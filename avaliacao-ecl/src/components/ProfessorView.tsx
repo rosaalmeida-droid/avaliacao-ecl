@@ -239,6 +239,7 @@ function extrairFicha(texto: string): FichaTecnica {
     const limpa = limparTexto(linha);
     if (limpa.length < 2 || limpa.length > 120) continue;
     if (regexSecIgnorar.test(limpa)) continue;
+    if (regexLixo.test(limpa)) continue;
     if (regexSecPreparacao.test(limpa) && limpa.length < 50) break;
 
     // Linha com bullet/número no início
@@ -283,6 +284,8 @@ function extrairFicha(texto: string): FichaTecnica {
   // Detetar passos numerados ou sequência de frases longas
   // -------------------------------------------------------
   const preparacao: PassoPreparacao[] = [];
+  const regexLixo = /cookies?|newsletter|privacidade|copyright|©|todos os direitos|pingo doce|continente|informação nutricional|avalia[çc][ãa]o desta receita|subscrição|obrigatório|nível de ameaça|allothunnus|thunnus|oncorhynchus|salmo salar|pesquisas recentes|ecrã ligado|encomendas via/i;
+
   const linhasPrep = linhas.slice(idxPreparacao + 1);
   const regexPasso = /^(\d+)[.)]\s*(.+)$/;
   const regexTemp = /(\d{2,3})\s*[°º]?\s*[Cc]/;
@@ -295,6 +298,7 @@ function extrairFicha(texto: string): FichaTecnica {
     const limpa = limparTexto(linha);
     if (limpa.length < 5) continue;
     if (regexSecIgnorar.test(limpa)) break;
+    if (regexLixo.test(limpa)) break;
 
     const mPasso = limpa.match(regexPasso);
     if (mPasso) {
@@ -481,9 +485,27 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
         />
       </Field>
 
+      {link && !mostrarManual && (
+        <div style={{ marginBottom: 10 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => {
+              const prompt = `Extrai desta receita, em formato de lista simples:\n\n1. NOME DO PRATO\n2. INGREDIENTES (uma linha por ingrediente, com quantidade, unidade e produto. Ex: "500 g bacalhau")\n3. MODO DE PREPARAÇÃO (passos numerados)\n4. Nº de doses\n5. Tempo de preparação\n6. Tempo de confeção\n\nLink da receita: ${link}`;
+              window.open(`https://claude.ai/new?q=${encodeURIComponent(prompt)}`, '_blank');
+            }}
+          >
+            🤖 Extrair receita com IA (Claude)
+          </button>
+          <div className="muted" style={{ fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+            Abre o Claude numa nova aba — copia o resultado e cola abaixo
+          </div>
+        </div>
+      )}
+
       {!mostrarManual && (
         <Button block onClick={carregar} disabled={(!link && !textoManual) || a_carregar}>
-          {a_carregar ? 'A carregar...' : 'Continuar →'}
+          {a_carregar ? 'A carregar...' : 'Tentar ler automaticamente →'}
         </Button>
       )}
 
