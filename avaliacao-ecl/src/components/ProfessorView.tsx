@@ -364,14 +364,45 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
     setACarregar(true);
     setErro('');
     try {
-      // Usa um proxy CORS simples para ler o link
       const url = `https://api.allorigins.win/get?url=${encodeURIComponent(link)}`;
       const res = await fetch(url);
       const data = await res.json();
-      // Extrair texto simples do HTML
+      const html = data.contents || '';
+
+      // 1ª tentativa: extrair JSON-LD schema.org/Recipe (Pingo Doce, Continente, etc.)
+      const jsonLdMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+      if (jsonLdMatch) {
+        for (const block of jsonLdMatch) {
+          try {
+            const json = JSON.parse(block.replace(/<[^>]+>/g, '').trim());
+            const recipe = json['@type'] === 'Recipe' ? json :
+              Array.isArray(json['@graph']) ? json['@graph'].find((g: any) => g['@type'] === 'Recipe') : null;
+            if (recipe) {
+              // Converter schema.org/Recipe para texto estruturado limpo
+              const nome = recipe.name || '';
+              const ingredientes = (recipe.recipeIngredient || []).join('\n');
+              const instrucoes = (recipe.recipeInstructions || [])
+                .map((i: any, idx: number) => `${idx + 1}. ${typeof i === 'string' ? i : i.text || ''}`)
+                .join('\n');
+              const tempoPrep = recipe.prepTime?.replace('PT', '').replace('M', ' min').replace('H', 'h') || '';
+              const tempoConf = recipe.cookTime?.replace('PT', '').replace('M', ' min').replace('H', 'h') || '';
+              const porcoes = recipe.recipeYield || '';
+              const texto = `${nome}\nTempo de preparação: ${tempoPrep}\nTempo de confeção: ${tempoConf}\nDoses: ${porcoes}\nIngredientes\n${ingredientes}\nPreparação\n${instrucoes}`;
+              onContinuar(texto, link);
+              return;
+            }
+          } catch {}
+        }
+      }
+
+      // 2ª tentativa: extrair texto limpo do HTML
       const div = document.createElement('div');
-      div.innerHTML = data.contents || '';
-      const texto = div.innerText || div.textContent || '';
+      div.innerHTML = html;
+      // Remover scripts, estilos, navs, footers, headers
+      ['script','style','nav','footer','header','aside','noscript'].forEach(tag => {
+        div.querySelectorAll(tag).forEach(el => el.remove());
+      });
+      const texto = (div.innerText || div.textContent || '').trim();
       if (texto.length < 50) throw new Error('Conteúdo insuficiente');
       onContinuar(texto, link);
     } catch (e) {
