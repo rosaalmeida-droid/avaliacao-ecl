@@ -12,6 +12,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
   const [modo, setModo] = useState<Perfil | null>(null);
   const [turmaId, setTurmaId] = useState(getTurmas()[0]?.id || '');
   const [numero, setNumero] = useState('');
+  const [ano, setAno] = useState<1 | 2 | 3>(1);
   const [pinAluno, setPinAluno] = useState('');
   const [pin, setPin] = useState('');
   const [erro, setErro] = useState('');
@@ -23,7 +24,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
       setErro('Número ou PIN incorretos.');
       return;
     }
-    const aluno = getOrCreateAluno(turmaId, Number(numero));
+    const aluno = getOrCreateAluno(turmaId, Number(numero), ano);
     onLogin('aluno', aluno.id, turmaId);
   }
 
@@ -71,6 +72,21 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
             </Field>
             <Field label="Número">
               <input className="input" type="number" value={numero} onChange={e => setNumero(e.target.value)} placeholder="ex: 12" />
+            </Field>
+            <Field label="Ano do curso">
+              <div>
+                {[1, 2, 3].map(a => (
+                  <button
+                    key={a}
+                    type="button"
+                    className={`chip ${ano === a ? 'selected' : ''}`}
+                    onClick={() => setAno(a as 1 | 2 | 3)}
+                    style={{ marginRight: 6 }}
+                  >
+                    {a}º ano
+                  </button>
+                ))}
+              </div>
             </Field>
             <Field label="PIN pessoal">
               <input className="input" type="password" value={pinAluno} onChange={e => setPinAluno(e.target.value)} placeholder="••••" />
