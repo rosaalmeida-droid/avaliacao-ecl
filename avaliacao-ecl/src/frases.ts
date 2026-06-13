@@ -7,11 +7,13 @@ import { FRASES_ATITUDES } from './frases_atitudes';
 import { FRASES_RESPONSABILIDADES } from './frases_responsabilidades';
 import { FRASES_TECNICAS } from './frases_tecnicas_1';
 import { FRASES_TECNICAS_2 } from './frases_tecnicas_2';
+import { FRASES_SUBTECNICAS } from './frases_subtecnicas';
 import { NivelAuto } from './types';
 
 export const TODAS_FRASES: FrasesCompetencia[] = [
   ...FRASES_TECNICAS,
   ...FRASES_TECNICAS_2,
+  ...FRASES_SUBTECNICAS,
   ...FRASES_ATITUDES,
   ...FRASES_RESPONSABILIDADES,
 ];
@@ -28,5 +30,4 @@ export function opcoesAutoavaliacao(competenciaId: string): { nivel: NivelAuto; 
   return f.frases.map((frase, i) => ({ nivel: NIVEIS[i], frase }));
 }
 
-export { getFrases };
 export type { FrasesCompetencia };
