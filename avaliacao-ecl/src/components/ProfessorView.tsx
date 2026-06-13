@@ -363,22 +363,32 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
     }
     setACarregar(true);
     setErro('');
-    try {
-      const url = `https://api.allorigins.win/get?url=${encodeURIComponent(link)}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const html = data.contents || '';
 
-      // 1ª tentativa: extrair JSON-LD schema.org/Recipe (Pingo Doce, Continente, etc.)
-      const jsonLdMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
-      if (jsonLdMatch) {
-        for (const block of jsonLdMatch) {
+    // Tentar vários métodos por ordem
+    const metodos = [
+      // 1º: Jina Reader — limpa o HTML e devolve texto estruturado
+      async () => {
+        const res = await fetch(`https://r.jina.ai/${link}`, {
+          headers: { 'Accept': 'text/plain' }
+        });
+        if (!res.ok) throw new Error('Jina falhou');
+        const texto = await res.text();
+        if (texto.length < 100) throw new Error('Conteúdo insuficiente');
+        return texto;
+      },
+      // 2º: allorigins com extração JSON-LD
+      async () => {
+        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(link)}`);
+        const data = await res.json();
+        const html = data.contents || '';
+        // Tentar JSON-LD primeiro
+        const jsonLdBlocks = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+        for (const block of jsonLdBlocks) {
           try {
             const json = JSON.parse(block.replace(/<[^>]+>/g, '').trim());
             const recipe = json['@type'] === 'Recipe' ? json :
               Array.isArray(json['@graph']) ? json['@graph'].find((g: any) => g['@type'] === 'Recipe') : null;
             if (recipe) {
-              // Converter schema.org/Recipe para texto estruturado limpo
               const nome = recipe.name || '';
               const ingredientes = (recipe.recipeIngredient || []).join('\n');
               const instrucoes = (recipe.recipeInstructions || [])
@@ -387,29 +397,33 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
               const tempoPrep = recipe.prepTime?.replace('PT', '').replace('M', ' min').replace('H', 'h') || '';
               const tempoConf = recipe.cookTime?.replace('PT', '').replace('M', ' min').replace('H', 'h') || '';
               const porcoes = recipe.recipeYield || '';
-              const texto = `${nome}\nTempo de preparação: ${tempoPrep}\nTempo de confeção: ${tempoConf}\nDoses: ${porcoes}\nIngredientes\n${ingredientes}\nPreparação\n${instrucoes}`;
-              onContinuar(texto, link);
-              return;
+              return `${nome}\nTempo de preparação: ${tempoPrep}\nTempo de confeção: ${tempoConf}\nDoses: ${porcoes}\nIngredientes\n${ingredientes}\nPreparação\n${instrucoes}`;
             }
           } catch {}
         }
-      }
+        // Fallback: texto limpo do HTML
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        ['script','style','nav','footer','header','aside','noscript'].forEach(tag => {
+          div.querySelectorAll(tag).forEach(el => el.remove());
+        });
+        const texto = (div.innerText || div.textContent || '').trim();
+        if (texto.length < 100) throw new Error('Conteúdo insuficiente');
+        return texto;
+      },
+    ];
 
-      // 2ª tentativa: extrair texto limpo do HTML
-      const div = document.createElement('div');
-      div.innerHTML = html;
-      // Remover scripts, estilos, navs, footers, headers
-      ['script','style','nav','footer','header','aside','noscript'].forEach(tag => {
-        div.querySelectorAll(tag).forEach(el => el.remove());
-      });
-      const texto = (div.innerText || div.textContent || '').trim();
-      if (texto.length < 50) throw new Error('Conteúdo insuficiente');
-      onContinuar(texto, link);
-    } catch (e) {
-      setErro('Não foi possível ler o link. Cola o texto da receita manualmente abaixo.');
-    } finally {
-      setACarregar(false);
+    for (const metodo of metodos) {
+      try {
+        const texto = await metodo();
+        onContinuar(texto, link);
+        setACarregar(false);
+        return;
+      } catch {}
     }
+
+    setErro('Não foi possível ler o link automaticamente. Cola o texto da receita manualmente abaixo.');
+    setACarregar(false);
   }
 
   return (
