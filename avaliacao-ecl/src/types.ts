@@ -11,6 +11,7 @@ export interface Competencia {
   descricao?: string;    // detalhe opcional
   uc: string[];          // códigos UC de origem (rastreabilidade ao referencial)
   palavrasChave?: string[]; // para sugestão automática a partir da receita
+  tecnicaMaeId?: string;    // se for subtécnica, id da técnica "grupo" (T01-T33) de onde deriva
 }
 
 export interface Turma {
