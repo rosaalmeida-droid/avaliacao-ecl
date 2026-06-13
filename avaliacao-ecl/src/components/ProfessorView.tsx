@@ -352,36 +352,51 @@ function extrairFicha(texto: string): FichaTecnica {
 function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string) => void }) {
   const [link, setLink] = useState('');
   const [textoManual, setTextoManual] = useState('');
+  const [nomePrato, setNomePrato] = useState('');
   const [a_carregar, setACarregar] = useState(false);
+  const [mostrarManual, setMostrarManual] = useState(false);
   const [erro, setErro] = useState('');
 
   async function carregar() {
     if (!link && !textoManual) return;
     if (textoManual) {
-      onContinuar(textoManual, '');
+      onContinuar((nomePrato ? nomePrato + '\n' : '') + textoManual, link);
       return;
     }
     setACarregar(true);
     setErro('');
 
-    // Tentar vários métodos por ordem
     const metodos = [
-      // 1º: Jina Reader — limpa o HTML e devolve texto estruturado
+      // 1º: Jina Reader com filtro de lixo
       async () => {
         const res = await fetch(`https://r.jina.ai/${link}`, {
-          headers: { 'Accept': 'text/plain' }
+          headers: { 'Accept': 'text/plain', 'X-Return-Format': 'markdown' }
         });
         if (!res.ok) throw new Error('Jina falhou');
         const texto = await res.text();
-        if (texto.length < 100) throw new Error('Conteúdo insuficiente');
-        return texto;
+
+        // Extrair título do Jina (linha "Title: ...")
+        const tituloMatch = texto.match(/^Title:\s*(.+)$/m);
+        if (tituloMatch) setNomePrato(tituloMatch[1].trim());
+
+        // Filtrar lixo
+        const linhasUteis = texto.split('\n').filter(l =>
+          l.trim().length > 3 &&
+          !l.includes('http') &&
+          !l.includes('![') &&
+          !l.includes('base64') &&
+          !l.includes('adzerk') &&
+          !l.includes('zkcdn') &&
+          !l.includes('eyJ')
+        );
+        if (linhasUteis.length < 8) throw new Error('Conteúdo insuficiente');
+        return linhasUteis.join('\n');
       },
-      // 2º: allorigins com extração JSON-LD
+      // 2º: allorigins com JSON-LD
       async () => {
         const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(link)}`);
         const data = await res.json();
         const html = data.contents || '';
-        // Tentar JSON-LD primeiro
         const jsonLdBlocks = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
         for (const block of jsonLdBlocks) {
           try {
@@ -389,7 +404,7 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
             const recipe = json['@type'] === 'Recipe' ? json :
               Array.isArray(json['@graph']) ? json['@graph'].find((g: any) => g['@type'] === 'Recipe') : null;
             if (recipe) {
-              const nome = recipe.name || '';
+              if (recipe.name) setNomePrato(recipe.name);
               const ingredientes = (recipe.recipeIngredient || []).join('\n');
               const instrucoes = (recipe.recipeInstructions || [])
                 .map((i: any, idx: number) => `${idx + 1}. ${typeof i === 'string' ? i : i.text || ''}`)
@@ -397,15 +412,15 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
               const tempoPrep = recipe.prepTime?.replace('PT', '').replace('M', ' min').replace('H', 'h') || '';
               const tempoConf = recipe.cookTime?.replace('PT', '').replace('M', ' min').replace('H', 'h') || '';
               const porcoes = recipe.recipeYield || '';
-              return `${nome}\nTempo de preparação: ${tempoPrep}\nTempo de confeção: ${tempoConf}\nDoses: ${porcoes}\nIngredientes\n${ingredientes}\nPreparação\n${instrucoes}`;
+              return `${recipe.name || ''}\nTempo de preparação: ${tempoPrep}\nTempo de confeção: ${tempoConf}\nDoses: ${porcoes}\nIngredientes\n${ingredientes}\nPreparação\n${instrucoes}`;
             }
           } catch {}
         }
-        // Fallback: texto limpo do HTML
+        // fallback HTML limpo
         const div = document.createElement('div');
         div.innerHTML = html;
         ['script','style','nav','footer','header','aside','noscript'].forEach(tag => {
-          div.querySelectorAll(tag).forEach(el => el.remove());
+          div.querySelectorAll(tag).forEach((el: Element) => el.remove());
         });
         const texto = (div.innerText || div.textContent || '').trim();
         if (texto.length < 100) throw new Error('Conteúdo insuficiente');
@@ -422,8 +437,10 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
       } catch {}
     }
 
-    setErro('Não foi possível ler o link automaticamente. Cola o texto da receita manualmente abaixo.');
+    // Todos falharam — mostrar modo manual com nome já preenchido se possível
     setACarregar(false);
+    setMostrarManual(true);
+    setErro('Não foi possível ler o link automaticamente. Cola abaixo apenas os ingredientes e o modo de preparação da receita.');
   }
 
   return (
@@ -436,32 +453,42 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
         <input
           className="input"
           value={link}
-          onChange={e => setLink(e.target.value)}
-          placeholder="https://www.exemplo.com/receita-bacalhau-bras"
+          onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); }}
+          placeholder="https://www.pingodoce.pt/receitas/..."
         />
       </Field>
 
-      <div className="muted" style={{ textAlign: 'center', margin: '8px 0' }}>ou</div>
+      {!mostrarManual && (
+        <Button block onClick={carregar} disabled={(!link && !textoManual) || a_carregar}>
+          {a_carregar ? 'A carregar...' : 'Continuar →'}
+        </Button>
+      )}
 
-      <Field label="Cola aqui o texto da receita">
-        <textarea
-          className="input"
-          value={textoManual}
-          onChange={e => setTextoManual(e.target.value)}
-          placeholder="Cola aqui o texto completo da receita (ingredientes e modo de preparação)..."
-          style={{ minHeight: 120 }}
-        />
-      </Field>
-
-      {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
-
-      <Button
-        block
-        onClick={carregar}
-        disabled={(!link && !textoManual) || a_carregar}
-      >
-        {a_carregar ? 'A carregar...' : 'Continuar →'}
-      </Button>
+      {(mostrarManual || !link) && (
+        <>
+          <div className="divider" />
+          {nomePrato && (
+            <Field label="Nome do prato (detetado automaticamente)">
+              <input className="input" value={nomePrato} onChange={e => setNomePrato(e.target.value)} />
+            </Field>
+          )}
+          {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>{erro}</div>}
+          <Field label={mostrarManual ? 'Cola aqui os ingredientes e modo de preparação' : 'Ou cola o texto da receita diretamente'}>
+            <textarea
+              className="input"
+              value={textoManual}
+              onChange={e => setTextoManual(e.target.value)}
+              placeholder={mostrarManual
+                ? 'Ex:\nIngredientes\n2 sakus de atum\n1 cs de óleo de sésamo\n...\n\nPreparação\n1. Tempere o atum...'
+                : 'Cola aqui o texto completo da receita...'}
+              style={{ minHeight: 140 }}
+            />
+          </Field>
+          <Button block onClick={carregar} disabled={!textoManual && !link}>
+            Continuar →
+          </Button>
+        </>
+      )}
     </Card>
   );
 }
