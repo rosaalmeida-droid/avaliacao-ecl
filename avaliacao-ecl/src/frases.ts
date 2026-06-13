@@ -28,4 +28,4 @@ export function opcoesAutoavaliacao(competenciaId: string): { nivel: NivelAuto; 
   return f.frases.map((frase, i) => ({ nivel: NIVEIS[i], frase }));
 }
 
-export { getFrases, FrasesCompetencia };
+export type { FrasesCompetencia };
