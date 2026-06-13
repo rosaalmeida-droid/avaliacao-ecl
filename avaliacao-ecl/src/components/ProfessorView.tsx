@@ -5,7 +5,86 @@ import { getCompetencia } from '../competencias';
 import { addComanda } from '../backend';
 import { EditorComanda, ESTADO_VAZIO, estadoParaComanda, EditorComandaState } from './EditorComanda';
 import { sugerirSubtecnicas } from '../subtecnicas';
-import { SUBTECNICAS } from '../subtecnicas';
+import { exportDOCX, exportPDF } from '../exportFicha';
+
+// ============================================================
+// Tabela de conversão de medidas culinárias para gramas/ml
+// ============================================================
+
+// Peso base por medida (em gramas/ml, para ingrediente genérico)
+const PESO_MEDIDA: Record<string, number> = {
+  'colher de sopa': 15,
+  'c.s.': 15,
+  'cs': 15,
+  'colher de sobremesa': 10,
+  'colher de chá': 5,
+  'c.c.': 5,
+  'cc': 5,
+  'copo': 200,
+  'chávena': 240,
+  'pitada': 1,
+  'xícara': 240,
+};
+
+// Fator de correção por ingrediente (multiplicar pelo peso base)
+const FATOR_INGREDIENTE: Record<string, number> = {
+  'farinha': 0.67,        // 1cs farinha ≈ 10g
+  'açúcar': 1.0,          // 1cs açúcar ≈ 15g
+  'açúcar em pó': 0.8,
+  'sal': 1.2,             // 1cs sal ≈ 18g
+  'azeite': 0.93,         // 1cs azeite ≈ 14g
+  'óleo': 0.93,
+  'manteiga': 1.0,        // 1cs manteiga ≈ 15g
+  'mel': 1.4,             // 1cs mel ≈ 21g
+  'cacau': 0.53,          // 1cs cacau ≈ 8g
+  'fermento': 0.6,        // 1cs fermento ≈ 9g
+  'maizena': 0.67,
+  'amido': 0.67,
+  'leite': 1.0,           // líquido = 1g/ml
+  'natas': 1.0,
+  'água': 1.0,
+  'vinagre': 1.0,
+  'molho': 1.0,
+  'arroz': 0.87,          // 1 copo arroz ≈ 174g
+};
+
+const LIMIAR_MANTER_MEDIDA = 20; // abaixo de 20g → manter medida original
+
+function converterMedida(qt: string, un: string, produto: string): { qtFinal: string; unFinal: string; obs: string } {
+  const unLower = un.toLowerCase().trim();
+  const produtoLower = produto.toLowerCase();
+
+  // q.b. e similares — não converter
+  if (/q\.?\s*b\.?|a\s+gosto|conforme|quanto\s+baste/i.test(unLower) || /q\.?\s*b\.?/i.test(qt)) {
+    return { qtFinal: 'q.b.', unFinal: '', obs: '' };
+  }
+
+  // Verificar se é uma medida conhecida
+  const medidaKey = Object.keys(PESO_MEDIDA).find(k => unLower.includes(k));
+  if (!medidaKey) return { qtFinal: qt, unFinal: un, obs: '' };
+
+  const pesoPorUnidade = PESO_MEDIDA[medidaKey];
+
+  // Fator de ingrediente
+  const fatorKey = Object.keys(FATOR_INGREDIENTE).find(k => produtoLower.includes(k));
+  const fator = fatorKey ? FATOR_INGREDIENTE[fatorKey] : 1.0;
+
+  // Quantidade numérica
+  const qtNum = parseFloat(qt.replace(',', '.').replace('½', '0.5').replace('¼', '0.25').replace('¾', '0.75')) || 1;
+  const gramas = Math.round(qtNum * pesoPorUnidade * fator);
+
+  // Unidade de saída
+  const isLiquido = ['leite', 'natas', 'água', 'azeite', 'óleo', 'vinagre', 'molho', 'caldo', 'sumo'].some(l => produtoLower.includes(l));
+  const unSaida = isLiquido ? 'ml' : 'g';
+
+  if (gramas < LIMIAR_MANTER_MEDIDA) {
+    // Manter medida original, mostrar equivalência como observação
+    return { qtFinal: qt, unFinal: un, obs: `≈ ${gramas}${unSaida}` };
+  } else {
+    // Mostrar em gramas/ml, com medida original como observação
+    return { qtFinal: String(gramas), unFinal: unSaida, obs: `(${qt} ${un})` };
+  }
+}
 
 // ============================================================
 // Tipos para a ficha técnica editável
@@ -65,62 +144,205 @@ const FICHA_VAZIA: FichaTecnica = {
 // ============================================================
 // Extração automática a partir do texto da receita
 // ============================================================
+function limparTexto(t: string): string {
+  return t.replace(/\s+/g, ' ').trim();
+}
+
 function extrairFicha(texto: string): FichaTecnica {
-  const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+  const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 1);
 
-  // Tentar encontrar nome do prato (geralmente nas primeiras linhas)
-  const nomePrato = linhas[0] || '';
-
-  // Tentar extrair ingredientes — procurar linhas com quantidades (números + unidades)
-  const regexIngrediente = /^([\d.,/]+)\s*(kg|g|l|ml|dl|cl|cs|cc|u|un|qb|[-])\s+(.+)$/i;
-  const ingredientes: LinhaIngrediente[] = [];
-  const preparacaoLinhas: string[] = [];
-
-  let modoPrep = false;
-  for (const linha of linhas) {
-    if (/modo de prepara|prepara[çc][ãa]o|m[eé]todo/i.test(linha)) {
-      modoPrep = true;
-      continue;
+  // -------------------------------------------------------
+  // NOME DO PRATO
+  // Estratégia: procurar linha em maiúsculas, ou linha curta
+  // no início do texto (antes de ingredientes/preparação)
+  // -------------------------------------------------------
+  let nomePrato = '';
+  const regexTitulo = /^(receita\s+(de\s+)?)?([A-ZÁÉÍÓÚÀÃÕÂÊÎÔÛÇ][^.!?:]{3,60})$/;
+  for (const linha of linhas.slice(0, 15)) {
+    const limpa = limparTexto(linha);
+    // Linha toda em maiúsculas e curta = título
+    if (limpa === limpa.toUpperCase() && limpa.length > 3 && limpa.length < 80 && /[A-Z]/.test(limpa)) {
+      nomePrato = limpa.charAt(0) + limpa.slice(1).toLowerCase();
+      break;
     }
-    if (!modoPrep) {
-      const m = linha.match(regexIngrediente);
-      if (m) {
-        ingredientes.push({
-          componente: '',
-          qt: m[1],
-          un: m[2],
-          produto: m[3],
-          tPrep: '',
-          tConf: '',
-          obs: '',
-        });
-      }
-    } else {
-      if (linha.length > 10) preparacaoLinhas.push(linha);
+    // Linha que começa com "Receita de ..."
+    if (/^receita\s+(de\s+)?/i.test(limpa) && limpa.length < 80) {
+      nomePrato = limpa;
+      break;
+    }
+    // Linha curta e capitalizada antes de qualquer ingrediente
+    if (regexTitulo.test(limpa) && !nomePrato && limpa.length < 60) {
+      nomePrato = limpa;
+    }
+  }
+  // Fallback: primeira linha não vazia
+  if (!nomePrato && linhas.length > 0) nomePrato = limparTexto(linhas[0]).slice(0, 60);
+
+  // -------------------------------------------------------
+  // DETETAR SECÇÕES
+  // Marcar onde começam ingredientes e preparação
+  // -------------------------------------------------------
+  const regexSecIngredientes = /ingredientes?|para\s+a?\s*receita|material\s+necessário|você\s+vai\s+precisar/i;
+  const regexSecPreparacao = /prepara[çc][ãa]o|modo\s+de\s+prepara|como\s+fazer|confec[çc][ãa]o|método|instru[çc][õo]es|passo\s+a\s+passo|receita/i;
+  const regexSecIgnorar = /coment[aá]rios?|avalia[çc][õo]es?|notas?\s+do\s+chef|dicas?|sugest[õo]es?|ver\s+também|produtos?\s+relacionados?/i;
+
+  let idxIngredientes = -1;
+  let idxPreparacao = -1;
+
+  for (let i = 0; i < linhas.length; i++) {
+    const l = linhas[i].toLowerCase();
+    if (idxIngredientes === -1 && regexSecIngredientes.test(l) && linhas[i].length < 50) idxIngredientes = i;
+    if (idxPreparacao === -1 && regexSecPreparacao.test(l) && linhas[i].length < 60 && i > 0) idxPreparacao = i;
+    if (regexSecIgnorar.test(l) && i > Math.max(idxIngredientes, idxPreparacao)) break;
+  }
+
+  // Se não encontrou secções, tentar detetar por padrão de conteúdo
+  if (idxIngredientes === -1) idxIngredientes = 0;
+  if (idxPreparacao === -1) idxPreparacao = Math.floor(linhas.length / 2);
+
+  // -------------------------------------------------------
+  // INGREDIENTES
+  // Padrões: "500g de bacalhau", "3 ovos", "1/2 cebola"
+  // "sal q.b.", "2 colheres de sopa de azeite"
+  // -------------------------------------------------------
+  const regexQtd = /^([\d.,/½¼¾]+\s*)?(kg|g|gr|mg|l|lt|ml|dl|cl|colher[es]*\s+de\s+(sopa|sobremesa|chá|café)|c\.s\.|c\.c\.|cs|cc|copo[s]?|chávena[s]?|pitada[s]?|q\.?\s*b\.?|un|unidade[s]?|dente[s]?|ramo[s]?|folha[s]?|fatia[s]?|rodela[s]?|cubo[s]?|pacote[s]?|lata[s]?|embalagem|maço[s]?)\s*/i;
+  const regexIngSimples = /^([\d.,/½¼¾]+)\s+(.{3,50})$/;
+  const regexIngCompleto = /^([\d.,/½¼¾]+\s*(?:kg|g|gr|mg|l|lt|ml|dl|cl|c\.s\.|c\.c\.|cs|cc|colher[es]*\s+de\s+(?:sopa|sobremesa|chá|café)|copo[s]?|chávena[s]?|un|unidade[s]?|dente[s]?|ramo[s]?|folha[s]?|fatia[s]?|pitada[s]?|q\.?\s*b\.?)?)\s+(?:de\s+)?(.{2,60})$/i;
+
+  const ingredientes: LinhaIngrediente[] = [];
+  const linhasIngredientes = linhas.slice(idxIngredientes + 1, idxPreparacao);
+
+  for (const linha of linhasIngredientes) {
+    const limpa = limparTexto(linha);
+    if (limpa.length < 2 || limpa.length > 120) continue;
+    if (regexSecIgnorar.test(limpa)) continue;
+    if (regexSecPreparacao.test(limpa) && limpa.length < 50) break;
+
+    // Linha com bullet/número no início
+    const semBullet = limpa.replace(/^[-•·*◦▪▸→✓\d]+[.)]\s*/, '');
+
+    const m = semBullet.match(regexIngCompleto);
+    if (m) {
+      const parteQt = m[1].trim();
+      const produto = m[2].trim();
+      const qtMatch = parteQt.match(/^([\d.,/½¼¾]+)\s*(.*)$/);
+      const qtRaw = qtMatch ? qtMatch[1] : parteQt;
+      const unRaw = qtMatch ? qtMatch[2].trim() : '';
+      const conv = converterMedida(qtRaw, unRaw, produto);
+      ingredientes.push({
+        componente: '',
+        qt: conv.qtFinal,
+        un: conv.unFinal,
+        produto,
+        tPrep: '',
+        tConf: '',
+        obs: conv.obs,
+      });
+    } else if (semBullet.length > 2 && semBullet.length < 80 && !/^\d+\s*(min|h|hora|°C|º)/i.test(semBullet)) {
+      ingredientes.push({
+        componente: '',
+        qt: 'q.b.',
+        un: '',
+        produto: semBullet,
+        tPrep: '',
+        tConf: '',
+        obs: '',
+      });
     }
   }
 
-  // Se não detetou ingredientes, criar linha vazia
   if (ingredientes.length === 0) {
     ingredientes.push({ componente: '', qt: '', un: '', produto: '', tPrep: '', tConf: '', obs: '' });
   }
 
-  // Preparação em passos
-  const preparacao: PassoPreparacao[] = preparacaoLinhas.length > 0
-    ? preparacaoLinhas.slice(0, 10).map((l, i) => ({
-        num: i + 1,
-        descricao: l,
-        temperatura: '',
-        tempo: '',
-        obs: '',
-      }))
-    : [{ num: 1, descricao: '', temperatura: '', tempo: '', obs: '' }];
+  // -------------------------------------------------------
+  // MODO DE PREPARAÇÃO
+  // Detetar passos numerados ou sequência de frases longas
+  // -------------------------------------------------------
+  const preparacao: PassoPreparacao[] = [];
+  const linhasPrep = linhas.slice(idxPreparacao + 1);
+  const regexPasso = /^(\d+)[.)]\s*(.+)$/;
+  const regexTemp = /(\d{2,3})\s*[°º]?\s*[Cc]/;
+  const regexTempo = /(\d+)\s*(min|minuto[s]?|hora[s]?|h\b)/i;
+
+  let passoAtual = '';
+  let numPasso = 1;
+
+  for (const linha of linhasPrep) {
+    const limpa = limparTexto(linha);
+    if (limpa.length < 5) continue;
+    if (regexSecIgnorar.test(limpa)) break;
+
+    const mPasso = limpa.match(regexPasso);
+    if (mPasso) {
+      if (passoAtual) {
+        const mTemp = passoAtual.match(regexTemp);
+        const mTempo = passoAtual.match(regexTempo);
+        preparacao.push({
+          num: numPasso++,
+          descricao: passoAtual,
+          temperatura: mTemp ? `${mTemp[1]}ºC` : '',
+          tempo: mTempo ? `${mTempo[1]} ${mTempo[2]}` : '',
+          obs: '',
+        });
+      }
+      passoAtual = mPasso[2];
+    } else if (limpa.length > 20 && !/^(ingredientes?|prepara)/i.test(limpa)) {
+      // Frase longa = parte de um passo
+      if (passoAtual) passoAtual += ' ' + limpa;
+      else passoAtual = limpa;
+      // Se acabou com ponto final = novo passo
+      if (limpa.endsWith('.') && passoAtual.length > 40) {
+        const mTemp = passoAtual.match(regexTemp);
+        const mTempo = passoAtual.match(regexTempo);
+        preparacao.push({
+          num: numPasso++,
+          descricao: passoAtual,
+          temperatura: mTemp ? `${mTemp[1]}ºC` : '',
+          tempo: mTempo ? `${mTempo[1]} ${mTempo[2]}` : '',
+          obs: '',
+        });
+        passoAtual = '';
+      }
+    }
+  }
+
+  // Último passo pendente
+  if (passoAtual.length > 10) {
+    const mTemp = passoAtual.match(regexTemp);
+    const mTempo = passoAtual.match(regexTempo);
+    preparacao.push({
+      num: numPasso,
+      descricao: passoAtual,
+      temperatura: mTemp ? `${mTemp[1]}ºC` : '',
+      tempo: mTempo ? `${mTempo[1]} ${mTempo[2]}` : '',
+      obs: '',
+    });
+  }
+
+  if (preparacao.length === 0) {
+    preparacao.push({ num: 1, descricao: '', temperatura: '', tempo: '', obs: '' });
+  }
+
+  // -------------------------------------------------------
+  // TEMPOS TOTAIS (do texto completo)
+  // -------------------------------------------------------
+  const regexTotalPrep = /(?:tempo\s+de\s+prepara[çc][ãa]o|prepara[çc][ãa]o)[:\s]+(\d+\s*(?:min|h|hora[s]?))/i;
+  const regexTotalConf = /(?:tempo\s+de\s+(?:confec[çc][ãa]o|cozedura|cozinhar|forno)|confec[çc][ãa]o)[:\s]+(\d+\s*(?:min|h|hora[s]?))/i;
+  const regexPorcoes = /(?:dose[s]?|por[çc][õo]es?|pessoas?|serve)[:\s]+(\d+)/i;
+
+  const mTPrep = texto.match(regexTotalPrep);
+  const mTConf = texto.match(regexTotalConf);
+  const mPorc = texto.match(regexPorcoes);
 
   return {
     ...FICHA_VAZIA,
     nomePrato,
     ingredientes,
     preparacao,
+    tempoPrep: mTPrep ? mTPrep[1] : '',
+    tempoConf: mTConf ? mTConf[1] : '',
+    numPorcoes: mPorc ? mPorc[1] : '',
   };
 }
 
@@ -418,7 +640,7 @@ function PassoFichaTecnica({
             Com base no texto da receita. Serão usadas no passo seguinte para sugerir competências.
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {subtecnicasDetetadas.map(s => (
+            {subtecnicasDetetadas.map((s: { id: string; nome: string }) => (
               <span key={s.id} className="chip suggested">★ {s.nome}</span>
             ))}
           </div>
@@ -427,6 +649,11 @@ function PassoFichaTecnica({
 
       <Card>
         <Button block variant="ghost" onClick={onVoltar}>← Voltar</Button>
+        <div style={{ height: 8 }} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="ghost" onClick={() => exportPDF(ficha as any)}>🖨️ PDF</Button>
+          <Button variant="ghost" onClick={() => exportDOCX(ficha as any)}>📄 Word</Button>
+        </div>
         <div style={{ height: 8 }} />
         <Button block onClick={() => onContinuar(ficha)} disabled={!ficha.nomePrato}>
           Continuar para Competências →
