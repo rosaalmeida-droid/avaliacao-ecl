@@ -6,6 +6,8 @@ import { addComanda } from '../backend';
 import { EditorComanda, ESTADO_VAZIO, estadoParaComanda, EditorComandaState } from './EditorComanda';
 import { sugerirSubtecnicas } from '../subtecnicas';
 import { exportDOCX, exportPDF } from '../exportFicha';
+import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
+import { calcularNutricao, InfoNutricional } from '../nutricao';
 
 // ============================================================
 // Tabela de conversão de medidas culinárias para gramas/ml
@@ -362,11 +364,16 @@ function extrairFicha(texto: string): FichaTecnica {
   const mTConf = texto.match(regexTotalConf);
   const mPorc = texto.match(regexPorcoes);
 
+  // Detetar alergénicos automaticamente
+  const produtosList = ingredientes.map(i => i.produto);
+  const alergenicosDetectados = detetarAlergenicos(produtosList);
+
   return {
     ...FICHA_VAZIA,
     nomePrato,
     ingredientes,
     preparacao,
+    alergenicos: formatarAlergenicos(alergenicosDetectados),
     tempoPrep: mTPrep ? mTPrep[1] : '',
     tempoConf: mTConf ? mTConf[1] : '',
     numPorcoes: mPorc ? mPorc[1] : '',
@@ -749,7 +756,52 @@ function PassoFichaTecnica({
         </div>
       </Card>
 
-      {/* Subtécnicas detetadas */}
+      {/* Nutrição */}
+      {(() => {
+        const nutri = calcularNutricao(ficha.ingredientes, parseInt(ficha.numPorcoes) || 1);
+        if (nutri.numIngredientesCalculados === 0) return null;
+        return (
+          <Card>
+            <div style={{ fontWeight: 700, marginBottom: 8 }}>
+              Valores Nutricionais Estimados
+              <span className="muted" style={{ fontSize: 11, fontWeight: 400, marginLeft: 8 }}>
+                (por porção · {nutri.numIngredientesCalculados}/{nutri.totalIngredientes} ingredientes calculados)
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {[
+                { label: 'Energia', valor: `${nutri.calorias} kcal` },
+                { label: 'Proteínas', valor: `${nutri.proteinas} g` },
+                { label: 'Gorduras', valor: `${nutri.gorduras} g` },
+                { label: 'Hidratos', valor: `${nutri.hidratos} g` },
+              ].map(({ label, valor }) => (
+                <div key={label} style={{ background: 'var(--cream)', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
+                  <div className="muted" style={{ fontSize: 11 }}>{label}</div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--copper)' }}>{valor}</div>
+                </div>
+              ))}
+            </div>
+            <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>
+              ⚠️ Estimativa — verificar com tabela oficial INSA
+            </div>
+          </Card>
+        );
+      })()}
+
+      {/* Alergénicos */}
+      {ficha.alergenicos && (
+        <Card>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Alergénicos detetados</div>
+          <div style={{ fontSize: 14 }}>{ficha.alergenicos}</div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+            ⚠️ Verificar sempre — baseado nos ingredientes introduzidos
+          </div>
+          <Field label="Editar alergénicos">
+            <input className="input" value={ficha.alergenicos}
+              onChange={e => setF('alergenicos', e.target.value)} />
+          </Field>
+        </Card>
+      )}
       {subtecnicasDetetadas.length > 0 && (
         <Card>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>🔍 Subtécnicas detetadas automaticamente</div>
