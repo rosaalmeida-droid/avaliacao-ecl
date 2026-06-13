@@ -157,26 +157,39 @@ function extrairFicha(texto: string): FichaTecnica {
   // no início do texto (antes de ingredientes/preparação)
   // -------------------------------------------------------
   let nomePrato = '';
+  // Palavras a ignorar como nome (botões/menus comuns em sites)
+  const palavrasIgnorar = /^(partilhar|imprimir|guardar|voltar|menu|home|início|pesquisar|receitas|ver mais|fechar|partilhe|login|registar|compartilhar|share|print|save)$/i;
   const regexTitulo = /^(receita\s+(de\s+)?)?([A-ZÁÉÍÓÚÀÃÕÂÊÎÔÛÇ][^.!?:]{3,60})$/;
-  for (const linha of linhas.slice(0, 15)) {
-    const limpa = limparTexto(linha);
-    // Linha toda em maiúsculas e curta = título
-    if (limpa === limpa.toUpperCase() && limpa.length > 3 && limpa.length < 80 && /[A-Z]/.test(limpa)) {
-      nomePrato = limpa.charAt(0) + limpa.slice(1).toLowerCase();
-      break;
-    }
-    // Linha que começa com "Receita de ..."
-    if (/^receita\s+(de\s+)?/i.test(limpa) && limpa.length < 80) {
-      nomePrato = limpa;
-      break;
-    }
-    // Linha curta e capitalizada antes de qualquer ingrediente
-    if (regexTitulo.test(limpa) && !nomePrato && limpa.length < 60) {
-      nomePrato = limpa;
+
+  // Primeiro tentar extrair do "Title:" do Jina
+  const tituloJina = texto.match(/^Title:\s*(.+)$/m);
+  if (tituloJina) nomePrato = tituloJina[1].trim();
+
+  if (!nomePrato) {
+    for (const linha of linhas.slice(0, 20)) {
+      const limpa = limparTexto(linha);
+      if (palavrasIgnorar.test(limpa.trim())) continue;
+      if (limpa.startsWith('#')) {
+        // Título markdown do Jina
+        const semHash = limpa.replace(/^#+\s*/, '').trim();
+        if (semHash.length > 3 && semHash.length < 80 && !palavrasIgnorar.test(semHash)) {
+          nomePrato = semHash;
+          break;
+        }
+      }
+      if (limpa === limpa.toUpperCase() && limpa.length > 3 && limpa.length < 80 && /[A-Z]/.test(limpa) && !palavrasIgnorar.test(limpa)) {
+        nomePrato = limpa.charAt(0) + limpa.slice(1).toLowerCase();
+        break;
+      }
+      if (/^receita\s+(de\s+)?/i.test(limpa) && limpa.length < 80) {
+        nomePrato = limpa;
+        break;
+      }
+      if (regexTitulo.test(limpa) && !nomePrato && limpa.length < 60 && !palavrasIgnorar.test(limpa)) {
+        nomePrato = limpa;
+      }
     }
   }
-  // Fallback: primeira linha não vazia
-  if (!nomePrato && linhas.length > 0) nomePrato = limparTexto(linhas[0]).slice(0, 60);
 
   // -------------------------------------------------------
   // DETETAR SECÇÕES
@@ -197,7 +210,17 @@ function extrairFicha(texto: string): FichaTecnica {
   }
 
   // Se não encontrou secções, tentar detetar por padrão de conteúdo
-  if (idxIngredientes === -1) idxIngredientes = 0;
+  if (idxIngredientes === -1) {
+    // Procurar a primeira linha que parece um ingrediente
+    for (let i = 0; i < linhas.length; i++) {
+      const limpa = limparTexto(linhas[i]);
+      if (/^[\d½¼¾]+\s*(kg|g|gr|ml|dl|l|cs|cc|colher|copo|chávena|pitada|dente|ramo|un)/i.test(limpa)) {
+        idxIngredientes = Math.max(0, i - 1);
+        break;
+      }
+    }
+    if (idxIngredientes === -1) idxIngredientes = 0;
+  }
   if (idxPreparacao === -1) idxPreparacao = Math.floor(linhas.length / 2);
 
   // -------------------------------------------------------
