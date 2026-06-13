@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --cream: #f7f1e6;
+  --charcoal: #1f1b16;
+  --copper: #b5651d;
+  --copper-light: #d98c4a;
+  --sage: #6b7c5e;
+  --sage-light: #9caf8e;
+  --danger: #b3413a;
+  --border: rgba(31,27,22,0.12);
+  --shadow: 0 2px 12px rgba(31,27,22,0.08);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--cream);
+  color: var(--charcoal);
+}
+
+h1, h2, h3, .display {
+  font-family: 'Fraunces', serif;
+}
+
+code, .mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.app-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px;
+  min-height: 100vh;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.05s ease, opacity 0.15s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary { background: var(--copper); color: #fff; }
+.btn-secondary { background: var(--sage); color: #fff; }
+.btn-ghost { background: transparent; color: var(--charcoal); border: 1px solid var(--border); }
+.btn-block { width: 100%; }
+
+.input, select.input, textarea.input {
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--cream);
+  color: var(--charcoal);
+}
+textarea.input { min-height: 90px; resize: vertical; }
+
+label.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--charcoal);
+  opacity: 0.8;
+}
+
+.field { margin-bottom: 14px; }
+
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1.5px dashed var(--sage);
+  color: var(--sage);
+}
+.stamp.copper { border-color: var(--copper); color: var(--copper); }
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 100px;
+}
+.badge-nova { background: rgba(107,124,94,0.15); color: var(--sage); }
+.badge-dev { background: rgba(181,101,29,0.12); color: var(--copper); }
+.badge-dominada { background: rgba(31,27,22,0.08); color: var(--charcoal); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: 100px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+.chip.selected {
+  background: var(--charcoal);
+  color: #fff;
+  border-color: var(--charcoal);
+}
+.chip.suggested:not(.selected) {
+  border-color: var(--copper-light);
+  background: rgba(181,101,29,0.06);
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 100px;
+  background: rgba(31,27,22,0.08);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--sage);
+  border-radius: 100px;
+  transition: width 0.3s ease;
+}
+
+.header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.title-row { display: flex; align-items: baseline; gap: 10px; }
+
+.muted { opacity: 0.6; font-size: 13px; }
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+
+.option-card {
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #fff;
+}
+.option-card:hover { border-color: var(--copper-light); }
+.option-card.selected {
+  border-color: var(--copper);
+  background: rgba(181,101,29,0.06);
+}
+
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+.pin-grid .btn { font-size: 20px; padding: 16px; }
