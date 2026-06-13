@@ -22,8 +22,15 @@ export interface Aluno {
   id: string;       // turma+numero, ex: "CP1-12"
   turmaId: string;
   numero: number;
+  ano: 1 | 2 | 3;    // ano do curso — define o nº mínimo de competências exigidas
   nome?: string;
 }
+
+export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
+  1: 5,
+  2: 8,
+  3: 12,
+};
 
 export type Perfil = 'aluno' | 'professor' | 'coordenadora';
 
@@ -72,6 +79,9 @@ export interface Comanda {
   tecnicasSugeridas: string[];        // ids de Competencia (categoria TECNICAS)
   atitudesSugeridas: string[];        // ids de Competencia (categoria ATITUDES)
   responsabilidadesSugeridas: string[]; // ids de Competencia (categoria RESPONSABILIDADES)
+  tecnicasFixas: string[];        // escolhidas pelo professor, obrigatórias (não removíveis)
+  atitudesFixas: string[];
+  responsabilidadesFixas: string[];
   criadaEm: string;       // ISO datetime
 }
 
