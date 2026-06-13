@@ -19,10 +19,10 @@ export const TECNICAS: Competencia[] = [
   // --- Fundamentos / organização (UC03576, UC01999) ---
   { id: 'T01', categoria: 'TECNICAS', nome: 'Elaborar e interpretar fichas técnicas', uc: ['UC03576','UC02002','UC02003','UC02004','UC02005'], palavrasChave: ['ficha técnica','receita'] },
   { id: 'T02', categoria: 'TECNICAS', nome: 'Preparar a mise en place', uc: ['UC03576','UC01999','UC02002','UC02003','UC02004','UC02005'], palavrasChave: ['mise en place','preparação'] },
-  { id: 'T03', categoria: 'TECNICAS', nome: 'Aplicar técnicas de corte de legumes e vegetais', uc: ['UC01999','UC03585'], palavrasChave: ['legumes','vegetais','corte','juliana','brunoise'] },
+  { id: 'T03', categoria: 'TECNICAS', nome: 'Aplicar técnicas de corte de legumes e vegetais', uc: ['UC01999','UC03585'], palavrasChave: ['legumes','vegetais','corte','juliana','brunoise','descascar','picar','cortar','batata','batatas','cenoura','cebola'] },
   { id: 'T04', categoria: 'TECNICAS', nome: 'Limpar e preparar carnes de açougue, criação e caça', uc: ['UC01999','UC02004'], palavrasChave: ['carne','vaca','porco','frango','caça'] },
   { id: 'T05', categoria: 'TECNICAS', nome: 'Limpar e preparar peixes, moluscos e crustáceos (filetagem)', uc: ['UC01999','UC02003'], palavrasChave: ['peixe','marisco','filetagem','crustáceo','molusco'] },
-  { id: 'T06', categoria: 'TECNICAS', nome: 'Aplicar técnicas dos principais métodos de confeção (grelhar, estufar, fritar, etc.)', uc: ['UC01999','UC02003','UC02004'], palavrasChave: ['grelhado','estufado','assado','fritura','vapor'] },
+  { id: 'T06', categoria: 'TECNICAS', nome: 'Aplicar técnicas dos principais métodos de confeção (grelhar, estufar, fritar, etc.)', uc: ['UC01999','UC02003','UC02004'], palavrasChave: ['grelhado','estufado','assado','fritura','vapor','grelhar','estufar','fritar','assar','cozer','refogar','saltear','marinar','escalfar','brasear','gratinar','vapor'] },
 
   // --- Acepipes, sopas, ovos e massas (UC02002) ---
   { id: 'T07', categoria: 'TECNICAS', nome: 'Confecionar sopas, cremes, aveludados e consommés', uc: ['UC02002'], palavrasChave: ['sopa','creme','caldo','consommé','aveludado'] },
@@ -30,14 +30,14 @@ export const TECNICAS: Competencia[] = [
   { id: 'T09', categoria: 'TECNICAS', nome: 'Confecionar pratos de ovos e massas', uc: ['UC02002'], palavrasChave: ['ovo','omelete','massa','pasta','esparguete'] },
 
   // --- Peixes e mariscos (UC02003) ---
-  { id: 'T10', categoria: 'TECNICAS', nome: 'Confecionar peixes e mariscos com acompanhamentos/guarnições', uc: ['UC02003'], palavrasChave: ['peixe','marisco','bacalhau','salmão','garoupa'] },
+  { id: 'T10', categoria: 'TECNICAS', nome: 'Confecionar peixes e mariscos com acompanhamentos/guarnições', uc: ['UC02003'], palavrasChave: ['peixe','marisco','bacalhau','salmão','garoupa','grelhar','assar','cozer','fritar','escalfar','marinar'] },
 
   // --- Carnes, aves, caça (UC02004) ---
-  { id: 'T11', categoria: 'TECNICAS', nome: 'Confecionar carnes, aves e caça com acompanhamentos/guarnições', uc: ['UC02004'], palavrasChave: ['frango','pato','vitela','porco','vaca','aves','caça'] },
+  { id: 'T11', categoria: 'TECNICAS', nome: 'Confecionar carnes, aves e caça com acompanhamentos/guarnições', uc: ['UC02004'], palavrasChave: ['frango','pato','vitela','porco','vaca','aves','caça','grelhar','assar','estufar','fritar','marinar','brasear','grelhado','assado'] },
 
   // --- Pastelaria base (UC02005) ---
-  { id: 'T12', categoria: 'TECNICAS', nome: 'Confecionar massas base de pastelaria', uc: ['UC02005'], palavrasChave: ['massa folhada','massa quebrada','massa areada','pastelaria'] },
-  { id: 'T13', categoria: 'TECNICAS', nome: 'Confecionar recheios, cremes base e molhos base de pastelaria', uc: ['UC02005'], palavrasChave: ['creme pasteleiro','recheio','molho de pastelaria','puré'] },
+  { id: 'T12', categoria: 'TECNICAS', nome: 'Confecionar massas base de pastelaria', uc: ['UC02005'], palavrasChave: ['massa folhada','massa quebrada','massa areada','pastelaria','laminar','estender','cozer'] },
+  { id: 'T13', categoria: 'TECNICAS', nome: 'Confecionar recheios, cremes base e molhos base de pastelaria', uc: ['UC02005'], palavrasChave: ['creme pasteleiro','recheio','molho de pastelaria','puré','bater','ferver','engrossar'] },
 
   // --- Empratamento e conservação (transversal a várias UCs) ---
   { id: 'T14', categoria: 'TECNICAS', nome: 'Aplicar técnicas de empratamento e decoração', uc: ['UC02002','UC02003','UC02004','UC02005','UC03586','UC03588'], palavrasChave: ['empratamento','decoração','apresentação'] },
@@ -134,7 +134,9 @@ export const RESPONSABILIDADES: Competencia[] = [
   { id: 'R12', categoria: 'RESPONSABILIDADES', nome: 'Utilizar corretamente equipamento de proteção individual (EPI)', uc: ['UC03584'] },
 ];
 
-export const TODAS_COMPETENCIAS: Competencia[] = [...TECNICAS, ...ATITUDES, ...RESPONSABILIDADES];
+import { SUBTECNICAS } from './subtecnicas';
+
+export const TODAS_COMPETENCIAS: Competencia[] = [...TECNICAS, ...ATITUDES, ...RESPONSABILIDADES, ...SUBTECNICAS];
 
 export function getCompetencia(id: string): Competencia | undefined {
   return TODAS_COMPETENCIAS.find(c => c.id === id);
@@ -145,7 +147,9 @@ export function getCompetencia(id: string): Competencia | undefined {
 // ------------------------------------------------------------------
 export function sugerirTecnicas(textoReceita: string): string[] {
   const texto = textoReceita.toLowerCase();
-  const sugeridas = TECNICAS.filter(t =>
+  // Sugerir tanto técnicas-mãe como subtécnicas específicas
+  const todas = [...TECNICAS, ...SUBTECNICAS];
+  const sugeridas = todas.filter(t =>
     (t.palavrasChave || []).some(p => texto.includes(p.toLowerCase()))
   );
   return sugeridas.map(t => t.id);
