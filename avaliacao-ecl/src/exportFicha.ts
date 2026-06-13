@@ -61,16 +61,23 @@ export function exportPDF(ficha: FichaTecnicaExport): void {
 // Export DOCX via biblioteca docx (carregada via CDN no browser)
 // ============================================================
 export async function exportDOCX(ficha: FichaTecnicaExport): Promise<void> {
-  // Carregar docx via CDN se ainda não estiver disponível
-  if (!(window as any).docx) {
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js';
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Falha ao carregar biblioteca docx'));
-      document.head.appendChild(script);
-    });
-  }
+  try {
+    // Carregar docx via CDN se ainda não estiver disponível
+    if (!(window as any).docx) {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js';
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Falha ao carregar biblioteca docx'));
+        document.head.appendChild(script);
+        setTimeout(() => reject(new Error('Timeout')), 10000);
+      });
+    }
+
+    if (!(window as any).docx) {
+      alert('Não foi possível carregar a biblioteca Word. Tenta o PDF em alternativa.');
+      return;
+    }
 
   const {
     Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
@@ -354,6 +361,10 @@ export async function exportDOCX(ficha: FichaTecnicaExport): Promise<void> {
   a.download = `Ficha_Tecnica_${ficha.nomePrato.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
   a.click();
   URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('Erro ao gerar Word:', e);
+    alert('Não foi possível gerar o ficheiro Word. Tenta o PDF em alternativa.');
+  }
 }
 
 // ============================================================
