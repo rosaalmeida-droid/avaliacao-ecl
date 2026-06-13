@@ -228,6 +228,8 @@ function extrairFicha(texto: string): FichaTecnica {
   // Padrões: "500g de bacalhau", "3 ovos", "1/2 cebola"
   // "sal q.b.", "2 colheres de sopa de azeite"
   // -------------------------------------------------------
+  const regexLixo = /cookies?|newsletter|privacidade|copyright|©|todos os direitos|pingo doce|continente|informação nutricional|avalia[çc][ãa]o desta receita|subscrição|obrigatório|nível de ameaça|allothunnus|thunnus|oncorhynchus|salmo salar|pesquisas recentes|ecrã ligado|encomendas via/i;
+
   const regexQtd = /^([\d.,/½¼¾]+\s*)?(kg|g|gr|mg|l|lt|ml|dl|cl|colher[es]*\s+de\s+(sopa|sobremesa|chá|café)|c\.s\.|c\.c\.|cs|cc|copo[s]?|chávena[s]?|pitada[s]?|q\.?\s*b\.?|un|unidade[s]?|dente[s]?|ramo[s]?|folha[s]?|fatia[s]?|rodela[s]?|cubo[s]?|pacote[s]?|lata[s]?|embalagem|maço[s]?)\s*/i;
   const regexIngSimples = /^([\d.,/½¼¾]+)\s+(.{3,50})$/;
   const regexIngCompleto = /^([\d.,/½¼¾]+\s*(?:kg|g|gr|mg|l|lt|ml|dl|cl|c\.s\.|c\.c\.|cs|cc|colher[es]*\s+de\s+(?:sopa|sobremesa|chá|café)|copo[s]?|chávena[s]?|un|unidade[s]?|dente[s]?|ramo[s]?|folha[s]?|fatia[s]?|pitada[s]?|q\.?\s*b\.?)?)\s+(?:de\s+)?(.{2,60})$/i;
@@ -284,8 +286,6 @@ function extrairFicha(texto: string): FichaTecnica {
   // Detetar passos numerados ou sequência de frases longas
   // -------------------------------------------------------
   const preparacao: PassoPreparacao[] = [];
-  const regexLixo = /cookies?|newsletter|privacidade|copyright|©|todos os direitos|pingo doce|continente|informação nutricional|avalia[çc][ãa]o desta receita|subscrição|obrigatório|nível de ameaça|allothunnus|thunnus|oncorhynchus|salmo salar|pesquisas recentes|ecrã ligado|encomendas via/i;
-
   const linhasPrep = linhas.slice(idxPreparacao + 1);
   const regexPasso = /^(\d+)[.)]\s*(.+)$/;
   const regexTemp = /(\d{2,3})\s*[°º]?\s*[Cc]/;
