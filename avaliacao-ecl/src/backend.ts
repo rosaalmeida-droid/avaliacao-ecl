@@ -63,6 +63,14 @@ export function addComanda(c: Comanda): void {
   enviar('Comandas', c as unknown as Record<string, unknown>);
 }
 
+export function updateComanda(c: Comanda): void {
+  const all = getComandas();
+  const idx = all.findIndex(x => x.id === c.id);
+  if (idx >= 0) all[idx] = c;
+  save(KEYS.comandas, all);
+  enviar('Comandas', c as unknown as Record<string, unknown>);
+}
+
 // ------------------------------------------------------------------
 // Seleções dos alunos
 // ------------------------------------------------------------------
@@ -137,13 +145,16 @@ export function addAluno(a: Aluno): void {
   }
 }
 
-export function getOrCreateAluno(turmaId: string, numero: number): Aluno {
+export function getOrCreateAluno(turmaId: string, numero: number, ano: 1 | 2 | 3): Aluno {
   const id = `${turmaId}-${numero}`;
   const all = getAlunos();
   let aluno = all.find(a => a.id === id);
   if (!aluno) {
-    aluno = { id, turmaId, numero };
+    aluno = { id, turmaId, numero, ano };
     addAluno(aluno);
+  } else if (aluno.ano !== ano) {
+    aluno.ano = ano;
+    save(KEYS.alunos, all);
   }
   return aluno;
 }
