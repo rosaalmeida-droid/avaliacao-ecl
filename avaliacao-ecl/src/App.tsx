@@ -5,8 +5,9 @@ import { Header } from './components/Header';
 import { ProfessorView } from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
+import { ComandasView } from './components/ComandasView';
 import { CoordenadoraView } from './components/CoordenadoraView';
-import { getOrCreateAluno } from './backend';
+import { getAlunos } from './backend';
 import './styles.css';
 
 interface Sessao {
@@ -17,7 +18,7 @@ interface Sessao {
 
 export default function App() {
   const [sessao, setSessao] = useState<Sessao | null>(null);
-  const [tabProfessor, setTabProfessor] = useState<'comanda' | 'validar'>('comanda');
+  const [tabProfessor, setTabProfessor] = useState<'comanda' | 'comandas' | 'validar'>('comanda');
 
   if (!sessao) {
     return <Login onLogin={(perfil, alunoId, turmaId) => setSessao({ perfil, alunoId, turmaId })} />;
@@ -27,21 +28,24 @@ export default function App() {
   let subtitulo = '';
 
   if (sessao.perfil === 'aluno' && sessao.alunoId) {
-    const partes = sessao.alunoId.split('-');
-    const numero = Number(partes.pop());
-    const turmaId = partes.join('-');
-    const aluno: Aluno = getOrCreateAluno(turmaId, numero);
-    subtitulo = `Aluno ${aluno.numero}`;
+    const aluno = getAlunos().find(a => a.id === sessao.alunoId);
+    if (!aluno) {
+      return <Login onLogin={(perfil, alunoId, turmaId) => setSessao({ perfil, alunoId, turmaId })} />;
+    }
+    subtitulo = `Aluno ${aluno.numero} · ${aluno.ano}º ano`;
     conteudo = <AlunoView aluno={aluno} />;
   } else if (sessao.perfil === 'professor' && sessao.turmaId) {
     subtitulo = sessao.turmaId;
     conteudo = (
       <div>
-        <div className="card" style={{ display: 'flex', gap: 8 }}>
+        <div className="card" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className={`btn ${tabProfessor === 'comanda' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTabProfessor('comanda')}>Nova Comanda</button>
+          <button className={`btn ${tabProfessor === 'comandas' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTabProfessor('comandas')}>Comandas</button>
           <button className={`btn ${tabProfessor === 'validar' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTabProfessor('validar')}>Validar</button>
         </div>
-        {tabProfessor === 'comanda' ? <ProfessorView turmaId={sessao.turmaId} /> : <ValidacaoView turmaId={sessao.turmaId} />}
+        {tabProfessor === 'comanda' && <ProfessorView turmaId={sessao.turmaId} />}
+        {tabProfessor === 'comandas' && <ComandasView turmaId={sessao.turmaId} />}
+        {tabProfessor === 'validar' && <ValidacaoView turmaId={sessao.turmaId} />}
       </div>
     );
   } else if (sessao.perfil === 'coordenadora') {
