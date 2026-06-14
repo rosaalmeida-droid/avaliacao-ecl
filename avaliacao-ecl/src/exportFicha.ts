@@ -42,6 +42,12 @@ export interface FichaTecnicaExport {
   empratamento: string;
   elaboradoPor: string;
   data: string;
+  nutricao?: {
+    calorias: number;
+    proteinas: number;
+    gorduras: number;
+    hidratos: number;
+  };
 }
 
 // ============================================================
@@ -429,6 +435,24 @@ function gerarHTML(ficha: FichaTecnicaExport): string {
   </table>
   <div class="section-title">APRESENTAÇÃO / EMPRATAMENTO</div>
   <table><tr><td>${ficha.empratamento || ''}</td></tr></table>
+  ${ficha.nutricao ? `
+  <div class="section-title">INFORMAÇÃO NUTRICIONAL ESTIMADA (por porção)</div>
+  <table class="header-table">
+    <tr>
+      <th>Energia (kcal)</th>
+      <th>Proteínas (g)</th>
+      <th>Gorduras (g)</th>
+      <th>Hidratos de Carbono (g)</th>
+    </tr>
+    <tr>
+      <td style="text-align:center;font-weight:bold;font-size:13pt">${ficha.nutricao.calorias}</td>
+      <td style="text-align:center">${ficha.nutricao.proteinas}</td>
+      <td style="text-align:center">${ficha.nutricao.gorduras}</td>
+      <td style="text-align:center">${ficha.nutricao.hidratos}</td>
+    </tr>
+  </table>
+  <div style="font-size:8pt;color:#666;margin-bottom:8px">⚠️ Valores estimados com base na tabela INSA. Verificar com tabela oficial.</div>
+  ` : ''}
   <table class="rodape" style="margin-top:20px">
     <tr>
       <td class="info-fill"><b>ELABORADO POR:</b> ${ficha.elaboradoPor}</td>
