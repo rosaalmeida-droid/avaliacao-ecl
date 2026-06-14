@@ -421,6 +421,7 @@ function extrairFicha(texto: string): FichaTecnica {
           temperatura: mTemp ? `${mTemp[1]}ºC` : '',
           tempo: mTempo ? `${mTempo[1]} ${mTempo[2]}` : '',
           obs: '',
+          haccp: '',
         });
       }
       passoAtual = mPasso[2];
@@ -438,6 +439,7 @@ function extrairFicha(texto: string): FichaTecnica {
           temperatura: mTemp ? `${mTemp[1]}ºC` : '',
           tempo: mTempo ? `${mTempo[1]} ${mTempo[2]}` : '',
           obs: '',
+          haccp: '',
         });
         passoAtual = '';
       }
@@ -454,11 +456,12 @@ function extrairFicha(texto: string): FichaTecnica {
       temperatura: mTemp ? `${mTemp[1]}ºC` : '',
       tempo: mTempo ? `${mTempo[1]} ${mTempo[2]}` : '',
       obs: '',
+      haccp: '',
     });
   }
 
   if (preparacao.length === 0) {
-    preparacao.push({ num: 1, descricao: '', temperatura: '', tempo: '', obs: '' });
+    preparacao.push({ num: 1, descricao: '', temperatura: '', tempo: '', obs: '', haccp: '' });
   }
 
   // -------------------------------------------------------
@@ -786,7 +789,7 @@ function PassoFichaTecnica({
   function addPasso() {
     setFicha(prev => ({
       ...prev,
-      preparacao: [...prev.preparacao, { num: prev.preparacao.length + 1, descricao: '', temperatura: '', tempo: '', obs: '' }],
+      preparacao: [...prev.preparacao, { num: prev.preparacao.length + 1, descricao: '', temperatura: '', tempo: '', obs: '', haccp: '' }],
     }));
   }
 
