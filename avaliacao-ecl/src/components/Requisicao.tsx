@@ -104,6 +104,9 @@ export default function Requisicao() {
   const racio = cr1p > 0 ? pvs/cr1p : 0;
   const margem = pvs - cr1p;
 
+  const fmt = (n: number, d=2) => n > 0 ? `${n.toFixed(d)} €` : '';
+  const fmtQ = (n: number) => n > 0 ? n.toFixed(3) : '';
+
   async function enviarParaSheets() {
     setMsg('A enviar para Sheets...');
     try {
@@ -127,7 +130,6 @@ export default function Requisicao() {
   function guardar() {
     try { localStorage.setItem('ecl_req', JSON.stringify(dados)); setMsg('✓ Guardado'); setTimeout(() => setMsg(''), 2000); } catch {}
   }
-  const fmtQ = (n: number) => n > 0 ? n.toFixed(3) : '';
 
   async function buscarPreco(i: number) {
     const nome = dados.ingredientes[i].nome; if (!nome) return;
