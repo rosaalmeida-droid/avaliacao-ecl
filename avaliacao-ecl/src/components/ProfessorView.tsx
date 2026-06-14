@@ -160,7 +160,7 @@ function extrairFicha(texto: string): FichaTecnica {
   // -------------------------------------------------------
   let nomePrato = '';
   // Palavras a ignorar como nome (botões/menus comuns em sites)
-  const palavrasIgnorar = /^(partilhar|imprimir|guardar|voltar|menu|home|início|pesquisar|receitas|ver mais|fechar|partilhe|login|registar|compartilhar|share|print|save)$/i;
+  const palavrasIgnorar = /^(partilhar|imprimir|guardar|voltar|menu|home|início|pesquisar|receitas|ver mais|fechar|partilhe|login|registar|compartilhar|share|print|save|nome do prato|nome:)$/i;
   const regexTitulo = /^(receita\s+(de\s+)?)?([A-ZÁÉÍÓÚÀÃÕÂÊÎÔÛÇ][^.!?:]{3,60})$/;
 
   // Primeiro tentar extrair do "Title:" do Jina
@@ -193,6 +193,15 @@ function extrairFicha(texto: string): FichaTecnica {
     }
   }
 
+  // Limpar nome — remover "1. ", "#", "Title: " e texto após " — "
+  nomePrato = nomePrato
+    .replace(/^[\d]+\.\s*/, '')
+    .replace(/^#+\s*/, '')
+    .replace(/^Title:\s*/i, '')
+    .split(' — ')[0]
+    .trim()
+    .slice(0, 80);
+
   // -------------------------------------------------------
   // DETETAR SECÇÕES
   // Marcar onde começam ingredientes e preparação
@@ -200,6 +209,8 @@ function extrairFicha(texto: string): FichaTecnica {
   const regexSecIngredientes = /ingredientes?|para\s+a?\s*receita|material\s+necessário|você\s+vai\s+precisar/i;
   const regexSecPreparacao = /prepara[çc][ãa]o|modo\s+de\s+prepara|como\s+fazer|confec[çc][ãa]o|método|instru[çc][õo]es|passo\s+a\s+passo|receita/i;
   const regexSecIgnorar = /coment[aá]rios?|avalia[çc][õo]es?|notas?\s+do\s+chef|dicas?|sugest[õo]es?|ver\s+também|produtos?\s+relacionados?/i;
+  // Metadados que não são passos de preparação
+  const regexMetadados = /^(nº\s+de\s+doses|número\s+de\s+doses|doses|porções|tempo\s+de\s+prepara|tempo\s+de\s+confec|tempo\s+total|serve\s+\d)/i;
 
   let idxIngredientes = -1;
   let idxPreparacao = -1;
@@ -226,8 +237,89 @@ function extrairFicha(texto: string): FichaTecnica {
   if (idxPreparacao === -1) idxPreparacao = Math.floor(linhas.length / 2);
 
   // -------------------------------------------------------
-  // INGREDIENTES
-  // Padrões: "500g de bacalhau", "3 ovos", "1/2 cebola"
+  // DETETAR FORMATO IA (com separador |)
+  // Quando o texto vem do Claude/ChatGPT com formato exato
+  // -------------------------------------------------------
+  const temFormatoIA = texto.includes('NOME DO PRATO:') && texto.includes('INGREDIENTES:');
+  
+  if (temFormatoIA) {
+    // Extrair campos do formato IA
+    const extrair = (campo: string) => {
+      const m = texto.match(new RegExp(`${campo}:\\s*(.+)`, 'i'));
+      return m ? m[1].trim() : '';
+    };
+
+    const nomeIA = extrair('NOME DO PRATO');
+    const classificacaoIA = extrair('CLASSIFICAÇÃO');
+    const dosesIA = extrair('Nº DE DOSES');
+    const tPrepIA = extrair('TEMPO DE PREPARAÇÃO');
+    const tConfIA = extrair('TEMPO DE CONFEÇÃO');
+    const alergenicosIA = extrair('ALERGÉNICOS');
+
+    // Ingredientes com separador |
+    const secIngIA = texto.match(/INGREDIENTES:\n([\s\S]*?)(?=\nPREPARAÇÃO:|$)/i);
+    const ingredientesIA: LinhaIngrediente[] = [];
+    if (secIngIA) {
+      const linhasIng = secIngIA[1].split('\n').filter(l => l.includes('|') && !l.toUpperCase().includes('COMPONENTE'));
+      for (const linha of linhasIng) {
+        const partes = linha.split('|').map(p => p.trim());
+        if (partes.length >= 4) {
+          const qtRaw = partes[1] || '';
+          const unRaw = partes[2] || '';
+          const produto = partes[3] || '';
+          const conv = converterMedida(qtRaw, unRaw, produto);
+          ingredientesIA.push({
+            componente: partes[0] || '',
+            qt: conv.qtFinal,
+            un: conv.unFinal,
+            produto,
+            tPrep: partes[4] || '',
+            tConf: partes[5] || '',
+            obs: conv.obs || partes[6] || '',
+          });
+        }
+      }
+    }
+
+    // Preparação com separador |
+    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|$)/i);
+    const preparacaoIA: PassoPreparacao[] = [];
+    if (secPrepIA) {
+      const linhasPrep = secPrepIA[1].split('\n').filter(l => l.includes('|') && !/^NR\s*\|/i.test(l));
+      for (const linha of linhasPrep) {
+        const partes = linha.split('|').map(p => p.trim());
+        if (partes.length >= 2 && partes[1]) {
+          preparacaoIA.push({
+            num: parseInt(partes[0]) || preparacaoIA.length + 1,
+            descricao: partes[1] || '',
+            temperatura: partes[2] || '',
+            tempo: partes[3] || '',
+            obs: partes[4] || '',
+          });
+        }
+      }
+    }
+
+    // Empratamento
+    const empratamentoIA = extrair('EMPRATAMENTO');
+
+    // Alergénicos automáticos se não vieram da IA
+    const produtosListIA = ingredientesIA.map(i => `${i.produto} ${i.obs}`);
+    const alergenicosFinais = alergenicosIA || formatarAlergenicos(detetarAlergenicos(produtosListIA));
+
+    return {
+      ...FICHA_VAZIA,
+      nomePrato: nomeIA,
+      classificacao: classificacaoIA,
+      numPorcoes: dosesIA,
+      tempoPrep: tPrepIA,
+      tempoConf: tConfIA,
+      alergenicos: alergenicosFinais,
+      ingredientes: ingredientesIA.length > 0 ? ingredientesIA : [{ componente: '', qt: '', un: '', produto: '', tPrep: '', tConf: '', obs: '' }],
+      preparacao: preparacaoIA.length > 0 ? preparacaoIA : [{ num: 1, descricao: '', temperatura: '', tempo: '', obs: '' }],
+      empratamento: empratamentoIA,
+    };
+  }
   // "sal q.b.", "2 colheres de sopa de azeite"
   // -------------------------------------------------------
   const regexLixo = /cookies?|newsletter|privacidade|copyright|©|todos os direitos|pingo doce|continente|informação nutricional|avalia[çc][ãa]o desta receita|subscrição|obrigatório|nível de ameaça|allothunnus|thunnus|oncorhynchus|salmo salar|pesquisas recentes|ecrã ligado|encomendas via/i;
@@ -288,6 +380,8 @@ function extrairFicha(texto: string): FichaTecnica {
   // Detetar passos numerados ou sequência de frases longas
   // -------------------------------------------------------
   const preparacao: PassoPreparacao[] = [];
+  const regexMetadados = /^(nome\s+do\s+prato|nº\s+de\s+(doses|porções)|tempo\s+de\s+prepara|tempo\s+de\s+confec|tempo\s+total|ingredientes?|prepara[çc][ãa]o|modo\s+de\s+prepara|apresenta[çc][ãa]o|empratamento)/i;
+
   const linhasPrep = linhas.slice(idxPreparacao + 1);
   const regexPasso = /^(\d+)[.)]\s*(.+)$/;
   const regexTemp = /(\d{2,3})\s*[°º]?\s*[Cc]/;
@@ -301,6 +395,8 @@ function extrairFicha(texto: string): FichaTecnica {
     if (limpa.length < 5) continue;
     if (regexSecIgnorar.test(limpa)) break;
     if (regexLixo.test(limpa)) break;
+    if (regexMetadados.test(limpa)) continue;
+    if (regexMetadados.test(limpa)) continue;
 
     const mPasso = limpa.match(regexPasso);
     if (mPasso) {
@@ -356,17 +452,19 @@ function extrairFicha(texto: string): FichaTecnica {
   // -------------------------------------------------------
   // TEMPOS TOTAIS (do texto completo)
   // -------------------------------------------------------
-  const regexTotalPrep = /(?:tempo\s+de\s+prepara[çc][ãa]o|prepara[çc][ãa]o)[:\s]+(\d+\s*(?:min|h|hora[s]?))/i;
-  const regexTotalConf = /(?:tempo\s+de\s+(?:confec[çc][ãa]o|cozedura|cozinhar|forno)|confec[çc][ãa]o)[:\s]+(\d+\s*(?:min|h|hora[s]?))/i;
-  const regexPorcoes = /(?:dose[s]?|por[çc][õo]es?|pessoas?|serve)[:\s]+(\d+)/i;
+  const regexTotalPrep = /(?:tempo\s+de\s+prepara[çc][ãa]o|prepara[çc][ãa]o)[:\s—–]+(\d+\s*(?:min|h|hora[s]?))/i;
+  const regexTotalConf = /(?:tempo\s+de\s+(?:confec[çc][ãa]o|cozedura|cozinhar|forno)|confec[çc][ãa]o)[:\s—–]+(\d+\s*(?:min|h|hora[s]?))/i;
+  const regexPorcoes = /(?:dose[s]?|por[çc][õo]es?|pessoas?|serve)[:\s—–]+(\d+)/i;
 
   const mTPrep = texto.match(regexTotalPrep);
   const mTConf = texto.match(regexTotalConf);
   const mPorc = texto.match(regexPorcoes);
 
-  // Detetar alergénicos automaticamente
-  const produtosList = ingredientes.map(i => i.produto);
-  const alergenicosDetectados = detetarAlergenicos(produtosList);
+  // Detetar alergénicos automaticamente — usar todos os textos dos ingredientes
+  const produtosList = ingredientes.map(i => `${i.produto} ${i.obs}`);
+  // Adicionar também texto bruto da secção de ingredientes para não perder nada
+  const textoIngredientes = linhas.slice(idxIngredientes, idxPreparacao).join(' ');
+  const alergenicosDetectados = detetarAlergenicos([...produtosList, textoIngredientes]);
 
   return {
     ...FICHA_VAZIA,
@@ -378,6 +476,36 @@ function extrairFicha(texto: string): FichaTecnica {
     tempoConf: mTConf ? mTConf[1] : '',
     numPorcoes: mPorc ? mPorc[1] : '',
   };
+}
+
+// ============================================================
+// Prompt para extração de receita via IA externa
+// Formato exato da ficha de produção ECL
+// ============================================================
+function gerarPrompt(linkReceita: string): string {
+  return `Analisa a receita neste link e extrai a informação NO FORMATO EXATO abaixo.
+Não alteres os títulos. Não acrescentes texto extra. Não acrescentes explicações.
+Usa o separador | entre colunas. Usa q.b. quando a quantidade não é especificada.
+
+NOME DO PRATO: [nome da receita]
+CLASSIFICAÇÃO: [Peixe / Carne / Aves / Sobremesa / Sopa / Entrada / Massa / Vegetariano / Outro]
+Nº DE DOSES: [número]
+TEMPO DE PREPARAÇÃO: [X min]
+TEMPO DE CONFEÇÃO: [X min]
+ALERGÉNICOS: [lista dos alergénicos presentes, ex: Glúten, Ovos, Peixe, Soja]
+
+INGREDIENTES:
+COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
+[componente ou vazio] | [quantidade] | [unidade: g/kg/ml/l/un/cs/cc/q.b.] | [nome do produto] | [tempo prep se aplicável] | [tempo conf se aplicável] | [observações]
+
+PREPARAÇÃO:
+NR | DESCRIÇÃO | TEMP | TEMPO | OBS
+1 | [descrição do passo] | [temperatura ex: 180ºC ou vazio] | [tempo ex: 5 min ou vazio] | [observações ou vazio]
+
+EMPRATAMENTO:
+[descrição da apresentação e empratamento do prato]
+
+Link: ${linkReceita}`;
 }
 
 // ============================================================
@@ -494,18 +622,28 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
 
       {link && !mostrarManual && (
         <div style={{ marginBottom: 10 }}>
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => {
-              const prompt = `Extrai desta receita, em formato de lista simples:\n\n1. NOME DO PRATO\n2. INGREDIENTES (uma linha por ingrediente, com quantidade, unidade e produto. Ex: "500 g bacalhau")\n3. MODO DE PREPARAÇÃO (passos numerados)\n4. Nº de doses\n5. Tempo de preparação\n6. Tempo de confeção\n\nLink da receita: ${link}`;
-              window.open(`https://claude.ai/new?q=${encodeURIComponent(prompt)}`, '_blank');
-            }}
-          >
-            🤖 Extrair receita com IA (Claude)
-          </button>
-          <div className="muted" style={{ fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-            Abre o Claude numa nova aba — copia o resultado e cola abaixo
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+            🤖 Extrair receita com IA
+          </div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+            Escolhe uma IA, copia o resultado e cola na caixa de texto abaixo.
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-ghost"
+              onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(gerarPrompt(link))}`, '_blank')}>
+              🟠 Claude
+            </button>
+            <button type="button" className="btn btn-ghost"
+              onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(gerarPrompt(link))}`, '_blank')}>
+              🟢 ChatGPT
+            </button>
+            <button type="button" className="btn btn-ghost"
+              onClick={() => {
+                navigator.clipboard.writeText(gerarPrompt(link));
+                alert('Prompt copiado! Cola numa IA à tua escolha.');
+              }}>
+              📋 Copiar prompt
+            </button>
           </div>
         </div>
       )}
@@ -820,8 +958,17 @@ function PassoFichaTecnica({
         <Button block variant="ghost" onClick={onVoltar}>← Voltar</Button>
         <div style={{ height: 8 }} />
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="ghost" onClick={() => exportPDF(ficha as any)}>🖨️ PDF</Button>
-          <Button variant="ghost" onClick={() => exportDOCX(ficha as any)}>📄 Word</Button>
+          <Button variant="ghost" onClick={() => {
+            try { exportPDF(ficha as any); } 
+            catch(e) { alert('Erro ao gerar PDF'); }
+          }}>🖨️ PDF</Button>
+          <Button variant="ghost" onClick={async () => {
+            try {
+              await exportDOCX(ficha as any);
+            } catch(e) {
+              alert('Erro ao gerar Word: ' + String(e));
+            }
+          }}>📄 Word</Button>
         </div>
         <div style={{ height: 8 }} />
         <Button block onClick={() => onContinuar(ficha)} disabled={!ficha.nomePrato}>
