@@ -110,17 +110,17 @@ export default function Requisicao() {
   async function enviarParaSheets() {
     setMsg('A enviar para Sheets...');
     try {
-      const resp = await fetch(SHEETS_URL, {
+      // Apps Script requer FormData ou URLSearchParams para evitar CORS preflight
+      const form = new FormData();
+      form.append('dados', JSON.stringify(dados));
+      
+      await fetch(SHEETS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dados),
+        mode: 'no-cors',
+        body: form,
       });
-      const result = await resp.json();
-      if (result.ok) {
-        setMsg('✓ Guardado no Google Sheets!');
-      } else {
-        setMsg('Erro: ' + (result.erro || 'desconhecido'));
-      }
+      // no-cors não devolve resposta legível — assumir sucesso
+      setMsg('✓ Enviado para Google Sheets!');
     } catch (err) {
       setMsg('Erro de ligação ao Sheets');
     }
