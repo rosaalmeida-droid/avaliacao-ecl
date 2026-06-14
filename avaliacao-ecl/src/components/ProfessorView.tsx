@@ -209,8 +209,6 @@ function extrairFicha(texto: string): FichaTecnica {
   const regexSecIngredientes = /ingredientes?|para\s+a?\s*receita|material\s+necessário|você\s+vai\s+precisar/i;
   const regexSecPreparacao = /prepara[çc][ãa]o|modo\s+de\s+prepara|como\s+fazer|confec[çc][ãa]o|método|instru[çc][õo]es|passo\s+a\s+passo|receita/i;
   const regexSecIgnorar = /coment[aá]rios?|avalia[çc][õo]es?|notas?\s+do\s+chef|dicas?|sugest[õo]es?|ver\s+também|produtos?\s+relacionados?/i;
-  // Metadados que não são passos de preparação
-  const regexMetadados = /^(nº\s+de\s+doses|número\s+de\s+doses|doses|porções|tempo\s+de\s+prepara|tempo\s+de\s+confec|tempo\s+total|serve\s+\d)/i;
 
   let idxIngredientes = -1;
   let idxPreparacao = -1;
