@@ -473,8 +473,14 @@ function gerarHTML(ficha: FichaTecnicaExport): string {
   <div style="font-size:8pt;color:#666;margin-bottom:8px">⚠️ Valores estimados com base na tabela INSA. Verificar com tabela oficial.</div>
   ` : ''}
   <div style="margin-top:16px;padding:10px 12px;border:2px solid #004F5C;border-radius:4px;background:#F0F8FF;">
-    <div style="font-weight:bold;color:#004F5C;font-size:10pt;margin-bottom:4px">📋 REGISTOS OBRIGATÓRIOS — KitchenFlow ECL</div>
-    <div style="font-size:9pt;color:#333;white-space:pre-line">${ficha.kitchenflow || 'Registar no KitchenFlow ECL: Temperatura de serviço · Higiene pessoal · Não conformidades'}</div>
+    <div style="font-weight:bold;color:#004F5C;font-size:10pt;margin-bottom:6px">📋 REGISTOS OBRIGATÓRIOS — KitchenFlow ECL</div>
+    <div style="font-size:9pt;color:#333">${
+      (ficha.kitchenflow || 'Temperatura de serviço · Higiene pessoal · Não conformidades')
+        .split('\n')
+        .filter((l: string) => l.trim())
+        .map((l: string) => `• ${l.trim()}`)
+        .join('<br>')
+    }</div>
   </div>
   <table class="rodape" style="margin-top:20px">
     <tr>
