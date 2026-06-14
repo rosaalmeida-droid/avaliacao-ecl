@@ -656,53 +656,49 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
   return (
     <Card>
       <div className="display" style={{ fontSize: 18, fontWeight: 700, marginBottom: 14 }}>
-        📋 Nova comanda — Passo 1: Receita
+        📋 Nova Ficha de Produção
       </div>
 
-      <Field label="Link da receita (internet)">
-        <input
+      {/* SECÇÃO IA — sempre visível */}
+      <div style={{ background: '#D6E4E8', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: '#004F5C', marginBottom: 6 }}>
+          🤖 Passo 1 — Extrai a receita com IA
+        </div>
+        <Field label="Link da receita (opcional)">
+          <input
+            className="input"
+            value={link}
+            onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); }}
+            placeholder="https://www.pingodoce.pt/receitas/..."
+          />
+        </Field>
+        <BotaoIAs link={link} />
+        {link && (
+          <button type="button" className="btn btn-ghost"
+            style={{ marginTop: 6, fontSize: 12 }}
+            onClick={carregar}
+            disabled={a_carregar}>
+            {a_carregar ? 'A carregar...' : '⚡ Tentar ler link automaticamente'}
+          </button>
+        )}
+      </div>
+
+      {/* CAIXA PARA COLAR RESULTADO */}
+      <Field label="Passo 2 — Cola aqui o resultado da IA">
+        <textarea
           className="input"
-          value={link}
-          onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); }}
-          placeholder="https://www.pingodoce.pt/receitas/..."
+          value={textoManual}
+          onChange={e => setTextoManual(e.target.value)}
+          placeholder={`Cola aqui o texto que a IA te devolveu. Exemplo:\n\nNOME DO PRATO: Bacalhau à Brás\nCLASSIFICAÇÃO: Peixe\nNº DE DOSES: 4\nTEMPO DE PREPARAÇÃO: 20 min\nTEMPO DE CONFEÇÃO: 30 min\nALERGÉNICOS: Peixe, Glúten\n\nINGREDIENTES:\nCOMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS\nPeixe | 500 | g | Bacalhau demolhado | | |\n\nPREPARAÇÃO:\nNR | DESCRIÇÃO | TEMP | TEMPO | OBS\n1 | Fritar a batata palito... | | 10 min |\n\nEMPRATAMENTO:\nDispor o bacalhau...`}
+          style={{ minHeight: 220, fontSize: 12, fontFamily: 'monospace' }}
         />
       </Field>
 
-      {link && (
-        <BotaoIAs link={link} />
-      )}
+      {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>{erro}</div>}
 
-      {!mostrarManual && (
-        <Button block onClick={carregar} disabled={(!link && !textoManual) || a_carregar}>
-          {a_carregar ? 'A carregar...' : 'Tentar ler automaticamente →'}
-        </Button>
-      )}
-
-      {(mostrarManual || !link) && (
-        <>
-          <div className="divider" />
-          {nomePrato && (
-            <Field label="Nome do prato (detetado automaticamente)">
-              <input className="input" value={nomePrato} onChange={e => setNomePrato(e.target.value)} />
-            </Field>
-          )}
-          {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>{erro}</div>}
-          <Field label={mostrarManual ? 'Cola aqui os ingredientes e modo de preparação' : 'Ou cola o texto da receita diretamente'}>
-            <textarea
-              className="input"
-              value={textoManual}
-              onChange={e => setTextoManual(e.target.value)}
-              placeholder={mostrarManual
-                ? 'Ex:\nIngredientes\n2 sakus de atum\n1 cs de óleo de sésamo\n...\n\nPreparação\n1. Tempere o atum...'
-                : 'Cola aqui o texto completo da receita...'}
-              style={{ minHeight: 140 }}
-            />
-          </Field>
-          <Button block onClick={carregar} disabled={!textoManual && !link}>
-            Continuar →
-          </Button>
-        </>
-      )}
+      <Button block onClick={carregar} disabled={!textoManual && !link}>
+        Continuar para a Ficha →
+      </Button>
     </Card>
   );
 }
