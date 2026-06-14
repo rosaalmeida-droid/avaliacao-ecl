@@ -491,3 +491,4 @@ function gerarHTML(ficha: FichaTecnicaExport): string {
   </table>
   </body></html>`;
 }
+
