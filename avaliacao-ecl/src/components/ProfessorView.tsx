@@ -506,9 +506,59 @@ EMPRATAMENTO:
 Link: ${linkReceita}`;
 }
 
-// ============================================================
-// Passo 1 — Introduzir link ou texto da receita
-// ============================================================
+function BotaoIAs({ link }: { link: string }) {
+  const [copiado, setCopiado] = React.useState(false);
+  const prompt = gerarPrompt(link);
+
+  function copiar() {
+    navigator.clipboard.writeText(prompt).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 3000);
+    }).catch(() => {
+      // fallback para browsers mais antigos
+      const ta = document.createElement('textarea');
+      ta.value = prompt;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 3000);
+    });
+  }
+
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+        🤖 Extrair receita com IA
+      </div>
+      <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+        Copia o prompt e cola numa IA à tua escolha. Cola o resultado na caixa de texto abaixo.
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-ghost"
+          onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(prompt)}`, '_blank')}>
+          🟠 Abrir no Claude
+        </button>
+        <button type="button" className="btn btn-ghost"
+          onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank')}>
+          🟢 Abrir no ChatGPT
+        </button>
+        <button type="button"
+          className="btn btn-ghost"
+          onClick={copiar}
+          style={{ background: copiado ? '#004F5C' : undefined, color: copiado ? '#fff' : undefined }}>
+          {copiado ? '✅ Prompt copiado!' : '📋 Copiar prompt'}
+        </button>
+      </div>
+      {copiado && (
+        <div style={{ marginTop: 8, padding: '8px 12px', background: '#D6E4E8', borderRadius: 6, fontSize: 13 }}>
+          ✅ Prompt copiado! Cola numa IA (Ctrl+V), copia o resultado e cola na caixa de texto abaixo.
+        </div>
+      )}
+    </div>
+  );
+}
 function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string) => void }) {
   const [link, setLink] = useState('');
   const [textoManual, setTextoManual] = useState('');
@@ -618,32 +668,8 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
         />
       </Field>
 
-      {link && !mostrarManual && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
-            🤖 Extrair receita com IA
-          </div>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-            Escolhe uma IA, copia o resultado e cola na caixa de texto abaixo.
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-ghost"
-              onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(gerarPrompt(link))}`, '_blank')}>
-              🟠 Claude
-            </button>
-            <button type="button" className="btn btn-ghost"
-              onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(gerarPrompt(link))}`, '_blank')}>
-              🟢 ChatGPT
-            </button>
-            <button type="button" className="btn btn-ghost"
-              onClick={() => {
-                navigator.clipboard.writeText(gerarPrompt(link));
-                alert('Prompt copiado! Cola numa IA à tua escolha.');
-              }}>
-              📋 Copiar prompt
-            </button>
-          </div>
-        </div>
+      {link && (
+        <BotaoIAs link={link} />
       )}
 
       {!mostrarManual && (
@@ -695,7 +721,19 @@ function PassoFichaTecnica({
   onContinuar: (ficha: FichaTecnica) => void;
   onVoltar: () => void;
 }) {
-  const [ficha, setFicha] = useState<FichaTecnica>(fichaInicial);
+  const [ficha, setFicha] = useState<FichaTecnica>(() => {
+    // Tentar recuperar ficha guardada
+    try {
+      const saved = localStorage.getItem('ecl_ficha_draft');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return fichaInicial;
+  });
+
+  // Auto-save sempre que a ficha muda
+  React.useEffect(() => {
+    try { localStorage.setItem('ecl_ficha_draft', JSON.stringify(ficha)); } catch {}
+  }, [ficha]);
 
   function setF<K extends keyof FichaTecnica>(key: K, value: FichaTecnica[K]) {
     setFicha(prev => ({ ...prev, [key]: value }));
@@ -957,15 +995,32 @@ function PassoFichaTecnica({
         <div style={{ height: 8 }} />
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="ghost" onClick={() => {
-            try { exportPDF(ficha as any); } 
+            const nutri = calcularNutricao(ficha.ingredientes, parseInt(ficha.numPorcoes) || 1);
+            const fichaExport = {
+              ...ficha,
+              nutricao: nutri.numIngredientesCalculados > 0 ? {
+                calorias: nutri.calorias,
+                proteinas: nutri.proteinas,
+                gorduras: nutri.gorduras,
+                hidratos: nutri.hidratos,
+              } : undefined,
+            };
+            try { exportPDF(fichaExport as any); }
             catch(e) { alert('Erro ao gerar PDF'); }
           }}>🖨️ PDF</Button>
           <Button variant="ghost" onClick={async () => {
-            try {
-              await exportDOCX(ficha as any);
-            } catch(e) {
-              alert('Erro ao gerar Word: ' + String(e));
-            }
+            const nutri = calcularNutricao(ficha.ingredientes, parseInt(ficha.numPorcoes) || 1);
+            const fichaExport = {
+              ...ficha,
+              nutricao: nutri.numIngredientesCalculados > 0 ? {
+                calorias: nutri.calorias,
+                proteinas: nutri.proteinas,
+                gorduras: nutri.gorduras,
+                hidratos: nutri.hidratos,
+              } : undefined,
+            };
+            try { await exportDOCX(fichaExport as any); }
+            catch(e) { alert('Erro ao gerar Word: ' + String(e)); }
           }}>📄 Word</Button>
         </div>
         <div style={{ height: 8 }} />
@@ -992,6 +1047,7 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
     // Guardar também o nome da receita da ficha técnica
     const comandaFinal = { ...comanda, titulo: ficha.nomePrato || comanda.titulo };
     addComanda(comandaFinal);
+    try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
     setCriada(comandaFinal);
   }
 
