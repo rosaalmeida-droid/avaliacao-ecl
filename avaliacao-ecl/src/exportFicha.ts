@@ -46,6 +46,7 @@ export interface FichaTecnicaExport {
   equipamento?: string;
   conservacao?: string;
   regeneracao?: string;
+  kitchenflow?: string;
   nutricao?: {
     calorias: number;
     proteinas: number;
@@ -435,7 +436,7 @@ function gerarHTML(ficha: FichaTecnicaExport): string {
   </table>
   <div class="section-title">MODO DE PREPARAÇÃO</div>
   <table class="header-table">
-    <tr><th style="width:30px">Nº</th><th>AÇÃO / DESCRIÇÃO</th><th style="width:60px">TEMP.</th><th style="width:60px">TEMPO</th><th>OBS.</th><th>⚠️ HACCP</th></tr>
+    <tr><th style="width:30px">Nº</th><th>AÇÃO / DESCRIÇÃO</th><th style="width:60px">TEMP.</th><th style="width:60px">TEMPO</th><th>OBS.</th><th style="width:120px">⚠️ PCC/HACCP</th></tr>
     ${prep}
   </table>
   <div class="section-title">APRESENTAÇÃO / EMPRATAMENTO</div>
@@ -444,12 +445,12 @@ function gerarHTML(ficha: FichaTecnicaExport): string {
   <div class="section-title">🔧 EQUIPAMENTO NECESSÁRIO</div>
   <table><tr><td style="white-space:pre-line">${ficha.equipamento}</td></tr></table>
   ` : ''}
-  ${ficha.conservacao || ficha.regeneracao ? `
+  ${(ficha.conservacao || ficha.regeneracao) ? `
   <div class="section-title">❄️ CONSERVAÇÃO E 🔥 REGENERAÇÃO</div>
   <table>
     <tr>
-      <td style="width:50%"><b>Conservação:</b><br>${ficha.conservacao || ''}</td>
-      <td style="width:50%"><b>Regeneração:</b><br>${ficha.regeneracao || ''}</td>
+      <td style="width:50%;vertical-align:top"><b>Conservação:</b><br>${ficha.conservacao || 'Não especificado'}</td>
+      <td style="width:50%;vertical-align:top"><b>Regeneração:</b><br>${ficha.regeneracao || 'Não especificado'}</td>
     </tr>
   </table>
   ` : ''}
@@ -471,6 +472,10 @@ function gerarHTML(ficha: FichaTecnicaExport): string {
   </table>
   <div style="font-size:8pt;color:#666;margin-bottom:8px">⚠️ Valores estimados com base na tabela INSA. Verificar com tabela oficial.</div>
   ` : ''}
+  <div style="margin-top:16px;padding:10px 12px;border:2px solid #004F5C;border-radius:4px;background:#F0F8FF;">
+    <div style="font-weight:bold;color:#004F5C;font-size:10pt;margin-bottom:4px">📋 REGISTOS OBRIGATÓRIOS — KitchenFlow ECL</div>
+    <div style="font-size:9pt;color:#333;white-space:pre-line">${ficha.kitchenflow || 'Registar no KitchenFlow ECL: Temperatura de serviço · Higiene pessoal · Não conformidades'}</div>
+  </div>
   <table class="rodape" style="margin-top:20px">
     <tr>
       <td class="info-fill"><b>ELABORADO POR:</b> ${ficha.elaboradoPor}</td>
