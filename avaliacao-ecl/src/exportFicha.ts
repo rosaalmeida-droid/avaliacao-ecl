@@ -42,6 +42,9 @@ export interface FichaTecnicaExport {
   empratamento: string;
   elaboradoPor: string;
   data: string;
+  equipamento?: string;
+  conservacao?: string;
+  regeneracao?: string;
   nutricao?: {
     calorias: number;
     proteinas: number;
@@ -388,6 +391,7 @@ function gerarHTML(ficha: FichaTecnicaExport): string {
       <td style="text-align:center;font-weight:bold">${p.num}</td>
       <td>${p.descricao}</td><td>${p.temperatura}</td>
       <td>${p.tempo}</td><td>${p.obs}</td>
+      <td style="color:#B5651D;font-size:9pt">${p.haccp || ''}</td>
     </tr>`).join('');
 
   return `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
@@ -430,11 +434,24 @@ function gerarHTML(ficha: FichaTecnicaExport): string {
   </table>
   <div class="section-title">MODO DE PREPARAÇÃO</div>
   <table class="header-table">
-    <tr><th style="width:30px">Nº</th><th>AÇÃO / DESCRIÇÃO</th><th style="width:60px">TEMP.</th><th style="width:60px">TEMPO</th><th>OBSERVAÇÕES</th></tr>
+    <tr><th style="width:30px">Nº</th><th>AÇÃO / DESCRIÇÃO</th><th style="width:60px">TEMP.</th><th style="width:60px">TEMPO</th><th>OBS.</th><th>⚠️ HACCP</th></tr>
     ${prep}
   </table>
   <div class="section-title">APRESENTAÇÃO / EMPRATAMENTO</div>
   <table><tr><td>${ficha.empratamento || ''}</td></tr></table>
+  ${ficha.equipamento ? `
+  <div class="section-title">🔧 EQUIPAMENTO NECESSÁRIO</div>
+  <table><tr><td style="white-space:pre-line">${ficha.equipamento}</td></tr></table>
+  ` : ''}
+  ${ficha.conservacao || ficha.regeneracao ? `
+  <div class="section-title">❄️ CONSERVAÇÃO E 🔥 REGENERAÇÃO</div>
+  <table>
+    <tr>
+      <td style="width:50%"><b>Conservação:</b><br>${ficha.conservacao || ''}</td>
+      <td style="width:50%"><b>Regeneração:</b><br>${ficha.regeneracao || ''}</td>
+    </tr>
+  </table>
+  ` : ''}
   ${ficha.nutricao ? `
   <div class="section-title">INFORMAÇÃO NUTRICIONAL ESTIMADA (por porção)</div>
   <table class="header-table">
