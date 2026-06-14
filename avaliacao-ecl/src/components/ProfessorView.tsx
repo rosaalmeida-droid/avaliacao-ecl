@@ -258,7 +258,9 @@ function extrairFicha(texto: string): FichaTecnica {
 
     const nomeIA = extrair('NOME DO PRATO');
     const classificacaoIA = extrair('CLASSIFICAÇÃO');
-    const dosesIA = extrair('Nº DE DOSES') || extrair('DOSES') || extrair('PORÇÕES') || texto.match(/(?:doses?|porções?)[:\s]+(\d+)/i)?.[1] || '';
+    const dosesIA = texto.match(/N[ºo°]?\s*DE\s*DOSES?:\s*(\d+)/i)?.[1] ||
+                    texto.match(/PORÇÕES?:\s*(\d+)/i)?.[1] ||
+                    texto.match(/DOSES?:\s*(\d+)/i)?.[1] || '';
     const tPrepIA = extrair('TEMPO DE PREPARAÇÃO');
     const tConfIA = extrair('TEMPO DE CONFEÇÃO');
     const alergenicosIA = extrair('ALERGÉNICOS');
@@ -292,20 +294,19 @@ function extrairFicha(texto: string): FichaTecnica {
     const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|\nEQUIPAMENTO|\nCONSERVAÇÃO:|$)/i);
     const preparacaoIA: PassoPreparacao[] = [];
     if (secPrepIA) {
-      // Juntar linhas que pertencem ao mesmo passo (linhas sem número no início)
       const linhasRaw = secPrepIA[1].split('\n');
       const linhasPassos: string[] = [];
       for (const linha of linhasRaw) {
-        if (!/^NR\s*\|/i.test(linha) && linha.includes('|')) {
-          // Linha com separador — é um passo ou continuação
-          const primeiraColuna = linha.split('|')[0].trim();
-          if (/^\d+$/.test(primeiraColuna)) {
-            // Começa com número = novo passo
-            linhasPassos.push(linha);
-          } else if (linhasPassos.length > 0) {
-            // Continuação do passo anterior — juntar
-            linhasPassos[linhasPassos.length - 1] += ' ' + linha.trim();
-          }
+        if (linha.trim() === '') continue;
+        if (/^NR\s*\|/i.test(linha)) continue; // cabeçalho
+        if (!linha.includes('|')) continue;
+        const primeiraColuna = linha.split('|')[0].trim();
+        // É novo passo se começa com número (1, 2, 3... ou 1., 2., etc.)
+        if (/^\d+\.?\s*$/.test(primeiraColuna)) {
+          linhasPassos.push(linha);
+        } else if (linhasPassos.length > 0) {
+          // Continuação do passo anterior
+          linhasPassos[linhasPassos.length - 1] += ' ' + linha.trim();
         }
       }
       for (const linha of linhasPassos) {
@@ -317,7 +318,7 @@ function extrairFicha(texto: string): FichaTecnica {
             temperatura: partes[2] || '',
             tempo: partes[3] || '',
             obs: partes[4] || '',
-            haccp: partes.slice(5).join(' ').trim() || '', // PCC pode ter | dentro
+            haccp: partes.slice(5).join('|').trim() || '',
           });
         }
       }
@@ -517,79 +518,116 @@ function extrairFicha(texto: string): FichaTecnica {
 // Formato exato da ficha de produção ECL
 // ============================================================
 function gerarPrompt(linkReceita: string): string {
-  return `Analisa a receita neste link e extrai a informação NO FORMATO EXATO abaixo.
-Não alteres os títulos. Não acrescentes texto extra. Não acrescentes explicações.
-Usa o separador | entre colunas. Usa q.b. quando a quantidade não é especificada.
+  return `Analisa a receita neste link e extrai a informação NO FORMATO EXATO do exemplo abaixo.
+REGRAS OBRIGATÓRIAS:
+- Usa o separador | entre colunas
+- Cada passo de preparação deve estar NUMA SÓ LINHA (não quebres linhas dentro de um passo)
+- O campo PCC/HACCP deve estar na mesma linha do passo, após o último |
+- Usa q.b. quando a quantidade não é especificada
+- O campo "Nº DE DOSES" deve ser sempre um número (ex: 2, 4, 6)
 
-NOME DO PRATO: [nome da receita]
+EXEMPLO DO FORMATO CORRETO:
+
+NOME DO PRATO: Bacalhau à Brás
+CLASSIFICAÇÃO: Peixe
+Nº DE DOSES: 4
+TEMPO DE PREPARAÇÃO: 30 min
+TEMPO DE CONFEÇÃO: 20 min
+ALERGÉNICOS: Peixe, Ovos, Glúten
+
+INGREDIENTES:
+COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
+Peixe | 500 | g | Bacalhau demolhado | 10 min | | Desfiar em lascas
+Vegetal | 3 | un | Cebola | 5 min | | Cortar em juliana
+Gordura | 1 | cs | Azeite | | |
+Ovo | 4 | un | Ovos | | | Mexer no final
+
+PREPARAÇÃO:
+NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
+1 | Cortar a cebola em juliana e refogar no azeite até ficar translúcida | Médio | 8 min | Mexer regularmente |
+2 | Adicionar o bacalhau desfiado e envolver bem | Médio | 5 min | | Usar bacalhau bem demolhado — verificar teor de sal
+3 | Adicionar as batatas palha e os ovos mexidos, envolver rapidamente | Forte | 2 min | Não cozinhar demasiado | Ovos devem ficar mal cozinhados — usar ovos frescos do dia
+
+EMPRATAMENTO:
+Servir em prato fundo, polvilhado com salsa picada e azeitonas.
+
+EQUIPAMENTO NECESSÁRIO:
+Frigideira larga antiaderente
+Faca de chef
+Tábua de corte
+
+CONSERVAÇÃO:
+Refrigerar a 0-4ºC, consumir em 24h, em recipiente fechado.
+
+REGENERAÇÃO:
+Aquecer em frigideira a lume médio, temperatura mínima 75ºC no centro.
+
+REGISTOS KITCHENFLOW:
+Higiene Pessoal — registar antes de iniciar a produção
+Temperatura de Serviço — servir quente, mínimo 63ºC
+Conservação de Produtos — bacalhau ou ovos que sobrem: refrigerar a 0-4ºC, consumir em 24h
+Não Conformidades — registar qualquer desvio detetado
+
+---
+AGORA FAZ O MESMO PARA ESTA RECEITA (mantém exactamente o mesmo formato):
+
+NOME DO PRATO: [nome]
 CLASSIFICAÇÃO: [Peixe / Carne / Aves / Sobremesa / Sopa / Entrada / Massa / Vegetariano / Outro]
 Nº DE DOSES: [número]
 TEMPO DE PREPARAÇÃO: [X min]
 TEMPO DE CONFEÇÃO: [X min]
-ALERGÉNICOS: [lista dos 14 alergénicos EU presentes, ex: Glúten, Ovos, Peixe, Soja, Sésamo]
+ALERGÉNICOS: [lista dos 14 alergénicos EU presentes]
 
 INGREDIENTES:
 COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
-[componente ou vazio] | [quantidade] | [unidade: g/kg/ml/l/un/cs/cc/q.b.] | [nome do produto] | [tempo prep se aplicável] | [tempo conf se aplicável] | [observações]
+[preencher]
 
 PREPARAÇÃO:
 NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
-[Para cada passo, indica na coluna PCC/HACCP APENAS os pontos críticos de controlo REAIS e AJUSTADOS à intenção desta receita específica.
-IMPORTANTE: Analisa PRIMEIRO a intenção culinária da receita antes de definir PCCs.
-- Se a receita prevê servir o alimento mal passado ou cru (tataki, tártaro, carpaccio, sashimi, steak saignant, mousse com ovo cru, etc.), NÃO digas para cozinhar a 75ºC. Em vez disso, indica os PCCs corretos para esse tipo de confeção:
-  * Peixe cru/mal passado: "Usar peixe de qualidade sashimi ou congelado previamente a -20ºC/24h"
-  * Carne crua/mal passada: "Usar carne fresca do dia, picada no momento, servir imediatamente"
-  * Ovo cru: "Usar ovos pasteurizados ou ovos ultra-frescos do dia"
-- Se a receita prevê confeção completa (frango, carne bem passada, peixe cozido, etc.): "Temp. mínima 75ºC no centro"
-- Outros PCCs válidos independentemente da intenção: contaminação cruzada, cadeia de frio, higiene de utensílios, temperaturas de armazenamento
-- Se o passo não tem PCC relevante: deixar vazio]
-1 | [descrição] | [temp] | [tempo] | [obs] | [PCC/HACCP ajustado à receita ou vazio]
+[cada passo numa só linha, PCC ajustado à intenção culinária real da receita]
 
 EMPRATAMENTO:
-[descrição da apresentação]
+[descrição]
 
 EQUIPAMENTO NECESSÁRIO:
-[lista de equipamentos específicos, um por linha]
+[lista]
 
 CONSERVAÇÃO:
-[como conservar: temperatura, tempo máximo, embalagem]
+[como conservar]
 
 REGENERAÇÃO:
-[como regenerar: método, temperatura mínima, tempo]
+[como regenerar — se não aplicável, dizer porquê]
 
 REGISTOS KITCHENFLOW:
-[O KitchenFlow ECL é a aplicação de gestão HACCP da escola. Tem exactamente estes 6 módulos de registo. Analisa a receita e indica QUAIS devem ser preenchidos nesta produção e PORQUÊ:
-
-1. Higiene Pessoal — registo obrigatório antes de qualquer produção: lavagem de mãos, touca, farda, ausência de adornos, estado de saúde. APLICAR SEMPRE.
-
-2. Temperatura de Serviço — registo da temperatura do prato no momento do serviço. APLICAR quando o prato é servido quente (mínimo 63ºC) ou frio (máximo 4ºC) e existe risco se a temperatura não for controlada.
-
-3. Controlo de Óleos — registo da qualidade e temperatura do óleo de fritura (polar, cor, cheiro). APLICAR APENAS se a receita usa fritura por imersão em óleo (fritar batatas, pastéis, croquetes, peixe frito, etc.). NÃO aplicar se apenas usa azeite/óleo para saltear ou refogar.
-
-4. Conservação de Produtos — registo de etiquetagem, temperatura e condições de conservação de matérias-primas abertas ou preparações que sobram. APLICAR quando sobram ingredientes abertos (ex: peixe cru, molhos preparados, massas cozidas) ou preparações que não são consumidas na totalidade.
-
-5. Não Conformidades — registo de qualquer desvio das normas HACCP detetado durante a produção (temperatura incorreta, produto fora de prazo, contaminação cruzada, equipamento avariado, etc.) e medida corretiva tomada. APLICAR SEMPRE.
-
-6. Amostra Testemunho — recolha de 150g do prato confeccionado, identificada com nome/data/hora, conservada a -18ºC durante 72h para rastreabilidade em caso de intoxicação. APLICAR quando a produção se destina a serviço a clientes externos ou eventos.
-
-Para cada módulo aplicável escreve: "[Nome do módulo] — [razão específica para esta receita e o que registar]"
-Não incluas módulos que claramente não se aplicam.]
+[O KitchenFlow ECL tem exactamente estes 6 módulos. Inclui apenas os aplicáveis:
+1. Higiene Pessoal — SEMPRE obrigatório
+2. Temperatura de Serviço — se prato quente (mín. 63ºC) ou frio (máx. 4ºC)
+3. Controlo de Óleos — APENAS se fritura por imersão em óleo
+4. Conservação de Produtos — se sobram ingredientes abertos ou preparações
+5. Não Conformidades — SEMPRE obrigatório
+6. Amostra Testemunho — se produção para serviço a clientes externos]
 
 ${linkReceita ? `Link: ${linkReceita}` : '[Sem link — analisa com base no teu conhecimento culinário e nas regras HACCP]'}`;
 }
 
 function BotaoIAs({ link }: { link: string }) {
   const [copiado, setCopiado] = React.useState(false);
-  const prompt = gerarPrompt(link);
+  const [mostrarPrompt, setMostrarPrompt] = React.useState(false);
+  const [promptEditavel, setPromptEditavel] = React.useState('');
+
+  React.useEffect(() => {
+    setPromptEditavel(gerarPrompt(link));
+  }, [link]);
+
+  const promptFinal = promptEditavel || gerarPrompt(link);
 
   function copiar() {
-    navigator.clipboard.writeText(prompt).then(() => {
+    navigator.clipboard.writeText(promptFinal).then(() => {
       setCopiado(true);
       setTimeout(() => setCopiado(false), 3000);
     }).catch(() => {
-      // fallback para browsers mais antigos
       const ta = document.createElement('textarea');
-      ta.value = prompt;
+      ta.value = promptFinal;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
@@ -601,30 +639,55 @@ function BotaoIAs({ link }: { link: string }) {
 
   return (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+      <div style={{ fontWeight: 700, fontSize: 13, color: '#004F5C', marginBottom: 6 }}>
         🤖 Extrair receita com IA
       </div>
       <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-        Copia o prompt e cola numa IA à tua escolha. Cola o resultado na caixa de texto abaixo.
+        Copia o prompt e cola numa IA. Podes editar o prompt antes de copiar para adicionar contexto extra.
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <button type="button" className="btn btn-ghost"
-          onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(prompt)}`, '_blank')}>
+          onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(promptFinal)}`, '_blank')}>
           🟠 Abrir no Claude
         </button>
         <button type="button" className="btn btn-ghost"
-          onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank')}>
+          onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(promptFinal)}`, '_blank')}>
           🟢 Abrir no ChatGPT
         </button>
-        <button type="button"
-          className="btn btn-ghost"
+        <button type="button" className="btn btn-ghost"
           onClick={copiar}
           style={{ background: copiado ? '#004F5C' : undefined, color: copiado ? '#fff' : undefined }}>
           {copiado ? '✅ Prompt copiado!' : '📋 Copiar prompt'}
         </button>
+        <button type="button" className="btn btn-ghost"
+          style={{ fontSize: 12 }}
+          onClick={() => {
+            if (!mostrarPrompt) setPromptEditavel(gerarPrompt(link));
+            setMostrarPrompt(!mostrarPrompt);
+          }}>
+          {mostrarPrompt ? '🔼 Esconder' : '✏️ Ver/editar prompt'}
+        </button>
       </div>
+      {mostrarPrompt && (
+        <div style={{ marginBottom: 8 }}>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>
+            Podes adicionar informação extra no final (ex: "Este prato é para um jantar de gala"). O formato mantém-se.
+          </div>
+          <textarea
+            className="input"
+            value={promptEditavel}
+            onChange={e => setPromptEditavel(e.target.value)}
+            style={{ minHeight: 180, fontSize: 11, fontFamily: 'monospace' }}
+          />
+          <button type="button" className="btn btn-ghost"
+            style={{ fontSize: 11, marginTop: 4 }}
+            onClick={() => setPromptEditavel(gerarPrompt(link))}>
+            🔄 Repor prompt original
+          </button>
+        </div>
+      )}
       {copiado && (
-        <div style={{ marginTop: 8, padding: '8px 12px', background: '#D6E4E8', borderRadius: 6, fontSize: 13 }}>
+        <div style={{ padding: '8px 12px', background: '#D6E4E8', borderRadius: 6, fontSize: 13 }}>
           ✅ Prompt copiado! Cola numa IA (Ctrl+V), copia o resultado e cola na caixa de texto abaixo.
         </div>
       )}
