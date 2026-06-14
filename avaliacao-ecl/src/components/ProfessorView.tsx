@@ -580,6 +580,16 @@ ALERGÉNICOS: [lista dos 14 alergénicos EU presentes]
 
 INGREDIENTES:
 COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
+[Para cada ingrediente preenche T.PREP com estimativa realista do tempo de preparação desse ingrediente:
+- Pesar/medir ingrediente simples (sal, azeite, especiarias): 1 min
+- Lavar/desinfetar vegetais: 2 min
+- Descascar e cortar cebola/alho: 2-3 min
+- Cortar legumes (juliana, brunoise, etc.): 3-5 min
+- Filetar/limpar peixe: 5-8 min
+- Preparar carne (aparar, porcionar): 5-10 min
+- Preparar ervas aromáticas: 1-2 min
+- Ingrediente sem preparação (ex: produto embalado pronto a usar): deixar vazio
+T.CONF: preencher apenas se o ingrediente tem cozedura independente (ex: batata cozida 20 min). Normalmente vazio.]
 [preencher]
 
 PREPARAÇÃO:
