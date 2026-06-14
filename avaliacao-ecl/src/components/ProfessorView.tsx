@@ -705,6 +705,7 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
   async function carregar() {
     if (!link && !textoManual) return;
     if (textoManual) {
+      try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
       onContinuar((nomePrato ? nomePrato + '\n' : '') + textoManual, link);
       return;
     }
@@ -854,7 +855,11 @@ function PassoFichaTecnica({
   onVoltar: () => void;
 }) {
   const [ficha, setFicha] = useState<FichaTecnica>(() => {
-    // Tentar recuperar ficha guardada
+    // Usar fichaInicial se tem conteúdo (veio de extração nova)
+    // Só usar o draft se fichaInicial está vazio
+    if (fichaInicial.nomePrato || fichaInicial.ingredientes.some(i => i.produto)) {
+      return fichaInicial;
+    }
     try {
       const saved = localStorage.getItem('ecl_ficha_draft');
       if (saved) return JSON.parse(saved);
