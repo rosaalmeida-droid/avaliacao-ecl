@@ -706,7 +706,11 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
     if (!link && !textoManual) return;
     if (textoManual) {
       try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-      onContinuar((nomePrato ? nomePrato + '\n' : '') + textoManual, link);
+      // Se o texto já tem NOME DO PRATO não adicionar nomePrato em separado
+      const textoFinal = textoManual.includes('NOME DO PRATO:') 
+        ? textoManual 
+        : (nomePrato ? nomePrato + '\n' : '') + textoManual;
+      onContinuar(textoFinal, link);
       return;
     }
     setACarregar(true);
@@ -854,22 +858,13 @@ function PassoFichaTecnica({
   onContinuar: (ficha: FichaTecnica) => void;
   onVoltar: () => void;
 }) {
-  const [ficha, setFicha] = useState<FichaTecnica>(() => {
-    // Usar fichaInicial se tem conteúdo (veio de extração nova)
-    // Só usar o draft se fichaInicial está vazio
-    if (fichaInicial.nomePrato || fichaInicial.ingredientes.some(i => i.produto)) {
-      return fichaInicial;
-    }
-    try {
-      const saved = localStorage.getItem('ecl_ficha_draft');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return fichaInicial;
-  });
+  const [ficha, setFicha] = useState<FichaTecnica>(fichaInicial);
 
-  // Auto-save sempre que a ficha muda
+  // Auto-save sempre que a ficha muda (só se tem conteúdo)
   React.useEffect(() => {
-    try { localStorage.setItem('ecl_ficha_draft', JSON.stringify(ficha)); } catch {}
+    if (ficha.nomePrato) {
+      try { localStorage.setItem('ecl_ficha_draft', JSON.stringify(ficha)); } catch {}
+    }
   }, [ficha]);
 
   function setF<K extends keyof FichaTecnica>(key: K, value: FichaTecnica[K]) {
@@ -923,8 +918,17 @@ function PassoFichaTecnica({
   return (
     <div>
       <Card>
-        <div className="display" style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
-          📋 Passo 2: Ficha Técnica
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <div className="display" style={{ fontSize: 18, fontWeight: 700, flex: 1 }}>
+            📋 Passo 2: Ficha de Produção
+          </div>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--danger)' }}
+            onClick={() => {
+              try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
+              setFicha(fichaInicial);
+            }}>
+            🗑️ Repor
+          </button>
         </div>
         <div className="muted" style={{ marginBottom: 14 }}>
           Verifica e ajusta os dados extraídos automaticamente.
@@ -1296,7 +1300,10 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
           setFicha(fichaConfirmada);
           setPasso('comanda');
         }}
-        onVoltar={() => setPasso('link')}
+        onVoltar={() => {
+          try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
+          setPasso('link');
+        }}
       />
     );
   }
