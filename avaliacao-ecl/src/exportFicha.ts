@@ -27,6 +27,7 @@ export interface PassoPreparacao {
   temperatura: string;
   tempo: string;
   obs: string;
+  haccp?: string;
 }
 
 export interface FichaTecnicaExport {
