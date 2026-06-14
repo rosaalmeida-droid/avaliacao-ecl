@@ -107,6 +107,7 @@ interface PassoPreparacao {
   temperatura: string;
   tempo: string;
   obs: string;
+  haccp: string;
 }
 
 interface FichaTecnica {
@@ -122,6 +123,9 @@ interface FichaTecnica {
   empratamento: string;
   elaboradoPor: string;
   data: string;
+  equipamento: string;
+  conservacao: string;
+  regeneracao: string;
 }
 
 const FICHA_VAZIA: FichaTecnica = {
@@ -136,11 +140,14 @@ const FICHA_VAZIA: FichaTecnica = {
     { componente: '', qt: '', un: '', produto: '', tPrep: '', tConf: '', obs: '' }
   ],
   preparacao: [
-    { num: 1, descricao: '', temperatura: '', tempo: '', obs: '' }
+    { num: 1, descricao: '', temperatura: '', tempo: '', obs: '', haccp: '' }
   ],
   empratamento: '',
   elaboradoPor: 'rosa.almeida@eclisboa.net',
   data: new Date().toLocaleDateString('pt-PT'),
+  equipamento: '',
+  conservacao: '',
+  regeneracao: '',
 };
 
 // ============================================================
@@ -279,8 +286,8 @@ function extrairFicha(texto: string): FichaTecnica {
       }
     }
 
-    // Preparação com separador |
-    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|$)/i);
+    // Preparação com separador | (agora com coluna HACCP)
+    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEQUIPAMENTO|\nCONSERVAÇÃO|\nEMPRATAMENTO|$)/i);
     const preparacaoIA: PassoPreparacao[] = [];
     if (secPrepIA) {
       const linhasPrep = secPrepIA[1].split('\n').filter(l => l.includes('|') && !/^NR\s*\|/i.test(l));
@@ -293,13 +300,17 @@ function extrairFicha(texto: string): FichaTecnica {
             temperatura: partes[2] || '',
             tempo: partes[3] || '',
             obs: partes[4] || '',
+            haccp: partes[5] || '',
           });
         }
       }
     }
 
-    // Empratamento
+    // Empratamento e novos campos
     const empratamentoIA = extrair('EMPRATAMENTO');
+    const equipamentoIA = texto.match(/EQUIPAMENTO NECESSÁRIO:\n([\s\S]*?)(?=\nCONSERVAÇÃO:|\nREGENERAÇÃO:|$)/i)?.[1]?.trim() || '';
+    const conservacaoIA = texto.match(/CONSERVAÇÃO:\n([\s\S]*?)(?=\nREGENERAÇÃO:|$)/i)?.[1]?.trim() || extrair('CONSERVAÇÃO');
+    const regeneracaoIA = texto.match(/REGENERAÇÃO:\n([\s\S]*?)(?=\n[A-Z][A-Z]|$)/i)?.[1]?.trim() || extrair('REGENERAÇÃO');
 
     // Alergénicos automáticos se não vieram da IA
     const produtosListIA = ingredientesIA.map(i => `${i.produto} ${i.obs}`);
@@ -314,8 +325,11 @@ function extrairFicha(texto: string): FichaTecnica {
       tempoConf: tConfIA,
       alergenicos: alergenicosFinais,
       ingredientes: ingredientesIA.length > 0 ? ingredientesIA : [{ componente: '', qt: '', un: '', produto: '', tPrep: '', tConf: '', obs: '' }],
-      preparacao: preparacaoIA.length > 0 ? preparacaoIA : [{ num: 1, descricao: '', temperatura: '', tempo: '', obs: '' }],
+      preparacao: preparacaoIA.length > 0 ? preparacaoIA : [{ num: 1, descricao: '', temperatura: '', tempo: '', obs: '', haccp: '' }],
       empratamento: empratamentoIA,
+      equipamento: equipamentoIA,
+      conservacao: conservacaoIA,
+      regeneracao: regeneracaoIA,
     };
   }
   // "sal q.b.", "2 colheres de sopa de azeite"
@@ -490,20 +504,26 @@ CLASSIFICAÇÃO: [Peixe / Carne / Aves / Sobremesa / Sopa / Entrada / Massa / Ve
 Nº DE DOSES: [número]
 TEMPO DE PREPARAÇÃO: [X min]
 TEMPO DE CONFEÇÃO: [X min]
-ALERGÉNICOS: [lista dos alergénicos presentes, ex: Glúten, Ovos, Peixe, Soja]
+ALERGÉNICOS: [lista dos 14 alergénicos EU presentes, ex: Glúten, Ovos, Peixe, Soja, Sésamo]
 
 INGREDIENTES:
 COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
 [componente ou vazio] | [quantidade] | [unidade: g/kg/ml/l/un/cs/cc/q.b.] | [nome do produto] | [tempo prep se aplicável] | [tempo conf se aplicável] | [observações]
 
 PREPARAÇÃO:
-NR | DESCRIÇÃO | TEMP | TEMPO | OBS
-1 | [descrição do passo] | [temperatura ex: 180ºC ou vazio] | [tempo ex: 5 min ou vazio] | [observações ou vazio]
+NR | DESCRIÇÃO | TEMP | TEMPO | OBS | HACCP
+1 | [descrição do passo] | [temperatura ex: 180ºC ou vazio] | [tempo ex: 5 min ou vazio] | [obs ou vazio] | [ponto crítico HACCP se aplicável, ex: "Temp. mínima 75ºC", "Evitar contaminação cruzada", "Arrefecer rapidamente abaixo 10ºC" ou vazio]
 
-EMPRATAMENTO:
-[descrição da apresentação e empratamento do prato]
+EQUIPAMENTO NECESSÁRIO:
+[lista de equipamentos específicos necessários, um por linha, ex: Frigideira antiaderente, Termómetro de sonda, Forno combinado, Mandolina, etc.]
 
-Link: ${linkReceita}`;
+CONSERVAÇÃO:
+[como conservar o prato acabado: temperatura, tempo máximo, embalagem, ex: "Refrigerar a 0-4ºC, consumir em 24h, tapar com película"]
+
+REGENERAÇÃO:
+[como regenerar/reaquecer: método, temperatura, tempo, ex: "Aquecer em frigideira a lume médio 2-3 min, temperatura mínima 75ºC no centro"]
+
+${linkReceita ? `Link: ${linkReceita}` : '[Sem link — analisa com base no teu conhecimento]'}`;
 }
 
 function BotaoIAs({ link }: { link: string }) {
@@ -659,12 +679,12 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
         📋 Nova Ficha de Produção
       </div>
 
-      {/* SECÇÃO IA — sempre visível */}
+      {/* SECÇÃO IA — sempre visível, mesmo sem link */}
       <div style={{ background: '#D6E4E8', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
         <div style={{ fontWeight: 700, fontSize: 13, color: '#004F5C', marginBottom: 6 }}>
           🤖 Passo 1 — Extrai a receita com IA
         </div>
-        <Field label="Link da receita (opcional)">
+        <Field label="Link da receita (opcional — inclui no prompt)">
           <input
             className="input"
             value={link}
@@ -672,6 +692,7 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
             placeholder="https://www.pingodoce.pt/receitas/..."
           />
         </Field>
+        {/* Botões IA — SEMPRE VISÍVEIS */}
         <BotaoIAs link={link} />
         {link && (
           <button type="button" className="btn btn-ghost"
@@ -902,6 +923,17 @@ function PassoFichaTecnica({
                   onChange={e => setPasso(i, 'obs', e.target.value)} />
               </Field>
             </div>
+            {(passo.haccp || true) && (
+              <div style={{ paddingLeft: 32, marginTop: 4 }}>
+                <Field label="⚠️ Ponto Crítico HACCP">
+                  <input className="input"
+                    style={{ borderColor: passo.haccp ? '#B5651D' : undefined, background: passo.haccp ? '#FFF8F0' : undefined }}
+                    value={passo.haccp}
+                    onChange={e => setPasso(i, 'haccp', e.target.value)}
+                    placeholder="ex: Temp. mínima 75ºC no centro, Evitar contaminação cruzada..." />
+                </Field>
+              </div>
+            )}
           </div>
         ))}
         <Button variant="ghost" onClick={addPasso} block>+ Adicionar passo</Button>
@@ -914,6 +946,36 @@ function PassoFichaTecnica({
             onChange={e => setF('empratamento', e.target.value)}
             placeholder="Descreve a apresentação e empratamento..." />
         </Field>
+      </Card>
+
+      {/* Equipamento */}
+      <Card>
+        <Field label="🔧 Equipamento necessário">
+          <textarea className="input" value={ficha.equipamento}
+            onChange={e => setF('equipamento', e.target.value)}
+            placeholder="ex: Frigideira antiaderente, Termómetro de sonda, Mandolina, Forno combinado..."
+            style={{ minHeight: 80 }} />
+        </Field>
+      </Card>
+
+      {/* Conservação e Regeneração */}
+      <Card>
+        <Field label="❄️ Conservação">
+          <textarea className="input" value={ficha.conservacao}
+            onChange={e => setF('conservacao', e.target.value)}
+            placeholder="ex: Refrigerar a 0-4ºC, consumir em 24h, tapar com película..."
+            style={{ minHeight: 60 }} />
+        </Field>
+        <Field label="🔥 Regeneração">
+          <textarea className="input" value={ficha.regeneracao}
+            onChange={e => setF('regeneracao', e.target.value)}
+            placeholder="ex: Aquecer em frigideira a lume médio 2-3 min, temperatura mínima 75ºC no centro..."
+            style={{ minHeight: 60 }} />
+        </Field>
+      </Card>
+
+      {/* Rodapé */}
+      <Card>
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Elaborado por">
             <input className="input" value={ficha.elaboradoPor}
