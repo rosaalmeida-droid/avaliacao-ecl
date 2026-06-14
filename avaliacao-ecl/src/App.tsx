@@ -7,6 +7,7 @@ import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
 import { ComandasView } from './components/ComandasView';
 import { CoordenadoraView } from './components/CoordenadoraView';
+import Requisicao from './components/Requisicao';
 import { getAlunos } from './backend';
 import './styles.css';
 
@@ -18,7 +19,7 @@ interface Sessao {
 
 export default function App() {
   const [sessao, setSessao] = useState<Sessao | null>(null);
-  const [tabProfessor, setTabProfessor] = useState<'comanda' | 'comandas' | 'validar'>('comanda');
+  const [tabProfessor, setTabProfessor] = useState<'comanda' | 'comandas' | 'validar' | 'requisicao'>('comanda');
 
   if (!sessao) {
     return <Login onLogin={(perfil, alunoId, turmaId) => setSessao({ perfil, alunoId, turmaId })} />;
@@ -34,20 +35,40 @@ export default function App() {
     }
     subtitulo = `Aluno ${aluno.numero} · ${aluno.ano}º ano`;
     conteudo = <AlunoView aluno={aluno} />;
+
   } else if (sessao.perfil === 'professor' && sessao.turmaId) {
     subtitulo = sessao.turmaId;
     conteudo = (
       <div>
         <div className="card" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className={`btn ${tabProfessor === 'comanda' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTabProfessor('comanda')}>Nova Comanda</button>
-          <button className={`btn ${tabProfessor === 'comandas' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTabProfessor('comandas')}>Comandas</button>
-          <button className={`btn ${tabProfessor === 'validar' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTabProfessor('validar')}>Validar</button>
+          <button
+            className={`btn ${tabProfessor === 'comanda' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setTabProfessor('comanda')}>
+            Nova Comanda
+          </button>
+          <button
+            className={`btn ${tabProfessor === 'comandas' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setTabProfessor('comandas')}>
+            Comandas
+          </button>
+          <button
+            className={`btn ${tabProfessor === 'validar' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setTabProfessor('validar')}>
+            Validar
+          </button>
+          <button
+            className={`btn ${tabProfessor === 'requisicao' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setTabProfessor('requisicao')}>
+            Requisição
+          </button>
         </div>
-        {tabProfessor === 'comanda' && <ProfessorView turmaId={sessao.turmaId} />}
-        {tabProfessor === 'comandas' && <ComandasView turmaId={sessao.turmaId} />}
-        {tabProfessor === 'validar' && <ValidacaoView turmaId={sessao.turmaId} />}
+        {tabProfessor === 'comanda'    && <ProfessorView turmaId={sessao.turmaId} />}
+        {tabProfessor === 'comandas'   && <ComandasView turmaId={sessao.turmaId} />}
+        {tabProfessor === 'validar'    && <ValidacaoView turmaId={sessao.turmaId} />}
+        {tabProfessor === 'requisicao' && <Requisicao />}
       </div>
     );
+
   } else if (sessao.perfil === 'coordenadora') {
     conteudo = <CoordenadoraView />;
   }
@@ -59,3 +80,4 @@ export default function App() {
     </div>
   );
 }
+
