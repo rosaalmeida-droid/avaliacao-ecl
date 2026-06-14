@@ -258,7 +258,7 @@ function extrairFicha(texto: string): FichaTecnica {
 
     const nomeIA = extrair('NOME DO PRATO');
     const classificacaoIA = extrair('CLASSIFICAÇÃO');
-    const dosesIA = extrair('Nº DE DOSES');
+    const dosesIA = extrair('Nº DE DOSES') || extrair('DOSES') || extrair('PORÇÕES') || texto.match(/(?:doses?|porções?)[:\s]+(\d+)/i)?.[1] || '';
     const tPrepIA = extrair('TEMPO DE PREPARAÇÃO');
     const tConfIA = extrair('TEMPO DE CONFEÇÃO');
     const alergenicosIA = extrair('ALERGÉNICOS');
@@ -288,12 +288,27 @@ function extrairFicha(texto: string): FichaTecnica {
       }
     }
 
-    // Preparação com separador | (agora com coluna HACCP)
-    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEQUIPAMENTO|\nCONSERVAÇÃO|\nEMPRATAMENTO|$)/i);
+    // Preparação com separador | — PCC pode ter texto longo
+    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|\nEQUIPAMENTO|\nCONSERVAÇÃO:|$)/i);
     const preparacaoIA: PassoPreparacao[] = [];
     if (secPrepIA) {
-      const linhasPrep = secPrepIA[1].split('\n').filter(l => l.includes('|') && !/^NR\s*\|/i.test(l));
-      for (const linha of linhasPrep) {
+      // Juntar linhas que pertencem ao mesmo passo (linhas sem número no início)
+      const linhasRaw = secPrepIA[1].split('\n');
+      const linhasPassos: string[] = [];
+      for (const linha of linhasRaw) {
+        if (!/^NR\s*\|/i.test(linha) && linha.includes('|')) {
+          // Linha com separador — é um passo ou continuação
+          const primeiraColuna = linha.split('|')[0].trim();
+          if (/^\d+$/.test(primeiraColuna)) {
+            // Começa com número = novo passo
+            linhasPassos.push(linha);
+          } else if (linhasPassos.length > 0) {
+            // Continuação do passo anterior — juntar
+            linhasPassos[linhasPassos.length - 1] += ' ' + linha.trim();
+          }
+        }
+      }
+      for (const linha of linhasPassos) {
         const partes = linha.split('|').map(p => p.trim());
         if (partes.length >= 2 && partes[1]) {
           preparacaoIA.push({
@@ -302,19 +317,18 @@ function extrairFicha(texto: string): FichaTecnica {
             temperatura: partes[2] || '',
             tempo: partes[3] || '',
             obs: partes[4] || '',
-            haccp: partes[5] || '',
+            haccp: partes.slice(5).join(' ').trim() || '', // PCC pode ter | dentro
           });
         }
       }
     }
 
-    // Empratamento e novos campos
-    const empratamentoIA = extrair('EMPRATAMENTO');
-    const equipamentoIA = texto.match(/EQUIPAMENTO NECESSÁRIO:\n([\s\S]*?)(?=\nCONSERVAÇÃO:|\nREGENERAÇÃO:|$)/i)?.[1]?.trim() || '';
-    const conservacaoIA = texto.match(/CONSERVAÇÃO:\n([\s\S]*?)(?=\nREGENERAÇÃO:|$)/i)?.[1]?.trim() || extrair('CONSERVAÇÃO');
-    const regeneracaoIA = texto.match(/REGENERAÇÃO:\n([\s\S]*?)(?=\n[A-Z][A-Z]|$)/i)?.[1]?.trim() || extrair('REGENERAÇÃO');
-
-    const kitchenflowIA = texto.match(/REGISTOS KITCHENFLOW:\n([\s\S]*?)(?=\n[A-Z][A-Z]|$)/i)?.[1]?.trim() || '';
+    // Campos multilinha — regex mais permissivo
+    const empratamentoIA = texto.match(/EMPRATAMENTO:\n([\s\S]*?)(?=\nEQUIPAMENTO|\nCONSERVAÇÃO|\nREGENERAÇÃO|\nREGISTOS|$)/i)?.[1]?.trim() || extrair('EMPRATAMENTO');
+    const equipamentoIA = texto.match(/EQUIPAMENTO NECESSÁRIO:\n([\s\S]*?)(?=\nCONSERVAÇÃO|\nREGENERAÇÃO|\nREGISTOS|$)/i)?.[1]?.trim() || '';
+    const conservacaoIA = texto.match(/CONSERVAÇÃO:\n([\s\S]*?)(?=\nREGENERAÇÃO|\nREGISTOS|$)/i)?.[1]?.trim() || '';
+    const regeneracaoIA = texto.match(/REGENERAÇÃO:\n([\s\S]*?)(?=\nREGISTOS|$)/i)?.[1]?.trim() || '';
+    const kitchenflowIA = texto.match(/REGISTOS KITCHENFLOW:\n([\s\S]*?)$/i)?.[1]?.trim() || '';
 
     // Alergénicos automáticos se não vieram da IA
     const produtosListIA = ingredientesIA.map(i => `${i.produto} ${i.obs}`);
@@ -544,14 +558,22 @@ REGENERAÇÃO:
 [como regenerar: método, temperatura mínima, tempo]
 
 REGISTOS KITCHENFLOW:
-[Com base nesta receita específica, indica APENAS os registos que fazem sentido registar no KitchenFlow ECL. Escolhe APENAS os aplicáveis:
-- "Temperatura de serviço" — se o prato é servido quente ou frio e requer controlo de temperatura
-- "Higiene pessoal" — sempre obrigatório
-- "Controlo de óleos" — APENAS se a receita usa fritura em óleo
-- "Amostra testemunho" — se é uma produção para serviço a clientes (não para aula simples)
-- "Não conformidades" — sempre, para registar desvios
-- "Conservação de produtos" — se sobram ingredientes ou preparações para guardar
-Formato: uma linha por registo, apenas os aplicáveis]
+[O KitchenFlow ECL é a aplicação de gestão HACCP da escola. Tem exactamente estes 6 módulos de registo. Analisa a receita e indica QUAIS devem ser preenchidos nesta produção e PORQUÊ:
+
+1. Higiene Pessoal — registo obrigatório antes de qualquer produção: lavagem de mãos, touca, farda, ausência de adornos, estado de saúde. APLICAR SEMPRE.
+
+2. Temperatura de Serviço — registo da temperatura do prato no momento do serviço. APLICAR quando o prato é servido quente (mínimo 63ºC) ou frio (máximo 4ºC) e existe risco se a temperatura não for controlada.
+
+3. Controlo de Óleos — registo da qualidade e temperatura do óleo de fritura (polar, cor, cheiro). APLICAR APENAS se a receita usa fritura por imersão em óleo (fritar batatas, pastéis, croquetes, peixe frito, etc.). NÃO aplicar se apenas usa azeite/óleo para saltear ou refogar.
+
+4. Conservação de Produtos — registo de etiquetagem, temperatura e condições de conservação de matérias-primas abertas ou preparações que sobram. APLICAR quando sobram ingredientes abertos (ex: peixe cru, molhos preparados, massas cozidas) ou preparações que não são consumidas na totalidade.
+
+5. Não Conformidades — registo de qualquer desvio das normas HACCP detetado durante a produção (temperatura incorreta, produto fora de prazo, contaminação cruzada, equipamento avariado, etc.) e medida corretiva tomada. APLICAR SEMPRE.
+
+6. Amostra Testemunho — recolha de 150g do prato confeccionado, identificada com nome/data/hora, conservada a -18ºC durante 72h para rastreabilidade em caso de intoxicação. APLICAR quando a produção se destina a serviço a clientes externos ou eventos.
+
+Para cada módulo aplicável escreve: "[Nome do módulo] — [razão específica para esta receita e o que registar]"
+Não incluas módulos que claramente não se aplicam.]
 
 ${linkReceita ? `Link: ${linkReceita}` : '[Sem link — analisa com base no teu conhecimento culinário e nas regras HACCP]'}`;
 }
