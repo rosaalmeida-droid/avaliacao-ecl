@@ -52,9 +52,9 @@ export interface PlanoAula {
   id: string;
   turmaId: string;
   professor: string;
-  data: string;        // ISO date
-  horaInicio: string;  // default 08:30
-  horaFim: string;     // default 17:30
+  data: string;
+  horaInicio: string;
+  horaFim: string;
   titulo: string;
   observacoes?: string;
   fichasIds: string[];
@@ -129,7 +129,13 @@ export interface FichaProducao {
 // Distribuição das Fichas no Plano de Aula
 // ============================================================
 
-export type ModoTrabalho = 'individual' | 'grupo' | 'todos';
+// Mantém compatibilidade com o sistema antigo de Comandas.
+// O EditorComanda só aceita individual/grupo.
+export type ModoTrabalho = 'individual' | 'grupo';
+
+// Novo tipo para distribuição de fichas de produção.
+// Aqui já existe a opção "todos".
+export type ModoDistribuicaoFicha = 'individual' | 'grupo' | 'todos';
 
 export type TipoServico =
   | 'normal'
@@ -166,7 +172,7 @@ export interface DistribuicaoFicha {
   id: string;
   planoAulaId: string;
   fichaId: string;
-  modo: ModoTrabalho;
+  modo: ModoDistribuicaoFicha;
   tipoServico: TipoServico;
   alunosIds: string[];
   grupos: GrupoFicha[];
@@ -187,7 +193,7 @@ export interface Comanda {
   titulo: string;
   linkOuTexto: string;
   fatorConversao?: number;
-  modo: 'individual' | 'grupo';
+  modo: ModoTrabalho;
   tipoServico: TipoServico;
   atendimentoCliente: boolean;
   alunosIds: string[];
@@ -199,7 +205,6 @@ export interface Comanda {
   responsabilidadesFixas: string[];
   criadaEm: string;
 
-  // novos campos opcionais
   planoAulaId?: string;
   fichaProducaoId?: string;
   grupoId?: string;
@@ -264,7 +269,6 @@ export interface SelecaoAluno {
   fotoUrl?: string;
   criadaEm: string;
 
-  // novos campos opcionais
   planoAulaId?: string;
   fichaId?: string;
   grupoId?: string;
@@ -291,7 +295,6 @@ export interface Validacao {
   validadoPor: string;
   validadoEm: string;
 
-  // novos campos opcionais
   planoAulaId?: string;
   fichaId?: string;
   grupoId?: string;
