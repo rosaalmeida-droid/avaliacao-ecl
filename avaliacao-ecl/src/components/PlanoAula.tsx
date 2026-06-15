@@ -93,17 +93,28 @@ export default function PlanoAula({ turmaId }: { turmaId: string }) {
         </div>
       )}
 
-      {planos.map(p=>(
-        <div key={p.id} className="option-card" onClick={()=>{setPlanoAtivo(p);setVista('grelha');}}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:600, fontSize:15 }}>{p.titulo}</div>
-              <div className="muted" style={{ marginTop:2 }}>{p.data} · {p.horaInicio}–{p.horaFim} · {p.fichasIds.length} fichas</div>
+      {planos.map(p=>{
+        const d = new Date(p.data+'T12:00:00');
+        return (
+          <div key={p.id} className="option-card" onClick={()=>{setPlanoAtivo(p);setVista('grelha');}}>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ background:'rgba(181,101,29,0.1)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
+                <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'var(--copper)', lineHeight:1 }}>
+                  {d.getDate().toString().padStart(2,'0')}
+                </div>
+                <div style={{ fontSize:10, fontWeight:600, color:'var(--copper)', opacity:0.8, textTransform:'uppercase' }}>
+                  {d.toLocaleDateString('pt-PT',{month:'short'})}
+                </div>
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:600, fontSize:14 }}>{p.titulo}</div>
+                <div className="muted" style={{ marginTop:2, fontSize:12 }}>{p.horaInicio}–{p.horaFim} · {p.fichasIds.length} ficha{p.fichasIds.length!==1?'s':''} · {p.turmaId}</div>
+              </div>
+              <span className="stamp copper">{p.estado==='publicado'?'Publicado':'Rascunho'}</span>
             </div>
-            <span className="stamp copper">{p.estado==='publicado'?'Publicado':'Rascunho'}</span>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
