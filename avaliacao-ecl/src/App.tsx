@@ -10,14 +10,33 @@ import { CoordenadoraView } from './components/CoordenadoraView';
 export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [aluno, setAluno] = useState<Aluno | null>(null);
+  const [turmaId, setTurmaId] = useState<string>('CP1');
   const [vistaProfessor, setVistaProfessor] = useState<'planeamento' | 'validacao'>('planeamento');
 
-  function handleLogin(p: Perfil, a?: Aluno) {
-    setPerfil(p);
-    if (a) setAluno(a);
+  function handleLogin(perfilRecebido: Perfil, alunoId?: string, turmaIdRecebida?: string) {
+    setPerfil(perfilRecebido);
+
+    if (turmaIdRecebida) {
+      setTurmaId(turmaIdRecebida);
+    }
+
+    if (perfilRecebido === 'aluno' && alunoId) {
+      const partes = alunoId.split('-');
+      const numeroTexto = partes[partes.length - 1];
+      const numero = parseInt(numeroTexto, 10) || 0;
+
+      const alunoObj: Aluno = {
+        id: alunoId,
+        turmaId: turmaIdRecebida || turmaId || 'CP1',
+        numero,
+        ano: 1,
+      };
+
+      setAluno(alunoObj);
+    }
   }
 
-  function logout() {
+  function sair() {
     setPerfil(null);
     setAluno(null);
     setVistaProfessor('planeamento');
@@ -29,7 +48,7 @@ export default function App() {
 
   return (
     <div style={{ maxWidth: 980, margin: '0 auto', padding: 12 }}>
-      <Header perfil={perfil} onLogout={logout} />
+      <Header perfil={perfil} onSair={sair} />
 
       {perfil === 'professor' && (
         <div>
@@ -70,7 +89,7 @@ export default function App() {
 
       {perfil === 'aluno' && aluno && <AlunoView aluno={aluno} />}
 
-      {perfil === 'coordenadora' && <CoordenadoraView />}
+      {perfil === 'coordenadora' && <CoordenadoraView turmaId={turmaId} />}
     </div>
   );
 }
