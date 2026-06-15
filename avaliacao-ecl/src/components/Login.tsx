@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Perfil } from '../types';
 import { Button, Card, Field } from './ui';
 import { getTurmas, getOrCreateAluno } from '../backend';
-import logoEcl from '../assets/logo_ecl.png';
+import { LOGO_ECL as logoEcl } from '../logo_ecl';
 
 const PINS: Record<Exclude<Perfil, 'aluno'>, string> = {
   professor: '1111',
