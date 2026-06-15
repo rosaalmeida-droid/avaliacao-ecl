@@ -1,6 +1,6 @@
 import React from 'react';
 import { Perfil } from '../types';
-import logoEcl from '../assets/logo_ecl.png';
+import { LOGO_ECL as logoEcl } from '../logo_ecl';
 
 const LABEL: Record<Perfil, string> = {
   aluno: 'Aluno',
