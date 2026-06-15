@@ -3,12 +3,10 @@ import {
   getPlanosAulaPorTurma,
   addOrUpdatePlanoAula,
   getFichasProducao,
-  associarFichaAoPlano,
   getAlunos,
   addOrUpdateDistribuicaoFicha,
-  getDistribuicoesPorPlano,
 } from '../backend';
-import { PlanoAula as TPlanoAula, FichaProducao, DistribuicaoFicha, ModoDistribuicaoFicha, TipoServico } from '../types';
+import { PlanoAula as TPlanoAula, DistribuicaoFicha } from '../types';
 
 // ── Constantes ────────────────────────────────────────────────
 const TIPOS_ATIVIDADE = [
@@ -74,7 +72,7 @@ function StepBar({ current, onClick }: { current: number; onClick: (i: number) =
 // ═══════════════════════════════════════════════════════════════
 // COMPONENTE PRINCIPAL
 // ═══════════════════════════════════════════════════════════════
-export default function PlanoAulaView({ turmaId }: { turmaId: string }) {
+export default function PlanoAula({ turmaId }: { turmaId: string }) {
   const [vista, setVista] = useState<'lista' | 'criar' | 'grelha'>('lista');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula | null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
