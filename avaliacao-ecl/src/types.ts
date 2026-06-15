@@ -1,31 +1,29 @@
 // ============================================================
 // Tipos — Avaliação ECL
-// Versão com Plano de Aula, Fichas de Produção, Requisições,
-// Grupos, Avaliação Técnica e Avaliação Atitudinal
 // ============================================================
 
 export type Categoria = 'TECNICAS' | 'ATITUDES' | 'RESPONSABILIDADES';
 
 export interface Competencia {
-  id: string;
+  id: string;            // ex: "T01"
   categoria: Categoria;
-  nome: string;
-  descricao?: string;
-  uc: string[];
-  palavrasChave?: string[];
-  tecnicaMaeId?: string;
+  nome: string;          // texto curto mostrado ao aluno
+  descricao?: string;    // detalhe opcional
+  uc: string[];          // códigos UC de origem (rastreabilidade ao referencial)
+  palavrasChave?: string[]; // para sugestão automática a partir da receita
+  tecnicaMaeId?: string;    // se for subtécnica, id da técnica "grupo" (T01-T33) de onde deriva
 }
 
 export interface Turma {
   id: string;
-  nome: string;
+  nome: string; // ex: "CP-Cozinha-2526"
 }
 
 export interface Aluno {
-  id: string;
+  id: string;       // turma+numero, ex: "CP1-12"
   turmaId: string;
   numero: number;
-  ano: 1 | 2 | 3;
+  ano: 1 | 2 | 3;    // ano do curso — define o nº mínimo de competências exigidas
   nome?: string;
 }
 
@@ -37,108 +35,13 @@ export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
 
 export type Perfil = 'aluno' | 'professor' | 'coordenadora';
 
-// ============================================================
-// Plano de Aula
-// ============================================================
-
-export type EstadoPlanoAula =
-  | 'rascunho'
-  | 'fichas_pendentes'
-  | 'requisicao_pendente'
-  | 'publicado'
-  | 'concluido';
-
-export interface PlanoAula {
-  id: string;
-  turmaId: string;
-  professor: string;
-  data: string;
-  horaInicio: string;
-  horaFim: string;
-  titulo: string;
-  observacoes?: string;
-  fichasIds: string[];
-  requisicaoId?: string;
-  estado: EstadoPlanoAula;
-  criadoEm: string;
-  atualizadoEm: string;
-}
-
-// ============================================================
-// Ficha de Produção
-// ============================================================
-
-export interface LinhaFichaIngrediente {
-  id: string;
-  componente: string;
-  qt: string;
-  un: string;
-  produto: string;
-  tPrep?: string;
-  tConf?: string;
-  obs?: string;
-}
-
-export interface PassoFichaProducao {
-  id: string;
-  num: number;
-  descricao: string;
-  temperatura?: string;
-  tempo?: string;
-  obs?: string;
-  haccp?: string;
-}
-
-export interface InfoNutricionalFicha {
-  porcao: string;
-  energiaKcal?: number;
-  proteinas?: number;
-  hidratos?: number;
-  gorduras?: number;
-  fibra?: number;
-  fonte?: string;
-}
-
-export interface FichaProducao {
-  id: string;
-  planoAulaId?: string;
-  nomePrato: string;
-  classificacao: string;
-  fichaNum?: string;
-  numPorcoes: string;
-  tempoPrep?: string;
-  tempoConf?: string;
-  ingredientes: LinhaFichaIngrediente[];
-  preparacao: PassoFichaProducao[];
-  empratamento?: string;
-  alergenicos: string[];
-  nutricao?: InfoNutricionalFicha;
-  equipamento?: string;
-  conservacao?: string;
-  regeneracao?: string;
-  kitchenflow?: string;
-  tecnicasSugeridas: string[];
-  ucsAssociadas: string[];
-  elaboradoPor: string;
-  data: string;
-  criadoEm: string;
-  atualizadoEm: string;
-}
-
-// ============================================================
-// Distribuição das Fichas no Plano de Aula
-// ============================================================
-
-// Mantém compatibilidade com o sistema antigo de Comandas.
-// O EditorComanda só aceita individual/grupo.
+// --------------------------------------------------------
+// Contexto da comanda
+// --------------------------------------------------------
 export type ModoTrabalho = 'individual' | 'grupo';
 
-// Novo tipo para distribuição de fichas de produção.
-// Aqui já existe a opção "todos".
-export type ModoDistribuicaoFicha = 'individual' | 'grupo' | 'todos';
-
 export type TipoServico =
-  | 'normal'
+  | 'normal'           // aula normal de cozinha, sem serviço especial
   | 'buffet'
   | 'servico_carta'
   | 'a_la_minute'
@@ -159,6 +62,202 @@ export const TIPO_SERVICO_LABEL: Record<TipoServico, string> = {
   jantar: 'Jantar / Banquete',
   catering: 'Catering',
 };
+
+// --------------------------------------------------------
+// Comanda do dia (criada pelo professor)
+// --------------------------------------------------------
+export interface Comanda {
+  id: string;
+  turmaId: string;
+  data: string;          // ISO date
+  titulo: string;        // nome da receita
+  linkOuTexto: string;    // link ou texto colado da receita
+  fatorConversao?: number;
+  modo: ModoTrabalho;
+  tipoServico: TipoServico;
+  atendimentoCliente: boolean;
+  alunosIds: string[];     // alunos atribuídos a esta comanda (1 se individual, N se grupo)
+  tecnicasSugeridas: string[];        // ids de Competencia (categoria TECNICAS)
+  atitudesSugeridas: string[];        // ids de Competencia (categoria ATITUDES)
+  responsabilidadesSugeridas: string[]; // ids de Competencia (categoria RESPONSABILIDADES)
+  tecnicasFixas: string[];        // escolhidas pelo professor, obrigatórias (não removíveis)
+  atitudesFixas: string[];
+  responsabilidadesFixas: string[];
+  criadaEm: string;       // ISO datetime
+}
+
+// --------------------------------------------------------
+// Autoavaliação — escala qualitativa mapeada para 0-20
+// --------------------------------------------------------
+export type NivelAuto = 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei';
+
+export const NIVEL_AUTO_LABEL: Record<NivelAuto, string> = {
+  nao_atingi: 'Não atingi',
+  desenvolvimento: 'Em desenvolvimento',
+  atingi: 'Atingi',
+  superei: 'Superei / domino bem',
+};
+
+export const NIVEL_AUTO_NOTA: Record<NivelAuto, number> = {
+  nao_atingi: 5,
+  desenvolvimento: 10,
+  atingi: 15,
+  superei: 18,
+};
+
+export interface AutoavaliacaoCompetencia {
+  competenciaId: string;
+  nivel: NivelAuto;
+}
+
+// --------------------------------------------------------
+// Seleção do aluno para uma comanda
+// --------------------------------------------------------
+export interface SelecaoAluno {
+  id: string;             // comandaId + alunoId
+  comandaId: string;
+  alunoId: string;
+  turmaId: string;
+  tecnicas: string[];        // ids escolhidos (min 3)
+  atitudes: string[];        // ids escolhidos (min 3)
+  responsabilidades: string[]; // ids escolhidos (min 3)
+  autoavaliacoes: AutoavaliacaoCompetencia[]; // uma por competência selecionada
+  comentario?: string;
+  fotoUrl?: string;
+  criadaEm: string;
+}
+
+// --------------------------------------------------------
+// Validação do professor (uma por competência escolhida)
+// --------------------------------------------------------
+export interface NotaCompetencia {
+  competenciaId: string;
+  nota: number;       // 0-20, nota final (validada ou herdada da autoavaliação)
+  origem: 'auto' | 'professor'; // se o professor ajustou ou aceitou a autoavaliação
+}
+
+export interface Validacao {
+  id: string;              // selecaoId
+  selecaoId: string;
+  comandaId: string;
+  alunoId: string;
+  turmaId: string;
+  notas: NotaCompetencia[]; // uma nota por competência selecionada
+  comentarioGeral?: string;
+  validadoPor: string;     // nome/pin do professor
+  validadoEm: string;      // ISO datetime
+}
+
+// --------------------------------------------------------
+// Histórico agregado por aluno × competência
+// (derivado das Validações, usado para o sistema de progressão)
+// --------------------------------------------------------
+export interface HistoricoCompetencia {
+  competenciaId: string;
+  notas: number[];     // todas as notas recebidas nessa competência
+  vezesTreinada: number; // = notas.length, exposto explicitamente
+  media: number;       // média calculada
+  dominada: boolean;   // media >= 12
+}
+
+export interface HistoricoAluno {
+  alunoId: string;
+  porCompetencia: Record<string, HistoricoCompetencia>;
+  mediaGeral: number;
+  totalAvaliacoes: number;
+  totalIndividual: number;
+  totalGrupo: number;
+}
+
+// --------------------------------------------------------
+// Atividades extracurriculares — eventos fora de horas e
+// concursos de cozinha. Registo factual de participação,
+// sem ligação (por agora) ao sistema de competências.
+// --------------------------------------------------------
+export type TipoAtividade = 'evento' | 'concurso';
+
+export interface Atividade {
+  id: string;
+  turmaId: string;
+  tipo: TipoAtividade;
+  titulo: string;       // ex: "Jantar de Gala - Hotel X" / "Concurso Jovem Chef 2026"
+  data: string;          // ISO date
+  participantesIds: string[]; // alunos que participaram
+  criadaEm: string;
+}
+
+// --------------------------------------------------------
+// Fichas de Produção
+// --------------------------------------------------------
+export interface IngredienteFicha {
+  id: string;
+  componente: string;
+  qt: string;
+  un: string;        // unidade (g, kg, ml, l, un)
+  produto: string;
+  tPrep: string;
+  tConf: string;
+  obs: string;
+}
+
+export interface PassoFicha {
+  id: string;
+  num: number;
+  descricao: string;
+  temperatura: string;
+  tempo: string;
+  obs: string;
+  haccp: string;
+}
+
+export interface FichaProducao {
+  id: string;
+  nomePrato: string;
+  classificacao: string;
+  fichaNum?: string;
+  numPorcoes: string;
+  tempoPrep?: string;
+  tempoConf?: string;
+  ingredientes: IngredienteFicha[];
+  preparacao: PassoFicha[];
+  empratamento?: string;
+  alergenicos: string[];
+  equipamento?: string;
+  conservacao?: string;
+  regeneracao?: string;
+  kitchenflow?: string;
+  tecnicasSugeridas?: string[];
+  ucsAssociadas?: string[];
+  elaboradoPor?: string;
+  data?: string;
+  planoAulaId?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+// --------------------------------------------------------
+// Planos de Aula
+// --------------------------------------------------------
+export interface PlanoAula {
+  id: string;
+  turmaId: string;
+  professor: string;
+  data: string;
+  horaInicio: string;
+  horaFim: string;
+  titulo: string;
+  observacoes: string;
+  fichasIds: string[];
+  estado: 'rascunho' | 'fichas_pendentes' | 'requisicao_pendente' | 'publicado';
+  requisicaoId?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+// --------------------------------------------------------
+// Distribuição de Fichas
+// --------------------------------------------------------
+export type ModoDistribuicaoFicha = 'todos' | 'grupo' | 'individual';
 
 export interface GrupoFicha {
   id: string;
@@ -182,169 +281,26 @@ export interface DistribuicaoFicha {
   publicada: boolean;
 }
 
-// ============================================================
-// Comanda — mantida para compatibilidade com código antigo
-// ============================================================
-
-export interface Comanda {
-  id: string;
-  turmaId: string;
-  data: string;
-  titulo: string;
-  linkOuTexto: string;
-  fatorConversao?: number;
-  modo: ModoTrabalho;
-  tipoServico: TipoServico;
-  atendimentoCliente: boolean;
-  alunosIds: string[];
-  tecnicasSugeridas: string[];
-  atitudesSugeridas: string[];
-  responsabilidadesSugeridas: string[];
-  tecnicasFixas: string[];
-  atitudesFixas: string[];
-  responsabilidadesFixas: string[];
-  criadaEm: string;
-
-  planoAulaId?: string;
-  fichaProducaoId?: string;
-  grupoId?: string;
-}
-
-// ============================================================
-// Autoavaliação
-// ============================================================
-
-export type NivelAuto = 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei';
-
-export const NIVEL_AUTO_LABEL: Record<NivelAuto, string> = {
-  nao_atingi: 'Não atingi',
-  desenvolvimento: 'Em desenvolvimento',
-  atingi: 'Atingi',
-  superei: 'Superei / domino bem',
-};
-
-export const NIVEL_AUTO_NOTA: Record<NivelAuto, number> = {
-  nao_atingi: 5,
-  desenvolvimento: 10,
-  atingi: 15,
-  superei: 18,
-};
-
-export interface AutoavaliacaoCompetencia {
-  competenciaId: string;
-  nivel: NivelAuto;
-}
-
-// ============================================================
-// Checklist operacional do aluno na Ficha de Produção
-// ============================================================
-
+// --------------------------------------------------------
+// Checklist do Aluno por Ficha
+// --------------------------------------------------------
 export interface ChecklistAlunoFicha {
   id: string;
   planoAulaId: string;
   fichaId: string;
   alunoId: string;
-  ingredientesConfirmados: string[];
+  pontualidade: 'a_horas' | 'atrasado';
+  minutosAtraso?: number;
+  fardamento: boolean;
+  itensFardamento: string[];
   passosConcluidos: string[];
-  haccpConfirmado: string[];
-  requisicaoVerificada: boolean;
-  comentario?: string;
+  haccpRegistado: boolean;
   atualizadoEm: string;
 }
 
-// ============================================================
-// Seleção do aluno
-// ============================================================
-
-export interface SelecaoAluno {
-  id: string;
-  comandaId: string;
-  alunoId: string;
-  turmaId: string;
-  tecnicas: string[];
-  atitudes: string[];
-  responsabilidades: string[];
-  autoavaliacoes: AutoavaliacaoCompetencia[];
-  comentario?: string;
-  fotoUrl?: string;
-  criadaEm: string;
-
-  planoAulaId?: string;
-  fichaId?: string;
-  grupoId?: string;
-}
-
-// ============================================================
-// Validação do professor
-// ============================================================
-
-export interface NotaCompetencia {
-  competenciaId: string;
-  nota: number;
-  origem: 'auto' | 'professor';
-}
-
-export interface Validacao {
-  id: string;
-  selecaoId: string;
-  comandaId: string;
-  alunoId: string;
-  turmaId: string;
-  notas: NotaCompetencia[];
-  comentarioGeral?: string;
-  validadoPor: string;
-  validadoEm: string;
-
-  planoAulaId?: string;
-  fichaId?: string;
-  grupoId?: string;
-}
-
-// ============================================================
-// Histórico
-// ============================================================
-
-export interface HistoricoCompetencia {
-  competenciaId: string;
-  notas: number[];
-  vezesTreinada: number;
-  media: number;
-  dominada: boolean;
-}
-
-export interface HistoricoAluno {
-  alunoId: string;
-  porCompetencia: Record<string, HistoricoCompetencia>;
-  mediaGeral: number;
-  totalAvaliacoes: number;
-  totalIndividual: number;
-  totalGrupo: number;
-}
-
-// ============================================================
-// Requisição e matérias-primas
-// ============================================================
-
-export interface MateriaPrima {
-  id: string;
-  nome: string;
-  marca?: string;
-  unidadeCompra: string;
-  precoUnitario: number;
-  fonte?: string;
-  urlProduto?: string;
-  sku?: string;
-  atualizadoEm: string;
-}
-
-export interface HistoricoPreco {
-  id: string;
-  materiaPrimaId: string;
-  preco: number;
-  fonte?: string;
-  atualizadoEm: string;
-}
-
+// --------------------------------------------------------
+// Requisição
+// --------------------------------------------------------
 export interface LinhaRequisicao {
   id: string;
   produto: string;
@@ -364,24 +320,32 @@ export interface RequisicaoAula {
   professor: string;
   fichasIds: string[];
   linhas: LinhaRequisicao[];
-  custoTotal?: number;
-  estado: 'rascunho' | 'validada' | 'enviada';
+  custoTotal: number;
+  estado: 'rascunho' | 'enviada' | 'aprovada';
   criadaEm: string;
   atualizadaEm: string;
 }
 
-// ============================================================
-// Atividades extracurriculares
-// ============================================================
-
-export type TipoAtividade = 'evento' | 'concurso';
-
-export interface Atividade {
+// --------------------------------------------------------
+// Matérias-Primas e Preços
+// --------------------------------------------------------
+export interface MateriaPrima {
   id: string;
-  turmaId: string;
-  tipo: TipoAtividade;
-  titulo: string;
+  nome: string;
+  categoria: string;
+  unidadeCompra: string;
+  unidadeReceita: string;
+  fatorConversao: number;
+  precoUnitario: number;
+  fonte?: string;
+  atualizadoEm: string;
+  aliases?: string[];
+}
+
+export interface HistoricoPreco {
+  id: string;
+  materiaPrimaId: string;
+  preco: number;
+  fonte: string;
   data: string;
-  participantesIds: string[];
-  criadaEm: string;
 }
