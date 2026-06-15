@@ -71,7 +71,7 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
 
 // ═══════════════════════════════════════════════════════════════
 export default function PlanoAula({ turmaId }: { turmaId: string }) {
-  const [vista, setVista] = useState<'lista'|'criar'|'grelha'>('lista');
+  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'>('lista');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
 
