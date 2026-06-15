@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Comanda } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao } from '../backend';
 import { sugerirSubtecnicas } from '../subtecnicas';
 import { exportDOCX, exportPDF } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
@@ -1233,14 +1233,17 @@ function PassoFichaTecnica({
 }
 
 // ============================================================
-// Vista principal do Professor — orquestra os 3 passos
+// Vista principal do Professor — orquestra os passos
 // ============================================================
 export function ProfessorView({ turmaId }: { turmaId: string }) {
-  const [passo, setPasso] = useState<'link' | 'ficha' | 'guardada'>('link');
+  const [vista, setVista] = useState<'biblioteca' | 'criar' | 'editar'>('biblioteca');
   const [textoReceita, setTextoReceita] = useState('');
   const [linkReceita, setLinkReceita] = useState('');
   const [ficha, setFicha] = useState<FichaTecnica>(FICHA_VAZIA);
-  const [fichaGuardada, setFichaGuardada] = useState(false);
+  const [passo, setPasso] = useState<'link' | 'ficha'>('link');
+  const [fichasGuardadas, setFichasGuardadas] = useState(() => getFichasProducao());
+
+  function recarregar() { setFichasGuardadas(getFichasProducao()); }
 
   function guardarFicha(fichaConfirmada: FichaTecnica) {
     const now = new Date().toISOString();
@@ -1268,26 +1271,71 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
       atualizadoEm: now,
     });
     try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-    setFichaGuardada(true);
-    setPasso('guardada');
+    recarregar();
+    setVista('biblioteca');
   }
 
-  if (passo === 'guardada') {
+  function novaFicha() {
+    setFicha(FICHA_VAZIA);
+    setTextoReceita('');
+    setLinkReceita('');
+    setPasso('link');
+    setVista('criar');
+  }
+
+  // ── BIBLIOTECA ────────────────────────────────────────────
+  if (vista === 'biblioteca') {
     return (
-      <Card>
-        <div className="display" style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>✅ Ficha de Produção guardada</div>
-        <div style={{ marginBottom: 10 }}><strong>{ficha.nomePrato}</strong></div>
-        <div className="muted" style={{ marginBottom: 12 }}>
-          A ficha foi guardada na biblioteca. Podes associá-la a um Plano de Aula no tab "Plano de Aula".
+      <div>
+        <div className="header-bar">
+          <h2 className="display" style={{ margin: 0 }}>Fichas de Produção</h2>
+          <button className="btn btn-primary" onClick={novaFicha}>+ Nova ficha</button>
         </div>
-        <Button block onClick={() => { setPasso('link'); setFicha(FICHA_VAZIA); setTextoReceita(''); setLinkReceita(''); setFichaGuardada(false); }}>
-          Nova Ficha de Produção
-        </Button>
-      </Card>
+
+        {fichasGuardadas.length === 0 && (
+          <Card>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>📄</div>
+              <div className="display" style={{ fontSize: 18, marginBottom: 6 }}>Ainda não há fichas</div>
+              <p className="muted">Cria a primeira ficha de produção.</p>
+              <Button onClick={novaFicha} style={{ marginTop: 10 }}>Criar ficha →</Button>
+            </div>
+          </Card>
+        )}
+
+        {fichasGuardadas.map(f => (
+          <div key={f.id} className="option-card" onClick={() => {
+            // Carregar ficha para edição
+            setFicha({
+              nomePrato: f.nomePrato, classificacao: f.classificacao,
+              fichaNum: f.fichaNum || '', alergenicos: (f.alergenicos||[]).join(', '),
+              tempoPrep: f.tempoPrep||'', tempoConf: f.tempoConf||'',
+              numPorcoes: f.numPorcoes||'',
+              ingredientes: f.ingredientes.length > 0 ? f.ingredientes as any : FICHA_VAZIA.ingredientes,
+              preparacao: f.preparacao.length > 0 ? f.preparacao as any : FICHA_VAZIA.preparacao,
+              empratamento: f.empratamento||'', elaboradoPor: f.elaboradoPor||'',
+              data: f.data||'', equipamento: f.equipamento||'',
+              conservacao: f.conservacao||'', regeneracao: f.regeneracao||'',
+              kitchenflow: f.kitchenflow||'',
+            });
+            setPasso('ficha');
+            setVista('editar');
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nomePrato}</div>
+                <div className="muted">{f.classificacao} · {f.numPorcoes} porções · {f.data}</div>
+              </div>
+              <span className="stamp">Ver / Editar</span>
+            </div>
+          </div>
+        ))}
+      </div>
     );
   }
 
-  if (passo === 'link') {
+  // ── CRIAR / EDITAR ────────────────────────────────────────
+  if (passo === 'link' && vista === 'criar') {
     return (
       <PassoLink onContinuar={(texto, link) => {
         setTextoReceita(texto);
@@ -1299,18 +1347,27 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
   }
 
   return (
-    <PassoFichaTecnica
-      ficha={ficha}
-      textoReceita={textoReceita}
-      onContinuar={(fichaConfirmada) => {
-        setFicha(fichaConfirmada);
-        guardarFicha(fichaConfirmada);
-      }}
-      onVoltar={() => {
-        try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-        setPasso('link');
-      }}
-    />
+    <div>
+      {vista === 'criar' && (
+        <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={() => { try { localStorage.removeItem('ecl_ficha_draft'); } catch {} setVista('biblioteca'); }}>← Biblioteca</button>
+      )}
+      {vista === 'editar' && (
+        <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={() => setVista('biblioteca')}>← Biblioteca</button>
+      )}
+      <PassoFichaTecnica
+        ficha={ficha}
+        textoReceita={textoReceita}
+        onContinuar={(fichaConfirmada) => {
+          setFicha(fichaConfirmada);
+          guardarFicha(fichaConfirmada);
+        }}
+        onVoltar={() => {
+          try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
+          if (vista === 'criar') setPasso('link');
+          else setVista('biblioteca');
+        }}
+      />
+    </div>
   );
 }
 
