@@ -5,86 +5,72 @@ import { Header } from './components/Header';
 import { ProfessorView } from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
-import { ComandasView } from './components/ComandasView';
 import { CoordenadoraView } from './components/CoordenadoraView';
-import Requisicao from './components/Requisicao';
-import PlanoAula from './components/PlanoAula';
-import { getAlunos } from './backend';
-import './styles.css';
-
-interface Sessao {
-  perfil: Perfil;
-  alunoId?: string;
-  turmaId?: string;
-}
 
 export default function App() {
-  const [sessao, setSessao] = useState<Sessao | null>(null);
-  const [tabProfessor, setTabProfessor] = useState<'plano' | 'comanda' | 'comandas' | 'validar' | 'requisicao'>('plano');
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [aluno, setAluno] = useState<Aluno | null>(null);
+  const [vistaProfessor, setVistaProfessor] = useState<'planeamento' | 'validacao'>('planeamento');
 
-  if (!sessao) {
-    return <Login onLogin={(perfil, alunoId, turmaId) => setSessao({ perfil, alunoId, turmaId })} />;
+  function handleLogin(p: Perfil, a?: Aluno) {
+    setPerfil(p);
+    if (a) setAluno(a);
   }
 
-  let conteudo: React.ReactNode = null;
-  let subtitulo = '';
+  function logout() {
+    setPerfil(null);
+    setAluno(null);
+    setVistaProfessor('planeamento');
+  }
 
-  if (sessao.perfil === 'aluno' && sessao.alunoId) {
-    const aluno = getAlunos().find(a => a.id === sessao.alunoId);
-    if (!aluno) {
-      return <Login onLogin={(perfil, alunoId, turmaId) => setSessao({ perfil, alunoId, turmaId })} />;
-    }
-    subtitulo = `Aluno ${aluno.numero} · ${aluno.ano}º ano`;
-    conteudo = <AlunoView aluno={aluno} />;
-
-  } else if (sessao.perfil === 'professor' && sessao.turmaId) {
-    subtitulo = sessao.turmaId;
-    conteudo = (
-      <div>
-        <div className="card" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            className={`btn ${tabProfessor === 'plano' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setTabProfessor('plano')}>
-            Plano de Aula
-          </button>
-          <button
-            className={`btn ${tabProfessor === 'comanda' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setTabProfessor('comanda')}>
-            Ficha Técnica
-          </button>
-          <button
-            className={`btn ${tabProfessor === 'comandas' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setTabProfessor('comandas')}>
-            Comandas
-          </button>
-          <button
-            className={`btn ${tabProfessor === 'validar' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setTabProfessor('validar')}>
-            Validar
-          </button>
-          <button
-            className={`btn ${tabProfessor === 'requisicao' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setTabProfessor('requisicao')}>
-            Requisição
-          </button>
-        </div>
-        {tabProfessor === 'plano'      && <PlanoAula turmaId={sessao.turmaId!} />}
-        {tabProfessor === 'comanda'    && <ProfessorView turmaId={sessao.turmaId} />}
-        {tabProfessor === 'comandas'   && <ComandasView turmaId={sessao.turmaId} />}
-        {tabProfessor === 'validar'    && <ValidacaoView turmaId={sessao.turmaId} />}
-        {tabProfessor === 'requisicao' && <Requisicao />}
-      </div>
-    );
-
-  } else if (sessao.perfil === 'coordenadora') {
-    conteudo = <CoordenadoraView />;
+  if (!perfil) {
+    return <Login onLogin={handleLogin} />;
   }
 
   return (
-    <div className="app-shell">
-      <Header perfil={sessao.perfil} subtitulo={subtitulo} onSair={() => setSessao(null)} />
-      {conteudo}
+    <div style={{ maxWidth: 980, margin: '0 auto', padding: 12 }}>
+      <Header perfil={perfil} onLogout={logout} />
+
+      {perfil === 'professor' && (
+        <div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button
+              onClick={() => setVistaProfessor('planeamento')}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: vistaProfessor === 'planeamento' ? '#1D9E75' : '#f2f2f2',
+                color: vistaProfessor === 'planeamento' ? 'white' : '#555',
+                cursor: 'pointer',
+              }}
+            >
+              Plano de Aula
+            </button>
+
+            <button
+              onClick={() => setVistaProfessor('validacao')}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: vistaProfessor === 'validacao' ? '#1D9E75' : '#f2f2f2',
+                color: vistaProfessor === 'validacao' ? 'white' : '#555',
+                cursor: 'pointer',
+              }}
+            >
+              Validação
+            </button>
+          </div>
+
+          {vistaProfessor === 'planeamento' && <ProfessorView />}
+          {vistaProfessor === 'validacao' && <ValidacaoView />}
+        </div>
+      )}
+
+      {perfil === 'aluno' && aluno && <AlunoView aluno={aluno} />}
+
+      {perfil === 'coordenadora' && <CoordenadoraView />}
     </div>
   );
 }
-
