@@ -1,69 +1,70 @@
 import React, { useState } from 'react';
-import { getAlunos } from '../backend';
+import {
+  getPlanosAulaPorTurma,
+  addOrUpdatePlanoAula,
+  getFichasProducao,
+  associarFichaAoPlano,
+  getAlunos,
+  addOrUpdateDistribuicaoFicha,
+  getDistribuicoesPorPlano,
+} from '../backend';
+import { PlanoAula as TPlanoAula, FichaProducao, DistribuicaoFicha, ModoDistribuicaoFicha, TipoServico } from '../types';
 
-// ── Competências para a grelha ────────────────────────────────
-const COMPS_PERM = [
-  { id:'A01', abrev:'Responsab.', sim:'Reconhece erro · Termina tarefas', nao:'Culpa colegas · Abandona' },
-  { id:'A11', abrev:'Organização', sim:'Mise en place · Posto arrumado', nao:'Procura utensílios a meio' },
-  { id:'A16', abrev:'Higiene/SA', sim:'Lava mãos · Separa crus', nao:'Toca rosto · Ignora temps.' },
+// ── Constantes ────────────────────────────────────────────────
+const TIPOS_ATIVIDADE = [
+  'Aula prática',
+  'Almoço pedagógico',
+  'Jantar pedagógico',
+  'Brunch',
+  'Pequeno-almoço',
+  'Coffee break',
+  'Serviço real à carta',
+  'Catering',
+  'Buffet',
+  'Evento externo',
+  'Outro',
 ];
-const COMPS_CTX_EQUIPA = [
-  { id:'A09', abrev:'Cooperação', sim:'Ajuda equipa · Partilha info', nao:'Só a sua tarefa · Tensão' },
-  { id:'A08', abrev:'Escuta ativa', sim:'Ouve · Segue 1ª vez', nao:'Precisa repetir · Distrai-se' },
-  { id:'A06', abrev:'Assertividade', sim:'Diz o que pensa · Aceita feedback', nao:'Silêncio com dúvidas · Agressivo' },
+
+const COMP_PERM = [
+  'Responsabilidade pelas suas ações',
+  'Sentido de organização',
+  'Higiene e segurança alimentar',
+  'Disponibilidade para aprender',
+  'Respeito pelas regras',
+  'Segurança e saúde no trabalho',
 ];
-const COMPS_CTX_IND = [
-  { id:'A02', abrev:'Autonomia', sim:'Toma iniciativa · Resolve sozinho', nao:'Espera instruções constantes' },
-  { id:'A04', abrev:'Iniciativa', sim:'Age antes de ser pedido', nao:'Espera sempre que digam' },
-  { id:'A10', abrev:'Empenho', sim:'Persiste quando difícil', nao:'Desiste ao 1º obstáculo' },
-];
 
-const TIPO_ATIVIDADE = ['Trabalho em equipa', 'Trabalho individual', 'Serviço real', 'Coordenação'];
-
-type NotaProf = 's' | 'a' | 'r' | null;
-
-interface PlanoState {
-  data: string;
-  turma: string;
-  tipo: string;
-  receitas: string[];
-  grupos: Record<string, string[]>;
-  horaInicio: string;
-}
-
-const PLANO_VAZIO: PlanoState = {
-  data: new Date().toISOString().split('T')[0],
-  turma: '',
-  tipo: 'Trabalho em equipa',
-  receitas: ['', '', ''],
-  grupos: {},
-  horaInicio: '09:00',
-};
-
+// ── Estilos ───────────────────────────────────────────────────
 const card: React.CSSProperties = {
-  background: 'var(--color-background-primary)',
-  border: '0.5px solid var(--color-border-tertiary)',
-  borderRadius: 12, padding: '12px 14px', marginBottom: 10,
+  background: 'var(--color-background-primary, #fff)',
+  border: '0.5px solid var(--color-border-tertiary, #e0e0e0)',
+  borderRadius: 12, padding: '14px 16px', marginBottom: 12,
 };
-const muted: React.CSSProperties = { color: 'var(--color-text-secondary)', fontSize: 11 };
-const btnPrimary = (disabled = false): React.CSSProperties => ({
-  width: '100%', padding: '9px 14px', borderRadius: 8, border: 'none',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  background: disabled ? 'var(--color-background-secondary)' : '#1D9E75',
-  color: disabled ? 'var(--color-text-secondary)' : 'white',
-  fontWeight: 500, fontSize: 13, marginTop: 6,
+const muted: React.CSSProperties = { color: '#888', fontSize: 12 };
+const label: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#444', marginBottom: 4, display: 'block' };
+const input: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, background: '#fff', color: '#222', boxSizing: 'border-box' };
+const select: React.CSSProperties = { ...input };
+const btnVerde = (disabled = false): React.CSSProperties => ({
+  padding: '10px 16px', borderRadius: 8, border: 'none', fontWeight: 600, fontSize: 13, cursor: disabled ? 'not-allowed' : 'pointer',
+  background: disabled ? '#e0e0e0' : '#1D9E75', color: disabled ? '#999' : 'white', width: '100%', marginTop: 8,
 });
+const btnCinza: React.CSSProperties = { padding: '9px 14px', borderRadius: 8, border: '1px solid #ddd', background: '#f5f5f5', color: '#555', fontWeight: 500, fontSize: 12, cursor: 'pointer' };
+const tag = (cor: string, bg: string): React.CSSProperties => ({ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: bg, color: cor, fontWeight: 500 });
 
-function StepBar({ steps, current, onClick }: { steps: string[]; current: number; onClick: (i: number) => void }) {
+// ── Step bar ──────────────────────────────────────────────────
+const STEPS = ['Dados', 'Fichas', 'Grupos', 'Competências', 'Publicar'];
+
+function StepBar({ current, onClick }: { current: number; onClick: (i: number) => void }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length},1fr)`, borderRadius: 10, overflow: 'hidden', border: '0.5px solid var(--color-border-tertiary)', marginBottom: 12 }}>
-      {steps.map((s, i) => (
-        <div key={i} onClick={() => i <= current && onClick(i)} style={{
-          padding: '6px 2px', textAlign: 'center', fontSize: 9, cursor: i <= current ? 'pointer' : 'default',
-          borderRight: i < steps.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none',
-          background: i < current ? '#EAF3DE' : i === current ? '#1D9E75' : 'var(--color-background-secondary)',
-          color: i < current ? '#3B6D11' : i === current ? 'white' : 'var(--color-text-secondary)',
-          fontWeight: i === current ? 500 : 400,
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${STEPS.length},1fr)`, borderRadius: 10, overflow: 'hidden', border: '1px solid #e0e0e0', marginBottom: 16 }}>
+      {STEPS.map((s, i) => (
+        <div key={i} onClick={() => i < current && onClick(i)} style={{
+          padding: '8px 4px', textAlign: 'center', fontSize: 11,
+          borderRight: i < STEPS.length - 1 ? '1px solid #e0e0e0' : 'none',
+          background: i < current ? '#EAF3DE' : i === current ? '#1D9E75' : '#f9f9f9',
+          color: i < current ? '#3B6D11' : i === current ? 'white' : '#aaa',
+          fontWeight: i === current ? 700 : 500,
+          cursor: i < current ? 'pointer' : 'default',
         }}>{i < current ? '✓ ' : ''}{s}</div>
       ))}
     </div>
@@ -73,57 +74,213 @@ function StepBar({ steps, current, onClick }: { steps: string[]; current: number
 // ═══════════════════════════════════════════════════════════════
 // COMPONENTE PRINCIPAL
 // ═══════════════════════════════════════════════════════════════
-export default function PlanoAula({ turmaId }: { turmaId: string }) {
-  const [view, setView] = useState<'plano' | 'avaliar'>('plano');
-  const [passo, setPasso] = useState(0);
-  const [plano, setPlano] = useState<PlanoState>({ ...PLANO_VAZIO, turma: turmaId });
-  const [publicado, setPublicado] = useState(false);
+export default function PlanoAulaView({ turmaId }: { turmaId: string }) {
+  const [vista, setVista] = useState<'lista' | 'criar' | 'grelha'>('lista');
+  const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula | null>(null);
+  const planos = getPlanosAulaPorTurma(turmaId);
 
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId);
-  const compsAtivas = plano.tipo === 'Trabalho em equipa' || plano.tipo === 'Serviço real'
-    ? COMPS_CTX_EQUIPA : COMPS_CTX_IND;
-  const todasComps = [...COMPS_PERM, ...compsAtivas];
-
-  // Grelha de avaliação
-  const [notas, setNotas] = useState<Record<string, Record<string, NotaProf>>>(() =>
-    Object.fromEntries(alunos.map(a => [a.id, Object.fromEntries(todasComps.map(c => [c.id, null]))]))
-  );
-
-  function toggleNota(alunoId: string, compId: string, v: NotaProf) {
-    setNotas(prev => ({ ...prev, [alunoId]: { ...prev[alunoId], [compId]: prev[alunoId][compId] === v ? null : v } }));
+  if (vista === 'criar') {
+    return <CriarPlano turmaId={turmaId} onConcluido={(p) => { setPlanoAtivo(p); setVista('grelha'); }} onVoltar={() => setVista('lista')} />;
   }
 
-  const STEPS = ['Dados', 'Fichas', 'Grupos', 'Competências', 'Publicar'];
-
-  if (view === 'avaliar') {
-    return <GrelhaAvaliacao turmaId={turmaId} plano={plano} notas={notas} todasComps={todasComps} alunos={alunos} onToggle={toggleNota} onVoltar={() => setView('plano')} />;
+  if (vista === 'grelha' && planoAtivo) {
+    return <GrelhaAvaliacao plano={planoAtivo} turmaId={turmaId} onVoltar={() => setVista('lista')} />;
   }
 
   return (
     <div>
-      <StepBar steps={STEPS} current={passo} onClick={setPasso} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontSize: 16, fontWeight: 700 }}>Planos de Aula</div>
+        <button onClick={() => setVista('criar')} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#1D9E75', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>
+      </div>
+
+      {planos.length === 0 && (
+        <div style={{ ...card, textAlign: 'center', padding: 32, color: '#aaa' }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Ainda não há planos</div>
+          <div style={muted}>Cria o primeiro plano de aula para começar.</div>
+        </div>
+      )}
+
+      {planos.map(p => (
+        <div key={p.id} style={{ ...card, cursor: 'pointer' }} onClick={() => { setPlanoAtivo(p); setVista('grelha'); }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>{p.titulo}</div>
+              <div style={muted}>{p.data} · {p.horaInicio}-{p.horaFim} · {p.fichasIds.length} fichas</div>
+            </div>
+            <span style={tag(p.estado === 'publicado' ? '#3B6D11' : '#854F0B', p.estado === 'publicado' ? '#EAF3DE' : '#FAEEDA')}>
+              {p.estado === 'publicado' ? 'Publicado' : p.estado === 'rascunho' ? 'Rascunho' : p.estado}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CRIAR PLANO — 5 PASSOS
+// ═══════════════════════════════════════════════════════════════
+function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId: string; onConcluido: (p: TPlanoAula) => void; onVoltar: () => void }) {
+  const [passo, setPasso] = useState(0);
+  const [dados, setDados] = useState({
+    titulo: '',
+    data: new Date().toISOString().split('T')[0],
+    horaInicio: '09:00',
+    horaFim: '17:30',
+    tipoAtividade: 'Aula prática',
+    tipoOutro: '',
+    professor: '',
+    observacoes: '',
+  });
+  const [fichasSelecionadas, setFichasSelecionadas] = useState<string[]>([]);
+  const [grupos, setGrupos] = useState<{ nome: string; fichaId: string; alunosIds: string[] }[]>([]);
+  const [compOpcional1, setCompOpcional1] = useState('');
+  const [compOpcional2, setCompOpcional2] = useState('');
+  const [plano, setPlano] = useState<TPlanoAula | null>(null);
+
+  const todasFichas = getFichasProducao();
+  const alunos = getAlunos().filter(a => a.turmaId === turmaId);
+
+  function setD(k: string, v: string) { setDados(p => ({ ...p, [k]: v })); }
+
+  // PASSO 0 — Dados
+  function criarRascunho() {
+    const now = new Date().toISOString();
+    const titulo = dados.titulo || `Plano ${dados.data}`;
+    const p: TPlanoAula = {
+      id: `plano_${Date.now()}`,
+      turmaId,
+      professor: dados.professor,
+      data: dados.data,
+      horaInicio: dados.horaInicio,
+      horaFim: dados.horaFim,
+      titulo,
+      observacoes: dados.observacoes,
+      fichasIds: [],
+      estado: 'rascunho',
+      criadoEm: now,
+      atualizadoEm: now,
+    };
+    addOrUpdatePlanoAula(p);
+    setPlano(p);
+    setPasso(1);
+  }
+
+  // PASSO 1 — Fichas
+  function toggleFicha(id: string) {
+    setFichasSelecionadas(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function guardarFichas() {
+    if (!plano) return;
+    const atualizado = { ...plano, fichasIds: fichasSelecionadas, estado: 'fichas_pendentes' as const };
+    addOrUpdatePlanoAula(atualizado);
+    setPlano(atualizado);
+    // Inicializar grupos
+    const gs = fichasSelecionadas.map(fid => {
+      const ficha = todasFichas.find(f => f.id === fid);
+      return { nome: ficha?.nomePrato || 'Grupo', fichaId: fid, alunosIds: [] };
+    });
+    setGrupos(gs);
+    setPasso(2);
+  }
+
+  // PASSO 2 — Grupos
+  function toggleAlunoGrupo(grupoIdx: number, alunoId: string) {
+    setGrupos(prev => {
+      const novo = [...prev];
+      const g = { ...novo[grupoIdx] };
+      g.alunosIds = g.alunosIds.includes(alunoId) ? g.alunosIds.filter(x => x !== alunoId) : [...g.alunosIds, alunoId];
+      novo[grupoIdx] = g;
+      return novo;
+    });
+  }
+
+  function guardarGrupos() {
+    if (!plano) return;
+    grupos.forEach((g, i) => {
+      const dist: DistribuicaoFicha = {
+        id: `dist_${plano.id}_${g.fichaId}`,
+        planoAulaId: plano.id,
+        fichaId: g.fichaId,
+        modo: g.alunosIds.length === 0 ? 'todos' : 'grupo',
+        tipoServico: 'normal',
+        alunosIds: g.alunosIds,
+        grupos: g.alunosIds.length > 0 ? [{ id: `gr_${i}`, fichaId: g.fichaId, planoAulaId: plano.id, nome: g.nome, alunosIds: g.alunosIds }] : [],
+        tecnicasSelecionadas: [],
+        atitudesSelecionadas: [],
+        atitudesProfessor: [],
+        publicada: false,
+      };
+      addOrUpdateDistribuicaoFicha(dist);
+    });
+    setPasso(3);
+  }
+
+  // PASSO 4 — Publicar
+  function publicar() {
+    if (!plano) return;
+    const atualizado = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
+    addOrUpdatePlanoAula(atualizado);
+    setPlano(atualizado);
+    onConcluido(atualizado);
+  }
+
+  const fichasSel = todasFichas.filter(f => fichasSelecionadas.includes(f.id));
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <button onClick={onVoltar} style={btnCinza}>← Voltar</button>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>Novo Plano de Aula</div>
+      </div>
+
+      <StepBar current={passo} onClick={setPasso} />
 
       {/* PASSO 0 — DADOS */}
       {passo === 0 && (
         <div>
           <div style={card}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>Dados da aula</div>
-            {[
-              { label: 'Data', content: <input type="date" value={plano.data} onChange={e => setPlano(p => ({ ...p, data: e.target.value }))} style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-primary)', color: 'var(--color-text-primary)' }} /> },
-              { label: 'Hora início', content: <input type="time" value={plano.horaInicio} onChange={e => setPlano(p => ({ ...p, horaInicio: e.target.value }))} style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-primary)', color: 'var(--color-text-primary)' }} /> },
-              { label: 'Tipo de atividade', content: (
-                <select value={plano.tipo} onChange={e => setPlano(p => ({ ...p, tipo: e.target.value }))} style={{ width: '100%', fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-primary)', color: 'var(--color-text-primary)' }}>
-                  {TIPO_ATIVIDADE.map(t => <option key={t}>{t}</option>)}
-                </select>
-              )},
-            ].map(({ label, content }) => (
-              <div key={label} style={{ marginBottom: 8 }}>
-                <div style={{ ...muted, marginBottom: 3 }}>{label}</div>
-                {content}
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: '#085041' }}>📋 Dados da aula</div>
+            <div style={{ marginBottom: 10 }}>
+              <span style={label}>Título (opcional)</span>
+              <input style={input} value={dados.titulo} onChange={e => setD('titulo', e.target.value)} placeholder="ex: Cozinha Asiática — CP2" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <span style={label}>Data</span>
+                <input type="date" style={input} value={dados.data} onChange={e => setD('data', e.target.value)} />
               </div>
-            ))}
+              <div>
+                <span style={label}>Professor</span>
+                <input style={input} value={dados.professor} onChange={e => setD('professor', e.target.value)} placeholder="Nome do professor" />
+              </div>
+              <div>
+                <span style={label}>Hora início</span>
+                <input type="time" style={input} value={dados.horaInicio} onChange={e => setD('horaInicio', e.target.value)} />
+              </div>
+              <div>
+                <span style={label}>Hora fim</span>
+                <input type="time" style={input} value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <span style={label}>Tipo de atividade</span>
+              <select style={select} value={dados.tipoAtividade} onChange={e => setD('tipoAtividade', e.target.value)}>
+                {TIPOS_ATIVIDADE.map(t => <option key={t}>{t}</option>)}
+              </select>
+              {dados.tipoAtividade === 'Outro' && (
+                <input style={{ ...input, marginTop: 6 }} value={dados.tipoOutro} onChange={e => setD('tipoOutro', e.target.value)} placeholder="Descreve o tipo de atividade..." />
+              )}
+            </div>
+            <div>
+              <span style={label}>Observações (opcional)</span>
+              <textarea style={{ ...input, minHeight: 60, resize: 'none' }} value={dados.observacoes} onChange={e => setD('observacoes', e.target.value)} placeholder="Notas para a aula..." />
+            </div>
           </div>
-          <button style={btnPrimary()} onClick={() => setPasso(1)}>Continuar →</button>
+          <button style={btnVerde(!dados.data)} disabled={!dados.data} onClick={criarRascunho}>Continuar — Fichas →</button>
         </div>
       )}
 
@@ -131,23 +288,35 @@ export default function PlanoAula({ turmaId }: { turmaId: string }) {
       {passo === 1 && (
         <div>
           <div style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Fichas técnicas</span>
-              <button onClick={() => setPlano(p => ({ ...p, receitas: [...p.receitas, ''] }))} style={{ fontSize: 10, padding: '4px 8px', borderRadius: 6, border: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>+ Adicionar</button>
-            </div>
-            {plano.receitas.map((r, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{i+1}</div>
-                <input value={r} onChange={e => { const rs = [...plano.receitas]; rs[i] = e.target.value; setPlano(p => ({ ...p, receitas: rs })); }} placeholder={`Receita ${i+1}...`} style={{ flex: 1, fontSize: 12, padding: '6px 8px', borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-primary)', color: 'var(--color-text-primary)' }} />
-                <select style={{ fontSize: 10, padding: '5px 6px', borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }}>
-                  <option>Gr. A</option><option>Gr. B</option><option>Todos</option>
-                </select>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: '#085041' }}>📄 Fichas de Produção</div>
+            <div style={{ ...muted, marginBottom: 12 }}>Seleciona as fichas para esta aula. Podes selecionar até 10.</div>
+            {todasFichas.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 20, color: '#aaa' }}>
+                <div style={{ fontSize: 24, marginBottom: 6 }}>📄</div>
+                <div>Ainda não há fichas criadas.</div>
+                <div style={muted}>Cria fichas no tab "Ficha de Produção" primeiro.</div>
+              </div>
+            )}
+            {todasFichas.map(f => (
+              <div key={f.id} onClick={() => toggleFicha(f.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                borderRadius: 8, border: `1px solid ${fichasSelecionadas.includes(f.id) ? '#1D9E75' : '#e0e0e0'}`,
+                background: fichasSelecionadas.includes(f.id) ? '#EAF3DE' : '#fff',
+                marginBottom: 6, cursor: 'pointer',
+              }}>
+                <div style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${fichasSelecionadas.includes(f.id) ? '#1D9E75' : '#ccc'}`, background: fichasSelecionadas.includes(f.id) ? '#1D9E75' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {fichasSelecionadas.includes(f.id) && <span style={{ color: 'white', fontSize: 12 }}>✓</span>}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{f.nomePrato}</div>
+                  <div style={muted}>{f.classificacao} · {f.numPorcoes} porções</div>
+                </div>
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button style={{ ...btnPrimary(), flex: 0, padding: '9px 12px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', border: '0.5px solid var(--color-border-tertiary)' }} onClick={() => setPasso(0)}>←</button>
-            <button style={{ ...btnPrimary(), flex: 1, marginTop: 0 }} onClick={() => setPasso(2)}>Continuar →</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...btnCinza, flex: 0 }} onClick={() => setPasso(0)}>←</button>
+            <button style={{ ...btnVerde(fichasSelecionadas.length === 0), flex: 1, marginTop: 0 }} disabled={fichasSelecionadas.length === 0} onClick={guardarFichas}>Continuar — Grupos →</button>
           </div>
         </div>
       )}
@@ -156,21 +325,39 @@ export default function PlanoAula({ turmaId }: { turmaId: string }) {
       {passo === 2 && (
         <div>
           <div style={card}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 10 }}>Distribuição de grupos</div>
-            {alunos.length === 0 && <div style={muted}>Sem alunos registados nesta turma.</div>}
-            {alunos.map((a, i) => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < alunos.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#9FE1CB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, color: '#085041' }}>{a.numero}</div>
-                <span style={{ flex: 1, fontSize: 12 }}>{a.nome || `Aluno ${a.numero}`}</span>
-                <select style={{ fontSize: 11, padding: '4px 6px', borderRadius: 6, border: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }}>
-                  <option>Grupo A</option><option>Grupo B</option><option>Individual</option>
-                </select>
-              </div>
-            ))}
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: '#085041' }}>👥 Distribuição de grupos</div>
+            <div style={{ ...muted, marginBottom: 12 }}>Para cada ficha, seleciona os alunos que vão trabalhar nela. Se não seleccionares nenhum, é atribuída a todos.</div>
+
+            {grupos.map((g, gi) => {
+              const ficha = todasFichas.find(f => f.id === g.fichaId);
+              return (
+                <div key={gi} style={{ ...card, background: '#f9f9f9', marginBottom: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#085041' }}>
+                    {ficha?.nomePrato || `Ficha ${gi + 1}`}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                    {alunos.length === 0 && <div style={muted}>Sem alunos registados nesta turma.</div>}
+                    {alunos.map(a => (
+                      <div key={a.id} onClick={() => toggleAlunoGrupo(gi, a.id)} style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '7px 9px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+                        border: `1px solid ${g.alunosIds.includes(a.id) ? '#1D9E75' : '#e0e0e0'}`,
+                        background: g.alunosIds.includes(a.id) ? '#EAF3DE' : '#fff',
+                      }}>
+                        <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${g.alunosIds.includes(a.id) ? '#1D9E75' : '#ccc'}`, background: g.alunosIds.includes(a.id) ? '#1D9E75' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {g.alunosIds.includes(a.id) && <span style={{ color: 'white', fontSize: 10 }}>✓</span>}
+                        </div>
+                        <span>{a.nome || `Aluno ${a.numero}`}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {g.alunosIds.length === 0 && <div style={{ ...muted, marginTop: 6 }}>Nenhum selecionado → atribuída a todos</div>}
+                </div>
+              );
+            })}
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button style={{ ...btnPrimary(), flex: 0, padding: '9px 12px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', border: '0.5px solid var(--color-border-tertiary)' }} onClick={() => setPasso(1)}>←</button>
-            <button style={{ ...btnPrimary(), flex: 1, marginTop: 0 }} onClick={() => setPasso(3)}>Continuar →</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...btnCinza, flex: 0 }} onClick={() => setPasso(1)}>←</button>
+            <button style={{ ...btnVerde(), flex: 1, marginTop: 0 }} onClick={guardarGrupos}>Continuar — Competências →</button>
           </div>
         </div>
       )}
@@ -179,67 +366,118 @@ export default function PlanoAula({ turmaId }: { turmaId: string }) {
       {passo === 3 && (
         <div>
           <div style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 500 }}>Permanentes</span>
-              <span style={{ fontSize: 10, background: '#FAEEDA', color: '#854F0B', padding: '2px 8px', borderRadius: 20 }}>sempre</span>
-            </div>
-            {COMPS_PERM.map(c => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-                <div style={{ width: 28, height: 16, borderRadius: 8, background: '#1D9E75', position: 'relative', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: 2, left: 14, width: 12, height: 12, borderRadius: '50%', background: 'white' }} />
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: '#085041' }}>⭐ Competências a avaliar</div>
+            <div style={{ ...muted, marginBottom: 12 }}>As permanentes são sempre avaliadas. Podes escolher até 2 opcionais.</div>
+
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#854F0B', marginBottom: 6 }}>Permanentes — sempre avaliadas</div>
+              {COMP_PERM.map(c => (
+                <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: '#FAEEDA', marginBottom: 4 }}>
+                  <span style={{ fontSize: 16 }}>🔒</span>
+                  <span style={{ fontSize: 12, flex: 1 }}>{c}</span>
                 </div>
-                <span style={{ flex: 1, fontSize: 11 }}>{c.abrev}</span>
-                <span style={{ fontSize: 10, background: '#FAEEDA', color: '#854F0B', padding: '1px 6px', borderRadius: 20 }}>obrigatória</span>
-              </div>
-            ))}
-          </div>
-          <div style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 500 }}>Contexto — {plano.tipo}</span>
-              <span style={{ fontSize: 10, background: '#E6F1FB', color: '#185FA5', padding: '2px 8px', borderRadius: 20 }}>auto</span>
+              ))}
             </div>
-            {compsAtivas.map((c, i) => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: i < compsAtivas.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                <div style={{ width: 28, height: 16, borderRadius: 8, background: '#1D9E75', position: 'relative', flexShrink: 0 }}>
-                  <div style={{ position: 'absolute', top: 2, left: 14, width: 12, height: 12, borderRadius: '50%', background: 'white' }} />
-                </div>
-                <span style={{ flex: 1, fontSize: 11 }}>{c.abrev}</span>
+
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#185FA5', marginBottom: 6 }}>Opcionais do professor (máx. 2)</div>
+              <div style={{ marginBottom: 6 }}>
+                <span style={label}>Competência opcional 1</span>
+                <select style={select} value={compOpcional1} onChange={e => setCompOpcional1(e.target.value)}>
+                  <option value="">— nenhuma —</option>
+                  <option>Autonomia</option>
+                  <option>Iniciativa</option>
+                  <option>Autocontrolo</option>
+                  <option>Assertividade</option>
+                  <option>Empatia</option>
+                  <option>Escuta ativa</option>
+                  <option>Cooperação</option>
+                  <option>Empenho e persistência</option>
+                  <option>Flexibilidade e adaptabilidade</option>
+                  <option>Sustentabilidade</option>
+                  <option>Respeito pelo bem-estar dos outros</option>
+                  <option>Autoconfiança</option>
+                  <option>Postura profissional</option>
+                  <option>Sentido crítico</option>
+                  <option>Respeito pelas diferenças individuais</option>
+                  <option>Cuidado com a apresentação pessoal</option>
+                </select>
               </div>
-            ))}
+              <div>
+                <span style={label}>Competência opcional 2</span>
+                <select style={select} value={compOpcional2} onChange={e => setCompOpcional2(e.target.value)}>
+                  <option value="">— nenhuma —</option>
+                  <option>Autonomia</option>
+                  <option>Iniciativa</option>
+                  <option>Autocontrolo</option>
+                  <option>Assertividade</option>
+                  <option>Empatia</option>
+                  <option>Escuta ativa</option>
+                  <option>Cooperação</option>
+                  <option>Empenho e persistência</option>
+                  <option>Flexibilidade e adaptabilidade</option>
+                  <option>Sustentabilidade</option>
+                  <option>Respeito pelo bem-estar dos outros</option>
+                  <option>Autoconfiança</option>
+                  <option>Postura profissional</option>
+                  <option>Sentido crítico</option>
+                  <option>Respeito pelas diferenças individuais</option>
+                  <option>Cuidado com a apresentação pessoal</option>
+                </select>
+              </div>
+            </div>
+
+            {fichasSel.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#534AB7', marginBottom: 6 }}>Competências técnicas das fichas</div>
+                {fichasSel.map(f => (
+                  <div key={f.id} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{f.nomePrato}</div>
+                    {f.tecnicasSugeridas && f.tecnicasSugeridas.length > 0
+                      ? f.tecnicasSugeridas.map(t => (
+                        <span key={t} style={{ ...tag('#534AB7', '#EEEDFE'), marginRight: 4, marginBottom: 4, display: 'inline-block' }}>{t}</span>
+                      ))
+                      : <span style={muted}>Sem técnicas detetadas</span>
+                    }
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button style={{ ...btnPrimary(), flex: 0, padding: '9px 12px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', border: '0.5px solid var(--color-border-tertiary)' }} onClick={() => setPasso(2)}>←</button>
-            <button style={{ ...btnPrimary(), flex: 1, marginTop: 0 }} onClick={() => setPasso(4)}>Continuar →</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...btnCinza, flex: 0 }} onClick={() => setPasso(2)}>←</button>
+            <button style={{ ...btnVerde(), flex: 1, marginTop: 0 }} onClick={() => setPasso(4)}>Continuar — Publicar →</button>
           </div>
         </div>
       )}
 
       {/* PASSO 4 — PUBLICAR */}
-      {passo === 4 && (
+      {passo === 4 && plano && (
         <div>
-          <div style={{ ...card, textAlign: 'center', padding: '16px 14px' }}>
-            <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>Pronto a publicar</div>
-            <div style={muted}>{plano.data} · {plano.turma} · {plano.tipo}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+          <div style={{ ...card, textAlign: 'center', padding: 24 }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{plano.titulo}</div>
+            <div style={muted}>{plano.data} · {plano.horaInicio}-{plano.horaFim}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
               {[
-                ['Fichas', plano.receitas.filter(r => r).length.toString()],
-                ['Alunos', alunos.length.toString()],
-                ['Permanentes', COMPS_PERM.length.toString()],
-                ['Contexto', compsAtivas.length.toString()],
+                ['Fichas', fichasSelecionadas.length],
+                ['Alunos', alunos.length],
+                ['Competências', COMP_PERM.length + (compOpcional1 ? 1 : 0) + (compOpcional2 ? 1 : 0)],
               ].map(([l, v]) => (
-                <div key={l} style={{ background: 'var(--color-background-secondary)', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, fontWeight: 500 }}>{v}</div>
+                <div key={String(l)} style={{ background: '#f5f5f5', borderRadius: 8, padding: '10px 6px' }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#1D9E75' }}>{v}</div>
                   <div style={muted}>{l}</div>
                 </div>
               ))}
             </div>
           </div>
-          <button style={btnPrimary()} onClick={() => { setPublicado(true); setView('avaliar'); }}>
-            Publicar e abrir grelha de avaliação
-          </button>
-          <button style={{ ...btnPrimary(), background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)', border: '0.5px solid var(--color-border-tertiary)', marginTop: 6 }} onClick={() => alert('Guardado como rascunho')}>
-            Guardar rascunho
-          </button>
+          <div style={{ ...card, background: '#F0FBF7', border: '1px solid #9FE1CB' }}>
+            <div style={{ fontSize: 12, color: '#085041' }}>
+              Ao publicar, os alunos passam a ver este plano e as fichas de produção atribuídas.
+            </div>
+          </div>
+          <button style={btnVerde()} onClick={publicar}>🚀 Publicar plano de aula</button>
+          <button style={{ ...btnCinza, width: '100%', marginTop: 6, textAlign: 'center' }} onClick={() => setPasso(3)}>← Voltar</button>
         </div>
       )}
     </div>
@@ -247,80 +485,99 @@ export default function PlanoAula({ turmaId }: { turmaId: string }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// GRELHA DE AVALIAÇÃO DO PROFESSOR
+// GRELHA DE AVALIAÇÃO
 // ═══════════════════════════════════════════════════════════════
-function GrelhaAvaliacao({ turmaId, plano, notas, todasComps, alunos, onToggle, onVoltar }: {
-  turmaId: string;
-  plano: PlanoState;
-  notas: Record<string, Record<string, NotaProf>>;
-  todasComps: { id: string; abrev: string; sim: string; nao: string }[];
-  alunos: ReturnType<typeof getAlunos>;
-  onToggle: (alunoId: string, compId: string, v: NotaProf) => void;
-  onVoltar: () => void;
-}) {
-  const [alunoDetalhe, setAlunoDetalhe] = useState<string | null>(null);
+function GrelhaAvaliacao({ plano, turmaId, onVoltar }: { plano: TPlanoAula; turmaId: string; onVoltar: () => void }) {
+  const alunos = getAlunos().filter(a => a.turmaId === turmaId);
+  const fichas = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
+  const comps = [...COMP_PERM.map(n => ({ id: n, abrev: n.split(' ').slice(0, 2).join(' '), tipo: 'perm' }))];
+
+  type Nota = 'S' | 'A' | 'R' | null;
+  const [notas, setNotas] = useState<Record<string, Record<string, Nota>>>(() =>
+    Object.fromEntries(alunos.map(a => [a.id, Object.fromEntries(comps.map(c => [c.id, null]))]))
+  );
+
+  function toggle(alunoId: string, compId: string, v: Nota) {
+    setNotas(prev => ({ ...prev, [alunoId]: { ...prev[alunoId], [compId]: prev[alunoId][compId] === v ? null : v } }));
+  }
+
+  const COR: Record<string, { bg: string; border: string; color: string }> = {
+    S: { bg: '#EAF3DE', border: '#639922', color: '#3B6D11' },
+    A: { bg: '#E6F1FB', border: '#378ADD', color: '#0C447C' },
+    R: { bg: '#FCEBEB', border: '#E24B4A', color: '#A32D2D' },
+  };
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <button onClick={onVoltar} style={{ fontSize: 11, padding: '5px 10px', borderRadius: 6, border: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>← Plano</button>
-        <span style={{ fontSize: 13, fontWeight: 500 }}>Grelha de avaliação · {plano.tipo}</span>
-      </div>
-
-      {/* TABELA */}
-      <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}>
-        {/* Cabeçalho */}
-        <div style={{ display: 'grid', gridTemplateColumns: `80px repeat(${todasComps.length},1fr)`, background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-          <div style={{ padding: '6px 8px', fontSize: 10, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Aluno</div>
-          {todasComps.map((c, i) => (
-            <div key={c.id} style={{ padding: '5px 3px', borderLeft: '0.5px solid var(--color-border-tertiary)' }}>
-              <div style={{ fontSize: 9, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'center', marginBottom: 2 }}>{c.abrev}</div>
-              <div style={{ fontSize: 7, background: '#EAF3DE', color: '#27500A', padding: '1px 3px', borderRadius: 3, marginBottom: 1, lineHeight: 1.3 }}>✓ {c.sim.split('·')[0].trim()}</div>
-              <div style={{ fontSize: 7, background: '#FCEBEB', color: '#791F1F', padding: '1px 3px', borderRadius: 3, lineHeight: 1.3 }}>✗ {c.nao.split('·')[0].trim()}</div>
-            </div>
-          ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <button onClick={onVoltar} style={btnCinza}>← Planos</button>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700 }}>{plano.titulo}</div>
+          <div style={muted}>{plano.data} · Grelha de avaliação</div>
         </div>
-
-        {/* Linhas de alunos */}
-        {alunos.map((a, ai) => (
-          <div key={a.id} style={{ display: 'grid', gridTemplateColumns: `80px repeat(${todasComps.length},1fr)`, borderBottom: ai < alunos.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-            <div style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#9FE1CB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 500, color: '#085041', flexShrink: 0 }}>{a.numero}</div>
-              <span style={{ fontSize: 10, color: 'var(--color-text-primary)' }}>{(a.nome || `Aluno ${a.numero}`).split(' ')[0]}</span>
-            </div>
-            {todasComps.map(c => {
-              const v = notas[a.id]?.[c.id] || null;
-              return (
-                <div key={c.id} style={{ padding: '4px 2px', display: 'flex', justifyContent: 'center', alignItems: 'center', borderLeft: '0.5px solid var(--color-border-tertiary)' }}>
-                  <div style={{ display: 'flex', gap: 1 }}>
-                    {(['s','a','r'] as NotaProf[]).map(bv => (
-                      <button key={bv!} onClick={() => onToggle(a.id, c.id, bv)} style={{
-                        width: 20, height: 20, borderRadius: 4, fontSize: 9, fontWeight: 500, cursor: 'pointer',
-                        border: `0.5px solid ${v === bv ? (bv==='s'?'#639922':bv==='a'?'#378ADD':'#E24B4A') : 'var(--color-border-tertiary)'}`,
-                        background: v === bv ? (bv==='s'?'#EAF3DE':bv==='a'?'#E6F1FB':'#FCEBEB') : 'var(--color-background-secondary)',
-                        color: v === bv ? (bv==='s'?'#3B6D11':bv==='a'?'#0C447C':'#A32D2D') : 'var(--color-text-secondary)',
-                      }}>{bv!.toUpperCase()}</button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ))}
       </div>
 
-      {/* Legenda */}
-      <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
-        {[['#639922','S — dentro do esperado'],['#378ADD','A — acima'],['#E24B4A','R — necessita reforço']].map(([cor,l]) => (
-          <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: cor, display: 'inline-block' }} />{l}
+      {/* Fichas */}
+      {fichas.length > 0 && (
+        <div style={{ ...card, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#085041', marginBottom: 8 }}>Fichas de Produção</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {fichas.map(f => <span key={f.id} style={tag('#085041', '#E6F4F1')}>{f.nomePrato}</span>)}
+          </div>
+        </div>
+      )}
+
+      {/* Grelha */}
+      <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 500 }}>
+          <thead>
+            <tr style={{ background: '#085041', color: 'white' }}>
+              <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 12, fontWeight: 600, minWidth: 100 }}>Aluno</th>
+              {comps.map(c => (
+                <th key={c.id} style={{ padding: '6px 4px', fontSize: 10, fontWeight: 600, textAlign: 'center', minWidth: 80 }}>
+                  <div>{c.abrev}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {alunos.map((a, ai) => (
+              <tr key={a.id} style={{ background: ai % 2 === 0 ? '#fff' : '#f9f9f9' }}>
+                <td style={{ padding: '8px 10px', fontSize: 12, fontWeight: 500, borderBottom: '1px solid #eee' }}>
+                  {a.nome || `Aluno ${a.numero}`}
+                </td>
+                {comps.map(c => {
+                  const v = notas[a.id]?.[c.id] || null;
+                  return (
+                    <td key={c.id} style={{ padding: '4px 3px', textAlign: 'center', borderBottom: '1px solid #eee' }}>
+                      <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                        {(['S','A','R'] as Nota[]).map(bv => (
+                          <button key={String(bv)} onClick={() => toggle(a.id, c.id, bv)} style={{
+                            width: 24, height: 24, borderRadius: 5, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                            border: `1px solid ${v === bv ? COR[bv!].border : '#ddd'}`,
+                            background: v === bv ? COR[bv!].bg : '#f5f5f5',
+                            color: v === bv ? COR[bv!].color : '#aaa',
+                          }}>{bv}</button>
+                        ))}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#888', marginBottom: 12 }}>
+        {[['#639922','S — dentro do esperado'],['#378ADD','A — acima do esperado'],['#E24B4A','R — necessita reforço']].map(([cor,l]) => (
+          <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: cor, display: 'inline-block' }} />{l}
           </span>
         ))}
       </div>
 
-      <button style={{ width: '100%', padding: '9px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#1D9E75', color: 'white', fontWeight: 500, fontSize: 13 }} onClick={() => alert('Avaliações guardadas!')}>
-        Guardar avaliações
-      </button>
+      <button style={btnVerde()} onClick={() => alert('Avaliações guardadas!')}>Guardar avaliações</button>
     </div>
   );
 }
