@@ -524,6 +524,24 @@ REGRAS OBRIGATÓRIAS:
 - Usa q.b. quando a quantidade não é especificada
 - O campo "Nº DE DOSES" deve ser sempre um número (ex: 2, 4, 6)
 
+REGRA CRÍTICA — UNIDADES DOS INGREDIENTES:
+- TODOS os ingredientes devem ter quantidade em gramas (g) ou mililitros (ml)
+- A ÚNICA exceção são os OVOS que ficam em "un" (ex: 2 | un | Ovos)
+- Quando a receita diz "2 cebolas" → escreve "200 | g | Cebola" (cebola média ≈ 100g cada)
+- "1 dente de alho" → "6 | g | Alho"
+- "1 lombo de bacalhau" → "200 | g | Bacalhau demolhado"
+- "1 lombo de salmão" → "180 | g | Salmão fresco"
+- "1 filete de peixe" → "150 | g | Peixe"
+- "1 tomate" → "120 | g | Tomate"
+- "1 cenoura" → "100 | g | Cenoura"
+- "1 batata média" → "150 | g | Batata"
+- "1 limão (sumo)" → "30 | ml | Sumo de limão"
+- "1 colher de sopa" (sólido) → "15 | g | [produto]"
+- "1 colher de sopa" (líquido) → "15 | ml | [produto]"
+- "1 colher de chá" → "5 | g | [produto]" ou "5 | ml | [produto]"
+- "q.b." → "q.b. | | [produto]"
+- NÃO usar: un, unidade, dente, ramo, folha, fatia, cabeça (exceto ovos)
+
 EXEMPLO DO FORMATO CORRETO:
 
 NOME DO PRATO: Bacalhau à Brás
