@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { Comanda } from '../types';
-import { Button, Card, Field, Chip } from './ui';
-import { getCompetencia } from '../competencias';
-import { addComanda } from '../backend';
-import { EditorComanda, ESTADO_VAZIO, estadoParaComanda, EditorComandaState } from './EditorComanda';
+import { Button, Card, Field } from './ui';
+import { addOrUpdateFichaProducao } from '../backend';
 import { sugerirSubtecnicas } from '../subtecnicas';
 import { exportDOCX, exportPDF } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
@@ -1227,7 +1225,7 @@ function PassoFichaTecnica({
         </div>
         <div style={{ height: 8 }} />
         <Button block onClick={() => onContinuar(ficha)} disabled={!ficha.nomePrato}>
-          Continuar para Competências →
+          Guardar Ficha de Produção →
         </Button>
       </Card>
     </div>
@@ -1238,53 +1236,52 @@ function PassoFichaTecnica({
 // Vista principal do Professor — orquestra os 3 passos
 // ============================================================
 export function ProfessorView({ turmaId }: { turmaId: string }) {
-  const [passo, setPasso] = useState<'link' | 'ficha' | 'comanda'>('link');
+  const [passo, setPasso] = useState<'link' | 'ficha' | 'guardada'>('link');
   const [textoReceita, setTextoReceita] = useState('');
   const [linkReceita, setLinkReceita] = useState('');
   const [ficha, setFicha] = useState<FichaTecnica>(FICHA_VAZIA);
-  const [criada, setCriada] = useState<Comanda | null>(null);
+  const [fichaGuardada, setFichaGuardada] = useState(false);
 
-  function guardarComanda(estado: EditorComandaState) {
-    const comanda = estadoParaComanda(estado, turmaId);
-    // Guardar também o nome da receita da ficha técnica
-    const comandaFinal = { ...comanda, titulo: ficha.nomePrato || comanda.titulo };
-    addComanda(comandaFinal);
+  function guardarFicha(fichaConfirmada: FichaTecnica) {
+    const now = new Date().toISOString();
+    addOrUpdateFichaProducao({
+      id: `ficha_${Date.now()}`,
+      nomePrato: fichaConfirmada.nomePrato,
+      classificacao: fichaConfirmada.classificacao,
+      fichaNum: fichaConfirmada.fichaNum,
+      numPorcoes: fichaConfirmada.numPorcoes,
+      tempoPrep: fichaConfirmada.tempoPrep,
+      tempoConf: fichaConfirmada.tempoConf,
+      ingredientes: fichaConfirmada.ingredientes.map((ing, i) => ({ ...ing, id: `ing_${i}` })),
+      preparacao: fichaConfirmada.preparacao.map((p, i) => ({ ...p, id: `passo_${i}` })),
+      empratamento: fichaConfirmada.empratamento,
+      alergenicos: fichaConfirmada.alergenicos.split(',').map(a => a.trim()).filter(Boolean),
+      equipamento: fichaConfirmada.equipamento,
+      conservacao: fichaConfirmada.conservacao,
+      regeneracao: fichaConfirmada.regeneracao,
+      kitchenflow: fichaConfirmada.kitchenflow,
+      tecnicasSugeridas: [],
+      ucsAssociadas: [],
+      elaboradoPor: fichaConfirmada.elaboradoPor,
+      data: fichaConfirmada.data,
+      criadoEm: now,
+      atualizadoEm: now,
+    });
     try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-    setCriada(comandaFinal);
+    setFichaGuardada(true);
+    setPasso('guardada');
   }
 
-  // Estado inicial do EditorComanda com dados da ficha e link
-  const estadoInicial: EditorComandaState = {
-    ...ESTADO_VAZIO,
-    titulo: ficha.nomePrato,
-    linkOuTexto: linkReceita || textoReceita.slice(0, 200),
-  };
-
-  if (criada) {
-    const todasFixas = [...criada.tecnicasFixas, ...criada.atitudesFixas, ...criada.responsabilidadesFixas];
+  if (passo === 'guardada') {
     return (
       <Card>
-        <div className="display" style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>✅ Comanda criada</div>
-        <div style={{ marginBottom: 10 }}>
-          <strong>{criada.titulo}</strong>
-        </div>
+        <div className="display" style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>✅ Ficha de Produção guardada</div>
+        <div style={{ marginBottom: 10 }}><strong>{ficha.nomePrato}</strong></div>
         <div className="muted" style={{ marginBottom: 12 }}>
-          Alunos: {criada.alunosIds.map(id => id.split('-').pop()).join(', ')}
-          <br />
-          <span className="mono" style={{ fontSize: 11 }}>IDs: {criada.alunosIds.join(', ')}</span>
+          A ficha foi guardada na biblioteca. Podes associá-la a um Plano de Aula no tab "Plano de Aula".
         </div>
-        {todasFixas.length > 0 && (
-          <>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Competências obrigatórias:</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {todasFixas.map(id => (
-                <span key={id} className="chip selected">🔒 {getCompetencia(id)?.nome}</span>
-              ))}
-            </div>
-          </>
-        )}
-        <Button block onClick={() => { setCriada(null); setPasso('link'); setFicha(FICHA_VAZIA); setTextoReceita(''); setLinkReceita(''); }}>
-          Nova comanda
+        <Button block onClick={() => { setPasso('link'); setFicha(FICHA_VAZIA); setTextoReceita(''); setLinkReceita(''); setFichaGuardada(false); }}>
+          Nova Ficha de Produção
         </Button>
       </Card>
     );
@@ -1301,39 +1298,19 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
     );
   }
 
-  if (passo === 'ficha') {
-    return (
-      <PassoFichaTecnica
-        ficha={ficha}
-        textoReceita={textoReceita}
-        onContinuar={(fichaConfirmada) => {
-          setFicha(fichaConfirmada);
-          setPasso('comanda');
-        }}
-        onVoltar={() => {
-          try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-          setPasso('link');
-        }}
-      />
-    );
-  }
-
   return (
-    <div>
-      <Card>
-        <div className="display" style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
-          📋 Passo 3: Competências e Comanda
-        </div>
-        <div className="muted" style={{ marginBottom: 4 }}>{ficha.nomePrato}</div>
-        <Button variant="ghost" onClick={() => setPasso('ficha')}>← Voltar à ficha técnica</Button>
-      </Card>
-      <EditorComanda
-        turmaId={turmaId}
-        estadoInicial={estadoInicial}
-        onGuardar={guardarComanda}
-        tituloBotao="Criar comanda"
-      />
-    </div>
+    <PassoFichaTecnica
+      ficha={ficha}
+      textoReceita={textoReceita}
+      onContinuar={(fichaConfirmada) => {
+        setFicha(fichaConfirmada);
+        guardarFicha(fichaConfirmada);
+      }}
+      onVoltar={() => {
+        try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
+        setPasso('link');
+      }}
+    />
   );
 }
 
