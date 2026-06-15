@@ -80,8 +80,8 @@ export default function App() {
             </button>
           </div>
 
-          {vistaProfessor === 'planeamento' && <ProfessorView />}
-          {vistaProfessor === 'validacao' && <ValidacaoView turmaId={turmaId} />}
+          {vistaProfessor === 'planeamento' && <ProfessorView turmaId={turmaId} />}
+          {vistaProfessor === 'validacao' && <ValidacaoView />}
         </div>
       )}
 
