@@ -8,6 +8,7 @@ import { ValidacaoView } from './components/ValidacaoView';
 import { ComandasView } from './components/ComandasView';
 import { CoordenadoraView } from './components/CoordenadoraView';
 import Requisicao from './components/Requisicao';
+import PlanoAula from './components/PlanoAula';
 import { getAlunos } from './backend';
 import './styles.css';
 
@@ -19,7 +20,7 @@ interface Sessao {
 
 export default function App() {
   const [sessao, setSessao] = useState<Sessao | null>(null);
-  const [tabProfessor, setTabProfessor] = useState<'comanda' | 'comandas' | 'validar' | 'requisicao'>('comanda');
+  const [tabProfessor, setTabProfessor] = useState<'plano' | 'comanda' | 'comandas' | 'validar' | 'requisicao'>('plano');
 
   if (!sessao) {
     return <Login onLogin={(perfil, alunoId, turmaId) => setSessao({ perfil, alunoId, turmaId })} />;
@@ -42,9 +43,14 @@ export default function App() {
       <div>
         <div className="card" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
+            className={`btn ${tabProfessor === 'plano' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setTabProfessor('plano')}>
+            Plano de Aula
+          </button>
+          <button
             className={`btn ${tabProfessor === 'comanda' ? 'btn-primary' : 'btn-ghost'}`}
             onClick={() => setTabProfessor('comanda')}>
-            Nova Comanda
+            Ficha Técnica
           </button>
           <button
             className={`btn ${tabProfessor === 'comandas' ? 'btn-primary' : 'btn-ghost'}`}
@@ -62,6 +68,7 @@ export default function App() {
             Requisição
           </button>
         </div>
+        {tabProfessor === 'plano'      && <PlanoAula turmaId={sessao.turmaId!} />}
         {tabProfessor === 'comanda'    && <ProfessorView turmaId={sessao.turmaId} />}
         {tabProfessor === 'comandas'   && <ComandasView turmaId={sessao.turmaId} />}
         {tabProfessor === 'validar'    && <ValidacaoView turmaId={sessao.turmaId} />}
