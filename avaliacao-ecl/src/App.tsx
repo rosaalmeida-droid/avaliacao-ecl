@@ -39,14 +39,17 @@ export default function App() {
 
       {perfil === 'professor' && (
         <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div className="tab-nav">
             {(['plano','ficha','validacao','requisicao'] as const).map(v => (
               <button
                 key={v}
                 onClick={() => setVistaProfessor(v)}
-                className={`btn ${vistaProfessor === v ? 'btn-primary' : 'btn-ghost'}`}
+                className={`tab-btn${vistaProfessor === v ? ' active' : ''}`}
               >
-                {v === 'plano' ? 'Plano de Aula' : v === 'ficha' ? 'Ficha de Produção' : v === 'validacao' ? 'Validação' : 'Requisição'}
+                {v === 'plano' ? 'Plano de Aula'
+                  : v === 'ficha' ? 'Ficha de Produção'
+                  : v === 'validacao' ? 'Validação'
+                  : 'Requisição'}
               </button>
             ))}
           </div>
@@ -62,3 +65,4 @@ export default function App() {
     </div>
   );
 }
+
