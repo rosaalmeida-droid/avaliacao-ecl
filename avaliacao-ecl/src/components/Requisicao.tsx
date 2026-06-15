@@ -275,8 +275,9 @@ export default function Requisicao() {
         turma: planoSel?.turmaId||'',
         dataAula: planoSel?.data||'',
         formador: planoSel?.professor||'',
+        responsavel,               // N42
         atividade,                 // K47
-        preparacao: '',            // A35 — vazio por agora
+        preparacao: '',            // A35
         consumo: {
           bar: consumo.bar,
           rest: consumo.rest,
