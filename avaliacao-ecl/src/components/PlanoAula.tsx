@@ -8,60 +8,60 @@ import {
 } from '../backend';
 import { PlanoAula as TPlanoAula, DistribuicaoFicha } from '../types';
 
-// ── Constantes ────────────────────────────────────────────────
 const TIPOS_ATIVIDADE = [
   'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
   'Pequeno-almoço','Coffee break','Serviço real à carta','Catering',
   'Buffet','Evento externo','Outro',
 ];
 const COMP_PERM = [
-  'Responsabilidade pelas suas ações',
-  'Sentido de organização',
-  'Higiene e segurança alimentar',
-  'Disponibilidade para aprender',
-  'Respeito pelas regras',
-  'Segurança e saúde no trabalho',
+  'Responsabilidade','Organização','Higiene e segurança alimentar',
+  'Disponibilidade para aprender','Respeito pelas regras','SST',
 ];
 const COMP_OPC = [
   'Autonomia','Iniciativa','Autocontrolo','Assertividade','Empatia',
   'Escuta ativa','Cooperação','Empenho e persistência',
-  'Flexibilidade e adaptabilidade','Sustentabilidade',
-  'Respeito pelo bem-estar dos outros','Autoconfiança',
-  'Postura profissional','Sentido crítico',
-  'Respeito pelas diferenças individuais','Cuidado com a apresentação pessoal',
+  'Flexibilidade','Sustentabilidade','Respeito pelo bem-estar',
+  'Autoconfiança','Postura profissional','Sentido crítico',
+  'Respeito pelas diferenças','Apresentação pessoal',
 ];
 
-// ── Estilos base ──────────────────────────────────────────────
-const S = {
-  card: { background:'var(--color-background-primary)', border:'0.5px solid var(--color-border-tertiary)', borderRadius:12, padding:'14px 16px', marginBottom:8 } as React.CSSProperties,
-  muted: { color:'var(--color-text-secondary)', fontSize:11 } as React.CSSProperties,
-  lbl: { fontSize:11, fontWeight:500, color:'var(--color-text-secondary)', marginBottom:4, display:'block' } as React.CSSProperties,
-  inp: { width:'100%', padding:'9px 11px', borderRadius:8, border:'0.5px solid var(--color-border-tertiary)', background:'var(--color-background-primary)', color:'var(--color-text-primary)', fontSize:13, boxSizing:'border-box' } as React.CSSProperties,
-  btnVerde: (dis=false): React.CSSProperties => ({ width:'100%', padding:'11px', background:dis?'var(--color-background-secondary)':'#1D9E75', color:dis?'var(--color-text-secondary)':'white', border:'none', borderRadius:10, fontSize:13, fontWeight:500, cursor:dis?'not-allowed':'pointer', marginTop:8 }),
-  btnGhost: { width:'100%', padding:'9px', background:'none', border:'0.5px solid var(--color-border-tertiary)', borderRadius:10, fontSize:12, color:'var(--color-text-secondary)', cursor:'pointer', marginTop:6 } as React.CSSProperties,
-  badge: (bg:string,color:string): React.CSSProperties => ({ fontSize:10, padding:'3px 9px', borderRadius:20, background:bg, color, fontWeight:500, flexShrink:0 }),
-};
-
-// ── Componente acordeão ───────────────────────────────────────
-function AccSection({ icon, title, desc, status, statusColor, statusBg, open, onToggle, done, children }: {
-  icon: string; title: string; desc: string;
-  status: string; statusColor: string; statusBg: string;
-  open: boolean; onToggle: () => void; done?: boolean; children: React.ReactNode;
+// ── Secção acordeão ───────────────────────────────────────────
+function Acc({ num, icon, title, desc, status, open, locked, onToggle, children }: {
+  num: number; icon: string; title: string; desc: string;
+  status: 'done'|'active'|'pending';
+  open: boolean; locked: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
 }) {
+  const statusStyles = {
+    done:    { bg:'rgba(107,124,94,0.15)',  color:'var(--sage)' },
+    active:  { bg:'rgba(181,101,29,0.12)', color:'var(--copper)' },
+    pending: { bg:'rgba(31,27,22,0.06)',   color:'rgba(31,27,22,0.4)' },
+  }[status];
+
   return (
-    <div style={{ border:`0.5px solid ${open?'#1D9E75':'var(--color-border-tertiary)'}`, borderRadius:12, marginBottom:8, overflow:'hidden', boxShadow:open?'0 0 0 3px rgba(29,158,117,0.08)':'none' }}>
-      <div onClick={onToggle} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px', cursor:'pointer', background:'var(--color-background-primary)' }}>
-        <div style={{ width:36, height:36, borderRadius:10, background:done?'#EAF3DE':open?'#085041':'var(--color-background-secondary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>
-          {done ? '✓' : icon}
+    <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:10 }}>
+      <div
+        onClick={() => !locked && onToggle()}
+        style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', cursor:locked?'default':'pointer' }}
+      >
+        <div style={{
+          width:36, height:36, borderRadius:10, flexShrink:0,
+          display:'flex', alignItems:'center', justifyContent:'center', fontSize:16,
+          background: status==='done'?'rgba(107,124,94,0.15)' : status==='active'?'var(--copper)' : 'rgba(31,27,22,0.06)',
+        }}>
+          {status==='done' ? '✓' : icon}
         </div>
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:13, fontWeight:500 }}>{title}</div>
-          <div style={S.muted}>{desc}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontWeight:600, fontSize:14 }}>{title}</div>
+          <div className="muted" style={{ fontSize:12, marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{desc}</div>
         </div>
-        <span style={S.badge(statusBg, statusColor)}>{status}</span>
+        <span className="badge" style={{ ...statusStyles, fontSize:11 }}>
+          {status==='done'?'Feito' : status==='active'?'Em curso' : 'Pendente'}
+        </span>
       </div>
       {open && (
-        <div style={{ borderTop:'0.5px solid var(--color-border-tertiary)', padding:'14px', background:'var(--color-background-primary)' }}>
+        <div style={{ borderTop:'1px solid var(--border)', padding:'14px 16px' }}>
           {children}
         </div>
       )}
@@ -70,39 +70,37 @@ function AccSection({ icon, title, desc, status, statusColor, statusBg, open, on
 }
 
 // ═══════════════════════════════════════════════════════════════
-// COMPONENTE PRINCIPAL
-// ═══════════════════════════════════════════════════════════════
 export default function PlanoAula({ turmaId }: { turmaId: string }) {
   const [vista, setVista] = useState<'lista'|'criar'|'grelha'>('lista');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
 
-  if (vista === 'criar') return <CriarPlano turmaId={turmaId} onConcluido={p => { setPlanoAtivo(p); setVista('grelha'); }} onVoltar={() => setVista('lista')} />;
-  if (vista === 'grelha' && planoAtivo) return <GrelhaAvaliacao plano={planoAtivo} turmaId={turmaId} onVoltar={() => setVista('lista')} />;
+  if (vista==='criar') return <CriarPlano turmaId={turmaId} onConcluido={p=>{setPlanoAtivo(p);setVista('grelha');}} onVoltar={()=>setVista('lista')} />;
+  if (vista==='grelha' && planoAtivo) return <GrelhaAvaliacao plano={planoAtivo} turmaId={turmaId} onVoltar={()=>setVista('lista')} />;
 
   return (
     <div>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-        <div style={{ fontSize:16, fontWeight:500 }}>Planos de Aula</div>
-        <button onClick={() => setVista('criar')} style={{ padding:'8px 14px', borderRadius:8, border:'none', background:'#085041', color:'white', fontWeight:500, fontSize:13, cursor:'pointer' }}>+ Novo plano</button>
+      <div className="header-bar">
+        <h2 className="display" style={{ margin:0 }}>Planos de Aula</h2>
+        <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
       </div>
-      {planos.length === 0 && (
-        <div style={{ ...S.card, textAlign:'center', padding:32 }}>
-          <div style={{ fontSize:32, marginBottom:8 }}>📋</div>
-          <div style={{ fontSize:14, fontWeight:500, marginBottom:4 }}>Ainda não há planos</div>
-          <div style={S.muted}>Cria o primeiro plano de aula.</div>
+
+      {planos.length===0 && (
+        <div className="card" style={{ textAlign:'center', padding:40 }}>
+          <div style={{ fontSize:40, marginBottom:10 }}>📋</div>
+          <div className="display" style={{ fontSize:18, marginBottom:6 }}>Ainda não há planos</div>
+          <p className="muted">Cria o primeiro plano de aula para começar.</p>
         </div>
       )}
-      {planos.map(p => (
-        <div key={p.id} style={{ ...S.card, cursor:'pointer' }} onClick={() => { setPlanoAtivo(p); setVista('grelha'); }}>
+
+      {planos.map(p=>(
+        <div key={p.id} className="option-card" onClick={()=>{setPlanoAtivo(p);setVista('grelha');}}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <div style={{ flex:1 }}>
-              <div style={{ fontSize:14, fontWeight:500 }}>{p.titulo}</div>
-              <div style={S.muted}>{p.data} · {p.horaInicio}-{p.horaFim} · {p.fichasIds.length} fichas</div>
+              <div style={{ fontWeight:600, fontSize:15 }}>{p.titulo}</div>
+              <div className="muted" style={{ marginTop:2 }}>{p.data} · {p.horaInicio}–{p.horaFim} · {p.fichasIds.length} fichas</div>
             </div>
-            <span style={S.badge(p.estado==='publicado'?'#EAF3DE':'#FAEEDA', p.estado==='publicado'?'#3B6D11':'#854F0B')}>
-              {p.estado==='publicado'?'Publicado':'Rascunho'}
-            </span>
+            <span className="stamp copper">{p.estado==='publicado'?'Publicado':'Rascunho'}</span>
           </div>
         </div>
       ))}
@@ -111,182 +109,163 @@ export default function PlanoAula({ turmaId }: { turmaId: string }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CRIAR PLANO — ACORDEÃO
+// CRIAR PLANO
 // ═══════════════════════════════════════════════════════════════
 function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConcluido:(p:TPlanoAula)=>void; onVoltar:()=>void }) {
-  const [secAberta, setSecAberta] = useState<number>(0);
-  const [secFecha, setSecFecha] = useState<number[]>([]);
-  const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor:'', observacoes:'' });
+  const [secAberta, setSecAberta] = useState(0);
+  const [feitas, setFeitas] = useState<number[]>([]);
+  const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor:'' });
   const [fichasSel, setFichasSel] = useState<string[]>([]);
-  const [grupos, setGrupos] = useState<Record<string,Record<string,'A'|'B'|'C'|null>>>({});
+  const [grupos, setGrupos] = useState<Record<string,Record<string,'A'|'B'|null>>>({});
   const [compOpc, setCompOpc] = useState<string[]>([]);
   const [plano, setPlano] = useState<TPlanoAula|null>(null);
   const [publicado, setPublicado] = useState(false);
 
   const todasFichas = getFichasProducao();
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId);
+  const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
 
   function setD(k:string,v:string) { setDados(p=>({...p,[k]:v})); }
-  function abrir(i:number) { setSecAberta(i); }
-  function concluir(i:number) { setSecFecha(p=>[...p,i]); setSecAberta(i+1); }
-  const feita = (i:number) => secFecha.includes(i);
+  function concluir(i:number) { setFeitas(p=>[...new Set([...p,i])]); setSecAberta(i+1); }
+  const feita = (i:number) => feitas.includes(i);
+  const status = (i:number): 'done'|'active'|'pending' => feita(i)?'done':secAberta===i?'active':'pending';
 
-  // Dados
   function guardarDados() {
     const now = new Date().toISOString();
     const p: TPlanoAula = {
       id:`plano_${Date.now()}`, turmaId, professor:dados.professor,
       data:dados.data, horaInicio:dados.horaInicio, horaFim:dados.horaFim,
-      titulo:dados.titulo||`Plano ${dados.data}`, observacoes:dados.observacoes,
-      fichasIds:[], estado:'rascunho', criadoEm:now, atualizadoEm:now,
+      titulo:dados.titulo||`${dados.tipoAtividade} — ${dados.data}`,
+      observacoes:'', fichasIds:[], estado:'rascunho', criadoEm:now, atualizadoEm:now,
     };
-    addOrUpdatePlanoAula(p);
-    setPlano(p);
-    concluir(0);
+    addOrUpdatePlanoAula(p); setPlano(p); concluir(0);
   }
 
-  // Fichas
-  function toggleFicha(id:string) { setFichasSel(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]); }
   function guardarFichas() {
     if(!plano) return;
-    const up = {...plano, fichasIds:fichasSel, estado:'fichas_pendentes' as const, atualizadoEm:new Date().toISOString()};
+    const up={...plano,fichasIds:fichasSel,estado:'fichas_pendentes' as const,atualizadoEm:new Date().toISOString()};
     addOrUpdatePlanoAula(up); setPlano(up);
-    const g: Record<string,Record<string,'A'|'B'|'C'|null>> = {};
-    fichasSel.forEach(fid => { g[fid]={}; alunos.forEach(a=>{g[fid][a.id]=null;}); });
+    const g:Record<string,Record<string,'A'|'B'|null>>={};
+    fichasSel.forEach(fid=>{g[fid]={};alunos.forEach(a=>{g[fid][a.id]=null;});});
     setGrupos(g); concluir(1);
   }
 
-  // Grupos
-  function setGrupo(fichaId:string,alunoId:string,g:'A'|'B'|'C'|null) {
-    setGrupos(p=>({...p,[fichaId]:{...p[fichaId],[alunoId]:g}}));
-  }
   function guardarGrupos() {
     if(!plano) return;
-    fichasSel.forEach(fid => {
-      const gs = grupos[fid]||{};
-      const grupoA = alunos.filter(a=>gs[a.id]==='A').map(a=>a.id);
-      const grupoB = alunos.filter(a=>gs[a.id]==='B').map(a=>a.id);
-      const todos = alunos.filter(a=>!gs[a.id]).map(a=>a.id);
+    fichasSel.forEach(fid=>{
+      const gs=grupos[fid]||{};
+      const aA=alunos.filter(a=>gs[a.id]==='A').map(a=>a.id);
+      const aB=alunos.filter(a=>gs[a.id]==='B').map(a=>a.id);
+      const aTodos=alunos.filter(a=>!gs[a.id]).map(a=>a.id);
       const dist: DistribuicaoFicha = {
-        id:`dist_${plano.id}_${fid}`, planoAulaId:plano.id, fichaId:fid,
-        modo:todos.length===alunos.length?'todos':'grupo',
-        tipoServico:'normal',
-        alunosIds:[...grupoA,...grupoB,...todos],
+        id:`dist_${plano.id}_${fid}`,planoAulaId:plano.id,fichaId:fid,
+        modo:aTodos.length===alunos.length?'todos':'grupo',tipoServico:'normal',
+        alunosIds:[...aA,...aB,...aTodos],
         grupos:[
-          ...(grupoA.length?[{id:`gr_A_${fid}`,fichaId:fid,planoAulaId:plano.id,nome:'Grupo A',alunosIds:grupoA}]:[]),
-          ...(grupoB.length?[{id:`gr_B_${fid}`,fichaId:fid,planoAulaId:plano.id,nome:'Grupo B',alunosIds:grupoB}]:[]),
+          ...(aA.length?[{id:`grA_${fid}`,fichaId:fid,planoAulaId:plano.id,nome:'Grupo A',alunosIds:aA}]:[]),
+          ...(aB.length?[{id:`grB_${fid}`,fichaId:fid,planoAulaId:plano.id,nome:'Grupo B',alunosIds:aB}]:[]),
         ],
-        tecnicasSelecionadas:[], atitudesSelecionadas:[], atitudesProfessor:[], publicada:false,
+        tecnicasSelecionadas:[],atitudesSelecionadas:[],atitudesProfessor:[],publicada:false,
       };
       addOrUpdateDistribuicaoFicha(dist);
     });
     concluir(2);
   }
 
-  // Competências
-  function toggleComp(c:string) { setCompOpc(p=>p.includes(c)?p.filter(x=>x!==c):[...p,c].slice(0,2)); }
-
-  // Publicar
   function publicar() {
     if(!plano) return;
-    const up = {...plano, estado:'publicado' as const, atualizadoEm:new Date().toISOString()};
+    const up={...plano,estado:'publicado' as const,atualizadoEm:new Date().toISOString()};
     addOrUpdatePlanoAula(up); setPlano(up); setPublicado(true); onConcluido(up);
   }
 
-  const resumoDados = dados.data ? `${dados.tipoAtividade} · ${dados.horaInicio}-${dados.horaFim}${dados.professor?` · ${dados.professor}`:''}` : '';
-  const resumoFichas = fichasSel.length ? `${fichasSel.length} ficha${fichasSel.length>1?'s':''} selecionada${fichasSel.length>1?'s':''}` : 'Nenhuma ficha selecionada';
   const fichasSelecionadas = todasFichas.filter(f=>fichasSel.includes(f.id));
+  const resumoFichas = fichasSel.length ? `${fichasSel.length} ficha${fichasSel.length>1?'s':''} selecionada${fichasSel.length>1?'s':''}` : 'Nenhuma ficha';
 
   return (
     <div>
       {/* CABEÇALHO VERDE ESCURO */}
-      <div style={{ background:'#085041', borderRadius:12, padding:'16px', marginBottom:14 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-          <button onClick={onVoltar} style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:8, padding:'6px 10px', color:'white', fontSize:12, cursor:'pointer' }}>← Voltar</button>
+      <div style={{ background:'#1f1b16', borderRadius:14, padding:'18px', marginBottom:16 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+          <button onClick={onVoltar} className="btn btn-ghost" style={{ fontSize:12, padding:'6px 12px', color:'rgba(247,241,230,0.7)', borderColor:'rgba(247,241,230,0.2)', background:'rgba(247,241,230,0.08)' }}>← Voltar</button>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:15, fontWeight:500, color:'white' }}>{dados.titulo||'Novo Plano de Aula'}</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', marginTop:2 }}>Escola de Comércio de Lisboa · {turmaId}</div>
+            <div style={{ fontFamily:'Fraunces, serif', fontSize:17, fontWeight:600, color:'var(--cream)' }}>{dados.titulo||'Novo Plano de Aula'}</div>
+            <div style={{ fontSize:11, color:'rgba(247,241,230,0.55)', marginTop:2 }}>ECL · {turmaId}</div>
           </div>
         </div>
-        {/* Progresso */}
+        {/* Barra de progresso */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:4 }}>
-          {['Dados','Fichas','Grupos','Compet.','Publicar'].map((s,i)=>(
+          {['Dados','Fichas','Grupos','Competências','Publicar'].map((s,i)=>(
             <div key={i} style={{ textAlign:'center' }}>
-              <div style={{ width:28, height:28, borderRadius:'50%', background:feita(i)?'#9FE1CB':secAberta===i?'white':'rgba(255,255,255,0.2)', color:feita(i)?'#085041':secAberta===i?'#085041':'rgba(255,255,255,0.6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:500, margin:'0 auto 3px', border:feita(i)?'none':secAberta===i?'none':'1px solid rgba(255,255,255,0.3)' }}>
-                {feita(i)?'✓':(i+1)}
-              </div>
-              <div style={{ fontSize:9, color:feita(i)?'#9FE1CB':secAberta===i?'white':'rgba(255,255,255,0.5)', fontWeight:secAberta===i?500:400 }}>{s}</div>
+              <div style={{ width:28,height:28,borderRadius:'50%',margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,
+                background:feita(i)?'var(--sage)':secAberta===i?'var(--copper)':'rgba(247,241,230,0.12)',
+                color:feita(i)||secAberta===i?'white':'rgba(247,241,230,0.4)',
+              }}>{feita(i)?'✓':(i+1)}</div>
+              <div style={{ fontSize:9, color:feita(i)?'var(--sage-light)':secAberta===i?'var(--copper-light)':'rgba(247,241,230,0.35)' }}>{s}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* SECÇÃO 0 — DADOS */}
-      <AccSection icon="📅" title="Dados da aula" desc={feita(0)?resumoDados:'Preenche a data, hora e tipo de atividade'}
-        status={feita(0)?'Completo':secAberta===0?'Em curso':'Pendente'}
-        statusBg={feita(0)?'#EAF3DE':secAberta===0?'#E6F1FB':'var(--color-background-secondary)'}
-        statusColor={feita(0)?'#3B6D11':secAberta===0?'#185FA5':'var(--color-text-secondary)'}
-        open={secAberta===0} onToggle={()=>abrir(0)} done={feita(0)}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
-          <div><span style={S.lbl}>Data</span><input type="date" style={S.inp} value={dados.data} onChange={e=>setD('data',e.target.value)}/></div>
-          <div><span style={S.lbl}>Professor</span><input style={S.inp} value={dados.professor} onChange={e=>setD('professor',e.target.value)} placeholder="Nome"/></div>
-          <div><span style={S.lbl}>Hora início</span><input type="time" style={S.inp} value={dados.horaInicio} onChange={e=>setD('horaInicio',e.target.value)}/></div>
-          <div><span style={S.lbl}>Hora fim</span><input type="time" style={S.inp} value={dados.horaFim} onChange={e=>setD('horaFim',e.target.value)}/></div>
+      <Acc num={0} icon="📅" title="Dados da aula" desc={feita(0)?`${dados.tipoAtividade} · ${dados.horaInicio}–${dados.horaFim}${dados.professor?' · '+dados.professor:''}` : 'Data, hora e tipo de atividade'} status={status(0)} open={secAberta===0} locked={false} onToggle={()=>setSecAberta(0)}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          <div className="field"><label className="field-label">Data</label><input type="date" className="input" value={dados.data} onChange={e=>setD('data',e.target.value)}/></div>
+          <div className="field"><label className="field-label">Professor</label><input className="input" value={dados.professor} onChange={e=>setD('professor',e.target.value)} placeholder="Nome"/></div>
+          <div className="field"><label className="field-label">Hora início</label><input type="time" className="input" value={dados.horaInicio} onChange={e=>setD('horaInicio',e.target.value)}/></div>
+          <div className="field"><label className="field-label">Hora fim</label><input type="time" className="input" value={dados.horaFim} onChange={e=>setD('horaFim',e.target.value)}/></div>
         </div>
-        <span style={S.lbl}>Tipo de atividade</span>
-        <select style={S.inp} value={dados.tipoAtividade} onChange={e=>setD('tipoAtividade',e.target.value)}>
-          {TIPOS_ATIVIDADE.map(t=><option key={t}>{t}</option>)}
-        </select>
-        {dados.tipoAtividade==='Outro'&&<input style={{...S.inp,marginTop:6}} value={dados.tipoOutro} onChange={e=>setD('tipoOutro',e.target.value)} placeholder="Descreve a atividade..."/>}
-        <div style={{marginTop:8}}><span style={S.lbl}>Título (opcional)</span><input style={S.inp} value={dados.titulo} onChange={e=>setD('titulo',e.target.value)} placeholder={`ex: Almoço Erasmus — ${turmaId}`}/></div>
-        <button style={S.btnVerde(!dados.data)} disabled={!dados.data} onClick={guardarDados}>Guardar e continuar →</button>
-      </AccSection>
+        <div className="field">
+          <label className="field-label">Tipo de atividade</label>
+          <select className="input" value={dados.tipoAtividade} onChange={e=>setD('tipoAtividade',e.target.value)}>
+            {TIPOS_ATIVIDADE.map(t=><option key={t}>{t}</option>)}
+          </select>
+          {dados.tipoAtividade==='Outro'&&<input className="input" style={{marginTop:6}} value={dados.tipoOutro} onChange={e=>setD('tipoOutro',e.target.value)} placeholder="Descreve a atividade..."/>}
+        </div>
+        <div className="field"><label className="field-label">Título (opcional)</label><input className="input" value={dados.titulo} onChange={e=>setD('titulo',e.target.value)} placeholder={`ex: Cozinha Asiática — ${turmaId}`}/></div>
+        <button className="btn btn-primary btn-block" disabled={!dados.data} onClick={guardarDados}>Guardar e continuar →</button>
+      </Acc>
 
       {/* SECÇÃO 1 — FICHAS */}
-      <AccSection icon="📄" title="Fichas de produção" desc={feita(1)?resumoFichas:'Seleciona as receitas para esta aula'}
-        status={feita(1)?'Completo':secAberta===1?'Em curso':'Pendente'}
-        statusBg={feita(1)?'#EAF3DE':secAberta===1?'#E6F1FB':'var(--color-background-secondary)'}
-        statusColor={feita(1)?'#3B6D11':secAberta===1?'#185FA5':'var(--color-text-secondary)'}
-        open={secAberta===1} onToggle={()=>feita(0)&&abrir(1)} done={feita(1)}>
+      <Acc num={1} icon="📄" title="Fichas de produção" desc={feita(1)?resumoFichas:'Seleciona as receitas para esta aula'} status={status(1)} open={secAberta===1} locked={!feita(0)&&secAberta!==1} onToggle={()=>feita(0)&&setSecAberta(1)}>
         {todasFichas.length===0?(
-          <div style={{ textAlign:'center', padding:'16px 0' }}>
-            <div style={{ fontSize:11, color:'var(--color-text-secondary)', marginBottom:8 }}>Ainda não há fichas criadas.</div>
-            <div style={{ padding:'10px 12px', background:'#EAF3DE', borderRadius:8, fontSize:11, color:'#3B6D11' }}>
-              Vai ao tab <strong>Ficha de Produção</strong> para criar fichas, depois volta aqui.
+          <div style={{textAlign:'center',padding:'14px 0'}}>
+            <p className="muted" style={{marginBottom:10}}>Ainda não há fichas criadas.</p>
+            <div style={{padding:'10px 14px',background:'rgba(107,124,94,0.1)',borderRadius:10,fontSize:13,color:'var(--sage)'}}>
+              Vai ao tab <strong>Ficha de Produção</strong> para criar fichas.
             </div>
           </div>
-        ):(
-          todasFichas.map(f=>(
-            <div key={f.id} onClick={()=>toggleFicha(f.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:8, border:`0.5px solid ${fichasSel.includes(f.id)?'#1D9E75':'var(--color-border-tertiary)'}`, background:fichasSel.includes(f.id)?'#EAF3DE':'var(--color-background-primary)', marginBottom:6, cursor:'pointer' }}>
-              <div style={{ width:20, height:20, borderRadius:5, border:`1.5px solid ${fichasSel.includes(f.id)?'#1D9E75':'var(--color-border-tertiary)'}`, background:fichasSel.includes(f.id)?'#1D9E75':'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'white', fontSize:11 }}>
+        ) : todasFichas.map(f=>(
+          <div key={f.id} className="option-card" style={{marginBottom:6}} onClick={()=>setFichasSel(p=>p.includes(f.id)?p.filter(x=>x!==f.id):[...p,f.id])}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:20,height:20,borderRadius:5,border:`1.5px solid ${fichasSel.includes(f.id)?'var(--copper)':'var(--border)'}`,background:fichasSel.includes(f.id)?'var(--copper)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:12}}>
                 {fichasSel.includes(f.id)&&'✓'}
               </div>
-              <div style={{flex:1}}><div style={{fontSize:12,fontWeight:500}}>{f.nomePrato}</div><div style={S.muted}>{f.classificacao} · {f.numPorcoes} porções</div></div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600,fontSize:14}}>{f.nomePrato}</div>
+                <div className="muted">{f.classificacao} · {f.numPorcoes} porções</div>
+              </div>
             </div>
-          ))
-        )}
-        <button style={S.btnVerde(fichasSel.length===0)} disabled={fichasSel.length===0} onClick={guardarFichas}>Continuar para grupos →</button>
-      </AccSection>
+          </div>
+        ))}
+        <button className="btn btn-primary btn-block" disabled={fichasSel.length===0} onClick={guardarFichas} style={{marginTop:8}}>Continuar para grupos →</button>
+      </Acc>
 
       {/* SECÇÃO 2 — GRUPOS */}
-      <AccSection icon="👥" title="Distribuição de grupos" desc={feita(2)?`${alunos.length} alunos distribuídos`:'Atribui alunos às fichas'}
-        status={feita(2)?'Completo':secAberta===2?'Em curso':'Pendente'}
-        statusBg={feita(2)?'#EAF3DE':secAberta===2?'#E6F1FB':'var(--color-background-secondary)'}
-        statusColor={feita(2)?'#3B6D11':secAberta===2?'#185FA5':'var(--color-text-secondary)'}
-        open={secAberta===2} onToggle={()=>feita(1)&&abrir(2)} done={feita(2)}>
+      <Acc num={2} icon="👥" title="Distribuição de grupos" desc={feita(2)?`${alunos.length} alunos distribuídos`:'Atribui alunos às fichas'} status={status(2)} open={secAberta===2} locked={!feita(1)} onToggle={()=>feita(1)&&setSecAberta(2)}>
         {fichasSelecionadas.map(f=>(
-          <div key={f.id} style={{marginBottom:12}}>
-            <div style={{fontSize:12,fontWeight:500,color:'#085041',marginBottom:6,padding:'6px 10px',background:'#EAF3DE',borderRadius:8}}>{f.nomePrato}</div>
-            {alunos.length===0&&<div style={S.muted}>Sem alunos registados nesta turma.</div>}
+          <div key={f.id} style={{marginBottom:14}}>
+            <div style={{fontWeight:600,fontSize:13,color:'var(--copper)',marginBottom:8,padding:'6px 10px',background:'rgba(181,101,29,0.08)',borderRadius:8}}>{f.nomePrato}</div>
+            {alunos.length===0&&<p className="muted">Sem alunos registados nesta turma.</p>}
             {alunos.map(a=>{
-              const g = grupos[f.id]?.[a.id]||null;
-              return (
-                <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 0',borderBottom:'0.5px solid var(--color-border-tertiary)'}}>
-                  <div style={{width:26,height:26,borderRadius:'50%',background:'#9FE1CB',display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:500,color:'#085041',flexShrink:0}}>{a.numero}</div>
-                  <span style={{flex:1,fontSize:12}}>{a.nome||`Aluno ${a.numero}`}</span>
+              const g=grupos[f.id]?.[a.id]||null;
+              return(
+                <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+                  <div style={{width:28,height:28,borderRadius:'50%',background:'rgba(107,124,94,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'var(--sage)',flexShrink:0}}>{a.numero}</div>
+                  <span style={{flex:1,fontSize:13}}>{a.nome||`Aluno ${a.numero}`}</span>
                   <div style={{display:'flex',gap:4}}>
-                    {(['A','B','C'] as const).map(gr=>(
-                      <button key={gr} onClick={()=>setGrupo(f.id,a.id,g===gr?null:gr)} style={{padding:'3px 8px',borderRadius:20,border:'0.5px solid var(--color-border-tertiary)',background:g===gr?'#085041':'var(--color-background-secondary)',color:g===gr?'white':'var(--color-text-secondary)',fontSize:10,fontWeight:g===gr?500:400,cursor:'pointer'}}>Gr {gr}</button>
+                    {(['A','B'] as const).map(gr=>(
+                      <button key={gr} onClick={()=>setGrupos(p=>({...p,[f.id]:{...p[f.id],[a.id]:g===gr?null:gr}}))} className="btn btn-ghost" style={{padding:'4px 10px',fontSize:11,fontWeight:600,background:g===gr?'var(--charcoal)':'transparent',color:g===gr?'var(--cream)':'var(--charcoal)',borderColor:g===gr?'var(--charcoal)':'var(--border)'}}>
+                        {gr}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -294,124 +273,115 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
             })}
           </div>
         ))}
-        {alunos.length===0&&fichasSelecionadas.length===0&&<div style={S.muted}>Seleciona fichas primeiro.</div>}
-        <button style={S.btnVerde()} onClick={guardarGrupos}>Continuar para competências →</button>
-      </AccSection>
+        <button className="btn btn-primary btn-block" onClick={guardarGrupos} style={{marginTop:8}}>Continuar para competências →</button>
+      </Acc>
 
       {/* SECÇÃO 3 — COMPETÊNCIAS */}
-      <AccSection icon="⭐" title="Competências" desc={feita(3)?`${COMP_PERM.length} permanentes + ${compOpc.length} opcionais`:'Define o que vai ser avaliado'}
-        status={feita(3)?'Completo':secAberta===3?'Em curso':'Pendente'}
-        statusBg={feita(3)?'#EAF3DE':secAberta===3?'#E6F1FB':'var(--color-background-secondary)'}
-        statusColor={feita(3)?'#3B6D11':secAberta===3?'#185FA5':'var(--color-text-secondary)'}
-        open={secAberta===3} onToggle={()=>feita(2)&&abrir(3)} done={feita(3)}>
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:11,fontWeight:500,color:'#854F0B',marginBottom:6}}>Permanentes — sempre avaliadas</div>
+      <Acc num={3} icon="⭐" title="Competências" desc={feita(3)?`${COMP_PERM.length} permanentes + ${compOpc.length} opcionais`:'Define o que vai ser avaliado'} status={status(3)} open={secAberta===3} locked={!feita(2)} onToggle={()=>feita(2)&&setSecAberta(3)}>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:12,fontWeight:600,color:'var(--copper)',marginBottom:6}}>Permanentes — sempre avaliadas</div>
           {COMP_PERM.map(c=>(
-            <div key={c} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:8,background:'#FAEEDA',marginBottom:4}}>
-              <span style={{fontSize:12}}>🔒</span><span style={{fontSize:12,flex:1}}>{c}</span>
+            <div key={c} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',borderRadius:8,background:'rgba(181,101,29,0.06)',border:'1px solid rgba(181,101,29,0.15)',marginBottom:4}}>
+              <span style={{fontSize:12,color:'var(--copper)'}}>🔒</span>
+              <span style={{fontSize:13}}>{c}</span>
             </div>
           ))}
         </div>
         <div>
-          <div style={{fontSize:11,fontWeight:500,color:'#185FA5',marginBottom:6}}>Opcionais do professor — máx. 2</div>
+          <div style={{fontSize:12,fontWeight:600,color:'var(--sage)',marginBottom:6}}>Opcionais do professor — máx. 2</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
             {COMP_OPC.map(c=>{
               const sel=compOpc.includes(c);
               return(
-                <div key={c} onClick={()=>toggleComp(c)} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 9px',borderRadius:8,border:`0.5px solid ${sel?'#378ADD':'var(--color-border-tertiary)'}`,background:sel?'#E6F1FB':'var(--color-background-secondary)',cursor:'pointer',fontSize:11}}>
-                  <span style={{color:sel?'#185FA5':'var(--color-text-secondary)',flexShrink:0}}>{sel?'✓':'+'}</span>
-                  <span style={{color:sel?'#0C447C':'var(--color-text-secondary)',fontWeight:sel?500:400,lineHeight:1.3}}>{c}</span>
+                <div key={c} onClick={()=>setCompOpc(p=>p.includes(c)?p.filter(x=>x!==c):[...p,c].slice(0,2))} className={`option-card${sel?' selected':''}`} style={{padding:'7px 10px',marginBottom:0,display:'flex',alignItems:'center',gap:6}}>
+                  <span style={{fontSize:11,color:sel?'var(--copper)':'rgba(31,27,22,0.3)',flexShrink:0}}>{sel?'✓':'+'}</span>
+                  <span style={{fontSize:12,lineHeight:1.3}}>{c}</span>
                 </div>
               );
             })}
           </div>
-          {compOpc.length>=2&&<div style={{fontSize:10,color:'#854F0B',marginTop:6,background:'#FAEEDA',padding:'5px 8px',borderRadius:6}}>Máximo de 2 competências opcionais atingido.</div>}
+          {compOpc.length>=2&&<p className="muted" style={{marginTop:6,fontSize:12}}>Máximo de 2 competências opcionais atingido.</p>}
         </div>
-        {fichasSelecionadas.some(f=>f.tecnicasSugeridas?.length>0)&&(
-          <div style={{marginTop:12}}>
-            <div style={{fontSize:11,fontWeight:500,color:'#534AB7',marginBottom:6}}>Técnicas das fichas selecionadas</div>
-            {fichasSelecionadas.map(f=>f.tecnicasSugeridas?.length>0&&(
-              <div key={f.id} style={{marginBottom:6}}>
-                <div style={{fontSize:11,fontWeight:500,marginBottom:3}}>{f.nomePrato}</div>
-                <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
-                  {f.tecnicasSugeridas.map(t=><span key={t} style={{fontSize:10,padding:'2px 7px',borderRadius:20,background:'#EEEDFE',color:'#534AB7'}}>{t}</span>)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        <button style={S.btnVerde()} onClick={()=>concluir(3)}>Continuar para publicar →</button>
-      </AccSection>
+        <button className="btn btn-primary btn-block" onClick={()=>concluir(3)} style={{marginTop:10}}>Continuar para publicar →</button>
+      </Acc>
 
       {/* SECÇÃO 4 — PUBLICAR */}
-      <AccSection icon="🚀" title="Publicar plano" desc="Tornar visível para os alunos"
-        status={publicado?'Publicado':secAberta===4?'Pronto':'Pendente'}
-        statusBg={publicado?'#EAF3DE':secAberta===4?'#EAF3DE':'var(--color-background-secondary)'}
-        statusColor={publicado?'#3B6D11':secAberta===4?'#3B6D11':'var(--color-text-secondary)'}
-        open={secAberta===4} onToggle={()=>feita(3)&&abrir(4)} done={publicado}>
-        <div style={{textAlign:'center',padding:'10px 0'}}>
-          <div style={{fontSize:36,marginBottom:8}}>📋</div>
-          <div style={{fontSize:14,fontWeight:500,marginBottom:4}}>{dados.titulo||`Plano ${dados.data}`}</div>
-          <div style={S.muted}>{dados.data} · {dados.horaInicio}-{dados.horaFim}</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginTop:14}}>
-            {[['Fichas',fichasSel.length],['Alunos',alunos.length],['Compet.',COMP_PERM.length+compOpc.length]].map(([l,v])=>(
-              <div key={String(l)} style={{background:'var(--color-background-secondary)',borderRadius:8,padding:'8px 4px'}}>
-                <div style={{fontSize:20,fontWeight:500,color:'#085041'}}>{v}</div>
-                <div style={S.muted}>{l}</div>
+      <Acc num={4} icon="🚀" title="Publicar plano" desc="Tornar visível para os alunos" status={publicado?'done':status(4)} open={secAberta===4} locked={!feita(3)} onToggle={()=>feita(3)&&setSecAberta(4)}>
+        <div style={{textAlign:'center',padding:'14px 0'}}>
+          <div style={{fontSize:40,marginBottom:10}}>📋</div>
+          <div className="display" style={{fontSize:18,marginBottom:4}}>{dados.titulo||`Plano ${dados.data}`}</div>
+          <p className="muted">{dados.data} · {dados.horaInicio}–{dados.horaFim}</p>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,margin:'16px 0'}}>
+            {[['Fichas',fichasSel.length],['Alunos',alunos.length],['Competências',COMP_PERM.length+compOpc.length]].map(([l,v])=>(
+              <div key={String(l)} style={{background:'rgba(181,101,29,0.06)',border:'1px solid rgba(181,101,29,0.15)',borderRadius:10,padding:'10px 6px',textAlign:'center'}}>
+                <div style={{fontFamily:'Fraunces, serif',fontSize:24,fontWeight:700,color:'var(--copper)'}}>{v}</div>
+                <div className="muted" style={{fontSize:12}}>{l}</div>
               </div>
             ))}
           </div>
         </div>
-        {!publicado&&<button style={{...S.btnVerde(),background:'#085041'}} onClick={publicar}>🚀 Publicar plano de aula</button>}
-        {publicado&&<div style={{textAlign:'center',padding:'10px',background:'#EAF3DE',borderRadius:8,color:'#3B6D11',fontSize:13,fontWeight:500}}>✓ Plano publicado — os alunos já podem aceder</div>}
-      </AccSection>
+        {!publicado
+          ? <button className="btn btn-primary btn-block" onClick={publicar} style={{background:'var(--charcoal)'}}>🚀 Publicar plano de aula</button>
+          : <div style={{textAlign:'center',padding:'12px',background:'rgba(107,124,94,0.12)',borderRadius:10,color:'var(--sage)',fontWeight:600}}>✓ Publicado — os alunos já podem aceder</div>
+        }
+      </Acc>
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════
-// GRELHA DE AVALIAÇÃO
+// GRELHA
 // ═══════════════════════════════════════════════════════════════
 function GrelhaAvaliacao({ plano, turmaId, onVoltar }: { plano:TPlanoAula; turmaId:string; onVoltar:()=>void }) {
   const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
   const fichas = getFichasProducao().filter(f=>plano.fichasIds.includes(f.id));
-  const comps = COMP_PERM.slice(0,4).map(n=>({id:n,abrev:n.split(' ').slice(0,2).join(' ')}));
+  const comps = COMP_PERM.map(n=>({id:n,abrev:n.split(' ').slice(0,2).join(' ')}));
   type Nota='S'|'A'|'R'|null;
-  const [notas,setNotas] = useState<Record<string,Record<string,Nota>>>(()=>Object.fromEntries(alunos.map(a=>[a.id,Object.fromEntries(comps.map(c=>[c.id,null]))])));
-  const COR: Record<string,{bg:string;border:string;color:string}> = {S:{bg:'#EAF3DE',border:'#639922',color:'#3B6D11'},A:{bg:'#E6F1FB',border:'#378ADD',color:'#0C447C'},R:{bg:'#FCEBEB',border:'#E24B4A',color:'#A32D2D'}};
+  const [notas,setNotas]=useState<Record<string,Record<string,Nota>>>(()=>Object.fromEntries(alunos.map(a=>[a.id,Object.fromEntries(comps.map(c=>[c.id,null]))])));
+
+  const COR={S:{bg:'rgba(107,124,94,0.15)',color:'var(--sage)',border:'var(--sage)'},A:{bg:'rgba(31,27,22,0.06)',color:'var(--charcoal)',border:'var(--charcoal)'},R:{bg:'rgba(179,65,58,0.1)',color:'var(--danger)',border:'var(--danger)'}};
 
   return (
     <div>
-      <div style={{background:'#085041',borderRadius:12,padding:'14px 16px',marginBottom:12}}>
-        <button onClick={onVoltar} style={{background:'rgba(255,255,255,0.15)',border:'none',borderRadius:8,padding:'5px 10px',color:'white',fontSize:11,cursor:'pointer',marginBottom:8}}>← Planos</button>
-        <div style={{fontSize:15,fontWeight:500,color:'white'}}>{plano.titulo}</div>
-        <div style={{fontSize:11,color:'rgba(255,255,255,0.7)',marginTop:2}}>{plano.data} · Grelha de avaliação</div>
+      <div style={{background:'var(--charcoal)',borderRadius:14,padding:'18px',marginBottom:16}}>
+        <button onClick={onVoltar} className="btn" style={{fontSize:11,padding:'5px 10px',background:'rgba(247,241,230,0.1)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.15)',marginBottom:10}}>← Planos</button>
+        <div className="display" style={{fontSize:18,color:'var(--cream)'}}>{plano.titulo}</div>
+        <div style={{fontSize:12,color:'rgba(247,241,230,0.5)',marginTop:2}}>{plano.data} · Grelha de avaliação</div>
       </div>
+
       {fichas.length>0&&(
-        <div style={{...S.card,marginBottom:10}}>
-          <div style={{fontSize:12,fontWeight:500,color:'#085041',marginBottom:6}}>Fichas desta aula</div>
-          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>{fichas.map(f=><span key={f.id} style={{fontSize:10,padding:'3px 8px',borderRadius:20,background:'#EAF3DE',color:'#085041'}}>{f.nomePrato}</span>)}</div>
+        <div className="card" style={{marginBottom:10}}>
+          <div style={{fontSize:12,fontWeight:600,color:'var(--copper)',marginBottom:8}}>Fichas desta aula</div>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            {fichas.map(f=><span key={f.id} className="stamp copper">{f.nomePrato}</span>)}
+          </div>
         </div>
       )}
+
       <div style={{overflowX:'auto',marginBottom:10}}>
-        <table style={{borderCollapse:'collapse',width:'100%',minWidth:400}}>
+        <table style={{borderCollapse:'collapse',width:'100%',minWidth:400,fontSize:13}}>
           <thead>
-            <tr style={{background:'#085041',color:'white'}}>
-              <th style={{padding:'8px 10px',textAlign:'left',fontSize:11,fontWeight:500,minWidth:90}}>Aluno</th>
-              {comps.map(c=><th key={c.id} style={{padding:'6px 4px',fontSize:10,fontWeight:500,textAlign:'center',minWidth:70}}>{c.abrev}</th>)}
+            <tr style={{background:'var(--charcoal)',color:'var(--cream)'}}>
+              <th style={{padding:'8px 12px',textAlign:'left',fontWeight:500,minWidth:100}}>Aluno</th>
+              {comps.map(c=><th key={c.id} style={{padding:'8px 6px',fontWeight:500,textAlign:'center',fontSize:11,minWidth:70}}>{c.abrev}</th>)}
             </tr>
           </thead>
           <tbody>
             {alunos.map((a,ai)=>(
-              <tr key={a.id} style={{background:ai%2===0?'var(--color-background-primary)':'var(--color-background-secondary)'}}>
-                <td style={{padding:'8px 10px',fontSize:12,fontWeight:500,borderBottom:'0.5px solid var(--color-border-tertiary)'}}>{a.nome||`Aluno ${a.numero}`}</td>
+              <tr key={a.id} style={{background:ai%2===0?'#fff':'var(--cream)'}}>
+                <td style={{padding:'8px 12px',fontWeight:500,borderBottom:'1px solid var(--border)'}}>{a.nome||`Aluno ${a.numero}`}</td>
                 {comps.map(c=>{
                   const v=notas[a.id]?.[c.id]||null;
                   return(
-                    <td key={c.id} style={{padding:'4px 3px',textAlign:'center',borderBottom:'0.5px solid var(--color-border-tertiary)'}}>
+                    <td key={c.id} style={{padding:'4px 4px',textAlign:'center',borderBottom:'1px solid var(--border)'}}>
                       <div style={{display:'flex',gap:2,justifyContent:'center'}}>
                         {(['S','A','R'] as Nota[]).map(bv=>(
-                          <button key={String(bv)} onClick={()=>setNotas(p=>({...p,[a.id]:{...p[a.id],[c.id]:p[a.id][c.id]===bv?null:bv}}))} style={{width:22,height:22,borderRadius:5,fontSize:9,fontWeight:700,cursor:'pointer',border:`0.5px solid ${v===bv?COR[bv!].border:'var(--color-border-tertiary)'}`,background:v===bv?COR[bv!].bg:'var(--color-background-secondary)',color:v===bv?COR[bv!].color:'var(--color-text-secondary)'}}>{bv}</button>
+                          <button key={String(bv)} onClick={()=>setNotas(p=>({...p,[a.id]:{...p[a.id],[c.id]:p[a.id][c.id]===bv?null:bv}}))}
+                            className="btn" style={{width:24,height:24,padding:0,fontSize:10,fontWeight:700,
+                              background:v===bv?COR[bv!].bg:'transparent',
+                              color:v===bv?COR[bv!].color:'rgba(31,27,22,0.25)',
+                              border:`1px solid ${v===bv?COR[bv!].border:'var(--border)'}`,
+                              borderRadius:6}}>{bv}</button>
                         ))}
                       </div>
                     </td>
@@ -422,12 +392,16 @@ function GrelhaAvaliacao({ plano, turmaId, onVoltar }: { plano:TPlanoAula; turma
           </tbody>
         </table>
       </div>
-      <div style={{display:'flex',gap:12,fontSize:11,color:'var(--color-text-secondary)',marginBottom:10}}>
-        {[['#639922','S — dentro'],['#378ADD','A — acima'],['#E24B4A','R — reforço']].map(([cor,l])=>(
-          <span key={l} style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:9,height:9,borderRadius:'50%',background:cor,display:'inline-block'}}/>{l}</span>
+
+      <div style={{display:'flex',gap:14,fontSize:12,color:'var(--charcoal)',opacity:0.6,marginBottom:12}}>
+        {[['var(--sage)','S — dentro do esperado'],['var(--charcoal)','A — acima'],['var(--danger)','R — necessita reforço']].map(([cor,l])=>(
+          <span key={l} style={{display:'flex',alignItems:'center',gap:4}}>
+            <span style={{width:8,height:8,borderRadius:'50%',background:cor,display:'inline-block'}}/>{l}
+          </span>
         ))}
       </div>
-      <button style={{...S.btnVerde(),background:'#085041'}} onClick={()=>alert('Avaliações guardadas!')}>Guardar avaliações</button>
+
+      <button className="btn btn-primary btn-block" style={{background:'var(--charcoal)'}} onClick={()=>alert('Avaliações guardadas!')}>Guardar avaliações</button>
     </div>
   );
 }
