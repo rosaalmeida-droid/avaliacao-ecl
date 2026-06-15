@@ -1,12 +1,57 @@
 // Ponte entre o sistema antigo e as novas competências atitudinais
-// Re-exporta de competenciasAtitudinais.ts com os nomes esperados pelo AlunoView
+// Garante compatibilidade entre snake_case e camelCase no AlunoView
 
-export { TODAS_COMPETENCIAS as ATITUDES_22, PERMANENTES_IDS, CompAtitudinal as CompetenciaAtitudinal, getCompsPorContexto as getCompetenciasContexto, getCompAtitudinal } from './competenciasAtitudinais';
-import { PERMANENTES } from './competenciasAtitudinais';
+import {
+  TODAS_COMPETENCIAS,
+  PERMANENTES,
+  PERMANENTES_IDS,
+  getCompsPorContexto,
+  getCompAtitudinal,
+  CompAtitudinal,
+} from './competenciasAtitudinais';
 
-export function getCompetenciasPermanentes() { return PERMANENTES; }
+export type EstadoProgressao =
+  | 'inicial'
+  | 'em_desenvolvimento'
+  | 'consolidado'
+  | 'avancado';
 
-export type EstadoProgressao = 'inicial' | 'em_desenvolvimento' | 'consolidado' | 'avancado';
+export type CompetenciaAtitudinal = CompAtitudinal & {
+  observar: string[];
+  naoObservar: string[];
+  nao_observar: string[];
+};
+
+function adaptarComp(comp: CompAtitudinal): CompetenciaAtitudinal {
+  const c = comp as any;
+
+  return {
+    ...comp,
+    observar: c.observar || c.o_que_observar || [],
+    naoObservar: c.naoObservar || c.nao_observar || [],
+    nao_observar: c.nao_observar || c.naoObservar || [],
+  };
+}
+
+export const ATITUDES_22: CompetenciaAtitudinal[] =
+  TODAS_COMPETENCIAS.map(adaptarComp);
+
+export function getCompetenciasPermanentes(): CompetenciaAtitudinal[] {
+  return PERMANENTES.map(adaptarComp);
+}
+
+export function getCompetenciasContexto(
+  contexto: 'individual' | 'equipa' | 'servico' | 'coordenacao'
+): CompetenciaAtitudinal[] {
+  return getCompsPorContexto(contexto).map(adaptarComp);
+}
+
+export function getCompetenciaAtitudinal(id: string): CompetenciaAtitudinal | undefined {
+  const comp = getCompAtitudinal(id);
+  return comp ? adaptarComp(comp) : undefined;
+}
+
+export { PERMANENTES_IDS };
 
 export const ESTADO_LABEL: Record<EstadoProgressao, string> = {
   inicial: 'Inicial',
