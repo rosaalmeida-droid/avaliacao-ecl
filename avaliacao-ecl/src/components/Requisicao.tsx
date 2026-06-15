@@ -1,621 +1,355 @@
 import React, { useState, useEffect } from 'react';
+import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getRequisicaoPorPlano } from '../backend';
+import { PlanoAula, FichaProducao } from '../types';
 
-interface LinhaIngrediente {
-  qtReceita: string;
-  nome: string;
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz2cG3QNBEZhb-kOms-GdwSewBSsYobITfWevftLylckjfRmYW1GbCNIzqjSxch6ik/exec';
+
+interface LinhaAgregada {
+  produto: string;
   und: string;
+  qtTotal: number;
   preco: string;
+  fichas: string[];
 }
 
-interface DadosRequisicao {
-  nomeReceita: string;
-  familia: string;
-  paxTotal: number;
-  paxReceita: number;
-  bevCost: number;
-  quebras: number;
-  consumo: { bar: boolean; rest: boolean; interno: boolean; convidados: boolean };
-  turma: string;
-  dataAula: string;
-  formador: string;
-  atividade: string;
-  preparacao: string;
-  ingredientes: LinhaIngrediente[];
-}
-
-const VAZIA: DadosRequisicao = {
-  nomeReceita: '',
-  familia: '',
-  paxTotal: 15,
-  paxReceita: 1,
-  bevCost: 20,
-  quebras: 10,
-  consumo: { bar: false, rest: true, interno: false, convidados: false },
-  turma: '',
-  dataAula: new Date().toISOString().split('T')[0],
-  formador: '',
-  atividade: '',
-  preparacao: '',
-  ingredientes: Array(14).fill(null).map(() => ({
-    qtReceita: '',
-    nome: '',
-    und: '',
-    preco: '',
-  })),
-};
-
-const C = {
-  azul: '#daeef3',
-  laranja: '#fde9d9',
-  rosa: '#f2dbdb',
-  bege: '#eeece1',
-  branco: '#ffffff',
-};
-
-const inp: React.CSSProperties = {
-  border: 'none',
-  background: 'transparent',
-  fontFamily: 'Arial',
-  fontSize: 10,
-  width: '100%',
-  padding: '1px 2px',
-  outline: 'none',
-};
-
-const celula = (
-  bg: string,
-  align: 'left' | 'center' | 'right' = 'left',
-  bold = false
-): React.CSSProperties => ({
-  backgroundColor: bg,
-  textAlign: align,
-  fontWeight: bold ? 'bold' : 'normal',
-  fontFamily: 'Arial',
-  fontSize: 10,
-  padding: '2px 4px',
-  border: '1px solid #000000',
-  verticalAlign: 'middle',
-});
-
-const SHEETS_URL =
-  'https://script.google.com/macros/s/AKfycbz2cG3QNBEZhb-kOms-GdwSewBSsYobITfWevftLylckjfRmYW1GbCNIzqjSxch6ik/exec';
-
-export default function Requisicao() {
-  const [dados, setDados] = useState<DadosRequisicao>(() => {
-    try {
-      const s = localStorage.getItem('ecl_req');
-      if (s) return JSON.parse(s);
-    } catch {}
-    return VAZIA;
+function agregarIngredientes(fichas: FichaProducao[], paxTotal: number): LinhaAgregada[] {
+  const mapa = new Map<string, LinhaAgregada>();
+  fichas.forEach(f => {
+    const paxBase = parseFloat(f.numPorcoes) || 1;
+    const fator = paxTotal / paxBase;
+    f.ingredientes.forEach(ing => {
+      if (!ing.produto) return;
+      const chave = `${ing.produto.toLowerCase().trim()}__${(ing.un||'').toLowerCase()}`;
+      const qt = (parseFloat(String(ing.qt).replace(',','.')) || 0) * fator;
+      if (mapa.has(chave)) {
+        const l = mapa.get(chave)!;
+        l.qtTotal += qt;
+        if (!l.fichas.includes(f.nomePrato)) l.fichas.push(f.nomePrato);
+      } else {
+        mapa.set(chave, { produto: ing.produto, und: ing.un||'', qtTotal: qt, preco: '', fichas: [f.nomePrato] });
+      }
+    });
   });
+  return Array.from(mapa.values());
+}
 
-  const [buscando, setBuscando] = useState<number | null>(null);
+// ── Estilos ───────────────────────────────────────────────────
+const card: React.CSSProperties = { background:'#fff', border:'1px solid rgba(31,27,22,0.12)', borderRadius:14, padding:'18px', marginBottom:14, boxShadow:'0 2px 12px rgba(31,27,22,0.08)' };
+const muted: React.CSSProperties = { fontSize:13, opacity:0.6 };
+const inp: React.CSSProperties = { width:'100%', fontFamily:'Inter,sans-serif', fontSize:14, padding:'9px 12px', borderRadius:10, border:'1px solid rgba(31,27,22,0.12)', background:'#f7f1e6', color:'#1f1b16', boxSizing:'border-box' };
+const btnP: React.CSSProperties = { padding:'10px 18px', borderRadius:10, border:'none', background:'#b5651d', color:'white', fontWeight:600, fontSize:14, cursor:'pointer' };
+const btnG: React.CSSProperties = { padding:'10px 18px', borderRadius:10, border:'1px solid rgba(31,27,22,0.12)', background:'transparent', color:'#1f1b16', fontWeight:600, fontSize:14, cursor:'pointer' };
+
+// ═══════════════════════════════════════════════════════════════
+export default function Requisicao() {
+  const [fase, setFase] = useState<'escolher'|'editar'>('escolher');
+  const [planos] = useState(() => getPlanosAulaPorTurma('CP1').filter(p => p.estado === 'publicado' || p.estado === 'fichas_pendentes' || p.estado === 'rascunho'));
+  const [planoSel, setPlanoSel] = useState<PlanoAula|null>(null);
+  const [fichasSel, setFichasSel] = useState<string[]>([]);
+  const [paxTotal, setPaxTotal] = useState(15);
+  const [quebras, setQuebras] = useState(10);
+  const [bevCost, setBevCost] = useState(20);
+  const [consumo, setConsumo] = useState({ bar:false, rest:true, interno:false, convidados:false });
+  const [responsavelCompras, setResponsavelCompras] = useState('');
+  const [atividade, setAtividade] = useState('');
+  const [linhas, setLinhas] = useState<LinhaAgregada[]>([]);
   const [msg, setMsg] = useState('');
 
-  useEffect(() => {
+  const todasFichas = getFichasProducao();
+
+  function gerarLinhas() {
+    const fichas = todasFichas.filter(f => fichasSel.includes(f.id));
+    setLinhas(agregarIngredientes(fichas, paxTotal));
+    setFase('editar');
+  }
+
+  function setPreco(i: number, v: string) {
+    setLinhas(prev => { const n=[...prev]; n[i]={...n[i],preco:v}; return n; });
+  }
+
+  // Cálculos
+  const totReceita = linhas.reduce((s,l)=>{
+    const p=parseFloat(l.preco)||0;
+    return s + p*l.qtTotal;
+  },0);
+  const qbVal = totReceita*(quebras/100);
+  const crTotal = totReceita+qbVal;
+  const cr1pax = paxTotal>0 ? crTotal/paxTotal : 0;
+  const pvs = bevCost>0 ? cr1pax/(bevCost/100) : 0;
+  const pvp = pvs*1.13;
+
+  async function enviarSheets() {
+    setMsg('A enviar...');
+    const form = new FormData();
+    form.append('dados', JSON.stringify({
+      nomeReceita: planoSel?.titulo||'',
+      familia:'', paxTotal, paxReceita:1,
+      bevCost, quebras, consumo,
+      turma: planoSel?.turmaId||'',
+      dataAula: planoSel?.data||'',
+      formador: planoSel?.professor||'',
+      atividade, preparacao:'',
+      responsavelCompras,
+      ingredientes: linhas.map(l=>({ qtReceita:l.qtTotal.toFixed(3), nome:l.produto, und:l.und, preco:l.preco })),
+    }));
     try {
-      localStorage.setItem('ecl_req', JSON.stringify(dados));
-    } catch {}
-  }, [dados]);
-
-  const setD = (k: keyof DadosRequisicao, v: any) =>
-    setDados((p) => ({ ...p, [k]: v }));
-
-  const setIng = (i: number, k: keyof LinhaIngrediente, v: string) => {
-    const n = [...dados.ingredientes];
-    n[i] = { ...n[i], [k]: v };
-    setD('ingredientes', n);
-  };
-
-  const paxR = dados.paxReceita || 1;
-  const paxT = dados.paxTotal || 1;
-  const bevC = (dados.bevCost || 20) / 100;
-  const qbPct = (dados.quebras || 10) / 100;
-
-  let totR = 0;
-  let tot1p = 0;
-  let totE = 0;
-
-  dados.ingredientes.forEach((ing) => {
-    const p = parseFloat(ing.preco) || 0;
-    const q = parseFloat(ing.qtReceita) || 0;
-
-    if (p && q) {
-      totR += p * q;
-      tot1p += (p * q) / paxR;
-      totE += (p * q * paxT) / paxR;
-    }
-  });
-
-  const qbR = totR * qbPct;
-  const qb1p = tot1p * qbPct;
-  const qbE = totE * qbPct;
-
-  const crR = totR + qbR;
-  const cr1p = tot1p + qb1p;
-  const crE = totE + qbE;
-
-  const pvs = bevC > 0 ? cr1p / bevC : 0;
-  const pvp = pvs * 1.13;
-  const racio = cr1p > 0 ? pvs / cr1p : 0;
-  const margem = pvs - cr1p;
-
-  const fmt = (n: number, d = 2) => (n > 0 ? `${n.toFixed(d)} €` : '');
-  const fmtQ = (n: number) => (n > 0 ? n.toFixed(3) : '');
-
-  async function enviarParaSheets() {
-    setMsg('A enviar para Sheets...');
-
-    try {
-      const form = new FormData();
-      form.append('dados', JSON.stringify(dados));
-
-      await fetch(SHEETS_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: form,
-      });
-
+      await fetch(SHEETS_URL, { method:'POST', mode:'no-cors', body:form });
       setMsg('✓ Enviado para Google Sheets!');
-    } catch {
-      setMsg('Erro de ligação ao Sheets');
-    }
-
-    setTimeout(() => setMsg(''), 4000);
+    } catch { setMsg('Erro de ligação'); }
+    setTimeout(()=>setMsg(''),4000);
   }
 
-  function guardar() {
-    try {
-      localStorage.setItem('ecl_req', JSON.stringify(dados));
-      setMsg('✓ Guardado');
-      setTimeout(() => setMsg(''), 2000);
-    } catch {}
+  function guardarLocal() {
+    if(!planoSel) return;
+    addOrUpdateRequisicao({
+      id:`req_${planoSel.id}`,
+      planoAulaId:planoSel.id,
+      turmaId:planoSel.turmaId,
+      dataAula:planoSel.data,
+      professor:planoSel.professor,
+      fichasIds:fichasSel,
+      linhas:linhas.map((l,i)=>({id:`l${i}`,produto:l.produto,unidade:l.und,quantidadeTotal:l.qtTotal,precoUnitario:parseFloat(l.preco)||undefined,custoTotal:(parseFloat(l.preco)||0)*l.qtTotal,obs:''})),
+      custoTotal:crTotal,
+      estado:'rascunho',
+      criadaEm:new Date().toISOString(),
+      atualizadaEm:new Date().toISOString(),
+    });
+    setMsg('✓ Guardado!');
+    setTimeout(()=>setMsg(''),2000);
   }
 
-  async function buscarPreco(i: number) {
-    const nome = dados.ingredientes[i].nome;
-    if (!nome) return;
+  // ── FASE 1 — ESCOLHER PLANO E FICHAS ─────────────────────
+  if (fase==='escolher') {
+    const fichasDisponiveis = planoSel
+      ? todasFichas.filter(f => planoSel.fichasIds.includes(f.id))
+      : [];
+    const fichasLivres = todasFichas.filter(f => !fichasDisponiveis.find(fd=>fd.id===f.id));
 
-    setBuscando(i);
+    return (
+      <div>
+        <div style={{...card}}>
+          <div style={{fontFamily:'Fraunces,serif',fontSize:20,fontWeight:700,marginBottom:4}}>📋 Nova Requisição</div>
+          <div style={muted}>Escolhe um plano de aula e as fichas a incluir.</div>
+        </div>
 
-    try {
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 150,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [
-            {
-              role: 'user',
-              content: `Preço por kg ou litro de "${nome}" no Continente ou Pingo Doce Portugal. Responde APENAS com o número (ex: 2.50).`,
-            },
-          ],
-        }),
-      });
+        {/* Escolher plano */}
+        <div style={card}>
+          <div style={{fontWeight:600,fontSize:14,marginBottom:10,color:'#b5651d'}}>1. Plano de aula</div>
+          {planos.length===0 && <div style={muted}>Sem planos criados. Cria um plano primeiro.</div>}
+          {planos.map(p=>(
+            <div key={p.id} onClick={()=>{setPlanoSel(p);setFichasSel(p.fichasIds);setAtividade('');}} style={{
+              padding:'10px 12px',borderRadius:10,border:`1.5px solid ${planoSel?.id===p.id?'#b5651d':'rgba(31,27,22,0.12)'}`,
+              background:planoSel?.id===p.id?'rgba(181,101,29,0.06)':'#fff',marginBottom:6,cursor:'pointer',
+            }}>
+              <div style={{fontWeight:600,fontSize:14}}>{p.titulo}</div>
+              <div style={muted}>{p.data} · {p.fichasIds.length} fichas · {p.turmaId}</div>
+            </div>
+          ))}
+        </div>
 
-      const data = await r.json();
-      const txt = (data.content || []).map((c: any) => c.text || '').join('');
-      const m = txt.match(/[\d]+[.,][\d]+/);
+        {/* Escolher fichas */}
+        {planoSel && (
+          <div style={card}>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:6,color:'#b5651d'}}>2. Fichas a incluir</div>
+            <div style={{...muted,marginBottom:10}}>Seleciona as fichas cujos ingredientes vão entrar na requisição.</div>
 
-      if (m) {
-        const p = parseFloat(m[0].replace(',', '.'));
-        if (p > 0) setIng(i, 'preco', p.toFixed(2));
-      }
-    } catch {}
-
-    setBuscando(null);
-  }
-
-  const tabelaStyle: React.CSSProperties = {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontFamily: 'Arial',
-    fontSize: 10,
-  };
-
-  return (
-    <div style={{ padding: '8px', overflowX: 'auto' }}>
-      <table style={tabelaStyle}>
-        <tbody>
-          <tr>
-            <td
-              colSpan={3}
-              style={{
-                ...celula(C.bege),
-                border: '2px solid #000',
-                padding: '6px 8px',
-                fontSize: 9,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 20 }}>🏫</span>
-                <div>
-                  <div style={{ fontWeight: 'bold', fontSize: 11 }}>
-                    Escola de Comércio de Lisboa
+            {fichasDisponiveis.length>0 && (
+              <>
+                <div style={{fontSize:12,fontWeight:600,color:'#6b7c5e',marginBottom:6}}>Do plano selecionado</div>
+                {fichasDisponiveis.map(f=>(
+                  <div key={f.id} onClick={()=>setFichasSel(p=>p.includes(f.id)?p.filter(x=>x!==f.id):[...p,f.id])} style={{
+                    display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:8,
+                    border:`1px solid ${fichasSel.includes(f.id)?'#b5651d':'rgba(31,27,22,0.12)'}`,
+                    background:fichasSel.includes(f.id)?'rgba(181,101,29,0.06)':'#fff',marginBottom:5,cursor:'pointer',
+                  }}>
+                    <div style={{width:18,height:18,borderRadius:4,border:`1.5px solid ${fichasSel.includes(f.id)?'#b5651d':'rgba(31,27,22,0.2)'}`,background:fichasSel.includes(f.id)?'#b5651d':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:11}}>
+                      {fichasSel.includes(f.id)&&'✓'}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:500}}>{f.nomePrato}</div>
+                      <div style={muted}>{f.classificacao} · {f.numPorcoes} porções</div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 9 }}>FICHA TÉCNICA / REQUISIÇÃO</div>
-                </div>
-              </div>
-            </td>
-            <td colSpan={7} style={{ ...celula(C.branco), border: '2px solid #000' }} />
-          </tr>
+                ))}
+              </>
+            )}
 
-          <tr>
-            <td colSpan={2} style={{ ...celula(C.branco), fontWeight: 'bold' }}>
-              NOME DA RECEITA:
-            </td>
-            <td colSpan={5} style={celula(C.branco)}>
-              <input
-                style={{ ...inp, fontSize: 11, fontWeight: 'bold' }}
-                value={dados.nomeReceita}
-                onChange={(e) => setD('nomeReceita', e.target.value)}
-                placeholder="Nome da receita..."
-              />
-            </td>
-            <td colSpan={3} style={celula(C.branco)} />
-          </tr>
-
-          <tr>
-            <td style={{ ...celula(C.branco), fontWeight: 'bold' }}>Família:</td>
-            <td colSpan={2} style={celula(C.branco)}>
-              <input
-                style={inp}
-                value={dados.familia}
-                onChange={(e) => setD('familia', e.target.value)}
-                placeholder="ex: Bebidas"
-              />
-            </td>
-            <td style={{ ...celula(C.branco), fontWeight: 'bold' }}>Encomendas:</td>
-            <td style={celula(C.branco, 'center')}>
-              <input
-                style={{ ...inp, textAlign: 'center', width: 40 }}
-                type="number"
-                value={dados.paxTotal}
-                onChange={(e) => setD('paxTotal', parseInt(e.target.value) || 1)}
-              />
-            </td>
-            <td style={celula(C.branco)}>pax</td>
-            <td style={{ ...celula(C.branco), fontWeight: 'bold' }}>Receita para:</td>
-            <td style={celula(C.branco, 'center')}>
-              <input
-                style={{ ...inp, textAlign: 'center', width: 30 }}
-                type="number"
-                value={dados.paxReceita}
-                onChange={(e) => setD('paxReceita', parseInt(e.target.value) || 1)}
-              />
-            </td>
-            <td style={celula(C.branco)}>pax</td>
-            <td style={celula(C.branco)} />
-          </tr>
-
-          <tr>
-            <td style={celula(C.azul, 'center', true)}>Custo por Porção</td>
-            <td style={celula(C.azul, 'center', true)}>Margem Contrib.</td>
-            <td style={celula(C.azul, 'center', true)}>Preço Venda S/ IVA</td>
-            <td style={celula(C.azul, 'center', true)}>PVP c/ IVA</td>
-            <td colSpan={2} style={celula(C.azul, 'center')}>
-              13% IVA
-            </td>
-            <td style={celula(C.azul, 'center', true)}>Rácio</td>
-            <td style={celula(C.azul, 'center', true)}>Food Cost (%)</td>
-            <td colSpan={2} style={celula(C.branco)} />
-          </tr>
-
-          <tr>
-            <td style={celula(C.branco, 'center', true)}>{fmt(cr1p)}</td>
-            <td style={celula(C.branco, 'center', true)}>{fmt(margem)}</td>
-            <td style={celula(C.branco, 'center', true)}>{fmt(pvs)}</td>
-            <td style={celula(C.branco, 'center', true)}>{fmt(pvp)}</td>
-            <td colSpan={2} style={celula(C.branco)} />
-            <td style={celula(C.branco, 'center', true)}>
-              {racio > 0 ? racio.toFixed(2) : ''}
-            </td>
-            <td style={celula(C.branco, 'center')}>
-              <input
-                style={{ ...inp, textAlign: 'center', width: 35 }}
-                type="number"
-                value={dados.bevCost}
-                onChange={(e) => setD('bevCost', parseFloat(e.target.value) || 20)}
-              />
-              <span>%</span>
-            </td>
-            <td colSpan={2} style={celula(C.branco)} />
-          </tr>
-
-          <tr>
-            {[
-              'Quantidade 1 pax',
-              'Quantidade Receita',
-              'Ingredientes',
-              'Und',
-              'Quant. Encomenda',
-              'Preço Unitário',
-              'Preço Receita',
-              'Preço 1 pax',
-              'Preço Encomenda',
-            ].map((h) => (
-              <td key={h} style={{ ...celula(C.azul, 'center', true), border: '2px solid #000' }}>
-                {h}
-              </td>
-            ))}
-            <td style={celula(C.branco)} />
-          </tr>
-
-          {dados.ingredientes.map((ing, i) => {
-            const p = parseFloat(ing.preco) || 0;
-            const q = parseFloat(ing.qtReceita) || 0;
-            const prR = p && q ? p * q : 0;
-            const pr1p = p && q ? (p * q) / paxR : 0;
-            const prE = p && q ? (p * q * paxT) / paxR : 0;
-            const qt1p = q ? q / paxR : 0;
-            const qtEnc = q ? (q * paxT) / paxR : 0;
-            const bgRow = i % 2 === 0 ? C.branco : '#f7fbfd';
-
-            return (
-              <tr key={i}>
-                <td style={celula(bgRow, 'right')}>{fmtQ(qt1p)}</td>
-                <td style={celula(bgRow, 'right')}>
-                  <input
-                    style={{ ...inp, textAlign: 'right' }}
-                    type="number"
-                    step="0.001"
-                    value={ing.qtReceita}
-                    onChange={(e) => setIng(i, 'qtReceita', e.target.value)}
-                    placeholder="0,000"
-                  />
-                </td>
-                <td style={celula(bgRow)}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <input
-                      style={{ ...inp, flex: 1 }}
-                      value={ing.nome}
-                      onChange={(e) => setIng(i, 'nome', e.target.value)}
-                      placeholder="Ingrediente..."
-                    />
-                    {ing.nome && (
-                      <button
-                        onClick={() => buscarPreco(i)}
-                        disabled={buscando === i}
-                        style={{
-                          fontSize: 8,
-                          padding: '1px 3px',
-                          border: '1px solid #aaa',
-                          borderRadius: 2,
-                          background: '#f0f0f0',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {buscando === i ? '⏳' : '🔍'}
-                      </button>
-                    )}
+            {fichasLivres.length>0 && (
+              <>
+                <div style={{fontSize:12,fontWeight:600,color:'#6b7c5e',margin:'10px 0 6px'}}>Outras fichas disponíveis</div>
+                {fichasLivres.map(f=>(
+                  <div key={f.id} onClick={()=>setFichasSel(p=>p.includes(f.id)?p.filter(x=>x!==f.id):[...p,f.id])} style={{
+                    display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:8,
+                    border:`1px solid ${fichasSel.includes(f.id)?'#b5651d':'rgba(31,27,22,0.12)'}`,
+                    background:fichasSel.includes(f.id)?'rgba(181,101,29,0.06)':'#f7f1e6',marginBottom:5,cursor:'pointer',
+                  }}>
+                    <div style={{width:18,height:18,borderRadius:4,border:`1.5px solid ${fichasSel.includes(f.id)?'#b5651d':'rgba(31,27,22,0.2)'}`,background:fichasSel.includes(f.id)?'#b5651d':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:11}}>
+                      {fichasSel.includes(f.id)&&'✓'}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:500}}>{f.nomePrato}</div>
+                      <div style={muted}>{f.classificacao} · {f.numPorcoes} porções</div>
+                    </div>
                   </div>
-                </td>
-                <td style={celula(bgRow, 'center')}>
-                  <input
-                    style={{ ...inp, textAlign: 'center' }}
-                    value={ing.und}
-                    onChange={(e) => setIng(i, 'und', e.target.value)}
-                    placeholder="un"
-                  />
-                </td>
-                <td style={celula(bgRow, 'right')}>{fmtQ(qtEnc)}</td>
-                <td style={celula(bgRow, 'right')}>
-                  <input
-                    style={{ ...inp, textAlign: 'right' }}
-                    type="number"
-                    step="0.01"
-                    value={ing.preco}
-                    onChange={(e) => setIng(i, 'preco', e.target.value)}
-                    placeholder="0,00"
-                  />
-                </td>
-                <td style={celula(bgRow, 'right')}>{fmt(prR)}</td>
-                <td style={celula(bgRow, 'right')}>{fmt(pr1p)}</td>
-                <td style={celula(bgRow, 'right')}>{fmt(prE)}</td>
-                <td style={celula(C.branco)} />
-              </tr>
-            );
-          })}
+                ))}
+              </>
+            )}
+          </div>
+        )}
 
-          <tr>
-            <td colSpan={5} style={{ ...celula(C.branco), border: '2px solid #000' }}>
-              <strong>Preparação / Confeção:</strong>
-            </td>
-            <td style={{ ...celula(C.branco), border: '2px solid #000' }}>
-              <strong>Total Custo</strong>
-            </td>
-            <td style={{ ...celula(C.azul, 'right', true), border: '2px solid #000' }}>
-              {fmt(totR)}
-            </td>
-            <td style={{ ...celula(C.rosa, 'right', true), border: '2px solid #000' }}>
-              {fmt(tot1p)}
-            </td>
-            <td style={{ ...celula(C.azul, 'right', true), border: '2px solid #000' }}>
-              {fmt(totE)}
-            </td>
-            <td style={celula(C.branco)} />
-          </tr>
-
-          <tr>
-            <td
-              colSpan={5}
-              rowSpan={2}
-              style={{ ...celula(C.branco), border: '2px solid #000', verticalAlign: 'top' }}
-            >
-              <textarea
-                value={dados.preparacao}
-                onChange={(e) => setD('preparacao', e.target.value)}
-                rows={3}
-                style={{ ...inp, resize: 'none', width: '100%', fontSize: 9 }}
-                placeholder="Preparação / Confeção..."
-              />
-            </td>
-            <td style={{ ...celula(C.branco), border: '2px solid #000' }}>
-              Quebras{' '}
-              <input
-                type="number"
-                value={dados.quebras}
-                onChange={(e) => setD('quebras', parseFloat(e.target.value) || 10)}
-                style={{ ...inp, width: 25, textAlign: 'right', display: 'inline' }}
-              />
-              %
-            </td>
-            <td style={{ ...celula(C.laranja, 'right'), border: '2px solid #000' }}>
-              {fmt(qbR)}
-            </td>
-            <td style={{ ...celula(C.laranja, 'right'), border: '2px solid #000' }}>
-              {fmt(qb1p)}
-            </td>
-            <td style={{ ...celula(C.laranja, 'right'), border: '2px solid #000' }}>
-              {fmt(qbE)}
-            </td>
-            <td style={celula(C.branco)} />
-          </tr>
-
-          <tr>
-            <td style={{ ...celula(C.branco), border: '2px solid #000' }}>
-              <strong>Custo Real</strong>
-            </td>
-            <td style={{ ...celula(C.rosa, 'right', true), border: '2px solid #000' }}>
-              {fmt(crR)}
-            </td>
-            <td style={{ ...celula(C.rosa, 'right', true), border: '2px solid #000' }}>
-              {fmt(cr1p)}
-            </td>
-            <td style={{ ...celula(C.rosa, 'right', true), border: '2px solid #000' }}>
-              {fmt(crE)}
-            </td>
-            <td style={celula(C.branco)} />
-          </tr>
-
-          <tr>
-            <td colSpan={4} style={{ ...celula(C.branco), border: '2px solid #000' }}>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                <strong>Consumo:</strong>
-                {[
-                  ['bar', 'ECL BAR'],
-                  ['rest', 'ECL Restaurante'],
-                  ['interno', 'Consumo Interno'],
-                  ['convidados', 'Convidados'],
-                ].map(([k, l]) => (
-                  <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <input
-                      type="checkbox"
-                      checked={(dados.consumo as any)[k]}
-                      onChange={(e) =>
-                        setD('consumo', { ...dados.consumo, [k]: e.target.checked })
-                      }
-                    />
+        {/* Pax e dados */}
+        {planoSel && fichasSel.length>0 && (
+          <div style={card}>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:10,color:'#b5651d'}}>3. Dados da requisição</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+              <div><label style={{fontSize:12,fontWeight:600,display:'block',marginBottom:4}}>Nº de doses (pax total)</label><input style={inp} type="number" value={paxTotal} onChange={e=>setPaxTotal(Number(e.target.value))}/></div>
+              <div><label style={{fontSize:12,fontWeight:600,display:'block',marginBottom:4}}>Quebras (%)</label><input style={inp} type="number" value={quebras} onChange={e=>setQuebras(Number(e.target.value))}/></div>
+              <div><label style={{fontSize:12,fontWeight:600,display:'block',marginBottom:4}}>Beverage Cost (%)</label><input style={inp} type="number" value={bevCost} onChange={e=>setBevCost(Number(e.target.value))}/></div>
+              <div><label style={{fontSize:12,fontWeight:600,display:'block',marginBottom:4}}>Responsável compras</label><input style={inp} value={responsavelCompras} onChange={e=>setResponsavelCompras(e.target.value)} placeholder="Nome"/></div>
+            </div>
+            <div style={{marginBottom:10}}>
+              <label style={{fontSize:12,fontWeight:600,display:'block',marginBottom:4}}>Atividade</label>
+              <input style={inp} value={atividade} onChange={e=>setAtividade(e.target.value)} placeholder="ex: Almoço Erasmus — 2ºARB e 2ºACP"/>
+            </div>
+            <div>
+              <label style={{fontSize:12,fontWeight:600,display:'block',marginBottom:6}}>Consumo</label>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                {[['bar','ECL BAR'],['rest','ECL Restaurante'],['interno','Consumo Interno'],['convidados','Convidados']].map(([k,l])=>(
+                  <label key={k} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:8,border:`1px solid ${consumo[k as keyof typeof consumo]?'#b5651d':'rgba(31,27,22,0.12)'}`,background:consumo[k as keyof typeof consumo]?'rgba(181,101,29,0.06)':'#fff',cursor:'pointer',fontSize:13}}>
+                    <input type="checkbox" checked={consumo[k as keyof typeof consumo]} onChange={e=>setConsumo(p=>({...p,[k]:e.target.checked}))} style={{accentColor:'#b5651d'}}/>
                     {l}
                   </label>
                 ))}
               </div>
-              <strong>Atividade: </strong>
-              <input
-                style={{ ...inp, display: 'inline', width: '70%' }}
-                value={dados.atividade}
-                onChange={(e) => setD('atividade', e.target.value)}
-                placeholder="ex: Almoço Erasmus tour"
-              />
-            </td>
-
-            <td colSpan={3} style={{ ...celula(C.branco), border: '2px solid #000' }}>
-              <div>
-                <strong>Turma: </strong>
-                <input
-                  style={inp}
-                  value={dados.turma}
-                  onChange={(e) => setD('turma', e.target.value)}
-                />
-              </div>
-              <div>
-                <strong>Data aula: </strong>
-                <input
-                  type="date"
-                  style={inp}
-                  value={dados.dataAula}
-                  onChange={(e) => setD('dataAula', e.target.value)}
-                />
-              </div>
-              <div>
-                <strong>Formador: </strong>
-                <input
-                  style={inp}
-                  value={dados.formador}
-                  onChange={(e) => setD('formador', e.target.value)}
-                />
-              </div>
-            </td>
-
-            <td colSpan={3} style={{ ...celula(C.branco), border: '2px solid #000' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
-                <strong>Direção</strong>
-                <strong>Formador</strong>
-                <strong>Compras</strong>
-                <div style={{ borderTop: '1px solid #000', marginTop: 20 }} />
-                <div style={{ borderTop: '1px solid #000', marginTop: 20 }} />
-                <div style={{ borderTop: '1px solid #000', marginTop: 20 }} />
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          marginTop: 8,
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-        }}
-      >
-        {msg && (
-          <span
-            style={{
-              fontSize: 10,
-              padding: '3px 8px',
-              borderRadius: 3,
-              background: '#E2EFDA',
-              color: '#375623',
-            }}
-          >
-            {msg}
-          </span>
+            </div>
+          </div>
         )}
 
-        <button
-          onClick={() =>
-            setD('ingredientes', [
-              ...dados.ingredientes,
-              { qtReceita: '', nome: '', und: '', preco: '' },
-            ])
-          }
-        >
-          + Linha
-        </button>
+        {planoSel && fichasSel.length>0 && (
+          <button style={{...btnP,width:'100%'}} onClick={gerarLinhas}>
+            Gerar requisição com {fichasSel.length} ficha{fichasSel.length>1?'s':''} →
+          </button>
+        )}
+      </div>
+    );
+  }
 
-        <button
-          onClick={async () => {
-            for (let i = 0; i < dados.ingredientes.length; i++) {
-              if (dados.ingredientes[i].nome && !dados.ingredientes[i].preco) {
-                await buscarPreco(i);
-              }
-            }
-          }}
-          disabled={buscando !== null}
-        >
-          🔍 Buscar preços online
-        </button>
+  // ── FASE 2 — EDITAR E ENVIAR ──────────────────────────────
+  const fmt = (n:number) => n>0?`${n.toFixed(2)} €`:'—';
 
-        <button onClick={enviarParaSheets}>📊 Guardar no Sheets</button>
+  return (
+    <div>
+      <button style={{...btnG,marginBottom:12}} onClick={()=>setFase('escolher')}>← Voltar</button>
 
-        <button onClick={() => window.print()}>PDF / Imprimir</button>
+      {/* Cabeçalho */}
+      <div style={{...card,background:'#1f1b16',color:'#f7f1e6'}}>
+        <div style={{fontFamily:'Fraunces,serif',fontSize:18,fontWeight:700,marginBottom:4}}>{planoSel?.titulo||'Requisição'}</div>
+        <div style={{fontSize:12,opacity:0.6}}>{planoSel?.data} · {planoSel?.turmaId} · {planoSel?.professor}</div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:8}}>
+          {todasFichas.filter(f=>fichasSel.includes(f.id)).map(f=>(
+            <span key={f.id} style={{fontSize:11,padding:'2px 8px',borderRadius:20,background:'rgba(247,241,230,0.15)',color:'#f7f1e6'}}>{f.nomePrato}</span>
+          ))}
+        </div>
+      </div>
 
-        <button onClick={guardar}>Guardar</button>
+      {/* Totais */}
+      <div style={{...card}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,textAlign:'center'}}>
+          {[['Custo Real/pax',fmt(cr1pax)],['PVS s/IVA',fmt(pvs)],['PVP c/IVA',fmt(pvp)]].map(([l,v])=>(
+            <div key={l} style={{background:'rgba(181,101,29,0.06)',borderRadius:10,padding:'10px 6px'}}>
+              <div style={{fontFamily:'Fraunces,serif',fontSize:18,fontWeight:700,color:'#b5651d'}}>{v}</div>
+              <div style={{...muted,fontSize:11}}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Ingredientes agregados */}
+      <div style={card}>
+        <div style={{fontWeight:600,fontSize:14,marginBottom:10,color:'#b5651d'}}>Ingredientes consolidados</div>
+        <div style={{fontSize:11,opacity:0.5,marginBottom:8}}>Quantidades calculadas para {paxTotal} doses. Preenche os preços unitários.</div>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead>
+              <tr style={{background:'#1f1b16',color:'#f7f1e6'}}>
+                <th style={{padding:'8px 10px',textAlign:'left',fontWeight:500}}>Ingrediente</th>
+                <th style={{padding:'8px 6px',textAlign:'right',fontWeight:500,whiteSpace:'nowrap'}}>Qt. Total</th>
+                <th style={{padding:'8px 6px',textAlign:'left',fontWeight:500}}>Und</th>
+                <th style={{padding:'8px 6px',textAlign:'right',fontWeight:500,whiteSpace:'nowrap'}}>Preço/un €</th>
+                <th style={{padding:'8px 6px',textAlign:'right',fontWeight:500}}>Total</th>
+                <th style={{padding:'8px 6px',textAlign:'left',fontWeight:500,fontSize:10}}>Fichas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linhas.map((l,i)=>{
+                const p=parseFloat(l.preco)||0;
+                const tot=p*l.qtTotal;
+                return(
+                  <tr key={i} style={{background:i%2===0?'#fff':'#f7f1e6',borderBottom:'1px solid rgba(31,27,22,0.06)'}}>
+                    <td style={{padding:'7px 10px',fontWeight:500}}>{l.produto}</td>
+                    <td style={{padding:'7px 6px',textAlign:'right'}}>{l.qtTotal.toFixed(3)}</td>
+                    <td style={{padding:'7px 6px'}}>{l.und}</td>
+                    <td style={{padding:'4px 6px'}}>
+                      <input value={l.preco} onChange={e=>setPreco(i,e.target.value)} style={{...inp,padding:'4px 6px',fontSize:12,textAlign:'right',width:70}} placeholder="0.00"/>
+                    </td>
+                    <td style={{padding:'7px 6px',textAlign:'right',fontWeight:tot>0?500:400,color:tot>0?'#b5651d':'rgba(31,27,22,0.3)'}}>{tot>0?fmt(tot):'—'}</td>
+                    <td style={{padding:'7px 6px',fontSize:10,opacity:0.5}}>{l.fichas.join(', ')}</td>
+                  </tr>
+                );
+              })}
+              <tr style={{background:'rgba(181,101,29,0.06)',fontWeight:700}}>
+                <td colSpan={4} style={{padding:'8px 10px'}}>Total Custo Receita</td>
+                <td style={{padding:'8px 6px',textAlign:'right',color:'#b5651d'}}>{fmt(totReceita)}</td>
+                <td/>
+              </tr>
+              <tr style={{background:'rgba(181,101,29,0.04)'}}>
+                <td colSpan={4} style={{padding:'6px 10px'}}>Quebras {quebras}%</td>
+                <td style={{padding:'6px 6px',textAlign:'right'}}>{fmt(qbVal)}</td>
+                <td/>
+              </tr>
+              <tr style={{background:'rgba(179,65,58,0.06)',fontWeight:700}}>
+                <td colSpan={4} style={{padding:'8px 10px'}}>Custo Real</td>
+                <td style={{padding:'8px 6px',textAlign:'right',color:'#b3413a'}}>{fmt(crTotal)}</td>
+                <td/>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Consumo e atividade */}
+      <div style={card}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <div>
+            <div style={{fontWeight:600,fontSize:12,marginBottom:6}}>Consumo</div>
+            {[['bar','ECL BAR'],['rest','ECL Restaurante'],['interno','Consumo Interno'],['convidados','Convidados']].map(([k,l])=>(
+              <div key={k} style={{fontSize:12,padding:'3px 0',color:consumo[k as keyof typeof consumo]?'#b5651d':'rgba(31,27,22,0.4)'}}>
+                {consumo[k as keyof typeof consumo]?'✓':'○'} {l}
+              </div>
+            ))}
+          </div>
+          <div>
+            <div style={{fontWeight:600,fontSize:12,marginBottom:4}}>Turma</div>
+            <div style={{fontSize:13}}>{planoSel?.turmaId}</div>
+            <div style={{fontWeight:600,fontSize:12,marginTop:8,marginBottom:4}}>Data aula</div>
+            <div style={{fontSize:13}}>{planoSel?.data}</div>
+            <div style={{fontWeight:600,fontSize:12,marginTop:8,marginBottom:4}}>Formador</div>
+            <div style={{fontSize:13}}>{planoSel?.professor||'—'}</div>
+            <div style={{fontWeight:600,fontSize:12,marginTop:8,marginBottom:4}}>Resp. Compras</div>
+            <div style={{fontSize:13}}>{responsavelCompras||'—'}</div>
+          </div>
+        </div>
+        {atividade&&<div style={{marginTop:10,padding:'8px 10px',background:'#f7f1e6',borderRadius:8,fontSize:13}}><strong>Atividade:</strong> {atividade}</div>}
+      </div>
+
+      {/* Ações */}
+      {msg&&<div style={{padding:'10px 14px',background:'rgba(107,124,94,0.1)',borderRadius:10,fontSize:13,color:'#6b7c5e',marginBottom:10,fontWeight:500}}>{msg}</div>}
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        <button style={btnP} onClick={enviarSheets}>📊 Enviar para Sheets</button>
+        <button style={btnG} onClick={guardarLocal}>💾 Guardar</button>
+        <button style={btnG} onClick={()=>window.print()}>🖨️ Imprimir</button>
       </div>
     </div>
   );
 }
+
