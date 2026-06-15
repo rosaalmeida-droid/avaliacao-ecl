@@ -25,14 +25,12 @@ export default function App() {
       const numeroTexto = partes[partes.length - 1];
       const numero = parseInt(numeroTexto, 10) || 0;
 
-      const alunoObj: Aluno = {
+      setAluno({
         id: alunoId,
         turmaId: turmaIdRecebida || turmaId || 'CP1',
         numero,
         ano: 1,
-      };
-
-      setAluno(alunoObj);
+      });
     }
   }
 
@@ -83,13 +81,13 @@ export default function App() {
           </div>
 
           {vistaProfessor === 'planeamento' && <ProfessorView />}
-          {vistaProfessor === 'validacao' && <ValidacaoView />}
+          {vistaProfessor === 'validacao' && <ValidacaoView turmaId={turmaId} />}
         </div>
       )}
 
       {perfil === 'aluno' && aluno && <AlunoView aluno={aluno} />}
 
-      {perfil === 'coordenadora' && <CoordenadoraView turmaId={turmaId} />}
+      {perfil === 'coordenadora' && <CoordenadoraView />}
     </div>
   );
 }
