@@ -1298,7 +1298,7 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
               <div style={{ fontSize: 40, marginBottom: 10 }}>📄</div>
               <div className="display" style={{ fontSize: 18, marginBottom: 6 }}>Ainda não há fichas</div>
               <p className="muted">Cria a primeira ficha de produção.</p>
-              <Button onClick={novaFicha} style={{ marginTop: 10 }}>Criar ficha →</Button>
+              <Button onClick={novaFicha}>Criar ficha →</Button>
             </div>
           </Card>
         )}
