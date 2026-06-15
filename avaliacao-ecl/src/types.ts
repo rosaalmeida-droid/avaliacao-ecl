@@ -102,6 +102,9 @@ export interface AutoavaliacaoCompetencia {
 export interface SelecaoAluno {
   id: string;
   comandaId: string;
+  planoAulaId?: string;
+  fichaId?: string;
+  grupoId?: string;
   alunoId: string;
   turmaId: string;
   tecnicas: string[];
@@ -123,6 +126,9 @@ export interface Validacao {
   id: string;
   selecaoId: string;
   comandaId: string;
+  planoAulaId?: string;
+  fichaId?: string;
+  grupoId?: string;
   alunoId: string;
   turmaId: string;
   notas: NotaCompetencia[];
@@ -251,16 +257,16 @@ export interface ChecklistAlunoFicha {
   planoAulaId: string;
   fichaId: string;
   alunoId: string;
-  pontualidade: 'a_horas' | 'atrasado';
+  pontualidade?: 'a_horas' | 'atrasado';
   minutosAtraso?: number;
-  fardamento: boolean;
-  itensFardamento: string[];
+  fardamento?: boolean;
+  itensFardamento?: string[];
   ingredientesConfirmados: string[];
   passosConcluidos: string[];
   haccpConfirmado: string[];
   requisicaoVerificada?: boolean;
   comentario?: string;
-  haccpRegistado: boolean;
+  haccpRegistado?: boolean;
   atualizadoEm: string;
 }
 
