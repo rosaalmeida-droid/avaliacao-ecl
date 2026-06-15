@@ -1,6 +1,3 @@
-// Ponte entre o sistema antigo e as novas competências atitudinais
-// Garante compatibilidade entre snake_case e camelCase no AlunoView
-
 import {
   TODAS_COMPETENCIAS,
   PERMANENTES,
@@ -20,6 +17,7 @@ export type CompetenciaAtitudinal = CompAtitudinal & {
   observar: string[];
   naoObservar: string[];
   nao_observar: string[];
+  descritores: Record<EstadoProgressao, string>;
 };
 
 function adaptarComp(comp: CompAtitudinal): CompetenciaAtitudinal {
@@ -30,6 +28,12 @@ function adaptarComp(comp: CompAtitudinal): CompetenciaAtitudinal {
     observar: c.observar || c.o_que_observar || [],
     naoObservar: c.naoObservar || c.nao_observar || [],
     nao_observar: c.nao_observar || c.naoObservar || [],
+    descritores: c.descritores || {
+      inicial: 'Necessito de muita orientação.',
+      em_desenvolvimento: 'Consigo cumprir parcialmente, com alguma ajuda.',
+      consolidado: 'Cumpro de forma autónoma e consistente.',
+      avancado: 'Supero o esperado e ajudo a melhorar o trabalho.',
+    },
   };
 }
 
