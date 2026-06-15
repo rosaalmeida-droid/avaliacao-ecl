@@ -61,7 +61,7 @@ export default function App() {
           </div>
           {vistaProfessor === 'plano'      && <PlanoAula turmaId={turmaId} />}
           {vistaProfessor === 'ficha'      && <ProfessorView turmaId={turmaId} />}
-          {vistaProfessor === 'validacao'  && <ValidacaoView turmaId={turmaId} />}
+          {vistaProfessor === 'validacao'  && <ValidacaoView />}
           {vistaProfessor === 'requisicao' && <Requisicao />}
         </div>
       )}
@@ -71,5 +71,4 @@ export default function App() {
     </div>
   );
 }
-
 
