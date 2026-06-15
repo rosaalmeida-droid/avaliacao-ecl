@@ -33,31 +33,22 @@ export default function App() {
 
   if (!perfil) return <Login onLogin={handleLogin} />;
 
-  const tabStyle = (ativa: boolean) => ({
-    padding: '8px 12px', borderRadius: 8, border: 'none',
-    background: ativa ? '#1D9E75' : '#f2f2f2',
-    color: ativa ? 'white' : '#555', cursor: 'pointer',
-  });
-
   return (
-    <div style={{ maxWidth: 980, margin: '0 auto', padding: 12 }}>
+    <div className="app-shell">
       <Header perfil={perfil} onSair={sair} />
 
       {perfil === 'professor' && (
         <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-            <button onClick={() => setVistaProfessor('plano')} style={tabStyle(vistaProfessor === 'plano')}>
-              Plano de Aula
-            </button>
-            <button onClick={() => setVistaProfessor('ficha')} style={tabStyle(vistaProfessor === 'ficha')}>
-              Ficha de Produção
-            </button>
-            <button onClick={() => setVistaProfessor('validacao')} style={tabStyle(vistaProfessor === 'validacao')}>
-              Validação
-            </button>
-            <button onClick={() => setVistaProfessor('requisicao')} style={tabStyle(vistaProfessor === 'requisicao')}>
-              Requisição
-            </button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            {(['plano','ficha','validacao','requisicao'] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => setVistaProfessor(v)}
+                className={`btn ${vistaProfessor === v ? 'btn-primary' : 'btn-ghost'}`}
+              >
+                {v === 'plano' ? 'Plano de Aula' : v === 'ficha' ? 'Ficha de Produção' : v === 'validacao' ? 'Validação' : 'Requisição'}
+              </button>
+            ))}
           </div>
           {vistaProfessor === 'plano'      && <PlanoAula turmaId={turmaId} />}
           {vistaProfessor === 'ficha'      && <ProfessorView turmaId={turmaId} />}
@@ -71,4 +62,3 @@ export default function App() {
     </div>
   );
 }
-
