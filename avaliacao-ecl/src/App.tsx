@@ -6,12 +6,13 @@ import { ProfessorView } from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
 import { CoordenadoraView } from './components/CoordenadoraView';
+import Requisicao from './components/Requisicao';
 
 export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [aluno, setAluno] = useState<Aluno | null>(null);
   const [turmaId, setTurmaId] = useState<string>('CP1');
-  const [vistaProfessor, setVistaProfessor] = useState<'planeamento' | 'validacao'>('planeamento');
+  const [vistaProfessor, setVistaProfessor] = useState<'planeamento' | 'validacao' | 'requisicao'>('planeamento');
 
   function handleLogin(perfilRecebido: Perfil, alunoId?: string, turmaIdRecebida?: string) {
     setPerfil(perfilRecebido);
@@ -50,7 +51,7 @@ export default function App() {
 
       {perfil === 'professor' && (
         <div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <button
               onClick={() => setVistaProfessor('planeamento')}
               style={{
@@ -78,10 +79,25 @@ export default function App() {
             >
               Validação
             </button>
+
+            <button
+              onClick={() => setVistaProfessor('requisicao')}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: vistaProfessor === 'requisicao' ? '#1D9E75' : '#f2f2f2',
+                color: vistaProfessor === 'requisicao' ? 'white' : '#555',
+                cursor: 'pointer',
+              }}
+            >
+              Requisição
+            </button>
           </div>
 
           {vistaProfessor === 'planeamento' && <ProfessorView turmaId={turmaId} />}
           {vistaProfessor === 'validacao' && <ValidacaoView />}
+          {vistaProfessor === 'requisicao' && <Requisicao />}
         </div>
       )}
 
