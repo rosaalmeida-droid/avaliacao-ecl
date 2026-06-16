@@ -153,6 +153,21 @@ export function addOrUpdateRequisicao(r: RequisicaoAula): void {
 
 // ── Comandas / Seleções / Validações ─────────────────────────
 export function getComandas(): Comanda[] { return load<Comanda>(KEYS.comandas); }
+
+export function addComanda(c: Comanda): void {
+  const all = getComandas();
+  all.push(c);
+  save(KEYS.comandas, all);
+  enviar('Comandas', c as unknown as Record<string, unknown>);
+}
+
+export function updateComanda(c: Comanda): void {
+  const all = getComandas();
+  const idx = all.findIndex(x => x.id === c.id);
+  if (idx >= 0) all[idx] = c;
+  save(KEYS.comandas, all);
+  enviar('Comandas', c as unknown as Record<string, unknown>);
+}
 export function getSelecoes(): SelecaoAluno[] { return load<SelecaoAluno>(KEYS.selecoes); }
 export function getValidacoes(): Validacao[] { return load<Validacao>(KEYS.validacoes); }
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
