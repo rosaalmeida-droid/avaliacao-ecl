@@ -8,7 +8,7 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula
 } from './types';
 
-const SHEETS_AVALIACAO_URL = '';
+const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbybXF4KtEeqXEyTfoWcDNSAFB2KvhpL8mJs-ps2kl02qb6Ll9UHQ-77si-OAiysOwFGCg/exec';
 
 const KEYS = {
   comandas:       'ecl_comandas',
@@ -35,9 +35,9 @@ function save<T>(key: string, data: T[]): void {
 }
 
 async function enviar(tabela: string, linha: Record<string, unknown>): Promise<void> {
-  if (!SHEETS_AVALIACAO_URL) return;
+  if (!SHEETS_HISTORICO_URL) return;
   try {
-    await fetch(SHEETS_AVALIACAO_URL, {
+    await fetch(SHEETS_HISTORICO_URL, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ tabela, linha }),
