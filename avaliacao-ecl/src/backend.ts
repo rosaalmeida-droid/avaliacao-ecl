@@ -221,8 +221,8 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
 
   return (
     <div>
-      {/* CABEÇALHO VERDE ESCURO */}
-      <div style={{ background:'#1f1b16', borderRadius:14, padding:'18px', marginBottom:16 }}>
+      {/* CABEÇALHO */}
+      <div style={{ background:'var(--charcoal)', borderRadius:14, padding:'18px', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
           <button onClick={onVoltar} className="btn btn-ghost" style={{ fontSize:12, padding:'6px 12px', color:'rgba(247,241,230,0.7)', borderColor:'rgba(247,241,230,0.2)', background:'rgba(247,241,230,0.08)' }}>← Voltar</button>
           <div style={{ flex:1 }}>
@@ -234,11 +234,12 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
         <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:4 }}>
           {['Dados','Fichas','Grupos','Competências','Publicar'].map((s,i)=>(
             <div key={i} style={{ textAlign:'center' }}>
-              <div style={{ width:28,height:28,borderRadius:'50%',margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,
-                background:feita(i)?'var(--sage)':secAberta===i?'var(--copper)':'rgba(247,241,230,0.12)',
-                color:feita(i)||secAberta===i?'white':'rgba(247,241,230,0.4)',
+              <div style={{ width:28,height:28,borderRadius:'50%',margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,
+                background:feita(i)?'var(--sage)':secAberta===i?'var(--copper)':'rgba(247,241,230,0.15)',
+                color:'white',
+                border:feita(i)||secAberta===i?'none':'1px solid rgba(247,241,230,0.3)',
               }}>{feita(i)?'✓':(i+1)}</div>
-              <div style={{ fontSize:9, color:feita(i)?'var(--sage-light)':secAberta===i?'var(--copper-light)':'rgba(247,241,230,0.35)' }}>{s}</div>
+              <div style={{ fontSize:9, fontWeight:600, color:feita(i)?'var(--sage-light)':secAberta===i?'var(--copper-light)':'rgba(247,241,230,0.5)' }}>{s}</div>
             </div>
           ))}
         </div>
