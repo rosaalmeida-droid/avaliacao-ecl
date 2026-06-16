@@ -25,7 +25,33 @@ const COMP_OPC = [
   'Respeito pelas diferenças','Apresentação pessoal',
 ];
 
-// ── Secção acordeão ───────────────────────────────────────────
+// Lista de UCs da componente tecnológica — cozinha
+const UCS_COZINHA = [
+  { id:'UC03576', nome:'Planear e organizar a producao de cozinha' },
+  { id:'UC01999', nome:'Preparar e executar confecoes de cozinha' },
+  { id:'UC03577', nome:'Preparar e confecionar molhos e fundos' },
+  { id:'UC02002', nome:'Preparar e confecionar sopas, acepipes, ovos e massas' },
+  { id:'UC02003', nome:'Preparar e confecionar peixes, mariscos e guarnições' },
+  { id:'UC02004', nome:'Preparar e confecionar carnes, aves, caca e guarnições' },
+  { id:'UC02005', nome:'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria' },
+  { id:'UC03579', nome:'Gerir aprovisionamentos e controlar custos' },
+  { id:'UC03584', nome:'Implementar regras de higiene e seguranca alimentar' },
+  { id:'UC03585', nome:'Conservar materias-primas alimentares' },
+  { id:'UC03586', nome:'Confecionar cozinha e docaria tradicional portuguesa' },
+  { id:'UC03587', nome:'Preparar e confecionar pastelaria de sobremesa' },
+  { id:'UC03588', nome:'Preparar e confecionar gastronomia do Mundo' },
+  { id:'UC03589', nome:'Implementar novas tendencias na cozinha' },
+  { id:'UC03590', nome:'Confecionar produtos sustentaveis' },
+  { id:'UC03591', nome:'Planear e executar servicos especiais de cozinha' },
+  { id:'UC03592', nome:'Planear e confecionar pastelaria internacional' },
+  { id:'UC03593', nome:'Planear e confecionar massas basicas de panificacao' },
+  { id:'UC03594', nome:'Planear e confecionar Cake Design' },
+  { id:'UC03595', nome:'Planear e confecionar cozinha alternativa' },
+  { id:'UC03596', nome:'Planear e confecionar cozinha criativa' },
+  { id:'UC03597', nome:'Planear e confecionar massas especiais de panificacao' },
+];
+
+
 function Acc({ num, icon, title, desc, status, open, locked, onToggle, children }: {
   num: number; icon: string; title: string; desc: string;
   status: 'done'|'active'|'pending';
@@ -125,7 +151,7 @@ export default function PlanoAula({ turmaId }: { turmaId: string }) {
 function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConcluido:(p:TPlanoAula)=>void; onVoltar:()=>void }) {
   const [secAberta, setSecAberta] = useState(0);
   const [feitas, setFeitas] = useState<number[]>([]);
-  const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor:'' });
+  const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor:'', ucId:'', ucNome:'' });
   const [fichasSel, setFichasSel] = useState<string[]>([]);
   const [grupos, setGrupos] = useState<Record<string,Record<string,'A'|'B'|null>>>({});
   const [compOpc, setCompOpc] = useState<string[]>([]);
@@ -142,12 +168,14 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
 
   function guardarDados() {
     const now = new Date().toISOString();
+    const ucSel = UCS_COZINHA.find(u => u.id === dados.ucId);
     const p: TPlanoAula = {
       id:`plano_${Date.now()}`, turmaId, professor:dados.professor,
       data:dados.data, horaInicio:dados.horaInicio, horaFim:dados.horaFim,
       titulo:dados.titulo||`${dados.tipoAtividade} — ${dados.data}`,
       observacoes:'', fichasIds:[], estado:'rascunho', criadoEm:now, atualizadoEm:now,
-    };
+      ucId: dados.ucId, ucNome: ucSel?.nome || '',
+    } as TPlanoAula;
     addOrUpdatePlanoAula(p); setPlano(p); concluir(0);
   }
 
@@ -231,8 +259,17 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
           </select>
           {dados.tipoAtividade==='Outro'&&<input className="input" style={{marginTop:6}} value={dados.tipoOutro} onChange={e=>setD('tipoOutro',e.target.value)} placeholder="Descreve a atividade..."/>}
         </div>
-        <div className="field"><label className="field-label">Título (opcional)</label><input className="input" value={dados.titulo} onChange={e=>setD('titulo',e.target.value)} placeholder={`ex: Cozinha Asiática — ${turmaId}`}/></div>
-        <button className="btn btn-primary btn-block" disabled={!dados.data} onClick={guardarDados}>Guardar e continuar →</button>
+        <div className="field" style={{gridColumn:'1/-1'}}>
+          <label className="field-label">UC desta aula <span style={{color:'var(--danger)'}}>*</span></label>
+          <select className="input" value={dados.ucId} onChange={e=>setD('ucId',e.target.value)}
+            style={{border:!dados.ucId?'1.5px solid var(--danger)':undefined}}>
+            <option value="">— Seleciona a Unidade de Competência —</option>
+            {UCS_COZINHA.map(u=><option key={u.id} value={u.id}>{u.id} · {u.nome}</option>)}
+          </select>
+          {!dados.ucId&&<div style={{fontSize:11,color:'var(--danger)',marginTop:4}}>Campo obrigatório — define as competências a avaliar nesta aula</div>}
+        </div>
+        <div className="field" style={{gridColumn:'1/-1'}}><label className="field-label">Título (opcional)</label><input className="input" value={dados.titulo} onChange={e=>setD('titulo',e.target.value)} placeholder={`ex: Cozinha Asiática — ${turmaId}`}/></div>
+        <button className="btn btn-primary btn-block" style={{gridColumn:'1/-1'}} disabled={!dados.data||!dados.ucId} onClick={guardarDados}>Guardar e continuar →</button>
       </Acc>
 
       {/* SECÇÃO 1 — FICHAS */}
@@ -345,8 +382,23 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
 // ═══════════════════════════════════════════════════════════════
 function DetalhePlano({ plano, turmaId, onVoltar, onEditar }: { plano:TPlanoAula; turmaId:string; onVoltar:()=>void; onEditar:()=>void }) {
   const fichas = getFichasProducao().filter(f=>plano.fichasIds.includes(f.id));
+  const todasFichas = getFichasProducao();
+  const fichasDisponiveis = todasFichas.filter(f=>!plano.fichasIds.includes(f.id));
   const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
   const [grelhaAberta, setGrelhaAberta] = useState(false);
+  const [mostrarAdicionarFicha, setMostrarAdicionarFicha] = useState(false);
+
+  // Estado do plano
+  const temFichas = fichas.length > 0;
+  const temRequisicao = !!plano.requisicaoId;
+  const publicado = plano.estado === 'publicado';
+
+  // Adicionar ficha ao plano
+  function adicionarFicha(fichaId: string) {
+    const fichasIds = [...plano.fichasIds, fichaId];
+    addOrUpdatePlanoAula({...plano, fichasIds, atualizadoEm: new Date().toISOString()});
+    setMostrarAdicionarFicha(false);
+  }
 
   // Grelha de avaliação
   type Nota='S'|'A'|'R'|null;
@@ -367,26 +419,70 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar }: { plano:TPlanoAula
         <button onClick={onVoltar} className="btn" style={{fontSize:11,padding:'5px 10px',background:'rgba(247,241,230,0.1)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.15)',marginBottom:10}}>← Planos</button>
         <div className="display" style={{fontSize:18,color:'var(--cream)'}}>{plano.titulo}</div>
         <div style={{fontSize:12,color:'rgba(247,241,230,0.5)',marginTop:2}}>{plano.data} · {plano.horaInicio}–{plano.horaFim} · {plano.turmaId}</div>
-        <span style={{marginTop:8,display:'inline-block',fontSize:11,padding:'3px 10px',borderRadius:20,background:plano.estado==='publicado'?'rgba(107,124,94,0.3)':'rgba(181,101,29,0.3)',color:'var(--cream)'}}>
-          {plano.estado==='publicado'?'Publicado':'Rascunho'}
-        </span>
+        {plano.ucId && (
+          <div style={{marginTop:8,padding:'6px 10px',background:'rgba(181,101,29,0.25)',borderRadius:8,display:'inline-block'}}>
+            <span style={{fontSize:10,color:'rgba(247,241,230,0.6)',textTransform:'uppercase',letterSpacing:'0.05em'}}>UC · </span>
+            <span style={{fontSize:12,color:'var(--cream)',fontWeight:600}}>{plano.ucId} — {plano.ucNome}</span>
+          </div>
+        )}
+        <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
+          <span style={{fontSize:11,padding:'3px 10px',borderRadius:20,background:publicado?'rgba(107,124,94,0.3)':'rgba(181,101,29,0.3)',color:'var(--cream)'}}>{publicado?'Publicado':'Rascunho'}</span>
+          {plano.professor&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,background:'rgba(247,241,230,0.1)',color:'rgba(247,241,230,0.7)'}}>Prof. {plano.professor}</span>}
+        </div>
       </div>
 
-      {/* Fichas */}
-      {fichas.length>0&&(
-        <div className="card">
-          <div style={{fontSize:12,fontWeight:700,color:'var(--copper)',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de producao</div>
-          {fichas.map(f=>(
-            <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:600}}>{f.nomePrato}</div>
-                <div className="muted">{f.classificacao} · {f.numPorcoes} porcoes</div>
-              </div>
-              <span className="stamp copper">{f.classificacao}</span>
-            </div>
-          ))}
+      {/* Estado do plano — checklist rápida */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{fontSize:12,fontWeight:700,color:'var(--charcoal)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>Estado do plano</div>
+        {[
+          [temFichas, `${fichas.length} ficha${fichas.length!==1?'s':''} de producao associada${fichas.length!==1?'s':''}`, 'Sem fichas de producao — adiciona abaixo'],
+          [temRequisicao, 'Requisicao criada', 'Requisicao pendente — cria no tab Requisicao'],
+          [publicado, 'Aula publicada — alunos podem aceder', 'Nao publicado — publica no final do acordeao'],
+        ].map(([ok, sim, nao], i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+            <span style={{fontSize:16,flexShrink:0}}>{ok?'✅':'⚪'}</span>
+            <span style={{fontSize:12,color:ok?'var(--charcoal)':'rgba(26,23,20,0.4)'}}>{ok?String(sim):String(nao)}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Fichas de producao */}
+      <div className="card">
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+          <div style={{fontSize:12,fontWeight:700,color:'var(--copper)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de producao</div>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setMostrarAdicionarFicha(!mostrarAdicionarFicha)}>
+            {mostrarAdicionarFicha?'Fechar':'+ Adicionar ficha'}
+          </button>
         </div>
-      )}
+        {fichas.length===0&&<div className="muted">Sem fichas associadas.</div>}
+        {fichas.map(f=>(
+          <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+            <div style={{width:36,height:36,borderRadius:8,background:'var(--copper-pale)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>📄</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600}}>{f.nomePrato}</div>
+              <div className="muted">{f.classificacao} · {f.numPorcoes} doses · {f.ingredientes?.length||0} ingredientes</div>
+            </div>
+            <span className="stamp copper">{f.classificacao}</span>
+          </div>
+        ))}
+
+        {/* Adicionar ficha */}
+        {mostrarAdicionarFicha&&(
+          <div style={{marginTop:12,padding:12,background:'var(--cream-dark)',borderRadius:10}}>
+            <div style={{fontSize:12,fontWeight:600,marginBottom:8}}>Fichas disponiveis para adicionar</div>
+            {fichasDisponiveis.length===0&&<div className="muted">Sem fichas disponiveis. Cria fichas no tab Ficha de Producao.</div>}
+            {fichasDisponiveis.map(f=>(
+              <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,fontWeight:600}}>{f.nomePrato}</div>
+                  <div className="muted">{f.classificacao} · {f.numPorcoes} doses</div>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={()=>adicionarFicha(f.id)}>Adicionar</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Alunos */}
       {alunos.length>0&&(
