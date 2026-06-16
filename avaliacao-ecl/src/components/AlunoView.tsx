@@ -496,7 +496,7 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
                 <div style={{ fontWeight:600, fontSize:13 }}>{m.nome}</div>
                 <div style={{ fontSize:10, marginTop:2, color:m.prioridade<=2?'var(--danger)':m.prioridade===3?'var(--copper)':'rgba(26,23,20,0.4)' }}>{m.motivo}</div>
               </div>
-              {m.notas.length>0&&(
+              {m.avaliacoes.length>0&&(
                 <div style={{ textAlign:'center', flexShrink:0 }}>
                   <div style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:'var(--copper)' }}>{m.mediaRecente.toFixed(1)}</div>
                   <div style={{ fontSize:9, color:'rgba(26,23,20,0.4)' }}>media</div>
