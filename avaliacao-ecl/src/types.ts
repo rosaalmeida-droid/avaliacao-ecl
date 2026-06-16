@@ -222,6 +222,8 @@ export interface PlanoAula {
   titulo: string;
   observacoes: string;
   fichasIds: string[];
+  ucId?: string;          // UC trabalhada nesta aula — ex: UC02003
+  ucNome?: string;        // nome da UC
   estado: 'rascunho' | 'fichas_pendentes' | 'requisicao_pendente' | 'publicado';
   requisicaoId?: string;
   criadoEm: string;
