@@ -1000,7 +1000,6 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
           </div>
         )}
       </div>
-      )}
     </div>
   );
 }
