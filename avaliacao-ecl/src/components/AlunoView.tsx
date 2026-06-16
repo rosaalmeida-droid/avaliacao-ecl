@@ -1,63 +1,40 @@
 import React, { useState } from 'react';
-import { Aluno, PlanoAula, FichaProducao, RequisicaoAula } from '../types';
+import { Aluno, PlanoAula, FichaProducao } from '../types';
 import {
-  getPlanosAulaPorTurma,
-  getFichasPorPlano,
-  getRequisicaoPorPlano,
-  getDistribuicoesPorPlano,
-  getChecklistAlunoFicha,
-  addOrUpdateChecklistAluno,
-  addOrUpdateSelecao,
+  getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
+  getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
+  addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao,
 } from '../backend';
 import {
-  getCompetenciasPermanentes,
-  getCompetenciasContexto,
-  EstadoProgressao,
-  ESTADO_LABEL,
-  ESTADO_COR,
-  CompetenciaAtitudinal,
-} from '../progressaoAtitudes';
+  MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, REGRAS_AVALIACAO,
+  microsPorUC, jaTeveSucesso, estaEmRegressao, MicroCompetencia,
+} from '../competenciasECL';
 
 // ── Estilos ───────────────────────────────────────────────────
-const card: React.CSSProperties = {
-  background: 'var(--color-background-primary)',
-  border: '0.5px solid var(--color-border-tertiary)',
-  borderRadius: 12, padding: '12px 14px', marginBottom: 10,
+const S = {
+  card: { background:'#fff', border:'1px solid var(--border)', borderRadius:14, padding:'16px', marginBottom:10, boxShadow:'var(--shadow-sm)' } as React.CSSProperties,
+  muted: { fontSize:12, color:'rgba(26,23,20,0.5)' } as React.CSSProperties,
+  verde: { background:'#1D9E75', color:'white', border:'none', borderRadius:10, padding:'10px 16px', fontWeight:600, cursor:'pointer', width:'100%', marginTop:8, fontSize:13 } as React.CSSProperties,
+  cinza: { background:'rgba(26,23,20,0.08)', color:'rgba(26,23,20,0.6)', border:'none', borderRadius:10, padding:'10px 16px', fontWeight:600, cursor:'pointer', width:'100%', marginTop:6, fontSize:13 } as React.CSSProperties,
 };
-const muted: React.CSSProperties = { color: 'var(--color-text-secondary)', fontSize: 11 };
-const btnPrimary = (disabled = false): React.CSSProperties => ({
-  width: '100%', padding: '10px 14px', borderRadius: 8, border: 'none',
-  background: disabled ? 'var(--color-background-secondary)' : '#1D9E75',
-  color: disabled ? 'var(--color-text-secondary)' : 'white',
-  fontWeight: 600, fontSize: 13, marginTop: 6, cursor: disabled ? 'not-allowed' : 'pointer',
-});
 
-// ── Fardamento ────────────────────────────────────────────────
-const FARD_ITEMS = [
-  'Touca', 'Avental limpo', 'Sapatos segurança', 'Farda completa',
-  'Sem unhas postiças', 'Sem fones/adornos', 'Mãos limpas', 'Cabelo preso',
-];
+const FARD_ITEMS = ['Touca','Avental limpo','Sapatos seguranca','Farda completa','Sem unhas postiças','Sem fones/adornos','Maos limpas','Cabelo preso'];
 
-function getHist(key: string): number {
-  try { return parseInt(localStorage.getItem(key) || '0'); } catch { return 0; }
-}
-function incHist(key: string) {
-  try { localStorage.setItem(key, String(getHist(key) + 1)); } catch {}
-}
+function getHist(key: string): number { try { return parseInt(localStorage.getItem(key)||'0'); } catch { return 0; } }
+function incHist(key: string) { try { localStorage.setItem(key, String(getHist(key)+1)); } catch {} }
 
-// ── Step bar ──────────────────────────────────────────────────
-function StepBar({ steps, current }: { steps: string[]; current: number }) {
+function StepBar({ steps, current }: { steps:string[]; current:number }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length},1fr)`, borderRadius: 10, overflow: 'hidden', border: '0.5px solid var(--color-border-tertiary)', marginBottom: 12 }}>
-      {steps.map((s, i) => (
+    <div style={{ display:'grid', gridTemplateColumns:`repeat(${steps.length},1fr)`, borderRadius:10, overflow:'hidden', border:'1px solid var(--border)', marginBottom:12 }}>
+      {steps.map((s,i)=>(
         <div key={i} style={{
-          padding: '6px 2px', textAlign: 'center', fontSize: 9,
-          borderRight: i < steps.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none',
-          background: i < current ? '#EAF3DE' : i === current ? '#1D9E75' : 'var(--color-background-secondary)',
-          color: i < current ? '#3B6D11' : i === current ? 'white' : 'var(--color-text-secondary)',
-          fontWeight: i === current ? 600 : 400,
+          padding:'6px 2px', textAlign:'center', fontSize:9,
+          borderRight: i<steps.length-1?'1px solid var(--border)':'none',
+          background: i<current?'var(--sage-pale)':i===current?'var(--copper)':'var(--cream-dark)',
+          color: i<current?'var(--sage)':i===current?'white':'rgba(26,23,20,0.4)',
+          fontWeight: i===current?700:400,
         }}>
-          {i < current ? '✓ ' : ''}{s}
+          {i<current?'✓ ':''}{s}
         </div>
       ))}
     </div>
@@ -65,90 +42,86 @@ function StepBar({ steps, current }: { steps: string[]; current: number }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// VISTA PRINCIPAL
-// ═══════════════════════════════════════════════════════════════
 export function AlunoView({ aluno }: { aluno: Aluno }) {
-  const planos = getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado');
-  const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
+  const planos = getPlanosAulaPorTurma(aluno.turmaId).filter(p=>p.estado==='publicado');
+  const [planoAtivo, setPlanoAtivo] = useState<PlanoAula|null>(null);
 
-  if (planoAtivo) {
-    return <FluxoPlano plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)} />;
-  }
+  if (planoAtivo) return <FluxoPlano plano={planoAtivo} aluno={aluno} onVoltar={()=>setPlanoAtivo(null)} />;
 
   return (
     <div>
-      <div style={card}>
-        <div style={{ fontSize: 15, fontWeight: 600 }}>Olá, {aluno.nome || `Aluno ${aluno.numero}`}!</div>
-        <div style={muted}>{aluno.turmaId} · {aluno.ano}º ano</div>
+      <div style={S.card}>
+        <div style={{ fontSize:16, fontWeight:700 }}>Olá, {aluno.nome||`Aluno ${aluno.numero}`}!</div>
+        <div style={S.muted}>{aluno.turmaId} · {aluno.ano}º ano</div>
       </div>
-      <div style={card}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Planos de aula disponíveis</div>
-        {planos.length === 0 && <div style={muted}>Ainda não existem planos publicados.</div>}
-        {planos.map(p => (
-          <div key={p.id} onClick={() => setPlanoAtivo(p)} style={{ padding: '10px 12px', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 8, marginBottom: 6, cursor: 'pointer' }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{p.titulo}</div>
-            <div style={muted}>{p.data} · {p.horaInicio}-{p.horaFim}</div>
-          </div>
-        ))}
+      <div style={S.card}>
+        <div style={{ fontSize:13, fontWeight:600, marginBottom:8 }}>Aulas disponíveis</div>
+        {planos.length===0&&<div style={S.muted}>Ainda não há aulas publicadas pelo professor.</div>}
+        {planos.map(p=>{
+          const d = new Date(p.data+'T12:00:00');
+          return (
+            <div key={p.id} onClick={()=>setPlanoAtivo(p)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:'1px solid var(--border)', marginBottom:6, cursor:'pointer', background:'#fff' }}>
+              <div style={{ background:'var(--copper-pale)', borderRadius:8, padding:'6px 8px', textAlign:'center', flexShrink:0 }}>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, color:'var(--copper)', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
+                <div style={{ fontSize:9, color:'var(--copper)', textTransform:'uppercase', fontWeight:600 }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:600, fontSize:13 }}>{p.titulo}</div>
+                <div style={S.muted}>{p.horaInicio}–{p.horaFim}{p.ucId?` · ${p.ucId}`:''}</div>
+              </div>
+              <span style={{ fontSize:11, color:'var(--copper)', fontWeight:600 }}>→</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════
-// FLUXO COMPLETO DO PLANO
+// FLUXO COMPLETO
 // ═══════════════════════════════════════════════════════════════
-function FluxoPlano({ plano, aluno, onVoltar }: { plano: PlanoAula; aluno: Aluno; onVoltar: () => void }) {
-  const STEPS = ['Entrada', 'Ficha', 'Requisição', 'Avaliação', 'Pares', 'Fim'];
+function FluxoPlano({ plano, aluno, onVoltar }: { plano:PlanoAula; aluno:Aluno; onVoltar:()=>void }) {
+  const STEPS = ['Entrada','Ficha','Requisição','Autoavaliação','Pares','Fim'];
   const [passo, setPasso] = useState(0);
-
   const fichas = getFichasPorPlano(plano.id);
   const requisicao = getRequisicaoPorPlano(plano.id);
   const distribuicoes = getDistribuicoesPorPlano(plano.id);
 
-  const fichasDoAluno = fichas.filter(f => {
-    const dist = distribuicoes.find(d => d.fichaId === f.id);
-    if (!dist) return true;
-    if (dist.modo === 'todos') return true;
-    return dist.alunosIds.includes(aluno.id) || dist.grupos.some(g => g.alunosIds.includes(aluno.id));
+  const fichasDoAluno = fichas.filter(f=>{
+    const dist = distribuicoes.find(d=>d.fichaId===f.id);
+    if (!dist||dist.modo==='todos') return true;
+    return dist.alunosIds.includes(aluno.id)||dist.grupos.some(g=>g.alunosIds.includes(aluno.id));
   });
 
-  const [fichaAtiva, setFichaAtiva] = useState<FichaProducao | null>(fichasDoAluno[0] || null);
+  const [fichaAtiva, setFichaAtiva] = useState<FichaProducao|null>(fichasDoAluno[0]||null);
 
-  // Estado da entrada
-  const [pontVal, setPontVal] = useState<'sim' | 'atras' | null>(null);
-  const [pontHora, setPontHora] = useState('');
+  // Entrada
+  const [pontVal, setPontVal] = useState<'sim'|'atras'|null>(null);
   const [pontMins, setPontMins] = useState(0);
-  const [fardState, setFardState] = useState<Record<string, boolean | null>>(
-    Object.fromEntries(FARD_ITEMS.map(f => [f, null]))
-  );
-
+  const [pontHora, setPontHora] = useState('');
+  const [fardState, setFardState] = useState<Record<string,boolean|null>>(Object.fromEntries(FARD_ITEMS.map(f=>[f,null])));
   const histAtrasos = getHist(`ecl_atrasos_${aluno.id}`);
-  const fardCompleto = Object.values(fardState).every(v => v !== null);
-  const entradaOk = pontVal !== null && fardCompleto;
+  const fardCompleto = Object.values(fardState).every(v=>v!==null);
+  const entradaOk = pontVal!==null&&fardCompleto;
 
-  function setPont(v: 'sim' | 'atras') {
+  function setPont(v:'sim'|'atras') {
     setPontVal(v);
     const now = new Date();
-    const hora = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-    setPontHora(hora);
-    if (v === 'atras') {
-      const [h, m] = plano.horaInicio.split(':').map(Number);
-      const diff = (now.getHours() * 60 + now.getMinutes()) - (h * 60 + m);
-      setPontMins(Math.max(1, diff));
+    setPontHora(now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'));
+    if (v==='atras') {
+      const [h,m] = plano.horaInicio.split(':').map(Number);
+      setPontMins(Math.max(1,(now.getHours()*60+now.getMinutes())-(h*60+m)));
     }
   }
 
-  function toggleFard(item: string) {
-    setFardState(prev => {
-      const v = prev[item];
-      return { ...prev, [item]: v === null ? true : v === true ? false : null };
-    });
+  function toggleFard(item:string) {
+    setFardState(prev=>{const v=prev[item]; return {...prev,[item]:v===null?true:v===true?false:null};});
   }
 
   function confirmarEntrada() {
-    if (pontVal === 'atras') incHist(`ecl_atrasos_${aluno.id}`);
-    FARD_ITEMS.forEach(item => { if (fardState[item] === false) incHist(`ecl_fard_${aluno.id}_${item}`); });
+    if (pontVal==='atras') incHist(`ecl_atrasos_${aluno.id}`);
+    FARD_ITEMS.forEach(item=>{if(fardState[item]===false) incHist(`ecl_fard_${aluno.id}_${item}`);});
     setPasso(1);
   }
 
@@ -157,453 +130,423 @@ function FluxoPlano({ plano, aluno, onVoltar }: { plano: PlanoAula; aluno: Aluno
       <StepBar steps={STEPS} current={passo} />
 
       {/* PASSO 0 — ENTRADA */}
-      {passo === 0 && (
+      {passo===0&&(
         <div>
-          <div style={{ ...card, background: '#085041', color: 'white' }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{plano.titulo}</div>
-            <div style={{ fontSize: 11, opacity: 0.85 }}>{plano.data} · {plano.horaInicio}-{plano.horaFim}</div>
+          <div style={{...S.card, background:'var(--charcoal)', color:'var(--cream)'}}>
+            <div style={{ fontSize:15, fontWeight:700 }}>{plano.titulo}</div>
+            <div style={{ fontSize:11, opacity:0.7 }}>{plano.data} · {plano.horaInicio}–{plano.horaFim}</div>
+            {plano.ucId&&<div style={{ marginTop:6, fontSize:11, opacity:0.6 }}>UC: {plano.ucId} — {plano.ucNome}</div>}
           </div>
 
-          <div style={card}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Pontualidade</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {(['sim', 'atras'] as const).map(v => (
-                <button key={v} onClick={() => setPont(v)} style={{
-                  flex: 1, padding: '12px 6px', borderRadius: 10, fontSize: 12, cursor: 'pointer', textAlign: 'center',
-                  border: '0.5px solid var(--color-border-tertiary)',
-                  background: pontVal === v ? (v === 'sim' ? '#EAF3DE' : '#FAEEDA') : 'var(--color-background-secondary)',
-                  color: pontVal === v ? (v === 'sim' ? '#27500A' : '#854F0B') : 'var(--color-text-secondary)',
+          <div style={S.card}>
+            <div style={{ fontWeight:600, fontSize:13, marginBottom:8 }}>Pontualidade</div>
+            <div style={{ display:'flex', gap:6 }}>
+              {(['sim','atras'] as const).map(v=>(
+                <button key={v} onClick={()=>setPont(v)} style={{
+                  flex:1, padding:'12px 6px', borderRadius:10, fontSize:12, cursor:'pointer', textAlign:'center',
+                  border:'1px solid var(--border)',
+                  background:pontVal===v?(v==='sim'?'var(--sage-pale)':'var(--copper-pale)'):'#fff',
+                  color:pontVal===v?(v==='sim'?'var(--sage)':'var(--copper)'):'rgba(26,23,20,0.5)',
+                  fontWeight:600,
                 }}>
-                  <div style={{ fontSize: 18, marginBottom: 3 }}>{v === 'sim' ? '✓' : '◷'}</div>
-                  {v === 'sim' ? 'Cheguei a horas' : 'Cheguei atrasado/a'}
+                  <div style={{ fontSize:20, marginBottom:3 }}>{v==='sim'?'✓':'◷'}</div>
+                  {v==='sim'?'Cheguei a horas':'Cheguei atrasado/a'}
                 </button>
               ))}
             </div>
-            {pontHora && (
-              <div style={{ marginTop: 8, padding: '8px 10px', background: pontVal === 'sim' ? '#EAF3DE' : '#FAEEDA', borderRadius: 8 }}>
-                <div style={{ fontSize: 10, color: pontVal === 'sim' ? '#3B6D11' : '#854F0B' }}>Registado automaticamente — não editável</div>
-                <div style={{ fontSize: 17, fontWeight: 600, color: pontVal === 'sim' ? '#3B6D11' : '#854F0B' }}>{pontHora}</div>
-                {pontVal === 'atras' && pontMins > 0 && (
-                  <div style={{ fontSize: 11, background: '#FCEBEB', color: '#A32D2D', borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginTop: 4 }}>{pontMins} min de atraso</div>
-                )}
+            {pontHora&&(
+              <div style={{ marginTop:8, padding:'8px 10px', background:pontVal==='sim'?'var(--sage-pale)':'var(--copper-pale)', borderRadius:8 }}>
+                <div style={S.muted}>Registado às</div>
+                <div style={{ fontSize:18, fontWeight:700, color:pontVal==='sim'?'var(--sage)':'var(--copper)' }}>{pontHora}</div>
+                {pontVal==='atras'&&pontMins>0&&<div style={{ fontSize:11, marginTop:2, color:'var(--danger)' }}>{pontMins} minutos de atraso</div>}
               </div>
             )}
-            {pontVal === 'atras' && histAtrasos + 1 >= 3 && (
-              <div style={{ marginTop: 8, padding: '9px 10px', background: histAtrasos + 1 >= 4 ? '#FCEBEB' : '#FAEEDA', border: `0.5px solid ${histAtrasos + 1 >= 4 ? '#F7C1C1' : '#FAC775'}`, borderRadius: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: histAtrasos + 1 >= 4 ? '#A32D2D' : '#854F0B' }}>{histAtrasos + 1}ª vez atrasado/a</div>
-                <div style={{ fontSize: 10, color: histAtrasos + 1 >= 4 ? '#791F1F' : '#633806', marginTop: 2 }}>
-                  {histAtrasos + 1 >= 4 ? 'O professor foi alertado. A reincidência pode afetar a tua avaliação.' : 'O professor está a ser informado. A pontualidade é avaliada.'}
-                </div>
+            {pontVal==='atras'&&histAtrasos+1>=3&&(
+              <div style={{ marginTop:8, padding:'9px 10px', background:'var(--danger-pale)', borderRadius:8, border:'1px solid rgba(192,57,43,0.2)' }}>
+                <div style={{ fontWeight:600, fontSize:12, color:'var(--danger)' }}>{histAtrasos+1}ª vez atrasado/a</div>
+                <div style={{ fontSize:11, color:'var(--danger)', opacity:0.8, marginTop:2 }}>O professor foi informado. A pontualidade é avaliada.</div>
               </div>
             )}
           </div>
 
-          <div style={card}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Fardamento e higiene pessoal</div>
-            <div style={muted}>Confirma cada item honestamente.</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 8 }}>
-              {FARD_ITEMS.map(item => {
+          <div style={S.card}>
+            <div style={{ fontWeight:600, fontSize:13, marginBottom:6 }}>Fardamento e higiene pessoal</div>
+            <div style={S.muted}>Confirma cada item honestamente.</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:5, marginTop:8 }}>
+              {FARD_ITEMS.map(item=>{
                 const v = fardState[item];
-                const histItem = getHist(`ecl_fard_${aluno.id}_${item}`);
-                const novoHist = v === false ? histItem + 1 : histItem;
                 return (
-                  <div key={item} onClick={() => toggleFard(item)} style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '7px 9px', borderRadius: 8, cursor: 'pointer', fontSize: 11,
-                    border: '0.5px solid var(--color-border-tertiary)',
-                    background: v === true ? '#EAF3DE' : v === false ? '#FCEBEB' : 'var(--color-background-secondary)',
-                    color: v === true ? '#27500A' : v === false ? '#791F1F' : 'var(--color-text-secondary)',
+                  <div key={item} onClick={()=>toggleFard(item)} style={{
+                    display:'flex', alignItems:'center', gap:6, padding:'7px 9px', borderRadius:8, cursor:'pointer', fontSize:11,
+                    border:'1px solid var(--border)',
+                    background:v===true?'var(--sage-pale)':v===false?'var(--danger-pale)':'var(--cream-dark)',
+                    color:v===true?'var(--sage)':v===false?'var(--danger)':'rgba(26,23,20,0.5)',
                   }}>
-                    <div style={{ width: 9, height: 9, borderRadius: '50%', flexShrink: 0, background: v === true ? '#639922' : v === false ? '#E24B4A' : 'var(--color-border-secondary)' }} />
-                    <span style={{ flex: 1 }}>{item}</span>
-                    {v === false && novoHist > 0 && <span style={{ fontSize: 9, background: '#FCEBEB', color: '#A32D2D', borderRadius: 10, padding: '1px 5px' }}>{novoHist}x</span>}
+                    <div style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background:v===true?'var(--sage)':v===false?'var(--danger)':'rgba(26,23,20,0.2)' }}/>
+                    <span style={{ flex:1 }}>{item}</span>
                   </div>
                 );
               })}
             </div>
-            {FARD_ITEMS.filter(item => fardState[item] === false && getHist(`ecl_fard_${aluno.id}_${item}`) + 1 >= 3).map(item => {
-              const total = getHist(`ecl_fard_${aluno.id}_${item}`) + 1;
-              return (
-                <div key={item} style={{ marginTop: 6, padding: '7px 9px', background: total >= 4 ? '#FCEBEB' : '#FAEEDA', border: `0.5px solid ${total >= 4 ? '#F7C1C1' : '#FAC775'}`, borderRadius: 8 }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: total >= 4 ? '#A32D2D' : '#854F0B' }}>{total}ª vez sem {item.toLowerCase()}</div>
-                  <div style={{ fontSize: 10, color: total >= 4 ? '#791F1F' : '#633806', marginTop: 1 }}>{total >= 4 ? 'O professor foi alertado.' : 'O professor está a ser informado.'}</div>
-                </div>
-              );
-            })}
           </div>
 
-          <button style={btnPrimary(!entradaOk)} disabled={!entradaOk} onClick={confirmarEntrada}>Continuar →</button>
-          <button style={{ ...btnPrimary(), background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }} onClick={onVoltar}>← Voltar</button>
+          <button style={{...S.verde, opacity:entradaOk?1:0.4}} disabled={!entradaOk} onClick={confirmarEntrada}>Continuar →</button>
+          <button style={S.cinza} onClick={onVoltar}>← Voltar</button>
         </div>
       )}
 
       {/* PASSO 1 — FICHA */}
-      {passo === 1 && (
+      {passo===1&&(
         <div>
-          <div style={card}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Fichas de Produção atribuídas</div>
-            {fichasDoAluno.length === 0 && <div style={muted}>Não tens fichas atribuídas neste plano.</div>}
-            {fichasDoAluno.map(f => (
-              <div key={f.id} onClick={() => setFichaAtiva(f)} style={{
-                padding: 10, borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', marginBottom: 6,
-                background: fichaAtiva?.id === f.id ? '#EAF3DE' : 'var(--color-background-primary)', cursor: 'pointer',
+          <div style={S.card}>
+            <div style={{ fontWeight:600, fontSize:13, marginBottom:8 }}>Fichas de produção desta aula</div>
+            {fichasDoAluno.length===0&&<div style={S.muted}>Não tens fichas atribuídas neste plano.</div>}
+            {fichasDoAluno.map(f=>(
+              <div key={f.id} onClick={()=>setFichaAtiva(f)} style={{
+                padding:10, borderRadius:8, border:`1.5px solid ${fichaAtiva?.id===f.id?'var(--copper)':'var(--border)'}`,
+                marginBottom:6, background:fichaAtiva?.id===f.id?'var(--copper-pale)':'#fff', cursor:'pointer',
               }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{f.nomePrato || 'Ficha sem nome'}</div>
-                <div style={muted}>{f.classificacao || 'Sem classificação'} · {f.numPorcoes} porções</div>
+                <div style={{ fontWeight:600, fontSize:13 }}>{f.nomePrato||'Ficha sem nome'}</div>
+                <div style={S.muted}>{f.classificacao} · {f.numPorcoes} doses</div>
               </div>
             ))}
           </div>
-          {fichaAtiva && <FichaAluno ficha={fichaAtiva} plano={plano} aluno={aluno} onNext={() => setPasso(2)} onBack={() => setPasso(0)} />}
-          {!fichaAtiva && <button style={btnPrimary()} onClick={() => setPasso(0)}>← Voltar</button>}
+          {fichaAtiva&&<FichaAluno ficha={fichaAtiva} plano={plano} aluno={aluno} onNext={()=>setPasso(2)} onBack={()=>setPasso(0)}/>}
+          {!fichaAtiva&&<button style={S.cinza} onClick={()=>setPasso(0)}>← Voltar</button>}
         </div>
       )}
 
       {/* PASSO 2 — REQUISIÇÃO */}
-      {passo === 2 && (
-        <RequisicaoAluno requisicao={requisicao} onNext={() => setPasso(3)} onBack={() => setPasso(1)} />
+      {passo===2&&(
+        <div>
+          <div style={S.card}>
+            <div style={{ fontWeight:600, fontSize:13, marginBottom:8 }}>Requisição da aula</div>
+            {!requisicao&&<div style={S.muted}>A requisição ainda não está disponível.</div>}
+            {requisicao&&(
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                <thead>
+                  <tr style={{ background:'var(--charcoal)', color:'var(--cream)' }}>
+                    <th style={{ padding:'7px 10px', textAlign:'left' }}>Produto</th>
+                    <th style={{ padding:'7px 6px', textAlign:'right' }}>Quantidade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requisicao.linhas.map((l,i)=>(
+                    <tr key={l.id} style={{ background:i%2===0?'#fff':'var(--cream)', borderBottom:'1px solid var(--border)' }}>
+                      <td style={{ padding:'7px 10px' }}>{l.produto}</td>
+                      <td style={{ padding:'7px 6px', textAlign:'right' }}>{l.quantidadeTotal} {l.unidade}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            <button style={{...S.cinza, flex:0, width:44}} onClick={()=>setPasso(1)}>←</button>
+            <button style={{...S.verde, flex:1, marginTop:0}} onClick={()=>setPasso(3)}>Continuar →</button>
+          </div>
+        </div>
       )}
 
-      {/* PASSO 3 — AVALIAÇÃO */}
-      {passo === 3 && fichaAtiva && (
-        <AvaliacaoAluno ficha={fichaAtiva} plano={plano} aluno={aluno} onBack={() => setPasso(2)} onFinish={() => setPasso(4)} />
+      {/* PASSO 3 — AUTOAVALIAÇÃO */}
+      {passo===3&&fichaAtiva&&(
+        <AutoavaliacaoAluno ficha={fichaAtiva} plano={plano} aluno={aluno} onBack={()=>setPasso(2)} onFinish={()=>setPasso(4)}/>
       )}
 
       {/* PASSO 4 — PARES */}
-      {passo === 4 && fichaAtiva && (
-        <AvaliacaoPares plano={plano} aluno={aluno} fichasDoAluno={fichasDoAluno} onBack={() => setPasso(3)} onFinish={() => setPasso(5)} />
+      {passo===4&&(
+        <div>
+          <div style={S.card}>
+            <div style={{ fontWeight:600, fontSize:13, marginBottom:4 }}>Avaliação dos colegas</div>
+            <div style={S.muted}>Confidencial — o colega não vê o que escreveste.</div>
+          </div>
+          <div style={{ display:'flex', gap:6, marginTop:10 }}>
+            <button style={{...S.cinza, flex:0, width:44}} onClick={()=>setPasso(3)}>←</button>
+            <button style={{...S.verde, flex:1, marginTop:0}} onClick={()=>setPasso(5)}>Submeter →</button>
+          </div>
+        </div>
       )}
 
       {/* PASSO 5 — FIM */}
-      {passo === 5 && (
+      {passo===5&&(
         <div>
-          <div style={{ ...card, textAlign: 'center', padding: 20 }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#EAF3DE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: 20, color: '#3B6D11' }}>✓</div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Avaliação completa!</div>
-            <div style={muted}>O professor irá validar.</div>
+          <div style={{...S.card, textAlign:'center', padding:24}}>
+            <div style={{ fontSize:40, marginBottom:10 }}>✓</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, marginBottom:6 }}>Avaliação completa!</div>
+            <div style={S.muted}>O professor irá validar as tuas escolhas.</div>
           </div>
-          <div style={card}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Registo desta aula</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '4px 0', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-              <span style={muted}>Pontualidade</span>
-              <span style={{ fontWeight: 600, color: pontVal === 'sim' ? '#639922' : '#854F0B' }}>{pontVal === 'sim' ? 'A horas' : `Atrasado/a ${pontMins} min`}</span>
+          <div style={S.card}>
+            <div style={{ fontWeight:600, fontSize:12, marginBottom:8 }}>Registo desta aula</div>
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, padding:'5px 0', borderBottom:'1px solid var(--border)' }}>
+              <span style={S.muted}>Pontualidade</span>
+              <span style={{ fontWeight:600, color:pontVal==='sim'?'var(--sage)':'var(--copper)' }}>
+                {pontVal==='sim'?'A horas':`Atrasado/a ${pontMins} min`}
+              </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '4px 0', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-              <span style={muted}>Fardamento</span>
-              <span style={{ fontWeight: 600, color: Object.values(fardState).every(v => v === true) ? '#639922' : '#854F0B' }}>
-                {Object.values(fardState).every(v => v === true) ? 'Completo' : 'Incompleto'}
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, padding:'5px 0' }}>
+              <span style={S.muted}>Fardamento</span>
+              <span style={{ fontWeight:600, color:Object.values(fardState).every(v=>v===true)?'var(--sage)':'var(--copper)' }}>
+                {Object.values(fardState).every(v=>v===true)?'Completo':'Incompleto'}
               </span>
             </div>
           </div>
-          <button style={btnPrimary()} onClick={onVoltar}>Voltar ao início</button>
+          <button style={S.verde} onClick={onVoltar}>Voltar ao início</button>
         </div>
       )}
     </div>
   );
 }
 
-// ── Ficha para o aluno ────────────────────────────────────────
-function FichaAluno({ ficha, plano, aluno, onNext, onBack }: { ficha: FichaProducao; plano: PlanoAula; aluno: Aluno; onNext: () => void; onBack: () => void }) {
+// ── Ficha do aluno ────────────────────────────────────────────
+function FichaAluno({ ficha, plano, aluno, onNext, onBack }: { ficha:FichaProducao; plano:PlanoAula; aluno:Aluno; onNext:()=>void; onBack:()=>void }) {
   const existente = getChecklistAlunoFicha(plano.id, ficha.id, aluno.id);
-  const [ingredientesConfirmados, setIngredientesConfirmados] = useState<string[]>(existente?.ingredientesConfirmados || []);
-  const [passosConcluidos, setPassosConcluidos] = useState<string[]>(existente?.passosConcluidos || []);
-  const [haccpConfirmado, setHaccpConfirmado] = useState<string[]>(existente?.haccpConfirmado || []);
-  const [comentario, setComentario] = useState(existente?.comentario || '');
+  const [ingredientesConfirmados, setIngConf] = useState<string[]>(existente?.ingredientesConfirmados||[]);
+  const [passosConcluidos, setPassosConcl] = useState<string[]>(existente?.passosConcluidos||[]);
+  const [haccpConfirmado, setHaccpConf] = useState<string[]>(existente?.haccpConfirmado||[]);
+  const [comentario, setComentario] = useState(existente?.comentario||'');
 
-  function toggle(list: string[], setList: (v: string[]) => void, id: string) {
-    setList(list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
+  function toggle(list:string[], setList:(v:string[])=>void, id:string) {
+    setList(list.includes(id)?list.filter(x=>x!==id):[...list,id]);
   }
 
   function continuar() {
     addOrUpdateChecklistAluno({
-      id: existente?.id || `check_${plano.id}_${ficha.id}_${aluno.id}`,
-      planoAulaId: plano.id, fichaId: ficha.id, alunoId: aluno.id,
+      id: existente?.id||`check_${plano.id}_${ficha.id}_${aluno.id}`,
+      planoAulaId:plano.id, fichaId:ficha.id, alunoId:aluno.id,
       ingredientesConfirmados, passosConcluidos, haccpConfirmado,
-      requisicaoVerificada: false, comentario,
-      atualizadoEm: new Date().toISOString(),
+      comentario, atualizadoEm:new Date().toISOString(),
     });
     onNext();
   }
 
   return (
     <div>
-      <div style={{ ...card, background: '#085041', color: 'white' }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{ficha.nomePrato || 'Ficha de Produção'}</div>
-        <div style={{ fontSize: 11, opacity: 0.85 }}>{ficha.classificacao} · {ficha.numPorcoes} porções</div>
+      <div style={{...S.card, background:'var(--charcoal)', color:'var(--cream)'}}>
+        <div style={{ fontWeight:700, fontSize:15 }}>{ficha.nomePrato||'Ficha de Producao'}</div>
+        <div style={{ fontSize:11, opacity:0.7 }}>{ficha.classificacao} · {ficha.numPorcoes} doses</div>
       </div>
 
-      <div style={card}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Ingredientes</div>
-        {ficha.ingredientes.map(ing => (
-          <label key={ing.id} style={{ display: 'block', padding: 8, borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', marginBottom: 5, background: ingredientesConfirmados.includes(ing.id) ? '#EAF3DE' : 'var(--color-background-primary)' }}>
-            <input type="checkbox" checked={ingredientesConfirmados.includes(ing.id)} onChange={() => toggle(ingredientesConfirmados, setIngredientesConfirmados, ing.id)} />{' '}
-            {ing.qt} {ing.un} {ing.produto}
+      {/* Ingredientes */}
+      <div style={S.card}>
+        <div style={{ fontWeight:600, fontSize:13, marginBottom:8 }}>Ingredientes</div>
+        {ficha.ingredientes?.map(ing=>(
+          <label key={ing.id} style={{ display:'block', padding:8, borderRadius:8, border:'1px solid var(--border)', marginBottom:5, background:ingredientesConfirmados.includes(ing.id)?'var(--sage-pale)':'#fff', cursor:'pointer' }}>
+            <input type="checkbox" checked={ingredientesConfirmados.includes(ing.id)} onChange={()=>toggle(ingredientesConfirmados,setIngConf,ing.id)} style={{ accentColor:'var(--sage)' }}/>{' '}
+            <strong>{ing.qt} {ing.un}</strong> {ing.produto}
+            {ing.obs&&<span style={{ fontSize:10, color:'var(--copper)', marginLeft:6 }}>{ing.obs}</span>}
           </label>
         ))}
       </div>
 
-      <div style={card}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Passos da produção</div>
-        {ficha.preparacao.map(p => (
-          <label key={p.id} style={{ display: 'block', padding: 8, borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', marginBottom: 5, background: passosConcluidos.includes(p.id) ? '#EAF3DE' : 'var(--color-background-primary)' }}>
-            <input type="checkbox" checked={passosConcluidos.includes(p.id)} onChange={() => toggle(passosConcluidos, setPassosConcluidos, p.id)} />{' '}
+      {/* Passos */}
+      <div style={S.card}>
+        <div style={{ fontWeight:600, fontSize:13, marginBottom:8 }}>Passos da produção</div>
+        {ficha.preparacao?.map(p=>(
+          <label key={p.id} style={{ display:'block', padding:8, borderRadius:8, border:'1px solid var(--border)', marginBottom:5, background:passosConcluidos.includes(p.id)?'var(--sage-pale)':'#fff', cursor:'pointer' }}>
+            <input type="checkbox" checked={passosConcluidos.includes(p.id)} onChange={()=>toggle(passosConcluidos,setPassosConcl,p.id)} style={{ accentColor:'var(--sage)' }}/>{' '}
             <strong>{p.num}.</strong> {p.descricao}
-            {(p.temperatura || p.tempo) && <div style={muted}>{p.temperatura} {p.tempo}</div>}
+            {(p.temperatura||p.tempo)&&<div style={{...S.muted,fontSize:10}}>{p.temperatura} {p.tempo}</div>}
           </label>
         ))}
       </div>
 
-      {ficha.preparacao.filter(p => p.haccp).length > 0 && (
-        <div style={card}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Pontos HACCP</div>
-          {ficha.preparacao.filter(p => p.haccp).map(p => (
-            <label key={p.id} style={{ display: 'block', padding: 8, borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', marginBottom: 5, background: haccpConfirmado.includes(p.id) ? '#EAF3DE' : '#FFF8F0' }}>
-              <input type="checkbox" checked={haccpConfirmado.includes(p.id)} onChange={() => toggle(haccpConfirmado, setHaccpConfirmado, p.id)} />{' '}
+      {/* HACCP */}
+      {ficha.preparacao?.filter(p=>p.haccp).length>0&&(
+        <div style={S.card}>
+          <div style={{ fontWeight:600, fontSize:13, marginBottom:8 }}>Pontos HACCP — verificar</div>
+          {ficha.preparacao.filter(p=>p.haccp).map(p=>(
+            <label key={p.id} style={{ display:'block', padding:8, borderRadius:8, border:'1px solid var(--border)', marginBottom:5, background:haccpConfirmado.includes(p.id)?'var(--sage-pale)':'var(--copper-pale)', cursor:'pointer' }}>
+              <input type="checkbox" checked={haccpConfirmado.includes(p.id)} onChange={()=>toggle(haccpConfirmado,setHaccpConf,p.id)} style={{ accentColor:'var(--copper)' }}/>{' '}
               ⚠️ {p.haccp}
             </label>
           ))}
         </div>
       )}
 
-      <div style={card}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Observação (opcional)</div>
-        <textarea style={{ width: '100%', minHeight: 60, borderRadius: 8, border: '0.5px solid var(--color-border-tertiary)', padding: 8, fontSize: 12 }}
-          value={comentario} onChange={e => setComentario(e.target.value)}
-          placeholder="Ex: ingrediente em falta, substituição feita, dúvida..." />
+      {/* Observação */}
+      <div style={S.card}>
+        <div style={{ fontWeight:600, fontSize:12, marginBottom:6 }}>Observação (opcional)</div>
+        <textarea style={{ width:'100%', minHeight:60, borderRadius:8, border:'1px solid var(--border)', padding:8, fontSize:12, fontFamily:'var(--font-body)' }}
+          value={comentario} onChange={e=>setComentario(e.target.value)}
+          placeholder="Ex: ingrediente em falta, substituição feita, dúvida..."/>
       </div>
 
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button style={{ ...btnPrimary(), flex: 0, padding: '10px 12px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }} onClick={onBack}>←</button>
-        <button style={{ ...btnPrimary(), flex: 1, marginTop: 0 }} onClick={continuar}>Guardar e continuar →</button>
-      </div>
-    </div>
-  );
-}
-
-// ── Requisição para o aluno ───────────────────────────────────
-function RequisicaoAluno({ requisicao, onNext, onBack }: { requisicao?: RequisicaoAula; onNext: () => void; onBack: () => void }) {
-  return (
-    <div>
-      <div style={card}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Requisição da aula</div>
-        {!requisicao && <div style={muted}>A requisição ainda não está disponível.</div>}
-        {requisicao && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <tbody>
-              {requisicao.linhas.map(l => (
-                <tr key={l.id}>
-                  <td style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', padding: 6 }}>{l.produto}</td>
-                  <td style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', padding: 6, textAlign: 'right' }}>{l.quantidadeTotal} {l.unidade}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button style={{ ...btnPrimary(), flex: 0, padding: '10px 12px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }} onClick={onBack}>←</button>
-        <button style={{ ...btnPrimary(), flex: 1, marginTop: 0 }} onClick={onNext}>Continuar →</button>
+      <div style={{ display:'flex', gap:6 }}>
+        <button style={{...S.cinza, flex:0, width:44, marginTop:0}} onClick={onBack}>←</button>
+        <button style={{...S.verde, flex:1, marginTop:0}} onClick={continuar}>Guardar e continuar →</button>
       </div>
     </div>
   );
 }
 
-// ── Avaliação atitudinal ──────────────────────────────────────
-function AvaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: { ficha: FichaProducao; plano: PlanoAula; aluno: Aluno; onBack: () => void; onFinish: () => void }) {
-  const distribuicoes = getDistribuicoesPorPlano(plano.id);
-  const dist = distribuicoes.find(d => d.fichaId === ficha.id);
-  const contexto = dist?.modo === 'individual' ? 'individual' : dist?.tipoServico && dist.tipoServico !== 'normal' ? 'servico' : 'equipa';
+// ═══════════════════════════════════════════════════════════════
+// AUTOAVALIAÇÃO — com microcompetências da UC + critérios observáveis
+// ═══════════════════════════════════════════════════════════════
+function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
+  ficha:FichaProducao; plano:PlanoAula; aluno:Aluno; onBack:()=>void; onFinish:()=>void;
+}) {
+  // Buscar microcompetências da UC desta aula
+  const ucId = plano.ucId || '';
+  const microsDaUC = ucId ? microsPorUC(ucId) : MICROCOMPETENCIAS.filter(m=>m.prioridade==='A');
 
-  const permanentes = getCompetenciasPermanentes().slice(0, 4);
-  const contextuais = getCompetenciasContexto(contexto as any).slice(0, 4);
-  const todasComps = [...permanentes, ...contextuais].filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i).slice(0, 8);
+  // Verificar histórico do aluno para cada microcompetência
+  const microsSugeridas = microsDaUC.slice(0, 8).map(m => {
+    const hist = getHistoricoAlunoMicro(aluno.id, m.id);
+    const notas = hist.map(h=>h.nota);
+    const consolidada = jaTeveSucesso(notas);
+    const emRegressao = estaEmRegressao(notas);
+    const nunca = notas.length === 0;
 
-  type Nivel = EstadoProgressao | null;
-  const [niveis, setNiveis] = useState<Record<string, Nivel>>(Object.fromEntries(todasComps.map(c => [c.id, null])));
-  const [aberta, setAberta] = useState<string | null>(todasComps[0]?.id || null);
+    let prioridade = 5;
+    let motivo = '';
+    if (emRegressao) { prioridade = 1; motivo = '⚠️ Em regressao — notas a descer'; }
+    else if (notas.length>=3 && !consolidada) { prioridade = 2; motivo = '→ Sem evolucao significativa'; }
+    else if (nunca) { prioridade = 3; motivo = '★ Nunca avaliada nesta UC'; }
+    else if (!consolidada) { prioridade = 4; motivo = '↑ Ainda em desenvolvimento'; }
+    else { motivo = '✓ Consolidada'; }
 
-  const feitas = todasComps.filter(c => niveis[c.id] !== null).length;
-  const avaliacaoOk = feitas === todasComps.length;
+    return { ...m, prioridade, motivo, consolidada, notas, mediaRecente: notas.length>0?notas.slice(-3).reduce((s,n)=>s+n,0)/Math.min(3,notas.length):0 };
+  }).sort((a,b)=>a.prioridade-b.prioridade);
 
-  function setNivel(id: string, v: Nivel) {
-    setNiveis(p => ({ ...p, [id]: p[id] === v ? null : v }));
-    const idx = todasComps.findIndex(c => c.id === id);
-    if (idx < todasComps.length - 1) setTimeout(() => setAberta(todasComps[idx + 1].id), 200);
-    else setAberta(null);
+  // Microcompetências obrigatórias (sempre presentes)
+  const [nivelHigiene, setNivelHigiene] = useState<number|null>(null);
+  const [nivelHaccp, setNivelHaccp] = useState<number|null>(null);
+
+  // Selecção do aluno (1 adicional)
+  const [microEscolhida, setMicroEscolhida] = useState<string|null>(null);
+  const [microAberta, setMicroAberta] = useState<string|null>(null);
+  const [avisoEscolha, setAvisoEscolha] = useState('');
+
+  // Avaliações das microcompetências sugeridas
+  const [notas, setNotas] = useState<Record<string,number|null>>({});
+
+  function escolherMicro(id: string) {
+    const m = MICROCOMPETENCIAS.find(x=>x.id===id);
+    if (!m) return;
+    const hist = getHistoricoAlunoMicro(aluno.id, id);
+    const notasHist = hist.map(h=>h.nota);
+    if (jaTeveSucesso(notasHist)) {
+      setAvisoEscolha(REGRAS_AVALIACAO.mensagemBloqueio);
+      return;
+    }
+    setAvisoEscolha('');
+    setMicroEscolhida(id===microEscolhida?null:id);
   }
 
-  function guardar() {
-    addOrUpdateSelecao({
-      id: `${plano.id}_${ficha.id}_${aluno.id}`,
-      comandaId: dist?.id || `${plano.id}_${ficha.id}`,
-      planoAulaId: plano.id, fichaId: ficha.id, alunoId: aluno.id, turmaId: aluno.turmaId,
-      tecnicas: ficha.tecnicasSugeridas || [],
-      atitudes: todasComps.map(c => c.id),
-      responsabilidades: [],
-      autoavaliacoes: todasComps.map(c => ({
-        competenciaId: c.id,
-        nivel: niveis[c.id] === 'avancado' ? 'superei' : niveis[c.id] === 'consolidado' ? 'atingi' : niveis[c.id] === 'em_desenvolvimento' ? 'desenvolvimento' : 'nao_atingi',
-      })),
-      criadaEm: new Date().toISOString(),
+  const NIVEIS = [
+    { v:5, label:'Inicial', cor:'var(--danger-pale)', txt:'var(--danger)' },
+    { v:10, label:'Em desenvolvimento', cor:'var(--copper-pale)', txt:'var(--copper)' },
+    { v:15, label:'Consolidado', cor:'var(--sage-pale)', txt:'var(--sage)' },
+    { v:18, label:'Avancado', cor:'rgba(37,99,235,0.08)', txt:'var(--info)' },
+  ];
+
+  const prontoParaSubmeter = nivelHigiene!==null && nivelHaccp!==null;
+
+  function submeter() {
+    const agora = new Date().toISOString();
+    // Registar obrigatórias
+    if (nivelHigiene!==null) addRegistoAvaliacao({ id:`${plano.id}_${ficha.id}_${aluno.id}_higiene`, alunoId:aluno.id, turmaId:aluno.turmaId, planoAulaId:plano.id, fichaId:ficha.id, ucId:plano.ucId||'', microcompetenciaId:'OBR_01', nota:nivelHigiene, data:agora, validadoPor:'aluno' });
+    if (nivelHaccp!==null) addRegistoAvaliacao({ id:`${plano.id}_${ficha.id}_${aluno.id}_haccp`, alunoId:aluno.id, turmaId:aluno.turmaId, planoAulaId:plano.id, fichaId:ficha.id, ucId:plano.ucId||'', microcompetenciaId:'OBR_02', nota:nivelHaccp, data:agora, validadoPor:'aluno' });
+    // Registar técnicas
+    Object.entries(notas).forEach(([microId,nota])=>{
+      if (nota!==null) addRegistoAvaliacao({ id:`${plano.id}_${ficha.id}_${aluno.id}_${microId}`, alunoId:aluno.id, turmaId:aluno.turmaId, planoAulaId:plano.id, fichaId:ficha.id, ucId:plano.ucId||'', microcompetenciaId:microId, nota, data:agora, validadoPor:'aluno' });
     });
+    // Guardar selecção
+    addOrUpdateSelecao({ id:`${plano.id}_${ficha.id}_${aluno.id}`, comandaId:`${plano.id}_${ficha.id}`, planoAulaId:plano.id, fichaId:ficha.id, alunoId:aluno.id, turmaId:aluno.turmaId, tecnicas:Object.keys(notas), atitudes:[], responsabilidades:[], autoavaliacoes:Object.entries(notas).filter(([,n])=>n!==null).map(([competenciaId,nota])=>({competenciaId,nivel:nota!>=17?'superei':nota!>=14?'atingi':nota!>=10?'desenvolvimento':'nao_atingi'})), criadaEm:agora });
     onFinish();
   }
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={muted}>Avalia todas as competências</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#1D9E75' }}>{feitas}/{todasComps.length}</span>
-      </div>
-      {todasComps.map(c => (
-        <CompCard key={c.id} comp={c} nivel={niveis[c.id]} aberta={aberta === c.id}
-          onToggle={() => setAberta(aberta === c.id ? null : c.id)}
-          onNivel={v => setNivel(c.id, v)} />
-      ))}
-      <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-        <button style={{ ...btnPrimary(), flex: 0, padding: '10px 12px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }} onClick={onBack}>←</button>
-        <button style={{ ...btnPrimary(!avaliacaoOk), flex: 1, marginTop: 0 }} disabled={!avaliacaoOk} onClick={guardar}>Continuar →</button>
-      </div>
-    </div>
-  );
-}
+      {/* OBRIGATÓRIAS */}
+      <div style={S.card}>
+        <div style={{ fontWeight:700, fontSize:13, marginBottom:2, color:'var(--sage)' }}>Competências obrigatórias</div>
+        <div style={S.muted}>Sempre presentes — não contam para o limite de 5.</div>
 
-// ── Avaliação entre pares ─────────────────────────────────────
-function AvaliacaoPares({ plano, aluno, fichasDoAluno, onBack, onFinish }: { plano: PlanoAula; aluno: Aluno; fichasDoAluno: FichaProducao[]; onBack: () => void; onFinish: () => void }) {
-  const distribuicoes = getDistribuicoesPorPlano(plano.id);
-
-  // Encontrar colegas do mesmo grupo
-  const colegas: { id: string; label: string }[] = [];
-  fichasDoAluno.forEach(f => {
-    const dist = distribuicoes.find(d => d.fichaId === f.id);
-    if (dist) {
-      dist.grupos.forEach(g => {
-        if (g.alunosIds.includes(aluno.id)) {
-          g.alunosIds.filter(id => id !== aluno.id).forEach(id => {
-            if (!colegas.find(c => c.id === id)) colegas.push({ id, label: id.split('-').pop() || id });
-          });
-        }
-      });
-    }
-  });
-
-  type ParNivel = 's' | 'a' | 'r' | null;
-  const [paresState, setParesState] = useState<Record<string, { coop: ParNivel; emp: ParNivel }>>(
-    Object.fromEntries(colegas.map(c => [c.id, { coop: null, emp: null }]))
-  );
-
-  const paresCompletos = colegas.length === 0 || colegas.every(c => paresState[c.id].coop && paresState[c.id].emp);
-
-  function setPar(id: string, campo: 'coop' | 'emp', v: ParNivel) {
-    setParesState(prev => ({ ...prev, [id]: { ...prev[id], [campo]: prev[id][campo] === v ? null : v } }));
-  }
-
-  const PAR_BTNS: { v: ParNivel; label: string; bg: string; border: string; color: string }[] = [
-    { v: 's', label: 'Dentro', bg: '#EAF3DE', border: '#639922', color: '#27500A' },
-    { v: 'a', label: 'Acima', bg: '#E6F1FB', border: '#378ADD', color: '#0C447C' },
-    { v: 'r', label: 'Precisa melhorar', bg: '#FCEBEB', border: '#E24B4A', color: '#791F1F' },
-  ];
-
-  return (
-    <div>
-      <div style={{ ...card, marginBottom: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>Avaliação dos colegas</div>
-        <div style={muted}>Confidencial — o colega não vê o que escreveste.</div>
-      </div>
-
-      {colegas.length === 0 && (
-        <div style={card}><div style={muted}>Aula individual — sem colegas para avaliar.</div></div>
-      )}
-
-      {colegas.map(c => (
-        <div key={c.id} style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#9FE1CB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600, color: '#085041' }}>{c.label}</div>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Aluno {c.label}</span>
-            {paresState[c.id].coop && paresState[c.id].emp && <span style={{ marginLeft: 'auto', fontSize: 10, background: '#EAF3DE', color: '#3B6D11', padding: '2px 8px', borderRadius: 20 }}>✓ completo</span>}
+        {[
+          { id:'OBR_01', nome:'Higiene pessoal', desc:'Fardamento, maos, apresentacao', val:nivelHigiene, set:setNivelHigiene },
+          { id:'OBR_02', nome:'Higiene e Seguranca Alimentar / Registos KitchenFlow', desc:'HACCP, PCC, registos', val:nivelHaccp, set:setNivelHaccp },
+        ].map(obr=>(
+          <div key={obr.id} style={{ marginTop:10, padding:'10px 12px', borderRadius:10, background:'var(--sage-pale)', border:'1px solid rgba(90,122,78,0.2)' }}>
+            <div style={{ fontWeight:600, fontSize:12, marginBottom:6 }}>{obr.nome}</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4 }}>
+              {NIVEIS.map(n=>(
+                <button key={n.v} onClick={()=>obr.set(n.v)} style={{ padding:'5px 2px', borderRadius:7, border:`1.5px solid ${obr.val===n.v?n.txt:'var(--border)'}`, background:obr.val===n.v?n.cor:'#fff', color:obr.val===n.v?n.txt:'rgba(26,23,20,0.5)', fontSize:9, fontWeight:600, cursor:'pointer', textAlign:'center' }}>
+                  {n.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {[{ campo: 'coop' as const, nome: 'Cooperação', hint: '"Ajudou quando foi preciso?"' }, { campo: 'emp' as const, nome: 'Empenho e persistência', hint: '"Trabalhou de verdade durante toda a aula?"' }].map(({ campo, nome, hint }) => (
-            <div key={campo} style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{nome}</div>
-              <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', fontStyle: 'italic', marginBottom: 5 }}>{hint}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
-                {PAR_BTNS.map(btn => {
-                  const atual = paresState[c.id][campo];
-                  return (
-                    <button key={String(btn.v)} onClick={() => setPar(c.id, campo, btn.v)} style={{
-                      padding: '6px 3px', borderRadius: 6, fontSize: 10, cursor: 'pointer', textAlign: 'center', lineHeight: 1.3,
-                      border: `0.5px solid ${atual === btn.v ? btn.border : 'var(--color-border-tertiary)'}`,
-                      background: atual === btn.v ? btn.bg : 'var(--color-background-primary)',
-                      color: atual === btn.v ? btn.color : 'var(--color-text-secondary)',
-                      fontWeight: atual === btn.v ? 600 : 400,
-                    }}>{btn.label}</button>
-                  );
-                })}
+        ))}
+      </div>
+
+      {/* MICROCOMPETÊNCIAS SUGERIDAS */}
+      <div style={S.card}>
+        <div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>Competências técnicas — esta aula</div>
+        <div style={S.muted}>Sugeridas com base na UC {plano.ucId||''} e no teu historial. Avalia as que praticaste.</div>
+
+        {microsSugeridas.map(m=>(
+          <div key={m.id} style={{ border:`1.5px solid ${microAberta===m.id?'var(--copper)':'var(--border)'}`, borderRadius:10, marginTop:8, overflow:'hidden' }}>
+            {/* Cabeçalho da microcompetência */}
+            <div onClick={()=>setMicroAberta(microAberta===m.id?null:m.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', cursor:'pointer', background:microAberta===m.id?'var(--copper-pale)':'#fff' }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:600, fontSize:13 }}>{m.nome}</div>
+                <div style={{ fontSize:10, marginTop:2, color:m.prioridade<=2?'var(--danger)':m.prioridade===3?'var(--copper)':'rgba(26,23,20,0.4)' }}>{m.motivo}</div>
               </div>
+              {m.notas.length>0&&(
+                <div style={{ textAlign:'center', flexShrink:0 }}>
+                  <div style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:700, color:'var(--copper)' }}>{m.mediaRecente.toFixed(1)}</div>
+                  <div style={{ fontSize:9, color:'rgba(26,23,20,0.4)' }}>media</div>
+                </div>
+              )}
+              <span style={{ fontSize:14, color:'var(--copper)' }}>{microAberta===m.id?'▲':'▼'}</span>
+            </div>
+
+            {/* Critérios observáveis — expandível */}
+            {microAberta===m.id&&(
+              <div style={{ borderTop:'1px solid var(--border)', padding:'10px 12px', background:'var(--cream-dark)' }}>
+                {m.criterios.length>0&&(
+                  <div style={{ marginBottom:10 }}>
+                    <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6, color:'var(--charcoal)' }}>Criterios observaveis</div>
+                    {m.criterios.map((c,i)=>(
+                      <div key={i} style={{ fontSize:11, padding:'4px 0', borderBottom:'1px solid var(--border)', color:'rgba(26,23,20,0.7)' }}>· {c}</div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>A tua autoavaliacao</div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4 }}>
+                  {NIVEIS.map(n=>(
+                    <button key={n.v} onClick={()=>setNotas(p=>({...p,[m.id]:p[m.id]===n.v?null:n.v}))} style={{ padding:'6px 3px', borderRadius:7, border:`1.5px solid ${notas[m.id]===n.v?n.txt:'var(--border)'}`, background:notas[m.id]===n.v?n.cor:'#fff', color:notas[m.id]===n.v?n.txt:'rgba(26,23,20,0.5)', fontSize:9, fontWeight:600, cursor:'pointer', textAlign:'center' }}>
+                      {n.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* ESCOLHA DO ALUNO — 1 adicional */}
+      <div style={S.card}>
+        <div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>A tua escolha — 1 competência adicional</div>
+        <div style={S.muted}>Escolhe uma competência que queiras demonstrar hoje.</div>
+        {avisoEscolha&&<div style={{ marginTop:8, padding:'8px 10px', background:'var(--danger-pale)', borderRadius:8, fontSize:12, color:'var(--danger)' }}>{avisoEscolha}</div>}
+        <div style={{ marginTop:8, maxHeight:180, overflowY:'auto' }}>
+          {MICROCOMPETENCIAS.filter(m=>!microsSugeridas.find(s=>s.id===m.id)).slice(0,20).map(m=>(
+            <div key={m.id} onClick={()=>escolherMicro(m.id)} style={{ padding:'7px 10px', borderRadius:8, border:`1.5px solid ${microEscolhida===m.id?'var(--copper)':'var(--border)'}`, marginBottom:4, cursor:'pointer', background:microEscolhida===m.id?'var(--copper-pale)':'#fff', fontSize:12 }}>
+              {m.nome}
             </div>
           ))}
         </div>
-      ))}
-
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button style={{ ...btnPrimary(), flex: 0, padding: '10px 12px', background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }} onClick={onBack}>←</button>
-        <button style={{ ...btnPrimary(!paresCompletos), flex: 1, marginTop: 0 }} disabled={!paresCompletos} onClick={onFinish}>Submeter avaliação →</button>
       </div>
-    </div>
-  );
-}
 
-// ── CompCard ──────────────────────────────────────────────────
-type Nivel = EstadoProgressao | null;
+      {!prontoParaSubmeter&&<div style={{ padding:'8px 12px', background:'var(--copper-pale)', borderRadius:8, fontSize:12, color:'var(--copper)', marginBottom:10 }}>Preenche as competências obrigatórias antes de submeter.</div>}
 
-function CompCard({ comp, nivel, aberta, onToggle, onNivel }: { comp: CompetenciaAtitudinal; nivel: Nivel; aberta: boolean; onToggle: () => void; onNivel: (v: Nivel) => void }) {
-  return (
-    <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, marginBottom: 6, overflow: 'hidden' }}>
-      <div onClick={onToggle} style={{ padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>{comp.nome}</div>
-          {nivel && (
-            <div style={{ fontSize: 10, marginTop: 1, color: ESTADO_COR[nivel].color, background: ESTADO_COR[nivel].bg, borderRadius: 20, padding: '1px 7px', display: 'inline-block' }}>
-              {ESTADO_LABEL[nivel]}
-            </div>
-          )}
-        </div>
-        <div style={{ width: 9, height: 9, borderRadius: '50%', background: nivel ? ESTADO_COR[nivel].color : 'var(--color-border-secondary)', flexShrink: 0 }} />
+      <div style={{ display:'flex', gap:6 }}>
+        <button style={{...S.cinza, flex:0, width:44, marginTop:0}} onClick={onBack}>←</button>
+        <button style={{...S.verde, flex:1, marginTop:0, opacity:prontoParaSubmeter?1:0.4}} disabled={!prontoParaSubmeter} onClick={submeter}>Submeter autoavaliacao →</button>
       </div>
-      {aberta && (
-        <div style={{ padding: '9px 12px', background: 'var(--color-background-secondary)', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-          <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', marginBottom: 7 }}>{comp.definicao}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginBottom: 8 }}>
-            <div style={{ background: '#EAF3DE', borderRadius: 6, padding: '5px 7px' }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: '#3B6D11', marginBottom: 2 }}>✓ Observo quando</div>
-              {comp.observar.slice(0, 2).map(s => <div key={s} style={{ fontSize: 9, color: '#27500A', lineHeight: 1.4 }}>· {s}</div>)}
-            </div>
-            <div style={{ background: '#FCEBEB', borderRadius: 6, padding: '5px 7px' }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: '#A32D2D', marginBottom: 2 }}>✗ Sinal de alerta</div>
-              {comp.naoObservar.slice(0, 2).map(s => <div key={s} style={{ fontSize: 9, color: '#791F1F', lineHeight: 1.4 }}>· {s}</div>)}
-            </div>
-          </div>
-          <NivelBtns valor={nivel} onChange={onNivel} comp={comp} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function NivelBtns({ valor, onChange, comp }: { valor: Nivel; onChange: (v: Nivel) => void; comp?: CompetenciaAtitudinal }) {
-  const estados: EstadoProgressao[] = ['inicial', 'em_desenvolvimento', 'consolidado', 'avancado'];
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 3 }}>
-      {estados.map(e => (
-        <button key={e} onClick={() => onChange(valor === e ? null : e)} style={{
-          padding: '5px 3px', borderRadius: 6, fontSize: 9, cursor: 'pointer', textAlign: 'center', lineHeight: 1.3,
-          border: `0.5px solid ${valor === e ? ESTADO_COR[e].color : 'var(--color-border-tertiary)'}`,
-          background: valor === e ? ESTADO_COR[e].bg : 'var(--color-background-primary)',
-          color: valor === e ? ESTADO_COR[e].color : 'var(--color-text-secondary)',
-          fontWeight: valor === e ? 600 : 400,
-        }}>
-          {ESTADO_LABEL[e]}
-          {comp && <div style={{ fontSize: 8, lineHeight: 1.2, marginTop: 2, opacity: 0.85 }}>{comp.descritores[e].substring(0, 28)}…</div>}
-        </button>
-      ))}
     </div>
   );
 }
