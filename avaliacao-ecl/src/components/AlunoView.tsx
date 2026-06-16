@@ -6,7 +6,7 @@ import {
   addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao,
 } from '../backend';
 import {
-  MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, REGRAS_AVALIACAO,
+  MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, jaTeveSucesso, estaEmRegressao, MicroCompetencia,
 } from '../competenciasECL';
 
@@ -392,20 +392,23 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
   // Verificar histórico do aluno para cada microcompetência
   const microsSugeridas = microsDaUC.slice(0, 8).map(m => {
     const hist = getHistoricoAlunoMicro(aluno.id, m.id);
-    const notas = hist.map(h=>h.nota);
-    const consolidada = jaTeveSucesso(notas);
-    const emRegressao = estaEmRegressao(notas);
-    const nunca = notas.length === 0;
+    // converter para {nota, data} para as funções do motor
+    const avaliacoes = hist.map(h=>({ nota: h.nota, data: h.data }));
+    const consolidada = jaTeveSucesso(avaliacoes);
+    const emRegressao = estaEmRegressao(avaliacoes);
+    const nunca = avaliacoes.length === 0;
+    const notasSimples = avaliacoes.map(a=>a.nota);
 
     let prioridade = 5;
     let motivo = '';
     if (emRegressao) { prioridade = 1; motivo = '⚠️ Em regressao — notas a descer'; }
-    else if (notas.length>=3 && !consolidada) { prioridade = 2; motivo = '→ Sem evolucao significativa'; }
+    else if (avaliacoes.length>=3 && !consolidada) { prioridade = 2; motivo = '→ Sem evolucao significativa'; }
     else if (nunca) { prioridade = 3; motivo = '★ Nunca avaliada nesta UC'; }
     else if (!consolidada) { prioridade = 4; motivo = '↑ Ainda em desenvolvimento'; }
     else { motivo = '✓ Consolidada'; }
 
-    return { ...m, prioridade, motivo, consolidada, notas, mediaRecente: notas.length>0?notas.slice(-3).reduce((s,n)=>s+n,0)/Math.min(3,notas.length):0 };
+    const mediaRecente = notasSimples.length>0 ? notasSimples.slice(-3).reduce((s,n)=>s+n,0)/Math.min(3,notasSimples.length) : 0;
+    return { ...m, prioridade, motivo, consolidada, avaliacoes, mediaRecente };
   }).sort((a,b)=>a.prioridade-b.prioridade);
 
   // Microcompetências obrigatórias (sempre presentes)
@@ -424,9 +427,9 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
     const m = MICROCOMPETENCIAS.find(x=>x.id===id);
     if (!m) return;
     const hist = getHistoricoAlunoMicro(aluno.id, id);
-    const notasHist = hist.map(h=>h.nota);
-    if (jaTeveSucesso(notasHist)) {
-      setAvisoEscolha(REGRAS_AVALIACAO.mensagemBloqueio);
+    const avaliacoes = hist.map(h=>({ nota: h.nota, data: h.data }));
+    if (jaTeveSucesso(avaliacoes)) {
+      setAvisoEscolha(PARAMETROS_AVALIACAO.mensagemBloqueioAluno);
       return;
     }
     setAvisoEscolha('');
@@ -509,7 +512,10 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
                   <div style={{ marginBottom:10 }}>
                     <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6, color:'var(--charcoal)' }}>Criterios observaveis</div>
                     {m.criterios.map((c,i)=>(
-                      <div key={i} style={{ fontSize:11, padding:'4px 0', borderBottom:'1px solid var(--border)', color:'rgba(26,23,20,0.7)' }}>· {c}</div>
+                      <div key={i} style={{ fontSize:11, padding:'4px 0', borderBottom:'1px solid var(--border)', color:'rgba(26,23,20,0.7)' }}>
+                        · {c.criterio}
+                        {c.como&&<span style={{ fontSize:9, color:'rgba(26,23,20,0.4)', display:'block', paddingLeft:8 }}>{c.como}</span>}
+                      </div>
                     ))}
                   </div>
                 )}
