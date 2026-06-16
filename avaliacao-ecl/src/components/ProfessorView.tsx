@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Comanda } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma } from '../backend';
 import { sugerirSubtecnicas } from '../subtecnicas';
 import { exportDOCX, exportPDF } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
@@ -718,40 +718,147 @@ ${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu 
 // ── Código que estava fora do template (removido) ──
 
 // ── Botão IAs ─────────────────────────────────────────────────
-function BotaoIAs({ link }: { link: string }) {
+function gerarPromptGuia(nomePrato: string, ucId?: string, ucNome?: string): string {
+  const ucContexto = ucId ? `\nContexto pedagógico: UC ${ucId} — ${ucNome || ''}` : '';
+  return `# GUIA DE APOIO À PRODUÇÃO — ${nomePrato.toUpperCase()}
+${ucContexto}
+
+Analisa a Ficha de Produção de "${nomePrato}" e gera um Guia de Apoio à Produção destinado a alunos do Curso Profissional de Cozinha e Pastelaria.
+
+IMPORTANTE:
+- Toda a informação deve referir-se exclusivamente a esta produção: ${nomePrato}
+- Não utilizar textos genéricos
+- Não repetir simplesmente o conteúdo da Ficha de Produção
+- O objectivo é explicar, formar e contextualizar tecnicamente o aluno
+- Utilizar tabelas sempre que possível
+- Linguagem simples, técnica e pedagógica
+
+---
+# 1. ENQUADRAMENTO DA PRODUÇÃO
+Explicar:
+- O que é a preparação
+- Qual a sua origem gastronómica
+- Em que contexto é normalmente utilizada
+- Principais características do produto final
+
+---
+# 2. COMPETÊNCIAS DESENVOLVIDAS
+
+## Competências Técnicas
+Relacionadas directamente com a produção de ${nomePrato}.
+
+## Atitudes
+- Organização
+- Gestão do tempo
+- Autonomia
+- Trabalho em equipa
+- Responsabilidade
+
+## Responsabilidades
+- HACCP
+- Segurança
+- Equipamentos
+- Conservação
+
+---
+# 3. MICROCOMPETÊNCIAS TÉCNICAS
+Identificar automaticamente as microcompetências presentes nesta produção.
+Explicar brevemente cada uma.
+
+---
+# 4. HACCP E PCC
+Apresentar em tabela:
+| Perigo | PCC | Temperatura crítica | Medida preventiva | Conservação |
+
+---
+# 5. RENDIMENTOS
+Para cada matéria-prima relevante:
+| Produto | Peso comprado | Peso utilizável | Rendimento | Origem das perdas |
+
+---
+# 6. CAPACITAÇÃO
+Explicar a quantidade por pessoa e justificar o tipo de serviço utilizado.
+
+---
+# 7. EQUILÍBRIO SENSORIAL
+| Componente | Intensidade | Notas |
+| Doce | | |
+| Ácido | | |
+| Salgado | | |
+| Amargo | | |
+| Umami | | |
+
+Indicar componentes dominantes, ausentes e pouco representados.
+
+---
+# 8. SUGESTÕES GASTRONÓMICAS
+Apenas sugestões — nunca alterar a receita.
+Justificar tecnicamente cada sugestão.
+
+---
+# 9. SUSTENTABILIDADE
+- Desperdícios gerados
+- Possíveis reaproveitamentos
+- Técnicas de valorização de subprodutos
+
+---
+# 10. FOOD COST PEDAGÓGICO
+- Ingredientes mais caros
+- Ingredientes com maior desperdício
+- Impacto dos rendimentos no custo final
+
+---
+# 11. CONHECIMENTOS A CONSOLIDAR
+Lista dos principais conhecimentos que o aluno deve dominar após executar esta produção.
+
+---
+# 12. QUESTÕES PARA ESTUDO
+Gerar automaticamente com base exclusivamente nesta produção:
+- 5 perguntas de escolha múltipla
+- 3 perguntas verdadeiro/falso
+- 2 situações práticas
+
+---
+Ficha de Produção: ${nomePrato}`;
+}
+
+function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?: string; ucId?: string; ucNome?: string }) {
   const [copiado, setCopiado] = React.useState(false);
+  const [copiadoGuia, setCopiadoGuia] = React.useState(false);
   const [mostrarPrompt, setMostrarPrompt] = React.useState(false);
+  const [mostrarGuia, setMostrarGuia] = React.useState(false);
   const [promptEditavel, setPromptEditavel] = React.useState('');
+  const [guiaEditavel, setGuiaEditavel] = React.useState('');
 
   React.useEffect(() => {
-    setPromptEditavel(gerarPrompt(link));
-  }, [link]);
+    setPromptEditavel(gerarPrompt(link, ucId, ucNome));
+    setGuiaEditavel(gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome));
+  }, [link, nomePrato, ucId, ucNome]);
 
-  const promptFinal = promptEditavel || gerarPrompt(link);
+  const promptFinal = promptEditavel || gerarPrompt(link, ucId, ucNome);
+  const guiaFinal = guiaEditavel || gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome);
 
-  function copiar() {
-    navigator.clipboard.writeText(promptFinal).then(() => {
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 3000);
+  function copiar(texto: string, setCop: (v: boolean) => void) {
+    navigator.clipboard.writeText(texto).then(() => {
+      setCop(true); setTimeout(() => setCop(false), 3000);
     }).catch(() => {
       const ta = document.createElement('textarea');
-      ta.value = promptFinal;
-      document.body.appendChild(ta);
-      ta.select();
+      ta.value = texto;
+      document.body.appendChild(ta); ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 3000);
+      setCop(true); setTimeout(() => setCop(false), 3000);
     });
   }
 
   return (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ fontWeight: 700, fontSize: 13, color: '#004F5C', marginBottom: 6 }}>
-        🤖 Extrair receita com IA
+      {/* FICHA DE PRODUÇÃO */}
+      <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 6 }}>
+        🤖 Extrair Ficha de Produção com IA
       </div>
       <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
-        Copia o prompt e cola numa IA. Podes editar o prompt antes de copiar para adicionar contexto extra.
+        Copia o prompt, cola numa IA com o link da receita e copia o resultado abaixo.
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <button type="button" className="btn btn-ghost"
@@ -763,46 +870,73 @@ function BotaoIAs({ link }: { link: string }) {
           🟢 Abrir no ChatGPT
         </button>
         <button type="button" className="btn btn-ghost"
-          onClick={copiar}
-          style={{ background: copiado ? '#004F5C' : undefined, color: copiado ? '#fff' : undefined }}>
-          {copiado ? '✅ Prompt copiado!' : '📋 Copiar prompt'}
+          onClick={() => copiar(promptFinal, setCopiado)}
+          style={{ background: copiado ? 'var(--copper)' : undefined, color: copiado ? '#fff' : undefined }}>
+          {copiado ? '✅ Copiado!' : '📋 Copiar prompt'}
         </button>
-        <button type="button" className="btn btn-ghost"
-          style={{ fontSize: 12 }}
-          onClick={() => {
-            if (!mostrarPrompt) setPromptEditavel(gerarPrompt(link));
-            setMostrarPrompt(!mostrarPrompt);
-          }}>
-          {mostrarPrompt ? '🔼 Esconder' : '✏️ Ver/editar prompt'}
+        <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }}
+          onClick={() => setMostrarPrompt(!mostrarPrompt)}>
+          {mostrarPrompt ? '🔼 Esconder' : '✏️ Ver/editar'}
         </button>
       </div>
       {mostrarPrompt && (
-        <div style={{ marginBottom: 8 }}>
-          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>
-            Podes adicionar informação extra no final (ex: "Este prato é para um jantar de gala"). O formato mantém-se.
-          </div>
-          <textarea
-            className="input"
-            value={promptEditavel}
+        <div style={{ marginBottom: 12 }}>
+          <textarea className="input" value={promptEditavel}
             onChange={e => setPromptEditavel(e.target.value)}
-            style={{ minHeight: 180, fontSize: 11, fontFamily: 'monospace' }}
-          />
-          <button type="button" className="btn btn-ghost"
-            style={{ fontSize: 11, marginTop: 4 }}
-            onClick={() => setPromptEditavel(gerarPrompt(link))}>
-            🔄 Repor prompt original
+            style={{ minHeight: 180, fontSize: 11, fontFamily: 'monospace' }}/>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 11, marginTop: 4 }}
+            onClick={() => setPromptEditavel(gerarPrompt(link, ucId, ucNome))}>
+            🔄 Repor original
           </button>
         </div>
       )}
-      {copiado && (
-        <div style={{ padding: '8px 12px', background: '#D6E4E8', borderRadius: 6, fontSize: 13 }}>
-          ✅ Prompt copiado! Cola numa IA (Ctrl+V), copia o resultado e cola na caixa de texto abaixo.
+
+      {/* GUIA DE APOIO À PRODUÇÃO */}
+      <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--sage)', marginBottom: 6 }}>
+          📚 Gerar Guia de Apoio à Produção
         </div>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+          Após criar a ficha, usa este prompt para gerar o Guia de Apoio completo com HACCP, rendimentos, equilíbrio sensorial e questões pedagógicas.
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+          <button type="button" className="btn btn-ghost"
+            onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(guiaFinal)}`, '_blank')}
+            style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}>
+            🟠 Guia no Claude
+          </button>
+          <button type="button" className="btn btn-ghost"
+            onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(guiaFinal)}`, '_blank')}
+            style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}>
+            🟢 Guia no ChatGPT
+          </button>
+          <button type="button" className="btn btn-ghost"
+            onClick={() => copiar(guiaFinal, setCopiadoGuia)}
+            style={{ background: copiadoGuia ? 'var(--sage)' : undefined, color: copiadoGuia ? '#fff' : undefined, borderColor: 'var(--sage)' }}>
+            {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt guia'}
+          </button>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 12, borderColor: 'var(--sage)', color: 'var(--sage)' }}
+            onClick={() => setMostrarGuia(!mostrarGuia)}>
+            {mostrarGuia ? '🔼 Esconder' : '✏️ Ver/editar guia'}
+          </button>
+        </div>
+        {mostrarGuia && (
+          <div style={{ marginBottom: 8 }}>
+            <textarea className="input" value={guiaEditavel}
+              onChange={e => setGuiaEditavel(e.target.value)}
+              style={{ minHeight: 180, fontSize: 11, fontFamily: 'monospace' }}/>
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 11, marginTop: 4 }}
+              onClick={() => setGuiaEditavel(gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome))}>
+              🔄 Repor original
+            </button>
+          </div>
+        )}
+      </div>
       )}
     </div>
   );
 }
-function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string) => void }) {
+function PassoLink({ onContinuar, ucId, ucNome }: { onContinuar: (texto: string, link: string) => void; ucId?: string; ucNome?: string }) {
   const [link, setLink] = useState('');
   const [textoManual, setTextoManual] = useState('');
   const [nomePrato, setNomePrato] = useState('');
@@ -921,7 +1055,7 @@ function PassoLink({ onContinuar }: { onContinuar: (texto: string, link: string)
           />
         </Field>
         {/* Botões IA — SEMPRE VISÍVEIS */}
-        <BotaoIAs link={link} />
+        <BotaoIAs link={link} nomePrato={nomePrato} ucId={ucId} ucNome={ucNome} />
         {link && (
           <button type="button" className="btn btn-ghost"
             style={{ marginTop: 6, fontSize: 12 }}
@@ -1343,6 +1477,12 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
   const [passo, setPasso] = useState<'link' | 'ficha'>('link');
   const [fichasGuardadas, setFichasGuardadas] = useState(() => getFichasProducao());
 
+  // Buscar UC do plano mais recente
+  const planos = getPlanosAulaPorTurma(turmaId);
+  const planoRecente = planos.find(p => p.ucId) || planos[0];
+  const ucId = planoRecente?.ucId || '';
+  const ucNome = planoRecente?.ucNome || '';
+
   function recarregar() { setFichasGuardadas(getFichasProducao()); }
 
   function guardarFicha(fichaConfirmada: FichaTecnica) {
@@ -1437,7 +1577,7 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
   // ── CRIAR / EDITAR ────────────────────────────────────────
   if (passo === 'link' && vista === 'criar') {
     return (
-      <PassoLink onContinuar={(texto, link) => {
+      <PassoLink ucId={ucId} ucNome={ucNome} onContinuar={(texto, link) => {
         setTextoReceita(texto);
         setLinkReceita(link);
         setFicha(extrairFicha(texto));
