@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Perfil, Aluno } from './types';
 import { Login } from './components/Login';
 import { Header } from './components/Header';
-import { ProfessorView } from './components/ProfessorView';
+import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
 import { CoordenadoraView } from './components/CoordenadoraView';
