@@ -267,58 +267,126 @@ function extrairFicha(texto: string): FichaTecnica {
     const secIngIA = texto.match(/INGREDIENTES:\n([\s\S]*?)(?=\nPREPARAÇÃO:|$)/i);
     const ingredientesIA: LinhaIngrediente[] = [];
     if (secIngIA) {
-      const linhasIng = secIngIA[1].split('\n').filter(l => l.includes('|') && !l.toUpperCase().includes('COMPONENTE'));
+      const linhasIng = secIngIA[1].split('\n').filter(l => l.trim() && !l.toUpperCase().includes('COMPONENTE') && !l.toUpperCase().startsWith('INGREDIENTE'));
       for (const linha of linhasIng) {
-        const partes = linha.split('|').map(p => p.trim());
-        if (partes.length >= 4) {
-          const qtRaw = partes[1] || '';
-          const unRaw = partes[2] || '';
-          const produto = partes[3] || '';
-          const conv = converterMedida(qtRaw, unRaw, produto);
-          ingredientesIA.push({
-            componente: partes[0] || '',
-            qt: conv.qtFinal,
-            un: conv.unFinal,
-            produto,
-            tPrep: partes[4] || '',
-            tConf: partes[5] || '',
-            obs: conv.obs || partes[6] || '',
-          });
+        // Formato com | (formato preferido)
+        if (linha.includes('|')) {
+          const partes = linha.split('|').map(p => p.trim());
+          if (partes.length >= 4 && partes[1]) {
+            const qtRaw = partes[1] || '';
+            const unRaw = partes[2] || '';
+            const produto = partes[3] || '';
+            const conv = converterMedida(qtRaw, unRaw, produto);
+            ingredientesIA.push({
+              componente: partes[0] || '',
+              qt: conv.qtFinal,
+              un: conv.unFinal,
+              produto,
+              tPrep: partes[4] || '',
+              tConf: partes[5] || '',
+              obs: conv.obs || partes[6] || '',
+            });
+          }
+        } else {
+          // Formato sem | — parse por regex (ex: "Bacalhau400gBacalhau demolhado10 min5 min⚠️...")
+          // Tenta separar: componente + quantidade + unidade + produto + resto
+          const m = linha.match(/^(.+?)\s+(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|un|cl|dl|L|Kg|G|ML|q\.b\.|q\.b|qb)\s+(.+?)(?:\s+(\d+\s*min|\d+[\-–]\d+\s*h?))?(?:\s+(\d+\s*min|\d+[\-–]\d+\s*min?))?(?:\s+(⚠️.+|[A-ZÁÉÍÓÚÂÊÎÔÛÃÕÇ].{5,}?))?$/i);
+          if (m) {
+            const qtRaw = m[2] || '';
+            const unRaw = m[3] || '';
+            const produto = m[4]?.trim() || '';
+            const conv = converterMedida(qtRaw, unRaw, produto);
+            ingredientesIA.push({
+              componente: m[1]?.trim() || '',
+              qt: conv.qtFinal,
+              un: conv.unFinal,
+              produto,
+              tPrep: m[5] || '',
+              tConf: m[6] || '',
+              obs: conv.obs || m[7] || '',
+            });
+          } else if (linha.match(/^[A-Za-zÀ-ú]/)) {
+            // fallback — linha de ingrediente sem estrutura clara
+            // tenta extrair pelo menos o produto e quantidade
+            const mSimples = linha.match(/^([A-Za-zÀ-ú ]+?)\s+(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|un|cl|dl|q\.b\.|q\.b|qb)?\s*(.*)/i);
+            if (mSimples) {
+              ingredientesIA.push({
+                componente: '',
+                qt: mSimples[2] || '',
+                un: mSimples[3] || '',
+                produto: mSimples[1]?.trim() || '',
+                tPrep: '',
+                tConf: '',
+                obs: mSimples[4] || '',
+              });
+            }
+          }
         }
       }
     }
 
-    // Preparação com separador | — PCC pode ter texto longo
+    // Preparação — aceita formato com ou sem |
     const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|\nEQUIPAMENTO|\nCONSERVAÇÃO:|$)/i);
     const preparacaoIA: PassoPreparacao[] = [];
     if (secPrepIA) {
-      const linhasRaw = secPrepIA[1].split('\n');
-      const linhasPassos: string[] = [];
-      for (const linha of linhasRaw) {
-        if (linha.trim() === '') continue;
-        if (/^NR\s*\|/i.test(linha)) continue; // cabeçalho
-        if (!linha.includes('|')) continue;
-        const primeiraColuna = linha.split('|')[0].trim();
-        // É novo passo se começa com número (1, 2, 3... ou 1., 2., etc.)
-        if (/^\d+\.?\s*$/.test(primeiraColuna)) {
-          linhasPassos.push(linha);
-        } else if (linhasPassos.length > 0) {
-          // Continuação do passo anterior
-          linhasPassos[linhasPassos.length - 1] += ' ' + linha.trim();
+      const linhasRaw = secPrepIA[1].split('\n').filter(l => l.trim());
+      const temPipe = linhasRaw.some(l => l.includes('|'));
+
+      if (temPipe) {
+        // Formato com | 
+        const linhasPassos: string[] = [];
+        for (const linha of linhasRaw) {
+          if (/^NR\s*\|/i.test(linha)) continue;
+          if (!linha.includes('|')) continue;
+          const primeiraColuna = linha.split('|')[0].trim();
+          if (/^\d+\.?\s*$/.test(primeiraColuna)) {
+            linhasPassos.push(linha);
+          } else if (linhasPassos.length > 0) {
+            linhasPassos[linhasPassos.length - 1] += ' ' + linha.trim();
+          }
         }
-      }
-      for (const linha of linhasPassos) {
-        const partes = linha.split('|').map(p => p.trim());
-        if (partes.length >= 2 && partes[1]) {
-          preparacaoIA.push({
-            num: parseInt(partes[0]) || preparacaoIA.length + 1,
-            descricao: partes[1] || '',
-            temperatura: partes[2] || '',
-            tempo: partes[3] || '',
-            obs: partes[4] || '',
-            haccp: partes.slice(5).join('|').trim() || '',
-          });
+        for (const linha of linhasPassos) {
+          const partes = linha.split('|').map(p => p.trim());
+          if (partes.length >= 2 && partes[1]) {
+            preparacaoIA.push({
+              num: parseInt(partes[0]) || preparacaoIA.length + 1,
+              descricao: partes[1] || '',
+              temperatura: partes[2] || '',
+              tempo: partes[3] || '',
+              obs: partes[4] || '',
+              haccp: partes.slice(5).join('|').trim() || '',
+            });
+          }
         }
+      } else {
+        // Formato sem | — cada linha começa com número
+        let passoActual: PassoPreparacao | null = null;
+        for (const linha of linhasRaw) {
+          if (/^NR\s+DESCRI/i.test(linha)) continue; // cabeçalho
+          const mNum = linha.match(/^(\d+)\s+(.+)/);
+          if (mNum) {
+            if (passoActual) preparacaoIA.push(passoActual);
+            // Extrair PCC/HACCP da linha se presente
+            const descCompleta = mNum[2];
+            const mHaccp = descCompleta.match(/(.+?)\s+(Temperatura[^.]+\.|PCC[^.]+\.|[A-Z][a-z]+ mínima[^.]+\.)$/);
+            passoActual = {
+              num: parseInt(mNum[1]),
+              descricao: mHaccp ? mHaccp[1].trim() : descCompleta.trim(),
+              temperatura: '',
+              tempo: '',
+              obs: '',
+              haccp: mHaccp ? mHaccp[2].trim() : '',
+            };
+          } else if (passoActual && linha.trim()) {
+            // Continuação do passo — pode ser obs ou haccp
+            if (linha.includes('°C') || linha.toLowerCase().includes('temperatura') || linha.toLowerCase().includes('pcc')) {
+              passoActual.haccp = (passoActual.haccp ? passoActual.haccp + ' ' : '') + linha.trim();
+            } else {
+              passoActual.obs = (passoActual.obs ? passoActual.obs + ' ' : '') + linha.trim();
+            }
+          }
+        }
+        if (passoActual) preparacaoIA.push(passoActual);
       }
     }
 
