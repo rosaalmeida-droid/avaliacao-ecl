@@ -515,34 +515,158 @@ function extrairFicha(texto: string): FichaTecnica {
 // Prompt para extração de receita via IA externa
 // Formato exato da ficha de produção ECL
 // ============================================================
-function gerarPrompt(linkReceita: string): string {
-  return `Analisa a receita neste link e extrai a informação NO FORMATO EXATO do exemplo abaixo.
-REGRAS OBRIGATÓRIAS:
-- Usa o separador | entre colunas
-- Cada passo de preparação deve estar NUMA SÓ LINHA (não quebres linhas dentro de um passo)
-- O campo PCC/HACCP deve estar na mesma linha do passo, após o último |
-- Usa q.b. quando a quantidade não é especificada
-- O campo "Nº DE DOSES" deve ser sempre um número (ex: 2, 4, 6)
+function gerarPrompt(linkReceita: string, ucId?: string, ucNome?: string): string {
+  const ucContexto = ucId ? `\nCONTEXTO PEDAGÓGICO: Esta ficha pertence à UC ${ucId} — ${ucNome || ''}.\nAs técnicas e competências devem ser específicas desta UC.` : '';
+  return `Analisa a receita e extrai a informação NO FORMATO EXATO abaixo.
+Aplica TODAS as regras obrigatórias antes de responder.${ucContexto}
 
-REGRA CRÍTICA — UNIDADES DOS INGREDIENTES:
-- TODOS os ingredientes devem ter quantidade em gramas (g) ou mililitros (ml)
-- A ÚNICA exceção são os OVOS que ficam em "un" (ex: 2 | un | Ovos)
-- Quando a receita diz "2 cebolas" → escreve "200 | g | Cebola" (cebola média ≈ 100g cada)
+═══════════════════════════════════════════════════
+REGRAS OBRIGATÓRIAS — LÊ TODAS ANTES DE COMEÇAR
+═══════════════════════════════════════════════════
+
+REGRA 1 — FORMATO
+- Usa o separador | entre colunas
+- Cada passo de preparação: NUMA SÓ LINHA
+- PCC/HACCP na mesma linha do passo, após o último |
+- Nº DE DOSES é sempre um número (ex: 4)
+
+REGRA 2 — UNIDADES (CRÍTICO)
+Todos os ingredientes em GRAMAS (g) ou MILILITROS (ml).
+ÚNICA exceção: OVOS ficam em "un".
+
+Conversões obrigatórias:
+- "2 cebolas" → "200 | g | Cebola" (média ≈ 100g)
 - "1 dente de alho" → "6 | g | Alho"
+- "1 cebola grande" → "200 | g | Cebola"
 - "1 lombo de bacalhau" → "200 | g | Bacalhau demolhado"
 - "1 lombo de salmão" → "180 | g | Salmão fresco"
-- "1 filete de peixe" → "150 | g | Peixe"
+- "1 filete de peixe" → "150 | g | [espécie]"
 - "1 tomate" → "120 | g | Tomate"
 - "1 cenoura" → "100 | g | Cenoura"
 - "1 batata média" → "150 | g | Batata"
+- "1 limão (raspa)" → "12 | g | Raspa de limão"
 - "1 limão (sumo)" → "30 | ml | Sumo de limão"
-- "1 colher de sopa" (sólido) → "15 | g | [produto]"
-- "1 colher de sopa" (líquido) → "15 | ml | [produto]"
-- "1 colher de chá" → "5 | g | [produto]" ou "5 | ml | [produto]"
+- "1 laranja (raspa)" → "15 | g | Raspa de laranja"
+- "1 cs" sólido → "15 | g | [produto]"
+- "1 cs" líquido → "15 | ml | [produto]"
+- "1 cc" → "5 | g | [produto]" ou "5 | ml"
 - "q.b." → "q.b. | | [produto]"
-- NÃO usar: un, unidade, dente, ramo, folha, fatia, cabeça (exceto ovos)
+- Gemas: "3 gemas" → "3 | un | Gemas de ovo"
+- Claras: "3 claras" → "3 | un | Claras de ovo"
+NÃO usar: un, unidade, dente, ramo, folha, fatia, cabeça (exceto ovos/gemas/claras)
 
-EXEMPLO DO FORMATO CORRETO:
+REGRA 3 — NOMES DOS INGREDIENTES (CRÍTICO)
+NUNCA usar nomes de marca. Usar sempre o produto genérico:
+❌ Knorr, Sidul, Vaqueiro, Mimosa, Riberalves, Gallo, Continente, Pingo Doce
+✅ Açúcar, Margarina, Leite, Bacalhau salgado, Azeite
+NUNCA usar produtos inexistentes:
+❌ Puré de grão → ✅ Grão cozido
+❌ Legumes assados → ✅ [lista os legumes crus]
+
+REGRA 3B — CALDOS (REGRA DA COZINHA PEDAGÓGICA)
+Em cozinha pedagógica os caldos NUNCA se compram — são SEMPRE produzidos em aula.
+NUNCA escrever "Caldo de galinha (cubo)" ou "Caldo Knorr" nos ingredientes.
+Quando a receita pede caldo:
+→ Na coluna PRODUTO escreve: "Caldo de galinha (produzido em aula)"
+→ Na coluna OBS escreve: "⚠️ Verificar se existe caldo já produzido na cozinha. Se não houver, informar o professor antes de iniciar."
+→ Na PREPARAÇÃO adiciona um passo antes dos outros: "Verificar disponibilidade de caldo de galinha na cozinha. Se necessário, produzir com antecedência."
+Tipos de caldo e o que escrever:
+- Caldo de galinha → "Caldo de galinha (produzido em aula)"
+- Caldo de carne → "Caldo de carne (produzido em aula)"
+- Caldo de peixe / fumet → "Fumet de peixe (produzido em aula)"
+- Caldo de legumes → "Caldo de legumes (produzido em aula)"
+
+REGRA 3C — ÁGUA DE COZEDURA
+Quando a receita tem ingredientes que produzem água de cozedura útil, adicionar nota obrigatória na coluna OBS:
+- Bacalhau (qualquer forma) → OBS: "⚠️ Reservar a água de demolha/cozedura — pode servir para ajustar consistência ou como base de caldo"
+- Massa/arroz → OBS: "⚠️ Reservar a água de cozedura (com amido) — útil para ligar molhos"
+- Batata → OBS: "⚠️ Reservar a água de cozedura se necessário para o puré"
+- Legumes → OBS: "⚠️ Reservar a água de cozedura para caldo de legumes"
+- Grão/feijão → OBS: "⚠️ Reservar a água de cozedura — rica em proteína e amido"
+
+REGRA 4 — FARINHA
+Se a receita não especifica o tipo:
+- Bolos, queques, muffins, massas montadas → "Farinha de trigo T55"
+- Pão, pizza, massa salgada → "Farinha de trigo T65"
+- Com fermento químico → "Farinha de trigo T55"
+- Por omissão → "Farinha de trigo T65"
+
+REGRA 5 — ÁGUA
+A água pode aparecer na Ficha de Produção normalmente.
+Não há restrição aqui — é apenas na Requisição que não aparece.
+
+REGRA 6 — COMPONENTES
+Agrupa os ingredientes por preparação/componente:
+Ex: "Massa", "Creme", "Cobertura", "Molho", "Guarnição"
+Deixa o campo COMPONENTE vazio se for receita simples sem componentes.
+
+REGRA 7 — PCC/HACCP
+Os PCC devem ser específicos da receita, não genéricos.
+Inclui: temperatura exacta, tempo, produto de risco.
+Exemplos corretos:
+- "Temperatura mínima 75°C no centro do produto"
+- "Creme pasteleiro: arrefecer de 65°C a 10°C em menos de 2h"
+- "Ovos: usar ovos frescos do dia, verificar data de validade"
+- "Bacalhau: verificar ausência de espinhas após desfiar"
+
+REGRA 8 — REGISTOS KITCHENFLOW
+Inclui APENAS os módulos aplicáveis a esta receita:
+1. Higiene Pessoal — SEMPRE
+2. Temperatura de Serviço — se prato quente (min 63°C) ou frio (max 4°C)
+3. Controlo de Óleos — APENAS se fritura por imersão
+4. Conservação de Produtos — se sobram ingredientes abertos
+5. Não Conformidades — SEMPRE
+6. Amostra Testemunho — APENAS se serviço a clientes externos
+
+═══════════════════════════════════════════════════
+FORMATO DE RESPOSTA (manter exactamente)
+═══════════════════════════════════════════════════
+
+NOME DO PRATO: [nome sem marcas]
+CLASSIFICAÇÃO: [Peixe / Carne / Aves / Sobremesa / Sopa / Entrada / Massa / Vegetariano / Outro]
+Nº DE DOSES: [número]
+TEMPO DE PREPARAÇÃO: [X min]
+TEMPO DE CONFEÇÃO: [X min]
+ALERGÉNICOS: [lista dos 14 alergénicos EU presentes]
+
+INGREDIENTES:
+COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
+[aplica REGRAS 2, 3, 4, 6 aqui]
+
+PREPARAÇÃO:
+NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
+[aplica REGRA 7 aqui — cada passo numa linha]
+
+EMPRATAMENTO:
+[descrição do empratamento profissional]
+
+EQUIPAMENTO NECESSÁRIO:
+[lista de equipamentos necessários]
+
+CONSERVAÇÃO:
+[temperatura, recipiente, duração]
+
+REGENERAÇÃO:
+[como regenerar ou "Não aplicável — consumir imediatamente"]
+
+REGISTOS KITCHENFLOW:
+[aplica REGRA 8 — apenas módulos relevantes]
+
+TÉCNICAS DETECTADAS:
+[Lista as microcompetências técnicas usadas nesta receita — máx 8, uma por linha, usando EXACTAMENTE estes nomes quando aplicável:
+Cozer | Escalfar/pochar | Branquear | Saltear | Fritar | Grelhar | Assar | Estufar/guisar | Brasear | Gratinar | Confitar
+Juliana | Brunoise | Mirepoix | Chiffonade | Filetar peixe | Escamar peixe | Retirar espinhas | Retirar pele peixe
+Porcionar peixe | Cozinhar bacalhau | Preparar marisco | Aparar carne | Desossar | Selar carne | Porcionar carne
+Fundo branco | Fundo escuro | Fumet de peixe | Fundo de legumes | Bechamel | Veloute | Reducao de molho | Emulsao quente/fria
+Sopa simples | Creme de legumes | Consomme | Bisque | Sopa fria | Ovo escalfado | Omelete
+Massa alimenticia seca | Massa fresca/recheada | Creme pasteleiro | Creme ingles | Chantilly | Ganache | Mousse
+Massa choux | Massa folhada | Detrempe | Tourage | Massa quebrada/areada
+Amassar | Fermentar | Dividir e bolear | Moldar pao | Cozer pao
+Elaborar ficha de producao | Interpretar ficha de producao | Organizar posto de trabalho | Elaborar cronograma de producao
+Calcular food cost | Elaborar requisicao | Controlar temperaturas | Armazenamento refrigerado | Etiquetagem e lote]
+
+---
+EXEMPLO DE REFERÊNCIA (Bacalhau à Brás):
 
 NOME DO PRATO: Bacalhau à Brás
 CLASSIFICAÇÃO: Peixe
@@ -553,89 +677,47 @@ ALERGÉNICOS: Peixe, Ovos, Glúten
 
 INGREDIENTES:
 COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
-Peixe | 500 | g | Bacalhau demolhado | 10 min | | Desfiar em lascas
-Vegetal | 3 | un | Cebola | 5 min | | Cortar em juliana
-Gordura | 1 | cs | Azeite | | |
-Ovo | 4 | un | Ovos | | | Mexer no final
+Peixe | 500 | g | Bacalhau demolhado | 10 min | | ⚠️ Reservar a água de cozedura
+Vegetal | 200 | g | Cebola | 3 min | | Cortar em juliana fina
+Gordura | 30 | ml | Azeite virgem extra | | |
+Ovo | 4 | un | Ovos | | | Mexer no final fora do lume
 
 PREPARAÇÃO:
 NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
-1 | Cortar a cebola em juliana e refogar no azeite até ficar translúcida | Médio | 8 min | Mexer regularmente |
-2 | Adicionar o bacalhau desfiado e envolver bem | Médio | 5 min | | Usar bacalhau bem demolhado — verificar teor de sal
-3 | Adicionar as batatas palha e os ovos mexidos, envolver rapidamente | Forte | 2 min | Não cozinhar demasiado | Ovos devem ficar mal cozinhados — usar ovos frescos do dia
+1 | Demolhar o bacalhau 24h antes em água fria, mudar a água 3 vezes | Frio | 24h | Manter refrigerado | Temperatura de refrigeração 0-4°C durante demolha
+2 | Refogar a cebola em juliana no azeite até ficar translúcida | Médio | 8 min | Mexer regularmente |
+3 | Adicionar o bacalhau desfiado sem espinhas e envolver | Médio | 5 min | | Verificar ausência de espinhas — risco de engasgamento
+4 | Juntar as batatas palha e envolver. Retirar do lume e adicionar os ovos mexidos | Forte→apagar | 2 min | Não cozinhar demasiado os ovos | Ovos devem ficar cremosos — temperatura interna 63°C
+5 | Retificar o sal e servir de imediato polvilhado com salsa picada | | | Provar sempre antes de servir |
 
 EMPRATAMENTO:
-Servir em prato fundo, polvilhado com salsa picada e azeitonas.
+Servir em prato fundo aquecido, polvilhado com salsa picada e azeitonas pretas. Decorar com rodela de limão.
 
 EQUIPAMENTO NECESSÁRIO:
 Frigideira larga antiaderente
-Faca de chef
-Tábua de corte
+Faca de chef e tábua de corte
+Tigela para desfiar o bacalhau
 
 CONSERVAÇÃO:
-Refrigerar a 0-4ºC, consumir em 24h, em recipiente fechado.
+Refrigerar a 0-4°C em recipiente fechado. Consumir nas 24h seguintes.
 
 REGENERAÇÃO:
-Aquecer em frigideira a lume médio, temperatura mínima 75ºC no centro.
+Aquecer em frigideira antiaderente a lume médio, adicionando um fio de azeite. Temperatura mínima 75°C no centro.
 
 REGISTOS KITCHENFLOW:
 Higiene Pessoal — registar antes de iniciar a produção
-Temperatura de Serviço — servir quente, mínimo 63ºC
-Conservação de Produtos — bacalhau ou ovos que sobrem: refrigerar a 0-4ºC, consumir em 24h
+Temperatura de Serviço — servir quente, mínimo 63°C
+Conservação de Produtos — bacalhau ou ovos que sobrem: refrigerar a 0-4°C, consumir em 24h
 Não Conformidades — registar qualquer desvio detetado
+Amostra Testemunho — se serviço a clientes externos
 
 ---
-AGORA FAZ O MESMO PARA ESTA RECEITA (mantém exactamente o mesmo formato):
-
-NOME DO PRATO: [nome]
-CLASSIFICAÇÃO: [Peixe / Carne / Aves / Sobremesa / Sopa / Entrada / Massa / Vegetariano / Outro]
-Nº DE DOSES: [número]
-TEMPO DE PREPARAÇÃO: [X min]
-TEMPO DE CONFEÇÃO: [X min]
-ALERGÉNICOS: [lista dos 14 alergénicos EU presentes]
-
-INGREDIENTES:
-COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
-[Para cada ingrediente preenche T.PREP com estimativa realista do tempo de preparação desse ingrediente:
-- Pesar/medir ingrediente simples (sal, azeite, especiarias): 1 min
-- Lavar/desinfetar vegetais: 2 min
-- Descascar e cortar cebola/alho: 2-3 min
-- Cortar legumes (juliana, brunoise, etc.): 3-5 min
-- Filetar/limpar peixe: 5-8 min
-- Preparar carne (aparar, porcionar): 5-10 min
-- Preparar ervas aromáticas: 1-2 min
-- Ingrediente sem preparação (ex: produto embalado pronto a usar): deixar vazio
-T.CONF: preencher apenas se o ingrediente tem cozedura independente (ex: batata cozida 20 min). Normalmente vazio.]
-[preencher]
-
-PREPARAÇÃO:
-NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
-[cada passo numa só linha, PCC ajustado à intenção culinária real da receita]
-
-EMPRATAMENTO:
-[descrição]
-
-EQUIPAMENTO NECESSÁRIO:
-[lista]
-
-CONSERVAÇÃO:
-[como conservar]
-
-REGENERAÇÃO:
-[como regenerar — se não aplicável, dizer porquê]
-
-REGISTOS KITCHENFLOW:
-[O KitchenFlow ECL tem exactamente estes 6 módulos. Inclui apenas os aplicáveis:
-1. Higiene Pessoal — SEMPRE obrigatório
-2. Temperatura de Serviço — se prato quente (mín. 63ºC) ou frio (máx. 4ºC)
-3. Controlo de Óleos — APENAS se fritura por imersão em óleo
-4. Conservação de Produtos — se sobram ingredientes abertos ou preparações
-5. Não Conformidades — SEMPRE obrigatório
-6. Amostra Testemunho — se produção para serviço a clientes externos]
-
-${linkReceita ? `Link: ${linkReceita}` : '[Sem link — analisa com base no teu conhecimento culinário e nas regras HACCP]'}`;
+${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu conhecimento culinário e aplica todas as regras acima.'}`;
 }
 
+// ── Código que estava fora do template (removido) ──
+
+// ── Botão IAs ─────────────────────────────────────────────────
 function BotaoIAs({ link }: { link: string }) {
   const [copiado, setCopiado] = React.useState(false);
   const [mostrarPrompt, setMostrarPrompt] = React.useState(false);
