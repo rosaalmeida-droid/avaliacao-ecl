@@ -4,7 +4,7 @@ import { PlanoAula, FichaProducao } from '../types';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
 import { converterUnidadeParaPeso } from '../pesosMedios';
 
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxs2Fn0xWPNsfxw1Kx4J62eOYX_nEq1zbwIKeLlUAwOzuxmbU_xlijaLGFzV7AIaBb3Ig/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz7g1xOC8gg23zI-wbE5ttAIHVj0l7GQrGkhSudCRvJqvgL5OK3bsBRmOSu4nNsEpR4aA';
 
 // ── Remover marcas ────────────────────────────────────────────
 const MARCAS = ['knorr','sidul','seara','continente','pingo doce','vaqueiro','mimosa','parmalat','compal','sumol','bom petisco','terra do bacalhau','pescanova','iglo','findus','campofrio','salsicharia','lusiteca','imperial','nobre','dias','matinal','predilecta','gallo','oliveira da serra'];
