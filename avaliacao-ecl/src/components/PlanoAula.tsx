@@ -13,16 +13,34 @@ const TIPOS_ATIVIDADE = [
   'Pequeno-almoço','Coffee break','Serviço real à carta','Catering',
   'Buffet','Evento externo','Outro',
 ];
+// Competências permanentes — sempre avaliadas (das 22 atitudes canónicas)
 const COMP_PERM = [
-  'Responsabilidade','Organização','Higiene e segurança alimentar',
-  'Disponibilidade para aprender','Respeito pelas regras','SST',
+  'Responsabilidade pelas suas acoes',
+  'Autonomia no ambito das suas funcoes',
+  'Respeito pelas normas de higiene e seguranca alimentar',
+  'Sentido de organizacao',
+  'Respeito pelas regras e normas definidas',
+  'Respeito pelas normas de seguranca e saude no trabalho',
 ];
+
+// Competências opcionais — professor escolhe
 const COMP_OPC = [
-  'Autonomia','Iniciativa','Autocontrolo','Assertividade','Empatia',
-  'Escuta ativa','Cooperação','Empenho e persistência',
-  'Flexibilidade','Sustentabilidade','Respeito pelo bem-estar',
-  'Autoconfiança','Postura profissional','Sentido crítico',
-  'Respeito pelas diferenças','Apresentação pessoal',
+  'Empatia',
+  'Empenho e persistencia na resolucao de problemas',
+  'Escuta ativa',
+  'Cooperacao com a equipa',
+  'Assertividade',
+  'Cuidado com a apresentacao pessoal',
+  'Flexibilidade e adaptabilidade',
+  'Iniciativa',
+  'Autocontrolo',
+  'Disponibilidade para aprender',
+  'Respeito pela sensibilidade e bem-estar dos outros',
+  'Respeito pelos principios da sustentabilidade',
+  'Sentido critico',
+  'Autoconfianca',
+  'Postura profissional',
+  'Respeito pelas diferencas individuais',
 ];
 
 // Lista de UCs da componente tecnológica — cozinha
@@ -96,9 +114,10 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
 }
 
 // ═══════════════════════════════════════════════════════════════
-export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlteracao, onGuardado }: {
+export default function PlanoAula({ turmaId, nomeProfessor, onAbrirPlano, onAlteracao, onGuardado }: {
   turmaId: string;
   nomeProfessor?: string;
+  onAbrirPlano?: (plano: TPlanoAula) => void;
   onIrParaFicha?: () => void;
   onAlteracao?: (guardar?: () => void) => void;
   onGuardado?: () => void;
@@ -107,8 +126,15 @@ export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlt
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
 
-  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p=>{setPlanoAtivo(p);setVista('detalhe');onGuardado?.();}} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
-  if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onIrParaFicha={onIrParaFicha} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
+  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => {
+    if (onAbrirPlano) {
+      onGuardado?.();
+      onAbrirPlano(p); // abre directamente a VistaDePlano
+    } else {
+      setPlanoAtivo(p); setVista('detalhe'); onGuardado?.();
+    }
+  }} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
+  if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
 
   return (
     <div>
@@ -128,7 +154,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlt
       {planos.map(p=>{
         const d = new Date(p.data+'T12:00:00');
         return (
-          <div key={p.id} className="option-card" onClick={()=>{setPlanoAtivo(p);setVista('detalhe');}}>
+          <div key={p.id} className="option-card" onClick={() => onAbrirPlano ? onAbrirPlano(p) : (setPlanoAtivo(p), setVista('detalhe'))}>
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
               <div style={{ background:'rgba(181,101,29,0.1)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
                 <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'var(--copper)', lineHeight:1 }}>
@@ -138,8 +164,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlt
                   {d.toLocaleDateString('pt-PT',{month:'short'})}
                 </div>
               </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:600, fontSize:14 }}>{p.titulo}</div>
+              <div style={{ flex:1 }}>                <div style={{ fontWeight:600, fontSize:14 }}>{p.titulo}</div>
                 <div className="muted" style={{ marginTop:2, fontSize:12 }}>{p.horaInicio}–{p.horaFim} · {p.fichasIds.length} ficha{p.fichasIds.length!==1?'s':''} · {p.turmaId}</div>
               </div>
               <span className="stamp copper">{p.estado==='publicado'?'Publicado':'Rascunho'}</span>
@@ -418,6 +443,9 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: { p
   const [notas,setNotas]=useState<Record<string,Record<string,Nota>>>(()=>
     Object.fromEntries(alunos.map(a=>[a.id,Object.fromEntries(comps.map(c=>[c.id,null]))]))
   );
+  const [compExtra, setCompExtra] = useState('');
+  const [compExtraAtiva, setCompExtraAtiva] = useState<string|null>(null);
+  const [notasExtra, setNotasExtra] = useState<Record<string,Nota>>({});
   const COR={
     S:{bg:'rgba(107,124,94,0.15)',color:'var(--sage)',border:'var(--sage)'},
     A:{bg:'rgba(31,27,22,0.06)',color:'var(--charcoal)',border:'var(--charcoal)'},
@@ -428,6 +456,27 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: { p
     <div>
       {/* Cabecalho */}
       <div style={{background:'var(--charcoal)',borderRadius:14,padding:'18px',marginBottom:12}}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:18,fontWeight:700,color:'var(--cream)'}}>{plano.titulo}</div>
+            <div style={{fontSize:12,color:'rgba(247,241,230,0.5)',marginTop:2}}>{plano.data} · {plano.horaInicio}–{plano.horaFim} · {plano.turmaId}</div>
+            {plano.ucId&&(
+              <div style={{marginTop:8,padding:'6px 10px',background:'rgba(181,101,29,0.25)',borderRadius:8,display:'inline-block'}}>
+                <span style={{fontSize:10,color:'rgba(247,241,230,0.6)',textTransform:'uppercase',letterSpacing:'0.05em'}}>UC · </span>
+                <span style={{fontSize:12,color:'var(--cream)',fontWeight:600}}>{plano.ucId} — {plano.ucNome}</span>
+              </div>
+            )}
+          </div>
+          <div style={{textAlign:'right',flexShrink:0,marginLeft:10}}>
+            <div style={{fontSize:10,padding:'3px 8px',borderRadius:20,background:plano.estado==='publicado'?'var(--sage)':'rgba(247,241,230,0.15)',color:'white',fontWeight:600,marginBottom:6}}>
+              {plano.estado==='publicado'?'✓ Publicado':'Rascunho'}
+            </div>
+            <div style={{fontSize:10,color:'rgba(247,241,230,0.4)'}}>
+              ☁️ Guardado no Sheets
+            </div>
+          </div>
+        </div>
+      </div>
         <button onClick={onVoltar} className="btn" style={{fontSize:11,padding:'5px 10px',background:'rgba(247,241,230,0.1)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.15)',marginBottom:10}}>← Planos</button>
         <div className="display" style={{fontSize:18,color:'var(--cream)'}}>{plano.titulo}</div>
         <div style={{fontSize:12,color:'rgba(247,241,230,0.5)',marginTop:2}}>{plano.data} · {plano.horaInicio}–{plano.horaFim} · {plano.turmaId}</div>
@@ -581,6 +630,65 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: { p
                   ))}
                 </div>
                 <button className="btn btn-primary btn-block" style={{background:'var(--charcoal)'}} onClick={()=>alert('Avaliacoes guardadas!')}>Guardar avaliações</button>
+
+                {/* Competência extra de observação */}
+                <div style={{marginTop:16,padding:'12px 14px',background:'rgba(90,122,78,0.08)',borderRadius:10,border:'1px solid rgba(90,122,78,0.2)'}}>
+                  <div style={{fontSize:12,fontWeight:700,color:'var(--sage)',marginBottom:6}}>
+                    + Competência extra de observação
+                  </div>
+                  <div style={{fontSize:11,color:'rgba(26,23,20,0.5)',marginBottom:8}}>
+                    Não entra na avaliação formal. Serve para observar um comportamento específico.
+                  </div>
+                  {!compExtraAtiva ? (
+                    <div style={{display:'flex',gap:6}}>
+                      <input className="input" value={compExtra} onChange={e=>setCompExtra(e.target.value)}
+                        placeholder="ex: Respeito pelas diferenças, Cooperação..."
+                        style={{flex:1,fontSize:12}} />
+                      <button className="btn btn-ghost" onClick={()=>{if(compExtra.trim()){setCompExtraAtiva(compExtra.trim());setNotasExtra({});}}}>
+                        Activar
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                        <div style={{fontWeight:600,fontSize:13,color:'var(--sage)'}}>{compExtraAtiva}</div>
+                        <button onClick={()=>{setCompExtraAtiva(null);setCompExtra('');}} style={{fontSize:11,color:'rgba(26,23,20,0.4)',background:'none',border:'none',cursor:'pointer'}}>Remover</button>
+                      </div>
+                      <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
+                        <thead>
+                          <tr style={{background:'var(--sage)',color:'white'}}>
+                            <th style={{padding:'6px 10px',textAlign:'left'}}>Aluno</th>
+                            <th style={{padding:'6px 4px',textAlign:'center'}}>S</th>
+                            <th style={{padding:'6px 4px',textAlign:'center'}}>A</th>
+                            <th style={{padding:'6px 4px',textAlign:'center'}}>R</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {alunos.map((a,ai)=>{
+                            const v=notasExtra[a.id]||null;
+                            return(
+                              <tr key={a.id} style={{background:ai%2===0?'#fff':'var(--cream)'}}>
+                                <td style={{padding:'7px 10px'}}>{a.nome||`Aluno ${a.numero}`}</td>
+                                {(['S','A','R'] as Nota[]).map(bv=>(
+                                  <td key={String(bv)} style={{textAlign:'center',padding:'3px 2px'}}>
+                                    <button onClick={()=>setNotasExtra(p=>({...p,[a.id]:p[a.id]===bv?null:bv}))}
+                                      style={{width:22,height:22,padding:0,fontSize:9,fontWeight:700,
+                                        background:v===bv?COR[bv!].bg:'transparent',
+                                        color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',
+                                        border:`1px solid ${v===bv?COR[bv!].border:'var(--border)'}`,
+                                        borderRadius:5,cursor:'pointer'}}>
+                                      {bv}
+                                    </button>
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
