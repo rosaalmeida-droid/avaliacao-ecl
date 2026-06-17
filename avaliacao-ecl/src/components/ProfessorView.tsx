@@ -1246,7 +1246,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
           style={{ width:'100%', minHeight: 60, borderRadius: 8, border: '1px solid var(--border)', padding: 8, fontSize: 11, fontFamily: 'monospace', background: '#fafafa', resize: 'vertical', marginBottom: 8 }} />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn btn-ghost"
-            style={{ borderColor: 'var(--sage)', color: 'var(--sage)', background: copiadoGuia ? 'var(--sage)' : undefined, color: copiadoGuia ? '#fff' : undefined } as any}
+            style={{ borderColor: 'var(--sage)', color: copiadoGuia ? '#fff' : 'var(--sage)', background: copiadoGuia ? 'var(--sage)' : undefined } as any}
             onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }}>
             {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt do guia'}
           </button>
