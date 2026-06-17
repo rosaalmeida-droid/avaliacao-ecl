@@ -9,13 +9,14 @@ const PINS: Record<Exclude<Perfil, 'aluno'>, string> = {
   coordenadora: '1006',
 };
 
-export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string, turmaId?: string) => void }) {
+export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string, turmaId?: string, nome?: string) => void }) {
   const [modo, setModo] = useState<Perfil | null>(null);
   const [turmaId, setTurmaId] = useState(getTurmas()[0]?.id || '');
   const [numero, setNumero] = useState('');
   const [ano, setAno] = useState<1 | 2 | 3>(1);
   const [pinAluno, setPinAluno] = useState('');
   const [pin, setPin] = useState('');
+  const [nomeProfessor, setNomeProfessor] = useState('');
   const [erro, setErro] = useState('');
 
   const turmas = getTurmas();
@@ -28,7 +29,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
 
   function entrarStaff(perfil: Exclude<Perfil, 'aluno'>) {
     if (pin !== PINS[perfil]) { setErro('PIN incorreto.'); return; }
-    onLogin(perfil, undefined, perfil === 'professor' ? turmaId : undefined);
+    onLogin(perfil, undefined, perfil === 'professor' ? turmaId : undefined, nomeProfessor || undefined);
   }
 
   /* ── Cabeçalho com logo ── */
@@ -109,8 +110,12 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
                   {turmas.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
                 </select>
               </Field>
+              <Field label="Nome (opcional)">
+                <input className="input" type="text" value={nomeProfessor} onChange={e => setNomeProfessor(e.target.value)} placeholder="ex: Rosa Almeida" />
+              </Field>
               <Field label="PIN">
-                <input className="input" type="password" value={pin} onChange={e => setPin(e.target.value)} placeholder="••••" />
+                <input className="input" type="password" value={pin} onChange={e => setPin(e.target.value)} placeholder="••••"
+                  onKeyDown={e => e.key === 'Enter' && entrarStaff('professor')} />
               </Field>
               {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
               <Button block onClick={() => entrarStaff('professor')}>Entrar</Button>
