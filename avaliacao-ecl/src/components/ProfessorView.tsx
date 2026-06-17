@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Comanda } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula } from '../backend';
 import { CaixaGuia } from './GuiaProducao';
 import { sugerirSubtecnicas } from '../subtecnicas';
 import { exportDOCX, exportPDF } from '../exportFicha';
@@ -1056,6 +1056,12 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
   const [erro, setErro] = useState('');
   const [fichasSimilares, setFichasSimilares] = useState<any[]>([]);
   const [mostrarSimilares, setMostrarSimilares] = useState(false);
+  const [copiadoFicha, setCopiadoFicha] = useState(false);
+  const [copiadoGuia, setCopiadoGuia] = useState(false);
+
+  // Prompts calculados em tempo real
+  const promptFicha = gerarPrompt(link, ucId, ucNome);
+  const promptGuia = gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome);
 
   // Verificar fichas similares quando o nomePrato muda
   React.useEffect(() => {
@@ -1180,59 +1186,92 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
         📋 Nova Ficha de Produção
       </div>
 
-      {/* NOME DO PRATO — activa detecção de similares */}
+      {/* NOME DO PRATO */}
       <Field label="Nome do prato *">
         <input
           className="input"
           value={nomePrato}
           onChange={e => { setNomePrato(e.target.value); onAlteracao?.(); }}
           placeholder="ex: Bacalhau à Brás, Mousse de Chocolate..."
-          style={{ borderColor: nomePrato ? undefined : 'var(--copper)' }}
         />
-        <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 3 }}>
-          Preenche antes de usar a IA — activa a detecção de fichas similares
-        </div>
       </Field>
 
-      {/* SECÇÃO IA — sempre visível, mesmo sem link */}
-      <div style={{ background: '#D6E4E8', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: '#004F5C', marginBottom: 6 }}>
-          🤖 Passo 1 — Extrai a receita com IA
-        </div>
-        <Field label="Link da receita (opcional — inclui no prompt)">
-          <input
-            className="input"
-            value={link}
-            onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); onAlteracao?.(); }}
-            placeholder="https://www.pingodoce.pt/receitas/..."
-          />
-        </Field>
-        {/* Botões IA — SEMPRE VISÍVEIS */}
-        <BotaoIAs link={link} nomePrato={nomePrato} ucId={ucId} ucNome={ucNome} />
-        {link && (
-          <button type="button" className="btn btn-ghost"
-            style={{ marginTop: 6, fontSize: 12 }}
-            onClick={carregar}
-            disabled={a_carregar}>
-            {a_carregar ? 'A carregar...' : '⚡ Tentar ler link automaticamente'}
-          </button>
-        )}
-      </div>
-
-      {/* CAIXA PARA COLAR RESULTADO DA FICHA */}
-      <div style={{ background: 'rgba(181,101,29,0.06)', borderRadius: 10, padding: '12px 14px', marginBottom: 14, border: '1.5px solid rgba(181,101,29,0.2)' }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 6 }}>
-          📋 Passo 2 — Cola aqui o resultado da IA <span style={{ fontWeight: 400, fontSize: 11 }}>(apenas para a Ficha de Produção)</span>
+      {/* PASSO 1A — PROMPT DA FICHA DE PRODUÇÃO */}
+      <div style={{ background: 'rgba(181,101,29,0.06)', borderRadius: 10, padding: '12px 14px', marginBottom: 12, border: '1.5px solid rgba(181,101,29,0.3)' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 4 }}>
+          🤖 Passo 1A — Prompt para a Ficha de Produção
         </div>
         <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
-          Copia o resultado da IA (ingredientes, preparação, HACCP) e cola aqui. O Guia de Apoio vai para uma área separada abaixo.
+          Copia este prompt, abre uma IA, cola e envia. Depois copia o resultado e cola no Passo 2.
+        </div>
+        <Field label="Link da receita (inclui no prompt automaticamente)">
+          <input className="input" value={link}
+            onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); onAlteracao?.(); }}
+            placeholder="https://www.pingodoce.pt/receitas/..." />
+        </Field>
+        <textarea readOnly value={promptFicha}
+          style={{ width:'100%', minHeight: 80, borderRadius: 8, border: '1px solid var(--border)', padding: 8, fontSize: 11, fontFamily: 'monospace', background: '#fafafa', resize: 'vertical', marginBottom: 8 }} />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-ghost"
+            style={{ background: copiadoFicha ? 'var(--copper)' : undefined, color: copiadoFicha ? '#fff' : undefined }}
+            onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }}>
+            {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt da ficha'}
+          </button>
+          <button type="button" className="btn btn-ghost"
+            onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(promptFicha)}`, '_blank')}>
+            🟠 Abrir no Claude
+          </button>
+          <button type="button" className="btn btn-ghost"
+            onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); window.open('https://chat.openai.com/', '_blank'); }}>
+            🟢 Abrir ChatGPT
+          </button>
+          {link && (
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }}
+              onClick={carregar} disabled={a_carregar}>
+              {a_carregar ? 'A carregar...' : '⚡ Ler link automaticamente'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* PASSO 1B — PROMPT DO GUIA DE APOIO */}
+      <div style={{ background: 'rgba(90,122,78,0.06)', borderRadius: 10, padding: '12px 14px', marginBottom: 12, border: '1.5px solid rgba(90,122,78,0.3)' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--sage)', marginBottom: 4 }}>
+          📚 Passo 1B — Prompt para o Guia de Apoio à Produção
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
+          Depois de ter a ficha, usa este prompt para gerar o Guia pedagógico. Cola o resultado no Passo 3.
+        </div>
+        <textarea readOnly value={promptGuia}
+          style={{ width:'100%', minHeight: 60, borderRadius: 8, border: '1px solid var(--border)', padding: 8, fontSize: 11, fontFamily: 'monospace', background: '#fafafa', resize: 'vertical', marginBottom: 8 }} />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-ghost"
+            style={{ borderColor: 'var(--sage)', color: 'var(--sage)', background: copiadoGuia ? 'var(--sage)' : undefined, color: copiadoGuia ? '#fff' : undefined } as any}
+            onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }}>
+            {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt do guia'}
+          </button>
+          <button type="button" className="btn btn-ghost" style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}
+            onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(promptGuia)}`, '_blank')}>
+            🟠 Guia no Claude
+          </button>
+          <button type="button" className="btn btn-ghost" style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}
+            onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); window.open('https://chat.openai.com/', '_blank'); }}>
+            🟢 Guia no ChatGPT
+          </button>
+        </div>
+      </div>
+
+      {/* PASSO 2 — RESULTADO DA FICHA DE PRODUÇÃO */}
+      <div style={{ background: 'rgba(181,101,29,0.04)', borderRadius: 10, padding: '12px 14px', marginBottom: 12, border: '1px solid rgba(181,101,29,0.2)' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 4 }}>
+          📋 Passo 2 — Cola aqui o resultado da Ficha de Produção
         </div>
         <textarea
           className="input"
           value={textoManual}
           onChange={e => { setTextoManual(e.target.value); onAlteracao?.(); }}
-          placeholder={`NOME DO PRATO: Bacalhau à Brás\nCLASSIFICAÇÃO: Peixe\nNº DE DOSES: 4\nTEMPO DE PREPARAÇÃO: 20 min\nTEMPO DE CONFEÇÃO: 30 min\nALERGÉNICOS: Peixe, Glúten\n\nINGREDIENTES:\nCOMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS\nPeixe | 500 | g | Bacalhau demolhado | 10 min | |\n\nPREPARAÇÃO:\nNR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP\n1 | Demolhar o bacalhau... | Frio | 24h | |\n\nEMPRATAMENTO:\n...\n\nREGISTOS KITCHENFLOW:\n...`}
-          style={{ minHeight: 200, fontSize: 12, fontFamily: 'monospace', background: '#fff' }}
+          placeholder={'NOME DO PRATO: ...\nCLASSIFICAÇÃO: ...\nNº DE DOSES: 4\n\nINGREDIENTES:\nCOMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS\n...\n\nPREPARAÇÃO:\nNR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP\n1 | ...'}
+          style={{ minHeight: 180, fontSize: 12, fontFamily: 'monospace', background: '#fff' }}
         />
       </div>
 
@@ -1252,12 +1291,9 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {f.linkFicha && (
-                  <button onClick={() => window.open(f.linkFicha, '_blank')} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px' }}>
-                    Ver →
-                  </button>
+                  <button onClick={() => window.open(f.linkFicha, '_blank')} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px' }}>Ver →</button>
                 )}
                 <button onClick={() => {
-                  // Reutilizar esta ficha
                   const fichaLocal = getFichasProducao().find(x => x.id === f.id);
                   if (fichaLocal) {
                     const textoSimulado = `NOME DO PRATO: ${fichaLocal.nomePrato}\nCLASSIFICAÇÃO: ${fichaLocal.classificacao}\nNº DE DOSES: ${fichaLocal.numPorcoes}\nTEMPO DE PREPARAÇÃO: ${fichaLocal.tempoPrep}\nTEMPO DE CONFEÇÃO: ${fichaLocal.tempoConf}\nALERGÉNICOS: ${(fichaLocal.alergenicos||[]).join(', ')}\n\nINGREDIENTES:\nCOMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS\n${(fichaLocal.ingredientes||[]).map(i => `${i.componente}|${i.qt}|${i.un}|${i.produto}|${i.tPrep}|${i.tConf}|${i.obs}`).join('\n')}\n\nPREPARAÇÃO:\nNR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP\n${(fichaLocal.preparacao||[]).map(p => `${p.num}|${p.descricao}|${p.temperatura}|${p.tempo}|${p.obs}|${p.haccp}`).join('\n')}\n\nEMPRATAMENTO:\n${fichaLocal.empratamento||''}\n\nCONSERVAÇÃO:\n${fichaLocal.conservacao||''}\n\nREGENERAÇÃO:\n${fichaLocal.regeneracao||''}\n\nREGISTOS KITCHENFLOW:\n${fichaLocal.kitchenflow||''}`;
@@ -1697,11 +1733,13 @@ function PassoFichaTecnica({
 // ============================================================
 // Vista principal do Professor — orquestra os passos
 // ============================================================
-export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
+export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia }: {
   turmaId: string;
   nomeProfessor?: string;
   onAlteracao?: () => void;
   onGuardado?: () => void;
+  planoId?: string;       // se presente, ficha fica associada a este plano
+  modoGuia?: boolean;     // se true, mostra só o fluxo do Guia
 }) {
   const [vista, setVista] = useState<'biblioteca' | 'criar' | 'editar'>('biblioteca');
   const [textoReceita, setTextoReceita] = useState('');
@@ -1737,13 +1775,27 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado 
       conservacao: fichaConfirmada.conservacao,
       regeneracao: fichaConfirmada.regeneracao,
       kitchenflow: fichaConfirmada.kitchenflow,
-      tecnicasSugeridas: [],
+      tecnicasSugeridas: fichaConfirmada.tecnicasDetectadas || [],
       ucsAssociadas: [ucId].filter(Boolean),
       elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor,
       data: fichaConfirmada.data,
       criadoEm: now,
       atualizadoEm: now,
     });
+
+    // Associar ao plano se existe planoId
+    if (planoId) {
+      const planos = getPlanosAula();
+      const plano = planos.find(p => p.id === planoId);
+      if (plano) {
+        const fichasActuais = getFichasProducao();
+        const novaFicha = fichasActuais[fichasActuais.length - 1];
+        if (novaFicha && !plano.fichasIds.includes(novaFicha.id)) {
+          addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, novaFicha.id], atualizadoEm: now });
+        }
+      }
+    }
+
     try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
     recarregar();
     onGuardado?.();
