@@ -195,7 +195,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
 }) {
   const [secAberta, setSecAberta] = useState(0);
   const [feitas, setFeitas] = useState<number[]>([]);
-  const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor: nomeProfessor || '', ucId:'', ucNome:'' });
+  const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor: nomeProfessor || '', ucId:'', ucnome:'' });
   const [fichasSel, setFichasSel] = useState<string[]>([]);
   const [grupos, setGrupos] = useState<Record<string,Record<string,'A'|'B'|null>>>({});
   const [compOpc, setCompOpc] = useState<string[]>([]);
@@ -218,7 +218,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       data:dados.data, horaInicio:dados.horaInicio, horaFim:dados.horaFim,
       titulo:dados.titulo||(dados.tipoAtividade + ' - ' + dados.data),
       observacoes:'', fichasIds:[], estado:'rascunho', criadoEm:now, atualizadoEm:now,
-      ucId: dados.ucId, ucNome: ucSel?.nome || '',
+      ucId: dados.ucId, ucnome: ucSel?.nome || '',
     } as TPlanoAula;
     addOrUpdatePlanoAula(p); setPlano(p); concluir(0); onGuardado?.();
   }
@@ -476,7 +476,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
         {plano.ucId && (
           <div style={{marginTop:8,padding:'6px 10px',background:'rgba(181,101,29,0.25)',borderRadius:8,display:'inline-block'}}>
             <span style={{fontSize:10,color:'rgba(247,241,230,0.6)',textTransform:'uppercase',letterSpacing:'0.05em'}}>UC </span>
-            <span style={{fontSize:12,color:'var(--cream)',fontWeight:600}}>{plano.ucId} - {plano.ucNome}</span>
+            <span style={{fontSize:12,color:'var(--cream)',fontWeight:600}}>{plano.ucId} - {plano.uc.nome}</span>
           </div>
         )}
         <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
