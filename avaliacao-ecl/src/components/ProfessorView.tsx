@@ -1628,7 +1628,7 @@ function PassoFichaTecnica({
 
         {/* TÉCNICAS DETECTADAS — ligar às microcompetências */}
         {ficha.tecnicasDetectadas && ficha.tecnicasDetectadas.length > 0 && (
-          <Card style={{ background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.2)' }}>
+          <div style={{ background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.2)', borderRadius: 12, padding: 16, marginBottom: 10 }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>
               🎯 Técnicas detectadas — para avaliação
             </div>
@@ -1642,15 +1642,15 @@ function PassoFichaTecnica({
                 </span>
               ))}
             </div>
-          </Card>
+          </div>
         )}
 
         <div style={{ height: 8 }} />
         <div style={{ position:'sticky', bottom:0, padding:'12px 0', background:'white', borderTop:'1px solid var(--border)' }}>
-          <Button block onClick={() => onContinuar(ficha)} disabled={!ficha.nomePrato}
-            style={{ background:'var(--sage)', fontSize:15, padding:'14px', fontWeight:700 }}>
+          <button className="btn btn-primary" style={{ width:'100%', background:'var(--sage)', fontSize:15, padding:'14px', fontWeight:700, borderRadius:10, border:'none', cursor:'pointer', opacity: ficha.nomePrato ? 1 : 0.4 }}
+            onClick={() => ficha.nomePrato && onContinuar(ficha)} disabled={!ficha.nomePrato}>
             ✓ Guardar Ficha de Produção
-          </Button>
+          </button>
           {!ficha.nomePrato && <div style={{ textAlign:'center', fontSize:11, color:'var(--danger)', marginTop:6 }}>Preenche o nome do prato para guardar.</div>}
         </div>
       </Card>
@@ -1797,7 +1797,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado 
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nomePrato}</div>
                 <div className="muted">{f.classificacao} · {f.numPorcoes} porções · {f.data}</div>
-                {f.ucsAssociadas?.length > 0 && <div style={{ fontSize:11, color:'var(--copper)' }}>{f.ucsAssociadas[0]}</div>}
+                {(f.ucsAssociadas || []).length > 0 && <div style={{ fontSize:11, color:'var(--copper)' }}>{(f.ucsAssociadas || [])[0]}</div>}
               </div>
               <span className="stamp">Ver / Editar</span>
             </div>
