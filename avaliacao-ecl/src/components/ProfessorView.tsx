@@ -947,7 +947,20 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
           🟠 Abrir no Claude
         </button>
         <button type="button" className="btn btn-ghost"
-          onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(promptFinal)}`, '_blank')}>
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(promptFinal);
+            } catch {
+              const ta = document.createElement('textarea');
+              ta.value = promptFinal;
+              document.body.appendChild(ta); ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+            }
+            setCopiado(true);
+            setTimeout(() => setCopiado(false), 4000);
+            window.open('https://chat.openai.com/', '_blank');
+          }}>
           🟢 Abrir ChatGPT (prompt copiado)
         </button>
         <button type="button" className="btn btn-ghost"
@@ -992,7 +1005,20 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
             🟠 Guia no Claude
           </button>
           <button type="button" className="btn btn-ghost"
-            onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(guiaFinal)}`, '_blank')}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(guiaFinal);
+              } catch {
+                const ta = document.createElement('textarea');
+                ta.value = guiaFinal;
+                document.body.appendChild(ta); ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+              }
+              setCopiadoGuia(true);
+              setTimeout(() => setCopiadoGuia(false), 4000);
+              window.open('https://chat.openai.com/', '_blank');
+            }}
             style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}>
             🟢 ChatGPT — Guia (prompt copiado)
           </button>
@@ -1155,13 +1181,17 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
       </div>
 
       {/* NOME DO PRATO — activa detecção de similares */}
-      <Field label="Nome do prato (opcional — activa detecção de duplicados)">
+      <Field label="Nome do prato *">
         <input
           className="input"
           value={nomePrato}
           onChange={e => { setNomePrato(e.target.value); onAlteracao?.(); }}
           placeholder="ex: Bacalhau à Brás, Mousse de Chocolate..."
+          style={{ borderColor: nomePrato ? undefined : 'var(--copper)' }}
         />
+        <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 3 }}>
+          Preenche antes de usar a IA — activa a detecção de fichas similares
+        </div>
       </Field>
 
       {/* SECÇÃO IA — sempre visível, mesmo sem link */}
@@ -1189,16 +1219,22 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
         )}
       </div>
 
-      {/* CAIXA PARA COLAR RESULTADO */}
-      <Field label="Passo 2 — Cola aqui o resultado da IA">
+      {/* CAIXA PARA COLAR RESULTADO DA FICHA */}
+      <div style={{ background: 'rgba(181,101,29,0.06)', borderRadius: 10, padding: '12px 14px', marginBottom: 14, border: '1.5px solid rgba(181,101,29,0.2)' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 6 }}>
+          📋 Passo 2 — Cola aqui o resultado da IA <span style={{ fontWeight: 400, fontSize: 11 }}>(apenas para a Ficha de Produção)</span>
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
+          Copia o resultado da IA (ingredientes, preparação, HACCP) e cola aqui. O Guia de Apoio vai para uma área separada abaixo.
+        </div>
         <textarea
           className="input"
           value={textoManual}
           onChange={e => { setTextoManual(e.target.value); onAlteracao?.(); }}
-          placeholder={`Cola aqui o texto que a IA te devolveu. Exemplo:\n\nNOME DO PRATO: Bacalhau à Brás\nCLASSIFICAÇÃO: Peixe\nNº DE DOSES: 4\nTEMPO DE PREPARAÇÃO: 20 min\nTEMPO DE CONFEÇÃO: 30 min\nALERGÉNICOS: Peixe, Glúten\n\nINGREDIENTES:\nCOMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS\nPeixe | 500 | g | Bacalhau demolhado | | |\n\nPREPARAÇÃO:\nNR | DESCRIÇÃO | TEMP | TEMPO | OBS\n1 | Fritar a batata palito... | | 10 min |\n\nEMPRATAMENTO:\nDispor o bacalhau...`}
-          style={{ minHeight: 220, fontSize: 12, fontFamily: 'monospace' }}
+          placeholder={`NOME DO PRATO: Bacalhau à Brás\nCLASSIFICAÇÃO: Peixe\nNº DE DOSES: 4\nTEMPO DE PREPARAÇÃO: 20 min\nTEMPO DE CONFEÇÃO: 30 min\nALERGÉNICOS: Peixe, Glúten\n\nINGREDIENTES:\nCOMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS\nPeixe | 500 | g | Bacalhau demolhado | 10 min | |\n\nPREPARAÇÃO:\nNR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP\n1 | Demolhar o bacalhau... | Frio | 24h | |\n\nEMPRATAMENTO:\n...\n\nREGISTOS KITCHENFLOW:\n...`}
+          style={{ minHeight: 200, fontSize: 12, fontFamily: 'monospace', background: '#fff' }}
         />
-      </Field>
+      </div>
 
       {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>{erro}</div>}
 
