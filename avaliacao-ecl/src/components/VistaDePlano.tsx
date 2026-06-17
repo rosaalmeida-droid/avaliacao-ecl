@@ -61,12 +61,16 @@ function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () =>
             {plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`}
           </div>
 
-          {/* UC */}
-          {plano.ucId && (
-            <div style={{ display: 'inline-block', background: 'rgba(181,101,29,0.3)', borderRadius: 8, padding: '4px 10px' }}>
-              <span style={{ fontSize: 10, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase' }}>UC </span>
-              <span style={{ fontSize: 12, color: 'var(--cream)', fontWeight: 600 }}>{plano.ucId}</span>
-              <span style={{ fontSize: 11, color: 'rgba(247,241,230,0.6)', marginLeft: 6 }}>{plano.ucNome}</span>
+          {/* UC — muito visível */}
+          {plano.ucId ? (
+            <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 12px', marginTop: 4, display: 'inline-block' }}>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Unidade de Competência</div>
+              <div style={{ fontSize: 13, color: 'white', fontWeight: 700, marginTop: 1 }}>{plano.ucId}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>{plano.ucNome}</div>
+            </div>
+          ) : (
+            <div style={{ background: 'rgba(179,65,58,0.3)', borderRadius: 8, padding: '5px 10px', marginTop: 4, display: 'inline-block' }}>
+              <span style={{ fontSize: 11, color: 'var(--danger-light)', fontWeight: 600 }}>⚠️ UC não definida</span>
             </div>
           )}
         </div>
@@ -82,7 +86,19 @@ function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () =>
   );
 }
 
-// ── Módulo card ───────────────────────────────────────────────
+// ── Barra fixa com UC ─────────────────────────────────────────
+function BarraUC({ plano }: { plano: PlanoAula }) {
+  if (!plano.ucId) return null;
+  return (
+    <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'var(--copper)', padding: '6px 16px', marginBottom: 12, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, flexShrink: 0 }}>UC</div>
+      <div style={{ flex: 1 }}>
+        <span style={{ fontSize: 13, color: 'white', fontWeight: 700 }}>{plano.ucId}</span>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', marginLeft: 8 }}>{plano.ucNome}</span>
+      </div>
+    </div>
+  );
+}
 function ModuloCard({ icone, titulo, descricao, estado, cor, onClick, desativado }: {
   icone: string; titulo: string; descricao: string;
   estado: 'pendente' | 'em_curso' | 'concluido' | 'bloqueado';
@@ -191,6 +207,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <BarraUC plano={plano} />
         <div style={{ background: 'var(--copper-pale)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>
           📄 A criar Ficha de Produção para este plano — será associada automaticamente
         </div>
@@ -227,6 +244,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <BarraUC plano={plano} />
         <div style={{ background: 'rgba(90,122,78,0.1)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--sage)', fontWeight: 600 }}>
           📚 Guia de Apoio à Produção — documento pedagógico separado da ficha
         </div>
@@ -265,6 +283,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <BarraUC plano={plano} />
         <Requisicao nomeProfessor={nomeProfessor} planoIdFixo={plano.id} />
       </div>
     );
@@ -274,6 +293,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <BarraUC plano={plano} />
         <ValidacaoView turmaId={turmaId} planoId={plano.id} />
       </div>
     );
