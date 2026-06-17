@@ -107,7 +107,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlt
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
 
-  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p=>{setPlanoAtivo(p);setVista('detalhe');onGuardado?.();}} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} />;
+  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p=>{setPlanoAtivo(p);setVista('detalhe');onGuardado?.();}} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
   if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onIrParaFicha={onIrParaFicha} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
 
   return (
@@ -154,7 +154,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlt
 // ═══════════════════════════════════════════════════════════════
 // CRIAR PLANO
 // ═══════════════════════════════════════════════════════════════
-function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao }: { turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void; onVoltar:()=>void; onAlteracao?:(guardar?:()=>void)=>void }) {
+function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado }: { turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void; onVoltar:()=>void; onAlteracao?:(guardar?:()=>void)=>void; onGuardado?:()=>void }) {
   const [secAberta, setSecAberta] = useState(0);
   const [feitas, setFeitas] = useState<number[]>([]);
   const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor: nomeProfessor || '', ucId:'', ucNome:'' });
