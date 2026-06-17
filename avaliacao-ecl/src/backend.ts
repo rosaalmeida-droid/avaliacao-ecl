@@ -1,5 +1,7 @@
 // ============================================================
-// Backend ECL — localStorage + Google Sheets
+// Backend ECL — localStorage (primário) + Google Sheets (persistência)
+// localStorage: acesso imediato e offline
+// Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
 import {
@@ -8,22 +10,34 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula
 } from './types';
 
+// ── URLs dos Apps Scripts ────────────────────────────────────
+// Histórico de avaliações dos alunos (já configurado e a funcionar)
 const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbybXF4KtEeqXEyTfoWcDNSAFB2KvhpL8mJs-ps2kl02qb6Ll9UHQ-77si-OAiysOwFGCg/exec';
 
+// Planos de Aula (preencher após criar o Sheets de Planos)
+const SHEETS_PLANOS_URL = '';
+
+// Fichas de Produção (preencher após criar o Sheets de Fichas)
+const SHEETS_FICHAS_URL = '';
+
+// ── Chaves localStorage ──────────────────────────────────────
 const KEYS = {
-  comandas:       'ecl_comandas',
-  selecoes:       'ecl_selecoes',
-  validacoes:     'ecl_validacoes',
-  atividades:     'ecl_atividades',
-  turmas:         'ecl_turmas',
-  alunos:         'ecl_alunos',
-  planos:         'ecl_planos',
-  fichas:         'ecl_fichas',
-  distribuicoes:  'ecl_distribuicoes',
-  checklists:     'ecl_checklists',
-  requisicoes:    'ecl_requisicoes',
+  comandas:      'ecl_comandas',
+  selecoes:      'ecl_selecoes',
+  validacoes:    'ecl_validacoes',
+  atividades:    'ecl_atividades',
+  turmas:        'ecl_turmas',
+  alunos:        'ecl_alunos',
+  planos:        'ecl_planos',
+  fichas:        'ecl_fichas',
+  distribuicoes: 'ecl_distribuicoes',
+  checklists:    'ecl_checklists',
+  requisicoes:   'ecl_requisicoes',
+  syncPlanos:    'ecl_sync_planos_ts',
+  syncFichas:    'ecl_sync_fichas_ts',
 };
 
+// ── Utilitários localStorage ─────────────────────────────────
 function load<T>(key: string): T[] {
   try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : []; }
   catch { return []; }
@@ -34,15 +48,77 @@ function save<T>(key: string, data: T[]): void {
   catch (e) { console.error('Erro ao guardar', key, e); }
 }
 
-async function enviar(tabela: string, linha: Record<string, unknown>): Promise<void> {
-  if (!SHEETS_HISTORICO_URL) return;
+async function enviar(url: string, tipo: string, dados: Record<string, unknown>): Promise<void> {
+  if (!url) return;
   try {
-    await fetch(SHEETS_HISTORICO_URL, {
+    await fetch(url, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ tabela, linha }),
+      body: JSON.stringify({ tipo, ...dados }),
     });
-  } catch (e) { console.error('Erro ao enviar para Sheets', e); }
+  } catch (e) { console.error('Erro Sheets:', e); }
+}
+
+async function lerDoSheets(url: string, params: Record<string, string>): Promise<any> {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+    const res = await fetch(u.toString());
+    return await res.json();
+  } catch (e) {
+    console.warn('Erro ao ler do Sheets:', e);
+    return null;
+  }
+}
+
+// Verifica fichas similares no Sheets de Fichas
+export async function buscarFichasSimilares(nome: string): Promise<Array<{id: string; nomePrato: string; classificacao: string; linkFicha: string; data: string}>> {
+  if (!SHEETS_FICHAS_URL || !nome) return [];
+  try {
+    const res = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'buscar_similar', nome });
+    return res?.ok ? (res.dados || []) : [];
+  } catch { return []; }
+}
+
+// ── Sincronização do Sheets para localStorage ─────────────────
+// Chamada na inicialização da app — carrega dados do Sheets se houver URL
+export async function sincronizarDoSheets(turmaId: string): Promise<void> {
+  try {
+    // Carregar planos do Sheets de Planos
+    if (SHEETS_PLANOS_URL) {
+      const jsonPlanos = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
+      if (jsonPlanos?.ok && jsonPlanos.dados?.length > 0) {
+        const locais = getPlanosAula();
+        const merged = [...locais];
+        for (const p of jsonPlanos.dados) {
+          const idx = merged.findIndex((x: PlanoAula) => x.id === p.id);
+          if (idx >= 0) {
+            if (new Date(p.atualizadoEm) > new Date((merged[idx] as any).atualizadoEm || '')) merged[idx] = p;
+          } else merged.push(p);
+        }
+        save(KEYS.planos, merged);
+      }
+    }
+
+    // Carregar índice de fichas do Sheets de Fichas
+    if (SHEETS_FICHAS_URL) {
+      const jsonFichas = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
+      if (jsonFichas?.ok && jsonFichas.dados?.length > 0) {
+        const locais = getFichasProducao();
+        const merged = [...locais];
+        for (const f of jsonFichas.dados) {
+          const idx = merged.findIndex((x: FichaProducao) => x.id === f.id);
+          if (idx < 0) merged.push({ ...f, ingredientes: [], preparacao: [] });
+        }
+        save(KEYS.fichas, merged);
+      }
+    }
+
+    localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
+  } catch (e) {
+    console.warn('Sincronização falhou — a usar dados locais:', e);
+  }
 }
 
 // ── Turmas ───────────────────────────────────────────────────
@@ -90,7 +166,7 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
   const idx = all.findIndex(x => x.id === p.id);
   if (idx >= 0) all[idx] = p; else all.push(p);
   save(KEYS.planos, all);
-  enviar('PlanosAula', p as unknown as Record<string, unknown>);
+  enviar(SHEETS_PLANOS_URL, 'plano', { plano: p });
 }
 
 // ── Fichas de Produção ───────────────────────────────────────
@@ -107,6 +183,7 @@ export function addOrUpdateFichaProducao(f: FichaProducao): void {
   const idx = all.findIndex(x => x.id === f.id);
   if (idx >= 0) all[idx] = f; else all.push(f);
   save(KEYS.fichas, all);
+  enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f });
 }
 
 // ── Distribuições de Fichas ──────────────────────────────────
@@ -149,6 +226,8 @@ export function addOrUpdateRequisicao(r: RequisicaoAula): void {
   const idx = all.findIndex(x => x.id === r.id);
   if (idx >= 0) all[idx] = r; else all.push(r);
   save(KEYS.requisicoes, all);
+  // Enviar para Sheets histórico (como já estava)
+  enviar(SHEETS_PLANOS_URL, 'requisicao', r as unknown as Record<string, unknown>);
 }
 
 // ── Comandas / Seleções / Validações ─────────────────────────
@@ -158,7 +237,7 @@ export function addComanda(c: Comanda): void {
   const all = getComandas();
   all.push(c);
   save(KEYS.comandas, all);
-  enviar('Comandas', c as unknown as Record<string, unknown>);
+  enviar(SHEETS_HISTORICO_URL, 'comanda', c as unknown as Record<string, unknown>);
 }
 
 export function updateComanda(c: Comanda): void {
@@ -166,8 +245,9 @@ export function updateComanda(c: Comanda): void {
   const idx = all.findIndex(x => x.id === c.id);
   if (idx >= 0) all[idx] = c;
   save(KEYS.comandas, all);
-  enviar('Comandas', c as unknown as Record<string, unknown>);
+  enviar(SHEETS_HISTORICO_URL, 'comanda', c as unknown as Record<string, unknown>);
 }
+
 export function getSelecoes(): SelecaoAluno[] { return load<SelecaoAluno>(KEYS.selecoes); }
 export function getValidacoes(): Validacao[] { return load<Validacao>(KEYS.validacoes); }
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
@@ -178,7 +258,7 @@ export function addOrUpdateSelecao(s: SelecaoAluno): void {
   const idx = all.findIndex(x => x.id === s.id);
   if (idx >= 0) all[idx] = s; else all.push(s);
   save(KEYS.selecoes, all);
-  enviar('Avaliacoes', s as unknown as Record<string, unknown>);
+  enviar(SHEETS_HISTORICO_URL, 'avaliacao', s as unknown as Record<string, unknown>);
 }
 
 export function addOrUpdateValidacao(v: Validacao): void {
@@ -186,7 +266,7 @@ export function addOrUpdateValidacao(v: Validacao): void {
   const idx = all.findIndex(x => x.id === v.id);
   if (idx >= 0) all[idx] = v; else all.push(v);
   save(KEYS.validacoes, all);
-  enviar('Validacoes', v as unknown as Record<string, unknown>);
+  enviar(SHEETS_HISTORICO_URL, 'validacao', v as unknown as Record<string, unknown>);
 }
 
 export function addOrUpdateAtividade(a: Atividade): void {
@@ -196,7 +276,7 @@ export function addOrUpdateAtividade(a: Atividade): void {
   save(KEYS.atividades, all);
 }
 
-// ── Histórico de avaliações por aluno/microcompetência ───────
+// ── Histórico de avaliações ──────────────────────────────────
 const KEY_HIST = 'ecl_historico_avaliacoes';
 
 export interface RegistoAvaliacao {
@@ -231,5 +311,13 @@ export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
   const all = getHistoricoAvaliacoes();
   all.push(r);
   save(KEY_HIST, all);
-  enviar('HistoricoAvaliacoes', r as unknown as Record<string, unknown>);
+  enviar(SHEETS_HISTORICO_URL, 'avaliacao', r as unknown as Record<string, unknown>);
+}
+
+// ── Estado de sincronização ──────────────────────────────────
+export function getEstadoSync(): { temSheets: boolean; ultimaSync: string | null } {
+  return {
+    temSheets: !!(SHEETS_PLANOS_URL || SHEETS_FICHAS_URL),
+    ultimaSync: localStorage.getItem(KEYS.syncPlanos),
+  };
 }
