@@ -132,7 +132,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
       turmaId: selecao.turmaId,
       planoAulaId: selecao.planoAulaId || '',
       fichaId: selecao.fichaId || '',
-      notas: notasFinais,
+      notas: notasFinais.map(n => ({
+        competenciaId: n.competenciaId,
+        nota: n.notaFinal,
+        origem: 'professor' as const,
+      })),
       comentarioProfessor: comentario,
       validadoEm: agora,
     };
@@ -200,7 +204,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
         const labelAluno = auto.nivel === 'superei' ? 'Faço com segurança' : auto.nivel === 'atingi' ? 'Consigo sozinho/a' : auto.nivel === 'desenvolvimento' ? 'Consigo com ajuda' : 'Ainda não consigo';
 
         return (
-          <Card key={auto.competenciaId} style={{ marginBottom: 10 }}>
+          <div key={auto.competenciaId} style={{ marginBottom: 10, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
             {/* Nome da competência */}
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{nome}</div>
 
@@ -255,7 +259,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
                 </span>
               </div>
             )}
-          </Card>
+          </div>
         );
       })}
 
@@ -270,11 +274,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
             style={{ minHeight: 80 }}
           />
         </Field>
-        <Button block onClick={guardar}
+        <button className="btn btn-primary" onClick={guardar}
           disabled={autoavaliacoes.some(a => !notasProf[a.competenciaId])}
-          style={{ background: 'var(--sage)', marginTop: 8, padding: 14, fontSize: 15, fontWeight: 700 }}>
+          style={{ width:'100%', background: 'var(--sage)', marginTop: 8, padding: '14px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', opacity: autoavaliacoes.some(a => !notasProf[a.competenciaId]) ? 0.4 : 1 }}>
           ✓ Validar e guardar avaliação
-        </Button>
+        </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
           <div style={{ fontSize: 11, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>
             Preenche a avaliação do professor em todas as competências antes de guardar.
