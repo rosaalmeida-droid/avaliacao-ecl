@@ -128,6 +128,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
     const validacao: Validacao = {
       id: `val_${selecao.id}_${Date.now()}`,
       selecaoId: selecao.id,
+      comandaId: selecao.planoAulaId || '',
       alunoId: selecao.alunoId,
       turmaId: selecao.turmaId,
       planoAulaId: selecao.planoAulaId || '',
@@ -137,7 +138,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
         nota: n.notaFinal,
         origem: 'professor' as const,
       })),
-      comentarioProfessor: comentario,
+      comentarioGeral: comentario,
+      validadoPor: 'professor',
       validadoEm: agora,
     };
     addOrUpdateValidacao(validacao as any);
