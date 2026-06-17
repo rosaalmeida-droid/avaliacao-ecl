@@ -203,7 +203,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     const p: TPlanoAula = {
       id:`plano_${Date.now()}`, turmaId, professor:dados.professor,
       data:dados.data, horaInicio:dados.horaInicio, horaFim:dados.horaFim,
-      titulo:dados.titulo||`${dados.tipoAtividade} — ${dados.data}`,
+      titulo:dados.titulo||(dados.tipoAtividade + ' - ' + dados.data),
       observacoes:'', fichasIds:[], estado:'rascunho', criadoEm:now, atualizadoEm:now,
       ucId: dados.ucId, ucNome: ucSel?.nome || '',
     } as TPlanoAula;
@@ -300,7 +300,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
           </select>
           {!dados.ucId&&<div style={{fontSize:11,color:'var(--danger)',marginTop:4}}>Campo obrigatório — define as competências a avaliar nesta aula</div>}
         </div>
-        <div className="field" style={{gridColumn:'1/-1'}}><label className="field-label">Título (opcional)</label><input className="input" value={dados.titulo} onChange={e=>setD('titulo',e.target.value)} placeholder={`ex: Cozinha Asiática — ${turmaId}`}/></div>
+        <div className="field" style={{gridColumn:'1/-1'}}><label className="field-label">Título (opcional)</label><input className="input" value={dados.titulo} onChange={e=>setD('titulo',e.target.value)} placeholder={'ex: Cozinha Asiatica - ' + turmaId}/></div>
         <button className="btn btn-primary btn-block" style={{gridColumn:'1/-1'}} disabled={!dados.data||!dados.ucId} onClick={guardarDados}>Guardar e continuar →</button>
       </Acc>
 
@@ -496,9 +496,9 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: { p
       <div className="card" style={{marginBottom:12}}>
         <div style={{fontSize:12,fontWeight:700,color:'var(--charcoal)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>Estado do plano</div>
         {[
-          [temFichas, `${fichas.length} ficha${fichas.length!==1?'s':''} de producao associada${fichas.length!==1?'s':''}`, 'Sem fichas de producao — adiciona abaixo'],
-          [temRequisicao, 'Requisicao criada', 'Requisicao pendente — cria no tab Requisicao'],
-          [publicado, 'Aula publicada — alunos podem aceder', 'Nao publicado — publica no final do acordeao'],
+          [temFichas, fichas.length + ' ficha' + (fichas.length!==1?'s':'') + ' de producao', 'Sem fichas de producao'],
+          [temRequisicao, 'Requisicao criada', 'Requisicao pendente'],
+          [publicado, 'Aula publicada para alunos', 'Nao publicado ainda'],
         ].map(([ok, sim, nao], i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
             <span style={{fontSize:16,flexShrink:0}}>{ok?'✅':'⚪'}</span>
