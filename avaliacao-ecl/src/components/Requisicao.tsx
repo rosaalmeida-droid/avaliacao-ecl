@@ -146,11 +146,12 @@ const S = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-export default function Requisicao({ nomeProfessor }: { nomeProfessor?: string }) {
+export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfessor?: string; planoIdFixo?: string }) {
   const [fase, setFase] = useState<'escolher' | 'editar'>('escolher');
 
   const planos = getPlanosAulaPorTurma('CP1');
-  const [planoSel, setPlanoSel] = useState<PlanoAula | null>(planos[0] || null);
+  const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || planos[0] || null : planos[0] || null;
+  const [planoSel, setPlanoSel] = useState<PlanoAula | null>(planoInicial);
   const [fichasSel, setFichasSel] = useState<string[]>(planos[0]?.fichasIds || []);
   const [paxPorFicha, setPaxPorFicha] = useState<Record<string, number>>(() => {
     const r: Record<string, number> = {};
