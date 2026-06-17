@@ -5,10 +5,10 @@ import {
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
   addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao,
 } from '../backend';
-import {
-  MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
+import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, jaTeveSucesso, estaEmRegressao, MicroCompetencia,
 } from '../competenciasECL';
+import { GuiaProducao } from './GuiaProducao';
 
 // ── Estilos ───────────────────────────────────────────────────
 const S = {
@@ -135,7 +135,13 @@ function FluxoPlano({ plano, aluno, onVoltar }: { plano:PlanoAula; aluno:Aluno; 
           <div style={{...S.card, background:'var(--charcoal)', color:'var(--cream)'}}>
             <div style={{ fontSize:15, fontWeight:700 }}>{plano.titulo}</div>
             <div style={{ fontSize:11, opacity:0.7 }}>{plano.data} · {plano.horaInicio}–{plano.horaFim}</div>
-            {plano.ucId&&<div style={{ marginTop:6, fontSize:11, opacity:0.6 }}>UC: {plano.ucId} — {plano.ucNome}</div>}
+            {plano.ucId&&(
+              <div style={{ marginTop:8, padding:'6px 10px', background:'rgba(181,101,29,0.25)', borderRadius:8 }}>
+                <div style={{ fontSize:9, color:'rgba(247,241,230,0.5)', textTransform:'uppercase', letterSpacing:'0.05em' }}>Unidade de Competência</div>
+                <div style={{ fontSize:12, color:'var(--cream)', fontWeight:700 }}>{plano.ucId}</div>
+                <div style={{ fontSize:11, color:'rgba(247,241,230,0.7)', marginTop:2 }}>{plano.ucNome}</div>
+              </div>
+            )}
           </div>
 
           <div style={S.card}>
@@ -371,6 +377,13 @@ function FichaAluno({ ficha, plano, aluno, onNext, onBack }: { ficha:FichaProduc
           placeholder="Ex: ingrediente em falta, substituição feita, dúvida..."/>
       </div>
 
+      {/* GUIA DE APOIO À PRODUÇÃO — separado da ficha */}
+      {(ficha as any).textoGuia && (
+        <div style={S.card}>
+          <GuiaProducao textoGuia={(ficha as any).textoGuia} nomePrato={ficha.nomePrato || ''} />
+        </div>
+      )}
+
       <div style={{ display:'flex', gap:6 }}>
         <button style={{...S.cinza, flex:0, width:44, marginTop:0}} onClick={onBack}>←</button>
         <button style={{...S.verde, flex:1, marginTop:0}} onClick={continuar}>Guardar e continuar →</button>
@@ -437,10 +450,10 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
   }
 
   const NIVEIS = [
-    { v:5, label:'Inicial', cor:'var(--danger-pale)', txt:'var(--danger)' },
-    { v:10, label:'Em desenvolvimento', cor:'var(--copper-pale)', txt:'var(--copper)' },
-    { v:15, label:'Consolidado', cor:'var(--sage-pale)', txt:'var(--sage)' },
-    { v:18, label:'Avancado', cor:'rgba(37,99,235,0.08)', txt:'var(--info)' },
+    { v:5,  label:'Ainda não consigo', cor:'var(--danger-pale)', txt:'var(--danger)' },
+    { v:10, label:'Consigo com ajuda',  cor:'var(--copper-pale)', txt:'var(--copper)' },
+    { v:15, label:'Consigo sozinho/a',  cor:'var(--sage-pale)',   txt:'var(--sage)' },
+    { v:18, label:'Faço com segurança', cor:'rgba(37,99,235,0.08)', txt:'var(--info)' },
   ];
 
   const prontoParaSubmeter = nivelHigiene!==null && nivelHaccp!==null;
@@ -510,13 +523,28 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
               <div style={{ borderTop:'1px solid var(--border)', padding:'10px 12px', background:'var(--cream-dark)' }}>
                 {m.criterios.length>0&&(
                   <div style={{ marginBottom:10 }}>
-                    <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6, color:'var(--charcoal)' }}>Criterios observaveis</div>
-                    {m.criterios.map((c,i)=>(
-                      <div key={i} style={{ fontSize:11, padding:'4px 0', borderBottom:'1px solid var(--border)', color:'rgba(26,23,20,0.7)' }}>
-                        · {c.criterio}
-                        {c.como&&<span style={{ fontSize:9, color:'rgba(26,23,20,0.4)', display:'block', paddingLeft:8 }}>{c.como}</span>}
-                      </div>
-                    ))}
+                    <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6, color:'var(--charcoal)' }}>O que é observado</div>
+                    {m.criterios.map((c,i)=>{
+                      const keyC = `${m.id}_c${i}`;
+                      const valC = (notas as any)[keyC];
+                      return (
+                        <div key={i} style={{ marginBottom:8, padding:'8px 10px', borderRadius:8, background:'#fff', border:'1px solid var(--border)' }}>
+                          <div style={{ fontSize:11, color:'rgba(26,23,20,0.8)', marginBottom:6 }}>· {c.criterio}</div>
+                          {c.como&&<div style={{ fontSize:9, color:'rgba(26,23,20,0.4)', marginBottom:6 }}>{c.como}</div>}
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:4 }}>
+                            {[
+                              { v:'sozinho', label:'Consigo sozinho/a', cor:'var(--sage-pale)', txt:'var(--sage)' },
+                              { v:'ajuda',   label:'Consigo com ajuda', cor:'var(--copper-pale)', txt:'var(--copper)' },
+                              { v:'nao',     label:'Ainda não consigo', cor:'var(--danger-pale)', txt:'var(--danger)' },
+                            ].map(op=>(
+                              <button key={op.v} onClick={()=>setNotas(p=>({...p,[keyC]:p[keyC]===op.v?null:op.v}))} style={{ padding:'5px 2px', borderRadius:7, border:`1.5px solid ${valC===op.v?op.txt:'var(--border)'}`, background:valC===op.v?op.cor:'#fff', color:valC===op.v?op.txt:'rgba(26,23,20,0.5)', fontSize:8, fontWeight:600, cursor:'pointer', textAlign:'center' }}>
+                                {op.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>A tua autoavaliacao</div>
@@ -533,20 +561,38 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
         ))}
       </div>
 
-      {/* ESCOLHA DO ALUNO — 1 adicional */}
+      {/* ESCOLHA DO ALUNO — 1 atitude adicional */}
       <div style={S.card}>
-        <div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>A tua escolha — 1 competência adicional</div>
-        <div style={S.muted}>Escolhe uma competência que queiras demonstrar hoje.</div>
+        <div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>A tua escolha — 1 atitude para trabalhar hoje</div>
+        <div style={S.muted}>Escolhe uma atitude que queiras demonstrar e desenvolver nesta aula.</div>
         {avisoEscolha&&<div style={{ marginTop:8, padding:'8px 10px', background:'var(--danger-pale)', borderRadius:8, fontSize:12, color:'var(--danger)' }}>{avisoEscolha}</div>}
-        <div style={{ marginTop:8, maxHeight:180, overflowY:'auto' }}>
-          {MICROCOMPETENCIAS.filter(m=>!microsSugeridas.find(s=>s.id===m.id)).slice(0,20).map(m=>(
-            <div key={m.id} onClick={()=>escolherMicro(m.id)} style={{ padding:'7px 10px', borderRadius:8, border:`1.5px solid ${microEscolhida===m.id?'var(--copper)':'var(--border)'}`, marginBottom:4, cursor:'pointer', background:microEscolhida===m.id?'var(--copper-pale)':'#fff', fontSize:12 }}>
-              {m.nome}
+        <div style={{ marginTop:8, maxHeight:200, overflowY:'auto' }}>
+          {ATITUDES.map(a=>(
+            <div key={a.id} onClick={()=>{
+              setAvisoEscolha('');
+              setMicroEscolhida(a.id===microEscolhida?null:a.id);
+            }} style={{ padding:'8px 10px', borderRadius:8, border:`1.5px solid ${microEscolhida===a.id?'var(--copper)':'var(--border)'}`, marginBottom:4, cursor:'pointer', background:microEscolhida===a.id?'var(--copper-pale)':'#fff', fontSize:12 }}>
+              {a.nome}
             </div>
           ))}
         </div>
       </div>
 
+          {Object.keys(notas).length>0&&(
+            <div style={{ padding:'10px 12px', borderRadius:10, background:'var(--cream-dark)', border:'1px solid var(--border)', marginBottom:10 }}>
+              <div style={{ fontSize:11, fontWeight:700, marginBottom:4 }}>O que isto significa</div>
+              {(()=>{
+                const vals = Object.values(notas).filter(v=>v!==null);
+                const media = vals.length>0 ? (vals as number[]).reduce((s,v)=>s+(v as number),0)/vals.length : 0;
+                const txt = media>=17 ? 'Consigo realizar esta tarefa com autonomia e segurança. Óptimo trabalho!'
+                  : media>=14 ? 'Já consigo realizar a maior parte das tarefas com segurança.'
+                  : media>=10 ? 'Já consigo realizar algumas tarefas, mas ainda preciso de apoio em algumas etapas.'
+                  : 'Ainda preciso de muito acompanhamento. Não desistas — é assim que se aprende!';
+                const cor = media>=17?'var(--sage)':media>=14?'var(--sage)':media>=10?'var(--copper)':'var(--danger)';
+                return <div style={{ fontSize:12, color:cor }}>{txt}</div>;
+              })()}
+            </div>
+          )}
       {!prontoParaSubmeter&&<div style={{ padding:'8px 12px', background:'var(--copper-pale)', borderRadius:8, fontSize:12, color:'var(--copper)', marginBottom:10 }}>Preenche as competências obrigatórias antes de submeter.</div>}
 
       <div style={{ display:'flex', gap:6 }}>
