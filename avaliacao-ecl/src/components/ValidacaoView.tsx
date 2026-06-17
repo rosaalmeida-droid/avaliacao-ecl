@@ -20,8 +20,8 @@ function calcularNotaFinal(notaProf: number, notaAluno: number): number {
   return Math.round((total / 5) * 20);
 }
 
-export function ValidacaoView({ turmaId }: { turmaId?: string }) {
-  const planos = getPlanosAula().filter(p => !turmaId || p.turmaId === turmaId);
+export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?: string }) {
+  const planos = getPlanosAula().filter(p => (!turmaId || p.turmaId === turmaId) && (!planoId || p.id === planoId));
   const selecoes = getSelecoes().filter(s => !turmaId || s.turmaId === turmaId);
   const validacoes = getValidacoes();
 
