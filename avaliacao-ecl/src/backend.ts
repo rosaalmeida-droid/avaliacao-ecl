@@ -15,7 +15,7 @@ import {
 const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbybXF4KtEeqXEyTfoWcDNSAFB2KvhpL8mJs-ps2kl02qb6Ll9UHQ-77si-OAiysOwFGCg/exec';
 
 // Planos de Aula (preencher após criar o Sheets de Planos)
-const SHEETS_PLANOS_URL = '';
+const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxT00cLo_mTHjv-swqo-lxqdq-YRmOB3gQ4AZ8rbIdyzTbAFt_Yi56D6-_GHV7miAlv/exec';
 
 // Fichas de Produção (preencher após criar o Sheets de Fichas)
 const SHEETS_FICHAS_URL = '';
