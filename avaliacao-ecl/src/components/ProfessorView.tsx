@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Comanda } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares } from '../backend';
+import { CaixaGuia } from './GuiaProducao';
 import { sugerirSubtecnicas } from '../subtecnicas';
 import { exportDOCX, exportPDF } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
@@ -125,6 +126,8 @@ interface FichaTecnica {
   conservacao: string;
   regeneracao: string;
   kitchenflow: string;
+  tecnicasDetectadas?: string[];
+  textoGuia?: string;       // texto do Guia de Apoio à Produção colado pelo professor
 }
 
 const FICHA_VAZIA: FichaTecnica = {
@@ -395,7 +398,14 @@ function extrairFicha(texto: string): FichaTecnica {
     const equipamentoIA = texto.match(/EQUIPAMENTO NECESSÁRIO:\n([\s\S]*?)(?=\nCONSERVAÇÃO|\nREGENERAÇÃO|\nREGISTOS|$)/i)?.[1]?.trim() || '';
     const conservacaoIA = texto.match(/CONSERVAÇÃO:\n([\s\S]*?)(?=\nREGENERAÇÃO|\nREGISTOS|$)/i)?.[1]?.trim() || '';
     const regeneracaoIA = texto.match(/REGENERAÇÃO:\n([\s\S]*?)(?=\nREGISTOS|$)/i)?.[1]?.trim() || '';
-    const kitchenflowIA = texto.match(/REGISTOS KITCHENFLOW:\n([\s\S]*?)$/i)?.[1]?.trim() || '';
+    const kitchenflowIA = texto.match(/REGISTOS KITCHENFLOW:\n([\s\S]*?)(?=\nTÉCNICAS|$)/i)?.[1]?.trim() || '';
+
+    // Extrair técnicas detectadas — para ligar às microcompetências
+    const secTecnicas = texto.match(/TÉCNICAS DETECTADAS:\n([\s\S]*?)$/i)?.[1]?.trim() || '';
+    const tecnicasDetectadas = secTecnicas
+      .split('\n')
+      .map(l => l.trim().replace(/^[-·•]\s*/, ''))
+      .filter(l => l.length > 2 && l.length < 60);
 
     // Alergénicos automáticos se não vieram da IA
     const produtosListIA = ingredientesIA.map(i => `${i.produto} ${i.obs}`);
@@ -416,6 +426,7 @@ function extrairFicha(texto: string): FichaTecnica {
       conservacao: conservacaoIA,
       regeneracao: regeneracaoIA,
       kitchenflow: kitchenflowIA,
+      tecnicasDetectadas,
     };
   }
   // "sal q.b.", "2 colheres de sopa de azeite"
@@ -721,7 +732,8 @@ REGISTOS KITCHENFLOW:
 [aplica REGRA 8 — apenas módulos relevantes]
 
 TÉCNICAS DETECTADAS:
-[Lista as microcompetências técnicas usadas nesta receita — máx 8, uma por linha, usando EXACTAMENTE estes nomes quando aplicável:
+[Lista APENAS os nomes exactos das microcompetências técnicas usadas nesta receita — máx 8, uma por linha.
+IMPORTANTE: Esta secção é usada pela aplicação para sugerir competências ao professor. Usa EXACTAMENTE estes nomes:
 Cozer | Escalfar/pochar | Branquear | Saltear | Fritar | Grelhar | Assar | Estufar/guisar | Brasear | Gratinar | Confitar
 Juliana | Brunoise | Mirepoix | Chiffonade | Filetar peixe | Escamar peixe | Retirar espinhas | Retirar pele peixe
 Porcionar peixe | Cozinhar bacalhau | Preparar marisco | Aparar carne | Desossar | Selar carne | Porcionar carne
@@ -730,8 +742,7 @@ Sopa simples | Creme de legumes | Consomme | Bisque | Sopa fria | Ovo escalfado 
 Massa alimenticia seca | Massa fresca/recheada | Creme pasteleiro | Creme ingles | Chantilly | Ganache | Mousse
 Massa choux | Massa folhada | Detrempe | Tourage | Massa quebrada/areada
 Amassar | Fermentar | Dividir e bolear | Moldar pao | Cozer pao
-Elaborar ficha de producao | Interpretar ficha de producao | Organizar posto de trabalho | Elaborar cronograma de producao
-Calcular food cost | Elaborar requisicao | Controlar temperaturas | Armazenamento refrigerado | Etiquetagem e lote]
+Organizar posto de trabalho | Controlar temperaturas | Armazenamento refrigerado | Etiquetagem e lote]
 
 ---
 EXEMPLO DE REFERÊNCIA (Bacalhau à Brás):
@@ -934,8 +945,12 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
           🟠 Abrir no Claude
         </button>
         <button type="button" className="btn btn-ghost"
-          onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(promptFinal)}`, '_blank')}>
-          🟢 Abrir no ChatGPT
+          onClick={() => {
+            const url = `https://chatgpt.com/`;
+            window.open(url, '_blank');
+            setTimeout(() => copiar(promptFinal, setCopiado), 300);
+          }}>
+          🟢 Abrir ChatGPT (prompt copiado)
         </button>
         <button type="button" className="btn btn-ghost"
           onClick={() => copiar(promptFinal, setCopiado)}
@@ -974,9 +989,12 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
             🟠 Guia no Claude
           </button>
           <button type="button" className="btn btn-ghost"
-            onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(guiaFinal)}`, '_blank')}
+            onClick={() => {
+              window.open('https://chatgpt.com/', '_blank');
+              setTimeout(() => copiar(guiaFinal, setCopiadoGuia), 300);
+            }}
             style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}>
-            🟢 Guia no ChatGPT
+            🟢 ChatGPT — Guia (prompt copiado)
           </button>
           <button type="button" className="btn btn-ghost"
             onClick={() => copiar(guiaFinal, setCopiadoGuia)}
@@ -1003,19 +1021,47 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
     </div>
   );
 }
-function PassoLink({ onContinuar, ucId, ucNome }: { onContinuar: (texto: string, link: string) => void; ucId?: string; ucNome?: string }) {
+function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (texto: string, link: string) => void; ucId?: string; ucNome?: string; onAlteracao?: () => void }) {
   const [link, setLink] = useState('');
   const [textoManual, setTextoManual] = useState('');
   const [nomePrato, setNomePrato] = useState('');
   const [a_carregar, setACarregar] = useState(false);
   const [mostrarManual, setMostrarManual] = useState(false);
   const [erro, setErro] = useState('');
+  const [fichasSimilares, setFichasSimilares] = useState<any[]>([]);
+  const [mostrarSimilares, setMostrarSimilares] = useState(false);
+
+  // Verificar fichas similares quando o nomePrato muda
+  React.useEffect(() => {
+    if (!nomePrato || nomePrato.length < 4) { setFichasSimilares([]); return; }
+    const timer = setTimeout(async () => {
+      // Verificar primeiro no localStorage
+      const locais = getFichasProducao();
+      const nomeLower = nomePrato.toLowerCase();
+      const similares = locais.filter(f => {
+        const n = (f.nomePrato || '').toLowerCase();
+        return n.includes(nomeLower) || nomeLower.includes(n) ||
+          nomeLower.split(' ').some(p => p.length > 3 && n.includes(p));
+      });
+      if (similares.length > 0) {
+        setFichasSimilares(similares.slice(0,3));
+        setMostrarSimilares(true);
+        return;
+      }
+      // Se não encontrou localmente, procurar no Sheets
+      const remotas = await buscarFichasSimilares(nomePrato);
+      if (remotas.length > 0) {
+        setFichasSimilares(remotas);
+        setMostrarSimilares(true);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [nomePrato]);
 
   async function carregar() {
     if (!link && !textoManual) return;
     if (textoManual) {
       try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-      // Se o texto já tem NOME DO PRATO não adicionar nomePrato em separado
       const textoFinal = textoManual.includes('NOME DO PRATO:') 
         ? textoManual 
         : (nomePrato ? nomePrato + '\n' : '') + textoManual;
@@ -1108,6 +1154,16 @@ function PassoLink({ onContinuar, ucId, ucNome }: { onContinuar: (texto: string,
         📋 Nova Ficha de Produção
       </div>
 
+      {/* NOME DO PRATO — activa detecção de similares */}
+      <Field label="Nome do prato (opcional — activa detecção de duplicados)">
+        <input
+          className="input"
+          value={nomePrato}
+          onChange={e => { setNomePrato(e.target.value); onAlteracao?.(); }}
+          placeholder="ex: Bacalhau à Brás, Mousse de Chocolate..."
+        />
+      </Field>
+
       {/* SECÇÃO IA — sempre visível, mesmo sem link */}
       <div style={{ background: '#D6E4E8', borderRadius: 8, padding: '12px 14px', marginBottom: 14 }}>
         <div style={{ fontWeight: 700, fontSize: 13, color: '#004F5C', marginBottom: 6 }}>
@@ -1117,7 +1173,7 @@ function PassoLink({ onContinuar, ucId, ucNome }: { onContinuar: (texto: string,
           <input
             className="input"
             value={link}
-            onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); }}
+            onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); onAlteracao?.(); }}
             placeholder="https://www.pingodoce.pt/receitas/..."
           />
         </Field>
@@ -1138,13 +1194,51 @@ function PassoLink({ onContinuar, ucId, ucNome }: { onContinuar: (texto: string,
         <textarea
           className="input"
           value={textoManual}
-          onChange={e => setTextoManual(e.target.value)}
+          onChange={e => { setTextoManual(e.target.value); onAlteracao?.(); }}
           placeholder={`Cola aqui o texto que a IA te devolveu. Exemplo:\n\nNOME DO PRATO: Bacalhau à Brás\nCLASSIFICAÇÃO: Peixe\nNº DE DOSES: 4\nTEMPO DE PREPARAÇÃO: 20 min\nTEMPO DE CONFEÇÃO: 30 min\nALERGÉNICOS: Peixe, Glúten\n\nINGREDIENTES:\nCOMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS\nPeixe | 500 | g | Bacalhau demolhado | | |\n\nPREPARAÇÃO:\nNR | DESCRIÇÃO | TEMP | TEMPO | OBS\n1 | Fritar a batata palito... | | 10 min |\n\nEMPRATAMENTO:\nDispor o bacalhau...`}
           style={{ minHeight: 220, fontSize: 12, fontFamily: 'monospace' }}
         />
       </Field>
 
       {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>{erro}</div>}
+
+      {/* AVISO DE FICHAS SIMILARES */}
+      {mostrarSimilares && fichasSimilares.length > 0 && (
+        <div style={{ marginBottom: 12, padding: '12px 14px', background: 'var(--copper-pale)', borderRadius: 12, border: '1.5px solid rgba(181,101,29,0.3)' }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 6 }}>
+            ⚠️ Já existe uma ficha semelhante
+          </div>
+          {fichasSimilares.map((f, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#fff', borderRadius: 8, marginBottom: 6, border: '1px solid var(--border)' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{f.nomePrato}</div>
+                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.data}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {f.linkFicha && (
+                  <button onClick={() => window.open(f.linkFicha, '_blank')} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px' }}>
+                    Ver →
+                  </button>
+                )}
+                <button onClick={() => {
+                  // Reutilizar esta ficha
+                  const fichaLocal = getFichasProducao().find(x => x.id === f.id);
+                  if (fichaLocal) {
+                    const textoSimulado = `NOME DO PRATO: ${fichaLocal.nomePrato}\nCLASSIFICAÇÃO: ${fichaLocal.classificacao}\nNº DE DOSES: ${fichaLocal.numPorcoes}\nTEMPO DE PREPARAÇÃO: ${fichaLocal.tempoPrep}\nTEMPO DE CONFEÇÃO: ${fichaLocal.tempoConf}\nALERGÉNICOS: ${(fichaLocal.alergenicos||[]).join(', ')}\n\nINGREDIENTES:\nCOMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS\n${(fichaLocal.ingredientes||[]).map(i => `${i.componente}|${i.qt}|${i.un}|${i.produto}|${i.tPrep}|${i.tConf}|${i.obs}`).join('\n')}\n\nPREPARAÇÃO:\nNR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP\n${(fichaLocal.preparacao||[]).map(p => `${p.num}|${p.descricao}|${p.temperatura}|${p.tempo}|${p.obs}|${p.haccp}`).join('\n')}\n\nEMPRATAMENTO:\n${fichaLocal.empratamento||''}\n\nCONSERVAÇÃO:\n${fichaLocal.conservacao||''}\n\nREGENERAÇÃO:\n${fichaLocal.regeneracao||''}\n\nREGISTOS KITCHENFLOW:\n${fichaLocal.kitchenflow||''}`;
+                    setMostrarSimilares(false);
+                    onContinuar(textoSimulado, link);
+                  }
+                }} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px', background: 'var(--sage)', color: 'white', border: 'none' }}>
+                  Usar esta ficha
+                </button>
+              </div>
+            </div>
+          ))}
+          <button onClick={() => setMostrarSimilares(false)} style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 4 }}>
+            Ignorar e criar nova ficha
+          </button>
+        </div>
+      )}
 
       <Button block onClick={carregar} disabled={!textoManual && !link}>
         Continuar para a Ficha →
@@ -1524,10 +1618,41 @@ function PassoFichaTecnica({
             catch(e) { alert('Erro ao gerar Word: ' + String(e)); }
           }}>📄 Word</Button>
         </div>
+
+        {/* GUIA DE APOIO À PRODUÇÃO — cola aqui o resultado da IA */}
+        <CaixaGuia
+          nomePrato={ficha.nomePrato}
+          textoGuiaInicial={ficha.textoGuia}
+          onGuiaAlterado={(texto) => setFicha(f => ({ ...f, textoGuia: texto }))}
+        />
+
+        {/* TÉCNICAS DETECTADAS — ligar às microcompetências */}
+        {ficha.tecnicasDetectadas && ficha.tecnicasDetectadas.length > 0 && (
+          <Card style={{ background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.2)' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>
+              🎯 Técnicas detectadas — para avaliação
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+              O motor vai sugerir estas competências ao professor quando avaliar esta ficha.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {ficha.tecnicasDetectadas.map((t, i) => (
+                <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: 'white', border: '1px solid rgba(181,101,29,0.3)', fontSize: 11, color: 'var(--copper)', fontWeight: 600 }}>
+                  {t}
+                </span>
+              ))}
+            </div>
+          </Card>
+        )}
+
         <div style={{ height: 8 }} />
-        <Button block onClick={() => onContinuar(ficha)} disabled={!ficha.nomePrato}>
-          Guardar Ficha de Produção →
-        </Button>
+        <div style={{ position:'sticky', bottom:0, padding:'12px 0', background:'white', borderTop:'1px solid var(--border)' }}>
+          <Button block onClick={() => onContinuar(ficha)} disabled={!ficha.nomePrato}
+            style={{ background:'var(--sage)', fontSize:15, padding:'14px', fontWeight:700 }}>
+            ✓ Guardar Ficha de Produção
+          </Button>
+          {!ficha.nomePrato && <div style={{ textAlign:'center', fontSize:11, color:'var(--danger)', marginTop:6 }}>Preenche o nome do prato para guardar.</div>}
+        </div>
       </Card>
     </div>
   );
@@ -1536,13 +1661,19 @@ function PassoFichaTecnica({
 // ============================================================
 // Vista principal do Professor — orquestra os passos
 // ============================================================
-export function ProfessorView({ turmaId }: { turmaId: string }) {
+export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
+  turmaId: string;
+  nomeProfessor?: string;
+  onAlteracao?: () => void;
+  onGuardado?: () => void;
+}) {
   const [vista, setVista] = useState<'biblioteca' | 'criar' | 'editar'>('biblioteca');
   const [textoReceita, setTextoReceita] = useState('');
   const [linkReceita, setLinkReceita] = useState('');
-  const [ficha, setFicha] = useState<FichaTecnica>(FICHA_VAZIA);
+  const [ficha, setFicha] = useState<FichaTecnica>({ ...FICHA_VAZIA, elaboradoPor: nomeProfessor || FICHA_VAZIA.elaboradoPor });
   const [passo, setPasso] = useState<'link' | 'ficha'>('link');
   const [fichasGuardadas, setFichasGuardadas] = useState(() => getFichasProducao());
+  const [guardadoMsg, setGuardadoMsg] = useState('');
 
   // Buscar UC do plano mais recente
   const planos = getPlanosAulaPorTurma(turmaId);
@@ -1571,15 +1702,17 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
       regeneracao: fichaConfirmada.regeneracao,
       kitchenflow: fichaConfirmada.kitchenflow,
       tecnicasSugeridas: [],
-      ucsAssociadas: [],
-      elaboradoPor: fichaConfirmada.elaboradoPor,
+      ucsAssociadas: [ucId].filter(Boolean),
+      elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor,
       data: fichaConfirmada.data,
       criadoEm: now,
       atualizadoEm: now,
     });
     try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
     recarregar();
-    setVista('biblioteca');
+    onGuardado?.();
+    setGuardadoMsg(fichaConfirmada.nomePrato || 'Ficha');
+    setVista('apos_guardar' as any);
   }
 
   function novaFicha() {
@@ -1588,6 +1721,27 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
     setLinkReceita('');
     setPasso('link');
     setVista('criar');
+  }
+
+  // ── APÓS GUARDAR ─────────────────────────────────────────
+  if ((vista as string) === 'apos_guardar') {
+    return (
+      <div style={{ padding: 16 }}>
+        <div style={{ background: 'var(--sage-pale)', border: '1px solid rgba(90,122,78,0.3)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
+          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--sage)', marginBottom: 4 }}>Ficha guardada!</div>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)' }}>{guardadoMsg}</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button className="btn btn-primary" onClick={novaFicha}>
+            + Criar nova Ficha de Produção
+          </button>
+          <button className="btn" style={{ background: 'var(--sage)', color: 'white' }} onClick={() => setVista('biblioteca')}>
+            Ver todas as fichas
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // ── BIBLIOTECA ────────────────────────────────────────────
@@ -1599,20 +1753,31 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
           <button className="btn btn-primary" onClick={novaFicha}>+ Nova ficha</button>
         </div>
 
+        {ucId && (
+          <div style={{ padding:'8px 14px', background:'var(--copper-pale)', borderRadius:10, marginBottom:12, fontSize:12, color:'var(--copper)', border:'1px solid rgba(181,101,29,0.2)' }}>
+            <strong>UC activa:</strong> {ucId} — {ucNome}
+          </div>
+        )}
+
         {fichasGuardadas.length === 0 && (
           <Card>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>📄</div>
               <div className="display" style={{ fontSize: 18, marginBottom: 6 }}>Ainda não há fichas</div>
-              <p className="muted">Cria a primeira ficha de produção.</p>
-              <Button onClick={novaFicha}>Criar ficha →</Button>
+              <p className="muted">Uma aula pode ter 1 ou mais fichas de produção.</p>
+              <Button onClick={novaFicha}>Criar primeira ficha →</Button>
             </div>
           </Card>
         )}
 
+        {fichasGuardadas.length > 0 && (
+          <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>
+            {fichasGuardadas.length} ficha{fichasGuardadas.length!==1?'s':''} criada{fichasGuardadas.length!==1?'s':''}. Podes adicionar mais ao mesmo plano de aula.
+          </div>
+        )}
+
         {fichasGuardadas.map(f => (
           <div key={f.id} className="option-card" onClick={() => {
-            // Carregar ficha para edição
             setFicha({
               nomePrato: f.nomePrato, classificacao: f.classificacao,
               fichaNum: f.fichaNum || '', alergenicos: (f.alergenicos||[]).join(', '),
@@ -1620,7 +1785,7 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
               numPorcoes: f.numPorcoes||'',
               ingredientes: f.ingredientes.length > 0 ? f.ingredientes as any : FICHA_VAZIA.ingredientes,
               preparacao: f.preparacao.length > 0 ? f.preparacao as any : FICHA_VAZIA.preparacao,
-              empratamento: f.empratamento||'', elaboradoPor: f.elaboradoPor||'',
+              empratamento: f.empratamento||'', elaboradoPor: f.elaboradoPor||nomeProfessor||'',
               data: f.data||'', equipamento: f.equipamento||'',
               conservacao: f.conservacao||'', regeneracao: f.regeneracao||'',
               kitchenflow: f.kitchenflow||'',
@@ -1632,6 +1797,7 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nomePrato}</div>
                 <div className="muted">{f.classificacao} · {f.numPorcoes} porções · {f.data}</div>
+                {f.ucsAssociadas?.length > 0 && <div style={{ fontSize:11, color:'var(--copper)' }}>{f.ucsAssociadas[0]}</div>}
               </div>
               <span className="stamp">Ver / Editar</span>
             </div>
@@ -1649,7 +1815,7 @@ export function ProfessorView({ turmaId }: { turmaId: string }) {
         setLinkReceita(link);
         setFicha(extrairFicha(texto));
         setPasso('ficha');
-      }} />
+      }} onAlteracao={onAlteracao} />
     );
   }
 
