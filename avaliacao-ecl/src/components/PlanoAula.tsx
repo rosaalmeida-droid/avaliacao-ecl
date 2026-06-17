@@ -276,7 +276,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
         </div>
       </div>
 
-      {/* SECÇÃO 0 — DADOS */}
+      {/* SECÇÃO 0 - DADOS */}
       <Acc num={0} icon="📅" title="Dados da aula" desc={feita(0)?`${dados.tipoAtividade} · ${dados.horaInicio}–${dados.horaFim}${dados.professor?' · '+dados.professor:''}` : 'Data, hora e tipo de atividade'} status={status(0)} open={secAberta===0} locked={false} onToggle={()=>setSecAberta(0)}>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
           <div className="field"><label className="field-label">Data</label><input type="date" className="input" value={dados.data} onChange={e=>setD('data',e.target.value)}/></div>
@@ -304,7 +304,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
         <button className="btn btn-primary btn-block" style={{gridColumn:'1/-1'}} disabled={!dados.data||!dados.ucId} onClick={guardarDados}>Guardar e continuar →</button>
       </Acc>
 
-      {/* SECÇÃO 1 — FICHAS */}
+      {/* SECÇÃO 1 - FICHAS */}
       <Acc num={1} icon="📄" title="Fichas de produção" desc={feita(1)?resumoFichas:'Seleciona as receitas para esta aula'} status={status(1)} open={secAberta===1} locked={!feita(0)&&secAberta!==1} onToggle={()=>feita(0)&&setSecAberta(1)}>
         {todasFichas.length===0?(
           <div style={{textAlign:'center',padding:'14px 0'}}>
@@ -334,7 +334,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
         <button className="btn btn-primary btn-block" disabled={fichasSel.length===0} onClick={guardarFichas} style={{marginTop:8}}>Continuar para grupos →</button>
       </Acc>
 
-      {/* SECÇÃO 2 — GRUPOS */}
+      {/* SECÇÃO 2 - GRUPOS */}
       <Acc num={2} icon="👥" title="Distribuição de grupos" desc={feita(2)?`${alunos.length} alunos distribuídos`:'Atribui alunos às fichas'} status={status(2)} open={secAberta===2} locked={!feita(1)} onToggle={()=>feita(1)&&setSecAberta(2)}>
         {fichasSelecionadas.map(f=>(
           <div key={f.id} style={{marginBottom:14}}>
@@ -361,7 +361,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
         <button className="btn btn-primary btn-block" onClick={guardarGrupos} style={{marginTop:8}}>Continuar para competências →</button>
       </Acc>
 
-      {/* SECÇÃO 3 — COMPETÊNCIAS */}
+      {/* SECÇÃO 3 - COMPETÊNCIAS */}
       <Acc num={3} icon="⭐" title="Competências" desc={feita(3)?`${COMP_PERM.length} permanentes + ${compOpc.length} opcionais`:'Define o que vai ser avaliado'} status={status(3)} open={secAberta===3} locked={!feita(2)} onToggle={()=>feita(2)&&setSecAberta(3)}>
         <div style={{marginBottom:14}}>
           <div style={{fontSize:12,fontWeight:600,color:'var(--copper)',marginBottom:6}}>Permanentes — sempre avaliadas</div>
@@ -390,7 +390,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
         <button className="btn btn-primary btn-block" onClick={()=>concluir(3)} style={{marginTop:10}}>Continuar para publicar →</button>
       </Acc>
 
-      {/* SECÇÃO 4 — PUBLICAR */}
+      {/* SECÇÃO 4 - PUBLICAR */}
       <Acc num={4} icon="🚀" title="Publicar plano" desc="Tornar visível para os alunos" status={publicado?'done':status(4)} open={secAberta===4} locked={!feita(3)} onToggle={()=>feita(3)&&setSecAberta(4)}>
         <div style={{textAlign:'center',padding:'14px 0'}}>
           <div style={{fontSize:40,marginBottom:10}}>📋</div>
@@ -492,7 +492,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: { p
         </div>
       </div>
 
-      {/* Estado do plano — checklist rápida */}
+      {/* Estado do plano */}
       <div className="card" style={{marginBottom:12}}>
         <div style={{fontSize:12,fontWeight:700,color:'var(--charcoal)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>Estado do plano</div>
         {[
@@ -566,7 +566,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: { p
         </div>
       </div>
 
-      {/* Grelha de avaliação — só disponível após publicação */}
+      {/* Grelha de avaliação - só disponível após publicação */}
       {plano.estado === 'publicado' && (
       <div style={{border:`1.5px solid ${grelhaAberta?'var(--copper)':'var(--border)'}`,borderRadius:14,overflow:'hidden',boxShadow:grelhaAberta?'0 0 0 3px rgba(181,101,29,0.08)':'none'}}>
         <div onClick={()=>setGrelhaAberta(!grelhaAberta)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',cursor:'pointer',background:grelhaAberta?'var(--copper-pale)':'#fff'}}>
@@ -694,7 +694,6 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: { p
           </div>
         )}
       </div>
-      )}
     </div>
   );
 }
