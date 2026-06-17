@@ -909,13 +909,15 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
   const [promptEditavel, setPromptEditavel] = React.useState('');
   const [guiaEditavel, setGuiaEditavel] = React.useState('');
 
-  React.useEffect(() => {
-    setPromptEditavel(gerarPrompt(link, ucId, ucNome));
-    setGuiaEditavel(gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome));
-  }, [link, nomePrato, ucId, ucNome]);
-
-  const promptFinal = promptEditavel || gerarPrompt(link, ucId, ucNome);
+  const promptFicha = gerarPrompt(link, ucId, ucNome);
+  const promptFinal = promptEditavel || promptFicha;
   const guiaFinal = guiaEditavel || gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome);
+
+  // Garantir que os estados são inicializados com os prompts correctos
+  React.useEffect(() => {
+    setPromptEditavel(''); // reset para usar promptFicha calculado em tempo real
+    setGuiaEditavel('');
+  }, [link, nomePrato, ucId, ucNome]);
 
   function copiar(texto: string, setCop: (v: boolean) => void) {
     navigator.clipboard.writeText(texto).then(() => {
@@ -945,11 +947,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
           🟠 Abrir no Claude
         </button>
         <button type="button" className="btn btn-ghost"
-          onClick={() => {
-            const url = `https://chatgpt.com/`;
-            window.open(url, '_blank');
-            setTimeout(() => copiar(promptFinal, setCopiado), 300);
-          }}>
+          onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(promptFinal)}`, '_blank')}>
           🟢 Abrir ChatGPT (prompt copiado)
         </button>
         <button type="button" className="btn btn-ghost"
@@ -962,7 +960,11 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
           {mostrarPrompt ? '🔼 Esconder' : '✏️ Ver/editar'}
         </button>
       </div>
-      {mostrarPrompt && (
+      {copiado && (
+        <div style={{ padding: '8px 12px', background: 'var(--copper-pale)', borderRadius: 8, fontSize: 12, color: 'var(--copper)', marginBottom: 8 }}>
+          ✅ Prompt copiado! No ChatGPT faz <strong>Ctrl+V</strong> (ou longa pressão → Colar) para colar.
+        </div>
+      )}
         <div style={{ marginBottom: 12 }}>
           <textarea className="input" value={promptEditavel}
             onChange={e => setPromptEditavel(e.target.value)}
@@ -989,10 +991,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
             🟠 Guia no Claude
           </button>
           <button type="button" className="btn btn-ghost"
-            onClick={() => {
-              window.open('https://chatgpt.com/', '_blank');
-              setTimeout(() => copiar(guiaFinal, setCopiadoGuia), 300);
-            }}
+            onClick={() => window.open(`https://chatgpt.com/?q=${encodeURIComponent(guiaFinal)}`, '_blank')}
             style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}>
             🟢 ChatGPT — Guia (prompt copiado)
           </button>
