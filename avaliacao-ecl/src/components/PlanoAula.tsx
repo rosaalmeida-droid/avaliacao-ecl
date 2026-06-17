@@ -96,7 +96,13 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
 }
 
 // ═══════════════════════════════════════════════════════════════
-export default function PlanoAula({ turmaId }: { turmaId: string }) {
+export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlteracao, onGuardado }: {
+  turmaId: string;
+  nomeProfessor?: string;
+  onIrParaFicha?: () => void;
+  onAlteracao?: (guardar?: () => void) => void;
+  onGuardado?: () => void;
+}) {
   const [vista, setVista] = useState<'lista'|'criar'|'detalhe'>('lista');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
@@ -151,7 +157,7 @@ export default function PlanoAula({ turmaId }: { turmaId: string }) {
 function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConcluido:(p:TPlanoAula)=>void; onVoltar:()=>void }) {
   const [secAberta, setSecAberta] = useState(0);
   const [feitas, setFeitas] = useState<number[]>([]);
-  const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor:'', ucId:'', ucNome:'' });
+  const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor: nomeProfessor || '', ucId:'', ucNome:'' });
   const [fichasSel, setFichasSel] = useState<string[]>([]);
   const [grupos, setGrupos] = useState<Record<string,Record<string,'A'|'B'|null>>>({});
   const [compOpc, setCompOpc] = useState<string[]>([]);
@@ -161,7 +167,7 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
   const todasFichas = getFichasProducao();
   const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
 
-  function setD(k:string,v:string) { setDados(p=>({...p,[k]:v})); }
+  function setD(k:string,v:string) { setDados(p=>({...p,[k]:v})); onAlteracao?.(); }
   function concluir(i:number) { setFeitas(p=>[...new Set([...p,i])]); setSecAberta(i+1); }
   const feita = (i:number) => feitas.includes(i);
   const status = (i:number): 'done'|'active'|'pending' => feita(i)?'done':secAberta===i?'active':'pending';
@@ -176,7 +182,7 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
       observacoes:'', fichasIds:[], estado:'rascunho', criadoEm:now, atualizadoEm:now,
       ucId: dados.ucId, ucNome: ucSel?.nome || '',
     } as TPlanoAula;
-    addOrUpdatePlanoAula(p); setPlano(p); concluir(0);
+    addOrUpdatePlanoAula(p); setPlano(p); concluir(0); onGuardado?.();
   }
 
   function guardarFichas() {
@@ -221,8 +227,8 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
 
   return (
     <div>
-      {/* CABEÇALHO VERDE ESCURO */}
-      <div style={{ background:'#1f1b16', borderRadius:14, padding:'18px', marginBottom:16 }}>
+      {/* CABEÇALHO */}
+      <div style={{ background:'var(--charcoal)', borderRadius:14, padding:'18px', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
           <button onClick={onVoltar} className="btn btn-ghost" style={{ fontSize:12, padding:'6px 12px', color:'rgba(247,241,230,0.7)', borderColor:'rgba(247,241,230,0.2)', background:'rgba(247,241,230,0.08)' }}>← Voltar</button>
           <div style={{ flex:1 }}>
@@ -234,11 +240,12 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
         <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:4 }}>
           {['Dados','Fichas','Grupos','Competências','Publicar'].map((s,i)=>(
             <div key={i} style={{ textAlign:'center' }}>
-              <div style={{ width:28,height:28,borderRadius:'50%',margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,
-                background:feita(i)?'var(--sage)':secAberta===i?'var(--copper)':'rgba(247,241,230,0.12)',
-                color:feita(i)||secAberta===i?'white':'rgba(247,241,230,0.4)',
+              <div style={{ width:28,height:28,borderRadius:'50%',margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,
+                background:feita(i)?'var(--sage)':secAberta===i?'var(--copper)':'rgba(247,241,230,0.15)',
+                color:'white',
+                border:feita(i)||secAberta===i?'none':'1px solid rgba(247,241,230,0.3)',
               }}>{feita(i)?'✓':(i+1)}</div>
-              <div style={{ fontSize:9, color:feita(i)?'var(--sage-light)':secAberta===i?'var(--copper-light)':'rgba(247,241,230,0.35)' }}>{s}</div>
+              <div style={{ fontSize:9, fontWeight:600, color:feita(i)?'var(--sage-light)':secAberta===i?'var(--copper-light)':'rgba(247,241,230,0.5)' }}>{s}</div>
             </div>
           ))}
         </div>
@@ -277,9 +284,14 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
         {todasFichas.length===0?(
           <div style={{textAlign:'center',padding:'14px 0'}}>
             <p className="muted" style={{marginBottom:10}}>Ainda não há fichas criadas.</p>
-            <div style={{padding:'10px 14px',background:'rgba(107,124,94,0.1)',borderRadius:10,fontSize:13,color:'var(--sage)'}}>
-              Vai ao tab <strong>Ficha de Produção</strong> para criar fichas.
+            <div style={{padding:'12px 14px',background:'var(--sage-pale)',borderRadius:10,fontSize:13,color:'var(--sage)',border:'1px solid rgba(90,122,78,0.2)',marginBottom:10}}>
+              👆 Vai ao tab <strong>Ficha de Produção</strong> para criar fichas.
             </div>
+            {onIrParaFicha && (
+              <button className="btn btn-primary" style={{background:'var(--sage)'}} onClick={onIrParaFicha}>
+                + Criar Ficha de Produção agora
+              </button>
+            )}
           </div>
         ) : todasFichas.map(f=>(
           <div key={f.id} className="option-card" style={{marginBottom:6}} onClick={()=>setFichasSel(p=>p.includes(f.id)?p.filter(x=>x!==f.id):[...p,f.id])}>
@@ -505,21 +517,25 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar }: { plano:TPlanoAula
         </div>
       </div>
 
-      {/* Grelha de avaliação — acordeão no final */}
+      {/* Grelha de avaliação — só disponível após publicação */}
+      {plano.estado === 'publicado' && (
       <div style={{border:`1.5px solid ${grelhaAberta?'var(--copper)':'var(--border)'}`,borderRadius:14,overflow:'hidden',boxShadow:grelhaAberta?'0 0 0 3px rgba(181,101,29,0.08)':'none'}}>
         <div onClick={()=>setGrelhaAberta(!grelhaAberta)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',cursor:'pointer',background:grelhaAberta?'var(--copper-pale)':'#fff'}}>
           <div style={{width:36,height:36,borderRadius:10,background:grelhaAberta?'var(--copper)':'var(--cream-dark)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>
             📊
           </div>
           <div style={{flex:1}}>
-            <div style={{fontWeight:600,fontSize:14}}>Grelha de avaliacao</div>
-            <div className="muted">Registo rapido por competencia · abre apos a aula</div>
+            <div style={{fontWeight:600,fontSize:14}}>Grelha de avaliação — registo do professor</div>
+            <div className="muted" style={{fontSize:11}}>Competências atitudinais · preencher durante ou após a aula</div>
           </div>
           <span style={{fontSize:18,color:'var(--copper)',transition:'transform 0.2s',transform:grelhaAberta?'rotate(180deg)':'rotate(0deg)'}}>›</span>
         </div>
 
         {grelhaAberta&&(
           <div style={{borderTop:'1px solid var(--border)',padding:'14px 16px',background:'#fff'}}>
+            <div style={{padding:'8px 12px',background:'var(--copper-pale)',borderRadius:8,fontSize:12,color:'var(--copper)',marginBottom:12}}>
+              Esta grelha regista a observação do professor sobre as <strong>atitudes</strong> dos alunos ao longo da aula — não a autoavaliação.
+            </div>
             {alunos.length===0&&<div className="muted">Sem alunos registados nesta turma.</div>}
             {alunos.length>0&&(
               <>
@@ -564,12 +580,13 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar }: { plano:TPlanoAula
                     </span>
                   ))}
                 </div>
-                <button className="btn btn-primary btn-block" style={{background:'var(--charcoal)'}} onClick={()=>alert('Avaliacoes guardadas!')}>Guardar avaliacoes</button>
+                <button className="btn btn-primary btn-block" style={{background:'var(--charcoal)'}} onClick={()=>alert('Avaliacoes guardadas!')}>Guardar avaliações</button>
               </>
             )}
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
