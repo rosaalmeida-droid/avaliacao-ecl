@@ -433,8 +433,10 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
   const [microAberta, setMicroAberta] = useState<string|null>(null);
   const [avisoEscolha, setAvisoEscolha] = useState('');
 
-  // Avaliações das microcompetências sugeridas
+  // Avaliações das microcompetências sugeridas (numéricas)
   const [notas, setNotas] = useState<Record<string,number|null>>({});
+  // Avaliações dos critérios observáveis (string: 'sozinho'/'ajuda'/'nao')
+  const [criteriosResp, setCriteriosResp] = useState<Record<string,string|null>>({});
 
   function escolherMicro(id: string) {
     const m = MICROCOMPETENCIAS.find(x=>x.id===id);
@@ -526,7 +528,7 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
                     <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6, color:'var(--charcoal)' }}>O que é observado</div>
                     {m.criterios.map((c,i)=>{
                       const keyC = `${m.id}_c${i}`;
-                      const valC = (notas as any)[keyC];
+                      const valC = criteriosResp[keyC];
                       return (
                         <div key={i} style={{ marginBottom:8, padding:'8px 10px', borderRadius:8, background:'#fff', border:'1px solid var(--border)' }}>
                           <div style={{ fontSize:11, color:'rgba(26,23,20,0.8)', marginBottom:6 }}>· {c.criterio}</div>
@@ -537,7 +539,7 @@ function AutoavaliacaoAluno({ ficha, plano, aluno, onBack, onFinish }: {
                               { v:'ajuda',   label:'Consigo com ajuda', cor:'var(--copper-pale)', txt:'var(--copper)' },
                               { v:'nao',     label:'Ainda não consigo', cor:'var(--danger-pale)', txt:'var(--danger)' },
                             ].map(op=>(
-                              <button key={op.v} onClick={()=>setNotas(p=>({...p,[keyC]:p[keyC]===op.v?null:op.v}))} style={{ padding:'5px 2px', borderRadius:7, border:`1.5px solid ${valC===op.v?op.txt:'var(--border)'}`, background:valC===op.v?op.cor:'#fff', color:valC===op.v?op.txt:'rgba(26,23,20,0.5)', fontSize:8, fontWeight:600, cursor:'pointer', textAlign:'center' }}>
+                              <button key={op.v} onClick={()=>setCriteriosResp(p=>({...p,[keyC]:p[keyC]===op.v?null:op.v}))} style={{ padding:'5px 2px', borderRadius:7, border:`1.5px solid ${valC===op.v?op.txt:'var(--border)'}`, background:valC===op.v?op.cor:'#fff', color:valC===op.v?op.txt:'rgba(26,23,20,0.5)', fontSize:8, fontWeight:600, cursor:'pointer', textAlign:'center' }}>
                                 {op.label}
                               </button>
                             ))}
