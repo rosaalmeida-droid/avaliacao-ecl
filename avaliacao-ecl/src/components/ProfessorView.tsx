@@ -962,9 +962,10 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
       </div>
       {copiado && (
         <div style={{ padding: '8px 12px', background: 'var(--copper-pale)', borderRadius: 8, fontSize: 12, color: 'var(--copper)', marginBottom: 8 }}>
-          ✅ Prompt copiado! No ChatGPT faz <strong>Ctrl+V</strong> (ou longa pressão → Colar) para colar.
+          ✅ Prompt copiado! No ChatGPT faz <strong>Ctrl+V</strong> para colar.
         </div>
       )}
+      {mostrarPrompt && (
         <div style={{ marginBottom: 12 }}>
           <textarea className="input" value={promptEditavel}
             onChange={e => setPromptEditavel(e.target.value)}
