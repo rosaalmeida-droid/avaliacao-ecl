@@ -18,7 +18,7 @@ const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/
 const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxT00cLo_mTHjv-swqo-lxqdq-YRmOB3gQ4AZ8rbIdyzTbAFt_Yi56D6-_GHV7miAlv/exec';
 
 // Fichas de Produção (preencher após criar o Sheets de Fichas)
-const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbyEAdlWrYLLlY2YgebNrVlHEwzLGymSmMpOLI4wuonyixNZOZcv5GaHYK5O85WLxbA/exec';
+const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
 
 // ── Chaves localStorage ──────────────────────────────────────
 const KEYS = {
