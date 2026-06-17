@@ -7,6 +7,7 @@ import {
   addOrUpdateDistribuicaoFicha,
 } from '../backend';
 import { PlanoAula as TPlanoAula, DistribuicaoFicha } from '../types';
+import ProfessorView from './ProfessorView';
 
 const TIPOS_ATIVIDADE = [
   'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
@@ -56,6 +57,51 @@ const UCS_COZINHA = [
   { id:'UC03596', nome:'Planear e confecionar cozinha criativa' },
   { id:'UC03597', nome:'Planear e confecionar massas especiais de panificacao' },
 ];
+
+function FichaSelector({ todasFichas, fichasSel, onChange }: {
+  todasFichas: any[]; fichasSel: string[]; onChange: (ids: string[]) => void;
+}) {
+  const [pesquisa, setPesquisa] = useState('');
+  const fichasFiltradas = todasFichas.filter(f =>
+    !pesquisa || (f.nomePrato||'').toLowerCase().includes(pesquisa.toLowerCase()) ||
+    (f.classificacao||'').toLowerCase().includes(pesquisa.toLowerCase())
+  );
+  return (
+    <div>
+      {fichasSel.length > 0 && (
+        <div style={{marginBottom:8,padding:'8px 10px',background:'var(--copper-pale)',borderRadius:8,fontSize:12,color:'var(--copper)',fontWeight:600}}>
+          {fichasSel.length} ficha{fichasSel.length>1?'s':''} selecionada{fichasSel.length>1?'s':''}
+        </div>
+      )}
+      <input
+        className="input"
+        value={pesquisa}
+        onChange={e=>setPesquisa(e.target.value)}
+        placeholder="Pesquisar fichas por nome ou tipo..."
+        style={{marginBottom:8}}
+      />
+      <div style={{maxHeight:280,overflowY:'auto',border:'1px solid var(--border)',borderRadius:10,padding:6}}>
+        {fichasFiltradas.length===0&&<div className="muted" style={{padding:10,textAlign:'center'}}>Sem resultados para "{pesquisa}"</div>}
+        {fichasFiltradas.map(f=>{
+          const sel = fichasSel.includes(f.id);
+          return (
+            <div key={f.id} onClick={()=>onChange(sel?fichasSel.filter(x=>x!==f.id):[...fichasSel,f.id])}
+              style={{display:'flex',alignItems:'center',gap:10,padding:'9px 10px',borderRadius:8,marginBottom:4,cursor:'pointer',background:sel?'var(--copper-pale)':'#fff',border:'1px solid '+(sel?'var(--copper)':'transparent')}}>
+              <div style={{width:20,height:20,borderRadius:5,border:'1.5px solid '+(sel?'var(--copper)':'var(--border)'),background:sel?'var(--copper)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:12,fontWeight:700}}>
+                {sel&&'✓'}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600,fontSize:13}}>{f.nomePrato}</div>
+                <div className="muted" style={{fontSize:11}}>{f.classificacao} · {f.numPorcoes} doses{f.data?' · '+f.data:''}</div>
+              </div>
+              {f.ucsAssociadas?.length>0&&<span style={{fontSize:10,color:'var(--copper)',fontWeight:600}}>{f.ucsAssociadas[0]}</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function Acc({ num, icon, title, desc, status, open, locked, onToggle, children }: {
   num: number; icon: string; title: string; desc: string;
@@ -155,6 +201,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   const [compOpc, setCompOpc] = useState<string[]>([]);
   const [plano, setPlano] = useState<TPlanoAula|null>(null);
   const [publicado, setPublicado] = useState(false);
+  const [criarFichaAberta, setCriarFichaAberta] = useState(false);
   const todasFichas = getFichasProducao();
   const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
 
@@ -218,6 +265,34 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
 
   return (
     <div>
+      {/* Modal criar ficha */}
+      {criarFichaAberta && (
+        <div style={{position:'fixed',inset:0,background:'rgba(26,23,20,0.7)',zIndex:9999,overflowY:'auto',padding:'20px 0'}}>
+          <div style={{background:'#fff',borderRadius:16,maxWidth:680,margin:'0 auto',padding:20}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:16}}>Nova Ficha de Producao</div>
+              <button onClick={()=>{setCriarFichaAberta(false);setFichasSel(getFichasProducao().filter(f=>plano&&f.id&&(f as any).planoOrigem===plano.id).map(f=>f.id).filter(id=>!fichasSel.includes(id)).concat(fichasSel).slice(-20));}} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'rgba(26,23,20,0.4)'}}>✕</button>
+            </div>
+            <div style={{padding:'8px 12px',background:'var(--copper-pale)',borderRadius:8,fontSize:12,color:'var(--copper)',marginBottom:14,fontWeight:600}}>
+              Esta ficha fica automaticamente associada ao plano quando guardada.
+            </div>
+            <ProfessorView
+              turmaId={turmaId}
+              nomeProfessor={nomeProfessor}
+              planoId={plano?.id}
+              onGuardado={() => {
+                // Após guardar ficha — actualizar lista e fechar modal
+                const fichasActuais = getFichasProducao();
+                const novaFicha = fichasActuais[fichasActuais.length - 1];
+                if (novaFicha) setFichasSel(p => [...p, novaFicha.id]);
+                setCriarFichaAberta(false);
+              }}
+              onAlteracao={() => {}}
+            />
+          </div>
+        </div>
+      )}
+
       <div style={{ background:'var(--charcoal)', borderRadius:14, padding:'18px', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
           <button onClick={onVoltar} className="btn btn-ghost" style={{ fontSize:12, padding:'6px 12px', color:'rgba(247,241,230,0.7)', borderColor:'rgba(247,241,230,0.2)', background:'rgba(247,241,230,0.08)' }}>← Voltar</button>
@@ -263,26 +338,24 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       </Acc>
 
       <Acc num={1} icon="📄" title="Fichas de producao" desc={feita(1)?resumoFichas:'Seleciona as receitas para esta aula'} status={status(1)} open={secAberta===1} locked={!feita(0)&&secAberta!==1} onToggle={()=>feita(0)&&setSecAberta(1)}>
-        {todasFichas.length===0?(
-          <div style={{textAlign:'center',padding:'14px 0'}}>
-            <p className="muted" style={{marginBottom:10}}>Ainda nao ha fichas criadas.</p>
-            <div style={{padding:'12px 14px',background:'var(--sage-pale)',borderRadius:10,fontSize:13,color:'var(--sage)',border:'1px solid rgba(90,122,78,0.2)',marginBottom:10}}>
-              Vai ao tab Ficha de Producao para criar fichas.
-            </div>
+        {/* Botão criar nova ficha — sempre visível */}
+        <div style={{marginBottom:12,padding:'10px 14px',background:'var(--sage-pale)',borderRadius:10,border:'1px solid rgba(90,122,78,0.2)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--sage)'}}>Criar nova ficha de produção</div>
+            <div style={{fontSize:11,color:'rgba(26,23,20,0.5)'}}>A ficha fica automaticamente associada a este plano</div>
           </div>
-        ) : todasFichas.map(f=>(
-          <div key={f.id} className="option-card" style={{marginBottom:6}} onClick={()=>setFichasSel(p=>p.includes(f.id)?p.filter(x=>x!==f.id):[...p,f.id])}>
-            <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <div style={{width:20,height:20,borderRadius:5,border:'1.5px solid '+(fichasSel.includes(f.id)?'var(--copper)':'var(--border)'),background:fichasSel.includes(f.id)?'var(--copper)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:12}}>
-                {fichasSel.includes(f.id)&&'✓'}
-              </div>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:600,fontSize:14}}>{f.nomePrato}</div>
-                <div className="muted">{f.classificacao} · {f.numPorcoes} porcoes</div>
-              </div>
-            </div>
-          </div>
-        ))}
+          <button className="btn btn-primary" style={{background:'var(--sage)',flexShrink:0}} onClick={()=>setCriarFichaAberta(true)}>
+            + Nova ficha
+          </button>
+        </div>
+
+        {todasFichas.length>0&&(
+          <>
+            <div style={{fontSize:12,fontWeight:600,marginBottom:6,color:'rgba(26,23,20,0.5)'}}>Ou seleciona uma ficha já existente:</div>
+            <FichaSelector todasFichas={todasFichas} fichasSel={fichasSel} onChange={setFichasSel} />
+          </>
+        )}
+
         <button className="btn btn-primary btn-block" disabled={fichasSel.length===0} onClick={guardarFichas} style={{marginTop:8}}>Continuar para grupos →</button>
       </Acc>
 
