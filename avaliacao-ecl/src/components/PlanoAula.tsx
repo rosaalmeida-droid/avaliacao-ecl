@@ -107,8 +107,8 @@ export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlt
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
 
-  if (vista==='criar') return <CriarPlano turmaId={turmaId} onConcluido={p=>{setPlanoAtivo(p);setVista('detalhe');}} onVoltar={()=>setVista('lista')} />;
-  if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
+  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p=>{setPlanoAtivo(p);setVista('detalhe');onGuardado?.();}} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} />;
+  if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onIrParaFicha={onIrParaFicha} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
 
   return (
     <div>
@@ -154,7 +154,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onIrParaFicha, onAlt
 // ═══════════════════════════════════════════════════════════════
 // CRIAR PLANO
 // ═══════════════════════════════════════════════════════════════
-function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConcluido:(p:TPlanoAula)=>void; onVoltar:()=>void }) {
+function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao }: { turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void; onVoltar:()=>void; onAlteracao?:(guardar?:()=>void)=>void }) {
   const [secAberta, setSecAberta] = useState(0);
   const [feitas, setFeitas] = useState<number[]>([]);
   const [dados, setDados] = useState({ titulo:'', data:new Date().toISOString().split('T')[0], horaInicio:'08:30', horaFim:'17:30', tipoAtividade:'Aula prática', tipoOutro:'', professor: nomeProfessor || '', ucId:'', ucNome:'' });
@@ -287,8 +287,8 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
             <div style={{padding:'12px 14px',background:'var(--sage-pale)',borderRadius:10,fontSize:13,color:'var(--sage)',border:'1px solid rgba(90,122,78,0.2)',marginBottom:10}}>
               👆 Vai ao tab <strong>Ficha de Produção</strong> para criar fichas.
             </div>
-            {onIrParaFicha && (
-              <button className="btn btn-primary" style={{background:'var(--sage)'}} onClick={onIrParaFicha}>
+            {onAlteracao && (
+              <button className="btn btn-primary" style={{background:'var(--sage)'}} onClick={()=>onAlteracao()}>
                 + Criar Ficha de Produção agora
               </button>
             )}
@@ -392,7 +392,7 @@ function CriarPlano({ turmaId, onConcluido, onVoltar }: { turmaId:string; onConc
 // ═══════════════════════════════════════════════════════════════
 // DETALHE DO PLANO
 // ═══════════════════════════════════════════════════════════════
-function DetalhePlano({ plano, turmaId, onVoltar, onEditar }: { plano:TPlanoAula; turmaId:string; onVoltar:()=>void; onEditar:()=>void }) {
+function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: { plano:TPlanoAula; turmaId:string; onVoltar:()=>void; onEditar:()=>void; onIrParaFicha?:()=>void }) {
   const fichas = getFichasProducao().filter(f=>plano.fichasIds.includes(f.id));
   const todasFichas = getFichasProducao();
   const fichasDisponiveis = todasFichas.filter(f=>!plano.fichasIds.includes(f.id));
