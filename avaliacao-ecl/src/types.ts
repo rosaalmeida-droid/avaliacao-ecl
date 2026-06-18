@@ -139,15 +139,16 @@ export interface NotaCompetencia {
 }
 
 export interface Validacao {
-  id: string;              // selecaoId
+  id: string;
   selecaoId: string;
   comandaId: string;
+  planoAulaId?: string;
   alunoId: string;
   turmaId: string;
-  notas: NotaCompetencia[]; // uma nota por competência selecionada
+  notas: NotaCompetencia[];
   comentarioGeral?: string;
-  validadoPor: string;     // nome/pin do professor
-  validadoEm: string;      // ISO datetime
+  validadoPor: string;
+  validadoEm: string;
 }
 
 // --------------------------------------------------------
