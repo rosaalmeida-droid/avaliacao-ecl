@@ -12,7 +12,7 @@ import {
 
 // ── URLs dos Apps Scripts ────────────────────────────────────
 // Histórico de avaliações dos alunos (já configurado e a funcionar)
-const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbyfchb-NExFKf_0At6Oby7WkTPQK1qZALx2veS4xb7-NF7Msow5ghstCNBmYGYoF7z16w/exec';
+const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxeakUsqNbZoCLmnlzdAeon8MUj7e2p9gDkJvL9AKqXmMIBDx0oBUhmoOQwcAK5c9aj_Q/exec';
 
 // Planos de Aula (preencher após criar o Sheets de Planos)
 const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxT00cLo_mTHjv-swqo-lxqdq-YRmOB3gQ4AZ8rbIdyzTbAFt_Yi56D6-_GHV7miAlv/exec';
