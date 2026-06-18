@@ -136,19 +136,17 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
   );
 }
 
-export default function PlanoAula({ turmaId, nomeProfessor, onAbrirPlano, onAlteracao, onGuardado }: {
+export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
   turmaId: string; nomeProfessor?: string;
-  onAbrirPlano?: (plano: TPlanoAula) => void;
-  onIrParaFicha?: () => void;
   onAlteracao?: (guardar?: () => void) => void;
-  onGuardado?: () => void;
+  onGuardado?: (plano?: TPlanoAula) => void;
 }) {
   const [vista, setVista] = useState<'lista'|'criar'|'detalhe'>('lista');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
 
   if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => {
-    if (onAbrirPlano) { onGuardado?.(); onAbrirPlano(p); }
+    onGuardado?.(p);
     else { setPlanoAtivo(p); setVista('detalhe'); onGuardado?.(); }
   }} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
 
@@ -194,7 +192,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAbrirPlano, onAlte
           : (p.horaFim||'').substring(0,5);
 
         return (
-          <div key={p.id} className="option-card" onClick={() => onAbrirPlano ? onAbrirPlano(p) : (setPlanoAtivo(p), setVista('detalhe'))}>
+          <div key={p.id} className="option-card" onClick={() => onGuardado?.(p)}>
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
               <div style={{ background:'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
                 <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'white', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
