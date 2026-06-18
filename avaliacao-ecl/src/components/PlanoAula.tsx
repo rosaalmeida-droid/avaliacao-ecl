@@ -226,8 +226,6 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAbrirPlano, onAlte
     </div>
   );
 }
-  );
-}
 
 function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado }: {
   turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void;
