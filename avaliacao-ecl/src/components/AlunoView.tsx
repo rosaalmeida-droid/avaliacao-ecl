@@ -46,7 +46,7 @@ function Acordeao({ id, aberto, titulo, icone, cor, estado, onClick, children }:
     if (aberto) setTimeout(scrollTo, 120);
   }, [aberto]);
 
-  const corEstado = estado === 'concluido' ? 'var(--sage)' : estado === 'em_curso' ? cor : 'rgba(26,23,20,0.2)';
+  const corEstado = estado === 'concluido' ? 'var(--sage)' : estado === 'em_curso' ? cor : 'rgba(26,23,20,0.55)';
   const bgEstado = estado === 'concluido' ? 'var(--sage-pale)' : estado === 'em_curso' ? `${cor}15` : '#fff';
 
   return (
@@ -57,7 +57,7 @@ function Acordeao({ id, aberto, titulo, icone, cor, estado, onClick, children }:
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--charcoal)' }}>{titulo}</div>
-          <div style={{ fontSize: 11, color: corEstado, fontWeight: 600, marginTop: 2 }}>
+          <div style={{ fontSize:13, color: corEstado, fontWeight: 600, marginTop: 2 }}>
             {estado === 'concluido' ? '✓ Concluído' : estado === 'em_curso' ? 'Em curso...' : 'Por fazer'}
           </div>
         </div>
@@ -96,14 +96,14 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             <div key={p.id} onClick={() => setPlanoAtivo(p)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 6, cursor: 'pointer', background: '#fff' }}>
               <div style={{ background: 'var(--copper-pale)', borderRadius: 8, padding: '6px 8px', textAlign: 'center', flexShrink: 0 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--copper)', lineHeight: 1 }}>{d.getDate().toString().padStart(2, '0')}</div>
-                <div style={{ fontSize: 9, color: 'var(--copper)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
+                <div style={{ fontSize:12, color: 'var(--copper)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{p.titulo}</div>
                 <div style={S.muted}>{p.horaInicio}–{p.horaFim}{p.ucId ? ` · ${p.ucId}` : ''}</div>
-                {p.ucNome && <div style={{ fontSize: 11, color: 'var(--copper)' }}>{p.ucNome}</div>}
+                {p.ucNome && <div style={{ fontSize:13, color: 'var(--copper)' }}>{p.ucNome}</div>}
               </div>
-              <span style={{ fontSize: 11, color: 'var(--copper)', fontWeight: 600 }}>→</span>
+              <span style={{ fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>→</span>
             </div>
           );
         })}
@@ -131,16 +131,16 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: { plano: PlanoAula; aluno
     <div>
       {/* Cabeçalho do plano */}
       <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '14px 16px', marginBottom: 14 }}>
-        <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: 'none', borderRadius: 8, padding: '4px 10px', color: 'rgba(247,241,230,0.6)', fontSize: 11, cursor: 'pointer', marginBottom: 10 }}>
+        <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '4px 10px', color: 'rgba(247,241,230,0.6)', fontSize:13, cursor: 'pointer', marginBottom: 10 }}>
           ← Voltar
         </button>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--cream)' }}>{plano.titulo}</div>
-        <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.5)', marginTop: 2 }}>{plano.data} · {plano.horaInicio}–{plano.horaFim}</div>
+        <div style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', marginTop: 2 }}>{plano.data} · {plano.horaInicio}–{plano.horaFim}</div>
         {plano.ucId && (
           <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(181,101,29,0.25)', borderRadius: 8, display: 'inline-block' }}>
-            <span style={{ fontSize: 10, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase' }}>UC </span>
+            <span style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase' }}>UC </span>
             <span style={{ fontSize: 12, color: 'var(--cream)', fontWeight: 700 }}>{plano.ucId}</span>
-            {plano.ucNome && <span style={{ fontSize: 11, color: 'rgba(247,241,230,0.6)', marginLeft: 6 }}>{plano.ucNome}</span>}
+            {plano.ucNome && <span style={{ fontSize:13, color: 'rgba(247,241,230,0.6)', marginLeft: 6 }}>{plano.ucNome}</span>}
           </div>
         )}
       </div>
@@ -233,8 +233,8 @@ function SecaoEntrada({ aluno, plano, onConcluido }: { aluno: Aluno; plano: Plan
         {FARD_ITEMS.map(item => {
           const v = fardState[item];
           return (
-            <div key={item} onClick={() => setFardState(p => { const vv = p[item]; return { ...p, [item]: vv === null ? true : vv === true ? false : null }; })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 9px', borderRadius: 8, cursor: 'pointer', fontSize: 11, border: '1px solid var(--border)', background: v === true ? 'var(--sage-pale)' : v === false ? 'var(--danger-pale)' : 'var(--cream-dark)', color: v === true ? 'var(--sage)' : v === false ? 'var(--danger)' : 'rgba(26,23,20,0.5)' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: v === true ? 'var(--sage)' : v === false ? 'var(--danger)' : 'rgba(26,23,20,0.2)' }} />
+            <div key={item} onClick={() => setFardState(p => { const vv = p[item]; return { ...p, [item]: vv === null ? true : vv === true ? false : null }; })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 9px', borderRadius: 8, cursor: 'pointer', fontSize:13, border: '1px solid var(--border)', background: v === true ? 'var(--sage-pale)' : v === false ? 'var(--danger-pale)' : 'var(--cream-dark)', color: v === true ? 'var(--sage)' : v === false ? 'var(--danger)' : 'rgba(26,23,20,0.5)' }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: v === true ? 'var(--sage)' : v === false ? 'var(--danger)' : 'rgba(26,23,20,0.55)' }} />
               <span style={{ flex: 1 }}>{item}</span>
             </div>
           );
@@ -271,7 +271,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
             <span style={{ fontSize: 18 }}>📄</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 14 }}>{f.nomePrato}</div>
-              <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.numPorcoes} doses</div>
+              <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.numPorcoes} doses</div>
             </div>
             <span style={{ fontSize: 16, color: 'var(--copper)' }}>{fichaAberta === f.id ? '▲' : '▼'}</span>
           </button>
@@ -281,12 +281,12 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
               {/* Ingredientes */}
               {f.ingredientes?.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'var(--copper)' }}>Ingredientes</div>
+                  <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'var(--copper)' }}>Ingredientes</div>
                   {f.ingredientes.map((ing, i) => (
                     <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: '#fff', cursor: 'pointer', fontSize: 12 }}>
                       <input type="checkbox" style={{ accentColor: 'var(--sage)' }} />
                       <strong>{ing.qt} {ing.un}</strong> {ing.produto}
-                      {ing.obs && <span style={{ fontSize: 10, color: 'var(--copper)' }}>{ing.obs}</span>}
+                      {ing.obs && <span style={{ fontSize:13, color: 'var(--copper)' }}>{ing.obs}</span>}
                     </label>
                   ))}
                 </div>
@@ -295,14 +295,14 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
               {/* Passos */}
               {f.preparacao?.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'var(--copper)' }}>Preparação</div>
+                  <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'var(--copper)' }}>Preparação</div>
                   {f.preparacao.map((p, i) => (
                     <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: '#fff', cursor: 'pointer', fontSize: 12 }}>
                       <input type="checkbox" style={{ accentColor: 'var(--sage)', marginTop: 2, flexShrink: 0 }} />
                       <div>
                         <strong>{p.num}.</strong> {p.descricao}
-                        {p.temperatura && <span style={{ fontSize: 10, color: '#2980b9', marginLeft: 6 }}>🌡 {p.temperatura}</span>}
-                        {p.haccp && <div style={{ fontSize: 10, color: 'var(--danger)', marginTop: 2 }}>⚠️ {p.haccp}</div>}
+                        {p.temperatura && <span style={{ fontSize:13, color: '#2980b9', marginLeft: 6 }}>🌡 {p.temperatura}</span>}
+                        {p.haccp && <div style={{ fontSize:13, color: 'var(--danger)', marginTop: 2 }}>⚠️ {p.haccp}</div>}
                       </div>
                     </label>
                   ))}
@@ -312,7 +312,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
               {/* Guia de Apoio */}
               {(f as any).textoGuia && (
                 <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, color: 'var(--sage)' }}>📚 Guia de Apoio à Produção</div>
+                  <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, color: 'var(--sage)' }}>📚 Guia de Apoio à Produção</div>
                   <GuiaProducao textoGuia={(f as any).textoGuia} nomePrato={f.nomePrato || ''} />
                 </div>
               )}
@@ -425,7 +425,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
 
       {/* OBRIGATÓRIAS */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>
+        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>
           🔒 Competências obrigatórias
         </div>
         {[
@@ -436,7 +436,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
             <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>{obr.label}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
               {OPCOES_AUTO.map(op => (
-                <button key={op.v} onClick={() => obr.set(op.v)} style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${obr.val === op.v ? op.txt : 'var(--border)'}`, background: obr.val === op.v ? op.cor : '#fff', color: obr.val === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
+                <button key={op.v} onClick={() => obr.set(op.v)} style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${obr.val === op.v ? op.txt : 'var(--border)'}`, background: obr.val === op.v ? op.cor : '#fff', color: obr.val === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize:13, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                   <div style={{ fontSize: 16, marginBottom: 2 }}>{op.emoji}</div>
                   {op.label}
                 </button>
@@ -449,7 +449,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
       {/* MICROCOMPETÊNCIAS TÉCNICAS */}
       {microsSugeridas.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>
+          <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>
             🔬 Competências técnicas desta aula
           </div>
           {microsSugeridas.map(m => (
@@ -457,10 +457,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
               <button onClick={() => setMicroAberta(microAberta === m.id ? null : m.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: microAberta === m.id ? 'var(--copper-pale)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{m.nome}</div>
-                  <div style={{ fontSize: 10, color: m.prioridade === 1 ? 'var(--danger)' : m.prioridade === 2 ? 'var(--copper)' : 'rgba(26,23,20,0.4)', marginTop: 2 }}>{m.motivo}</div>
+                  <div style={{ fontSize:13, color: m.prioridade === 1 ? 'var(--danger)' : m.prioridade === 2 ? 'var(--copper)' : 'rgba(26,23,20,0.4)', marginTop: 2 }}>{m.motivo}</div>
                 </div>
                 {notasMicro[m.id] && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--sage)' }}>✓</span>
+                  <span style={{ fontSize:13, fontWeight: 700, color: 'var(--sage)' }}>✓</span>
                 )}
                 <span style={{ fontSize: 14, color: 'var(--copper)' }}>{microAberta === m.id ? '▲' : '▼'}</span>
               </button>
@@ -470,16 +470,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
                   {/* Critérios */}
                   {m.criterios.length > 0 && (
                     <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>O que é observado</div>
+                      <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>O que é observado</div>
                       {m.criterios.map((c: any, ci: number) => {
                         const keyC = `${m.id}_c${ci}`;
                         const valC = criteriosResp[keyC];
                         return (
                           <div key={ci} style={{ marginBottom: 8, padding: '7px 10px', borderRadius: 8, background: '#fff', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: 11, marginBottom: 5 }}>· {c.criterio}</div>
+                            <div style={{ fontSize:13, marginBottom: 5 }}>· {c.criterio}</div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
                               {OPCOES_AUTO.map(op => (
-                                <button key={op.v} onClick={() => setCriteriosResp(p => ({ ...p, [keyC]: p[keyC] === op.v ? null : op.v }))} style={{ padding: '4px 2px', borderRadius: 6, border: `1px solid ${valC === op.v ? op.txt : 'var(--border)'}`, background: valC === op.v ? op.cor : '#fff', color: valC === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize: 8, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
+                                <button key={op.v} onClick={() => setCriteriosResp(p => ({ ...p, [keyC]: p[keyC] === op.v ? null : op.v }))} style={{ padding: '4px 2px', borderRadius: 6, border: `1px solid ${valC === op.v ? op.txt : 'var(--border)'}`, background: valC === op.v ? op.cor : '#fff', color: valC === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize:12, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                                   {op.emoji} {op.label}
                                 </button>
                               ))}
@@ -491,10 +491,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
                   )}
 
                   {/* Avaliação global da microcompetência */}
-                  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avaliação geral desta competência</div>
+                  <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avaliação geral desta competência</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
                     {OPCOES_AUTO.map(op => (
-                      <button key={op.v} onClick={() => setNotasMicro(p => ({ ...p, [m.id]: p[m.id] === op.v ? null : op.v }))} style={{ padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${notasMicro[m.id] === op.v ? op.txt : 'var(--border)'}`, background: notasMicro[m.id] === op.v ? op.cor : '#fff', color: notasMicro[m.id] === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
+                      <button key={op.v} onClick={() => setNotasMicro(p => ({ ...p, [m.id]: p[m.id] === op.v ? null : op.v }))} style={{ padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${notasMicro[m.id] === op.v ? op.txt : 'var(--border)'}`, background: notasMicro[m.id] === op.v ? op.cor : '#fff', color: notasMicro[m.id] === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize:13, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                         <div style={{ fontSize: 18, marginBottom: 2 }}>{op.emoji}</div>
                         {op.label}
                       </button>
@@ -509,7 +509,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
 
       {/* ATITUDE EXTRA — escolha do aluno */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>
+        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>
           💡 A tua atitude — escolhe uma para trabalhar hoje
         </div>
         <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, padding: 8 }}>
