@@ -212,18 +212,18 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
 
             {/* Autoavaliação do aluno */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 10px', background: 'var(--cream-dark)', borderRadius: 8 }}>
-              <span style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>Aluno disse:</span>
+              <span style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>Aluno disse:</span>
               <span style={{ fontWeight: 600, fontSize: 12, color: corAluno }}>{labelAluno}</span>
             </div>
 
             {/* Critérios observáveis */}
             {criterios.length > 0 && (
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5, color: 'rgba(26,23,20,0.4)' }}>
+                <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5, color: 'rgba(26,23,20,0.4)' }}>
                   Critérios observáveis
                 </div>
                 {criterios.map((c, i) => (
-                  <div key={i} style={{ fontSize: 11, padding: '3px 0', borderBottom: '1px solid var(--border)', color: 'rgba(26,23,20,0.7)' }}>
+                  <div key={i} style={{ fontSize:13, padding: '3px 0', borderBottom: '1px solid var(--border)', color: 'rgba(26,23,20,0.7)' }}>
                     · {c}
                   </div>
                 ))}
@@ -231,7 +231,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
             )}
 
             {/* Avaliação do professor (1-4) */}
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'rgba(26,23,20,0.5)' }}>
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'rgba(26,23,20,0.5)' }}>
               Avaliação do professor
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, marginBottom: notaFinal ? 8 : 0 }}>
@@ -240,7 +240,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
                   padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${notaProf === n.v ? n.txt : 'var(--border)'}`,
                   background: notaProf === n.v ? n.cor : '#fff',
                   color: notaProf === n.v ? n.txt : 'rgba(26,23,20,0.5)',
-                  fontSize: 10, fontWeight: 600, cursor: 'pointer', textAlign: 'center',
+                  fontSize:13, fontWeight: 600, cursor: 'pointer', textAlign: 'center',
                 }}>
                   <div style={{ fontSize: 16, marginBottom: 2 }}>{n.v}</div>
                   {n.label}
@@ -251,12 +251,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
             {/* Nota final calculada */}
             {notaFinal !== null && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: notaFinal >= 12 ? 'var(--sage-pale)' : 'var(--danger-pale)', borderRadius: 8 }}>
-                <span style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>Nota final:</span>
+                <span style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>Nota final:</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: notaFinal >= 12 ? 'var(--sage)' : 'var(--danger)' }}>
                   {notaFinal}
                 </span>
-                <span style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)' }}>/20</span>
-                <span style={{ fontSize: 11, marginLeft: 'auto', color: notaFinal >= 12 ? 'var(--sage)' : 'var(--danger)', fontWeight: 600 }}>
+                <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/20</span>
+                <span style={{ fontSize:13, marginLeft: 'auto', color: notaFinal >= 12 ? 'var(--sage)' : 'var(--danger)', fontWeight: 600 }}>
                   {notaFinal >= 17 ? 'Excelente' : notaFinal >= 14 ? 'Bom' : notaFinal >= 12 ? 'Suficiente' : 'Insuficiente'}
                 </span>
               </div>
@@ -282,7 +282,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
           ✓ Validar e guardar avaliação
         </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
-          <div style={{ fontSize: 11, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>
+          <div style={{ fontSize:13, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>
             Preenche a avaliação do professor em todas as competências antes de guardar.
           </div>
         )}
