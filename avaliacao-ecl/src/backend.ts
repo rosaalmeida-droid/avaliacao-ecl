@@ -12,7 +12,7 @@ import {
 
 // ── URLs dos Apps Scripts ────────────────────────────────────
 // Histórico de avaliações dos alunos (já configurado e a funcionar)
-const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbybXF4KtEeqXEyTfoWcDNSAFB2KvhpL8mJs-ps2kl02qb6Ll9UHQ-77si-OAiysOwFGCg/exec';
+const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbyfchb-NExFKf_0At6Oby7WkTPQK1qZALx2veS4xb7-NF7Msow5ghstCNBmYGYoF7z16w/exec';
 
 // Planos de Aula (preencher após criar o Sheets de Planos)
 const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxT00cLo_mTHjv-swqo-lxqdq-YRmOB3gQ4AZ8rbIdyzTbAFt_Yi56D6-_GHV7miAlv/exec';
@@ -311,7 +311,57 @@ export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
   const all = getHistoricoAvaliacoes();
   all.push(r);
   save(KEY_HIST, all);
-  enviar(SHEETS_HISTORICO_URL, 'avaliacao', r as unknown as Record<string, unknown>);
+
+  // Enriquecer com dados para o Apps Script do Histórico
+  const aluno = getAlunos().find(a => a.id === r.alunoId);
+  const plano = getPlanosAula().find(p => p.id === r.planoAulaId);
+  const ficha = getFichasProducao().find(f => f.id === r.fichaId);
+
+  enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
+    ...r,
+    tipo: 'avaliacao',
+    nomeAluno: aluno?.nome || ('Aluno ' + (aluno?.numero || 0)),
+    numero: aluno?.numero || 0,
+    ano: aluno?.ano || 1,
+    planoTitulo: plano?.titulo || '',
+    ucId: r.ucId || plano?.ucId || '',
+    fichaNome: ficha?.nomePrato || '',
+    microcompetencia: r.microcompetenciaId,
+    nota: r.nota,
+    data: r.data,
+    validadoPor: r.validadoPor,
+  });
+}
+
+export function addRegistoPresenca(dados: {
+  alunoId: string;
+  turmaId: string;
+  planoAulaId?: string;
+  presente: boolean;
+  atrasado?: boolean;
+  atrasadoMins?: number;
+  horaEntrada?: string;
+  fardamentoOk?: boolean;
+  observacao?: string;
+  data?: string;
+}): void {
+  const aluno = getAlunos().find(a => a.id === dados.alunoId);
+  const plano = getPlanosAula().find(p => p.id === dados.planoAulaId);
+  enviar(SHEETS_HISTORICO_URL, 'presenca', {
+    tipo: 'presenca',
+    nomeAluno: aluno?.nome || ('Aluno ' + (aluno?.numero || 0)),
+    numero: aluno?.numero || 0,
+    turmaId: dados.turmaId,
+    planoTitulo: plano?.titulo || '',
+    ucId: plano?.ucId || '',
+    presente: dados.presente,
+    atrasado: dados.atrasado || false,
+    atrasadoMins: dados.atrasadoMins || 0,
+    horaEntrada: dados.horaEntrada || new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+    fardamentoOk: dados.fardamentoOk ?? true,
+    observacao: dados.observacao || '',
+    data: dados.data || new Date().toLocaleDateString('pt-PT'),
+  });
 }
 
 // ── Estado de sincronização ──────────────────────────────────
