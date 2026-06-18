@@ -161,16 +161,16 @@ function limparTexto(t: string): string {
 }
 
 function extrairFicha(texto: string): FichaTecnica {
-  // Limpar markdown do ChatGPT antes de processar
+  // Limpar markdown mas SEM danificar tabelas com |
   texto = texto
-    .replace(/\*\*(.*?)\*\*/g, '$1')   // **negrito** → negrito
-    .replace(/\*(.*?)\*/g, '$1')        // *itálico* → itálico
-    .replace(/^#{1,4}\s*/gm, '')        // ## headers → sem hash
-    .replace(/^>\s*/gm, '')             // > citações
-    .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // `código`
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [texto](link) → texto
-    .replace(/---+/g, '')               // separadores ---
-    .replace(/\n{3,}/g, '\n\n');        // múltiplas linhas vazias
+    .replace(/\*\*([^*]+)\*\*/g, '$1')          // **negrito** → negrito
+    .replace(/\*([^*\n]+)\*/g, '$1')             // *itálico* → itálico (sem cruzar linhas)
+    .replace(/^#{1,4}\s+/gm, '')                 // ## headers
+    .replace(/^>\s*/gm, '')                      // > citações
+    .replace(/`([^`]+)`/g, '$1')                 // `código`
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')     // [texto](link) → texto
+    .replace(/^[-]{3,}$/gm, '')                  // linhas --- sozinhas (não dentro de tabelas)
+    .replace(/\n{3,}/g, '\n\n');                 // múltiplas linhas vazias
 
   const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 1);
 
@@ -1947,7 +1947,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   return (
     <div>
       {vista === 'criar' && (
-        <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={() => { try { localStorage.removeItem('ecl_ficha_draft'); } catch {} setVista('biblioteca'); }}>← Biblioteca</button>
+        <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={() => { try { localStorage.setItem('ecl_ficha_draft', JSON.stringify(ficha)); } catch {} setVista('biblioteca'); }}>← Biblioteca</button>
       )}
       {vista === 'editar' && (
         <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={() => setVista('biblioteca')}>← Biblioteca</button>
@@ -1962,10 +1962,9 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
           guardarFicha(fichaConfirmada);
         }}
         onVoltar={() => {
-          // Guardar draft — não apagar
+          // Guardar draft e voltar ao PassoLink — não à biblioteca
           try { localStorage.setItem('ecl_ficha_draft', JSON.stringify(ficha)); } catch {}
-          if (vista === 'criar') setPasso('link');
-          else setVista('biblioteca');
+          setPasso('link');
         }}
       />
     </div>
