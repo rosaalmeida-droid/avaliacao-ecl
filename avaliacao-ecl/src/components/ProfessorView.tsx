@@ -970,7 +970,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
             }
             setCopiado(true);
             setTimeout(() => setCopiado(false), 4000);
-            window.open('https://chat.openai.com/', '_blank');
+            window.open('https://chatgpt.com/chat', '_blank');
           }}>
           🟢 Abrir ChatGPT (prompt copiado)
         </button>
@@ -993,8 +993,8 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
         <div style={{ marginBottom: 12 }}>
           <textarea className="input" value={promptEditavel}
             onChange={e => setPromptEditavel(e.target.value)}
-            style={{ minHeight: 180, fontSize: 11, fontFamily: 'monospace' }}/>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 11, marginTop: 4 }}
+            style={{ minHeight: 180, fontSize:13, fontFamily: 'monospace' }}/>
+          <button type="button" className="btn btn-ghost" style={{ fontSize:13, marginTop: 4 }}
             onClick={() => setPromptEditavel(gerarPrompt(link, ucId, ucNome))}>
             🔄 Repor original
           </button>
@@ -1028,7 +1028,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
               }
               setCopiadoGuia(true);
               setTimeout(() => setCopiadoGuia(false), 4000);
-              window.open('https://chat.openai.com/', '_blank');
+              window.open('https://chatgpt.com/chat', '_blank');
             }}
             style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}>
             🟢 ChatGPT — Guia (prompt copiado)
@@ -1047,8 +1047,8 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
           <div style={{ marginBottom: 8 }}>
             <textarea className="input" value={guiaEditavel}
               onChange={e => setGuiaEditavel(e.target.value)}
-              style={{ minHeight: 180, fontSize: 11, fontFamily: 'monospace' }}/>
-            <button type="button" className="btn btn-ghost" style={{ fontSize: 11, marginTop: 4 }}
+              style={{ minHeight: 180, fontSize:13, fontFamily: 'monospace' }}/>
+            <button type="button" className="btn btn-ghost" style={{ fontSize:13, marginTop: 4 }}
               onClick={() => setGuiaEditavel(gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome))}>
               🔄 Repor original
             </button>
@@ -1222,41 +1222,41 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
         <div style={{ fontWeight:700, fontSize:13, color:'var(--copper)', marginBottom:8 }}>🤖 Gerar com IA</div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
           <div>
-            <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:5 }}>Ficha de Produção</div>
+            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:5 }}>Ficha de Produção</div>
             <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:11 }}
+              <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
                 onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }}>
                 {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt'}
               </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:11 }}
+              <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
                 onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptFicha), '_blank')}>
                 🟠 Claude
               </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:11 }}
-                onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); window.open('https://chat.openai.com/', '_blank'); }}>
+              <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
+                onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
                 🟢 ChatGPT
               </button>
             </div>
           </div>
           <div>
-            <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--sage)', marginBottom:5 }}>Guia de Apoio</div>
+            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--sage)', marginBottom:5 }}>Guia de Apoio</div>
             <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:11, borderColor:'var(--sage)', color:copiadoGuia?'#fff':'var(--sage)', background:copiadoGuia?'var(--sage)':undefined } as any}
+              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:copiadoGuia?'#fff':'var(--sage)', background:copiadoGuia?'var(--sage)':undefined } as any}
                 onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }}>
                 {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt'}
               </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:11, borderColor:'var(--sage)', color:'var(--sage)' }}
+              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
                 onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptGuia), '_blank')}>
                 🟠 Claude
               </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:11, borderColor:'var(--sage)', color:'var(--sage)' }}
-                onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); window.open('https://chat.openai.com/', '_blank'); }}>
+              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
+                onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
                 🟢 ChatGPT
               </button>
             </div>
           </div>
         </div>
-        <div style={{ fontSize:11, color:'rgba(26,23,20,0.4)', textAlign:'center', marginTop:8 }}>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)', textAlign:'center', marginTop:8 }}>
           Copia o prompt → vai à IA → copia o resultado → cola abaixo
         </div>
       </div>
@@ -1264,7 +1264,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
       {/* 4. CAIXA RESULTADO */}
       <div style={{ background:'rgba(181,101,29,0.04)', borderRadius:10, padding:'12px 14px', marginBottom:12, border:'1px solid rgba(181,101,29,0.15)' }}>
         <div style={{ fontWeight:700, fontSize:13, color:'var(--copper)', marginBottom:4 }}>📋 Cola aqui o resultado da IA</div>
-        <div style={{ fontSize:11, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>A app detecta automaticamente se é a Ficha ou o Guia.</div>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>A app detecta automaticamente se é a Ficha ou o Guia.</div>
         <textarea className="input" value={textoManual}
           onChange={e => { setTextoManual(e.target.value); onAlteracao?.(); }}
           placeholder={'NOME DO PRATO: Sopa Juliana\nCLASSIFICAÇÃO: Sopa\nNº DE DOSES: 4\n\nINGREDIENTES:\n...\nPREPARAÇÃO:\n...'}
@@ -1283,11 +1283,11 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#fff', borderRadius: 8, marginBottom: 6, border: '1px solid var(--border)' }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{f.nomePrato}</div>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.data}</div>
+                <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.data}</div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {f.linkFicha && (
-                  <button onClick={() => window.open(f.linkFicha, '_blank')} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px' }}>Ver →</button>
+                  <button onClick={() => window.open(f.linkFicha, '_blank')} className="btn btn-ghost" style={{ fontSize:13, padding: '5px 10px' }}>Ver →</button>
                 )}
                 <button onClick={() => {
                   const fichaLocal = getFichasProducao().find(x => x.id === f.id);
@@ -1296,13 +1296,13 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
                     setMostrarSimilares(false);
                     onContinuar(textoSimulado, link);
                   }
-                }} className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 10px', background: 'var(--sage)', color: 'white', border: 'none' }}>
+                }} className="btn btn-ghost" style={{ fontSize:13, padding: '5px 10px', background: 'var(--sage)', color: 'white', border: 'none' }}>
                   Usar esta ficha
                 </button>
               </div>
             </div>
           ))}
-          <button onClick={() => setMostrarSimilares(false)} style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 4 }}>
+          <button onClick={() => setMostrarSimilares(false)} style={{ fontSize:13, color: 'rgba(26,23,20,0.4)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 4 }}>
             Ignorar e criar nova ficha
           </button>
         </div>
@@ -1397,7 +1397,7 @@ function PassoFichaTecnica({
           <div className="display" style={{ fontSize: 18, fontWeight: 700, flex: 1 }}>
             📋 Passo 2: Ficha de Produção
           </div>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 11, color: 'var(--danger)' }}
+          <button type="button" className="btn btn-ghost" style={{ fontSize:13, color: 'var(--danger)' }}
             onClick={() => {
               try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
               setFicha(fichaInicial);
@@ -1605,7 +1605,7 @@ function PassoFichaTecnica({
           <Card>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>
               Valores Nutricionais Estimados
-              <span className="muted" style={{ fontSize: 11, fontWeight: 400, marginLeft: 8 }}>
+              <span className="muted" style={{ fontSize:13, fontWeight: 400, marginLeft: 8 }}>
                 (por porção · {nutri.numIngredientesCalculados}/{nutri.totalIngredientes} ingredientes calculados)
               </span>
             </div>
@@ -1617,12 +1617,12 @@ function PassoFichaTecnica({
                 { label: 'Hidratos', valor: `${nutri.hidratos} g` },
               ].map(({ label, valor }) => (
                 <div key={label} style={{ background: 'var(--cream)', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
-                  <div className="muted" style={{ fontSize: 11 }}>{label}</div>
+                  <div className="muted" style={{ fontSize:13 }}>{label}</div>
                   <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--copper)' }}>{valor}</div>
                 </div>
               ))}
             </div>
-            <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>
+            <div className="muted" style={{ fontSize:13, marginTop: 6 }}>
               ⚠️ Estimativa — verificar com tabela oficial INSA
             </div>
           </Card>
@@ -1634,7 +1634,7 @@ function PassoFichaTecnica({
         <Card>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Alergénicos detetados</div>
           <div style={{ fontSize: 14 }}>{ficha.alergenicos}</div>
-          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+          <div className="muted" style={{ fontSize:13, marginTop: 4 }}>
             ⚠️ Verificar sempre — baseado nos ingredientes introduzidos
           </div>
           <Field label="Editar alergénicos">
@@ -1698,19 +1698,19 @@ function PassoFichaTecnica({
         {/* GUIA DE APOIO À PRODUÇÃO */}
         <div style={{ marginTop:16, padding:'14px', background:'rgba(90,122,78,0.06)', borderRadius:12, border:'1.5px solid rgba(90,122,78,0.25)' }}>
           <div style={{ fontWeight:700, fontSize:14, color:'var(--sage)', marginBottom:4 }}>📚 Guia de Apoio à Produção</div>
-          <div style={{ fontSize:11, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>Documento pedagógico separado da ficha. Gera com IA e cola abaixo.</div>
+          <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>Documento pedagógico separado da ficha. Gera com IA e cola abaixo.</div>
           {/* Botões IA do Guia */}
           <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
-            <button type="button" className="btn btn-ghost" style={{ fontSize:11, borderColor:'var(--sage)', color:'var(--sage)' }}
+            <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
               onClick={() => { navigator.clipboard.writeText(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)).catch(()=>{}); }}>
               📋 Copiar prompt do Guia
             </button>
-            <button type="button" className="btn btn-ghost" style={{ fontSize:11, borderColor:'var(--sage)', color:'var(--sage)' }}
+            <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
               onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)), '_blank')}>
               🟠 Guia no Claude
             </button>
-            <button type="button" className="btn btn-ghost" style={{ fontSize:11, borderColor:'var(--sage)', color:'var(--sage)' }}
-              onClick={() => { navigator.clipboard.writeText(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)).catch(()=>{}); window.open('https://chat.openai.com/', '_blank'); }}>
+            <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
+              onClick={() => { navigator.clipboard.writeText(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
               🟢 Guia no ChatGPT
             </button>
           </div>
@@ -1732,7 +1732,7 @@ function PassoFichaTecnica({
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {ficha.tecnicasDetectadas.map((t, i) => (
-                <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: 'white', border: '1px solid rgba(181,101,29,0.3)', fontSize: 11, color: 'var(--copper)', fontWeight: 600 }}>
+                <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: 'white', border: '1px solid rgba(181,101,29,0.3)', fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>
                   {t}
                 </span>
               ))}
@@ -1746,7 +1746,7 @@ function PassoFichaTecnica({
             onClick={() => ficha.nomePrato && onContinuar(ficha)} disabled={!ficha.nomePrato}>
             ✓ Guardar Ficha de Produção
           </button>
-          {!ficha.nomePrato && <div style={{ textAlign:'center', fontSize:11, color:'var(--danger)', marginTop:6 }}>Preenche o nome do prato para guardar.</div>}
+          {!ficha.nomePrato && <div style={{ textAlign:'center', fontSize:13, color:'var(--danger)', marginTop:6 }}>Preenche o nome do prato para guardar.</div>}
         </div>
       </Card>
     </div>
@@ -1908,7 +1908,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nomePrato}</div>
                 <div className="muted">{f.classificacao} · {f.numPorcoes} porções · {f.data}</div>
-                {(f.ucsAssociadas || []).length > 0 && <div style={{ fontSize:11, color:'var(--copper)' }}>{(f.ucsAssociadas || [])[0]}</div>}
+                {(f.ucsAssociadas || []).length > 0 && <div style={{ fontSize:13, color:'var(--copper)' }}>{(f.ucsAssociadas || [])[0]}</div>}
               </div>
               <span className="stamp">Ver / Editar</span>
             </div>
