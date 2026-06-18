@@ -1312,11 +1312,15 @@ function PassoFichaTecnica({
   textoReceita,
   onContinuar,
   onVoltar,
+  ucId = '',
+  ucNome = '',
 }: {
   ficha: FichaTecnica;
   textoReceita: string;
   onContinuar: (ficha: FichaTecnica) => void;
   onVoltar: () => void;
+  ucId?: string;
+  ucNome?: string;
 }) {
   const [ficha, setFicha] = useState<FichaTecnica>(fichaInicial);
 
@@ -1940,6 +1944,8 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       <PassoFichaTecnica
         ficha={ficha}
         textoReceita={textoReceita}
+        ucId={ucId}
+        ucNome={ucNome}
         onContinuar={(fichaConfirmada) => {
           setFicha(fichaConfirmada);
           guardarFicha(fichaConfirmada);
