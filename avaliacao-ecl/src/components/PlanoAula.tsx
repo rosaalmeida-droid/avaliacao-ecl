@@ -35,27 +35,27 @@ const COMP_OPC = [
 
 const UCS_COZINHA = [
   { id:'UC03576', nome:'Planear e organizar a producao de cozinha' },
-  { id:'UC01999', nome:'Preparar e executar confeccoes de cozinha' },
-  { id:'UC03577', nome:'Preparar e confeccionar molhos e fundos' },
-  { id:'UC02002', nome:'Preparar e confeccionar sopas, acepipes, ovos e massas' },
-  { id:'UC02003', nome:'Preparar e confeccionar peixes, mariscos e guarnicoes' },
-  { id:'UC02004', nome:'Preparar e confeccionar carnes, aves, caca e guarnicoes' },
-  { id:'UC02005', nome:'Preparar e confeccionar massas base, recheios, cremes e molhos de pastelaria' },
+  { id:'UC01999', nome:'Preparar e executar confecoes de cozinha' },
+  { id:'UC03577', nome:'Preparar e confecionar molhos e fundos' },
+  { id:'UC02002', nome:'Preparar e confecionar sopas, acepipes, ovos e massas' },
+  { id:'UC02003', nome:'Preparar e confecionar peixes, mariscos e guarnicoes' },
+  { id:'UC02004', nome:'Preparar e confecionar carnes, aves, caca e guarnicoes' },
+  { id:'UC02005', nome:'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria' },
   { id:'UC03579', nome:'Gerir aprovisionamentos e controlar custos' },
   { id:'UC03584', nome:'Implementar regras de higiene e seguranca alimentar' },
   { id:'UC03585', nome:'Conservar materias-primas alimentares' },
   { id:'UC03586', nome:'Confecionar cozinha e docaria tradicional portuguesa' },
-  { id:'UC03587', nome:'Preparar e confeccionar pastelaria de sobremesa' },
-  { id:'UC03588', nome:'Preparar e confeccionar gastronomia do Mundo' },
+  { id:'UC03587', nome:'Preparar e confecionar pastelaria de sobremesa' },
+  { id:'UC03588', nome:'Preparar e confecionar gastronomia do Mundo' },
   { id:'UC03589', nome:'Implementar novas tendencias na cozinha' },
   { id:'UC03590', nome:'Confecionar produtos sustentaveis' },
   { id:'UC03591', nome:'Planear e executar servicos especiais de cozinha' },
-  { id:'UC03592', nome:'Planear e confeccionar pastelaria internacional' },
-  { id:'UC03593', nome:'Planear e confeccionar massas basicas de panificacao' },
-  { id:'UC03594', nome:'Planear e confeccionar Cake Design' },
-  { id:'UC03595', nome:'Planear e confeccionar cozinha alternativa' },
-  { id:'UC03596', nome:'Planear e confeccionar cozinha criativa' },
-  { id:'UC03597', nome:'Planear e confeccionar massas especiais de panificacao' },
+  { id:'UC03592', nome:'Planear e confecionar pastelaria internacional' },
+  { id:'UC03593', nome:'Planear e confecionar massas basicas de panificacao' },
+  { id:'UC03594', nome:'Planear e confecionar Cake Design' },
+  { id:'UC03595', nome:'Planear e confecionar cozinha alternativa' },
+  { id:'UC03596', nome:'Planear e confecionar cozinha criativa' },
+  { id:'UC03597', nome:'Planear e confecionar massas especiais de panificacao' },
 ];
 
 function FichaSelector({ todasFichas, fichasSel, onChange }: {
@@ -92,9 +92,9 @@ function FichaSelector({ todasFichas, fichasSel, onChange }: {
               </div>
               <div style={{flex:1}}>
                 <div style={{fontWeight:600,fontSize:13}}>{f.nomePrato}</div>
-                <div className="muted" style={{fontSize:11}}>{f.classificacao} · {f.numPorcoes} doses{f.data?' · '+f.data:''}</div>
+                <div className="muted" style={{fontSize:13}}>{f.classificacao} · {f.numPorcoes} doses{f.data?' · '+f.data:''}</div>
               </div>
-              {f.ucsAssociadas?.length>0&&<span style={{fontSize:10,color:'var(--copper)',fontWeight:600}}>{f.ucsAssociadas[0]}</span>}
+              {f.ucsAssociadas?.length>0&&<span style={{fontSize:13,color:'var(--copper)',fontWeight:600}}>{f.ucsAssociadas[0]}</span>}
             </div>
           );
         })}
@@ -123,7 +123,7 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
           <div style={{ fontWeight:600, fontSize:14 }}>{title}</div>
           <div className="muted" style={{ fontSize:12, marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{desc}</div>
         </div>
-        <span className="badge" style={{ ...statusStyles, fontSize:11 }}>
+        <span className="badge" style={{ ...statusStyles, fontSize:13 }}>
           {status==='done'?'Feito' : status==='active'?'Em curso' : 'Pendente'}
         </span>
       </div>
@@ -198,21 +198,21 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAbrirPlano, onAlte
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
               <div style={{ background:'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
                 <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'white', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
-                <div style={{ fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.85)', textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
-                <div style={{ fontSize:9, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
+                <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.85)', textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{p.titulo || 'Plano de aula'}</div>
                 {p.ucId && (
-                  <div style={{ fontSize:11, color:'var(--copper)', fontWeight:600, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  <div style={{ fontSize:13, color:'var(--copper)', fontWeight:600, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                     {p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}
                   </div>
                 )}
-                <div className="muted" style={{ fontSize:11 }}>
+                <div className="muted" style={{ fontSize:13 }}>
                   {horaI && horaF ? horaI+'-'+horaF+' ' : ''}{p.turmaId}{(p.fichasIds?.length||0) > 0 ? ' - '+p.fichasIds.length+' ficha'+(p.fichasIds.length!==1?'s':'') : ''}
                 </div>
               </div>
-              <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, fontWeight:700, flexShrink:0,
+              <span style={{ fontSize:13, padding:'3px 10px', borderRadius:20, fontWeight:700, flexShrink:0,
                 background:p.estado==='publicado'?'rgba(90,122,78,0.15)':'rgba(181,101,29,0.12)',
                 color:p.estado==='publicado'?'var(--sage)':'var(--copper)',
                 border:'1px solid '+(p.estado==='publicado'?'rgba(90,122,78,0.3)':'rgba(181,101,29,0.3)'),
@@ -317,6 +317,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             <ProfessorView
               turmaId={turmaId}
               nomeProfessor={nomeProfessor}
+              planoId={plano?.id}
               onGuardado={() => {
                 // Após guardar ficha — actualizar lista e fechar modal
                 const fichasActuais = getFichasProducao();
@@ -332,17 +333,17 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
 
       <div style={{ background:'var(--charcoal)', borderRadius:14, padding:'18px', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
-          <button onClick={onVoltar} className="btn btn-ghost" style={{ fontSize:12, padding:'6px 12px', color:'rgba(247,241,230,0.7)', borderColor:'rgba(247,241,230,0.2)', background:'rgba(247,241,230,0.08)' }}>← Voltar</button>
+          <button onClick={onVoltar} className="btn btn-ghost" style={{ fontSize:12, padding:'6px 12px', color:'rgba(247,241,230,0.7)', borderColor:'rgba(247,241,230,0.6)', background:'rgba(247,241,230,0.08)' }}>← Voltar</button>
           <div style={{ flex:1 }}>
             <div style={{ fontFamily:'Fraunces, serif', fontSize:17, fontWeight:600, color:'var(--cream)' }}>{dados.titulo||'Novo Plano de Aula'}</div>
-            <div style={{ fontSize:11, color:'rgba(247,241,230,0.55)', marginTop:2 }}>ECL · {turmaId}</div>
+            <div style={{ fontSize:13, color:'rgba(247,241,230,0.55)', marginTop:2 }}>ECL · {turmaId}</div>
           </div>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:4 }}>
           {['Dados','Fichas','Grupos','Competências','Publicar'].map((s,i)=>(
             <div key={i} style={{ textAlign:'center' }}>
-              <div style={{ width:28,height:28,borderRadius:'50%',margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700, background:feita(i)?'var(--sage)':secAberta===i?'var(--copper)':'rgba(247,241,230,0.15)', color:'white', border:feita(i)||secAberta===i?'none':'1px solid rgba(247,241,230,0.3)' }}>{feita(i)?'✓':(i+1)}</div>
-              <div style={{ fontSize:9, fontWeight:600, color:feita(i)?'var(--sage-light)':secAberta===i?'var(--copper-light)':'rgba(247,241,230,0.5)' }}>{s}</div>
+              <div style={{ width:28,height:28,borderRadius:'50%',margin:'0 auto 3px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700, background:feita(i)?'var(--sage)':secAberta===i?'var(--copper)':'rgba(247,241,230,0.6)', color:'white', border:feita(i)||secAberta===i?'none':'1px solid rgba(247,241,230,0.3)' }}>{feita(i)?'✓':(i+1)}</div>
+              <div style={{ fontSize:12, fontWeight:600, color:feita(i)?'var(--sage-light)':secAberta===i?'var(--copper-light)':'rgba(247,241,230,0.5)' }}>{s}</div>
             </div>
           ))}
         </div>
@@ -368,7 +369,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             <option value="">Seleciona a Unidade de Competencia</option>
             {UCS_COZINHA.map(u=><option key={u.id} value={u.id}>{u.id} - {u.nome}</option>)}
           </select>
-          {!dados.ucId&&<div style={{fontSize:11,color:'var(--danger)',marginTop:4}}>Campo obrigatorio</div>}
+          {!dados.ucId&&<div style={{fontSize:13,color:'var(--danger)',marginTop:4}}>Campo obrigatorio</div>}
         </div>
         <div className="field"><label className="field-label">Título (opcional)</label><input className="input" value={dados.titulo} onChange={e=>setD('titulo',e.target.value)} placeholder={'Aula de ' + turmaId}/></div>
         <button className="btn btn-primary btn-block" disabled={!dados.data||!dados.ucId} onClick={guardarDados}>Guardar e continuar →</button>
@@ -379,7 +380,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
         <div style={{marginBottom:12,padding:'10px 14px',background:'var(--sage-pale)',borderRadius:10,border:'1px solid rgba(90,122,78,0.2)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
             <div style={{fontSize:13,fontWeight:600,color:'var(--sage)'}}>Criar nova ficha de produção</div>
-            <div style={{fontSize:11,color:'rgba(26,23,20,0.5)'}}>A ficha fica automaticamente associada a este plano</div>
+            <div style={{fontSize:13,color:'rgba(26,23,20,0.5)'}}>A ficha fica automaticamente associada a este plano</div>
           </div>
           <button className="btn btn-primary" style={{background:'var(--sage)',flexShrink:0}} onClick={()=>setCriarFichaAberta(true)}>
             + Nova ficha
@@ -405,11 +406,11 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
               const g=grupos[f.id]?.[a.id]||null;
               return(
                 <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
-                  <div style={{width:28,height:28,borderRadius:'50%',background:'rgba(107,124,94,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'var(--sage)',flexShrink:0}}>{a.numero}</div>
+                  <div style={{width:28,height:28,borderRadius:'50%',background:'rgba(107,124,94,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:600,color:'var(--sage)',flexShrink:0}}>{a.numero}</div>
                   <span style={{flex:1,fontSize:13}}>{a.nome||'Aluno '+a.numero}</span>
                   <div style={{display:'flex',gap:4}}>
                     {(['A','B'] as const).map(gr=>(
-                      <button key={gr} onClick={()=>setGrupos(p=>({...p,[f.id]:{...p[f.id],[a.id]:g===gr?null:gr}}))} className="btn btn-ghost" style={{padding:'4px 10px',fontSize:11,fontWeight:600,background:g===gr?'var(--charcoal)':'transparent',color:g===gr?'var(--cream)':'var(--charcoal)',borderColor:g===gr?'var(--charcoal)':'var(--border)'}}>
+                      <button key={gr} onClick={()=>setGrupos(p=>({...p,[f.id]:{...p[f.id],[a.id]:g===gr?null:gr}}))} className="btn btn-ghost" style={{padding:'4px 10px',fontSize:13,fontWeight:600,background:g===gr?'var(--charcoal)':'transparent',color:g===gr?'var(--cream)':'var(--charcoal)',borderColor:g===gr?'var(--charcoal)':'var(--border)'}}>
                         {gr}
                       </button>
                     ))}
@@ -439,7 +440,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
               const sel=compOpc.includes(c);
               return(
                 <div key={c} onClick={()=>setCompOpc(p=>p.includes(c)?p.filter(x=>x!==c):[...p,c].slice(0,2))} className={'option-card'+(sel?' selected':'')} style={{padding:'7px 10px',marginBottom:0,display:'flex',alignItems:'center',gap:6}}>
-                  <span style={{fontSize:11,color:sel?'var(--copper)':'rgba(31,27,22,0.3)',flexShrink:0}}>{sel?'✓':'+'}</span>
+                  <span style={{fontSize:13,color:sel?'var(--copper)':'rgba(31,27,22,0.3)',flexShrink:0}}>{sel?'✓':'+'}</span>
                   <span style={{fontSize:12,lineHeight:1.3}}>{c}</span>
                 </div>
               );
@@ -507,18 +508,18 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
   return (
     <div>
       <div style={{background:'var(--charcoal)',borderRadius:14,padding:'18px',marginBottom:12}}>
-        <button onClick={onVoltar} className="btn" style={{fontSize:11,padding:'5px 10px',background:'rgba(247,241,230,0.1)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.15)',marginBottom:10}}>← Planos</button>
+        <button onClick={onVoltar} className="btn" style={{fontSize:13,padding:'5px 10px',background:'rgba(247,241,230,0.6)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.6)',marginBottom:10}}>← Planos</button>
         <div className="display" style={{fontSize:18,color:'var(--cream)'}}>{plano.titulo}</div>
         <div style={{fontSize:12,color:'rgba(247,241,230,0.5)',marginTop:2}}>{plano.data} · {plano.horaInicio}–{plano.horaFim} · {plano.turmaId}</div>
         {plano.ucId && (
           <div style={{marginTop:8,padding:'6px 10px',background:'rgba(181,101,29,0.25)',borderRadius:8,display:'inline-block'}}>
-            <span style={{fontSize:10,color:'rgba(247,241,230,0.6)',textTransform:'uppercase',letterSpacing:'0.05em'}}>UC </span>
+            <span style={{fontSize:13,color:'rgba(247,241,230,0.6)',textTransform:'uppercase',letterSpacing:'0.05em'}}>UC </span>
             <span style={{fontSize:12,color:'var(--cream)',fontWeight:600}}>{plano.ucId} - {plano.ucNome}</span>
           </div>
         )}
         <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
-          <span style={{fontSize:11,padding:'3px 10px',borderRadius:20,background:publicado?'rgba(107,124,94,0.3)':'rgba(181,101,29,0.3)',color:'var(--cream)'}}>{publicado?'Publicado':'Rascunho'}</span>
-          <span style={{fontSize:10,color:'rgba(247,241,230,0.4)'}}>☁️ Guardado no Sheets</span>
+          <span style={{fontSize:13,padding:'3px 10px',borderRadius:20,background:publicado?'rgba(107,124,94,0.3)':'rgba(181,101,29,0.3)',color:'var(--cream)'}}>{publicado?'Publicado':'Rascunho'}</span>
+          <span style={{fontSize:13,color:'rgba(247,241,230,0.4)'}}>☁️ Guardado no Sheets</span>
         </div>
       </div>
 
@@ -570,7 +571,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
             <div style={{width:36,height:36,borderRadius:10,background:grelhaAberta?'var(--copper)':'var(--cream-dark)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>📊</div>
             <div style={{flex:1}}>
               <div style={{fontWeight:600,fontSize:14}}>Grelha de avaliacao</div>
-              <div className="muted" style={{fontSize:11}}>Competencias atitudinais durante a aula</div>
+              <div className="muted" style={{fontSize:13}}>Competencias atitudinais durante a aula</div>
             </div>
             <span style={{fontSize:18,color:'var(--copper)'}}>{grelhaAberta?'▲':'▼'}</span>
           </div>
@@ -586,7 +587,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                       <thead>
                         <tr style={{background:'var(--charcoal)',color:'var(--cream)'}}>
                           <th style={{padding:'8px 10px',textAlign:'left',fontWeight:500,minWidth:90}}>Aluno</th>
-                          {comps.map(c=><th key={c.id} style={{padding:'6px 4px',fontWeight:500,textAlign:'center',fontSize:10,minWidth:60}}>{c.abrev}</th>)}
+                          {comps.map(c=><th key={c.id} style={{padding:'6px 4px',fontWeight:500,textAlign:'center',fontSize:13,minWidth:60}}>{c.abrev}</th>)}
                         </tr>
                       </thead>
                       <tbody>
@@ -599,7 +600,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                                 <td key={c.id} style={{padding:'3px 2px',textAlign:'center',borderBottom:'1px solid var(--border)'}}>
                                   <div style={{display:'flex',gap:2,justifyContent:'center'}}>
                                     {(['S','A','R'] as Nota[]).map(bv=>(
-                                      <button key={String(bv)} onClick={()=>setNotas(p=>({...p,[a.id]:{...p[a.id],[c.id]:p[a.id][c.id]===bv?null:bv}}))} className="btn" style={{width:22,height:22,padding:0,fontSize:9,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5}}>{bv}</button>
+                                      <button key={String(bv)} onClick={()=>setNotas(p=>({...p,[a.id]:{...p[a.id],[c.id]:p[a.id][c.id]===bv?null:bv}}))} className="btn" style={{width:22,height:22,padding:0,fontSize:12,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5}}>{bv}</button>
                                     ))}
                                   </div>
                                 </td>
@@ -613,7 +614,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                   <button className="btn btn-primary btn-block" style={{background:'var(--charcoal)',marginBottom:12}} onClick={()=>alert('Guardado!')}>Guardar avaliacoes</button>
                   <div style={{padding:'12px 14px',background:'rgba(90,122,78,0.08)',borderRadius:10,border:'1px solid rgba(90,122,78,0.2)'}}>
                     <div style={{fontSize:12,fontWeight:700,color:'var(--sage)',marginBottom:6}}>+ Competencia extra de observacao</div>
-                    <div style={{fontSize:11,color:'rgba(26,23,20,0.5)',marginBottom:8}}>Nao entra na avaliacao formal.</div>
+                    <div style={{fontSize:13,color:'rgba(26,23,20,0.5)',marginBottom:8}}>Nao entra na avaliacao formal.</div>
                     {!compExtraAtiva?(
                       <div style={{display:'flex',gap:6}}>
                         <input className="input" value={compExtra} onChange={e=>setCompExtra(e.target.value)} placeholder="ex: Cooperacao, Iniciativa..." style={{flex:1,fontSize:12}}/>
@@ -623,7 +624,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                       <div>
                         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                           <div style={{fontWeight:600,fontSize:13,color:'var(--sage)'}}>{compExtraAtiva}</div>
-                          <button onClick={()=>{setCompExtraAtiva(null);setCompExtra('');}} style={{fontSize:11,color:'rgba(26,23,20,0.4)',background:'none',border:'none',cursor:'pointer'}}>Remover</button>
+                          <button onClick={()=>{setCompExtraAtiva(null);setCompExtra('');}} style={{fontSize:13,color:'rgba(26,23,20,0.4)',background:'none',border:'none',cursor:'pointer'}}>Remover</button>
                         </div>
                         <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
                           <thead><tr style={{background:'var(--sage)',color:'white'}}><th style={{padding:'6px 10px',textAlign:'left'}}>Aluno</th><th style={{padding:'6px 4px',textAlign:'center'}}>S</th><th style={{padding:'6px 4px',textAlign:'center'}}>A</th><th style={{padding:'6px 4px',textAlign:'center'}}>R</th></tr></thead>
@@ -635,7 +636,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                                   <td style={{padding:'7px 10px'}}>{a.nome||'Aluno '+a.numero}</td>
                                   {(['S','A','R'] as Nota[]).map(bv=>(
                                     <td key={String(bv)} style={{textAlign:'center',padding:'3px 2px'}}>
-                                      <button onClick={()=>setNotasExtra(p=>({...p,[a.id]:p[a.id]===bv?null:bv}))} style={{width:22,height:22,padding:0,fontSize:9,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5,cursor:'pointer'}}>{bv}</button>
+                                      <button onClick={()=>setNotasExtra(p=>({...p,[a.id]:p[a.id]===bv?null:bv}))} style={{width:22,height:22,padding:0,fontSize:12,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5,cursor:'pointer'}}>{bv}</button>
                                     </td>
                                   ))}
                                 </tr>
@@ -655,3 +656,4 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
     </div>
   );
 }
+
