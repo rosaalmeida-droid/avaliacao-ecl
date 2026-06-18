@@ -1,27 +1,29 @@
+// ============================================================
 // Tipos — Avaliação ECL
+// ============================================================
 
 export type Categoria = 'TECNICAS' | 'ATITUDES' | 'RESPONSABILIDADES';
 
 export interface Competencia {
-  id: string;
+  id: string;            // ex: "T01"
   categoria: Categoria;
-  nome: string;
-  descricao?: string;
-  uc: string[];
-  palavrasChave?: string[];
-  tecnicaMaeId?: string;
+  nome: string;          // texto curto mostrado ao aluno
+  descricao?: string;    // detalhe opcional
+  uc: string[];          // códigos UC de origem (rastreabilidade ao referencial)
+  palavrasChave?: string[]; // para sugestão automática a partir da receita
+  tecnicaMaeId?: string;    // se for subtécnica, id da técnica "grupo" (T01-T33) de onde deriva
 }
 
 export interface Turma {
   id: string;
-  nome: string;
+  nome: string; // ex: "CP-Cozinha-2526"
 }
 
 export interface Aluno {
-  id: string;
+  id: string;       // turma+numero, ex: "CP1-12"
   turmaId: string;
   numero: number;
-  ano: 1 | 2 | 3;
+  ano: 1 | 2 | 3;    // ano do curso — define o nº mínimo de competências exigidas
   nome?: string;
 }
 
@@ -33,10 +35,13 @@ export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
 
 export type Perfil = 'aluno' | 'professor' | 'coordenadora';
 
+// --------------------------------------------------------
+// Contexto da comanda
+// --------------------------------------------------------
 export type ModoTrabalho = 'individual' | 'grupo';
 
 export type TipoServico =
-  | 'normal'
+  | 'normal'           // aula normal de cozinha, sem serviço especial
   | 'buffet'
   | 'servico_carta'
   | 'a_la_minute'
@@ -49,39 +54,45 @@ export type TipoServico =
 export const TIPO_SERVICO_LABEL: Record<TipoServico, string> = {
   normal: 'Aula normal',
   buffet: 'Buffet',
-  servico_carta: 'Servico a carta',
-  a_la_minute: 'Servico a la minute',
+  servico_carta: 'Serviço à carta',
+  a_la_minute: 'Serviço à la minute',
   coffee_break: 'Coffee break',
   brunch: 'Brunch',
-  pequeno_almoco: 'Pequeno-almoco',
+  pequeno_almoco: 'Pequeno-almoço',
   jantar: 'Jantar / Banquete',
   catering: 'Catering',
 };
 
+// --------------------------------------------------------
+// Comanda do dia (criada pelo professor)
+// --------------------------------------------------------
 export interface Comanda {
   id: string;
   turmaId: string;
-  data: string;
-  titulo: string;
-  linkOuTexto: string;
+  data: string;          // ISO date
+  titulo: string;        // nome da receita
+  linkOuTexto: string;    // link ou texto colado da receita
   fatorConversao?: number;
   modo: ModoTrabalho;
   tipoServico: TipoServico;
   atendimentoCliente: boolean;
-  alunosIds: string[];
-  tecnicasSugeridas: string[];
-  atitudesSugeridas: string[];
-  responsabilidadesSugeridas: string[];
-  tecnicasFixas: string[];
+  alunosIds: string[];     // alunos atribuídos a esta comanda (1 se individual, N se grupo)
+  tecnicasSugeridas: string[];        // ids de Competencia (categoria TECNICAS)
+  atitudesSugeridas: string[];        // ids de Competencia (categoria ATITUDES)
+  responsabilidadesSugeridas: string[]; // ids de Competencia (categoria RESPONSABILIDADES)
+  tecnicasFixas: string[];        // escolhidas pelo professor, obrigatórias (não removíveis)
   atitudesFixas: string[];
   responsabilidadesFixas: string[];
-  criadaEm: string;
+  criadaEm: string;       // ISO datetime
 }
 
+// --------------------------------------------------------
+// Autoavaliação — escala qualitativa mapeada para 0-20
+// --------------------------------------------------------
 export type NivelAuto = 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei';
 
 export const NIVEL_AUTO_LABEL: Record<NivelAuto, string> = {
-  nao_atingi: 'Nao atingi',
+  nao_atingi: 'Não atingi',
   desenvolvimento: 'Em desenvolvimento',
   atingi: 'Atingi',
   superei: 'Superei / domino bem',
@@ -99,12 +110,14 @@ export interface AutoavaliacaoCompetencia {
   nivel: NivelAuto;
 }
 
+// --------------------------------------------------------
+// Seleção do aluno para uma comanda
+// --------------------------------------------------------
 export interface SelecaoAluno {
   id: string;
   comandaId: string;
   planoAulaId?: string;
   fichaId?: string;
-  grupoId?: string;
   alunoId: string;
   turmaId: string;
   tecnicas: string[];
@@ -116,33 +129,37 @@ export interface SelecaoAluno {
   criadaEm: string;
 }
 
+// --------------------------------------------------------
+// Validação do professor (uma por competência escolhida)
+// --------------------------------------------------------
 export interface NotaCompetencia {
   competenciaId: string;
-  nota: number;
-  origem: 'auto' | 'professor';
+  nota: number;       // 0-20, nota final (validada ou herdada da autoavaliação)
+  origem: 'auto' | 'professor'; // se o professor ajustou ou aceitou a autoavaliação
 }
 
 export interface Validacao {
-  id: string;
+  id: string;              // selecaoId
   selecaoId: string;
   comandaId: string;
-  planoAulaId?: string;
-  fichaId?: string;
-  grupoId?: string;
   alunoId: string;
   turmaId: string;
-  notas: NotaCompetencia[];
+  notas: NotaCompetencia[]; // uma nota por competência selecionada
   comentarioGeral?: string;
-  validadoPor: string;
-  validadoEm: string;
+  validadoPor: string;     // nome/pin do professor
+  validadoEm: string;      // ISO datetime
 }
 
+// --------------------------------------------------------
+// Histórico agregado por aluno × competência
+// (derivado das Validações, usado para o sistema de progressão)
+// --------------------------------------------------------
 export interface HistoricoCompetencia {
   competenciaId: string;
-  notas: number[];
-  vezesTreinada: number;
-  media: number;
-  dominada: boolean;
+  notas: number[];     // todas as notas recebidas nessa competência
+  vezesTreinada: number; // = notas.length, exposto explicitamente
+  media: number;       // média calculada
+  dominada: boolean;   // media >= 12
 }
 
 export interface HistoricoAluno {
@@ -154,23 +171,31 @@ export interface HistoricoAluno {
   totalGrupo: number;
 }
 
+// --------------------------------------------------------
+// Atividades extracurriculares — eventos fora de horas e
+// concursos de cozinha. Registo factual de participação,
+// sem ligação (por agora) ao sistema de competências.
+// --------------------------------------------------------
 export type TipoAtividade = 'evento' | 'concurso';
 
 export interface Atividade {
   id: string;
   turmaId: string;
   tipo: TipoAtividade;
-  titulo: string;
-  data: string;
-  participantesIds: string[];
+  titulo: string;       // ex: "Jantar de Gala - Hotel X" / "Concurso Jovem Chef 2026"
+  data: string;          // ISO date
+  participantesIds: string[]; // alunos que participaram
   criadaEm: string;
 }
 
+// --------------------------------------------------------
+// Fichas de Produção
+// --------------------------------------------------------
 export interface IngredienteFicha {
   id: string;
   componente: string;
   qt: string;
-  un: string;
+  un: string;        // unidade (g, kg, ml, l, un)
   produto: string;
   tPrep: string;
   tConf: string;
@@ -212,6 +237,9 @@ export interface FichaProducao {
   atualizadoEm: string;
 }
 
+// --------------------------------------------------------
+// Planos de Aula
+// --------------------------------------------------------
 export interface PlanoAula {
   id: string;
   turmaId: string;
@@ -222,14 +250,19 @@ export interface PlanoAula {
   titulo: string;
   observacoes: string;
   fichasIds: string[];
-  ucId?: string;          // UC trabalhada nesta aula — ex: UC02003
-  ucNome?: string;        // nome da UC
   estado: 'rascunho' | 'fichas_pendentes' | 'requisicao_pendente' | 'publicado';
   requisicaoId?: string;
+  ucId?: string;
+  ucNome?: string;
+  compRemovidas?: string[];
+  compAdicionadas?: string[];
   criadoEm: string;
   atualizadoEm: string;
 }
 
+// --------------------------------------------------------
+// Distribuição de Fichas
+// --------------------------------------------------------
 export type ModoDistribuicaoFicha = 'todos' | 'grupo' | 'individual';
 
 export interface GrupoFicha {
@@ -254,24 +287,30 @@ export interface DistribuicaoFicha {
   publicada: boolean;
 }
 
+// --------------------------------------------------------
+// Checklist do Aluno por Ficha
+// --------------------------------------------------------
 export interface ChecklistAlunoFicha {
   id: string;
   planoAulaId: string;
   fichaId: string;
   alunoId: string;
-  pontualidade?: 'a_horas' | 'atrasado';
+  pontualidade: 'a_horas' | 'atrasado';
   minutosAtraso?: number;
-  fardamento?: boolean;
-  itensFardamento?: string[];
+  fardamento: boolean;
+  itensFardamento: string[];
   ingredientesConfirmados: string[];
   passosConcluidos: string[];
   haccpConfirmado: string[];
   requisicaoVerificada?: boolean;
   comentario?: string;
-  haccpRegistado?: boolean;
+  haccpRegistado: boolean;
   atualizadoEm: string;
 }
 
+// --------------------------------------------------------
+// Requisição
+// --------------------------------------------------------
 export interface LinhaRequisicao {
   id: string;
   produto: string;
@@ -297,6 +336,9 @@ export interface RequisicaoAula {
   atualizadaEm: string;
 }
 
+// --------------------------------------------------------
+// Matérias-Primas e Preços
+// --------------------------------------------------------
 export interface MateriaPrima {
   id: string;
   nome: string;
