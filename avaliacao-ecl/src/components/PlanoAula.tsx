@@ -168,24 +168,64 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAbrirPlano, onAlte
         </div>
       )}
       {planos.map(p=>{
-        const d = new Date(p.data+'T12:00:00');
+        // Corrigir data que pode vir em vários formatos
+        let d: Date;
+        try {
+          if (!p.data || p.data === 'undefined') throw new Error();
+          // Formato ISO: 2026-07-09
+          if (/^\d{4}-\d{2}-\d{2}$/.test(p.data)) {
+            d = new Date(p.data + 'T12:00:00');
+          // Formato com hora: 2026-07-09T...
+          } else if (p.data.includes('T')) {
+            d = new Date(p.data);
+          } else {
+            d = new Date(p.data);
+          }
+          if (isNaN(d.getTime())) throw new Error();
+        } catch {
+          d = new Date();
+        }
+        // Hora limpa
+        const horaI = (p.horaInicio||'').includes('T')
+          ? new Date(p.horaInicio).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})
+          : (p.horaInicio||'').substring(0,5);
+        const horaF = (p.horaFim||'').includes('T')
+          ? new Date(p.horaFim).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})
+          : (p.horaFim||'').substring(0,5);
+
         return (
           <div key={p.id} className="option-card" onClick={() => onAbrirPlano ? onAbrirPlano(p) : (setPlanoAtivo(p), setVista('detalhe'))}>
-            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ background:'rgba(181,101,29,0.1)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
-                <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'var(--copper)', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
-                <div style={{ fontSize:10, fontWeight:600, color:'var(--copper)', opacity:0.8, textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+              <div style={{ background:'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
+                <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'white', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
+                <div style={{ fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.85)', textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
+                <div style={{ fontSize:9, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
               </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontWeight:600, fontSize:14 }}>{p.titulo}</div>
-                <div className="muted" style={{ marginTop:2, fontSize:12 }}>{p.horaInicio}–{p.horaFim} · {p.fichasIds.length} ficha{p.fichasIds.length!==1?'s':''} · {p.turmaId}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{p.titulo || 'Plano de aula'}</div>
+                {p.ucId && (
+                  <div style={{ fontSize:11, color:'var(--copper)', fontWeight:600, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}
+                  </div>
+                )}
+                <div className="muted" style={{ fontSize:11 }}>
+                  {horaI && horaF ? horaI+'-'+horaF+' ' : ''}{p.turmaId}{(p.fichasIds?.length||0) > 0 ? ' - '+p.fichasIds.length+' ficha'+(p.fichasIds.length!==1?'s':'') : ''}
+                </div>
               </div>
-              <span className="stamp copper">{p.estado==='publicado'?'Publicado':'Rascunho'}</span>
+              <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, fontWeight:700, flexShrink:0,
+                background:p.estado==='publicado'?'rgba(90,122,78,0.15)':'rgba(181,101,29,0.12)',
+                color:p.estado==='publicado'?'var(--sage)':'var(--copper)',
+                border:'1px solid '+(p.estado==='publicado'?'rgba(90,122,78,0.3)':'rgba(181,101,29,0.3)'),
+              }}>
+                {p.estado==='publicado'?'Publicado':'Rascunho'}
+              </span>
             </div>
           </div>
         );
       })}
     </div>
+  );
+}
   );
 }
 
