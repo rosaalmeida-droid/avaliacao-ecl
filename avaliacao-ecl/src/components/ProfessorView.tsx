@@ -161,6 +161,17 @@ function limparTexto(t: string): string {
 }
 
 function extrairFicha(texto: string): FichaTecnica {
+  // Limpar markdown do ChatGPT antes de processar
+  texto = texto
+    .replace(/\*\*(.*?)\*\*/g, '$1')   // **negrito** → negrito
+    .replace(/\*(.*?)\*/g, '$1')        // *itálico* → itálico
+    .replace(/^#{1,4}\s*/gm, '')        // ## headers → sem hash
+    .replace(/^>\s*/gm, '')             // > citações
+    .replace(/`{1,3}(.*?)`{1,3}/g, '$1') // `código`
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [texto](link) → texto
+    .replace(/---+/g, '')               // separadores ---
+    .replace(/\n{3,}/g, '\n\n');        // múltiplas linhas vazias
+
   const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 1);
 
   // -------------------------------------------------------
@@ -1061,7 +1072,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
 
   // Prompts calculados em tempo real
   const promptFicha = gerarPrompt(link, ucId, ucNome);
-  const promptGuia = gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome);
+  const promptGuia = gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome) + (link ? `\n\nLink da receita: ${link}` : '');
 
   // Verificar fichas similares quando o nomePrato muda
   React.useEffect(() => {
