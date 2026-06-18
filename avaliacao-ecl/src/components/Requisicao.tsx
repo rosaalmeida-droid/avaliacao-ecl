@@ -139,10 +139,10 @@ const fQn = (n: number, und: string) => {
 const S = {
   card: { background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '18px', marginBottom: 12, boxShadow: 'var(--shadow-sm)' } as React.CSSProperties,
   muted: { fontSize: 12, color: 'rgba(26,23,20,0.5)' } as React.CSSProperties,
-  lbl: { fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 4, color: 'rgba(26,23,20,0.5)' },
-  inp: { fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderRadius: 7, border: '1.5px solid rgba(26,23,20,0.15)', background: '#fff', color: '#1a1714', boxSizing: 'border-box' as const },
+  lbl: { fontSize:13, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 4, color: 'rgba(26,23,20,0.5)' },
+  inp: { fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderRadius: 7, border: '1.5px solid rgba(26,23,20,0.55)', background: '#fff', color: '#1a1714', boxSizing: 'border-box' as const },
   btnP: { padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' } as React.CSSProperties,
-  btnG: { padding: '10px 18px', borderRadius: 10, border: '1.5px solid rgba(26,23,20,0.15)', background: 'transparent', color: '#1a1714', fontWeight: 600, fontSize: 13, cursor: 'pointer' } as React.CSSProperties,
+  btnG: { padding: '10px 18px', borderRadius: 10, border: '1.5px solid rgba(26,23,20,0.55)', background: 'transparent', color: '#1a1714', fontWeight: 600, fontSize: 13, cursor: 'pointer' } as React.CSSProperties,
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -278,7 +278,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
               <div key={p.id} onClick={() => selecionarPlano(p)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${planoSel?.id === p.id ? 'var(--copper)' : 'var(--border)'}`, background: planoSel?.id === p.id ? 'var(--copper-pale)' : '#fff', marginBottom: 6, cursor: 'pointer' }}>
                 <div style={{ background: 'var(--copper-pale)', borderRadius: 8, padding: '6px 8px', textAlign: 'center', flexShrink: 0, minWidth: 40 }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--copper)', lineHeight: 1 }}>{d.getDate().toString().padStart(2, '0')}</div>
-                  <div style={{ fontSize: 9, color: 'var(--copper)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
+                  <div style={{ fontSize:12, color: 'var(--copper)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{p.titulo}</div>
@@ -298,7 +298,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
             {[...fichasDisp, ...fichasExtra].map(f => (
               <div key={f.id} style={{ border: `1.5px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px', marginBottom: 6, background: fichasSel.includes(f.id) ? 'var(--copper-pale)' : '#fff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div onClick={() => toggleFicha(f.id)} style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'white', border: `1.5px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'rgba(26,23,20,0.2)'}`, background: fichasSel.includes(f.id) ? 'var(--copper)' : 'transparent' }}>
+                  <div onClick={() => toggleFicha(f.id)} style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize:13, color: 'white', border: `1.5px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'rgba(26,23,20,0.55)'}`, background: fichasSel.includes(f.id) ? 'var(--copper)' : 'transparent' }}>
                     {fichasSel.includes(f.id) && 'v'}
                   </div>
                   <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => toggleFicha(f.id)}>
@@ -307,7 +307,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
                   </div>
                   {fichasSel.includes(f.id) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <span style={{ fontSize: 11, color: 'var(--copper)', fontWeight: 600 }}>Doses:</span>
+                      <span style={{ fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>Doses:</span>
                       <input type="number" min={1} value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
                         onChange={e => setPaxPorFicha(p => ({ ...p, [f.id]: Number(e.target.value) }))}
                         style={{ ...S.inp, width: 60, textAlign: 'center' }} />
@@ -366,14 +366,14 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--cream)', marginBottom: 8 }}>{nomeReceita}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
           {[['Familia', familia || '—'], ['Encomendas', `${paxEncTotal} doses`], ['Receita para', `${paxBaseTotal} doses`], ['Turma', planoSel?.turmaId || '—'], ['Data aula', planoSel?.data || '—'], ['Formador', planoSel?.professor || '—']].map(([l, v]) => (
-            <div key={l}><div style={{ fontSize: 9, color: 'rgba(247,241,230,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div><div style={{ fontSize: 12, color: 'var(--cream)', fontWeight: 500 }}>{v}</div></div>
+            <div key={l}><div style={{ fontSize:12, color: 'rgba(247,241,230,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div><div style={{ fontSize: 12, color: 'var(--cream)', fontWeight: 500 }}>{v}</div></div>
           ))}
         </div>
-        {atividade && <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(247,241,230,0.7)' }}>Atividade: {atividade}</div>}
-        {responsavel && <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.6)' }}>Resp. compras: {responsavel}</div>}
+        {atividade && <div style={{ marginTop: 8, fontSize:13, color: 'rgba(247,241,230,0.7)' }}>Atividade: {atividade}</div>}
+        {responsavel && <div style={{ fontSize:13, color: 'rgba(247,241,230,0.6)' }}>Resp. compras: {responsavel}</div>}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
           {fichasSelecionadas.map(f => (
-            <span key={f.id} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: 'rgba(247,241,230,0.1)', color: 'var(--cream)' }}>
+            <span key={f.id} style={{ fontSize:13, padding: '2px 8px', borderRadius: 20, background: 'rgba(247,241,230,0.6)', color: 'var(--cream)' }}>
               {f.nomePrato} · {paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 1} doses
             </span>
           ))}
@@ -406,7 +406,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
       {todosAvisos.length > 0 && (
         <div style={{ ...S.card, background: 'var(--info-pale)', border: '1px solid rgba(37,99,235,0.2)' }}>
           <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--info)', marginBottom: 6 }}>Conversoes automaticas aplicadas</div>
-          {todosAvisos.map((a, i) => <div key={i} style={{ fontSize: 11, color: 'var(--info)', marginBottom: 2 }}>→ {a}</div>)}
+          {todosAvisos.map((a, i) => <div key={i} style={{ fontSize:13, color: 'var(--info)', marginBottom: 2 }}>→ {a}</div>)}
         </div>
       )}
 
@@ -436,16 +436,16 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
         <label style={S.lbl}>Ingredientes — {linhasNormais.length} produtos · todos editaveis</label>
         <div style={S.muted}>Produto, unidade, quantidade e preco podem ser corrigidos. Agua excluida automaticamente.</div>
         <div style={{ overflowX: 'auto', marginTop: 10 }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 11 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize:13 }}>
             <thead>
               <tr style={{ background: 'var(--charcoal)', color: 'var(--cream)' }}>
                 <th style={{ padding: '7px 8px', textAlign: 'left', minWidth: 130 }}>Produto</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize: 9 }}>Qt/pax</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize: 9 }}>Qt Receita</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:12 }}>Qt/pax</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:12 }}>Qt Receita</th>
                 <th style={{ padding: '7px 4px', textAlign: 'left', minWidth: 38 }}>Und</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 65, fontSize: 9 }}>Qt Enc.</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 58, fontSize: 9 }}>€/kg</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize: 9 }}>€ Enc.</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 65, fontSize:12 }}>Qt Enc.</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 58, fontSize:12 }}>€/kg</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:12 }}>€ Enc.</th>
               </tr>
             </thead>
             <tbody>
@@ -455,30 +455,30 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
                 return (
                   <tr key={l.id} style={{ background: '#fff', borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '3px 4px' }}>
-                      <input value={l.produto} onChange={e => setL(i, 'produto', e.target.value)} style={{ ...S.inp, width: '100%', fontSize: 11 }} />
+                      <input value={l.produto} onChange={e => setL(i, 'produto', e.target.value)} style={{ ...S.inp, width: '100%', fontSize:13 }} />
                       <div style={{ display: 'flex', gap: 6 }}>
-                        {l.daBD && <span style={{ fontSize: 9, color: 'var(--sage)' }}>BD</span>}
-                        {rend && <span style={{ fontSize: 8, color: 'rgba(26,23,20,0.35)' }}>Rend. {Math.round(rend.rendimento * 100)}%</span>}
+                        {l.daBD && <span style={{ fontSize:12, color: 'var(--sage)' }}>BD</span>}
+                        {rend && <span style={{ fontSize:12, color: 'rgba(26,23,20,0.35)' }}>Rend. {Math.round(rend.rendimento * 100)}%</span>}
                       </div>
                     </td>
-                    <td style={{ padding: '3px 4px', textAlign: 'right', color: 'rgba(26,23,20,0.4)', fontSize: 10 }}>{fQn(l.qt1pax, l.und)}</td>
-                    <td style={{ padding: '3px 4px', textAlign: 'right', color: 'rgba(26,23,20,0.4)', fontSize: 10 }}>{fQn(l.qtReceita, l.und)}</td>
+                    <td style={{ padding: '3px 4px', textAlign: 'right', color: 'rgba(26,23,20,0.4)', fontSize:13 }}>{fQn(l.qt1pax, l.und)}</td>
+                    <td style={{ padding: '3px 4px', textAlign: 'right', color: 'rgba(26,23,20,0.4)', fontSize:13 }}>{fQn(l.qtReceita, l.und)}</td>
                     <td style={{ padding: '3px 3px' }}>
-                      <select value={l.und} onChange={e => setL(i, 'und', e.target.value)} style={{ ...S.inp, width: 45, padding: '4px 3px', fontSize: 11 }}>
+                      <select value={l.und} onChange={e => setL(i, 'und', e.target.value)} style={{ ...S.inp, width: 45, padding: '4px 3px', fontSize:13 }}>
                         <option>kg</option><option>l</option><option>un</option><option>q.b.</option>
                       </select>
                     </td>
                     <td style={{ padding: '3px 3px' }}>
                       <input type="number" step="0.001" value={l.qtEncomenda.toFixed(3)}
                         onChange={e => setQtEnc(i, parseFloat(e.target.value) || 0)}
-                        style={{ ...S.inp, width: 65, textAlign: 'right', fontSize: 11 }} />
+                        style={{ ...S.inp, width: 65, textAlign: 'right', fontSize:13 }} />
                     </td>
                     <td style={{ padding: '3px 3px' }}>
                       <input value={l.precoUnitario} onChange={e => setL(i, 'precoUnitario', e.target.value)}
-                        style={{ ...S.inp, width: 58, textAlign: 'right', fontSize: 11, background: l.daBD ? 'var(--sage-pale)' : '#fff' }}
+                        style={{ ...S.inp, width: 58, textAlign: 'right', fontSize:13, background: l.daBD ? 'var(--sage-pale)' : '#fff' }}
                         placeholder="0.00" />
                     </td>
-                    <td style={{ padding: '3px 5px', textAlign: 'right', fontWeight: l.precoEncomenda > 0 ? 600 : 400, color: l.precoEncomenda > 0 ? 'var(--copper)' : 'rgba(26,23,20,0.2)' }}>
+                    <td style={{ padding: '3px 5px', textAlign: 'right', fontWeight: l.precoEncomenda > 0 ? 600 : 400, color: l.precoEncomenda > 0 ? 'var(--copper)' : 'rgba(26,23,20,0.55)' }}>
                       {l.precoEncomenda > 0 ? fE(l.precoEncomenda) : '—'}
                     </td>
                   </tr>
@@ -489,8 +489,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
                 <td style={{ padding: '8px 5px', textAlign: 'right', color: 'var(--copper)', fontSize: 12 }}>{fE(totEnc)}</td>
               </tr>
               <tr style={{ background: 'var(--cream-dark)' }}>
-                <td colSpan={6} style={{ padding: '6px 8px', fontSize: 11 }}>Quebras {quebras}%</td>
-                <td style={{ padding: '6px 5px', textAlign: 'right', fontSize: 11 }}>{fE(qbVal)}</td>
+                <td colSpan={6} style={{ padding: '6px 8px', fontSize:13 }}>Quebras {quebras}%</td>
+                <td style={{ padding: '6px 5px', textAlign: 'right', fontSize:13 }}>{fE(qbVal)}</td>
               </tr>
               <tr style={{ background: 'var(--danger-pale)', fontWeight: 700 }}>
                 <td colSpan={6} style={{ padding: '8px 8px', fontSize: 12 }}>Custo Real Total</td>
@@ -507,7 +507,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
           <label style={S.lbl}>Ingredientes q.b. — quantidade minima estimada</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
             {linhasQB.map(l => (
-              <div key={l.id} style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--cream-dark)', border: '1px solid var(--border)', fontSize: 11 }}>
+              <div key={l.id} style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--cream-dark)', border: '1px solid var(--border)', fontSize:13 }}>
                 <span style={{ fontWeight: 600 }}>{l.produto}</span>
                 <span style={S.muted}> · {fQ(l.qtEncomenda, l.und)}</span>
               </div>
