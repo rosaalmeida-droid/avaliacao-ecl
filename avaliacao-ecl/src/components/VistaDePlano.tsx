@@ -648,3 +648,23 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
     </div>
   );
 }
+
+// ── Componente VistaDePlano — usado pelo App.tsx ──────────────
+export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoActualizado, onAlteracao, onGuardado }: {
+  plano: TPlanoAula;
+  turmaId: string;
+  nomeProfessor?: string;
+  onVoltar: () => void;
+  onPlanoActualizado: (p: TPlanoAula) => void;
+  onAlteracao?: (guardar?: () => void) => void;
+  onGuardado?: () => void;
+}) {
+  return (
+    <DetalhePlano
+      plano={plano}
+      turmaId={turmaId}
+      onVoltar={onVoltar}
+      onEditar={onVoltar}
+    />
+  );
+}
