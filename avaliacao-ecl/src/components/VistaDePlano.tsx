@@ -12,7 +12,6 @@ import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
 
-// ── Tipos ─────────────────────────────────────────────────────
 type Modulo = 'inicio' | 'ficha' | 'guia' | 'requisicao' | 'validacao';
 
 interface Props {
@@ -25,7 +24,6 @@ interface Props {
   onGuardado?: () => void;
 }
 
-// ── Cabeçalho do Plano ────────────────────────────────────────
 function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () => void }) {
   let d: Date;
   try {
@@ -36,18 +34,14 @@ function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () =>
     if (isNaN(d.getTime())) throw new Error();
   } catch { d = new Date(); }
   const diaSemana = d.toLocaleDateString('pt-PT', { weekday: 'long' });
-  const dataFormatada = d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
     <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '16px 18px', marginBottom: 16 }}>
-      {/* Botão voltar */}
       <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 12, cursor: 'pointer', marginBottom: 12 }}>
         ← Todos os planos
       </button>
 
-      {/* Identificação clara do plano */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        {/* Data em destaque */}
         <div style={{ background: 'var(--copper)', borderRadius: 12, padding: '10px 14px', textAlign: 'center', flexShrink: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'white', lineHeight: 1 }}>
             {d.getDate().toString().padStart(2, '0')}
@@ -68,7 +62,6 @@ function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () =>
             {plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`}
           </div>
 
-          {/* UC — muito visível */}
           {plano.ucId ? (
             <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 12px', marginTop: 4, display: 'inline-block' }}>
               <div style={{ fontSize:12, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Unidade de Competência</div>
@@ -82,7 +75,6 @@ function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () =>
           )}
         </div>
 
-        {/* Estado */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize:13, padding: '4px 10px', borderRadius: 20, background: plano.estado === 'publicado' ? 'var(--sage)' : 'rgba(247,241,230,0.6)', color: 'white', fontWeight: 600 }}>
             {plano.estado === 'publicado' ? '✓ Publicado' : plano.estado === 'fichas_pendentes' ? 'Fichas pendentes' : 'Rascunho'}
@@ -93,7 +85,6 @@ function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () =>
   );
 }
 
-// ── Barra fixa com UC ─────────────────────────────────────────
 function BarraUC({ plano }: { plano: PlanoAula }) {
   if (!plano.ucId) return null;
   return (
@@ -106,6 +97,7 @@ function BarraUC({ plano }: { plano: PlanoAula }) {
     </div>
   );
 }
+
 function ModuloCard({ icone, titulo, descricao, estado, cor, onClick, desativado }: {
   icone: string; titulo: string; descricao: string;
   estado: 'pendente' | 'em_curso' | 'concluido' | 'bloqueado';
@@ -125,7 +117,6 @@ function ModuloCard({ icone, titulo, descricao, estado, cor, onClick, desativado
       borderRadius: 14, border: `1.5px solid ${c.border}`, background: c.bg,
       cursor: desativado ? 'not-allowed' : 'pointer', marginBottom: 10,
       opacity: estado === 'bloqueado' ? 0.5 : 1,
-      transition: 'all 0.15s',
     }}>
       <div style={{ width: 44, height: 44, borderRadius: 12, background: estado === 'concluido' ? 'var(--sage)' : `${cor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
         {estado === 'concluido' ? '✓' : icone}
@@ -141,7 +132,6 @@ function ModuloCard({ icone, titulo, descricao, estado, cor, onClick, desativado
   );
 }
 
-// ── Modal de próximo passo ────────────────────────────────────
 function ModalProximoPasso({ titulo, opcoes, onEscolha }: {
   titulo: string;
   opcoes: { label: string; icone: string; valor: string; destaque?: boolean }[];
@@ -170,13 +160,9 @@ function ModalProximoPasso({ titulo, opcoes, onEscolha }: {
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-// VISTA DEDICADA AO PLANO
-// ════════════════════════════════════════════════════════════════
 export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoActualizado, onAlteracao, onGuardado }: Props) {
   const [modulo, setModulo] = useState<Modulo>('inicio');
   const [modalProximo, setModalProximo] = useState<string | null>(null);
-  const [fichaActiva, setFichaActiva] = useState<string | null>(null);
 
   const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
@@ -184,7 +170,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const temRequisicao = !!requisicao;
   const publicado = plano.estado === 'publicado';
 
-  // Determinar estados dos módulos
   function estadoModulo(m: string) {
     if (m === 'ficha') return temFichas ? 'concluido' : 'pendente';
     if (m === 'guia') {
@@ -203,13 +188,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     onPlanoActualizado(p);
   }
 
-  // Após criar ficha — perguntar próximo passo
   function aposGuardarFicha() {
     onGuardado?.();
     setModalProximo('apos_ficha');
   }
 
-  // ── Renderizar módulo activo ──────────────────────────────────
   if (modulo === 'ficha') {
     return (
       <div>
@@ -307,18 +290,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias'>('resumo');
-
-  // Competências do plano — geridas pelo professor
-  // Carregar do plano ou calcular a partir da UC
   const [compRemovidas, setCompRemovidas] = useState<string[]>((plano as any).compRemovidas || []);
   const [compAdicionadas, setCompAdicionadas] = useState<string[]>((plano as any).compAdicionadas || []);
 
-  // Calcular competências sugeridas para esta UC
   const microsDaUC = plano.ucId ? microsPorUC(plano.ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
-  const tecnicasSugeridas = fichasDoPlano.flatMap(f => (f as any).tecnicasSugeridas || []);
 
-  // Competências que o aluno vai receber
-  const compObrigatorias = OBRIGATORIAS; // estas nunca se removem
+  const compObrigatorias = OBRIGATORIAS;
   const compTecnicas = microsDaUC.slice(0, 6).filter(m => !compRemovidas.includes(m.id));
   const compAtitudes = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 4).filter(a => !compRemovidas.includes(a.id));
   const totalComp = compObrigatorias.length + compTecnicas.length + compAtitudes.length + compAdicionadas.length;
@@ -331,12 +308,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     onPlanoActualizado(p);
   }
 
-  // ── INÍCIO — visão geral do plano ─────────────────────────────
   return (
     <div>
       <CabecalhoPlano plano={plano} onVoltar={onVoltar} />
 
-      {/* Tabs dentro do plano */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
         <button onClick={() => setTabInicio('resumo')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'resumo' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'resumo' ? 'white' : 'rgba(26,23,20,0.5)' }}>
           📋 Resumo
@@ -346,15 +321,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </button>
       </div>
 
-      {/* TAB COMPETÊNCIAS */}
       {tabInicio === 'competencias' && (
         <div>
-          {/* Info */}
           <div style={{ padding: '10px 14px', background: 'var(--copper-pale)', borderRadius: 10, fontSize: 12, color: 'var(--copper)', marginBottom: 14, border: '1px solid rgba(181,101,29,0.2)' }}>
-            <strong>{totalComp} competências</strong> no total para esta aula. As obrigatórias (higiene, HACCP, assiduidade) não podem ser removidas. As restantes podem ser ajustadas.
+            <strong>{totalComp} competências</strong> no total para esta aula.
           </div>
 
-          {/* OBRIGATÓRIAS — não removíveis */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>
               🔒 Obrigatórias — sempre presentes
@@ -368,7 +340,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             ))}
           </div>
 
-          {/* TÉCNICAS sugeridas pela UC */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>
               🔬 Técnicas — sugeridas pela UC {plano.ucId}
@@ -380,12 +351,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
-                    {m.criterios.length > 0 && <div style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>{m.criterios.length} critérios observáveis</div>}
                   </div>
                   <button onClick={() => {
-                    const novas = removida
-                      ? compRemovidas.filter(x => x !== m.id)
-                      : [...compRemovidas, m.id];
+                    const novas = removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id];
                     guardarCompetencias(novas, compAdicionadas);
                   }} style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
@@ -395,7 +363,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             })}
           </div>
 
-          {/* ATITUDES */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>
               💡 Atitudes — sugeridas para esta aula
@@ -407,9 +374,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
                   <div style={{ flex: 1, fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{a.nome}</div>
                   <button onClick={() => {
-                    const novas = removida
-                      ? compRemovidas.filter(x => x !== a.id)
-                      : [...compRemovidas, a.id];
+                    const novas = removida ? compRemovidas.filter(x => x !== a.id) : [...compRemovidas, a.id];
                     guardarCompetencias(novas, compAdicionadas);
                   }} style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
@@ -418,32 +383,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               );
             })}
           </div>
-
-          {/* Resumo */}
-          <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 12, textAlign: 'center' }}>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
-            <div style={{ color: 'rgba(26,23,20,0.5)' }}>
-              {compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compAtitudes.length} atitudes
-              {compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}
-            </div>
-            {totalComp > 7 && (
-              <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>
-                ⚠️ São muitas competências para uma aula. Considera remover algumas.
-              </div>
-            )}
-            {totalComp <= 5 && (
-              <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>
-                ✓ Número adequado para uma aula.
-              </div>
-            )}
-          </div>
         </div>
       )}
 
-      {/* TAB RESUMO */}
       {tabInicio === 'resumo' && (<>
-
-      {/* Fichas associadas */}
       {fichasDoPlano.length > 0 && (
         <div style={{ marginBottom: 14, padding: '10px 14px', background: 'var(--cream-dark)', borderRadius: 12, border: '1px solid var(--border)' }}>
           <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 8 }}>
@@ -462,7 +405,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
       )}
 
-      {/* Módulos */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>
           Construir esta aula
@@ -492,7 +434,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           onClick={() => temFichas && setModulo('validacao')} />
       </div>
 
-      {/* Publicar */}
       <div style={{ padding: '14px 16px', borderRadius: 14, border: `2px solid ${publicado ? 'var(--sage)' : 'var(--copper)'}`, background: publicado ? 'var(--sage-pale)' : 'var(--copper-pale)' }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6, color: publicado ? 'var(--sage)' : 'var(--copper)' }}>
           {publicado ? '✓ Aula publicada para os alunos' : '🚀 Gerar para os alunos'}
@@ -512,4 +453,3 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 }
 
 export default VistaDePlano;
-
