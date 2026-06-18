@@ -143,6 +143,7 @@ export interface Validacao {
   selecaoId: string;
   comandaId: string;
   planoAulaId?: string;
+  fichaId?: string;
   alunoId: string;
   turmaId: string;
   notas: NotaCompetencia[];
