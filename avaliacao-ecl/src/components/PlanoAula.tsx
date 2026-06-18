@@ -35,27 +35,27 @@ const COMP_OPC = [
 
 const UCS_COZINHA = [
   { id:'UC03576', nome:'Planear e organizar a producao de cozinha' },
-  { id:'UC01999', nome:'Preparar e executar confecoes de cozinha' },
-  { id:'UC03577', nome:'Preparar e confecionar molhos e fundos' },
-  { id:'UC02002', nome:'Preparar e confecionar sopas, acepipes, ovos e massas' },
-  { id:'UC02003', nome:'Preparar e confecionar peixes, mariscos e guarnicoes' },
-  { id:'UC02004', nome:'Preparar e confecionar carnes, aves, caca e guarnicoes' },
-  { id:'UC02005', nome:'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria' },
+  { id:'UC01999', nome:'Preparar e executar confeccoes de cozinha' },
+  { id:'UC03577', nome:'Preparar e confeccionar molhos e fundos' },
+  { id:'UC02002', nome:'Preparar e confeccionar sopas, acepipes, ovos e massas' },
+  { id:'UC02003', nome:'Preparar e confeccionar peixes, mariscos e guarnicoes' },
+  { id:'UC02004', nome:'Preparar e confeccionar carnes, aves, caca e guarnicoes' },
+  { id:'UC02005', nome:'Preparar e confeccionar massas base, recheios, cremes e molhos de pastelaria' },
   { id:'UC03579', nome:'Gerir aprovisionamentos e controlar custos' },
   { id:'UC03584', nome:'Implementar regras de higiene e seguranca alimentar' },
   { id:'UC03585', nome:'Conservar materias-primas alimentares' },
   { id:'UC03586', nome:'Confecionar cozinha e docaria tradicional portuguesa' },
-  { id:'UC03587', nome:'Preparar e confecionar pastelaria de sobremesa' },
-  { id:'UC03588', nome:'Preparar e confecionar gastronomia do Mundo' },
+  { id:'UC03587', nome:'Preparar e confeccionar pastelaria de sobremesa' },
+  { id:'UC03588', nome:'Preparar e confeccionar gastronomia do Mundo' },
   { id:'UC03589', nome:'Implementar novas tendencias na cozinha' },
   { id:'UC03590', nome:'Confecionar produtos sustentaveis' },
   { id:'UC03591', nome:'Planear e executar servicos especiais de cozinha' },
-  { id:'UC03592', nome:'Planear e confecionar pastelaria internacional' },
-  { id:'UC03593', nome:'Planear e confecionar massas basicas de panificacao' },
-  { id:'UC03594', nome:'Planear e confecionar Cake Design' },
-  { id:'UC03595', nome:'Planear e confecionar cozinha alternativa' },
-  { id:'UC03596', nome:'Planear e confecionar cozinha criativa' },
-  { id:'UC03597', nome:'Planear e confecionar massas especiais de panificacao' },
+  { id:'UC03592', nome:'Planear e confeccionar pastelaria internacional' },
+  { id:'UC03593', nome:'Planear e confeccionar massas basicas de panificacao' },
+  { id:'UC03594', nome:'Planear e confeccionar Cake Design' },
+  { id:'UC03595', nome:'Planear e confeccionar cozinha alternativa' },
+  { id:'UC03596', nome:'Planear e confeccionar cozinha criativa' },
+  { id:'UC03597', nome:'Planear e confeccionar massas especiais de panificacao' },
 ];
 
 function FichaSelector({ todasFichas, fichasSel, onChange }: {
@@ -317,7 +317,6 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             <ProfessorView
               turmaId={turmaId}
               nomeProfessor={nomeProfessor}
-              planoId={plano?.id}
               onGuardado={() => {
                 // Após guardar ficha — actualizar lista e fechar modal
                 const fichasActuais = getFichasProducao();
@@ -656,4 +655,3 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
     </div>
   );
 }
-
