@@ -7,8 +7,7 @@ import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
 import { CoordenadoraView } from './components/CoordenadoraView';
 import Requisicao from './components/Requisicao';
-import PlanoAula from './components/PlanoAula';
-import { VistaDePlano } from './components/VistaDePlano';
+import PlanoAula, { VistaDePlano } from './components/VistaDePlano';
 import { sincronizarDoSheets, getEstadoSync, getPlanosAulaPorTurma } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
@@ -36,9 +35,7 @@ export default function App() {
   const [turmaId, setTurmaId] = useState<string>('CP1');
   const [nomeProfessor, setNomeProfessor] = useState<string>('');
 
-  // Vista do professor — null = lista de planos, 'plano_id' = vista dedicada ao plano
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
-  // Fallback tabs para validação e biblioteca de fichas
   const [vistaGlobal, setVistaGlobal] = useState<'planos' | 'validacao' | 'biblioteca'>('planos');
 
   const [temAlteracoes, setTemAlteracoes] = useState(false);
@@ -122,20 +119,18 @@ export default function App() {
 
       {perfil === 'professor' && (
         <div>
-          {/* Se há um plano aberto — vista dedicada ao plano */}
           {planoAberto ? (
             <VistaDePlano
               plano={planoAberto}
               turmaId={turmaId}
               nomeProfessor={nomeProfessor}
               onVoltar={fecharPlano}
-              onPlanoActualizado={p => setPlanoAberto(p)}
+              onPlanoActualizado={(p: TPlanoAula) => setPlanoAberto(p)}
               onAlteracao={registarAlteracao}
               onGuardado={limparAlteracoes}
             />
           ) : (
             <div>
-              {/* Tabs globais — só para lista de planos, validação e biblioteca */}
               <div className="tab-nav">
                 {(['planos','validacao','biblioteca'] as const).map(v => (
                   <button key={v} onClick={() => setVistaGlobal(v)}
