@@ -511,3 +511,5 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   );
 }
 
+export default VistaDePlano;
+
