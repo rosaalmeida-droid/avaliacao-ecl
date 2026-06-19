@@ -534,4 +534,3 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
     </div>
   );
 }
-
