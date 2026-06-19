@@ -3,7 +3,7 @@ import { Aluno, PlanoAula, FichaProducao } from '../types';
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
-  addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao,
+  addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -223,6 +223,16 @@ function SecaoEntrada({ aluno, plano, onConcluido }: { aluno: Aluno; plano: Plan
 
   function confirmar() {
     if (pontVal === 'atras') incHist(`ecl_atrasos_${aluno.id}`);
+    const fardamentoOk = Object.values(fardState).every(v => v === true);
+    addRegistoPresenca({
+      alunoId: aluno.id,
+      turmaId: aluno.turmaId,
+      planoAulaId: plano.id,
+      presente: true,
+      atrasado: pontVal === 'atras',
+      atrasadoMins: pontVal === 'atras' ? pontMins : 0,
+      fardamentoOk,
+    });
     onConcluido();
   }
 
@@ -419,12 +429,30 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
 
   function submeter() {
     const agora = new Date().toISOString();
-    if (nivelHigiene) addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_higiene_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: 'OBR_01', nota: nivelHigiene === 'sozinho' ? 15 : nivelHigiene === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
-    if (nivelHaccp) addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_haccp_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: 'OBR_02', nota: nivelHaccp === 'sozinho' ? 15 : nivelHaccp === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
+    // Mapear nível do aluno (sozinho/ajuda/nao) → NivelAuto do sistema de validação
+    const paraNivelAuto = (v: string | null): 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei' =>
+      v === 'sozinho' ? 'atingi' : v === 'ajuda' ? 'desenvolvimento' : 'nao_atingi';
+
+    const autoavaliacoes: { competenciaId: string; nivel: 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei' }[] = [];
+
+    if (nivelHigiene) {
+      addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_higiene_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: 'OBR_01', nota: nivelHigiene === 'sozinho' ? 15 : nivelHigiene === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
+      autoavaliacoes.push({ competenciaId: 'OBR_01', nivel: paraNivelAuto(nivelHigiene) });
+    }
+    if (nivelHaccp) {
+      addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_haccp_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: 'OBR_02', nota: nivelHaccp === 'sozinho' ? 15 : nivelHaccp === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
+      autoavaliacoes.push({ competenciaId: 'OBR_02', nivel: paraNivelAuto(nivelHaccp) });
+    }
     Object.entries(notasMicro).forEach(([microId, v]) => {
-      if (v) addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_${microId}_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: microId, nota: v === 'sozinho' ? 15 : v === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
+      if (v) {
+        addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_${microId}_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: microId, nota: v === 'sozinho' ? 15 : v === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
+        autoavaliacoes.push({ competenciaId: microId, nivel: paraNivelAuto(v) });
+      }
     });
-    addOrUpdateSelecao({ id: `sel_${plano.id}_${aluno.id}`, comandaId: plano.id, planoAulaId: plano.id, fichaId: '', alunoId: aluno.id, turmaId: aluno.turmaId, tecnicas: Object.keys(notasMicro), atitudes: atitudeEscolhida ? [atitudeEscolhida] : [], responsabilidades: [], autoavaliacoes: [], criadaEm: agora });
+    if (atitudeEscolhida) {
+      autoavaliacoes.push({ competenciaId: atitudeEscolhida, nivel: 'atingi' });
+    }
+    addOrUpdateSelecao({ id: `sel_${plano.id}_${aluno.id}`, comandaId: plano.id, planoAulaId: plano.id, fichaId: '', alunoId: aluno.id, turmaId: aluno.turmaId, tecnicas: Object.keys(notasMicro), atitudes: atitudeEscolhida ? [atitudeEscolhida] : [], responsabilidades: [], autoavaliacoes, criadaEm: agora });
     onConcluido();
   }
 
