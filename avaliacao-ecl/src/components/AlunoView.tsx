@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Aluno, PlanoAula, FichaProducao } from '../types';
 import {
@@ -619,5 +620,4 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
     </div>
   );
 }
-
 
