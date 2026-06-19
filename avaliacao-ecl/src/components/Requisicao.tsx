@@ -146,16 +146,16 @@ const S = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfessor?: string; planoIdFixo?: string }) {
+export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1', fichasIniciais, onGuardado }: { nomeProfessor?: string; planoIdFixo?: string; turmaId?: string; fichasIniciais?: string[]; onGuardado?: () => void }) {
   const [fase, setFase] = useState<'escolher' | 'editar'>('escolher');
 
-  const planos = getPlanosAulaPorTurma('CP1');
+  const planos = getPlanosAulaPorTurma(turmaId);
   const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || planos[0] || null : planos[0] || null;
   const [planoSel, setPlanoSel] = useState<PlanoAula | null>(planoInicial);
-  const [fichasSel, setFichasSel] = useState<string[]>(planos[0]?.fichasIds || []);
+  const [fichasSel, setFichasSel] = useState<string[]>(fichasIniciais?.length ? fichasIniciais : (planoInicial?.fichasIds || []));
   const [paxPorFicha, setPaxPorFicha] = useState<Record<string, number>>(() => {
     const r: Record<string, number> = {};
-    planos[0]?.fichasIds.forEach(fid => {
+    (planoInicial?.fichasIds || []).forEach(fid => {
       const f = getFichasProducao().find(x => x.id === fid);
       if (f) r[fid] = parseFloat(f.numPorcoes) || 4;
     });
@@ -538,6 +538,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo }: { nomeProfess
             custoTotal: crTotal, estado: 'rascunho', criadaEm: new Date().toISOString(), atualizadaEm: new Date().toISOString(),
           });
           setMsg('Guardado!'); setTimeout(() => setMsg(''), 2000);
+          onGuardado?.();
         }}>Guardar</button>
         <button style={S.btnG} onClick={() => window.print()}>Imprimir</button>
       </div>
