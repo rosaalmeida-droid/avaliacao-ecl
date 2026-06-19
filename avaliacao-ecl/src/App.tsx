@@ -89,6 +89,7 @@ export default function App() {
   }
 
   function irPara(vista: VistaProf) {
+    if (vista === vistaGlobal && !planoAberto) return; // já está aqui, não faz nada
     navegarCom(() => { setPlanoAberto(null); limparAlteracoes(); setVistaGlobal(vista); });
   }
 
