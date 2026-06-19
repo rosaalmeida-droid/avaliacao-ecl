@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Aluno, PlanoAula, FichaProducao } from '../types';
 import {
@@ -273,7 +272,54 @@ function SecaoEntrada({ aluno, plano, onConcluido }: { aluno: Aluno; plano: Plan
 // ── Secção 2 — Fichas de Produção ────────────────────────────
 function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProducao[]; plano: PlanoAula; aluno: Aluno; onConcluido: () => void }) {
   const [fichaAberta, setFichaAberta] = useState<string | null>(fichas[0]?.id || null);
-  const [checklist, setChecklist] = useState<Record<string, Set<string>>>({});
+  // checklist[fichaId] = { ingredientesConfirmados: Set, passosConcluidos: Set }
+  const [checklist, setChecklist] = useState<Record<string, { ing: Set<number>; passo: Set<number> }>>(() => {
+    const inicial: Record<string, { ing: Set<number>; passo: Set<number> }> = {};
+    fichas.forEach(f => {
+      const existente = getChecklistAlunoFicha(plano.id, f.id, aluno.id);
+      inicial[f.id] = {
+        ing: new Set((existente?.ingredientesConfirmados || []).map(Number)),
+        passo: new Set((existente?.passosConcluidos || []).map(Number)),
+      };
+    });
+    return inicial;
+  });
+
+  function guardarChecklist(fichaId: string, novoIng?: Set<number>, novoPasso?: Set<number>) {
+    setChecklist(prev => {
+      const actual = prev[fichaId] || { ing: new Set(), passo: new Set() };
+      const next = { ing: novoIng || actual.ing, passo: novoPasso || actual.passo };
+      addOrUpdateChecklistAluno({
+        id: `chk_${plano.id}_${fichaId}_${aluno.id}`,
+        planoAulaId: plano.id,
+        fichaId,
+        alunoId: aluno.id,
+        pontualidade: 'a_horas', // pontualidade real já registada separadamente via addRegistoPresenca
+        fardamento: true, // idem — fardamento real já registado via addRegistoPresenca
+        itensFardamento: [],
+        ingredientesConfirmados: Array.from(next.ing).map(String),
+        passosConcluidos: Array.from(next.passo).map(String),
+        haccpConfirmado: [],
+        haccpRegistado: false,
+        atualizadoEm: new Date().toISOString(),
+      });
+      return { ...prev, [fichaId]: next };
+    });
+  }
+
+  function toggleIngrediente(fichaId: string, idx: number) {
+    const actual = checklist[fichaId] || { ing: new Set(), passo: new Set() };
+    const novo = new Set(actual.ing);
+    if (novo.has(idx)) novo.delete(idx); else novo.add(idx);
+    guardarChecklist(fichaId, novo, undefined);
+  }
+
+  function togglePasso(fichaId: string, idx: number) {
+    const actual = checklist[fichaId] || { ing: new Set(), passo: new Set() };
+    const novo = new Set(actual.passo);
+    if (novo.has(idx)) novo.delete(idx); else novo.add(idx);
+    guardarChecklist(fichaId, undefined, novo);
+  }
 
   if (fichas.length === 0) {
     return (
@@ -300,17 +346,35 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
 
           {fichaAberta === f.id && (
             <div style={{ padding: '12px 14px', background: '#fdfcfb', borderRadius: '0 0 10px 10px', border: '1px solid var(--border)', borderTop: 'none' }}>
+              {/* Botão imprimir/ver ficha completa — sempre visível quando há HTML gerado */}
+              {(f as any).htmlCompleto && (
+                <button className="btn btn-ghost btn-block" style={{ marginBottom: 12 }}
+                  onClick={() => {
+                    const win = window.open('', '_blank');
+                    if (win) { win.document.write((f as any).htmlCompleto); win.document.close(); }
+                  }}>
+                  🖨️ Ver / Imprimir Ficha Completa
+                </button>
+              )}
+              {(!f.ingredientes || f.ingredientes.length === 0) && (!f.preparacao || f.preparacao.length === 0) && !(f as any).htmlCompleto && (
+                <div style={{ padding: '10px 12px', background: 'var(--copper-pale)', borderRadius: 8, fontSize: 12, color: 'var(--copper)', marginBottom: 10 }}>
+                  ⚠️ Esta ficha foi sincronizada sem os detalhes de ingredientes/preparação. Pede ao professor para confirmar no dispositivo onde a criou.
+                </div>
+              )}
               {/* Ingredientes */}
               {f.ingredientes?.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'var(--copper)' }}>Ingredientes</div>
-                  {f.ingredientes.map((ing, i) => (
-                    <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: '#fff', cursor: 'pointer', fontSize: 12 }}>
-                      <input type="checkbox" style={{ accentColor: 'var(--sage)' }} />
-                      <strong>{ing.qt} {ing.un}</strong> {ing.produto}
-                      {ing.obs && <span style={{ fontSize:13, color: 'var(--copper)' }}>{ing.obs}</span>}
-                    </label>
-                  ))}
+                  {f.ingredientes.map((ing, i) => {
+                    const marcado = checklist[f.id]?.ing.has(i) || false;
+                    return (
+                      <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: marcado ? 'var(--sage-pale)' : '#fff', cursor: 'pointer', fontSize: 12 }}>
+                        <input type="checkbox" checked={marcado} onChange={() => toggleIngrediente(f.id, i)} style={{ accentColor: 'var(--sage)' }} />
+                        <strong style={{ textDecoration: marcado ? 'line-through' : 'none' }}>{ing.qt} {ing.un}</strong> <span style={{ textDecoration: marcado ? 'line-through' : 'none' }}>{ing.produto}</span>
+                        {ing.obs && <span style={{ fontSize:13, color: 'var(--copper)' }}>{ing.obs}</span>}
+                      </label>
+                    );
+                  })}
                 </div>
               )}
 
@@ -318,16 +382,19 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
               {f.preparacao?.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'var(--copper)' }}>Preparação</div>
-                  {f.preparacao.map((p, i) => (
-                    <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: '#fff', cursor: 'pointer', fontSize: 12 }}>
-                      <input type="checkbox" style={{ accentColor: 'var(--sage)', marginTop: 2, flexShrink: 0 }} />
-                      <div>
-                        <strong>{p.num}.</strong> {p.descricao}
-                        {p.temperatura && <span style={{ fontSize:13, color: '#2980b9', marginLeft: 6 }}>🌡 {p.temperatura}</span>}
-                        {p.haccp && <div style={{ fontSize:13, color: 'var(--danger)', marginTop: 2 }}>⚠️ {p.haccp}</div>}
-                      </div>
-                    </label>
-                  ))}
+                  {f.preparacao.map((p, i) => {
+                    const marcado = checklist[f.id]?.passo.has(i) || false;
+                    return (
+                      <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: marcado ? 'var(--sage-pale)' : '#fff', cursor: 'pointer', fontSize: 12 }}>
+                        <input type="checkbox" checked={marcado} onChange={() => togglePasso(f.id, i)} style={{ accentColor: 'var(--sage)', marginTop: 2, flexShrink: 0 }} />
+                        <div style={{ textDecoration: marcado ? 'line-through' : 'none' }}>
+                          <strong>{p.num}.</strong> {p.descricao}
+                          {p.temperatura && <span style={{ fontSize:13, color: '#2980b9', marginLeft: 6 }}>🌡 {p.temperatura}</span>}
+                          {p.haccp && <div style={{ fontSize:13, color: 'var(--danger)', marginTop: 2 }}>⚠️ {p.haccp}</div>}
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
               )}
 
