@@ -51,6 +51,18 @@ const FATOR_INGREDIENTE: Record<string, number> = {
 
 const LIMIAR_MANTER_MEDIDA = 20; // abaixo de 20g → manter medida original
 
+// Limpa nomes de produtos com ruído típico da extracção IA: duplicações, conectores soltos
+function limparNomeProduto(nome: string): string {
+  let t = nome.trim()
+    .replace(/[.,;:!?]+$/g, '')              // pontuação no fim
+    .replace(/^\s*(é|de|da|do|das|dos)\s+/i, '') // conector solto no início
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Remover palavra duplicada consecutiva: "ovo ovo" → "ovo", "Ovo, é ovo" → "Ovo"
+  t = t.replace(/\b(\w+)([\s,]+\1\b)+/gi, '$1');
+  return t;
+}
+
 function converterMedida(qt: string, un: string, produto: string): { qtFinal: string; unFinal: string; obs: string } {
   const unLower = un.toLowerCase().trim();
   const produtoLower = produto.toLowerCase();
@@ -296,7 +308,7 @@ function extrairFicha(texto: string): FichaTecnica {
           if (partes.length >= 4 && partes[1]) {
             const qtRaw = partes[1] || '';
             const unRaw = partes[2] || '';
-            const produto = partes[3] || '';
+            const produto = limparNomeProduto(partes[3] || '');
             const conv = converterMedida(qtRaw, unRaw, produto);
             ingredientesIA.push({
               componente: partes[0] || '',
@@ -315,7 +327,7 @@ function extrairFicha(texto: string): FichaTecnica {
           if (m) {
             const qtRaw = m[2] || '';
             const unRaw = m[3] || '';
-            const produto = m[4]?.trim() || '';
+            const produto = limparNomeProduto(m[4]?.trim() || '');
             const conv = converterMedida(qtRaw, unRaw, produto);
             ingredientesIA.push({
               componente: m[1]?.trim() || '',
@@ -335,7 +347,7 @@ function extrairFicha(texto: string): FichaTecnica {
                 componente: '',
                 qt: mSimples[2] || '',
                 un: mSimples[3] || '',
-                produto: mSimples[1]?.trim() || '',
+                produto: limparNomeProduto(mSimples[1]?.trim() || ''),
                 tPrep: '',
                 tConf: '',
                 obs: mSimples[4] || '',
@@ -1836,11 +1848,15 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
   function guardarFicha(fichaConfirmada: FichaTecnica) {
     const now = new Date().toISOString();
+    // Numeração sequencial global — nunca se repete em toda a app
+    const todasFichas = getFichasProducao();
+    const proximoNum = todasFichas.length + 1;
+    const numeroFormatado = `#${String(proximoNum).padStart(3, '0')}`;
     addOrUpdateFichaProducao({
       id: `ficha_${Date.now()}`,
       nomePrato: fichaConfirmada.nomePrato,
       classificacao: fichaConfirmada.classificacao,
-      fichaNum: fichaConfirmada.fichaNum,
+      fichaNum: fichaConfirmada.fichaNum || numeroFormatado,
       numPorcoes: fichaConfirmada.numPorcoes,
       tempoPrep: fichaConfirmada.tempoPrep,
       tempoConf: fichaConfirmada.tempoConf,
@@ -1950,7 +1966,12 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             }}
           />
 
-          <button className="btn btn-primary btn-block" style={{ marginTop: 16 }}
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }}
+            onClick={() => window.print()}>
+            🖨️ Imprimir Guia
+          </button>
+
+          <button className="btn btn-primary btn-block" style={{ marginTop: 10 }}
             onClick={() => onGuardado?.()}>
             ✓ Concluir Guia
           </button>
@@ -1961,6 +1982,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
   // ── APÓS GUARDAR ─────────────────────────────────────────
   if ((vista as string) === 'apos_guardar') {
+    const ultimaFicha = fichasGuardadas[fichasGuardadas.length - 1] || ficha;
     return (
       <div style={{ padding: 16 }}>
         <div style={{ background: 'var(--sage-pale)', border: '1px solid rgba(90,122,78,0.3)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16 }}>
@@ -1968,6 +1990,19 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
           <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--sage)', marginBottom: 4 }}>Ficha guardada!</div>
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)' }}>{guardadoMsg}</div>
         </div>
+
+        {/* Imprimir — disponível assim que a ficha é guardada */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => {
+            try { exportPDF(ultimaFicha as any); }
+            catch (e) { alert('Erro ao gerar PDF'); }
+          }}>🖨️ PDF</button>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={async () => {
+            try { await exportDOCX(ultimaFicha as any); }
+            catch (e) { alert('Erro ao gerar Word: ' + String(e)); }
+          }}>📄 Word</button>
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button className="btn btn-primary" onClick={novaFicha}>
             + Criar nova Ficha de Produção
