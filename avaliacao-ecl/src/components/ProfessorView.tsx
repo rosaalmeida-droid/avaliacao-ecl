@@ -52,6 +52,35 @@ const FATOR_INGREDIENTE: Record<string, number> = {
 const LIMIAR_MANTER_MEDIDA = 20; // abaixo de 20g → manter medida original
 
 // Limpa nomes de produtos com ruído típico da extracção IA: duplicações, conectores soltos
+// Copia texto para a área de transferência com fallback se a API falhar
+function copiarTexto(texto: string, onSucesso: () => void, onFalha: () => void) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(texto).then(onSucesso).catch(() => {
+      // fallback: tentar método antigo
+      tentarFallbackCopia(texto, onSucesso, onFalha);
+    });
+  } else {
+    tentarFallbackCopia(texto, onSucesso, onFalha);
+  }
+}
+
+function tentarFallbackCopia(texto: string, onSucesso: () => void, onFalha: () => void) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onSucesso(); else onFalha();
+  } catch {
+    onFalha();
+  }
+}
+
 function limparNomeProduto(nome: string): string {
   let t = nome.trim()
     .replace(/[.,;:!?]+$/g, '')              // pontuação no fim
@@ -1078,7 +1107,9 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
   );
 }
 function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }: { onContinuar: (texto: string, link: string) => void; ucId?: string; ucNome?: string; onAlteracao?: () => void; nomePratoInicial?: string }) {
-  const [link, setLink] = useState('');
+  const [link, setLink] = useState(() => {
+    try { return localStorage.getItem('ecl_link_draft') || ''; } catch { return ''; }
+  });
   const [textoManual, setTextoManual] = useState('');
   const [nomePrato, setNomePrato] = useState(nomePratoInicial || '');
   const [a_carregar, setACarregar] = useState(false);
@@ -1088,6 +1119,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
   const [mostrarSimilares, setMostrarSimilares] = useState(false);
   const [copiadoFicha, setCopiadoFicha] = useState(false);
   const [copiadoGuia, setCopiadoGuia] = useState(false);
+  const [mostrarPromptManual, setMostrarPromptManual] = useState<'ficha' | 'guia' | null>(null);
 
   // Prompts calculados em tempo real
   const promptFicha = gerarPrompt(link, ucId, ucNome);
@@ -1225,7 +1257,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
       {/* 1. LINK — primeiro */}
       <Field label="Link da receita">
         <input className="input" value={link}
-          onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); onAlteracao?.(); }}
+          onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); onAlteracao?.(); try { localStorage.setItem('ecl_link_draft', e.target.value); } catch {} }}
           placeholder="https://www.pingodoce.pt/receitas/..." />
         {link && (
           <button type="button" className="btn btn-ghost" style={{ marginTop:6, fontSize:12, width:'100%' }}
@@ -1252,7 +1284,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
-            onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }}>
+            onClick={() => copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => setMostrarPromptManual('ficha'))}>
             {copiadoFicha ? '✅ Prompt copiado! Agora cola na IA' : '📋 Copiar prompt da Ficha'}
           </button>
           <div style={{ display:'flex', gap:6 }}>
@@ -1261,9 +1293,8 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
               🟠 Abrir no Claude
             </button>
             <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13 }}
-              onClick={async () => {
-                try { await navigator.clipboard.writeText(promptFicha); } catch {}
-                setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000);
+              onClick={() => {
+                copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => setMostrarPromptManual('ficha'));
                 window.open('https://chatgpt.com/chat', '_blank');
               }}>
               🟢 Abrir no ChatGPT
@@ -1272,6 +1303,15 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', textAlign:'center' }}>
             No ChatGPT: o prompt já foi copiado — cola com Ctrl+V (ou Cmd+V) na caixa de chat
           </div>
+          {mostrarPromptManual === 'ficha' && (
+            <div style={{ marginTop: 6 }}>
+              <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>
+                ⚠️ A cópia automática falhou — selecciona o texto abaixo e copia manualmente (Ctrl+C):
+              </div>
+              <textarea readOnly value={promptFicha} onClick={e => (e.target as HTMLTextAreaElement).select()}
+                style={{ width: '100%', minHeight: 100, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1px solid var(--border)' }} />
+            </div>
+          )}
         </div>
 
         {/* Guia — só aparece se já tem nome do prato */}
@@ -1285,7 +1325,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }}>
+                onClick={() => copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => setMostrarPromptManual('guia'))}>
                 {copiadoGuia ? '✅ Prompt do Guia copiado!' : '📋 Copiar prompt do Guia'}
               </button>
               <div style={{ display:'flex', gap:6 }}>
@@ -1294,14 +1334,22 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
                   🟠 Guia no Claude
                 </button>
                 <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                  onClick={async () => {
-                    try { await navigator.clipboard.writeText(promptGuia); } catch {}
-                    setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000);
+                  onClick={() => {
+                    copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => setMostrarPromptManual('guia'));
                     window.open('https://chatgpt.com/chat', '_blank');
                   }}>
                   🟢 Guia no ChatGPT
                 </button>
               </div>
+              {mostrarPromptManual === 'guia' && (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>
+                    ⚠️ A cópia automática falhou — selecciona o texto abaixo e copia manualmente (Ctrl+C):
+                  </div>
+                  <textarea readOnly value={promptGuia} onClick={e => (e.target as HTMLTextAreaElement).select()}
+                    style={{ width: '100%', minHeight: 100, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1px solid var(--border)' }} />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1847,54 +1895,66 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   function recarregar() { setFichasGuardadas(getFichasProducao()); }
 
   function guardarFicha(fichaConfirmada: FichaTecnica) {
-    const now = new Date().toISOString();
-    // Numeração sequencial global — nunca se repete em toda a app
-    const todasFichas = getFichasProducao();
-    const proximoNum = todasFichas.length + 1;
-    const numeroFormatado = `#${String(proximoNum).padStart(3, '0')}`;
-    addOrUpdateFichaProducao({
-      id: `ficha_${Date.now()}`,
-      nomePrato: fichaConfirmada.nomePrato,
-      classificacao: fichaConfirmada.classificacao,
-      fichaNum: fichaConfirmada.fichaNum || numeroFormatado,
-      numPorcoes: fichaConfirmada.numPorcoes,
-      tempoPrep: fichaConfirmada.tempoPrep,
-      tempoConf: fichaConfirmada.tempoConf,
-      ingredientes: fichaConfirmada.ingredientes.map((ing, i) => ({ ...ing, id: `ing_${i}` })),
-      preparacao: fichaConfirmada.preparacao.map((p, i) => ({ ...p, id: `passo_${i}` })),
-      empratamento: fichaConfirmada.empratamento,
-      alergenicos: fichaConfirmada.alergenicos.split(',').map(a => a.trim()).filter(Boolean),
-      equipamento: fichaConfirmada.equipamento,
-      conservacao: fichaConfirmada.conservacao,
-      regeneracao: fichaConfirmada.regeneracao,
-      kitchenflow: fichaConfirmada.kitchenflow,
-      tecnicasSugeridas: fichaConfirmada.tecnicasDetectadas || [],
-      ucsAssociadas: [ucId].filter(Boolean),
-      elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor,
-      data: fichaConfirmada.data,
-      textoGuia: fichaConfirmada.textoGuia,
-      criadoEm: now,
-      atualizadoEm: now,
-    });
+    try {
+      const now = new Date().toISOString();
+      // Numeração sequencial global — nunca se repete em toda a app
+      const todasFichas = getFichasProducao();
+      const proximoNum = todasFichas.length + 1;
+      const numeroFormatado = `#${String(proximoNum).padStart(3, '0')}`;
 
-    // Associar ao plano se existe planoId
-    if (planoId) {
-      const planos = getPlanosAula();
-      const plano = planos.find(p => p.id === planoId);
-      if (plano) {
-        const fichasActuais = getFichasProducao();
-        const novaFicha = fichasActuais[fichasActuais.length - 1];
-        if (novaFicha && !plano.fichasIds.includes(novaFicha.id)) {
-          addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, novaFicha.id], atualizadoEm: now });
+      // Normalizar alergenicos — pode vir como string ou array, dependendo da origem
+      const alergRaw: any = fichaConfirmada.alergenicos;
+      const alergenicosArray: string[] = Array.isArray(alergRaw)
+        ? alergRaw
+        : (typeof alergRaw === 'string' ? alergRaw.split(',').map(a => a.trim()).filter(Boolean) : []);
+
+      addOrUpdateFichaProducao({
+        id: `ficha_${Date.now()}`,
+        nomePrato: fichaConfirmada.nomePrato || '',
+        classificacao: fichaConfirmada.classificacao || '',
+        fichaNum: fichaConfirmada.fichaNum || numeroFormatado,
+        numPorcoes: fichaConfirmada.numPorcoes || '',
+        tempoPrep: fichaConfirmada.tempoPrep || '',
+        tempoConf: fichaConfirmada.tempoConf || '',
+        ingredientes: (fichaConfirmada.ingredientes || []).map((ing, i) => ({ ...ing, id: `ing_${i}` })),
+        preparacao: (fichaConfirmada.preparacao || []).map((p, i) => ({ ...p, id: `passo_${i}` })),
+        empratamento: fichaConfirmada.empratamento || '',
+        alergenicos: alergenicosArray,
+        equipamento: fichaConfirmada.equipamento || '',
+        conservacao: fichaConfirmada.conservacao || '',
+        regeneracao: fichaConfirmada.regeneracao || '',
+        kitchenflow: fichaConfirmada.kitchenflow || '',
+        tecnicasSugeridas: fichaConfirmada.tecnicasDetectadas || [],
+        ucsAssociadas: [ucId].filter(Boolean),
+        elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
+        data: fichaConfirmada.data || now,
+        textoGuia: fichaConfirmada.textoGuia,
+        criadoEm: now,
+        atualizadoEm: now,
+      });
+
+      // Associar ao plano se existe planoId
+      if (planoId) {
+        const planos = getPlanosAula();
+        const plano = planos.find(p => p.id === planoId);
+        if (plano) {
+          const fichasActuais = getFichasProducao();
+          const novaFicha = fichasActuais[fichasActuais.length - 1];
+          if (novaFicha && !plano.fichasIds.includes(novaFicha.id)) {
+            addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, novaFicha.id], atualizadoEm: now });
+          }
         }
       }
-    }
 
-    try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-    recarregar();
-    onGuardado?.();
-    setGuardadoMsg(fichaConfirmada.nomePrato || 'Ficha');
-    setVista('apos_guardar' as any);
+      try { localStorage.removeItem('ecl_ficha_draft'); localStorage.removeItem('ecl_link_draft'); } catch {}
+      recarregar();
+      onGuardado?.();
+      setGuardadoMsg(fichaConfirmada.nomePrato || 'Ficha');
+      setVista('apos_guardar' as any);
+    } catch (err) {
+      console.error('Erro ao guardar ficha:', err);
+      alert('Ocorreu um erro ao guardar a ficha. Os dados não se perderam — tenta novamente. Detalhe: ' + String(err));
+    }
   }
 
   function novaFicha() {
