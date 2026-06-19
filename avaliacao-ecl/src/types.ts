@@ -236,6 +236,7 @@ export interface FichaProducao {
   elaboradoPor?: string;
   data?: string;
   planoAulaId?: string;
+  textoGuia?: string;
   criadoEm: string;
   atualizadoEm: string;
 }
