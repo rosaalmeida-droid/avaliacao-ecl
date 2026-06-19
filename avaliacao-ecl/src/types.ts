@@ -237,6 +237,7 @@ export interface FichaProducao {
   data?: string;
   planoAulaId?: string;
   textoGuia?: string;
+  htmlCompleto?: string;  // ficha formatada pronta a mostrar/imprimir — gerada ao guardar
   criadoEm: string;
   atualizadoEm: string;
 }
