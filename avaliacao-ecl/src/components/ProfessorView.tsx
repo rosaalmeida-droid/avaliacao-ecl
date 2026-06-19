@@ -2144,8 +2144,19 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
     let fichaDraft = ficha;
     try {
       const d = localStorage.getItem('ecl_ficha_draft');
-      if (d) fichaDraft = { ...JSON.parse(d) };
-    } catch {}
+      if (d) {
+        const parsed = JSON.parse(d);
+        // Normalizar todos os campos texto — drafts antigos podem ter arrays em vez de strings
+        const camposTexto = ['nomePrato', 'classificacao', 'fichaNum', 'alergenicos', 'tempoPrep', 'tempoConf', 'numPorcoes', 'empratamento', 'elaboradoPor', 'data', 'equipamento', 'conservacao', 'regeneracao', 'kitchenflow', 'textoGuia'];
+        camposTexto.forEach(campo => {
+          if (Array.isArray(parsed[campo])) parsed[campo] = parsed[campo].join(', ');
+          if (parsed[campo] != null && typeof parsed[campo] !== 'string') parsed[campo] = String(parsed[campo]);
+        });
+        if (!Array.isArray(parsed.ingredientes)) parsed.ingredientes = FICHA_VAZIA.ingredientes;
+        if (!Array.isArray(parsed.preparacao)) parsed.preparacao = FICHA_VAZIA.preparacao;
+        fichaDraft = { ...FICHA_VAZIA, ...parsed };
+      }
+    } catch { fichaDraft = ficha; }
 
     return (
       <PassoLink ucId={ucId} ucNome={ucNome} nomePratoInicial={nomePratoInicial} onContinuar={(texto, link) => {
