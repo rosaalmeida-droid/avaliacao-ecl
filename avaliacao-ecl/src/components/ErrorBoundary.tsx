@@ -30,7 +30,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
             {this.state.mensagem}
           </div>
           <button
-            onClick={() => { this.setState({ temErro: false, mensagem: '' }); window.location.reload(); }}
+            onClick={() => {
+              // Limpar drafts que possam estar corrompidos e causar o mesmo erro outra vez
+              try {
+                localStorage.removeItem('ecl_ficha_draft');
+                localStorage.removeItem('ecl_link_draft');
+              } catch {}
+              this.setState({ temErro: false, mensagem: '' });
+              window.location.reload();
+            }}
             style={{ padding: '12px 24px', borderRadius: 10, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
             🔄 Recarregar a aplicação
           </button>
