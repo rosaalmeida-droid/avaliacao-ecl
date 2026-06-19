@@ -233,7 +233,7 @@ function ModalRequisicao({ plano, fichas, onSim, onNao }: {
 
 // ── Registos dos Alunos — ver e reabrir autoavaliações ─────────
 function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string }) {
-  const [alunos, setAlunos] = React.useState<{ id: string; nome: string; numero: number }[]>([]);
+  const [alunos, setAlunos] = React.useState<{ id: string; nome?: string; numero: number }[]>([]);
   const [reabrirConfirm, setReabrirConfirm] = React.useState<string | null>(null);
   const [tick, setTick] = React.useState(0);
 
@@ -346,13 +346,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   function publicar() {
     const p = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
-    addOrUpdatePlanoAula(p);
+    addOrUpdatePlanoAula(p); // já envia para o Sheets — alunos vêem sempre a versão mais recente
     onPlanoActualizado(p);
-    // Enviar para Sheets — alunos vêem sempre a versão mais recente
-    try {
-      const { sincronizarPlanoParaSheets } = require('../backend');
-      sincronizarPlanoParaSheets?.(p);
-    } catch {}
   }
 
   // Após criar ficha — modal simples Sim/Não
