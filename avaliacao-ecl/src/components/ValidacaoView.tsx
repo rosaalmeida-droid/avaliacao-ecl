@@ -22,7 +22,7 @@ function calcularNotaFinal(notaProf: number, notaAluno: number): number {
 
 export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?: string }) {
   const planos = getPlanosAula().filter(p => (!turmaId || p.turmaId === turmaId) && (!planoId || p.id === planoId));
-  const selecoes = getSelecoes().filter(s => !turmaId || s.turmaId === turmaId);
+  const selecoes = getSelecoes().filter(s => (!turmaId || s.turmaId === turmaId) && (!planoId || s.planoAulaId === planoId));
   const validacoes = getValidacoes();
 
   const pendentes = selecoes.filter(s => !validacoes.some(v => v.selecaoId === s.id));
