@@ -6,6 +6,7 @@ import {
   getAlunos,
 } from '../backend';
 import { PlanoAula as TPlanoAula } from '../types';
+import { Card } from './ui';
 import ProfessorView from './ProfessorView';
 
 const TIPOS_ATIVIDADE = [
