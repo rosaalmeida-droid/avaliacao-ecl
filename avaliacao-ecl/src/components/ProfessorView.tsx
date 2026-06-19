@@ -161,6 +161,13 @@ function limparTexto(t: string): string {
 }
 
 function extrairFicha(texto: string): FichaTecnica {
+  // Detectar se o texto colado é o PROMPT (não a resposta da IA)
+  // Sinais: contém os marcadores literais de instrução do prompt
+  const ehPrompt = /\[nome sem marcas\]|\[Peixe \/ Carne|\[lista dos 14 alerg|\[X min\]|Analisa a (página|receita|Ficha)/i.test(texto.slice(0, 500));
+  if (ehPrompt) {
+    return { ...FICHA_VAZIA, nomePrato: '⚠️ Colaste o PROMPT, não o resultado — vai à IA e cola a RESPOSTA dela aqui' };
+  }
+
   // Limpar markdown mas SEM danificar tabelas com |
   texto = texto
     .replace(/\*\*([^*]+)\*\*/g, '$1')          // **negrito** → negrito
@@ -1104,6 +1111,12 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
   async function carregar() {
     if (!link && !textoManual) return;
     if (textoManual) {
+      // Detectar se colou o PROMPT em vez da RESPOSTA da IA
+      const ehPrompt = /\[nome sem marcas\]|\[Peixe \/ Carne|\[lista dos 14 alerg|\[X min\]|Analisa a (página|receita|Ficha)/i.test(textoManual.slice(0, 500));
+      if (ehPrompt) {
+        setErro('⚠️ Isto parece ser o PROMPT, não o resultado da IA. Cola o texto que a IA respondeu, não o que enviaste.');
+        return;
+      }
       try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
       const textoFinal = textoManual.includes('NOME DO PRATO:') 
         ? textoManual 
@@ -1236,9 +1249,16 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
               🟠 Abrir no Claude
             </button>
             <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13 }}
-              onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(promptFicha); } catch {}
+                setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000);
+                window.open('https://chatgpt.com/chat', '_blank');
+              }}>
               🟢 Abrir no ChatGPT
             </button>
+          </div>
+          <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', textAlign:'center' }}>
+            No ChatGPT: o prompt já foi copiado — cola com Ctrl+V (ou Cmd+V) na caixa de chat
           </div>
         </div>
 
@@ -1262,7 +1282,11 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
                   🟠 Guia no Claude
                 </button>
                 <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                  onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
+                  onClick={async () => {
+                    try { await navigator.clipboard.writeText(promptGuia); } catch {}
+                    setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000);
+                    window.open('https://chatgpt.com/chat', '_blank');
+                  }}>
                   🟢 Guia no ChatGPT
                 </button>
               </div>
@@ -1416,6 +1440,13 @@ function PassoFichaTecnica({
           <div className="display" style={{ fontSize: 18, fontWeight: 700, flex: 1 }}>
             📋 Passo 2: Ficha de Produção
           </div>
+          <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
+            onClick={() => {
+              try { localStorage.setItem('ecl_ficha_draft', JSON.stringify(ficha)); } catch {}
+              onVoltar();
+            }}>
+            ← Voltar ao link
+          </button>
           <button type="button" className="btn btn-ghost" style={{ fontSize:13, color: 'var(--danger)' }}
             onClick={() => {
               try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
@@ -1425,7 +1456,7 @@ function PassoFichaTecnica({
           </button>
         </div>
         <div className="muted" style={{ marginBottom: 14 }}>
-          Verifica e ajusta os dados extraídos automaticamente.
+          Verifica e ajusta os dados extraídos automaticamente. Se os campos estiverem vazios (com [colchetes]), volta ao link e tenta com outra IA.
         </div>
 
         {/* Cabeçalho */}
@@ -1729,7 +1760,10 @@ function PassoFichaTecnica({
               🟠 Guia no Claude
             </button>
             <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-              onClick={() => { navigator.clipboard.writeText(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)); } catch {}
+                window.open('https://chatgpt.com/chat', '_blank');
+              }}>
               🟢 Guia no ChatGPT
             </button>
           </div>
