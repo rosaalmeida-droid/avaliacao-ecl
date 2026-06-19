@@ -10,6 +10,7 @@ import Requisicao from './components/Requisicao';
 import PlanoAula from './components/PlanoAula';
 import { VistaDePlano } from './components/VistaDePlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { sincronizarDoSheets, getEstadoSync } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
@@ -34,7 +35,7 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
 // Tipo para a vista global do professor
 type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc';
 
-export default function App() {
+function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [aluno, setAluno] = useState<Aluno | null>(null);
   const [turmaId, setTurmaId] = useState<string>('CP1');
@@ -233,5 +234,13 @@ export default function App() {
       {perfil === 'aluno' && aluno && <AlunoView aluno={aluno} />}
       {perfil === 'coordenadora' && <CoordenadoraView />}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppInterno />
+    </ErrorBoundary>
   );
 }
