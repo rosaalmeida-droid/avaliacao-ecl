@@ -76,8 +76,19 @@ function Acordeao({ id, aberto, titulo, icone, cor, estado, onClick, children }:
 // VISTA DO ALUNO — lista de aulas
 // ════════════════════════════════════════════════════════════════
 export function AlunoView({ aluno }: { aluno: Aluno }) {
-  const planos = getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado');
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
+  const [planos, setPlanos] = useState<PlanoAula[]>(() =>
+    getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
+  );
+
+  // Sincronizar com Sheets ao entrar — garante que o aluno vê sempre a versão mais recente
+  useEffect(() => {
+    import('../backend').then(({ sincronizarDoSheets }) => {
+      sincronizarDoSheets(aluno.turmaId).then(() => {
+        setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
+      }).catch(() => {});
+    });
+  }, [aluno.turmaId]);
 
   if (planoAtivo) return <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)} />;
 
@@ -361,7 +372,6 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
   const ucId = plano.ucId || '';
   const compRemovidas: string[] = (plano as any).compRemovidas || [];
 
-  // Microcompetências da UC não removidas
   const microsDaUCEspecificas = ucId ? microsPorUC(ucId) : [];
   const microsEstruturantes = MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
   const microsDaUC = microsDaUCEspecificas.length >= 3
@@ -387,13 +397,17 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
     })
     .sort((a, b) => a.prioridade - b.prioridade);
 
-  // Estados da avaliação
+  // Estados
   const [nivelHigiene, setNivelHigiene] = useState<string | null>(null);
   const [nivelHaccp, setNivelHaccp] = useState<string | null>(null);
   const [microAberta, setMicroAberta] = useState<string | null>(null);
   const [notasMicro, setNotasMicro] = useState<Record<string, string | null>>({});
   const [criteriosResp, setCriteriosResp] = useState<Record<string, string | null>>({});
   const [atitudeEscolhida, setAtitudeEscolhida] = useState<string | null>(null);
+  const [modalConfirmar, setModalConfirmar] = useState(false);
+  const [submetido, setSubmetido] = useState(() => {
+    try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
+  });
 
   const OPCOES_AUTO = [
     { v: 'sozinho', label: 'Consigo sozinho/a', cor: 'var(--sage-pale)', txt: 'var(--sage)', emoji: '💪' },
@@ -414,20 +428,64 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
     onConcluido();
   }
 
+  function submeterDefinitivo() {
+    submeter();
+    try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, new Date().toISOString()); } catch {}
+    setSubmetido(true);
+    setModalConfirmar(false);
+  }
+
+  // ── Se já submeteu — mostrar resumo bloqueado ─────────────────
+  if (submetido) {
+    const horaSubmissao = (() => {
+      try {
+        const d = localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`);
+        if (d) return new Date(d).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+      } catch {}
+      return '';
+    })();
+    return (
+      <div>
+        <div style={{ padding:'14px', background:'var(--sage-pale)', borderRadius:12, border:'1.5px solid rgba(90,122,78,0.3)', marginBottom:14, textAlign:'center' }}>
+          <div style={{ fontSize:28, marginBottom:4 }}>✓</div>
+          <div style={{ fontWeight:700, fontSize:15, color:'var(--sage)' }}>Autoavaliação submetida{horaSubmissao ? ` às ${horaSubmissao}` : ''}</div>
+          <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:4 }}>O professor vai validar o teu registo.</div>
+        </div>
+        <div style={{ padding:'12px 14px', background:'var(--cream-dark)', borderRadius:10 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', marginBottom:8 }}>O teu registo (só leitura):</div>
+          <div style={{ fontSize:13, color:'var(--sage)' }}>🔒 Higiene pessoal: {nivelHigiene === 'sozinho' ? '💪 Sozinho/a' : nivelHigiene === 'ajuda' ? '🤝 Com ajuda' : '📖 A aprender'}</div>
+          <div style={{ fontSize:13, color:'var(--sage)', marginTop:4 }}>🔒 Higiene alimentar: {nivelHaccp === 'sozinho' ? '💪 Sozinho/a' : nivelHaccp === 'ajuda' ? '🤝 Com ajuda' : '📖 A aprender'}</div>
+          {Object.entries(notasMicro).filter(([,v]) => v).map(([id, v]) => {
+            const m = microsSugeridas.find(x => x.id === id);
+            return m ? <div key={id} style={{ fontSize:13, marginTop:4 }}>🔬 {m.nome}: {v === 'sozinho' ? '💪 Sozinho/a' : v === 'ajuda' ? '🤝 Com ajuda' : '📖 A aprender'}</div> : null;
+          })}
+          {atitudeEscolhida && <div style={{ fontSize:13, marginTop:4 }}>💡 Atitude: {ATITUDES.find(a => a.id === atitudeEscolhida)?.nome}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Avaliação activa ──────────────────────────────────────────
   return (
     <div>
-      {/* UC */}
-      {plano.ucId && (
-        <div style={{ padding: '8px 12px', background: 'rgba(181,101,29,0.1)', borderRadius: 8, marginBottom: 14, fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>
-          UC: {plano.ucId} — {plano.ucNome}
+      {/* UC e resumo de competências */}
+      <div style={{ padding:'12px 14px', background:'rgba(181,101,29,0.08)', borderRadius:10, marginBottom:16, border:'1px solid rgba(181,101,29,0.2)' }}>
+        {plano.ucId && <div style={{ fontSize:13, fontWeight:700, color:'var(--copper)', marginBottom:8 }}>{plano.ucId} — {plano.ucNome}</div>}
+        <div style={{ fontSize:12, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Competências desta aula:</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+          <div style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>🔒 Higiene pessoal · Higiene alimentar · Assiduidade</div>
+          {microsSugeridas.slice(0,4).map(m => (
+            <div key={m.id} style={{ fontSize:13, color:'rgba(26,23,20,0.7)' }}>
+              🔬 {m.nome}{m.motivo && <span style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginLeft:6 }}>{m.motivo}</span>}
+            </div>
+          ))}
+          <div style={{ fontSize:13, color:'rgba(142,68,173,0.8)' }}>💡 1 atitude à tua escolha</div>
         </div>
-      )}
+      </div>
 
       {/* OBRIGATÓRIAS */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>
-          🔒 Competências obrigatórias
-        </div>
+        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>🔒 Competências obrigatórias</div>
         {[
           { id: 'higiene', label: 'Higiene pessoal', val: nivelHigiene, set: setNivelHigiene },
           { id: 'haccp', label: 'Higiene e Segurança Alimentar / Registos KitchenFlow', val: nivelHaccp, set: setNivelHaccp },
@@ -446,53 +504,23 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
         ))}
       </div>
 
-      {/* MICROCOMPETÊNCIAS TÉCNICAS */}
+      {/* TÉCNICAS */}
       {microsSugeridas.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>
-            🔬 Competências técnicas desta aula
-          </div>
+          <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Competências técnicas</div>
           {microsSugeridas.map(m => (
-            <div key={m.id} style={{ border: `1.5px solid ${microAberta === m.id ? 'var(--copper)' : 'var(--border)'}`, borderRadius: 10, marginBottom: 8, overflow: 'hidden' }}>
-              <button onClick={() => setMicroAberta(microAberta === m.id ? null : m.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: microAberta === m.id ? 'var(--copper-pale)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+            <div key={m.id} style={{ marginBottom: 8, borderRadius: 10, border: `1.5px solid ${microAberta === m.id ? 'var(--copper)' : 'var(--border)'}`, overflow: 'hidden' }}>
+              <button onClick={() => setMicroAberta(s => s === m.id ? null : m.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: microAberta === m.id ? 'var(--copper-pale)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{m.nome}</div>
-                  <div style={{ fontSize:13, color: m.prioridade === 1 ? 'var(--danger)' : m.prioridade === 2 ? 'var(--copper)' : 'rgba(26,23,20,0.4)', marginTop: 2 }}>{m.motivo}</div>
+                  <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{m.motivo}</div>
                 </div>
-                {notasMicro[m.id] && (
-                  <span style={{ fontSize:13, fontWeight: 700, color: 'var(--sage)' }}>✓</span>
-                )}
-                <span style={{ fontSize: 14, color: 'var(--copper)' }}>{microAberta === m.id ? '▲' : '▼'}</span>
+                {notasMicro[m.id] && <span style={{ fontSize: 18 }}>{notasMicro[m.id] === 'sozinho' ? '💪' : notasMicro[m.id] === 'ajuda' ? '🤝' : '📖'}</span>}
+                <span style={{ fontSize: 16, color: 'var(--copper)', transform: microAberta === m.id ? 'rotate(90deg)' : 'none', transition: '0.2s' }}>›</span>
               </button>
-
               {microAberta === m.id && (
-                <div style={{ borderTop: '1px solid var(--border)', padding: '10px 12px', background: 'var(--cream-dark)' }}>
-                  {/* Critérios */}
-                  {m.criterios.length > 0 && (
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>O que é observado</div>
-                      {m.criterios.map((c: any, ci: number) => {
-                        const keyC = `${m.id}_c${ci}`;
-                        const valC = criteriosResp[keyC];
-                        return (
-                          <div key={ci} style={{ marginBottom: 8, padding: '7px 10px', borderRadius: 8, background: '#fff', border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize:13, marginBottom: 5 }}>· {c.criterio}</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
-                              {OPCOES_AUTO.map(op => (
-                                <button key={op.v} onClick={() => setCriteriosResp(p => ({ ...p, [keyC]: p[keyC] === op.v ? null : op.v }))} style={{ padding: '4px 2px', borderRadius: 6, border: `1px solid ${valC === op.v ? op.txt : 'var(--border)'}`, background: valC === op.v ? op.cor : '#fff', color: valC === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize:12, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
-                                  {op.emoji} {op.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Avaliação global da microcompetência */}
-                  <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Avaliação geral desta competência</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
+                <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', background: '#fdfcfb' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 10 }}>
                     {OPCOES_AUTO.map(op => (
                       <button key={op.v} onClick={() => setNotasMicro(p => ({ ...p, [m.id]: p[m.id] === op.v ? null : op.v }))} style={{ padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${notasMicro[m.id] === op.v ? op.txt : 'var(--border)'}`, background: notasMicro[m.id] === op.v ? op.cor : '#fff', color: notasMicro[m.id] === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize:13, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
                         <div style={{ fontSize: 18, marginBottom: 2 }}>{op.emoji}</div>
@@ -507,11 +535,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
         </div>
       )}
 
-      {/* ATITUDE EXTRA — escolha do aluno */}
+      {/* ATITUDE */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>
-          💡 A tua atitude — escolhe uma para trabalhar hoje
-        </div>
+        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>💡 A tua atitude — escolhe uma</div>
         <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, padding: 8 }}>
           {ATITUDES.filter(a => !compRemovidas.includes(a.id)).map(a => (
             <div key={a.id} onClick={() => setAtitudeEscolhida(a.id === atitudeEscolhida ? null : a.id)} style={{ padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${atitudeEscolhida === a.id ? '#8e44ad' : 'transparent'}`, background: atitudeEscolhida === a.id ? 'rgba(142,68,173,0.08)' : '#fff', cursor: 'pointer', fontSize: 12, marginBottom: 4, fontWeight: atitudeEscolhida === a.id ? 600 : 400 }}>
@@ -527,10 +553,43 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
         </div>
       )}
 
-      <button style={{ ...S.verde, opacity: prontoParaSubmeter ? 1 : 0.4 }} disabled={!prontoParaSubmeter} onClick={submeter}>
+      <button style={{ ...S.verde, opacity: prontoParaSubmeter ? 1 : 0.4 }} disabled={!prontoParaSubmeter} onClick={() => setModalConfirmar(true)}>
         ✓ Submeter autoavaliação
       </button>
+
+      {/* Modal de confirmação */}
+      {modalConfirmar && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
+          <div style={{ background:'#fff', borderRadius:20, padding:24, maxWidth:360, width:'100%' }}>
+            <div style={{ fontSize:32, textAlign:'center', marginBottom:8 }}>🎯</div>
+            <div style={{ fontWeight:700, fontSize:17, textAlign:'center', marginBottom:6 }}>Confirmas o teu registo?</div>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', textAlign:'center', marginBottom:16 }}>
+              Depois de submeter não podes alterar. Queres rever alguma coisa?
+            </div>
+            <div style={{ background:'var(--cream-dark)', borderRadius:10, padding:'10px 14px', marginBottom:16, fontSize:13 }}>
+              <div>🔒 Higiene: {nivelHigiene === 'sozinho' ? '💪' : nivelHigiene === 'ajuda' ? '🤝' : '📖'}</div>
+              <div style={{ marginTop:4 }}>🔒 HACCP: {nivelHaccp === 'sozinho' ? '💪' : nivelHaccp === 'ajuda' ? '🤝' : '📖'}</div>
+              {Object.entries(notasMicro).filter(([,v]) => v).map(([id, v]) => {
+                const m = microsSugeridas.find(x => x.id === id);
+                return m ? <div key={id} style={{ marginTop:4 }}>🔬 {m.nome}: {v === 'sozinho' ? '💪' : v === 'ajuda' ? '🤝' : '📖'}</div> : null;
+              })}
+              {atitudeEscolhida && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a => a.id === atitudeEscolhida)?.nome}</div>}
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              <button onClick={submeterDefinitivo}
+                style={{ padding:'14px', borderRadius:12, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:15, cursor:'pointer' }}>
+                ✓ Sim, confirmo este registo
+              </button>
+              <button onClick={() => setModalConfirmar(false)}
+                style={{ padding:'12px', borderRadius:12, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
+                Voltar e rever
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
