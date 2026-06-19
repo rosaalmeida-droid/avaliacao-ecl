@@ -378,17 +378,27 @@ export function pesquisarMateriaPrima(termo: string): MateriaPrimaBase[] {
 }
 
 export function encontrarMateriaPrima(nome: string): MateriaPrimaBase | undefined {
-  const t = nome.toLowerCase().trim();
+  // Limpar ruído: duplicações tipo "ovo ovo" ou "é ovo, é ovo", artigos, pontuação
+  let t = nome.toLowerCase().trim()
+    .replace(/[.,;:!?()]/g, ' ')        // pontuação → espaço
+    .replace(/\b(é|de|da|do|das|dos|um|uma|uns|umas)\b/g, ' ') // artigos/conectores
+    .replace(/\s+/g, ' ')               // espaços múltiplos
+    .trim();
+  // Remover palavra duplicada consecutiva: "ovo ovo" → "ovo"
+  t = t.replace(/\b(\w+)( \1\b)+/g, '$1');
+
+  if (!t) return undefined;
+
   // Tentar correspondência exata primeiro
   let found = MATERIAS_PRIMAS_BASE.find(mp =>
     mp.nome.toLowerCase() === t ||
     mp.aliases.some(a => a.toLowerCase() === t)
   );
-  // Depois correspondência parcial, pegando o mais barato
+  // Depois correspondência parcial nos dois sentidos (palavra-base contida no texto OU vice-versa)
   if (!found) {
     const matches = MATERIAS_PRIMAS_BASE.filter(mp =>
-      mp.nome.toLowerCase().includes(t) ||
-      mp.aliases.some(a => a.toLowerCase().includes(t))
+      mp.nome.toLowerCase().includes(t) || t.includes(mp.nome.toLowerCase()) ||
+      mp.aliases.some(a => a.toLowerCase().includes(t) || t.includes(a.toLowerCase()))
     ).sort((a,b) => a.precoUnitario - b.precoUnitario);
     found = matches[0];
   }
