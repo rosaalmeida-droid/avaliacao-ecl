@@ -40,6 +40,7 @@ export default function App() {
   const [turmaId, setTurmaId] = useState<string>('CP1');
   const [nomeProfessor, setNomeProfessor] = useState<string>('');
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
+  const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('planos');
   const [temAlteracoes, setTemAlteracoes] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<(() => void) | null>(null);
@@ -81,16 +82,22 @@ export default function App() {
   }
 
   function abrirPlano(plano: TPlanoAula) {
-    navegarCom(() => { setPlanoAberto(plano); limparAlteracoes(); });
+    navegarCom(() => { setPlanoAberto(plano); setPlanoEmPausa(null); limparAlteracoes(); });
   }
 
   function fecharPlano() {
-    navegarCom(() => { setPlanoAberto(null); limparAlteracoes(); setVistaGlobal('planos'); });
+    navegarCom(() => { setPlanoAberto(null); setPlanoEmPausa(null); limparAlteracoes(); setVistaGlobal('planos'); });
   }
 
   function irPara(vista: VistaProf) {
     if (vista === vistaGlobal && !planoAberto) return; // já está aqui, não faz nada
-    navegarCom(() => { setPlanoAberto(null); limparAlteracoes(); setVistaGlobal(vista); });
+    navegarCom(() => {
+      // Se há um plano aberto, fica em pausa em vez de se perder — modo livre
+      if (planoAberto) setPlanoEmPausa(planoAberto);
+      setPlanoAberto(null);
+      limparAlteracoes();
+      setVistaGlobal(vista);
+    });
   }
 
   function handleLogin(perfilRecebido: Perfil, alunoId?: string, turmaIdRecebida?: string, nomeUser?: string) {
@@ -138,6 +145,30 @@ export default function App() {
 
       {perfil === 'professor' && (
         <div>
+          {/* Navegação global — modo livre, sem associar a nenhum plano */}
+          <div className="tab-nav" style={{ overflowX: 'auto', display: 'flex', gap: 4, paddingBottom: 2 }}>
+            {tabsProf.map(t => (
+              <button key={t.id} onClick={() => irPara(t.id)}
+                className={`tab-btn${(!planoAberto && vistaGlobal === t.id) ? ' active' : ''}`}
+                style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {t.icone} {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Banner para voltar ao plano que ficou em pausa */}
+          {planoEmPausa && !planoAberto && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--copper-pale)', borderRadius: 10, marginTop: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 13, color: 'var(--copper)', flex: 1 }}>
+                📋 Tens o plano "{planoEmPausa.titulo}" em pausa
+              </span>
+              <button onClick={() => { setPlanoAberto(planoEmPausa); }}
+                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
+                ← Voltar ao plano
+              </button>
+            </div>
+          )}
+
           {/* Plano aberto — vista dedicada */}
           {planoAberto ? (
             <VistaDePlano
@@ -151,17 +182,6 @@ export default function App() {
             />
           ) : (
             <div>
-              {/* Navegação global — Ponto 1 da lista */}
-              <div className="tab-nav" style={{ overflowX: 'auto', display: 'flex', gap: 4, paddingBottom: 2 }}>
-                {tabsProf.map(t => (
-                  <button key={t.id} onClick={() => irPara(t.id)}
-                    className={`tab-btn${vistaGlobal === t.id ? ' active' : ''}`}
-                    style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    {t.icone} {t.label}
-                  </button>
-                ))}
-              </div>
-
               {/* Conteúdo por vista */}
               {vistaGlobal === 'planos' && (
                 <PlanoAula
