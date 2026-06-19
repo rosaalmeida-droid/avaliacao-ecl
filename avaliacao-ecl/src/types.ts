@@ -219,6 +219,7 @@ export interface FichaProducao {
   nomePrato: string;
   classificacao: string;
   fichaNum?: string;
+  codigo?: string;        // ex: 1A, 1B, 2A — Plano N + letra
   numPorcoes: string;
   tempoPrep?: string;
   tempoConf?: string;
@@ -256,6 +257,7 @@ export interface PlanoAula {
   requisicaoId?: string;
   ucId?: string;
   ucNome?: string;
+  numeroPlan?: number;
   compRemovidas?: string[];
   compAdicionadas?: string[];
   criadoEm: string;
