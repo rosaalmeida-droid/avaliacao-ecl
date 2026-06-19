@@ -290,4 +290,3 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
     </div>
   );
 }
-
