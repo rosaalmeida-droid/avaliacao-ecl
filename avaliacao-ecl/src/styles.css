@@ -458,3 +458,124 @@ tr:nth-child(even) td { background: var(--cream); }
   .btn { font-size: 13px; padding: 9px 14px; }
   .tab-btn { font-size: 12px; padding: 8px 8px; }
 }
+
+/* ── ACESSIBILIDADE — tamanhos mínimos ───────────────────────── */
+/* Nenhum texto visível abaixo de 12px */
+* { min-font-size: 12px; }
+
+/* Botões de acção principal — sempre grandes e visíveis */
+.btn-primary, .btn-secondary {
+  font-size: 15px !important;
+  padding: 13px 20px !important;
+  font-weight: 700 !important;
+  min-height: 48px;
+}
+
+.btn-block {
+  font-size: 15px !important;
+  min-height: 52px;
+  border-radius: 12px !important;
+}
+
+/* Labels e campos — mais legíveis */
+label.field-label {
+  font-size: 13px !important;
+  color: var(--charcoal) !important;
+  font-weight: 700 !important;
+}
+
+.input, select.input, textarea.input {
+  font-size: 15px !important;
+  padding: 12px 14px !important;
+  min-height: 48px;
+}
+
+textarea.input {
+  min-height: 100px !important;
+}
+
+/* Texto muted — contraste mínimo */
+.muted {
+  color: rgba(26,23,20,0.6) !important;
+  font-size: 13px !important;
+}
+
+/* Option cards — mais espaço, mais fácil de tocar */
+.option-card {
+  padding: 16px 18px !important;
+  margin-bottom: 10px !important;
+}
+
+/* Tabs — mais visíveis */
+.tab-btn {
+  font-size: 14px !important;
+  padding: 10px 14px !important;
+  font-weight: 600 !important;
+}
+
+.tab-btn.active {
+  color: var(--copper) !important;
+  font-weight: 700 !important;
+}
+
+/* Cards — mais respiro */
+.card {
+  padding: 20px !important;
+  margin-bottom: 14px !important;
+}
+
+/* Botão guardar/avançar — sempre em destaque */
+.btn-guardar {
+  background: var(--sage) !important;
+  color: white !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  padding: 16px !important;
+  width: 100%;
+  border-radius: 14px !important;
+  min-height: 56px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(90,122,78,0.3);
+  margin-top: 8px;
+}
+
+/* Informação secundária — visível mas não a gritar */
+.info-box {
+  background: var(--cream-dark);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: rgba(26,23,20,0.7);
+  border-left: 3px solid var(--copper);
+  margin-bottom: 12px;
+}
+
+/* Secção de passos — numeração clara */
+.passo-numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--copper);
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Títulos de secção */
+.secao-titulo {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: var(--charcoal) !important;
+  margin-bottom: 12px;
+}
+
+/* Erros e alertas — nunca invisíveis */
+.alert-danger, [style*="danger"] {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
