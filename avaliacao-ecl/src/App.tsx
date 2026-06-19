@@ -9,7 +9,8 @@ import { CoordenadoraView } from './components/CoordenadoraView';
 import Requisicao from './components/Requisicao';
 import PlanoAula from './components/PlanoAula';
 import { VistaDePlano } from './components/VistaDePlano';
-import { sincronizarDoSheets, getEstadoSync, getPlanosAulaPorTurma } from './backend';
+import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
+import { sincronizarDoSheets, getEstadoSync } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -30,17 +31,16 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   );
 }
 
+// Tipo para a vista global do professor
+type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc';
+
 export default function App() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [aluno, setAluno] = useState<Aluno | null>(null);
   const [turmaId, setTurmaId] = useState<string>('CP1');
   const [nomeProfessor, setNomeProfessor] = useState<string>('');
-
-  // Vista do professor — null = lista de planos, 'plano_id' = vista dedicada ao plano
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
-  // Fallback tabs para validação e biblioteca de fichas
-  const [vistaGlobal, setVistaGlobal] = useState<'planos' | 'validacao' | 'biblioteca'>('planos');
-
+  const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('planos');
   const [temAlteracoes, setTemAlteracoes] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<(() => void) | null>(null);
   const [guardarCallback, setGuardarCallback] = useState<(() => void) | null>(null);
@@ -88,6 +88,10 @@ export default function App() {
     navegarCom(() => { setPlanoAberto(null); limparAlteracoes(); setVistaGlobal('planos'); });
   }
 
+  function irPara(vista: VistaProf) {
+    navegarCom(() => { setPlanoAberto(null); limparAlteracoes(); setVistaGlobal(vista); });
+  }
+
   function handleLogin(perfilRecebido: Perfil, alunoId?: string, turmaIdRecebida?: string, nomeUser?: string) {
     setPerfil(perfilRecebido);
     if (turmaIdRecebida) setTurmaId(turmaIdRecebida);
@@ -108,6 +112,17 @@ export default function App() {
 
   if (!perfil) return <Login onLogin={handleLogin} />;
 
+  // ── Tabs da navegação global do professor ──────────────────
+  const tabsProf: { id: VistaProf; label: string; icone: string }[] = [
+    { id: 'planos',     label: 'Planos de Aula', icone: '📋' },
+    { id: 'ficha',      label: 'Ficha',          icone: '📄' },
+    { id: 'guia',       label: 'Guia',           icone: '📚' },
+    { id: 'requisicao', label: 'Requisição',      icone: '🛒' },
+    { id: 'validacao',  label: 'Validação',       icone: '✓'  },
+    { id: 'biblioteca', label: 'Biblioteca',      icone: '🗂️' },
+    { id: 'avaliacao_uc', label: 'Avaliação por UC', icone: '📊' },
+  ];
+
   return (
     <div className="app-shell">
       {modalAberto && (
@@ -122,7 +137,7 @@ export default function App() {
 
       {perfil === 'professor' && (
         <div>
-          {/* Se há um plano aberto — vista dedicada ao plano */}
+          {/* Plano aberto — vista dedicada */}
           {planoAberto ? (
             <VistaDePlano
               plano={planoAberto}
@@ -135,18 +150,18 @@ export default function App() {
             />
           ) : (
             <div>
-              {/* Tabs globais — só para lista de planos, validação e biblioteca */}
-              <div className="tab-nav">
-                {(['planos','validacao','biblioteca'] as const).map(v => (
-                  <button key={v} onClick={() => setVistaGlobal(v)}
-                    className={`tab-btn${vistaGlobal === v ? ' active' : ''}`}>
-                    {v === 'planos' ? '📋 Planos de Aula'
-                      : v === 'validacao' ? '✓ Validação'
-                      : '📚 Fichas — Biblioteca'}
+              {/* Navegação global — Ponto 1 da lista */}
+              <div className="tab-nav" style={{ overflowX: 'auto', display: 'flex', gap: 4, paddingBottom: 2 }}>
+                {tabsProf.map(t => (
+                  <button key={t.id} onClick={() => irPara(t.id)}
+                    className={`tab-btn${vistaGlobal === t.id ? ' active' : ''}`}
+                    style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {t.icone} {t.label}
                   </button>
                 ))}
               </div>
 
+              {/* Conteúdo por vista */}
               {vistaGlobal === 'planos' && (
                 <PlanoAula
                   turmaId={turmaId}
@@ -154,6 +169,26 @@ export default function App() {
                   onAlteracao={registarAlteracao}
                   onGuardado={(p?: TPlanoAula) => { limparAlteracoes(); if (p) abrirPlano(p); }}
                 />
+              )}
+              {vistaGlobal === 'ficha' && (
+                <ProfessorView
+                  turmaId={turmaId}
+                  nomeProfessor={nomeProfessor}
+                  onAlteracao={registarAlteracao}
+                  onGuardado={limparAlteracoes}
+                />
+              )}
+              {vistaGlobal === 'guia' && (
+                <ProfessorView
+                  turmaId={turmaId}
+                  nomeProfessor={nomeProfessor}
+                  modoGuia={true}
+                  onAlteracao={registarAlteracao}
+                  onGuardado={limparAlteracoes}
+                />
+              )}
+              {vistaGlobal === 'requisicao' && (
+                <Requisicao nomeProfessor={nomeProfessor} turmaId={turmaId} />
               )}
               {vistaGlobal === 'validacao' && (
                 <ValidacaoView turmaId={turmaId} />
@@ -165,6 +200,9 @@ export default function App() {
                   onAlteracao={registarAlteracao}
                   onGuardado={limparAlteracoes}
                 />
+              )}
+              {vistaGlobal === 'avaliacao_uc' && (
+                <AvaliacaoPorUC turmaId={turmaId} />
               )}
             </div>
           )}
