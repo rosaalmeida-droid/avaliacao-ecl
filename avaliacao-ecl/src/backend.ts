@@ -102,6 +102,9 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     }
 
     // Carregar índice de fichas do Sheets de Fichas
+    // O índice agora também traz htmlCompleto (ficha formatada pronta a mostrar) —
+    // os dados estruturados (ingredientes/preparação) continuam só no localStorage
+    // de origem, mas o aluno pode sempre ver/imprimir a versão completa em HTML.
     if (SHEETS_FICHAS_URL) {
       const jsonFichas = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
       if (jsonFichas?.ok && jsonFichas.dados?.length > 0) {
@@ -109,7 +112,12 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         const merged = [...locais];
         for (const f of jsonFichas.dados) {
           const idx = merged.findIndex((x: FichaProducao) => x.id === f.id);
-          if (idx < 0) merged.push({ ...f, ingredientes: [], preparacao: [] });
+          if (idx < 0) {
+            merged.push({ ...f, ingredientes: [], preparacao: [], htmlCompleto: f.htmlCompleto || '' });
+          } else if (f.htmlCompleto && !(merged[idx] as any).htmlCompleto) {
+            // Já existe localmente mas sem HTML — completar com o que veio do Sheets
+            merged[idx] = { ...merged[idx], htmlCompleto: f.htmlCompleto } as any;
+          }
         }
         save(KEYS.fichas, merged);
       }
@@ -226,8 +234,8 @@ export function addOrUpdateRequisicao(r: RequisicaoAula): void {
   const idx = all.findIndex(x => x.id === r.id);
   if (idx >= 0) all[idx] = r; else all.push(r);
   save(KEYS.requisicoes, all);
-  // Enviar para Sheets histórico (como já estava)
-  enviar(SHEETS_PLANOS_URL, 'requisicao', r as unknown as Record<string, unknown>);
+  // Enviar para Sheets histórico — aninhado em 'requisicao' como o Apps Script espera
+  enviar(SHEETS_PLANOS_URL, 'requisicao', { requisicao: r });
 }
 
 // ── Comandas / Seleções / Validações ─────────────────────────
@@ -258,7 +266,9 @@ export function addOrUpdateSelecao(s: SelecaoAluno): void {
   const idx = all.findIndex(x => x.id === s.id);
   if (idx >= 0) all[idx] = s; else all.push(s);
   save(KEYS.selecoes, all);
-  enviar(SHEETS_HISTORICO_URL, 'avaliacao', s as unknown as Record<string, unknown>);
+  // Não enviar para o Sheets aqui — os dados reais por competência já vão
+  // individualmente via addRegistoAvaliacao() chamado em AlunoView.submeter().
+  // Enviar a SelecaoAluno completa como 'avaliacao' criava linhas vazias/lixo na sheet do aluno.
 }
 
 export function addOrUpdateValidacao(v: Validacao): void {
