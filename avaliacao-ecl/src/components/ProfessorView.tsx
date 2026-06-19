@@ -4,7 +4,7 @@ import { Button, Card, Field } from './ui';
 import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula } from '../backend';
 import { CaixaGuia } from './GuiaProducao';
 import { sugerirSubtecnicas } from '../subtecnicas';
-import { exportDOCX, exportPDF } from '../exportFicha';
+import { exportDOCX, exportPDF, gerarHTML } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
 import { calcularNutricao, InfoNutricional } from '../nutricao';
 
@@ -79,6 +79,26 @@ function tentarFallbackCopia(texto: string, onSucesso: () => void, onFalha: () =
   } catch {
     onFalha();
   }
+}
+
+// Garante que todos os campos texto da ficha são SEMPRE string — nunca array nem outro tipo.
+// Previne o crash React #300 quando dados antigos/sujos (localStorage, IA) trazem arrays.
+function normalizarFicha(f: any): FichaTecnica {
+  const camposTexto: (keyof FichaTecnica)[] = [
+    'nomePrato', 'classificacao', 'fichaNum', 'alergenicos', 'tempoPrep', 'tempoConf',
+    'numPorcoes', 'empratamento', 'elaboradoPor', 'data', 'equipamento',
+    'conservacao', 'regeneracao', 'kitchenflow', 'textoGuia',
+  ];
+  const out: any = { ...FICHA_VAZIA, ...f };
+  camposTexto.forEach(campo => {
+    const v = out[campo];
+    if (Array.isArray(v)) out[campo] = v.join(', ');
+    else if (v != null && typeof v !== 'string') out[campo] = String(v);
+    else if (v == null) out[campo] = '';
+  });
+  if (!Array.isArray(out.ingredientes) || out.ingredientes.length === 0) out.ingredientes = FICHA_VAZIA.ingredientes;
+  if (!Array.isArray(out.preparacao) || out.preparacao.length === 0) out.preparacao = FICHA_VAZIA.preparacao;
+  return out as FichaTecnica;
 }
 
 function limparNomeProduto(nome: string): string {
@@ -1436,7 +1456,7 @@ function PassoFichaTecnica({
   ucId?: string;
   ucNome?: string;
 }) {
-  const [ficha, setFicha] = useState<FichaTecnica>(fichaInicial);
+  const [ficha, setFicha] = useState<FichaTecnica>(() => normalizarFicha(fichaInicial));
 
   // Auto-save sempre que a ficha muda (só se tem conteúdo)
   React.useEffect(() => {
@@ -1908,6 +1928,31 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         ? alergRaw
         : (typeof alergRaw === 'string' ? alergRaw.split(',').map(a => a.trim()).filter(Boolean) : []);
 
+      // Gerar HTML formatado da ficha — para o aluno ver/imprimir em qualquer dispositivo
+      // sem depender de reler dados estruturados do Sheets (limitação conhecida)
+      const htmlCompleto = (() => {
+        try {
+          return gerarHTML({
+            nomePrato: fichaConfirmada.nomePrato || '',
+            classificacao: fichaConfirmada.classificacao || '',
+            fichaNum: fichaConfirmada.fichaNum || numeroFormatado,
+            numPorcoes: fichaConfirmada.numPorcoes || '',
+            tempoPrep: fichaConfirmada.tempoPrep || '',
+            tempoConf: fichaConfirmada.tempoConf || '',
+            ingredientes: fichaConfirmada.ingredientes || [],
+            preparacao: fichaConfirmada.preparacao || [],
+            empratamento: fichaConfirmada.empratamento || '',
+            alergenicos: alergenicosArray,
+            equipamento: fichaConfirmada.equipamento || '',
+            conservacao: fichaConfirmada.conservacao || '',
+            regeneracao: fichaConfirmada.regeneracao || '',
+            kitchenflow: fichaConfirmada.kitchenflow || '',
+            elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
+            data: fichaConfirmada.data || now,
+          } as any);
+        } catch { return ''; }
+      })();
+
       addOrUpdateFichaProducao({
         id: `ficha_${Date.now()}`,
         nomePrato: fichaConfirmada.nomePrato || '',
@@ -1929,6 +1974,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
         data: fichaConfirmada.data || now,
         textoGuia: fichaConfirmada.textoGuia,
+        htmlCompleto,
         criadoEm: now,
         atualizadoEm: now,
       });
@@ -2109,18 +2155,18 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
         {fichasGuardadas.map(f => (
           <div key={f.id} className="option-card" onClick={() => {
-            setFicha({
+            setFicha(normalizarFicha({
               nomePrato: f.nomePrato, classificacao: f.classificacao,
-              fichaNum: f.fichaNum || '', alergenicos: (f.alergenicos||[]).join(', '),
+              fichaNum: f.fichaNum || '', alergenicos: f.alergenicos,
               tempoPrep: f.tempoPrep||'', tempoConf: f.tempoConf||'',
               numPorcoes: f.numPorcoes||'',
-              ingredientes: f.ingredientes.length > 0 ? f.ingredientes as any : FICHA_VAZIA.ingredientes,
-              preparacao: f.preparacao.length > 0 ? f.preparacao as any : FICHA_VAZIA.preparacao,
+              ingredientes: f.ingredientes && f.ingredientes.length > 0 ? f.ingredientes as any : FICHA_VAZIA.ingredientes,
+              preparacao: f.preparacao && f.preparacao.length > 0 ? f.preparacao as any : FICHA_VAZIA.preparacao,
               empratamento: f.empratamento||'', elaboradoPor: f.elaboradoPor||nomeProfessor||'',
               data: f.data||'', equipamento: f.equipamento||'',
               conservacao: f.conservacao||'', regeneracao: f.regeneracao||'',
               kitchenflow: f.kitchenflow||'',
-            });
+            }));
             setPasso('ficha');
             setVista('editar');
           }}>
@@ -2144,18 +2190,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
     let fichaDraft = ficha;
     try {
       const d = localStorage.getItem('ecl_ficha_draft');
-      if (d) {
-        const parsed = JSON.parse(d);
-        // Normalizar todos os campos texto — drafts antigos podem ter arrays em vez de strings
-        const camposTexto = ['nomePrato', 'classificacao', 'fichaNum', 'alergenicos', 'tempoPrep', 'tempoConf', 'numPorcoes', 'empratamento', 'elaboradoPor', 'data', 'equipamento', 'conservacao', 'regeneracao', 'kitchenflow', 'textoGuia'];
-        camposTexto.forEach(campo => {
-          if (Array.isArray(parsed[campo])) parsed[campo] = parsed[campo].join(', ');
-          if (parsed[campo] != null && typeof parsed[campo] !== 'string') parsed[campo] = String(parsed[campo]);
-        });
-        if (!Array.isArray(parsed.ingredientes)) parsed.ingredientes = FICHA_VAZIA.ingredientes;
-        if (!Array.isArray(parsed.preparacao)) parsed.preparacao = FICHA_VAZIA.preparacao;
-        fichaDraft = { ...FICHA_VAZIA, ...parsed };
-      }
+      if (d) fichaDraft = normalizarFicha(JSON.parse(d));
     } catch { fichaDraft = ficha; }
 
     return (
@@ -2163,7 +2198,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         setTextoReceita(texto);
         setLinkReceita(link);
         // Sempre tentar extrair — o extrairFicha agora lida com todos os formatos
-        const fichaExtraida = extrairFicha(texto);
+        const fichaExtraida = normalizarFicha(extrairFicha(texto));
         // Se a extracção encontrou pelo menos o nome, usar
         if (fichaExtraida.nomePrato) {
           setFicha(fichaExtraida);
