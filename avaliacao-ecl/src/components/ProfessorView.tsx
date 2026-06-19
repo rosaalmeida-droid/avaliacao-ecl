@@ -1058,10 +1058,10 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
     </div>
   );
 }
-function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (texto: string, link: string) => void; ucId?: string; ucNome?: string; onAlteracao?: () => void }) {
+function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }: { onContinuar: (texto: string, link: string) => void; ucId?: string; ucNome?: string; onAlteracao?: () => void; nomePratoInicial?: string }) {
   const [link, setLink] = useState('');
   const [textoManual, setTextoManual] = useState('');
-  const [nomePrato, setNomePrato] = useState('');
+  const [nomePrato, setNomePrato] = useState(nomePratoInicial || '');
   const [a_carregar, setACarregar] = useState(false);
   const [mostrarManual, setMostrarManual] = useState(false);
   const [erro, setErro] = useState('');
@@ -1219,56 +1219,75 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao }: { onContinuar: (t
 
       {/* 3. PROMPTS IA */}
       <div style={{ background:'rgba(181,101,29,0.06)', borderRadius:10, padding:'12px 14px', marginBottom:12, border:'1.5px solid rgba(181,101,29,0.2)' }}>
-        <div style={{ fontWeight:700, fontSize:13, color:'var(--copper)', marginBottom:8 }}>🤖 Gerar com IA</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-          <div>
-            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:5 }}>Ficha de Produção</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
-                onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }}>
-                {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt'}
-              </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
-                onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptFicha), '_blank')}>
-                🟠 Claude
-              </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
-                onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
-                🟢 ChatGPT
-              </button>
-            </div>
+        <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
+          🤖 Passo 1 — Gerar a Ficha de Produção com IA
+        </div>
+        <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
+          Copia o prompt → cola numa IA → copia o resultado → cola na caixa abaixo
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
+            onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }}>
+            {copiadoFicha ? '✅ Prompt copiado! Agora cola na IA' : '📋 Copiar prompt da Ficha'}
+          </button>
+          <div style={{ display:'flex', gap:6 }}>
+            <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13 }}
+              onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptFicha), '_blank')}>
+              🟠 Abrir no Claude
+            </button>
+            <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13 }}
+              onClick={() => { navigator.clipboard.writeText(promptFicha).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
+              🟢 Abrir no ChatGPT
+            </button>
           </div>
-          <div>
-            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--sage)', marginBottom:5 }}>Guia de Apoio</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:copiadoGuia?'#fff':'var(--sage)', background:copiadoGuia?'var(--sage)':undefined } as any}
+        </div>
+
+        {/* Guia — só aparece se já tem nome do prato */}
+        {nomePrato && (
+          <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid rgba(181,101,29,0.2)' }}>
+            <div style={{ fontWeight:700, fontSize:14, color:'var(--sage)', marginBottom:4 }}>
+              📚 Passo 2 — Gerar o Guia de Apoio à Produção
+            </div>
+            <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
+              Usa este prompt <strong>após</strong> teres a ficha pronta — o guia é baseado em "{nomePrato}"
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
                 onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }}>
-                {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt'}
+                {copiadoGuia ? '✅ Prompt do Guia copiado!' : '📋 Copiar prompt do Guia'}
               </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptGuia), '_blank')}>
-                🟠 Claude
-              </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
-                🟢 ChatGPT
-              </button>
+              <div style={{ display:'flex', gap:6 }}>
+                <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
+                  onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptGuia), '_blank')}>
+                  🟠 Guia no Claude
+                </button>
+                <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
+                  onClick={() => { navigator.clipboard.writeText(promptGuia).catch(()=>{}); window.open('https://chatgpt.com/chat', '_blank'); }}>
+                  🟢 Guia no ChatGPT
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-        <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)', textAlign:'center', marginTop:8 }}>
-          Copia o prompt → vai à IA → copia o resultado → cola abaixo
-        </div>
+        )}
+        {!nomePrato && (
+          <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(90,122,78,0.08)', borderRadius:8, fontSize:12, color:'var(--sage)' }}>
+            💡 Preenche o nome do prato acima para activar os botões do Guia de Apoio
+          </div>
+        )}
       </div>
 
       {/* 4. CAIXA RESULTADO */}
       <div style={{ background:'rgba(181,101,29,0.04)', borderRadius:10, padding:'12px 14px', marginBottom:12, border:'1px solid rgba(181,101,29,0.15)' }}>
-        <div style={{ fontWeight:700, fontSize:13, color:'var(--copper)', marginBottom:4 }}>📋 Cola aqui o resultado da IA</div>
-        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>A app detecta automaticamente se é a Ficha ou o Guia.</div>
+        <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
+          📥 Passo 3 — Cola aqui o resultado da IA
+        </div>
+        <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:8 }}>
+          Cola o resultado da ficha <strong>ou</strong> do guia — a app detecta automaticamente qual é.
+        </div>
         <textarea className="input" value={textoManual}
           onChange={e => { setTextoManual(e.target.value); onAlteracao?.(); }}
-          placeholder={'NOME DO PRATO: Sopa Juliana\nCLASSIFICAÇÃO: Sopa\nNº DE DOSES: 4\n\nINGREDIENTES:\n...\nPREPARAÇÃO:\n...'}
-          style={{ minHeight:180, fontSize:12, fontFamily:'monospace', background:'#fff' }} />
+          placeholder={'Cola aqui o texto gerado pela IA...\n\nExemplo:\nNOME DO PRATO: Sopa Juliana\nCLASSIFICAÇÃO: Sopa\nNº DE DOSES: 4\n\nINGREDIENTES:\n...\nPREPARAÇÃO:\n...'}
+          style={{ minHeight:180, fontSize:13, fontFamily:'monospace', background:'#fff' }} />
       </div>
 
       {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>{erro}</div>}
@@ -1756,13 +1775,14 @@ function PassoFichaTecnica({
 // ============================================================
 // Vista principal do Professor — orquestra os passos
 // ============================================================
-export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia }: {
+export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia, nomePratoInicial }: {
   turmaId: string;
   nomeProfessor?: string;
   onAlteracao?: () => void;
   onGuardado?: () => void;
-  planoId?: string;       // se presente, ficha fica associada a este plano
-  modoGuia?: boolean;     // se true, mostra só o fluxo do Guia
+  planoId?: string;
+  modoGuia?: boolean;
+  nomePratoInicial?: string;
 }) {
   const [vista, setVista] = useState<'biblioteca' | 'criar' | 'editar'>('biblioteca');
   const [textoReceita, setTextoReceita] = useState('');
@@ -1928,16 +1948,19 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
     } catch {}
 
     return (
-      <PassoLink ucId={ucId} ucNome={ucNome} onContinuar={(texto, link) => {
+      <PassoLink ucId={ucId} ucNome={ucNome} nomePratoInicial={nomePratoInicial} onContinuar={(texto, link) => {
         setTextoReceita(texto);
         setLinkReceita(link);
-        // Se há draft, manter a ficha — apenas actualizar com o novo texto se diferente
-        if (texto && texto.includes('NOME DO PRATO')) {
-          setFicha(extrairFicha(texto));
+        // Sempre tentar extrair — o extrairFicha agora lida com todos os formatos
+        const fichaExtraida = extrairFicha(texto);
+        // Se a extracção encontrou pelo menos o nome, usar
+        if (fichaExtraida.nomePrato) {
+          setFicha(fichaExtraida);
         } else if (fichaDraft.nomePrato) {
+          // Fallback: draft existente
           setFicha(fichaDraft);
         } else {
-          setFicha(extrairFicha(texto));
+          setFicha(fichaExtraida);
         }
         setPasso('ficha');
       }} onAlteracao={onAlteracao} />
