@@ -223,4 +223,3 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
 }
 
 export default AvaliacaoPorUC;
-
