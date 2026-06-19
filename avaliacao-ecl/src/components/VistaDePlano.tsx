@@ -26,7 +26,7 @@ interface Props {
 }
 
 // ── Cabeçalho do Plano ────────────────────────────────────────
-function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () => void }) {
+function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAula; onVoltar: () => void; modulo?: Modulo; setModulo?: (m: Modulo) => void }) {
   let d: Date;
   try {
     if (!plano.data || plano.data === 'undefined') throw new Error();
@@ -38,12 +38,45 @@ function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () =>
   const diaSemana = d.toLocaleDateString('pt-PT', { weekday: 'long' });
   const dataFormatada = d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' });
 
+  // Limpar formato das horas — podem vir como ISO completo do Sheets
+  const horaI = (plano.horaInicio || '').includes('T')
+    ? new Date(plano.horaInicio).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    : (plano.horaInicio || '').substring(0, 5);
+  const horaF = (plano.horaFim || '').includes('T')
+    ? new Date(plano.horaFim).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    : (plano.horaFim || '').substring(0, 5);
+
   return (
     <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '16px 18px', marginBottom: 16 }}>
       {/* Botão voltar */}
       <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 12, cursor: 'pointer', marginBottom: 12 }}>
         ← Todos os planos
       </button>
+
+      {/* Tabs internas do plano — navegação dentro deste plano específico */}
+      {modulo && setModulo && (
+        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', marginBottom: 14, paddingBottom: 2 }}>
+          {([
+            { id: 'inicio', label: 'Resumo', icone: '📋' },
+            { id: 'ficha', label: 'Ficha', icone: '📄' },
+            { id: 'guia', label: 'Guia', icone: '📚' },
+            { id: 'requisicao', label: 'Requisição', icone: '🛒' },
+            { id: 'validacao', label: 'Validação', icone: '✓' },
+            { id: 'competencias', label: 'Competências', icone: '🎯' },
+            { id: 'registos', label: 'Reabrir', icone: '🔓' },
+          ] as { id: Modulo; label: string; icone: string }[]).map(t => (
+            <button key={t.id} onClick={() => setModulo(t.id)}
+              style={{
+                whiteSpace: 'nowrap', flexShrink: 0, padding: '7px 12px', borderRadius: 8, border: 'none',
+                background: modulo === t.id ? 'var(--copper)' : 'rgba(247,241,230,0.1)',
+                color: modulo === t.id ? 'white' : 'rgba(247,241,230,0.6)',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}>
+              {t.icone} {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Identificação clara do plano */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
@@ -62,7 +95,7 @@ function CabecalhoPlano({ plano, onVoltar }: { plano: PlanoAula; onVoltar: () =>
 
         <div style={{ flex: 1 }}>
           <div style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>
-            {diaSemana} · {plano.horaInicio}–{plano.horaFim} · {plano.turmaId}
+            {diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {plano.turmaId}
           </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 6 }}>
             {plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`}
@@ -412,7 +445,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   if (modulo === 'ficha') {
     return (
       <div>
-        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
         <div style={{ background: 'var(--copper-pale)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>
           📄 A criar Ficha de Produção para este plano — será associada automaticamente
@@ -453,7 +486,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
     return (
       <div>
-        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
         {nomePratoGuia && (
           <div style={{ background: 'rgba(90,122,78,0.1)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>
@@ -488,7 +521,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   if (modulo === 'requisicao') {
     return (
       <div>
-        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
         <Requisicao
           nomeProfessor={nomeProfessor}
@@ -536,7 +569,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   if (modulo === 'competencias') {
     return (
       <div>
-        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
 
         <div style={{ padding:'10px 14px', background:'var(--copper-pale)', borderRadius:10, fontSize:13, color:'var(--copper)', marginBottom:14, border:'1px solid rgba(181,101,29,0.2)' }}>
@@ -611,7 +644,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   if (modulo === 'registos') {
     return (
       <div>
-        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
         <RegistosAlunos plano={plano} turmaId={turmaId} />
       </div>
@@ -621,7 +654,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // modulo === 'validacao'
   return (
     <div>
-      <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} />
+      <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
       <BarraUC plano={plano} />
       <ValidacaoView turmaId={turmaId} planoId={plano.id} />
     </div>
@@ -632,9 +665,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // ── INÍCIO — visão geral do plano ─────────────────────────────
   return (
     <div>
-      <CabecalhoPlano plano={plano} onVoltar={onVoltar} />
+      <CabecalhoPlano plano={plano} onVoltar={onVoltar} modulo={modulo} setModulo={setModulo} />
 
-      {/* Tabs dentro do plano */}
+      {/* Sub-navegação só dentro do Resumo: Resumo vs Competências */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
         <button onClick={() => setTabInicio('resumo')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'resumo' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'resumo' ? 'white' : 'rgba(26,23,20,0.5)' }}>
           📋 Resumo
@@ -836,4 +869,3 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 }
 
 export default VistaDePlano;
-
