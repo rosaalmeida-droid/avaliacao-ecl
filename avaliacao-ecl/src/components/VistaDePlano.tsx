@@ -95,7 +95,7 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
 
         <div style={{ flex: 1 }}>
           <div style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>
-            {diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {String(plano.turmaId ?? '')}
+            {plano.numeroPlan ? `Plano ${plano.numeroPlan} · ` : ''}{diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {String(plano.turmaId ?? '')}
           </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 6 }}>
             {String(plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`)}
@@ -497,13 +497,15 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
     return (
       <div>
-        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-        <BarraUC plano={plano} />
-        {nomePratoGuia && (
-          <div style={{ background: 'rgba(90,122,78,0.1)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>
-            📚 Guia de Apoio à Produção — <strong>{nomePratoGuia}</strong>
-          </div>
-        )}
+        <div className="no-print">
+          <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
+          <BarraUC plano={plano} />
+          {nomePratoGuia && (
+            <div style={{ background: 'rgba(90,122,78,0.1)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>
+              📚 Guia de Apoio à Produção — <strong>{nomePratoGuia}</strong>
+            </div>
+          )}
+        </div>
         <ProfessorView
           turmaId={turmaId}
           nomeProfessor={nomeProfessor}
