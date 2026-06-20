@@ -1391,8 +1391,8 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           {fichasSimilares.map((f, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#fff', borderRadius: 8, marginBottom: 6, border: '1px solid var(--border)' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{f.nomePrato}</div>
-                <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.data}</div>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{String(f.nomePrato ?? '')}</div>
+                <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>{String(f.classificacao ?? '')} · {String(f.data ?? '')}</div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {f.linkFicha && (
@@ -1848,7 +1848,47 @@ function PassoFichaTecnica({
         <div style={{ height: 8 }} />
         <div style={{ position:'sticky', bottom:0, padding:'12px 0', background:'white', borderTop:'1px solid var(--border)' }}>
           <button className="btn btn-primary" style={{ width:'100%', background:'var(--sage)', fontSize:15, padding:'14px', fontWeight:700, borderRadius:10, border:'none', cursor:'pointer', opacity: ficha.nomePrato ? 1 : 0.4 }}
-            onClick={() => ficha.nomePrato && onContinuar(ficha)} disabled={!ficha.nomePrato}>
+            onClick={() => {
+              if (!ficha.nomePrato) return;
+              // Normalizar todos os campos antes de continuar — proteção final contra
+              // qualquer tipo inesperado (array em vez de string, undefined, etc.)
+              const fichaSegura: FichaTecnica = {
+                ...ficha,
+                nomePrato: String(ficha.nomePrato || ''),
+                classificacao: String(ficha.classificacao || ''),
+                fichaNum: String(ficha.fichaNum || ''),
+                alergenicos: Array.isArray(ficha.alergenicos) ? (ficha.alergenicos as any).join(', ') : String(ficha.alergenicos || ''),
+                tempoPrep: String(ficha.tempoPrep || ''),
+                tempoConf: String(ficha.tempoConf || ''),
+                numPorcoes: String(ficha.numPorcoes || ''),
+                empratamento: String(ficha.empratamento || ''),
+                elaboradoPor: String(ficha.elaboradoPor || ''),
+                data: String(ficha.data || ''),
+                equipamento: String(ficha.equipamento || ''),
+                conservacao: String(ficha.conservacao || ''),
+                regeneracao: String(ficha.regeneracao || ''),
+                kitchenflow: String(ficha.kitchenflow || ''),
+                ingredientes: (ficha.ingredientes || []).map(ing => ({
+                  componente: String(ing?.componente ?? ''),
+                  qt: String(ing?.qt ?? ''),
+                  un: String(ing?.un ?? ''),
+                  produto: String(ing?.produto ?? ''),
+                  tPrep: String(ing?.tPrep ?? ''),
+                  tConf: String(ing?.tConf ?? ''),
+                  obs: String(ing?.obs ?? ''),
+                })),
+                preparacao: (ficha.preparacao || []).map((p, i) => ({
+                  num: typeof p?.num === 'number' ? p.num : i + 1,
+                  descricao: String(p?.descricao ?? ''),
+                  temperatura: String(p?.temperatura ?? ''),
+                  tempo: String(p?.tempo ?? ''),
+                  obs: String(p?.obs ?? ''),
+                  haccp: String(p?.haccp ?? ''),
+                })),
+                tecnicasDetectadas: Array.isArray(ficha.tecnicasDetectadas) ? ficha.tecnicasDetectadas.map(String) : [],
+              };
+              onContinuar(fichaSegura);
+            }} disabled={!ficha.nomePrato}>
             ✓ Guardar Ficha de Produção
           </button>
           {!ficha.nomePrato && <div style={{ textAlign:'center', fontSize:13, color:'var(--danger)', marginTop:6 }}>Preenche o nome do prato para guardar.</div>}
