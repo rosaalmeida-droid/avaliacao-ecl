@@ -24,6 +24,8 @@ const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 // modelo com ingredientes, preços, turma, data, formador, responsável e atividade.
 export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbz7g1xOC8gg23zI-wbE5ttAIHVj0l7GQrGkhSudCRvJqvgL5OK3bsBRmOSu4nNsEpR4aA/exec';
 
+export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbxYOWQNb1UkzTocol56UhXk8ORQ8WlZHKGPU3l-got80WBSWr1I-4sCrdfO5Nhas3Hjgw/exec';
+
 // ── Chaves localStorage ──────────────────────────────────────
 const KEYS = {
   comandas:      'ecl_comandas',
@@ -187,6 +189,28 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
   if (idx >= 0) all[idx] = p; else all.push(p);
   save(KEYS.planos, all);
   enviar(SHEETS_PLANOS_URL, 'plano', { plano: p });
+  sincronizarPlanoComCalendario(p);
+}
+
+// Envia o plano para o Google Calendar — usa sempre a DATA DA AULA (p.data),
+// nunca a data em que o plano foi criado. Não bloqueia nem espera resposta.
+function sincronizarPlanoComCalendario(p: PlanoAula): void {
+  if (!SHEETS_CALENDARIO_URL || !p.data) return;
+  const fichas = getFichasProducao().filter(f => p.fichasIds.includes(f.id)).map(f => f.nomePrato);
+  const temRequisicao = getRequisicoes().some(r => r.planoAulaId === p.id);
+  enviar(SHEETS_CALENDARIO_URL, 'plano', {
+    planoId: p.id,
+    data: p.data,
+    horaInicio: p.horaInicio,
+    horaFim: p.horaFim,
+    titulo: p.titulo,
+    ucId: p.ucId || '',
+    ucNome: p.ucNome || '',
+    turmaId: p.turmaId,
+    professor: p.professor,
+    fichas,
+    temRequisicao,
+  });
 }
 
 // ── Fichas de Produção ───────────────────────────────────────
