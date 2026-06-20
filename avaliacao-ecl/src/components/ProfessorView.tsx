@@ -2280,8 +2280,10 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                 addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, f.id], atualizadoEm: new Date().toISOString() });
                 recarregar();
                 onAlteracao?.();
+                onGuardado?.(); // avisa o componente pai (VistaDePlano) para recarregar o plano actualizado
               }
               setMostrarBibliotecaCompleta(false);
+              setVista('biblioteca');
               return;
             }
             setFicha(normalizarFicha({
