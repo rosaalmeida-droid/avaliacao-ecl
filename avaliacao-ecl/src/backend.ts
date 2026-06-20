@@ -190,7 +190,25 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
 }
 
 // ── Fichas de Produção ───────────────────────────────────────
-export function getFichasProducao(): FichaProducao[] { return load<FichaProducao>(KEYS.fichas); }
+export function getFichasProducao(): FichaProducao[] {
+  const fichas = load<FichaProducao>(KEYS.fichas);
+  // Corrigir retroactivamente fichas antigas com campo "data" malformado
+  // (ex: "00:00:00" — gravado antes da correção do Apps Script que tratava
+  // objetos Date incorretamente). Não altera o que já está correto.
+  let mudou = false;
+  const corrigidas = fichas.map(f => {
+    const dataRaw = (f.data || '').trim();
+    const pareceSoHora = /^\d{1,2}:\d{2}(:\d{2})?$/.test(dataRaw);
+    if (pareceSoHora) {
+      mudou = true;
+      const dataFallback = f.criadoEm ? new Date(f.criadoEm).toLocaleDateString('pt-PT') : '';
+      return { ...f, data: dataFallback };
+    }
+    return f;
+  });
+  if (mudou) save(KEYS.fichas, corrigidas);
+  return corrigidas;
+}
 
 export function getFichasPorPlano(planoId: string): FichaProducao[] {
   const plano = getPlanosAula().find(p => p.id === planoId);
