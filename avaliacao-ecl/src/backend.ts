@@ -22,7 +22,7 @@ const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
 // modelo com ingredientes, preços, turma, data, formador, responsável e atividade.
-export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbw9F0aZWCQOi-zIDUaMljLkAh3ilWt9R6D_EZe3as3pFm234q3u8iF1428Ga86ma_aYTg/exec';
+export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbz7g1xOC8gg23zI-wbE5ttAIHVj0l7GQrGkhSudCRvJqvgL5OK3bsBRmOSu4nNsEpR4aA/exec';
 
 // ── Chaves localStorage ──────────────────────────────────────
 const KEYS = {
