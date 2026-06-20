@@ -7,8 +7,9 @@
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
   Turma, Aluno, PlanoAula, FichaProducao,
-  DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula
+  DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo
 } from './types';
+import { microsPorUC, ATITUDES, OBRIGATORIAS } from './competenciasECL';
 
 // ── URLs dos Apps Scripts ────────────────────────────────────
 // Histórico de avaliações dos alunos (já configurado e a funcionar)
@@ -39,6 +40,8 @@ const KEYS = {
   distribuicoes: 'ecl_distribuicoes',
   checklists:    'ecl_checklists',
   requisicoes:   'ecl_requisicoes',
+  presencas:     'ecl_presencas',
+  recuperacoes:  'ecl_recuperacoes',
   syncPlanos:    'ecl_sync_planos_ts',
   syncFichas:    'ecl_sync_fichas_ts',
 };
@@ -394,6 +397,21 @@ export function getHistoricoAvaliacoes(): RegistoAvaliacao[] {
   return load<RegistoAvaliacao>(KEY_HIST);
 }
 
+export interface RegistoPresenca {
+  id: string;
+  alunoId: string;
+  turmaId: string;
+  planoAulaId: string;
+  ucId: string;
+  presente: boolean;
+  atrasado: boolean;
+  atrasadoMins: number;
+  horaEntrada: string;
+  fardamentoOk: boolean;
+  observacao: string;
+  data: string;
+}
+
 export function getHistoricoAluno(alunoId: string): RegistoAvaliacao[] {
   return getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId);
 }
@@ -444,6 +462,30 @@ export function addRegistoPresenca(dados: {
 }): void {
   const aluno = getAlunos().find(a => a.id === dados.alunoId);
   const plano = getPlanosAula().find(p => p.id === dados.planoAulaId);
+
+  // Gravar localmente — necessário para a app conseguir CONSULTAR presenças
+  // depois (ex: identificação automática de faltas para Recuperação de Módulos).
+  // Antes só se enviava para o Sheets (escrita) sem guardar para leitura local.
+  const registo: RegistoPresenca = {
+    id: `presenca_${dados.alunoId}_${dados.planoAulaId || 'sem_plano'}_${Date.now()}`,
+    alunoId: dados.alunoId,
+    turmaId: dados.turmaId,
+    planoAulaId: dados.planoAulaId || '',
+    ucId: plano?.ucId || '',
+    presente: dados.presente,
+    atrasado: dados.atrasado || false,
+    atrasadoMins: dados.atrasadoMins || 0,
+    horaEntrada: dados.horaEntrada || new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+    fardamentoOk: dados.fardamentoOk ?? true,
+    observacao: dados.observacao || '',
+    data: dados.data || new Date().toLocaleDateString('pt-PT'),
+  };
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  // Evitar duplicar — se já houver registo deste aluno para este plano, substitui
+  const idx = all.findIndex(r => r.alunoId === dados.alunoId && r.planoAulaId === dados.planoAulaId);
+  if (idx >= 0) all[idx] = registo; else all.push(registo);
+  save(KEYS.presencas, all);
+
   enviar(SHEETS_HISTORICO_URL, 'presenca', {
     tipo: 'presenca',
     nomeAluno: aluno?.nome || ('Aluno ' + (aluno?.numero || 0)),
@@ -454,11 +496,121 @@ export function addRegistoPresenca(dados: {
     presente: dados.presente,
     atrasado: dados.atrasado || false,
     atrasadoMins: dados.atrasadoMins || 0,
-    horaEntrada: dados.horaEntrada || new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+    horaEntrada: registo.horaEntrada,
     fardamentoOk: dados.fardamentoOk ?? true,
     observacao: dados.observacao || '',
-    data: dados.data || new Date().toLocaleDateString('pt-PT'),
+    data: registo.data,
   });
+}
+
+// Lê todas as presenças guardadas localmente
+export function getPresencas(): RegistoPresenca[] {
+  return load<RegistoPresenca>(KEYS.presencas);
+}
+
+// Para um aluno e uma UC, devolve os planos de aula dessa UC a que o aluno
+// NÃO esteve presente (faltou) — usado para a Recuperação de Módulos.
+export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: string): PlanoAula[] {
+  const todosPlanosDaUC = getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && p.estado === 'publicado');
+  const presencas = getPresencas().filter(r => r.alunoId === alunoId);
+  return todosPlanosDaUC.filter(plano => {
+    const registo = presencas.find(r => r.planoAulaId === plano.id);
+    // Falta = não há registo de presença, OU há registo explícito de ausência
+    return !registo || registo.presente === false;
+  });
+}
+
+// ── Recuperação de Módulos ──────────────────────────────────────
+const SHEETS_RECUPERACAO_URL = ''; // PENDENTE: preencher quando houver Apps Script dedicado
+
+export function getRecuperacoes(): RecuperacaoModulo[] {
+  return load<RecuperacaoModulo>(KEYS.recuperacoes);
+}
+
+export function getRecuperacoesPorAluno(alunoId: string): RecuperacaoModulo[] {
+  return getRecuperacoes().filter(r => r.alunoId === alunoId);
+}
+
+export function getRecuperacoesPorTurma(turmaId: string): RecuperacaoModulo[] {
+  return getRecuperacoes().filter(r => r.turmaId === turmaId);
+}
+
+export function addOrUpdateRecuperacao(r: RecuperacaoModulo): void {
+  const all = getRecuperacoes();
+  const idx = all.findIndex(x => x.id === r.id);
+  if (idx >= 0) all[idx] = r; else all.push(r);
+  save(KEYS.recuperacoes, all);
+  if (SHEETS_RECUPERACAO_URL) {
+    enviar(SHEETS_RECUPERACAO_URL, 'recuperacao', { recuperacao: r });
+  }
+}
+
+// Determina o tipo de UC (técnica / organizacional / híbrida) com base nas
+// microcompetências técnicas vs atitudes/responsabilidades associadas.
+// Usado para adaptar o modelo de recuperação (com ou sem exigência prática).
+export function classificarTipoUC(ucId: string): 'tecnica' | 'organizacional' | 'hibrida' {
+  const tecnicas = microsPorUC(ucId);
+  // Heurística simples: se há muitas microcompetências técnicas específicas da UC,
+  // é predominantemente técnica. Se a UC não tem microcompetências técnicas próprias
+  // (só usa as obrigatórias/atitudes), é organizacional. Caso intermédio é híbrida.
+  if (tecnicas.length >= 4) return 'tecnica';
+  if (tecnicas.length === 0) return 'organizacional';
+  return 'hibrida';
+}
+
+// Constrói uma recuperação nova para um aluno+UC: identifica automaticamente
+// os planos faltados, herda competências/atitudes/responsabilidades — sem o
+// professor ter de escolher tudo manualmente outra vez.
+export function criarRecuperacaoAutomatica(alunoId: string, turmaId: string, ucId: string, ucNome: string): RecuperacaoModulo {
+  const planosFaltados = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
+  const planosIds = planosFaltados.map(p => p.id);
+
+  // Herdar competências dos planos seleccionados (união, sem duplicados)
+  const competenciasSet = new Set<string>();
+  const microsDaUC = microsPorUC(ucId);
+  microsDaUC.forEach(m => competenciasSet.add(m.id));
+  planosFaltados.forEach(p => {
+    (p.compAdicionadas || []).forEach(c => competenciasSet.add(c));
+    (p.compRemovidas || []).forEach(c => competenciasSet.delete(c));
+  });
+
+  const atitudesIds = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').map(a => a.id);
+  const responsabilidadesIds = OBRIGATORIAS.map(o => o.id);
+
+  const agora = new Date().toISOString();
+  return {
+    id: `recup_${alunoId}_${ucId}_${Date.now()}`,
+    alunoId, turmaId, ucId, ucNome,
+    tipoUC: classificarTipoUC(ucId),
+    planosIds,
+    competenciasIds: Array.from(competenciasSet),
+    atitudesIds,
+    responsabilidadesIds,
+    estado: 'pendente',
+    dataAtribuicao: agora,
+    criadoEm: agora,
+    atualizadoEm: agora,
+  };
+}
+
+// Resumo de progresso de competências de uma UC para um aluno — combina o que
+// foi demonstrado em aula com o que foi recuperado posteriormente.
+export function getEstadoCompetenciasUC(alunoId: string, ucId: string): {
+  total: number; demonstradasEmAula: number; recuperadas: number; estado: 'incompleto' | 'completo';
+} {
+  const micros = microsPorUC(ucId);
+  const total = micros.length;
+  const historico = getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.validadoPor !== 'recuperacao');
+  const demonstradasEmAula = new Set(historico.filter(r => r.nota >= 12).map(r => r.microcompetenciaId)).size;
+  const recuperacoesConcluidas = getRecuperacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.estado === 'concluida');
+  const competenciasRecuperadas = new Set<string>();
+  recuperacoesConcluidas.forEach(r => {
+    (r.avaliacaoCompetencias || []).forEach(a => {
+      if (a.nivel === 'consolidada' || a.nivel === 'avancada') competenciasRecuperadas.add(a.competenciaId);
+    });
+  });
+  const recuperadas = competenciasRecuperadas.size;
+  return { total, demonstradasEmAula, recuperadas, estado: (demonstradasEmAula + recuperadas) >= total ? 'completo' : 'incompleto' };
 }
 
 // ── Estado de sincronização ──────────────────────────────────
