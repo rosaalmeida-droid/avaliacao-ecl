@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao } from '../backend';
+import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, SHEETS_REQUISICAO_URL } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
 import {
@@ -7,7 +7,7 @@ import {
   obterRendimento,
 } from '../requisicaoLogica';
 
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxs2Fn0xWPNsfxw1Kx4J62eOYX_nEq1zbwIKeLlUAwOzuxmbU_xlijaLGFzV7AIaBb3Ig/exec';
+// SHEETS_REQUISICAO_URL agora vem centralizado do backend.ts
 
 // ── Linha da requisição ───────────────────────────────────────
 interface Linha {
@@ -147,15 +147,18 @@ const S = {
 
 // ═══════════════════════════════════════════════════════════════
 export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1', fichasIniciais, onGuardado }: { nomeProfessor?: string; planoIdFixo?: string; turmaId?: string; fichasIniciais?: string[]; onGuardado?: () => void }) {
-  const [fase, setFase] = useState<'escolher' | 'editar'>('escolher');
-
   const planos = getPlanosAulaPorTurma(turmaId);
   const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || planos[0] || null : planos[0] || null;
+  const fichasSelInicial = fichasIniciais?.length ? fichasIniciais : (planoInicial?.fichasIds || []);
+
+  const [fase, setFase] = useState<'escolher' | 'editar'>(
+    fichasIniciais?.length ? 'editar' : 'escolher'
+  );
   const [planoSel, setPlanoSel] = useState<PlanoAula | null>(planoInicial);
-  const [fichasSel, setFichasSel] = useState<string[]>(fichasIniciais?.length ? fichasIniciais : (planoInicial?.fichasIds || []));
+  const [fichasSel, setFichasSel] = useState<string[]>(fichasSelInicial);
   const [paxPorFicha, setPaxPorFicha] = useState<Record<string, number>>(() => {
     const r: Record<string, number> = {};
-    (planoInicial?.fichasIds || []).forEach(fid => {
+    fichasSelInicial.forEach(fid => {
       const f = getFichasProducao().find(x => x.id === fid);
       if (f) r[fid] = parseFloat(f.numPorcoes) || 4;
     });
@@ -166,8 +169,22 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const [consumo, setConsumo] = useState({ bar: false, rest: true, interno: false, convidados: false });
   const [responsavel, setResponsavel] = useState('');
   const [atividade, setAtividade] = useState('');
-  const [familia, setFamilia] = useState('');
-  const [linhas, setLinhas] = useState<Linha[]>([]);
+  const [familia, setFamilia] = useState(() => {
+    // Pré-preencher com a classificação da primeira ficha seleccionada
+    const f = getFichasProducao().find(x => fichasSelInicial.includes(x.id));
+    return f?.classificacao || '';
+  });
+  // Se entrámos directamente em modo 'editar' (vindo do plano), calcular já as linhas
+  const [linhas, setLinhas] = useState<Linha[]>(() => {
+    if (!fichasIniciais?.length) return [];
+    const fsel = getFichasProducao().filter(f => fichasSelInicial.includes(f.id));
+    const pax: Record<string, number> = {};
+    fichasSelInicial.forEach(fid => {
+      const f = getFichasProducao().find(x => x.id === fid);
+      if (f) pax[fid] = parseFloat(f.numPorcoes) || 4;
+    });
+    return agregarIngredientes(fsel, pax);
+  });
   const [msg, setMsg] = useState('');
 
   const todasFichas = getFichasProducao();
@@ -253,7 +270,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       };
       const form = new FormData();
       form.append('dados', JSON.stringify(payload));
-      await fetch(SHEETS_URL, { method: 'POST', mode: 'no-cors', body: form });
+      await fetch(SHEETS_REQUISICAO_URL, { method: 'POST', mode: 'no-cors', body: form });
       setMsg('✓ Enviado para o Google Sheets!');
     } catch (e) { setMsg('Erro: ' + String(e)); }
     setTimeout(() => setMsg(''), 6000);
@@ -528,21 +545,22 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       {msg && <div style={{ padding: '10px 14px', background: 'var(--sage-pale)', borderRadius: 10, fontSize: 13, color: 'var(--sage)', marginBottom: 10, fontWeight: 600 }}>{msg}</div>}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button style={S.btnP} onClick={enviarSheets}>Enviar para Google Sheets</button>
-        <button style={S.btnG} onClick={() => {
-          if (!planoSel) return;
-          addOrUpdateRequisicao({
-            id: `req_${planoSel.id}`, planoAulaId: planoSel.id, turmaId: planoSel.turmaId,
-            dataAula: planoSel.data, professor: planoSel.professor, fichasIds: fichasSel,
-            linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: parseFloat(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
-            custoTotal: crTotal, estado: 'rascunho', criadaEm: new Date().toISOString(), atualizadaEm: new Date().toISOString(),
-          });
-          setMsg('Guardado!'); setTimeout(() => setMsg(''), 2000);
+        <button style={S.btnP} onClick={async () => {
+          // 1. Guardar localmente
+          if (planoSel) {
+            addOrUpdateRequisicao({
+              id: `req_${planoSel.id}`, planoAulaId: planoSel.id, turmaId: planoSel.turmaId,
+              dataAula: planoSel.data, professor: planoSel.professor, fichasIds: fichasSel,
+              linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: parseFloat(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
+              custoTotal: crTotal, estado: 'enviada', criadaEm: new Date().toISOString(), atualizadaEm: new Date().toISOString(),
+            });
+          }
+          // 2. Enviar para o Google Sheets com TODOS os dados (preço, unidade, turma, data, formador...)
+          await enviarSheets();
           onGuardado?.();
-        }}>Guardar</button>
+        }}>✓ Guardar e Enviar para o Google Sheets</button>
         <button style={S.btnG} onClick={() => window.print()}>Imprimir</button>
       </div>
     </div>
   );
 }
-
