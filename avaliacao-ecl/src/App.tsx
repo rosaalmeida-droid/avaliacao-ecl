@@ -152,12 +152,14 @@ function AppInterno() {
         />
       )}
 
-      <Header perfil={perfil} onSair={sair} nomeProfessor={nomeProfessor} syncStatus={syncStatus} onAtualizar={atualizarDados} />
+      <div className="no-print">
+        <Header perfil={perfil} onSair={sair} nomeProfessor={nomeProfessor} syncStatus={syncStatus} onAtualizar={atualizarDados} />
+      </div>
 
       {perfil === 'professor' && (
         <div>
           {/* Navegação global — modo livre, sem associar a nenhum plano */}
-          <div className="tab-nav" style={{ overflowX: 'auto', display: 'flex', gap: 4, paddingBottom: 2 }}>
+          <div className="tab-nav no-print" style={{ overflowX: 'auto', display: 'flex', gap: 4, paddingBottom: 2 }}>
             {tabsProf.map(t => (
               <button key={t.id} onClick={() => irPara(t.id)}
                 className={`tab-btn${(!planoAberto && vistaGlobal === t.id) ? ' active' : ''}`}
