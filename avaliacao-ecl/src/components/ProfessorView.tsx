@@ -1818,17 +1818,32 @@ function PassoFichaTecnica({
               🎯 Técnicas detectadas — para avaliação
             </div>
             <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
-              O motor vai sugerir estas competências ao professor quando avaliar esta ficha.
+              O motor vai sugerir estas competências ao professor quando avaliar esta ficha. Toca para remover as que não se aplicam.
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {ficha.tecnicasDetectadas.map((t, i) => (
-                <span key={i} style={{ padding: '4px 10px', borderRadius: 20, background: 'white', border: '1px solid rgba(181,101,29,0.3)', fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>
-                  {t}
-                </span>
+                <button key={i} type="button"
+                  onClick={() => setFicha(f => ({ ...f, tecnicasDetectadas: (f.tecnicasDetectadas || []).filter((_, idx) => idx !== i) }))}
+                  style={{ padding: '4px 10px', borderRadius: 20, background: 'white', border: '1px solid rgba(181,101,29,0.3)', fontSize:13, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {t} <span style={{ fontSize: 11, opacity: 0.6 }}>✕</span>
+                </button>
               ))}
             </div>
           </div>
         )}
+
+        {/* Adicionar técnica manualmente */}
+        <div style={{ marginBottom: 10 }}>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }}
+            onClick={() => {
+              const nova = prompt('Nome da técnica/competência a adicionar:');
+              if (nova && nova.trim()) {
+                setFicha(f => ({ ...f, tecnicasDetectadas: [...(f.tecnicasDetectadas || []), nova.trim()] }));
+              }
+            }}>
+            + Adicionar técnica
+          </button>
+        </div>
 
         <div style={{ height: 8 }} />
         <div style={{ position:'sticky', bottom:0, padding:'12px 0', background:'white', borderTop:'1px solid var(--border)' }}>
@@ -2199,7 +2214,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   }
 
   // ── CRIAR / EDITAR ────────────────────────────────────────
-  if (passo === 'link' && vista === 'criar') {
+  if (passo === 'link') {
     // Verificar se há draft guardado
     let fichaDraft = ficha;
     try {
