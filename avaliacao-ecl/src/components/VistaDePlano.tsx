@@ -357,12 +357,34 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [modulo, setModulo] = useState<Modulo>('inicio');
   const [modalProximo, setModalProximo] = useState<string | null>(null);
   const [fichasParaRequisicao, setFichasParaRequisicao] = React.useState<string[]>([]);
+  // Hooks de competências — têm de estar aqui, ANTES de qualquer return condicional,
+  // nunca depois (violar as Regras dos Hooks causa erros React imprevisíveis).
+  const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias'>('resumo');
+  const [compRemovidas, setCompRemovidas] = useState<string[]>(
+    Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []
+  );
+  const [compAdicionadas, setCompAdicionadas] = useState<string[]>(
+    Array.isArray((plano as any).compAdicionadas) ? (plano as any).compAdicionadas : []
+  );
 
   const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
   const temFichas = fichasDoPlano.length > 0;
   const temRequisicao = !!requisicao;
   const publicado = plano.estado === 'publicado';
+  const microsDaUC = plano.ucId ? microsPorUC(plano.ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
+  const compObrigatorias = OBRIGATORIAS;
+  const compTecnicas = microsDaUC.slice(0, 6).filter(m => !compRemovidas.includes(m.id));
+  const compAtitudes = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 4).filter(a => !compRemovidas.includes(a.id));
+  const totalComp = compObrigatorias.length + compTecnicas.length + compAtitudes.length + compAdicionadas.length;
+
+  function guardarCompetencias(removidas: string[], adicionadas: string[]) {
+    setCompRemovidas(removidas);
+    setCompAdicionadas(adicionadas);
+    const p = { ...plano, compRemovidas: removidas, compAdicionadas: adicionadas, atualizadoEm: new Date().toISOString() } as any;
+    addOrUpdatePlanoAula(p);
+    onPlanoActualizado(p);
+  }
 
   // Determinar estados dos módulos
   function estadoModulo(m: string) {
@@ -426,27 +448,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   // ── Renderizar módulo activo ──────────────────────────────────
-  const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias'>('resumo');
-  const [compRemovidas, setCompRemovidas] = useState<string[]>(
-    Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []
-  );
-  const [compAdicionadas, setCompAdicionadas] = useState<string[]>(
-    Array.isArray((plano as any).compAdicionadas) ? (plano as any).compAdicionadas : []
-  );
-  const microsDaUC = plano.ucId ? microsPorUC(plano.ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
-  const compObrigatorias = OBRIGATORIAS;
-  const compTecnicas = microsDaUC.slice(0, 6).filter(m => !compRemovidas.includes(m.id));
-  const compAtitudes = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 4).filter(a => !compRemovidas.includes(a.id));
-  const totalComp = compObrigatorias.length + compTecnicas.length + compAtitudes.length + compAdicionadas.length;
-
-  function guardarCompetencias(removidas: string[], adicionadas: string[]) {
-    setCompRemovidas(removidas);
-    setCompAdicionadas(adicionadas);
-    const p = { ...plano, compRemovidas: removidas, compAdicionadas: adicionadas, atualizadoEm: new Date().toISOString() } as any;
-    addOrUpdatePlanoAula(p);
-    onPlanoActualizado(p);
-  }
-
   if (modulo === 'ficha') {
     return (
       <div>
