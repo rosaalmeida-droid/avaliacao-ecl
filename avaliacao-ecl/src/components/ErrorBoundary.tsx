@@ -15,6 +15,22 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: any, info: any) {
     console.error('Erro capturado pela app:', error, info);
+    // Diagnóstico: mostrar o draft guardado no momento do crash, para identificar
+    // qual campo tem um tipo inesperado (array em vez de string, etc.)
+    try {
+      const draft = localStorage.getItem('ecl_ficha_draft');
+      if (draft) {
+        const parsed = JSON.parse(draft);
+        console.error('[DIAGNÓSTICO] Conteúdo de ecl_ficha_draft no momento do crash:', parsed);
+        Object.entries(parsed).forEach(([campo, valor]) => {
+          console.error(`[DIAGNÓSTICO] campo "${campo}" = `, valor, ' | tipo:', Array.isArray(valor) ? 'ARRAY' : typeof valor);
+        });
+      } else {
+        console.error('[DIAGNÓSTICO] Não havia ecl_ficha_draft guardado.');
+      }
+    } catch (e) {
+      console.error('[DIAGNÓSTICO] Erro ao ler draft:', e);
+    }
   }
 
   render() {
