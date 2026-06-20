@@ -580,3 +580,13 @@ textarea.input {
   font-weight: 600 !important;
 }
 
+/* ── IMPRESSÃO DO GUIA — mostrar todas as secções, mesmo fechadas ──
+   Por defeito só a secção activa fica visível (acordeão). Ao imprimir,
+   forçamos TODAS as .guia-conteudo-print a aparecer, independentemente
+   do display:none inline definido pelo React. */
+@media print {
+  .guia-conteudo-print {
+    display: block !important;
+  }
+}
+
