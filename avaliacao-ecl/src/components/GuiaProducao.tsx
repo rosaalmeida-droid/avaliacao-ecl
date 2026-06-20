@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 
+// ============================================================
+// Guia de Apoio à Produção — Renderizador Visual ECL
+// Transforma o texto da IA num documento visual e acessível
+// ============================================================
+
+// ── Tipos ─────────────────────────────────────────────────────
 interface SecaoGuia {
   num: number;
   titulo: string;
@@ -13,8 +19,12 @@ interface DadosGuia {
   nomePrato: string;
   secoes: SecaoGuia[];
   equilibrioSensorial?: { componente: string; intensidade: string; notas: string }[];
+  rendimentos?: { produto: string; comprado: string; utilizavel: string; rendimento: string; perdas: string }[];
+  haccp?: { perigo: string; pcc: string; temperatura: string; medida: string; conservacao: string }[];
+  questoes?: { tipo: string; pergunta: string; opcoes?: string[]; resposta?: string }[];
 }
 
+// ── Configuração das secções ──────────────────────────────────
 const SECOES_CONFIG = [
   { num: 1,  titulo: 'Enquadramento',          icone: '📖', cor: '#1f1b16', corTexto: '#faf7f2' },
   { num: 2,  titulo: 'Competências',            icone: '🎯', cor: '#b5651d', corTexto: '#fff' },
@@ -23,17 +33,19 @@ const SECOES_CONFIG = [
   { num: 5,  titulo: 'Rendimentos',             icone: '⚖️', cor: '#2980b9', corTexto: '#fff' },
   { num: 6,  titulo: 'Capacitação',             icone: '👥', cor: '#8e44ad', corTexto: '#fff' },
   { num: 7,  titulo: 'Equilíbrio Sensorial',    icone: '🌈', cor: '#e67e22', corTexto: '#fff' },
-  { num: 8,  titulo: 'Sugestões Gastronómicas', icone: '', cor: '#16a085', corTexto: '#fff' },
+  { num: 8,  titulo: 'Sugestões Gastronómicas', icone: '💡', cor: '#16a085', corTexto: '#fff' },
   { num: 9,  titulo: 'Sustentabilidade',        icone: '♻️', cor: '#27ae60', corTexto: '#fff' },
   { num: 10, titulo: 'Food Cost',               icone: '💶', cor: '#2c3e50', corTexto: '#fff' },
   { num: 11, titulo: 'Conhecimentos',           icone: '📚', cor: '#7f8c8d', corTexto: '#fff' },
   { num: 12, titulo: 'Questões de Estudo',      icone: '❓', cor: '#34495e', corTexto: '#fff' },
 ];
 
+// ── Parser do texto da IA → estrutura de dados ────────────────
 function parseGuia(texto: string, nomePrato: string): DadosGuia {
   const secoes: SecaoGuia[] = [];
 
   SECOES_CONFIG.forEach(cfg => {
+    // Padrões de cabeçalho: "# 1.", "## 1.", "1.", "SECÇÃO 1"
     const regex = new RegExp(
       `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:ENQUADRAMENTO|COMPETÊNCIAS|MICROCOMPETÊNCIAS|HACCP|RENDIMENTOS|CAPACITAÇÃO|EQUILÍBRIO|SUGESTÕES|SUSTENTABILIDADE|FOOD COST|CONHECIMENTOS|QUESTÕES)[^\\n]*\\n([\\s\\S]*?)(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*|$)`,
       'i'
@@ -44,6 +56,7 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
     }
   });
 
+  // Se não encontrou secções pelo número, tentar pelos títulos
   if (secoes.length < 3) {
     const padroesTitulo = [
       { regex: /(?:ENQUADRAMENTO|enquadramento)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:COMPETÊNCIAS|HACCP|MICRO|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST)|$)/i, num: 1 },
@@ -68,6 +81,7 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
     });
   }
 
+  // Extrair equilíbrio sensorial como dados estruturados
   const secSensorial = secoes.find(s => s.num === 7);
   let equilibrioSensorial;
   if (secSensorial) {
@@ -84,6 +98,7 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   return { nomePrato, secoes: secoes.sort((a, b) => a.num - b.num), equilibrioSensorial };
 }
 
+// ── Roda Sensorial (SVG) ──────────────────────────────────────
 function RodaSensorial({ dados }: { dados: { componente: string; intensidade: string; notas: string }[] }) {
   const CORES_SABORES: Record<string, string> = {
     doce: '#f39c12', ácido: '#27ae60', salgado: '#2980b9',
@@ -123,18 +138,23 @@ function RodaSensorial({ dados }: { dados: { componente: string; intensidade: st
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
       <svg viewBox="0 0 200 200" style={{ width: 180, height: 180 }}>
+        {/* Círculos guia */}
         {[1, 2, 3, 4, 5].map(r => (
           <circle key={r} cx={cx} cy={cy} r={raioMin + (r / 5) * (raioMax - raioMin)}
             fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
         ))}
+        {/* Linhas dos eixos */}
         {pontos.map((p, i) => (
           <line key={i} x1={cx} y1={cy} x2={cx + raioMax * Math.cos(p.angulo)} y2={cy + raioMax * Math.sin(p.angulo)}
             stroke="rgba(0,0,0,0.1)" strokeWidth="1" />
         ))}
+        {/* Polígono de sabores */}
         <polygon points={polygonPoints} fill="rgba(181,101,29,0.2)" stroke="var(--copper)" strokeWidth="1.5" />
+        {/* Pontos */}
         {pontos.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r={5} fill={p.cor} stroke="white" strokeWidth="1.5" />
         ))}
+        {/* Labels */}
         {pontos.map((p, i) => {
           const lx = cx + (raioMax + 16) * Math.cos(p.angulo);
           const ly = cy + (raioMax + 16) * Math.sin(p.angulo);
@@ -146,6 +166,7 @@ function RodaSensorial({ dados }: { dados: { componente: string; intensidade: st
           );
         })}
       </svg>
+      {/* Legenda */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
         {sabores.map((s, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11 }}>
@@ -159,6 +180,7 @@ function RodaSensorial({ dados }: { dados: { componente: string; intensidade: st
   );
 }
 
+// ── Renderizador de conteúdo rich text ───────────────────────
 function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
   const linhas = texto.split('\n');
   const elementos: React.ReactNode[] = [];
@@ -207,6 +229,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       return;
     }
 
+    // Tabela markdown
     if (l.includes('|')) {
       emTabela = true;
       const celulas = l.split('|').map(c => c.trim()).filter(c => c);
@@ -216,6 +239,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
 
     if (emTabela) fecharTabela();
 
+    // Cabeçalho
     if (l.startsWith('###')) {
       elementos.push(<div key={i} style={{ fontWeight: 700, fontSize: 13, color: cor, marginTop: 10, marginBottom: 4 }}>{l.replace(/^#+\s*/, '')}</div>);
       return;
@@ -225,6 +249,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       return;
     }
 
+    // Lista
     if (l.match(/^[-*•·]\s+/)) {
       const texto = l.replace(/^[-*•·]\s+/, '');
       const partesBold = texto.split(/\*\*(.*?)\*\*/g);
@@ -239,6 +264,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       return;
     }
 
+    // Lista numerada
     const mNum = l.match(/^(\d+)[.)]\s+(.+)/);
     if (mNum) {
       const texto = mNum[2];
@@ -256,6 +282,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       return;
     }
 
+    // Bold inline
     const partesBold = l.split(/\*\*(.*?)\*\*/g);
     elementos.push(
       <p key={i} style={{ margin: '0 0 6px 0', fontSize: 13, lineHeight: 1.6 }}>
@@ -269,8 +296,10 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
   return <div>{elementos}</div>;
 }
 
+// ── Questões de estudo ─────────────────────────────────────────
 function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
   const [respostas, setRespostas] = useState<Record<string, string>>({});
+  const [mostrarRespostas, setMostrarRespostas] = useState(false);
 
   const linhas = conteudo.split('\n').filter(l => l.trim());
   const questoes: { tipo: string; pergunta: string; opcoes: string[]; id: string }[] = [];
@@ -330,6 +359,7 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
   );
 }
 
+// ── Componente principal ──────────────────────────────────────
 export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
   textoGuia: string;
   nomePrato: string;
@@ -350,6 +380,7 @@ export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
 
   return (
     <div style={{ fontFamily: 'var(--font-body)' }}>
+      {/* Cabeçalho */}
       <div style={{ background: 'linear-gradient(135deg, #1f1b16 0%, #3d3830 100%)', borderRadius: 16, padding: '20px 20px 16px', marginBottom: 16, color: '#faf7f2' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
@@ -370,6 +401,7 @@ export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
           )}
         </div>
 
+        {/* Navegação rápida */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
           {guia.secoes.map(s => (
             <button key={s.num} onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)} style={{ padding: '4px 10px', borderRadius: 20, border: `1px solid ${secaoAberta === s.num ? s.cor : 'rgba(255,255,255,0.2)'}`, background: secaoAberta === s.num ? s.cor : 'rgba(255,255,255,0.08)', color: '#faf7f2', fontSize: 11, cursor: 'pointer', fontWeight: secaoAberta === s.num ? 700 : 400 }}>
@@ -379,8 +411,10 @@ export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
         </div>
       </div>
 
+      {/* Secções */}
       {guia.secoes.map(s => (
         <div key={s.num} style={{ marginBottom: 10, borderRadius: 14, overflow: 'hidden', border: `1px solid ${s.cor}30`, boxShadow: secaoAberta === s.num ? `0 4px 16px ${s.cor}20` : 'none' }}>
+          {/* Cabeçalho da secção */}
           <button onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: secaoAberta === s.num ? s.cor : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: secaoAberta === s.num ? 'rgba(255,255,255,0.2)' : s.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
               {s.icone}
@@ -395,26 +429,28 @@ export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
             </span>
           </button>
 
-          {secaoAberta === s.num && (
-            <div style={{ padding: '16px 16px', background: '#fdfcfb', borderTop: `2px solid ${s.cor}` }}>
-              {s.num === 7 && guia.equilibrioSensorial && guia.equilibrioSensorial.length > 0 && (
-                <div style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 12, border: `1px solid ${s.cor}30` }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: s.cor, marginBottom: 12, textAlign: 'center' }}>
-                    Roda de Equilíbrio Sensorial
-                  </div>
-                  <RodaSensorial dados={guia.equilibrioSensorial} />
+          {/* Conteúdo da secção — sempre montado, escondido por CSS quando fechada.
+              Isto garante que a impressão mostra TODAS as secções, não só a aberta. */}
+          <div className="guia-conteudo-print" style={{ display: secaoAberta === s.num ? 'block' : 'none', padding: '16px 16px', background: '#fdfcfb', borderTop: `2px solid ${s.cor}` }}>
+            {s.num === 7 && guia.equilibrioSensorial && guia.equilibrioSensorial.length > 0 && (
+              <div style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 12, border: `1px solid ${s.cor}30` }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: s.cor, marginBottom: 12, textAlign: 'center' }}>
+                  Roda de Equilíbrio Sensorial
                 </div>
-              )}
+                <RodaSensorial dados={guia.equilibrioSensorial} />
+              </div>
+            )}
 
-              {s.num === 12
-                ? <SecaoQuestoes conteudo={s.conteudo} cor={s.cor} />
-                : <RenderConteudo texto={s.conteudo} cor={s.cor} />
-              }
-            </div>
-          )}
+            {/* Questões interactivas para secção 12 */}
+            {s.num === 12
+              ? <SecaoQuestoes conteudo={s.conteudo} cor={s.cor} />
+              : <RenderConteudo texto={s.conteudo} cor={s.cor} />
+            }
+          </div>
         </div>
       ))}
 
+      {/* Rodapé */}
       <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 11, color: 'rgba(26,23,20,0.3)' }}>
         Escola de Comércio de Lisboa · Avaliação ECL · {new Date().getFullYear()}
       </div>
@@ -422,6 +458,7 @@ export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
   );
 }
 
+// ── Caixa para colar o texto do Guia ─────────────────────────
 export function CaixaGuia({ nomePrato, ucId, ucNome, textoGuiaInicial, onGuiaAlterado }: {
   nomePrato: string;
   ucId?: string;
@@ -458,7 +495,7 @@ export function CaixaGuia({ nomePrato, ucId, ucNome, textoGuiaInicial, onGuiaAlt
           />
           {textoGuia && (
             <button onClick={() => setModo('ver')} style={{ marginTop: 8, width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-               Ver Guia Formatado →
+              📚 Ver Guia Formatado →
             </button>
           )}
         </>
