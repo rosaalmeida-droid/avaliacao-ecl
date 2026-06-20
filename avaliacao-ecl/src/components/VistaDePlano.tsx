@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao,
-  getRequisicaoPorPlano, getAlunos,
+  getRequisicaoPorPlano, getAlunos, getPlanosAula,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -405,8 +405,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     onPlanoActualizado(p);
   }
 
-  // Após criar ficha — modal simples Sim/Não
+  // Após criar/associar ficha — recarrega o plano actualizado do backend
+  // (necessário porque o ProfessorView altera o plano directamente no backend,
+  // sem o componente pai saber automaticamente).
   function aposGuardarFicha() {
+    const planoAtualizado = getPlanosAula().find(p => p.id === plano.id);
+    if (planoAtualizado) onPlanoActualizado(planoAtualizado);
     onGuardado?.();
     setModalProximo('apos_ficha');
   }
