@@ -178,7 +178,7 @@ export function getPlanosAula(): PlanoAula[] { return load<PlanoAula>(KEYS.plano
 export function getPlanosAulaPorTurma(turmaId: string): PlanoAula[] {
   return getPlanosAula()
     .filter(p => p.turmaId === turmaId)
-    .sort((a, b) => b.data.localeCompare(a.data));
+    .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
 }
 
 export function addOrUpdatePlanoAula(p: PlanoAula): void {
