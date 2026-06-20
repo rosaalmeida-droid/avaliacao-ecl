@@ -255,7 +255,7 @@ export interface PlanoAula {
   titulo: string;
   observacoes: string;
   fichasIds: string[];
-  estado: 'rascunho' | 'fichas_pendentes' | 'requisicao_pendente' | 'publicado';
+  estado: 'rascunho' | 'fichas_pendentes' | 'requisicao_pendente' | 'publicado' | 'arquivado';
   requisicaoId?: string;
   ucId?: string;
   ucNome?: string;
