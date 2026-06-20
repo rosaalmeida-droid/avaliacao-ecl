@@ -38,6 +38,8 @@ const SECOES_CONFIG = [
   { num: 10, titulo: 'Food Cost',               icone: '💶', cor: '#2c3e50', corTexto: '#fff' },
   { num: 11, titulo: 'Conhecimentos',           icone: '📚', cor: '#7f8c8d', corTexto: '#fff' },
   { num: 12, titulo: 'Questões de Estudo',      icone: '❓', cor: '#34495e', corTexto: '#fff' },
+  { num: 13, titulo: 'Caso Profissional',       icone: '🏆', cor: '#6c5ce7', corTexto: '#fff' },
+  { num: 14, titulo: 'Autoavaliação',           icone: '📝', cor: '#00b894', corTexto: '#fff' },
 ];
 
 // ── Parser do texto da IA → estrutura de dados ────────────────
@@ -47,7 +49,7 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   SECOES_CONFIG.forEach(cfg => {
     // Padrões de cabeçalho: "# 1.", "## 1.", "1.", "SECÇÃO 1"
     const regex = new RegExp(
-      `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:ENQUADRAMENTO|COMPETÊNCIAS|MICROCOMPETÊNCIAS|HACCP|RENDIMENTOS|CAPACITAÇÃO|EQUILÍBRIO|SUGESTÕES|SUSTENTABILIDADE|FOOD COST|CONHECIMENTOS|QUESTÕES)[^\\n]*\\n([\\s\\S]*?)(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*|$)`,
+      `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:ENQUADRAMENTO|COMPETÊNCIAS|MICROCOMPETÊNCIAS|HACCP|RENDIMENTOS|CAPACITAÇÃO|EQUILÍBRIO|SUGESTÕES|SUSTENTABILIDADE|FOOD COST|CONHECIMENTOS|QUESTÕES|CASO PROFISSIONAL|AUTOAVALIAÇÃO)[^\\n]*\\n([\\s\\S]*?)(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*|$)`,
       'i'
     );
     const m = texto.match(regex);
@@ -59,18 +61,20 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   // Se não encontrou secções pelo número, tentar pelos títulos
   if (secoes.length < 3) {
     const padroesTitulo = [
-      { regex: /(?:ENQUADRAMENTO|enquadramento)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:COMPETÊNCIAS|HACCP|MICRO|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST)|$)/i, num: 1 },
-      { regex: /(?:COMPETÊNCIAS|competências)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:MICRO|HACCP|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST)|$)/i, num: 2 },
-      { regex: /(?:MICROCOMPETÊNCIAS|micro)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:HACCP|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST)|$)/i, num: 3 },
-      { regex: /(?:HACCP|PCC)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST)|$)/i, num: 4 },
-      { regex: /(?:RENDIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST)|$)/i, num: 5 },
-      { regex: /(?:CAPACITAÇÃO)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:EQUIL|SUGE|SUST|FOOD|CONHE|QUEST)|$)/i, num: 6 },
-      { regex: /(?:EQUILÍBRIO SENSORIAL|sensorial)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:SUGE|SUST|FOOD|CONHE|QUEST)|$)/i, num: 7 },
-      { regex: /(?:SUGESTÕES)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:SUST|FOOD|CONHE|QUEST)|$)/i, num: 8 },
-      { regex: /(?:SUSTENTABILIDADE)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:FOOD|CONHE|QUEST)|$)/i, num: 9 },
-      { regex: /(?:FOOD COST)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CONHE|QUEST)|$)/i, num: 10 },
-      { regex: /(?:CONHECIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:QUEST)|$)/i, num: 11 },
-      { regex: /(?:QUESTÕES)[^#\n]*\n([\s\S]*?)$/i, num: 12 },
+      { regex: /(?:ENQUADRAMENTO|enquadramento)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:COMPETÊNCIAS|HACCP|MICRO|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 1 },
+      { regex: /(?:COMPETÊNCIAS|competências)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:MICRO|HACCP|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 2 },
+      { regex: /(?:MICROCOMPETÊNCIAS|micro)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:HACCP|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 3 },
+      { regex: /(?:HACCP|PCC)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 4 },
+      { regex: /(?:RENDIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 5 },
+      { regex: /(?:CAPACITAÇÃO)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 6 },
+      { regex: /(?:EQUILÍBRIO SENSORIAL|sensorial)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 7 },
+      { regex: /(?:SUGESTÕES)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 8 },
+      { regex: /(?:SUSTENTABILIDADE)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 9 },
+      { regex: /(?:FOOD COST)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CONHE|QUEST|CASO|AUTO)|$)/i, num: 10 },
+      { regex: /(?:CONHECIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:QUEST|CASO|AUTO)|$)/i, num: 11 },
+      { regex: /(?:QUESTÕES)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CASO|AUTO)|$)/i, num: 12 },
+      { regex: /(?:CASO PROFISSIONAL)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:AUTOAVALIAÇÃO)|$)/i, num: 13 },
+      { regex: /(?:AUTOAVALIAÇÃO)[^#\n]*\n([\s\S]*?)$/i, num: 14 },
     ];
     padroesTitulo.forEach(p => {
       const m = texto.match(p.regex);
