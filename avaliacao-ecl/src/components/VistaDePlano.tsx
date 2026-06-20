@@ -95,18 +95,18 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
 
         <div style={{ flex: 1 }}>
           <div style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>
-            {diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {plano.turmaId}
+            {diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {String(plano.turmaId ?? '')}
           </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 6 }}>
-            {plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`}
+            {String(plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`)}
           </div>
 
           {/* UC — muito visível */}
           {plano.ucId ? (
             <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 12px', marginTop: 4, display: 'inline-block' }}>
               <div style={{ fontSize:12, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Unidade de Competência</div>
-              <div style={{ fontSize: 13, color: 'white', fontWeight: 700, marginTop: 1 }}>{plano.ucId}</div>
-              <div style={{ fontSize:13, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>{plano.ucNome}</div>
+              <div style={{ fontSize: 13, color: 'white', fontWeight: 700, marginTop: 1 }}>{String(plano.ucId ?? '')}</div>
+              <div style={{ fontSize:13, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>{String(plano.ucNome ?? '')}</div>
             </div>
           ) : (
             <div style={{ background: 'rgba(179,65,58,0.3)', borderRadius: 8, padding: '5px 10px', marginTop: 4, display: 'inline-block' }}>
@@ -133,8 +133,8 @@ function BarraUC({ plano }: { plano: PlanoAula }) {
     <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'var(--copper)', padding: '6px 16px', marginBottom: 12, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
       <div style={{ fontSize:12, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, flexShrink: 0 }}>UC</div>
       <div style={{ flex: 1 }}>
-        <span style={{ fontSize: 13, color: 'white', fontWeight: 700 }}>{plano.ucId}</span>
-        <span style={{ fontSize:13, color: 'rgba(255,255,255,0.8)', marginLeft: 8 }}>{plano.ucNome}</span>
+        <span style={{ fontSize: 13, color: 'white', fontWeight: 700 }}>{String(plano.ucId ?? '')}</span>
+        <span style={{ fontSize:13, color: 'rgba(255,255,255,0.8)', marginLeft: 8 }}>{String(plano.ucNome ?? '')}</span>
       </div>
     </div>
   );
@@ -392,7 +392,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // ── Modal Sim/Não ─────────────────────────────────────────────
   if (modalProximo === 'apos_ficha') {
     const fichasActuais = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
-    const ultimaFicha = fichasActuais[fichasActuais.length - 1];
+    const ordenadas = [...fichasActuais].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
+    const ultimaFicha = ordenadas[ordenadas.length - 1];
     const nomePrato = ultimaFicha?.nomePrato || '';
     return (
       <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
@@ -485,7 +486,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   if (modulo === 'guia') {
     const fichasActuais = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
-    const ultimaFicha = fichasActuais[fichasActuais.length - 1];
+    const ordenadas = [...fichasActuais].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
+    const ultimaFicha = ordenadas[ordenadas.length - 1];
     const nomePratoGuia = ultimaFicha?.nomePrato || '';
 
     return (
