@@ -1,761 +1,147 @@
-import React, { useState } from 'react';
-import {
-  getPlanosAulaPorTurma,
-  addOrUpdatePlanoAula,
-  arquivarPlanoAula,
-  desarquivarPlanoAula,
-  getPlanosArquivados,
-  getFichasProducao,
-  getAlunos,
-} from '../backend';
-import { PlanoAula as TPlanoAula } from '../types';
-import { Card } from './ui';
-import ProfessorView from './ProfessorView';
-
-const TIPOS_ATIVIDADE = [
-  'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
-  'Pequeno-almoço','Coffee break','Serviço real à carta','Catering',
-  'Buffet','Evento externo','Outro',
-];
-
-const COMP_PERM = [
-  'Responsabilidade pelas suas acoes',
-  'Autonomia no ambito das suas funcoes',
-  'Respeito pelas normas de higiene e seguranca alimentar',
-  'Sentido de organizacao',
-  'Respeito pelas regras e normas definidas',
-  'Respeito pelas normas de seguranca e saude no trabalho',
-];
-
-const COMP_OPC = [
-  'Empatia','Empenho e persistencia na resolucao de problemas','Escuta ativa',
-  'Cooperacao com a equipa','Assertividade','Cuidado com a apresentacao pessoal',
-  'Flexibilidade e adaptabilidade','Iniciativa','Autocontrolo',
-  'Disponibilidade para aprender','Respeito pela sensibilidade e bem-estar dos outros',
-  'Respeito pelos principios da sustentabilidade','Sentido critico',
-  'Autoconfianca','Postura profissional','Respeito pelas diferencas individuais',
-];
-
-export const UCS_COZINHA = [
-  { id:'UC03576', nome:'Planear e organizar a producao de cozinha' },
-  { id:'UC01999', nome:'Preparar e executar confecoes de cozinha' },
-  { id:'UC03577', nome:'Preparar e confecionar molhos e fundos' },
-  { id:'UC02002', nome:'Preparar e confecionar sopas, acepipes, ovos e massas' },
-  { id:'UC02003', nome:'Preparar e confecionar peixes, mariscos e guarnicoes' },
-  { id:'UC02004', nome:'Preparar e confecionar carnes, aves, caca e guarnicoes' },
-  { id:'UC02005', nome:'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria' },
-  { id:'UC03579', nome:'Gerir aprovisionamentos e controlar custos' },
-  { id:'UC03584', nome:'Implementar regras de higiene e seguranca alimentar' },
-  { id:'UC03585', nome:'Conservar materias-primas alimentares' },
-  { id:'UC03586', nome:'Confecionar cozinha e docaria tradicional portuguesa' },
-  { id:'UC03587', nome:'Preparar e confecionar pastelaria de sobremesa' },
-  { id:'UC03588', nome:'Preparar e confecionar gastronomia do Mundo' },
-  { id:'UC03589', nome:'Implementar novas tendencias na cozinha' },
-  { id:'UC03590', nome:'Confecionar produtos sustentaveis' },
-  { id:'UC03591', nome:'Planear e executar servicos especiais de cozinha' },
-  { id:'UC03592', nome:'Planear e confecionar pastelaria internacional' },
-  { id:'UC03593', nome:'Planear e confecionar massas basicas de panificacao' },
-  { id:'UC03594', nome:'Planear e confecionar Cake Design' },
-  { id:'UC03595', nome:'Planear e confecionar cozinha alternativa' },
-  { id:'UC03596', nome:'Planear e confecionar cozinha criativa' },
-  { id:'UC03597', nome:'Planear e confecionar massas especiais de panificacao' },
-];
-
-// Parseia a data de um plano, lidando com vários formatos possíveis
-function parsearDataPlano(dataStr?: string): Date {
+function doPost(e) {
   try {
-    if (!dataStr || dataStr === 'undefined') throw new Error();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
-      return new Date(dataStr + 'T12:00:00');
+    // Alinhado com os outros scripts ECL: corpo enviado como JSON puro
+    // (Content-Type: text/plain), não FormData — chega sempre via postData.contents.
+    const raw = (e.postData && e.postData.contents) || (e.parameter && e.parameter.dados) || '{}';
+    const dados = JSON.parse(raw);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const folha1 = ss.getSheetByName('Folha1');
+    
+    if (!folha1) return resposta(false, 'Aba Folha1 nao encontrada');
+
+    const paxR = parseFloat(dados.paxReceita) || 1;
+    const paxT = parseFloat(dados.paxTotal) || 15;
+
+    // Criar copia com nome receita + data
+    const agora = new Date();
+    const data = Utilities.formatDate(agora, 'Europe/Lisbon', 'dd-MM-yyyy');
+    const nomeReceita = (dados.nomeReceita || 'Receita').substring(0, 20);
+    const nomeAba = (nomeReceita + '_' + data)
+      .replace(/[^a-zA-Z0-9_\-]/g, '_')
+      .substring(0, 50);
+    
+    // Apagar aba anterior com mesmo nome se existir
+    const abaExistente = ss.getSheetByName(nomeAba);
+    if (abaExistente) ss.deleteSheet(abaExistente);
+    
+    // Copiar Folha1 (modelo)
+    const sheet = folha1.copyTo(ss);
+    sheet.setName(nomeAba);
+
+    // ── CABECALHO ─────────────────────────────────────────────
+    // D5 — nome da receita (linha 5, coluna D=4)
+    sheet.getRange('D5').setValue(dados.nomeReceita || '');
+    sheet.getRange('B7').setValue(dados.familia || '');
+    sheet.getRange('H7').setValue(paxT);   // Encomendas
+    sheet.getRange('L7').setValue(paxR);   // Receita para
+
+    // ── LIMPAR LINHAS 16 A 58 (43 linhas de ingredientes) ──────
+    // Coluna A (Quantidade 1 pax) é FÓRMULA calculada a partir de B — nunca escrever lá.
+    for (let i = 0; i < 43; i++) {
+      const row = 16 + i;
+      sheet.getRange(row, 2).setValue('');  // B - qty receita
+      try { sheet.getRange(row, 3).setValue(''); } catch(e) {}  // C - nome (pode estar mesclada)
+      sheet.getRange(row, 8).setValue('');  // H - unidade
+      sheet.getRange(row, 12).setValue(''); // L - preco unitario
     }
-    const d = new Date(dataStr);
-    if (isNaN(d.getTime())) throw new Error();
-    return d;
-  } catch {
-    return new Date();
+
+    // ── PREENCHER INGREDIENTES ────────────────────────────────
+    const ingredientes = dados.ingredientes || [];
+    ingredientes.forEach(function(ing, i) {
+      if (i >= 43 || !ing.nome) return;
+      const row = 16 + i;
+
+      const qtRec = parseFloat(ing.qtReceita) || 0;
+      const preco = parseFloat(ing.preco)     || 0;
+
+      // B(2) = qty receita — a coluna A (Quantidade 1 pax) calcula-se sozinha por fórmula
+      if (qtRec > 0) {
+        try { sheet.getRange(row, 2).setValue(qtRec); } catch(e) {}
+      }
+      // C(3) = nome ingrediente — pode estar mesclado
+      try { sheet.getRange(row, 3).setValue(ing.nome); } catch(e) {
+        try { sheet.getRange('C' + row).setValue(ing.nome); } catch(e2) {}
+      }
+      // H(8) = unidade
+      try { sheet.getRange(row, 8).setValue(ing.und || ''); } catch(e) {}
+      // L(12) = preco unitario
+      if (preco > 0) {
+        try { sheet.getRange(row, 12).setValue(preco); } catch(e) {}
+      }
+    });
+
+    // ── CONSUMO (J64-J67) ─────────────────────────────────────
+    const consumo = dados.consumo || {};
+    try {
+      sheet.getRange('J64').setValue(consumo.bar        ? 'X' : '');
+      sheet.getRange('J65').setValue(consumo.rest       ? 'X' : '');
+      sheet.getRange('J66').setValue(consumo.interno    ? 'X' : '');
+      sheet.getRange('J67').setValue(consumo.convidados ? 'X' : '');
+    } catch(e) {}
+
+    // ── INFO AULA (coluna R, linhas 64-66) ─────────────────────
+    try { sheet.getRange('R64').setValue(dados.turma      || ''); } catch(e) {}
+    try { sheet.getRange('R65').setValue(dados.dataAula   || ''); } catch(e) {}
+    try { sheet.getRange('R66').setValue(dados.formador   || ''); } catch(e) {}
+
+    // ── ATIVIDADE (a partir de K70) ────────────────────────────
+    try { sheet.getRange('K70').setValue(dados.atividade  || ''); } catch(e) {}
+
+    // ── RESPONSÁVEL COMPRAS (linha 76, zona de assinatura) ─────
+    try { sheet.getRange('N76').setValue(dados.responsavel|| ''); } catch(e) {}
+
+    // ── PREPARACAO ────────────────────────────────────────────
+    try { sheet.getRange('A59').setValue(dados.preparacao || ''); } catch(e) {}
+
+    // Mover aba para o fim
+    try {
+      ss.setActiveSheet(sheet);
+      ss.moveActiveSheet(ss.getNumSheets());
+    } catch(e) {}
+
+    return resposta(true, 'Requisicao criada: ' + nomeAba + ' | ' + ingredientes.length + ' ingredientes');
+
+  } catch(err) {
+    return resposta(false, 'Erro: ' + err.toString() + ' | Stack: ' + err.stack);
   }
 }
 
-function limparHora(h?: string): string {
-  if (!h) return '';
-  return h.includes('T')
-    ? new Date(h).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-    : h.substring(0, 5);
+function resposta(ok, mensagem) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: ok, mensagem: mensagem }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ── Calendário mensal — vista visual dos planos de aula ────────
-function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: TPlanoAula[]; onAbrirPlano: (p: TPlanoAula) => void; onPlanoEliminado?: () => void }) {
-  const hoje = new Date();
-  const [mesActual, setMesActual] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-
-  // Agrupar planos por dia (yyyy-mm-dd)
-  const planosPorDia = new Map<string, TPlanoAula[]>();
-  planos.forEach(p => {
-    const d = parsearDataPlano(p.data);
-    const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (!planosPorDia.has(chave)) planosPorDia.set(chave, []);
-    planosPorDia.get(chave)!.push(p);
-  });
-
-  const ano = mesActual.getFullYear();
-  const mes = mesActual.getMonth();
-  const primeiroDiaSemana = (new Date(ano, mes, 1).getDay() + 6) % 7; // 0=segunda
-  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
-  const nomesMes = mesActual.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
-  const diasSemana = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
-
-  const celulas: (number | null)[] = [];
-  for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null);
-  for (let d = 1; d <= diasNoMes; d++) celulas.push(d);
-
-  const [diaSelecionado, setDiaSelecionado] = useState<number | null>(null);
-
-  return (
-    <div>
-      {/* Navegação do mês */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <button onClick={() => { setMesActual(new Date(ano, mes - 1, 1)); setDiaSelecionado(null); }}
-          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>‹</button>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, textTransform: 'capitalize' }}>{nomesMes}</div>
-        <button onClick={() => { setMesActual(new Date(ano, mes + 1, 1)); setDiaSelecionado(null); }}
-          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>›</button>
-      </div>
-      <button onClick={() => { setMesActual(new Date(hoje.getFullYear(), hoje.getMonth(), 1)); setDiaSelecionado(hoje.getMonth() === mes && hoje.getFullYear() === ano ? hoje.getDate() : null); }}
-        style={{ width: '100%', marginBottom: 12, padding: '6px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 12, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer' }}>
-        Hoje
-      </button>
-
-      {/* Cabeçalho dias da semana */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 4 }}>
-        {diasSemana.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'rgba(26,23,20,0.4)', padding: '4px 0' }}>{d}</div>
-        ))}
-      </div>
-
-      {/* Grelha do calendário */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 16 }}>
-        {celulas.map((dia, i) => {
-          if (dia === null) return <div key={`vazio-${i}`} />;
-          const chave = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-          const planosNesteDia = planosPorDia.get(chave) || [];
-          const ehHoje = hoje.getDate() === dia && hoje.getMonth() === mes && hoje.getFullYear() === ano;
-          const selecionado = diaSelecionado === dia;
-          return (
-            <button key={dia} onClick={() => setDiaSelecionado(selecionado ? null : dia)}
-              style={{
-                aspectRatio: '1', borderRadius: 8, border: ehHoje ? '2px solid var(--copper)' : '1px solid var(--border)',
-                background: selecionado ? 'var(--copper)' : (planosNesteDia.length > 0 ? 'var(--copper-pale)' : '#fff'),
-                color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
-                cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: 2, position: 'relative',
-              }}>
-              <span style={{ fontSize: 13, fontWeight: ehHoje || selecionado ? 700 : 500 }}>{dia}</span>
-              {planosNesteDia.length > 0 && (
-                <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
-                  {planosNesteDia.slice(0, 3).map((_, idx) => (
-                    <div key={idx} style={{ width: 4, height: 4, borderRadius: '50%', background: selecionado ? 'white' : 'var(--copper)' }} />
-                  ))}
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Lista de planos do dia selecionado */}
-      {diaSelecionado !== null && (() => {
-        const chave = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(diaSelecionado).padStart(2, '0')}`;
-        const planosDoDia = planosPorDia.get(chave) || [];
-        return (
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              {diaSelecionado} de {nomesMes}
-            </div>
-            {planosDoDia.length === 0 && (
-              <div style={{ padding: '20px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)', fontSize: 13 }}>
-                Sem aulas planeadas neste dia.
-              </div>
-            )}
-            {planosDoDia.map(p => {
-              const horaI = limparHora(p.horaInicio);
-              const horaF = limparHora(p.horaFim);
-              return (
-                <div key={p.id} className="option-card" onClick={() => onAbrirPlano(p)} style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 10px', textAlign: 'center', minWidth: 50 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{horaI || '--:--'}</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo || 'Plano de aula'}</div>
-                      {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}</div>}
-                      <div className="muted" style={{ fontSize: 12 }}>{horaI && horaF ? `${horaI}-${horaF}` : ''} {p.turmaId ? '· ' + p.turmaId : ''}</div>
-                    </div>
-                    <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
-                      background: p.estado === 'publicado' ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
-                      color: p.estado === 'publicado' ? 'var(--sage)' : 'var(--copper)' }}>
-                      {p.estado === 'publicado' ? 'Publicado' : 'Rascunho'}
-                    </span>
-                    <button onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm(`Mover "${p.titulo || 'este plano'}" para arquivo? Deixa de aparecer aqui mas fica guardado.`)) {
-                        arquivarPlanoAula(p.id);
-                        onPlanoEliminado?.();
-                      }
-                    }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
-                      title="Arquivar plano">
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
-    </div>
-  );
+function doGet(e) {
+  return resposta(true, 'Apps Script Requisicao ECL v3 ativo');
 }
 
-function FichaSelector({ todasFichas, fichasSel, onChange }: {
-  todasFichas: any[]; fichasSel: string[]; onChange: (ids: string[]) => void;
-}) {
-  const [pesquisa, setPesquisa] = useState('');
-  const fichasFiltradas = todasFichas.filter(f =>
-    !pesquisa || (f.nomePrato||'').toLowerCase().includes(pesquisa.toLowerCase()) ||
-    (f.classificacao||'').toLowerCase().includes(pesquisa.toLowerCase())
-  );
-  return (
-    <div>
-      {fichasSel.length > 0 && (
-        <div style={{marginBottom:8,padding:'8px 10px',background:'var(--copper-pale)',borderRadius:8,fontSize:12,color:'var(--copper)',fontWeight:600}}>
-          {fichasSel.length} ficha{fichasSel.length>1?'s':''} selecionada{fichasSel.length>1?'s':''}
-        </div>
-      )}
-      <input
-        className="input"
-        value={pesquisa}
-        onChange={e=>setPesquisa(e.target.value)}
-        placeholder="Pesquisar fichas por nome ou tipo..."
-        style={{marginBottom:8}}
-      />
-      <div style={{maxHeight:280,overflowY:'auto',border:'1px solid var(--border)',borderRadius:10,padding:6}}>
-        {fichasFiltradas.length===0&&<div className="muted" style={{padding:10,textAlign:'center'}}>Sem resultados para "{pesquisa}"</div>}
-        {fichasFiltradas.map(f=>{
-          const sel = fichasSel.includes(f.id);
-          return (
-            <div key={f.id} onClick={()=>onChange(sel?fichasSel.filter(x=>x!==f.id):[...fichasSel,f.id])}
-              style={{display:'flex',alignItems:'center',gap:10,padding:'9px 10px',borderRadius:8,marginBottom:4,cursor:'pointer',background:sel?'var(--copper-pale)':'#fff',border:'1px solid '+(sel?'var(--copper)':'transparent')}}>
-              <div style={{width:20,height:20,borderRadius:5,border:'1.5px solid '+(sel?'var(--copper)':'var(--border)'),background:sel?'var(--copper)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:12,fontWeight:700}}>
-                {sel&&'✓'}
-              </div>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:600,fontSize:13}}>{f.nomePrato}</div>
-                <div className="muted" style={{fontSize:13}}>{f.classificacao} · {f.numPorcoes} doses{f.data?' · '+f.data:''}</div>
-              </div>
-              {f.ucsAssociadas?.length>0&&<span style={{fontSize:13,color:'var(--copper)',fontWeight:600}}>{f.ucsAssociadas[0]}</span>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function Acc({ num, icon, title, desc, status, open, locked, onToggle, children }: {
-  num: number; icon: string; title: string; desc: string;
-  status: 'done'|'active'|'pending'; open: boolean; locked: boolean;
-  onToggle: () => void; children: React.ReactNode;
-}) {
-  const statusStyles = {
-    done:    { bg:'rgba(107,124,94,0.15)',  color:'var(--sage)' },
-    active:  { bg:'rgba(181,101,29,0.12)', color:'var(--copper)' },
-    pending: { bg:'rgba(31,27,22,0.06)',   color:'rgba(31,27,22,0.4)' },
-  }[status];
-  return (
-    <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:10 }}>
-      <div onClick={() => !locked && onToggle()} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', cursor:locked?'default':'pointer' }}>
-        <div style={{ width:36, height:36, borderRadius:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, background: status==='done'?'rgba(107,124,94,0.15)' : status==='active'?'var(--copper)' : 'rgba(31,27,22,0.06)' }}>
-          {status==='done' ? '✓' : icon}
-        </div>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontWeight:600, fontSize:14 }}>{title}</div>
-          <div className="muted" style={{ fontSize:12, marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{desc}</div>
-        </div>
-        <span className="badge" style={{ ...statusStyles, fontSize:13 }}>
-          {status==='done'?'Feito' : status==='active'?'Em curso' : 'Pendente'}
-        </span>
-      </div>
-      {open && (
-        <div style={{ borderTop:'1px solid var(--border)', padding:'14px 16px' }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
-  turmaId: string; nomeProfessor?: string;
-  onAlteracao?: (guardar?: () => void) => void;
-  onGuardado?: (plano?: TPlanoAula) => void;
-}) {
-  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>('calendario');
-  const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const planos = getPlanosAulaPorTurma(turmaId);
-
-  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => {
-    onGuardado?.(p);
-  }} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
-
-  if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
-
-  if (vista==='calendario') return (
-    <div>
-      <div className="header-bar">
-        <h2 className="display" style={{ margin:0 }}>Planos de Aula</h2>
-        <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
-      </div>
-      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-        <button onClick={()=>setVista('calendario')} className="tab-btn active" style={{ flex:1 }}>📅 Calendário</button>
-        <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
-        <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
-      </div>
-      <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)} onPlanoEliminado={() => setRefreshKey(k => k + 1)} key={refreshKey} />
-    </div>
-  );
-
-  if (vista==='arquivo') {
-    const arquivados = getPlanosArquivados(turmaId);
-    return (
-      <div>
-        <div className="header-bar">
-          <h2 className="display" style={{ margin:0 }}>Arquivo</h2>
-          <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
-        </div>
-        <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-          <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
-          <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
-          <button onClick={()=>setVista('arquivo')} className="tab-btn active" style={{ flex:1 }}>🗄️ Arquivo</button>
-        </div>
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 14 }}>
-          Planos arquivados não aparecem no calendário nem na lista. Podes sempre trazê-los de volta.
-        </div>
-        {arquivados.length === 0 && (
-          <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>
-            O arquivo está vazio.
-          </div>
-        )}
-        {arquivados.map(p => {
-          const horaI = limparHora(p.horaInicio);
-          const horaF = limparHora(p.horaFim);
-          return (
-            <div key={p.id} className="option-card" style={{ marginBottom: 8, opacity: 0.75 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo || 'Plano de aula'}</div>
-                  {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}</div>}
-                  <div className="muted" style={{ fontSize: 12 }}>{p.data} · {horaI && horaF ? `${horaI}-${horaF}` : ''} · {p.turmaId}</div>
-                </div>
-                <button onClick={() => {
-                  desarquivarPlanoAula(p.id);
-                  setRefreshKey(k => k + 1);
-                }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-                  ↩️ Restaurar
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="header-bar">
-        <h2 className="display" style={{ margin:0 }}>Planos de Aula</h2>
-        <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
-      </div>
-      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-        <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
-        <button onClick={()=>setVista('lista')} className="tab-btn active" style={{ flex:1 }}>📋 Lista</button>
-        <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
-      </div>
-      {planos.length===0 && (
-        <div className="card" style={{ textAlign:'center', padding:40 }}>
-          <div style={{ fontSize:40, marginBottom:10 }}>📋</div>
-          <div className="display" style={{ fontSize:18, marginBottom:6 }}>Ainda não há planos</div>
-          <p className="muted">Cria o primeiro plano de aula para começar.</p>
-        </div>
-      )}
-      {planos.map(p=>{
-        // Corrigir data que pode vir em vários formatos
-        let d: Date;
-        try {
-          if (!p.data || p.data === 'undefined') throw new Error();
-          // Formato ISO: 2026-07-09
-          if (/^\d{4}-\d{2}-\d{2}$/.test(p.data)) {
-            d = new Date(p.data + 'T12:00:00');
-          // Formato com hora: 2026-07-09T...
-          } else if (p.data.includes('T')) {
-            d = new Date(p.data);
-          } else {
-            d = new Date(p.data);
-          }
-          if (isNaN(d.getTime())) throw new Error();
-        } catch {
-          d = new Date();
-        }
-        // Hora limpa
-        const horaI = (p.horaInicio||'').includes('T')
-          ? new Date(p.horaInicio).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})
-          : (p.horaInicio||'').substring(0,5);
-        const horaF = (p.horaFim||'').includes('T')
-          ? new Date(p.horaFim).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})
-          : (p.horaFim||'').substring(0,5);
-
-        return (
-          <div key={p.id} className="option-card" onClick={() => onGuardado?.(p)}>
-            <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-              <div style={{ background:'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
-                <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'white', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
-                <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.85)', textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>
-                  {p.numeroPlan ? <span style={{ color:'var(--copper)', marginRight:6 }}>Plano {p.numeroPlan}</span> : null}
-                  {p.titulo || 'Plano de aula'}
-                </div>
-                {p.ucId && (
-                  <div style={{ fontSize:13, color:'var(--copper)', fontWeight:600, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}
-                  </div>
-                )}
-                <div className="muted" style={{ fontSize:13 }}>
-                  {horaI && horaF ? horaI+'-'+horaF+' ' : ''}{p.turmaId}{(p.fichasIds?.length||0) > 0 ? ' - '+p.fichasIds.length+' ficha'+(p.fichasIds.length!==1?'s':'') : ''}
-                </div>
-              </div>
-              <span style={{ fontSize:13, padding:'3px 10px', borderRadius:20, fontWeight:700, flexShrink:0,
-                background:p.estado==='publicado'?'rgba(90,122,78,0.15)':'rgba(181,101,29,0.12)',
-                color:p.estado==='publicado'?'var(--sage)':'var(--copper)',
-                border:'1px solid '+(p.estado==='publicado'?'rgba(90,122,78,0.3)':'rgba(181,101,29,0.3)'),
-              }}>
-                {p.estado==='publicado'?'Publicado':'Rascunho'}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado }: {
-  turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void;
-  onVoltar:()=>void; onAlteracao?:(guardar?:()=>void)=>void; onGuardado?:()=>void;
-}) {
-  const [dados, setDados] = useState({
-    data: new Date().toISOString().split('T')[0],
-    horaInicio: '08:30',
-    horaFim: '17:30',
-    ucId: '',
-    titulo: '',
-    professor: nomeProfessor || '',
-    tipoAtividade: 'Aula prática',
-  });
-
-  function setD(k: string, v: string) { setDados(p => ({ ...p, [k]: v })); onAlteracao?.(); }
-
-  function guardar() {
-    const now = new Date().toISOString();
-    const ucSel = UCS_COZINHA.find(u => u.id === dados.ucId);
-    const planosExistentes = getPlanosAulaPorTurma(turmaId);
-    const numeroPlan = planosExistentes.length + 1;
-    const titulo = dados.titulo || `Plano ${numeroPlan} — ${dados.tipoAtividade} — ${dados.data}`;
-    const p: TPlanoAula = {
-      id: 'plano_' + Date.now(), turmaId,
-      professor: dados.professor,
-      data: dados.data,
-      horaInicio: dados.horaInicio,
-      horaFim: dados.horaFim,
-      titulo,
-      observacoes: '', fichasIds: [],
-      estado: 'rascunho',
-      criadoEm: now, atualizadoEm: now,
-      ucId: dados.ucId,
-      ucNome: ucSel?.nome || '',
-      numeroPlan,
-    } as TPlanoAula;
-    addOrUpdatePlanoAula(p);
-    onGuardado?.();
-    onConcluido(p);
-  }
-
-  const podeGuardar = !!dados.data && !!dados.ucId;
-
-  return (
-    <div>
-      <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
-        <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: '1px solid rgba(247,241,230,0.2)', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>
-          ← Voltar
-        </button>
-        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>
-          Novo Plano de Aula
-        </div>
-        <div style={{ fontSize: 13, color: 'rgba(247,241,230,0.5)', marginTop: 3 }}>ECL · {turmaId}</div>
-      </div>
-
-      <Card>
-        {/* UC — campo mais importante */}
-        <div className="field" style={{ marginBottom: 16 }}>
-          <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>
-            Unidade de Competência <span style={{ color: 'var(--danger)' }}>*</span>
-          </label>
-          <select className="input" value={dados.ucId}
-            onChange={e => setD('ucId', e.target.value)}
-            style={{ border: !dados.ucId ? '2px solid var(--danger)' : undefined, fontSize: 14 }}>
-            <option value="">— Selecciona a UC desta aula —</option>
-            {UCS_COZINHA.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)}
-          </select>
-          {!dados.ucId && (
-            <div style={{ fontSize: 13, color: 'var(--danger)', marginTop: 4 }}>Obrigatório — define as competências da aula</div>
-          )}
-          {dados.ucId && (
-            <div style={{ fontSize: 13, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>
-              ✓ {UCS_COZINHA.find(u => u.id === dados.ucId)?.nome}
-            </div>
-          )}
-        </div>
-
-        {/* Data e horas */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
-          <div className="field">
-            <label className="field-label">Data</label>
-            <input type="date" className="input" value={dados.data} onChange={e => setD('data', e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="field-label">Início</label>
-            <input type="time" className="input" value={dados.horaInicio} onChange={e => setD('horaInicio', e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="field-label">Fim</label>
-            <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
-          </div>
-        </div>
-
-        {/* Tipo */}
-        <div className="field" style={{ marginBottom: 14 }}>
-          <label className="field-label">Tipo de actividade</label>
-          <select className="input" value={dados.tipoAtividade} onChange={e => setD('tipoAtividade', e.target.value)}>
-            {TIPOS_ATIVIDADE.map(t => <option key={t}>{t}</option>)}
-          </select>
-        </div>
-
-        {/* Título — opcional */}
-        <div className="field" style={{ marginBottom: 20 }}>
-          <label className="field-label">Título (opcional)</label>
-          <input className="input" value={dados.titulo}
-            onChange={e => setD('titulo', e.target.value)}
-            placeholder={`Plano — ${dados.tipoAtividade} — ${dados.data}`} />
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
-            Se não preencheres, o título é gerado automaticamente com número sequencial
-          </div>
-        </div>
-
-        <button
-          className="btn btn-primary btn-block"
-          disabled={!podeGuardar}
-          onClick={guardar}
-          style={{ fontSize: 15, padding: '14px', opacity: podeGuardar ? 1 : 0.4 }}>
-          {podeGuardar ? 'Criar plano e começar →' : 'Selecciona a UC para continuar'}
-        </button>
-      </Card>
-    </div>
-  );
-}
-
-
-function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
-  plano:TPlanoAula; turmaId:string; onVoltar:()=>void; onEditar:()=>void; onIrParaFicha?:()=>void;
-}) {
-  const fichas = getFichasProducao().filter(f=>plano.fichasIds.includes(f.id));
-  const todasFichas = getFichasProducao();
-  const fichasDisponiveis = todasFichas.filter(f=>!plano.fichasIds.includes(f.id));
-  const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
-  const [grelhaAberta, setGrelhaAberta] = useState(false);
-  const [mostrarAdicionarFicha, setMostrarAdicionarFicha] = useState(false);
-  const temFichas = fichas.length > 0;
-  const publicado = plano.estado === 'publicado';
-
-  function adicionarFicha(fichaId: string) {
-    addOrUpdatePlanoAula({...plano, fichasIds:[...plano.fichasIds,fichaId], atualizadoEm:new Date().toISOString()});
-    setMostrarAdicionarFicha(false);
-  }
-
-  type Nota='S'|'A'|'R'|null;
-  const comps = COMP_PERM.map(n=>({id:n,abrev:n.split(' ').slice(0,2).join(' ')}));
-  const [notas,setNotas]=useState<Record<string,Record<string,Nota>>>(()=>
-    Object.fromEntries(alunos.map(a=>[a.id,Object.fromEntries(comps.map(c=>[c.id,null]))]))
-  );
-  const [compExtra,setCompExtra]=useState('');
-  const [compExtraAtiva,setCompExtraAtiva]=useState<string|null>(null);
-  const [notasExtra,setNotasExtra]=useState<Record<string,Nota>>({});
-  const COR={
-    S:{bg:'rgba(107,124,94,0.15)',color:'var(--sage)',border:'var(--sage)'},
-    A:{bg:'rgba(31,27,22,0.06)',color:'var(--charcoal)',border:'var(--charcoal)'},
-    R:{bg:'rgba(179,65,58,0.1)',color:'var(--danger)',border:'var(--danger)'}
+// Testar manualmente — executa esta funcao no editor para depurar
+function testarEnvio() {
+  const mockDados = {
+    nomeReceita: 'Bacalhau a Bras + Bacalhau a Narcisa',
+    familia: 'Peixe',
+    paxTotal: 15,
+    paxReceita: 4,
+    turma: '2ARB',
+    dataAula: '2026-06-16',
+    formador: 'Rosa Almeida',
+    responsavel: 'Maria Silva',
+    atividade: 'Almoco Erasmus tour - 2ARB e 2ACP',
+    consumo: { bar: false, rest: true, interno: false, convidados: false },
+    ingredientes: [
+      { nome: 'Bacalhau demolhado', qty1pax: '0.125', qtReceita: '0.500', und: 'kg', preco: '13.99' },
+      { nome: 'Ovos', qty1pax: '1', qtReceita: '4', und: 'un', preco: '0.25' },
+      { nome: 'Azeite virgem extra', qty1pax: '0.010', qtReceita: '0.040', und: 'l', preco: '6.65' },
+      { nome: 'Cebola', qty1pax: '0.033', qtReceita: '0.130', und: 'kg', preco: '0.89' },
+    ],
   };
-
-  return (
-    <div>
-      <div style={{background:'var(--charcoal)',borderRadius:14,padding:'18px',marginBottom:12}}>
-        <button onClick={onVoltar} className="btn" style={{fontSize:13,padding:'5px 10px',background:'rgba(247,241,230,0.6)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.6)',marginBottom:10}}>← Planos</button>
-        <div className="display" style={{fontSize:18,color:'var(--cream)'}}>{plano.titulo}</div>
-        <div style={{fontSize:12,color:'rgba(247,241,230,0.5)',marginTop:2}}>{plano.data} · {plano.horaInicio}–{plano.horaFim} · {plano.turmaId}</div>
-        {plano.ucId && (
-          <div style={{marginTop:8,padding:'6px 10px',background:'rgba(181,101,29,0.25)',borderRadius:8,display:'inline-block'}}>
-            <span style={{fontSize:13,color:'rgba(247,241,230,0.6)',textTransform:'uppercase',letterSpacing:'0.05em'}}>UC </span>
-            <span style={{fontSize:12,color:'var(--cream)',fontWeight:600}}>{plano.ucId} - {plano.ucNome}</span>
-          </div>
-        )}
-        <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
-          <span style={{fontSize:13,padding:'3px 10px',borderRadius:20,background:publicado?'rgba(107,124,94,0.3)':'rgba(181,101,29,0.3)',color:'var(--cream)'}}>{publicado?'Publicado':'Rascunho'}</span>
-          <span style={{fontSize:13,color:'rgba(247,241,230,0.4)'}}>☁️ Guardado no Sheets</span>
-        </div>
-      </div>
-
-      <div className="card" style={{marginBottom:12}}>
-        <div style={{fontSize:12,fontWeight:700,color:'var(--charcoal)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>Estado do plano</div>
-        {[
-          [temFichas, fichas.length+' ficha'+(fichas.length!==1?'s':'')+' de producao', 'Sem fichas de producao'],
-          [publicado, 'Aula publicada para alunos', 'Nao publicado ainda'],
-        ].map(([ok,sim,nao],i)=>(
-          <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
-            <span style={{fontSize:16,flexShrink:0}}>{ok?'✅':'⚪'}</span>
-            <span style={{fontSize:12,color:ok?'var(--charcoal)':'rgba(26,23,20,0.4)'}}>{ok?String(sim):String(nao)}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="card">
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-          <div style={{fontSize:12,fontWeight:700,color:'var(--copper)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de producao</div>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setMostrarAdicionarFicha(!mostrarAdicionarFicha)}>{mostrarAdicionarFicha?'Fechar':'+ Adicionar ficha'}</button>
-        </div>
-        {fichas.length===0&&<div className="muted">Sem fichas associadas.</div>}
-        {fichas.map(f=>(
-          <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
-            <div style={{width:36,height:36,borderRadius:8,background:'var(--copper-pale)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>📄</div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:600}}>{f.nomePrato}</div>
-              <div className="muted">{f.classificacao} · {f.numPorcoes} doses</div>
-            </div>
-          </div>
-        ))}
-        {mostrarAdicionarFicha&&(
-          <div style={{marginTop:12,padding:12,background:'var(--cream-dark)',borderRadius:10}}>
-            <div style={{fontSize:12,fontWeight:600,marginBottom:8}}>Fichas disponiveis</div>
-            {fichasDisponiveis.length===0&&<div className="muted">Sem fichas disponiveis.</div>}
-            {fichasDisponiveis.map(f=>(
-              <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
-                <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600}}>{f.nomePrato}</div><div className="muted">{f.classificacao}</div></div>
-                <button className="btn btn-primary btn-sm" onClick={()=>adicionarFicha(f.id)}>Adicionar</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {plano.estado==='publicado'&&(
-        <div style={{border:'1.5px solid '+(grelhaAberta?'var(--copper)':'var(--border)'),borderRadius:14,overflow:'hidden',marginTop:10}}>
-          <div onClick={()=>setGrelhaAberta(!grelhaAberta)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',cursor:'pointer',background:grelhaAberta?'var(--copper-pale)':'#fff'}}>
-            <div style={{width:36,height:36,borderRadius:10,background:grelhaAberta?'var(--copper)':'var(--cream-dark)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>📊</div>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:600,fontSize:14}}>Grelha de avaliacao</div>
-              <div className="muted" style={{fontSize:13}}>Competencias atitudinais durante a aula</div>
-            </div>
-            <span style={{fontSize:18,color:'var(--copper)'}}>{grelhaAberta?'▲':'▼'}</span>
-          </div>
-          {grelhaAberta&&(
-            <div style={{borderTop:'1px solid var(--border)',padding:'14px 16px',background:'#fff'}}>
-              <div style={{padding:'8px 12px',background:'var(--copper-pale)',borderRadius:8,fontSize:12,color:'var(--copper)',marginBottom:12}}>
-                Registo do professor sobre as atitudes dos alunos — nao a autoavaliacao.
-              </div>
-              {alunos.length>0&&(
-                <>
-                  <div style={{overflowX:'auto',marginBottom:10}}>
-                    <table style={{borderCollapse:'collapse',width:'100%',minWidth:400,fontSize:12}}>
-                      <thead>
-                        <tr style={{background:'var(--charcoal)',color:'var(--cream)'}}>
-                          <th style={{padding:'8px 10px',textAlign:'left',fontWeight:500,minWidth:90}}>Aluno</th>
-                          {comps.map(c=><th key={c.id} style={{padding:'6px 4px',fontWeight:500,textAlign:'center',fontSize:13,minWidth:60}}>{c.abrev}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {alunos.map((a,ai)=>(
-                          <tr key={a.id} style={{background:ai%2===0?'#fff':'var(--cream)'}}>
-                            <td style={{padding:'7px 10px',fontWeight:500,borderBottom:'1px solid var(--border)'}}>{a.nome||'Aluno '+a.numero}</td>
-                            {comps.map(c=>{
-                              const v=notas[a.id]?.[c.id]||null;
-                              return(
-                                <td key={c.id} style={{padding:'3px 2px',textAlign:'center',borderBottom:'1px solid var(--border)'}}>
-                                  <div style={{display:'flex',gap:2,justifyContent:'center'}}>
-                                    {(['S','A','R'] as Nota[]).map(bv=>(
-                                      <button key={String(bv)} onClick={()=>setNotas(p=>({...p,[a.id]:{...p[a.id],[c.id]:p[a.id][c.id]===bv?null:bv}}))} className="btn" style={{width:22,height:22,padding:0,fontSize:12,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5}}>{bv}</button>
-                                    ))}
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <button className="btn btn-primary btn-block" style={{background:'var(--charcoal)',marginBottom:12}} onClick={()=>alert('Guardado!')}>Guardar avaliacoes</button>
-                  <div style={{padding:'12px 14px',background:'rgba(90,122,78,0.08)',borderRadius:10,border:'1px solid rgba(90,122,78,0.2)'}}>
-                    <div style={{fontSize:12,fontWeight:700,color:'var(--sage)',marginBottom:6}}>+ Competencia extra de observacao</div>
-                    <div style={{fontSize:13,color:'rgba(26,23,20,0.5)',marginBottom:8}}>Nao entra na avaliacao formal.</div>
-                    {!compExtraAtiva?(
-                      <div style={{display:'flex',gap:6}}>
-                        <input className="input" value={compExtra} onChange={e=>setCompExtra(e.target.value)} placeholder="ex: Cooperacao, Iniciativa..." style={{flex:1,fontSize:12}}/>
-                        <button className="btn btn-ghost" onClick={()=>{if(compExtra.trim()){setCompExtraAtiva(compExtra.trim());setNotasExtra({});}}}>Activar</button>
-                      </div>
-                    ):(
-                      <div>
-                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-                          <div style={{fontWeight:600,fontSize:13,color:'var(--sage)'}}>{compExtraAtiva}</div>
-                          <button onClick={()=>{setCompExtraAtiva(null);setCompExtra('');}} style={{fontSize:13,color:'rgba(26,23,20,0.4)',background:'none',border:'none',cursor:'pointer'}}>Remover</button>
-                        </div>
-                        <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
-                          <thead><tr style={{background:'var(--sage)',color:'white'}}><th style={{padding:'6px 10px',textAlign:'left'}}>Aluno</th><th style={{padding:'6px 4px',textAlign:'center'}}>S</th><th style={{padding:'6px 4px',textAlign:'center'}}>A</th><th style={{padding:'6px 4px',textAlign:'center'}}>R</th></tr></thead>
-                          <tbody>
-                            {alunos.map((a,ai)=>{
-                              const v=notasExtra[a.id]||null;
-                              return(
-                                <tr key={a.id} style={{background:ai%2===0?'#fff':'var(--cream)'}}>
-                                  <td style={{padding:'7px 10px'}}>{a.nome||'Aluno '+a.numero}</td>
-                                  {(['S','A','R'] as Nota[]).map(bv=>(
-                                    <td key={String(bv)} style={{textAlign:'center',padding:'3px 2px'}}>
-                                      <button onClick={()=>setNotasExtra(p=>({...p,[a.id]:p[a.id]===bv?null:bv}))} style={{width:22,height:22,padding:0,fontSize:12,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5,cursor:'pointer'}}>{bv}</button>
-                                    </td>
-                                  ))}
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  
+  const mockE = {
+    parameter: { dados: JSON.stringify(mockDados) },
+    postData: { contents: JSON.stringify(mockDados) }
+  };
+  
+  const resultado = doPost(mockE);
+  Logger.log(resultado.getContent());
 }
