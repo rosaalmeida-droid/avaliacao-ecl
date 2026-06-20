@@ -1911,7 +1911,9 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
     const fichasDoPlano = planoId
       ? getFichasProducao().filter(f => (f as any).planoAulaId === planoId)
       : getFichasProducao();
-    return fichasDoPlano[fichasDoPlano.length - 1] || null;
+    // Ordenar por data de criação real — não confiar na ordem do array
+    const ordenadas = [...fichasDoPlano].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
+    return ordenadas[ordenadas.length - 1] || null;
   });
   const nomePrato = nomePratoInicial || fichaAlvo?.nomePrato || '';
   const [textoGuia, setTextoGuia] = useState((fichaAlvo as any)?.textoGuia || '');
@@ -2036,7 +2038,9 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   const [ficha, setFicha] = useState<FichaTecnica>({ ...FICHA_VAZIA, elaboradoPor: nomeProfessor || FICHA_VAZIA.elaboradoPor });
   const [passo, setPasso] = useState<'link' | 'ficha'>('link');
   const [fichasGuardadas, setFichasGuardadas] = useState(() => getFichasProducao());
+  const [mostrarBibliotecaCompleta, setMostrarBibliotecaCompleta] = useState(false);
   const [guardadoMsg, setGuardadoMsg] = useState('');
+  const [ultimaFichaIdGuardada, setUltimaFichaIdGuardada] = useState<string | null>(null);
 
   // Buscar UC do plano mais recente
   const planos = getPlanosAulaPorTurma(turmaId);
@@ -2054,6 +2058,21 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       const proximoNum = todasFichas.length + 1;
       const numeroFormatado = `#${String(proximoNum).padStart(3, '0')}`;
 
+      // Evitar nomes duplicados — só ao criar ficha NOVA (não ao editar uma já existente)
+      let nomeFinal = fichaConfirmada.nomePrato || '';
+      if (vista === 'criar' && nomeFinal) {
+        const nomesExistentes = new Set(todasFichas.map(f => (f.nomePrato || '').trim().toLowerCase()));
+        if (nomesExistentes.has(nomeFinal.trim().toLowerCase())) {
+          let contador = 2;
+          let candidato = `${nomeFinal} ${contador}`;
+          while (nomesExistentes.has(candidato.trim().toLowerCase())) {
+            contador++;
+            candidato = `${nomeFinal} ${contador}`;
+          }
+          nomeFinal = candidato;
+        }
+      }
+
       // Normalizar alergenicos — pode vir como string ou array, dependendo da origem
       const alergRaw: any = fichaConfirmada.alergenicos;
       const alergenicosArray: string[] = Array.isArray(alergRaw)
@@ -2066,7 +2085,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       const htmlCompleto = (() => {
         try {
           return gerarHTML({
-            nomePrato: fichaConfirmada.nomePrato || '',
+            nomePrato: nomeFinal,
             classificacao: fichaConfirmada.classificacao || '',
             fichaNum: fichaConfirmada.fichaNum || numeroFormatado,
             numPorcoes: fichaConfirmada.numPorcoes || '',
@@ -2086,9 +2105,10 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         } catch { return ''; }
       })();
 
+      const novaFichaId = `ficha_${Date.now()}`;
       addOrUpdateFichaProducao({
-        id: `ficha_${Date.now()}`,
-        nomePrato: fichaConfirmada.nomePrato || '',
+        id: novaFichaId,
+        nomePrato: nomeFinal,
         classificacao: fichaConfirmada.classificacao || '',
         fichaNum: fichaConfirmada.fichaNum || numeroFormatado,
         numPorcoes: fichaConfirmada.numPorcoes || '',
@@ -2112,23 +2132,24 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         atualizadoEm: now,
       });
 
-      // Associar ao plano se existe planoId
+      // Associar ao plano se existe planoId — usar o ID exacto que acabámos de criar,
+      // nunca adivinhar pela posição na lista (podia associar a ficha errada).
       if (planoId) {
         const planos = getPlanosAula();
         const plano = planos.find(p => p.id === planoId);
-        if (plano) {
-          const fichasActuais = getFichasProducao();
-          const novaFicha = fichasActuais[fichasActuais.length - 1];
-          if (novaFicha && !plano.fichasIds.includes(novaFicha.id)) {
-            addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, novaFicha.id], atualizadoEm: now });
-          }
+        if (plano && !plano.fichasIds.includes(novaFichaId)) {
+          addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, novaFichaId], atualizadoEm: now });
         }
       }
 
       try { localStorage.removeItem('ecl_ficha_draft'); localStorage.removeItem('ecl_link_draft'); } catch {}
       recarregar();
       onGuardado?.();
-      setGuardadoMsg(fichaConfirmada.nomePrato || 'Ficha');
+      setUltimaFichaIdGuardada(novaFichaId);
+      const nomeOriginal = fichaConfirmada.nomePrato || '';
+      setGuardadoMsg(nomeFinal !== nomeOriginal
+        ? `${nomeFinal} (renomeado de "${nomeOriginal}" — já existia uma ficha com esse nome)`
+        : (nomeFinal || 'Ficha'));
       setVista('apos_guardar' as any);
     } catch (err) {
       console.error('Erro ao guardar ficha:', err);
@@ -2151,7 +2172,8 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
   // ── APÓS GUARDAR ─────────────────────────────────────────
   if ((vista as string) === 'apos_guardar') {
-    const ultimaFichaRaw = fichasGuardadas[fichasGuardadas.length - 1] || ficha;
+    // Usar o ID exacto que guardámos — nunca adivinhar pela posição na lista
+    const ultimaFichaRaw = (ultimaFichaIdGuardada ? fichasGuardadas.find(f => f.id === ultimaFichaIdGuardada) : null) || ficha;
     // Normalizar para exportação — FichaProducao tem alergenicos como array, FichaTecnica como string
     const alergRaw: any = (ultimaFichaRaw as any).alergenicos;
     const ultimaFicha = {
@@ -2192,6 +2214,12 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
   // ── BIBLIOTECA ────────────────────────────────────────────
   if (vista === 'biblioteca') {
+    // Por defeito, só mostrar fichas associadas a ESTE plano específico
+    const fichasDoPlano = planoId
+      ? fichasGuardadas.filter(f => (f as any).planoAulaId === planoId)
+      : fichasGuardadas;
+    const fichasParaMostrar = mostrarBibliotecaCompleta ? fichasGuardadas : fichasDoPlano;
+
     return (
       <div>
         <div className="header-bar">
@@ -2205,25 +2233,57 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
           </div>
         )}
 
-        {fichasGuardadas.length === 0 && (
+        {planoId && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button
+              onClick={() => setMostrarBibliotecaCompleta(false)}
+              className={`tab-btn${!mostrarBibliotecaCompleta ? ' active' : ''}`}
+              style={{ flex: 1 }}>
+              📋 Deste plano ({fichasDoPlano.length})
+            </button>
+            <button
+              onClick={() => setMostrarBibliotecaCompleta(true)}
+              className={`tab-btn${mostrarBibliotecaCompleta ? ' active' : ''}`}
+              style={{ flex: 1 }}>
+              🗂️ + Adicionar ficha existente
+            </button>
+          </div>
+        )}
+
+        {fichasParaMostrar.length === 0 && (
           <Card>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>📄</div>
-              <div className="display" style={{ fontSize: 18, marginBottom: 6 }}>Ainda não há fichas</div>
+              <div className="display" style={{ fontSize: 18, marginBottom: 6 }}>
+                {mostrarBibliotecaCompleta ? 'Ainda não há fichas em nenhum plano' : 'Ainda não há fichas neste plano'}
+              </div>
               <p className="muted">Uma aula pode ter 1 ou mais fichas de produção.</p>
               <Button onClick={novaFicha}>Criar primeira ficha →</Button>
             </div>
           </Card>
         )}
 
-        {fichasGuardadas.length > 0 && (
+        {fichasParaMostrar.length > 0 && (
           <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>
-            {fichasGuardadas.length} ficha{fichasGuardadas.length!==1?'s':''} criada{fichasGuardadas.length!==1?'s':''}. Podes adicionar mais ao mesmo plano de aula.
+            {fichasParaMostrar.length} ficha{fichasParaMostrar.length!==1?'s':''}
+            {mostrarBibliotecaCompleta ? ' em toda a app — clica para associar a este plano' : ' associada(s) a este plano'}.
           </div>
         )}
 
-        {fichasGuardadas.map(f => (
+        {fichasParaMostrar.map(f => (
           <div key={f.id} className="option-card" onClick={() => {
+            if (mostrarBibliotecaCompleta && planoId) {
+              // Associar a ficha existente a este plano, sem duplicar
+              const planos = getPlanosAula();
+              const plano = planos.find(p => p.id === planoId);
+              if (plano && !plano.fichasIds.includes(f.id)) {
+                addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, f.id], atualizadoEm: new Date().toISOString() });
+                recarregar();
+                onAlteracao?.();
+              }
+              setMostrarBibliotecaCompleta(false);
+              return;
+            }
             setFicha(normalizarFicha({
               nomePrato: f.nomePrato, classificacao: f.classificacao,
               fichaNum: f.fichaNum || '', alergenicos: f.alergenicos,
@@ -2240,6 +2300,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             setVista('editar');
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {mostrarBibliotecaCompleta && <span style={{ fontSize: 18, color: 'var(--sage)' }}>+</span>}
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nomePrato}</div>
                 <div className="muted">{f.classificacao} · {f.numPorcoes} porções · {f.data}</div>
