@@ -194,7 +194,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   });
   const [msg, setMsg] = useState('');
 
-  const todasFichas = getFichasProducao();
+  const todasFichas = [...getFichasProducao()].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
   const fichasDisp = planoSel ? todasFichas.filter(f => planoSel.fichasIds.includes(f.id)) : [];
   const fichasExtra = todasFichas.filter(f => !fichasDisp.find(fd => fd.id === f.id));
   const fichasSelecionadas = todasFichas.filter(f => fichasSel.includes(f.id));
@@ -274,9 +274,11 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           preco: l.precoUnitario || '0',
         })),
       };
-      const form = new FormData();
-      form.append('dados', JSON.stringify(payload));
-      await fetch(SHEETS_REQUISICAO_URL, { method: 'POST', mode: 'no-cors', body: form });
+      await fetch(SHEETS_REQUISICAO_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      });
       setMsg('✓ Enviado para o Google Sheets!');
     } catch (e) { setMsg('Erro: ' + String(e)); }
     setTimeout(() => setMsg(''), 6000);
