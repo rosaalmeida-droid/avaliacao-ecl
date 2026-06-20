@@ -10,6 +10,7 @@ import Requisicao from './components/Requisicao';
 import PlanoAula from './components/PlanoAula';
 import { VistaDePlano } from './components/VistaDePlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
+import { CopiaSegurancaView } from './components/CopiaSeguranca';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { sincronizarDoSheets, getEstadoSync, addAluno } from './backend';
 
@@ -33,7 +34,7 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
 }
 
 // Tipo para a vista global do professor
-type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc';
+type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca';
 
 function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -41,6 +42,7 @@ function AppInterno() {
   const [turmaId, setTurmaId] = useState<string>('CP1');
   const [nomeProfessor, setNomeProfessor] = useState<string>('');
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('planos');
   const [temAlteracoes, setTemAlteracoes] = useState(false);
@@ -50,15 +52,18 @@ function AppInterno() {
   const [modalMensagem, setModalMensagem] = useState('');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'ok' | 'offline'>('idle');
 
+  function atualizarDados() {
+    if (!turmaId) return;
+    setSyncStatus('syncing');
+    sincronizarDoSheets(turmaId)
+      .then(() => { setSyncStatus('ok'); setRefreshKey(k => k + 1); })
+      .catch(() => setSyncStatus('offline'));
+  }
+
   useEffect(() => {
     if (perfil === 'professor' && turmaId) {
       const { temSheets } = getEstadoSync();
-      if (temSheets) {
-        setSyncStatus('syncing');
-        sincronizarDoSheets(turmaId)
-          .then(() => setSyncStatus('ok'))
-          .catch(() => setSyncStatus('offline'));
-      }
+      if (temSheets) atualizarDados();
     }
   }, [perfil, turmaId]);
 
@@ -134,6 +139,7 @@ function AppInterno() {
     { id: 'validacao',  label: 'Validação',       icone: '✓'  },
     { id: 'biblioteca', label: 'Biblioteca',      icone: '🗂️' },
     { id: 'avaliacao_uc', label: 'Avaliação por UC', icone: '📊' },
+    { id: 'copia_seguranca', label: 'Cópia de Segurança', icone: '💾' },
   ];
 
   return (
@@ -146,7 +152,7 @@ function AppInterno() {
         />
       )}
 
-      <Header perfil={perfil} onSair={sair} nomeProfessor={nomeProfessor} syncStatus={syncStatus} />
+      <Header perfil={perfil} onSair={sair} nomeProfessor={nomeProfessor} syncStatus={syncStatus} onAtualizar={atualizarDados} />
 
       {perfil === 'professor' && (
         <div>
@@ -177,6 +183,7 @@ function AppInterno() {
           {/* Plano aberto — vista dedicada */}
           {planoAberto ? (
             <VistaDePlano
+              key={refreshKey}
               plano={planoAberto}
               turmaId={turmaId}
               nomeProfessor={nomeProfessor}
@@ -190,6 +197,7 @@ function AppInterno() {
               {/* Conteúdo por vista */}
               {vistaGlobal === 'planos' && (
                 <PlanoAula
+                  key={refreshKey}
                   turmaId={turmaId}
                   nomeProfessor={nomeProfessor}
                   onAlteracao={registarAlteracao}
@@ -230,12 +238,15 @@ function AppInterno() {
               {vistaGlobal === 'avaliacao_uc' && (
                 <AvaliacaoPorUC turmaId={turmaId} />
               )}
+              {vistaGlobal === 'copia_seguranca' && (
+                <CopiaSegurancaView />
+              )}
             </div>
           )}
         </div>
       )}
 
-      {perfil === 'aluno' && aluno && <AlunoView aluno={aluno} />}
+      {perfil === 'aluno' && aluno && <AlunoView key={refreshKey} aluno={aluno} />}
       {perfil === 'coordenadora' && <CoordenadoraView />}
     </div>
   );
