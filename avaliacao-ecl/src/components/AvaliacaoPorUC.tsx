@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { getHistoricoAvaliacoes, getAlunos, RegistoAvaliacao } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, addAluno, RegistoAvaliacao } from '../backend';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude } from '../competenciasECL';
 import { UCS_COZINHA } from './PlanoAula';
 
@@ -31,9 +31,17 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
   const [filtroAluno, setFiltroAluno] = useState<string>('todos');
   const [excluidos, setExcluidos] = useState<Set<string>>(new Set()); // ids de registos excluídos
   const [vistaPor, setVistaPor] = useState<'aluno' | 'competencia'>('aluno');
+  const [refresh, setRefresh] = useState(0);
 
-  const alunos = useMemo(() => getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero), [turmaId]);
-  const todosRegistos = useMemo(() => getHistoricoAvaliacoes(), []);
+  const alunos = useMemo(() => getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero), [turmaId, refresh]);
+  const todosRegistos = useMemo(() => getHistoricoAvaliacoes(), [refresh]);
+
+  function criarListaAlunos(quantidade: number) {
+    for (let n = 1; n <= quantidade; n++) {
+      addAluno({ id: `${turmaId}-${n}`, turmaId, numero: n, ano: 1 });
+    }
+    setRefresh(r => r + 1);
+  }
 
   // Registos filtrados por UC (e aluno, se aplicável)
   const registosUC = useMemo(() => {
@@ -103,6 +111,29 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 16 }}>
         Filtra por UC para ver médias, frequências e ajustar o que entra no cálculo.
       </div>
+
+      {alunos.length === 0 && (
+        <div style={{ padding: '14px 16px', background: 'var(--copper-pale)', borderRadius: 10, marginBottom: 16, border: '1px solid rgba(181,101,29,0.25)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--copper)', marginBottom: 6 }}>
+            ⚠️ Ainda não há alunos registados nesta turma ({turmaId})
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
+            Os alunos registam-se automaticamente quando fazem login pela primeira vez. Se quiseres já filtrar por aluno sem esperar, cria já a lista de números:
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => criarListaAlunos(28)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              Criar 1 a 28
+            </button>
+            <button onClick={() => {
+              const n = prompt('Quantos alunos tem a turma?');
+              const num = parseInt(n || '', 10);
+              if (num > 0 && num <= 40) criarListaAlunos(num);
+            }} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--copper)', background: '#fff', color: 'var(--copper)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+              Outro nº
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filtro UC */}
       <div className="field" style={{ marginBottom: 12 }}>
