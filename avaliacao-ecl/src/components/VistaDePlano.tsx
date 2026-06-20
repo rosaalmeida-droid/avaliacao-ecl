@@ -426,8 +426,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   // ── Renderizar módulo activo ──────────────────────────────────
   const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias'>('resumo');
-  const [compRemovidas, setCompRemovidas] = useState<string[]>((plano as any).compRemovidas || []);
-  const [compAdicionadas, setCompAdicionadas] = useState<string[]>((plano as any).compAdicionadas || []);
+  const [compRemovidas, setCompRemovidas] = useState<string[]>(
+    Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []
+  );
+  const [compAdicionadas, setCompAdicionadas] = useState<string[]>(
+    Array.isArray((plano as any).compAdicionadas) ? (plano as any).compAdicionadas : []
+  );
   const microsDaUC = plano.ucId ? microsPorUC(plano.ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
   const compObrigatorias = OBRIGATORIAS;
   const compTecnicas = microsDaUC.slice(0, 6).filter(m => !compRemovidas.includes(m.id));
