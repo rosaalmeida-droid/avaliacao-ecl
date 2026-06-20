@@ -1139,7 +1139,6 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
   const [mostrarSimilares, setMostrarSimilares] = useState(false);
   const [copiadoFicha, setCopiadoFicha] = useState(false);
   const [copiadoGuia, setCopiadoGuia] = useState(false);
-  const [mostrarPromptManual, setMostrarPromptManual] = useState<'ficha' | 'guia' | null>(null);
 
   // Prompts calculados em tempo real
   const promptFicha = gerarPrompt(link, ucId, ucNome);
@@ -1303,35 +1302,27 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           Copia o prompt → cola numa IA → copia o resultado → cola na caixa abaixo
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
-            onClick={() => copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => setMostrarPromptManual('ficha'))}>
-            {copiadoFicha ? '✅ Prompt copiado! Agora cola na IA' : '📋 Copiar prompt da Ficha'}
+          <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13 }}
+            onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptFicha), '_blank')}>
+            🟠 Abrir no Claude (prompt incluído automaticamente)
           </button>
-          <div style={{ display:'flex', gap:6 }}>
-            <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13 }}
-              onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptFicha), '_blank')}>
-              🟠 Abrir no Claude
-            </button>
-            <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13 }}
-              onClick={() => {
-                copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => setMostrarPromptManual('ficha'));
-                window.open('https://chatgpt.com/chat', '_blank');
-              }}>
-              🟢 Abrir no ChatGPT
-            </button>
-          </div>
-          <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', textAlign:'center' }}>
-            No ChatGPT: o prompt já foi copiado — cola com Ctrl+V (ou Cmd+V) na caixa de chat
-          </div>
-          {mostrarPromptManual === 'ficha' && (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>
-                ⚠️ A cópia automática falhou — selecciona o texto abaixo e copia manualmente (Ctrl+C):
-              </div>
-              <textarea readOnly value={promptFicha} onClick={e => (e.target as HTMLTextAreaElement).select()}
-                style={{ width: '100%', minHeight: 100, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1px solid var(--border)' }} />
+          <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
+            onClick={() => window.open('https://chatgpt.com/chat', '_blank')}>
+            🟢 Abrir o ChatGPT
+          </button>
+          <div style={{ marginTop: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--copper)', marginBottom: 4 }}>
+              Para o ChatGPT — copia este texto e cola lá (toca na caixa para seleccionar tudo):
             </div>
-          )}
+            <textarea readOnly value={promptFicha}
+              onClick={e => (e.target as HTMLTextAreaElement).select()}
+              onFocus={e => e.target.select()}
+              style={{ width: '100%', minHeight: 110, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1.5px solid var(--copper)', background: '#fffdf9' }} />
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6, width: '100%' }}
+              onClick={() => copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
+              {copiadoFicha ? '✅ Copiado!' : '📋 Tentar copiar automaticamente'}
+            </button>
+          </div>
         </div>
 
         {/* Guia — só aparece se já tem nome do prato */}
@@ -1345,31 +1336,26 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
               <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                onClick={() => copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => setMostrarPromptManual('guia'))}>
-                {copiadoGuia ? '✅ Prompt do Guia copiado!' : '📋 Copiar prompt do Guia'}
+                onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptGuia), '_blank')}>
+                🟠 Guia no Claude (prompt incluído automaticamente)
               </button>
-              <div style={{ display:'flex', gap:6 }}>
-                <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                  onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptGuia), '_blank')}>
-                  🟠 Guia no Claude
-                </button>
-                <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                  onClick={() => {
-                    copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => setMostrarPromptManual('guia'));
-                    window.open('https://chatgpt.com/chat', '_blank');
-                  }}>
-                  🟢 Guia no ChatGPT
+              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
+                onClick={() => window.open('https://chatgpt.com/chat', '_blank')}>
+                🟢 Abrir o ChatGPT
+              </button>
+              <div style={{ marginTop: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sage)', marginBottom: 4 }}>
+                  Para o ChatGPT — copia este texto e cola lá (toca na caixa para seleccionar tudo):
+                </div>
+                <textarea readOnly value={promptGuia}
+                  onClick={e => (e.target as HTMLTextAreaElement).select()}
+                  onFocus={e => e.target.select()}
+                  style={{ width: '100%', minHeight: 100, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1.5px solid var(--sage)', background: '#fbfffb' }} />
+                <button type="button" className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6, width: '100%', borderColor:'var(--sage)', color:'var(--sage)' }}
+                  onClick={() => copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => {})}>
+                  {copiadoGuia ? '✅ Copiado!' : '📋 Tentar copiar automaticamente'}
                 </button>
               </div>
-              {mostrarPromptManual === 'guia' && (
-                <div style={{ marginTop: 6 }}>
-                  <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>
-                    ⚠️ A cópia automática falhou — selecciona o texto abaixo e copia manualmente (Ctrl+C):
-                  </div>
-                  <textarea readOnly value={promptGuia} onClick={e => (e.target as HTMLTextAreaElement).select()}
-                    style={{ width: '100%', minHeight: 100, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1px solid var(--border)' }} />
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -1908,21 +1894,25 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-            onClick={() => copiarTexto(promptGuiaAtual, () => {}, () => {})}>
-            📋 Copiar prompt do Guia
+            onClick={() => window.open('https://claude.ai/new?q=' + encodeURIComponent(promptGuiaAtual), '_blank')}>
+            🟠 Guia no Claude (prompt incluído automaticamente)
           </button>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" className="btn btn-ghost" style={{ flex: 1, fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-              onClick={() => window.open('https://claude.ai/new?q=' + encodeURIComponent(promptGuiaAtual), '_blank')}>
-              🟠 Guia no Claude
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
+            onClick={() => window.open('https://chatgpt.com/chat', '_blank')}>
+            🟢 Abrir o ChatGPT
+          </button>
+          <div style={{ marginTop: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sage)', marginBottom: 4 }}>
+              Para o ChatGPT — copia este texto e cola lá (toca na caixa para seleccionar tudo):
+            </div>
+            <textarea readOnly value={promptGuiaAtual}
+              onClick={e => (e.target as HTMLTextAreaElement).select()}
+              onFocus={e => e.target.select()}
+              style={{ width: '100%', minHeight: 100, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1.5px solid var(--sage)', background: '#fbfffb' }} />
+            <button type="button" className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6, width: '100%', borderColor:'var(--sage)', color:'var(--sage)' }}
+              onClick={() => copiarTexto(promptGuiaAtual, () => {}, () => {})}>
+              📋 Tentar copiar automaticamente
             </button>
-            <button type="button" className="btn btn-ghost" style={{ flex: 1, fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-              onClick={() => { copiarTexto(promptGuiaAtual, () => {}, () => {}); window.open('https://chatgpt.com/chat', '_blank'); }}>
-              🟢 Guia no ChatGPT
-            </button>
-          </div>
-          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', textAlign: 'center' }}>
-            No ChatGPT: o prompt já foi copiado — cola com Ctrl+V na caixa de chat
           </div>
         </div>
 
@@ -2014,6 +2004,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       const alergenicosArray: string[] = Array.isArray(alergRaw)
         ? alergRaw
         : (typeof alergRaw === 'string' ? alergRaw.split(',').map(a => a.trim()).filter(Boolean) : []);
+      const alergenicosTexto: string = alergenicosArray.join(', ');
 
       // Gerar HTML formatado da ficha — para o aluno ver/imprimir em qualquer dispositivo
       // sem depender de reler dados estruturados do Sheets (limitação conhecida)
@@ -2029,7 +2020,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             ingredientes: fichaConfirmada.ingredientes || [],
             preparacao: fichaConfirmada.preparacao || [],
             empratamento: fichaConfirmada.empratamento || '',
-            alergenicos: alergenicosArray,
+            alergenicos: alergenicosTexto,
             equipamento: fichaConfirmada.equipamento || '',
             conservacao: fichaConfirmada.conservacao || '',
             regeneracao: fichaConfirmada.regeneracao || '',
