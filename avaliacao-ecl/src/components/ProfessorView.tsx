@@ -885,25 +885,30 @@ Analisa a Ficha de Produção de "${nomePrato}" e gera um Guia de Apoio à Produ
 
 IMPORTANTE:
 - Toda a informação deve referir-se exclusivamente a esta produção: ${nomePrato}
-- Não utilizar textos genéricos
+- Não utilizar textos genéricos nem frases feitas
 - Não repetir simplesmente o conteúdo da Ficha de Produção
-- O objectivo é explicar, formar e contextualizar tecnicamente o aluno
-- Utilizar tabelas sempre que possível
+- O objectivo é explicar, formar e contextualizar tecnicamente o aluno, com profundidade real
+- Utilizar tabelas sempre que possível, sempre seguidas de interpretação dos resultados
 - Linguagem simples, técnica e pedagógica
+- Cada secção deve ter desenvolvimento real — não aceitar respostas de 2-3 frases onde o tema pede mais
 
 ---
 # 1. ENQUADRAMENTO DA PRODUÇÃO
-Explicar:
-- O que é a preparação
-- Qual a sua origem gastronómica
-- Em que contexto é normalmente utilizada
-- Principais características do produto final
+
+Identifica qual é o ingrediente ou técnica protagonista de ${nomePrato} e desenvolve um enquadramento histórico, gastronómico e profissional centrado nele — não no prato em geral de forma vaga.
+
+Desenvolver com factos concretos (não genéricos):
+- origem e história real do ingrediente/técnica protagonista — de onde vem, como chegou à cozinha portuguesa, evolução ao longo do tempo;
+- porque se tornou central na cultura gastronómica portuguesa ou na técnica em causa;
+- curiosidades técnicas ou históricas específicas;
+- importância cultural e identitária;
+- porque esta receita usa este ingrediente/técnica desta forma concreta;
+- o que distingue esta preparação de outras semelhantes.
+
+Exigência: texto com desenvolvimento real, não um parágrafo curto e genérico. O aluno deve aprender factos concretos, não frases vazias tipo "é um prato tradicional português".
 
 ---
 # 2. COMPETÊNCIAS DESENVOLVIDAS
-
-## Competências Técnicas
-Relacionadas directamente com a produção de ${nomePrato}.
 
 ## Atitudes
 - Organização
@@ -912,33 +917,46 @@ Relacionadas directamente com a produção de ${nomePrato}.
 - Trabalho em equipa
 - Responsabilidade
 
+Explicar como cada atitude aparece em momentos concretos desta produção específica.
+
 ## Responsabilidades
 - HACCP
 - Segurança
 - Equipamentos
 - Conservação
 
----
-# 3. MICROCOMPETÊNCIAS TÉCNICAS
-Identificar automaticamente as microcompetências presentes nesta produção.
-Explicar brevemente cada uma.
+Explicar as consequências profissionais do incumprimento de cada uma, ligadas a esta produção.
 
 ---
-# 4. HACCP E PCC
+# 3. HACCP E PCC
+
 Apresentar em tabela:
 | Perigo | PCC | Temperatura crítica | Medida preventiva | Conservação |
 
+Depois da tabela, interpretar: porque cada ponto é crítico, riscos associados, consequências da falha.
+
 ---
-# 5. RENDIMENTOS
-Para cada matéria-prima relevante:
+# 4. RENDIMENTOS E APRESENTAÇÕES COMERCIAIS
+
+Para cada matéria-prima relevante, apresentar tabela:
 | Produto | Peso comprado | Peso utilizável | Rendimento | Origem das perdas |
 
----
-# 6. CAPACITAÇÃO
-Explicar a quantidade por pessoa e justificar o tipo de serviço utilizado.
+Quando a matéria-prima principal desta produção existe no mercado em diferentes apresentações comerciais (ex: salgado vs fresco vs congelado; posta vs lombo; inteiro vs porcionado), é OBRIGATÓRIO comparar pelo menos 2-3 dessas opções numa segunda tabela:
+
+| Apresentação comercial | Preço de referência | Rendimento | Desperdício | Tempo de preparação | Adequação ao uso |
+
+Interpretar os resultados: explicar que uma opção mais cara à partida pode ter melhor rendimento e resultar em custo final semelhante ou menor; que opção é mais adequada a que contexto (restaurante tradicional, hotel, buffet, fine dining); como esta escolha influencia compras, produção e organização do serviço.
+
+Utilizar preços de referência de supermercados portugueses (ex: Continente, Pingo Doce) quando possível, identificados como valores de referência aproximados.
 
 ---
-# 7. EQUILÍBRIO SENSORIAL
+# 5. CAPACITAÇÃO
+
+Explicar a quantidade por pessoa e justificar o tipo de serviço utilizado (entrada, prato principal, buffet, catering, etc.) e como isso influencia compras, produção e custo por dose.
+
+---
+# 6. EQUILÍBRIO SENSORIAL
+
 | Componente | Intensidade | Notas |
 | Doce | | |
 | Ácido | | |
@@ -946,35 +964,111 @@ Explicar a quantidade por pessoa e justificar o tipo de serviço utilizado.
 | Amargo | | |
 | Umami | | |
 
-Indicar componentes dominantes, ausentes e pouco representados.
+Indicar componentes dominantes, ausentes e pouco representados, e o impacto na experiência gastronómica final.
 
 ---
-# 8. SUGESTÕES GASTRONÓMICAS
+# 7. SUGESTÕES GASTRONÓMICAS
+
 Apenas sugestões — nunca alterar a receita.
-Justificar tecnicamente cada sugestão.
+Justificar tecnicamente cada sugestão (elemento ácido, crocante, fresco, aromático, contraste de textura).
 
 ---
-# 9. SUSTENTABILIDADE
-- Desperdícios gerados
-- Possíveis reaproveitamentos
-- Técnicas de valorização de subprodutos
+# 8. SUSTENTABILIDADE
+
+- Desperdícios gerados nesta produção concreta
+- Possíveis reaproveitamentos e subprodutos
+- Técnicas de valorização
+- Relação entre sustentabilidade e food cost
 
 ---
-# 10. FOOD COST PEDAGÓGICO
-- Ingredientes mais caros
-- Ingredientes com maior desperdício
-- Impacto dos rendimentos no custo final
+# 9. FOOD COST PEDAGÓGICO
+
+Apresentar tabela com custo total, custo útil, custo por dose, ingredientes mais caros e ingredientes com maior desperdício.
+
+Relacionar directamente com a secção 4 (Rendimentos e Apresentações Comerciais): demonstrar com números concretos como a escolha da apresentação comercial da matéria-prima principal (ex: lombo vs posta, fresco vs congelado) influencia o custo final por dose — mesmo quando o preço de compra inicial é diferente.
+
+Interpretar os resultados, não apresentar só números.
+
+---
+# 10. MICROCOMPETÊNCIAS TÉCNICAS
+
+Identificar as microcompetências técnicas presentes nesta produção.
+
+Para cada uma explicar: significado, onde aparece na execução, erros frequentes, impacto na qualidade final e no rendimento.
+
+Não apresentar como lista solta — explicar de forma pedagógica, ligando sempre à produção concreta de ${nomePrato}.
 
 ---
 # 11. CONHECIMENTOS A CONSOLIDAR
-Lista dos principais conhecimentos que o aluno deve dominar após executar esta produção.
+
+Desenvolver os principais conhecimentos que o aluno deve dominar após executar esta produção, relacionando-os explicitamente com: técnica utilizada, matéria-prima e suas apresentações comerciais, HACCP, rendimento, food cost e organização da produção.
+
+Esta secção deve funcionar como apoio real ao estudo — escrever com desenvolvimento, não como lista de tópicos soltos sem explicação.
 
 ---
-# 12. QUESTÕES PARA ESTUDO
-Gerar automaticamente com base exclusivamente nesta produção:
-- 5 perguntas de escolha múltipla
-- 3 perguntas verdadeiro/falso
-- 2 situações práticas
+# 12. QUESTÕES PARA ESTUDO E RECUPERAÇÃO
+
+Gerar exactamente 10 questões relativamente importantes, alinhadas com o desenvolvimento de todo o guia (enquadramento, HACCP, rendimentos, food cost, microcompetências, conhecimentos).
+
+Estas questões devem poder ser usadas pelo professor para um aluno recuperar uma avaliação negativa relacionada com esta produção — por isso devem ser substanciais, não triviais.
+
+Gerar:
+- 6 perguntas de escolha múltipla (com 4 opções cada, indicando a resposta correta)
+- 2 perguntas verdadeiro/falso (com justificação da resposta)
+- 2 situações práticas que exijam decisão e justificação técnica (não apenas memorização)
+
+---
+# 13. CASO PROFISSIONAL FINAL
+
+Criar um cenário profissional realista relacionado com ${nomePrato}, que obrigue o aluno a analisar, justificar e decidir — não apenas responder.
+
+O caso pode envolver, por exemplo:
+- escolha entre diferentes apresentações comerciais da matéria-prima principal (ligado à secção 4);
+- escolha de fornecedor;
+- adaptação ao tipo de serviço (buffet, à la carte, catering);
+- gestão de desperdício ou de produção numa situação de imprevisto;
+- decisão de food cost sob restrição de orçamento.
+
+Apresentar o cenário em 1-2 parágrafos concretos e terminar com uma pergunta clara que exija ao aluno tomar e justificar uma decisão profissional.
+
+---
+# 14. AUTOAVALIAÇÃO DO ALUNO
+
+Gerar entre 5 e 8 questões de reflexão individual sobre esta produção específica, para o aluno responder por si.
+
+As questões devem ajudar o aluno a pensar sobre:
+- o que executou melhor nesta produção;
+- onde sentiu mais dificuldade;
+- que erro cometeu ou podia ter evitado;
+- como poderia reduzir o desperdício nesta produção;
+- que competência sentiu desenvolver mais;
+- o que deve melhorar na próxima vez que repetir esta ou uma produção semelhante.
+
+O objectivo é promover reflexão crítica, autonomia e melhoria contínua — não são perguntas de avaliação do professor, são de autorreflexão do próprio aluno.
+
+---
+# 15. RECUPERAÇÃO PRÁTICA DA COMPETÊNCIA
+
+Esta secção destina-se a um aluno que faltou a esta produção ou que não atingiu a competência na avaliação. As questões escritas (secção 12) sozinhas não chegam — é preciso prática real.
+
+Apresentar DUAS opções de recuperação, claramente separadas, para o professor escolher consoante o caso de cada aluno:
+
+## Opção A — Mini-plano de aula de recuperação prática
+
+Descrever um plano concreto e reduzido (não a aula completa) que o aluno deve repetir numa próxima sessão prática para provar que adquiriu a competência. Incluir:
+- duração estimada (mais curta que a aula original, focada no essencial);
+- que parte exacta da técnica/produção deve repetir (não é preciso refazer tudo, só o que falhou);
+- o que o professor deve observar e validar durante essa repetição;
+- critério claro de sucesso — o que tem de acontecer para se considerar a competência recuperada.
+
+## Opção B — Checklist de auto-treino
+
+Lista de passos concretos que o aluno pode treinar sozinho, fora da aula, antes da sessão de recuperação prática:
+- passos técnicos específicos para rever/treinar mentalmente ou em casa, quando aplicável;
+- pontos de atenção que costumam falhar nesta técnica/produção;
+- o que verificar antes de se considerar pronto para a Opção A.
+
+Adaptar sempre as duas opções à produção concreta de ${nomePrato} — nunca genérico.
 
 ---
 Ficha de Produção: ${nomePrato}`;
