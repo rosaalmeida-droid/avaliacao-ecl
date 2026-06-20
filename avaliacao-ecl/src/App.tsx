@@ -11,6 +11,7 @@ import PlanoAula from './components/PlanoAula';
 import { VistaDePlano } from './components/VistaDePlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { CopiaSegurancaView } from './components/CopiaSeguranca';
+import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { sincronizarDoSheets, getEstadoSync, addAluno } from './backend';
 
@@ -34,7 +35,7 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
 }
 
 // Tipo para a vista global do professor
-type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca';
+type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes';
 
 function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -140,6 +141,7 @@ function AppInterno() {
     { id: 'biblioteca', label: 'Biblioteca',      icone: '🗂️' },
     { id: 'avaliacao_uc', label: 'Avaliação por UC', icone: '📊' },
     { id: 'copia_seguranca', label: 'Cópia de Segurança', icone: '💾' },
+    { id: 'gestao_recuperacoes', label: 'Recuperações', icone: '🔄' },
   ];
 
   return (
@@ -242,6 +244,9 @@ function AppInterno() {
               )}
               {vistaGlobal === 'copia_seguranca' && (
                 <CopiaSegurancaView />
+              )}
+              {vistaGlobal === 'gestao_recuperacoes' && (
+                <GestaoRecuperacoes turmaId={turmaId} />
               )}
             </div>
           )}
