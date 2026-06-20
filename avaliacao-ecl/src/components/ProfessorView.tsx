@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Comanda } from '../types';
 import { Button, Card, Field } from './ui';
 import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula } from '../backend';
-import { CaixaGuia } from './GuiaProducao';
+import { GuiaProducao } from './GuiaProducao';
 import { sugerirSubtecnicas } from '../subtecnicas';
 import { exportDOCX, exportPDF, gerarHTML } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
@@ -1825,35 +1825,6 @@ function PassoFichaTecnica({
           }}>📄 Word</Button>
         </div>
 
-        {/* GUIA DE APOIO À PRODUÇÃO */}
-        <div style={{ marginTop:16, padding:'14px', background:'rgba(90,122,78,0.06)', borderRadius:12, border:'1.5px solid rgba(90,122,78,0.25)' }}>
-          <div style={{ fontWeight:700, fontSize:14, color:'var(--sage)', marginBottom:4 }}>📚 Guia de Apoio à Produção</div>
-          <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>Documento pedagógico separado da ficha. Gera com IA e cola abaixo.</div>
-          {/* Botões IA do Guia */}
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
-            <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-              onClick={() => { navigator.clipboard.writeText(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)).catch(()=>{}); }}>
-              📋 Copiar prompt do Guia
-            </button>
-            <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-              onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)), '_blank')}>
-              🟠 Guia no Claude
-            </button>
-            <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-              onClick={async () => {
-                try { await navigator.clipboard.writeText(gerarPromptGuia(ficha.nomePrato||'Receita', ucId, ucNome)); } catch {}
-                window.open('https://chatgpt.com/chat', '_blank');
-              }}>
-              🟢 Guia no ChatGPT
-            </button>
-          </div>
-          <CaixaGuia
-            nomePrato={ficha.nomePrato}
-            textoGuiaInicial={ficha.textoGuia}
-            onGuiaAlterado={(texto) => setFicha(f => ({ ...f, textoGuia: texto }))}
-          />
-        </div>
-
         {/* TÉCNICAS DETECTADAS — ligar às microcompetências */}
         {ficha.tecnicasDetectadas && ficha.tecnicasDetectadas.length > 0 && (
           <div style={{ background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.2)', borderRadius: 12, padding: 16, marginBottom: 10 }}>
@@ -1889,6 +1860,122 @@ function PassoFichaTecnica({
 // ============================================================
 // Vista principal do Professor — orquestra os passos
 // ============================================================
+// ── Ecrã dedicado do Guia — isolado, estado próprio, gravação explícita ──
+function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao, onGuardado }: {
+  planoId?: string; ucId?: string; ucNome?: string; nomePratoInicial?: string;
+  onAlteracao?: () => void; onGuardado?: () => void;
+}) {
+  // Encontrar a ficha-alvo UMA VEZ ao montar — não recalcula a cada render do pai
+  const [fichaAlvo] = useState<FichaProducao | null>(() => {
+    const fichasDoPlano = planoId
+      ? getFichasProducao().filter(f => (f as any).planoAulaId === planoId)
+      : getFichasProducao();
+    return fichasDoPlano[fichasDoPlano.length - 1] || null;
+  });
+  const nomePrato = nomePratoInicial || fichaAlvo?.nomePrato || '';
+  const [textoGuia, setTextoGuia] = useState((fichaAlvo as any)?.textoGuia || '');
+  const [modo, setModo] = useState<'colar' | 'ver'>((fichaAlvo as any)?.textoGuia ? 'ver' : 'colar');
+  const [guardadoOk, setGuardadoOk] = useState(false);
+
+  if (!fichaAlvo) {
+    return (
+      <div style={{ padding: 16, textAlign: 'center' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>📚</div>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Ainda não há nenhuma ficha</div>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>Cria primeiro uma Ficha de Produção para depois gerar o Guia.</div>
+      </div>
+    );
+  }
+
+  const promptGuiaAtual = gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome);
+
+  function guardarGuia() {
+    if (!fichaAlvo) return;
+    addOrUpdateFichaProducao({ ...fichaAlvo, textoGuia, atualizadoEm: new Date().toISOString() } as any);
+    setGuardadoOk(true);
+    setTimeout(() => setGuardadoOk(false), 2500);
+    onAlteracao?.();
+  }
+
+  return (
+    <div>
+      <div style={{ background: 'var(--sage-pale)', borderRadius: 14, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(90,122,78,0.25)' }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--sage)' }}>📚 Guia de Apoio à Produção</div>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{nomePrato}</div>
+      </div>
+
+      <Card>
+        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
+            onClick={() => copiarTexto(promptGuiaAtual, () => {}, () => {})}>
+            📋 Copiar prompt do Guia
+          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" className="btn btn-ghost" style={{ flex: 1, fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
+              onClick={() => window.open('https://claude.ai/new?q=' + encodeURIComponent(promptGuiaAtual), '_blank')}>
+              🟠 Guia no Claude
+            </button>
+            <button type="button" className="btn btn-ghost" style={{ flex: 1, fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
+              onClick={() => { copiarTexto(promptGuiaAtual, () => {}, () => {}); window.open('https://chatgpt.com/chat', '_blank'); }}>
+              🟢 Guia no ChatGPT
+            </button>
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', textAlign: 'center' }}>
+            No ChatGPT: o prompt já foi copiado — cola com Ctrl+V na caixa de chat
+          </div>
+        </div>
+
+        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginTop: 16, marginBottom: 8 }}>2. Colar o resultado</div>
+
+        {modo === 'colar' && (
+          <>
+            <textarea
+              value={textoGuia}
+              onChange={e => setTextoGuia(e.target.value)}
+              placeholder={`Cola aqui o resultado da IA para o Guia de Apoio à Produção de "${nomePrato}"...`}
+              style={{ width: '100%', minHeight: 160, borderRadius: 10, border: '1.5px solid var(--border)', padding: 10, fontSize: 12, fontFamily: 'monospace', resize: 'vertical' }}
+            />
+            {textoGuia && (
+              <button onClick={() => setModo('ver')} style={{ marginTop: 8, width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                📚 Ver Guia Formatado →
+              </button>
+            )}
+          </>
+        )}
+
+        {modo === 'ver' && textoGuia && (
+          <>
+            <button onClick={() => setModo('colar')} style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+              ← Editar texto
+            </button>
+            <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} />
+          </>
+        )}
+
+        {/* Gravação EXPLÍCITA — só ao clicar, nunca automática a cada tecla */}
+        <button className="btn btn-primary btn-block" style={{ marginTop: 16 }}
+          disabled={!textoGuia}
+          onClick={guardarGuia}>
+          {guardadoOk ? '✅ Guia guardado!' : '💾 Guardar Guia'}
+        </button>
+
+        {textoGuia && (
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }}
+            onClick={() => window.print()}>
+            🖨️ Imprimir Guia
+          </button>
+        )}
+
+        <button className="btn btn-block" style={{ marginTop: 10, background: 'var(--copper)', color: 'white' }}
+          onClick={() => { if (textoGuia && !guardadoOk) guardarGuia(); onGuardado?.(); }}>
+          ✓ Concluir Guia
+        </button>
+      </Card>
+    </div>
+  );
+}
+
 export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia, nomePratoInicial }: {
   turmaId: string;
   nomeProfessor?: string;
@@ -2013,77 +2100,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
   // ── MODO GUIA — atalho directo para a última ficha do plano ──
   if (modoGuia) {
-    const fichasDoPlano = planoId
-      ? getFichasProducao().filter(f => (f as any).planoAulaId === planoId)
-      : getFichasProducao();
-    const ultimaFicha = fichasDoPlano[fichasDoPlano.length - 1];
-    const nomePrato = nomePratoInicial || ultimaFicha?.nomePrato || '';
-
-    if (!ultimaFicha) {
-      return (
-        <div style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>📚</div>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Ainda não há nenhuma ficha</div>
-          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>Cria primeiro uma Ficha de Produção para depois gerar o Guia.</div>
-        </div>
-      );
-    }
-
-    const promptGuiaAtual = gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome);
-
-    return (
-      <div>
-        <div style={{ background: 'var(--sage-pale)', borderRadius: 14, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(90,122,78,0.25)' }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--sage)' }}>📚 Guia de Apoio à Produção</div>
-          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{nomePrato}</div>
-        </div>
-
-        <Card>
-          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-              onClick={async () => { try { await navigator.clipboard.writeText(promptGuiaAtual); } catch {} }}>
-              📋 Copiar prompt do Guia
-            </button>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button type="button" className="btn btn-ghost" style={{ flex: 1, fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-                onClick={() => window.open('https://claude.ai/new?q=' + encodeURIComponent(promptGuiaAtual), '_blank')}>
-                🟠 Guia no Claude
-              </button>
-              <button type="button" className="btn btn-ghost" style={{ flex: 1, fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-                onClick={async () => { try { await navigator.clipboard.writeText(promptGuiaAtual); } catch {} window.open('https://chatgpt.com/chat', '_blank'); }}>
-                🟢 Guia no ChatGPT
-              </button>
-            </div>
-            <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', textAlign: 'center' }}>
-              No ChatGPT: o prompt já foi copiado — cola com Ctrl+V na caixa de chat
-            </div>
-          </div>
-
-          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginTop: 16, marginBottom: 8 }}>2. Colar o resultado</div>
-          <CaixaGuia
-            nomePrato={nomePrato}
-            ucId={ucId}
-            ucNome={ucNome}
-            textoGuiaInicial={(ultimaFicha as any).textoGuia}
-            onGuiaAlterado={(texto) => {
-              addOrUpdateFichaProducao({ ...ultimaFicha, textoGuia: texto, atualizadoEm: new Date().toISOString() } as any);
-              onAlteracao?.();
-            }}
-          />
-
-          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }}
-            onClick={() => window.print()}>
-            🖨️ Imprimir Guia
-          </button>
-
-          <button className="btn btn-primary btn-block" style={{ marginTop: 10 }}
-            onClick={() => onGuardado?.()}>
-            ✓ Concluir Guia
-          </button>
-        </Card>
-      </div>
-    );
+    return <EcraGuiaDedicado planoId={planoId} ucId={ucId} ucNome={ucNome} nomePratoInicial={nomePratoInicial} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
   }
 
   // ── APÓS GUARDAR ─────────────────────────────────────────
