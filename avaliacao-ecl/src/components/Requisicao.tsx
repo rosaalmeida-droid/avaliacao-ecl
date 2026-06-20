@@ -167,8 +167,15 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const [quebras, setQuebras] = useState(10);
   const [bevCost, setBevCost] = useState(20);
   const [consumo, setConsumo] = useState({ bar: false, rest: true, interno: false, convidados: false });
-  const [responsavel, setResponsavel] = useState('');
-  const [atividade, setAtividade] = useState('');
+  const [responsavel, setResponsavel] = useState(() => {
+    // Sem fonte automática fiável — sugere o último nome usado (provavelmente a mesma
+    // pessoa em requisições próximas), mas o professor pode sempre mudar.
+    try { return localStorage.getItem('ecl_ultimo_responsavel_compras') || ''; } catch { return ''; }
+  });
+  const [atividade, setAtividade] = useState(() => {
+    // Auto-preencher com o título do plano (já inclui tipo de actividade + data)
+    return planoInicial?.titulo || '';
+  });
   const [familia, setFamilia] = useState(() => {
     // Pré-preencher com a classificação da primeira ficha seleccionada
     const f = getFichasProducao().find(x => fichasSelInicial.includes(x.id));
@@ -255,14 +262,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         dataAula: planoSel?.data || '',
         formador: nomeProfessor || planoSel?.professor || '',
         responsavel,  // N42
-        atividade,    // K47
+        atividade,    // K70
         preparacao: '',
         consumo: { bar: consumo.bar, rest: consumo.rest, interno: consumo.interno, convidados: consumo.convidados },
-        // Ingredientes → linhas 16+ do Sheets
-        // A=qty1pax | B=qtReceita | C=nome | H=und | J=precoUnitario
+        // Ingredientes → linhas 16-58 do Sheets
+        // A = fórmula calculada (não escrever) | B=qtReceita | C=nome | H=und | L=precoUnitario
         ingredientes: linhasAtivas.filter(l => !l.isQB).map(l => ({
           nome: l.produto,
-          qty1pax: fQn(l.qt1pax, l.und),
           qtReceita: fQn(l.qtReceita, l.und),
           und: l.und,
           preco: l.precoUnitario || '0',
@@ -344,10 +350,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               <div><label style={S.lbl}>Familia / Classificacao</label><input style={{ ...S.inp, width: '100%' }} value={familia} onChange={e => setFamilia(e.target.value)} placeholder="ex: Peixe, Sobremesa..." /></div>
               <div><label style={S.lbl}>Quebras (%)</label><input style={{ ...S.inp, width: '100%' }} type="number" value={quebras} onChange={e => setQuebras(Number(e.target.value))} /></div>
               <div><label style={S.lbl}>Beverage Cost (%)</label><input style={{ ...S.inp, width: '100%' }} type="number" value={bevCost} onChange={e => setBevCost(Number(e.target.value))} /></div>
-              <div><label style={S.lbl}>Responsavel compras</label><input style={{ ...S.inp, width: '100%' }} value={responsavel} onChange={e => setResponsavel(e.target.value)} placeholder="Nome" /></div>
+              <div><label style={S.lbl}>Responsavel compras *manual*</label><input style={{ ...S.inp, width: '100%' }} value={responsavel}
+                onChange={e => { setResponsavel(e.target.value); try { localStorage.setItem('ecl_ultimo_responsavel_compras', e.target.value); } catch {} }}
+                placeholder="Nome de quem faz as compras" /></div>
             </div>
             <div style={{ marginBottom: 8 }}>
-              <label style={S.lbl}>Atividade</label>
+              <label style={S.lbl}>Atividade (pré-preenchida do plano — podes ajustar)</label>
               <input style={{ ...S.inp, width: '100%' }} value={atividade} onChange={e => setAtividade(e.target.value)} placeholder="ex: Almoco dos Pais · ECL Restaurante" />
             </div>
             <div>
