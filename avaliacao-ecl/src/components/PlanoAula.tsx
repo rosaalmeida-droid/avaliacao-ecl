@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   getPlanosAulaPorTurma,
   addOrUpdatePlanoAula,
+  eliminarPlanoAula,
   getFichasProducao,
   getAlunos,
 } from '../backend';
@@ -192,6 +193,16 @@ function CalendarioMensal({ planos, onAbrirPlano }: { planos: TPlanoAula[]; onAb
                       color: p.estado === 'publicado' ? 'var(--sage)' : 'var(--copper)' }}>
                       {p.estado === 'publicado' ? 'Publicado' : 'Rascunho'}
                     </span>
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Eliminar "${p.titulo || 'este plano'}"? Esta ação não pode ser desfeita.`)) {
+                        eliminarPlanoAula(p.id);
+                        window.location.reload();
+                      }
+                    }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
+                      title="Eliminar plano">
+                      🗑️
+                    </button>
                   </div>
                 </div>
               );
