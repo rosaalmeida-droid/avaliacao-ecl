@@ -2096,7 +2096,13 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
   // ── APÓS GUARDAR ─────────────────────────────────────────
   if ((vista as string) === 'apos_guardar') {
-    const ultimaFicha = fichasGuardadas[fichasGuardadas.length - 1] || ficha;
+    const ultimaFichaRaw = fichasGuardadas[fichasGuardadas.length - 1] || ficha;
+    // Normalizar para exportação — FichaProducao tem alergenicos como array, FichaTecnica como string
+    const alergRaw: any = (ultimaFichaRaw as any).alergenicos;
+    const ultimaFicha = {
+      ...ultimaFichaRaw,
+      alergenicos: Array.isArray(alergRaw) ? alergRaw.join(', ') : (alergRaw || ''),
+    };
     return (
       <div style={{ padding: 16 }}>
         <div style={{ background: 'var(--sage-pale)', border: '1px solid rgba(90,122,78,0.3)', borderRadius: 14, padding: 20, textAlign: 'center', marginBottom: 16 }}>
