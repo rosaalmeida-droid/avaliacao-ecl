@@ -266,6 +266,34 @@ export interface PlanoAula {
   atualizadoEm: string;
 }
 
+// ── Recuperação de Módulos ──────────────────────────────────
+export interface RecuperacaoModulo {
+  id: string;
+  alunoId: string;
+  turmaId: string;
+  ucId: string;
+  ucNome: string;
+  tipoUC: 'tecnica' | 'organizacional' | 'hibrida';
+  planosIds: string[];           // planos de aula que esta recuperação cobre
+  competenciasIds: string[];     // competências/microcompetências herdadas dos planos
+  atitudesIds: string[];
+  responsabilidadesIds: string[];
+  estado: 'pendente' | 'submetida' | 'em_avaliacao' | 'concluida';
+  trabalhoTeorico?: string;      // texto/respostas do aluno
+  investigacao?: string;
+  casoProfissional?: string;
+  autoavaliacao?: string;
+  evidenciasUrls?: string[];     // fotos/vídeos/PDFs anexados pelo aluno
+  avaliacaoCompetencias?: { competenciaId: string; nivel: 'nao_demonstrada' | 'em_desenvolvimento' | 'consolidada' | 'avancada' }[];
+  comentarioProfessor?: string;
+  professorAvaliador?: string;
+  dataAtribuicao: string;
+  dataSubmissao?: string;
+  dataValidacao?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 // --------------------------------------------------------
 // Distribuição de Fichas
 // --------------------------------------------------------
