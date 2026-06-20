@@ -11,7 +11,7 @@ import PlanoAula from './components/PlanoAula';
 import { VistaDePlano } from './components/VistaDePlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { sincronizarDoSheets, getEstadoSync } from './backend';
+import { sincronizarDoSheets, getEstadoSync, addAluno } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -108,7 +108,11 @@ function AppInterno() {
     if (perfilRecebido === 'aluno' && alunoId) {
       const partes = alunoId.split('-');
       const numero = parseInt(partes[partes.length - 1], 10) || 0;
-      setAluno({ id: alunoId, turmaId: turmaIdRecebida || turmaId || 'CP1', numero, ano: 1 });
+      const novoAluno: Aluno = { id: alunoId, turmaId: turmaIdRecebida || turmaId || 'CP1', numero, ano: 1 };
+      setAluno(novoAluno);
+      // Registar o aluno na lista persistente — necessário para o professor
+      // conseguir ver/filtrar este aluno em Avaliação por UC, Reabrir, etc.
+      addAluno(novoAluno);
     }
   }
 
