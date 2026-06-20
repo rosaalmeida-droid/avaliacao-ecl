@@ -58,6 +58,151 @@ export const UCS_COZINHA = [
   { id:'UC03597', nome:'Planear e confecionar massas especiais de panificacao' },
 ];
 
+// Parseia a data de um plano, lidando com vários formatos possíveis
+function parsearDataPlano(dataStr?: string): Date {
+  try {
+    if (!dataStr || dataStr === 'undefined') throw new Error();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
+      return new Date(dataStr + 'T12:00:00');
+    }
+    const d = new Date(dataStr);
+    if (isNaN(d.getTime())) throw new Error();
+    return d;
+  } catch {
+    return new Date();
+  }
+}
+
+function limparHora(h?: string): string {
+  if (!h) return '';
+  return h.includes('T')
+    ? new Date(h).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    : h.substring(0, 5);
+}
+
+// ── Calendário mensal — vista visual dos planos de aula ────────
+function CalendarioMensal({ planos, onAbrirPlano }: { planos: TPlanoAula[]; onAbrirPlano: (p: TPlanoAula) => void }) {
+  const hoje = new Date();
+  const [mesActual, setMesActual] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+
+  // Agrupar planos por dia (yyyy-mm-dd)
+  const planosPorDia = new Map<string, TPlanoAula[]>();
+  planos.forEach(p => {
+    const d = parsearDataPlano(p.data);
+    const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!planosPorDia.has(chave)) planosPorDia.set(chave, []);
+    planosPorDia.get(chave)!.push(p);
+  });
+
+  const ano = mesActual.getFullYear();
+  const mes = mesActual.getMonth();
+  const primeiroDiaSemana = (new Date(ano, mes, 1).getDay() + 6) % 7; // 0=segunda
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  const nomesMes = mesActual.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+  const diasSemana = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+
+  const celulas: (number | null)[] = [];
+  for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null);
+  for (let d = 1; d <= diasNoMes; d++) celulas.push(d);
+
+  const [diaSelecionado, setDiaSelecionado] = useState<number | null>(null);
+
+  return (
+    <div>
+      {/* Navegação do mês */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <button onClick={() => { setMesActual(new Date(ano, mes - 1, 1)); setDiaSelecionado(null); }}
+          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>‹</button>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, textTransform: 'capitalize' }}>{nomesMes}</div>
+        <button onClick={() => { setMesActual(new Date(ano, mes + 1, 1)); setDiaSelecionado(null); }}
+          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>›</button>
+      </div>
+      <button onClick={() => { setMesActual(new Date(hoje.getFullYear(), hoje.getMonth(), 1)); setDiaSelecionado(hoje.getMonth() === mes && hoje.getFullYear() === ano ? hoje.getDate() : null); }}
+        style={{ width: '100%', marginBottom: 12, padding: '6px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 12, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer' }}>
+        Hoje
+      </button>
+
+      {/* Cabeçalho dias da semana */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 4 }}>
+        {diasSemana.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'rgba(26,23,20,0.4)', padding: '4px 0' }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Grelha do calendário */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 16 }}>
+        {celulas.map((dia, i) => {
+          if (dia === null) return <div key={`vazio-${i}`} />;
+          const chave = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+          const planosNesteDia = planosPorDia.get(chave) || [];
+          const ehHoje = hoje.getDate() === dia && hoje.getMonth() === mes && hoje.getFullYear() === ano;
+          const selecionado = diaSelecionado === dia;
+          return (
+            <button key={dia} onClick={() => setDiaSelecionado(selecionado ? null : dia)}
+              style={{
+                aspectRatio: '1', borderRadius: 8, border: ehHoje ? '2px solid var(--copper)' : '1px solid var(--border)',
+                background: selecionado ? 'var(--copper)' : (planosNesteDia.length > 0 ? 'var(--copper-pale)' : '#fff'),
+                color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
+                cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: 2, position: 'relative',
+              }}>
+              <span style={{ fontSize: 13, fontWeight: ehHoje || selecionado ? 700 : 500 }}>{dia}</span>
+              {planosNesteDia.length > 0 && (
+                <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
+                  {planosNesteDia.slice(0, 3).map((_, idx) => (
+                    <div key={idx} style={{ width: 4, height: 4, borderRadius: '50%', background: selecionado ? 'white' : 'var(--copper)' }} />
+                  ))}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Lista de planos do dia selecionado */}
+      {diaSelecionado !== null && (() => {
+        const chave = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(diaSelecionado).padStart(2, '0')}`;
+        const planosDoDia = planosPorDia.get(chave) || [];
+        return (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+              {diaSelecionado} de {nomesMes}
+            </div>
+            {planosDoDia.length === 0 && (
+              <div style={{ padding: '20px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)', fontSize: 13 }}>
+                Sem aulas planeadas neste dia.
+              </div>
+            )}
+            {planosDoDia.map(p => {
+              const horaI = limparHora(p.horaInicio);
+              const horaF = limparHora(p.horaFim);
+              return (
+                <div key={p.id} className="option-card" onClick={() => onAbrirPlano(p)} style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 10px', textAlign: 'center', minWidth: 50 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{horaI || '--:--'}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo || 'Plano de aula'}</div>
+                      {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}</div>}
+                      <div className="muted" style={{ fontSize: 12 }}>{horaI && horaF ? `${horaI}-${horaF}` : ''} {p.turmaId ? '· ' + p.turmaId : ''}</div>
+                    </div>
+                    <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
+                      background: p.estado === 'publicado' ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
+                      color: p.estado === 'publicado' ? 'var(--sage)' : 'var(--copper)' }}>
+                      {p.estado === 'publicado' ? 'Publicado' : 'Rascunho'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 function FichaSelector({ todasFichas, fichasSel, onChange }: {
   todasFichas: any[]; fichasSel: string[]; onChange: (ids: string[]) => void;
 }) {
@@ -141,7 +286,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   onAlteracao?: (guardar?: () => void) => void;
   onGuardado?: (plano?: TPlanoAula) => void;
 }) {
-  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'>('lista');
+  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'>('calendario');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const planos = getPlanosAulaPorTurma(turmaId);
 
@@ -151,11 +296,29 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
 
   if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
 
+  if (vista==='calendario') return (
+    <div>
+      <div className="header-bar">
+        <h2 className="display" style={{ margin:0 }}>Planos de Aula</h2>
+        <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
+      </div>
+      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+        <button onClick={()=>setVista('calendario')} className="tab-btn active" style={{ flex:1 }}>📅 Calendário</button>
+        <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
+      </div>
+      <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)} />
+    </div>
+  );
+
   return (
     <div>
       <div className="header-bar">
         <h2 className="display" style={{ margin:0 }}>Planos de Aula</h2>
         <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
+      </div>
+      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+        <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
+        <button onClick={()=>setVista('lista')} className="tab-btn active" style={{ flex:1 }}>📋 Lista</button>
       </div>
       {planos.length===0 && (
         <div className="card" style={{ textAlign:'center', padding:40 }}>
