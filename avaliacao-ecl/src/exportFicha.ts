@@ -61,7 +61,6 @@ export interface FichaTecnicaExport {
 // Export PDF via impressão do browser
 // ============================================================
 export function exportPDF(ficha: FichaTecnicaExport): void {
-  ficha = { ...ficha, alergenicos: Array.isArray((ficha as any).alergenicos) ? (ficha as any).alergenicos.join(', ') : (ficha.alergenicos || '') };
   const html = gerarHTML(ficha);
   const win = window.open('', '_blank');
   if (!win) return;
@@ -75,7 +74,6 @@ export function exportPDF(ficha: FichaTecnicaExport): void {
 // Export DOCX via biblioteca docx (carregada via CDN no browser)
 // ============================================================
 export async function exportDOCX(ficha: FichaTecnicaExport): Promise<void> {
-  ficha = { ...ficha, alergenicos: Array.isArray((ficha as any).alergenicos) ? (ficha as any).alergenicos.join(', ') : (ficha.alergenicos || '') };
   try {
     // Carregar docx via CDN se ainda não estiver disponível
     if (!(window as any).docx) {
@@ -386,7 +384,6 @@ export async function exportDOCX(ficha: FichaTecnicaExport): Promise<void> {
 // HTML para impressão/PDF (formato ECL)
 // ============================================================
 export function gerarHTML(ficha: FichaTecnicaExport): string {
-  ficha = { ...ficha, alergenicos: Array.isArray((ficha as any).alergenicos) ? (ficha as any).alergenicos.join(', ') : (ficha.alergenicos || '') };
   const ing = ficha.ingredientes.map((i, idx) => `
     <tr style="background:${idx % 2 === 0 ? '#fff' : '#F2F2F2'}">
       <td>${i.componente}</td><td>${i.qt}</td><td>${i.un}</td>
