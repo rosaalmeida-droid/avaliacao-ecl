@@ -9,6 +9,13 @@ function getNomeComp(id: string): string {
   return encontrarMicro(id)?.nome || id;
 }
 
+// Formata uma data de forma segura — nunca mostra "Invalid Date" se vier malformada
+function formatarDataSegura(dataStr: string, opcoes?: Intl.DateTimeFormatOptions): string {
+  const d = new Date(dataStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('pt-PT', opcoes);
+}
+
 interface LinhaComp {
   compId: string;
   nome: string;
@@ -210,9 +217,9 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {c.registos.map(r => (
                         <button key={r.id} onClick={() => toggleExcluir(r.id)}
-                          title={`${new Date(r.data).toLocaleDateString('pt-PT')} — clica para excluir`}
+                          title={`${formatarDataSegura(r.data)} — clica para excluir`}
                           style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', color: 'rgba(26,23,20,0.6)', cursor: 'pointer' }}>
-                          {r.nota} · {new Date(r.data).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })} ✕
+                          {r.nota} · {formatarDataSegura(r.data, { day: '2-digit', month: '2-digit' })} ✕
                         </button>
                       ))}
                     </div>
