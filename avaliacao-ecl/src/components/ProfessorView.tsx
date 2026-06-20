@@ -1942,14 +1942,14 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
 
   return (
     <div>
-      <div style={{ background: 'var(--sage-pale)', borderRadius: 14, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(90,122,78,0.25)' }}>
+      <div className="no-print" style={{ background: 'var(--sage-pale)', borderRadius: 14, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(90,122,78,0.25)' }}>
         <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--sage)' }}>📚 Guia de Apoio à Produção</div>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{nomePrato}</div>
       </div>
 
       <Card>
-        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
+        <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
             onClick={() => window.open('https://claude.ai/new?q=' + encodeURIComponent(promptGuiaAtual), '_blank')}>
             🟠 Guia no Claude (prompt incluído automaticamente)
@@ -1973,10 +1973,10 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
           </div>
         </div>
 
-        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginTop: 16, marginBottom: 8 }}>2. Colar o resultado</div>
+        <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginTop: 16, marginBottom: 8 }}>2. Colar o resultado</div>
 
         {modo === 'colar' && (
-          <>
+          <div className="no-print">
             <textarea
               value={textoGuia}
               onChange={e => setTextoGuia(e.target.value)}
@@ -1988,33 +1988,35 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
                 📚 Ver Guia Formatado →
               </button>
             )}
-          </>
+          </div>
         )}
 
         {modo === 'ver' && textoGuia && (
           <>
-            <button onClick={() => setModo('colar')} style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+            <button onClick={() => setModo('colar')} className="no-print" style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
               ← Editar texto
             </button>
-            <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} />
+            <div className="guia-area-impressao">
+              <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} />
+            </div>
           </>
         )}
 
         {/* Gravação EXPLÍCITA — só ao clicar, nunca automática a cada tecla */}
-        <button className="btn btn-primary btn-block" style={{ marginTop: 16 }}
+        <button className="btn btn-primary btn-block no-print" style={{ marginTop: 16 }}
           disabled={!textoGuia}
           onClick={guardarGuia}>
           {guardadoOk ? '✅ Guia guardado!' : '💾 Guardar Guia'}
         </button>
 
         {textoGuia && (
-          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }}
+          <button className="btn btn-ghost btn-block no-print" style={{ marginTop: 10 }}
             onClick={() => window.print()}>
             🖨️ Imprimir Guia
           </button>
         )}
 
-        <button className="btn btn-block" style={{ marginTop: 10, background: 'var(--copper)', color: 'white' }}
+        <button className="btn btn-block no-print" style={{ marginTop: 10, background: 'var(--copper)', color: 'white' }}
           onClick={() => { if (textoGuia && !guardadoOk) guardarGuia(); onGuardado?.(); }}>
           ✓ Concluir Guia
         </button>
