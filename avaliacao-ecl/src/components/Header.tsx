@@ -8,12 +8,13 @@ const LABEL: Record<Perfil, string> = {
   coordenadora: 'Coordenadora',
 };
 
-export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus }: {
+export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus, onAtualizar }: {
   perfil: Perfil;
   subtitulo?: string;
   onSair: () => void;
   nomeProfessor?: string;
   syncStatus?: 'idle' | 'syncing' | 'ok' | 'offline';
+  onAtualizar?: () => void;
 }) {
   const label = nomeProfessor || LABEL[perfil];
   const syncInfo = syncStatus === 'syncing' ? { icon: '🔄', cor: 'var(--copper)', txt: 'A sincronizar...' }
@@ -27,9 +28,15 @@ export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus }:
         <img src={logoEcl} alt="Escola de Comércio de Lisboa" style={{ height: 38, width: 'auto', objectFit: 'contain' }} />
         <div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, lineHeight: 1.2, color: 'var(--charcoal)' }}>Avaliação ECL</div>
-          <div className="muted" style={{ fontSize: 11 }}>
+          <div className="muted" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
             Comanda de competências
-            {syncInfo && <span style={{ marginLeft: 8, color: syncInfo.cor }}>{syncInfo.icon} {syncInfo.txt}</span>}
+            {syncInfo && <span style={{ color: syncInfo.cor }}>{syncInfo.icon} {syncInfo.txt}</span>}
+            {onAtualizar && (
+              <button onClick={onAtualizar} disabled={syncStatus === 'syncing'}
+                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', fontSize: 11, color: 'var(--copper)', fontWeight: 600, cursor: syncStatus === 'syncing' ? 'default' : 'pointer', opacity: syncStatus === 'syncing' ? 0.5 : 1 }}>
+                {syncStatus === 'syncing' ? '🔄 A actualizar...' : '🔄 Actualizar'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -45,4 +52,3 @@ export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus }:
     </div>
   );
 }
-
