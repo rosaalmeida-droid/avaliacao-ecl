@@ -177,9 +177,10 @@ export function getOrCreateAluno(turmaId: string, numero: number, ano: 1|2|3): A
 // ── Planos de Aula ───────────────────────────────────────────
 export function getPlanosAula(): PlanoAula[] { return load<PlanoAula>(KEYS.planos); }
 
-export function getPlanosAulaPorTurma(turmaId: string): PlanoAula[] {
+export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false): PlanoAula[] {
   return getPlanosAula()
     .filter(p => p.turmaId === turmaId)
+    .filter(p => incluirArquivados || p.estado !== 'arquivado')
     .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
 }
 
@@ -193,10 +194,35 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
 }
 
 // Remove um plano de aula só localmente (o registo no Sheets/Calendário fica
-// como histórico — útil para limpar duplicados criados durante testes).
-export function eliminarPlanoAula(planoId: string): void {
-  const all = getPlanosAula().filter(p => p.id !== planoId);
-  save(KEYS.planos, all);
+// Arquiva um plano — desaparece da vista normal mas fica guardado, recuperável.
+// Mais simples e seguro do que eliminar de verdade: nunca se perde nada por engano.
+export function arquivarPlanoAula(planoId: string): void {
+  const all = getPlanosAula();
+  const idx = all.findIndex(p => p.id === planoId);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], estado: 'arquivado', atualizadoEm: new Date().toISOString() };
+    save(KEYS.planos, all);
+    enviar(SHEETS_PLANOS_URL, 'plano', { plano: all[idx] });
+  }
+}
+
+// Traz um plano arquivado de volta — repõe o estado anterior (rascunho, para
+// o professor decidir se publica de novo).
+export function desarquivarPlanoAula(planoId: string): void {
+  const all = getPlanosAula();
+  const idx = all.findIndex(p => p.id === planoId);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], estado: 'rascunho', atualizadoEm: new Date().toISOString() };
+    save(KEYS.planos, all);
+    enviar(SHEETS_PLANOS_URL, 'plano', { plano: all[idx] });
+  }
+}
+
+// Lista só os planos arquivados de uma turma — usado no ecrã "Arquivo"
+export function getPlanosArquivados(turmaId: string): PlanoAula[] {
+  return getPlanosAula()
+    .filter(p => p.turmaId === turmaId && p.estado === 'arquivado')
+    .sort((a, b) => (b.atualizadoEm || '').localeCompare(a.atualizadoEm || ''));
 }
 
 // Envia o plano para o Google Calendar — usa sempre a DATA DA AULA (p.data),
@@ -441,4 +467,100 @@ export function getEstadoSync(): { temSheets: boolean; ultimaSync: string | null
     temSheets: !!(SHEETS_PLANOS_URL || SHEETS_FICHAS_URL),
     ultimaSync: localStorage.getItem(KEYS.syncPlanos),
   };
+}
+
+// ── Cópia de segurança completa ────────────────────────────────
+// Junta TODOS os dados guardados localmente num único objeto, para o
+// professor poder descarregar e guardar como rede de segurança própria,
+// independente do Google Sheets.
+export interface CopiaSeguranca {
+  versao: number;
+  criadoEm: string;
+  alunos: Aluno[];
+  planos: PlanoAula[];
+  fichas: FichaProducao[];
+  distribuicoes: DistribuicaoFicha[];
+  checklists: ChecklistAlunoFicha[];
+  requisicoes: RequisicaoAula[];
+  comandas: Comanda[];
+  selecoes: SelecaoAluno[];
+  validacoes: Validacao[];
+  atividades: Atividade[];
+  historicoAvaliacoes: RegistoAvaliacao[];
+}
+
+export function exportarTudo(): CopiaSeguranca {
+  return {
+    versao: 1,
+    criadoEm: new Date().toISOString(),
+    alunos: getAlunos(),
+    planos: getPlanosAula(),
+    fichas: getFichasProducao(),
+    distribuicoes: getDistribuicoes(),
+    checklists: getChecklists(),
+    requisicoes: getRequisicoes(),
+    comandas: getComandas(),
+    selecoes: getSelecoes(),
+    validacoes: getValidacoes(),
+    atividades: getAtividades(),
+    historicoAvaliacoes: getHistoricoAvaliacoes(),
+  };
+}
+
+// Descarrega a cópia de segurança como ficheiro .json no computador do professor
+export function descarregarCopiaSeguranca(): void {
+  const dados = exportarTudo();
+  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dataHoje = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `avaliacao-ecl-copia-seguranca-${dataHoje}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Restaura dados a partir de uma cópia de segurança previamente exportada.
+// modo 'substituir': apaga tudo o que existe e põe só o que está no ficheiro.
+// modo 'juntar': mantém o que já existe e acrescenta/atualiza com o do ficheiro
+// (entradas com o mesmo id são substituídas pela versão do ficheiro).
+export function restaurarCopiaSeguranca(dados: CopiaSeguranca, modo: 'substituir' | 'juntar'): void {
+  function aplicar<T extends { id: string }>(key: string, novos: T[]) {
+    if (modo === 'substituir') {
+      save(key, novos);
+      return;
+    }
+    const actuais = load<T>(key);
+    const merged = [...actuais];
+    novos.forEach(n => {
+      const idx = merged.findIndex(x => x.id === n.id);
+      if (idx >= 0) merged[idx] = n; else merged.push(n);
+    });
+    save(key, merged);
+  }
+
+  aplicar(KEYS.alunos, dados.alunos || []);
+  aplicar(KEYS.planos, dados.planos || []);
+  aplicar(KEYS.fichas, dados.fichas || []);
+  aplicar(KEYS.distribuicoes, dados.distribuicoes || []);
+  aplicar(KEYS.checklists, dados.checklists || []);
+  aplicar(KEYS.requisicoes, dados.requisicoes || []);
+  aplicar(KEYS.comandas, dados.comandas || []);
+  aplicar(KEYS.selecoes, dados.selecoes || []);
+  aplicar(KEYS.validacoes, dados.validacoes || []);
+  aplicar(KEYS.atividades, dados.atividades || []);
+  // Histórico de avaliações usa chave própria fora de KEYS — tratar à parte
+  if (modo === 'substituir') {
+    save(KEY_HIST, dados.historicoAvaliacoes || []);
+  } else {
+    const actuais = load<RegistoAvaliacao>(KEY_HIST);
+    const merged = [...actuais];
+    (dados.historicoAvaliacoes || []).forEach(n => {
+      const idx = merged.findIndex(x => x.id === n.id);
+      if (idx >= 0) merged[idx] = n; else merged.push(n);
+    });
+    save(KEY_HIST, merged);
+  }
 }
