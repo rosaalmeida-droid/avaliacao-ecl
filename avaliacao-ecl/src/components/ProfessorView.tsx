@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Comanda } from '../types';
+import { Comanda, FichaProducao } from '../types';
 import { Button, Card, Field } from './ui';
 import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula } from '../backend';
 import { GuiaProducao } from './GuiaProducao';
