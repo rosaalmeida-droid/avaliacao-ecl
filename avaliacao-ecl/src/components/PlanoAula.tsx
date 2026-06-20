@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import {
   getPlanosAulaPorTurma,
   addOrUpdatePlanoAula,
-  eliminarPlanoAula,
+  arquivarPlanoAula,
+  desarquivarPlanoAula,
+  getPlanosArquivados,
   getFichasProducao,
   getAlunos,
 } from '../backend';
@@ -82,7 +84,7 @@ function limparHora(h?: string): string {
 }
 
 // ── Calendário mensal — vista visual dos planos de aula ────────
-function CalendarioMensal({ planos, onAbrirPlano }: { planos: TPlanoAula[]; onAbrirPlano: (p: TPlanoAula) => void }) {
+function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: TPlanoAula[]; onAbrirPlano: (p: TPlanoAula) => void; onPlanoEliminado?: () => void }) {
   const hoje = new Date();
   const [mesActual, setMesActual] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
 
@@ -195,12 +197,12 @@ function CalendarioMensal({ planos, onAbrirPlano }: { planos: TPlanoAula[]; onAb
                     </span>
                     <button onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Eliminar "${p.titulo || 'este plano'}"? Esta ação não pode ser desfeita.`)) {
-                        eliminarPlanoAula(p.id);
-                        window.location.reload();
+                      if (confirm(`Mover "${p.titulo || 'este plano'}" para arquivo? Deixa de aparecer aqui mas fica guardado.`)) {
+                        arquivarPlanoAula(p.id);
+                        onPlanoEliminado?.();
                       }
                     }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
-                      title="Eliminar plano">
+                      title="Arquivar plano">
                       🗑️
                     </button>
                   </div>
@@ -297,8 +299,9 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   onAlteracao?: (guardar?: () => void) => void;
   onGuardado?: (plano?: TPlanoAula) => void;
 }) {
-  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'>('calendario');
+  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>('calendario');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const planos = getPlanosAulaPorTurma(turmaId);
 
   if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => {
@@ -316,10 +319,57 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
       <div style={{ display:'flex', gap:6, marginBottom:14 }}>
         <button onClick={()=>setVista('calendario')} className="tab-btn active" style={{ flex:1 }}>📅 Calendário</button>
         <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
+        <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
       </div>
-      <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)} />
+      <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)} onPlanoEliminado={() => setRefreshKey(k => k + 1)} key={refreshKey} />
     </div>
   );
+
+  if (vista==='arquivo') {
+    const arquivados = getPlanosArquivados(turmaId);
+    return (
+      <div>
+        <div className="header-bar">
+          <h2 className="display" style={{ margin:0 }}>Arquivo</h2>
+          <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
+        </div>
+        <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+          <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
+          <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
+          <button onClick={()=>setVista('arquivo')} className="tab-btn active" style={{ flex:1 }}>🗄️ Arquivo</button>
+        </div>
+        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 14 }}>
+          Planos arquivados não aparecem no calendário nem na lista. Podes sempre trazê-los de volta.
+        </div>
+        {arquivados.length === 0 && (
+          <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>
+            O arquivo está vazio.
+          </div>
+        )}
+        {arquivados.map(p => {
+          const horaI = limparHora(p.horaInicio);
+          const horaF = limparHora(p.horaFim);
+          return (
+            <div key={p.id} className="option-card" style={{ marginBottom: 8, opacity: 0.75 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo || 'Plano de aula'}</div>
+                  {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}</div>}
+                  <div className="muted" style={{ fontSize: 12 }}>{p.data} · {horaI && horaF ? `${horaI}-${horaF}` : ''} · {p.turmaId}</div>
+                </div>
+                <button onClick={() => {
+                  desarquivarPlanoAula(p.id);
+                  setRefreshKey(k => k + 1);
+                }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                  ↩️ Restaurar
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -330,6 +380,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
       <div style={{ display:'flex', gap:6, marginBottom:14 }}>
         <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
         <button onClick={()=>setVista('lista')} className="tab-btn active" style={{ flex:1 }}>📋 Lista</button>
+        <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
       </div>
       {planos.length===0 && (
         <div className="card" style={{ textAlign:'center', padding:40 }}>
