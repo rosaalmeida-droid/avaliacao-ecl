@@ -91,7 +91,15 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       if (jsonPlanos?.ok && jsonPlanos.dados?.length > 0) {
         const locais = getPlanosAula();
         const merged = [...locais];
-        for (const p of jsonPlanos.dados) {
+        for (const pRaw of jsonPlanos.dados) {
+          // Normalizar — o Sheets pode devolver campos array como string (CSV de uma célula)
+          const p: any = {
+            ...pRaw,
+            fichasIds: Array.isArray(pRaw.fichasIds) ? pRaw.fichasIds
+              : (typeof pRaw.fichasIds === 'string' && pRaw.fichasIds ? pRaw.fichasIds.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean) : []),
+            compRemovidas: Array.isArray(pRaw.compRemovidas) ? pRaw.compRemovidas : [],
+            compAdicionadas: Array.isArray(pRaw.compAdicionadas) ? pRaw.compAdicionadas : [],
+          };
           const idx = merged.findIndex((x: PlanoAula) => x.id === p.id);
           if (idx >= 0) {
             if (new Date(p.atualizadoEm) > new Date((merged[idx] as any).atualizadoEm || '')) merged[idx] = p;
