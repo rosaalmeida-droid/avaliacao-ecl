@@ -588,5 +588,12 @@ textarea.input {
   .guia-conteudo-print {
     display: block !important;
   }
+
+  /* Esconder interface da app (tabs, prompts, botões) quando o professor
+     imprime o Guia a partir do ecrã de edição — só o conteúdo do guia
+     deve sair na folha impressa. */
+  .no-print {
+    display: none !important;
+  }
 }
 
