@@ -192,6 +192,13 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
   sincronizarPlanoComCalendario(p);
 }
 
+// Remove um plano de aula só localmente (o registo no Sheets/Calendário fica
+// como histórico — útil para limpar duplicados criados durante testes).
+export function eliminarPlanoAula(planoId: string): void {
+  const all = getPlanosAula().filter(p => p.id !== planoId);
+  save(KEYS.planos, all);
+}
+
 // Envia o plano para o Google Calendar — usa sempre a DATA DA AULA (p.data),
 // nunca a data em que o plano foi criado. Não bloqueia nem espera resposta.
 function sincronizarPlanoComCalendario(p: PlanoAula): void {
