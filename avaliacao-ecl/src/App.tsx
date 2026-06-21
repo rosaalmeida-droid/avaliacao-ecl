@@ -12,6 +12,8 @@ import { VistaDePlano } from './components/VistaDePlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { CopiaSegurancaView } from './components/CopiaSeguranca';
 import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
+import { MapaCompetencias } from './components/MapaCompetencias';
+import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { sincronizarDoSheets, getEstadoSync, addAluno } from './backend';
 
@@ -35,7 +37,7 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
 }
 
 // Tipo para a vista global do professor
-type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes';
+type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias';
 
 function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -132,16 +134,19 @@ function AppInterno() {
   if (!perfil) return <Login onLogin={handleLogin} />;
 
   // ── Tabs da navegação global do professor ──────────────────
-  const tabsProf: { id: VistaProf; label: string; icone: string }[] = [
-    { id: 'planos',     label: 'Planos de Aula', icone: '📋' },
-    { id: 'ficha',      label: 'Ficha',          icone: '📄' },
-    { id: 'guia',       label: 'Guia',           icone: '📚' },
-    { id: 'requisicao', label: 'Requisição',      icone: '🛒' },
-    { id: 'validacao',  label: 'Validação',       icone: '✓'  },
-    { id: 'biblioteca', label: 'Biblioteca',      icone: '🗂️' },
-    { id: 'avaliacao_uc', label: 'Avaliação por UC', icone: '📊' },
-    { id: 'copia_seguranca', label: 'Cópia de Segurança', icone: '💾' },
-    { id: 'gestao_recuperacoes', label: 'Recuperações', icone: '🔄' },
+  // Cada módulo tem cor própria — ajuda o professor a saber sempre,
+  // num relance, em que área de trabalho está.
+  const tabsProf: { id: VistaProf; label: string; icone: string; cor: string; corPale: string }[] = [
+    { id: 'planos',     label: 'Planos de Aula', icone: '📋', cor: 'var(--copper)', corPale: 'var(--copper-pale)' },
+    { id: 'ficha',      label: 'Ficha',          icone: '📄', cor: 'var(--sage)', corPale: 'var(--sage-pale)' },
+    { id: 'guia',       label: 'Guia',           icone: '📚', cor: 'var(--guia)', corPale: 'var(--guia-pale)' },
+    { id: 'requisicao', label: 'Requisição',      icone: '🛒', cor: 'var(--requisicao)', corPale: 'var(--requisicao-pale)' },
+    { id: 'validacao',  label: 'Validação',       icone: '✓',  cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
+    { id: 'biblioteca', label: 'Biblioteca',      icone: '🗂️', cor: 'var(--sage)', corPale: 'var(--sage-pale)' },
+    { id: 'avaliacao_uc', label: 'Avaliação por UC', icone: '📊', cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
+    { id: 'copia_seguranca', label: 'Cópia de Segurança', icone: '💾', cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
+    { id: 'gestao_recuperacoes', label: 'Recuperações', icone: '🔄', cor: 'var(--recuperacao)', corPale: 'var(--recuperacao-pale)' },
+    { id: 'mapa_competencias', label: 'Mapa de Competências', icone: '🗺️', cor: 'var(--competencias)', corPale: 'var(--competencias-pale)' },
   ];
 
   return (
@@ -162,13 +167,22 @@ function AppInterno() {
         <div>
           {/* Navegação global — modo livre, sem associar a nenhum plano */}
           <div className="tab-nav no-print" style={{ overflowX: 'auto', display: 'flex', gap: 4, paddingBottom: 2 }}>
-            {tabsProf.map(t => (
-              <button key={t.id} onClick={() => irPara(t.id)}
-                className={`tab-btn${(!planoAberto && vistaGlobal === t.id) ? ' active' : ''}`}
-                style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                {t.icone} {t.label}
-              </button>
-            ))}
+            {tabsProf.map(t => {
+              const ativo = !planoAberto && vistaGlobal === t.id;
+              return (
+                <button key={t.id} onClick={() => irPara(t.id)}
+                  className="tab-btn"
+                  style={{
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                    background: ativo ? t.corPale : undefined,
+                    color: ativo ? t.cor : undefined,
+                    borderColor: ativo ? t.cor : undefined,
+                    fontWeight: ativo ? 700 : undefined,
+                  }}>
+                  {t.icone} {t.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Banner para voltar ao plano que ficou em pausa */}
@@ -246,7 +260,10 @@ function AppInterno() {
                 <CopiaSegurancaView />
               )}
               {vistaGlobal === 'gestao_recuperacoes' && (
-                <GestaoRecuperacoes turmaId={turmaId} />
+                <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />
+              )}
+              {vistaGlobal === 'mapa_competencias' && (
+                <MapaCompetencias turmaId={turmaId} />
               )}
             </div>
           )}
@@ -255,6 +272,12 @@ function AppInterno() {
 
       {perfil === 'aluno' && aluno && <AlunoView key={refreshKey} aluno={aluno} />}
       {perfil === 'coordenadora' && <CoordenadoraView />}
+
+      {perfil === 'professor' && (
+        <div className="no-print">
+          <CentroAvisos onNavegar={(aviso) => irPara((aviso.contexto?.tabDestino as VistaProf) || 'requisicao')} />
+        </div>
+      )}
     </div>
   );
 }
