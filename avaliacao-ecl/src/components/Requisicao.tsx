@@ -193,6 +193,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     fichasIniciais?.length ? 'editar' : 'escolher'
   );
   const [planoSel, setPlanoSel] = useState<PlanoAula | null>(planoInicial);
+  const [mostrarTodosPlanos, setMostrarTodosPlanos] = useState(false);
   const [fichasSel, setFichasSel] = useState<string[]>(fichasSelInicial);
   const [paxPorFicha, setPaxPorFicha] = useState<Record<string, number>>(() => {
     const r: Record<string, number> = {};
@@ -326,7 +327,21 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         formador: nomeProfessor || planoSel?.professor || '',
         responsavel,  // N42
         atividade,    // K70
-        preparacao: '',
+        // Preparação — preenchida AUTOMATICAMENTE com os passos da(s) Ficha(s)
+        // Técnica(s) associada(s), sem o professor precisar de escrever nada
+        // na Requisição. Só os passos, sem ingredientes (pedido de 21/06/2026).
+        preparacao: fichasSelecionadas
+          .map(f => {
+            const passos = (f.preparacao || [])
+              .slice()
+              .sort((a, b) => (a.num || 0) - (b.num || 0))
+              .map(p => `${p.num}. ${p.descricao}`)
+              .join('\n');
+            // Só identificar o prato no cabeçalho se houver mais de uma ficha
+            return fichasSelecionadas.length > 1 ? `${f.nomePrato}:\n${passos}` : passos;
+          })
+          .filter(Boolean)
+          .join('\n\n'),
         consumo: { bar: consumo.bar, rest: consumo.rest, interno: consumo.interno, convidados: consumo.convidados },
         // Ingredientes → linhas 16-58 do Sheets
         // A = fórmula calculada (não escrever) | B=qtReceita | C=nome | H=und | L=precoUnitario
@@ -353,17 +368,17 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // ── FASE 1 — ESCOLHER ─────────────────────────────────────
   if (fase === 'escolher') {
     return (
-      <div>
-        <div style={S.card}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4, color: 'var(--requisicao)' }}>🛒 Nova Requisicao</div>
-          <div style={S.muted}>Seleciona o plano, as fichas de producao e o numero de doses.</div>
+      <div style={{ background: 'var(--requisicao-pale)', borderRadius: 16, padding: 16 }}>
+        <div style={{ background: 'var(--requisicao)', borderRadius: 14, padding: '16px 18px', marginBottom: 14 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4, color: 'white' }}>🛒 Nova Requisicao</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>Seleciona o plano, as fichas de producao e o numero de doses.</div>
         </div>
 
         {/* 1. Plano */}
         <div style={S.card}>
           <label style={S.lbl}>1. Plano de aula</label>
           {planos.length === 0 && <div style={S.muted}>Sem planos criados. Cria primeiro um plano de aula.</div>}
-          {planos.map(p => {
+          {(mostrarTodosPlanos ? planos : planos.slice(0, 8)).map(p => {
             const d = new Date(p.data + 'T12:00:00');
             return (
               <div key={p.id} onClick={() => selecionarPlano(p)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${planoSel?.id === p.id ? 'var(--copper)' : 'var(--border)'}`, background: planoSel?.id === p.id ? 'var(--copper-pale)' : '#fff', marginBottom: 6, cursor: 'pointer' }}>
@@ -373,12 +388,21 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{p.titulo}</div>
-                  <div style={S.muted}>{p.turmaId} · {p.fichasIds.length} fichas</div>
+                  <div style={S.muted}>
+                    {p.turmaId} {p.ucId ? `· ${p.ucId}` : ''} · {p.fichasIds.length} fichas
+                    {p.estado === 'publicado' && <span style={{ color: 'var(--sage)', fontWeight: 700 }}> · Publicado</span>}
+                  </div>
                 </div>
                 {planoSel?.id === p.id && <span style={{ color: 'var(--copper)' }}>✓</span>}
               </div>
             );
           })}
+          {!mostrarTodosPlanos && planos.length > 8 && (
+            <button onClick={() => setMostrarTodosPlanos(true)}
+              style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 12, fontWeight: 600, color: 'var(--copper)', cursor: 'pointer' }}>
+              Ver mais {planos.length - 8} planos mais antigos
+            </button>
+          )}
         </div>
 
         {/* 2. Fichas e doses */}
@@ -446,12 +470,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           </button>
         )}
       </div>
+    </div>
     );
   }
 
   // ── FASE 2 — EDITAR E ENVIAR ──────────────────────────────
   return (
-    <div>
+    <div style={{ background: 'var(--requisicao-pale)', borderRadius: 16, padding: 16 }}>
       <button className="no-print" style={{ ...S.btnG, marginBottom: 12 }} onClick={() => setFase('escolher')}>← Voltar</button>
 
       {/* Cabecalho tipo ficha ECL */}
@@ -638,6 +663,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         }}>✓ Guardar e Enviar para o Google Sheets</button>
         <button style={S.btnG} onClick={() => window.print()}>Imprimir</button>
       </div>
+    </div>
     </div>
   );
 }
