@@ -14,6 +14,9 @@ export function CopiaSegurancaView() {
     { label: 'Requisições', n: dadosActuais.requisicoes.length },
     { label: 'Alunos', n: dadosActuais.alunos.length },
     { label: 'Registos de avaliação', n: dadosActuais.historicoAvaliacoes.length },
+    { label: 'Presenças', n: dadosActuais.presencas.length },
+    { label: 'Recuperações de módulos', n: dadosActuais.recuperacoes.length },
+    { label: 'Evidências (Banco de Evidências)', n: dadosActuais.evidencias.length },
   ];
 
   function lerFicheiro(e: React.ChangeEvent<HTMLInputElement>) {
