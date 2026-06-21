@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, SHEETS_REQUISICAO_URL } from '../backend';
+import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
-import { encontrarMateriaPrima } from '../materiasPrimasBase';
+import { encontrarMateriaPrimaComConfianca } from '../materiasPrimasBase';
 import {
   processarIngrediente,
   obterRendimento,
@@ -46,8 +46,14 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
     const paxPedido = paxPorFicha[f.id] || paxBase;
     const fator = paxPedido / paxBase;
 
-    f.ingredientes.forEach(ing => {
-      if (!ing.produto?.trim()) return;
+    // Proteção total: f.ingredientes pode vir undefined/null se a ficha foi
+    // gravada antes de uma correção anterior, ou chegou malformada do Sheets.
+    // Sem isto, .forEach rebentava e travava o processamento de TODAS as
+    // fichas seguintes silenciosamente — a causa real da requisição vazia.
+    const ingredientesDaFicha = Array.isArray(f.ingredientes) ? f.ingredientes : [];
+
+    ingredientesDaFicha.forEach(ing => {
+      if (!ing || !ing.produto?.trim()) return;
 
       const proc = processarIngrediente(ing.produto, ing.qt, ing.un, f.nomePrato);
       if (proc.excluir) return;
@@ -69,8 +75,31 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
       // Se sim, juntar mesmo que a actual seja QB
       const chaveNormal = `${produtoChave}__${proc.und === 'un' ? 'un' : 'kg'}`;
 
-      const mp = encontrarMateriaPrima(proc.produto);
-      const precoUnitario = (mp && mp.precoKg > 0) ? mp.precoKg.toFixed(2) : '';
+      const custom = getMateriasPrimasCustom();
+      const { mp, confianca } = encontrarMateriaPrimaComConfianca(proc.produto, custom);
+      // Ingredientes vendidos por unidade (ovos, etc.) têm precoKg = 0 — usar
+      // precoUnitario nesse caso. Ingredientes vendidos a peso/volume usam precoKg.
+      const precoMP = mp ? (proc.und === 'un' ? mp.precoUnitario : mp.precoKg) : 0;
+      const precoUnitario = (precoMP && precoMP > 0) ? precoMP.toFixed(2) : '';
+
+      // Gerar aviso no Centro de Avisos quando a correspondência não é segura
+      // — o professor confirma/corrige diretamente na Requisição, sem
+      // precisar de ir a um ecrã de gestão à parte.
+      if (confianca === 'nenhuma') {
+        addAviso({
+          tipo: 'ingrediente_nao_encontrado',
+          titulo: `Ingrediente "${proc.produto}" não está na base de preços`,
+          descricao: `Confirma o preço de "${proc.produto}" na Requisição — fica guardado automaticamente para a próxima vez.`,
+          contexto: { ingredienteNome: proc.produto, fichaId: f.id },
+        });
+      } else if (confianca === 'ambigua') {
+        addAviso({
+          tipo: 'ingrediente_ambiguo',
+          titulo: `Confirma o preço de "${proc.produto}"`,
+          descricao: `A app associou a "${mp?.nome}" mas não tem a certeza — confirma se está correto na Requisição.`,
+          contexto: { ingredienteNome: proc.produto, fichaId: f.id },
+        });
+      }
 
       // Aviso: unidade 'un' que não é ovo
       const avisos = [...proc.avisos];
@@ -133,6 +162,15 @@ const fQn = (n: number, und: string) => {
   if (n === 0) return '';
   if (und === 'un') return String(Math.round(n));
   return n >= 1 ? n.toFixed(3) : n.toFixed(4);
+};
+
+// Versão para ENVIO ao Sheets — nunca devolve string vazia (o Apps Script
+// espera sempre um número, mesmo que seja 0). fQn esconde zeros só para
+// efeitos visuais na tabela; usar essa função no envio fazia desaparecer
+// ingredientes com quantidade pequena ou exactamente 0.
+const fQnEnvio = (n: number, und: string): string => {
+  if (und === 'un') return String(Math.round(n));
+  return n.toFixed(4);
 };
 
 // ── Estilos ───────────────────────────────────────────────────
@@ -221,12 +259,37 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   }
 
   function gerarLinhas() {
-    setLinhas(agregarIngredientes(fichasSelecionadas, paxPorFicha));
+    const novasLinhas = agregarIngredientes(fichasSelecionadas, paxPorFicha);
+    // Aviso imediato e visível — antes ficava silencioso e a requisição
+    // saía vazia sem o professor perceber porquê.
+    const fichasSemIngredientes = fichasSelecionadas.filter(f => !Array.isArray(f.ingredientes) || f.ingredientes.length === 0);
+    if (fichasSemIngredientes.length > 0) {
+      alert(`Atenção: a(s) ficha(s) "${fichasSemIngredientes.map(f => f.nomePrato).join('", "')}" não têm ingredientes guardados. Abre a ficha e confirma que está completa antes de gerar a requisição.`);
+    }
+    setLinhas(novasLinhas);
     setFase('editar');
   }
 
   function setL(i: number, campo: string, v: string | number) {
     setLinhas(prev => { const n = [...prev]; n[i] = recalc({ ...n[i], [campo]: v }); return n; });
+  }
+
+  // Quando o professor confirma/corrige o preço de um ingrediente, a base
+  // de dados aprende — fica guardado para a próxima vez (sem precisar de
+  // ecrã de gestão à parte), e o aviso pendente é resolvido automaticamente.
+  function confirmarPrecoIngrediente(i: number) {
+    const l = linhas[i];
+    const preco = parseFloat(l.precoUnitario) || 0;
+    if (preco <= 0) return;
+    addOrUpdateMateriaPrimaCustom({
+      nome: l.produto,
+      categoria: familia || 'Outros',
+      unidadeCompra: l.und,
+      precoKg: l.und === 'un' ? 0 : preco,
+      precoUnitario: l.und === 'un' ? preco : preco,
+      aliases: [l.produto.toLowerCase()],
+    });
+    resolverAvisosDoIngrediente(l.produto);
   }
 
   function setQtEnc(i: number, v: number) {
@@ -267,9 +330,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         consumo: { bar: consumo.bar, rest: consumo.rest, interno: consumo.interno, convidados: consumo.convidados },
         // Ingredientes → linhas 16-58 do Sheets
         // A = fórmula calculada (não escrever) | B=qtReceita | C=nome | H=und | L=precoUnitario
-        ingredientes: linhasAtivas.filter(l => !l.isQB).map(l => ({
+        // Inclui também linhas Q.B. (sal, especiarias a gosto) — já têm uma
+        // quantidade mínima estimada calculada, não devem ser excluídas da
+        // requisição (o responsável de compras precisa de saber que existem).
+        ingredientes: linhasAtivas.map(l => ({
           nome: l.produto,
-          qtReceita: fQn(l.qtReceita, l.und),
+          qtReceita: fQnEnvio(l.qtReceita, l.und),
           und: l.und,
           preco: l.precoUnitario || '0',
         })),
@@ -289,7 +355,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     return (
       <div>
         <div style={S.card}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Nova Requisicao</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4, color: 'var(--requisicao)' }}>🛒 Nova Requisicao</div>
           <div style={S.muted}>Seleciona o plano, as fichas de producao e o numero de doses.</div>
         </div>
 
@@ -386,7 +452,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // ── FASE 2 — EDITAR E ENVIAR ──────────────────────────────
   return (
     <div>
-      <button style={{ ...S.btnG, marginBottom: 12 }} onClick={() => setFase('escolher')}>← Voltar</button>
+      <button className="no-print" style={{ ...S.btnG, marginBottom: 12 }} onClick={() => setFase('escolher')}>← Voltar</button>
 
       {/* Cabecalho tipo ficha ECL */}
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '18px', marginBottom: 12 }}>
@@ -409,7 +475,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
       {/* Decisao produzir/comprar */}
       {linhasPergunta.length > 0 && (
-        <div style={{ ...S.card, border: '1.5px solid var(--copper)', background: 'var(--copper-pale)' }}>
+        <div className="no-print" style={{ ...S.card, border: '1.5px solid var(--copper)', background: 'var(--copper-pale)' }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>Decisao necessaria — produzir ou comprar?</div>
           {linhasPergunta.map(l => {
             const i = linhas.indexOf(l);
@@ -502,8 +568,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                     </td>
                     <td style={{ padding: '3px 3px' }}>
                       <input value={l.precoUnitario} onChange={e => setL(i, 'precoUnitario', e.target.value)}
+                        onBlur={() => confirmarPrecoIngrediente(i)}
                         style={{ ...S.inp, width: 58, textAlign: 'right', fontSize:13, background: l.daBD ? 'var(--sage-pale)' : '#fff' }}
-                        placeholder="0.00" />
+                        placeholder="0.00" title={l.daBD ? 'Preço da base de dados' : 'Confirma o preço — fica guardado para a próxima vez'} />
                     </td>
                     <td style={{ padding: '3px 5px', textAlign: 'right', fontWeight: l.precoEncomenda > 0 ? 600 : 400, color: l.precoEncomenda > 0 ? 'var(--copper)' : 'rgba(26,23,20,0.55)' }}>
                       {l.precoEncomenda > 0 ? fE(l.precoEncomenda) : '—'}
@@ -554,12 +621,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
       {msg && <div style={{ padding: '10px 14px', background: 'var(--sage-pale)', borderRadius: 10, fontSize: 13, color: 'var(--sage)', marginBottom: 10, fontWeight: 600 }}>{msg}</div>}
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button style={S.btnP} onClick={async () => {
           // 1. Guardar localmente
           if (planoSel) {
             addOrUpdateRequisicao({
-              id: `req_${planoSel.id}`, planoAulaId: planoSel.id, turmaId: planoSel.turmaId,
+              id: `req_${planoSel.id}_${Date.now()}`, planoAulaId: planoSel.id, turmaId: planoSel.turmaId,
               dataAula: planoSel.data, professor: planoSel.professor, fichasIds: fichasSel,
               linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: parseFloat(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
               custoTotal: crTotal, estado: 'enviada', criadaEm: new Date().toISOString(), atualizadaEm: new Date().toISOString(),
