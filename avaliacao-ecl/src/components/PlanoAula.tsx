@@ -89,7 +89,12 @@ function limparHora(h?: string): string {
 // ── Calendário mensal — vista visual dos planos de aula ────────
 function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: TPlanoAula[]; onAbrirPlano: (p: TPlanoAula) => void; onPlanoEliminado?: () => void }) {
   const hoje = new Date();
-  const [mesActual, setMesActual] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+  const [modoVista, setModoVista] = useState<'semana' | 'mes' | '2meses'>('mes');
+  const [dataReferencia, setDataReferencia] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
+  // Dia em foco — só muda quando o utilizador clica explicitamente num dia.
+  // Antes, navegar entre meses reiniciava sempre para null; agora mantém-se
+  // o dia que estava a ser trabalhado (pedido de 21/06/2026).
+  const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(hoje);
 
   // Agrupar planos por dia (yyyy-mm-dd)
   const planosPorDia = new Map<string, TPlanoAula[]>();
@@ -100,79 +105,168 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
     planosPorDia.get(chave)!.push(p);
   });
 
-  const ano = mesActual.getFullYear();
-  const mes = mesActual.getMonth();
-  const primeiroDiaSemana = (new Date(ano, mes, 1).getDay() + 6) % 7; // 0=segunda
-  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
-  const nomesMes = mesActual.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+  function chaveDia(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function ehMesmoDia(a: Date, b: Date) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  function navegar(direcao: 1 | -1) {
+    const nova = new Date(dataReferencia);
+    if (modoVista === 'semana') nova.setDate(nova.getDate() + direcao * 7);
+    else if (modoVista === 'mes') nova.setMonth(nova.getMonth() + direcao);
+    else nova.setMonth(nova.getMonth() + direcao * 2);
+    setDataReferencia(nova);
+    // Mantém o dia selecionado — não reinicia para null ao navegar.
+  }
+
+  function irParaHoje() {
+    setDataReferencia(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
+    setDiaSelecionado(hoje);
+  }
+
   const diasSemana = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
 
-  const celulas: (number | null)[] = [];
-  for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null);
-  for (let d = 1; d <= diasNoMes; d++) celulas.push(d);
+  // Gera as células de um mês específico (ano/mês 0-indexed)
+  function gerarMes(ano: number, mes: number) {
+    const primeiroDiaSemana = (new Date(ano, mes, 1).getDay() + 6) % 7;
+    const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+    const celulas: (Date | null)[] = [];
+    for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null);
+    for (let d = 1; d <= diasNoMes; d++) celulas.push(new Date(ano, mes, d));
+    return celulas;
+  }
 
-  const [diaSelecionado, setDiaSelecionado] = useState<number | null>(null);
+  // Gera os 7 dias da semana que contém dataReferencia (segunda a domingo)
+  function gerarSemana(ref: Date) {
+    const diaSemana = (ref.getDay() + 6) % 7; // 0=segunda
+    const inicio = new Date(ref);
+    inicio.setDate(ref.getDate() - diaSemana);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(inicio);
+      d.setDate(inicio.getDate() + i);
+      return d;
+    });
+  }
+
+  function CelulaDia({ data }: { data: Date | null }) {
+    if (!data) return <div />;
+    const chave = chaveDia(data);
+    const planosNesteDia = planosPorDia.get(chave) || [];
+    const ehHoje = ehMesmoDia(data, hoje);
+    const selecionado = diaSelecionado && ehMesmoDia(data, diaSelecionado);
+    return (
+      <button onClick={() => setDiaSelecionado(selecionado ? null : data)}
+        style={{
+          aspectRatio: '1', maxHeight: 34, borderRadius: 6, border: ehHoje ? '1.5px solid var(--copper)' : '1px solid var(--border)',
+          background: selecionado ? 'var(--copper)' : (planosNesteDia.length > 0 ? 'var(--copper-pale)' : '#fff'),
+          color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
+          cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: 1, position: 'relative', fontSize: 11,
+        }}>
+        <span style={{ fontSize: 11, fontWeight: ehHoje || selecionado ? 700 : 500 }}>{data.getDate()}</span>
+        {planosNesteDia.length > 0 && (
+          <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
+            {planosNesteDia.slice(0, 3).map((_, idx) => (
+              <div key={idx} style={{ width: 3, height: 3, borderRadius: '50%', background: selecionado ? 'white' : 'var(--copper)' }} />
+            ))}
+          </div>
+        )}
+      </button>
+    );
+  }
+
+  function GrelhaMes({ ano, mes, mostrarTitulo }: { ano: number; mes: number; mostrarTitulo?: boolean }) {
+    const celulas = gerarMes(ano, mes);
+    const nomeMes = new Date(ano, mes, 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+    return (
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {mostrarTitulo && (
+          <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', marginBottom: 6, textTransform: 'capitalize', color: 'rgba(26,23,20,0.6)' }}>{nomeMes}</div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 3 }}>
+          {diasSemana.map(d => (
+            <div key={d} style={{ textAlign: 'center', fontSize: 8, fontWeight: 700, color: 'rgba(26,23,20,0.4)' }}>{d[0]}</div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+          {celulas.map((dia, i) => <CelulaDia key={i} data={dia} />)}
+        </div>
+      </div>
+    );
+  }
+
+  const ano = dataReferencia.getFullYear();
+  const mes = dataReferencia.getMonth();
+  const tituloAtual = modoVista === 'semana'
+    ? `Semana de ${gerarSemana(dataReferencia)[0].toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })}`
+    : modoVista === 'mes'
+    ? dataReferencia.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+    : `${dataReferencia.toLocaleDateString('pt-PT', { month: 'short' })} – ${new Date(ano, mes + 1, 1).toLocaleDateString('pt-PT', { month: 'short', year: 'numeric' })}`;
 
   return (
     <div>
-      {/* Navegação do mês */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <button onClick={() => { setMesActual(new Date(ano, mes - 1, 1)); setDiaSelecionado(null); }}
-          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>‹</button>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, textTransform: 'capitalize' }}>{nomesMes}</div>
-        <button onClick={() => { setMesActual(new Date(ano, mes + 1, 1)); setDiaSelecionado(null); }}
-          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>›</button>
-      </div>
-      <button onClick={() => { setMesActual(new Date(hoje.getFullYear(), hoje.getMonth(), 1)); setDiaSelecionado(hoje.getMonth() === mes && hoje.getFullYear() === ano ? hoje.getDate() : null); }}
-        style={{ width: '100%', marginBottom: 12, padding: '6px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 12, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer' }}>
-        Hoje
-      </button>
-
-      {/* Cabeçalho dias da semana */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 4 }}>
-        {diasSemana.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'rgba(26,23,20,0.4)', padding: '4px 0' }}>{d}</div>
+      {/* Seletor de modo de vista */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+        {(['semana', 'mes', '2meses'] as const).map(m => (
+          <button key={m} onClick={() => setModoVista(m)}
+            style={{ flex: 1, padding: '5px 6px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              border: modoVista === m ? 'none' : '1px solid var(--border)',
+              background: modoVista === m ? 'var(--copper)' : '#fff',
+              color: modoVista === m ? 'white' : 'rgba(26,23,20,0.6)' }}>
+            {m === 'semana' ? 'Semana' : m === 'mes' ? 'Mês' : '2 Meses'}
+          </button>
         ))}
       </div>
 
-      {/* Grelha do calendário */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 16 }}>
-        {celulas.map((dia, i) => {
-          if (dia === null) return <div key={`vazio-${i}`} />;
-          const chave = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-          const planosNesteDia = planosPorDia.get(chave) || [];
-          const ehHoje = hoje.getDate() === dia && hoje.getMonth() === mes && hoje.getFullYear() === ano;
-          const selecionado = diaSelecionado === dia;
-          return (
-            <button key={dia} onClick={() => setDiaSelecionado(selecionado ? null : dia)}
-              style={{
-                aspectRatio: '1', borderRadius: 8, border: ehHoje ? '2px solid var(--copper)' : '1px solid var(--border)',
-                background: selecionado ? 'var(--copper)' : (planosNesteDia.length > 0 ? 'var(--copper-pale)' : '#fff'),
-                color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
-                cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: 2, position: 'relative',
-              }}>
-              <span style={{ fontSize: 13, fontWeight: ehHoje || selecionado ? 700 : 500 }}>{dia}</span>
-              {planosNesteDia.length > 0 && (
-                <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
-                  {planosNesteDia.slice(0, 3).map((_, idx) => (
-                    <div key={idx} style={{ width: 4, height: 4, borderRadius: '50%', background: selecionado ? 'white' : 'var(--copper)' }} />
-                  ))}
-                </div>
-              )}
-            </button>
-          );
-        })}
+      {/* Navegação */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <button onClick={() => navegar(-1)}
+          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 13 }}>‹</button>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, textTransform: 'capitalize' }}>{tituloAtual}</div>
+        <button onClick={() => navegar(1)}
+          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 13 }}>›</button>
       </div>
+      <button onClick={irParaHoje}
+        style={{ width: '100%', marginBottom: 10, padding: '5px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', fontSize: 11, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer' }}>
+        Hoje
+      </button>
+
+      {/* Grelha — varia consoante o modo */}
+      {modoVista === 'semana' && (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+            {diasSemana.map(d => (
+              <div key={d} style={{ textAlign: 'center', fontSize: 9, fontWeight: 700, color: 'rgba(26,23,20,0.4)' }}>{d}</div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 14 }}>
+            {gerarSemana(dataReferencia).map((d, i) => <CelulaDia key={i} data={d} />)}
+          </div>
+        </div>
+      )}
+      {modoVista === 'mes' && (
+        <div style={{ marginBottom: 14 }}>
+          <GrelhaMes ano={ano} mes={mes} />
+        </div>
+      )}
+      {modoVista === '2meses' && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+          <GrelhaMes ano={ano} mes={mes} mostrarTitulo />
+          <GrelhaMes ano={mes === 11 ? ano + 1 : ano} mes={(mes + 1) % 12} mostrarTitulo />
+        </div>
+      )}
 
       {/* Lista de planos do dia selecionado */}
       {diaSelecionado !== null && (() => {
-        const chave = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(diaSelecionado).padStart(2, '0')}`;
+        const chave = chaveDia(diaSelecionado);
         const planosDoDia = planosPorDia.get(chave) || [];
+        const nomeDia = diaSelecionado.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
         return (
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              {diaSelecionado} de {nomesMes}
+              {nomeDia}
             </div>
             {planosDoDia.length === 0 && (
               <div style={{ padding: '20px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)', fontSize: 13 }}>
@@ -210,7 +304,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                         arquivarPlanoAula(p.id);
                         onPlanoEliminado?.();
                       } else if (escolha === '2') {
-                        if (confirm(`Confirma: eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"? Não pode ser desfeito.`)) {
+                        if (confirm(`Confirma: eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"? Não pode ser desfeita.`)) {
                           eliminarPlanoAulaDefinitivamente(p.id);
                           onPlanoEliminado?.();
                         }
@@ -316,6 +410,10 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>('calendario');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  // Modo de seleção múltipla — eliminar vários planos de uma vez (ponto 9
+  // do documento de 21/06/2026).
+  const [modoSelecaoPlanos, setModoSelecaoPlanos] = useState(false);
+  const [planosSelecionadosIds, setPlanosSelecionadosIds] = useState<Set<string>>(new Set());
   const planos = getPlanosAulaPorTurma(turmaId);
 
   if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => {
@@ -328,14 +426,16 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
     <div>
       <div className="header-bar">
         <h2 className="display" style={{ margin:0 }}>Planos de Aula</h2>
-        <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
+        <button className="btn btn-primary" onClick={()=>setVista('criar')} style={{ background: 'var(--copper)', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>📋 + Novo Plano de Aula</button>
       </div>
       <div style={{ display:'flex', gap:6, marginBottom:14 }}>
         <button onClick={()=>setVista('calendario')} className="tab-btn active" style={{ flex:1 }}>📅 Calendário</button>
         <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
         <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
       </div>
-      <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)} onPlanoEliminado={() => setRefreshKey(k => k + 1)} key={refreshKey} />
+      <div style={{ maxWidth: 420 }}>
+        <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)} onPlanoEliminado={() => setRefreshKey(k => k + 1)} key={refreshKey} />
+      </div>
     </div>
   );
 
@@ -345,7 +445,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
       <div>
         <div className="header-bar">
           <h2 className="display" style={{ margin:0 }}>Arquivo</h2>
-          <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
+          <button className="btn btn-primary" onClick={()=>setVista('criar')} style={{ background: 'var(--copper)', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>📋 + Novo Plano de Aula</button>
         </div>
         <div style={{ display:'flex', gap:6, marginBottom:14 }}>
           <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
@@ -394,16 +494,43 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   }
 
   return (
-    <div>
-      <div className="header-bar">
-        <h2 className="display" style={{ margin:0 }}>Planos de Aula</h2>
-        <button className="btn btn-primary" onClick={()=>setVista('criar')}>+ Novo plano</button>
+    <div style={{ background: 'var(--copper-pale)', borderRadius: 16, padding: 16 }}>
+      <div style={{ background: 'var(--copper)', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <h2 className="display" style={{ margin:0, color: 'white' }}>Planos de Aula</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {vista === 'lista' && (
+            <button className="btn btn-ghost" onClick={() => { setModoSelecaoPlanos(!modoSelecaoPlanos); setPlanosSelecionadosIds(new Set()); }}
+              style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>
+              {modoSelecaoPlanos ? '✕ Cancelar' : '☑ Selecionar'}
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={()=>setVista('criar')} style={{ background: 'white', color: 'var(--copper)', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>📋 + Novo Plano de Aula</button>
+        </div>
       </div>
       <div style={{ display:'flex', gap:6, marginBottom:14 }}>
         <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
         <button onClick={()=>setVista('lista')} className="tab-btn active" style={{ flex:1 }}>📋 Lista</button>
         <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
       </div>
+      {modoSelecaoPlanos && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+          <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
+            {planosSelecionadosIds.size} plano(s) selecionado(s)
+          </span>
+          <button onClick={() => {
+            if (planosSelecionadosIds.size === 0) return;
+            if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosIds.size} plano(s)? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeito.`)) {
+              planosSelecionadosIds.forEach(id => eliminarPlanoAulaDefinitivamente(id));
+              setPlanosSelecionadosIds(new Set());
+              setModoSelecaoPlanos(false);
+              setRefreshKey(k => k + 1);
+            }
+          }} disabled={planosSelecionadosIds.size === 0}
+            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12, cursor: planosSelecionadosIds.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosIds.size === 0 ? 0.4 : 1 }}>
+            🗑️ Eliminar Selecionados
+          </button>
+        </div>
+      )}
       {planos.length===0 && (
         <div className="card" style={{ textAlign:'center', padding:40 }}>
           <div style={{ fontSize:40, marginBottom:10 }}>📋</div>
@@ -438,8 +565,23 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           : (p.horaFim||'').substring(0,5);
 
         return (
-          <div key={p.id} className="option-card" onClick={() => onGuardado?.(p)}>
+          <div key={p.id} className="option-card" onClick={() => {
+            if (modoSelecaoPlanos) {
+              setPlanosSelecionadosIds(prev => {
+                const novo = new Set(prev);
+                if (novo.has(p.id)) novo.delete(p.id); else novo.add(p.id);
+                return novo;
+              });
+              return;
+            }
+            onGuardado?.(p);
+          }}>
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+              {modoSelecaoPlanos && (
+                <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: planosSelecionadosIds.has(p.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, color: 'white' }}>
+                  {planosSelecionadosIds.has(p.id) && '✓'}
+                </div>
+              )}
               <div style={{ background:'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
                 <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'white', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
                 <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.85)', textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
@@ -534,7 +676,26 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       </div>
 
       <Card>
-        {/* UC — campo mais importante */}
+        {/* Data — primeiro campo, define imediatamente quando o plano fica agendado */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div className="field">
+            <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)' }}>
+              Data <span style={{ color: 'var(--danger)' }}>*</span>
+            </label>
+            <input type="date" className="input" value={dados.data} onChange={e => setD('data', e.target.value)}
+              style={{ border: !dados.data ? '2px solid var(--danger)' : undefined, fontSize: 14 }} />
+          </div>
+          <div className="field">
+            <label className="field-label">Início</label>
+            <input type="time" className="input" value={dados.horaInicio} onChange={e => setD('horaInicio', e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="field-label">Fim</label>
+            <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
+          </div>
+        </div>
+
+        {/* UC */}
         <div className="field" style={{ marginBottom: 16 }}>
           <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>
             Unidade de Competência <span style={{ color: 'var(--danger)' }}>*</span>
@@ -555,14 +716,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
           )}
         </div>
 
-        {/* Data e horas */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
-          <div className="field">
-            <label className="field-label">Data</label>
-            <input type="date" className="input" value={dados.data} onChange={e => setD('data', e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="field-label">Início</label>
+
             <input type="time" className="input" value={dados.horaInicio} onChange={e => setD('horaInicio', e.target.value)} />
           </div>
           <div className="field">
@@ -782,6 +936,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }
