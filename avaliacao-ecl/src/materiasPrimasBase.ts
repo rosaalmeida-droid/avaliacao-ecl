@@ -408,3 +408,54 @@ export function encontrarMateriaPrima(nome: string): MateriaPrimaBase | undefine
 export function getPrecoKg(mp: MateriaPrimaBase): string {
   return mp.precoKg > 0 ? `${mp.precoKg.toFixed(2)} €/kg` : '';
 }
+
+// ── Busca inteligente com nível de confiança ────────────────────────────
+// Usada pela Requisição para decidir quando mostrar um aviso ao professor.
+// Considera primeiro a camada CUSTOM (editada/aprendida pelo professor —
+// sempre prioritária), depois a base de fábrica.
+export type ConfiancaMatch = 'exata' | 'ambigua' | 'nenhuma';
+
+export interface ResultadoBuscaMP {
+  mp: MateriaPrimaBase | undefined;
+  confianca: ConfiancaMatch;
+}
+
+export function encontrarMateriaPrimaComConfianca(
+  nome: string,
+  custom: { nome: string; categoria: string; unidadeCompra: string; precoKg: number; precoUnitario: number; aliases: string[] }[] = []
+): ResultadoBuscaMP {
+  let t = nome.toLowerCase().trim()
+    .replace(/[.,;:!?()]/g, ' ')
+    .replace(/\b(é|de|da|do|das|dos|um|uma|uns|umas)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  t = t.replace(/\b(\w+)( \1\b)+/g, '$1');
+
+  if (!t) return { mp: undefined, confianca: 'nenhuma' };
+
+  // Converter custom para o formato MateriaPrimaBase para reutilizar a mesma lógica
+  const customComoBase: MateriaPrimaBase[] = custom.map(c => ({
+    id: `custom_${c.nome}`, nome: c.nome, categoria: c.categoria,
+    unidadeCompra: c.unidadeCompra, unidadeReceita: c.unidadeCompra, fatorConversao: 1,
+    precoKg: c.precoKg, precoUnitario: c.precoUnitario, fonte: 'Professor', atualizadoEm: '', aliases: c.aliases,
+  }));
+  // Custom tem prioridade — procurar lá primeiro
+  const todasFontes = [...customComoBase, ...MATERIAS_PRIMAS_BASE];
+
+  // 1. Correspondência EXATA (nome ou alias igual) — alta confiança
+  const exata = todasFontes.find(mp =>
+    mp.nome.toLowerCase() === t || mp.aliases.some(a => a.toLowerCase() === t)
+  );
+  if (exata) return { mp: exata, confianca: 'exata' };
+
+  // 2. Correspondência PARCIAL — confiança ambígua, vale a pena confirmar
+  const matches = todasFontes.filter(mp =>
+    mp.nome.toLowerCase().includes(t) || t.includes(mp.nome.toLowerCase()) ||
+    mp.aliases.some(a => a.toLowerCase().includes(t) || t.includes(a.toLowerCase()))
+  ).sort((a, b) => a.precoUnitario - b.precoUnitario);
+
+  if (matches.length > 0) return { mp: matches[0], confianca: 'ambigua' };
+
+  // 3. Nada encontrado
+  return { mp: undefined, confianca: 'nenhuma' };
+}
