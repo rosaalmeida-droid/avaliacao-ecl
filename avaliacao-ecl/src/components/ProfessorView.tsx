@@ -905,7 +905,13 @@ Preparação:
 ${(ficha.preparacao || []).map((p, idx) => `${idx + 1}. ${p.descricao || ''}`).join('\n')}
 
 Nº de doses: ${ficha.numPorcoes || '?'} | Tempo preparação: ${ficha.tempoPrep || '?'} | Tempo confeção: ${ficha.tempoConf || '?'}
-${ficha.alergenicos?.length ? `Alergénicos: ${ficha.alergenicos.join(', ')}` : ''}
+${(() => {
+  // Alergénicos pode chegar como array (esperado) ou string solta (dados
+  // antigos sincronizados do Sheets) — nunca assumir .join() sem verificar.
+  const al = ficha.alergenicos;
+  const texto = Array.isArray(al) ? al.join(', ') : (al || '');
+  return texto ? `Alergénicos: ${texto}` : '';
+})()}
 ${ficha.conservacao ? `Conservação: ${ficha.conservacao}` : ''}
 ${ficha.kitchenflow ? `Pontos HACCP/KitchenFlow: ${ficha.kitchenflow}` : ''}
 ` : `\n⚠️ Ficha de Produção não disponível neste momento — usa o teu conhecimento culinário sobre "${nomePrato}", mas sinaliza isso no início do Guia.\n`;
