@@ -470,7 +470,6 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           </button>
         )}
       </div>
-    </div>
     );
   }
 
@@ -663,7 +662,6 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         }}>✓ Guardar e Enviar para o Google Sheets</button>
         <button style={S.btnG} onClick={() => window.print()}>Imprimir</button>
       </div>
-    </div>
     </div>
   );
 }
