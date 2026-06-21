@@ -26,20 +26,13 @@ interface DadosGuia {
 
 // ── Configuração das secções ──────────────────────────────────
 const SECOES_CONFIG = [
-  { num: 1,  titulo: 'Enquadramento',          icone: '📖', cor: '#1f1b16', corTexto: '#faf7f2' },
-  { num: 2,  titulo: 'Competências',            icone: '🎯', cor: '#b5651d', corTexto: '#fff' },
-  { num: 3,  titulo: 'Microcompetências',       icone: '🔬', cor: '#5a7a4e', corTexto: '#fff' },
-  { num: 4,  titulo: 'HACCP e PCC',             icone: '⚠️', cor: '#c0392b', corTexto: '#fff' },
-  { num: 5,  titulo: 'Rendimentos',             icone: '⚖️', cor: '#2980b9', corTexto: '#fff' },
-  { num: 6,  titulo: 'Capacitação',             icone: '👥', cor: '#8e44ad', corTexto: '#fff' },
-  { num: 7,  titulo: 'Equilíbrio Sensorial',    icone: '🌈', cor: '#e67e22', corTexto: '#fff' },
-  { num: 8,  titulo: 'Sugestões Gastronómicas', icone: '💡', cor: '#16a085', corTexto: '#fff' },
-  { num: 9,  titulo: 'Sustentabilidade',        icone: '♻️', cor: '#27ae60', corTexto: '#fff' },
-  { num: 10, titulo: 'Food Cost',               icone: '💶', cor: '#2c3e50', corTexto: '#fff' },
-  { num: 11, titulo: 'Conhecimentos',           icone: '📚', cor: '#7f8c8d', corTexto: '#fff' },
-  { num: 12, titulo: 'Questões de Estudo',      icone: '❓', cor: '#34495e', corTexto: '#fff' },
-  { num: 13, titulo: 'Caso Profissional',       icone: '🏆', cor: '#6c5ce7', corTexto: '#fff' },
-  { num: 14, titulo: 'Autoavaliação',           icone: '📝', cor: '#00b894', corTexto: '#fff' },
+  { num: 1, titulo: 'De Onde Vem',          icone: '📖', cor: '#1f1b16', corTexto: '#faf7f2' },
+  { num: 2, titulo: 'Competências',         icone: '🎯', cor: '#b5651d', corTexto: '#fff' },
+  { num: 3, titulo: 'HACCP — Pontos Críticos', icone: '⚠️', cor: '#c0392b', corTexto: '#fff' },
+  { num: 4, titulo: 'Rendimentos',          icone: '⚖️', cor: '#2980b9', corTexto: '#fff' },
+  { num: 5, titulo: 'Equilíbrio de Sabores', icone: '🌈', cor: '#e67e22', corTexto: '#fff' },
+  { num: 6, titulo: 'Técnicas-Chave',       icone: '🔪', cor: '#5a7a4e', corTexto: '#fff' },
+  { num: 7, titulo: 'Perguntas de Estudo',  icone: '❓', cor: '#34495e', corTexto: '#fff' },
 ];
 
 // ── Parser do texto da IA → estrutura de dados ────────────────
@@ -49,7 +42,7 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   SECOES_CONFIG.forEach(cfg => {
     // Padrões de cabeçalho: "# 1.", "## 1.", "1.", "SECÇÃO 1"
     const regex = new RegExp(
-      `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:ENQUADRAMENTO|COMPETÊNCIAS|MICROCOMPETÊNCIAS|HACCP|RENDIMENTOS|CAPACITAÇÃO|EQUILÍBRIO|SUGESTÕES|SUSTENTABILIDADE|FOOD COST|CONHECIMENTOS|QUESTÕES|CASO PROFISSIONAL|AUTOAVALIAÇÃO)[^\\n]*\\n([\\s\\S]*?)(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*|$)`,
+      `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:DE ONDE VEM|COMPETÊNCIAS|HACCP|RENDIMENTOS|EQUILÍBRIO|TÉCNICAS|PERGUNTAS)[^\\n]*\\n([\\s\\S]*?)(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*|$)`,
       'i'
     );
     const m = texto.match(regex);
@@ -61,20 +54,13 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   // Se não encontrou secções pelo número, tentar pelos títulos
   if (secoes.length < 3) {
     const padroesTitulo = [
-      { regex: /(?:ENQUADRAMENTO|enquadramento)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:COMPETÊNCIAS|HACCP|MICRO|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 1 },
-      { regex: /(?:COMPETÊNCIAS|competências)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:MICRO|HACCP|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 2 },
-      { regex: /(?:MICROCOMPETÊNCIAS|micro)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:HACCP|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 3 },
-      { regex: /(?:HACCP|PCC)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 4 },
-      { regex: /(?:RENDIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CAPACI|EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 5 },
-      { regex: /(?:CAPACITAÇÃO)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:EQUIL|SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 6 },
-      { regex: /(?:EQUILÍBRIO SENSORIAL|sensorial)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:SUGE|SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 7 },
-      { regex: /(?:SUGESTÕES)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:SUST|FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 8 },
-      { regex: /(?:SUSTENTABILIDADE)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:FOOD|CONHE|QUEST|CASO|AUTO)|$)/i, num: 9 },
-      { regex: /(?:FOOD COST)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CONHE|QUEST|CASO|AUTO)|$)/i, num: 10 },
-      { regex: /(?:CONHECIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:QUEST|CASO|AUTO)|$)/i, num: 11 },
-      { regex: /(?:QUESTÕES)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CASO|AUTO)|$)/i, num: 12 },
-      { regex: /(?:CASO PROFISSIONAL)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:AUTOAVALIAÇÃO)|$)/i, num: 13 },
-      { regex: /(?:AUTOAVALIAÇÃO)[^#\n]*\n([\s\S]*?)$/i, num: 14 },
+      { regex: /(?:DE ONDE VEM|origem)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:COMPETÊNCIAS|HACCP|RENDI|EQUIL|TÉCNI|PERGU)|$)/i, num: 1 },
+      { regex: /(?:COMPETÊNCIAS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:HACCP|RENDI|EQUIL|TÉCNI|PERGU)|$)/i, num: 2 },
+      { regex: /(?:HACCP|PCC|pontos críticos)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:RENDI|EQUIL|TÉCNI|PERGU)|$)/i, num: 3 },
+      { regex: /(?:RENDIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:EQUIL|TÉCNI|PERGU)|$)/i, num: 4 },
+      { regex: /(?:EQUILÍBRIO|sabores)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:TÉCNI|PERGU)|$)/i, num: 5 },
+      { regex: /(?:TÉCNICAS[\s-]*CHAVE|técnicas)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:PERGU)|$)/i, num: 6 },
+      { regex: /(?:PERGUNTAS)[^#\n]*\n([\s\S]*?)$/i, num: 7 },
     ];
     padroesTitulo.forEach(p => {
       const m = texto.match(p.regex);
@@ -85,18 +71,19 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
     });
   }
 
-  // Extrair equilíbrio sensorial como dados estruturados
-  const secSensorial = secoes.find(s => s.num === 7);
+  // Extrair equilíbrio sensorial como dados estruturados — novo formato
+  // simples "DOCE: Forte" (prompt reformulado em 21/06/2026, mais fácil
+  // para a IA preencher de forma consistente do que tabela markdown).
+  const secSensorial = secoes.find(s => s.num === 5);
   let equilibrioSensorial;
   if (secSensorial) {
-    const linhas = secSensorial.conteudo.split('\n').filter(l => l.includes('|'));
-    equilibrioSensorial = linhas
-      .filter(l => !l.match(/^[\s|:-]+$/) && !l.toLowerCase().includes('componente'))
-      .map(l => {
-        const partes = l.split('|').map(p => p.trim());
-        return { componente: partes[1] || partes[0], intensidade: partes[2] || '', notas: partes[3] || '' };
-      })
-      .filter(r => r.componente && r.componente.length > 1);
+    const SABORES = ['DOCE', 'ÁCIDO', 'SALGADO', 'AMARGO', 'UMAMI'];
+    const linhas = secSensorial.conteudo.split('\n');
+    equilibrioSensorial = SABORES.map(sabor => {
+      const linha = linhas.find(l => l.toUpperCase().trim().startsWith(sabor));
+      const valor = linha ? linha.split(':')[1]?.trim() || '' : '';
+      return { componente: sabor.charAt(0) + sabor.slice(1).toLowerCase(), intensidade: valor, notas: '' };
+    }).filter(r => r.intensidade);
   }
 
   return { nomePrato, secoes: secoes.sort((a, b) => a.num - b.num), equilibrioSensorial };
@@ -112,9 +99,9 @@ function RodaSensorial({ dados }: { dados: { componente: string; intensidade: st
   };
 
   const INTENSIDADES: Record<string, number> = {
-    'muito alto': 5, 'alto': 4, 'elevado': 4,
-    'médio': 3, 'moderado': 3, 'medio': 3,
-    'baixo': 2, 'reduzido': 2,
+    'muito alto': 5, 'alto': 4, 'elevado': 4, 'forte': 4,
+    'médio': 3, 'moderado': 3, 'medio': 3, 'presente': 3,
+    'baixo': 2, 'reduzido': 2, 'ligeiro': 2,
     'muito baixo': 1, 'ausente': 0, 'nenhum': 0,
   };
 
@@ -436,7 +423,7 @@ export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
           {/* Conteúdo da secção — sempre montado, escondido por CSS quando fechada.
               Isto garante que a impressão mostra TODAS as secções, não só a aberta. */}
           <div className="guia-conteudo-print" style={{ display: secaoAberta === s.num ? 'block' : 'none', padding: '16px 16px', background: '#fdfcfb', borderTop: `2px solid ${s.cor}` }}>
-            {s.num === 7 && guia.equilibrioSensorial && guia.equilibrioSensorial.length > 0 && (
+            {s.num === 5 && guia.equilibrioSensorial && guia.equilibrioSensorial.length > 0 && (
               <div style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 12, border: `1px solid ${s.cor}30` }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: s.cor, marginBottom: 12, textAlign: 'center' }}>
                   Roda de Equilíbrio Sensorial
@@ -446,7 +433,7 @@ export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
             )}
 
             {/* Questões interactivas para secção 12 */}
-            {s.num === 12
+            {s.num === 7
               ? <SecaoQuestoes conteudo={s.conteudo} cor={s.cor} />
               : <RenderConteudo texto={s.conteudo} cor={s.cor} />
             }
