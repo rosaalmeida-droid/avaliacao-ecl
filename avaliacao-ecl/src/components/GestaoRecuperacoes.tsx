@@ -135,7 +135,6 @@ function Lista({ items, nomeAluno, vazio, onClick }: { items: RecuperacaoModulo[
         </div>
       ))}
     </div>
-    </div>
   );
 }
 
