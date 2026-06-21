@@ -1839,7 +1839,6 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
         </button>
       </Card>
     </div>
-    </div>
   );
 }
 
@@ -2204,7 +2203,6 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
           </div>
         ))}
       </div>
-    </div>
     );
   }
 
