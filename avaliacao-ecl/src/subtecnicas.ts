@@ -12,6 +12,27 @@
 
 import { Competencia } from './types';
 
+// ── Guards por categoria — evita falsos positivos (ex: "lombo" numa receita
+// de carne já não sugere por engano uma técnica de peixe) ──────────────
+const GUARDS: Record<string, string[]> = {
+  PEIXE:      ['peixe','atum','salmão','bacalhau','robalo','dourada','linguado','pescada','carapau','sardinhas','solha','pregado','pargo','cherne','faneca','marisco','amêijoa','camarão','lagosta','lula','polvo','mexilhão','gambas','sapateira'],
+  CARNE:      ['carne','bife','frango','pato','peru','galinha','porco','vaca','borrego','vitela','coelho','perdiz','veado','javali','entrecosto','costeleta','lombo','secretos','presa'],
+  PASTELARIA: ['bolo','tarte','torta','mousse','pudim','crème brûlée','cheesecake','brownie','muffin','cupcake','croissant','brioche','massa folhada','pâte','ganache','fondant','merengue','pavlova','tiramisu','panna cotta','soufflé'],
+  SOPAS:      ['sopa','caldo','creme de','velouté','consommé','bisque','gazpacho','minestrone'],
+};
+
+function normalizarTextoSub(texto: string): string {
+  return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ');
+}
+
+function textoContemPalavraSub(texto: string, palavra: string): boolean {
+  return normalizarTextoSub(texto).includes(normalizarTextoSub(palavra));
+}
+
+function grupoAtivoSub(textoNorm: string, grupo: string): boolean {
+  return (GUARDS[grupo] || []).some(p => textoContemPalavraSub(textoNorm, p));
+}
+
 export const SUBTECNICAS: Competencia[] = [
 
   // ================================================================
@@ -233,12 +254,35 @@ export const SUBTECNICAS: Competencia[] = [
 // Helpers
 // ----------------------------------------------------------------
 
-/** Dado o texto de uma receita, devolve as subtécnicas relevantes */
+/** Dado o texto de uma receita, devolve as subtécnicas relevantes.
+ * Usa guards por categoria (peixe/carne/pastelaria/sopa) para evitar falsos
+ * positivos — ex: a palavra "lombo" numa receita de carne já não sugere
+ * por engano uma técnica de "Lombo de bacalhau". */
 export function sugerirSubtecnicas(textoReceita: string): Competencia[] {
+  if (!textoReceita || textoReceita.trim().length < 10) return [];
+  const textoNorm = normalizarTextoSub(textoReceita);
+  const temPeixe = grupoAtivoSub(textoNorm, 'PEIXE');
+  const temCarne = grupoAtivoSub(textoNorm, 'CARNE');
+  const temPastelaria = grupoAtivoSub(textoNorm, 'PASTELARIA');
+  const temSopa = grupoAtivoSub(textoNorm, 'SOPAS');
+
+  const candidatos = SUBTECNICAS.filter(s => {
+    if (!s.palavrasChave || s.palavrasChave.length === 0) return false;
+    // Exclusões rigorosas por categoria — mesmo critério usado nas UCs de peixe/carne
+    if (['S030','S031','S032','S033','S034','S035','S036'].includes(s.id) && !temPeixe) return false;
+    if (['S040','S041','S042','S043','S044','S045','S047','S048'].includes(s.id) && !temCarne) return false;
+    if (s.palavrasChave.some(p => ['sopa','caldo','velouté','bisque','consommé'].includes(p)) && !temSopa) return false;
+    const isPastelaria = s.palavrasChave.some(p => ['bolo','tarte','mousse','pudim','massa folhada','ganache','merengue'].includes(p));
+    if (isPastelaria && !temPastelaria) return false;
+    return s.palavrasChave.some(p => textoContemPalavraSub(textoNorm, p));
+  });
+
+  if (candidatos.length > 0) return candidatos;
+
+  // Fallback simples se os guards filtrarem tudo — preferível a devolver
+  // lista vazia quando há sinal claro por palavra-chave directa.
   const texto = textoReceita.toLowerCase();
-  return SUBTECNICAS.filter(s =>
-    (s.palavrasChave || []).some(p => texto.includes(p.toLowerCase()))
-  );
+  return SUBTECNICAS.filter(s => (s.palavrasChave || []).some(p => texto.includes(p.toLowerCase())));
 }
 
 /** Subtécnicas agrupadas pela técnica-mãe */
