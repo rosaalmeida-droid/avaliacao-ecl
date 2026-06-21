@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao,
-  getRequisicaoPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente,
+  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -369,6 +369,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
+  // Um plano pode ter várias requisições (decisão de 21/06/2026) — lista
+  // completa para gestão e eliminação múltipla, não só a mais recente.
+  const todasRequisicoesDoPlano = getRequisicoesPorPlano(plano.id);
+  const [modoSelecaoReq, setModoSelecaoReq] = useState(false);
+  const [reqSelecionadasIds, setReqSelecionadasIds] = useState<Set<string>>(new Set());
   const temFichas = fichasDoPlano.length > 0;
   const temRequisicao = !!requisicao;
   const publicado = plano.estado === 'publicado';
@@ -536,18 +541,70 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
-        {requisicao && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--sage-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 600, flex: 1 }}>✓ Já existe uma requisição para este plano</span>
-            <button onClick={() => {
-              if (confirm('Eliminar DEFINITIVAMENTE esta requisição? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeita.')) {
-                eliminarRequisicaoDefinitivamente(requisicao.id);
-                onPlanoActualizado({ ...plano });
-              }
-            }} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 16, cursor: 'pointer', padding: '2px 6px' }}
-              title="Eliminar requisição definitivamente">
-              🗑️
-            </button>
+        {todasRequisicoesDoPlano.length > 0 && (
+          <div style={{ background: 'var(--sage-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: modoSelecaoReq ? 8 : 0 }}>
+              <span style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 600 }}>
+                ✓ {todasRequisicoesDoPlano.length} requisição(ões) para este plano
+              </span>
+              {todasRequisicoesDoPlano.length > 1 && (
+                <button onClick={() => { setModoSelecaoReq(!modoSelecaoReq); setReqSelecionadasIds(new Set()); }}
+                  style={{ fontSize: 11, fontWeight: 700, color: 'var(--sage)', background: 'none', border: '1px solid var(--sage)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
+                  {modoSelecaoReq ? '✕ Cancelar' : '☑ Selecionar'}
+                </button>
+              )}
+            </div>
+            {modoSelecaoReq && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
+                  {reqSelecionadasIds.size} selecionada(s)
+                </span>
+                <button onClick={() => {
+                  if (reqSelecionadasIds.size === 0) return;
+                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} requisição(ões)? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeito.`)) {
+                    reqSelecionadasIds.forEach(id => eliminarRequisicaoDefinitivamente(id));
+                    setReqSelecionadasIds(new Set());
+                    setModoSelecaoReq(false);
+                    onPlanoActualizado({ ...plano });
+                  }
+                }} disabled={reqSelecionadasIds.size === 0}
+                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 11, cursor: reqSelecionadasIds.size === 0 ? 'default' : 'pointer', opacity: reqSelecionadasIds.size === 0 ? 0.4 : 1 }}>
+                  🗑️ Eliminar
+                </button>
+              </div>
+            )}
+            {todasRequisicoesDoPlano.map(r => (
+              <div key={r.id} onClick={() => {
+                if (!modoSelecaoReq) return;
+                setReqSelecionadasIds(prev => {
+                  const novo = new Set(prev);
+                  if (novo.has(r.id)) novo.delete(r.id); else novo.add(r.id);
+                  return novo;
+                });
+              }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: '#fff', marginBottom: 4, cursor: modoSelecaoReq ? 'pointer' : 'default' }}>
+                {modoSelecaoReq && (
+                  <div style={{ width: 18, height: 18, borderRadius: 5, border: '2px solid var(--sage)', background: reqSelecionadasIds.has(r.id) ? 'var(--sage)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 10, color: 'white' }}>
+                    {reqSelecionadasIds.has(r.id) && '✓'}
+                  </div>
+                )}
+                <span style={{ fontSize: 12, flex: 1 }}>
+                  {r.criadaEm ? new Date(r.criadaEm).toLocaleDateString('pt-PT') + ' ' + new Date(r.criadaEm).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : r.id}
+                  {' · '}{r.linhas?.length || 0} ingredientes
+                </span>
+                {!modoSelecaoReq && (
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm('Eliminar DEFINITIVAMENTE esta requisição? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeita.')) {
+                      eliminarRequisicaoDefinitivamente(r.id);
+                      onPlanoActualizado({ ...plano });
+                    }
+                  }} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: 'pointer', padding: '2px 6px' }}
+                    title="Eliminar esta requisição">
+                    🗑️
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         )}
         <Requisicao
