@@ -3,6 +3,9 @@ import { Comanda, FichaProducao } from '../types';
 import { Button, Card, Field } from './ui';
 import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha } from '../backend';
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
+import { SeletorIA } from './SeletorIA';
+import { encontrarMateriaPrima } from '../materiasPrimasBase';
+import { obterComponenteCulinario } from '../componentesCulinarios';
 import { GuiaProducao } from './GuiaProducao';
 import { sugerirSubtecnicas } from '../subtecnicas';
 import { getReferencialUC } from '../referencial811RA144';
@@ -878,218 +881,99 @@ ${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu 
 // ── Código que estava fora do template (removido) ──
 
 // ── Botão IAs ─────────────────────────────────────────────────
-function gerarPromptGuia(nomePrato: string, ucId?: string, ucNome?: string): string {
+function gerarPromptGuia(nomePrato: string, ucId?: string, ucNome?: string, ficha?: FichaProducao | null): string {
   const refUC = ucId ? getReferencialUC(ucId) : undefined;
   const ucContexto = ucId ? `\nContexto pedagógico: UC ${ucId} — ${ucNome || refUC?.nome || ''}` : '';
 
   // Contexto oficial real do referencial 811RA144 — Realizações e Critérios de
-  // Desempenho desta UC, tal como definidos no documento regulamentar. Usado
-  // para ancorar a secção de Competências em linguagem oficial, não inventada.
+  // Desempenho desta UC, tal como definidos no documento regulamentar.
   const blocoReferencial = refUC ? `
-Referência oficial desta Unidade de Competência (811RA144) — usa esta linguagem
-e estes conceitos reais ao desenvolver a secção 2 (Competências Desenvolvidas):
-
-Realizações da UC:
-${refUC.realizacoes.map(r => `- ${r}`).join('\n')}
-
-Critérios de Desempenho da UC:
-${refUC.criteriosDesempenho.map(c => `- ${c}`).join('\n')}
+Referência oficial desta Unidade de Competência (811RA144):
+${refUC.realizacoes.slice(0, 4).map(r => `- ${r}`).join('\n')}
 ` : '';
+
+  // Dados REAIS da Ficha de Produção — sem isto, a IA só tinha o nome do
+  // prato e gerava texto genérico (problema identificado em 21/06/2026:
+  // "ChatGPT e Claude indicam que a Ficha não está a ser assumida no prompt").
+  const blocoFicha = ficha ? `
+## FICHA DE PRODUÇÃO REAL — usa SEMPRE estes dados, nunca inventes valores
+
+Ingredientes (${ficha.ingredientes?.length || 0}):
+${(ficha.ingredientes || []).map(i => `- ${i.produto}: ${i.qt}${i.un}${i.componente ? ` (${i.componente})` : ''}`).join('\n')}
+
+Preparação:
+${(ficha.preparacao || []).map((p, idx) => `${idx + 1}. ${p.descricao || ''}`).join('\n')}
+
+Nº de doses: ${ficha.numPorcoes || '?'} | Tempo preparação: ${ficha.tempoPrep || '?'} | Tempo confeção: ${ficha.tempoConf || '?'}
+${ficha.alergenicos?.length ? `Alergénicos: ${ficha.alergenicos.join(', ')}` : ''}
+${ficha.conservacao ? `Conservação: ${ficha.conservacao}` : ''}
+${ficha.kitchenflow ? `Pontos HACCP/KitchenFlow: ${ficha.kitchenflow}` : ''}
+` : `\n⚠️ Ficha de Produção não disponível neste momento — usa o teu conhecimento culinário sobre "${nomePrato}", mas sinaliza isso no início do Guia.\n`;
 
   return `# GUIA DE APOIO À PRODUÇÃO — ${nomePrato.toUpperCase()}
 ${ucContexto}
 ${blocoReferencial}
-Analisa a Ficha de Produção de "${nomePrato}" e gera um Guia de Apoio à Produção destinado a alunos do Curso Profissional de Cozinha e Pastelaria.
+${blocoFicha}
 
-IMPORTANTE:
-- Toda a informação deve referir-se exclusivamente a esta produção: ${nomePrato}
-- Não utilizar textos genéricos nem frases feitas
-- Não repetir simplesmente o conteúdo da Ficha de Produção
-- O objectivo é explicar, formar e contextualizar tecnicamente o aluno, com profundidade real
-- Utilizar tabelas sempre que possível, sempre seguidas de interpretação dos resultados
-- Linguagem simples, técnica e pedagógica
-- Cada secção deve ter desenvolvimento real — não aceitar respostas de 2-3 frases onde o tema pede mais
+Gera um Guia de Apoio à Produção para ALUNOS DE 15-16 ANOS do Curso Profissional de Cozinha e Pastelaria, com base na Ficha de Produção acima.
 
----
-# 1. ENQUADRAMENTO DA PRODUÇÃO
-
-Identifica qual é o ingrediente ou técnica protagonista de ${nomePrato} e desenvolve um enquadramento histórico, gastronómico e profissional centrado nele — não no prato em geral de forma vaga.
-
-Desenvolver com factos concretos (não genéricos):
-- origem e história real do ingrediente/técnica protagonista — de onde vem, como chegou à cozinha portuguesa, evolução ao longo do tempo;
-- porque se tornou central na cultura gastronómica portuguesa ou na técnica em causa;
-- curiosidades técnicas ou históricas específicas;
-- importância cultural e identitária;
-- porque esta receita usa este ingrediente/técnica desta forma concreta;
-- o que distingue esta preparação de outras semelhantes.
-
-Exigência: texto com desenvolvimento real, não um parágrafo curto e genérico. O aluno deve aprender factos concretos, não frases vazias tipo "é um prato tradicional português".
+REGRAS OBRIGATÓRIAS:
+- Linguagem simples e direta — frases curtas, vocabulário do dia a dia, nada de texto académico ou denso
+- Material de ESTUDO RÁPIDO, não um relatório — o aluno deve conseguir ler tudo em poucos minutos
+- Usa SEMPRE os ingredientes e a preparação reais da Ficha acima — nunca inventes valores diferentes
+- Prefere tabelas, listas e destaques a parágrafos longos
+- Cada secção: máximo 4-6 linhas de texto corrido, ou uma tabela curta
+- Não incluir tarefas de recuperação, planos de recuperação ou avaliação — isso vive noutro módulo da app
 
 ---
-# 2. COMPETÊNCIAS DESENVOLVIDAS
+# 1. DE ONDE VEM ESTE PRATO
 
-## Atitudes
-- Organização
-- Gestão do tempo
-- Autonomia
-- Trabalho em equipa
-- Responsabilidade
-
-Explicar como cada atitude aparece em momentos concretos desta produção específica.
-
-## Responsabilidades
-- HACCP
-- Segurança
-- Equipamentos
-- Conservação
-
-Explicar as consequências profissionais do incumprimento de cada uma, ligadas a esta produção.
+2-3 frases sobre a origem do ingrediente ou técnica principal — só os factos mais interessantes, nada de história extensa.
 
 ---
-# 3. HACCP E PCC
+# 2. COMPETÊNCIAS DESTA AULA
 
-Apresentar em tabela:
-| Perigo | PCC | Temperatura crítica | Medida preventiva | Conservação |
-
-Depois da tabela, interpretar: porque cada ponto é crítico, riscos associados, consequências da falha.
-
----
-# 4. RENDIMENTOS E APRESENTAÇÕES COMERCIAIS
-
-Para cada matéria-prima relevante, apresentar tabela:
-| Produto | Peso comprado | Peso utilizável | Rendimento | Origem das perdas |
-
-Quando a matéria-prima principal desta produção existe no mercado em diferentes apresentações comerciais (ex: salgado vs fresco vs congelado; posta vs lombo; inteiro vs porcionado), é OBRIGATÓRIO comparar pelo menos 2-3 dessas opções numa segunda tabela:
-
-| Apresentação comercial | Preço de referência | Rendimento | Desperdício | Tempo de preparação | Adequação ao uso |
-
-Interpretar os resultados: explicar que uma opção mais cara à partida pode ter melhor rendimento e resultar em custo final semelhante ou menor; que opção é mais adequada a que contexto (restaurante tradicional, hotel, buffet, fine dining); como esta escolha influencia compras, produção e organização do serviço.
-
-Utilizar preços de referência de supermercados portugueses (ex: Continente, Pingo Doce) quando possível, identificados como valores de referência aproximados.
+Tabela curta:
+| Competência técnica | O que vais treinar |
+|---|---|
+(preencher com 2-4 linhas, baseado na Ficha e no referencial da UC)
 
 ---
-# 5. CAPACITAÇÃO
+# 3. HACCP — PONTOS CRÍTICOS
 
-Explicar a quantidade por pessoa e justificar o tipo de serviço utilizado (entrada, prato principal, buffet, catering, etc.) e como isso influencia compras, produção e custo por dose.
-
----
-# 6. EQUILÍBRIO SENSORIAL
-
-| Componente | Intensidade | Notas |
-| Doce | | |
-| Ácido | | |
-| Salgado | | |
-| Amargo | | |
-| Umami | | |
-
-Indicar componentes dominantes, ausentes e pouco representados, e o impacto na experiência gastronómica final.
+Tabela curta com os pontos críticos REAIS desta receita (temperatura, tempo, contaminação cruzada):
+| Etapa | Risco | O que fazer |
+|---|---|---|
 
 ---
-# 7. SUGESTÕES GASTRONÓMICAS
+# 4. RENDIMENTOS
 
-Apenas sugestões — nunca alterar a receita.
-Justificar tecnicamente cada sugestão (elemento ácido, crocante, fresco, aromático, contraste de textura).
-
----
-# 8. SUSTENTABILIDADE
-
-- Desperdícios gerados nesta produção concreta
-- Possíveis reaproveitamentos e subprodutos
-- Técnicas de valorização
-- Relação entre sustentabilidade e food cost
+Tabela curta comparando 2 formas de apresentar este prato comercialmente (ex: porção individual vs travessa partilhada), com rendimento aproximado de cada.
 
 ---
-# 9. FOOD COST PEDAGÓGICO
+# 5. EQUILÍBRIO DE SABORES
 
-Apresentar tabela com custo total, custo útil, custo por dose, ingredientes mais caros e ingredientes com maior desperdício.
+Para cada um destes 5 sabores, indica só "Forte", "Presente" ou "Ausente" nesta receita — vai ser desenhado como gráfico depois, por isso só preciso da palavra:
+DOCE: 
+ÁCIDO: 
+SALGADO: 
+AMARGO: 
+UMAMI: 
 
-Relacionar directamente com a secção 4 (Rendimentos e Apresentações Comerciais): demonstrar com números concretos como a escolha da apresentação comercial da matéria-prima principal (ex: lombo vs posta, fresco vs congelado) influencia o custo final por dose — mesmo quando o preço de compra inicial é diferente.
-
-Interpretar os resultados, não apresentar só números.
-
----
-# 10. MICROCOMPETÊNCIAS TÉCNICAS
-
-Identificar as microcompetências técnicas presentes nesta produção.
-
-Para cada uma explicar: significado, onde aparece na execução, erros frequentes, impacto na qualidade final e no rendimento.
-
-Não apresentar como lista solta — explicar de forma pedagógica, ligando sempre à produção concreta de ${nomePrato}.
+Depois, 1-2 frases sobre o equilíbrio geral.
 
 ---
-# 11. CONHECIMENTOS A CONSOLIDAR
+# 6. TÉCNICAS-CHAVE
 
-Desenvolver os principais conhecimentos que o aluno deve dominar após executar esta produção, relacionando-os explicitamente com: técnica utilizada, matéria-prima e suas apresentações comerciais, HACCP, rendimento, food cost e organização da produção.
-
-Esta secção deve funcionar como apoio real ao estudo — escrever com desenvolvimento, não como lista de tópicos soltos sem explicação.
+Lista curta (3-5 pontos) das técnicas culinárias mais importantes desta receita, cada uma com 1 frase de explicação prática.
 
 ---
-# 12. QUESTÕES PARA ESTUDO E RECUPERAÇÃO
+# 7. PERGUNTAS RÁPIDAS DE ESTUDO
 
-Gerar exactamente 10 questões relativamente importantes, alinhadas com o desenvolvimento de todo o guia (enquadramento, HACCP, rendimentos, food cost, microcompetências, conhecimentos).
-
-Estas questões devem poder ser usadas pelo professor para um aluno recuperar uma avaliação negativa relacionada com esta produção — por isso devem ser substanciais, não triviais.
-
-Gerar:
-- 6 perguntas de escolha múltipla (com 4 opções cada, indicando a resposta correta)
-- 2 perguntas verdadeiro/falso (com justificação da resposta)
-- 2 situações práticas que exijam decisão e justificação técnica (não apenas memorização)
+5 perguntas curtas de escolha múltipla ou verdadeiro/falso sobre esta produção — para o aluno se testar a si próprio em 2 minutos. Sem respostas longas, só pergunta + opções + qual é a certa.
 
 ---
-# 13. CASO PROFISSIONAL FINAL
-
-Criar um cenário profissional realista relacionado com ${nomePrato}, que obrigue o aluno a analisar, justificar e decidir — não apenas responder.
-
-O caso pode envolver, por exemplo:
-- escolha entre diferentes apresentações comerciais da matéria-prima principal (ligado à secção 4);
-- escolha de fornecedor;
-- adaptação ao tipo de serviço (buffet, à la carte, catering);
-- gestão de desperdício ou de produção numa situação de imprevisto;
-- decisão de food cost sob restrição de orçamento.
-
-Apresentar o cenário em 1-2 parágrafos concretos e terminar com uma pergunta clara que exija ao aluno tomar e justificar uma decisão profissional.
-
----
-# 14. AUTOAVALIAÇÃO DO ALUNO
-
-Gerar entre 5 e 8 questões de reflexão individual sobre esta produção específica, para o aluno responder por si.
-
-As questões devem ajudar o aluno a pensar sobre:
-- o que executou melhor nesta produção;
-- onde sentiu mais dificuldade;
-- que erro cometeu ou podia ter evitado;
-- como poderia reduzir o desperdício nesta produção;
-- que competência sentiu desenvolver mais;
-- o que deve melhorar na próxima vez que repetir esta ou uma produção semelhante.
-
-O objectivo é promover reflexão crítica, autonomia e melhoria contínua — não são perguntas de avaliação do professor, são de autorreflexão do próprio aluno.
-
----
-# 15. RECUPERAÇÃO PRÁTICA DA COMPETÊNCIA
-
-Esta secção destina-se a um aluno que faltou a esta produção ou que não atingiu a competência na avaliação. As questões escritas (secção 12) sozinhas não chegam — é preciso prática real.
-
-Apresentar DUAS opções de recuperação, claramente separadas, para o professor escolher consoante o caso de cada aluno:
-
-## Opção A — Mini-plano de aula de recuperação prática
-
-Descrever um plano concreto e reduzido (não a aula completa) que o aluno deve repetir numa próxima sessão prática para provar que adquiriu a competência. Incluir:
-- duração estimada (mais curta que a aula original, focada no essencial);
-- que parte exacta da técnica/produção deve repetir (não é preciso refazer tudo, só o que falhou);
-- o que o professor deve observar e validar durante essa repetição;
-- critério claro de sucesso — o que tem de acontecer para se considerar a competência recuperada.
-
-## Opção B — Checklist de auto-treino
-
-Lista de passos concretos que o aluno pode treinar sozinho, fora da aula, antes da sessão de recuperação prática:
-- passos técnicos específicos para rever/treinar mentalmente ou em casa, quando aplicável;
-- pontos de atenção que costumam falhar nesta técnica/produção;
-- o que verificar antes de se considerar pronto para a Opção A.
-
-Adaptar sempre as duas opções à produção concreta de ${nomePrato} — nunca genérico.
-
----
-Ficha de Produção: ${nomePrato}`;
+IMPORTANTE: termina sempre com uma secção final curta "RESUMO EM 30 SEGUNDOS" com 3-4 bullet points dos pontos mais importantes a reter.`;
 }
 
 function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?: string; ucId?: string; ucNome?: string }) {
@@ -1132,28 +1016,8 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
       <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
         Copia o prompt, cola numa IA com o link da receita e copia o resultado abaixo.
       </div>
+      <SeletorIA prompt={promptFinal} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-        <button type="button" className="btn btn-ghost"
-          onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(promptFinal)}`, '_blank')}>
-          🟠 Abrir no Claude
-        </button>
-        <button type="button" className="btn btn-ghost"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(promptFinal);
-            } catch {
-              const ta = document.createElement('textarea');
-              ta.value = promptFinal;
-              document.body.appendChild(ta); ta.select();
-              document.execCommand('copy');
-              document.body.removeChild(ta);
-            }
-            setCopiado(true);
-            setTimeout(() => setCopiado(false), 4000);
-            window.open('https://chatgpt.com/chat', '_blank');
-          }}>
-          🟢 Abrir ChatGPT (prompt copiado)
-        </button>
         <button type="button" className="btn btn-ghost"
           onClick={() => copiar(promptFinal, setCopiado)}
           style={{ background: copiado ? 'var(--copper)' : undefined, color: copiado ? '#fff' : undefined }}>
@@ -1189,30 +1053,8 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
         <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
           Após criar a ficha, usa este prompt para gerar o Guia de Apoio completo com HACCP, rendimentos, equilíbrio sensorial e questões pedagógicas.
         </div>
+        <SeletorIA prompt={guiaFinal} corPrincipal="var(--guia)" />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-          <button type="button" className="btn btn-ghost"
-            onClick={() => window.open(`https://claude.ai/new?q=${encodeURIComponent(guiaFinal)}`, '_blank')}
-            style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}>
-            🟠 Guia no Claude
-          </button>
-          <button type="button" className="btn btn-ghost"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(guiaFinal);
-              } catch {
-                const ta = document.createElement('textarea');
-                ta.value = guiaFinal;
-                document.body.appendChild(ta); ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-              }
-              setCopiadoGuia(true);
-              setTimeout(() => setCopiadoGuia(false), 4000);
-              window.open('https://chatgpt.com/chat', '_blank');
-            }}
-            style={{ borderColor: 'var(--sage)', color: 'var(--sage)' }}>
-            🟢 ChatGPT — Guia (prompt copiado)
-          </button>
           <button type="button" className="btn btn-ghost"
             onClick={() => copiar(guiaFinal, setCopiadoGuia)}
             style={{ background: copiadoGuia ? 'var(--sage)' : undefined, color: copiadoGuia ? '#fff' : undefined, borderColor: 'var(--sage)' }}>
@@ -1322,15 +1164,12 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           🤖 Passo 1 — Gerar a Ficha de Produção com IA
         </div>
         <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
-          Abre directo no Claude já com o prompt pronto → confirma/envia lá → copia a resposta → cola abaixo
+          Claude abre já com o prompt pronto — ChatGPT e Gemini abrem com o prompt copiado, basta colar
         </div>
-        <button type="button" className="btn btn-primary" style={{ width:'100%', fontSize:13, marginBottom:6 }}
-          onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptFicha), '_blank')}>
-          ✨ Abrir no Claude (já preenchido)
-        </button>
+        <SeletorIA prompt={promptFicha} />
         <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:12 }}
           onClick={() => copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
-          {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt (para ChatGPT ou outro)'}
+          {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt'}
         </button>
 
         {/* Guia — só aparece se já tem nome do prato */}
@@ -1339,10 +1178,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
             <div style={{ fontWeight:700, fontSize:14, color:'var(--sage)', marginBottom:4 }}>
               📚 Passo 2 — Gerar o Guia de Apoio (depois da ficha pronta)
             </div>
-            <button type="button" className="btn btn-primary" style={{ width:'100%', fontSize:13, marginBottom:6, background:'var(--sage)' }}
-              onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptGuia), '_blank')}>
-              ✨ Abrir Guia no Claude (já preenchido)
-            </button>
+            <SeletorIA prompt={promptGuia} corPrincipal="var(--guia)" />
             <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:12, borderColor:'var(--sage)', color:'var(--sage)' }}
               onClick={() => copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => {})}>
               {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt do Guia'}
@@ -1926,7 +1762,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
     );
   }
 
-  const promptGuiaAtual = gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome);
+  const promptGuiaAtual = gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome, fichaAlvo);
 
   function guardarGuia() {
     if (!fichaAlvo) return;
@@ -1937,37 +1773,21 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
   }
 
   return (
-    <div>
-      <div className="no-print" style={{ background: 'var(--guia-pale)', borderRadius: 14, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(74,90,138,0.25)' }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--guia)' }}>📚 Guia de Apoio à Produção</div>
-        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{nomePrato}</div>
+    <div style={{ background: 'var(--guia-pale)', borderRadius: 16, padding: 16 }}>
+      <div className="no-print" style={{ background: 'var(--guia)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: 'white' }}>📚 Guia de Apoio à Produção</div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>{nomePrato}</div>
         <EtiquetaLigacaoPlano planoAulaId={(fichaAlvo as any)?.planoAulaId} />
       </div>
 
       <Card>
         <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-            onClick={() => window.open('https://claude.ai/new?q=' + encodeURIComponent(promptGuiaAtual), '_blank')}>
-            🟠 Guia no Claude (prompt incluído automaticamente)
+          <SeletorIA prompt={promptGuiaAtual} corPrincipal="var(--guia)" />
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 12, borderColor: 'var(--sage)', color: 'var(--sage)' }}
+            onClick={() => copiarTexto(promptGuiaAtual, () => {}, () => {})}>
+            📋 Copiar prompt
           </button>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-            onClick={() => window.open('https://chatgpt.com/chat', '_blank')}>
-            🟢 Abrir o ChatGPT
-          </button>
-          <div style={{ marginTop: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sage)', marginBottom: 4 }}>
-              Para o ChatGPT — copia este texto e cola lá (toca na caixa para seleccionar tudo):
-            </div>
-            <textarea readOnly value={promptGuiaAtual}
-              onClick={e => (e.target as HTMLTextAreaElement).select()}
-              onFocus={e => e.target.select()}
-              style={{ width: '100%', minHeight: 100, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1.5px solid var(--sage)', background: '#fbfffb' }} />
-            <button type="button" className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6, width: '100%', borderColor:'var(--sage)', color:'var(--sage)' }}
-              onClick={() => copiarTexto(promptGuiaAtual, () => {}, () => {})}>
-              📋 Tentar copiar automaticamente
-            </button>
-          </div>
         </div>
 
         <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginTop: 16, marginBottom: 8 }}>2. Colar o resultado</div>
@@ -2019,6 +1839,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
         </button>
       </Card>
     </div>
+    </div>
   );
 }
 
@@ -2042,6 +1863,10 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   const [passo, setPasso] = useState<'link' | 'ficha'>('link');
   const [fichasGuardadas, setFichasGuardadas] = useState(() => getFichasProducao());
   const [mostrarBibliotecaCompleta, setMostrarBibliotecaCompleta] = useState(false);
+  // Modo de seleção múltipla — eliminar várias fichas de uma vez (ponto 9
+  // do documento de 21/06/2026, "isto é extremamente moroso" item a item).
+  const [modoSelecao, setModoSelecao] = useState(false);
+  const [fichasSelecionadasIds, setFichasSelecionadasIds] = useState<Set<string>>(new Set());
   const [guardadoMsg, setGuardadoMsg] = useState('');
   const [ultimaFichaIdGuardada, setUltimaFichaIdGuardada] = useState<string | null>(null);
 
@@ -2122,7 +1947,12 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         numPorcoes: fichaConfirmada.numPorcoes || '',
         tempoPrep: fichaConfirmada.tempoPrep || '',
         tempoConf: fichaConfirmada.tempoConf || '',
-        ingredientes: (fichaConfirmada.ingredientes || []).map((ing, i) => ({ ...ing, id: `ing_${i}` })),
+        ingredientes: (fichaConfirmada.ingredientes || []).map((ing, i) => ({
+          ...ing, id: `ing_${i}`,
+          // Componente culinário preenchido automaticamente — o professor
+          // pode sempre corrigir manualmente depois (campo continua editável).
+          componente: ing.componente?.trim() || obterComponenteCulinario(encontrarMateriaPrima(ing.produto)?.categoria),
+        })),
         preparacao: (fichaConfirmada.preparacao || []).map((p, i) => ({ ...p, id: `passo_${i}` })),
         empratamento: fichaConfirmada.empratamento || '',
         alergenicos: alergenicosArray,
@@ -2231,11 +2061,37 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
     const fichasParaMostrar = mostrarBibliotecaCompleta ? fichasGuardadas : fichasDoPlano;
 
     return (
-      <div>
-        <div className="header-bar">
-          <h2 className="display" style={{ margin: 0 }}>Fichas de Produção</h2>
-          <button className="btn btn-primary" onClick={novaFicha}>+ Nova ficha</button>
+      <div style={{ background: 'var(--sage-pale)', borderRadius: 16, padding: 16 }}>
+        <div style={{ background: 'var(--sage)', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <h2 className="display" style={{ margin: 0, color: 'white' }}>Fichas de Produção</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => { setModoSelecao(!modoSelecao); setFichasSelecionadasIds(new Set()); }}
+              style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>
+              {modoSelecao ? '✕ Cancelar' : '☑ Selecionar'}
+            </button>
+            <button className="btn btn-primary" onClick={novaFicha} style={{ background: 'white', color: 'var(--sage)' }}>+ Nova ficha</button>
+          </div>
         </div>
+
+        {modoSelecao && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
+              {fichasSelecionadasIds.size} ficha(s) selecionada(s)
+            </span>
+            <button onClick={() => {
+              if (fichasSelecionadasIds.size === 0) return;
+              if (confirm(`Eliminar DEFINITIVAMENTE ${fichasSelecionadasIds.size} ficha(s)? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeito.`)) {
+                fichasSelecionadasIds.forEach(id => eliminarFichaProducaoDefinitivamente(id));
+                setFichasSelecionadasIds(new Set());
+                setModoSelecao(false);
+                recarregar();
+              }
+            }} disabled={fichasSelecionadasIds.size === 0}
+              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12, cursor: fichasSelecionadasIds.size === 0 ? 'default' : 'pointer', opacity: fichasSelecionadasIds.size === 0 ? 0.4 : 1 }}>
+              🗑️ Eliminar Selecionados
+            </button>
+          </div>
+        )}
 
         {ucId && (
           <div style={{ padding:'8px 14px', background:'var(--copper-pale)', borderRadius:10, marginBottom:12, fontSize:12, color:'var(--copper)', border:'1px solid rgba(181,101,29,0.2)' }}>
@@ -2282,6 +2138,14 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
         {fichasParaMostrar.map(f => (
           <div key={f.id} className="option-card" onClick={() => {
+            if (modoSelecao) {
+              setFichasSelecionadasIds(prev => {
+                const novo = new Set(prev);
+                if (novo.has(f.id)) novo.delete(f.id); else novo.add(f.id);
+                return novo;
+              });
+              return;
+            }
             if (mostrarBibliotecaCompleta && planoId) {
               // Associar a ficha existente a este plano, sem duplicar
               const planos = getPlanosAula();
@@ -2313,6 +2177,11 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             setVista('editar');
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {modoSelecao && (
+                <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: fichasSelecionadasIds.has(f.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, color: 'white' }}>
+                  {fichasSelecionadasIds.has(f.id) && '✓'}
+                </div>
+              )}
               {mostrarBibliotecaCompleta && <span style={{ fontSize: 18, color: 'var(--sage)' }}>+</span>}
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nomePrato}</div>
@@ -2335,6 +2204,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
           </div>
         ))}
       </div>
+    </div>
     );
   }
 
