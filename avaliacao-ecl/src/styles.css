@@ -17,6 +17,23 @@
   --info:         #2563eb;
   --info-pale:    #eff6ff;
 
+  /* ── Cores por módulo ──────────────────────────────────────
+     Cada área de trabalho principal tem a sua cor própria, para
+     o professor saber sempre, num relance, em que módulo está.
+     --copper (Planos) e --sage (Fichas) já existiam — mantidos. */
+  --guia:         #4a5a8a;  /* azul-ardósia — Guia de Apoio */
+  --guia-light:   #7382ad;
+  --guia-pale:    #eef1f8;
+  --requisicao:       #9c5840;  /* terracota — Requisição */
+  --requisicao-light: #bd7e69;
+  --requisicao-pale:  #f7eee9;
+  --recuperacao:       #7d4f8c;  /* ameixa — Recuperações */
+  --recuperacao-light: #a47bb0;
+  --recuperacao-pale:  #f4eef7;
+  --competencias:       #2f7d72;  /* verde-petróleo — Competências/Mapa */
+  --competencias-light: #5fa297;
+  --competencias-pale:  #eef6f5;
+
   --border:       rgba(26,23,20,0.10);
   --border-mid:   rgba(26,23,20,0.18);
   --shadow-xs:    0 1px 3px rgba(26,23,20,0.06);
@@ -69,6 +86,21 @@ code, .mono {
   margin: 0 auto;
   padding: 20px 16px 40px;
   min-height: 100vh;
+}
+
+/* Em ecrãs largos (computador/tablet), aproveitar muito mais espaço —
+   90% do trabalho do professor acontece em computador, e a app ficava
+   estreita e centrada com muito espaço vazio à volta. */
+@media (min-width: 900px) {
+  .app-shell {
+    max-width: 1400px;
+    padding: 28px 40px 48px;
+  }
+}
+@media (min-width: 1400px) {
+  .app-shell {
+    max-width: 1600px;
+  }
 }
 
 /* ── Cards ───────────────────────────────────────────────────── */
