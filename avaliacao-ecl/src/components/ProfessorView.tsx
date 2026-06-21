@@ -921,65 +921,131 @@ ${ucContexto}
 ${blocoReferencial}
 ${blocoFicha}
 
-Gera um Guia de Apoio à Produção para ALUNOS DE 15-16 ANOS do Curso Profissional de Cozinha e Pastelaria, com base na Ficha de Produção acima.
+Gera um Guia de Apoio à Produção para alunos de 14-16 anos do Curso Profissional de Cozinha e Pastelaria, com base na Ficha de Produção acima.
 
-REGRAS OBRIGATÓRIAS:
-- Linguagem simples e direta — frases curtas, vocabulário do dia a dia, nada de texto académico ou denso
-- Material de ESTUDO RÁPIDO, não um relatório — o aluno deve conseguir ler tudo em poucos minutos
+IMPORTANTE:
+- Toda a informação deve referir-se exclusivamente a esta produção: ${nomePrato}
+- Não utilizar textos genéricos nem frases feitas
+- Não repetir simplesmente o conteúdo da Ficha de Produção
+- O objectivo é explicar, formar e contextualizar tecnicamente o aluno, com profundidade real — este é material de estudo profissional, não um resumo superficial
 - Usa SEMPRE os ingredientes e a preparação reais da Ficha acima — nunca inventes valores diferentes
-- Prefere tabelas, listas e destaques a parágrafos longos
-- Cada secção: máximo 4-6 linhas de texto corrido, ou uma tabela curta
-- Não incluir tarefas de recuperação, planos de recuperação ou avaliação — isso vive noutro módulo da app
+- Linguagem clara e directa, adequada a um aluno de 14-16 anos, mas sem perder rigor técnico nem profundidade de conteúdo
+- Prefere tabelas, esquemas e listas estruturadas a parágrafos longos e densos — o objectivo é tornar o conteúdo mais fácil de estudar visualmente, sem cortar conteúdo
+- Cada secção deve ter desenvolvimento real e completo — não aceitar respostas de 2-3 frases onde o tema pede mais
+- Não incluir tarefas de recuperação, planos de recuperação ou avaliação de recuperação — isso vive agora num módulo próprio da app
 
 ---
-# 1. DE ONDE VEM ESTE PRATO
+# 1. ENQUADRAMENTO DA PRODUÇÃO
 
-2-3 frases sobre a origem do ingrediente ou técnica principal — só os factos mais interessantes, nada de história extensa.
+Identifica qual é o ingrediente ou técnica protagonista de ${nomePrato} e desenvolve um enquadramento histórico, gastronómico e profissional centrado nele — não no prato em geral de forma vaga.
+
+Desenvolver com factos concretos (não genéricos):
+- origem e história real do ingrediente/técnica protagonista — de onde vem, como chegou à cozinha portuguesa, evolução ao longo do tempo;
+- porque se tornou central na cultura gastronómica portuguesa ou na técnica em causa;
+- curiosidades técnicas ou históricas específicas;
+- importância cultural e identitária;
+- porque esta receita usa este ingrediente/técnica desta forma concreta;
+- o que distingue esta preparação de outras semelhantes.
+
+Exigência: texto com desenvolvimento real, não um parágrafo curto e genérico. O aluno deve aprender factos concretos, não frases vazias tipo "é um prato tradicional português".
 
 ---
-# 2. COMPETÊNCIAS DESTA AULA
+# 2. COMPETÊNCIAS DESENVOLVIDAS
 
-Tabela curta:
-| Competência técnica | O que vais treinar |
+## Atitudes
+- Organização
+- Gestão do tempo
+- Trabalho em equipa
+- Postura profissional
+- Higiene e segurança
+
+## Responsabilidades Técnicas
+Listar as responsabilidades técnicas concretas exigidas nesta produção, baseadas no referencial oficial da UC acima, em tabela:
+| Responsabilidade | Como se observa nesta produção |
 |---|---|
-(preencher com 2-4 linhas, baseado na Ficha e no referencial da UC)
 
 ---
-# 3. HACCP — PONTOS CRÍTICOS
+# 3. HACCP E PONTOS CRÍTICOS DE CONTROLO (PCC)
 
-Tabela curta com os pontos críticos REAIS desta receita (temperatura, tempo, contaminação cruzada):
-| Etapa | Risco | O que fazer |
-|---|---|---|
+Tabela com os pontos críticos REAIS desta receita (temperatura, tempo, contaminação cruzada, conservação):
+| Etapa | Perigo | Ponto Crítico | Medida de Controlo |
+|---|---|---|---|
 
----
-# 4. RENDIMENTOS
-
-Tabela curta comparando 2 formas de apresentar este prato comercialmente (ex: porção individual vs travessa partilhada), com rendimento aproximado de cada.
+Depois da tabela, 1 parágrafo de interpretação: porque é que estes pontos são especialmente relevantes nesta produção concreta (não genérico).
 
 ---
-# 5. EQUILÍBRIO DE SABORES
+# 4. RENDIMENTOS E APRESENTAÇÕES COMERCIAIS
 
-Para cada um destes 5 sabores, indica só "Forte", "Presente" ou "Ausente" nesta receita — vai ser desenhado como gráfico depois, por isso só preciso da palavra:
+Compara pelo menos 2 formas diferentes de apresentar comercialmente este prato (ex: porção individual à la carte vs travessa para buffet vs formato take-away), com rendimento aproximado, vantagens e desvantagens de cada uma. Tabela seguida de interpretação.
+
+---
+# 5. CAPACITAÇÃO
+
+Que capacidades técnicas e organizativas esta produção desenvolve no aluno, e porquê são relevantes para o seu percurso profissional.
+
+---
+# 6. EQUILÍBRIO SENSORIAL
+
+Para cada um destes 5 sabores, classifica a intensidade nesta receita concreta (usa: Forte / Presente / Ausente):
 DOCE: 
 ÁCIDO: 
 SALGADO: 
 AMARGO: 
 UMAMI: 
 
-Depois, 1-2 frases sobre o equilíbrio geral.
+Depois, desenvolve em 1 parágrafo: como estes sabores se equilibram (ou não) nesta receita concreta, e o impacto disso na experiência gastronómica.
 
 ---
-# 6. TÉCNICAS-CHAVE
+# 7. SUGESTÕES GASTRONÓMICAS
 
-Lista curta (3-5 pontos) das técnicas culinárias mais importantes desta receita, cada uma com 1 frase de explicação prática.
-
----
-# 7. PERGUNTAS RÁPIDAS DE ESTUDO
-
-5 perguntas curtas de escolha múltipla ou verdadeiro/falso sobre esta produção — para o aluno se testar a si próprio em 2 minutos. Sem respostas longas, só pergunta + opções + qual é a certa.
+Apenas sugestões — nunca alterar a receita original. Sugere acompanhamentos, harmonizações ou variações, justificando tecnicamente cada uma (elemento ácido, crocante, fresco, aromático, contraste de textura).
 
 ---
-IMPORTANTE: termina sempre com uma secção final curta "RESUMO EM 30 SEGUNDOS" com 3-4 bullet points dos pontos mais importantes a reter.`;
+# 8. SUSTENTABILIDADE
+
+Como esta produção se relaciona com sustentabilidade — aproveitamento integral do ingrediente principal, redução de desperdício, sazonalidade, origem local quando aplicável.
+
+---
+# 9. FOOD COST PEDAGÓGICO
+
+Liga-se à secção 4 (Rendimentos): para cada apresentação comercial comparada, estima o impacto no food cost. Tabela seguida de interpretação sobre que opção é mais vantajosa e em que contexto.
+
+---
+# 10. TÉCNICAS E MICROCOMPETÊNCIAS TÉCNICAS
+
+Lista as técnicas culinárias específicas mobilizadas nesta produção (ex: branqueamento, redução, emulsão, ponto de cozedura), cada uma com uma explicação técnica real do que exige e porque é crítica para o resultado final.
+
+---
+# 11. CONHECIMENTOS A CONSOLIDAR
+
+Lista os conhecimentos teóricos que esta produção exige ou reforça (ex: reacções químicas envolvidas, princípios de conservação, bases de confecção), ligados ao referencial oficial da UC.
+
+---
+# 12. QUESTÕES PARA ESTUDO
+
+Gera entre 8 e 10 questões de estudo sobre esta produção concreta — mistura de escolha múltipla, verdadeiro/falso e resposta curta — cobrindo ingredientes, técnica, HACCP e fundamentos teóricos. Inclui as respostas certas no fim.
+
+---
+# 13. CASO PROFISSIONAL FINAL
+
+Cria um cenário profissional realista relacionado com ${nomePrato}, que obrigue o aluno a analisar, justificar e decidir — não apenas responder.
+
+O caso pode envolver, por exemplo:
+- escolha entre diferentes apresentações comerciais da matéria-prima principal (ligado à secção 4);
+- escolha de fornecedor;
+- adaptação ao tipo de serviço (buffet, à la carte, catering);
+- gestão de desperdício ou de produção numa situação de imprevisto;
+- decisão de food cost sob restrição de orçamento.
+
+Apresentar o cenário em 1-2 parágrafos concretos e terminar com uma pergunta clara que exija ao aluno tomar e justificar uma decisão profissional.
+
+---
+# 14. AUTOAVALIAÇÃO DO ALUNO
+
+Gerar entre 5 e 8 questões de reflexão individual sobre esta produção específica, para o aluno responder por si, ligadas ao que realmente aprendeu e onde sentiu mais dificuldade.
+
+---
+IMPORTANTE: termina com uma secção final "RESUMO" com os pontos-chave de cada secção, de forma esquemática (bullets curtos), para revisão rápida antes da aula prática.`;
 }
 
 function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?: string; ucId?: string; ucNome?: string }) {
