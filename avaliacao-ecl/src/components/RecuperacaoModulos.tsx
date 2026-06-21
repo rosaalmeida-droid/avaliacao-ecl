@@ -4,6 +4,7 @@ import {
   getRecuperacoesPorAluno, addOrUpdateRecuperacao, criarRecuperacaoAutomatica,
   getPlanosFaltadosPorUC, getPlanosAulaPorTurma, getEstadoCompetenciasUC, getGuiasDaRecuperacao,
   construirPromptPlanoIndividual,
+  gerarPlanoRecuperacaoComIA,
   recuperacaoEstaTrancada,
 } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } from '../competenciasECL';
@@ -11,6 +12,7 @@ import { gerarPerguntasDefesaOral } from '../matrizEvidencias';
 import { getReferencialUC } from '../referencial811RA144';
 import { UCS_COZINHA } from './PlanoAula';
 import { GuiaProducao } from './GuiaProducao';
+import { SeletorIA } from './SeletorIA';
 
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
@@ -332,17 +334,63 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
 // para uma IA externa (ChatGPT/Claude), resultado colado de volta. Não há
 // forma de impedir o uso de IA fora da app — a proteção real é o prompt ser
 // único + a Defesa Oral obrigatória depois confirmar compreensão real.
+// Converte o JSON estruturado devolvido pela Gemini num texto legível, no
+// mesmo formato que o aluno já via ao colar manualmente de uma IA externa —
+// mantém a interface consistente entre os dois caminhos (automático/manual).
+function formatarPlanoIA(plano: import('../backend').PlanoIndividualGemini): string {
+  return `RESUMO
+${plano.resumo}
+
+TAREFAS
+${(plano.tarefas || []).map((t, i) => `${i + 1}. ${t}`).join('\n')}
+
+QUESTÕES TÉCNICAS
+${(plano.questoesTecnicas || []).map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+CASO PROFISSIONAL
+${plano.casoProfissional || ''}
+
+EVIDÊNCIAS A ENTREGAR
+${(plano.evidenciasExigidas || []).map(e => `- ${e}`).join('\n')}
+
+COMPETÊNCIAS COM DEFESA ORAL OBRIGATÓRIA
+${(plano.competenciasComDefesaOral || []).map(c => `- ${c}`).join('\n')}
+
+Tempo estimado: ${plano.tempoEstimadoMinutos || '?'} minutos`;
+}
+
 function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: import('../types').RecuperacaoModulo; onAtualizado: () => void }) {
   const r = recuperacao;
   const [aberto, setAberto] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [colando, setColando] = useState(false);
   const [textoColado, setTextoColado] = useState(r.planoIndividualTexto || '');
+  const [aGerarIA, setAGerarIA] = useState(false);
+  const [avisoIA, setAvisoIA] = useState('');
 
   const prompt = r.promptPlanoIndividual || construirPromptPlanoIndividual(r.id);
 
-  function gerar() {
-    addOrUpdateRecuperacao({ ...r, promptPlanoIndividual: prompt, atualizadoEm: new Date().toISOString() });
+  // Tenta primeiro a geração automática via Gemini (gratuita) — se não
+  // estiver configurada ou o limite diário foi atingido, cai automaticamente
+  // no modo manual (prompt copiável), sem nunca bloquear o aluno.
+  async function gerar() {
+    setAGerarIA(true);
+    setAvisoIA('');
+    const resultado = await gerarPlanoRecuperacaoComIA(r.id);
+    if (resultado.ok) {
+      const textoFormatado = formatarPlanoIA(resultado.plano);
+      addOrUpdateRecuperacao({
+        ...r, promptPlanoIndividual: prompt, planoIndividualTexto: textoFormatado,
+        atualizadoEm: new Date().toISOString(),
+      });
+      setTextoColado(textoFormatado);
+    } else {
+      // Modo manual — guarda só o prompt, o aluno copia/cola como antes.
+      if (resultado.motivo === 'limite_atingido') setAvisoIA('A geração automática atingiu o limite gratuito de hoje — usa o modo manual abaixo.');
+      else if (resultado.motivo !== 'sem_chave') setAvisoIA('Não foi possível gerar automaticamente — usa o modo manual abaixo.');
+      addOrUpdateRecuperacao({ ...r, promptPlanoIndividual: prompt, atualizadoEm: new Date().toISOString() });
+    }
+    setAGerarIA(false);
     setAberto(true);
     onAtualizado();
   }
@@ -360,17 +408,18 @@ function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: impo
     onAtualizado();
   }
 
-  if (!r.promptPlanoIndividual && !aberto) {
+  if (!r.promptPlanoIndividual && !r.planoIndividualTexto && !aberto) {
     return (
       <div style={{ marginBottom: 18, background: 'var(--copper-pale)', borderRadius: 10, padding: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--copper)', marginBottom: 6 }}>
           🤖 Plano de Recuperação Individual
         </div>
         <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
-          Gera um plano feito só para ti, com as tuas competências em falta. Depois colas numa IA (ChatGPT, Claude) para obteres o plano completo.
+          Gera um plano feito só para ti, com as tuas competências em falta. A app tenta gerar automaticamente — se não conseguir, dá-te um texto para colares numa IA.
         </div>
-        <button onClick={gerar} style={{ width: '100%', padding: 12, borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-          ✨ Gerar o meu Plano de Recuperação
+        {avisoIA && <div style={{ fontSize: 12, color: 'var(--copper)', marginBottom: 8 }}>{avisoIA}</div>}
+        <button onClick={gerar} disabled={aGerarIA} style={{ width: '100%', padding: 12, borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: aGerarIA ? 'default' : 'pointer', opacity: aGerarIA ? 0.7 : 1 }}>
+          {aGerarIA ? '⏳ A gerar...' : '✨ Gerar o meu Plano de Recuperação'}
         </button>
       </div>
     );
@@ -389,23 +438,14 @@ function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: impo
           {!r.planoIndividualTexto && (
             <>
               <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
-                1. Abre directamente no Claude (já vem preenchido) → 2. Confirma/envia lá → 3. Cola aqui o resultado
+                Escolhe uma IA — depois cola aqui o resultado.
               </div>
               <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 11, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 200, overflowY: 'auto', marginBottom: 8 }}>
                 {prompt}
               </div>
-              <button onClick={() => {
-                if (prompt.length > 6000) {
-                  alert('Este prompt é demasiado longo para abrir directamente. Usa "Copiar prompt" e cola manualmente numa IA.');
-                  return;
-                }
-                window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
-              }}
-                style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 6 }}>
-                ✨ Abrir no Claude (já preenchido)
-              </button>
+              <SeletorIA prompt={prompt} corPrincipal="var(--recuperacao)" />
               <button onClick={copiar} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--copper)', background: copiado ? 'var(--sage)' : '#fff', color: copiado ? 'white' : 'var(--copper)', fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 8 }}>
-                {copiado ? '✓ Copiado!' : '📋 Copiar prompt (para ChatGPT ou outro)'}
+                {copiado ? '✓ Copiado!' : '📋 Copiar prompt'}
               </button>
               {!colando ? (
                 <button onClick={() => setColando(true)} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
