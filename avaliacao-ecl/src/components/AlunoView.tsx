@@ -10,6 +10,8 @@ import {
   microsPorUC, jaTeveSucesso, estaEmRegressao,
 } from '../competenciasECL';
 import { GuiaProducao } from './GuiaProducao';
+import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
+import { PerfilProfissionalAluno } from './PerfilProfissional';
 
 // ── Estilos ───────────────────────────────────────────────────
 const S = {
@@ -77,6 +79,7 @@ function Acordeao({ id, aberto, titulo, icone, cor, estado, onClick, children }:
 // ════════════════════════════════════════════════════════════════
 export function AlunoView({ aluno }: { aluno: Aluno }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
+  const [vista, setVista] = useState<'aulas' | 'recuperacao' | 'perfil'>('aulas');
   const [planos, setPlanos] = useState<PlanoAula[]>(() =>
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
@@ -98,27 +101,46 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
         <div style={{ fontSize: 16, fontWeight: 700 }}>Olá, {aluno.nome || `Aluno ${aluno.numero}`}!</div>
         <div style={S.muted}>{aluno.turmaId} · {aluno.ano}º ano</div>
       </div>
-      <div style={S.card}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Aulas disponíveis</div>
-        {planos.length === 0 && <div style={S.muted}>Ainda não há aulas publicadas.</div>}
-        {planos.map(p => {
-          const d = new Date(p.data + 'T12:00:00');
-          return (
-            <div key={p.id} onClick={() => setPlanoAtivo(p)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 6, cursor: 'pointer', background: '#fff' }}>
-              <div style={{ background: 'var(--copper-pale)', borderRadius: 8, padding: '6px 8px', textAlign: 'center', flexShrink: 0 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--copper)', lineHeight: 1 }}>{d.getDate().toString().padStart(2, '0')}</div>
-                <div style={{ fontSize:12, color: 'var(--copper)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{p.titulo}</div>
-                <div style={S.muted}>{p.horaInicio}–{p.horaFim}{p.ucId ? ` · ${p.ucId}` : ''}</div>
-                {p.ucNome && <div style={{ fontSize:13, color: 'var(--copper)' }}>{p.ucNome}</div>}
-              </div>
-              <span style={{ fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>→</span>
-            </div>
-          );
-        })}
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        <button onClick={() => setVista('aulas')} className={`tab-btn${vista === 'aulas' ? ' active' : ''}`} style={{ flex: 1 }}>
+          📅 Aulas
+        </button>
+        <button onClick={() => setVista('recuperacao')} className={`tab-btn${vista === 'recuperacao' ? ' active' : ''}`} style={{ flex: 1 }}>
+          🔄 Recuperação
+        </button>
+        <button onClick={() => setVista('perfil')} className={`tab-btn${vista === 'perfil' ? ' active' : ''}`} style={{ flex: 1 }}>
+          🪪 Perfil
+        </button>
       </div>
+
+      {vista === 'recuperacao' ? (
+        <RecuperacaoModulosAluno aluno={aluno} />
+      ) : vista === 'perfil' ? (
+        <PerfilProfissionalAluno aluno={aluno} />
+      ) : (
+        <div style={S.card}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Aulas disponíveis</div>
+          {planos.length === 0 && <div style={S.muted}>Ainda não há aulas publicadas.</div>}
+          {planos.map(p => {
+            const d = new Date(p.data + 'T12:00:00');
+            return (
+              <div key={p.id} onClick={() => setPlanoAtivo(p)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 6, cursor: 'pointer', background: '#fff' }}>
+                <div style={{ background: 'var(--copper-pale)', borderRadius: 8, padding: '6px 8px', textAlign: 'center', flexShrink: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--copper)', lineHeight: 1 }}>{d.getDate().toString().padStart(2, '0')}</div>
+                  <div style={{ fontSize:12, color: 'var(--copper)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{p.titulo}</div>
+                  <div style={S.muted}>{p.horaInicio}–{p.horaFim}{p.ucId ? ` · ${p.ucId}` : ''}</div>
+                  {p.ucNome && <div style={{ fontSize:13, color: 'var(--copper)' }}>{p.ucNome}</div>}
+                </div>
+                <span style={{ fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>→</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -287,7 +309,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
 
   function guardarChecklist(fichaId: string, novoIng?: Set<number>, novoPasso?: Set<number>) {
     setChecklist(prev => {
-      const actual = prev[fichaId] || { ing: new Set(), passo: new Set() };
+      const actual = prev[fichaId] || { ing: new Set<number>(), passo: new Set<number>() };
       const next = { ing: novoIng || actual.ing, passo: novoPasso || actual.passo };
       addOrUpdateChecklistAluno({
         id: `chk_${plano.id}_${fichaId}_${aluno.id}`,
@@ -308,15 +330,15 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
   }
 
   function toggleIngrediente(fichaId: string, idx: number) {
-    const actual = checklist[fichaId] || { ing: new Set(), passo: new Set() };
-    const novo = new Set(actual.ing);
+    const actual: { ing: Set<number>; passo: Set<number> } = checklist[fichaId] || { ing: new Set<number>(), passo: new Set<number>() };
+    const novo = new Set<number>(actual.ing);
     if (novo.has(idx)) novo.delete(idx); else novo.add(idx);
     guardarChecklist(fichaId, novo, undefined);
   }
 
   function togglePasso(fichaId: string, idx: number) {
-    const actual = checklist[fichaId] || { ing: new Set(), passo: new Set() };
-    const novo = new Set(actual.passo);
+    const actual: { ing: Set<number>; passo: Set<number> } = checklist[fichaId] || { ing: new Set<number>(), passo: new Set<number>() };
+    const novo = new Set<number>(actual.passo);
     if (novo.has(idx)) novo.delete(idx); else novo.add(idx);
     guardarChecklist(fichaId, undefined, novo);
   }
@@ -511,7 +533,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
       addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_haccp_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: 'OBR_02', nota: nivelHaccp === 'sozinho' ? 15 : nivelHaccp === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
       autoavaliacoes.push({ competenciaId: 'OBR_02', nivel: paraNivelAuto(nivelHaccp) });
     }
-    Object.entries(notasMicro).forEach(([microId, v]) => {
+    (Object.entries(notasMicro) as [string, string | null][]).forEach(([microId, v]) => {
       if (v) {
         addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_${microId}_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: microId, nota: v === 'sozinho' ? 15 : v === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
         autoavaliacoes.push({ competenciaId: microId, nivel: paraNivelAuto(v) });
