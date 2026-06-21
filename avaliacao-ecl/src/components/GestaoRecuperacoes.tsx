@@ -3,6 +3,7 @@ import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, g
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } from '../competenciasECL';
 import { RecuperacaoModulo } from '../types';
 import { GuiaProducao } from './GuiaProducao';
+import { SeletorIA } from './SeletorIA';
 
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
@@ -40,12 +41,14 @@ export function GestaoRecuperacoes({ turmaId, nomeProfessor }: { turmaId: string
   }
 
   return (
-    <div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
-        Gestão de Recuperações
-      </div>
-      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 16 }}>
-        Trabalhos de recuperação submetidos pelos alunos, por validar.
+    <div style={{ background: 'var(--recuperacao-pale)', borderRadius: 16, padding: 16 }}>
+      <div style={{ background: 'var(--recuperacao)', borderRadius: 14, padding: '16px 18px', marginBottom: 14 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'white' }}>
+          🔄 Gestão de Recuperações
+        </div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
+          Trabalhos de recuperação submetidos pelos alunos, por validar.
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
@@ -131,6 +134,7 @@ function Lista({ items, nomeAluno, vazio, onClick }: { items: RecuperacaoModulo[
           </div>
         </div>
       ))}
+    </div>
     </div>
   );
 }
@@ -354,18 +358,9 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
                 <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 11, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
                   {promptAnalise}
                 </div>
-                <button onClick={() => {
-                  if (promptAnalise.length > 6000) {
-                    alert('Este prompt é demasiado longo para abrir directamente. Usa "Copiar prompt" e cola manualmente numa IA.');
-                    return;
-                  }
-                  window.open('https://claude.ai/new?q=' + encodeURIComponent(promptAnalise), '_blank');
-                }}
-                  style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 6 }}>
-                  ✨ Abrir no Claude (já preenchido)
-                </button>
+                <SeletorIA prompt={promptAnalise} corPrincipal="var(--recuperacao)" />
                 <button onClick={copiarPromptAnalise} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--sage)', background: copiadoAnalise ? 'var(--sage)' : '#fff', color: copiadoAnalise ? 'white' : 'var(--sage)', fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 8 }}>
-                  {copiadoAnalise ? '✓ Copiado!' : '📋 Copiar prompt (para ChatGPT ou outro)'}
+                  {copiadoAnalise ? '✓ Copiado!' : '📋 Copiar prompt'}
                 </button>
                 {!colandoAnalise ? (
                   <button onClick={() => setColandoAnalise(true)} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
