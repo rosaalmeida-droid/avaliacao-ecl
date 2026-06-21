@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao,
-  getRequisicaoPorPlano, getAlunos, getPlanosAula,
+  getRequisicaoPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -536,6 +536,20 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
+        {requisicao && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--sage-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+            <span style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 600, flex: 1 }}>✓ Já existe uma requisição para este plano</span>
+            <button onClick={() => {
+              if (confirm('Eliminar DEFINITIVAMENTE esta requisição? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeita.')) {
+                eliminarRequisicaoDefinitivamente(requisicao.id);
+                onPlanoActualizado({ ...plano });
+              }
+            }} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 16, cursor: 'pointer', padding: '2px 6px' }}
+              title="Eliminar requisição definitivamente">
+              🗑️
+            </button>
+          </div>
+        )}
         <Requisicao
           nomeProfessor={nomeProfessor}
           planoIdFixo={plano.id}
