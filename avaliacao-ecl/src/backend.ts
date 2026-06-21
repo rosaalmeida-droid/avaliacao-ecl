@@ -50,6 +50,12 @@ const KEYS = {
   materiasPrimasCustom: 'ecl_materias_primas_custom',
   syncPlanos:    'ecl_sync_planos_ts',
   syncFichas:    'ecl_sync_fichas_ts',
+  // "Tombstones" — IDs eliminados definitivamente. Sem isto, a sincronização
+  // via Sheets trazia de volta planos/fichas/requisições já apagados, porque
+  // não distinguia "nunca existiu aqui" de "já existiu e foi eliminado".
+  eliminadosPlanos:      'ecl_eliminados_planos',
+  eliminadosFichas:      'ecl_eliminados_fichas',
+  eliminadosRequisicoes: 'ecl_eliminados_requisicoes',
 };
 
 // ── Utilitários localStorage ─────────────────────────────────
@@ -105,8 +111,10 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       const jsonPlanos = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
       if (jsonPlanos?.ok && jsonPlanos.dados?.length > 0) {
         const locais = getPlanosAula();
+        const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
         const merged = [...locais];
         for (const pRaw of jsonPlanos.dados) {
+          if (eliminados.has(pRaw.id)) continue; // já foi eliminado de propósito — não trazer de volta
           // Normalizar — o Sheets pode devolver campos array como string (CSV de uma célula)
           const p: any = {
             ...pRaw,
@@ -132,8 +140,10 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       const jsonFichas = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
       if (jsonFichas?.ok && jsonFichas.dados?.length > 0) {
         const locais = getFichasProducao();
+        const eliminadas = new Set(load<string>(KEYS.eliminadosFichas));
         const merged = [...locais];
         for (const f of jsonFichas.dados) {
+          if (eliminadas.has(f.id)) continue; // já foi eliminada de propósito — não trazer de volta
           const idx = merged.findIndex((x: FichaProducao) => x.id === f.id);
           if (idx < 0) {
             merged.push({ ...f, ingredientes: [], preparacao: [], htmlCompleto: f.htmlCompleto || '', textoGuia: f.textoGuia || '', planoAulaId: f.planoAulaId || undefined });
@@ -287,6 +297,11 @@ export function arquivarPlanoAula(planoId: string): void {
 // sheet Planos_Aula). Diferente de arquivar: não há forma de recuperar.
 export function eliminarPlanoAulaDefinitivamente(planoId: string): void {
   save(KEYS.planos, getPlanosAula().filter(p => p.id !== planoId));
+  // Registar tombstone — sem isto, a próxima sincronização trazia o plano
+  // de volta do Sheets, porque não havia forma de saber que foi eliminado
+  // de propósito (em vez de nunca ter existido localmente).
+  const eliminados = load<string>(KEYS.eliminadosPlanos);
+  if (!eliminados.includes(planoId)) save(KEYS.eliminadosPlanos, [...eliminados, planoId]);
   enviar(SHEETS_PLANOS_URL, 'eliminar_plano', { planoId });
 }
 
@@ -369,6 +384,8 @@ export function addOrUpdateFichaProducao(f: FichaProducao): void {
 // individual da ficha e a linha correspondente no INDICE).
 export function eliminarFichaProducaoDefinitivamente(fichaId: string): void {
   save(KEYS.fichas, getFichasProducao().filter(f => f.id !== fichaId));
+  const eliminados = load<string>(KEYS.eliminadosFichas);
+  if (!eliminados.includes(fichaId)) save(KEYS.eliminadosFichas, [...eliminados, fichaId]);
   enviar(SHEETS_FICHAS_URL, 'eliminar_ficha', { fichaId });
 }
 
@@ -432,6 +449,8 @@ export function addOrUpdateRequisicao(r: RequisicaoAula): void {
 // histórico de Requisições do Sheets de Planos.
 export function eliminarRequisicaoDefinitivamente(requisicaoId: string): void {
   save(KEYS.requisicoes, getRequisicoes().filter(r => r.id !== requisicaoId));
+  const eliminados = load<string>(KEYS.eliminadosRequisicoes);
+  if (!eliminados.includes(requisicaoId)) save(KEYS.eliminadosRequisicoes, [...eliminados, requisicaoId]);
   enviar(SHEETS_PLANOS_URL, 'eliminar_requisicao', { requisicaoId });
 }
 
@@ -810,6 +829,47 @@ export function construirPromptPlanoIndividual(recuperacaoId: string): string {
     evidenciasJaExistentes: evidencias.map(e => `${getNomeCompetenciaGenerica(e.competenciaId)} (nível ${e.nivel}, em ${new Date(e.data).toLocaleDateString('pt-PT')})`),
     realizacoesOficiais: refUC?.realizacoes || [],
   });
+}
+
+// Resultado estruturado devolvido pela Gemini — espelha o JSON pedido na
+// função serverless /api/gerarPlanoRecuperacao.ts.
+export interface PlanoIndividualGemini {
+  resumo: string;
+  tarefas: string[];
+  questoesTecnicas: string[];
+  casoProfissional: string;
+  evidenciasExigidas: string[];
+  competenciasComDefesaOral: string[];
+  tempoEstimadoMinutos: number;
+}
+
+export type ResultadoGeracaoIA =
+  | { ok: true; plano: PlanoIndividualGemini }
+  | { ok: false; motivo: 'sem_chave' | 'limite_atingido' | 'erro_api' | 'resposta_invalida' | 'erro_rede' | 'erro_pedido'; mensagem: string };
+
+// Tenta gerar o Plano de Recuperação Individual automaticamente via Gemini
+// (free tier). Se a chave não estiver configurada na Vercel, ou se o limite
+// diário gratuito for atingido, devolve ok:false com o motivo — a interface
+// usa isso para cair automaticamente no modo manual (prompt copiável já
+// existente), sem nunca bloquear o aluno.
+export async function gerarPlanoRecuperacaoComIA(recuperacaoId: string): Promise<ResultadoGeracaoIA> {
+  const prompt = construirPromptPlanoIndividual(recuperacaoId);
+  if (!prompt) return { ok: false, motivo: 'erro_pedido', mensagem: 'Recuperação não encontrada.' };
+
+  try {
+    const res = await fetch('/api/gerarPlanoRecuperacao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    const dados = await res.json();
+    if (dados.ok) return { ok: true, plano: dados.plano };
+    return { ok: false, motivo: dados.motivo || 'erro_api', mensagem: dados.mensagem || 'Erro desconhecido.' };
+  } catch (err) {
+    // Falha de rede, ou a função /api não existe nesta instalação (deploy
+    // antigo sem a pasta api/) — cair no modo manual sem rebentar a app.
+    return { ok: false, motivo: 'erro_rede', mensagem: String(err) };
+  }
 }
 
 // Constrói o prompt de análise preliminar (ponto 11-13 da adenda) — o
