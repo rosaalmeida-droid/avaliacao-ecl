@@ -7,9 +7,12 @@
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
   Turma, Aluno, PlanoAula, FichaProducao,
-  DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo
+  DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
+  Aviso, MateriaPrimaCustom
 } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS } from './competenciasECL';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './competenciasECL';
+import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
+import { REFERENCIAL_811RA144 } from './referencial811RA144';
 
 // ── URLs dos Apps Scripts ────────────────────────────────────
 // Histórico de avaliações dos alunos (já configurado e a funcionar)
@@ -42,6 +45,9 @@ const KEYS = {
   requisicoes:   'ecl_requisicoes',
   presencas:     'ecl_presencas',
   recuperacoes:  'ecl_recuperacoes',
+  evidencias:    'ecl_evidencias',
+  avisos:        'ecl_avisos',
+  materiasPrimasCustom: 'ecl_materias_primas_custom',
   syncPlanos:    'ecl_sync_planos_ts',
   syncFichas:    'ecl_sync_fichas_ts',
 };
@@ -130,13 +136,43 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         for (const f of jsonFichas.dados) {
           const idx = merged.findIndex((x: FichaProducao) => x.id === f.id);
           if (idx < 0) {
-            merged.push({ ...f, ingredientes: [], preparacao: [], htmlCompleto: f.htmlCompleto || '' });
-          } else if (f.htmlCompleto && !(merged[idx] as any).htmlCompleto) {
-            // Já existe localmente mas sem HTML — completar com o que veio do Sheets
-            merged[idx] = { ...merged[idx], htmlCompleto: f.htmlCompleto } as any;
+            merged.push({ ...f, ingredientes: [], preparacao: [], htmlCompleto: f.htmlCompleto || '', textoGuia: f.textoGuia || '', planoAulaId: f.planoAulaId || undefined });
+          } else {
+            // Completar campos que possam faltar localmente mas existem no Sheets
+            // — crítico para textoGuia (Guia de Apoio) e planoAulaId (ligação à
+            // Recuperação de Módulos), que antes não sincronizavam entre dispositivos.
+            const atualizado = { ...merged[idx] } as any;
+            if (f.htmlCompleto && !atualizado.htmlCompleto) atualizado.htmlCompleto = f.htmlCompleto;
+            if (f.textoGuia && !atualizado.textoGuia) atualizado.textoGuia = f.textoGuia;
+            if (f.planoAulaId && !atualizado.planoAulaId) atualizado.planoAulaId = f.planoAulaId;
+            merged[idx] = atualizado;
           }
         }
         save(KEYS.fichas, merged);
+      }
+    }
+
+    // Carregar Recuperações e Evidências do Sheets dedicado — merge por ID,
+    // a versão mais recente (atualizadoEm) ganha em caso de conflito.
+    if (SHEETS_RECUPERACAO_URL) {
+      const jsonRecup = await lerDoSheets(SHEETS_RECUPERACAO_URL, { tipo: 'recuperacoes', turmaId });
+      if (jsonRecup?.ok && jsonRecup.dados?.length > 0) {
+        const locais = getRecuperacoes();
+        const merged = [...locais];
+        for (const r of jsonRecup.dados) {
+          const idx = merged.findIndex((x: RecuperacaoModulo) => x.id === r.id);
+          if (idx < 0) merged.push(r);
+          else if ((r.atualizadoEm || '') > (merged[idx].atualizadoEm || '')) merged[idx] = r;
+        }
+        save(KEYS.recuperacoes, merged);
+      }
+
+      const jsonEvid = await lerDoSheets(SHEETS_RECUPERACAO_URL, { tipo: 'evidencias' });
+      if (jsonEvid?.ok && jsonEvid.dados?.length > 0) {
+        const locais = getEvidencias();
+        const idsLocais = new Set(locais.map((e: Evidencia) => e.id));
+        const novas = jsonEvid.dados.filter((e: Evidencia) => !idsLocais.has(e.id));
+        if (novas.length > 0) save(KEYS.evidencias, [...locais, ...novas]);
       }
     }
 
@@ -196,6 +232,44 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
   sincronizarPlanoComCalendario(p);
 }
 
+// Numeração sequencial robusta — baseada no MAIOR número já usado, nunca em
+// .length (que desce se algo for eliminado e podia repetir números antigos).
+// A partir de hoje (21/06/2026), o piso passa a ser 100, conforme decidido.
+const PISO_NUMERACAO = 100;
+
+export function proximoNumeroPlano(): number {
+  const todos = getPlanosAula();
+  const maior = todos.reduce((m, p) => Math.max(m, p.numeroPlan || 0), 0);
+  return Math.max(maior + 1, PISO_NUMERACAO);
+}
+
+export function proximoNumeroFicha(): number {
+  const todas = getFichasProducao();
+  const maior = todas.reduce((m, f) => {
+    const n = parseInt((f.fichaNum || '').replace(/\D/g, ''), 10);
+    return Number.isFinite(n) ? Math.max(m, n) : m;
+  }, 0);
+  return Math.max(maior + 1, PISO_NUMERACAO);
+}
+
+export function proximoNumeroRecuperacao(): number {
+  const todas = getRecuperacoes();
+  const maior = todas.reduce((m, r) => {
+    const n = parseInt(((r as any).numeroRecuperacao || '').toString().replace(/\D/g, ''), 10);
+    return Number.isFinite(n) ? Math.max(m, n) : m;
+  }, 0);
+  return Math.max(maior + 1, PISO_NUMERACAO);
+}
+
+// Código do Plano de Aula: Ano-UC-Número, ex: "1-UC03586-100".
+// Sem data — já existe como campo próprio do plano, não precisa duplicar.
+export function gerarCodigoPlano(turmaId: string, ucId: string | undefined, numeroPlan: number): string {
+  const aluno = getAlunos().find(a => a.turmaId === turmaId);
+  const ano = aluno?.ano || '?';
+  const ucLimpo = ucId || 'SemUC';
+  return `${ano}-${ucLimpo}-${numeroPlan}`;
+}
+
 // Remove um plano de aula só localmente (o registo no Sheets/Calendário fica
 // Arquiva um plano — desaparece da vista normal mas fica guardado, recuperável.
 // Mais simples e seguro do que eliminar de verdade: nunca se perde nada por engano.
@@ -207,6 +281,13 @@ export function arquivarPlanoAula(planoId: string): void {
     save(KEYS.planos, all);
     enviar(SHEETS_PLANOS_URL, 'plano', { plano: all[idx] });
   }
+}
+
+// Elimina o plano DEFINITIVAMENTE — local e no Sheets (linha removida da
+// sheet Planos_Aula). Diferente de arquivar: não há forma de recuperar.
+export function eliminarPlanoAulaDefinitivamente(planoId: string): void {
+  save(KEYS.planos, getPlanosAula().filter(p => p.id !== planoId));
+  enviar(SHEETS_PLANOS_URL, 'eliminar_plano', { planoId });
 }
 
 // Traz um plano arquivado de volta — repõe o estado anterior (rascunho, para
@@ -284,6 +365,13 @@ export function addOrUpdateFichaProducao(f: FichaProducao): void {
   enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f });
 }
 
+// Elimina a ficha DEFINITIVAMENTE — local e no Sheets (remove a sheet
+// individual da ficha e a linha correspondente no INDICE).
+export function eliminarFichaProducaoDefinitivamente(fichaId: string): void {
+  save(KEYS.fichas, getFichasProducao().filter(f => f.id !== fichaId));
+  enviar(SHEETS_FICHAS_URL, 'eliminar_ficha', { fichaId });
+}
+
 // ── Distribuições de Fichas ──────────────────────────────────
 export function getDistribuicoes(): DistribuicaoFicha[] { return load<DistribuicaoFicha>(KEYS.distribuicoes); }
 
@@ -316,7 +404,19 @@ export function addOrUpdateChecklistAluno(c: ChecklistAlunoFicha): void {
 export function getRequisicoes(): RequisicaoAula[] { return load<RequisicaoAula>(KEYS.requisicoes); }
 
 export function getRequisicaoPorPlano(planoId: string): RequisicaoAula | undefined {
-  return getRequisicoes().find(r => r.planoAulaId === planoId);
+  // Como um plano pode ter várias requisições (ex: fichas mudaram a meio),
+  // devolve sempre a mais recente — não a primeira encontrada.
+  const todas = getRequisicoes().filter(r => r.planoAulaId === planoId);
+  if (todas.length === 0) return undefined;
+  return todas.sort((a, b) => (b.criadaEm || '').localeCompare(a.criadaEm || ''))[0];
+}
+
+// Devolve TODAS as requisições de um plano, mais recente primeiro — usada
+// onde é preciso mostrar/gerir o histórico completo, não só a última.
+export function getRequisicoesPorPlano(planoId: string): RequisicaoAula[] {
+  return getRequisicoes()
+    .filter(r => r.planoAulaId === planoId)
+    .sort((a, b) => (b.criadaEm || '').localeCompare(a.criadaEm || ''));
 }
 
 export function addOrUpdateRequisicao(r: RequisicaoAula): void {
@@ -326,6 +426,13 @@ export function addOrUpdateRequisicao(r: RequisicaoAula): void {
   save(KEYS.requisicoes, all);
   // Enviar para Sheets histórico — aninhado em 'requisicao' como o Apps Script espera
   enviar(SHEETS_PLANOS_URL, 'requisicao', { requisicao: r });
+}
+
+// Elimina a requisição DEFINITIVAMENTE — local e a linha correspondente no
+// histórico de Requisições do Sheets de Planos.
+export function eliminarRequisicaoDefinitivamente(requisicaoId: string): void {
+  save(KEYS.requisicoes, getRequisicoes().filter(r => r.id !== requisicaoId));
+  enviar(SHEETS_PLANOS_URL, 'eliminar_requisicao', { requisicaoId });
 }
 
 // ── Comandas / Seleções / Validações ─────────────────────────
@@ -521,7 +628,8 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
 }
 
 // ── Recuperação de Módulos ──────────────────────────────────────
-const SHEETS_RECUPERACAO_URL = ''; // PENDENTE: preencher quando houver Apps Script dedicado
+// Script dedicado de Recuperações/Evidências — deploy concluído em 21/06/2026.
+export const SHEETS_RECUPERACAO_URL = 'https://script.google.com/macros/s/AKfycbx5oRjHhh8OduNZcUFlK1MXEoJrJfqMwGoU1ZYgYj9ASlg3WsKbdrnM6etpVcXH_nalUg/exec';
 
 export function getRecuperacoes(): RecuperacaoModulo[] {
   return load<RecuperacaoModulo>(KEYS.recuperacoes);
@@ -561,11 +669,36 @@ export function classificarTipoUC(ucId: string): 'tecnica' | 'organizacional' | 
 // Constrói uma recuperação nova para um aluno+UC: identifica automaticamente
 // os planos faltados, herda competências/atitudes/responsabilidades — sem o
 // professor ter de escolher tudo manualmente outra vez.
+// Verifica se uma recuperação está trancada (passou da dataLimite sem ser
+// submetida, e o professor não destrancou manualmente). Calculado na hora —
+// não depende de um campo gravado que possa ficar desatualizado.
+export function recuperacaoEstaTrancada(r: RecuperacaoModulo): boolean {
+  if (r.destrancadaPorProfessor) return false;
+  if (r.estado !== 'pendente') return false; // já submetida — não tranca mais
+  if (!r.dataLimite) return false;
+  return new Date(r.dataLimite).getTime() < Date.now();
+}
+
+// O professor destranca a recuperação, dando mais tempo ao aluno — gera
+// uma nova dataLimite de +1 mês a partir de agora.
+export function destrancarRecuperacao(recuperacaoId: string): void {
+  const all = getRecuperacoes();
+  const idx = all.findIndex(r => r.id === recuperacaoId);
+  if (idx >= 0) {
+    const novaDataLimite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    addOrUpdateRecuperacao({ ...all[idx], destrancadaPorProfessor: true, dataLimite: novaDataLimite, atualizadoEm: new Date().toISOString() });
+  }
+}
+
 export function criarRecuperacaoAutomatica(alunoId: string, turmaId: string, ucId: string, ucNome: string): RecuperacaoModulo {
   const planosFaltados = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
   const planosIds = planosFaltados.map(p => p.id);
 
-  // Herdar competências dos planos seleccionados (união, sem duplicados)
+  // Herdar competências TÉCNICAS dos planos seleccionados (união, sem duplicados).
+  // Apenas estas (Grupo A) e as responsabilidades (Grupo B) entram na exigência
+  // de recuperação por escrito/defesa oral — as atitudes (Grupo C) NUNCA são
+  // validadas por trabalho escrito, ver matrizEvidencias.ts e pontos 19-20 do
+  // documento pedagógico "Arquitetura Pedagógica da Avaliação ECL".
   const competenciasSet = new Set<string>();
   const microsDaUC = microsPorUC(ucId);
   microsDaUC.forEach(m => competenciasSet.add(m.id));
@@ -574,20 +707,31 @@ export function criarRecuperacaoAutomatica(alunoId: string, turmaId: string, ucI
     (p.compRemovidas || []).forEach(c => competenciasSet.delete(c));
   });
 
-  const atitudesIds = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').map(a => a.id);
   const responsabilidadesIds = OBRIGATORIAS.map(o => o.id);
 
+  // Atitudes ficam registadas como "pendentes de observação futura" — não
+  // bloqueiam a conclusão da UC nem fazem parte do trabalho escrito do aluno.
+  // São validadas em qualquer contexto futuro (outra UC, FCT, PAP) através
+  // do Banco de Evidências (ver addEvidencia / getEvidenciasPorCompetencia).
+  const atitudesIds = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').map(a => a.id);
+
   const agora = new Date().toISOString();
+  // Prazo de 1 mês para o aluno submeter — depois disso a recuperação fica
+  // trancada automaticamente, e só o professor a pode reabrir (decisão de
+  // 21/06/2026: "podes pôr um mês, e depois tranca").
+  const dataLimite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   return {
     id: `recup_${alunoId}_${ucId}_${Date.now()}`,
     alunoId, turmaId, ucId, ucNome,
+    numeroRecuperacao: proximoNumeroRecuperacao(),
     tipoUC: classificarTipoUC(ucId),
     planosIds,
     competenciasIds: Array.from(competenciasSet),
-    atitudesIds,
+    atitudesIds, // informativo — não exigido como trabalho escrito na recuperação
     responsabilidadesIds,
     estado: 'pendente',
     dataAtribuicao: agora,
+    dataLimite,
     criadoEm: agora,
     atualizadoEm: agora,
   };
@@ -612,6 +756,205 @@ export function getEstadoCompetenciasUC(alunoId: string, ucId: string): {
   const recuperadas = competenciasRecuperadas.size;
   return { total, demonstradasEmAula, recuperadas, estado: (demonstradasEmAula + recuperadas) >= total ? 'completo' : 'incompleto' };
 }
+
+// Devolve os Guias de Apoio à Produção (já gerados) das fichas associadas aos
+// planos de uma recuperação. O Guia é o centro do trabalho de recuperação —
+// o aluno parte do conteúdo já existente (enquadramento, HACCP, food cost,
+// questões), em vez de escrever tudo do zero numa caixa de texto vazia.
+export function getGuiasDaRecuperacao(planosIds: string[]): { fichaId: string; nomePrato: string; textoGuia: string; planoAulaId: string }[] {
+  const fichas = getFichasProducao();
+  const planos = getPlanosAula().filter(p => planosIds.includes(p.id));
+  // Fonte 1 (mais fiável): plano.fichasIds — sempre preenchido, inclusive em
+  // fichas antigas criadas antes do campo planoAulaId existir na ficha.
+  const fichasIdsViaPlano = new Set<string>();
+  planos.forEach(p => (p.fichasIds || []).forEach(fid => fichasIdsViaPlano.add(fid)));
+
+  const resultado = new Map<string, { fichaId: string; nomePrato: string; textoGuia: string; planoAulaId: string }>();
+  fichas.forEach(f => {
+    if (!f.textoGuia) return;
+    // Aceita a ficha se: (a) o seu planoAulaId está na lista, OU (b) algum
+    // dos planos em causa a referencia em fichasIds.
+    const viaPlanoAulaId = f.planoAulaId && planosIds.includes(f.planoAulaId);
+    const viaFichasIds = fichasIdsViaPlano.has(f.id);
+    if (viaPlanoAulaId || viaFichasIds) {
+      resultado.set(f.id, { fichaId: f.id, nomePrato: f.nomePrato, textoGuia: f.textoGuia!, planoAulaId: f.planoAulaId || planosIds[0] || '' });
+    }
+  });
+  return Array.from(resultado.values());
+}
+
+// Constrói o prompt único do Plano de Recuperação Individual para uma
+// recuperação concreta, cruzando: produções em falta, competências/
+// responsabilidades por validar, atitudes pendentes, evidências já existentes
+// (para não repetir o que já foi observado), referencial oficial, e o nível
+// de medidas educativas do aluno.
+export function construirPromptPlanoIndividual(recuperacaoId: string): string {
+  const r = getRecuperacoes().find(x => x.id === recuperacaoId);
+  if (!r) return '';
+  const aluno = getAlunos().find(a => a.id === r.alunoId);
+  const guias = getGuiasDaRecuperacao(r.planosIds);
+  const refUC = REFERENCIAL_811RA144[r.ucId];
+  const evidencias = getEvidenciasPorAluno(r.alunoId).filter(e =>
+    [...r.competenciasIds, ...r.responsabilidadesIds, ...r.atitudesIds].includes(e.competenciaId) && e.nivel >= 2
+  );
+
+  return gerarPromptPlanoIndividual({
+    nomeAluno: aluno?.nome || `Aluno ${aluno?.numero || ''}`,
+    ucId: r.ucId,
+    ucNome: r.ucNome,
+    nivelMedidas: aluno?.nivelMedidas || 1,
+    producoesFaltadas: guias.map(g => g.nomePrato),
+    competenciasEmFalta: r.competenciasIds.map(getNomeCompetenciaGenerica),
+    responsabilidadesEmFalta: r.responsabilidadesIds.map(getNomeCompetenciaGenerica),
+    atitudesPendentes: r.atitudesIds.map(getNomeCompetenciaGenerica),
+    evidenciasJaExistentes: evidencias.map(e => `${getNomeCompetenciaGenerica(e.competenciaId)} (nível ${e.nivel}, em ${new Date(e.data).toLocaleDateString('pt-PT')})`),
+    realizacoesOficiais: refUC?.realizacoes || [],
+  });
+}
+
+// Constrói o prompt de análise preliminar (ponto 11-13 da adenda) — o
+// professor copia, cola numa IA, e cola o resultado de volta na app.
+export function construirPromptAnalisePreliminar(recuperacaoId: string): string {
+  const r = getRecuperacoes().find(x => x.id === recuperacaoId);
+  if (!r) return '';
+  const aluno = getAlunos().find(a => a.id === r.alunoId);
+  const guias = getGuiasDaRecuperacao(r.planosIds);
+
+  return gerarPromptAnalisePreliminar({
+    nomeAluno: aluno?.nome || `Aluno ${aluno?.numero || ''}`,
+    ucNome: r.ucNome,
+    guiasTexto: guias.map(g => g.textoGuia),
+    trabalhoTeorico: r.trabalhoTeorico || '',
+    investigacao: r.investigacao || '',
+    casoProfissional: r.casoProfissional || '',
+    autoavaliacao: r.autoavaliacao || '',
+    planoIndividualTexto: r.planoIndividualTexto,
+  });
+}
+
+// ── Banco de Evidências ──────────────────────────────────────────
+// Regista qualquer observação de competência/atitude/responsabilidade,
+// independente da UC. Permite que uma atitude transversal (ex: Organização)
+// pendente de observação numa UC seja validada noutra UC, mais tarde.
+export function getEvidencias(): Evidencia[] {
+  return load<Evidencia>(KEYS.evidencias);
+}
+
+export function getEvidenciasPorAluno(alunoId: string): Evidencia[] {
+  return getEvidencias().filter(e => e.alunoId === alunoId);
+}
+
+export function getEvidenciasPorCompetencia(alunoId: string, competenciaId: string): Evidencia[] {
+  return getEvidencias().filter(e => e.alunoId === alunoId && e.competenciaId === competenciaId);
+}
+
+export function addEvidencia(e: Evidencia): void {
+  const all = getEvidencias();
+  all.push(e);
+  save(KEYS.evidencias, all);
+  if (SHEETS_RECUPERACAO_URL) {
+    enviar(SHEETS_RECUPERACAO_URL, 'evidencia', { evidencia: e });
+  }
+}
+
+// Nível mais alto já registado para uma competência de um aluno — usado para
+// não "recuar" o estado se já tiver sido observado um nível superior antes.
+export function getNivelMaximoEvidencia(alunoId: string, competenciaId: string): 0 | 1 | 2 | 3 | 4 {
+  const evidencias = getEvidenciasPorCompetencia(alunoId, competenciaId);
+  if (evidencias.length === 0) return 0;
+  return evidencias.reduce((max, e) => (e.nivel > max ? e.nivel : max), 0 as 0 | 1 | 2 | 3 | 4);
+}
+
+// ── Perfil Profissional do Aluno ─────────────────────────────────
+// Junta histórico de avaliações + evidências + recuperações numa vista
+// única, dividida em 4 áreas (pontos 32-35 do documento pedagógico):
+// Competências Técnicas, Responsabilidades, Gestão/Organização, Atitudes.
+export interface ItemPerfil {
+  competenciaId: string;
+  nome: string;
+  nivel: 0 | 1 | 2 | 3 | 4;
+  origem: 'aula' | 'recuperacao' | 'evidencia' | 'nao_observado';
+  ultimaData?: string;
+}
+
+export interface PerfilProfissionalAluno {
+  alunoId: string;
+  tecnicas: ItemPerfil[];
+  responsabilidades: ItemPerfil[];
+  atitudes: ItemPerfil[];
+  pontosFortes: string[];
+  areasADesenvolver: string[];
+}
+
+function notaParaNivel(nota: number): 0 | 1 | 2 | 3 | 4 {
+  if (nota >= 16) return 4;
+  if (nota >= 12) return 3;
+  if (nota >= 8) return 2;
+  if (nota > 0) return 1;
+  return 0;
+}
+
+export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalAluno {
+  const historico = getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId);
+  const evidencias = getEvidenciasPorAluno(alunoId);
+
+  // Agrupar por competência: pegar sempre no nível mais alto já demonstrado
+  // (consolidação não regride — ver ponto 29 do documento pedagógico).
+  const porCompetencia = new Map<string, { nivel: 0 | 1 | 2 | 3 | 4; origem: ItemPerfil['origem']; data: string }>();
+
+  historico.forEach(r => {
+    const nivel = notaParaNivel(r.nota);
+    const actual = porCompetencia.get(r.microcompetenciaId);
+    if (!actual || nivel > actual.nivel) {
+      porCompetencia.set(r.microcompetenciaId, {
+        nivel, origem: r.validadoPor === 'recuperacao' ? 'recuperacao' : 'aula', data: r.data,
+      });
+    }
+  });
+
+  evidencias.forEach(e => {
+    const actual = porCompetencia.get(e.competenciaId);
+    if (!actual || e.nivel > actual.nivel) {
+      porCompetencia.set(e.competenciaId, { nivel: e.nivel, origem: 'evidencia', data: e.data });
+    }
+  });
+
+  const tecnicas: ItemPerfil[] = [];
+  const responsabilidades: ItemPerfil[] = [];
+  const atitudes: ItemPerfil[] = [];
+
+  porCompetencia.forEach((info, competenciaId) => {
+    const grupo = classificarGrupoCompetencia(competenciaId);
+    const item: ItemPerfil = {
+      competenciaId, nome: getNomeCompetenciaGenerica(competenciaId),
+      nivel: info.nivel, origem: info.origem, ultimaData: info.data,
+    };
+    if (grupo === 'tecnica') tecnicas.push(item);
+    else if (grupo === 'responsabilidade') responsabilidades.push(item);
+    else atitudes.push(item);
+  });
+
+  // Pontos fortes: nível 3-4. Áreas a desenvolver: nível 0-1.
+  const todos = [...tecnicas, ...responsabilidades, ...atitudes];
+  const pontosFortes = todos.filter(i => i.nivel >= 3).map(i => i.nome);
+  const areasADesenvolver = todos.filter(i => i.nivel <= 1).map(i => i.nome);
+
+  return { alunoId, tecnicas, responsabilidades, atitudes, pontosFortes, areasADesenvolver };
+}
+
+function getNomeCompetenciaGenerica(id: string): string {
+  if (id.startsWith('OBR_')) {
+    const o = OBRIGATORIAS.find(x => x.id === id);
+    return o?.nome || id;
+  }
+  if (id.startsWith('ATT_')) {
+    const a = ATITUDES.find(x => x.id === id);
+    return a?.nome || id;
+  }
+  const m = encontrarMicro(id);
+  return m?.nome || id;
+}
+
 
 // ── Estado de sincronização ──────────────────────────────────
 export function getEstadoSync(): { temSheets: boolean; ultimaSync: string | null } {
@@ -639,6 +982,9 @@ export interface CopiaSeguranca {
   validacoes: Validacao[];
   atividades: Atividade[];
   historicoAvaliacoes: RegistoAvaliacao[];
+  presencas: RegistoPresenca[];
+  recuperacoes: RecuperacaoModulo[];
+  evidencias: Evidencia[];
 }
 
 export function exportarTudo(): CopiaSeguranca {
@@ -656,6 +1002,9 @@ export function exportarTudo(): CopiaSeguranca {
     validacoes: getValidacoes(),
     atividades: getAtividades(),
     historicoAvaliacoes: getHistoricoAvaliacoes(),
+    presencas: getPresencas(),
+    recuperacoes: getRecuperacoes(),
+    evidencias: getEvidencias(),
   };
 }
 
@@ -703,6 +1052,9 @@ export function restaurarCopiaSeguranca(dados: CopiaSeguranca, modo: 'substituir
   aplicar(KEYS.selecoes, dados.selecoes || []);
   aplicar(KEYS.validacoes, dados.validacoes || []);
   aplicar(KEYS.atividades, dados.atividades || []);
+  aplicar(KEYS.presencas, dados.presencas || []);
+  aplicar(KEYS.recuperacoes, dados.recuperacoes || []);
+  aplicar(KEYS.evidencias, dados.evidencias || []);
   // Histórico de avaliações usa chave própria fora de KEYS — tratar à parte
   if (modo === 'substituir') {
     save(KEY_HIST, dados.historicoAvaliacoes || []);
@@ -715,4 +1067,164 @@ export function restaurarCopiaSeguranca(dados: CopiaSeguranca, modo: 'substituir
     });
     save(KEY_HIST, merged);
   }
+}
+
+// ── Centro de Avisos ──────────────────────────────────────────
+// Lista transversal de problemas pendentes em toda a app — ingredientes
+// sem preço confirmado, fichas incompletas, etc. O painel lateral lê daqui.
+export function getAvisos(): Aviso[] {
+  return load<Aviso>(KEYS.avisos);
+}
+
+export function getAvisosPendentes(): Aviso[] {
+  const persistidos = getAvisos().filter(a => !a.resolvido);
+  return [...persistidos, ...calcularAvisosOperacionais()];
+}
+
+// Avisos operacionais — recalculados a cada chamada, sempre fiéis ao estado
+// real da app (não ficam desatualizados como avisos gravados ficariam).
+// Cobrem todo o ciclo de trabalho do professor: plano → ficha → guia →
+// requisição → avaliação → recuperação — para que o Centro de Avisos seja
+// mesmo o painel central de gestão do dia a dia, como pedido.
+function calcularAvisosOperacionais(): Aviso[] {
+  const avisos: Aviso[] = [];
+  const planos = getPlanosAula().filter(p => p.estado !== 'arquivado');
+  const fichas = getFichasProducao();
+  const requisicoes = getRequisicoes();
+  const recuperacoes = getRecuperacoes();
+  const comandas = getComandas();
+  const validacoes = getValidacoes();
+
+  planos.forEach(p => {
+    // 1. Plano sem nenhuma ficha associada
+    if ((p.fichasIds || []).length === 0) {
+      avisos.push({
+        id: `op_plano_sem_ficha_${p.id}`, tipo: 'plano_sem_ficha',
+        titulo: `"${p.titulo || 'Plano de aula'}" ainda não tem ficha`,
+        descricao: `Plano de ${p.data} sem nenhuma Ficha de Produção associada.`,
+        contexto: { planoId: p.id, tabDestino: 'planos' },
+        resolvido: false, criadoEm: p.criadoEm,
+      });
+    } else {
+      // 2. Ficha(s) do plano sem Guia gerado
+      const fichasDoPlano = fichas.filter(f => (p.fichasIds || []).includes(f.id));
+      const semGuia = fichasDoPlano.filter(f => !f.textoGuia);
+      if (semGuia.length > 0 && p.estado === 'publicado') {
+        avisos.push({
+          id: `op_ficha_sem_guia_${p.id}`, tipo: 'ficha_sem_guia',
+          titulo: `Falta o Guia em "${p.titulo || 'plano'}"`,
+          descricao: `${semGuia.length} ficha(s) sem Guia de Apoio gerado: ${semGuia.map(f => f.nomePrato).join(', ')}.`,
+          contexto: { planoId: p.id, tabDestino: 'guia' },
+          resolvido: false, criadoEm: p.criadoEm,
+        });
+      }
+      // 3. Plano publicado, com fichas, mas sem Requisição feita
+      const temRequisicao = requisicoes.some(r => r.planoAulaId === p.id);
+      if (!temRequisicao && p.estado === 'publicado') {
+        avisos.push({
+          id: `op_plano_sem_req_${p.id}`, tipo: 'plano_sem_requisicao',
+          titulo: `Falta a Requisição de "${p.titulo || 'plano'}"`,
+          descricao: `Plano publicado com fichas, mas ainda sem requisição de ingredientes enviada.`,
+          contexto: { planoId: p.id, tabDestino: 'requisicao' },
+          resolvido: false, criadoEm: p.criadoEm,
+        });
+      }
+    }
+  });
+
+  // 4. Recuperações submetidas pelo aluno, à espera de avaliação do professor
+  recuperacoes.filter(r => r.estado === 'submetida' || r.estado === 'em_avaliacao').forEach(r => {
+    avisos.push({
+      id: `op_recup_avaliar_${r.id}`, tipo: 'recuperacao_por_avaliar',
+      titulo: `Recuperação de ${r.ucId} por avaliar`,
+      descricao: `Um aluno submeteu o trabalho de recuperação — aguarda avaliação.`,
+      contexto: { tabDestino: 'gestao_recuperacoes' },
+      resolvido: false, criadoEm: r.dataSubmissao || r.criadoEm,
+    });
+  });
+
+  // 5. Comandas com selecções por validar (aluno já trabalhou, falta o professor validar)
+  const comandasPendentes = comandas.filter(c => {
+    const jaValidada = validacoes.some(v => (v as any).comandaId === c.id);
+    return !jaValidada;
+  });
+  if (comandasPendentes.length > 0) {
+    avisos.push({
+      id: `op_validacao_pendente`, tipo: 'validacao_pendente',
+      titulo: `${comandasPendentes.length} validação(ões) pendente(s)`,
+      descricao: `Há comandas de alunos à espera de validação do professor.`,
+      contexto: { tabDestino: 'validacao' },
+      resolvido: false, criadoEm: new Date().toISOString(),
+    });
+  }
+
+  return avisos;
+}
+
+// Cria um aviso, evitando duplicados óbvios (mesmo tipo + mesmo ingrediente
+// já pendente não cria um segundo aviso igual).
+export function addAviso(a: Omit<Aviso, 'id' | 'criadoEm' | 'resolvido'>): void {
+  const all = getAvisos();
+  const jaExiste = all.some(x =>
+    !x.resolvido && x.tipo === a.tipo &&
+    x.contexto?.ingredienteNome === a.contexto?.ingredienteNome
+  );
+  if (jaExiste) return;
+  all.push({ ...a, id: `aviso_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, resolvido: false, criadoEm: new Date().toISOString() });
+  save(KEYS.avisos, all);
+}
+
+export function resolverAviso(avisoId: string): void {
+  const all = getAvisos();
+  const idx = all.findIndex(a => a.id === avisoId);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], resolvido: true, resolvidoEm: new Date().toISOString() };
+    save(KEYS.avisos, all);
+  }
+}
+
+// Resolve automaticamente todos os avisos pendentes de um ingrediente —
+// chamado quando o professor confirma/corrige o preço na Requisição.
+export function resolverAvisosDoIngrediente(nomeIngrediente: string): void {
+  const all = getAvisos();
+  let mudou = false;
+  const atualizados = all.map(a => {
+    if (!a.resolvido && a.contexto?.ingredienteNome?.toLowerCase() === nomeIngrediente.toLowerCase()) {
+      mudou = true;
+      return { ...a, resolvido: true, resolvidoEm: new Date().toISOString() };
+    }
+    return a;
+  });
+  if (mudou) save(KEYS.avisos, atualizados);
+}
+
+// ── Base de Dados de Ingredientes (camada editável) ────────────────────
+// Fica POR CIMA da base "de fábrica" (MATERIAS_PRIMAS_BASE, ~233 itens,
+// só leitura). O professor nunca edita o ficheiro de código — só esta
+// camada, que cresce organicamente sempre que confirma um preço na
+// Requisição. Entradas aqui têm sempre prioridade sobre as de fábrica.
+export function getMateriasPrimasCustom(): MateriaPrimaCustom[] {
+  return load<MateriaPrimaCustom>(KEYS.materiasPrimasCustom);
+}
+
+export function addOrUpdateMateriaPrimaCustom(m: Omit<MateriaPrimaCustom, 'id' | 'criadoEm' | 'atualizadoEm'> & { id?: string }): MateriaPrimaCustom {
+  const all = getMateriasPrimasCustom();
+  const agora = new Date().toISOString();
+  const idExistente = m.id || all.find(x => x.nome.toLowerCase() === m.nome.toLowerCase())?.id;
+  const idx = idExistente ? all.findIndex(x => x.id === idExistente) : -1;
+  const registo: MateriaPrimaCustom = {
+    id: idExistente || `mp_custom_${Date.now()}`,
+    nome: m.nome, categoria: m.categoria || 'Outros',
+    unidadeCompra: m.unidadeCompra, precoKg: m.precoKg, precoUnitario: m.precoUnitario,
+    aliases: m.aliases || [],
+    criadoEm: idx >= 0 ? all[idx].criadoEm : agora,
+    atualizadoEm: agora,
+  };
+  if (idx >= 0) all[idx] = registo; else all.push(registo);
+  save(KEYS.materiasPrimasCustom, all);
+  return registo;
+}
+
+export function eliminarMateriaPrimaCustom(id: string): void {
+  save(KEYS.materiasPrimasCustom, getMateriasPrimasCustom().filter(m => m.id !== id));
 }
