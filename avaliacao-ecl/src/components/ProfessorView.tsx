@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Comanda, FichaProducao } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha } from '../backend';
+import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { GuiaProducao } from './GuiaProducao';
 import { sugerirSubtecnicas } from '../subtecnicas';
+import { getReferencialUC } from '../referencial811RA144';
 import { exportDOCX, exportPDF, gerarHTML } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
 import { calcularNutricao, InfoNutricional } from '../nutricao';
@@ -877,10 +879,26 @@ ${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu 
 
 // ── Botão IAs ─────────────────────────────────────────────────
 function gerarPromptGuia(nomePrato: string, ucId?: string, ucNome?: string): string {
-  const ucContexto = ucId ? `\nContexto pedagógico: UC ${ucId} — ${ucNome || ''}` : '';
+  const refUC = ucId ? getReferencialUC(ucId) : undefined;
+  const ucContexto = ucId ? `\nContexto pedagógico: UC ${ucId} — ${ucNome || refUC?.nome || ''}` : '';
+
+  // Contexto oficial real do referencial 811RA144 — Realizações e Critérios de
+  // Desempenho desta UC, tal como definidos no documento regulamentar. Usado
+  // para ancorar a secção de Competências em linguagem oficial, não inventada.
+  const blocoReferencial = refUC ? `
+Referência oficial desta Unidade de Competência (811RA144) — usa esta linguagem
+e estes conceitos reais ao desenvolver a secção 2 (Competências Desenvolvidas):
+
+Realizações da UC:
+${refUC.realizacoes.map(r => `- ${r}`).join('\n')}
+
+Critérios de Desempenho da UC:
+${refUC.criteriosDesempenho.map(c => `- ${c}`).join('\n')}
+` : '';
+
   return `# GUIA DE APOIO À PRODUÇÃO — ${nomePrato.toUpperCase()}
 ${ucContexto}
-
+${blocoReferencial}
 Analisa a Ficha de Produção de "${nomePrato}" e gera um Guia de Apoio à Produção destinado a alunos do Curso Profissional de Cozinha e Pastelaria.
 
 IMPORTANTE:
@@ -1226,8 +1244,6 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
   });
   const [textoManual, setTextoManual] = useState('');
   const [nomePrato, setNomePrato] = useState(nomePratoInicial || '');
-  const [a_carregar, setACarregar] = useState(false);
-  const [mostrarManual, setMostrarManual] = useState(false);
   const [erro, setErro] = useState('');
   const [fichasSimilares, setFichasSimilares] = useState<any[]>([]);
   const [mostrarSimilares, setMostrarSimilares] = useState(false);
@@ -1265,100 +1281,19 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
     return () => clearTimeout(timer);
   }, [nomePrato]);
 
-  async function carregar() {
-    if (!link && !textoManual) return;
-    if (textoManual) {
-      // Detectar se colou o PROMPT em vez da RESPOSTA da IA
-      const ehPrompt = /\[nome sem marcas\]|\[Peixe \/ Carne|\[lista dos 14 alerg|\[X min\]|Analisa a (página|receita|Ficha)/i.test(textoManual.slice(0, 500));
-      if (ehPrompt) {
-        setErro('⚠️ Isto parece ser o PROMPT, não o resultado da IA. Cola o texto que a IA respondeu, não o que enviaste.');
-        return;
-      }
-      try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-      const textoFinal = textoManual.includes('NOME DO PRATO:') 
-        ? textoManual 
-        : (nomePrato ? nomePrato + '\n' : '') + textoManual;
-      onContinuar(textoFinal, link);
+  function carregar() {
+    if (!textoManual) return;
+    // Detectar se colou o PROMPT em vez da RESPOSTA da IA
+    const ehPrompt = /\[nome sem marcas\]|\[Peixe \/ Carne|\[lista dos 14 alerg|\[X min\]|Analisa a (página|receita|Ficha)/i.test(textoManual.slice(0, 500));
+    if (ehPrompt) {
+      setErro('⚠️ Isto parece ser o PROMPT, não o resultado da IA. Cola o texto que a IA respondeu, não o que enviaste.');
       return;
     }
-    setACarregar(true);
-    setErro('');
-
-    const metodos = [
-      // 1º: Jina Reader com filtro de lixo
-      async () => {
-        const res = await fetch(`https://r.jina.ai/${link}`, {
-          headers: { 'Accept': 'text/plain', 'X-Return-Format': 'markdown' }
-        });
-        if (!res.ok) throw new Error('Jina falhou');
-        const texto = await res.text();
-
-        // Extrair título do Jina (linha "Title: ...")
-        const tituloMatch = texto.match(/^Title:\s*(.+)$/m);
-        if (tituloMatch) setNomePrato(tituloMatch[1].trim());
-
-        // Filtrar lixo
-        const linhasUteis = texto.split('\n').filter(l =>
-          l.trim().length > 3 &&
-          !l.includes('http') &&
-          !l.includes('![') &&
-          !l.includes('base64') &&
-          !l.includes('adzerk') &&
-          !l.includes('zkcdn') &&
-          !l.includes('eyJ')
-        );
-        if (linhasUteis.length < 8) throw new Error('Conteúdo insuficiente');
-        return linhasUteis.join('\n');
-      },
-      // 2º: allorigins com JSON-LD
-      async () => {
-        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(link)}`);
-        const data = await res.json();
-        const html = data.contents || '';
-        const jsonLdBlocks = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
-        for (const block of jsonLdBlocks) {
-          try {
-            const json = JSON.parse(block.replace(/<[^>]+>/g, '').trim());
-            const recipe = json['@type'] === 'Recipe' ? json :
-              Array.isArray(json['@graph']) ? json['@graph'].find((g: any) => g['@type'] === 'Recipe') : null;
-            if (recipe) {
-              if (recipe.name) setNomePrato(recipe.name);
-              const ingredientes = (recipe.recipeIngredient || []).join('\n');
-              const instrucoes = (recipe.recipeInstructions || [])
-                .map((i: any, idx: number) => `${idx + 1}. ${typeof i === 'string' ? i : i.text || ''}`)
-                .join('\n');
-              const tempoPrep = recipe.prepTime?.replace('PT', '').replace('M', ' min').replace('H', 'h') || '';
-              const tempoConf = recipe.cookTime?.replace('PT', '').replace('M', ' min').replace('H', 'h') || '';
-              const porcoes = recipe.recipeYield || '';
-              return `${recipe.name || ''}\nTempo de preparação: ${tempoPrep}\nTempo de confeção: ${tempoConf}\nDoses: ${porcoes}\nIngredientes\n${ingredientes}\nPreparação\n${instrucoes}`;
-            }
-          } catch {}
-        }
-        // fallback HTML limpo
-        const div = document.createElement('div');
-        div.innerHTML = html;
-        ['script','style','nav','footer','header','aside','noscript'].forEach(tag => {
-          div.querySelectorAll(tag).forEach((el: Element) => el.remove());
-        });
-        const texto = (div.innerText || div.textContent || '').trim();
-        if (texto.length < 100) throw new Error('Conteúdo insuficiente');
-        return texto;
-      },
-    ];
-
-    for (const metodo of metodos) {
-      try {
-        const texto = await metodo();
-        onContinuar(texto, link);
-        setACarregar(false);
-        return;
-      } catch {}
-    }
-
-    // Todos falharam — mostrar modo manual com nome já preenchido se possível
-    setACarregar(false);
-    setMostrarManual(true);
-    setErro('Não foi possível ler o link automaticamente. Cola abaixo apenas os ingredientes e o modo de preparação da receita.');
+    try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
+    const textoFinal = textoManual.includes('NOME DO PRATO:')
+      ? textoManual
+      : (nomePrato ? nomePrato + '\n' : '') + textoManual;
+    onContinuar(textoFinal, link);
   }
 
   return (
@@ -1367,17 +1302,11 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         📋 Nova Ficha de Produção
       </div>
 
-      {/* 1. LINK — primeiro */}
-      <Field label="Link da receita">
+      {/* 1. LINK — opcional, só para incluir no prompt da IA */}
+      <Field label="Link da receita (opcional)">
         <input className="input" value={link}
-          onChange={e => { setLink(e.target.value); setMostrarManual(false); setErro(''); onAlteracao?.(); try { localStorage.setItem('ecl_link_draft', e.target.value); } catch {} }}
+          onChange={e => { setLink(e.target.value); setErro(''); onAlteracao?.(); try { localStorage.setItem('ecl_link_draft', e.target.value); } catch {} }}
           placeholder="https://www.pingodoce.pt/receitas/..." />
-        {link && (
-          <button type="button" className="btn btn-ghost" style={{ marginTop:6, fontSize:12, width:'100%' }}
-            onClick={carregar} disabled={a_carregar}>
-            {a_carregar ? '⏳ A ler o link...' : '⚡ Ler link automaticamente'}
-          </button>
-        )}
       </Field>
 
       {/* 2. NOME DO PRATO */}
@@ -1387,75 +1316,42 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           placeholder="ex: Sopa Juliana, Bacalhau à Brás..." />
       </Field>
 
-      {/* 3. PROMPTS IA */}
+      {/* 3. GERAR COM IA — um único caminho claro */}
       <div style={{ background:'rgba(181,101,29,0.06)', borderRadius:10, padding:'12px 14px', marginBottom:12, border:'1.5px solid rgba(181,101,29,0.2)' }}>
         <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
           🤖 Passo 1 — Gerar a Ficha de Produção com IA
         </div>
         <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
-          Copia o prompt → cola numa IA → copia o resultado → cola na caixa abaixo
+          Abre directo no Claude já com o prompt pronto → confirma/envia lá → copia a resposta → cola abaixo
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          <button type="button" className="btn btn-ghost" style={{ flex:1, fontSize:13 }}
-            onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptFicha), '_blank')}>
-            🟠 Abrir no Claude (prompt incluído automaticamente)
-          </button>
-          <button type="button" className="btn btn-ghost" style={{ fontSize:13 }}
-            onClick={() => window.open('https://chatgpt.com/chat', '_blank')}>
-            🟢 Abrir o ChatGPT
-          </button>
-          <div style={{ marginTop: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--copper)', marginBottom: 4 }}>
-              Para o ChatGPT — copia este texto e cola lá (toca na caixa para seleccionar tudo):
-            </div>
-            <textarea readOnly value={promptFicha}
-              onClick={e => (e.target as HTMLTextAreaElement).select()}
-              onFocus={e => e.target.select()}
-              style={{ width: '100%', minHeight: 110, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1.5px solid var(--copper)', background: '#fffdf9' }} />
-            <button type="button" className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6, width: '100%' }}
-              onClick={() => copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
-              {copiadoFicha ? '✅ Copiado!' : '📋 Tentar copiar automaticamente'}
-            </button>
-          </div>
-        </div>
+        <button type="button" className="btn btn-primary" style={{ width:'100%', fontSize:13, marginBottom:6 }}
+          onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptFicha), '_blank')}>
+          ✨ Abrir no Claude (já preenchido)
+        </button>
+        <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:12 }}
+          onClick={() => copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
+          {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt (para ChatGPT ou outro)'}
+        </button>
 
         {/* Guia — só aparece se já tem nome do prato */}
         {nomePrato && (
-          <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid rgba(181,101,29,0.2)' }}>
+          <div style={{ marginTop:14, paddingTop:12, borderTop:'1px solid rgba(181,101,29,0.2)' }}>
             <div style={{ fontWeight:700, fontSize:14, color:'var(--sage)', marginBottom:4 }}>
-              📚 Passo 2 — Gerar o Guia de Apoio à Produção
+              📚 Passo 2 — Gerar o Guia de Apoio (depois da ficha pronta)
             </div>
-            <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
-              Usa este prompt <strong>após</strong> teres a ficha pronta — o guia é baseado em "{nomePrato}"
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptGuia), '_blank')}>
-                🟠 Guia no Claude (prompt incluído automaticamente)
-              </button>
-              <button type="button" className="btn btn-ghost" style={{ fontSize:13, borderColor:'var(--sage)', color:'var(--sage)' }}
-                onClick={() => window.open('https://chatgpt.com/chat', '_blank')}>
-                🟢 Abrir o ChatGPT
-              </button>
-              <div style={{ marginTop: 4 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sage)', marginBottom: 4 }}>
-                  Para o ChatGPT — copia este texto e cola lá (toca na caixa para seleccionar tudo):
-                </div>
-                <textarea readOnly value={promptGuia}
-                  onClick={e => (e.target as HTMLTextAreaElement).select()}
-                  onFocus={e => e.target.select()}
-                  style={{ width: '100%', minHeight: 100, fontSize: 12, fontFamily: 'monospace', padding: 8, borderRadius: 8, border: '1.5px solid var(--sage)', background: '#fbfffb' }} />
-                <button type="button" className="btn btn-ghost" style={{ fontSize: 12, marginTop: 6, width: '100%', borderColor:'var(--sage)', color:'var(--sage)' }}
-                  onClick={() => copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => {})}>
-                  {copiadoGuia ? '✅ Copiado!' : '📋 Tentar copiar automaticamente'}
-                </button>
-              </div>
-            </div>
+            <button type="button" className="btn btn-primary" style={{ width:'100%', fontSize:13, marginBottom:6, background:'var(--sage)' }}
+              onClick={() => window.open('https://claude.ai/new?q='+encodeURIComponent(promptGuia), '_blank')}>
+              ✨ Abrir Guia no Claude (já preenchido)
+            </button>
+            <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:12, borderColor:'var(--sage)', color:'var(--sage)' }}
+              onClick={() => copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => {})}>
+              {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt do Guia'}
+            </button>
           </div>
         )}
         {!nomePrato && (
           <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(90,122,78,0.08)', borderRadius:8, fontSize:12, color:'var(--sage)' }}>
-            💡 Preenche o nome do prato acima para activar os botões do Guia de Apoio
+            💡 Preenche o nome do prato acima para activar o Guia de Apoio
           </div>
         )}
       </div>
@@ -1469,9 +1365,15 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           Cola o resultado da ficha <strong>ou</strong> do guia — a app detecta automaticamente qual é.
         </div>
         <textarea className="input" value={textoManual}
-          onChange={e => { setTextoManual(e.target.value); onAlteracao?.(); }}
+          onChange={e => { setTextoManual(e.target.value); setErro(''); onAlteracao?.(); }}
           placeholder={'Cola aqui o texto gerado pela IA...\n\nExemplo:\nNOME DO PRATO: Sopa Juliana\nCLASSIFICAÇÃO: Sopa\nNº DE DOSES: 4\n\nINGREDIENTES:\n...\nPREPARAÇÃO:\n...'}
           style={{ minHeight:180, fontSize:13, fontFamily:'monospace', background:'#fff' }} />
+        {textoManual && (
+          <button type="button" className="btn btn-primary" style={{ width:'100%', marginTop:8 }}
+            onClick={carregar}>
+            Continuar com este texto →
+          </button>
+        )}
       </div>
 
       {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>{erro}</div>}
@@ -2036,9 +1938,10 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
 
   return (
     <div>
-      <div className="no-print" style={{ background: 'var(--sage-pale)', borderRadius: 14, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(90,122,78,0.25)' }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--sage)' }}>📚 Guia de Apoio à Produção</div>
+      <div className="no-print" style={{ background: 'var(--guia-pale)', borderRadius: 14, padding: '16px 18px', marginBottom: 16, border: '1px solid rgba(74,90,138,0.25)' }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--guia)' }}>📚 Guia de Apoio à Produção</div>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{nomePrato}</div>
+        <EtiquetaLigacaoPlano planoAulaId={(fichaAlvo as any)?.planoAulaId} />
       </div>
 
       <Card>
@@ -2129,6 +2032,10 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   nomePratoInicial?: string;
 }) {
   const [vista, setVista] = useState<'biblioteca' | 'criar' | 'editar'>('biblioteca');
+  // ID da ficha original quando em modo 'editar' — sem isto, guardar uma
+  // edição criava sempre uma ficha NOVA em vez de atualizar a existente
+  // (causa real de fichas duplicadas: "Bacalhau", "Bacalhau 2", "Bacalhau 3"...)
+  const [fichaEmEdicaoId, setFichaEmEdicaoId] = useState<string | null>(null);
   const [textoReceita, setTextoReceita] = useState('');
   const [linkReceita, setLinkReceita] = useState('');
   const [ficha, setFicha] = useState<FichaTecnica>({ ...FICHA_VAZIA, elaboradoPor: nomeProfessor || FICHA_VAZIA.elaboradoPor });
@@ -2149,10 +2056,11 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   function guardarFicha(fichaConfirmada: FichaTecnica) {
     try {
       const now = new Date().toISOString();
-      // Numeração sequencial global — nunca se repete em toda a app
+      // Numeração sequencial robusta — baseada no maior número já usado, não
+      // em .length (que descia ao eliminar fichas e podia repetir números).
       const todasFichas = getFichasProducao();
-      const proximoNum = todasFichas.length + 1;
-      const numeroFormatado = `#${String(proximoNum).padStart(3, '0')}`;
+      const proximoNum = proximoNumeroFicha();
+      const numeroFormatado = `#${proximoNum}`;
 
       // Evitar nomes duplicados — só ao criar ficha NOVA (não ao editar uma já existente)
       let nomeFinal = fichaConfirmada.nomePrato || '';
@@ -2201,12 +2109,16 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         } catch { return ''; }
       })();
 
-      const novaFichaId = `ficha_${Date.now()}`;
+      // Quando estamos a EDITAR uma ficha já existente, reutilizar o ID
+      // original — sem isto, "guardar" criava sempre uma ficha NOVA,
+      // duplicando (Bacalhau, Bacalhau 2, Bacalhau 3...).
+      const novaFichaId = (vista === 'editar' && fichaEmEdicaoId) ? fichaEmEdicaoId : `ficha_${Date.now()}`;
+      const fichaOriginal = vista === 'editar' && fichaEmEdicaoId ? todasFichas.find(f => f.id === fichaEmEdicaoId) : undefined;
       addOrUpdateFichaProducao({
         id: novaFichaId,
         nomePrato: nomeFinal,
         classificacao: fichaConfirmada.classificacao || '',
-        fichaNum: fichaConfirmada.fichaNum || numeroFormatado,
+        fichaNum: fichaOriginal?.fichaNum || fichaConfirmada.fichaNum || numeroFormatado,
         numPorcoes: fichaConfirmada.numPorcoes || '',
         tempoPrep: fichaConfirmada.tempoPrep || '',
         tempoConf: fichaConfirmada.tempoConf || '',
@@ -2222,9 +2134,10 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         ucsAssociadas: [ucId].filter(Boolean),
         elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
         data: fichaConfirmada.data || now,
-        textoGuia: fichaConfirmada.textoGuia,
+        planoAulaId: fichaOriginal?.planoAulaId || planoId || undefined,
+        textoGuia: fichaConfirmada.textoGuia || fichaOriginal?.textoGuia,
         htmlCompleto,
-        criadoEm: now,
+        criadoEm: fichaOriginal?.criadoEm || now,
         atualizadoEm: now,
       });
 
@@ -2257,6 +2170,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
     setFicha(FICHA_VAZIA);
     setTextoReceita('');
     setLinkReceita('');
+    setFichaEmEdicaoId(null);
     setPasso('link');
     setVista('criar');
   }
@@ -2395,6 +2309,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               kitchenflow: f.kitchenflow||'',
             }));
             setPasso('ficha');
+            setFichaEmEdicaoId(f.id);
             setVista('editar');
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2403,8 +2318,19 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nomePrato}</div>
                 <div className="muted">{f.classificacao} · {f.numPorcoes} porções · {f.data}</div>
                 {(f.ucsAssociadas || []).length > 0 && <div style={{ fontSize:13, color:'var(--copper)' }}>{(f.ucsAssociadas || [])[0]}</div>}
+                <EtiquetaLigacaoPlano planoAulaId={f.planoAulaId} />
               </div>
               <span className="stamp">Ver / Editar</span>
+              <button onClick={(e) => {
+                e.stopPropagation();
+                if (confirm(`Eliminar definitivamente "${f.nomePrato}"? Esta ação remove a ficha do telemóvel/computador E do Google Sheets — não pode ser desfeita.`)) {
+                  eliminarFichaProducaoDefinitivamente(f.id);
+                  recarregar();
+                }
+              }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
+                title="Eliminar definitivamente">
+                🗑️
+              </button>
             </div>
           </div>
         ))}
