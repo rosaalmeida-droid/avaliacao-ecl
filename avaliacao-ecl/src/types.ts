@@ -25,6 +25,10 @@ export interface Aluno {
   numero: number;
   ano: 1 | 2 | 3;    // ano do curso — define o nº mínimo de competências exigidas
   nome?: string;
+  // Nível de medidas educativas (DL 54/2018) — adapta a extensão, linguagem
+  // e complexidade do Plano de Recuperação Individual gerado por IA.
+  // Nunca retira competências essenciais da UC, só adapta a FORMA de acesso.
+  nivelMedidas?: 1 | 2 | 3;
 }
 
 export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
@@ -266,27 +270,81 @@ export interface PlanoAula {
   atualizadoEm: string;
 }
 
-// ── Recuperação de Módulos ──────────────────────────────────
+// ── Banco de Evidências ──────────────────────────────────────
+// Registo de qualquer observação de competência/atitude/responsabilidade,
+// independente da UC em que ocorreu. Permite validar atitudes transversais
+// em contexto diferente daquele em que ficaram pendentes.
+export interface Evidencia {
+  id: string;
+  alunoId: string;
+  competenciaId: string;
+  ucId: string;            // UC em que a evidência foi recolhida (pode ser diferente da UC de origem da competência)
+  planoAulaId?: string;
+  fichaId?: string;
+  tipoEvidencia: string;   // ex: 'observacao_direta', 'defesa_oral', 'video_demonstrativo'...
+  nivel: 0 | 1 | 2 | 3 | 4;
+  observacaoQualitativa?: string;
+  professor: string;
+  data: string;
+  criadoEm: string;
+}
+
 export interface RecuperacaoModulo {
   id: string;
   alunoId: string;
   turmaId: string;
   ucId: string;
   ucNome: string;
+  // Código sequencial da recuperação — ex: "100-UC03586". Gerado a partir
+  // de 100 (decisão de 21/06/2026), sequencial, sempre com a UC.
+  numeroRecuperacao?: number;
   tipoUC: 'tecnica' | 'organizacional' | 'hibrida';
   planosIds: string[];           // planos de aula que esta recuperação cobre
   competenciasIds: string[];     // competências/microcompetências herdadas dos planos
   atitudesIds: string[];
   responsabilidadesIds: string[];
-  estado: 'pendente' | 'submetida' | 'em_avaliacao' | 'concluida';
+  estado: 'gerada' | 'em_curso' | 'submetida' | 'em_analise' | 'devolvida' | 'aguardar_defesa_oral' | 'validada' | 'nao_validada' | 'pendente_observacao_futura'
+    // estados antigos mantidos para compatibilidade com recuperações já criadas
+    | 'pendente' | 'em_avaliacao' | 'concluida';
   trabalhoTeorico?: string;      // texto/respostas do aluno
   investigacao?: string;
   casoProfissional?: string;
   autoavaliacao?: string;
-  evidenciasUrls?: string[];     // fotos/vídeos/PDFs anexados pelo aluno
+  // Anexos de evidências (ponto 6-7 da adenda) — Opção C: link manual (Drive/
+  // OneDrive), mais simples de implementar já sem precisar de infraestrutura
+  // própria de upload. O aluno cola o link, a app só guarda a referência.
+  evidenciasUrls?: string[];     // mantido por compatibilidade
+  anexos?: { tipo: 'foto' | 'video' | 'audio' | 'documento' | 'link'; url: string; descricao?: string; criadoEm: string }[];
+  // Validação com apoio de IA (pontos 11-13) — a IA NUNCA decide a nota final,
+  // só apoia o professor com um relatório preliminar.
+  analiseIA?: {
+    relatorioConsistencia: string;
+    lacunasDetetadas: string[];
+    sugestaoPerguntasDefesaOral: string[];
+    sugestaoEstado: 'suficiente_para_defesa' | 'necessita_correcao' | 'evidencia_insuficiente' | 'validavel_observacao_futura';
+    geradoEm: string;
+  };
+  dataLimite?: string;            // data limite para o aluno submeter (1 mês após criação)
+  // Quando passa a dataLimite sem o aluno ter submetido, a recuperação fica
+  // trancada automaticamente — só o professor a pode destrancar (dar mais tempo).
+  trancada?: boolean;
+  destrancadaPorProfessor?: boolean;
   avaliacaoCompetencias?: { competenciaId: string; nivel: 'nao_demonstrada' | 'em_desenvolvimento' | 'consolidada' | 'avancada' }[];
   comentarioProfessor?: string;
   professorAvaliador?: string;
+  // Defesa Oral — pontos 10-11 do documento pedagógico: nenhuma recuperação
+  // deve ser validada exclusivamente por trabalho escrito.
+  perguntasDefesaOral?: { competenciaId: string; pergunta: string }[];
+  defesaOralRealizada?: boolean;
+  defesaOralNotas?: string;       // notas do professor durante a defesa oral
+  defesaOralData?: string;
+  // Plano de Recuperação Individual — gerado por IA a partir do prompt único
+  // construído pela app (competências em falta, evidências existentes, nível
+  // de medidas do aluno). Diferente para cada aluno, mesmo na mesma UC.
+  nivelMedidasUsado?: 1 | 2 | 3;
+  promptPlanoIndividual?: string;     // prompt fechado dado ao aluno/professor para colar na IA
+  planoIndividualTexto?: string;      // resultado colado pelo professor depois de gerar com IA
+  planoIndividualAprovado?: boolean;  // professor reviu/aprovou antes de o aluno usar
   dataAtribuicao: string;
   dataSubmissao?: string;
   dataValidacao?: string;
@@ -392,4 +450,36 @@ export interface HistoricoPreco {
   preco: number;
   fonte: string;
   data: string;
+}
+
+// ── Centro de Avisos ──────────────────────────────────────────
+// Painel transversal a toda a app — lista problemas pendentes que o
+// professor precisa de rever (ex: ingrediente sem preço confirmado).
+export interface Aviso {
+  id: string;
+  tipo: 'ingrediente_nao_encontrado' | 'ingrediente_ambiguo' | 'ficha_incompleta'
+    | 'plano_sem_ficha' | 'ficha_sem_guia' | 'plano_sem_requisicao'
+    | 'recuperacao_por_avaliar' | 'validacao_pendente' | 'outro';
+  titulo: string;
+  descricao: string;
+  contexto?: { fichaId?: string; planoId?: string; ingredienteNome?: string; tabDestino?: string };
+  resolvido: boolean;
+  criadoEm: string;
+  resolvidoEm?: string;
+}
+
+// Ingrediente/matéria-prima adicionado ou corrigido pelo professor — fica
+// guardado por cima da base "de fábrica" (MATERIAS_PRIMAS_BASE), sem a
+// alterar diretamente. Permite à base crescer com o uso real, sem o
+// professor ter de ir a um ecrã de gestão dedicado.
+export interface MateriaPrimaCustom {
+  id: string;
+  nome: string;
+  categoria: string;
+  unidadeCompra: string;
+  precoKg: number;
+  precoUnitario: number;
+  aliases: string[];
+  criadoEm: string;
+  atualizadoEm: string;
 }
