@@ -4,6 +4,9 @@ import {
   addOrUpdatePlanoAula,
   arquivarPlanoAula,
   desarquivarPlanoAula,
+  eliminarPlanoAulaDefinitivamente,
+  proximoNumeroPlano,
+  gerarCodigoPlano,
   getPlanosArquivados,
   getFichasProducao,
   getAlunos,
@@ -197,12 +200,23 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                     </span>
                     <button onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Mover "${p.titulo || 'este plano'}" para arquivo? Deixa de aparecer aqui mas fica guardado.`)) {
+                      const escolha = window.prompt(
+                        `O que queres fazer com "${p.titulo || 'este plano'}"?\n\n` +
+                        `Escreve 1 para ARQUIVAR (reversível — sai da lista mas fica guardado)\n` +
+                        `Escreve 2 para ELIMINAR DEFINITIVAMENTE (remove tudo, do telemóvel e do Google Sheets — não pode ser desfeito)\n\n` +
+                        `Ou cancela para não fazer nada.`
+                      );
+                      if (escolha === '1') {
                         arquivarPlanoAula(p.id);
                         onPlanoEliminado?.();
+                      } else if (escolha === '2') {
+                        if (confirm(`Confirma: eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"? Não pode ser desfeito.`)) {
+                          eliminarPlanoAulaDefinitivamente(p.id);
+                          onPlanoEliminado?.();
+                        }
                       }
                     }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
-                      title="Arquivar plano">
+                      title="Arquivar ou eliminar">
                       🗑️
                     </button>
                   </div>
@@ -363,6 +377,14 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                 }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                   ↩️ Restaurar
                 </button>
+                <button onClick={() => {
+                  if (confirm(`Eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeita.`)) {
+                    eliminarPlanoAulaDefinitivamente(p.id);
+                    setRefreshKey(k => k + 1);
+                  }
+                }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--danger)', background: '#fff', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                  🗑️ Eliminar
+                </button>
               </div>
             </div>
           );
@@ -471,9 +493,13 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   function guardar() {
     const now = new Date().toISOString();
     const ucSel = UCS_COZINHA.find(u => u.id === dados.ucId);
-    const planosExistentes = getPlanosAulaPorTurma(turmaId);
-    const numeroPlan = planosExistentes.length + 1;
-    const titulo = dados.titulo || `Plano ${numeroPlan} — ${dados.tipoAtividade} — ${dados.data}`;
+    // Numeração sequencial robusta — baseada no maior número já usado, não em
+    // .length (que descia ao eliminar planos e podia repetir números).
+    const numeroPlan = proximoNumeroPlano();
+    // Código formal do plano: Ano-UC-Número, ex: "1-UC03586-100" — sem data,
+    // já existe como campo próprio do plano.
+    const codigoPlano = gerarCodigoPlano(turmaId, dados.ucId, numeroPlan);
+    const titulo = dados.titulo || `${codigoPlano} — ${dados.tipoAtividade}`;
     const p: TPlanoAula = {
       id: 'plano_' + Date.now(), turmaId,
       professor: dados.professor,
