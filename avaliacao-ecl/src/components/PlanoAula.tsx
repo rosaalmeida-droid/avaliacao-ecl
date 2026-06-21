@@ -716,15 +716,6 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
           )}
         </div>
 
-
-            <input type="time" className="input" value={dados.horaInicio} onChange={e => setD('horaInicio', e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="field-label">Fim</label>
-            <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
-          </div>
-        </div>
-
         {/* Tipo */}
         <div className="field" style={{ marginBottom: 14 }}>
           <label className="field-label">Tipo de actividade</label>
@@ -936,7 +927,6 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
           )}
         </div>
       )}
-    </div>
     </div>
   );
 }
