@@ -7,12 +7,14 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
   const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
 
   return (
-    <div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4, color: 'var(--competencias)' }}>
-        🗺️ Mapa de Competências
-      </div>
-      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 16 }}>
-        Estado das competências de cada aluno — observadas, em desenvolvimento, consolidadas, por recuperar.
+    <div style={{ background: 'var(--competencias-pale)', borderRadius: 16, padding: 16 }}>
+      <div style={{ background: 'var(--competencias)', borderRadius: 14, padding: '16px 18px', marginBottom: 14 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'white' }}>
+          🗺️ Mapa de Competências
+        </div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
+          Estado das competências de cada aluno — observadas, em desenvolvimento, consolidadas, por recuperar.
+        </div>
       </div>
 
       {alunos.length === 0 && (
@@ -93,6 +95,7 @@ function MiniGrupo({ titulo, itens }: { titulo: string; itens: { nome: string; n
           </span>
         ))}
       </div>
+    </div>
     </div>
   );
 }
