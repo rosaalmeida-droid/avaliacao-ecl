@@ -96,7 +96,6 @@ function MiniGrupo({ titulo, itens }: { titulo: string; itens: { nome: string; n
         ))}
       </div>
     </div>
-    </div>
   );
 }
 
