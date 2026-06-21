@@ -95,6 +95,10 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
   // Antes, navegar entre meses reiniciava sempre para null; agora mantém-se
   // o dia que estava a ser trabalhado (pedido de 21/06/2026).
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(hoje);
+  // Modo de seleção múltipla — também no Calendário, não só na vista Lista
+  // (pedido de 21/06/2026: "estamos a eliminar sempre um a um").
+  const [modoSelecaoCal, setModoSelecaoCal] = useState(false);
+  const [planosSelecionadosCal, setPlanosSelecionadosCal] = useState<Set<string>>(new Set());
 
   // Agrupar planos por dia (yyyy-mm-dd)
   const planosPorDia = new Map<string, TPlanoAula[]>();
@@ -265,9 +269,36 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
         const nomeDia = diaSelecionado.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
         return (
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              {nomeDia}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {nomeDia}
+              </div>
+              {planosDoDia.length > 0 && (
+                <button onClick={() => { setModoSelecaoCal(!modoSelecaoCal); setPlanosSelecionadosCal(new Set()); }}
+                  style={{ fontSize: 11, fontWeight: 700, color: 'var(--copper)', background: 'none', border: '1px solid var(--copper)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
+                  {modoSelecaoCal ? '✕ Cancelar' : '☑ Selecionar'}
+                </button>
+              )}
             </div>
+            {modoSelecaoCal && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
+                  {planosSelecionadosCal.size} selecionado(s)
+                </span>
+                <button onClick={() => {
+                  if (planosSelecionadosCal.size === 0) return;
+                  if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosCal.size} plano(s)? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeito.`)) {
+                    planosSelecionadosCal.forEach(id => eliminarPlanoAulaDefinitivamente(id));
+                    setPlanosSelecionadosCal(new Set());
+                    setModoSelecaoCal(false);
+                    onPlanoEliminado?.();
+                  }
+                }} disabled={planosSelecionadosCal.size === 0}
+                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 11, cursor: planosSelecionadosCal.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosCal.size === 0 ? 0.4 : 1 }}>
+                  🗑️ Eliminar
+                </button>
+              </div>
+            )}
             {planosDoDia.length === 0 && (
               <div style={{ padding: '20px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)', fontSize: 13 }}>
                 Sem aulas planeadas neste dia.
@@ -277,8 +308,23 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
               const horaI = limparHora(p.horaInicio);
               const horaF = limparHora(p.horaFim);
               return (
-                <div key={p.id} className="option-card" onClick={() => onAbrirPlano(p)} style={{ marginBottom: 8 }}>
+                <div key={p.id} className="option-card" onClick={() => {
+                  if (modoSelecaoCal) {
+                    setPlanosSelecionadosCal(prev => {
+                      const novo = new Set(prev);
+                      if (novo.has(p.id)) novo.delete(p.id); else novo.add(p.id);
+                      return novo;
+                    });
+                    return;
+                  }
+                  onAbrirPlano(p);
+                }} style={{ marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {modoSelecaoCal && (
+                      <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: planosSelecionadosCal.has(p.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, color: 'white' }}>
+                        {planosSelecionadosCal.has(p.id) && '✓'}
+                      </div>
+                    )}
                     <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 10px', textAlign: 'center', minWidth: 50 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{horaI || '--:--'}</div>
                     </div>
@@ -292,27 +338,29 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                       color: p.estado === 'publicado' ? 'var(--sage)' : 'var(--copper)' }}>
                       {p.estado === 'publicado' ? 'Publicado' : 'Rascunho'}
                     </span>
-                    <button onClick={(e) => {
-                      e.stopPropagation();
-                      const escolha = window.prompt(
-                        `O que queres fazer com "${p.titulo || 'este plano'}"?\n\n` +
-                        `Escreve 1 para ARQUIVAR (reversível — sai da lista mas fica guardado)\n` +
-                        `Escreve 2 para ELIMINAR DEFINITIVAMENTE (remove tudo, do telemóvel e do Google Sheets — não pode ser desfeito)\n\n` +
-                        `Ou cancela para não fazer nada.`
-                      );
-                      if (escolha === '1') {
-                        arquivarPlanoAula(p.id);
-                        onPlanoEliminado?.();
-                      } else if (escolha === '2') {
-                        if (confirm(`Confirma: eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"? Não pode ser desfeita.`)) {
-                          eliminarPlanoAulaDefinitivamente(p.id);
+                    {!modoSelecaoCal && (
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        const escolha = window.prompt(
+                          `O que queres fazer com "${p.titulo || 'este plano'}"?\n\n` +
+                          `Escreve 1 para ARQUIVAR (reversível — sai da lista mas fica guardado)\n` +
+                          `Escreve 2 para ELIMINAR DEFINITIVAMENTE (remove tudo, do telemóvel e do Google Sheets — não pode ser desfeito)\n\n` +
+                          `Ou cancela para não fazer nada.`
+                        );
+                        if (escolha === '1') {
+                          arquivarPlanoAula(p.id);
                           onPlanoEliminado?.();
+                        } else if (escolha === '2') {
+                          if (confirm(`Confirma: eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"? Não pode ser desfeita.`)) {
+                            eliminarPlanoAulaDefinitivamente(p.id);
+                            onPlanoEliminado?.();
+                          }
                         }
-                      }
-                    }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
-                      title="Arquivar ou eliminar">
-                      🗑️
-                    </button>
+                      }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
+                        title="Arquivar ou eliminar">
+                        🗑️
+                      </button>
+                    )}
                   </div>
                 </div>
               );
