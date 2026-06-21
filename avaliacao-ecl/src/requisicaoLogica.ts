@@ -36,6 +36,9 @@ interface IngredienteDerivado {
   produtoOriginal: string;
   fatorConversao: number; // kg de produto original por kg de derivado
   und: string;
+  pesoMedioKg?: number; // peso médio de 1 unidade do produto original, em kg
+                        // — usado quando und === 'un', para converter kg do
+                        // derivado em número real de unidades necessárias
 }
 
 const INGREDIENTES_DERIVADOS: IngredienteDerivado[] = [
@@ -85,18 +88,23 @@ const INGREDIENTES_DERIVADOS: IngredienteDerivado[] = [
     fatorConversao: 1.5,
     und: 'kg',
   },
-  // Gemas e claras → ovos
+  // Gemas e claras → ovos. Não se compram gemas/claras avulsas — compram-se
+  // ovos inteiros (pedido de 21/06/2026). Padrões mais robustos: aceitam
+  // texto extra antes/depois (ex: "Gemas pasteurizadas", "Gema (1 un)"),
+  // não exigem que "gema(s)"/"clara(s)" seja a última palavra exacta.
   {
-    padroes: [/gema[s]?\s+de\s+ovo/i, /gema[s]?$/i],
+    padroes: [/\bgema[s]?\b/i],
     produtoOriginal: 'Ovos',
     fatorConversao: 1, // 1 gema ≈ 1 ovo necessário
     und: 'un',
+    pesoMedioKg: 0.018, // ~18g por gema (ovo médio)
   },
   {
-    padroes: [/clara[s]?\s+de\s+ovo/i, /clara[s]?$/i, /egg\s+white/i],
+    padroes: [/\bclara[s]?\b/i, /\begg\s+white[s]?\b/i],
     produtoOriginal: 'Ovos',
     fatorConversao: 1,
     und: 'un',
+    pesoMedioKg: 0.033, // ~33g por clara (ovo médio)
   },
 ];
 
@@ -116,11 +124,18 @@ export function converterIngredienteDerivado(
   for (const d of INGREDIENTES_DERIVADOS) {
     if (d.padroes.some(p => p.test(n))) {
       if (d.und === 'un') {
-        // converter kg de derivado para unidades do produto original
-        const qtUn = Math.ceil(qtKg * 1000 * d.fatorConversao / 100); // aproximação
+        // Dois modos de cálculo, consoante o que está definido no item:
+        // (a) pesoMedioKg → converte kg do derivado em unidades reais pelo
+        //     peso médio (usado para gemas/claras — corrigido em 21/06/2026,
+        //     antes dava sempre "1" independentemente da quantidade real);
+        // (b) fatorConversao → "quantas unidades por kg de derivado" (usado
+        //     para raspa/sumo de citrinos, já calibrado e correcto).
+        const qtUnidades = d.pesoMedioKg
+          ? Math.max(1, Math.ceil(qtKg / d.pesoMedioKg))
+          : Math.max(1, Math.ceil(qtKg * d.fatorConversao));
         return {
           produtoOriginal: d.produtoOriginal,
-          qtOriginal: Math.max(1, Math.ceil(qtKg * d.fatorConversao)),
+          qtOriginal: qtUnidades,
           undOriginal: 'un',
           isDerivado: true,
         };
