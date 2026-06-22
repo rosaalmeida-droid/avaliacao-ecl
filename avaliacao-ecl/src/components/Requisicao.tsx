@@ -355,14 +355,29 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           preco: l.precoUnitario || '0',
         })),
       };
-      await fetch(SHEETS_REQUISICAO_URL, {
-        method: 'POST', mode: 'no-cors',
+      // Removido mode:'no-cors' — escondia QUALQUER erro real do Apps
+      // Script (a app mostrava sempre "✓ Enviado", mesmo quando a aba nunca
+      // chegava a ser criada no Sheets). Apps Script já responde com
+      // cabeçalhos CORS abertos, não precisa de no-cors. Corrigido em
+      // 22/06/2026 depois de confirmado que requisições "enviadas com
+      // sucesso" não apareciam no Sheets.
+      const resposta = await fetch(SHEETS_REQUISICAO_URL, {
+        method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
       });
-      setMsg('✓ Enviado para o Google Sheets!');
-    } catch (e) { setMsg('Erro: ' + String(e)); }
-    setTimeout(() => setMsg(''), 6000);
+      let dadosResposta: any = null;
+      try { dadosResposta = await resposta.json(); } catch {}
+      if (dadosResposta && dadosResposta.ok === false) {
+        setMsg('⚠️ Erro no Google Sheets: ' + (dadosResposta.mensagem || 'desconhecido'));
+      } else if (dadosResposta && dadosResposta.ok === true) {
+        setMsg('✓ Enviado para o Google Sheets!');
+      } else {
+        // Resposta chegou mas sem o formato esperado — assumir sucesso com aviso
+        setMsg('✓ Enviado (sem confirmação detalhada do Sheets)');
+      }
+    } catch (e) { setMsg('❌ Falhou o envio: ' + String(e)); }
+    setTimeout(() => setMsg(''), 8000);
   }
 
   // ── FASE 1 — ESCOLHER ─────────────────────────────────────
