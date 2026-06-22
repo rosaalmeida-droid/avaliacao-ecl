@@ -393,6 +393,11 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
                       <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: marcado ? 'var(--sage-pale)' : '#fff', cursor: 'pointer', fontSize: 12 }}>
                         <input type="checkbox" checked={marcado} onChange={() => toggleIngrediente(f.id, i)} style={{ accentColor: 'var(--sage)' }} />
                         <strong style={{ textDecoration: marcado ? 'line-through' : 'none' }}>{ing.qt} {ing.un}</strong> <span style={{ textDecoration: marcado ? 'line-through' : 'none' }}>{ing.produto}</span>
+                        {ing.componente && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--sage)', background: 'var(--sage-pale)', borderRadius: 10, padding: '1px 7px', marginLeft: 'auto' }}>
+                            {ing.componente}
+                          </span>
+                        )}
                         {ing.obs && <span style={{ fontSize:13, color: 'var(--copper)' }}>{ing.obs}</span>}
                       </label>
                     );
