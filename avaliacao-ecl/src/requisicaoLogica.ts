@@ -320,9 +320,25 @@ export function limparMarcas(nome: string): string {
   for (const m of MARCAS_REMOVER) {
     n = n.replace(new RegExp(`\\b${m}\\b`, 'gi'), '').replace(/\s+/g, ' ').trim();
   }
-  // Remover também padrões como "Marca X" no início
-  n = n.replace(/^[A-Z][a-z]+\s+/, n.split(' ').length > 2 ? '' : n);
+  // NOTA: removida em 22/06/2026 uma segunda tentativa "genérica" de apanhar
+  // marcas não listadas (regex /^[A-Z][a-z]+\s+/) — apagava por engano a
+  // PRIMEIRA PALAVRA de qualquer ingrediente com 3+ palavras, mesmo sem ser
+  // marca nenhuma. Ex: "Gemas de ovo" → "de ovo", "Farinha de trigo T55" →
+  // "de trigo T55". A lista explícita MARCAS_REMOVER acima já é segura e
+  // suficiente — preferível não detectar uma marca nova a apagar nomes reais.
   return n.trim() || nome.trim();
+}
+
+// Normaliza o nome do ingrediente para apresentação — independentemente de
+// como o professor o escreveu na Ficha de Produção (espaços a mais, tudo
+// em minúscula, etc.). Não altera o significado, só a forma:
+// " ovos" → "Ovos" | "farinha de trigo t55" → "Farinha de trigo t55"
+// Decisão de 22/06/2026: corrigir SEMPRE na Requisição, não depender de
+// disciplina perfeita de escrita em cada ficha.
+export function normalizarNomeIngrediente(nome: string): string {
+  let n = nome.replace(/\s+/g, ' ').trim();
+  if (!n) return n;
+  return n.charAt(0).toUpperCase() + n.slice(1);
 }
 
 // ── 9. PROCESSAMENTO COMPLETO DE UM INGREDIENTE ──────────────
@@ -346,7 +362,7 @@ export function processarIngrediente(
   nomePrato: string = ''
 ): IngredienteProcessado {
   const avisos: string[] = [];
-  let produto = limparMarcas(nome.trim());
+  let produto = normalizarNomeIngrediente(limparMarcas(nome.trim()));
   const isQB = /q\.?b\.?|a\s+gosto|quanto\s+baste/i.test(String(qtRaw));
 
   // Verificar se deve excluir (água)
