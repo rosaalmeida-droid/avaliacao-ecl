@@ -93,9 +93,21 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   if (secSensorial) {
     const SABORES = ['DOCE', 'ÁCIDO', 'SALGADO', 'AMARGO', 'UMAMI'];
     const linhas = secSensorial.conteudo.split('\n');
+    // A IA por vezes devolve formato "DOCE: Forte" (texto simples, pedido no
+    // prompt) e por vezes tabela markdown "| Doce | Forte |" — suporta ambos,
+    // já que o modelo nem sempre segue o formato exacto pedido.
     equilibrioSensorial = SABORES.map(sabor => {
-      const linha = linhas.find(l => l.toUpperCase().trim().startsWith(sabor));
-      const valor = linha ? linha.split(':')[1]?.trim() || '' : '';
+      const linhaTexto = linhas.find(l => l.toUpperCase().trim().startsWith(sabor));
+      let valor = linhaTexto ? linhaTexto.split(':')[1]?.trim() || '' : '';
+      if (!valor) {
+        // Tentar formato tabela: "| Doce | Forte |" ou "| Doce    | Forte       |"
+        const linhaTabela = linhas.find(l => l.includes('|') && l.toUpperCase().includes(sabor));
+        if (linhaTabela) {
+          const celulas = linhaTabela.split('|').map(c => c.trim()).filter(c => c);
+          // primeira célula é o nome do sabor, segunda é a intensidade
+          if (celulas.length >= 2 && !celulas[1].match(/^[-:]+$/)) valor = celulas[1];
+        }
+      }
       return { componente: sabor.charAt(0) + sabor.slice(1).toLowerCase(), intensidade: valor, notas: '' };
     }).filter(r => r.intensidade);
   }
@@ -198,20 +210,20 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       const cabecalho = tabelaAtual[0];
       const corpo = tabelaAtual.slice(1).filter(r => !r.every(c => c.match(/^[-:]+$/)));
       elementos.push(
-        <div key={`tabela_${iLinha}`} style={{ overflowX: 'auto', marginBottom: 10 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <div key={`tabela_${iLinha}`} style={{ overflowX: 'auto', marginTop: 14, marginBottom: 18, borderRadius: 10, border: `1px solid ${cor}30` }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: cor, color: 'white' }}>
                 {cabecalho.map((h, i) => (
-                  <th key={i} style={{ padding: '7px 10px', textAlign: 'left', fontWeight: 600 }}>{h}</th>
+                  <th key={i} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {corpo.map((row, ri) => (
-                <tr key={ri} style={{ background: ri % 2 === 0 ? '#fff' : 'rgba(0,0,0,0.03)' }}>
+                <tr key={ri} style={{ background: ri % 2 === 0 ? '#fff' : `${cor}08` }}>
                   {row.map((cell, ci) => (
-                    <td key={ci} style={{ padding: '6px 10px', borderBottom: '1px solid rgba(0,0,0,0.06)', verticalAlign: 'top' }}>
+                    <td key={ci} style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.06)', verticalAlign: 'top', lineHeight: 1.5 }}>
                       {cell}
                     </td>
                   ))}
@@ -246,11 +258,23 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
 
     // Cabeçalho
     if (l.startsWith('###')) {
-      elementos.push(<div key={i} style={{ fontWeight: 700, fontSize: 13, color: cor, marginTop: 10, marginBottom: 4 }}>{l.replace(/^#+\s*/, '')}</div>);
+      elementos.push(
+        <div key={i} style={{ fontWeight: 800, fontSize: 14.5, color: cor, marginTop: 22, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 4, height: 16, background: cor, borderRadius: 2, display: 'inline-block' }} />
+          {l.replace(/^#+\s*/, '')}
+        </div>
+      );
       return;
     }
     if (l.startsWith('##')) {
-      elementos.push(<div key={i} style={{ fontWeight: 700, fontSize: 14, color: cor, marginTop: 12, marginBottom: 5, borderBottom: `1px solid ${cor}30`, paddingBottom: 3 }}>{l.replace(/^#+\s*/, '')}</div>);
+      elementos.push(
+        <div key={i} style={{
+          fontWeight: 800, fontSize: 16, color: cor, marginTop: 26, marginBottom: 10,
+          paddingBottom: 6, borderBottom: `2px solid ${cor}40`, textTransform: 'uppercase', letterSpacing: '0.03em',
+        }}>
+          {l.replace(/^#+\s*/, '')}
+        </div>
+      );
       return;
     }
 
@@ -259,10 +283,10 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       const texto = l.replace(/^[-*•·]\s+/, '');
       const partesBold = texto.split(/\*\*(.*?)\*\*/g);
       elementos.push(
-        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4, fontSize: 13 }}>
-          <span style={{ color: cor, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>·</span>
+        <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8, fontSize: 13.5, lineHeight: 1.5 }}>
+          <span style={{ color: cor, fontWeight: 900, flexShrink: 0, marginTop: 1, fontSize: 16 }}>·</span>
           <span>
-            {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi}>{p}</strong> : p)}
+            {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi} style={{ color: cor }}>{p}</strong> : p)}
           </span>
         </div>
       );
@@ -275,23 +299,23 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       const texto = mNum[2];
       const partesBold = texto.split(/\*\*(.*?)\*\*/g);
       elementos.push(
-        <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 5, fontSize: 13 }}>
-          <span style={{ background: cor, color: 'white', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+        <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, fontSize: 13.5, lineHeight: 1.5 }}>
+          <span style={{ background: cor, color: 'white', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
             {mNum[1]}
           </span>
-          <span style={{ paddingTop: 2 }}>
-            {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi}>{p}</strong> : p)}
+          <span style={{ paddingTop: 3 }}>
+            {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi} style={{ color: cor }}>{p}</strong> : p)}
           </span>
         </div>
       );
       return;
     }
 
-    // Bold inline
+    // Bold inline — parágrafo normal, com mais espaço entre ideias
     const partesBold = l.split(/\*\*(.*?)\*\*/g);
     elementos.push(
-      <p key={i} style={{ margin: '0 0 6px 0', fontSize: 13, lineHeight: 1.6 }}>
-        {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi}>{p}</strong> : p)}
+      <p key={i} style={{ margin: '0 0 12px 0', fontSize: 13.5, lineHeight: 1.7, color: 'rgba(26,23,20,0.85)' }}>
+        {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi} style={{ color: cor, fontWeight: 700 }}>{p}</strong> : p)}
       </p>
     );
   });
