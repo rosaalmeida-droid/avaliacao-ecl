@@ -27,6 +27,8 @@ const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
 // modelo com ingredientes, preços, turma, data, formador, responsável e atividade.
 export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbz7g1xOC8gg23zI-wbE5ttAIHVj0l7GQrGkhSudCRvJqvgL5OK3bsBRmOSu4nNsEpR4aA/exec';
+// ID do Google Sheets da Requisição — para abrir directamente após o envio
+export const SHEETS_REQUISICAO_ID = ''; // preencher quando confirmado
 
 export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbxYOWQNb1UkzTocol56UhXk8ORQ8WlZHKGPU3l-got80WBSWr1I-4sCrdfO5Nhas3Hjgw/exec';
 
@@ -48,6 +50,7 @@ const KEYS = {
   evidencias:    'ecl_evidencias',
   avisos:        'ecl_avisos',
   materiasPrimasCustom: 'ecl_materias_primas_custom',
+  tecnicasCustom:       'ecl_tecnicas_custom',
   syncPlanos:    'ecl_sync_planos_ts',
   syncFichas:    'ecl_sync_fichas_ts',
   // "Tombstones" — IDs eliminados definitivamente. Sem isto, a sincronização
@@ -1258,7 +1261,81 @@ export function resolverAvisosDoIngrediente(nomeIngrediente: string): void {
   if (mudou) save(KEYS.avisos, atualizados);
 }
 
-// ── Base de Dados de Ingredientes (camada editável) ────────────────────
+// ── Sugestões de ingredientes — fluxo Professor → Coordenadora ───────────
+// Professor cria sugestão via Requisição → fica como aviso pendente no
+// Centro de Avisos → Coordenadora aprova/edita/rejeita → se aprovado,
+// o ingrediente é adicionado/actualizado na camada custom (MateriaPrimaCustom).
+
+export function addSugestaoIngrediente(sugestao: {
+  nomeOriginal: string;
+  nomeCorrigido?: string;
+  precoKg?: number;
+  precoUnitario?: number;
+  unidadeCompra?: string;
+  categoria?: string;
+  observacao?: string;
+  sugeridoPor?: string;
+}): void {
+  // Verificar se já existe sugestão pendente para este ingrediente
+  const all = getAvisos();
+  const jaExiste = all.some(a =>
+    !a.resolvido &&
+    a.tipo === 'sugestao_ingrediente' &&
+    a.contexto?.sugestao?.nomeOriginal?.toLowerCase() === sugestao.nomeOriginal.toLowerCase()
+  );
+  if (jaExiste) return;
+
+  addAviso({
+    tipo: 'sugestao_ingrediente',
+    titulo: `💡 Sugestão: "${sugestao.nomeOriginal}"`,
+    descricao: sugestao.observacao
+      ? `${sugestao.sugeridoPor || 'Professor'}: ${sugestao.observacao}`
+      : `${sugestao.sugeridoPor || 'Professor'} sugere correcção a este ingrediente`,
+    contexto: {
+      ingredienteNome: sugestao.nomeOriginal,
+      sugestao: {
+        ...sugestao,
+        sugeridoEm: new Date().toISOString(),
+        estadoAprovacao: 'pendente',
+      },
+    },
+  });
+}
+
+export function aprovarSugestaoIngrediente(avisoId: string, dadosFinais: {
+  nomeCorrigido: string;
+  precoKg: number;
+  precoUnitario: number;
+  unidadeCompra: string;
+  categoria: string;
+}): void {
+  const all = getAvisos();
+  const aviso = all.find(a => a.id === avisoId);
+  if (!aviso || !aviso.contexto?.sugestao) return;
+
+  const nomeOriginal = aviso.contexto.sugestao.nomeOriginal;
+
+  // Adicionar/actualizar na camada custom — fica imediatamente disponível
+  addOrUpdateMateriaPrimaCustom({
+    nome: dadosFinais.nomeCorrigido || nomeOriginal,
+    categoria: dadosFinais.categoria || 'Outro',
+    unidadeCompra: dadosFinais.unidadeCompra || 'kg',
+    precoKg: dadosFinais.precoKg || 0,
+    precoUnitario: dadosFinais.precoUnitario || 0,
+    aliases: nomeOriginal !== dadosFinais.nomeCorrigido
+      ? [nomeOriginal.toLowerCase()]
+      : [],
+  });
+
+  // Marcar aviso como resolvido
+  resolverAviso(avisoId);
+}
+
+export function rejeitarSugestaoIngrediente(avisoId: string): void {
+  resolverAviso(avisoId);
+}
+
+
 // Fica POR CIMA da base "de fábrica" (MATERIAS_PRIMAS_BASE, ~233 itens,
 // só leitura). O professor nunca edita o ficheiro de código — só esta
 // camada, que cresce organicamente sempre que confirma um preço na
@@ -1287,4 +1364,52 @@ export function addOrUpdateMateriaPrimaCustom(m: Omit<MateriaPrimaCustom, 'id' |
 
 export function eliminarMateriaPrimaCustom(id: string): void {
   save(KEYS.materiasPrimasCustom, getMateriasPrimasCustom().filter(m => m.id !== id));
+}
+
+// ── Técnicas Custom — camada editável por cima das SUBTECNICAS base ────────
+// Quando o professor encontra uma técnica nova ou com nome diferente
+// (ex: "creme de nata", "pastel de nata"), pode adicioná-la aqui —
+// entra em vigor imediatamente em todas as fichas seguintes, sem precisar
+// de ir ao código. Mesmo modelo da MateriaPrimaCustom para ingredientes.
+
+export interface TecnicaCustom {
+  id: string;
+  nome: string;              // nome da técnica como vai aparecer na app
+  palavrasChave: string[];   // termos que activam esta técnica no texto da receita
+  tecnicaMaeId?: string;     // ligação à técnica-grupo (T01-T33), opcional
+  uc?: string[];             // UCs do referencial 811RA144 associadas
+  criadoEm: string;
+  atualizadoEm: string;
+  criadoPor?: string;        // nome do professor que adicionou
+}
+
+export function getTecnicasCustom(): TecnicaCustom[] {
+  try {
+    const raw = localStorage.getItem(KEYS.tecnicasCustom);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function addOrUpdateTecnicaCustom(t: Omit<TecnicaCustom, 'id' | 'criadoEm' | 'atualizadoEm'> & { id?: string }): TecnicaCustom {
+  const all = getTecnicasCustom();
+  const agora = new Date().toISOString();
+  const idExistente = t.id || all.find(x => x.nome.toLowerCase() === t.nome.toLowerCase())?.id;
+  const idx = idExistente ? all.findIndex(x => x.id === idExistente) : -1;
+  const registo: TecnicaCustom = {
+    id: idExistente || `tec_custom_${Date.now()}`,
+    nome: t.nome,
+    palavrasChave: t.palavrasChave || [t.nome.toLowerCase()],
+    tecnicaMaeId: t.tecnicaMaeId,
+    uc: t.uc,
+    criadoPor: t.criadoPor,
+    criadoEm: idx >= 0 ? all[idx].criadoEm : agora,
+    atualizadoEm: agora,
+  };
+  if (idx >= 0) all[idx] = registo; else all.push(registo);
+  save(KEYS.tecnicasCustom, all);
+  return registo;
+}
+
+export function eliminarTecnicaCustom(id: string): void {
+  save(KEYS.tecnicasCustom, getTecnicasCustom().filter(t => t.id !== id));
 }
