@@ -459,10 +459,29 @@ export interface Aviso {
   id: string;
   tipo: 'ingrediente_nao_encontrado' | 'ingrediente_ambiguo' | 'ficha_incompleta'
     | 'plano_sem_ficha' | 'ficha_sem_guia' | 'plano_sem_requisicao'
-    | 'recuperacao_por_avaliar' | 'validacao_pendente' | 'outro';
+    | 'recuperacao_por_avaliar' | 'validacao_pendente' | 'outro'
+    | 'sugestao_ingrediente'; // professor sugere correcção à base — Coordenadora aprova
   titulo: string;
   descricao: string;
-  contexto?: { fichaId?: string; planoId?: string; ingredienteNome?: string; tabDestino?: string };
+  contexto?: {
+    fichaId?: string;
+    planoId?: string;
+    ingredienteNome?: string;
+    tabDestino?: string;
+    // campos específicos de sugestao_ingrediente
+    sugestao?: {
+      nomeOriginal: string;       // como veio da ficha
+      nomeCorrigido?: string;     // sugestão do professor
+      precoKg?: number;           // preço sugerido por kg
+      precoUnitario?: number;     // preço sugerido por unidade
+      unidadeCompra?: string;     // kg, un, L...
+      categoria?: string;         // Proteína, Vegetal, Laticínio...
+      observacao?: string;        // nota livre do professor
+      sugeridoPor?: string;       // nome do professor
+      sugeridoEm?: string;        // timestamp
+      estadoAprovacao?: 'pendente' | 'aprovado' | 'rejeitado';
+    };
+  };
   resolvido: boolean;
   criadoEm: string;
   resolvidoEm?: string;
