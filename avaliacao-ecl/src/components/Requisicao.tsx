@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente } from '../backend';
+import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
 import { encontrarMateriaPrimaComConfianca } from '../materiasPrimasBase';
 import {
@@ -30,6 +30,7 @@ interface Linha {
   isQB: boolean;
   perguntarProfessor: boolean;
   decisaoProfessor?: 'comprar' | 'produzir';
+  preparacaoInfo?: { nome: string; materiasPrimas?: string[]; podeComprar: boolean }; // dados da preparação identificada
 }
 
 function recalc(l: Linha): Linha {
@@ -140,6 +141,7 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
           avisos,
           isQB: proc.isQB,
           perguntarProfessor: proc.perguntarProfessor,
+          preparacaoInfo: proc.preparacaoInfo,
         });
       }
     });
@@ -185,7 +187,12 @@ const S = {
 
 // ═══════════════════════════════════════════════════════════════
 export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1', fichasIniciais, onGuardado }: { nomeProfessor?: string; planoIdFixo?: string; turmaId?: string; fichasIniciais?: string[]; onGuardado?: () => void }) {
-  const planos = getPlanosAulaPorTurma(turmaId);
+  const planos = getPlanosAulaPorTurma(turmaId)
+    .sort((a, b) => (b.data || '').localeCompare(a.data || '')); // mais recentes primeiro
+  // Planos recentes = últimos 60 dias + planos com fichas associadas
+  const hoje = new Date();
+  const limite60dias = new Date(hoje.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const planosRecentes = planos.filter(p => (p.data || '') >= limite60dias || p.fichasIds.length > 0);
   const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || planos[0] || null : planos[0] || null;
   const fichasSelInicial = fichasIniciais?.length ? fichasIniciais : (planoInicial?.fichasIds || []);
 
@@ -206,6 +213,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const [quebras, setQuebras] = useState(10);
   const [bevCost, setBevCost] = useState(20);
   const [consumo, setConsumo] = useState({ bar: false, rest: true, interno: false, convidados: false });
+  const [sugestaoAberta, setSugestaoAberta] = useState<string | null>(null); // nome do ingrediente em sugestão
+  const [sugestaoForm, setSugestaoForm] = useState({ precoKg: '', unidadeCompra: 'kg', categoria: '', observacao: '' });
+  const [sugestaoEnviada, setSugestaoEnviada] = useState(false);
   const [responsavel, setResponsavel] = useState(() => {
     // Sem fonte automática fiável — sugere o último nome usado (provavelmente a mesma
     // pessoa em requisições próximas), mas o professor pode sempre mudar.
@@ -232,6 +242,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     return agregarIngredientes(fsel, pax);
   });
   const [msg, setMsg] = useState('');
+  const [linkSheets, setLinkSheets] = useState(''); // URL do Google Sheets para abrir directamente
 
   const todasFichas = [...getFichasProducao()].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
   const fichasDisp = planoSel ? todasFichas.filter(f => planoSel.fichasIds.includes(f.id)) : [];
@@ -322,7 +333,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         nomeReceita, familia,
         paxTotal: paxEncTotal,   // H7 — Encomendas
         paxReceita: paxBaseTotal, // L7 — Receita para
-        turma: planoSel?.turmaId || '',
+        turma: planoSel?.turmaId || turmaId || '',
         dataAula: planoSel?.data || '',
         formador: nomeProfessor || planoSel?.professor || '',
         responsavel,  // N42
@@ -355,30 +366,38 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           preco: l.precoUnitario || '0',
         })),
       };
-      // NOTA sobre CORS: Apps Script não suporta leitura de resposta POST
-      // directamente do browser (sem proxy). Com no-cors, o pedido chega ao
-      // script na mesma (confirmado: a aba é criada), mas a resposta é
-      // opaque — não é possível ler. Solução: fire-and-forget com timeout.
-      // A aba aparece no Sheets → confirmação real de que funcionou.
+      // PROXY VERCEL — em vez de enviar directamente para o Apps Script
+      // (que causava redirect 302 bloqueado pelo browser com no-cors),
+      // enviamos para a nossa própria função serverless Vercel que
+      // reencaminha do lado do servidor. Confirmado pelo Network tab:
+      // "exec 302 fetch / Redirect" — browser não conseguia seguir.
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
+      const timeout = setTimeout(() => controller.abort(), 20000);
+      let dadosResposta: any = null;
       try {
-        await fetch(SHEETS_REQUISICAO_URL, {
+        const resposta = await fetch('/api/enviarRequisicao', {
           method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
           signal: controller.signal,
         });
+        try { dadosResposta = await resposta.json(); } catch {}
       } finally {
         clearTimeout(timeout);
       }
-      setMsg('✓ Enviado para o Google Sheets! Verifica a aba nova no Sheets.');
+      if (dadosResposta?.ok === false) {
+        setMsg('⚠️ Erro: ' + (dadosResposta.mensagem || 'desconhecido'));
+      } else {
+        setMsg('✓ Enviado para o Google Sheets!');
+        if (dadosResposta?.urlSheets) {
+          setLinkSheets(dadosResposta.urlSheets);
+        }
+      }
     } catch (e) {
       if (String(e).includes('abort')) {
-        setMsg('⏱️ Tempo limite excedido — verifica se a aba apareceu no Sheets.');
+        setMsg('⏱️ Tempo limite — verifica se a aba apareceu no Sheets.');
       } else {
-        setMsg('❌ Falhou o envio: ' + String(e));
+        setMsg('❌ Falhou: ' + String(e));
       }
     }
     setTimeout(() => setMsg(''), 8000);
@@ -397,7 +416,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         <div style={S.card}>
           <label style={S.lbl}>1. Plano de aula</label>
           {planos.length === 0 && <div style={S.muted}>Sem planos criados. Cria primeiro um plano de aula.</div>}
-          {(mostrarTodosPlanos ? planos : planos.slice(0, 8)).map(p => {
+          {(mostrarTodosPlanos ? planos : planosRecentes).map(p => {
             const d = new Date(p.data + 'T12:00:00');
             return (
               <div key={p.id} onClick={() => selecionarPlano(p)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${planoSel?.id === p.id ? 'var(--copper)' : 'var(--border)'}`, background: planoSel?.id === p.id ? 'var(--copper-pale)' : '#fff', marginBottom: 6, cursor: 'pointer' }}>
@@ -416,7 +435,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               </div>
             );
           })}
-          {!mostrarTodosPlanos && planos.length > 8 && (
+          {!mostrarTodosPlanos && planos.length > planosRecentes.length && (
             <button onClick={() => setMostrarTodosPlanos(true)}
               style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 12, fontWeight: 600, color: 'var(--copper)', cursor: 'pointer' }}>
               Ver mais {planos.length - 8} planos mais antigos
@@ -497,6 +516,95 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     <div style={{ background: 'var(--requisicao-pale)', borderRadius: 16, padding: 16 }}>
       <button className="no-print" style={{ ...S.btnG, marginBottom: 12 }} onClick={() => setFase('escolher')}>← Voltar</button>
 
+      {/* Modal de sugestão de correcção de ingrediente */}
+      {sugestaoAberta && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 24, maxWidth: 420, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>💡 Sugerir correcção</div>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 16 }}>
+              "{sugestaoAberta}" não está na base de dados. Preenche o que souberes — a Coordenadora vai verificar e aprovar.
+            </div>
+            {sugestaoEnviada ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+                <div style={{ fontWeight: 700, color: 'var(--sage)' }}>Sugestão enviada!</div>
+                <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginTop: 4 }}>A Coordenadora irá verificar e aprovar.</div>
+                <button onClick={() => { setSugestaoAberta(null); setSugestaoEnviada(false); setSugestaoForm({ precoKg: '', unidadeCompra: 'kg', categoria: '', observacao: '' }); }}
+                  style={{ marginTop: 14, padding: '10px 24px', borderRadius: 10, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, cursor: 'pointer' }}>
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Preço (€/kg ou €/un)</label>
+                  <input type="number" step="0.01" value={sugestaoForm.precoKg}
+                    onChange={e => setSugestaoForm(f => ({ ...f, precoKg: e.target.value }))}
+                    style={{ ...S.inp, width: '100%' }} placeholder="ex: 2.50" />
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Unidade de compra</label>
+                  <select value={sugestaoForm.unidadeCompra}
+                    onChange={e => setSugestaoForm(f => ({ ...f, unidadeCompra: e.target.value }))}
+                    style={{ ...S.inp, width: '100%' }}>
+                    <option value="kg">kg</option>
+                    <option value="un">un (unidade)</option>
+                    <option value="l">l (litro)</option>
+                    <option value="embalagem">embalagem</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Categoria</label>
+                  <select value={sugestaoForm.categoria}
+                    onChange={e => setSugestaoForm(f => ({ ...f, categoria: e.target.value }))}
+                    style={{ ...S.inp, width: '100%' }}>
+                    <option value="">Seleccionar...</option>
+                    <option value="Proteína animal">Proteína animal</option>
+                    <option value="Peixe e marisco">Peixe e marisco</option>
+                    <option value="Vegetais">Vegetais</option>
+                    <option value="Farinhas">Farinhas</option>
+                    <option value="Laticínios">Laticínios</option>
+                    <option value="Gorduras">Gorduras</option>
+                    <option value="Açúcares">Açúcares</option>
+                    <option value="Especiarias e ervas">Especiarias e ervas</option>
+                    <option value="Ovos">Ovos</option>
+                    <option value="Massas e cereais">Massas e cereais</option>
+                    <option value="Conservas">Conservas</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Observação (opcional)</label>
+                  <textarea value={sugestaoForm.observacao}
+                    onChange={e => setSugestaoForm(f => ({ ...f, observacao: e.target.value }))}
+                    style={{ ...S.inp, width: '100%', minHeight: 60 }}
+                    placeholder="ex: produzido em aula, não se compra; ou: verificar se é igual a Massa folhada" />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setSugestaoAberta(null); setSugestaoForm({ precoKg: '', unidadeCompra: 'kg', categoria: '', observacao: '' }); }}
+                    style={{ flex: 1, padding: '10px', borderRadius: 10, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                    Cancelar
+                  </button>
+                  <button onClick={() => {
+                    addSugestaoIngrediente({
+                      nomeOriginal: sugestaoAberta,
+                      precoKg: parseFloat(sugestaoForm.precoKg) || 0,
+                      unidadeCompra: sugestaoForm.unidadeCompra,
+                      categoria: sugestaoForm.categoria,
+                      observacao: sugestaoForm.observacao,
+                      sugeridoPor: nomeProfessor || 'Professor',
+                    });
+                    setSugestaoEnviada(true);
+                  }} style={{ flex: 2, padding: '10px', borderRadius: 10, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, cursor: 'pointer' }}>
+                    ✓ Enviar sugestão à Coordenadora
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Cabecalho tipo ficha ECL */}
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '18px', marginBottom: 12 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--cream)', marginBottom: 8 }}>{nomeReceita}</div>
@@ -518,20 +626,57 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
       {/* Decisao produzir/comprar */}
       {linhasPergunta.length > 0 && (
-        <div className="no-print" style={{ ...S.card, border: '1.5px solid var(--copper)', background: 'var(--copper-pale)' }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>Decisao necessaria — produzir ou comprar?</div>
+        <div className="no-print" style={{ ...S.card, border: '2px solid var(--danger)', background: '#fff8f0' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--danger)', marginBottom: 4 }}>
+            ⚠️ Atenção — massas base devem ser produzidas em aula
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.65)', marginBottom: 12 }}>
+            Em cozinha/pastelaria pedagógica, as massas base fazem parte das competências a desenvolver.
+            Cada massa deve ter uma <strong>Ficha Técnica própria</strong> associada a este plano de aula.
+          </div>
           {linhasPergunta.map(l => {
             const i = linhas.indexOf(l);
+            const prep = l.preparacaoInfo as any;
+            const materiais = prep?.materiasPrimas || [];
+            const podeTambemComprar = prep?.podeComprar !== false; // massa filo pode comprar-se
             return (
-              <div key={l.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(181,101,29,0.2)' }}>
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{l.produto}</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {(['comprar', 'produzir'] as const).map(d => (
-                    <button key={d} onClick={() => setDecisao(i, d)} style={{ flex: 1, padding: '7px', borderRadius: 8, border: `1.5px solid ${l.decisaoProfessor === d ? (d === 'comprar' ? 'var(--copper)' : 'var(--sage)') : 'var(--border)'}`, background: l.decisaoProfessor === d ? (d === 'comprar' ? 'var(--copper)' : 'var(--sage)') : '#fff', color: l.decisaoProfessor === d ? 'white' : 'var(--charcoal)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
-                      {d === 'comprar' ? 'Comprar' : 'Produzir em aula'}
-                    </button>
-                  ))}
+              <div key={l.id} style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(196,60,20,0.2)', background: '#fff', marginBottom: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>📋 {l.produto}</div>
+                {materiais.length > 0 && (
+                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+                    Matérias-primas base: {materiais.join(', ')}
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, marginBottom: 10 }}>
+                  → Cria uma Ficha Técnica separada para a produção desta massa e associa-a a este plano de aula.
                 </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => setDecisao(i, 'produzir')}
+                    style={{ flex: 2, padding: '8px 12px', borderRadius: 8, border: `2px solid ${l.decisaoProfessor === 'produzir' ? 'var(--sage)' : 'var(--border)'}`, background: l.decisaoProfessor === 'produzir' ? 'var(--sage)' : '#fff', color: l.decisaoProfessor === 'produzir' ? 'white' : 'var(--charcoal)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                    ✓ Produzir em aula (ficha técnica própria)
+                  </button>
+                  {podeTambemComprar && (
+                    <button onClick={() => setDecisao(i, 'comprar')}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `2px solid ${l.decisaoProfessor === 'comprar' ? 'var(--copper)' : 'var(--border)'}`, background: l.decisaoProfessor === 'comprar' ? 'var(--copper)' : '#fff', color: l.decisaoProfessor === 'comprar' ? 'white' : 'rgba(26,23,20,0.5)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+                      Excepção: comprar
+                    </button>
+                  )}
+                </div>
+                {l.decisaoProfessor === 'comprar' && (
+                  <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 7, background: 'var(--copper-pale)', fontSize: 11, color: 'var(--copper)' }}>
+                    ⚠️ Compra autorizada — fica registado. Justifica na observação da ficha técnica.
+                  </div>
+                )}
+                {l.decisaoProfessor === 'produzir' && (
+                  <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(74,90,138,0.08)', border: '1px solid rgba(74,90,138,0.2)', fontSize: 12 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--guia)', marginBottom: 4 }}>⏳ Pendência criada</div>
+                    <div style={{ color: 'rgba(26,23,20,0.7)' }}>"{l.produto}" não vai para a requisição de compras. Antes da aula:</div>
+                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ fontSize: 11, color: 'var(--guia)', fontWeight: 600 }}>✓ Cria uma Ficha Técnica para esta massa e associa-a a este plano</div>
+                      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>As matérias-primas base precisam de aparecer numa requisição separada</div>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -592,9 +737,16 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   <tr key={l.id} style={{ background: '#fff', borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '3px 4px' }}>
                       <input value={l.produto} onChange={e => setL(i, 'produto', e.target.value)} style={{ ...S.inp, width: '100%', fontSize:13 }} />
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                         {l.daBD && <span style={{ fontSize:12, color: 'var(--sage)' }}>BD</span>}
                         {rend && <span style={{ fontSize:12, color: 'rgba(26,23,20,0.35)' }}>Rend. {Math.round(rend.rendimento * 100)}%</span>}
+                        {!l.daBD && (
+                          <button type="button"
+                            onClick={() => setSugestaoAberta(l.produto)}
+                            style={{ fontSize:10, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--copper)', background: 'var(--copper-pale)', color: 'var(--copper)', cursor: 'pointer', fontWeight: 600 }}>
+                            💡 Sugerir
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td style={{ padding: '3px 4px', textAlign: 'right', color: 'rgba(26,23,20,0.4)', fontSize:13 }}>{fQn(l.qt1pax, l.und)}</td>
@@ -662,7 +814,17 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         </div>
       </div>
 
-      {msg && <div style={{ padding: '10px 14px', background: 'var(--sage-pale)', borderRadius: 10, fontSize: 13, color: 'var(--sage)', marginBottom: 10, fontWeight: 600 }}>{msg}</div>}
+      {msg && (
+        <div style={{ padding: '10px 14px', background: 'var(--sage-pale)', borderRadius: 10, fontSize: 13, color: 'var(--sage)', marginBottom: 10, fontWeight: 600 }}>
+          {msg}
+          {linkSheets && (
+            <a href={linkSheets} target="_blank" rel="noreferrer"
+              style={{ display: 'block', marginTop: 8, padding: '6px 12px', borderRadius: 8, background: 'var(--sage)', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, fontSize: 12 }}>
+              📊 Abrir no Google Sheets →
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button style={S.btnP} onClick={async () => {
