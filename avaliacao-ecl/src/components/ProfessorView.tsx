@@ -678,10 +678,48 @@ function extrairFicha(texto: string): FichaTecnica {
 // Prompt para extração de receita via IA externa
 // Formato exato da ficha de produção ECL
 // ============================================================
-function gerarPrompt(linkReceita: string, ucId?: string, ucNome?: string): string {
+function gerarPrompt(linkReceita: string, ucId?: string, ucNome?: string, modoProf?: boolean): string {
   const ucContexto = ucId ? `\nCONTEXTO PEDAGÓGICO: Esta ficha pertence à UC ${ucId} — ${ucNome || ''}.\nAs técnicas e competências devem ser específicas desta UC.` : '';
+
+  const blocoProf = modoProf ? `
+
+═══════════════════════════════════════════════════
+MODO PROFISSIONAL — LÊ ANTES DE TUDO O RESTO
+═══════════════════════════════════════════════════
+
+Esta ficha é para uma cozinha pedagógica profissional de nível Secundário (Curso Profissional).
+Usa o link como INSPIRAÇÃO — não como receita literal a copiar.
+
+ELEVA a receita para nível profissional:
+
+1. TÉCNICAS — substitui métodos caseiros por técnicas de cozinha clássica:
+   - "fritar" → saltear, confitar, poêler ou fritar por imersão (especificar)
+   - "cozinhar" → escalfar, branquear, estufar, brasear (o mais correcto para o produto)
+   - "misturar" → incorporar, homogeneizar, emulsionar (conforme o caso)
+   - "deitar" → adicionar, incorporar, verter em fio
+   - "mexer" → envolver suavemente, bater em neve, montar
+   - "cozer no forno" → assar, gratinar, confitar (temperatura e tempo precisos)
+
+2. CORTES — usa nomenclatura profissional:
+   - "picado" → brunoise, chiffonade ou picado fino (especificar)
+   - "às rodelas" → em rondelles
+   - "em tiras" → em juliana ou em chiffonade
+   - "em cubos" → em brunoise (pequeno) ou em macedónia (médio)
+
+3. APRESENTAÇÃO — sugere empratamento profissional com elemento de altura, molho, guarnição
+
+4. CALDOS — NUNCA usar cubos ou caldos comprados — são sempre "produzidos em aula"
+
+5. MASSAS BASE — se a receita usa massa folhada, quebrada, choux, etc.:
+   - Coloca-a como ingrediente normal na ficha
+   - Adiciona uma nota na OBS: "⚠️ Produzir em aula — criar Ficha Técnica separada para esta massa"
+
+6. TÉCNICAS DETECTADAS — lista apenas técnicas profissionais, não caseiras
+
+` : '';
+
   return `Analisa a receita e extrai a informação NO FORMATO EXATO abaixo.
-Aplica TODAS as regras obrigatórias antes de responder.${ucContexto}
+Aplica TODAS as regras obrigatórias antes de responder.${ucContexto}${blocoProf}
 
 ═══════════════════════════════════════════════════
 REGRAS OBRIGATÓRIAS — LÊ TODAS ANTES DE COMEÇAR
@@ -1163,9 +1201,10 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
   const [mostrarSimilares, setMostrarSimilares] = useState(false);
   const [copiadoFicha, setCopiadoFicha] = useState(false);
   const [copiadoGuia, setCopiadoGuia] = useState(false);
+  const [modoProf, setModoProf] = useState(false); // modo profissional — eleva técnicas
 
   // Prompts calculados em tempo real
-  const promptFicha = gerarPrompt(link, ucId, ucNome);
+  const promptFicha = gerarPrompt(link, ucId, ucNome, modoProf);
   const promptGuia = gerarPromptGuia(nomePrato || 'Receita', ucId, ucNome) + (link ? `\n\nLink da receita: ${link}` : '');
 
   // Verificar fichas similares quando o nomePrato muda
@@ -1238,6 +1277,26 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
           Claude abre já com o prompt pronto — ChatGPT e Gemini abrem com o prompt copiado, basta colar
         </div>
+
+        {/* Selector de modo — fiel ao link ou versão profissional */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <button type="button"
+            onClick={() => setModoProf(false)}
+            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: `2px solid ${!modoProf ? 'var(--copper)' : 'var(--border)'}`, background: !modoProf ? 'var(--copper)' : '#fff', color: !modoProf ? 'white' : 'rgba(26,23,20,0.6)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            📄 Fiel ao link
+          </button>
+          <button type="button"
+            onClick={() => setModoProf(true)}
+            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: `2px solid ${modoProf ? 'var(--sage)' : 'var(--border)'}`, background: modoProf ? 'var(--sage)' : '#fff', color: modoProf ? 'white' : 'rgba(26,23,20,0.6)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            ⭐ Versão profissional
+          </button>
+        </div>
+        {modoProf && (
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(90,122,78,0.08)', border: '1px solid rgba(90,122,78,0.2)', fontSize: 11, color: 'var(--sage)', marginBottom: 10 }}>
+            A IA vai elevar as técnicas para nível profissional — cortes com nomenclatura clássica, métodos de confeção precisos, massas base assinaladas para produção em aula.
+          </div>
+        )}
+
         <SeletorIA prompt={promptFicha} />
         <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:12 }}
           onClick={() => copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
@@ -2112,6 +2171,27 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Próximos passos naturais — Guia → Requisição → Voltar */}
+          {planoId && (
+            <button className="btn btn-primary" style={{ background: 'var(--guia)', fontSize: 14, padding: '12px' }}
+              onClick={() => onGuardado?.()}>
+              📚 Criar Guia de Apoio →
+            </button>
+          )}
+          {planoId && (
+            <button className="btn btn-primary" style={{ background: 'var(--requisicao)', fontSize: 14, padding: '12px' }}
+              onClick={() => {
+                // Navegar para a requisição deste plano
+                onGuardado?.();
+                // Sinal para o VistaDePlano abrir directamente o módulo de requisição
+                setTimeout(() => {
+                  const ev = new CustomEvent('ecl:abrirRequisicao', { detail: { planoId } });
+                  window.dispatchEvent(ev);
+                }, 100);
+              }}>
+              🛒 Criar Requisição →
+            </button>
+          )}
           <button className="btn btn-primary" onClick={novaFicha}>
             + Criar nova Ficha de Produção
           </button>
