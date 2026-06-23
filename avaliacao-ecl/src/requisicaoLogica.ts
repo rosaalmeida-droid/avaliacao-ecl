@@ -117,22 +117,26 @@ export interface ConversaoDerivado {
 
 export function converterIngredienteDerivado(
   nome: string,
-  qtKg: number // quantidade já em kg
+  qtKg: number, // quantidade — em kg se und='g'/'kg', em unidades se und='un'
+  und: string = 'kg' // unidade original, antes de qualquer conversão
 ): ConversaoDerivado | null {
   const n = nome.toLowerCase().trim();
 
   for (const d of INGREDIENTES_DERIVADOS) {
     if (d.padroes.some(p => p.test(n))) {
       if (d.und === 'un') {
-        // Dois modos de cálculo, consoante o que está definido no item:
-        // (a) pesoMedioKg → converte kg do derivado em unidades reais pelo
-        //     peso médio (usado para gemas/claras — corrigido em 21/06/2026,
-        //     antes dava sempre "1" independentemente da quantidade real);
-        // (b) fatorConversao → "quantas unidades por kg de derivado" (usado
-        //     para raspa/sumo de citrinos, já calibrado e correcto).
-        const qtUnidades = d.pesoMedioKg
-          ? Math.max(1, Math.ceil(qtKg / d.pesoMedioKg))
-          : Math.max(1, Math.ceil(qtKg * d.fatorConversao));
+        // Dois modos de cálculo:
+        // (a) und original era 'un' → qtKg já é número de unidades (ex: 6 gemas)
+        //     → quantidade de ovos = directamente qtKg (6 gemas = 6 ovos)
+        // (b) und original era 'g'/'kg' → qtKg é peso em kg → usar pesoMedioKg
+        //     para calcular quantas unidades são necessárias
+        const undOrig = (und || '').toLowerCase().trim();
+        const jaEmUnidades = ['un', 'unidade', 'unidades'].includes(undOrig);
+        const qtUnidades = jaEmUnidades
+          ? Math.max(1, Math.ceil(qtKg))  // já é unidades — arredondar para cima
+          : d.pesoMedioKg
+            ? Math.max(1, Math.ceil(qtKg / d.pesoMedioKg))  // converter kg → unidades
+            : Math.max(1, Math.ceil(qtKg * d.fatorConversao));
         return {
           produtoOriginal: d.produtoOriginal,
           qtOriginal: qtUnidades,
@@ -170,12 +174,24 @@ export const PREPARACOES: Preparacao[] = [
   { nome: 'Creme pasteleiro', padroes: [/creme\s+pasteleiro/i, /pastry\s+cream/i, /creme\s+patissiere/i], podeComprar: false, perguntarProfessor: false, materiasPrimas: ['Leite', 'Açúcar', 'Ovos', 'Farinha T55', 'Manteiga'] },
   { nome: 'Bechamel', padroes: [/b[eé]chamel/i, /molho\s+branco/i], podeComprar: false, perguntarProfessor: false, materiasPrimas: ['Leite', 'Farinha T55', 'Manteiga', 'Sal', 'Noz-moscada'] },
   { nome: 'Molho de tomate', padroes: [/molho\s+de\s+tomate\s+caseiro/i], podeComprar: false, perguntarProfessor: false },
-  // Preparações que PODEM comprar ou produzir
-  { nome: 'Massa folhada', padroes: [/massa\s+folhada/i, /puff\s+pastry/i], podeComprar: true, perguntarProfessor: true, materiasPrimas: ['Farinha T65', 'Manteiga', 'Sal', 'Água'] },
-  { nome: 'Massa filo', padroes: [/massa\s+filo/i, /filo\s+pastry/i, /phyllo/i], podeComprar: true, perguntarProfessor: true },
+
+  // ── MASSAS BASE — produzidas em aula salvo excepção autorizada ─────────
+  // Regra pedagógica ECL (22/06/2026): em cozinha/pastelaria profissional,
+  // massas base fazem parte das competências a desenvolver — não se compram.
+  // A app avisa o professor e sugere a criação de uma Ficha Técnica separada.
+  // Excepções (ex: comprar massa filo, massa de pizza pré-feita) só com
+  // autorização explícita do professor, registada na observação da ficha.
+  { nome: 'Massa folhada', padroes: [/massa\s+folhada/i, /puff\s+pastry/i, /pate\s+feuilletee/i, /massa\s+folhada\s+invertida/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T65', 'Manteiga', 'Sal', 'Água'] },
+  { nome: 'Massa quebrada', padroes: [/massa\s+quebrada/i, /shortcrust/i, /p[aâ]te\s+bris[eé]e/i, /massa\s+areada/i, /p[aâ]te\s+sabl[eé]e/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T55', 'Manteiga', 'Sal', 'Água'] },
+  { nome: 'Massa sucrée', padroes: [/massa\s+sucr[eé]e/i, /p[aâ]te\s+sucr[eé]e/i, /massa\s+doce/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T55', 'Manteiga', 'Açúcar em pó', 'Ovos'] },
+  { nome: 'Massa de fartos', padroes: [/massa\s+de\s+fartos/i, /massa\s+choux/i, /p[aâ]te\s+[aà]\s+choux/i, /choux\s+pastry/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T55', 'Manteiga', 'Ovos', 'Água', 'Sal'] },
+  { nome: 'Massa de pizza', padroes: [/massa\s+de\s+pizza/i, /pizza\s+dough/i, /massa\s+para\s+pizza/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T65', 'Fermento de padeiro', 'Sal', 'Azeite', 'Água'] },
+  { nome: 'Massa de pão', padroes: [/massa\s+de\s+p[aã]o/i, /bread\s+dough/i, /massa\s+p[aã]o/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T65', 'Fermento de padeiro', 'Sal', 'Água'] },
+  { nome: 'Massa fresca', padroes: [/massa\s+fresca/i, /fresh\s+pasta/i, /massa\s+caseira/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T55', 'Ovos', 'Sal'] },
+  { nome: 'Massa filo', padroes: [/massa\s+filo/i, /filo\s+pastry/i, /phyllo/i], podeComprar: true, perguntarProfessor: true }, // excepção — muito técnica, pode comprar
+  { nome: 'Base de tarte', padroes: [/base\s+de\s+tarte/i, /tart\s+shell/i, /base\s+para\s+tarte/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T55', 'Manteiga', 'Sal', 'Água'] },
   { nome: 'Bolacha champanhe', padroes: [/bolacha\s+champanhe/i, /ladyfinger/i, /savoiardi/i, /biscuit\s+cuill[eè]re/i], podeComprar: true, perguntarProfessor: true, materiasPrimas: ['Ovos', 'Açúcar', 'Farinha T55'] },
-  { nome: 'Massa quebrada', padroes: [/massa\s+quebrada/i, /shortcrust/i, /p[aâ]te\s+bris[eé]e/i], podeComprar: true, perguntarProfessor: true },
-  { nome: 'Base de tarte', padroes: [/base\s+de\s+tarte/i, /tart\s+shell/i, /base\s+para\s+tarte/i], podeComprar: true, perguntarProfessor: true },
+
   // Preparações que são sempre compradas (produtos processados)
   { nome: 'Puré de tomate', padroes: [/pur[eé]\s+de\s+tomate/i, /concentrado\s+de\s+tomate/i], podeComprar: true, perguntarProfessor: false },
 ];
@@ -353,6 +369,7 @@ export interface IngredienteProcessado {
   isDerivado: boolean;
   isPreparacao: boolean;
   perguntarProfessor: boolean; // produzir ou comprar?
+  preparacaoInfo?: { nome: string; materiasPrimas?: string[]; podeComprar: boolean };
 }
 
 export function processarIngrediente(
@@ -406,7 +423,19 @@ export function processarIngrediente(
   }
 
   // Verificar ingredientes derivados
-  const derivado = converterIngredienteDerivado(produto, qtKg);
+  // CRÍTICO: gemas/claras com und='un' — qtKg=6 significa 6 unidades,
+  // não 6 kg. A conversão pesoMedioKg só faz sentido quando a quantidade
+  // vem em GRAMAS (und='g'). Quando já vem em unidades, a quantidade de
+  // ovos é directamente a quantidade de gemas/claras pedidas.
+  const derivado = converterIngredienteDerivado(
+    produto,
+    // Se und=un e é gema/clara, passar a quantidade REAL em unidades
+    // embrulhada num flag negativo (convenção interna) para que a função
+    // saiba que não deve dividir pelo pesoMedioKg.
+    // Implementação mais limpa: passar und como parâmetro adicional.
+    qtKg,
+    und  // novo parâmetro — und original antes da conversão
+  );
   if (derivado) {
     return {
       produto: derivado.produtoOriginal,
@@ -432,11 +461,16 @@ export function processarIngrediente(
   // Verificar se é preparação que precisa de decidir produzir/comprar
   const prep = identificarPreparacao(produto);
   if (prep && prep.perguntarProfessor) {
+    const ehMassa = !prep.podeComprar; // massas base nunca se compram por defeito
     return {
       produto, qtKg, und,
       isQB, excluir: false,
-      avisos: [`"${produto}" pode ser comprado ou produzido em aula`],
+      avisos: [ehMassa
+        ? `"${produto}" deve ser produzida em aula — cria uma Ficha Técnica separada`
+        : `"${produto}" pode ser comprado ou produzido em aula`
+      ],
       isDerivado: false, isPreparacao: true, perguntarProfessor: true,
+      preparacaoInfo: { nome: prep.nome, materiasPrimas: prep.materiasPrimas, podeComprar: prep.podeComprar },
     };
   }
 
