@@ -17,7 +17,7 @@ import { Competencia } from './types';
 const GUARDS: Record<string, string[]> = {
   PEIXE:      ['peixe','atum','salmão','bacalhau','robalo','dourada','linguado','pescada','carapau','sardinhas','solha','pregado','pargo','cherne','faneca','marisco','amêijoa','camarão','lagosta','lula','polvo','mexilhão','gambas','sapateira'],
   CARNE:      ['carne','bife','frango','pato','peru','galinha','porco','vaca','borrego','vitela','coelho','perdiz','veado','javali','entrecosto','costeleta','lombo','secretos','presa'],
-  PASTELARIA: ['bolo','tarte','torta','mousse','pudim','crème brûlée','cheesecake','brownie','muffin','cupcake','croissant','brioche','massa folhada','pâte','ganache','fondant','merengue','pavlova','tiramisu','panna cotta','soufflé'],
+  PASTELARIA: ['bolo','tarte','torta','mousse','pudim','crème brûlée','cheesecake','brownie','muffin','cupcake','croissant','brioche','massa folhada','pâte','ganache','fondant','merengue','pavlova','tiramisu','panna cotta','soufflé','pastel de nata','pastel de belém','creme pasteleiro','creme de nata'],
   SOPAS:      ['sopa','caldo','creme de','velouté','consommé','bisque','gazpacho','minestrone'],
 };
 
@@ -204,8 +204,10 @@ export const SUBTECNICAS: Competencia[] = [
   { id: 'S161', categoria: 'TECNICAS', nome: 'Preparar massa folhada (laminar)', uc: ['UC02005'], tecnicaMaeId: 'T12', palavrasChave: ['massa folhada','laminar','laminação','mil folhas'] },
   { id: 'S162', categoria: 'TECNICAS', nome: 'Preparar massa lêveda / brioche', uc: ['UC02005','UC03593'], tecnicaMaeId: 'T12', palavrasChave: ['massa lêveda','brioche'] },
   { id: 'S163', categoria: 'TECNICAS', nome: 'Preparar pâte à choux', uc: ['UC02005'], tecnicaMaeId: 'T12', palavrasChave: ['pâte à choux','massa choux','éclair','profiteroles'] },
-  { id: 'S164', categoria: 'TECNICAS', nome: 'Preparar creme pasteleiro', uc: ['UC02005'], tecnicaMaeId: 'T13', palavrasChave: ['creme pasteleiro'] },
-  { id: 'S165', categoria: 'TECNICAS', nome: 'Preparar creme inglês', uc: ['UC02005'], tecnicaMaeId: 'T13', palavrasChave: ['creme inglês'] },
+  { id: 'S164', categoria: 'TECNICAS', nome: 'Preparar creme pasteleiro', uc: ['UC02005'], tecnicaMaeId: 'T13', palavrasChave: ['creme pasteleiro','creme de pasteleiro','creme patissiere','custard cream'] },
+  { id: 'S164B', categoria: 'TECNICAS', nome: 'Preparar creme de natas', uc: ['UC02005'], tecnicaMaeId: 'T13', palavrasChave: ['creme de nata','creme de natas','creme chantilly','chantilly','creme batido','natas batidas'] },
+  { id: 'S164C', categoria: 'TECNICAS', nome: 'Confeção de pastel de nata', uc: ['UC02005'], tecnicaMaeId: 'T13', palavrasChave: ['pastel de nata','pasteis de nata','pastel de belém','pasteis de belem'] },
+  { id: 'S165', categoria: 'TECNICAS', nome: 'Preparar creme inglês', uc: ['UC02005'], tecnicaMaeId: 'T13', palavrasChave: ['creme inglês','creme ingles','crème anglaise','anglaise'] },
   { id: 'S166', categoria: 'TECNICAS', nome: 'Preparar ganache', uc: ['UC02005','UC03592'], tecnicaMaeId: 'T13', palavrasChave: ['ganache','chocolate'] },
   { id: 'S167', categoria: 'TECNICAS', nome: 'Preparar merengue (francês / italiano / suíço)', uc: ['UC02005','UC03592'], tecnicaMaeId: 'T13', palavrasChave: ['merengue','merengue francês','merengue italiano','merengue suíço'] },
   { id: 'S168', categoria: 'TECNICAS', nome: 'Preparar sabayon', uc: ['UC02005'], tecnicaMaeId: 'T13', palavrasChave: ['sabayon'] },
@@ -277,7 +279,29 @@ export function sugerirSubtecnicas(textoReceita: string): Competencia[] {
     return s.palavrasChave.some(p => textoContemPalavraSub(textoNorm, p));
   });
 
-  if (candidatos.length > 0) return candidatos;
+  // Técnicas custom adicionadas pelo professor — ligadas automaticamente
+  // quando o texto da receita contém as palavras-chave definidas.
+  // Importação lazy para evitar dependência circular (backend ← subtecnicas).
+  let candidatosCustom: Competencia[] = [];
+  try {
+    const raw = localStorage.getItem('ecl_tecnicas_custom');
+    if (raw) {
+      const tecCustom = JSON.parse(raw) as Array<{ id: string; nome: string; palavrasChave: string[]; tecnicaMaeId?: string; uc?: string[] }>;
+      candidatosCustom = tecCustom
+        .filter(t => (t.palavrasChave || []).some(p => textoContemPalavraSub(textoNorm, p)))
+        .map(t => ({
+          id: t.id,
+          categoria: 'TECNICAS' as const,
+          nome: t.nome,
+          palavrasChave: t.palavrasChave,
+          tecnicaMaeId: t.tecnicaMaeId,
+          uc: t.uc || [],
+        }));
+    }
+  } catch {}
+
+  const todos = [...candidatos, ...candidatosCustom];
+  if (todos.length > 0) return todos;
 
   // Fallback simples se os guards filtrarem tudo — preferível a devolver
   // lista vazia quando há sinal claro por palavra-chave directa.
