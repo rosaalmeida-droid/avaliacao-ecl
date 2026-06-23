@@ -363,7 +363,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           nome: l.produto,
           qtReceita: fQnEnvio(l.qtReceita, l.und),
           und: l.und,
-          preco: l.precoUnitario || '0',
+          // Normalizar preço: vírgula → ponto (formato pt-PT → número universal)
+          // O Apps Script e o Google Sheets esperam sempre ponto decimal.
+          preco: parseFloat((l.precoUnitario || '0').replace(',', '.')) || 0,
         })),
       };
       // PROXY VERCEL — em vez de enviar directamente para o Apps Script
