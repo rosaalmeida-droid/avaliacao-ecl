@@ -430,6 +430,257 @@ export function encontrarAtitude(id: string): Atitude | undefined {
   return ATITUDES.find(a => a.id === id);
 }
 
+
+// ══════════════════════════════════════════════════════════════════
+// MAPA FAMÍLIA → MICROCOMPETÊNCIAS PERMITIDAS
+// Define quais microcompetências fazem sentido para cada família.
+// Usado na SecaoAvaliacao do AlunoView para filtrar sugestões.
+// Se a ficha não tem família definida, cai para filtro por UC.
+// ══════════════════════════════════════════════════════════════════
+
+export const MICROS_POR_FAMILIA: Record<string, string[]> = {
+  'Preparações Base e Molhos': [
+    'S001','S002', // higiene e mise en place — sempre
+    'M0073','M0079','M0080','M0130', // coulis, creme inglês, creme pasteleiro, ganache
+    'M0022', // assar (para reduções)
+    'M0019', // aproveitamento integral
+    'M0020','M0002', // armazenamento, vácuo
+    'OBR_01','OBR_02',
+  ],
+  'Sopas e Caldos': [
+    'S001','S002',
+    'S058a','S058b','S058c', // cortes
+    'M0022', // cozer
+    'M0019', // aproveitamento
+    'M0020','M0002',
+    'OBR_01','OBR_02',
+  ],
+  'Entradas e Acepipes': [
+    'S001','S002',
+    'S058a','S058b','S058c',
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Ovos': [
+    'S001','S002',
+    'M0041', // chantilly
+    'M0079','M0080', // cremes base com ovos
+    'M0022', // cozer
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Peixes e Mariscos': [
+    'S001','S002',
+    'S058a','S058b','S058c',
+    'M0022', // assar
+    'M0100','M0101', // desespinhar, filetar peixe (se existirem)
+    'M0019','M0020','M0002',
+    'OBR_01','OBR_02',
+  ],
+  'Carnes, Aves e Caça': [
+    'S001','S002',
+    'S058a','S058b','S058c',
+    'M0011', // aparar carne
+    'M0023', // assar carne/aves
+    'M0024', // atar
+    'M0090', // desossar
+    'M0114', // estufar carne
+    'M0137', // guisar
+    'M0179', // porcionar carne
+    'M0213', // selar carne
+    'M0019','M0020','M0002',
+    'OBR_01','OBR_02',
+  ],
+  'Arrozes': [
+    'S001','S002',
+    'S058a','S058b','S058c',
+    'M0021', // arroz tradicional português
+    'M0022', // cozer
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Massas': [
+    'S001','S002',
+    'S058a','S058b','S058c',
+    'M0008', // amassar
+    'M0022', // cozer
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Legumes e Vegetarianos': [
+    'S001','S002',
+    'S058a','S058b','S058c',
+    'M0022', // cozer
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Acompanhamentos e Guarnições': [
+    'S001','S002',
+    'S058a','S058b','S058c',
+    'M0022',
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Panificação': [
+    'S001','S002',
+    'M0008', // amassar
+    'M0033', // brioche
+    'M0044', // ciabatta
+    'M0074', // cozer pão
+    'M0091', // dividir e bolear
+    'M0121', // fermentar
+    'M0124', // focaccia
+    'M0158', // massa mãe/levain
+    'M0166', // moldar pão
+    'M0178', // poolish
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Pastelaria — Massas Base': [
+    'S001','S002',
+    'M0008', // amassar
+    'M0095', // détrempe
+    'M0155', // massa choux
+    'M0156', // massa folhada
+    'M0159', // massa quebrada/areada
+    'M0237', // tourage
+    'S162B', // massa montada (génoise, esponja)
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Pastelaria — Cremes e Molhos': [
+    'S001','S002',
+    'M0041', // chantilly
+    'M0072', // coulis/compota
+    'M0079', // creme inglês
+    'M0080', // creme pasteleiro
+    'M0130', // ganache
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Pastelaria — Sobremesas Empratadas': [
+    'S001','S002',
+    'M0029', // bavaroise/entremet
+    'M0041', // chantilly
+    'M0072', // coulis/compota
+    'M0079', // creme inglês
+    'M0080', // creme pasteleiro
+    'M0130', // ganache
+    'M0132', // gelado/sorvete
+    'M0168', // mousse
+    'S164D', // mousse (subtécnica)
+    'M0227', // sobremesa empratada
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Pastelaria — Doçaria e Petit Fours': [
+    'S001','S002',
+    'M0042', // cheesecake/brownie
+    'M0072', // coulis/compota
+    'M0080', // creme pasteleiro
+    'M0094', // doçaria conventual
+    'M0130', // ganache
+    'M0153', // macaron
+    'M0160', // mille-feuille
+    'M0175', // panna cotta
+    'M0231', // strudel
+    'M0236', // tiramisù
+    'M0244', // éclair/Paris-Brest
+    'M0019','M0020',
+    'OBR_01','OBR_02',
+  ],
+  'Bebidas': [
+    'S001','S002',
+    'M0007', // agitar/mexer (bar)
+    'M0016', // apresentar bebida
+    'OBR_01','OBR_02',
+  ],
+};
+
+
+// ── Mapa etiqueta → microcompetências adicionais ─────────────
+// Complementa as famílias com técnicas específicas de ingredientes,
+// métodos especiais ou contextos culturais.
+export const MICROS_POR_ETIQUETA: Record<string, string[]> = {
+  // Proteínas cruzadas
+  'Vaca':         ['M0011','M0023','M0090','M0179','M0213'],
+  'Porco':        ['M0011','M0023','M0090','M0179','M0213'],
+  'Frango':       ['M0023','M0024','M0090','M0179'],
+  'Pato':         ['M0023','M0024','M0090','M0179'],
+  'Borrego':      ['M0011','M0023','M0090','M0179'],
+  'Caça':         ['M0011','M0023','M0090','M0179'],
+  'Peixe branco': ['M0100','M0101','M0102','M0103'], // filetar, escamar, desespinhar, porcionar
+  'Peixe gordo':  ['M0100','M0101','M0102','M0103'],
+  'Bacalhau':     ['M0027','M0100','M0102'], // bacalhau tradicional, filetar, desespinhar
+  'Marisco':      ['M0104','M0105'], // preparar marisco, descascar camarão
+  'Moluscos':     ['M0104','M0106'], // preparar marisco, abrir bivalves
+  'Leguminosas':  ['M0019','M0020'],
+  'Queijo':       ['M0019'],
+  'Enchidos':     ['M0019'],
+
+  // Técnicas/métodos
+  'Forno':        ['M0022','M0023'],
+  'Vapor':        ['M0022'],
+  'Vácuo':        ['M0002'],
+  'Fritura':      ['M0022'],
+  'Grelhado':     ['M0022'],
+  'Estufado':     ['M0114','M0137'],
+  'Fumado':       ['M0019'],
+  'Fermentado':   ['M0121','M0158','M0178'],
+  'Cru':          ['S058a','S058b','S058c'],
+
+  // Contexto cultural
+  'Cozinha Portuguesa':   ['M0021','M0027','M0076','M0094','M0102'],
+  'Pastelaria Portuguesa':['M0094','M0080','M0156'],
+  'Cozinha Internacional':['M0019'],
+  'Sustentável':          ['M0019','M0020'],
+  'Criativa/Vanguarda':   ['M0002','M0022'],
+  'Alternativa/Vegan':    ['S058a','S058b','S058c','M0019'],
+};
+
+/** Devolve as microcompetências adequadas para uma ficha técnica.
+ *  Combina família1 + família2 (se existir) + etiquetas.
+ *  Se nenhuma família está definida, cai para filtro por UC. */
+export function microsPorFamilia(
+  familia1: string | undefined,
+  familia2?: string,
+  etiquetas?: string[],
+  ucId?: string
+): MicroCompetencia[] {
+  if (!familia1 && !familia2) {
+    // fallback: filtro por UC
+    return ucId ? microsPorUC(ucId) : [];
+  }
+
+  const ids = new Set<string>();
+
+  // Família principal
+  if (familia1 && MICROS_POR_FAMILIA[familia1]) {
+    MICROS_POR_FAMILIA[familia1].forEach(id => ids.add(id));
+  }
+
+  // Família secundária (peso equivalente)
+  if (familia2 && MICROS_POR_FAMILIA[familia2]) {
+    MICROS_POR_FAMILIA[familia2].forEach(id => ids.add(id));
+  }
+
+  // Etiquetas — adicionam microcompetências específicas
+  if (etiquetas && etiquetas.length > 0) {
+    etiquetas.forEach(etiqueta => {
+      const microsEtiqueta = MICROS_POR_ETIQUETA[etiqueta];
+      if (microsEtiqueta) microsEtiqueta.forEach(id => ids.add(id));
+    });
+  }
+
+  // Sempre incluir as obrigatórias
+  ids.add('OBR_01');
+  ids.add('OBR_02');
+  ids.add('S001');
+  ids.add('S002');
+
+  return MICROCOMPETENCIAS.filter(m => ids.has(m.id));
+}
+
 export function microsPorUC(uc: string): MicroCompetencia[] {
   return MICROCOMPETENCIAS.filter(m => m.ucPrincipal === uc || m.ucsRelacionadas.includes(uc));
 }
