@@ -4,11 +4,12 @@ import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
   addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
-  getHistoricoAluno,
+  getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
+  registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
-  microsPorUC, jaTeveSucesso, estaEmRegressao,
+  microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
 } from '../competenciasECL';
 import { GuiaProducao } from './GuiaProducao';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
@@ -372,6 +373,18 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
               <div style={{ fontSize:13, color:'rgba(247,241,230,0.45)', marginTop:4 }}>
                 {aluno.ano}º ano · Nº {aluno.numero}
               </div>
+              {aluno.nivelMedidas && aluno.nivelMedidas > 1 && (
+                <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6,
+                  padding:'4px 12px', borderRadius:100,
+                  background: aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.25)' : 'rgba(181,101,29,0.25)',
+                  border: `1px solid ${aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.5)' : 'rgba(181,101,29,0.5)'}` }}>
+                  <span style={{ fontSize:14 }}>{aluno.nivelMedidas === 3 ? '🔴' : '🟡'}</span>
+                  <span style={{ fontSize:12, fontWeight:700,
+                    color: aluno.nivelMedidas === 3 ? '#ff9a9a' : '#ffd0a0' }}>
+                    {aluno.nivelMedidas === 3 ? 'Medidas Adicionais (Nível 3)' : 'Medidas Seletivas (Nível 2)'}
+                  </span>
+                </div>
+              )}
             </div>
             {/* Resumo rápido */}
             <div style={{ display:'flex', gap:10 }}>
@@ -610,13 +623,22 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
           <div style={{ fontSize:13, color:'rgba(247,241,230,0.45)' }}>
             {formatarData(plano.data)} · {plano.horaInicio}–{plano.horaFim}
           </div>
-          {plano.ucNome && (
-            <div style={{ marginTop:8, display:'inline-block', padding:'4px 12px',
-              background:'rgba(181,101,29,0.3)', borderRadius:100, fontSize:12,
-              color:'rgba(247,241,230,0.8)', fontWeight:600 }}>
-              {plano.ucId} · {plano.ucNome}
-            </div>
-          )}
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:8 }}>
+            {plano.ucNome && (
+              <div style={{ padding:'4px 12px', background:'rgba(181,101,29,0.3)',
+                borderRadius:100, fontSize:12, color:'rgba(247,241,230,0.8)', fontWeight:600 }}>
+                {plano.ucId} · {plano.ucNome}
+              </div>
+            )}
+            {aluno.nivelMedidas && aluno.nivelMedidas > 1 && (
+              <div style={{ padding:'4px 12px', borderRadius:100, fontSize:12, fontWeight:700,
+                background: aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.3)' : 'rgba(181,101,29,0.2)',
+                color: aluno.nivelMedidas === 3 ? '#ff9a9a' : '#ffd0a0',
+                border: `1px solid ${aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.5)' : 'rgba(181,101,29,0.4)'}` }}>
+                {aluno.nivelMedidas === 3 ? '🔴 Nível 3 — Medidas Adicionais' : '🟡 Nível 2 — Medidas Seletivas'}
+              </div>
+            )}
+          </div>
 
           {/* Barra de progresso dos 4 passos */}
           <div style={{ display:'flex', gap:6, marginTop:16 }}>
@@ -734,20 +756,20 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   aluno: Aluno; plano: PlanoAula; onConcluido: () => void;
 }) {
   const [pontVal, setPontVal] = useState<'sim'|'atras'|null>(null);
-  const [pontMins, setPontMins] = useState(0);
   const [fardState, setFardState] = useState<Record<string, boolean|null>>(
     Object.fromEntries(FARD_ITEMS.map(f => [f.id, null]))
   );
   const fardCompleto = Object.values(fardState).every(v => v !== null);
   const entradaOk = pontVal !== null && fardCompleto;
 
+  function calcularMinutosAtraso(): number {
+    const now = new Date();
+    const [h,m] = plano.horaInicio.split(':').map(Number);
+    return Math.max(1, (now.getHours()*60+now.getMinutes())-(h*60+m));
+  }
+
   function setPont(v: 'sim'|'atras') {
     setPontVal(v);
-    if (v==='atras') {
-      const now = new Date();
-      const [h,m] = plano.horaInicio.split(':').map(Number);
-      setPontMins(Math.max(1, (now.getHours()*60+now.getMinutes())-(h*60+m)));
-    }
   }
 
   function toggleFard(id: string) {
@@ -757,14 +779,18 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
     });
   }
 
-  function confirmar() {
+  async function confirmar() {
     if (pontVal==='atras') incHist(`ecl_atrasos_${aluno.id}`);
     const fardamentoOk = Object.values(fardState).every(v => v===true);
     addRegistoPresenca({
       alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id,
       presente: true, atrasado: pontVal==='atras',
-      atrasadoMins: pontVal==='atras' ? pontMins : 0, fardamentoOk,
+      atrasadoMins: pontVal==='atras' ? calcularMinutosAtraso() : 0, fardamentoOk,
     });
+    // Enviar automaticamente para o KitchenFlow — o aluno não precisa de fazer nada
+    const nomeAluno = aluno.nome || `Aluno ${aluno.numero}`;
+    registarHigieneKitchenFlow(aluno.turmaId, aluno.id, nomeAluno, fardamentoOk)
+      .catch(() => {}); // falha silenciosa
     onConcluido();
   }
 
@@ -789,15 +815,16 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
         </div>
         {pontVal==='atras' && (
           <div style={{ marginTop:10, padding:'12px 14px', background:T.dangerP,
-            borderRadius:12, border:`1px solid ${T.danger}30` }}>
-            <div style={{ fontSize:13, fontWeight:600, color:T.danger, marginBottom:6 }}>
-              Quantos minutos de atraso?
+            borderRadius:12, border:`1px solid ${T.danger}30`, display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:24 }}>⏰</span>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color:T.danger }}>
+                Atraso registado automaticamente
+              </div>
+              <div style={{ fontSize:13, color:T.danger, opacity:0.8, marginTop:2 }}>
+                A aula começou às {plano.horaInicio} — o sistema calcula os minutos no momento em que confirmares.
+              </div>
             </div>
-            <input type="number" min={1} value={pontMins}
-              onChange={e => setPontMins(Number(e.target.value))}
-              style={{ width:80, padding:'8px 12px', borderRadius:8, border:`1.5px solid ${T.danger}40`,
-                fontSize:16, fontWeight:700, textAlign:'center', color:T.danger }} />
-            <span style={{ fontSize:13, color:T.danger, marginLeft:8 }}>minutos</span>
           </div>
         )}
       </div>
@@ -840,6 +867,204 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       }}>
         {entradaOk ? 'Confirmar e continuar →' : 'Preenche todos os campos primeiro'}
       </button>
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// PAINEL KITCHENFLOW — registos obrigatórios da ficha
+// ─────────────────────────────────────────────────────────────
+function PainelKitchenFlow({ fichas, aluno, plano }: {
+  fichas: any[]; aluno: any; plano: any;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [regTemp, setRegTemp] = useState<{prato:string;tipo:'quente'|'frio';temp:string}|null>(null);
+  const [regNC, setRegNC] = useState<{zona:string;desc:string;acao:string}|null>(null);
+  const [enviado, setEnviado] = useState<string[]>([]);
+  const nomeAluno = aluno.nome || `Aluno ${aluno.numero}`;
+
+  // Extrair registos obrigatórios do campo kitchenflow das fichas
+  const registosTexto = fichas.map(f => f.kitchenflow || '').filter(Boolean).join('\n');
+  const temTemperatura = /temperatura.*servi|temperatura de servi/i.test(registosTexto);
+  const temOleos = /controlo.*óleo|controlo de óleo/i.test(registosTexto);
+  const temConservacao = /conserva[cç]/i.test(registosTexto);
+  const temTestemunho = /amostra.*testemunho/i.test(registosTexto);
+
+  const registos = [
+    { id:'higiene', emoji:'🧼', label:'Higiene Pessoal', desc:'Registado automaticamente na entrada', auto:true },
+    ...(temTemperatura ? [{ id:'temp', emoji:'🌡️', label:'Temperatura de Serviço', desc:'Registar temperatura do prato antes de servir', auto:false }] : []),
+    ...(temOleos ? [{ id:'oleos', emoji:'🛢️', label:'Controlo de Óleos', desc:'Registar controlo de óleos de fritura', auto:false }] : []),
+    ...(temConservacao ? [{ id:'conservacao', emoji:'📦', label:'Conservação de Produtos', desc:'Registar produtos que sobram', auto:false }] : []),
+    { id:'nc', emoji:'⚠️', label:'Não Conformidades', desc:'Registar qualquer problema detetado', auto:false },
+    ...(temTestemunho ? [{ id:'testemunho', emoji:'🧪', label:'Amostra Testemunho', desc:'Recolher amostra se houver serviço a clientes', auto:false }] : []),
+  ];
+
+  async function enviarTemperatura() {
+    if (!regTemp || !regTemp.prato || !regTemp.temp) return;
+    await registarTemperaturaKitchenFlow(
+      aluno.turmaId, aluno.id, nomeAluno,
+      regTemp.prato, regTemp.tipo, Number(regTemp.temp)
+    );
+    setEnviado(p => [...p, 'temp']);
+    setRegTemp(null);
+  }
+
+  async function enviarNC() {
+    if (!regNC || !regNC.desc) return;
+    await registarNaoConformidadeKitchenFlow(
+      aluno.turmaId, aluno.id, nomeAluno,
+      regNC.zona || 'Cozinha', regNC.desc, regNC.acao || 'A definir'
+    );
+    setEnviado(p => [...p, 'nc']);
+    setRegNC(null);
+  }
+
+  return (
+    <div style={{ marginBottom:16, borderRadius:14, overflow:'hidden',
+      border:`1.5px solid #0e7490`, background:'#f0f9ff' }}>
+      <button onClick={() => setAberto(a => !a)} style={{
+        width:'100%', display:'flex', alignItems:'center', gap:12,
+        padding:'12px 16px', background:'#0e7490', border:'none', cursor:'pointer',
+      }}>
+        <span style={{ fontSize:20 }}>🏭</span>
+        <div style={{ flex:1, textAlign:'left' }}>
+          <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>KitchenFlow ECL</div>
+          <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)' }}>
+            {registos.filter(r => enviado.includes(r.id) || r.auto).length}/{registos.length} registos concluídos
+          </div>
+        </div>
+        <span style={{ fontSize:18, color:'rgba(255,255,255,0.7)',
+          transform:aberto?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+      </button>
+
+      {aberto && (
+        <div style={{ padding:'12px 14px' }}>
+          {registos.map(reg => {
+            const feito = enviado.includes(reg.id) || reg.auto;
+            return (
+              <div key={reg.id} style={{ marginBottom:8, padding:'10px 12px',
+                borderRadius:10, background:feito?'#d1fae5':'#fff',
+                border:`1px solid ${feito?'#6ee7b7':'rgba(14,116,144,0.2)'}` }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontSize:20 }}>{feito ? '✅' : reg.emoji}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:700,
+                      color:feito?'#065f46':'#0e7490' }}>{reg.label}</div>
+                    <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:1 }}>
+                      {feito ? 'Registado ✓' : reg.desc}
+                    </div>
+                  </div>
+                  {!feito && !reg.auto && reg.id !== 'temp' && reg.id !== 'nc' && (
+                    <button onClick={() => abrirKitchenFlow(reg.id)} style={{
+                      padding:'6px 12px', borderRadius:8, border:'none',
+                      background:'#0e7490', color:'#fff', fontSize:12,
+                      fontWeight:700, cursor:'pointer', flexShrink:0,
+                    }}>
+                      Registar →
+                    </button>
+                  )}
+                  {!feito && reg.id === 'nc' && !regNC && (
+                    <button onClick={() => setRegNC({zona:'Cozinha',desc:'',acao:''})} style={{
+                      padding:'6px 12px', borderRadius:8, border:'none',
+                      background:'#dc2626', color:'#fff', fontSize:12,
+                      fontWeight:700, cursor:'pointer', flexShrink:0,
+                    }}>
+                      Registar →
+                    </button>
+                  )}
+                  {!feito && reg.id === 'temp' && !regTemp && (
+                    <button onClick={() => setRegTemp({prato:fichas[0]?.nomePrato||'',tipo:'quente',temp:''})} style={{
+                      padding:'6px 12px', borderRadius:8, border:'none',
+                      background:'#0e7490', color:'#fff', fontSize:12,
+                      fontWeight:700, cursor:'pointer', flexShrink:0,
+                    }}>
+                      Registar →
+                    </button>
+                  )}
+                </div>
+
+                {/* Formulário Temperatura */}
+                {reg.id === 'temp' && regTemp && (
+                  <div style={{ marginTop:10, padding:'10px', background:'#e0f2fe',
+                    borderRadius:8, display:'flex', flexDirection:'column', gap:8 }}>
+                    <div style={{ display:'flex', gap:6 }}>
+                      {(['quente','frio'] as const).map(t => (
+                        <button key={t} onClick={() => setRegTemp(p => p?{...p,tipo:t}:null)} style={{
+                          flex:1, padding:'6px', borderRadius:6, cursor:'pointer',
+                          border:`2px solid ${regTemp.tipo===t?'#0e7490':'rgba(14,116,144,0.3)'}`,
+                          background:regTemp.tipo===t?'#0e7490':'#fff',
+                          color:regTemp.tipo===t?'#fff':'#0e7490', fontSize:12, fontWeight:700,
+                        }}>{t==='quente'?'🔥 Quente':'❄️ Frio'}</button>
+                      ))}
+                    </div>
+                    <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                      <input type="number" value={regTemp.temp}
+                        onChange={e => setRegTemp(p => p?{...p,temp:e.target.value}:null)}
+                        placeholder="°C" style={{ flex:1, padding:'8px', borderRadius:6,
+                          border:'1px solid rgba(14,116,144,0.3)', fontSize:15, textAlign:'center' }} />
+                      <span style={{ fontSize:12, color:'#0e7490', fontWeight:600 }}>
+                        {regTemp.tipo==='quente'?'mín. 63°C':'máx. 4°C'}
+                      </span>
+                    </div>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button onClick={enviarTemperatura} style={{ flex:1, padding:'8px',
+                        borderRadius:8, border:'none', background:'#0e7490', color:'#fff',
+                        fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                        ✓ Confirmar
+                      </button>
+                      <button onClick={() => setRegTemp(null)} style={{ padding:'8px 12px',
+                        borderRadius:8, border:'1px solid rgba(14,116,144,0.3)',
+                        background:'#fff', color:'#0e7490', fontSize:13, cursor:'pointer' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Formulário Não Conformidade */}
+                {reg.id === 'nc' && regNC && (
+                  <div style={{ marginTop:10, padding:'10px', background:'#fef2f2',
+                    borderRadius:8, display:'flex', flexDirection:'column', gap:8 }}>
+                    <input value={regNC.zona} onChange={e => setRegNC(p => p?{...p,zona:e.target.value}:null)}
+                      placeholder="Zona (ex: Cozinha fria)" style={{ padding:'8px', borderRadius:6,
+                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13 }} />
+                    <textarea value={regNC.desc} onChange={e => setRegNC(p => p?{...p,desc:e.target.value}:null)}
+                      placeholder="Descreve o problema..." rows={2} style={{ padding:'8px', borderRadius:6,
+                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13, resize:'none' }} />
+                    <input value={regNC.acao} onChange={e => setRegNC(p => p?{...p,acao:e.target.value}:null)}
+                      placeholder="Ação corretiva tomada" style={{ padding:'8px', borderRadius:6,
+                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13 }} />
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button onClick={enviarNC} style={{ flex:1, padding:'8px',
+                        borderRadius:8, border:'none', background:'#dc2626', color:'#fff',
+                        fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                        ✓ Registar NC
+                      </button>
+                      <button onClick={() => setRegNC(null)} style={{ padding:'8px 12px',
+                        borderRadius:8, border:'1px solid rgba(220,38,38,0.3)',
+                        background:'#fff', color:'#dc2626', fontSize:13, cursor:'pointer' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(14,116,144,0.08)',
+            borderRadius:8, fontSize:12, color:'#0e7490', display:'flex', alignItems:'center', gap:8 }}>
+            <span>🔗</span>
+            <span>Abrir KitchenFlow ECL completo:</span>
+            <button onClick={() => abrirKitchenFlow()} style={{ padding:'4px 10px',
+              borderRadius:6, border:'none', background:'#0e7490', color:'#fff',
+              fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              Abrir →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -894,6 +1119,9 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
 
   return (
     <div>
+      {/* Painel KitchenFlow — registos obrigatórios desta produção */}
+      <PainelKitchenFlow fichas={fichas} aluno={aluno} plano={plano} />
+
       {fichas.map(f => (
         <div key={f.id} style={{ marginBottom:12 }}>
           <button onClick={() => setFichaAberta(fichaAberta===f.id?null:f.id)} style={{
@@ -1041,7 +1269,15 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
 }) {
   const ucId = plano.ucId||'';
   const compRemovidas: string[] = (plano as any).compRemovidas||[];
-  const microsDaUCEsp = ucId ? microsPorUC(ucId) : [];
+
+  // Usar família das fichas como filtro principal — mais preciso que filtro por UC
+  // Combina família1 + família2 + etiquetas de todas as fichas do plano
+  const familia1 = fichas.length > 0 ? (fichas[0] as any).familia1 : undefined;
+  const familia2 = fichas.length > 0 ? (fichas[0] as any).familia2 : undefined;
+  const etiquetas = fichas.flatMap((f: any) => f.etiquetas || []);
+  const microsDaUCEsp = (familia1 || familia2)
+    ? microsPorFamilia(familia1, familia2, etiquetas, ucId)
+    : ucId ? microsPorUC(ucId) : [];
   const microsEstr = MICROCOMPETENCIAS.filter(m => m.prioridade==='A');
   const microsDaUC = microsDaUCEsp.length>=3
     ? microsDaUCEsp
