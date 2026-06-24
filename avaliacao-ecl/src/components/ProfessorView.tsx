@@ -1100,7 +1100,7 @@ SUBTÉCNICAS DETECTADAS:
 S162B — Massa montada (se a variante usar génoise como base)
 
 ---
-${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu conhecimento culinário e aplica todas as regras acima.'}\`;
+${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu conhecimento culinário e aplica todas as regras acima.'}`;
 }
 
 // ── Código que estava fora do template (removido) ──
