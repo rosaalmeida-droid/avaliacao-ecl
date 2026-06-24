@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Perfil } from '../types';
 import { Button, Card, Field } from './ui';
-import { getTurmas, getOrCreateAluno } from '../backend';
+import { getTurmas, getAlunos, validarLoginAluno } from '../backend';
 import { LOGO_ECL as logoEcl } from '../logo_ecl';
 
 const PINS: Record<Exclude<Perfil, 'aluno'>, string> = {
@@ -18,13 +18,31 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
   const [pin, setPin] = useState('');
   const [nomeProfessor, setNomeProfessor] = useState('');
   const [erro, setErro] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const turmas = getTurmas();
 
-  function entrarAluno() {
-    if (!numero || pinAluno !== '1234') { setErro('Número ou PIN incorretos.'); return; }
-    const aluno = getOrCreateAluno(turmaId, Number(numero), ano);
-    onLogin('aluno', aluno.id, turmaId);
+  // Detecta se o aluno já tem PIN definido (primeiro acesso vs. regresso)
+  const alunoExistente = numero
+    ? getAlunos().find(a => a.id === `${turmaId}-${numero}`)
+    : undefined;
+  const primeiroAcesso = !alunoExistente?.pin;
+
+  async function entrarAluno() {
+    setErro('');
+    if (!numero) { setErro('Introduz o teu número de aluno.'); return; }
+    if (pinAluno.length < 4) { setErro('O PIN deve ter 4 dígitos.'); return; }
+    setLoading(true);
+    try {
+      const resultado = await validarLoginAluno(turmaId, Number(numero), ano, pinAluno);
+      if (!resultado.ok || !resultado.aluno) {
+        setErro(resultado.erro || 'Número ou PIN incorretos.');
+      } else {
+        onLogin('aluno', resultado.aluno.id, turmaId);
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   function entrarStaff(perfil: Exclude<Perfil, 'aluno'>) {
@@ -79,11 +97,11 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
           {modo === 'aluno' && (
             <>
               <Field label="Turma">
-                <select className="input" value={turmaId} onChange={e => setTurmaId(e.target.value)}>
+                <select className="input" value={turmaId} onChange={e => { setTurmaId(e.target.value); setNumero(''); }}>
                   {turmas.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
                 </select>
               </Field>
-              <Field label="Número">
+              <Field label="Número de aluno">
                 <input className="input" type="number" value={numero} onChange={e => setNumero(e.target.value)} placeholder="ex: 12" />
               </Field>
               <Field label="Ano do curso">
@@ -95,11 +113,35 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
                   ))}
                 </div>
               </Field>
-              <Field label="PIN pessoal">
-                <input className="input" type="password" value={pinAluno} onChange={e => setPinAluno(e.target.value)} placeholder="••••" />
+
+              {/* Mensagem diferente conforme primeiro acesso ou regresso */}
+              {numero && (
+                <div style={{ padding: '8px 12px', borderRadius: 8, fontSize: 12, marginBottom: 8,
+                  background: primeiroAcesso ? 'var(--copper-pale)' : 'var(--sage-pale)',
+                  color: primeiroAcesso ? 'var(--copper)' : 'var(--sage)' }}>
+                  {primeiroAcesso
+                    ? '✦ Primeiro acesso — escolhe um PIN de 4 dígitos. Vai ser sempre o teu.'
+                    : '✓ Bem-vindo/a de volta! Introduz o teu PIN.'}
+                </div>
+              )}
+
+              <Field label={primeiroAcesso ? 'Escolhe um PIN (4 dígitos)' : 'PIN pessoal'}>
+                <input
+                  className="input"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pinAluno}
+                  onChange={e => setPinAluno(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="••••"
+                  onKeyDown={e => e.key === 'Enter' && entrarAluno()}
+                />
               </Field>
+
               {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
-              <Button block onClick={entrarAluno}>Entrar</Button>
+              <Button block onClick={entrarAluno} disabled={loading}>
+                {loading ? 'A verificar...' : primeiroAcesso ? 'Criar PIN e Entrar' : 'Entrar'}
+              </Button>
             </>
           )}
 
@@ -125,7 +167,8 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
           {modo === 'coordenadora' && (
             <>
               <Field label="PIN">
-                <input className="input" type="password" value={pin} onChange={e => setPin(e.target.value)} placeholder="••••" />
+                <input className="input" type="password" value={pin} onChange={e => setPin(e.target.value)} placeholder="••••"
+                  onKeyDown={e => e.key === 'Enter' && entrarStaff('coordenadora')} />
               </Field>
               {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
               <Button block onClick={() => entrarStaff('coordenadora')}>Entrar</Button>
@@ -133,10 +176,9 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
           )}
 
           <div className="divider" />
-          <Button block variant="ghost" onClick={() => { setModo(null); setErro(''); }}>← Voltar</Button>
+          <Button block variant="ghost" onClick={() => { setModo(null); setErro(''); setPinAluno(''); setPin(''); }}>← Voltar</Button>
         </div>
       </div>
     </div>
   );
 }
-
