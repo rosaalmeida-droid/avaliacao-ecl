@@ -81,7 +81,7 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
       // Ingredientes vendidos por unidade (ovos, etc.) têm precoKg = 0 — usar
       // precoUnitario nesse caso. Ingredientes vendidos a peso/volume usam precoKg.
       const precoMP = mp ? (proc.und === 'un' ? mp.precoUnitario : mp.precoKg) : 0;
-      const precoUnitario = (precoMP && precoMP > 0) ? precoMP.toFixed(2) : '';
+      const precoUnitario = (precoMP && precoMP > 0) ? precoMP.toFixed(2).replace('.', ',') : '';
 
       // Gerar aviso no Centro de Avisos quando a correspondência não é segura
       // — o professor confirma/corrige diretamente na Requisição, sem
@@ -154,16 +154,18 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
 }
 
 // ── Formatadores ──────────────────────────────────────────────
-const fE = (n: number) => n > 0 ? `${n.toFixed(2)} €` : '—';
+// Usa vírgula como separador decimal (formato pt-PT) para display
+const ptPT = (n: number, dec: number) => n.toFixed(dec).replace('.', ',');
+const fE = (n: number) => n > 0 ? `${ptPT(n, 2)} €` : '—';
 const fQ = (n: number, und: string) => {
   if (und === 'q.b.' || n === 0) return 'q.b.';
   if (und === 'un') return `${Math.round(n)} un`;
-  return n >= 1 ? `${n.toFixed(3)} ${und}` : `${(n * 1000).toFixed(0)} g`; // <1kg mostrar em g
+  return n >= 1 ? `${ptPT(n, 3)} ${und}` : `${(n * 1000).toFixed(0)} g`; // <1kg mostrar em g
 };
 const fQn = (n: number, und: string) => {
   if (n === 0) return '';
   if (und === 'un') return String(Math.round(n));
-  return n >= 1 ? n.toFixed(3) : n.toFixed(4);
+  return n >= 1 ? ptPT(n, 3) : ptPT(n, 4);
 };
 
 // Versão para ENVIO ao Sheets — nunca devolve string vazia (o Apps Script
