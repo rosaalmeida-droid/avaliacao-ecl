@@ -25,10 +25,14 @@ export interface Aluno {
   numero: number;
   ano: 1 | 2 | 3;    // ano do curso — define o nº mínimo de competências exigidas
   nome?: string;
+  pin?: string;              // PIN pessoal definido pelo aluno (4 dígitos)
+  pinCriadoEm?: string;     // ISO timestamp — quando o aluno criou o PIN pela primeira vez
+  pinAlteradoEm?: string;   // ISO timestamp — quando o PIN foi alterado (se alguma vez)
   // Nível de medidas educativas (DL 54/2018) — adapta a extensão, linguagem
   // e complexidade do Plano de Recuperação Individual gerado por IA.
   // Nunca retira competências essenciais da UC, só adapta a FORMA de acesso.
   nivelMedidas?: 1 | 2 | 3;
+  ativo?: boolean;           // false = aluno saiu/transferido (mantém histórico)
 }
 
 export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
