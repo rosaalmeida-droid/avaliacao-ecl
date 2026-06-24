@@ -425,10 +425,7 @@ export function seedPlanoTeste(): void {
     equipamento: 'Forma de pudim com tampa · Frigideira antiaderente · Termómetro de sonda · Passador fino',
     conservacao: 'Refrigerar a 0-4°C em recipiente fechado. Consumir em 48h.',
     regeneracao: 'Não aplicável — servir frio. Não regenerar.',
-    kitchenflow: 'Higiene Pessoal — registar antes de iniciar a produção
-Temperatura de Serviço — servir frio, máximo 4°C
-Conservação de Produtos — produto com ovos e leite: refrigerar a 0-4°C, consumir em 48h
-Não Conformidades — registar qualquer desvio detetado',
+    kitchenflow: 'Higiene Pessoal — registar antes de iniciar a produção\nTemperatura de Serviço — servir frio, máximo 4°C\nConservação de Produtos — produto com ovos e leite: refrigerar a 0-4°C, consumir em 48h\nNão Conformidades — registar qualquer desvio detetado',
     tecnicasSugeridas: ['Caramelizar', 'Cozer em banho-maria', 'Cozer no forno', 'Controlar temperaturas'],
     ucsAssociadas: ['UC02005'],
     elaboradoPor: 'rosa.almeida@eclisboa.net',
