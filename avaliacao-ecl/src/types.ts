@@ -222,10 +222,74 @@ export interface PassoFicha {
   haccp: string;
 }
 
+// Famílias de fichas técnicas — lista fechada, extensível no futuro
+export type FamiliaFicha =
+  | 'Preparações Base e Molhos'
+  | 'Sopas e Caldos'
+  | 'Entradas e Acepipes'
+  | 'Ovos'
+  | 'Peixes e Mariscos'
+  | 'Carnes, Aves e Caça'
+  | 'Arrozes'
+  | 'Massas'
+  | 'Legumes e Vegetarianos'
+  | 'Acompanhamentos e Guarnições'
+  | 'Panificação'
+  | 'Pastelaria — Massas Base'
+  | 'Pastelaria — Cremes e Molhos'
+  | 'Pastelaria — Sobremesas Empratadas'
+  | 'Pastelaria — Doçaria e Petit Fours'
+  | 'Bebidas';
+
+// Etiquetas válidas — lista fechada, extensível no futuro
+export const ETIQUETAS_FICHA = {
+  proteina: [
+    'Vaca', 'Porco', 'Frango', 'Pato', 'Borrego', 'Caça',
+    'Peixe branco', 'Peixe gordo', 'Bacalhau', 'Marisco', 'Moluscos',
+    'Leguminosas', 'Queijo', 'Enchidos',
+  ],
+  tecnica: [
+    'Forno', 'Vapor', 'Vácuo', 'Fritura', 'Grelhado',
+    'Estufado', 'Fumado', 'Fermentado', 'Cru',
+  ],
+  cultural: [
+    'Cozinha Portuguesa', 'Pastelaria Portuguesa', 'Cozinha Internacional',
+    'Sustentável', 'Criativa/Vanguarda', 'Alternativa/Vegan',
+  ],
+} as const;
+
+export const TODAS_ETIQUETAS: string[] = [
+  ...ETIQUETAS_FICHA.proteina,
+  ...ETIQUETAS_FICHA.tecnica,
+  ...ETIQUETAS_FICHA.cultural,
+];
+
+export const FAMILIAS_FICHA: FamiliaFicha[] = [
+  'Preparações Base e Molhos',
+  'Sopas e Caldos',
+  'Entradas e Acepipes',
+  'Ovos',
+  'Peixes e Mariscos',
+  'Carnes, Aves e Caça',
+  'Arrozes',
+  'Massas',
+  'Legumes e Vegetarianos',
+  'Acompanhamentos e Guarnições',
+  'Panificação',
+  'Pastelaria — Massas Base',
+  'Pastelaria — Cremes e Molhos',
+  'Pastelaria — Sobremesas Empratadas',
+  'Pastelaria — Doçaria e Petit Fours',
+  'Bebidas',
+];
+
 export interface FichaProducao {
   id: string;
   nomePrato: string;
   classificacao: string;
+  familia1?: FamiliaFicha;        // família principal — define microcompetências primárias
+  familia2?: FamiliaFicha;        // família secundária — quando duas técnicas têm peso equivalente
+  etiquetas?: string[];           // contexto adicional — máx 3 (proteína cruzada, método, cultural)
   fichaNum?: string;
   codigo?: string;        // ex: 1A, 1B, 2A — Plano N + letra
   numPorcoes: string;
