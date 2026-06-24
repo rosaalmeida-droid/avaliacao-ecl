@@ -4,6 +4,7 @@ import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
   addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
+  getHistoricoAluno,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -13,78 +14,301 @@ import { GuiaProducao } from './GuiaProducao';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
 
-// ── Estilos ───────────────────────────────────────────────────
-const S = {
-  card: { background:'#fff', border:'1px solid var(--border)', borderRadius:14, padding:'16px', marginBottom:10 } as React.CSSProperties,
-  muted: { fontSize:12, color:'rgba(26,23,20,0.5)' } as React.CSSProperties,
-  verde: { background:'var(--sage)', color:'white', border:'none', borderRadius:10, padding:'12px 16px', fontWeight:700, cursor:'pointer', width:'100%', marginTop:8, fontSize:14 } as React.CSSProperties,
-  cinza: { background:'rgba(26,23,20,0.08)', color:'rgba(26,23,20,0.6)', border:'none', borderRadius:10, padding:'10px 16px', fontWeight:600, cursor:'pointer', width:'100%', marginTop:6, fontSize:13 } as React.CSSProperties,
+// ─────────────────────────────────────────────────────────────
+// TOKENS — tudo derivado das CSS vars do projeto
+// ─────────────────────────────────────────────────────────────
+const T = {
+  cream:   '#faf7f2',
+  charcoal:'#1a1714',
+  copper:  '#b5651d',
+  copperP: '#fdf0e6',
+  sage:    '#5a7a4e',
+  sageP:   '#eef4eb',
+  danger:  '#c0392b',
+  dangerP: '#fdf0ef',
+  info:    '#2563eb',
+  infoP:   '#eff6ff',
+  border:  'rgba(26,23,20,0.10)',
 };
 
-const FARD_ITEMS = ['Touca','Avental limpo','Sapatos seguranca','Farda completa','Sem unhas postiças','Sem fones/adornos','Maos limpas','Cabelo preso'];
+const FARD_ITEMS = [
+  { id:'touca',    label:'Touca',              emoji:'👒' },
+  { id:'avental',  label:'Avental limpo',       emoji:'🧥' },
+  { id:'sapatos',  label:'Sapatos de segurança',emoji:'👟' },
+  { id:'farda',    label:'Farda completa',      emoji:'👔' },
+  { id:'unhas',    label:'Sem unhas postiças',  emoji:'✋' },
+  { id:'fones',    label:'Sem fones/adornos',   emoji:'🎧' },
+  { id:'maos',     label:'Mãos limpas',         emoji:'🫧' },
+  { id:'cabelo',   label:'Cabelo preso',         emoji:'💇' },
+];
+
+// ─────────────────────────────────────────────────────────────
+// UTILITÁRIOS
+// ─────────────────────────────────────────────────────────────
 function getHist(key: string): number { try { return parseInt(localStorage.getItem(key)||'0'); } catch { return 0; } }
 function incHist(key: string) { try { localStorage.setItem(key, String(getHist(key)+1)); } catch {} }
 
-// ── Hook scroll para topo de secção ──────────────────────────
+function formatarData(iso: string): string {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('pt-PT', { weekday:'long', day:'numeric', month:'long' });
+}
+
+function isHoje(iso: string): boolean {
+  return iso === new Date().toISOString().slice(0,10);
+}
+
+function isFuturo(iso: string): boolean {
+  return iso > new Date().toISOString().slice(0,10);
+}
+
+function diasParaData(iso: string): number {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const alvo = new Date(iso + 'T00:00:00'); alvo.setHours(0,0,0,0);
+  return Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
+}
+
+// ─────────────────────────────────────────────────────────────
+// HOOK — scroll suave para elemento
+// ─────────────────────────────────────────────────────────────
 function useScrollTo() {
   const ref = useRef<HTMLDivElement>(null);
-  const scrollTo = () => {
-    if (ref.current) {
-      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
+  const scrollTo = () => ref.current?.scrollIntoView({ behavior:'smooth', block:'start' });
   return { ref, scrollTo };
 }
 
-// ── Acordeão ─────────────────────────────────────────────────
-function Acordeao({ id, aberto, titulo, icone, cor, estado, onClick, children }: {
-  id: string; aberto: boolean; titulo: string; icone: string;
-  cor: string; estado: 'pendente' | 'concluido' | 'em_curso';
-  onClick: () => void; children: React.ReactNode;
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Botão grande acessível
+// ─────────────────────────────────────────────────────────────
+function BotaoGrande({ onClick, cor, corTexto, emoji, label, sublabel, disabled, outline }: {
+  onClick: () => void; cor: string; corTexto?: string; emoji: string;
+  label: string; sublabel?: string; disabled?: boolean; outline?: boolean;
 }) {
-  const { ref, scrollTo } = useScrollTo();
-
-  useEffect(() => {
-    if (aberto) setTimeout(scrollTo, 120);
-  }, [aberto]);
-
-  const corEstado = estado === 'concluido' ? 'var(--sage)' : estado === 'em_curso' ? cor : 'rgba(26,23,20,0.55)';
-  const bgEstado = estado === 'concluido' ? 'var(--sage-pale)' : estado === 'em_curso' ? `${cor}15` : '#fff';
-
   return (
-    <div ref={ref} style={{ borderRadius: 14, overflow: 'hidden', border: `1.5px solid ${aberto ? cor : 'var(--border)'}`, marginBottom: 10, boxShadow: aberto ? `0 4px 20px ${cor}20` : 'none' }}>
-      <button onClick={onClick} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: aberto ? `${cor}12` : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-        <div style={{ width: 42, height: 42, borderRadius: 10, background: estado === 'concluido' ? 'var(--sage)' : `${cor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: estado === 'concluido' ? 20 : 22, flexShrink: 0, color: estado === 'concluido' ? 'white' : cor }}>
-          {estado === 'concluido' ? '✓' : icone}
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--charcoal)' }}>{titulo}</div>
-          <div style={{ fontSize:13, color: corEstado, fontWeight: 600, marginTop: 2 }}>
-            {estado === 'concluido' ? '✓ Concluído' : estado === 'em_curso' ? 'Em curso...' : 'Por fazer'}
-          </div>
-        </div>
-        <span style={{ fontSize: 20, color: cor, transform: aberto ? 'rotate(90deg)' : 'rotate(0)', transition: '0.2s' }}>›</span>
-      </button>
-      {aberto && (
-        <div style={{ borderTop: `2px solid ${cor}`, padding: '14px 16px', background: '#fdfcfb' }}>
-          {children}
-        </div>
-      )}
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width:'100%', display:'flex', alignItems:'center', gap:16,
+        padding:'18px 20px', borderRadius:16, cursor: disabled ? 'not-allowed' : 'pointer',
+        border: outline ? `2.5px solid ${cor}` : 'none',
+        background: disabled ? 'rgba(26,23,20,0.05)' : outline ? '#fff' : cor,
+        color: disabled ? 'rgba(26,23,20,0.3)' : outline ? cor : (corTexto || '#fff'),
+        opacity: disabled ? 0.5 : 1,
+        boxShadow: disabled ? 'none' : `0 4px 16px ${cor}30`,
+        transition:'all 0.15s', textAlign:'left',
+      }}
+    >
+      <span style={{ fontSize:36, lineHeight:1, flexShrink:0 }}>{emoji}</span>
+      <div>
+        <div style={{ fontSize:17, fontWeight:700, lineHeight:1.2 }}>{label}</div>
+        {sublabel && <div style={{ fontSize:13, opacity:0.75, marginTop:2 }}>{sublabel}</div>}
+      </div>
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Chip de estado
+// ─────────────────────────────────────────────────────────────
+function ChipEstado({ texto, cor, bg }: { texto:string; cor:string; bg:string }) {
+  return (
+    <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:100,
+      background:bg, color:cor, fontSize:12, fontWeight:700, letterSpacing:'0.02em' }}>
+      {texto}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Card de aviso
+// ─────────────────────────────────────────────────────────────
+function CardAviso({ emoji, titulo, corpo, cor, bg }: {
+  emoji:string; titulo:string; corpo:string; cor:string; bg:string;
+}) {
+  return (
+    <div style={{ display:'flex', gap:14, padding:'14px 16px', borderRadius:14,
+      background:bg, border:`1.5px solid ${cor}40`, marginBottom:10 }}>
+      <span style={{ fontSize:28, flexShrink:0, marginTop:2 }}>{emoji}</span>
+      <div>
+        <div style={{ fontWeight:700, fontSize:14, color:cor }}>{titulo}</div>
+        <div style={{ fontSize:13, color:T.charcoal, opacity:0.75, marginTop:2 }}>{corpo}</div>
+      </div>
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-// VISTA DO ALUNO — lista de aulas
-// ════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Calendário do aluno
+// ─────────────────────────────────────────────────────────────
+function CalendarioAluno({ planos, onAbrirPlano }: {
+  planos: PlanoAula[];
+  onAbrirPlano: (p: PlanoAula) => void;
+}) {
+  const hoje = new Date();
+  const [mes, setMes] = useState(hoje.getMonth());
+  const [ano, setAno] = useState(hoje.getFullYear());
+
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const diasNoMes = new Date(ano, mes+1, 0).getDate();
+
+  const planosPorData: Record<string, PlanoAula[]> = {};
+  planos.forEach(p => {
+    if (!planosPorData[p.data]) planosPorData[p.data] = [];
+    planosPorData[p.data].push(p);
+  });
+
+  function mesAnterior() {
+    if (mes === 0) { setMes(11); setAno(a => a-1); }
+    else setMes(m => m-1);
+  }
+  function proximoMes() {
+    if (mes === 11) { setMes(0); setAno(a => a+1); }
+    else setMes(m => m+1);
+  }
+
+  const celulas: (number|null)[] = Array(primeiroDia).fill(null);
+  for (let d=1; d<=diasNoMes; d++) celulas.push(d);
+
+  return (
+    <div style={{ background:'#fff', borderRadius:20, border:`1px solid ${T.border}`,
+      boxShadow:'0 2px 12px rgba(26,23,20,0.06)', overflow:'hidden' }}>
+      {/* Cabeçalho do mês */}
+      <div style={{ background:T.charcoal, padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <button onClick={mesAnterior} style={{ background:'rgba(255,255,255,0.15)', border:'none',
+          borderRadius:10, width:36, height:36, fontSize:18, color:'#fff', cursor:'pointer' }}>‹</button>
+        <div style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, color:'#fff' }}>
+          {MESES[mes]} {ano}
+        </div>
+        <button onClick={proximoMes} style={{ background:'rgba(255,255,255,0.15)', border:'none',
+          borderRadius:10, width:36, height:36, fontSize:18, color:'#fff', cursor:'pointer' }}>›</button>
+      </div>
+
+      {/* Dias da semana */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)',
+        background:'rgba(26,23,20,0.04)', borderBottom:`1px solid ${T.border}` }}>
+        {DIAS_SEMANA.map(d => (
+          <div key={d} style={{ textAlign:'center', padding:'8px 0', fontSize:11,
+            fontWeight:700, color:'rgba(26,23,20,0.4)', letterSpacing:'0.05em' }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Grelha de dias */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, padding:8 }}>
+        {celulas.map((dia, i) => {
+          if (!dia) return <div key={`v${i}`} />;
+          const isoDate = `${ano}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+          const temAula = !!planosPorData[isoDate];
+          const eHoje = isHoje(isoDate);
+          const aulas = planosPorData[isoDate] || [];
+
+          return (
+            <div key={dia}
+              onClick={() => aulas.length && onAbrirPlano(aulas[0])}
+              style={{
+                position:'relative', aspectRatio:'1', display:'flex', flexDirection:'column',
+                alignItems:'center', justifyContent:'center', borderRadius:12,
+                cursor: temAula ? 'pointer' : 'default',
+                background: eHoje ? T.copper : temAula ? T.sageP : 'transparent',
+                border: eHoje ? `2px solid ${T.copper}` : temAula ? `1.5px solid ${T.sage}40` : 'none',
+                transition:'all 0.15s',
+              }}>
+              <span style={{ fontSize:15, fontWeight: eHoje||temAula ? 700 : 400,
+                color: eHoje ? '#fff' : temAula ? T.sage : 'rgba(26,23,20,0.5)' }}>
+                {dia}
+              </span>
+              {temAula && (
+                <span style={{ width:6, height:6, borderRadius:'50%', marginTop:2,
+                  background: eHoje ? 'rgba(255,255,255,0.8)' : T.sage }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legenda */}
+      <div style={{ display:'flex', gap:16, padding:'10px 16px 14px', borderTop:`1px solid ${T.border}` }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'rgba(26,23,20,0.5)' }}>
+          <span style={{ width:10, height:10, borderRadius:'50%', background:T.copper, display:'inline-block' }}/>
+          Hoje
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'rgba(26,23,20,0.5)' }}>
+          <span style={{ width:10, height:10, borderRadius:'50%', background:T.sage, display:'inline-block' }}/>
+          Aula
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Card de aula na lista
+// ─────────────────────────────────────────────────────────────
+function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void }) {
+  const hoje = isHoje(plano.data);
+  const futuro = isFuturo(plano.data);
+  const dias = diasParaData(plano.data);
+  const d = new Date(plano.data + 'T12:00:00');
+
+  let estadoLabel = '';
+  let estadoCor = T.sage;
+  let estadoBg = T.sageP;
+  if (hoje) { estadoLabel='HOJE'; estadoCor=T.copper; estadoBg=T.copperP; }
+  else if (dias === 1) { estadoLabel='AMANHÃ'; estadoCor=T.info; estadoBg=T.infoP; }
+  else if (futuro && dias <= 7) { estadoLabel=`em ${dias} dias`; estadoCor=T.info; estadoBg=T.infoP; }
+  else if (!futuro) { estadoLabel='Passada'; estadoCor='rgba(26,23,20,0.4)'; estadoBg='rgba(26,23,20,0.05)'; }
+
+  return (
+    <div onClick={onAbrir} style={{
+      display:'flex', gap:14, padding:'14px 16px', borderRadius:16,
+      background: hoje ? T.copperP : '#fff',
+      border: `1.5px solid ${hoje ? T.copper+'60' : T.border}`,
+      boxShadow: hoje ? `0 4px 16px ${T.copper}20` : '0 1px 4px rgba(26,23,20,0.06)',
+      cursor:'pointer', marginBottom:8, transition:'all 0.15s',
+    }}>
+      {/* Data */}
+      <div style={{ background: hoje ? T.copper : 'rgba(26,23,20,0.06)', borderRadius:12,
+        padding:'10px 12px', textAlign:'center', flexShrink:0, minWidth:52 }}>
+        <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700, lineHeight:1,
+          color: hoje ? '#fff' : T.charcoal }}>
+          {d.getDate().toString().padStart(2,'0')}
+        </div>
+        <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
+          color: hoje ? 'rgba(255,255,255,0.8)' : 'rgba(26,23,20,0.4)', marginTop:2 }}>
+          {d.toLocaleDateString('pt-PT',{month:'short'})}
+        </div>
+      </div>
+
+      {/* Info */}
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:4 }}>
+          <div style={{ fontWeight:700, fontSize:15, color:T.charcoal }}>{plano.titulo}</div>
+          {estadoLabel && <ChipEstado texto={estadoLabel} cor={estadoCor} bg={estadoBg} />}
+        </div>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>
+          🕐 {plano.horaInicio}–{plano.horaFim}
+          {plano.ucNome && <> · <span style={{ color:T.copper }}>{plano.ucNome}</span></>}
+        </div>
+      </div>
+
+      <span style={{ fontSize:20, color:'rgba(26,23,20,0.25)', alignSelf:'center', flexShrink:0 }}>›</span>
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+// VISTA PRINCIPAL DO ALUNO
+// ═════════════════════════════════════════════════════════════
 export function AlunoView({ aluno }: { aluno: Aluno }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
-  const [vista, setVista] = useState<'aulas' | 'recuperacao' | 'perfil'>('aulas');
+  const [aba, setAba] = useState<'hoje' | 'calendario' | 'perfil'>('hoje');
   const [planos, setPlanos] = useState<PlanoAula[]>(() =>
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
 
-  // Sincronizar com Sheets ao entrar — garante que o aluno vê sempre a versão mais recente
   useEffect(() => {
     import('../backend').then(({ sincronizarDoSheets }) => {
       sincronizarDoSheets(aluno.turmaId).then(() => {
@@ -93,62 +317,261 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
     });
   }, [aluno.turmaId]);
 
-  if (planoAtivo) return <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)} />;
+  const historicoAluno = getHistoricoAluno(aluno.id);
+  const planoHoje = planos.find(p => isHoje(p.data));
+  const proximasAulas = planos.filter(p => isFuturo(p.data)).sort((a,b) => a.data.localeCompare(b.data)).slice(0, 5);
+  const aulasPassadas = planos.filter(p => !isFuturo(p.data) && !isHoje(p.data)).sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
+
+  // Avisos para o aluno
+  const avisos: { emoji:string; titulo:string; corpo:string; cor:string; bg:string }[] = [];
+  if (planoHoje) {
+    avisos.push({ emoji:'🔔', titulo:'Tens aula hoje!',
+      corpo:`${planoHoje.titulo} · ${planoHoje.horaInicio}–${planoHoje.horaFim}`,
+      cor:T.copper, bg:T.copperP });
+  }
+  const atrasos = getHist(`ecl_atrasos_${aluno.id}`);
+  if (atrasos >= 3) {
+    avisos.push({ emoji:'⏰', titulo:`${atrasos} atrasos registados`,
+      corpo:'Tenta chegar a horas — isso conta na tua avaliação de atitudes.',
+      cor:T.danger, bg:T.dangerP });
+  }
+  if (proximasAulas[0]) {
+    const dias = diasParaData(proximasAulas[0].data);
+    if (dias === 1) {
+      avisos.push({ emoji:'📅', titulo:'Aula amanhã!',
+        corpo:`${proximasAulas[0].titulo} · ${proximasAulas[0].horaInicio}`,
+        cor:T.info, bg:T.infoP });
+    }
+  }
+  if (historicoAluno.length === 0 && !planoHoje) {
+    avisos.push({ emoji:'✨', titulo:'Bem-vindo/a à Avaliação ECL!',
+      corpo:'Ainda não tens avaliações. Quando o professor publicar uma aula, aparece aqui.',
+      cor:T.sage, bg:T.sageP });
+  }
+
+  if (planoAtivo) {
+    return <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)} />;
+  }
 
   return (
-    <div>
-      <div style={S.card}>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>Olá, {aluno.nome || `Aluno ${aluno.numero}`}!</div>
-        <div style={S.muted}>{aluno.turmaId} · {aluno.ano}º ano</div>
-      </div>
+    <div style={{ minHeight:'100vh', background:T.cream }}>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        <button onClick={() => setVista('aulas')} className={`tab-btn${vista === 'aulas' ? ' active' : ''}`} style={{ flex: 1 }}>
-          📅 Aulas
-        </button>
-        <button onClick={() => setVista('recuperacao')} className={`tab-btn${vista === 'recuperacao' ? ' active' : ''}`} style={{ flex: 1 }}>
-          🔄 Recuperação
-        </button>
-        <button onClick={() => setVista('perfil')} className={`tab-btn${vista === 'perfil' ? ' active' : ''}`} style={{ flex: 1 }}>
-          🪪 Perfil
-        </button>
-      </div>
-
-      {vista === 'recuperacao' ? (
-        <RecuperacaoModulosAluno aluno={aluno} />
-      ) : vista === 'perfil' ? (
-        <PerfilProfissionalAluno aluno={aluno} />
-      ) : (
-        <div style={S.card}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Aulas disponíveis</div>
-          {planos.length === 0 && <div style={S.muted}>Ainda não há aulas publicadas.</div>}
-          {planos.map(p => {
-            const d = new Date(p.data + 'T12:00:00');
-            return (
-              <div key={p.id} onClick={() => setPlanoAtivo(p)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 6, cursor: 'pointer', background: '#fff' }}>
-                <div style={{ background: 'var(--copper-pale)', borderRadius: 8, padding: '6px 8px', textAlign: 'center', flexShrink: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--copper)', lineHeight: 1 }}>{d.getDate().toString().padStart(2, '0')}</div>
-                  <div style={{ fontSize:12, color: 'var(--copper)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{p.titulo}</div>
-                  <div style={S.muted}>{p.horaInicio}–{p.horaFim}{p.ucId ? ` · ${p.ucId}` : ''}</div>
-                  {p.ucNome && <div style={{ fontSize:13, color: 'var(--copper)' }}>{p.ucNome}</div>}
-                </div>
-                <span style={{ fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>→</span>
+      {/* ── CABEÇALHO ─────────────────────────────────────── */}
+      <div style={{ background:T.charcoal, padding:'20px 20px 0' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+            <div>
+              <div style={{ fontSize:13, color:'rgba(247,241,230,0.5)', fontWeight:600,
+                textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
+                Avaliação ECL · {aluno.turmaId}
               </div>
-            );
-          })}
+              <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+                color:'#faf7f2', lineHeight:1.1 }}>
+                Olá, {aluno.nome?.split(' ')[0] || `Aluno ${aluno.numero}`}! 👋
+              </div>
+              <div style={{ fontSize:13, color:'rgba(247,241,230,0.45)', marginTop:4 }}>
+                {aluno.ano}º ano · Nº {aluno.numero}
+              </div>
+            </div>
+            {/* Resumo rápido */}
+            <div style={{ display:'flex', gap:10 }}>
+              <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
+                padding:'10px 16px', textAlign:'center' }}>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+                  color:'#faf7f2', lineHeight:1 }}>{historicoAluno.length}</div>
+                <div style={{ fontSize:11, color:'rgba(247,241,230,0.45)', marginTop:3 }}>avaliações</div>
+              </div>
+              <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
+                padding:'10px 16px', textAlign:'center' }}>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+                  color:'#faf7f2', lineHeight:1 }}>{planos.length}</div>
+                <div style={{ fontSize:11, color:'rgba(247,241,230,0.45)', marginTop:3 }}>aulas</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div style={{ display:'flex', gap:4 }}>
+            {([
+              { id:'hoje', emoji:'🏠', label:'Início' },
+              { id:'calendario', emoji:'📅', label:'Calendário' },
+              { id:'perfil', emoji:'🪪', label:'O meu perfil' },
+            ] as const).map(tab => (
+              <button key={tab.id} onClick={() => setAba(tab.id)} style={{
+                padding:'10px 20px', border:'none', cursor:'pointer', fontSize:14, fontWeight:600,
+                borderRadius:'10px 10px 0 0',
+                background: aba === tab.id ? T.cream : 'transparent',
+                color: aba === tab.id ? T.charcoal : 'rgba(247,241,230,0.6)',
+                transition:'all 0.15s',
+              }}>
+                {tab.emoji} {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* ── CONTEÚDO ──────────────────────────────────────── */}
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 20px 48px' }}>
+
+        {/* ── ABA INÍCIO ── */}
+        {aba === 'hoje' && (
+          <div style={{ display:'grid', gap:24,
+            gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '1fr 1fr' : '1fr' }}>
+
+            {/* Coluna esquerda — avisos + aula de hoje */}
+            <div>
+              {/* Avisos */}
+              {avisos.length > 0 && (
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                    📢 Avisos
+                  </div>
+                  {avisos.map((a,i) => <CardAviso key={i} {...a} />)}
+                </div>
+              )}
+
+              {/* Aula de hoje — botão grande */}
+              {planoHoje ? (
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                    🍳 Aula de hoje
+                  </div>
+                  <div style={{ background:T.copper, borderRadius:20, padding:'20px',
+                    boxShadow:`0 8px 32px ${T.copper}40` }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)',
+                      textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
+                      {planoHoje.horaInicio}–{planoHoje.horaFim}
+                      {planoHoje.ucNome && ` · ${planoHoje.ucNome}`}
+                    </div>
+                    <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+                      color:'#fff', marginBottom:16 }}>{planoHoje.titulo}</div>
+                    <button onClick={() => setPlanoAtivo(planoHoje)} style={{
+                      width:'100%', padding:'14px', borderRadius:12, border:'none',
+                      background:'rgba(255,255,255,0.2)', color:'#fff', fontSize:16,
+                      fontWeight:700, cursor:'pointer', backdropFilter:'blur(4px)',
+                    }}>
+                      Entrar na aula →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background:'rgba(26,23,20,0.04)', borderRadius:16, padding:'20px',
+                  textAlign:'center', marginBottom:20 }}>
+                  <div style={{ fontSize:36, marginBottom:8 }}>😴</div>
+                  <div style={{ fontWeight:600, fontSize:15 }}>Sem aula hoje</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>
+                    {proximasAulas[0]
+                      ? `Próxima aula: ${formatarData(proximasAulas[0].data)}`
+                      : 'Sem aulas agendadas próximas.'}
+                  </div>
+                </div>
+              )}
+
+              {/* Ações rápidas */}
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                  letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:2 }}>
+                  ⚡ Ações rápidas
+                </div>
+                <BotaoGrande onClick={() => setAba('calendario')}
+                  cor={T.info} emoji="📅"
+                  label="Ver calendário" sublabel="Todas as tuas aulas" outline />
+                <BotaoGrande onClick={() => setAba('perfil')}
+                  cor={T.sage} emoji="📊"
+                  label="O meu progresso" sublabel="Competências e avaliações" outline />
+              </div>
+            </div>
+
+            {/* Coluna direita — próximas aulas + passadas */}
+            <div>
+              {proximasAulas.length > 0 && (
+                <div style={{ marginBottom:24 }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                    🗓️ Próximas aulas
+                  </div>
+                  {proximasAulas.map(p => (
+                    <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
+                  ))}
+                </div>
+              )}
+
+              {aulasPassadas.length > 0 && (
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                    📚 Aulas anteriores
+                  </div>
+                  {aulasPassadas.map(p => (
+                    <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
+                  ))}
+                </div>
+              )}
+
+              {proximasAulas.length === 0 && aulasPassadas.length === 0 && (
+                <div style={{ background:'#fff', borderRadius:16, padding:'32px 20px',
+                  textAlign:'center', border:`1px solid ${T.border}` }}>
+                  <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
+                  <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>Sem aulas ainda</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>
+                    O professor ainda não publicou aulas para a tua turma.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── ABA CALENDÁRIO ── */}
+        {aba === 'calendario' && (
+          <div style={{ display:'grid', gap:24,
+            gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '380px 1fr' : '1fr' }}>
+            <div>
+              <CalendarioAluno planos={planos} onAbrirPlano={p => setPlanoAtivo(p)} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:14 }}>
+                📋 Todas as aulas
+              </div>
+              {planos.length === 0 ? (
+                <div style={{ background:'#fff', borderRadius:16, padding:'32px 20px',
+                  textAlign:'center', border:`1px solid ${T.border}` }}>
+                  <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
+                  <div style={{ fontWeight:600 }}>Sem aulas publicadas</div>
+                </div>
+              ) : (
+                [...planos].sort((a,b) => b.data.localeCompare(a.data)).map(p => (
+                  <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── ABA PERFIL ── */}
+        {aba === 'perfil' && (
+          <div>
+            <PerfilProfissionalAluno aluno={aluno} />
+            <div style={{ marginTop:24 }}>
+              <RecuperacaoModulosAluno aluno={aluno} />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-// VISTA DEDICADA — um plano de aula com acordeão
-// ════════════════════════════════════════════════════════════════
-function VistaDePlanoAluno({ plano, aluno, onVoltar }: { plano: PlanoAula; aluno: Aluno; onVoltar: () => void }) {
+// ═════════════════════════════════════════════════════════════
+// VISTA DE UM PLANO — acordeão com os 4 passos
+// ═════════════════════════════════════════════════════════════
+function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
+  plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
+}) {
   const [secAberta, setSecAberta] = useState<string>('entrada');
   const fichas = getFichasPorPlano(plano.id);
   const requisicao = getRequisicaoPorPlano(plano.id);
@@ -156,268 +579,397 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: { plano: PlanoAula; aluno
   const [fichaConcluida, setFichaConcluida] = useState(false);
   const [avaliacaoConcluida, setAvaliacaoConcluida] = useState(false);
 
-  function abrirFechar(id: string) {
-    setSecAberta(s => s === id ? '' : id);
-  }
+  const PASSOS = [
+    { id:'entrada',    emoji:'🪪', label:'Entrada e Higiene',         cor:T.copper },
+    { id:'ficha',      emoji:'📄', label:`Ficha${fichas.length>1?'s':''} de Produção`, cor:'#2980b9' },
+    { id:'requisicao', emoji:'🛒', label:'Requisição da Aula',        cor:'#7d4f8c' },
+    { id:'avaliacao',  emoji:'🎯', label:'Autoavaliação',             cor:T.sage },
+  ];
+
+  const estadoPasso = (id: string): 'concluido'|'ativo'|'pendente' => {
+    if (id==='entrada' && entradaConcluida) return 'concluido';
+    if (id==='ficha' && fichaConcluida) return 'concluido';
+    if (id==='requisicao' && requisicao) return 'concluido';
+    if (id==='avaliacao' && avaliacaoConcluida) return 'concluido';
+    if (id===secAberta) return 'ativo';
+    return 'pendente';
+  };
 
   return (
-    <div>
+    <div style={{ minHeight:'100vh', background:T.cream }}>
       {/* Cabeçalho do plano */}
-      <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '14px 16px', marginBottom: 14 }}>
-        <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '4px 10px', color: 'rgba(247,241,230,0.6)', fontSize:13, cursor: 'pointer', marginBottom: 10 }}>
-          ← Voltar
-        </button>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--cream)' }}>{plano.titulo}</div>
-        <div style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', marginTop: 2 }}>{plano.data} · {plano.horaInicio}–{plano.horaFim}</div>
-        {plano.ucId && (
-          <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(181,101,29,0.25)', borderRadius: 8, display: 'inline-block' }}>
-            <span style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase' }}>UC </span>
-            <span style={{ fontSize: 12, color: 'var(--cream)', fontWeight: 700 }}>{plano.ucId}</span>
-            {plano.ucNome && <span style={{ fontSize:13, color: 'rgba(247,241,230,0.6)', marginLeft: 6 }}>{plano.ucNome}</span>}
+      <div style={{ background:T.charcoal, padding:'16px 20px 20px' }}>
+        <div style={{ maxWidth:900, margin:'0 auto' }}>
+          <button onClick={onVoltar} style={{ background:'rgba(247,241,230,0.12)', border:'none',
+            borderRadius:8, padding:'6px 14px', color:'rgba(247,241,230,0.7)', fontSize:13,
+            cursor:'pointer', marginBottom:14 }}>
+            ← Voltar
+          </button>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:700,
+            color:'#faf7f2', marginBottom:4 }}>{plano.titulo}</div>
+          <div style={{ fontSize:13, color:'rgba(247,241,230,0.45)' }}>
+            {formatarData(plano.data)} · {plano.horaInicio}–{plano.horaFim}
+          </div>
+          {plano.ucNome && (
+            <div style={{ marginTop:8, display:'inline-block', padding:'4px 12px',
+              background:'rgba(181,101,29,0.3)', borderRadius:100, fontSize:12,
+              color:'rgba(247,241,230,0.8)', fontWeight:600 }}>
+              {plano.ucId} · {plano.ucNome}
+            </div>
+          )}
+
+          {/* Barra de progresso dos 4 passos */}
+          <div style={{ display:'flex', gap:6, marginTop:16 }}>
+            {PASSOS.map(p => {
+              const est = estadoPasso(p.id);
+              return (
+                <div key={p.id} onClick={() => setSecAberta(p.id)} style={{
+                  flex:1, padding:'8px 6px', borderRadius:10, cursor:'pointer',
+                  background: est==='concluido' ? T.sage : est==='ativo' ? p.cor+'25' : 'rgba(247,241,230,0.08)',
+                  border: `1.5px solid ${est==='concluido' ? T.sage : est==='ativo' ? p.cor : 'transparent'}`,
+                  textAlign:'center', transition:'all 0.15s',
+                }}>
+                  <div style={{ fontSize:18 }}>{est==='concluido' ? '✓' : p.emoji}</div>
+                  <div style={{ fontSize:10, fontWeight:700, color: est==='concluido'?'#fff':est==='ativo'?p.cor:'rgba(247,241,230,0.4)',
+                    marginTop:2, display:'none' /* esconde em mobile */ }}>{p.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Conteúdo dos passos */}
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'20px' }}>
+        {PASSOS.map(p => {
+          const est = estadoPasso(p.id);
+          const aberto = secAberta === p.id;
+          return (
+            <div key={p.id} style={{ marginBottom:12, borderRadius:18, overflow:'hidden',
+              border:`1.5px solid ${aberto ? p.cor : est==='concluido' ? T.sage+'60' : T.border}`,
+              boxShadow: aberto ? `0 4px 20px ${p.cor}20` : 'none', transition:'all 0.2s' }}>
+
+              {/* Cabeçalho do passo */}
+              <button onClick={() => setSecAberta(aberto ? '' : p.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:14, padding:'16px 20px',
+                background: aberto ? `${p.cor}10` : est==='concluido' ? T.sageP : '#fff',
+                border:'none', cursor:'pointer', textAlign:'left', transition:'all 0.15s',
+              }}>
+                <div style={{ width:48, height:48, borderRadius:14, flexShrink:0, display:'flex',
+                  alignItems:'center', justifyContent:'center', fontSize:24,
+                  background: est==='concluido' ? T.sage : aberto ? `${p.cor}20` : 'rgba(26,23,20,0.06)',
+                  color: est==='concluido' ? '#fff' : p.cor }}>
+                  {est==='concluido' ? '✓' : p.emoji}
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:16, color:T.charcoal }}>{p.label}</div>
+                  <div style={{ fontSize:13, marginTop:2, fontWeight:600,
+                    color: est==='concluido' ? T.sage : aberto ? p.cor : 'rgba(26,23,20,0.4)' }}>
+                    {est==='concluido' ? '✓ Feito!' : aberto ? 'Em curso...' : 'Por fazer'}
+                  </div>
+                </div>
+                <span style={{ fontSize:22, color:p.cor, opacity:0.6,
+                  transform: aberto ? 'rotate(90deg)' : 'none', transition:'0.2s' }}>›</span>
+              </button>
+
+              {aberto && (
+                <div style={{ borderTop:`2px solid ${p.cor}`, padding:'20px', background:'#fdfcfb' }}>
+                  {p.id==='entrada' && (
+                    <SecaoEntrada aluno={aluno} plano={plano}
+                      onConcluido={() => { setEntradaConcluida(true); setSecAberta('ficha'); }} />
+                  )}
+                  {p.id==='ficha' && (
+                    <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
+                      onConcluido={() => { setFichaConcluida(true); setSecAberta('requisicao'); }} />
+                  )}
+                  {p.id==='requisicao' && (
+                    requisicao
+                      ? <SecaoRequisicao requisicao={requisicao} onConcluido={() => setSecAberta('avaliacao')} />
+                      : <div>
+                          <div style={{ textAlign:'center', padding:'20px', color:'rgba(26,23,20,0.5)', fontSize:14 }}>
+                            🛒 A requisição ainda não foi criada pelo professor.
+                          </div>
+                          <button onClick={() => setSecAberta('avaliacao')}
+                            style={{ width:'100%', padding:'14px', borderRadius:12, border:'none',
+                            background:T.sage, color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer' }}>
+                            Continuar para a Avaliação →
+                          </button>
+                        </div>
+                  )}
+                  {p.id==='avaliacao' && (
+                    <SecaoAvaliacao plano={plano} aluno={aluno} fichas={fichas}
+                      onConcluido={() => { setAvaliacaoConcluida(true); setSecAberta(''); }} />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Concluído */}
+        {avaliacaoConcluida && (
+          <div style={{ background:T.sageP, borderRadius:20, padding:'32px 24px',
+            textAlign:'center', border:`1.5px solid ${T.sage}40`, marginTop:8 }}>
+            <div style={{ fontSize:56, marginBottom:12 }}>🎉</div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+              color:T.sage, marginBottom:6 }}>Aula concluída!</div>
+            <div style={{ fontSize:14, color:'rgba(26,23,20,0.55)', marginBottom:20 }}>
+              O professor vai validar a tua autoavaliação. Bom trabalho!
+            </div>
+            <button onClick={onVoltar} style={{ padding:'14px 32px', borderRadius:12, border:'none',
+              background:T.sage, color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
+              Voltar ao início
+            </button>
           </div>
         )}
       </div>
-
-      {/* ── ACORDEÃO 1 — ENTRADA ────────────────────────── */}
-      <Acordeao id="entrada" aberto={secAberta === 'entrada'} titulo="Entrada e Higiene" icone="🪪"
-        cor="var(--copper)" estado={entradaConcluida ? 'concluido' : secAberta === 'entrada' ? 'em_curso' : 'pendente'}
-        onClick={() => abrirFechar('entrada')}>
-        <SecaoEntrada aluno={aluno} plano={plano} onConcluido={() => { setEntradaConcluida(true); setSecAberta('ficha'); }} />
-      </Acordeao>
-
-      {/* ── ACORDEÃO 2 — FICHA DE PRODUÇÃO ─────────────── */}
-      <Acordeao id="ficha" aberto={secAberta === 'ficha'} titulo={`Ficha${fichas.length > 1 ? 's' : ''} de Produção (${fichas.length})`} icone="📄"
-        cor="var(--copper)" estado={fichaConcluida ? 'concluido' : secAberta === 'ficha' ? 'em_curso' : 'pendente'}
-        onClick={() => abrirFechar('ficha')}>
-        <SecaoFichas fichas={fichas} plano={plano} aluno={aluno} onConcluido={() => { setFichaConcluida(true); setSecAberta('requisicao'); }} />
-      </Acordeao>
-
-      {/* ── ACORDEÃO 3 — REQUISIÇÃO ─────────────────────── */}
-      <Acordeao id="requisicao" aberto={secAberta === 'requisicao'} titulo="Requisição da Aula" icone="🛒"
-        cor="#2980b9" estado={requisicao ? 'concluido' : 'pendente'}
-        onClick={() => abrirFechar('requisicao')}>
-        {requisicao ? (
-          <SecaoRequisicao requisicao={requisicao} onConcluido={() => setSecAberta('avaliacao')} />
-        ) : (
-          <div>
-            <div style={S.muted}>A requisição ainda não foi criada pelo professor.</div>
-            <button style={S.verde} onClick={() => setSecAberta('avaliacao')}>Continuar para a Avaliação →</button>
-          </div>
-        )}
-      </Acordeao>
-
-      {/* ── ACORDEÃO 4 — COMPETÊNCIAS E AUTOAVALIAÇÃO ───── */}
-      <Acordeao id="avaliacao" aberto={secAberta === 'avaliacao'} titulo="Competências e Autoavaliação" icone="🎯"
-        cor="#8e44ad" estado={avaliacaoConcluida ? 'concluido' : secAberta === 'avaliacao' ? 'em_curso' : 'pendente'}
-        onClick={() => abrirFechar('avaliacao')}>
-        <SecaoAvaliacao plano={plano} aluno={aluno} fichas={fichas} onConcluido={() => { setAvaliacaoConcluida(true); setSecAberta(''); }} />
-      </Acordeao>
-
-      {/* Resumo final */}
-      {avaliacaoConcluida && (
-        <div style={{ ...S.card, textAlign: 'center', padding: 24, background: 'var(--sage-pale)', border: '1px solid rgba(90,122,78,0.3)' }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>✓</div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--sage)', marginBottom: 4 }}>Aula concluída!</div>
-          <div style={S.muted}>O professor vai validar a tua autoavaliação.</div>
-          <button style={{ ...S.verde, marginTop: 12 }} onClick={onVoltar}>Voltar às aulas</button>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Secção 1 — Entrada ───────────────────────────────────────
-function SecaoEntrada({ aluno, plano, onConcluido }: { aluno: Aluno; plano: PlanoAula; onConcluido: () => void }) {
-  const [pontVal, setPontVal] = useState<'sim' | 'atras' | null>(null);
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO 1 — Entrada e Higiene
+// ─────────────────────────────────────────────────────────────
+function SecaoEntrada({ aluno, plano, onConcluido }: {
+  aluno: Aluno; plano: PlanoAula; onConcluido: () => void;
+}) {
+  const [pontVal, setPontVal] = useState<'sim'|'atras'|null>(null);
   const [pontMins, setPontMins] = useState(0);
-  const [fardState, setFardState] = useState<Record<string, boolean | null>>(Object.fromEntries(FARD_ITEMS.map(f => [f, null])));
+  const [fardState, setFardState] = useState<Record<string, boolean|null>>(
+    Object.fromEntries(FARD_ITEMS.map(f => [f.id, null]))
+  );
   const fardCompleto = Object.values(fardState).every(v => v !== null);
   const entradaOk = pontVal !== null && fardCompleto;
 
-  function setPont(v: 'sim' | 'atras') {
+  function setPont(v: 'sim'|'atras') {
     setPontVal(v);
-    if (v === 'atras') {
+    if (v==='atras') {
       const now = new Date();
-      const [h, m] = plano.horaInicio.split(':').map(Number);
-      setPontMins(Math.max(1, (now.getHours() * 60 + now.getMinutes()) - (h * 60 + m)));
+      const [h,m] = plano.horaInicio.split(':').map(Number);
+      setPontMins(Math.max(1, (now.getHours()*60+now.getMinutes())-(h*60+m)));
     }
   }
 
+  function toggleFard(id: string) {
+    setFardState(prev => {
+      const cur = prev[id];
+      return { ...prev, [id]: cur===null ? true : cur===true ? false : null };
+    });
+  }
+
   function confirmar() {
-    if (pontVal === 'atras') incHist(`ecl_atrasos_${aluno.id}`);
-    const fardamentoOk = Object.values(fardState).every(v => v === true);
+    if (pontVal==='atras') incHist(`ecl_atrasos_${aluno.id}`);
+    const fardamentoOk = Object.values(fardState).every(v => v===true);
     addRegistoPresenca({
-      alunoId: aluno.id,
-      turmaId: aluno.turmaId,
-      planoAulaId: plano.id,
-      presente: true,
-      atrasado: pontVal === 'atras',
-      atrasadoMins: pontVal === 'atras' ? pontMins : 0,
-      fardamentoOk,
+      alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id,
+      presente: true, atrasado: pontVal==='atras',
+      atrasadoMins: pontVal==='atras' ? pontMins : 0, fardamentoOk,
     });
     onConcluido();
   }
 
   return (
     <div>
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Pontualidade</div>
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        {(['sim', 'atras'] as const).map(v => (
-          <button key={v} onClick={() => setPont(v)} style={{ flex: 1, padding: '12px 6px', borderRadius: 10, fontSize: 12, cursor: 'pointer', textAlign: 'center', border: '1px solid var(--border)', background: pontVal === v ? (v === 'sim' ? 'var(--sage-pale)' : 'var(--copper-pale)') : '#fff', color: pontVal === v ? (v === 'sim' ? 'var(--sage)' : 'var(--copper)') : 'rgba(26,23,20,0.5)', fontWeight: 600 }}>
-            <div style={{ fontSize: 22, marginBottom: 3 }}>{v === 'sim' ? '✓' : '◷'}</div>
-            {v === 'sim' ? 'Cheguei a horas' : 'Cheguei atrasado/a'}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Fardamento e higiene pessoal</div>
-      <div style={S.muted}>Confirma cada item honestamente.</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 8, marginBottom: 14 }}>
-        {FARD_ITEMS.map(item => {
-          const v = fardState[item];
-          return (
-            <div key={item} onClick={() => setFardState(p => { const vv = p[item]; return { ...p, [item]: vv === null ? true : vv === true ? false : null }; })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 9px', borderRadius: 8, cursor: 'pointer', fontSize:13, border: '1px solid var(--border)', background: v === true ? 'var(--sage-pale)' : v === false ? 'var(--danger-pale)' : 'var(--cream-dark)', color: v === true ? 'var(--sage)' : v === false ? 'var(--danger)' : 'rgba(26,23,20,0.5)' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: v === true ? 'var(--sage)' : v === false ? 'var(--danger)' : 'rgba(26,23,20,0.55)' }} />
-              <span style={{ flex: 1 }}>{item}</span>
+      {/* Pontualidade */}
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:15, fontWeight:700, marginBottom:12 }}>⏰ Chegaste a horas?</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          {(['sim','atras'] as const).map(v => (
+            <button key={v} onClick={() => setPont(v)} style={{
+              padding:'20px 12px', borderRadius:14, fontSize:14, fontWeight:700, cursor:'pointer',
+              border:`2px solid ${pontVal===v ? (v==='sim'?T.sage:T.danger) : T.border}`,
+              background: pontVal===v ? (v==='sim'?T.sageP:T.dangerP) : '#fff',
+              color: pontVal===v ? (v==='sim'?T.sage:T.danger) : 'rgba(26,23,20,0.5)',
+              display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+            }}>
+              <span style={{ fontSize:36 }}>{v==='sim'?'✅':'⏳'}</span>
+              {v==='sim' ? 'Sim, cheguei a horas' : 'Não, cheguei atrasado/a'}
+            </button>
+          ))}
+        </div>
+        {pontVal==='atras' && (
+          <div style={{ marginTop:10, padding:'12px 14px', background:T.dangerP,
+            borderRadius:12, border:`1px solid ${T.danger}30` }}>
+            <div style={{ fontSize:13, fontWeight:600, color:T.danger, marginBottom:6 }}>
+              Quantos minutos de atraso?
             </div>
-          );
-        })}
+            <input type="number" min={1} value={pontMins}
+              onChange={e => setPontMins(Number(e.target.value))}
+              style={{ width:80, padding:'8px 12px', borderRadius:8, border:`1.5px solid ${T.danger}40`,
+                fontSize:16, fontWeight:700, textAlign:'center', color:T.danger }} />
+            <span style={{ fontSize:13, color:T.danger, marginLeft:8 }}>minutos</span>
+          </div>
+        )}
       </div>
 
-      <button style={{ ...S.verde, opacity: entradaOk ? 1 : 0.4 }} disabled={!entradaOk} onClick={confirmar}>
-        Confirmar entrada →
+      {/* Fardamento */}
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>👔 Fardamento e higiene</div>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:12 }}>
+          Toca em cada item — verde = sim ✓, vermelho = não ✗
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {FARD_ITEMS.map(item => {
+            const v = fardState[item.id];
+            return (
+              <button key={item.id} onClick={() => toggleFard(item.id)} style={{
+                display:'flex', alignItems:'center', gap:10, padding:'14px 12px',
+                borderRadius:12, cursor:'pointer', fontSize:14, fontWeight:600,
+                border:`2px solid ${v===true?T.sage:v===false?T.danger:T.border}`,
+                background: v===true?T.sageP : v===false?T.dangerP : '#fff',
+                color: v===true?T.sage : v===false?T.danger : 'rgba(26,23,20,0.6)',
+                transition:'all 0.15s',
+              }}>
+                <span style={{ fontSize:22 }}>{item.emoji}</span>
+                <span style={{ flex:1, textAlign:'left', lineHeight:1.2 }}>{item.label}</span>
+                <span style={{ fontSize:18, flexShrink:0 }}>
+                  {v===true ? '✓' : v===false ? '✗' : '?'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <button onClick={confirmar} disabled={!entradaOk} style={{
+        width:'100%', padding:'16px', borderRadius:14, border:'none',
+        background: entradaOk ? T.copper : 'rgba(26,23,20,0.08)',
+        color: entradaOk ? '#fff' : 'rgba(26,23,20,0.3)',
+        fontSize:16, fontWeight:700, cursor: entradaOk ? 'pointer' : 'not-allowed',
+        boxShadow: entradaOk ? `0 4px 16px ${T.copper}40` : 'none', transition:'all 0.2s',
+      }}>
+        {entradaOk ? 'Confirmar e continuar →' : 'Preenche todos os campos primeiro'}
       </button>
     </div>
   );
 }
 
-// ── Secção 2 — Fichas de Produção ────────────────────────────
-function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProducao[]; plano: PlanoAula; aluno: Aluno; onConcluido: () => void }) {
-  const [fichaAberta, setFichaAberta] = useState<string | null>(fichas[0]?.id || null);
-  // checklist[fichaId] = { ingredientesConfirmados: Set, passosConcluidos: Set }
-  const [checklist, setChecklist] = useState<Record<string, { ing: Set<number>; passo: Set<number> }>>(() => {
-    const inicial: Record<string, { ing: Set<number>; passo: Set<number> }> = {};
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO 2 — Fichas de Produção (mantida da versão anterior)
+// ─────────────────────────────────────────────────────────────
+function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
+  fichas: FichaProducao[]; plano: PlanoAula; aluno: Aluno; onConcluido: () => void;
+}) {
+  const [fichaAberta, setFichaAberta] = useState<string|null>(fichas[0]?.id||null);
+  const [checklist, setChecklist] = useState<Record<string,{ing:Set<number>;passo:Set<number>}>>(() => {
+    const init: Record<string,{ing:Set<number>;passo:Set<number>}> = {};
     fichas.forEach(f => {
-      const existente = getChecklistAlunoFicha(plano.id, f.id, aluno.id);
-      inicial[f.id] = {
-        ing: new Set((existente?.ingredientesConfirmados || []).map(Number)),
-        passo: new Set((existente?.passosConcluidos || []).map(Number)),
+      const ex = getChecklistAlunoFicha(plano.id, f.id, aluno.id);
+      init[f.id] = {
+        ing: new Set((ex?.ingredientesConfirmados||[]).map(Number)),
+        passo: new Set((ex?.passosConcluidos||[]).map(Number)),
       };
     });
-    return inicial;
+    return init;
   });
 
-  function guardarChecklist(fichaId: string, novoIng?: Set<number>, novoPasso?: Set<number>) {
+  function guardar(fichaId: string, novoIng?: Set<number>, novoPasso?: Set<number>) {
     setChecklist(prev => {
-      const actual = prev[fichaId] || { ing: new Set<number>(), passo: new Set<number>() };
-      const next = { ing: novoIng || actual.ing, passo: novoPasso || actual.passo };
+      const cur = prev[fichaId]||{ing:new Set<number>(),passo:new Set<number>()};
+      const next = { ing: novoIng||cur.ing, passo: novoPasso||cur.passo };
       addOrUpdateChecklistAluno({
-        id: `chk_${plano.id}_${fichaId}_${aluno.id}`,
-        planoAulaId: plano.id,
-        fichaId,
-        alunoId: aluno.id,
-        pontualidade: 'a_horas', // pontualidade real já registada separadamente via addRegistoPresenca
-        fardamento: true, // idem — fardamento real já registado via addRegistoPresenca
-        itensFardamento: [],
-        ingredientesConfirmados: Array.from(next.ing).map(String),
-        passosConcluidos: Array.from(next.passo).map(String),
-        haccpConfirmado: [],
-        haccpRegistado: false,
-        atualizadoEm: new Date().toISOString(),
+        id:`chk_${plano.id}_${fichaId}_${aluno.id}`, planoAulaId:plano.id, fichaId,
+        alunoId:aluno.id, pontualidade:'a_horas', fardamento:true, itensFardamento:[],
+        ingredientesConfirmados:Array.from(next.ing).map(String),
+        passosConcluidos:Array.from(next.passo).map(String),
+        haccpConfirmado:[], haccpRegistado:false, atualizadoEm:new Date().toISOString(),
       });
-      return { ...prev, [fichaId]: next };
+      return {...prev,[fichaId]:next};
     });
   }
 
-  function toggleIngrediente(fichaId: string, idx: number) {
-    const actual: { ing: Set<number>; passo: Set<number> } = checklist[fichaId] || { ing: new Set<number>(), passo: new Set<number>() };
-    const novo = new Set<number>(actual.ing);
-    if (novo.has(idx)) novo.delete(idx); else novo.add(idx);
-    guardarChecklist(fichaId, novo, undefined);
-  }
-
-  function togglePasso(fichaId: string, idx: number) {
-    const actual: { ing: Set<number>; passo: Set<number> } = checklist[fichaId] || { ing: new Set<number>(), passo: new Set<number>() };
-    const novo = new Set<number>(actual.passo);
-    if (novo.has(idx)) novo.delete(idx); else novo.add(idx);
-    guardarChecklist(fichaId, undefined, novo);
-  }
-
-  if (fichas.length === 0) {
+  if (fichas.length===0) {
     return (
       <div>
-        <div style={S.muted}>Não há fichas de produção para esta aula.</div>
-        <button style={S.verde} onClick={onConcluido}>Continuar →</button>
+        <div style={{ textAlign:'center', padding:'20px', color:'rgba(26,23,20,0.5)', fontSize:14 }}>
+          📄 Não há fichas de produção para esta aula.
+        </div>
+        <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12,
+          border:'none', background:T.sage, color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer' }}>
+          Continuar →
+        </button>
       </div>
     );
   }
 
   return (
     <div>
-      {fichas.map((f, fi) => (
-        <div key={f.id} style={{ marginBottom: 10 }}>
-          {/* Cabeçalho da ficha */}
-          <button onClick={() => setFichaAberta(fichaAberta === f.id ? null : f.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${fichaAberta === f.id ? 'var(--copper)' : 'var(--border)'}`, background: fichaAberta === f.id ? 'var(--copper-pale)' : '#fff', cursor: 'pointer', textAlign: 'left' }}>
-            <span style={{ fontSize: 18 }}>📄</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>{f.nomePrato}</div>
-              <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.numPorcoes} doses</div>
+      {fichas.map(f => (
+        <div key={f.id} style={{ marginBottom:12 }}>
+          <button onClick={() => setFichaAberta(fichaAberta===f.id?null:f.id)} style={{
+            width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+            borderRadius:12, border:`1.5px solid ${fichaAberta===f.id?'#2980b9':T.border}`,
+            background: fichaAberta===f.id ? '#e8f4fd' : '#fff', cursor:'pointer', textAlign:'left',
+          }}>
+            <span style={{ fontSize:22 }}>📄</span>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:700, fontSize:15 }}>{f.nomePrato}</div>
+              <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.numPorcoes} doses</div>
             </div>
-            <span style={{ fontSize: 16, color: 'var(--copper)' }}>{fichaAberta === f.id ? '▲' : '▼'}</span>
+            <span style={{ fontSize:18, color:'#2980b9' }}>{fichaAberta===f.id?'▲':'▼'}</span>
           </button>
 
-          {fichaAberta === f.id && (
-            <div style={{ padding: '12px 14px', background: '#fdfcfb', borderRadius: '0 0 10px 10px', border: '1px solid var(--border)', borderTop: 'none' }}>
-              {/* Botão imprimir/ver ficha completa — sempre visível quando há HTML gerado */}
+          {fichaAberta===f.id && (
+            <div style={{ padding:'14px', background:'#fdfcfb', borderRadius:'0 0 12px 12px',
+              border:'1px solid #2980b920', borderTop:'none' }}>
               {(f as any).htmlCompleto && (
-                <button className="btn btn-ghost btn-block" style={{ marginBottom: 12 }}
+                <button style={{ width:'100%', padding:'10px', borderRadius:10, border:`1px solid ${T.border}`,
+                  background:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', marginBottom:12 }}
                   onClick={() => {
-                    const win = window.open('', '_blank');
-                    if (win) { win.document.write((f as any).htmlCompleto); win.document.close(); }
+                    const win=window.open('','_blank');
+                    if(win){win.document.write((f as any).htmlCompleto);win.document.close();}
                   }}>
                   🖨️ Ver / Imprimir Ficha Completa
                 </button>
               )}
-              {(!f.ingredientes || f.ingredientes.length === 0) && (!f.preparacao || f.preparacao.length === 0) && !(f as any).htmlCompleto && (
-                <div style={{ padding: '10px 12px', background: 'var(--copper-pale)', borderRadius: 8, fontSize: 12, color: 'var(--copper)', marginBottom: 10 }}>
-                  ⚠️ Esta ficha foi sincronizada sem os detalhes de ingredientes/preparação. Pede ao professor para confirmar no dispositivo onde a criou.
-                </div>
-              )}
-              {/* Ingredientes */}
-              {f.ingredientes?.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'var(--copper)' }}>Ingredientes</div>
-                  {f.ingredientes.map((ing, i) => {
-                    const marcado = checklist[f.id]?.ing.has(i) || false;
+
+              {f.ingredientes?.length>0 && (
+                <div style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.05em', color:'#2980b9', marginBottom:8 }}>Ingredientes</div>
+                  {f.ingredientes.map((ing,i) => {
+                    const marcado = checklist[f.id]?.ing.has(i)||false;
                     return (
-                      <label key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: marcado ? 'var(--sage-pale)' : '#fff', cursor: 'pointer', fontSize: 12 }}>
-                        <input type="checkbox" checked={marcado} onChange={() => toggleIngrediente(f.id, i)} style={{ accentColor: 'var(--sage)' }} />
-                        <strong style={{ textDecoration: marcado ? 'line-through' : 'none' }}>{ing.qt} {ing.un}</strong> <span style={{ textDecoration: marcado ? 'line-through' : 'none' }}>{ing.produto}</span>
-                        {ing.componente && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--sage)', background: 'var(--sage-pale)', borderRadius: 10, padding: '1px 7px', marginLeft: 'auto' }}>
-                            {ing.componente}
-                          </span>
-                        )}
-                        {ing.obs && <span style={{ fontSize:13, color: 'var(--copper)' }}>{ing.obs}</span>}
+                      <label key={i} style={{ display:'flex', alignItems:'center', gap:10,
+                        padding:'10px 12px', borderRadius:10, border:`1px solid ${T.border}`,
+                        marginBottom:5, background:marcado?T.sageP:'#fff', cursor:'pointer' }}>
+                        <input type="checkbox" checked={marcado} style={{ accentColor:T.sage, width:18, height:18 }}
+                          onChange={() => {
+                            const cur = checklist[f.id]?.ing||new Set<number>();
+                            const n = new Set<number>(cur);
+                            n.has(i)?n.delete(i):n.add(i);
+                            guardar(f.id,n);
+                          }} />
+                        <span style={{ fontSize:14, textDecoration:marcado?'line-through':'none' }}>
+                          <strong>{ing.qt} {ing.un}</strong> {ing.produto}
+                        </span>
                       </label>
                     );
                   })}
                 </div>
               )}
 
-              {/* Passos */}
-              {f.preparacao?.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'var(--copper)' }}>Preparação</div>
-                  {f.preparacao.map((p, i) => {
-                    const marcado = checklist[f.id]?.passo.has(i) || false;
+              {f.preparacao?.length>0 && (
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.05em', color:'#2980b9', marginBottom:8 }}>Preparação</div>
+                  {f.preparacao.map((p,i) => {
+                    const marcado = checklist[f.id]?.passo.has(i)||false;
                     return (
-                      <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px', borderRadius: 7, border: '1px solid var(--border)', marginBottom: 4, background: marcado ? 'var(--sage-pale)' : '#fff', cursor: 'pointer', fontSize: 12 }}>
-                        <input type="checkbox" checked={marcado} onChange={() => togglePasso(f.id, i)} style={{ accentColor: 'var(--sage)', marginTop: 2, flexShrink: 0 }} />
-                        <div style={{ textDecoration: marcado ? 'line-through' : 'none' }}>
+                      <label key={i} style={{ display:'flex', alignItems:'flex-start', gap:10,
+                        padding:'10px 12px', borderRadius:10, border:`1px solid ${T.border}`,
+                        marginBottom:5, background:marcado?T.sageP:'#fff', cursor:'pointer' }}>
+                        <input type="checkbox" checked={marcado} style={{ accentColor:T.sage, width:18, height:18, marginTop:2, flexShrink:0 }}
+                          onChange={() => {
+                            const cur = checklist[f.id]?.passo||new Set<number>();
+                            const n = new Set<number>(cur);
+                            n.has(i)?n.delete(i):n.add(i);
+                            guardar(f.id,undefined,n);
+                          }} />
+                        <div style={{ fontSize:14, textDecoration:marcado?'line-through':'none', lineHeight:1.4 }}>
                           <strong>{p.num}.</strong> {p.descricao}
-                          {p.temperatura && <span style={{ fontSize:13, color: '#2980b9', marginLeft: 6 }}>🌡 {p.temperatura}</span>}
-                          {p.haccp && <div style={{ fontSize:13, color: 'var(--danger)', marginTop: 2 }}>⚠️ {p.haccp}</div>}
+                          {p.temperatura&&<span style={{ color:'#2980b9', marginLeft:6, fontSize:12 }}>🌡 {p.temperatura}</span>}
+                          {p.haccp&&<div style={{ color:T.danger, fontSize:12, marginTop:2 }}>⚠️ {p.haccp}</div>}
                         </div>
                       </label>
                     );
@@ -425,200 +977,145 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: { fichas: FichaProdu
                 </div>
               )}
 
-              {/* Guia de Apoio */}
               {(f as any).textoGuia && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, color: 'var(--sage)' }}>📚 Guia de Apoio à Produção</div>
-                  <GuiaProducao textoGuia={(f as any).textoGuia} nomePrato={f.nomePrato || ''} />
+                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${T.border}` }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.05em', color:T.sage, marginBottom:8 }}>📚 Guia de Apoio</div>
+                  <GuiaProducao textoGuia={(f as any).textoGuia} nomePrato={f.nomePrato||''} />
                 </div>
               )}
             </div>
           )}
         </div>
       ))}
-
-      <button style={S.verde} onClick={onConcluido}>Concluí a ficha → Continuar</button>
+      <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12,
+        border:'none', background:'#2980b9', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer', marginTop:6 }}>
+        Concluí a ficha → Continuar
+      </button>
     </div>
   );
 }
 
-// ── Secção 3 — Requisição ────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO 3 — Requisição
+// ─────────────────────────────────────────────────────────────
 function SecaoRequisicao({ requisicao, onConcluido }: { requisicao: any; onConcluido: () => void }) {
   return (
     <div>
-      <div style={S.muted}>Ingredientes a requisitar para esta aula.</div>
-      <div style={{ overflowX: 'auto', marginTop: 10, marginBottom: 14 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+      <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:14 }}>
+        🛒 Ingredientes a requisitar para esta aula.
+      </div>
+      <div style={{ overflowX:'auto', marginBottom:16 }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:14 }}>
           <thead>
-            <tr style={{ background: '#2980b9', color: 'white' }}>
-              <th style={{ padding: '7px 10px', textAlign: 'left' }}>Produto</th>
-              <th style={{ padding: '7px 6px', textAlign: 'right' }}>Quantidade</th>
-              <th style={{ padding: '7px 6px', textAlign: 'left' }}>Un.</th>
+            <tr style={{ background:'#7d4f8c', color:'#fff' }}>
+              <th style={{ padding:'10px 12px', textAlign:'left', borderRadius:'8px 0 0 0' }}>Produto</th>
+              <th style={{ padding:'10px 8px', textAlign:'right' }}>Quantidade</th>
+              <th style={{ padding:'10px 8px', textAlign:'left', borderRadius:'0 8px 0 0' }}>Un.</th>
             </tr>
           </thead>
           <tbody>
-            {(requisicao.linhas || []).map((l: any, i: number) => (
-              <tr key={l.id || i} style={{ background: i % 2 === 0 ? '#fff' : 'var(--cream)', borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '7px 10px' }}>{l.produto}</td>
-                <td style={{ padding: '7px 6px', textAlign: 'right', fontWeight: 600 }}>{l.quantidadeTotal}</td>
-                <td style={{ padding: '7px 6px', color: 'rgba(26,23,20,0.5)' }}>{l.unidade}</td>
+            {(requisicao.linhas||[]).map((l: any, i: number) => (
+              <tr key={l.id||i} style={{ background:i%2===0?'#fff':T.cream, borderBottom:`1px solid ${T.border}` }}>
+                <td style={{ padding:'10px 12px' }}>{l.produto}</td>
+                <td style={{ padding:'10px 8px', textAlign:'right', fontWeight:700 }}>{l.quantidadeTotal}</td>
+                <td style={{ padding:'10px 8px', color:'rgba(26,23,20,0.5)' }}>{l.unidade}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <button style={S.verde} onClick={onConcluido}>Continuar para a Avaliação →</button>
+      <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12,
+        border:'none', background:'#7d4f8c', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer' }}>
+        Continuar para a Avaliação →
+      </button>
     </div>
   );
 }
 
-// ── Secção 4 — Competências e Autoavaliação ──────────────────
-function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAula; aluno: Aluno; fichas: FichaProducao[]; onConcluido: () => void }) {
-  const ucId = plano.ucId || '';
-  const compRemovidas: string[] = (plano as any).compRemovidas || [];
-
-  const microsDaUCEspecificas = ucId ? microsPorUC(ucId) : [];
-  const microsEstruturantes = MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
-  const microsDaUC = microsDaUCEspecificas.length >= 3
-    ? microsDaUCEspecificas
-    : [...microsDaUCEspecificas, ...microsEstruturantes.filter(m => !microsDaUCEspecificas.find(x => x.id === m.id))].slice(0, 8);
-
-  const microsSugeridas = microsDaUC
-    .filter(m => !compRemovidas.includes(m.id))
-    .slice(0, 6)
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO 4 — Autoavaliação (mantida da versão anterior)
+// ─────────────────────────────────────────────────────────────
+function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
+  plano: PlanoAula; aluno: Aluno; fichas: FichaProducao[]; onConcluido: () => void;
+}) {
+  const ucId = plano.ucId||'';
+  const compRemovidas: string[] = (plano as any).compRemovidas||[];
+  const microsDaUCEsp = ucId ? microsPorUC(ucId) : [];
+  const microsEstr = MICROCOMPETENCIAS.filter(m => m.prioridade==='A');
+  const microsDaUC = microsDaUCEsp.length>=3
+    ? microsDaUCEsp
+    : [...microsDaUCEsp,...microsEstr.filter(m=>!microsDaUCEsp.find(x=>x.id===m.id))].slice(0,8);
+  const microsSug = microsDaUC
+    .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
     .map(m => {
       const hist = getHistoricoAlunoMicro(aluno.id, m.id);
-      const avaliacoes = hist.map(h => ({ nota: h.nota, data: h.data }));
-      const consolidada = jaTeveSucesso(avaliacoes);
-      const emRegressao = estaEmRegressao(avaliacoes);
-      let prioridade = 4;
-      let motivo = '';
-      if (emRegressao) { prioridade = 1; motivo = '⚠️ Em regressão'; }
-      else if (avaliacoes.length === 0) { prioridade = 2; motivo = '★ Nunca avaliada'; }
-      else if (!consolidada) { prioridade = 3; motivo = '↑ Em desenvolvimento'; }
-      else { motivo = '✓ Consolidada'; }
-      const media = avaliacoes.length > 0 ? avaliacoes.slice(-3).reduce((s, a) => s + a.nota, 0) / Math.min(3, avaliacoes.length) : 0;
-      return { ...m, prioridade, motivo, consolidada, avaliacoes, media };
-    })
-    .sort((a, b) => a.prioridade - b.prioridade);
+      const avs = hist.map(h=>({nota:h.nota,data:h.data}));
+      const emReg = estaEmRegressao(avs);
+      const motivo = emReg?'⚠️ Em regressão':avs.length===0?'★ Nunca avaliada':!jaTeveSucesso(avs)?'↑ Em desenvolvimento':'✓ Consolidada';
+      return {...m, motivo};
+    });
 
-  // Estados
-  const [nivelHigiene, setNivelHigiene] = useState<string | null>(null);
-  const [nivelHaccp, setNivelHaccp] = useState<string | null>(null);
-  const [microAberta, setMicroAberta] = useState<string | null>(null);
-  const [notasMicro, setNotasMicro] = useState<Record<string, string | null>>({});
-  const [criteriosResp, setCriteriosResp] = useState<Record<string, string | null>>({});
-  const [atitudeEscolhida, setAtitudeEscolhida] = useState<string | null>(null);
+  const [nivelHigiene, setNivelHigiene] = useState<string|null>(null);
+  const [nivelHaccp, setNivelHaccp] = useState<string|null>(null);
+  const [notasMicro, setNotasMicro] = useState<Record<string,string|null>>({});
+  const [microAberta, setMicroAberta] = useState<string|null>(null);
+  const [atitudeEscolhida, setAtitudeEscolhida] = useState<string|null>(null);
   const [modalConfirmar, setModalConfirmar] = useState(false);
   const [submetido, setSubmetido] = useState(() => {
     try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
   });
 
-  const OPCOES_AUTO = [
-    { v: 'sozinho', label: 'Consigo sozinho/a', cor: 'var(--sage-pale)', txt: 'var(--sage)', emoji: '💪' },
-    { v: 'ajuda', label: 'Consigo com ajuda', cor: 'var(--copper-pale)', txt: 'var(--copper)', emoji: '🤝' },
-    { v: 'nao', label: 'Ainda não consigo', cor: 'var(--danger-pale)', txt: 'var(--danger)', emoji: '📖' },
+  const OPCOES = [
+    { v:'sozinho', label:'Consigo sozinho/a', emoji:'💪', cor:T.sage,   bg:T.sageP },
+    { v:'ajuda',   label:'Com ajuda',          emoji:'🤝', cor:T.copper, bg:T.copperP },
+    { v:'nao',     label:'Ainda não consigo',  emoji:'📖', cor:T.danger, bg:T.dangerP },
   ];
 
-  const prontoParaSubmeter = nivelHigiene !== null && nivelHaccp !== null;
-
-  function submeter() {
-    const agora = new Date().toISOString();
-    // Mapear nível do aluno (sozinho/ajuda/nao) → NivelAuto do sistema de validação
-    const paraNivelAuto = (v: string | null): 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei' =>
-      v === 'sozinho' ? 'atingi' : v === 'ajuda' ? 'desenvolvimento' : 'nao_atingi';
-
-    const autoavaliacoes: { competenciaId: string; nivel: 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei' }[] = [];
-
-    if (nivelHigiene) {
-      addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_higiene_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: 'OBR_01', nota: nivelHigiene === 'sozinho' ? 15 : nivelHigiene === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
-      autoavaliacoes.push({ competenciaId: 'OBR_01', nivel: paraNivelAuto(nivelHigiene) });
-    }
-    if (nivelHaccp) {
-      addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_haccp_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: 'OBR_02', nota: nivelHaccp === 'sozinho' ? 15 : nivelHaccp === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
-      autoavaliacoes.push({ competenciaId: 'OBR_02', nivel: paraNivelAuto(nivelHaccp) });
-    }
-    (Object.entries(notasMicro) as [string, string | null][]).forEach(([microId, v]) => {
-      if (v) {
-        addRegistoAvaliacao({ id: `${plano.id}_${aluno.id}_${microId}_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '', ucId, microcompetenciaId: microId, nota: v === 'sozinho' ? 15 : v === 'ajuda' ? 10 : 5, data: agora, validadoPor: 'aluno' });
-        autoavaliacoes.push({ competenciaId: microId, nivel: paraNivelAuto(v) });
-      }
-    });
-    if (atitudeEscolhida) {
-      autoavaliacoes.push({ competenciaId: atitudeEscolhida, nivel: 'atingi' });
-    }
-    addOrUpdateSelecao({ id: `sel_${plano.id}_${aluno.id}`, comandaId: plano.id, planoAulaId: plano.id, fichaId: '', alunoId: aluno.id, turmaId: aluno.turmaId, tecnicas: Object.keys(notasMicro), atitudes: atitudeEscolhida ? [atitudeEscolhida] : [], responsabilidades: [], autoavaliacoes, criadaEm: agora });
-    onConcluido();
-  }
+  const prontoParaSubmeter = nivelHigiene!==null && nivelHaccp!==null;
 
   function submeterDefinitivo() {
-    submeter();
-    try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, new Date().toISOString()); } catch {}
-    setSubmetido(true);
-    setModalConfirmar(false);
+    const agora = new Date().toISOString();
+    const paraNivel = (v:string|null): 'nao_atingi'|'desenvolvimento'|'atingi'|'superei' =>
+      v==='sozinho'?'atingi':v==='ajuda'?'desenvolvimento':'nao_atingi';
+    if (nivelHigiene) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hig_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_01',nota:nivelHigiene==='sozinho'?15:nivelHigiene==='ajuda'?10:5,data:agora,validadoPor:'aluno'});
+    if (nivelHaccp) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hac_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_02',nota:nivelHaccp==='sozinho'?15:nivelHaccp==='ajuda'?10:5,data:agora,validadoPor:'aluno'});
+    Object.entries(notasMicro).forEach(([mId,v])=>{if(v)addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${mId}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:mId,nota:v==='sozinho'?15:v==='ajuda'?10:5,data:agora,validadoPor:'aluno'});});
+    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:atitudeEscolhida?[atitudeEscolhida]:[],responsabilidades:[],autoavaliacoes:[],criadaEm:agora});
+    try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
+    setSubmetido(true); setModalConfirmar(false); onConcluido();
   }
 
-  // ── Se já submeteu — mostrar resumo bloqueado ─────────────────
-  if (submetido) {
-    const horaSubmissao = (() => {
-      try {
-        const d = localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`);
-        if (d) return new Date(d).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
-      } catch {}
-      return '';
-    })();
-    return (
-      <div>
-        <div style={{ padding:'14px', background:'var(--sage-pale)', borderRadius:12, border:'1.5px solid rgba(90,122,78,0.3)', marginBottom:14, textAlign:'center' }}>
-          <div style={{ fontSize:28, marginBottom:4 }}>✓</div>
-          <div style={{ fontWeight:700, fontSize:15, color:'var(--sage)' }}>Autoavaliação submetida{horaSubmissao ? ` às ${horaSubmissao}` : ''}</div>
-          <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:4 }}>O professor vai validar o teu registo.</div>
-        </div>
-        <div style={{ padding:'12px 14px', background:'var(--cream-dark)', borderRadius:10 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', marginBottom:8 }}>O teu registo (só leitura):</div>
-          <div style={{ fontSize:13, color:'var(--sage)' }}>🔒 Higiene pessoal: {nivelHigiene === 'sozinho' ? '💪 Sozinho/a' : nivelHigiene === 'ajuda' ? '🤝 Com ajuda' : '📖 A aprender'}</div>
-          <div style={{ fontSize:13, color:'var(--sage)', marginTop:4 }}>🔒 Higiene alimentar: {nivelHaccp === 'sozinho' ? '💪 Sozinho/a' : nivelHaccp === 'ajuda' ? '🤝 Com ajuda' : '📖 A aprender'}</div>
-          {Object.entries(notasMicro).filter(([,v]) => v).map(([id, v]) => {
-            const m = microsSugeridas.find(x => x.id === id);
-            return m ? <div key={id} style={{ fontSize:13, marginTop:4 }}>🔬 {m.nome}: {v === 'sozinho' ? '💪 Sozinho/a' : v === 'ajuda' ? '🤝 Com ajuda' : '📖 A aprender'}</div> : null;
-          })}
-          {atitudeEscolhida && <div style={{ fontSize:13, marginTop:4 }}>💡 Atitude: {ATITUDES.find(a => a.id === atitudeEscolhida)?.nome}</div>}
-        </div>
-      </div>
-    );
-  }
+  if (submetido) return (
+    <div style={{ textAlign:'center', padding:'24px' }}>
+      <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
+      <div style={{ fontSize:17, fontWeight:700, color:T.sage }}>Autoavaliação enviada!</div>
+      <div style={{ fontSize:14, color:'rgba(26,23,20,0.55)', marginTop:6 }}>O professor vai validar o teu registo.</div>
+    </div>
+  );
 
-  // ── Avaliação activa ──────────────────────────────────────────
   return (
     <div>
-      {/* UC e resumo de competências */}
-      <div style={{ padding:'12px 14px', background:'rgba(181,101,29,0.08)', borderRadius:10, marginBottom:16, border:'1px solid rgba(181,101,29,0.2)' }}>
-        {plano.ucId && <div style={{ fontSize:13, fontWeight:700, color:'var(--copper)', marginBottom:8 }}>{plano.ucId} — {plano.ucNome}</div>}
-        <div style={{ fontSize:12, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Competências desta aula:</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-          <div style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>🔒 Higiene pessoal · Higiene alimentar · Assiduidade</div>
-          {microsSugeridas.slice(0,4).map(m => (
-            <div key={m.id} style={{ fontSize:13, color:'rgba(26,23,20,0.7)' }}>
-              🔬 {m.nome}{m.motivo && <span style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginLeft:6 }}>{m.motivo}</span>}
-            </div>
-          ))}
-          <div style={{ fontSize:13, color:'rgba(142,68,173,0.8)' }}>💡 1 atitude à tua escolha</div>
-        </div>
-      </div>
-
-      {/* OBRIGATÓRIAS */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>🔒 Competências obrigatórias</div>
+      {/* Obrigatórias */}
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+          letterSpacing:'0.06em', color:T.sage, marginBottom:12 }}>🔒 Sempre avaliadas</div>
         {[
-          { id: 'higiene', label: 'Higiene pessoal', val: nivelHigiene, set: setNivelHigiene },
-          { id: 'haccp', label: 'Higiene e Segurança Alimentar / Registos KitchenFlow', val: nivelHaccp, set: setNivelHaccp },
+          { id:'hig', label:'Higiene pessoal', val:nivelHigiene, set:setNivelHigiene },
+          { id:'hac', label:'Higiene e Segurança Alimentar', val:nivelHaccp, set:setNivelHaccp },
         ].map(obr => (
-          <div key={obr.id} style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 10, background: 'var(--sage-pale)', border: '1px solid rgba(90,122,78,0.2)' }}>
-            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8 }}>{obr.label}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
-              {OPCOES_AUTO.map(op => (
-                <button key={op.v} onClick={() => obr.set(op.v)} style={{ padding: '7px 4px', borderRadius: 8, border: `1.5px solid ${obr.val === op.v ? op.txt : 'var(--border)'}`, background: obr.val === op.v ? op.cor : '#fff', color: obr.val === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize:13, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
-                  <div style={{ fontSize: 16, marginBottom: 2 }}>{op.emoji}</div>
+          <div key={obr.id} style={{ marginBottom:12, padding:'14px', borderRadius:14,
+            background:T.sageP, border:`1px solid ${T.sage}30` }}>
+            <div style={{ fontWeight:700, fontSize:14, marginBottom:10 }}>{obr.label}</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+              {OPCOES.map(op => (
+                <button key={op.v} onClick={() => obr.set(op.v)} style={{
+                  padding:'12px 6px', borderRadius:10, border:`2px solid ${obr.val===op.v?op.cor:T.border}`,
+                  background:obr.val===op.v?op.bg:'#fff', color:obr.val===op.v?op.cor:'rgba(26,23,20,0.5)',
+                  fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                }}>
+                  <span style={{ fontSize:24 }}>{op.emoji}</span>
                   {op.label}
                 </button>
               ))}
@@ -627,26 +1124,38 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
         ))}
       </div>
 
-      {/* TÉCNICAS */}
-      {microsSugeridas.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Competências técnicas</div>
-          {microsSugeridas.map(m => (
-            <div key={m.id} style={{ marginBottom: 8, borderRadius: 10, border: `1.5px solid ${microAberta === m.id ? 'var(--copper)' : 'var(--border)'}`, overflow: 'hidden' }}>
-              <button onClick={() => setMicroAberta(s => s === m.id ? null : m.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: microAberta === m.id ? 'var(--copper-pale)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{m.nome}</div>
-                  <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{m.motivo}</div>
+      {/* Técnicas */}
+      {microsSug.length>0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:T.copper, marginBottom:12 }}>🔬 Técnicas desta aula</div>
+          {microsSug.map(m => (
+            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
+              border:`1.5px solid ${microAberta===m.id?T.copper:T.border}` }}>
+              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+                background:microAberta===m.id?T.copperP:'#fff', border:'none', cursor:'pointer', textAlign:'left',
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
                 </div>
-                {notasMicro[m.id] && <span style={{ fontSize: 18 }}>{notasMicro[m.id] === 'sozinho' ? '💪' : notasMicro[m.id] === 'ajuda' ? '🤝' : '📖'}</span>}
-                <span style={{ fontSize: 16, color: 'var(--copper)', transform: microAberta === m.id ? 'rotate(90deg)' : 'none', transition: '0.2s' }}>›</span>
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>
+                  {notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}
+                </span>}
+                <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
               </button>
-              {microAberta === m.id && (
-                <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', background: '#fdfcfb' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 10 }}>
-                    {OPCOES_AUTO.map(op => (
-                      <button key={op.v} onClick={() => setNotasMicro(p => ({ ...p, [m.id]: p[m.id] === op.v ? null : op.v }))} style={{ padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${notasMicro[m.id] === op.v ? op.txt : 'var(--border)'}`, background: notasMicro[m.id] === op.v ? op.cor : '#fff', color: notasMicro[m.id] === op.v ? op.txt : 'rgba(26,23,20,0.5)', fontSize:13, fontWeight: 600, cursor: 'pointer', textAlign: 'center' }}>
-                        <div style={{ fontSize: 18, marginBottom: 2 }}>{op.emoji}</div>
+              {microAberta===m.id && (
+                <div style={{ padding:'12px 16px', borderTop:`2px solid ${T.copper}`, background:'#fdfcfb' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                    {OPCOES.map(op => (
+                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
+                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
+                        background:notasMicro[m.id]===op.v?op.bg:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                      }}>
+                        <span style={{ fontSize:24 }}>{op.emoji}</span>
                         {op.label}
                       </button>
                     ))}
@@ -658,53 +1167,68 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
         </div>
       )}
 
-      {/* ATITUDE */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>💡 A tua atitude — escolhe uma</div>
-        <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10, padding: 8 }}>
-          {ATITUDES.filter(a => !compRemovidas.includes(a.id)).map(a => (
-            <div key={a.id} onClick={() => setAtitudeEscolhida(a.id === atitudeEscolhida ? null : a.id)} style={{ padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${atitudeEscolhida === a.id ? '#8e44ad' : 'transparent'}`, background: atitudeEscolhida === a.id ? 'rgba(142,68,173,0.08)' : '#fff', cursor: 'pointer', fontSize: 12, marginBottom: 4, fontWeight: atitudeEscolhida === a.id ? 600 : 400 }}>
-              {a.nome}
-            </div>
+      {/* Atitude */}
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+          letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:12 }}>💡 A tua atitude — escolhe uma</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {ATITUDES.filter(a=>!compRemovidas.includes(a.id)).slice(0,12).map(a => (
+            <button key={a.id} onClick={() => setAtitudeEscolhida(a.id===atitudeEscolhida?null:a.id)} style={{
+              padding:'12px', borderRadius:12, fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left',
+              border:`1.5px solid ${atitudeEscolhida===a.id?'#7d4f8c':T.border}`,
+              background:atitudeEscolhida===a.id?'rgba(125,79,140,0.08)':'#fff',
+              color:atitudeEscolhida===a.id?'#7d4f8c':'rgba(26,23,20,0.7)',
+            }}>
+              {atitudeEscolhida===a.id?'✓ ':''}{a.nome}
+            </button>
           ))}
         </div>
       </div>
 
       {!prontoParaSubmeter && (
-        <div style={{ padding: '8px 12px', background: 'var(--copper-pale)', borderRadius: 8, fontSize: 12, color: 'var(--copper)', marginBottom: 10 }}>
-          Preenche as competências obrigatórias antes de submeter.
+        <div style={{ padding:'12px 14px', background:T.copperP, borderRadius:10,
+          fontSize:13, color:T.copper, marginBottom:12 }}>
+          ⚠️ Preenche pelo menos as duas competências obrigatórias para poderes submeter.
         </div>
       )}
 
-      <button style={{ ...S.verde, opacity: prontoParaSubmeter ? 1 : 0.4 }} disabled={!prontoParaSubmeter} onClick={() => setModalConfirmar(true)}>
+      <button onClick={() => setModalConfirmar(true)} disabled={!prontoParaSubmeter} style={{
+        width:'100%', padding:'16px', borderRadius:14, border:'none', fontSize:16, fontWeight:700,
+        background:prontoParaSubmeter?T.sage:'rgba(26,23,20,0.08)',
+        color:prontoParaSubmeter?'#fff':'rgba(26,23,20,0.3)',
+        cursor:prontoParaSubmeter?'pointer':'not-allowed',
+        boxShadow:prontoParaSubmeter?`0 4px 16px ${T.sage}40`:'none', transition:'all 0.2s',
+      }}>
         ✓ Submeter autoavaliação
       </button>
 
-      {/* Modal de confirmação */}
+      {/* Modal confirmação */}
       {modalConfirmar && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
-          <div style={{ background:'#fff', borderRadius:20, padding:24, maxWidth:360, width:'100%' }}>
-            <div style={{ fontSize:32, textAlign:'center', marginBottom:8 }}>🎯</div>
-            <div style={{ fontWeight:700, fontSize:17, textAlign:'center', marginBottom:6 }}>Confirmas o teu registo?</div>
-            <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', textAlign:'center', marginBottom:16 }}>
-              Depois de submeter não podes alterar. Queres rever alguma coisa?
+        <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.7)',
+          display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
+          <div style={{ background:'#fff', borderRadius:24, padding:'28px 24px', maxWidth:380, width:'100%' }}>
+            <div style={{ textAlign:'center', marginBottom:16 }}>
+              <div style={{ fontSize:48, marginBottom:8 }}>🎯</div>
+              <div style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:700, marginBottom:6 }}>
+                Confirmas o teu registo?
+              </div>
+              <div style={{ fontSize:14, color:'rgba(26,23,20,0.55)' }}>
+                Depois de submeter não podes alterar.
+              </div>
             </div>
-            <div style={{ background:'var(--cream-dark)', borderRadius:10, padding:'10px 14px', marginBottom:16, fontSize:13 }}>
-              <div>🔒 Higiene: {nivelHigiene === 'sozinho' ? '💪' : nivelHigiene === 'ajuda' ? '🤝' : '📖'}</div>
-              <div style={{ marginTop:4 }}>🔒 HACCP: {nivelHaccp === 'sozinho' ? '💪' : nivelHaccp === 'ajuda' ? '🤝' : '📖'}</div>
-              {Object.entries(notasMicro).filter(([,v]) => v).map(([id, v]) => {
-                const m = microsSugeridas.find(x => x.id === id);
-                return m ? <div key={id} style={{ marginTop:4 }}>🔬 {m.nome}: {v === 'sozinho' ? '💪' : v === 'ajuda' ? '🤝' : '📖'}</div> : null;
-              })}
-              {atitudeEscolhida && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a => a.id === atitudeEscolhida)?.nome}</div>}
+            <div style={{ background:T.cream, borderRadius:12, padding:'12px 16px', marginBottom:20, fontSize:14 }}>
+              <div>🔒 Higiene: {nivelHigiene==='sozinho'?'💪 Sozinho/a':nivelHigiene==='ajuda'?'🤝 Com ajuda':'📖 A aprender'}</div>
+              <div style={{ marginTop:4 }}>🔒 HACCP: {nivelHaccp==='sozinho'?'💪 Sozinho/a':nivelHaccp==='ajuda'?'🤝 Com ajuda':'📖 A aprender'}</div>
+              {atitudeEscolhida && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeEscolhida)?.nome}</div>}
             </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              <button onClick={submeterDefinitivo}
-                style={{ padding:'14px', borderRadius:12, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:15, cursor:'pointer' }}>
-                ✓ Sim, confirmo este registo
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <button onClick={submeterDefinitivo} style={{ padding:'15px', borderRadius:14, border:'none',
+                background:T.sage, color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
+                ✓ Sim, confirmo!
               </button>
-              <button onClick={() => setModalConfirmar(false)}
-                style={{ padding:'12px', borderRadius:12, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
+              <button onClick={() => setModalConfirmar(false)} style={{ padding:'12px', borderRadius:12,
+                border:`1px solid ${T.border}`, background:'#fff', color:'rgba(26,23,20,0.6)',
+                fontSize:14, fontWeight:600, cursor:'pointer' }}>
                 Voltar e rever
               </button>
             </div>
@@ -714,4 +1238,3 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: { plano: PlanoAul
     </div>
   );
 }
-
