@@ -175,6 +175,8 @@ export interface DadosPlanoIndividual {
   atitudesPendentes: string[];          // informativo — não exigido por escrito
   evidenciasJaExistentes: string[];     // o que já foi observado noutro contexto, não repetir
   realizacoesOficiais: string[];        // do referencial 811RA144
+  contextoUC?: string;                  // enquadramento pedagógico específico da UC (gerado dinamicamente)
+  criteriosDesempenho?: string[];       // critérios de desempenho do referencial
 }
 
 const INSTRUCOES_NIVEL: Record<1 | 2 | 3, string> = {
@@ -206,11 +208,21 @@ const INSTRUCOES_NIVEL: Record<1 | 2 | 3, string> = {
 // a informação necessária — não depende de pesquisa externa, por isso não
 // existe versão "pronta" na internet para copiar.
 export function gerarPromptPlanoIndividual(d: DadosPlanoIndividual): string {
+  // Contexto pedagógico específico da UC — ancora o plano no que a UC realmente exige
+  const contexto = d.contextoUC
+    ? `\n## Contexto pedagógico desta UC\n${d.contextoUC}\n`
+    : '';
+
+  // Critérios de desempenho do referencial
+  const criterios = d.criteriosDesempenho && d.criteriosDesempenho.length > 0
+    ? `\nCritérios de desempenho do referencial:\n${d.criteriosDesempenho.map(c => `- ${c}`).join('\n')}\n`
+    : '';
+
   return `# PLANO DE RECUPERAÇÃO INDIVIDUAL — ${d.nomeAluno}
 
 Gera um Plano de Recuperação Individual para este aluno específico, com base EXCLUSIVAMENTE
 nos dados abaixo. Não inventes informação nova nem genérica — usa só o que está aqui.
-
+${contexto}
 ## Situação do aluno
 Unidade de Competência: ${d.ucId} — ${d.ucNome}
 
@@ -227,10 +239,9 @@ tarefa escrita — ficam para observação futura em qualquer aula):
 ${d.atitudesPendentes.map(a => `- ${a}`).join('\n') || '(nenhuma)'}
 
 ${d.evidenciasJaExistentes.length > 0 ? `Já observado noutro contexto (NÃO repetir, já está validado):\n${d.evidenciasJaExistentes.map(e => `- ${e}`).join('\n')}\n` : ''}
-
 Referencial oficial desta UC (811RA144):
 ${d.realizacoesOficiais.map(r => `- ${r}`).join('\n') || '(não disponível)'}
-
+${criterios}
 ## Nível de medidas educativas a aplicar
 ${INSTRUCOES_NIVEL[d.nivelMedidas]}
 
@@ -238,12 +249,21 @@ ${INSTRUCOES_NIVEL[d.nivelMedidas]}
 O nível de medidas NUNCA retira competências essenciais da UC — só adapta a
 FORMA como o aluno acede à tarefa, a realiza, e demonstra a competência.
 
+## INSTRUÇÃO FUNDAMENTAL SOBRE O CONTEÚDO
+O plano deve estar ANCORADO no contexto específico desta UC.
+Não geres tarefas técnicas genéricas — todas as tarefas, questões e casos profissionais
+devem estar ligados ao que esta UC realmente pede: ${d.ucNome}.
+Se a UC é de cozinha portuguesa, o plano fala de pratos portugueses, regiões, tradições,
+produtos nacionais — não de técnicas culinárias abstratas.
+Se a UC é de pastelaria, o plano centra-se em produções de pastelaria, não em cortes de legumes.
+O aluno deve sentir que este plano foi feito para a UC que está a recuperar, não para qualquer outra.
+
 ## O que deves gerar
 Um plano estruturado com:
-1. Resumo do que falta recuperar (2-3 frases, directo)
-2. Tarefas concretas — só sobre as competências técnicas e responsabilidades listadas acima
-3. Questões técnicas adaptadas ao nível de medidas
-4. Um caso profissional realista, ligado às produções em falta
+1. Resumo do que falta recuperar (2-3 frases, directo, ligado ao contexto desta UC)
+2. Tarefas concretas — ancoradas nas produções em falta e no espírito desta UC
+3. Questões técnicas adaptadas ao nível de medidas e ao contexto da UC
+4. Um caso profissional realista ligado a esta UC (ex: numa cozinha a preparar X prato português)
 5. Evidências exigidas (o que o aluno deve entregar)
 6. Indicação clara: que competências vão exigir defesa oral obrigatória depois
 7. Tempo total estimado para completar este plano
