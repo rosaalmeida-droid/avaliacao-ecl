@@ -15,7 +15,7 @@ import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
 import { MapaCompetencias } from './components/MapaCompetencias';
 import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { sincronizarDoSheets, getEstadoSync, addAluno } from './backend';
+import { sincronizarDoSheets, getEstadoSync, addAluno, seedAlunosTeste, seedHistorialTeste, seedPlanoTeste, getTurmas } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -62,6 +62,14 @@ function AppInterno() {
       .then(() => { setSyncStatus('ok'); setRefreshKey(k => k + 1); })
       .catch(() => setSyncStatus('offline'));
   }
+
+  // Seed de dados de teste — só corre se não houver dados ainda
+  useEffect(() => {
+    getTurmas();          // garante turmas CZ1A/CZ2A
+    seedAlunosTeste();    // cria os 4 alunos fictícios
+    seedHistorialTeste(); // cria historial de avaliações e presenças
+    seedPlanoTeste();     // cria plano de aula + ficha Pudim de Ovos + requisição
+  }, []);
 
   useEffect(() => {
     if (perfil === 'professor' && turmaId) {
