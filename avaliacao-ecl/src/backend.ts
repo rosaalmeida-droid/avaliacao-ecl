@@ -36,6 +36,86 @@ export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbx
 // Preencher após criar o Apps Script de alunos (conta eclisboa.net)
 export let SHEETS_ALUNOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbz_uOq2o8ntMasiRM_V-RkPh7_FlErVnd6ZezTjlxYQ9CXDShAEtWhRfLDARLybzbBeVg/exec';
 
+// ── Integração KitchenFlow ECL ───────────────────────────────
+// URL do Apps Script do KitchenFlow — envia registos em background
+export const KITCHENFLOW_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyP34XxTPKvhxrG9dvmb4J28q_dKh1v6WqPgDSykZUGgwZ5zuygKapchAsVkrMao0SMKg/exec';
+export const KITCHENFLOW_APP_URL = 'https://ecl-haccp.vercel.app/';
+
+// Formato: { tabela: string, linha: any[] }
+async function enviarParaKitchenFlow(tabela: string, linha: any[]): Promise<void> {
+  if (!KITCHENFLOW_SHEET_URL) return;
+  try {
+    await fetch(KITCHENFLOW_SHEET_URL, {
+      method: 'POST',
+      body: JSON.stringify({ tabela, linha }),
+    });
+  } catch { /* falha silenciosa — não bloqueia o fluxo do aluno */ }
+}
+
+/** Envia registo de Higiene Pessoal para o KitchenFlow.
+ *  Chamado automaticamente quando o aluno confirma fardamento na Avaliação ECL.
+ *  Formato idêntico ao usado pelo KitchenFlow internamente. */
+export async function registarHigieneKitchenFlow(
+  turmaId: string,
+  alunoId: string,
+  nomeAluno: string,
+  fardamentoOk: boolean
+): Promise<void> {
+  const hoje = new Date();
+  const data = hoje.toLocaleDateString('pt-PT');
+  const hora = hoje.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const estado = fardamentoOk ? 'Confirmado' : 'Incompleto — registado pela Avaliação ECL';
+  await enviarParaKitchenFlow('Higiene Pessoal', [
+    data, hora, turmaId, alunoId, nomeAluno, estado
+  ]);
+}
+
+/** Envia registo de Temperatura de Serviço para o KitchenFlow. */
+export async function registarTemperaturaKitchenFlow(
+  turmaId: string,
+  alunoId: string,
+  nomeAluno: string,
+  prato: string,
+  tipo: 'quente' | 'frio',
+  temperatura: number
+): Promise<void> {
+  const hoje = new Date();
+  const data = hoje.toLocaleDateString('pt-PT');
+  const hora = hoje.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const tempOk = tipo === 'quente' ? temperatura >= 63 : temperatura <= 4;
+  await enviarParaKitchenFlow('Temperatura Serviço', [
+    data, hora, turmaId, alunoId, nomeAluno,
+    prato, tipo === 'quente' ? 'Quente' : 'Frio',
+    temperatura, tempOk ? 'OK' : 'NC', hora, ''
+  ]);
+}
+
+/** Envia registo de Não Conformidade para o KitchenFlow. */
+export async function registarNaoConformidadeKitchenFlow(
+  turmaId: string,
+  alunoId: string,
+  nomeAluno: string,
+  zona: string,
+  descricao: string,
+  acaoCorretiva: string
+): Promise<void> {
+  const hoje = new Date();
+  const data = hoje.toLocaleDateString('pt-PT');
+  const hora = hoje.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  await enviarParaKitchenFlow('NãoConformidades', [
+    data, hora, turmaId, alunoId, nomeAluno,
+    zona, descricao, acaoCorretiva, 'pendente'
+  ]);
+}
+
+/** Abre o KitchenFlow no módulo correto numa nova tab. */
+export function abrirKitchenFlow(modulo?: string): void {
+  const url = modulo
+    ? `${KITCHENFLOW_APP_URL}?mod=${modulo}`
+    : KITCHENFLOW_APP_URL;
+  window.open(url, '_blank', 'noopener');
+}
+
 // ── Chaves localStorage ──────────────────────────────────────
 const KEYS = {
   comandas:      'ecl_comandas',
@@ -71,7 +151,7 @@ function load<T>(key: string): T[] {
   catch { return []; }
 }
 
-function save<T>(key: string, data: T[]): void {
+export function save<T>(key: string, data: T[]): void {
   try { localStorage.setItem(key, JSON.stringify(data)); }
   catch (e) { console.error('Erro ao guardar', key, e); }
 }
@@ -204,13 +284,75 @@ export function getTurmas(): Turma[] {
   const t = load<Turma>(KEYS.turmas);
   if (t.length === 0) {
     const seed: Turma[] = [
-      { id: 'CP1', nome: 'CP Cozinha/Pastelaria 1' },
-      { id: 'CP2', nome: 'CP Cozinha/Pastelaria 2' },
+      { id: 'CZ1A', nome: 'Cozinha 1º Ano — Turma A' },
+      { id: 'CZ2A', nome: 'Cozinha 2º Ano — Turma A' },
     ];
     save(KEYS.turmas, seed);
     return seed;
   }
   return t;
+}
+
+// ── Seed de alunos fictícios para testes ─────────────────────
+// Criados automaticamente na primeira vez que a app é aberta.
+// Permitem simular cenários reais sem dados de alunos reais.
+export function seedAlunosTeste(): void {
+  const todos = getAlunos();
+  if (todos.length > 0) return; // já existem alunos, não fazer seed
+
+  const agora = new Date().toISOString();
+  const alunos: Aluno[] = [
+    {
+      // Aluno 1 — perfil universal, sem historial, primeiro acesso
+      id: 'CZ1A-1',
+      turmaId: 'CZ1A',
+      numero: 1,
+      ano: 1,
+      nome: 'Mariana Costa',
+      pin: '1001',
+      pinCriadoEm: agora,
+      nivelMedidas: 1,
+      ativo: true,
+    },
+    {
+      // Aluno 2 — nível 3 NEE, historial misto (algumas técnicas consolidadas, outras em regressão)
+      id: 'CZ1A-2',
+      turmaId: 'CZ1A',
+      numero: 2,
+      ano: 1,
+      nome: 'Tomás Ferreira',
+      pin: '1002',
+      pinCriadoEm: agora,
+      nivelMedidas: 3,
+      ativo: true,
+    },
+    {
+      // Aluno 3 — perfil avançado, maioria das técnicas consolidadas
+      id: 'CZ1A-3',
+      turmaId: 'CZ1A',
+      numero: 3,
+      ano: 1,
+      nome: 'Beatriz Rodrigues',
+      pin: '1003',
+      pinCriadoEm: agora,
+      nivelMedidas: 1,
+      ativo: true,
+    },
+    {
+      // Aluno 4 — 2º ano, historial de atrasos e faltas, competências em falta
+      id: 'CZ2A-4',
+      turmaId: 'CZ2A',
+      numero: 4,
+      ano: 2,
+      nome: 'João Mendes',
+      pin: '2004',
+      pinCriadoEm: agora,
+      nivelMedidas: 2,
+      ativo: true,
+    },
+  ];
+
+  save(KEYS.alunos, alunos);
 }
 
 // ── Alunos ───────────────────────────────────────────────────
@@ -228,6 +370,236 @@ export function getOrCreateAluno(turmaId: string, numero: number, ano: 1|2|3): A
   if (!aluno) { aluno = { id, turmaId, numero, ano }; addAluno(aluno); }
   else if (aluno.ano !== ano) { aluno.ano = ano; save(KEYS.alunos, all); }
   return aluno;
+}
+
+
+
+// ── Seed de plano de aula, ficha técnica e requisição para testes ──
+// Cria dados realistas para simular uma aula completa da Mariana Costa.
+export function seedPlanoTeste(): void {
+  const KEY_PLANOS = 'ecl_planos';
+  const KEY_FICHAS = 'ecl_fichas';
+  const KEY_REQUISICOES = 'ecl_requisicoes';
+
+  if (load<any>(KEY_PLANOS).length > 0) return; // já tem planos
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  const agora = new Date().toISOString();
+
+  const fichaId = 'ficha_teste_pudim_001';
+  const planoId = 'plano_teste_cz1a_001';
+  const reqId   = 'req_teste_cz1a_001';
+
+  // ── Ficha Técnica — Pudim de Ovos ────────────────────────
+  const fichaPudim = {
+    id: fichaId,
+    nomePrato: 'Pudim de Ovos',
+    classificacao: 'Sobremesa',
+    familia1: 'Pastelaria — Sobremesas Empratadas',
+    familia2: undefined,
+    etiquetas: ['Forno', 'Cozinha Portuguesa'],
+    fichaNum: '1A',
+    numPorcoes: '8',
+    tempoPrep: '20 min',
+    tempoConf: '45 min',
+    ingredientes: [
+      { id:'i1', componente:'Caramelo', qt:'200', un:'g', produto:'Açúcar', tPrep:'2 min', tConf:'8 min', obs:'Caramelizar até âmbar escuro' },
+      { id:'i2', componente:'Pudim', qt:'6', un:'un', produto:'Ovos inteiros', tPrep:'', tConf:'', obs:'' },
+      { id:'i3', componente:'Pudim', qt:'3', un:'un', produto:'Gemas de ovo', tPrep:'', tConf:'', obs:'Reforça a riqueza e cor' },
+      { id:'i4', componente:'Pudim', qt:'500', un:'ml', produto:'Leite gordo', tPrep:'', tConf:'', obs:'Aquecer sem ferver' },
+      { id:'i5', componente:'Pudim', qt:'200', un:'g', produto:'Açúcar', tPrep:'', tConf:'', obs:'' },
+      { id:'i6', componente:'Pudim', qt:'5', un:'ml', produto:'Extracto de baunilha', tPrep:'', tConf:'', obs:'' },
+    ],
+    preparacao: [
+      { id:'p1', num:1, descricao:'Caramelizar o açúcar em seco numa frigideira antiaderente até atingir âmbar escuro', temperatura:'Forte', tempo:'8 min', obs:'Não mexer — agitar apenas a frigideira', haccp:'Atenção: açúcar a 180°C — risco de queimadura grave' },
+      { id:'p2', num:2, descricao:'Verter o caramelo na forma untada e distribuir uniformemente', temperatura:'', tempo:'2 min', obs:'Rodar a forma rapidamente antes de solidificar', haccp:'' },
+      { id:'p3', num:3, descricao:'Aquecer o leite com a baunilha sem deixar ferver', temperatura:'Médio', tempo:'5 min', obs:'', haccp:'' },
+      { id:'p4', num:4, descricao:'Bater os ovos inteiros e as gemas com o açúcar até dissolver — não incorporar ar', temperatura:'', tempo:'3 min', obs:'Evitar espuma — afecta a textura final', haccp:'' },
+      { id:'p5', num:5, descricao:'Verter o leite morno em fio sobre os ovos, mexendo constantemente', temperatura:'', tempo:'2 min', obs:'Temperar devagar para não coagular os ovos', haccp:'' },
+      { id:'p6', num:6, descricao:'Passar o creme pelo passador fino e verter na forma caramelizada', temperatura:'', tempo:'2 min', obs:'Eliminar bolhas de ar da superfície', haccp:'' },
+      { id:'p7', num:7, descricao:'Cozer em banho-maria no forno a 160°C durante 45 min', temperatura:'160°C', tempo:'45 min', obs:'Cobrir com papel de alumínio a meio', haccp:'PCC: temperatura interna mínima 72°C — verificar com termómetro' },
+      { id:'p8', num:8, descricao:'Arrefecer à temperatura ambiente e refrigerar mínimo 4h antes de desenformar', temperatura:'Frio', tempo:'4h', obs:'Não desenformar quente', haccp:'PCC: refrigerar a 0-4°C — produto com ovos e leite' },
+    ],
+    empratamento: 'Desenformar para prato de apresentação. O caramelo deve escorrer naturalmente pelas laterais. Decorar com ramo de hortelã e caramelo em fio.',
+    alergenicos: ['Ovos', 'Leite'],
+    equipamento: 'Forma de pudim com tampa · Frigideira antiaderente · Termómetro de sonda · Passador fino',
+    conservacao: 'Refrigerar a 0-4°C em recipiente fechado. Consumir em 48h.',
+    regeneracao: 'Não aplicável — servir frio. Não regenerar.',
+    kitchenflow: 'Higiene Pessoal — registar antes de iniciar a produção
+Temperatura de Serviço — servir frio, máximo 4°C
+Conservação de Produtos — produto com ovos e leite: refrigerar a 0-4°C, consumir em 48h
+Não Conformidades — registar qualquer desvio detetado',
+    tecnicasSugeridas: ['Caramelizar', 'Cozer em banho-maria', 'Cozer no forno', 'Controlar temperaturas'],
+    ucsAssociadas: ['UC02005'],
+    elaboradoPor: 'rosa.almeida@eclisboa.net',
+    data: hoje,
+    planoAulaId: planoId,
+    criadoEm: agora,
+    atualizadoEm: agora,
+  };
+
+  // ── Plano de Aula ─────────────────────────────────────────
+  const plano = {
+    id: planoId,
+    turmaId: 'CZ1A',
+    professor: 'Rosa Almeida',
+    data: hoje,
+    horaInicio: '08:30',
+    horaFim: '12:30',
+    titulo: 'Introdução à Doçaria Portuguesa — Pudim de Ovos',
+    observacoes: 'Primeira aula de doçaria. Foco na técnica do caramelo e cozeção em banho-maria.',
+    fichasIds: [fichaId],
+    estado: 'publicado' as const,
+    requisicaoId: reqId,
+    ucId: 'UC02005',
+    ucNome: 'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria',
+    numeroPlan: 1,
+    criadoEm: agora,
+    atualizadoEm: agora,
+  };
+
+  // ── Requisição ───────────────────────────────────────────
+  const requisicao = {
+    id: reqId,
+    planoAulaId: planoId,
+    turmaId: 'CZ1A',
+    dataAula: hoje,
+    professor: 'Rosa Almeida',
+    fichasIds: [fichaId],
+    linhas: [
+      { id:'r1', produto:'Açúcar', quantidade:400, quantidadeTotal:400, unidade:'g', fichaId, componente:'Caramelo + Pudim', precoKg:1.20, custoTotal:0.48 },
+      { id:'r2', produto:'Ovos inteiros', quantidade:6, quantidadeTotal:6, unidade:'un', fichaId, componente:'Pudim', precoKg:0, custoTotal:0.90 },
+      { id:'r3', produto:'Gemas de ovo', quantidade:3, quantidadeTotal:3, unidade:'un', fichaId, componente:'Pudim', precoKg:0, custoTotal:0.30 },
+      { id:'r4', produto:'Leite gordo', quantidade:500, quantidadeTotal:500, unidade:'ml', fichaId, componente:'Pudim', precoKg:1.10, custoTotal:0.55 },
+      { id:'r5', produto:'Extracto de baunilha', quantidade:5, quantidadeTotal:5, unidade:'ml', fichaId, componente:'Pudim', precoKg:0, custoTotal:0.20 },
+    ],
+    custoTotal: 2.43,
+    estado: 'enviada' as const,
+    criadaEm: agora,
+    atualizadaEm: agora,
+  };
+
+  save(KEY_FICHAS, [fichaPudim]);
+  save(KEY_PLANOS, [plano]);
+  save(KEY_REQUISICOES, [requisicao]);
+}
+
+// ── Seed de historial de avaliações para alunos de teste ─────
+// Cria registos realistas para simular diferentes cenários.
+export function seedHistorialTeste(): void {
+  const KEY_HIST = 'ecl_historico_avaliacoes';
+  const KEY_PRES = 'ecl_historico_presencas';
+  const existing = load<any>(KEY_HIST);
+  if (existing.length > 0) return; // já tem historial
+
+  const datas = [
+    '2025-10-15', '2025-10-22', '2025-11-05',
+    '2025-11-19', '2025-12-03', '2025-12-17',
+    '2026-01-14', '2026-01-28', '2026-02-11',
+  ];
+
+  const avaliacoes: any[] = [];
+  const presencas: any[] = [];
+  let idx = 0;
+
+  // ── MARIANA COSTA (CZ1A-1) — perfil universal, primeiro ano, sem historial
+  // Nenhum registo — aluna nova, vai avaliar na primeira aula
+
+  // ── TOMÁS FERREIRA (CZ1A-2) — nível 3 NEE, historial misto
+  // Algumas técnicas consolidadas, outras em regressão
+  const tomasCompetencias = [
+    { id: 'S001', notas: [5, 5, 10] },      // higiene — em desenvolvimento
+    { id: 'S002', notas: [15, 15, 15] },    // mise en place — consolidada
+    { id: 'S058a', notas: [10, 15, 5] },    // cortes — em regressão!
+    { id: 'OBR_01', notas: [10, 10, 15] },  // higiene pessoal — a melhorar
+  ];
+  tomasCompetencias.forEach(({ id, notas }) => {
+    notas.forEach((nota, i) => {
+      avaliacoes.push({
+        id: `seed_tomas_${id}_${i}`,
+        alunoId: 'CZ1A-2', turmaId: 'CZ1A',
+        planoAulaId: `plano_seed_${i}`, fichaId: '',
+        ucId: 'UC01999', microcompetenciaId: id,
+        nota, data: datas[i], validadoPor: 'professor',
+      });
+    });
+  });
+  // Presenças — faltou a 2 aulas das 9
+  datas.slice(0, 9).forEach((data, i) => {
+    presencas.push({
+      id: `seed_tomas_pres_${i}`,
+      alunoId: 'CZ1A-2', turmaId: 'CZ1A',
+      planoAulaId: `plano_seed_${i}`, ucId: 'UC01999',
+      presente: i !== 3 && i !== 6, // faltou à 4ª e 7ª aula
+      atrasado: i === 1 || i === 5,
+      atrasadoMins: i === 1 ? 15 : i === 5 ? 8 : 0,
+      fardamentoOk: i !== 2,
+    });
+  });
+
+  // ── BEATRIZ RODRIGUES (CZ1A-3) — perfil avançado, maioria consolidada
+  const beatrizCompetencias = [
+    { id: 'S001', notas: [15, 15, 15] },    // higiene — avançada
+    { id: 'S002', notas: [15, 15, 15] },    // mise en place — avançada
+    { id: 'S058a', notas: [10, 15, 15] },   // cortes — consolidada
+    { id: 'S058b', notas: [15, 15, 15] },   // gomos — avançada
+    { id: 'OBR_01', notas: [15, 15, 15] },  // higiene pessoal — avançada
+    { id: 'OBR_02', notas: [10, 15, 15] },  // HACCP — consolidada
+    { id: 'S162B', notas: [15, 15] },       // massa montada — avançada
+  ];
+  beatrizCompetencias.forEach(({ id, notas }) => {
+    notas.forEach((nota, i) => {
+      avaliacoes.push({
+        id: `seed_beatriz_${id}_${i}`,
+        alunoId: 'CZ1A-3', turmaId: 'CZ1A',
+        planoAulaId: `plano_seed_${i}`, fichaId: '',
+        ucId: 'UC01999', microcompetenciaId: id,
+        nota, data: datas[i], validadoPor: 'professor',
+      });
+    });
+  });
+  datas.slice(0, 9).forEach((data, i) => {
+    presencas.push({
+      id: `seed_beatriz_pres_${i}`,
+      alunoId: 'CZ1A-3', turmaId: 'CZ1A',
+      planoAulaId: `plano_seed_${i}`, ucId: 'UC01999',
+      presente: true, atrasado: false, atrasadoMins: 0, fardamentoOk: true,
+    });
+  });
+
+  // ── JOÃO MENDES (CZ2A-4) — 2º ano, atrasos, faltas, competências em falta
+  const joaoCompetencias = [
+    { id: 'S001', notas: [5, 5, 5, 5] },    // higiene — nunca passou
+    { id: 'S002', notas: [10, 5, 10, 5] },  // mise en place — irregular
+    { id: 'OBR_01', notas: [5, 10, 5, 5] }, // higiene pessoal — problema recorrente
+    { id: 'OBR_02', notas: [5, 5, 10, 5] }, // HACCP — fraco
+  ];
+  joaoCompetencias.forEach(({ id, notas }) => {
+    notas.forEach((nota, i) => {
+      avaliacoes.push({
+        id: `seed_joao_${id}_${i}`,
+        alunoId: 'CZ2A-4', turmaId: 'CZ2A',
+        planoAulaId: `plano_seed_${i}`, fichaId: '',
+        ucId: 'UC02003', microcompetenciaId: id,
+        nota, data: datas[i], validadoPor: 'professor',
+      });
+    });
+  });
+  // Presenças — faltou a 4 aulas das 9, 3 atrasos
+  datas.slice(0, 9).forEach((data, i) => {
+    presencas.push({
+      id: `seed_joao_pres_${i}`,
+      alunoId: 'CZ2A-4', turmaId: 'CZ2A',
+      planoAulaId: `plano_seed_${i}`, ucId: 'UC02003',
+      presente: ![2, 4, 6, 8].includes(i), // faltou a 4 aulas
+      atrasado: [0, 1, 5].includes(i),
+      atrasadoMins: i === 0 ? 20 : i === 1 ? 10 : i === 5 ? 30 : 0,
+      fardamentoOk: ![0, 3].includes(i), // fardamento incompleto em 2 aulas
+    });
+  });
+
+  save(KEY_HIST, avaliacoes);
+  save(KEY_PRES, presencas);
 }
 
 // ── Gestão de PINs ───────────────────────────────────────────
@@ -914,6 +1286,48 @@ export function getGuiasDaRecuperacao(planosIds: string[]): { fichaId: string; n
 // responsabilidades por validar, atitudes pendentes, evidências já existentes
 // (para não repetir o que já foi observado), referencial oficial, e o nível
 // de medidas educativas do aluno.
+// Contextos pedagógicos específicos por UC — ancoram o plano de recuperação
+// no espírito real da UC, evitando que a IA gere tarefas técnicas genéricas.
+const CONTEXTO_PEDAGOGICO_UC: Record<string, string> = {
+  UC03586: `Esta UC é sobre COZINHA E DOÇARIA TRADICIONAL PORTUGUESA.
+O objetivo central não é técnico — é cultural e identitário.
+O aluno deve ser capaz de:
+- Reconhecer pratos emblemáticos da gastronomia portuguesa (bacalhau, caldo verde, cozido, arroz de pato, pastéis de nata, etc.)
+- Compreender a ligação entre os pratos e as regiões, tradições e história do país
+- Valorizar os produtos nacionais (DOP, IGP) e a sazonalidade
+- Executar uma receita tradicional respeitando a técnica original, não a adaptando arbitrariamente
+O plano de recuperação deve centrar-se neste eixo cultural: IDENTIDADE, TRADIÇÃO, PRODUTO NACIONAL.
+Não deve focar em técnicas culinárias genéricas (brunoise, branquear, etc.) que pertencem a outras UCs.`,
+
+  UC03587: `Esta UC é sobre PASTELARIA DE SOBREMESA.
+O foco é a confeção de produtos de pastelaria e sobremesas, cremes, massas base e geladaria.
+O plano deve centrar-se em produções de pastelaria — não em técnicas de cozinha salgada.`,
+
+  UC03588: `Esta UC é sobre GASTRONOMIA DO MUNDO.
+O aluno deve conhecer e confecionar pratos de diferentes culturas e países.
+O plano deve ligar-se a um ou mais países/regiões específicos, não a técnicas genéricas.`,
+
+  UC01999: `Esta UC é sobre MÉTODOS DE CONFEÇÃO.
+O foco é a aplicação correta dos diferentes métodos (assar, brasear, cozer, confitar, etc.)
+O plano deve centrar-se nos métodos específicos que o aluno não demonstrou.`,
+
+  UC02002: `Esta UC é sobre SOPAS, ACEPIPES, OVOS, MASSAS, SALADAS E ENTRADAS.
+O plano deve centrar-se nas produções deste grupo — não em carnes, peixes ou pastelaria.`,
+
+  UC02003: `Esta UC é sobre PEIXES E MARISCOS.
+O plano deve centrar-se na preparação e confeção de pescado — limpeza, corte, técnicas de confeção aplicadas ao peixe.`,
+
+  UC02004: `Esta UC é sobre CARNES, AVES E CAÇA.
+O plano deve centrar-se na preparação e confeção de carnes — desossar, aparar, bridagem, métodos de confeção aplicados.`,
+
+  UC02005: `Esta UC é sobre MASSAS BASE, RECHEIOS, CREMES E MOLHOS DE PASTELARIA.
+O plano deve centrar-se nas bases de pastelaria — pâte brisée, sablée, choux, cremes, etc.`,
+
+  UC03585: `Esta UC é sobre CONSERVAÇÃO DE MATÉRIAS-PRIMAS E PRODUTOS.
+O foco é HACCP, temperaturas, etiquetagem, FIFO/FEFO, armazenamento correto.
+O plano deve centrar-se nas práticas de conservação e segurança alimentar.`,
+};
+
 export function construirPromptPlanoIndividual(recuperacaoId: string): string {
   const r = getRecuperacoes().find(x => x.id === recuperacaoId);
   if (!r) return '';
@@ -935,6 +1349,8 @@ export function construirPromptPlanoIndividual(recuperacaoId: string): string {
     atitudesPendentes: r.atitudesIds.map(getNomeCompetenciaGenerica),
     evidenciasJaExistentes: evidencias.map(e => `${getNomeCompetenciaGenerica(e.competenciaId)} (nível ${e.nivel}, em ${new Date(e.data).toLocaleDateString('pt-PT')})`),
     realizacoesOficiais: refUC?.realizacoes || [],
+    criteriosDesempenho: refUC?.criteriosDesempenho || [],
+    contextoUC: CONTEXTO_PEDAGOGICO_UC[r.ucId] || undefined,
   });
 }
 
