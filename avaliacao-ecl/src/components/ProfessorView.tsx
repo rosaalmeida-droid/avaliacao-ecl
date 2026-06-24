@@ -679,7 +679,9 @@ function extrairFicha(texto: string): FichaTecnica {
 // Formato exato da ficha de produção ECL
 // ============================================================
 function gerarPrompt(linkReceita: string, ucId?: string, ucNome?: string, modoProf?: boolean): string {
-  const ucContexto = ucId ? `\nCONTEXTO PEDAGÓGICO: Esta ficha pertence à UC ${ucId} — ${ucNome || ''}.\nAs técnicas e competências devem ser específicas desta UC.` : '';
+  const ucContexto = ucId
+    ? `\nCONTEXTO PEDAGÓGICO: Esta ficha pertence à UC ${ucId} — ${ucNome || ''}.\nAs técnicas, famílias e competências devem ser específicas desta UC.`
+    : '';
 
   const blocoProf = modoProf ? `
 
@@ -714,8 +716,6 @@ ELEVA a receita para nível profissional:
    - Coloca-a como ingrediente normal na ficha
    - Adiciona uma nota na OBS: "⚠️ Produzir em aula — criar Ficha Técnica separada para esta massa"
 
-6. TÉCNICAS DETECTADAS — lista apenas técnicas profissionais, não caseiras
-
 ` : '';
 
   return `Analisa a receita e extrai a informação NO FORMATO EXATO abaixo.
@@ -733,85 +733,65 @@ REGRA 1 — FORMATO
 
 REGRA 2 — UNIDADES (CRÍTICO)
 Todos os ingredientes em GRAMAS (g) ou MILILITROS (ml).
-ÚNICA exceção: OVOS ficam em "un".
+ÚNICA exceção: OVOS ficam em "un" (incluindo gemas e claras — "3 gemas" → "3 | un | Gemas de ovo").
 
 Conversões obrigatórias:
 - "2 cebolas" → "200 | g | Cebola" (média ≈ 100g)
 - "1 dente de alho" → "6 | g | Alho"
-- "1 cebola grande" → "200 | g | Cebola"
 - "1 lombo de bacalhau" → "200 | g | Bacalhau demolhado"
-- "1 lombo de salmão" → "180 | g | Salmão fresco"
 - "1 filete de peixe" → "150 | g | [espécie]"
 - "1 tomate" → "120 | g | Tomate"
 - "1 cenoura" → "100 | g | Cenoura"
 - "1 batata média" → "150 | g | Batata"
 - "1 limão (raspa)" → "12 | g | Raspa de limão"
 - "1 limão (sumo)" → "30 | ml | Sumo de limão"
-- "1 laranja (raspa)" → "15 | g | Raspa de laranja"
 - "1 cs" sólido → "15 | g | [produto]"
 - "1 cs" líquido → "15 | ml | [produto]"
-- "1 cc" → "5 | g | [produto]" ou "5 | ml"
+- "1 cc" → "5 | g ou ml | [produto]"
 - "q.b." → "q.b. | | [produto]"
-- Gemas: "3 gemas" → "3 | un | Gemas de ovo"
-- Claras: "3 claras" → "3 | un | Claras de ovo"
 NÃO usar: un, unidade, dente, ramo, folha, fatia, cabeça (exceto ovos/gemas/claras)
 
-REGRA 3 — NOMES DOS INGREDIENTES (CRÍTICO)
+REGRA 3 — NOMES DOS INGREDIENTES
 NUNCA usar nomes de marca. Usar sempre o produto genérico:
-❌ Knorr, Sidul, Vaqueiro, Mimosa, Riberalves, Gallo, Continente, Pingo Doce
+❌ Knorr, Sidul, Vaqueiro, Mimosa, Riberalves, Gallo
 ✅ Açúcar, Margarina, Leite, Bacalhau salgado, Azeite
 NUNCA usar produtos inexistentes:
-❌ Puré de grão → ✅ Grão cozido
-❌ Legumes assados → ✅ [lista os legumes crus]
+❌ Puré de grão → ✅ Grão cozido e passado
 
 REGRA 3B — CALDOS (REGRA DA COZINHA PEDAGÓGICA)
 Em cozinha pedagógica os caldos NUNCA se compram — são SEMPRE produzidos em aula.
-NUNCA escrever "Caldo de galinha (cubo)" ou "Caldo Knorr" nos ingredientes.
 Quando a receita pede caldo:
-→ Na coluna PRODUTO escreve: "Caldo de galinha (produzido em aula)"
-→ Na coluna OBS escreve: "⚠️ Verificar se existe caldo já produzido na cozinha. Se não houver, informar o professor antes de iniciar."
-→ Na PREPARAÇÃO adiciona um passo antes dos outros: "Verificar disponibilidade de caldo de galinha na cozinha. Se necessário, produzir com antecedência."
-Tipos de caldo e o que escrever:
-- Caldo de galinha → "Caldo de galinha (produzido em aula)"
-- Caldo de carne → "Caldo de carne (produzido em aula)"
-- Caldo de peixe / fumet → "Fumet de peixe (produzido em aula)"
-- Caldo de legumes → "Caldo de legumes (produzido em aula)"
+→ Ingrediente: "Caldo de galinha (produzido em aula)"
+→ OBS: "⚠️ Verificar se existe caldo já produzido. Se não houver, informar o professor antes de iniciar."
+Tipos: caldo de galinha | caldo de carne | fumet de peixe | caldo de legumes
 
 REGRA 3C — ÁGUA DE COZEDURA
-Quando a receita tem ingredientes que produzem água de cozedura útil, adicionar nota obrigatória na coluna OBS:
-- Bacalhau (qualquer forma) → OBS: "⚠️ Reservar a água de demolha/cozedura — pode servir para ajustar consistência ou como base de caldo"
-- Massa/arroz → OBS: "⚠️ Reservar a água de cozedura (com amido) — útil para ligar molhos"
-- Batata → OBS: "⚠️ Reservar a água de cozedura se necessário para o puré"
-- Legumes → OBS: "⚠️ Reservar a água de cozedura para caldo de legumes"
-- Grão/feijão → OBS: "⚠️ Reservar a água de cozedura — rica em proteína e amido"
+Ingredientes que produzem água útil → adicionar nota na OBS:
+- Bacalhau → "⚠️ Reservar a água de demolha/cozedura"
+- Massa/arroz → "⚠️ Reservar a água de cozedura (com amido) — útil para ligar molhos"
+- Legumes → "⚠️ Reservar a água de cozedura para caldo de legumes"
+- Grão/feijão → "⚠️ Reservar a água de cozedura — rica em proteína e amido"
 
 REGRA 4 — FARINHA
-Se a receita não especifica o tipo:
-- Bolos, queques, muffins, massas montadas → "Farinha de trigo T55"
-- Pão, pizza, massa salgada → "Farinha de trigo T65"
-- Com fermento químico → "Farinha de trigo T55"
+- Bolos, massas montadas, pastelaria → "Farinha de trigo T55"
+- Pão, pizza, massas salgadas → "Farinha de trigo T65"
 - Por omissão → "Farinha de trigo T65"
 
-REGRA 5 — ÁGUA
-A água pode aparecer na Ficha de Produção normalmente.
-Não há restrição aqui — é apenas na Requisição que não aparece.
+REGRA 5 — COMPONENTES
+Agrupa os ingredientes por componente quando o prato tem partes distintas:
+Ex: "Massa", "Creme", "Cobertura", "Molho", "Guarnição", "Base"
+Deixa o campo COMPONENTE vazio se for receita simples.
 
-REGRA 6 — COMPONENTES
-Agrupa os ingredientes por preparação/componente:
-Ex: "Massa", "Creme", "Cobertura", "Molho", "Guarnição"
-Deixa o campo COMPONENTE vazio se for receita simples sem componentes.
-
-REGRA 7 — PCC/HACCP
+REGRA 6 — PCC/HACCP
 Os PCC devem ser específicos da receita, não genéricos.
 Inclui: temperatura exacta, tempo, produto de risco.
 Exemplos corretos:
 - "Temperatura mínima 75°C no centro do produto"
 - "Creme pasteleiro: arrefecer de 65°C a 10°C em menos de 2h"
-- "Ovos: usar ovos frescos do dia, verificar data de validade"
-- "Bacalhau: verificar ausência de espinhas após desfiar"
+- "Ovos: verificar data de validade — usar ovos frescos do dia"
 
-REGRA 8 — REGISTOS KITCHENFLOW
-Inclui APENAS os módulos aplicáveis a esta receita:
+REGRA 7 — REGISTOS KITCHENFLOW
+Inclui APENAS os módulos aplicáveis:
 1. Higiene Pessoal — SEMPRE
 2. Temperatura de Serviço — se prato quente (min 63°C) ou frio (max 4°C)
 3. Controlo de Óleos — APENAS se fritura por imersão
@@ -820,23 +800,142 @@ Inclui APENAS os módulos aplicáveis a esta receita:
 6. Amostra Testemunho — APENAS se serviço a clientes externos
 
 ═══════════════════════════════════════════════════
+REGRA 8 — FAMÍLIA E ETIQUETAS (CRÍTICO PARA A AVALIAÇÃO)
+═══════════════════════════════════════════════════
+
+A FAMÍLIA define as microcompetências e subtécnicas que serão sugeridas ao aluno na avaliação.
+Uma escolha errada leva a competências irrelevantes — lê com atenção.
+
+FAMÍLIA PRINCIPAL (obrigatória) — escolhe UMA da lista:
+  Preparações Base e Molhos    → fundos, molhos base, manteigas compostas, caldos
+  Sopas e Caldos               → sopas simples, cremes, consommés, bisques, gazpacho
+  Entradas e Acepipes          → patês, tártaros, mousses salgadas, saladas compostas
+  Ovos                         → ovos mexidos, escalfados, omeletes, ovos en cocotte
+  Peixes e Mariscos            → filetes, lombos, peixe inteiro, marisco, moluscos
+  Carnes, Aves e Caça          → frango, vitela, borrego, pato, porco, caça
+  Arrozes                      → risotto, paella, arroz de pato, arroz de marisco, pilaf
+  Massas                       → pasta seca, massa fresca, gnocchi, esparguete, lasanha
+  Legumes e Vegetarianos       → pratos sem proteína animal como elemento principal
+  Acompanhamentos e Guarnições → purés, legumes saltados, batatas, arroz branco
+  Panificação                  → pão de trigo, broa, brioche, focaccia, ciabatta, pão especial
+  Pastelaria — Massas Base     → massa folhada, choux, quebrada, areada, génoise, biscuit
+  Pastelaria — Cremes e Molhos → creme pasteleiro, inglês, chantilly, ganache, coulis, compota
+  Pastelaria — Sobremesas Empratadas → sobremesas com vários componentes, tarte empratada, mousse
+  Pastelaria — Doçaria e Petit Fours → pastel de nata, macaron, éclair, petit four, doçaria conventual
+  Bebidas                      → sumos, bebidas compostas, chás, café, infusões
+
+FAMÍLIA SECUNDÁRIA (opcional) — usa quando o prato combina duas técnicas com PESO EQUIVALENTE:
+Exemplos onde usar família secundária:
+  - Pastel de Nata → F1: Pastelaria — Massas Base + F2: Pastelaria — Cremes e Molhos
+  - Éclair → F1: Pastelaria — Massas Base + F2: Pastelaria — Cremes e Molhos
+  - Tarte de frutas → F1: Pastelaria — Massas Base + F2: Pastelaria — Sobremesas Empratadas
+  - Arroz de pato → F1: Arrozes + F2: Carnes, Aves e Caça
+  - Bacalhau à Brás → F1: Peixes e Mariscos + F2: Ovos
+NÃO usar família secundária se uma técnica for claramente secundária (ex: molho de acompanhamento).
+
+ETIQUETAS (opcional, máximo 3) — contexto adicional que acrescenta microcompetências específicas:
+
+  Proteína/ingrediente cruzado:
+    Vaca | Porco | Frango | Pato | Borrego | Caça | Peixe branco | Peixe gordo |
+    Bacalhau | Marisco | Moluscos | Leguminosas | Queijo | Enchidos
+
+  Técnica/método dominante:
+    Forno | Vapor | Vácuo | Fritura | Grelhado | Estufado | Fumado | Fermentado | Cru
+
+  Contexto cultural:
+    Cozinha Portuguesa | Pastelaria Portuguesa | Cozinha Internacional |
+    Sustentável | Criativa/Vanguarda | Alternativa/Vegan
+
+REGRA DAS ETIQUETAS:
+- NUNCA etiquetar o que já está na família (ex: família Peixes → não etiquetar "Peixe")
+- Usar etiqueta só quando ACRESCENTA informação (ingrediente cruzado, método especial, contexto cultural)
+- Uma ficha simples pode ter zero etiquetas
+
+EXEMPLOS CORRETOS:
+  Pudim de Ovos:
+    F1: Pastelaria — Sobremesas Empratadas | F2: (nenhuma) | Etiquetas: Forno | Cozinha Portuguesa
+  Pastel de Nata:
+    F1: Pastelaria — Massas Base | F2: Pastelaria — Cremes e Molhos | Etiquetas: Pastelaria Portuguesa
+  Arroz de Pato:
+    F1: Arrozes | F2: Carnes, Aves e Caça | Etiquetas: Forno | Cozinha Portuguesa
+  Bacalhau à Gomes de Sá:
+    F1: Peixes e Mariscos | F2: (nenhuma) | Etiquetas: Bacalhau | Cozinha Portuguesa | Forno
+  Caldo Verde:
+    F1: Sopas e Caldos | F2: (nenhuma) | Etiquetas: Cozinha Portuguesa
+  Génoise com Mousse de Chocolate:
+    F1: Pastelaria — Massas Base | F2: Pastelaria — Sobremesas Empratadas | Etiquetas: (nenhuma)
+
+═══════════════════════════════════════════════════
+REGRA 9 — MICROCOMPETÊNCIAS E SUBTÉCNICAS DETECTADAS
+═══════════════════════════════════════════════════
+
+Esta secção é usada pela aplicação para sugerir competências ao aluno na autoavaliação.
+A escolha deve ser COERENTE com a FAMÍLIA e ETIQUETAS definidas.
+NÃO incluir técnicas de outras famílias — se a família é Sobremesas, não incluir "Aparar carne".
+
+Microcompetências técnicas — usa EXACTAMENTE estes nomes (máx 6):
+  CORTES E PREPARAÇÕES BASE:
+    Brunoise | Juliana | Chiffonade | Rondelles | Mirepoix | Macedónia | Paisana
+    Filetar peixe | Escamar peixe | Retirar espinhas | Retirar pele peixe | Porcionar peixe
+    Preparar marisco | Descascar camarão | Abrir bivalves
+    Aparar carne | Desossar | Selar carne | Porcionar carne | Bridage/atar aves
+    Tornear legumes | Corte em jardineira
+
+  MÉTODOS DE CONFEÇÃO:
+    Cozer em água | Cozer a vapor | Escalfar/pochar | Branquear
+    Saltear | Fritar por imersão | Grelhar | Assar no forno
+    Estufar | Guisar | Brasear | Confitar | Gratinar
+    Cozer em banho-maria | Cozer sous-vide
+
+  FUNDOS E MOLHOS:
+    Fundo branco | Fundo escuro | Fumet de peixe | Fundo de legumes
+    Bechamel | Velouté | Redução de molho | Emulsão quente | Emulsão fria
+    Molho de tomate | Demi-glace
+
+  PASTELARIA E DOÇARIA:
+    Massa folhada | Détrempe | Tourage | Massa quebrada/areada
+    Massa choux | Génoise/massa montada | Biscuit | Dacquoise
+    Creme pasteleiro | Creme inglês | Chantilly | Ganache
+    Mousse | Bavaroise | Panna cotta | Creme de nata
+    Coulis/compota | Caramelizar | Temperagem de chocolate
+    Macaron | Éclair | Mille-feuille | Sobremesa empratada
+
+  PANIFICAÇÃO:
+    Amassar | Fermentar | Dividir e bolear | Moldar pão | Cozer pão
+    Poolish/fermento prévio | Massa mãe/levain | Slash/golpear
+
+  HIGIENE E CONTROLO:
+    Organizar posto de trabalho | Controlar temperaturas
+    Armazenamento refrigerado | Etiquetagem e lote | Verificar validades
+
+Subtécnicas específicas — usa EXACTAMENTE estes nomes quando aplicável:
+  S058a — Corte em Rondelle/Demi-lune
+  S058b — Corte em Gomos
+  S058c — Corte em Bâton
+  S162B — Massa montada (génoise, esponja, pão de ló, biscuit)
+  S164D — Mousse (técnica de incorporação de ar)
+
+═══════════════════════════════════════════════════
 FORMATO DE RESPOSTA (manter exactamente)
 ═══════════════════════════════════════════════════
 
 NOME DO PRATO: [nome sem marcas]
+FAMÍLIA PRINCIPAL: [exactamente um valor da lista de famílias]
+FAMÍLIA SECUNDÁRIA: [exactamente um valor da lista OU "nenhuma"]
+ETIQUETAS: [até 3 etiquetas da lista OU "nenhuma"]
 CLASSIFICAÇÃO: [Peixe / Carne / Aves / Sobremesa / Sopa / Entrada / Massa / Vegetariano / Outro]
 Nº DE DOSES: [número]
 TEMPO DE PREPARAÇÃO: [X min]
 TEMPO DE CONFEÇÃO: [X min]
-ALERGÉNICOS: [lista dos 14 alergénicos EU presentes]
+ALERGIÉNICOS: [lista dos 14 alergénicos EU presentes]
 
 INGREDIENTES:
 COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
-[aplica REGRAS 2, 3, 4, 6 aqui]
+[aplica REGRAS 2, 3, 3B, 3C, 4, 5 aqui]
 
 PREPARAÇÃO:
 NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
-[aplica REGRA 7 aqui — cada passo numa linha]
+[aplica REGRA 6 aqui — cada passo numa linha]
 
 EMPRATAMENTO:
 [descrição do empratamento profissional]
@@ -851,72 +950,161 @@ REGENERAÇÃO:
 [como regenerar ou "Não aplicável — consumir imediatamente"]
 
 REGISTOS KITCHENFLOW:
-[aplica REGRA 8 — apenas módulos relevantes]
+[aplica REGRA 7 — apenas módulos relevantes]
 
-TÉCNICAS DETECTADAS:
-[Lista APENAS os nomes exactos das microcompetências técnicas usadas nesta receita — máx 8, uma por linha.
-IMPORTANTE: Esta secção é usada pela aplicação para sugerir competências ao professor. Usa EXACTAMENTE estes nomes:
-Cozer | Escalfar/pochar | Branquear | Saltear | Fritar | Grelhar | Assar | Estufar/guisar | Brasear | Gratinar | Confitar
-Juliana | Brunoise | Mirepoix | Chiffonade | Filetar peixe | Escamar peixe | Retirar espinhas | Retirar pele peixe
-Porcionar peixe | Cozinhar bacalhau | Preparar marisco | Aparar carne | Desossar | Selar carne | Porcionar carne
-Fundo branco | Fundo escuro | Fumet de peixe | Fundo de legumes | Bechamel | Veloute | Reducao de molho | Emulsao quente/fria
-Sopa simples | Creme de legumes | Consomme | Bisque | Sopa fria | Ovo escalfado | Omelete
-Massa alimenticia seca | Massa fresca/recheada | Creme pasteleiro | Creme ingles | Chantilly | Ganache | Mousse
-Massa choux | Massa folhada | Detrempe | Tourage | Massa quebrada/areada
-Amassar | Fermentar | Dividir e bolear | Moldar pao | Cozer pao
-Organizar posto de trabalho | Controlar temperaturas | Armazenamento refrigerado | Etiquetagem e lote]
+MICROCOMPETÊNCIAS DETECTADAS:
+[lista de microcompetências da REGRA 9 — coerentes com a FAMÍLIA]
+[máx 6, uma por linha]
+
+SUBTÉCNICAS DETECTADAS:
+[lista de subtécnicas específicas (S058a, S058b, S058c, S162B, S164D) se aplicável]
+[ou "nenhuma"]
 
 ---
-EXEMPLO DE REFERÊNCIA (Bacalhau à Brás):
+EXEMPLO DE REFERÊNCIA — Pudim de Ovos:
 
-NOME DO PRATO: Bacalhau à Brás
-CLASSIFICAÇÃO: Peixe
-Nº DE DOSES: 4
-TEMPO DE PREPARAÇÃO: 30 min
-TEMPO DE CONFEÇÃO: 20 min
-ALERGÉNICOS: Peixe, Ovos, Glúten
+NOME DO PRATO: Pudim de Ovos
+FAMÍLIA PRINCIPAL: Pastelaria — Sobremesas Empratadas
+FAMÍLIA SECUNDÁRIA: nenhuma
+ETIQUETAS: Forno | Cozinha Portuguesa
+CLASSIFICAÇÃO: Sobremesa
+Nº DE DOSES: 8
+TEMPO DE PREPARAÇÃO: 20 min
+TEMPO DE CONFEÇÃO: 45 min
+ALERGIÉNICOS: Ovos, Leite
 
 INGREDIENTES:
 COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
-Peixe | 500 | g | Bacalhau demolhado | 10 min | | ⚠️ Reservar a água de cozedura
-Vegetal | 200 | g | Cebola | 3 min | | Cortar em juliana fina
-Gordura | 30 | ml | Azeite virgem extra | | |
-Ovo | 4 | un | Ovos | | | Mexer no final fora do lume
+Caramelo | 200 | g | Açúcar | 2 min | 8 min | Caramelizar até âmbar escuro
+Pudim | 6 | un | Ovos inteiros | | |
+Pudim | 3 | un | Gemas de ovo | | | Reforça a riqueza e cor
+Pudim | 500 | ml | Leite gordo | | | Aquecer sem ferver
+Pudim | 200 | g | Açúcar | | |
+Pudim | 5 | ml | Extracto de baunilha | | |
 
 PREPARAÇÃO:
 NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
-1 | Demolhar o bacalhau 24h antes em água fria, mudar a água 3 vezes | Frio | 24h | Manter refrigerado | Temperatura de refrigeração 0-4°C durante demolha
-2 | Refogar a cebola em juliana no azeite até ficar translúcida | Médio | 8 min | Mexer regularmente |
-3 | Adicionar o bacalhau desfiado sem espinhas e envolver | Médio | 5 min | | Verificar ausência de espinhas — risco de engasgamento
-4 | Juntar as batatas palha e envolver. Retirar do lume e adicionar os ovos mexidos | Forte→apagar | 2 min | Não cozinhar demasiado os ovos | Ovos devem ficar cremosos — temperatura interna 63°C
-5 | Retificar o sal e servir de imediato polvilhado com salsa picada | | | Provar sempre antes de servir |
+1 | Caramelizar o açúcar em seco numa frigideira antiaderente até atingir âmbar escuro | Forte | 8 min | Não mexer — agitar apenas a frigideira | Atenção: açúcar a 180°C — risco de queimadura grave
+2 | Verter o caramelo na forma untada e distribuir uniformemente | | 2 min | Rodar a forma rapidamente antes de solidificar |
+3 | Aquecer o leite com a baunilha sem deixar ferver | Médio | 5 min | |
+4 | Bater os ovos inteiros e as gemas com o açúcar até dissolver — não incorporar ar | | 3 min | Evitar espuma — afecta a textura final |
+5 | Verter o leite morno em fio sobre os ovos, mexendo constantemente | | 2 min | Temperar devagar para não coagular os ovos |
+6 | Passar o creme pelo passador fino e verter na forma caramelizada | | 2 min | Eliminar bolhas de ar da superfície |
+7 | Cozer em banho-maria no forno a 160°C durante 45 min | 160°C | 45 min | Cobrir com papel de alumínio a meio | PCC: temperatura interna mínima 72°C — verificar com termómetro
+8 | Arrefecer à temperatura ambiente e refrigerar mínimo 4h antes de desenformar | Frio | 4h | Não desenformar quente | PCC: refrigerar a 0-4°C — produto com ovos e leite
 
 EMPRATAMENTO:
-Servir em prato fundo aquecido, polvilhado com salsa picada e azeitonas pretas. Decorar com rodela de limão.
+Desenformar para prato de apresentação. O caramelo deve escorrer naturalmente pelas laterais. Decorar com ramo de hortelã e caramelo em fio.
 
 EQUIPAMENTO NECESSÁRIO:
-Frigideira larga antiaderente
-Faca de chef e tábua de corte
-Tigela para desfiar o bacalhau
+Forma de pudim com tampa
+Frigideira antiaderente para o caramelo
+Termómetro de sonda
+Passador fino
+Recipiente para banho-maria
 
 CONSERVAÇÃO:
-Refrigerar a 0-4°C em recipiente fechado. Consumir nas 24h seguintes.
+Refrigerar a 0-4°C em recipiente fechado. Consumir em 48h.
 
 REGENERAÇÃO:
-Aquecer em frigideira antiaderente a lume médio, adicionando um fio de azeite. Temperatura mínima 75°C no centro.
+Não aplicável — servir frio. Não regenerar.
 
 REGISTOS KITCHENFLOW:
 Higiene Pessoal — registar antes de iniciar a produção
-Temperatura de Serviço — servir quente, mínimo 63°C
-Conservação de Produtos — bacalhau ou ovos que sobrem: refrigerar a 0-4°C, consumir em 24h
+Temperatura de Serviço — servir frio, máximo 4°C
+Conservação de Produtos — produto com ovos e leite: refrigerar a 0-4°C, consumir em 48h
 Não Conformidades — registar qualquer desvio detetado
-Amostra Testemunho — se serviço a clientes externos
+
+MICROCOMPETÊNCIAS DETECTADAS:
+Caramelizar
+Cozer em banho-maria
+Cozer no forno
+Controlar temperaturas
+Organizar posto de trabalho
+
+SUBTÉCNICAS DETECTADAS:
+nenhuma
 
 ---
-${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu conhecimento culinário e aplica todas as regras acima.'}`;
+EXEMPLO DE REFERÊNCIA — Pastel de Nata:
+
+NOME DO PRATO: Pastel de Nata
+FAMÍLIA PRINCIPAL: Pastelaria — Massas Base
+FAMÍLIA SECUNDÁRIA: Pastelaria — Cremes e Molhos
+ETIQUETAS: Pastelaria Portuguesa
+CLASSIFICAÇÃO: Sobremesa
+Nº DE DOSES: 12
+TEMPO DE PREPARAÇÃO: 60 min
+TEMPO DE CONFEÇÃO: 15 min
+ALERGIÉNICOS: Glúten, Ovos, Leite
+
+INGREDIENTES:
+COMPONENTE | QT | UN | PRODUTO | T.PREP | T.CONF | OBS
+Massa folhada | 500 | g | Farinha de trigo T65 | | | ⚠️ Produzir massa folhada em aula
+Massa folhada | 250 | g | Manteiga em placa | | | Para o tourage — fria
+Massa folhada | 10 | g | Sal | | |
+Massa folhada | 250 | ml | Água fria | | |
+Creme de nata | 500 | ml | Leite gordo | | | Aquecer com a canela e limão
+Creme de nata | 6 | un | Gemas de ovo | | |
+Creme de nata | 200 | g | Açúcar | | |
+Creme de nata | 30 | g | Farinha de trigo T55 | | | Para ligar o creme
+Creme de nata | 1 | un | Pau de canela | | |
+Creme de nata | 15 | g | Raspa de limão | | |
+
+PREPARAÇÃO:
+NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
+1 | Preparar a détrempe: misturar farinha, sal e água — trabalhar até massa lisa e homogénea | | 10 min | Não desenvolver demasiado o glúten |
+2 | Refrigerar a détrempe envolvida em película durante 30 min | 4°C | 30 min | | PCC: temperatura de refrigeração 0-4°C
+3 | Executar o tourage: incorporar a manteiga em placa com 3 voltas simples | Frio | 20 min | Manter a massa fria durante todo o processo |
+4 | Refrigerar entre cada volta — mínimo 15 min | 4°C | 15 min | | PCC: manteiga não pode derreter — máx 10°C
+5 | Aquecer o leite com o pau de canela e raspa de limão sem ferver | Médio | 5 min | |
+6 | Bater as gemas com o açúcar e a farinha até obter creme homogéneo | | 3 min | Sem incorporar ar |
+7 | Temperar o creme com o leite quente em fio, mexendo constantemente | | 3 min | |
+8 | Levar ao lume mexendo até engrossar — creme de nata a 85°C | Médio-forte | 5 min | Mexer continuamente sem parar | PCC: atingir 85°C para pasteurização — verificar com termómetro
+9 | Arrefecer rapidamente o creme a menos de 10°C | Frio | 30 min | Banho de gelo ou abatedor | PCC: arrefecer de 65°C a 10°C em menos de 2h
+10 | Estender a massa folhada a 3mm — forrar as formas de pastel | | 10 min | Não esticar — pode retrair |
+11 | Rechear com o creme de nata até 3/4 da forma | | 5 min | |
+12 | Cozer em forno a 250°C durante 12-15 min até a superfície apresentar manchas escuras | 250°C | 15 min | Forno pré-aquecido no máximo | PCC: temperatura interna mínima 75°C
+
+EMPRATAMENTO:
+Servir morno ou à temperatura ambiente. Polvilhar com canela em pó e açúcar em pó. Apresentar em papel rendado.
+
+EQUIPAMENTO NECESSÁRIO:
+Laminadora ou rolo de pastelaria
+Formas de pastel de nata
+Termómetro de sonda
+Abatedor ou banho de gelo
+Passador fino
+
+CONSERVAÇÃO:
+Consumir no próprio dia. Não refrigerar a massa cozida — perde crocância.
+
+REGENERAÇÃO:
+Aquecer em forno a 200°C durante 3-4 min. Não usar microondas.
+
+REGISTOS KITCHENFLOW:
+Higiene Pessoal — registar antes de iniciar a produção
+Temperatura de Serviço — servir morno, verificar temperatura
+Conservação de Produtos — creme de nata não utilizado: refrigerar a 0-4°C, consumir em 24h
+Não Conformidades — registar qualquer desvio detetado
+
+MICROCOMPETÊNCIAS DETECTADAS:
+Massa folhada
+Détrempe
+Tourage
+Creme de nata
+Cozer no forno
+Controlar temperaturas
+
+SUBTÉCNICAS DETECTADAS:
+S162B — Massa montada (se a variante usar génoise como base)
+
+---
+${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu conhecimento culinário e aplica todas as regras acima.'}\`;
 }
 
 // ── Código que estava fora do template (removido) ──
+
 
 // ── Botão IAs ─────────────────────────────────────────────────
 function gerarPromptGuia(nomePrato: string, ucId?: string, ucNome?: string, ficha?: FichaProducao | null): string {
