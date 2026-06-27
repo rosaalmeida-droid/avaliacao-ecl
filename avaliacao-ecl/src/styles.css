@@ -612,20 +612,110 @@ textarea.input {
   font-weight: 600 !important;
 }
 
-/* ── IMPRESSÃO DO GUIA — mostrar todas as secções, mesmo fechadas ──
-   Por defeito só a secção activa fica visível (acordeão). Ao imprimir,
-   forçamos TODAS as .guia-conteudo-print a aparecer, independentemente
-   do display:none inline definido pelo React. */
+/* ── IMPRESSÃO DO GUIA ─────────────────────────────────────────────
+   Regras específicas para impressão do Guia de Apoio à Produção.
+   Objectivos:
+   1. Mostrar todas as secções do acordeão (mesmo as fechadas)
+   2. Esconder toda a interface da app
+   3. Evitar cortes no meio de tabelas e secções
+   4. Remover LaTeX e artefactos visuais da web
+   5. Tipografia e espaçamento adequados para papel A4
+*/
 @media print {
+
+  /* Reset geral para impressão */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ocultar toda a interface da app */
+  .no-print,
+  nav, header, footer,
+  [role="navigation"],
+  button:not(.guia-print-visible) {
+    display: none !important;
+  }
+
+  /* Mostrar todas as secções do acordeão */
   .guia-conteudo-print {
     display: block !important;
   }
 
-  /* Esconder interface da app (tabs, prompts, botões) quando o professor
-     imprime o Guia a partir do ecrã de edição — só o conteúdo do guia
-     deve sair na folha impressa. */
-  .no-print {
-    display: none !important;
+  /* Página A4 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+  }
+
+  body {
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #1a1714 !important;
+    background: white !important;
+  }
+
+  /* Títulos de secção — nunca ficam sozinhos no fim de página */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Secções do guia — não partir no meio */
+  .guia-secao,
+  .guia-secao-card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Tabelas — repetir cabeçalho em cada página */
+  table {
+    page-break-inside: auto;
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Alertas HACCP e PCC — nunca partir */
+  .guia-pcc,
+  .guia-alerta {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Roda sensorial — centrar e não partir */
+  .guia-roda-sensorial {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    text-align: center;
+  }
+
+  /* Remover sombras, borders desnecessários */
+  .card, [class*="card"] {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Rodapé de impressão — usa o atributo data-rodape gerado pelo React
+     com: nome do prato · código UC — nome UC · ECL ano */
+  .guia-area-impressao::after {
+    content: attr(data-rodape);
+    display: block;
+    text-align: center;
+    font-size: 9pt;
+    color: #666;
+    margin-top: 20pt;
+    padding-top: 6pt;
+    border-top: 0.5pt solid #ccc;
+    font-style: italic;
   }
 }
 
