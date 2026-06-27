@@ -293,6 +293,41 @@ export function getTurmas(): Turma[] {
   return t;
 }
 
+
+// ════════════════════════════════════════════════════════════════
+// MANUAL DO COZINHEIRO — Backend
+// ════════════════════════════════════════════════════════════════
+
+const KEY_MANUAL = 'ecl_manual_cozinheiro';
+
+export function getEntradasManual(): EntradaManual[] {
+  return load<EntradaManual>(KEY_MANUAL);
+}
+
+export function addEntradaManual(entrada: EntradaManual): void {
+  const todas = getEntradasManual();
+  const idx = todas.findIndex(e => e.id === entrada.id);
+  if (idx >= 0) todas[idx] = entrada;
+  else todas.push(entrada);
+  save(KEY_MANUAL, todas);
+}
+
+export function deleteEntradaManual(id: string): void {
+  const todas = getEntradasManual().filter(e => e.id !== id);
+  save(KEY_MANUAL, todas);
+}
+
+export function pesquisarManual(query: string): EntradaManual[] {
+  if (!query.trim()) return getEntradasManual();
+  const q = query.toLowerCase().trim();
+  return getEntradasManual().filter(e =>
+    e.titulo.toLowerCase().includes(q) ||
+    e.categoria.toLowerCase().includes(q) ||
+    e.palavrasChave.some(p => p.toLowerCase().includes(q)) ||
+    e.textoGuia.toLowerCase().includes(q)
+  );
+}
+
 // ── Seed de alunos fictícios para testes ─────────────────────
 // Criados automaticamente na primeira vez que a app é aberta.
 // Permitem simular cenários reais sem dados de alunos reais.
