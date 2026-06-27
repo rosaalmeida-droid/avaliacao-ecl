@@ -570,3 +570,62 @@ export interface MateriaPrimaCustom {
   criadoEm: string;
   atualizadoEm: string;
 }
+
+// ════════════════════════════════════════════════════════════════
+// MANUAL DO COZINHEIRO — Biblioteca técnica de referência permanente
+// ════════════════════════════════════════════════════════════════
+
+export type CategoriaManual =
+  | 'Higiene e Preparação'
+  | 'Técnicas de Corte'
+  | 'Métodos de Confeção'
+  | 'Empratamento e Apresentação'
+  | 'Conservação e Armazenamento'
+  | 'Equipamentos e Utensílios'
+  | 'Pastelaria e Doçaria'
+  | 'Segurança Alimentar'
+  | 'Outro';
+
+export type NivelManual = 'Base' | 'Intermédio' | 'Avançado';
+
+export interface EntradaManual {
+  id: string;
+  titulo: string;
+  categoria: CategoriaManual;
+  nivel: NivelManual;
+  palavrasChave: string[];
+  textoGuia: string;
+  criadoPor: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export const CATEGORIAS_MANUAL: CategoriaManual[] = [
+  'Higiene e Preparação',
+  'Técnicas de Corte',
+  'Métodos de Confeção',
+  'Empratamento e Apresentação',
+  'Conservação e Armazenamento',
+  'Equipamentos e Utensílios',
+  'Pastelaria e Doçaria',
+  'Segurança Alimentar',
+  'Outro',
+];
+
+export const ICONES_CATEGORIA: Record<CategoriaManual, string> = {
+  'Higiene e Preparação':        '🥬',
+  'Técnicas de Corte':           '🔪',
+  'Métodos de Confeção':         '🔥',
+  'Empratamento e Apresentação': '🍽️',
+  'Conservação e Armazenamento': '❄️',
+  'Equipamentos e Utensílios':   '🧰',
+  'Pastelaria e Doçaria':        '🍮',
+  'Segurança Alimentar':         '⚠️',
+  'Outro':                       '📖',
+};
+
+export const CORES_NIVEL: Record<NivelManual, { bg: string; cor: string }> = {
+  'Base':       { bg: '#EAF3DE', cor: '#27500A' },
+  'Intermédio': { bg: '#E6F1FB', cor: '#0C447C' },
+  'Avançado':   { bg: '#EEEDFE', cor: '#3C3489' },
+};
