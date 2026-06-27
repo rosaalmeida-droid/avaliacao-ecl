@@ -1,8 +1,9 @@
 // Utilitário comum para abrir uma IA externa a partir de qualquer prompt da
-// app. Claude tem suporte a link com prompt pré-preenchido; ChatGPT e
-// Gemini não têm essa funcionalidade publicamente disponível — por isso,
-// para essas duas, copiamos o prompt automaticamente para a área de
-// transferência antes de abrir o site, poupando o passo manual de copiar.
+// app.
+// • Claude  → abre com o prompt pré-preenchido via ?q= (prompts até 6000 chars)
+// • ChatGPT → abre com o prompt pré-preenchido via ?q= (prompts até 4000 chars)
+//             se o prompt for maior, copia e abre vazio com aviso
+// • Gemini  → não tem URL pública para pré-preencher; copia o prompt e abre
 export type IADestino = 'claude' | 'chatgpt' | 'gemini';
 
 async function copiarTextoSeguro(texto: string) {
@@ -29,13 +30,23 @@ export async function abrirIA(destino: IADestino, prompt: string) {
     return;
   }
   if (destino === 'chatgpt') {
-    await copiarTextoSeguro(prompt);
-    window.open('https://chatgpt.com/', '_blank');
+    // ChatGPT suporta ?q= para pré-preencher o prompt
+    if (prompt.length > 4000) {
+      // Prompt demasiado longo — copiar e abrir vazio
+      await copiarTextoSeguro(prompt);
+      window.open('https://chatgpt.com/', '_blank');
+      alert('Prompt copiado! O ChatGPT abriu — faz Ctrl+V para colar.');
+    } else {
+      window.open('https://chatgpt.com/?q=' + encodeURIComponent(prompt), '_blank');
+    }
     return;
   }
   if (destino === 'gemini') {
+    // Gemini não tem URL pública para pré-preencher — copiar e abrir
     await copiarTextoSeguro(prompt);
     window.open('https://gemini.google.com/app', '_blank');
+    // Aviso subtil em vez de alert — não interrompe o fluxo
+    console.info('Gemini: prompt copiado para a área de transferência — Ctrl+V para colar');
     return;
   }
 }
