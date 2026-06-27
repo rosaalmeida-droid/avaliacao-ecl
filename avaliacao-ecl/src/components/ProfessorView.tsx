@@ -740,6 +740,14 @@ Aplica TODAS as regras obrigatórias antes de responder.${ucContexto}${blocoProf
 REGRAS OBRIGATÓRIAS — LÊ TODAS ANTES DE COMEÇAR
 ═══════════════════════════════════════════════════
 
+REGRA 0 — PROIBIÇÕES ABSOLUTAS (lê primeiro)
+- NUNCA usar HTML em bruto: proibido <br>, <BR>, <b>, <strong>, <table>, <td>, etc.
+- NUNCA cortar frases a meio — todas as frases devem terminar com ponto final
+- NUNCA truncar conteúdo de tabelas com "..." ou deixar células incompletas
+- NUNCA repetir cabeçalhos da app como "GUIA DE APOIO À PRODUÇÃO" ou "ECL 2025/26"
+- Para quebras de linha dentro de tabelas: usar apenas \n (nova linha simples)
+- Para negrito em tabelas: usar **texto** (markdown), nunca HTML
+
 REGRA 1 — FORMATO
 - Usa o separador | entre colunas
 - Cada passo de preparação: NUMA SÓ LINHA
