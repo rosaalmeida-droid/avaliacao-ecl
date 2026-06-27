@@ -12,6 +12,7 @@ import {
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
 } from '../competenciasECL';
 import { GuiaProducao } from './GuiaProducao';
+import { ManualCozinheiro } from './ManualCozinheiro';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
 
@@ -305,7 +306,7 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
 // ═════════════════════════════════════════════════════════════
 export function AlunoView({ aluno }: { aluno: Aluno }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
-  const [aba, setAba] = useState<'hoje' | 'calendario' | 'perfil'>('hoje');
+  const [aba, setAba] = useState<'hoje' | 'calendario' | 'manual' | 'perfil'>('hoje');
   const [planos, setPlanos] = useState<PlanoAula[]>(() =>
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
@@ -408,6 +409,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             {([
               { id:'hoje', emoji:'🏠', label:'Início' },
               { id:'calendario', emoji:'📅', label:'Calendário' },
+              { id:'manual', emoji:'📖', label:'Manual' },
               { id:'perfil', emoji:'🪪', label:'O meu perfil' },
             ] as const).map(tab => (
               <button key={tab.id} onClick={() => setAba(tab.id)} style={{
@@ -563,6 +565,11 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
               )}
             </div>
           </div>
+        )}
+
+        {/* ── ABA MANUAL ── */}
+        {aba === 'manual' && (
+          <ManualCozinheiro modoProf={false} />
         )}
 
         {/* ── ABA PERFIL ── */}
