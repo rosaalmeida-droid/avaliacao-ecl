@@ -42,6 +42,20 @@ const SECOES_CONFIG = [
   { num: 14, titulo: 'Autoavaliação',           icone: '🪞', cor: '#9b59b6', corTexto: '#fff' },
 ];
 
+// ── Limpar LaTeX gerado pela IA ──────────────────────────────────
+// Converte fórmulas como $600\text{ ml}$ → 600 ml
+function limparLatex(texto: string): string {
+  if (!texto) return '';
+  return texto
+    .replace(/\$([\d.,]+)\\text\{\s*([^}]+)\}\$/g, '$1 $2')
+    .replace(/\$\\text\{([^}]+)\}\$/g, '$1')
+    .replace(/\$([\d.,]+)\$/g, '$1')
+    .replace(/\$[^$]*\$/g, '')
+    .replace(/\\([a-zA-Z]+)/g, '')
+    .replace(/  +/g, ' ')
+    .trim();
+}
+
 // ── Parser do texto da IA → estrutura de dados ────────────────
 function parseGuia(texto: string, nomePrato: string): DadosGuia {
   texto = limparLatex(texto);
