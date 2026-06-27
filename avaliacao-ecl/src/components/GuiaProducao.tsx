@@ -44,6 +44,7 @@ const SECOES_CONFIG = [
 
 // ── Parser do texto da IA → estrutura de dados ────────────────
 function parseGuia(texto: string, nomePrato: string): DadosGuia {
+  texto = limparLatex(texto);
   const secoes: SecaoGuia[] = [];
 
   SECOES_CONFIG.forEach(cfg => {
@@ -91,24 +92,52 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   const secSensorial = secoes.find(s => s.num === 6);
   let equilibrioSensorial;
   if (secSensorial) {
-    const SABORES = ['DOCE', 'ÁCIDO', 'SALGADO', 'AMARGO', 'UMAMI'];
+    // Sabores com variantes de escrita (IA às vezes escreve sem acento)
+    const SABORES = [
+      { chave: 'DOCE',    variantes: ['DOCE', 'SWEET'] },
+      { chave: 'ÁCIDO',   variantes: ['ÁCIDO', 'ACIDO', 'ACID', 'AZEDO'] },
+      { chave: 'SALGADO', variantes: ['SALGADO', 'SAL', 'SALTY'] },
+      { chave: 'AMARGO',  variantes: ['AMARGO', 'BITTER'] },
+      { chave: 'UMAMI',   variantes: ['UMAMI', 'SAVORY', 'SAVOURY'] },
+    ];
+    const INTENSIDADES_VALIDAS = ['forte', 'presente', 'ligeiro', 'ausente', 'alto', 'baixo', 'médio', 'medio', 'elevado'];
     const linhas = secSensorial.conteudo.split('\n');
-    // A IA por vezes devolve formato "DOCE: Forte" (texto simples, pedido no
-    // prompt) e por vezes tabela markdown "| Doce | Forte |" — suporta ambos,
-    // já que o modelo nem sempre segue o formato exacto pedido.
-    equilibrioSensorial = SABORES.map(sabor => {
-      const linhaTexto = linhas.find(l => l.toUpperCase().trim().startsWith(sabor));
-      let valor = linhaTexto ? linhaTexto.split(':')[1]?.trim() || '' : '';
+    // Tentar texto completo (secção + parágrafo) para maior cobertura
+    const textoCompleto = secSensorial.conteudo;
+
+    equilibrioSensorial = SABORES.map(({ chave, variantes }) => {
+      let valor = '';
+
+      // 1. Formato directo: "DOCE: Forte" ou "Doce: Presente"
+      for (const v of variantes) {
+        const regex = new RegExp(`\\b${v}\\s*:\s*([\\w\\s]+?)(?:\\n|$|\\.|,)`, 'i');
+        const m = textoCompleto.match(regex);
+        if (m) { valor = m[1].trim(); break; }
+      }
+
+      // 2. Formato tabela: "| Doce | Forte |"
       if (!valor) {
-        // Tentar formato tabela: "| Doce | Forte |" ou "| Doce    | Forte       |"
-        const linhaTabela = linhas.find(l => l.includes('|') && l.toUpperCase().includes(sabor));
-        if (linhaTabela) {
-          const celulas = linhaTabela.split('|').map(c => c.trim()).filter(c => c);
-          // primeira célula é o nome do sabor, segunda é a intensidade
-          if (celulas.length >= 2 && !celulas[1].match(/^[-:]+$/)) valor = celulas[1];
+        for (const v of variantes) {
+          const linhaTab = linhas.find(l => l.includes('|') && l.toUpperCase().includes(v));
+          if (linhaTab) {
+            const celulas = linhaTab.split('|').map(c => c.trim()).filter(c => c && !c.match(/^[-:]+$/));
+            if (celulas.length >= 2) { valor = celulas[1]; break; }
+          }
         }
       }
-      return { componente: sabor.charAt(0) + sabor.slice(1).toLowerCase(), intensidade: valor, notas: '' };
+
+      // 3. Normalizar valor — garantir que é uma intensidade válida
+      if (valor) {
+        const vLower = valor.toLowerCase().trim();
+        const match = INTENSIDADES_VALIDAS.find(iv => vLower.includes(iv));
+        if (!match && vLower.length > 15) valor = ''; // texto longo não é intensidade
+      }
+
+      return {
+        componente: chave.charAt(0) + chave.slice(1).toLowerCase().replace('acido', 'ácido'),
+        intensidade: valor,
+        notas: ''
+      };
     }).filter(r => r.intensidade);
   }
 
@@ -389,9 +418,11 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
 }
 
 // ── Componente principal ──────────────────────────────────────
-export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
+export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
   textoGuia: string;
   nomePrato: string;
+  ucId?: string;
+  ucNome?: string;
   onFechar?: () => void;
 }) {
   const guia = parseGuia(textoGuia, nomePrato);
@@ -442,7 +473,7 @@ export function GuiaProducao({ textoGuia, nomePrato, onFechar }: {
 
       {/* Secções */}
       {guia.secoes.map(s => (
-        <div key={s.num} style={{ marginBottom: 10, borderRadius: 14, overflow: 'hidden', border: `1px solid ${s.cor}30`, boxShadow: secaoAberta === s.num ? `0 4px 16px ${s.cor}20` : 'none' }}>
+        <div key={s.num} className="guia-secao-card" style={{ marginBottom: 10, borderRadius: 14, overflow: 'hidden', border: `1px solid ${s.cor}30`, boxShadow: secaoAberta === s.num ? `0 4px 16px ${s.cor}20` : 'none' }}>
           {/* Cabeçalho da secção */}
           <button onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: secaoAberta === s.num ? s.cor : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: secaoAberta === s.num ? 'rgba(255,255,255,0.2)' : s.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
@@ -535,7 +566,7 @@ export function CaixaGuia({ nomePrato, ucId, ucNome, textoGuiaInicial, onGuiaAlt
           <button onClick={() => setModo('colar')} style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
             ← Editar texto
           </button>
-          <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} />
+          <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} ucId={ucId} ucNome={ucNome} />
         </>
       )}
     </div>
