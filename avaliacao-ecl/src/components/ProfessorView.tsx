@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Comanda, FichaProducao } from '../types';
+import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
 import { Button, Card, Field } from './ui';
 import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha } from '../backend';
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
@@ -1705,18 +1705,18 @@ function PassoFichaTecnica({
           <Field label="🍽️ Família principal (obrigatória para avaliação)">
             <select className="input" value={ficha.familia1 || ''} onChange={e => setF('familia1', e.target.value || undefined)}>
               <option value="">— Escolher família —</option>
-              {FAMILIAS_FICHA.map(f => <option key={f} value={f}>{f}</option>)}
+              {FAMILIAS_FICHA.map((f: FamiliaFicha) => <option key={f} value={f}>{f}</option>)}
             </select>
           </Field>
           <Field label="🍽️ Família secundária (opcional — quando há duas técnicas equivalentes)">
             <select className="input" value={ficha.familia2 || ''} onChange={e => setF('familia2', e.target.value || undefined)}>
               <option value="">— Nenhuma —</option>
-              {FAMILIAS_FICHA.filter(f => f !== ficha.familia1).map(f => <option key={f} value={f}>{f}</option>)}
+              {FAMILIAS_FICHA.filter((f: FamiliaFicha) => f !== ficha.familia1).map((f: FamiliaFicha) => <option key={f} value={f}>{f}</option>)}
             </select>
           </Field>
           <Field label="🏷️ Etiquetas (máx. 3 — contexto adicional)">
             <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-              {TODAS_ETIQUETAS.map(et => {
+              {TODAS_ETIQUETAS.map((et: string) => {
                 const selecionada = (ficha.etiquetas || []).includes(et);
                 const limite = (ficha.etiquetas || []).length >= 3;
                 return (
