@@ -612,6 +612,28 @@ textarea.input {
   font-weight: 600 !important;
 }
 
+/* ── Secção Cultura e Gastronomia ──────────────────────────────────
+   Estilo especial para a secção 15 — fundo levemente creme,
+   citações destacadas, fontes na impressão sempre visíveis */
+.guia-cultura-gastronomia {
+  background: #f8f6f0 !important;
+}
+
+.guia-cultura-gastronomia blockquote {
+  border-left: 3px solid #2c3e50;
+  padding-left: 12px;
+  margin: 12px 0;
+  font-style: italic;
+  color: rgba(26,23,20,0.7);
+}
+
+@media print {
+  .guia-cultura-gastronomia {
+    page-break-before: always;
+    background: #f8f6f0 !important;
+  }
+}
+
 /* ── IMPRESSÃO DO GUIA ─────────────────────────────────────────────
    Regras específicas para impressão do Guia de Apoio à Produção.
    Objectivos:
