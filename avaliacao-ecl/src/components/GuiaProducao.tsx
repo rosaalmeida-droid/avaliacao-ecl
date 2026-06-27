@@ -40,6 +40,7 @@ const SECOES_CONFIG = [
   { num: 12, titulo: 'Questões de Estudo',      icone: '❓', cor: '#34495e', corTexto: '#fff' },
   { num: 13, titulo: 'Caso Profissional',       icone: '🧩', cor: '#d35400', corTexto: '#fff' },
   { num: 14, titulo: 'Autoavaliação',           icone: '🪞', cor: '#9b59b6', corTexto: '#fff' },
+  { num: 15, titulo: 'Cultura e Gastronomia',   icone: '📖', cor: '#2c3e50', corTexto: '#fff' },
 ];
 
 // ── Limpar LaTeX gerado pela IA ──────────────────────────────────
@@ -88,6 +89,7 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
       { regex: /(?:TÉCNICAS|microcompetências)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CONHE|QUEST|CASO|AUTOAV)|$)/i, num: 10 },
       { regex: /(?:CONHECIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:QUEST|CASO|AUTOAV)|$)/i, num: 11 },
       { regex: /(?:QUESTÕES)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CASO|AUTOAV)|$)/i, num: 12 },
+      { regex: /(?:CULTURA)[^#\n]*\n([\s\S]*?)$/i, num: 15 },
       { regex: /(?:CASO PROFISSIONAL|caso)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:AUTOAV)|$)/i, num: 13 },
       { regex: /(?:AUTOAVALIAÇÃO)[^#\n]*\n([\s\S]*?)$/i, num: 14 },
     ];
@@ -373,21 +375,50 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
   const [respostas, setRespostas] = useState<Record<string, string>>({});
   const [mostrarRespostas, setMostrarRespostas] = useState(false);
 
-  const linhas = conteudo.split('\n').filter(l => l.trim());
+  // Separar bloco de perguntas do bloco de respostas
+  const blocoPerguntas = conteudo.split(/RESPOSTAS?\s*:/i)[0]
+    .replace(/PERGUNTAS?\s*:/i, '').trim();
+  const blocoRespostas = conteudo.includes('RESPOSTAS')
+    ? conteudo.split(/RESPOSTAS?\s*:/i)[1]?.trim() || ''
+    : '';
+
+  // Extrair respostas correctas
+  const respostasCorretas: Record<string, string> = {};
+  if (blocoRespostas) {
+    blocoRespostas.split('\n').forEach(l => {
+      const m = l.trim().match(/^(\d+)[.)\s]+(.+)/);
+      if (m) respostasCorretas[`q${m[1]}`] = m[2].trim();
+    });
+  }
+
+  const linhas = blocoPerguntas.split('\n').filter(l => l.trim());
   const questoes: { tipo: string; pergunta: string; opcoes: string[]; id: string }[] = [];
   let qAtual: typeof questoes[0] | null = null;
 
   linhas.forEach(l => {
-    const t = l.trim();
-    const mPerg = t.match(/^(\d+)[.)]\s+(.+)/);
-    if (mPerg) {
+    const t = l.trim()
+      // Limpar markdown bold **texto** → texto
+      .replace(/\*\*([^*]+)\*\*/g, '$1');
+    const mPerg = t.match(/^(\d+)[.)\s]+(.+)/);
+    if (mPerg && !t.match(/^\d+[.)\s]+[a-d][.)]/i)) {
       if (qAtual) questoes.push(qAtual);
-      const tipo = t.toLowerCase().includes('verdadeiro') || t.toLowerCase().includes('falso') ? 'vf'
-        : t.toLowerCase().includes('situação') || t.toLowerCase().includes('prática') ? 'pratica'
+      const pergTexto = mPerg[2].trim();
+      const tipo = pergTexto.toLowerCase().includes('(verdadeiro/falso)') ||
+                   pergTexto.toLowerCase().includes('verdadeiro ou falso')
+        ? 'vf'
+        : pergTexto.toLowerCase().includes('(resposta curta)') ||
+          pergTexto.toLowerCase().includes('justifica') ||
+          pergTexto.toLowerCase().includes('explica')
+        ? 'pratica'
         : 'escolha';
-      qAtual = { tipo, pergunta: mPerg[2], opcoes: [], id: `q${mPerg[1]}` };
-    } else if (qAtual && t.match(/^[a-dA-D][.)]\s+/)) {
-      qAtual.opcoes.push(t.replace(/^[a-dA-D][.)]\s+/, ''));
+      qAtual = {
+        tipo,
+        pergunta: pergTexto.replace(/\(verdadeiro\/falso\)/i, '').replace(/\(resposta curta\)/i, '').trim(),
+        opcoes: [],
+        id: `q${mPerg[1]}`
+      };
+    } else if (qAtual && t.match(/^[a-dA-D][.)]/)) {
+      qAtual.opcoes.push(t.replace(/^[a-dA-D][.)\s]+/, '').trim());
     }
   });
   if (qAtual) questoes.push(qAtual);
@@ -427,6 +458,31 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
         </div>
       ))}
       {questoes.length === 0 && <RenderConteudo texto={conteudo} cor={cor} />}
+
+      {questoes.length > 0 && Object.keys(respostasCorretas).length > 0 && (
+        <button
+          onClick={() => setMostrarRespostas(v => !v)}
+          style={{ marginTop: 12, padding: '9px 18px', borderRadius: 9, border: `1.5px solid ${cor}`,
+            background: mostrarRespostas ? cor : '#fff', color: mostrarRespostas ? '#fff' : cor,
+            fontWeight: 700, fontSize: 13, cursor: 'pointer', width: '100%' }}>
+          {mostrarRespostas ? '🙈 Esconder respostas' : '✅ Ver respostas correctas'}
+        </button>
+      )}
+
+      {mostrarRespostas && Object.keys(respostasCorretas).length > 0 && (
+        <div style={{ marginTop: 10, padding: '12px 14px', background: `${cor}10`,
+          borderRadius: 10, border: `1px solid ${cor}30` }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: cor, marginBottom: 8,
+            textTransform: 'uppercase', letterSpacing: '0.05em' }}>Respostas correctas</div>
+          {Object.entries(respostasCorretas).map(([id, resp]) => (
+            <div key={id} style={{ fontSize: 13, marginBottom: 5, display: 'flex', gap: 8 }}>
+              <span style={{ fontWeight: 700, color: cor, flexShrink: 0 }}>
+                {id.replace('q', '')}.</span>
+              <span style={{ color: '#1a1714' }}>{resp}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -440,6 +496,8 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
   onFechar?: () => void;
 }) {
   const guia = parseGuia(textoGuia, nomePrato);
+  // Abrir secção 1 por defeito; secção 15 (Cultura e Gastronomia) abre automaticamente se existir
+  const temCultura = guia.secoes.some(s => s.num === 15);
   const [secaoAberta, setSecaoAberta] = useState<number | null>(1);
 
   if (!textoGuia || guia.secoes.length === 0) {
@@ -505,7 +563,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
 
           {/* Conteúdo da secção — sempre montado, escondido por CSS quando fechada.
               Isto garante que a impressão mostra TODAS as secções, não só a aberta. */}
-          <div className="guia-conteudo-print" style={{ display: secaoAberta === s.num ? 'block' : 'none', padding: '16px 16px', background: '#fdfcfb', borderTop: `2px solid ${s.cor}` }}>
+          <div className={`guia-conteudo-print${s.num === 15 ? ' guia-cultura-gastronomia' : ''}`} style={{ display: secaoAberta === s.num ? 'block' : 'none', padding: '16px 16px', background: s.num === 15 ? '#f8f6f0' : '#fdfcfb', borderTop: `2px solid ${s.cor}` }}>
             {s.num === 6 && guia.equilibrioSensorial && guia.equilibrioSensorial.length > 0 && (
               <div style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 12, border: `1px solid ${s.cor}30` }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: s.cor, marginBottom: 12, textAlign: 'center' }}>
