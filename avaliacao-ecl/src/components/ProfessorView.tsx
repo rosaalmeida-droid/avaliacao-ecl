@@ -1115,6 +1115,35 @@ SUBTÉCNICAS DETECTADAS:
 S162B — Massa montada (se a variante usar génoise como base)
 
 ---
+# 15. CULTURA E GASTRONOMIA
+
+Esta secção aparece SEMPRE no fim do guião e na impressão.
+Pesquisa online e apresenta informação cultural e gastronómica aprofundada sobre este prato ou ingrediente principal — baseada em fontes credíveis.
+
+Fontes prioritárias a consultar e citar:
+- Virgílio Nogueiro Gomes (virgiliogomes.com) — maior investigador vivo da gastronomia portuguesa
+- Dicionário Prático da Cozinha Portuguesa (Virgílio Nogueiro Gomes, Marcador)
+- Histórias e Curiosidades à Mesa (Virgílio Nogueiro Gomes, Marcador, 2023)
+- Património Alimentar Português (patrimoniocultural.gov.pt)
+- Outras fontes académicas ou jornalísticas de qualidade sobre gastronomia portuguesa
+
+ESTRUTURA OBRIGATÓRIA:
+
+📖 Contexto histórico e cultural
+[2-3 parágrafos sobre a história do prato, ingrediente ou técnica — quando surgiu, em que contexto social, regional ou histórico, como evoluiu até hoje. Se Virgílio Nogueiro Gomes escreveu sobre isto, usa e cita.]
+
+🏛️ Ligação ao património
+[Como este prato ou ingrediente se insere no património gastronómico português — região de origem, classificações DOP/IGP se aplicável, presença em festividades ou tradições.]
+
+💬 Voz de referência
+[Se encontrares texto ou citação de Virgílio Nogueiro Gomes, Maria de Lourdes Modesto, ou outro investigador credível sobre este tema específico, inclui aqui com citação da fonte. Se não existir nada específico, omite esta subsecção.]
+
+📚 Fontes consultadas
+[Lista simples das fontes usadas: autor, título/site, ano se disponível]
+
+IMPORTANTE: Não inventar factos. Se não há informação disponível sobre um aspecto, dizer claramente que não existe registo conhecido. Preferir menos informação mas correcta a mais informação inventada.
+
+---
 ${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu conhecimento culinário e aplica todas as regras acima.'}`;
 }
 
@@ -1265,7 +1294,33 @@ Lista os conhecimentos teóricos que esta produção exige ou reforça (ex: reac
 ---
 # 12. QUESTÕES PARA ESTUDO
 
-Gera entre 8 e 10 questões de estudo sobre esta produção concreta — mistura de escolha múltipla, verdadeiro/falso e resposta curta — cobrindo ingredientes, técnica, HACCP e fundamentos teóricos. Inclui as respostas certas no fim.
+Gera entre 8 e 10 questões de estudo sobre esta produção concreta.
+Mistura: escolha múltipla (a/b/c/d), verdadeiro/falso, e resposta curta.
+Cobre: ingredientes, técnica, HACCP e fundamentos teóricos.
+
+FORMATO OBRIGATÓRIO — segue EXACTAMENTE esta estrutura:
+
+PERGUNTAS:
+1. [Texto da pergunta de escolha múltipla]
+a) [Opção]
+b) [Opção]
+c) [Opção]
+d) [Opção]
+
+2. [Texto da pergunta verdadeiro/falso] (Verdadeiro/Falso)
+
+3. [Texto da pergunta de resposta curta] (Resposta curta)
+
+[...continuar até 8-10 questões...]
+
+RESPOSTAS:
+1. [letra correta]
+2. [Verdadeiro/Falso]
+3. [resposta correcta em 1-2 frases]
+[...uma resposta por linha, numerada...]
+
+NÃO misturar perguntas e respostas. NÃO escrever a resposta a seguir à pergunta.
+A palavra PERGUNTAS: e a palavra RESPOSTAS: são obrigatórias como separadores.
 
 ---
 # 13. CASO PROFISSIONAL FINAL
