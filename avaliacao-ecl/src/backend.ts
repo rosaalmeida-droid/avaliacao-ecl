@@ -8,7 +8,7 @@ import {
   Comanda, SelecaoAluno, Validacao, Atividade,
   Turma, Aluno, PlanoAula, FichaProducao,
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
-  Aviso, MateriaPrimaCustom
+  Aviso, MateriaPrimaCustom, EntradaManual
 } from './types';
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './competenciasECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
@@ -323,7 +323,7 @@ export function pesquisarManual(query: string): EntradaManual[] {
   return getEntradasManual().filter(e =>
     e.titulo.toLowerCase().includes(q) ||
     e.categoria.toLowerCase().includes(q) ||
-    e.palavrasChave.some(p => p.toLowerCase().includes(q)) ||
+    e.palavrasChave.some((p: string) => p.toLowerCase().includes(q)) ||
     e.textoGuia.toLowerCase().includes(q)
   );
 }
