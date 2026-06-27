@@ -690,20 +690,46 @@ textarea.input {
     break-inside: avoid;
   }
 
-  /* Tabelas — repetir cabeçalho em cada página */
+  /* Tabelas — repetir cabeçalho e não cortar linhas */
   table {
     page-break-inside: auto;
+    break-inside: auto;
     border-collapse: collapse;
     width: 100%;
+    font-size: 10pt;
   }
 
   thead {
-    display: table-header-group;
+    display: table-header-group; /* repete cabeçalho em cada página */
+  }
+
+  tfoot {
+    display: table-footer-group;
   }
 
   tr {
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+
+  td, th {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Texto truncado — remover clamps e overflows que cortam conteúdo */
+  /* NÃO forçar display:block — quebra layouts flex/grid */
+  * {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    -webkit-line-clamp: unset !important;
+    max-height: none !important;
+  }
+
+  /* Texto que usa white-space:nowrap pode ser forçado a quebrar */
+  p, li, span, td, th {
+    white-space: normal !important;
   }
 
   /* Alertas HACCP e PCC — nunca partir */
