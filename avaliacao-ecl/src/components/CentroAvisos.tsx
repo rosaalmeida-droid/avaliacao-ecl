@@ -28,6 +28,8 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
 
   function resolver(id: string) {
     resolverAviso(id);
+    // Forçar rerender imediato — especialmente importante para avisos operacionais
+    setAvisos(getAvisosPendentes());
     setAvisos(getAvisosPendentes());
   }
 
