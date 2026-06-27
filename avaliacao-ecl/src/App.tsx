@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Perfil, Aluno, PlanoAula as TPlanoAula } from './types';
 import { Login } from './components/Login';
+import { ManualCozinheiro } from './components/ManualCozinheiro';
 import { Header } from './components/Header';
 import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
@@ -37,7 +38,7 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
 }
 
 // Tipo para a vista global do professor
-type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias';
+type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual';
 
 function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -151,6 +152,7 @@ function AppInterno() {
     { id: 'requisicao', label: 'Requisição',      icone: '🛒', cor: 'var(--requisicao)', corPale: 'var(--requisicao-pale)' },
     { id: 'validacao',  label: 'Validação',       icone: '✓',  cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
     { id: 'biblioteca', label: 'Biblioteca',      icone: '🗂️', cor: 'var(--sage)', corPale: 'var(--sage-pale)' },
+      { id: 'manual',     label: 'Manual do Cozinheiro', icone: '📖', cor: 'var(--charcoal)', corPale: 'rgba(26,23,20,0.06)' },
     { id: 'avaliacao_uc', label: 'Avaliação por UC', icone: '📊', cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
     { id: 'copia_seguranca', label: 'Cópia de Segurança', icone: '💾', cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
     { id: 'gestao_recuperacoes', label: 'Recuperações', icone: '🔄', cor: 'var(--recuperacao)', corPale: 'var(--recuperacao-pale)' },
@@ -252,6 +254,9 @@ function AppInterno() {
               )}
               {vistaGlobal === 'validacao' && (
                 <ValidacaoView turmaId={turmaId} />
+              )}
+              {vistaGlobal === 'manual' && (
+                <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />
               )}
               {vistaGlobal === 'biblioteca' && (
                 <ProfessorView
