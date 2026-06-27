@@ -45,17 +45,37 @@ const SECOES_CONFIG = [
 
 // ── Limpar LaTeX gerado pela IA ──────────────────────────────────
 // Converte fórmulas como $600\text{ ml}$ → 600 ml
-function limparLatex(texto: string): string {
+function limparTextoIA(texto: string): string {
   if (!texto) return '';
   return texto
+    // ── LaTeX ──────────────────────────────────────────────────
     .replace(/\$([\d.,]+)\\text\{\s*([^}]+)\}\$/g, '$1 $2')
     .replace(/\$\\text\{([^}]+)\}\$/g, '$1')
     .replace(/\$([\d.,]+)\$/g, '$1')
     .replace(/\$[^$]*\$/g, '')
     .replace(/\\([a-zA-Z]+)/g, '')
+    // ── HTML em bruto gerado pela IA ────────────────────────────
+    .replace(/<br\s*\/?>/gi, '\n')          // <br> → nova linha
+    .replace(/<BR\s*\/?>/gi, '\n')          // <BR> → nova linha
+    .replace(/<b>(.*?)<\/b>/gi, '**$1**')   // <b> → bold markdown
+    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+    .replace(/<[^>]+>/g, '')                  // remover qualquer outro tag HTML
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    // ── Cabeçalhos repetidos da app ────────────────────────────
+    .replace(/GUIA DE APOIO À PRODUÇÃO[^\n]*/gi, '')
+    .replace(/\d+ secções · ECL \d+\/\d+/gi, '')
+    .replace(/Escola de Comércio de Lisboa[^\n]*/gi, '')
+    // ── Limpar espaços duplos e linhas vazias excessivas ────────
     .replace(/  +/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
+
+// Manter alias para compatibilidade
+const limparLatex = limparTextoIA;
 
 // ── Parser do texto da IA → estrutura de dados ────────────────
 function parseGuia(texto: string, nomePrato: string): DadosGuia {
@@ -255,20 +275,20 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       const cabecalho = tabelaAtual[0];
       const corpo = tabelaAtual.slice(1).filter(r => !r.every(c => c.match(/^[-:]+$/)));
       elementos.push(
-        <div key={`tabela_${iLinha}`} style={{ overflowX: 'auto', marginTop: 14, marginBottom: 18, borderRadius: 10, border: `1px solid ${cor}30` }}>
+        <div key={`tabela_${iLinha}`} style={{ overflowX: 'auto', marginTop: 14, marginBottom: 18, borderRadius: 12, border: `2px solid ${cor}40`, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
-              <tr style={{ background: cor, color: 'white' }}>
+              <tr style={{ background: `linear-gradient(135deg, ${cor} 0%, ${cor}cc 100%)`, color: 'white' }}>
                 {cabecalho.map((h, i) => (
-                  <th key={i} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, fontSize: 12 }}>{h}</th>
+                  <th key={i} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 700, fontSize: 12, letterSpacing: '0.02em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {corpo.map((row, ri) => (
-                <tr key={ri} style={{ background: ri % 2 === 0 ? '#fff' : `${cor}08` }}>
+                <tr key={ri} style={{ background: ri % 2 === 0 ? '#fff' : `${cor}06`, transition: 'background 0.1s' }}>
                   {row.map((cell, ci) => (
-                    <td key={ci} style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.06)', verticalAlign: 'top', lineHeight: 1.5 }}>
+                    <td key={ci} style={{ padding: '10px 14px', borderBottom: `1px solid ${cor}15`, verticalAlign: 'top', lineHeight: 1.55, fontSize: 13 }}>
                       {cell}
                     </td>
                   ))}
@@ -327,11 +347,22 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
     if (l.match(/^[-*•·]\s+/)) {
       const texto = l.replace(/^[-*•·]\s+/, '');
       const partesBold = texto.split(/\*\*(.*?)\*\*/g);
+      // Detectar alertas PCC/HACCP dentro de listas
+      const ehAlerta = /PCC|HACCP|⚠️|mínimo|crítico|temperatura.*°C|°C.*mínimo/i.test(texto);
       elementos.push(
-        <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8, fontSize: 13.5, lineHeight: 1.5 }}>
-          <span style={{ color: cor, fontWeight: 900, flexShrink: 0, marginTop: 1, fontSize: 16 }}>·</span>
-          <span>
-            {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi} style={{ color: cor }}>{p}</strong> : p)}
+        <div key={i} style={{
+          display: 'flex', gap: 10, marginBottom: ehAlerta ? 6 : 6,
+          padding: ehAlerta ? '8px 12px' : '6px 10px',
+          borderRadius: 8, fontSize: 13.5, lineHeight: 1.5,
+          background: ehAlerta ? 'rgba(192,57,43,0.06)' : `${cor}08`,
+          border: ehAlerta ? '1px solid rgba(192,57,43,0.2)' : `1px solid ${cor}15`,
+        }}>
+          <span style={{
+            color: ehAlerta ? '#c0392b' : cor,
+            fontWeight: 900, flexShrink: 0, marginTop: 1, fontSize: ehAlerta ? 18 : 16
+          }}>{ehAlerta ? '⚠️' : '▸'}</span>
+          <span style={{ color: ehAlerta ? '#7b1b10' : 'inherit' }}>
+            {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi} style={{ color: ehAlerta ? '#c0392b' : cor }}>{p}</strong> : p)}
           </span>
         </div>
       );
@@ -344,11 +375,20 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
       const texto = mNum[2];
       const partesBold = texto.split(/\*\*(.*?)\*\*/g);
       elementos.push(
-        <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, fontSize: 13.5, lineHeight: 1.5 }}>
-          <span style={{ background: cor, color: 'white', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+        <div key={i} style={{
+          display: 'flex', gap: 12, marginBottom: 10, padding: '8px 10px',
+          borderRadius: 10, fontSize: 13.5, lineHeight: 1.5,
+          background: `${cor}08`, border: `1px solid ${cor}15`,
+        }}>
+          <span style={{
+            background: cor, color: 'white', borderRadius: '50%',
+            width: 26, height: 26, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0,
+            boxShadow: `0 2px 6px ${cor}40`,
+          }}>
             {mNum[1]}
           </span>
-          <span style={{ paddingTop: 3 }}>
+          <span style={{ paddingTop: 4 }}>
             {partesBold.map((p, pi) => pi % 2 === 1 ? <strong key={pi} style={{ color: cor }}>{p}</strong> : p)}
           </span>
         </div>
@@ -512,58 +552,128 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
 
   return (
     <div style={{ fontFamily: 'var(--font-body)' }}>
-      {/* Cabeçalho */}
-      <div style={{ background: 'linear-gradient(135deg, #1f1b16 0%, #3d3830 100%)', borderRadius: 16, padding: '20px 20px 16px', marginBottom: 16, color: '#faf7f2' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6, marginBottom: 4 }}>
-              Guia de Apoio à Produção
+
+      {/* ── CABEÇALHO ── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1a1714 0%, #2d2520 60%, #3d3020 100%)',
+        borderRadius: 18, padding: '22px 20px 18px', marginBottom: 14,
+        color: '#faf7f2', position: 'relative', overflow: 'hidden',
+      }}>
+        {/* Elemento decorativo */}
+        <div style={{ position: 'absolute', right: -20, top: -20, width: 120, height: 120,
+          borderRadius: '50%', background: 'rgba(181,101,29,0.15)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', right: 20, bottom: -30, width: 80, height: 80,
+          borderRadius: '50%', background: 'rgba(181,101,29,0.08)', pointerEvents: 'none' }} />
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em',
+              color: 'rgba(247,241,230,0.5)', marginBottom: 6, fontWeight: 600 }}>
+              🍽️ Guia de Apoio à Produção
             </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700,
+              lineHeight: 1.15, color: '#faf7f2' }}>
               {nomePrato}
             </div>
-            <div style={{ fontSize: 11, opacity: 0.5, marginTop: 6 }}>
-              {guia.secoes.length} secções · ECL 2025/26
-            </div>
+            {ucNome && (
+              <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.45)', marginTop: 5,
+                display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ background: 'rgba(181,101,29,0.3)', padding: '2px 8px',
+                  borderRadius: 100, fontSize: 10, fontWeight: 700, color: '#f0b470' }}>
+                  {ucId}
+                </span>
+                {ucNome}
+              </div>
+            )}
           </div>
           {onFechar && (
-            <button onClick={onFechar} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, padding: '6px 12px', color: '#faf7f2', cursor: 'pointer', fontSize: 12 }}>
+            <button onClick={onFechar} style={{ background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
+              padding: '6px 12px', color: '#faf7f2', cursor: 'pointer', fontSize: 12,
+              flexShrink: 0 }}>
               ✕
             </button>
           )}
         </div>
 
-        {/* Navegação rápida */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
+        {/* Chips de navegação rápida */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 16 }}>
           {guia.secoes.map(s => (
-            <button key={s.num} onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)} style={{ padding: '4px 10px', borderRadius: 20, border: `1px solid ${secaoAberta === s.num ? s.cor : 'rgba(255,255,255,0.2)'}`, background: secaoAberta === s.num ? s.cor : 'rgba(255,255,255,0.08)', color: '#faf7f2', fontSize: 11, cursor: 'pointer', fontWeight: secaoAberta === s.num ? 700 : 400 }}>
+            <button key={s.num}
+              onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)}
+              style={{
+                padding: '5px 11px', borderRadius: 100, fontSize: 11, cursor: 'pointer',
+                fontWeight: secaoAberta === s.num ? 700 : 500,
+                border: `1.5px solid ${secaoAberta === s.num ? s.cor : 'rgba(255,255,255,0.18)'}`,
+                background: secaoAberta === s.num ? s.cor : 'rgba(255,255,255,0.06)',
+                color: '#faf7f2', transition: 'all 0.15s',
+                boxShadow: secaoAberta === s.num ? `0 2px 8px ${s.cor}50` : 'none',
+              }}>
               {s.icone} {s.num}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Secções */}
+      {/* ── SECÇÕES ── */}
       {guia.secoes.map(s => (
-        <div key={s.num} className="guia-secao-card" style={{ marginBottom: 10, borderRadius: 14, overflow: 'hidden', border: `1px solid ${s.cor}30`, boxShadow: secaoAberta === s.num ? `0 4px 16px ${s.cor}20` : 'none' }}>
-          {/* Cabeçalho da secção */}
-          <button onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: secaoAberta === s.num ? s.cor : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: secaoAberta === s.num ? 'rgba(255,255,255,0.2)' : s.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+        <div key={s.num} className="guia-secao-card" style={{
+          marginBottom: 10, borderRadius: 16, overflow: 'hidden',
+          border: secaoAberta === s.num ? `2px solid ${s.cor}` : `1px solid ${s.cor}25`,
+          boxShadow: secaoAberta === s.num ? `0 6px 24px ${s.cor}25` : '0 1px 4px rgba(26,23,20,0.06)',
+          transition: 'all 0.2s',
+        }}>
+          {/* Botão de secção */}
+          <button onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)} style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+            padding: '14px 18px',
+            background: secaoAberta === s.num
+              ? `linear-gradient(135deg, ${s.cor} 0%, ${s.cor}dd 100%)`
+              : '#fff',
+            border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
+          }}>
+            {/* Ícone grande */}
+            <div style={{
+              width: 48, height: 48, borderRadius: 13, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 24,
+              background: secaoAberta === s.num ? 'rgba(255,255,255,0.22)' : `${s.cor}18`,
+              boxShadow: secaoAberta === s.num ? 'none' : `0 2px 8px ${s.cor}20`,
+            }}>
               {s.icone}
             </div>
+
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: secaoAberta === s.num ? '#fff' : '#1a1714' }}>
-                {s.num}. {s.titulo}
+              {/* Número pequeno */}
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: secaoAberta === s.num ? 'rgba(255,255,255,0.65)' : `${s.cor}90`,
+                marginBottom: 2 }}>
+                Secção {s.num}
+              </div>
+              {/* Título */}
+              <div style={{ fontWeight: 800, fontSize: 15, lineHeight: 1.2,
+                color: secaoAberta === s.num ? '#fff' : '#1a1714' }}>
+                {s.titulo}
               </div>
             </div>
-            <span style={{ fontSize: 18, color: secaoAberta === s.num ? '#fff' : s.cor, transition: 'transform 0.2s', transform: secaoAberta === s.num ? 'rotate(90deg)' : 'rotate(0deg)' }}>
-              ›
-            </span>
+
+            <span style={{
+              fontSize: 22, fontWeight: 300,
+              color: secaoAberta === s.num ? 'rgba(255,255,255,0.7)' : `${s.cor}80`,
+              transform: secaoAberta === s.num ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s', flexShrink: 0,
+            }}>›</span>
           </button>
 
-          {/* Conteúdo da secção — sempre montado, escondido por CSS quando fechada.
-              Isto garante que a impressão mostra TODAS as secções, não só a aberta. */}
-          <div className={`guia-conteudo-print${s.num === 15 ? ' guia-cultura-gastronomia' : ''}`} style={{ display: secaoAberta === s.num ? 'block' : 'none', padding: '16px 16px', background: s.num === 15 ? '#f8f6f0' : '#fdfcfb', borderTop: `2px solid ${s.cor}` }}>
+          {/* Conteúdo */}
+          <div className={`guia-conteudo-print${s.num === 15 ? ' guia-cultura-gastronomia' : ''}`}
+            style={{
+              display: secaoAberta === s.num ? 'block' : 'none',
+              padding: '18px 18px 20px',
+              background: s.num === 15 ? '#f8f6f0' : '#fdfcfb',
+              borderTop: `3px solid ${s.cor}`,
+            }}>
             {s.num === 6 && guia.equilibrioSensorial && guia.equilibrioSensorial.length > 0 && (
               <div style={{ marginBottom: 16, padding: 16, background: '#fff', borderRadius: 12, border: `1px solid ${s.cor}30` }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: s.cor, marginBottom: 12, textAlign: 'center' }}>
