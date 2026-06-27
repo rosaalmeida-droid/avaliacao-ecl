@@ -450,13 +450,30 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
   );
 }
 
-export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
+export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoIdInicial, onPlanoIdInicialUsado }: {
   turmaId: string; nomeProfessor?: string;
   onAlteracao?: (guardar?: () => void) => void;
   onGuardado?: (plano?: TPlanoAula) => void;
+  planoIdInicial?: string;
+  onPlanoIdInicialUsado?: () => void;
 }) {
   const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>('calendario');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
+
+  // Abrir plano específico vindo de um aviso
+  React.useEffect(() => {
+    if (!planoIdInicial) return;
+    const todos = getPlanosAulaPorTurma(turmaId, true);
+    const plano = todos.find(p => p.id === planoIdInicial);
+    if (plano) {
+      setPlanoAtivo(plano);
+      setVista('detalhe');
+    } else {
+      // Plano não existe — aviso ficou órfão, não navegar
+      console.warn('PlanoAula: planoIdInicial não encontrado:', planoIdInicial);
+    }
+    onPlanoIdInicialUsado?.();
+  }, [planoIdInicial]);
   const [refreshKey, setRefreshKey] = useState(0);
   // Modo de seleção múltipla — eliminar vários planos de uma vez (ponto 9
   // do documento de 21/06/2026).
