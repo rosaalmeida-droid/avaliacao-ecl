@@ -1,9 +1,9 @@
 import React from 'react';
 import { abrirIA } from '../abrirIA';
 
-// 3 botões pequenos para abrir o prompt directamente numa IA externa — só
-// o Claude tem link com prompt pré-preenchido; ChatGPT e Gemini abrem
-// vazios (o professor usa "Copiar prompt" ao lado para colar lá).
+// 3 botões para abrir o prompt directamente numa IA externa:
+// • Claude e ChatGPT — abrem já com o prompt preenchido (até certo limite)
+// • Gemini — copia o prompt e abre o site (colar com Ctrl+V)
 export function SeletorIA({ prompt, corPrincipal }: { prompt: string; corPrincipal?: string }) {
   const cor = corPrincipal || 'var(--copper)';
   const botaoStyle: React.CSSProperties = {
@@ -12,13 +12,13 @@ export function SeletorIA({ prompt, corPrincipal }: { prompt: string; corPrincip
   };
   return (
     <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-      <button onClick={() => abrirIA('claude', prompt)} style={botaoStyle} title="Abre já com o prompt preenchido">
+      <button onClick={() => abrirIA('claude', prompt)} style={botaoStyle} title="Abre o Claude já com o prompt preenchido — só clicar ↗">
         🟠 Claude
       </button>
-      <button onClick={() => abrirIA('chatgpt', prompt)} style={botaoStyle} title="Copia o prompt e abre o ChatGPT">
+      <button onClick={() => abrirIA('chatgpt', prompt)} style={botaoStyle} title="Abre o ChatGPT já com o prompt preenchido — só clicar ↗">
         🟢 ChatGPT
       </button>
-      <button onClick={() => abrirIA('gemini', prompt)} style={botaoStyle} title="Copia o prompt e abre o Gemini">
+      <button onClick={() => abrirIA('gemini', prompt)} style={botaoStyle} title="Copia o prompt e abre o Gemini — colar com Ctrl+V">
         🔵 Gemini
       </button>
     </div>
