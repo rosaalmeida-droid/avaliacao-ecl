@@ -192,6 +192,9 @@ interface FichaTecnica {
   conservacao: string;
   regeneracao: string;
   kitchenflow: string;
+  familia1?: string;        // família principal — define microcompetências primárias
+  familia2?: string;        // família secundária — quando duas técnicas têm peso equivalente
+  etiquetas?: string[];     // contexto adicional — máx 3
   tecnicasDetectadas?: string[];
   textoGuia?: string;       // texto do Guia de Apoio à Produção colado pelo professor
 }
@@ -217,6 +220,9 @@ const FICHA_VAZIA: FichaTecnica = {
   conservacao: '',
   regeneracao: '',
   kitchenflow: '',
+  familia1: undefined,
+  familia2: undefined,
+  etiquetas: [],
 };
 
 // ============================================================
@@ -343,6 +349,12 @@ function extrairFicha(texto: string): FichaTecnica {
 
     const nomeIA = extrair('NOME DO PRATO');
     const classificacaoIA = extrair('CLASSIFICAÇÃO');
+    const familia1IA = extrair('FAMÍLIA PRINCIPAL') || extrair('FAMILIA PRINCIPAL') || '';
+    const familia2IA = extrair('FAMÍLIA SECUNDÁRIA') || extrair('FAMILIA SECUNDARIA') || '';
+    const etiquetasIA = extrair('ETIQUETAS') || '';
+    const etiquetasArr = etiquetasIA && etiquetasIA !== 'nenhuma'
+      ? etiquetasIA.split('|').map((e: string) => e.trim()).filter((e: string) => e && e !== 'nenhuma')
+      : [];
     const dosesIA = texto.match(/N[ºo°]?\s*DE\s*DOSES?:\s*(\d+)/i)?.[1] ||
                     texto.match(/PORÇÕES?:\s*(\d+)/i)?.[1] ||
                     texto.match(/DOSES?:\s*(\d+)/i)?.[1] || '';
@@ -510,6 +522,9 @@ function extrairFicha(texto: string): FichaTecnica {
       conservacao: conservacaoIA,
       regeneracao: regeneracaoIA,
       kitchenflow: kitchenflowIA,
+      familia1: FAMILIAS_FICHA.includes(familia1IA as FamiliaFicha) ? familia1IA : undefined,
+      familia2: familia2IA && familia2IA !== 'nenhuma' && FAMILIAS_FICHA.includes(familia2IA as FamiliaFicha) ? familia2IA : undefined,
+      etiquetas: etiquetasArr,
       tecnicasDetectadas,
     };
   }
@@ -1212,14 +1227,15 @@ Que capacidades técnicas e organizativas esta produção desenvolve no aluno, e
 ---
 # 6. EQUILÍBRIO SENSORIAL
 
-Para cada um destes 5 sabores, classifica a intensidade nesta receita concreta (usa: Forte / Presente / Ausente):
-DOCE: 
-ÁCIDO: 
-SALGADO: 
-AMARGO: 
-UMAMI: 
+OBRIGATÓRIO — preenche EXACTAMENTE neste formato (uma linha por sabor, sem alterar):
+DOCE: [Forte / Presente / Ligeiro / Ausente]
+ÁCIDO: [Forte / Presente / Ligeiro / Ausente]
+SALGADO: [Forte / Presente / Ligeiro / Ausente]
+AMARGO: [Forte / Presente / Ligeiro / Ausente]
+UMAMI: [Forte / Presente / Ligeiro / Ausente]
 
-Depois, desenvolve em 1 parágrafo: como estes sabores se equilibram (ou não) nesta receita concreta, e o impacto disso na experiência gastronómica.
+Depois, 1 parágrafo de análise: como estes sabores se equilibram nesta receita concreta e o impacto na experiência gastronómica.
+NÃO escrever tabela, NÃO usar markdown com pipes. Apenas as 5 linhas no formato acima, depois o parágrafo.
 
 ---
 # 7. SUGESTÕES GASTRONÓMICAS
@@ -1463,7 +1479,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           🤖 Passo 1 — Gerar a Ficha de Produção com IA
         </div>
         <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
-          Claude abre já com o prompt pronto — ChatGPT e Gemini abrem com o prompt copiado, basta colar
+          Claude e ChatGPT abrem já com o prompt preenchido — no Gemini o prompt é copiado automaticamente, basta colar com Ctrl+V
         </div>
 
         {/* Selector de modo — fiel ao link ou versão profissional */}
@@ -1684,6 +1700,52 @@ function PassoFichaTecnica({
           <Field label="Classificação">
             <input className="input" value={ficha.classificacao} onChange={e => setF('classificacao', e.target.value)} placeholder="ex: Peixe, Sobremesa..." />
           </Field>
+
+          {/* ── Família e Etiquetas ── */}
+          <Field label="🍽️ Família principal (obrigatória para avaliação)">
+            <select className="input" value={ficha.familia1 || ''} onChange={e => setF('familia1', e.target.value || undefined)}>
+              <option value="">— Escolher família —</option>
+              {FAMILIAS_FICHA.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </Field>
+          <Field label="🍽️ Família secundária (opcional — quando há duas técnicas equivalentes)">
+            <select className="input" value={ficha.familia2 || ''} onChange={e => setF('familia2', e.target.value || undefined)}>
+              <option value="">— Nenhuma —</option>
+              {FAMILIAS_FICHA.filter(f => f !== ficha.familia1).map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </Field>
+          <Field label="🏷️ Etiquetas (máx. 3 — contexto adicional)">
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+              {TODAS_ETIQUETAS.map(et => {
+                const selecionada = (ficha.etiquetas || []).includes(et);
+                const limite = (ficha.etiquetas || []).length >= 3;
+                return (
+                  <button key={et} type="button"
+                    onClick={() => {
+                      const cur = ficha.etiquetas || [];
+                      if (selecionada) setF('etiquetas', cur.filter((x: string) => x !== et));
+                      else if (!limite) setF('etiquetas', [...cur, et]);
+                    }}
+                    style={{
+                      padding:'4px 10px', borderRadius:100, fontSize:12, fontWeight:600,
+                      border:`1.5px solid ${selecionada ? 'var(--copper)' : 'var(--border)'}`,
+                      background:selecionada ? 'var(--copper-pale)' : '#fff',
+                      color:selecionada ? 'var(--copper)' : 'rgba(26,23,20,0.5)',
+                      cursor: selecionada || !limite ? 'pointer' : 'not-allowed',
+                      opacity: !selecionada && limite ? 0.4 : 1,
+                    }}>
+                    {selecionada ? '✓ ' : ''}{et}
+                  </button>
+                );
+              })}
+            </div>
+            {(ficha.etiquetas || []).length > 0 && (
+              <div style={{ fontSize:12, color:'var(--copper)', marginTop:6 }}>
+                Selecionadas: {(ficha.etiquetas || []).join(' · ')}
+              </div>
+            )}
+          </Field>
+
           <Field label="Alergénicos">
             <input className="input" value={ficha.alergenicos} onChange={e => setF('alergenicos', e.target.value)} />
           </Field>
@@ -2019,6 +2081,9 @@ function PassoFichaTecnica({
                 conservacao: String(ficha.conservacao || ''),
                 regeneracao: String(ficha.regeneracao || ''),
                 kitchenflow: String(ficha.kitchenflow || ''),
+                familia1: ficha.familia1 || undefined,
+                familia2: ficha.familia2 || undefined,
+                etiquetas: Array.isArray(ficha.etiquetas) ? ficha.etiquetas : [],
                 ingredientes: (ficha.ingredientes || []).map(ing => ({
                   componente: String(ing?.componente ?? ''),
                   qt: String(ing?.qt ?? ''),
@@ -2132,8 +2197,8 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
             <button onClick={() => setModo('colar')} className="no-print" style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
               ← Editar texto
             </button>
-            <div className="guia-area-impressao">
-              <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} />
+            <div className="guia-area-impressao" data-rodape={`Guião de Apoio à Produção · ${nomePrato}${ucId ? \` · ${ucId}\` : ''}${ucNome ? \` — ${ucNome}\` : ''} · ECL 2025/26`}>
+              <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} ucId={ucId} ucNome={ucNome} />
             </div>
           </>
         )}
