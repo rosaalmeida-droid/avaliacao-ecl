@@ -133,6 +133,7 @@ const KEYS = {
   recuperacoes:  'ecl_recuperacoes',
   evidencias:    'ecl_evidencias',
   avisos:        'ecl_avisos',
+  avisosDispensados: 'ecl_avisos_dispensados',
   materiasPrimasCustom: 'ecl_materias_primas_custom',
   tecnicasCustom:       'ecl_tecnicas_custom',
   syncPlanos:    'ecl_sync_planos_ts',
@@ -1693,7 +1694,9 @@ export function getAvisos(): Aviso[] {
 
 export function getAvisosPendentes(): Aviso[] {
   const persistidos = getAvisos().filter(a => !a.resolvido);
-  return [...persistidos, ...calcularAvisosOperacionais()];
+  const dispensados = new Set(load<string>(KEYS.avisosDispensados));
+  const operacionais = calcularAvisosOperacionais().filter(a => !dispensados.has(a.id));
+  return [...persistidos, ...operacionais];
 }
 
 // Avisos operacionais — recalculados a cada chamada, sempre fiéis ao estado
@@ -1790,12 +1793,27 @@ export function addAviso(a: Omit<Aviso, 'id' | 'criadoEm' | 'resolvido'>): void 
 }
 
 export function resolverAviso(avisoId: string): void {
+  // Avisos operacionais (id começa com 'op_') são recalculados dinamicamente
+  // — não estão no localStorage, por isso guarda-se o ID numa lista de dispensados
+  if (avisoId.startsWith('op_')) {
+    const dispensados = load<string>(KEYS.avisosDispensados);
+    if (!dispensados.includes(avisoId)) {
+      dispensados.push(avisoId);
+      save(KEYS.avisosDispensados, dispensados);
+    }
+    return;
+  }
+  // Avisos persistidos normais
   const all = getAvisos();
   const idx = all.findIndex(a => a.id === avisoId);
   if (idx >= 0) {
     all[idx] = { ...all[idx], resolvido: true, resolvidoEm: new Date().toISOString() };
     save(KEYS.avisos, all);
   }
+}
+
+export function limparAvisosDispensados(): void {
+  save(KEYS.avisosDispensados, []);
 }
 
 // Resolve automaticamente todos os avisos pendentes de um ingrediente —
