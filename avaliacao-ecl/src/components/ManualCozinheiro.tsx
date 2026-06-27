@@ -164,7 +164,7 @@ LINGUAGEM: directa, sem texto académico. Frases curtas. Prefere tabelas e lista
       titulo: titulo.trim(),
       categoria,
       nivel,
-      palavrasChave: palavras.split(',').map(p => p.trim()).filter(Boolean),
+      palavrasChave: palavras.split(',').map((p: string) => p.trim()).filter(Boolean),
       textoGuia: texto.trim(),
       criadoPor: nomeProfessor,
       criadoEm: entrada?.criadoEm || agora,
@@ -390,7 +390,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           </div>
           {entradaAtiva.palavrasChave.length > 0 && (
             <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {entradaAtiva.palavrasChave.map((p, i) => (
+              {entradaAtiva.palavrasChave.map((p: string, i: number) => (
                 <span key={i} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
                   background: 'rgba(255,255,255,0.08)', color: 'rgba(247,241,230,0.6)' }}>
                   #{p}
@@ -523,7 +523,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           color: categoriaFiltro === 'Todas' ? '#fff' : 'rgba(26,23,20,0.5)',
           cursor: 'pointer',
         }}>Todas</button>
-        {CATEGORIAS_MANUAL.filter(c => entradas.some(e => e.categoria === c)).map(c => (
+        {CATEGORIAS_MANUAL.filter((c: CategoriaManual) => entradas.some(e => e.categoria === c)).map((c: CategoriaManual) => (
           <button key={c} onClick={() => setCategoriaFiltro(c === categoriaFiltro ? 'Todas' : c)} style={{
             padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
             border: `1.5px solid ${categoriaFiltro === c ? COR_DOURADO : 'rgba(26,23,20,0.1)'}`,
@@ -595,7 +595,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
       ) : (
         // Agrupado por categoria
         <div>
-          {Object.entries(porCategoria).map(([cat, items]) => (
+          {Object.entries(porCategoria).map(([cat, items]: [string, EntradaManual[]]) => (
             <div key={cat} style={{ marginBottom: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8,
                 marginBottom: 10 }}>
