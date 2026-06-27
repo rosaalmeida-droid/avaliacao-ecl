@@ -1263,6 +1263,21 @@ SALGADO: [Forte / Presente / Ligeiro / Ausente]
 AMARGO: [Forte / Presente / Ligeiro / Ausente]
 UMAMI: [Forte / Presente / Ligeiro / Ausente]
 
+ATENÇÃO — REGRAS OBRIGATÓRIAS PARA A CLASSIFICAÇÃO:
+
+DOCE:
+- NUNCA classificar como "Ausente" em carnes seladas ou assadas — a reacção de Maillard e a caramelização das proteínas e açúcares naturais da carne criam sabor doce perceptível. Usar no mínimo "Ligeiro".
+- Marinadas com vinho, frutas, cebola ou beterraba contribuem para "Presente" ou "Forte".
+- Só "Ausente" em preparações sem carne, sem vegetais adocicados, sem caramelização.
+
+UMAMI:
+- Carnes (especialmente porco, vaca, frango) têm umami elevado pelos aminoácidos glutamato naturais. Nunca "Ausente" em pratos de carne.
+- Peixes, mariscos, cogumelos, tomate, queijo curado — contribuem fortemente para umami.
+
+ÁCIDO:
+- Vinhos, sumos cítricos, vinagres, iogurte, tomate — contribuem para "Presente" ou "Forte".
+- Marinadas com vinho branco tornam o ácido pelo menos "Ligeiro".
+
 Depois, 1 parágrafo de análise: como estes sabores se equilibram nesta receita concreta e o impacto na experiência gastronómica.
 NÃO escrever tabela, NÃO usar markdown com pipes. Apenas as 5 linhas no formato acima, depois o parágrafo.
 
