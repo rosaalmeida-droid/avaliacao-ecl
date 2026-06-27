@@ -49,6 +49,7 @@ function AppInterno() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('planos');
+  const [planoIdAlvo, setPlanoIdAlvo] = useState<string | null>(null);
   const [temAlteracoes, setTemAlteracoes] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<(() => void) | null>(null);
   const [guardarCallback, setGuardarCallback] = useState<(() => void) | null>(null);
@@ -230,6 +231,8 @@ function AppInterno() {
                   nomeProfessor={nomeProfessor}
                   onAlteracao={registarAlteracao}
                   onGuardado={(p?: TPlanoAula) => { limparAlteracoes(); if (p) abrirPlano(p); }}
+                  planoIdInicial={planoIdAlvo || undefined}
+                  onPlanoIdInicialUsado={() => setPlanoIdAlvo(null)}
                 />
               )}
               {vistaGlobal === 'ficha' && (
@@ -288,7 +291,17 @@ function AppInterno() {
 
       {perfil === 'professor' && (
         <div className="no-print">
-          <CentroAvisos onNavegar={(aviso) => irPara((aviso.contexto?.tabDestino as VistaProf) || 'requisicao')} />
+          <CentroAvisos
+            perfil={perfil || undefined}
+            onNavegar={(aviso) => {
+              const tab = (aviso.contexto?.tabDestino as VistaProf) || 'planos';
+              // Se o aviso tem planoId mas o plano pode ter sido apagado
+              // verificar antes de navegar
+              const planoId = aviso.contexto?.planoId;
+              irPara(tab);
+              if (planoId) setPlanoIdAlvo(planoId);
+            }}
+          />
         </div>
       )}
     </div>
