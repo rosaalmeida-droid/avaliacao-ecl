@@ -2197,7 +2197,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
             <button onClick={() => setModo('colar')} className="no-print" style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
               ← Editar texto
             </button>
-            <div className="guia-area-impressao" data-rodape={`Guião de Apoio à Produção · ${nomePrato}${ucId ? \` · ${ucId}\` : ''}${ucNome ? \` — ${ucNome}\` : ''} · ECL 2025/26`}>
+            <div className="guia-area-impressao" data-rodape={'Guião de Apoio à Produção · ' + nomePrato + (ucId ? ' · ' + ucId : '') + (ucNome ? ' — ' + ucNome : '') + ' · ECL 2025/26'}>
               <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} ucId={ucId} ucNome={ucNome} />
             </div>
           </>
