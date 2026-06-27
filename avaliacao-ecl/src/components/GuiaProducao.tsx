@@ -88,10 +88,10 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
       { regex: /(?:FOOD COST)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:TÉCNI|CONHE|QUEST|CASO|AUTOAV)|$)/i, num: 9 },
       { regex: /(?:TÉCNICAS|microcompetências)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CONHE|QUEST|CASO|AUTOAV)|$)/i, num: 10 },
       { regex: /(?:CONHECIMENTOS)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:QUEST|CASO|AUTOAV)|$)/i, num: 11 },
-      { regex: /(?:QUESTÕES)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CASO|AUTOAV)|$)/i, num: 12 },
-      { regex: /(?:CULTURA)[^#\n]*\n([\s\S]*?)$/i, num: 15 },
-      { regex: /(?:CASO PROFISSIONAL|caso)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:AUTOAV)|$)/i, num: 13 },
-      { regex: /(?:AUTOAVALIAÇÃO)[^#\n]*\n([\s\S]*?)$/i, num: 14 },
+      { regex: /(?:QUESTÕES)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CASO|AUTOAV|CULTUR)|$)/i, num: 12 },
+      { regex: /(?:CASO PROFISSIONAL|caso)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:AUTOAV|CULTUR)|$)/i, num: 13 },
+      { regex: /(?:AUTOAVALIAÇÃO)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:CULTUR)|$)/i, num: 14 },
+      { regex: /(?:CULTURA E GASTRONOMIA|CULTURA)[^#\n]*\n([\s\S]*?)$/i, num: 15 },
     ];
     padroesTitulo.forEach(p => {
       const m = texto.match(p.regex);
