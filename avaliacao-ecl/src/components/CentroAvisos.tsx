@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAvisosPendentes, resolverAviso, aprovarSugestaoIngrediente, rejeitarSugestaoIngrediente } from '../backend';
 import { Aviso } from '../types';
 
-export function CentroAvisos({ onNavegar }: { onNavegar?: (aviso: Aviso) => void }) {
+export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso) => void; perfil?: string }) {
   const [aberto, setAberto] = useState(false);
   const [avisos, setAvisos] = useState<Aviso[]>(() => getAvisosPendentes());
   const [isLargo, setIsLargo] = useState(typeof window !== 'undefined' && window.innerWidth >= 900);
@@ -190,19 +190,18 @@ export function CentroAvisos({ onNavegar }: { onNavegar?: (aviso: Aviso) => void
 
                   {/* Avisos normais */}
                   {!ehSugestao && (
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {onNavegar && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {onNavegar && a.contexto?.tabDestino && (
                         <button onClick={() => onNavegar(a)}
-                          style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>
+                          style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 600, fontSize: 11, cursor: 'pointer', minWidth: 80 }}>
                           Ir corrigir →
                         </button>
                       )}
-                      {!ehOperacional && (
-                        <button onClick={() => resolver(a.id)}
-                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>
-                          Dispensar
-                        </button>
-                      )}
+                      {/* Dispensar disponível para todos — coordenadora também pode anular avisos de plano */}
+                      <button onClick={() => resolver(a.id)}
+                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>
+                        {perfil === 'coordenadora' && ehOperacional ? '🗑️ Anular' : 'Dispensar'}
+                      </button>
                     </div>
                   )}
                 </div>
