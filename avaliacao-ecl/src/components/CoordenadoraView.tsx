@@ -6,9 +6,10 @@ import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcula
 import { UCS_COZINHA } from './PlanoAula';
 import { Card, Button, Field, Badge } from './ui';
 import { CentroAvisos } from './CentroAvisos';
+import { GuiaProducao } from './GuiaProducao';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config'>('avisos');
 
   return (
     <div>
@@ -21,6 +22,7 @@ export function CoordenadoraView() {
           <Button variant={tab === 'atividades' ? 'primary' : 'ghost'} onClick={() => setTab('atividades')}>Eventos/Concursos</Button>
           <Button variant={tab === 'pedagogico' ? 'primary' : 'ghost'} onClick={() => setTab('pedagogico')}>📊 Visão Pedagógica</Button>
           <Button variant={tab === 'alunos' ? 'primary' : 'ghost'} onClick={() => setTab('alunos')}>👥 Gestão de Alunos</Button>
+          <Button variant={tab === 'config' ? 'primary' : 'ghost'} onClick={() => setTab('config')}>⚙️ Configurações</Button>
         </div>
       </Card>
       {tab === 'avisos' && (
@@ -34,6 +36,7 @@ export function CoordenadoraView() {
       {tab === 'atividades' && <AtividadesTab />}
       {tab === 'pedagogico' && <VisaoPedagogicaTab />}
       {tab === 'alunos' && <GestaoAlunosTab />}
+      {tab === 'config' && <ConfigTab />}
     </div>
   );
 }
@@ -143,6 +146,31 @@ function BibliotecaFichasTab() {
                   background: 'var(--copper-pale)', color: 'var(--copper)',
                   fontSize: 11, fontWeight: 600 }}>{et}</span>
               ))}
+            </div>
+          )}
+
+          {/* Guião de Apoio à Produção */}
+          {(fichaAberta as any).textoGuia && (
+            <div style={{ marginTop: 16, paddingTop: 16,
+              borderTop: '1px solid rgba(26,23,20,0.08)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--copper)',
+                textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                📖 Guião de Apoio à Produção
+              </div>
+              <GuiaProducao
+                textoGuia={(fichaAberta as any).textoGuia}
+                nomePrato={fichaAberta.nomePrato || ''}
+                ucId={(fichaAberta as any).ucId}
+                ucNome={(fichaAberta as any).ucNome}
+              />
+            </div>
+          )}
+
+          {!(fichaAberta as any).textoGuia && (
+            <div style={{ marginTop: 12, padding: '10px 14px',
+              background: 'rgba(26,23,20,0.04)', borderRadius: 8,
+              fontSize: 12, color: 'rgba(26,23,20,0.4)', textAlign: 'center' }}>
+              Guião ainda não gerado para esta ficha.
             </div>
           )}
         </div>
@@ -392,6 +420,89 @@ function BibliotecaPlanosTab() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+
+// ── Configurações (Coordenadora) ─────────────────────────────
+function ConfigTab() {
+  const [confirmando, setConfirmando] = React.useState(false);
+  const [feito, setFeito] = React.useState(false);
+
+  function limparDadosTeste() {
+    // Remove só os dados de teste — mantém fichas e planos reais
+    const chavesTeste = [
+      'ecl_alunos', 'ecl_turmas', 'ecl_planos', 'ecl_fichas',
+      'ecl_requisicoes', 'ecl_historico_avaliacoes', 'ecl_historico_presencas',
+    ];
+    chavesTeste.forEach(k => {
+      try { localStorage.removeItem(k); } catch {}
+    });
+    setFeito(true);
+    setConfirmando(false);
+    setTimeout(() => window.location.reload(), 1500);
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <Card>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>⚙️ Configurações</div>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 16 }}>
+          Opções de administração da Avaliação ECL.
+        </div>
+
+        {/* Limpar dados de teste */}
+        <div style={{ padding: '14px 16px', borderRadius: 12,
+          border: '1.5px solid rgba(192,57,43,0.3)', background: '#fdf5f5' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#7b1b10', marginBottom: 4 }}>
+            🗑️ Limpar dados de teste
+          </div>
+          <div style={{ fontSize: 13, color: '#A32D2D', marginBottom: 12, lineHeight: 1.5 }}>
+            Remove os alunos, planos de aula, fichas e requisições criados automaticamente
+            para testes. As fichas técnicas reais e o Manual do Cozinheiro são preservados.
+            A app recarrega após limpar.
+          </div>
+
+          {feito ? (
+            <div style={{ padding: '10px', borderRadius: 8, background: '#EAF3DE',
+              color: '#27500A', fontWeight: 700, fontSize: 13, textAlign: 'center' }}>
+              ✓ Dados de teste removidos — a recarregar...
+            </div>
+          ) : !confirmando ? (
+            <button onClick={() => setConfirmando(true)} style={{
+              padding: '10px 20px', borderRadius: 9, border: 'none',
+              background: '#c0392b', color: '#fff', fontSize: 13,
+              fontWeight: 700, cursor: 'pointer',
+            }}>
+              Limpar dados de teste
+            </button>
+          ) : (
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#7b1b10',
+                marginBottom: 10 }}>
+                Tens a certeza? Esta acção não pode ser desfeita.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={limparDadosTeste} style={{
+                  padding: '10px 20px', borderRadius: 9, border: 'none',
+                  background: '#c0392b', color: '#fff', fontSize: 13,
+                  fontWeight: 700, cursor: 'pointer',
+                }}>
+                  Sim, limpar tudo
+                </button>
+                <button onClick={() => setConfirmando(false)} style={{
+                  padding: '10px 20px', borderRadius: 9,
+                  border: '1px solid rgba(26,23,20,0.2)',
+                  background: '#fff', fontSize: 13, cursor: 'pointer',
+                }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
