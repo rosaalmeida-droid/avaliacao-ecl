@@ -411,42 +411,211 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   }
 
   // ── FASE 1 — ESCOLHER ─────────────────────────────────────
+  // Calendário de planos — estado local
+  const [mesAtual, setMesAtual] = React.useState(() => {
+    const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() };
+  });
+  const [fichaDetalhe, setFichaDetalhe] = React.useState<FichaProducao | null>(null);
+
+  // Dias do mês com planos
+  const diasComPlano = React.useMemo(() => {
+    const mapa: Record<string, PlanoAula[]> = {};
+    planos.forEach(p => {
+      if (!p.data) return;
+      const d = new Date(p.data + 'T12:00:00');
+      if (d.getFullYear() === mesAtual.ano && d.getMonth() === mesAtual.mes) {
+        const dia = d.getDate();
+        if (!mapa[dia]) mapa[dia] = [];
+        mapa[dia].push(p);
+      }
+    });
+    return mapa;
+  }, [planos, mesAtual]);
+
+  const diasNoMes = new Date(mesAtual.ano, mesAtual.mes + 1, 0).getDate();
+  const primeiroDiaSemana = new Date(mesAtual.ano, mesAtual.mes, 1).getDay();
+  const nomeMes = new Date(mesAtual.ano, mesAtual.mes, 1)
+    .toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+  const hoje2 = new Date().toISOString().slice(0, 10);
+
   if (fase === 'escolher') {
+    // Modal de detalhe de ficha
+    if (fichaDetalhe) {
+      return (
+        <div style={{ background: 'var(--requisicao-pale)', borderRadius: 16, padding: 16 }}>
+          <button onClick={() => setFichaDetalhe(null)} style={{
+            background: 'rgba(26,23,20,0.07)', border: 'none', borderRadius: 8,
+            padding: '7px 14px', cursor: 'pointer', fontSize: 13,
+            fontWeight: 600, marginBottom: 12,
+          }}>← Voltar</button>
+          <div style={{ background: '#fff', borderRadius: 14, padding: 16,
+            border: '1px solid rgba(26,23,20,0.1)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18,
+              fontWeight: 700, marginBottom: 4 }}>{fichaDetalhe.nomePrato}</div>
+            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
+              {fichaDetalhe.classificacao}
+              {(fichaDetalhe as any).familia1 && ` · ${(fichaDetalhe as any).familia1}`}
+              {fichaDetalhe.numPorcoes && ` · receita base: ${fichaDetalhe.numPorcoes} doses`}
+            </div>
+            {Array.isArray(fichaDetalhe.ingredientes) && fichaDetalhe.ingredientes.length > 0 && (
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--copper)',
+                  textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                  Ingredientes
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--copper)', color: '#fff' }}>
+                      <th style={{ padding: '6px 10px', textAlign: 'left' }}>Ingrediente</th>
+                      <th style={{ padding: '6px 10px', textAlign: 'right' }}>Qtd</th>
+                      <th style={{ padding: '6px 10px' }}>Un</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fichaDetalhe.ingredientes.map((ing, i) => (
+                      <tr key={i} style={{ background: i%2===0 ? '#fff' : 'rgba(181,101,29,0.04)',
+                        borderBottom: '1px solid rgba(26,23,20,0.05)' }}>
+                        <td style={{ padding: '6px 10px' }}>{ing.produto}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'right' }}>{ing.qt}</td>
+                        <td style={{ padding: '6px 10px', color: 'rgba(26,23,20,0.5)' }}>{ing.un}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {fichaDetalhe.alergenicos && (
+              <div style={{ marginTop: 12, padding: '8px 12px', background: '#FCEBEB',
+                borderRadius: 8, fontSize: 12, color: '#A32D2D' }}>
+                ⚠️ {Array.isArray(fichaDetalhe.alergenicos)
+                  ? fichaDetalhe.alergenicos.join(', ')
+                  : fichaDetalhe.alergenicos}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{ background: 'var(--requisicao-pale)', borderRadius: 16, padding: 16 }}>
-        <div style={{ background: 'var(--requisicao)', borderRadius: 14, padding: '16px 18px', marginBottom: 14 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4, color: 'white' }}>🛒 Nova Requisicao</div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>Seleciona o plano, as fichas de producao e o numero de doses.</div>
+        <div style={{ background: 'var(--requisicao)', borderRadius: 14,
+          padding: '16px 18px', marginBottom: 14 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20,
+            fontWeight: 700, marginBottom: 4, color: 'white' }}>🛒 Nova Requisição</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
+            Selecciona o dia no calendário, escolhe as fichas e define as doses.
+          </div>
         </div>
 
-        {/* 1. Plano */}
+        {/* ── CALENDÁRIO ── */}
         <div style={S.card}>
-          <label style={S.lbl}>1. Plano de aula</label>
-          {planos.length === 0 && <div style={S.muted}>Sem planos criados. Cria primeiro um plano de aula.</div>}
-          {(mostrarTodosPlanos ? planos : planosRecentes).map(p => {
-            const d = new Date(p.data + 'T12:00:00');
-            return (
-              <div key={p.id} onClick={() => selecionarPlano(p)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${planoSel?.id === p.id ? 'var(--copper)' : 'var(--border)'}`, background: planoSel?.id === p.id ? 'var(--copper-pale)' : '#fff', marginBottom: 6, cursor: 'pointer' }}>
-                <div style={{ background: 'var(--copper-pale)', borderRadius: 8, padding: '6px 8px', textAlign: 'center', flexShrink: 0, minWidth: 40 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--copper)', lineHeight: 1 }}>{d.getDate().toString().padStart(2, '0')}</div>
-                  <div style={{ fontSize:12, color: 'var(--copper)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{p.titulo}</div>
-                  <div style={S.muted}>
-                    {p.turmaId} {p.ucId ? `· ${p.ucId}` : ''} · {p.fichasIds.length} fichas
-                    {p.estado === 'publicado' && <span style={{ color: 'var(--sage)', fontWeight: 700 }}> · Publicado</span>}
-                  </div>
-                </div>
-                {planoSel?.id === p.id && <span style={{ color: 'var(--copper)' }}>✓</span>}
+          <div style={{ display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', marginBottom: 12 }}>
+            <button onClick={() => setMesAtual(m => {
+              const d = new Date(m.ano, m.mes - 1, 1);
+              return { ano: d.getFullYear(), mes: d.getMonth() };
+            })} style={{ background: 'none', border: 'none', fontSize: 20,
+              cursor: 'pointer', color: 'var(--copper)', padding: '0 6px' }}>‹</button>
+            <div style={{ fontWeight: 700, fontSize: 14,
+              textTransform: 'capitalize' }}>{nomeMes}</div>
+            <button onClick={() => setMesAtual(m => {
+              const d = new Date(m.ano, m.mes + 1, 1);
+              return { ano: d.getFullYear(), mes: d.getMonth() };
+            })} style={{ background: 'none', border: 'none', fontSize: 20,
+              cursor: 'pointer', color: 'var(--copper)', padding: '0 6px' }}>›</button>
+          </div>
+
+          {/* Dias da semana */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)',
+            gap: 2, marginBottom: 4 }}>
+            {['D','S','T','Q','Q','S','S'].map((d, i) => (
+              <div key={i} style={{ textAlign: 'center', fontSize: 10,
+                fontWeight: 700, color: 'rgba(26,23,20,0.35)',
+                padding: '2px 0' }}>{d}</div>
+            ))}
+          </div>
+
+          {/* Grelha de dias */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
+            {/* Offset */}
+            {Array.from({ length: primeiroDiaSemana }).map((_, i) => (
+              <div key={`off${i}`} />
+            ))}
+            {Array.from({ length: diasNoMes }).map((_, i) => {
+              const dia = i + 1;
+              const dataStr = `${mesAtual.ano}-${String(mesAtual.mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+              const temPlano = !!diasComPlano[dia];
+              const isHoje = dataStr === hoje2;
+              const isSel = planoSel?.data === dataStr;
+              return (
+                <button key={dia} onClick={() => {
+                  if (diasComPlano[dia]?.length) {
+                    selecionarPlano(diasComPlano[dia][0]);
+                  }
+                }} style={{
+                  padding: '6px 2px', borderRadius: 8, border: 'none',
+                  background: isSel ? 'var(--copper)'
+                    : isHoje ? 'rgba(181,101,29,0.12)'
+                    : temPlano ? 'rgba(181,101,29,0.06)'
+                    : 'transparent',
+                  color: isSel ? '#fff'
+                    : temPlano ? 'var(--copper)'
+                    : 'rgba(26,23,20,0.4)',
+                  fontWeight: isSel || temPlano ? 700 : 400,
+                  fontSize: 13, cursor: temPlano ? 'pointer' : 'default',
+                  position: 'relative',
+                }}>
+                  {dia}
+                  {temPlano && !isSel && (
+                    <div style={{ position: 'absolute', bottom: 2, left: '50%',
+                      transform: 'translateX(-50%)', width: 4, height: 4,
+                      borderRadius: '50%', background: 'var(--copper)' }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Se há múltiplos planos no mesmo dia */}
+          {planoSel && diasComPlano[new Date(planoSel.data+'T12:00:00').getDate()]?.length > 1 && (
+            <div style={{ marginTop: 10, paddingTop: 10,
+              borderTop: '1px solid rgba(26,23,20,0.08)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+                marginBottom: 6, textTransform: 'uppercase' }}>
+                Planos neste dia
               </div>
-            );
-          })}
-          {!mostrarTodosPlanos && planos.length > planosRecentes.length && (
-            <button onClick={() => setMostrarTodosPlanos(true)}
-              style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 12, fontWeight: 600, color: 'var(--copper)', cursor: 'pointer' }}>
-              Ver mais {planos.length - 8} planos mais antigos
-            </button>
+              {diasComPlano[new Date(planoSel.data+'T12:00:00').getDate()].map(p => (
+                <div key={p.id} onClick={() => selecionarPlano(p)} style={{
+                  padding: '7px 10px', borderRadius: 8, marginBottom: 4,
+                  border: `1.5px solid ${planoSel.id===p.id ? 'var(--copper)' : 'var(--border)'}`,
+                  background: planoSel.id===p.id ? 'var(--copper-pale)' : '#fff',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                }}>
+                  {p.titulo}
+                  <span style={{ fontSize: 11, fontWeight: 400,
+                    color: 'rgba(26,23,20,0.5)', marginLeft: 6 }}>
+                    {p.fichasIds.length} fichas
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Plano seleccionado */}
+          {planoSel && (
+            <div style={{ marginTop: 12, padding: '10px 12px',
+              background: 'var(--copper-pale)', borderRadius: 10,
+              border: '1.5px solid var(--copper)' }}>
+              <div style={{ fontWeight: 700, fontSize: 13,
+                color: 'var(--copper)', marginBottom: 2 }}>
+                ✓ {planoSel.titulo}
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>
+                {planoSel.data} · {planoSel.horaInicio}–{planoSel.horaFim}
+                {planoSel.ucId && ` · ${planoSel.ucId}`}
+              </div>
+            </div>
           )}
         </div>
 
@@ -470,6 +639,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{f.nomePrato}</div>
                     <div style={S.muted}>{f.classificacao} · receita base: {f.numPorcoes} doses</div>
                   </div>
+                  <button onClick={e => { e.stopPropagation(); setFichaDetalhe(f); }}
+                    style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(26,23,20,0.15)',
+                      background: '#fff', fontSize: 11, fontWeight: 600,
+                      color: 'rgba(26,23,20,0.6)', cursor: 'pointer', flexShrink: 0 }}>
+                    Ver ficha
+                  </button>
                   {fichasSel.includes(f.id) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                       <span style={{ fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>Doses:</span>
