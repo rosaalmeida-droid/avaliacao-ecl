@@ -413,6 +413,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // ── FASE 1 — ESCOLHER ─────────────────────────────────────
   // Calendário de planos — estado local
   const [mesAtual, setMesAtual] = React.useState(() => {
+    // Abrir no mês do plano mais recente com fichas — mais útil que o mês actual
+    const planoMaisRecente = planos.find(p => p.fichasIds?.length > 0 && p.data);
+    if (planoMaisRecente?.data) {
+      const d = new Date(planoMaisRecente.data + 'T12:00:00');
+      return { ano: d.getFullYear(), mes: d.getMonth() };
+    }
     const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() };
   });
   const [fichaDetalhe, setFichaDetalhe] = React.useState<FichaProducao | null>(null);
@@ -554,7 +560,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                     selecionarPlano(diasComPlano[dia][0]);
                   }
                 }} style={{
-                  padding: '6px 2px', borderRadius: 8, border: 'none',
+                  padding: '8px 2px', borderRadius: 8, border: 'none',
                   background: isSel ? 'var(--copper)'
                     : isHoje ? 'rgba(181,101,29,0.12)'
                     : temPlano ? 'rgba(181,101,29,0.06)'
@@ -595,7 +601,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   {p.titulo}
                   <span style={{ fontSize: 11, fontWeight: 400,
                     color: 'rgba(26,23,20,0.5)', marginLeft: 6 }}>
-                    {p.fichasIds.length} fichas
+                    {p.fichasIds?.length || 0} fichas
                   </span>
                 </div>
               ))}
@@ -604,24 +610,42 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
           {/* Plano seleccionado */}
           {planoSel && (
-            <div style={{ marginTop: 12, padding: '10px 12px',
+            <div style={{ marginTop: 12, padding: '12px 14px',
               background: 'var(--copper-pale)', borderRadius: 10,
-              border: '1.5px solid var(--copper)' }}>
-              <div style={{ fontWeight: 700, fontSize: 13,
-                color: 'var(--copper)', marginBottom: 2 }}>
-                ✓ {planoSel.titulo}
+              border: '1.5px solid var(--copper)',
+              display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13,
+                  color: 'var(--copper)', marginBottom: 2 }}>
+                  ✓ {planoSel.titulo}
+                </div>
+                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>
+                  {planoSel.data
+                    ? new Date(planoSel.data + 'T12:00:00').toLocaleDateString('pt-PT',
+                        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                    : ''}
+                  {planoSel.ucId && ` · ${planoSel.ucId}`}
+                </div>
+                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
+                  {planoSel.fichasIds?.length || 0} ficha(s) associada(s)
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>
-                {planoSel.data} · {planoSel.horaInicio}–{planoSel.horaFim}
-                {planoSel.ucId && ` · ${planoSel.ucId}`}
-              </div>
+              <button onClick={() => {
+                  // scroll suave para as fichas
+                  document.getElementById('req-fichas')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                style={{ padding: '8px 14px', borderRadius: 8, border: 'none',
+                  background: 'var(--copper)', color: '#fff', fontSize: 12,
+                  fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                Ver fichas ↓
+              </button>
             </div>
           )}
         </div>
 
         {/* 2. Fichas e doses */}
         {planoSel && (
-          <div style={S.card}>
+          <div id="req-fichas" style={S.card}>
             <label style={S.lbl}>2. Fichas de producao e doses</label>
             <div style={{ ...S.muted, marginBottom: 10 }}>Seleciona as fichas e define as doses pretendidas para cada uma.</div>
             {fichasDisp.length === 0 ? (
