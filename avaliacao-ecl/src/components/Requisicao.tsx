@@ -250,7 +250,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
   const todasFichas = [...getFichasProducao()].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
   // Só mostrar fichas do plano seleccionado — nunca todas as fichas do sistema
-  const fichasDisp = planoSel ? todasFichas.filter(f => planoSel.fichasIds.includes(f.id)) : [];
+  const fichasDisp = planoSel ? todasFichas.filter(f => (planoSel.fichasIds || []).includes(f.id)) : [];
   const fichasExtra: FichaProducao[] = []; // desactivado — só fichas do plano
   const fichasSelecionadas = todasFichas.filter(f => fichasSel.includes(f.id));
 
@@ -414,21 +414,36 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // Calendário de planos — estado local
   const [mesAtual, setMesAtual] = React.useState(() => {
     // Abrir no mês do plano mais recente com fichas — mais útil que o mês actual
-    const planoMaisRecente = planos.find(p => p.fichasIds?.length > 0 && p.data);
+    const planoMaisRecente = planos.find(p => (p.fichasIds?.length ?? 0) > 0 && p.data);
     if (planoMaisRecente?.data) {
-      const d = new Date(planoMaisRecente.data + 'T12:00:00');
-      return { ano: d.getFullYear(), mes: d.getMonth() };
+      // Garantir formato YYYY-MM-DD independentemente do que vier da BD
+      const dataStr = String(planoMaisRecente.data).slice(0, 10);
+      const partes = dataStr.split('-');
+      if (partes.length === 3) {
+        return { ano: parseInt(partes[0]), mes: parseInt(partes[1]) - 1 };
+      }
     }
     const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() };
   });
   const [fichaDetalhe, setFichaDetalhe] = React.useState<FichaProducao | null>(null);
+
+
+  // Parse seguro de data YYYY-MM-DD sem problemas de timezone
+  function parseData(dataStr: string): Date | null {
+    if (!dataStr) return null;
+    const s = String(dataStr).slice(0, 10);
+    const partes = s.split('-');
+    if (partes.length !== 3) return null;
+    return new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+  }
 
   // Dias do mês com planos
   const diasComPlano = React.useMemo(() => {
     const mapa: Record<string, PlanoAula[]> = {};
     planos.forEach(p => {
       if (!p.data) return;
-      const d = new Date(p.data + 'T12:00:00');
+      const d = parseData(String(p.data));
+      if (!d) return;
       if (d.getFullYear() === mesAtual.ano && d.getMonth() === mesAtual.mes) {
         const dia = d.getDate();
         if (!mapa[dia]) mapa[dia] = [];
@@ -441,7 +456,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const diasNoMes = new Date(mesAtual.ano, mesAtual.mes + 1, 0).getDate();
   const primeiroDiaSemana = new Date(mesAtual.ano, mesAtual.mes, 1).getDay();
   const nomeMes = new Date(mesAtual.ano, mesAtual.mes, 1)
-    .toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+    .toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+    .replace(/^./, c => c.toUpperCase());
   const hoje2 = new Date().toISOString().slice(0, 10);
 
   if (fase === 'escolher') {
@@ -584,14 +600,14 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           </div>
 
           {/* Se há múltiplos planos no mesmo dia */}
-          {planoSel && diasComPlano[new Date(planoSel.data+'T12:00:00').getDate()]?.length > 1 && (
+          {planoSel && diasComPlano[parseData(String(planoSel.data))?.getDate() ?? 0]?.length > 1 && (
             <div style={{ marginTop: 10, paddingTop: 10,
               borderTop: '1px solid rgba(26,23,20,0.08)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                 marginBottom: 6, textTransform: 'uppercase' }}>
                 Planos neste dia
               </div>
-              {diasComPlano[new Date(planoSel.data+'T12:00:00').getDate()].map(p => (
+              {(diasComPlano[parseData(String(planoSel.data))?.getDate() ?? 0] || []).map(p => (
                 <div key={p.id} onClick={() => selecionarPlano(p)} style={{
                   padding: '7px 10px', borderRadius: 8, marginBottom: 4,
                   border: `1.5px solid ${planoSel.id===p.id ? 'var(--copper)' : 'var(--border)'}`,
@@ -621,8 +637,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 </div>
                 <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>
                   {planoSel.data
-                    ? new Date(planoSel.data + 'T12:00:00').toLocaleDateString('pt-PT',
-                        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                    ? (() => { const d = parseData(String(planoSel.data)); return d ? d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : String(planoSel.data).slice(0,10); })()
                     : ''}
                   {planoSel.ucId && ` · ${planoSel.ucId}`}
                 </div>
