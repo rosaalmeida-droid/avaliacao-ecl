@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { Atividade, TipoAtividade } from '../types';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save } from '../backend';
+import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
 import { Card, Button, Field, Badge } from './ui';
+import { CentroAvisos } from './CentroAvisos';
 
 export function CoordenadoraView() {
   const [tab, setTab] = useState<'avisos' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos'>('avisos');
@@ -65,14 +66,14 @@ function BibliotecaFichasTab() {
     let f = todasFichas;
     if (pesquisa.trim()) {
       const q = pesquisa.toLowerCase();
-      f = f.filter(fi =>
+      f = f.filter((fi: FichaProducao) =>
         fi.nomePrato?.toLowerCase().includes(q) ||
         fi.classificacao?.toLowerCase().includes(q) ||
         fi.alergenicos?.toString().toLowerCase().includes(q) ||
         (fi as any).familia1?.toLowerCase().includes(q)
       );
     }
-    return f.sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+    return f.sort((a: FichaProducao, b: FichaProducao) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
   }, [todasFichas, pesquisa]);
 
   if (fichaAberta) {
@@ -177,7 +178,7 @@ function BibliotecaFichasTab() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {fichasFiltradas.map(f => (
+          {fichasFiltradas.map((f: FichaProducao) => (
             <div key={f.id} onClick={() => setFichaAberta(f)} style={{
               background: '#fff', borderRadius: 12, padding: '12px 14px',
               border: '1px solid rgba(26,23,20,0.08)', cursor: 'pointer',
