@@ -7,18 +7,28 @@ import { UCS_COZINHA } from './PlanoAula';
 import { Card, Button, Field, Badge } from './ui';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'ranking' | 'atividades' | 'pedagogico' | 'alunos'>('ranking');
+  const [tab, setTab] = useState<'avisos' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos'>('avisos');
 
   return (
     <div>
       <Card>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant={tab === 'avisos' ? 'primary' : 'ghost'} onClick={() => setTab('avisos')}>🔔 Avisos</Button>
+          <Button variant={tab === 'fichas' ? 'primary' : 'ghost'} onClick={() => setTab('fichas')}>🗂️ Fichas Técnicas</Button>
+          <Button variant={tab === 'planos' ? 'primary' : 'ghost'} onClick={() => setTab('planos')}>📅 Planos de Aula</Button>
           <Button variant={tab === 'ranking' ? 'primary' : 'ghost'} onClick={() => setTab('ranking')}>Ranking</Button>
           <Button variant={tab === 'atividades' ? 'primary' : 'ghost'} onClick={() => setTab('atividades')}>Eventos/Concursos</Button>
           <Button variant={tab === 'pedagogico' ? 'primary' : 'ghost'} onClick={() => setTab('pedagogico')}>📊 Visão Pedagógica</Button>
           <Button variant={tab === 'alunos' ? 'primary' : 'ghost'} onClick={() => setTab('alunos')}>👥 Gestão de Alunos</Button>
         </div>
       </Card>
+      {tab === 'avisos' && (
+        <div style={{ marginTop: 12 }}>
+          <CentroAvisos perfil="coordenadora" />
+        </div>
+      )}
+      {tab === 'fichas' && <BibliotecaFichasTab />}
+      {tab === 'planos' && <BibliotecaPlanosTab />}
       {tab === 'ranking' && <RankingTab />}
       {tab === 'atividades' && <AtividadesTab />}
       {tab === 'pedagogico' && <VisaoPedagogicaTab />}
@@ -38,6 +48,350 @@ function BadgeNivel({ nivel }: { nivel?: 1|2|3 }) {
       border: `1px solid ${nivel === 3 ? '#c0392b40' : '#b5651d40'}` }}>
       {nivel === 3 ? '🔴 Nível 3 — Medidas Adicionais' : '🟡 Nível 2 — Medidas Seletivas'}
     </span>
+  );
+}
+
+
+// ── Biblioteca de Fichas Técnicas (Coordenadora) ─────────────
+function BibliotecaFichasTab() {
+  const [pesquisa, setPesquisa] = React.useState('');
+  const [fichaAberta, setFichaAberta] = React.useState<FichaProducao | null>(null);
+  const turmas = getTurmas();
+  const [turmaFiltro, setTurmaFiltro] = React.useState<string>('todas');
+
+  const todasFichas = React.useMemo(() => getFichasProducao(), []);
+
+  const fichasFiltradas = React.useMemo(() => {
+    let f = todasFichas;
+    if (pesquisa.trim()) {
+      const q = pesquisa.toLowerCase();
+      f = f.filter(fi =>
+        fi.nomePrato?.toLowerCase().includes(q) ||
+        fi.classificacao?.toLowerCase().includes(q) ||
+        fi.alergenicos?.toString().toLowerCase().includes(q) ||
+        (fi as any).familia1?.toLowerCase().includes(q)
+      );
+    }
+    return f.sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+  }, [todasFichas, pesquisa]);
+
+  if (fichaAberta) {
+    return (
+      <div style={{ marginTop: 12 }}>
+        <button onClick={() => setFichaAberta(null)} style={{
+          background: 'rgba(26,23,20,0.06)', border: 'none', borderRadius: 8,
+          padding: '7px 14px', cursor: 'pointer', fontSize: 13,
+          fontWeight: 600, marginBottom: 12,
+        }}>← Voltar à biblioteca</button>
+
+        <div style={{ background: '#fff', borderRadius: 14, padding: '16px',
+          border: '1px solid rgba(26,23,20,0.1)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20,
+            fontWeight: 700, marginBottom: 4 }}>{fichaAberta.nomePrato}</div>
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 16 }}>
+            {fichaAberta.classificacao}
+            {(fichaAberta as any).familia1 && ` · ${(fichaAberta as any).familia1}`}
+            {fichaAberta.numPorcoes && ` · ${fichaAberta.numPorcoes} doses`}
+          </div>
+
+          {/* Ingredientes */}
+          {Array.isArray(fichaAberta.ingredientes) && fichaAberta.ingredientes.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8,
+                color: 'var(--copper)' }}>Ingredientes</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: 'var(--copper)', color: '#fff' }}>
+                    <th style={{ padding: '6px 10px', textAlign: 'left' }}>Ingrediente</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'right' }}>Qtd</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'left' }}>Un</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'left' }}>Componente</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fichaAberta.ingredientes.map((ing, i) => (
+                    <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : 'rgba(181,101,29,0.04)',
+                      borderBottom: '1px solid rgba(26,23,20,0.06)' }}>
+                      <td style={{ padding: '6px 10px', fontWeight: 500 }}>{ing.produto}</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right' }}>{ing.qt}</td>
+                      <td style={{ padding: '6px 10px', color: 'rgba(26,23,20,0.5)' }}>{ing.un}</td>
+                      <td style={{ padding: '6px 10px', color: 'rgba(26,23,20,0.5)',
+                        fontSize: 11 }}>{ing.componente}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Alergénios */}
+          {fichaAberta.alergenicos && (fichaAberta.alergenicos as any).length > 0 && (
+            <div style={{ padding: '8px 12px', background: '#FCEBEB',
+              borderRadius: 8, fontSize: 12, color: '#A32D2D' }}>
+              ⚠️ Alergénios: {Array.isArray(fichaAberta.alergenicos)
+                ? fichaAberta.alergenicos.join(', ')
+                : fichaAberta.alergenicos}
+            </div>
+          )}
+
+          {/* Etiquetas */}
+          {(fichaAberta as any).etiquetas?.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {(fichaAberta as any).etiquetas.map((et: string, i: number) => (
+                <span key={i} style={{ padding: '2px 10px', borderRadius: 100,
+                  background: 'var(--copper-pale)', color: 'var(--copper)',
+                  fontSize: 11, fontWeight: 600 }}>{et}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ background: '#1a1714', borderRadius: 14,
+        padding: '14px 16px', marginBottom: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#faf7f2', marginBottom: 10 }}>
+          🗂️ Biblioteca de Fichas Técnicas
+        </div>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 10, top: '50%',
+            transform: 'translateY(-50%)', color: 'rgba(247,241,230,0.4)' }}>🔍</span>
+          <input value={pesquisa} onChange={e => setPesquisa(e.target.value)}
+            placeholder="Pesquisar por nome, classificação, alergénio..."
+            style={{ width: '100%', padding: '9px 10px 9px 32px', borderRadius: 8,
+              border: 'none', background: 'rgba(255,255,255,0.1)',
+              color: '#faf7f2', fontSize: 13 }} />
+        </div>
+        <div style={{ fontSize: 12, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
+          {fichasFiltradas.length} ficha{fichasFiltradas.length !== 1 ? 's' : ''} no sistema
+        </div>
+      </div>
+
+      {fichasFiltradas.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px', color: 'rgba(26,23,20,0.4)' }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🗂️</div>
+          <div>Nenhuma ficha encontrada</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {fichasFiltradas.map(f => (
+            <div key={f.id} onClick={() => setFichaAberta(f)} style={{
+              background: '#fff', borderRadius: 12, padding: '12px 14px',
+              border: '1px solid rgba(26,23,20,0.08)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 12,
+              boxShadow: '0 1px 4px rgba(26,23,20,0.04)',
+            }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                background: 'var(--copper-pale)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                🍽️
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>
+                  {f.nomePrato}</div>
+                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
+                  {f.classificacao}
+                  {(f as any).familia1 && ` · ${(f as any).familia1}`}
+                  {f.numPorcoes && ` · ${f.numPorcoes} doses`}
+                </div>
+                {f.alergenicos && (f.alergenicos as any).length > 0 && (
+                  <div style={{ fontSize: 11, color: '#A32D2D', marginTop: 2 }}>
+                    ⚠️ {Array.isArray(f.alergenicos) ? f.alergenicos.join(', ') : f.alergenicos}
+                  </div>
+                )}
+              </div>
+              <span style={{ color: 'rgba(26,23,20,0.3)', fontSize: 18 }}>›</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Biblioteca de Planos de Aula (Coordenadora) ──────────────
+function BibliotecaPlanosTab() {
+  const turmas = getTurmas();
+  const [turmaFiltro, setTurmaFiltro] = React.useState<string>('todas');
+  const [pesquisa, setPesquisa] = React.useState('');
+  const [planoAberto, setPlanoAberto] = React.useState<PlanoAula | null>(null);
+
+  const todosPlanos = React.useMemo(() => {
+    const planos: PlanoAula[] = [];
+    turmas.forEach(t => {
+      planos.push(...getPlanosAulaPorTurma(t.id, true));
+    });
+    return planos.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+  }, []);
+
+  const planosFiltrados = React.useMemo(() => {
+    let p = todosPlanos;
+    if (turmaFiltro !== 'todas') p = p.filter(pl => pl.turmaId === turmaFiltro);
+    if (pesquisa.trim()) {
+      const q = pesquisa.toLowerCase();
+      p = p.filter(pl =>
+        pl.titulo?.toLowerCase().includes(q) ||
+        pl.ucId?.toLowerCase().includes(q) ||
+        pl.ucNome?.toLowerCase().includes(q)
+      );
+    }
+    return p;
+  }, [todosPlanos, turmaFiltro, pesquisa]);
+
+  if (planoAberto) {
+    return (
+      <div style={{ marginTop: 12 }}>
+        <button onClick={() => setPlanoAberto(null)} style={{
+          background: 'rgba(26,23,20,0.06)', border: 'none', borderRadius: 8,
+          padding: '7px 14px', cursor: 'pointer', fontSize: 13,
+          fontWeight: 600, marginBottom: 12,
+        }}>← Voltar à biblioteca</button>
+
+        <div style={{ background: '#fff', borderRadius: 14, padding: '16px',
+          border: '1px solid rgba(26,23,20,0.1)' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <span style={{ padding: '2px 10px', borderRadius: 100, fontSize: 11,
+              fontWeight: 700, background: planoAberto.estado === 'publicado'
+                ? '#EAF3DE' : 'rgba(26,23,20,0.06)',
+              color: planoAberto.estado === 'publicado' ? '#27500A' : 'rgba(26,23,20,0.5)' }}>
+              {planoAberto.estado === 'publicado' ? '✓ Publicado' : 'Rascunho'}
+            </span>
+            <span style={{ padding: '2px 10px', borderRadius: 100, fontSize: 11,
+              background: 'rgba(26,23,20,0.06)', color: 'rgba(26,23,20,0.6)' }}>
+              {planoAberto.turmaId}
+            </span>
+            {planoAberto.numeroPlan && (
+              <span style={{ padding: '2px 10px', borderRadius: 100, fontSize: 11,
+                background: 'var(--copper-pale)', color: 'var(--copper)', fontWeight: 700 }}>
+                Plano {planoAberto.numeroPlan}
+              </span>
+            )}
+          </div>
+
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18,
+            fontWeight: 700, marginBottom: 4 }}>{planoAberto.titulo}</div>
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
+            {planoAberto.data} · {planoAberto.horaInicio}–{planoAberto.horaFim}
+          </div>
+
+          {planoAberto.ucId && (
+            <div style={{ padding: '8px 12px', background: 'var(--copper-pale)',
+              borderRadius: 8, fontSize: 12, color: 'var(--copper)',
+              fontWeight: 600, marginBottom: 12 }}>
+              {planoAberto.ucId} — {planoAberto.ucNome}
+            </div>
+          )}
+
+          {planoAberto.observacoes && (
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)',
+              lineHeight: 1.6, marginBottom: 12 }}>
+              {planoAberto.observacoes}
+            </div>
+          )}
+
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}>
+            {planoAberto.fichasIds?.length || 0} ficha(s) associada(s) ·
+            Professor: {planoAberto.professor}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ background: '#1a1714', borderRadius: 14,
+        padding: '14px 16px', marginBottom: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#faf7f2', marginBottom: 10 }}>
+          📅 Biblioteca de Planos de Aula
+        </div>
+        <div style={{ position: 'relative', marginBottom: 8 }}>
+          <span style={{ position: 'absolute', left: 10, top: '50%',
+            transform: 'translateY(-50%)', color: 'rgba(247,241,230,0.4)' }}>🔍</span>
+          <input value={pesquisa} onChange={e => setPesquisa(e.target.value)}
+            placeholder="Pesquisar por título, UC..."
+            style={{ width: '100%', padding: '9px 10px 9px 32px', borderRadius: 8,
+              border: 'none', background: 'rgba(255,255,255,0.1)',
+              color: '#faf7f2', fontSize: 13 }} />
+        </div>
+        {/* Filtro por turma */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button onClick={() => setTurmaFiltro('todas')} style={{
+            padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+            border: `1.5px solid ${turmaFiltro === 'todas' ? '#fff' : 'rgba(255,255,255,0.2)'}`,
+            background: turmaFiltro === 'todas' ? '#fff' : 'transparent',
+            color: turmaFiltro === 'todas' ? '#1a1714' : 'rgba(247,241,230,0.6)',
+            cursor: 'pointer',
+          }}>Todas as turmas</button>
+          {turmas.map(t => (
+            <button key={t.id} onClick={() => setTurmaFiltro(t.id)} style={{
+              padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+              border: `1.5px solid ${turmaFiltro === t.id ? '#fff' : 'rgba(255,255,255,0.2)'}`,
+              background: turmaFiltro === t.id ? '#fff' : 'transparent',
+              color: turmaFiltro === t.id ? '#1a1714' : 'rgba(247,241,230,0.6)',
+              cursor: 'pointer',
+            }}>{t.id}</button>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
+          {planosFiltrados.length} plano{planosFiltrados.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+
+      {planosFiltrados.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px', color: 'rgba(26,23,20,0.4)' }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
+          <div>Nenhum plano encontrado</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {planosFiltrados.map(p => {
+            const d = new Date((p.data || '') + 'T12:00:00');
+            return (
+              <div key={p.id} onClick={() => setPlanoAberto(p)} style={{
+                background: '#fff', borderRadius: 12, padding: '12px 14px',
+                border: '1px solid rgba(26,23,20,0.08)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 12,
+                boxShadow: '0 1px 4px rgba(26,23,20,0.04)',
+              }}>
+                <div style={{ background: 'var(--copper-pale)', borderRadius: 10,
+                  padding: '8px 10px', textAlign: 'center', flexShrink: 0, minWidth: 44 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 20,
+                    fontWeight: 700, color: 'var(--copper)', lineHeight: 1 }}>
+                    {d.getDate().toString().padStart(2, '0')}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--copper)', fontWeight: 600,
+                    textTransform: 'uppercase' }}>
+                    {d.toLocaleDateString('pt-PT', { month: 'short' })}
+                  </div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 100,
+                      background: 'rgba(26,23,20,0.06)',
+                      color: 'rgba(26,23,20,0.5)', fontWeight: 600 }}>{p.turmaId}</span>
+                    {p.estado === 'publicado' && (
+                      <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 100,
+                        background: '#EAF3DE', color: '#27500A', fontWeight: 600 }}>✓ Pub.</span>
+                    )}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo}</div>
+                  {p.ucId && (
+                    <div style={{ fontSize: 12, color: 'var(--copper)', marginTop: 2 }}>
+                      {p.ucId}{p.ucNome ? ` — ${p.ucNome.slice(0, 40)}${p.ucNome.length > 40 ? '...' : ''}` : ''}
+                    </div>
+                  )}
+                </div>
+                <span style={{ color: 'rgba(26,23,20,0.3)', fontSize: 18, flexShrink: 0 }}>›</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
