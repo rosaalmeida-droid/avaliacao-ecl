@@ -709,7 +709,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               {aberto && (
                 <div style={{ borderTop:`2px solid ${p.cor}`, padding:'20px', background:'#fdfcfb' }}>
                   {p.id==='entrada' && !orientacaoConcluida && (
-                    <PainelOrientacao plano={plano} fichas={fichas}
+                    <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno}
                       onContinuar={() => { setOrientacaoConcluida(true); }} />
                   )}
                   {p.id==='entrada' && orientacaoConcluida && (
@@ -780,8 +780,8 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
 // PAINEL DE ORIENTAÇÃO — aparece ao entrar no plano de aula
 // Resume o que vai acontecer e orienta para o KitchenFlow
 // ─────────────────────────────────────────────────────────────
-function PainelOrientacao({ plano, fichas, onContinuar }: {
-  plano: PlanoAula; fichas: FichaProducao[]; onContinuar: () => void;
+function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
+  plano: PlanoAula; fichas: FichaProducao[]; aluno: Aluno; onContinuar: () => void;
 }) {
   // Extrair alertas HACCP das fichas
   const alertasHACCP: string[] = [];
