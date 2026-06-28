@@ -66,7 +66,7 @@ export async function registarHigieneKitchenFlow(
   const hora = hoje.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
   const estado = fardamentoOk ? 'Confirmado' : 'Incompleto — registado pela Avaliação ECL';
   await enviarParaKitchenFlow('Higiene Pessoal', [
-    data, hora, turmaId, alunoId, nomeAluno, estado
+    data, hora, turmaId, alunoId, nomeAluno, estado, 'avaliacao_ecl'
   ]);
 }
 
@@ -111,13 +111,19 @@ export async function registarNaoConformidadeKitchenFlow(
 /** Abre o KitchenFlow com login automático do aluno/professor.
  *  Passa turma, número e PIN na URL para que o KitchenFlow faça
  *  login automaticamente sem o utilizador ter de repetir as credenciais. */
-export function abrirKitchenFlow(modulo?: string, user?: { turma: string; numero?: number; pin?: string; tipo?: string }): void {
+export function abrirKitchenFlow(modulo?: string, user?: {
+  turma: string; numero?: number; pin?: string; tipo?: string;
+  ucId?: string; ucNome?: string; pratos?: string[];
+}): void {
   const params = new URLSearchParams();
   if (modulo) params.set('mod', modulo);
   if (user?.turma) params.set('turma', user.turma);
   if (user?.numero) params.set('num', String(user.numero));
   if (user?.pin) params.set('pin', user.pin);
   if (user?.tipo) params.set('tipo', user.tipo || 'aluno');
+  if (user?.ucId) params.set('uc', user.ucId);
+  if (user?.ucNome) params.set('ucNome', user.ucNome);
+  if (user?.pratos?.length) params.set('pratos', user.pratos.join('|'));
   const query = params.toString();
   const url = query ? `${KITCHENFLOW_APP_URL}?${query}` : KITCHENFLOW_APP_URL;
   window.open(url, '_blank', 'noopener');
