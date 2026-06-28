@@ -975,6 +975,27 @@ REGENERAÇÃO:
 REGISTOS KITCHENFLOW:
 [aplica REGRA 7 — apenas módulos relevantes]
 
+REGRA 10 — REGISTOS KITCHENFLOW OBRIGATÓRIOS POR INGREDIENTE
+Analisa cada ingrediente da ficha. Para ingredientes crus, frescos, de origem animal
+ou de risco microbiológico, indica o registo KitchenFlow obrigatório.
+
+Formato obrigatório — uma linha por registo, com pipe:
+REGISTO: [tipo] | INGREDIENTE: [nome] | MOTIVO: [razão técnica curta]
+
+Tipos de registo válidos:
+- Higiene Pessoal — sempre obrigatório
+- Temperatura Serviço — se prato quente (≥63°C) ou frio (≤4°C)
+- Controlo de Óleos — APENAS se fritura por imersão
+- Conservação — se sobram ingredientes abertos de risco
+- NãoConformidades — sempre obrigatório
+
+Exemplos:
+REGISTO: Higiene Pessoal | INGREDIENTE: todos | MOTIVO: obrigatório antes de qualquer produção
+REGISTO: Temperatura Serviço | INGREDIENTE: lombo de porco | MOTIVO: temperatura interna mínima 75°C
+REGISTO: Temperatura Serviço | INGREDIENTE: pudim de ovos | MOTIVO: servir frio, máx 4°C
+REGISTO: Conservação | INGREDIENTE: leite gordo | MOTIVO: produto lácteo aberto, refrigerar a 0-4°C
+REGISTO: NãoConformidades | INGREDIENTE: todos | MOTIVO: registar qualquer desvio detetado
+
 MICROCOMPETÊNCIAS DETECTADAS:
 [lista de microcompetências da REGRA 9 — coerentes com a FAMÍLIA]
 [máx 6, uma por linha]
@@ -1122,34 +1143,6 @@ Controlar temperaturas
 SUBTÉCNICAS DETECTADAS:
 S162B — Massa montada (se a variante usar génoise como base)
 
----
-# 15. CULTURA E GASTRONOMIA
-
-Esta secção aparece SEMPRE no fim do guião e na impressão.
-Pesquisa online e apresenta informação cultural e gastronómica aprofundada sobre este prato ou ingrediente principal — baseada em fontes credíveis.
-
-Fontes prioritárias a consultar e citar:
-- Virgílio Nogueiro Gomes (virgiliogomes.com) — maior investigador vivo da gastronomia portuguesa
-- Dicionário Prático da Cozinha Portuguesa (Virgílio Nogueiro Gomes, Marcador)
-- Histórias e Curiosidades à Mesa (Virgílio Nogueiro Gomes, Marcador, 2023)
-- Património Alimentar Português (patrimoniocultural.gov.pt)
-- Outras fontes académicas ou jornalísticas de qualidade sobre gastronomia portuguesa
-
-ESTRUTURA OBRIGATÓRIA:
-
-📖 Contexto histórico e cultural
-[2-3 parágrafos sobre a história do prato, ingrediente ou técnica — quando surgiu, em que contexto social, regional ou histórico, como evoluiu até hoje. Se Virgílio Nogueiro Gomes escreveu sobre isto, usa e cita.]
-
-🏛️ Ligação ao património
-[Como este prato ou ingrediente se insere no património gastronómico português — região de origem, classificações DOP/IGP se aplicável, presença em festividades ou tradições.]
-
-💬 Voz de referência
-[Se encontrares texto ou citação de Virgílio Nogueiro Gomes, Maria de Lourdes Modesto, ou outro investigador credível sobre este tema específico, inclui aqui com citação da fonte. Se não existir nada específico, omite esta subsecção.]
-
-📚 Fontes consultadas
-[Lista simples das fontes usadas: autor, título/site, ano se disponível]
-
-IMPORTANTE: Não inventar factos. Se não há informação disponível sobre um aspecto, dizer claramente que não existe registo conhecido. Preferir menos informação mas correcta a mais informação inventada.
 
 ---
 ${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu conhecimento culinário e aplica todas as regras acima.'}`;
