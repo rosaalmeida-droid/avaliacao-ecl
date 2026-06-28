@@ -899,6 +899,9 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
             numero: aluno.numero,
             pin: aluno.pin,
             tipo: 'aluno',
+            ucId: plano.ucId,
+            ucNome: plano.ucNome,
+            pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
           })} style={{
           padding: '10px 16px', borderRadius: 9, border: 'none',
           background: '#185FA5', color: '#fff', fontSize: 13,
