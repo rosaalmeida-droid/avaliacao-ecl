@@ -359,7 +359,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [fichasParaRequisicao, setFichasParaRequisicao] = React.useState<string[]>([]);
   // Hooks de competências — têm de estar aqui, ANTES de qualquer return condicional,
   // nunca depois (violar as Regras dos Hooks causa erros React imprevisíveis).
-  const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias'>('resumo');
+  const [tabInicio, setTabInicio] = useState<'orientacao' | 'resumo' | 'competencias'>('orientacao');
   const [compRemovidas, setCompRemovidas] = useState<string[]>(
     Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []
   );
@@ -751,8 +751,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     <div>
       <CabecalhoPlano plano={plano} onVoltar={onVoltar} modulo={modulo} setModulo={setModulo} />
 
-      {/* Sub-navegação só dentro do Resumo: Resumo vs Competências */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+      {/* Sub-navegação: Orientação, Resumo, Competências */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10, flexWrap: 'wrap' }}>
+        <button onClick={() => setTabInicio('orientacao')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'orientacao' ? '#0e7490' : 'transparent', color: tabInicio === 'orientacao' ? 'white' : 'rgba(26,23,20,0.5)' }}>
+          🚦 Orientação
+        </button>
         <button onClick={() => setTabInicio('resumo')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'resumo' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'resumo' ? 'white' : 'rgba(26,23,20,0.5)' }}>
           📋 Resumo
         </button>
@@ -760,6 +763,79 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           🎯 Competências ({totalComp})
         </button>
       </div>
+
+      {/* TAB ORIENTAÇÃO — para o professor */}
+      {tabInicio === 'orientacao' && (
+        <div>
+          {/* Checklist do professor */}
+          <div style={{ background: '#E6F1FB', borderRadius: 14, padding: '14px 16px',
+            border: '1.5px solid #B5D4F4', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 10 }}>
+              🚦 Antes de começar — verificar
+            </div>
+            {[
+              { ok: temFichas, label: 'Fichas de produção criadas', acao: () => setModulo('ficha'), acaoLabel: 'Criar ficha →' },
+              { ok: fichasDoPlano.some((f: any) => f.textoGuia), label: 'Guião de produção gerado', acao: () => setModulo('guia'), acaoLabel: 'Gerar guião →' },
+              { ok: temRequisicao, label: 'Requisição enviada', acao: () => setModulo('requisicao'), acaoLabel: 'Fazer requisição →' },
+              { ok: publicado, label: 'Plano publicado para os alunos', acao: null, acaoLabel: '' },
+            ].map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 12px', borderRadius: 9, marginBottom: 6,
+                background: item.ok ? '#EAF3DE' : '#fff',
+                border: `1px solid ${item.ok ? '#C0DD97' : 'rgba(14,116,144,0.2)'}` }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{item.ok ? '✅' : '⭕'}</span>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: item.ok ? 500 : 600,
+                  color: item.ok ? '#27500A' : '#0C447C' }}>{item.label}</span>
+                {!item.ok && item.acao && (
+                  <button onClick={item.acao} style={{ padding: '4px 10px', borderRadius: 7,
+                    border: 'none', background: '#0e7490', color: '#fff',
+                    fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                    {item.acaoLabel}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* O que se vai produzir */}
+          {fichasDoPlano.length > 0 && (
+            <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px',
+              border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+                textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                🍽️ Produção desta aula
+              </div>
+              {fichasDoPlano.map((f: any, i: number) => (
+                <div key={i} style={{ padding: '8px 10px', borderRadius: 8, marginBottom: 6,
+                  background: 'rgba(181,101,29,0.05)', border: '1px solid rgba(181,101,29,0.15)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{f.nomePrato}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
+                    {f.numPorcoes && `${f.numPorcoes} doses`}
+                    {f.alergenicos?.length > 0 && ` · ⚠️ ${Array.isArray(f.alergenicos) ? f.alergenicos.join(', ') : f.alergenicos}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* KitchenFlow */}
+          <div style={{ background: '#0e7490', borderRadius: 14, padding: '14px 16px',
+            marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 6 }}>
+              🏭 KitchenFlow ECL
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 10, lineHeight: 1.5 }}>
+              Abre o KitchenFlow para verificar os registos da cozinha antes de começar a aula.
+            </div>
+            <button onClick={() => window.open('https://ecl-haccp.vercel.app/', '_blank')}
+              style={{ padding: '10px 16px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.12)', color: '#fff',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+              🔗 Abrir KitchenFlow ECL →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TAB COMPETÊNCIAS */}
       {tabInicio === 'competencias' && (
