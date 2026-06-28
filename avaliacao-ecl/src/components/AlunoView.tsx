@@ -6,6 +6,7 @@ import {
   addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL,
+  sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -592,16 +593,19 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
 }) {
-  const [secAberta, setSecAberta] = useState<string>('entrada');
+  const [secAberta, setSecAberta] = useState<string>('orientacao');
+  const [orientacaoConcluida, setOrientacaoConcluida] = useState(false);
   const fichas = getFichasPorPlano(plano.id);
   const requisicao = getRequisicaoPorPlano(plano.id);
   const [entradaConcluida, setEntradaConcluida] = useState(false);
   const [fichaConcluida, setFichaConcluida] = useState(false);
+  const [guiaoConcluido, setGuiaoConcluido] = useState(false);
   const [avaliacaoConcluida, setAvaliacaoConcluida] = useState(false);
 
   const PASSOS = [
     { id:'entrada',    emoji:'🪪', label:'Entrada e Higiene',         cor:T.copper },
     { id:'ficha',      emoji:'📄', label:`Ficha${fichas.length>1?'s':''} de Produção`, cor:'#2980b9' },
+    ...(fichas.some((f:any) => f.textoGuia) ? [{ id:'guia', emoji:'📖', label:'Guião de Produção', cor:'#1a6b5a' }] : []),
     { id:'requisicao', emoji:'🛒', label:'Requisição da Aula',        cor:'#7d4f8c' },
     { id:'avaliacao',  emoji:'🎯', label:'Autoavaliação',             cor:T.sage },
   ];
@@ -609,6 +613,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   const estadoPasso = (id: string): 'concluido'|'ativo'|'pendente' => {
     if (id==='entrada' && entradaConcluida) return 'concluido';
     if (id==='ficha' && fichaConcluida) return 'concluido';
+    if (id==='guia' && guiaoConcluido) return 'concluido';
     if (id==='requisicao' && requisicao) return 'concluido';
     if (id==='avaliacao' && avaliacaoConcluida) return 'concluido';
     if (id===secAberta) return 'ativo';
@@ -703,13 +708,24 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
 
               {aberto && (
                 <div style={{ borderTop:`2px solid ${p.cor}`, padding:'20px', background:'#fdfcfb' }}>
-                  {p.id==='entrada' && (
+                  {p.id==='entrada' && !orientacaoConcluida && (
+                    <PainelOrientacao plano={plano} fichas={fichas}
+                      onContinuar={() => { setOrientacaoConcluida(true); }} />
+                  )}
+                  {p.id==='entrada' && orientacaoConcluida && (
                     <SecaoEntrada aluno={aluno} plano={plano}
                       onConcluido={() => { setEntradaConcluida(true); setSecAberta('ficha'); }} />
                   )}
                   {p.id==='ficha' && (
                     <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
-                      onConcluido={() => { setFichaConcluida(true); setSecAberta('requisicao'); }} />
+                      onConcluido={() => {
+                        setFichaConcluida(true);
+                        setSecAberta(fichas.some((f:any) => f.textoGuia) ? 'guia' : 'requisicao');
+                      }} />
+                  )}
+                  {p.id==='guia' && (
+                    <SecaoGuiao fichas={fichas} plano={plano}
+                      onConcluido={() => { setGuiaoConcluido(true); setSecAberta('requisicao'); }} />
                   )}
                   {p.id==='requisicao' && (
                     requisicao
@@ -759,6 +775,152 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
 // ─────────────────────────────────────────────────────────────
 // SECÇÃO 1 — Entrada e Higiene
 // ─────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────
+// PAINEL DE ORIENTAÇÃO — aparece ao entrar no plano de aula
+// Resume o que vai acontecer e orienta para o KitchenFlow
+// ─────────────────────────────────────────────────────────────
+function PainelOrientacao({ plano, fichas, onContinuar }: {
+  plano: PlanoAula; fichas: FichaProducao[]; onContinuar: () => void;
+}) {
+  // Extrair alertas HACCP das fichas
+  const alertasHACCP: string[] = [];
+  fichas.forEach(f => {
+    (f.preparacao || []).forEach((p: any) => {
+      if (p.haccp?.trim()) alertasHACCP.push(p.haccp.trim());
+    });
+  });
+
+  // Alergénios de todas as fichas
+  const alergenios = Array.from(new Set(
+    fichas.flatMap(f => Array.isArray(f.alergenicos) ? f.alergenicos : [])
+  )).filter(Boolean);
+
+  return (
+    <div style={{ fontFamily: 'var(--font-sans)' }}>
+
+      {/* Cabeçalho da aula */}
+      <div style={{ background: 'linear-gradient(135deg, #1a1714, #2d2520)',
+        borderRadius: 16, padding: '18px 20px', marginBottom: 14, color: '#faf7f2' }}>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em',
+          color: 'rgba(247,241,230,0.5)', marginBottom: 6 }}>
+          📋 Plano de hoje
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2, marginBottom: 6 }}>
+          {plano.titulo}
+        </div>
+        {plano.ucId && (
+          <div style={{ fontSize: 12, color: 'rgba(247,241,230,0.5)' }}>
+            {plano.ucId}{plano.ucNome ? ` — ${plano.ucNome}` : ''}
+          </div>
+        )}
+        {(plano.horaInicio || plano.horaFim) && (
+          <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(247,241,230,0.6)',
+            display: 'flex', gap: 12 }}>
+            {plano.horaInicio && <span>🕗 Início: {plano.horaInicio}</span>}
+            {plano.horaFim && <span>🕛 Fim: {plano.horaFim}</span>}
+          </div>
+        )}
+      </div>
+
+      {/* O que vamos produzir */}
+      {fichas.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px',
+          border: '1px solid rgba(26,23,20,0.08)', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+            textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+            🍽️ O que vamos produzir hoje
+          </div>
+          {fichas.map((f, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10,
+              padding: '8px 10px', borderRadius: 8, marginBottom: 6,
+              background: 'rgba(181,101,29,0.05)',
+              border: '1px solid rgba(181,101,29,0.15)' }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>🍽️</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{f.nomePrato}</div>
+                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
+                  {f.numPorcoes && `${f.numPorcoes} doses`}
+                  {f.tempoPrep && ` · Prep: ${f.tempoPrep}`}
+                  {f.tempoConf && ` · Conf: ${f.tempoConf}`}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Alertas HACCP */}
+      {alertasHACCP.length > 0 && (
+        <div style={{ background: '#FCEBEB', borderRadius: 14, padding: '14px 16px',
+          border: '1.5px solid #F7C1C1', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#A32D2D',
+            textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+            ⚠️ Pontos críticos desta aula — lê antes de começar!
+          </div>
+          {alertasHACCP.slice(0, 5).map((a, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6,
+              fontSize: 13, color: '#7b1b10', lineHeight: 1.5 }}>
+              <span style={{ flexShrink: 0, fontWeight: 700 }}>⚠️</span>
+              <span>{a}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Alergénios */}
+      {alergenios.length > 0 && (
+        <div style={{ background: '#FEF9EC', borderRadius: 12, padding: '12px 14px',
+          border: '1px solid #FAC775', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#854F0B',
+            marginBottom: 8 }}>🏷️ Alergénios presentes nesta produção</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {alergenios.map((a, i) => (
+              <span key={i} style={{ padding: '3px 10px', borderRadius: 100,
+                background: '#fff', border: '1px solid #FAC775',
+                fontSize: 12, fontWeight: 600, color: '#854F0B' }}>{a}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* KitchenFlow — abrir agora */}
+      <div style={{ background: '#E6F1FB', borderRadius: 14, padding: '14px 16px',
+        border: '1.5px solid #B5D4F4', marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 6 }}>
+          🏭 KitchenFlow ECL — registos iniciais
+        </div>
+        <div style={{ fontSize: 13, color: '#185FA5', marginBottom: 12, lineHeight: 1.5 }}>
+          Antes de começar a produzir, verifica as condições da cozinha e regista no KitchenFlow.
+          A tua higiene pessoal será registada automaticamente quando confirmares a entrada.
+        </div>
+        <button onClick={() => abrirKitchenFlow(undefined, {
+            turma: aluno.turmaId,
+            numero: aluno.numero,
+            pin: aluno.pin,
+            tipo: 'aluno',
+          })} style={{
+          padding: '10px 16px', borderRadius: 9, border: 'none',
+          background: '#185FA5', color: '#fff', fontSize: 13,
+          fontWeight: 700, cursor: 'pointer', width: '100%',
+        }}>
+          🔗 Abrir KitchenFlow ECL — entrar automaticamente
+        </button>
+      </div>
+
+      {/* Botão continuar */}
+      <button onClick={onContinuar} style={{
+        width: '100%', padding: '16px', borderRadius: 14, border: 'none',
+        background: 'var(--copper)', color: '#fff', fontSize: 16,
+        fontWeight: 700, cursor: 'pointer',
+        boxShadow: '0 4px 16px rgba(181,101,29,0.3)',
+      }}>
+        Entendido — Iniciar aula →
+      </button>
+    </div>
+  );
+}
+
 function SecaoEntrada({ aluno, plano, onConcluido }: {
   aluno: Aluno; plano: PlanoAula; onConcluido: () => void;
 }) {
@@ -1079,6 +1241,67 @@ function PainelKitchenFlow({ fichas, aluno, plano }: {
 // ─────────────────────────────────────────────────────────────
 // SECÇÃO 2 — Fichas de Produção (mantida da versão anterior)
 // ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO GUIÃO — Guião de Apoio à Produção para o aluno
+// ─────────────────────────────────────────────────────────────
+function SecaoGuiao({ fichas, plano, onConcluido }: {
+  fichas: FichaProducao[]; plano: PlanoAula; onConcluido: () => void;
+}) {
+  const fichasComGuiao = fichas.filter((f: any) => f.textoGuia);
+  const [fichaActiva, setFichaActiva] = useState(fichasComGuiao[0]?.id || '');
+
+  if (fichasComGuiao.length === 0) {
+    return (
+      <div>
+        <div style={{ textAlign:'center', padding:'32px 20px',
+          color:'rgba(26,23,20,0.4)', fontSize:14 }}>
+          <div style={{ fontSize:32, marginBottom:8 }}>📖</div>
+          O professor ainda não criou o guião para esta aula.
+        </div>
+        <button onClick={onConcluido} style={{ width:'100%', padding:'14px',
+          borderRadius:12, border:'none', background:'#1a6b5a', color:'#fff',
+          fontSize:15, fontWeight:700, cursor:'pointer', marginTop:6 }}>
+          Continuar →
+        </button>
+      </div>
+    );
+  }
+
+  const fichaGuiao = fichasComGuiao.find((f: any) => f.id === fichaActiva) || fichasComGuiao[0];
+
+  return (
+    <div>
+      {/* Selector de ficha se houver mais do que uma com guião */}
+      {fichasComGuiao.length > 1 && (
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:14 }}>
+          {fichasComGuiao.map((f: any) => (
+            <button key={f.id} onClick={() => setFichaActiva(f.id)} style={{
+              padding:'6px 14px', borderRadius:100, border:'none', cursor:'pointer',
+              fontSize:12, fontWeight:700,
+              background: fichaActiva === f.id ? '#1a6b5a' : 'rgba(26,106,90,0.08)',
+              color: fichaActiva === f.id ? '#fff' : '#1a6b5a',
+            }}>{f.nomePrato}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Guião */}
+      <GuiaProducao
+        textoGuia={(fichaGuiao as any).textoGuia}
+        nomePrato={fichaGuiao.nomePrato || ''}
+        ucId={plano.ucId}
+        ucNome={plano.ucNome}
+      />
+
+      <button onClick={onConcluido} style={{ width:'100%', padding:'14px',
+        borderRadius:12, border:'none', background:'#1a6b5a', color:'#fff',
+        fontSize:15, fontWeight:700, cursor:'pointer', marginTop:16 }}>
+        Li o guião → Continuar
+      </button>
+    </div>
+  );
+}
+
 function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
   fichas: FichaProducao[]; plano: PlanoAula; aluno: Aluno; onConcluido: () => void;
 }) {
@@ -1276,6 +1499,26 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
 }) {
   const ucId = plano.ucId||'';
   const compRemovidas: string[] = (plano as any).compRemovidas||[];
+
+  // Evidências do KitchenFlow — carregadas automaticamente
+  const [evidenciasKF, setEvidenciasKF] = useState<EvidenciaKitchenFlow[]>([]);
+  const [kfCarregado, setKfCarregado] = useState(false);
+
+  useEffect(() => {
+    // Ir buscar registos KitchenFlow do aluno nesta data
+    const data = plano.data ? String(plano.data).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const registosObrig = fichas.flatMap(f => extrairRegistosObrigatorios(f as any));
+    const tiposUnicos = Array.from(new Set(registosObrig));
+
+    sincronizarEvidenciasKitchenFlow(aluno.turmaId, aluno.id, data, tiposUnicos)
+      .then(ev => { setEvidenciasKF(ev); setKfCarregado(true); })
+      .catch(() => setKfCarregado(true));
+  }, [plano.id]);
+
+  // Verificar se uma competência tem evidência no KitchenFlow
+  function temEvidenciaKF(compId: string): boolean {
+    return evidenciasKF.some(e => e.competenciaId === compId);
+  }
 
   // Usar família das fichas como filtro principal — mais preciso que filtro por UC
   // Combina família1 + família2 + etiquetas de todas as fichas do plano
