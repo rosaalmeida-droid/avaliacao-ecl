@@ -245,10 +245,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   });
   const [msg, setMsg] = useState('');
   const [linkSheets, setLinkSheets] = useState(''); // URL do Google Sheets para abrir directamente
+  // Preços por ingrediente na pré-requisição — chave: produto.toLowerCase()
+  const [precosPreReq, setPrecosPreReq] = useState<Record<string, string>>({});
 
   const todasFichas = [...getFichasProducao()].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+  // Só mostrar fichas do plano seleccionado — nunca todas as fichas do sistema
   const fichasDisp = planoSel ? todasFichas.filter(f => planoSel.fichasIds.includes(f.id)) : [];
-  const fichasExtra = todasFichas.filter(f => !fichasDisp.find(fd => fd.id === f.id));
+  const fichasExtra: FichaProducao[] = []; // desactivado — só fichas do plano
   const fichasSelecionadas = todasFichas.filter(f => fichasSel.includes(f.id));
 
   const paxBaseTotal = fichasSelecionadas.reduce((s, f) => s + (parseFloat(f.numPorcoes) || 1), 0) || 1;
@@ -452,7 +455,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           <div style={S.card}>
             <label style={S.lbl}>2. Fichas de producao e doses</label>
             <div style={{ ...S.muted, marginBottom: 10 }}>Seleciona as fichas e define as doses pretendidas para cada uma.</div>
-            {[...fichasDisp, ...fichasExtra].map(f => (
+            {fichasDisp.length === 0 ? (
+              <div style={{ padding: '12px', color: 'rgba(26,23,20,0.5)', fontSize: 13, textAlign: 'center' }}>
+                Este plano não tem fichas de produção associadas. Adiciona fichas no Plano de Aula.
+              </div>
+            ) : null}
+            {fichasDisp.map(f => (
               <div key={f.id} style={{ border: `1.5px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px', marginBottom: 6, background: fichasSel.includes(f.id) ? 'var(--copper-pale)' : '#fff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div onClick={() => toggleFicha(f.id)} style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize:13, color: 'white', border: `1.5px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'rgba(26,23,20,0.55)'}`, background: fichasSel.includes(f.id) ? 'var(--copper)' : 'transparent' }}>
@@ -471,6 +479,66 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                     </div>
                   )}
                 </div>
+
+                {/* Ingredientes com preço — só quando ficha seleccionada */}
+                {fichasSel.includes(f.id) && Array.isArray(f.ingredientes) && f.ingredientes.length > 0 && (
+                  <div style={{ marginTop: 10, borderTop: '1px solid rgba(26,23,20,0.08)', paddingTop: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--copper)',
+                      textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                      💶 Preço dos ingredientes (opcional — preenche para estimativa de custo)
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 4 }}>
+                      {f.ingredientes.filter(ing => ing?.produto?.trim()).map((ing, ii) => {
+                        const chave = ing.produto.toLowerCase().trim();
+                        const custom = getMateriasPrimasCustom();
+                        const { mp } = encontrarMateriaPrimaComConfianca(ing.produto, custom);
+                        const precoSugerido = mp ? (ing.un === 'un' ? mp.precoUnitario : mp.precoKg) : 0;
+                        const valorActual = precosPreReq[chave] || (precoSugerido > 0 ? precoSugerido.toFixed(2).replace('.', ',') : '');
+                        return (
+                          <React.Fragment key={ii}>
+                            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)',
+                              alignSelf: 'center', paddingLeft: 4 }}>
+                              {ing.produto}
+                              <span style={{ color: 'rgba(26,23,20,0.4)', marginLeft: 4 }}>
+                                ({ing.qt} {ing.un})
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={valorActual}
+                                placeholder={ing.un === 'un' ? '€/un' : '€/kg'}
+                                onChange={e => {
+                                  const v = e.target.value.replace(',', '.');
+                                  setPrecosPreReq(p => ({ ...p, [chave]: e.target.value }));
+                                  // Guardar na base de dados para próxima vez
+                                  if (parseFloat(v) > 0) {
+                                    addOrUpdateMateriaPrimaCustom({
+                                      nome: ing.produto,
+                                      categoria: f.classificacao || 'Outros',
+                                      unidadeCompra: ing.un === 'un' ? 'un' : 'kg',
+                                      precoKg: ing.un === 'un' ? 0 : parseFloat(v),
+                                      precoUnitario: ing.un === 'un' ? parseFloat(v) : parseFloat(v),
+                                      aliases: [chave],
+                                    });
+                                  }
+                                }}
+                                style={{ width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 12,
+                                  border: `1px solid ${valorActual ? 'var(--copper)' : 'var(--border)'}`,
+                                  background: valorActual ? 'var(--copper-pale)' : '#fff',
+                                  textAlign: 'right' }}
+                              />
+                              <span style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', minWidth: 28 }}>
+                                {ing.un === 'un' ? '€/un' : '€/kg'}
+                              </span>
+                            </div>
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
