@@ -108,11 +108,18 @@ export async function registarNaoConformidadeKitchenFlow(
   ]);
 }
 
-/** Abre o KitchenFlow no módulo correto numa nova tab. */
-export function abrirKitchenFlow(modulo?: string): void {
-  const url = modulo
-    ? `${KITCHENFLOW_APP_URL}?mod=${modulo}`
-    : KITCHENFLOW_APP_URL;
+/** Abre o KitchenFlow com login automático do aluno/professor.
+ *  Passa turma, número e PIN na URL para que o KitchenFlow faça
+ *  login automaticamente sem o utilizador ter de repetir as credenciais. */
+export function abrirKitchenFlow(modulo?: string, user?: { turma: string; numero?: number; pin?: string; tipo?: string }): void {
+  const params = new URLSearchParams();
+  if (modulo) params.set('mod', modulo);
+  if (user?.turma) params.set('turma', user.turma);
+  if (user?.numero) params.set('num', String(user.numero));
+  if (user?.pin) params.set('pin', user.pin);
+  if (user?.tipo) params.set('tipo', user.tipo || 'aluno');
+  const query = params.toString();
+  const url = query ? `${KITCHENFLOW_APP_URL}?${query}` : KITCHENFLOW_APP_URL;
   window.open(url, '_blank', 'noopener');
 }
 
@@ -285,8 +292,9 @@ export function getTurmas(): Turma[] {
   const t = load<Turma>(KEYS.turmas);
   if (t.length === 0) {
     const seed: Turma[] = [
-      { id: 'CZ1A', nome: 'Cozinha 1º Ano — Turma A' },
-      { id: 'CZ2A', nome: 'Cozinha 2º Ano — Turma A' },
+      { id: '1º CP', nome: '1º CP — Cozinha e Pastelaria' },
+      { id: '2º CP', nome: '2º CP — Cozinha e Pastelaria' },
+      { id: '3º CP', nome: '3º CP — Cozinha e Pastelaria' },
     ];
     save(KEYS.turmas, seed);
     return seed;
@@ -329,6 +337,107 @@ export function pesquisarManual(query: string): EntradaManual[] {
   );
 }
 
+
+// ════════════════════════════════════════════════════════════════
+// CRUZAMENTO KITCHENFLOW → COMPETÊNCIAS
+// Vai buscar registos do aluno à Sheet do KitchenFlow e mapeia
+// para evidências de competências na Avaliação ECL.
+// Regra Rosa: "Se não registou, não conta — mesmo que tenha feito."
+// ════════════════════════════════════════════════════════════════
+
+// Mapa de registos KitchenFlow → competências da Avaliação ECL
+const MAPA_KF_COMPETENCIAS: Record<string, string[]> = {
+  'Higiene Pessoal':      ['OBR_01'],
+  'Temperatura Serviço':  ['OBR_02'],
+  'NãoConformidades':     ['OBR_02'],
+  'Conservação':          ['OBR_02'],
+  'Controlo de Óleos':    ['OBR_02'],
+  'Presença':             ['OBR_01'],
+};
+
+export interface EvidenciaKitchenFlow {
+  competenciaId: string;
+  registoKF: string;       // tipo de registo no KitchenFlow
+  ingrediente?: string;    // ingrediente que originou o registo
+  motivo?: string;         // razão técnica
+  registadoEm?: string;    // timestamp do registo no KF
+  fonte: 'kitchenflow';
+}
+
+/** Vai buscar registos do dia de um aluno à Sheet do KitchenFlow
+ *  e mapeia para evidências de competências.
+ *  Só conta registos que são obrigatórios para a ficha técnica. */
+export async function sincronizarEvidenciasKitchenFlow(
+  turmaId: string,
+  alunoId: string,
+  data: string,           // YYYY-MM-DD
+  registosObrigatorios: string[]  // tipos de registo obrigatórios para a ficha
+): Promise<EvidenciaKitchenFlow[]> {
+  if (!KITCHENFLOW_SHEET_URL) return [];
+
+  const evidencias: EvidenciaKitchenFlow[] = [];
+
+  try {
+    // Buscar registos do aluno neste dia para cada tipo obrigatório
+    for (const tipoRegisto of registosObrigatorios) {
+      const url = `${KITCHENFLOW_SHEET_URL}?tabela=${encodeURIComponent(tipoRegisto)}&turma=${encodeURIComponent(turmaId)}&aluno=${encodeURIComponent(alunoId)}&data=${encodeURIComponent(data)}`;
+
+      const resp = await fetch(url);
+      if (!resp.ok) continue;
+
+      const dados = await resp.json();
+      if (!dados.ok || !dados.dados?.length) continue;
+
+      // Verificar se existe registo deste aluno nesta data
+      const registoAluno = dados.dados.find((linha: any[]) => {
+        const dataLinha = String(linha[0] || '');
+        const idAluno = String(linha[3] || linha[2] || '');
+        return dataLinha.includes(data.split('-').reverse().join('/')) &&
+               (idAluno === alunoId || idAluno === String(alunoId).split('-').pop());
+      });
+
+      if (registoAluno) {
+        const competencias = MAPA_KF_COMPETENCIAS[tipoRegisto] || [];
+        competencias.forEach(compId => {
+          evidencias.push({
+            competenciaId: compId,
+            registoKF: tipoRegisto,
+            registadoEm: `${registoAluno[0]} ${registoAluno[1] || ''}`.trim(),
+            fonte: 'kitchenflow',
+          });
+        });
+      }
+    }
+  } catch {
+    // Falha silenciosa — não bloqueia o fluxo da avaliação
+  }
+
+  return evidencias;
+}
+
+/** Extrai os registos KitchenFlow obrigatórios de uma ficha técnica.
+ *  A ficha tem um campo 'registosKFObrigatorios' gerado pela IA
+ *  com formato: REGISTO|INGREDIENTE|MOTIVO (uma por linha). */
+export function extrairRegistosObrigatorios(ficha: FichaProducao): string[] {
+  const campo = (ficha as any).registosKFObrigatorios || ficha.kitchenflow || '';
+  if (!campo) return ['Higiene Pessoal', 'NãoConformidades']; // mínimo sempre
+
+  const tipos = new Set<string>(['Higiene Pessoal', 'NãoConformidades']);
+
+  campo.split('\n').forEach((linha: string) => {
+    const partes = linha.split('|').map((p: string) => p.trim());
+    const tipo = partes[0]?.replace(/^REGISTO:\s*/i, '').trim();
+    if (tipo && MAPA_KF_COMPETENCIAS[tipo]) tipos.add(tipo);
+
+    // Inferir por palavras-chave no texto
+    if (/temperatura|°C|mínimo|serviço/i.test(linha)) tipos.add('Temperatura Serviço');
+    if (/fritu|óleo|fritura/i.test(linha)) tipos.add('Controlo de Óleos');
+    if (/conserv|frigorí|refriger/i.test(linha)) tipos.add('Conservação');
+  });
+
+  return Array.from(tipos);
+}
+
 // ── Seed de alunos fictícios para testes ─────────────────────
 // Criados automaticamente na primeira vez que a app é aberta.
 // Permitem simular cenários reais sem dados de alunos reais.
@@ -340,8 +449,8 @@ export function seedAlunosTeste(): void {
   const alunos: Aluno[] = [
     {
       // Aluno 1 — perfil universal, sem historial, primeiro acesso
-      id: 'CZ1A-1',
-      turmaId: 'CZ1A',
+      id: '1ºCP-1',
+      turmaId: '1º CP',
       numero: 1,
       ano: 1,
       nome: 'Mariana Costa',
@@ -352,8 +461,8 @@ export function seedAlunosTeste(): void {
     },
     {
       // Aluno 2 — nível 3 NEE, historial misto (algumas técnicas consolidadas, outras em regressão)
-      id: 'CZ1A-2',
-      turmaId: 'CZ1A',
+      id: '1ºCP-2',
+      turmaId: '1º CP',
       numero: 2,
       ano: 1,
       nome: 'Tomás Ferreira',
@@ -364,8 +473,8 @@ export function seedAlunosTeste(): void {
     },
     {
       // Aluno 3 — perfil avançado, maioria das técnicas consolidadas
-      id: 'CZ1A-3',
-      turmaId: 'CZ1A',
+      id: '1ºCP-3',
+      turmaId: '1º CP',
       numero: 3,
       ano: 1,
       nome: 'Beatriz Rodrigues',
@@ -376,8 +485,8 @@ export function seedAlunosTeste(): void {
     },
     {
       // Aluno 4 — 2º ano, historial de atrasos e faltas, competências em falta
-      id: 'CZ2A-4',
-      turmaId: 'CZ2A',
+      id: '2ºCP-4',
+      turmaId: '2º CP',
       numero: 4,
       ano: 2,
       nome: 'João Mendes',
@@ -474,7 +583,7 @@ export function seedPlanoTeste(): void {
   // ── Plano de Aula ─────────────────────────────────────────
   const plano = {
     id: planoId,
-    turmaId: 'CZ1A',
+    turmaId: '1º CP',
     professor: 'Rosa Almeida',
     data: hoje,
     horaInicio: '08:30',
@@ -495,7 +604,7 @@ export function seedPlanoTeste(): void {
   const requisicao = {
     id: reqId,
     planoAulaId: planoId,
-    turmaId: 'CZ1A',
+    turmaId: '1º CP',
     dataAula: hoje,
     professor: 'Rosa Almeida',
     fichasIds: [fichaId],
@@ -550,7 +659,7 @@ export function seedHistorialTeste(): void {
     notas.forEach((nota, i) => {
       avaliacoes.push({
         id: `seed_tomas_${id}_${i}`,
-        alunoId: 'CZ1A-2', turmaId: 'CZ1A',
+        alunoId: '1ºCP-2', turmaId: '1º CP',
         planoAulaId: `plano_seed_${i}`, fichaId: '',
         ucId: 'UC01999', microcompetenciaId: id,
         nota, data: datas[i], validadoPor: 'professor',
@@ -561,7 +670,7 @@ export function seedHistorialTeste(): void {
   datas.slice(0, 9).forEach((data, i) => {
     presencas.push({
       id: `seed_tomas_pres_${i}`,
-      alunoId: 'CZ1A-2', turmaId: 'CZ1A',
+      alunoId: '1ºCP-2', turmaId: '1º CP',
       planoAulaId: `plano_seed_${i}`, ucId: 'UC01999',
       presente: i !== 3 && i !== 6, // faltou à 4ª e 7ª aula
       atrasado: i === 1 || i === 5,
@@ -584,7 +693,7 @@ export function seedHistorialTeste(): void {
     notas.forEach((nota, i) => {
       avaliacoes.push({
         id: `seed_beatriz_${id}_${i}`,
-        alunoId: 'CZ1A-3', turmaId: 'CZ1A',
+        alunoId: '1ºCP-3', turmaId: '1º CP',
         planoAulaId: `plano_seed_${i}`, fichaId: '',
         ucId: 'UC01999', microcompetenciaId: id,
         nota, data: datas[i], validadoPor: 'professor',
@@ -594,7 +703,7 @@ export function seedHistorialTeste(): void {
   datas.slice(0, 9).forEach((data, i) => {
     presencas.push({
       id: `seed_beatriz_pres_${i}`,
-      alunoId: 'CZ1A-3', turmaId: 'CZ1A',
+      alunoId: '1ºCP-3', turmaId: '1º CP',
       planoAulaId: `plano_seed_${i}`, ucId: 'UC01999',
       presente: true, atrasado: false, atrasadoMins: 0, fardamentoOk: true,
     });
@@ -611,7 +720,7 @@ export function seedHistorialTeste(): void {
     notas.forEach((nota, i) => {
       avaliacoes.push({
         id: `seed_joao_${id}_${i}`,
-        alunoId: 'CZ2A-4', turmaId: 'CZ2A',
+        alunoId: '2ºCP-4', turmaId: '2º CP',
         planoAulaId: `plano_seed_${i}`, fichaId: '',
         ucId: 'UC02003', microcompetenciaId: id,
         nota, data: datas[i], validadoPor: 'professor',
@@ -622,7 +731,7 @@ export function seedHistorialTeste(): void {
   datas.slice(0, 9).forEach((data, i) => {
     presencas.push({
       id: `seed_joao_pres_${i}`,
-      alunoId: 'CZ2A-4', turmaId: 'CZ2A',
+      alunoId: '2ºCP-4', turmaId: '2º CP',
       planoAulaId: `plano_seed_${i}`, ucId: 'UC02003',
       presente: ![2, 4, 6, 8].includes(i), // faltou a 4 aulas
       atrasado: [0, 1, 5].includes(i),
