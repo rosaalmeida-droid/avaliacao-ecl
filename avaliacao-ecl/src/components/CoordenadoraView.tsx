@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma } from '../backend';
+import type { RegistoPresenca } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -9,13 +10,14 @@ import { CentroAvisos } from './CentroAvisos';
 import { GuiaProducao } from './GuiaProducao';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'presencas' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config'>('avisos');
 
   return (
     <div>
       <Card>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button variant={tab === 'avisos' ? 'primary' : 'ghost'} onClick={() => setTab('avisos')}>🔔 Avisos</Button>
+          <Button variant={tab === 'presencas' ? 'primary' : 'ghost'} onClick={() => setTab('presencas')}>👤 Presenças</Button>
           <Button variant={tab === 'fichas' ? 'primary' : 'ghost'} onClick={() => setTab('fichas')}>🗂️ Fichas Técnicas</Button>
           <Button variant={tab === 'planos' ? 'primary' : 'ghost'} onClick={() => setTab('planos')}>📅 Planos de Aula</Button>
           <Button variant={tab === 'ranking' ? 'primary' : 'ghost'} onClick={() => setTab('ranking')}>Ranking</Button>
@@ -30,6 +32,7 @@ export function CoordenadoraView() {
           <CentroAvisos perfil="coordenadora" />
         </div>
       )}
+      {tab === 'presencas' && <PresencasTab />}
       {tab === 'fichas' && <BibliotecaFichasTab />}
       {tab === 'planos' && <BibliotecaPlanosTab />}
       {tab === 'ranking' && <RankingTab />}
@@ -55,6 +58,178 @@ function BadgeNivel({ nivel }: { nivel?: 1|2|3 }) {
   );
 }
 
+
+
+// ── Presenças e Historial de Entradas (Coordenadora) ─────────
+function PresencasTab() {
+  const turmas = getTurmas();
+  const alunos = getAlunos();
+  const [turmaFiltro, setTurmaFiltro] = React.useState<string>('todas');
+  const [dataFiltro, setDataFiltro] = React.useState<string>('');
+  const [alunoAberto, setAlunoAberto] = React.useState<string | null>(null);
+
+  const presencas = React.useMemo(() => getPresencas(), []);
+
+  const presencasFiltradas = React.useMemo(() => {
+    let p = presencas;
+    if (turmaFiltro !== 'todas') p = p.filter((r: RegistoPresenca) => r.turmaId === turmaFiltro);
+    if (dataFiltro) p = p.filter((r: RegistoPresenca) => r.data?.slice(0,10) === dataFiltro);
+    return p.sort((a: RegistoPresenca, b: RegistoPresenca) => (b.data||'').localeCompare(a.data||''));
+  }, [presencas, turmaFiltro, dataFiltro]);
+
+  // Agrupar por aluno para historial
+  const porAluno = React.useMemo(() => {
+    const mapa: Record<string, RegistoPresenca[]> = {};
+    presencas.forEach((r: RegistoPresenca) => {
+      if (!mapa[r.alunoId]) mapa[r.alunoId] = [];
+      mapa[r.alunoId].push(r);
+    });
+    return mapa;
+  }, [presencas]);
+
+  const nomeAluno = (id: string) => alunos.find(a => a.id === id)?.nome || id;
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      {/* Cabeçalho */}
+      <div style={{ background: '#1a1714', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#faf7f2', marginBottom: 10 }}>
+          👤 Presenças e Entradas
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input type="date" value={dataFiltro} onChange={e => setDataFiltro(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 8, border: 'none',
+              background: 'rgba(255,255,255,0.1)', color: '#faf7f2', fontSize: 13 }} />
+          <select value={turmaFiltro} onChange={e => setTurmaFiltro(e.target.value)}
+            style={{ padding: '7px 10px', borderRadius: 8, border: 'none',
+              background: 'rgba(255,255,255,0.1)', color: '#faf7f2', fontSize: 13 }}>
+            <option value="todas">Todas as turmas</option>
+            {turmas.map(t => <option key={t.id} value={t.id}>{t.id}</option>)}
+          </select>
+          {(dataFiltro || turmaFiltro !== 'todas') && (
+            <button onClick={() => { setDataFiltro(''); setTurmaFiltro('todas'); }}
+              style={{ padding: '7px 12px', borderRadius: 8, border: 'none',
+                background: 'rgba(255,255,255,0.15)', color: '#faf7f2',
+                fontSize: 12, cursor: 'pointer' }}>✕ Limpar</button>
+          )}
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
+          {presencasFiltradas.length} registo{presencasFiltradas.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+
+      {/* Lista de presenças */}
+      {presencasFiltradas.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '32px', color: 'rgba(26,23,20,0.4)' }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>👤</div>
+          <div>Sem presenças registadas</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {presencasFiltradas.map((r: RegistoPresenca, i: number) => {
+            const atrasado = r.atrasado;
+            const fardOk = r.fardamentoOk !== false;
+            return (
+              <div key={i} style={{ background: '#fff', borderRadius: 12,
+                padding: '12px 14px', border: '1px solid rgba(26,23,20,0.08)',
+                cursor: 'pointer' }}
+                onClick={() => setAlunoAberto(alunoAberto === r.alunoId ? null : r.alunoId)}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* Estado geral */}
+                  <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 20,
+                    background: atrasado || !fardOk ? '#fef2f2' : '#f0fdf4' }}>
+                    {atrasado || !fardOk ? '⚠️' : '✅'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>
+                      {nomeAluno(r.alunoId)}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
+                      {r.turmaId} · {r.data?.slice(0,10)} · {r.horaEntrada || '--:--'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                      {/* Pontualidade */}
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+                        background: atrasado ? '#fef2f2' : '#f0fdf4',
+                        color: atrasado ? '#dc2626' : '#15803d', fontWeight: 600 }}>
+                        {atrasado ? `⚠ ${r.atrasadoMins || '?'} min atraso` : '✓ A tempo'}
+                      </span>
+                      {/* Fardamento */}
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+                        background: fardOk ? '#f0fdf4' : '#fef2f2',
+                        color: fardOk ? '#15803d' : '#dc2626', fontWeight: 600 }}>
+                        {fardOk ? '✓ Fardamento OK' : '⚠ Fardamento incompleto'}
+                      </span>
+                      {/* Higiene */}
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+                        background: '#f0fdf4', color: '#15803d', fontWeight: 600 }}>
+                        ✓ Higiene OK
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Historial do aluno quando expandido */}
+                {alunoAberto === r.alunoId && porAluno[r.alunoId] && (
+                  <div style={{ marginTop: 12, paddingTop: 12,
+                    borderTop: '1px solid rgba(26,23,20,0.06)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700,
+                      color: 'rgba(26,23,20,0.5)', marginBottom: 8,
+                      textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Historial de {nomeAluno(r.alunoId)}
+                    </div>
+                    {porAluno[r.alunoId]
+                      .sort((a: RegistoPresenca, b: RegistoPresenca) =>
+                        (b.data||'').localeCompare(a.data||''))
+                      .map((h: RegistoPresenca, hi: number) => (
+                        <div key={hi} style={{ display: 'flex', gap: 8,
+                          padding: '5px 8px', borderRadius: 6, marginBottom: 3,
+                          background: hi % 2 === 0 ? 'rgba(26,23,20,0.02)' : '#fff',
+                          fontSize: 12, alignItems: 'center' }}>
+                          <span style={{ color: 'rgba(26,23,20,0.4)', minWidth: 80 }}>
+                            {h.data?.slice(0,10)}
+                          </span>
+                          <span style={{ color: 'rgba(26,23,20,0.5)', minWidth: 45 }}>
+                            {h.horaEntrada || '--:--'}
+                          </span>
+                          <span style={{ color: h.atrasado ? '#dc2626' : '#15803d',
+                            fontWeight: 600 }}>
+                            {h.atrasado ? `⚠ ${h.atrasadoMins}min` : '✓'}
+                          </span>
+                          <span style={{ color: h.fardamentoOk !== false ? '#15803d' : '#dc2626' }}>
+                            {h.fardamentoOk !== false ? '👔✓' : '👔✗'}
+                          </span>
+                          {h.ucId && (
+                            <span style={{ fontSize: 10, color: 'var(--copper)',
+                              background: 'var(--copper-pale)', padding: '1px 6px',
+                              borderRadius: 4 }}>{h.ucId}</span>
+                          )}
+                        </div>
+                      ))}
+                    {/* Estatísticas rápidas */}
+                    <div style={{ marginTop: 8, padding: '8px 10px',
+                      background: 'rgba(26,23,20,0.03)', borderRadius: 8,
+                      display: 'flex', gap: 16, fontSize: 12 }}>
+                      <span>📅 {porAluno[r.alunoId].length} aulas</span>
+                      <span style={{ color: '#dc2626' }}>
+                        ⚠ {porAluno[r.alunoId].filter((h: RegistoPresenca) => h.atrasado).length} atrasos
+                      </span>
+                      <span style={{ color: '#dc2626' }}>
+                        👔 {porAluno[r.alunoId].filter((h: RegistoPresenca) => h.fardamentoOk === false).length} fardamento incompleto
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Biblioteca de Fichas Técnicas (Coordenadora) ─────────────
 function BibliotecaFichasTab() {
