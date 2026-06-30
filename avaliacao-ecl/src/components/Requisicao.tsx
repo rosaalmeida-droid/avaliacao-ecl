@@ -1048,7 +1048,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                         style={{ ...S.inp, width: 65, textAlign: 'right', fontSize:13 }} />
                     </td>
                     <td style={{ padding: '3px 3px' }}>
-                      <input value={l.precoUnitario} onChange={e => setL(i, 'precoUnitario', e.target.value)}
+                      <input value={l.precoUnitario}
+                        onChange={e => {
+                          setL(i, 'precoUnitario', e.target.value);
+                        }}
                         onBlur={() => confirmarPrecoIngrediente(i)}
                         style={{ ...S.inp, width: 58, textAlign: 'right', fontSize:13, background: l.daBD ? 'var(--sage-pale)' : '#fff' }}
                         placeholder="0.00" title={l.daBD ? 'Preço da base de dados' : 'Confirma o preço — fica guardado para a próxima vez'} />
@@ -1127,7 +1130,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           await enviarSheets();
           onGuardado?.();
         }}>✓ Guardar e Enviar para o Google Sheets</button>
-        <button style={S.btnG} onClick={() => window.print()}>Imprimir</button>
+        <button style={S.btnG} onClick={() => {
+          // Garantir que todos os preços estão recalculados antes de imprimir
+          // (o professor pode ter editado um campo sem sair dele)
+          setLinhas(prev => prev.map(l => recalc(l)));
+          // Pequeno delay para o React actualizar o DOM antes de imprimir
+          setTimeout(() => window.print(), 150);
+        }}>Imprimir</button>
       </div>
     </div>
   );
