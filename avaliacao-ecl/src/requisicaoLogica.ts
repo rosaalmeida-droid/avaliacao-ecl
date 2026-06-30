@@ -351,9 +351,107 @@ export function limparMarcas(nome: string): string {
 // " ovos" → "Ovos" | "farinha de trigo t55" → "Farinha de trigo t55"
 // Decisão de 22/06/2026: corrigir SEMPRE na Requisição, não depender de
 // disciplina perfeita de escrita em cada ficha.
+
+// ── ALIASES CULINÁRIOS PORTUGUESES ────────────────────────────
+// Nomes alternativos para o mesmo ingrediente — garante que
+// "chambão" e "ossobuco" são tratados como o mesmo produto,
+// que "sumo de limão" e "limão espremido" se consolidam, etc.
+const ALIASES_CULINARIOS: Record<string, string> = {
+  // Carnes de vaca
+  'chambao': 'Chambão de vaca',
+  'chambão': 'Chambão de vaca',
+  'ossobuco': 'Chambão de vaca',
+  'osso buco': 'Chambão de vaca',
+  'jarrete de vaca': 'Chambão de vaca',
+  'perna de vaca': 'Chambão de vaca',
+  'tutano': 'Chambão de vaca',
+  // Carnes de porco
+  'lombo de porco': 'Lombo de porco',
+  'lombo suíno': 'Lombo de porco',
+  'entrecosto': 'Entrecosto de porco',
+  'costeleta de porco': 'Costeleta de porco',
+  // Frango/aves
+  'peito de frango': 'Frango — peito',
+  'coxa de frango': 'Frango — coxa',
+  'coxas e sobrecoxas': 'Frango — coxa e sobrecoxa',
+  'frango inteiro': 'Frango inteiro',
+  // Peixe
+  'lombo de bacalhau': 'Bacalhau — lombo',
+  'bacalhau demolhado': 'Bacalhau — lombo',
+  'postas de bacalhau': 'Bacalhau — posta',
+  // Gorduras
+  'manteiga sem sal': 'Manteiga s/sal',
+  'manteiga com sal': 'Manteiga c/sal',
+  'azeite virgem extra': 'Azeite',
+  'azeite extra virgem': 'Azeite',
+  'azeite virgem': 'Azeite',
+  'oleo vegetal': 'Óleo vegetal',
+  'óleo vegetal': 'Óleo vegetal',
+  // Laticínios
+  'leite inteiro': 'Leite gordo',
+  'leite gordo': 'Leite gordo',
+  'leite meio gordo': 'Leite meio-gordo',
+  'natas para culinaria': 'Natas',
+  'natas para culinária': 'Natas',
+  'crème fraîche': 'Natas',
+  'queijo parmesão': 'Parmesão',
+  'parmigiano reggiano': 'Parmesão',
+  // Aromáticos
+  'alho frances': 'Alho-francês',
+  'alho-francês': 'Alho-francês',
+  'alho francês': 'Alho-francês',
+  'cebola roxa': 'Cebola roxa',
+  'cebola branca': 'Cebola',
+  'cebola amarela': 'Cebola',
+  // Tomate
+  'tomate pelado': 'Tomate pelado (lata)',
+  'tomates pelados': 'Tomate pelado (lata)',
+  'polpa de tomate': 'Polpa de tomate',
+  'concentrado de tomate': 'Concentrado de tomate',
+  // Vinho
+  'vinho branco seco': 'Vinho branco',
+  'vinho tinto seco': 'Vinho tinto',
+  'vinho do porto': 'Vinho do Porto',
+  // Legumes
+  'batata para cozer': 'Batata',
+  'batata para assar': 'Batata',
+  'batata nova': 'Batata nova',
+  // Sumos
+  'sumo de limao': 'Limão — sumo',
+  'sumo de limão': 'Limão — sumo',
+  'limao espremido': 'Limão — sumo',
+  'limão espremido': 'Limão — sumo',
+  'sumo de laranja': 'Laranja — sumo',
+  'caldo de carne': 'Caldo de carne (produzido em aula)',
+  'fundo de carne': 'Caldo de carne (produzido em aula)',
+};
+
+// Ingredientes de despensa — excluir da requisição
+// (sal, especiarias em pequenas quantidades — sempre há em stock)
+const DESPENSA_EXCLUIR = new Set([
+  'sal', 'sal fino', 'sal grosso', 'flor de sal',
+  'pimenta', 'pimenta preta', 'pimenta branca', 'pimenta rosa',
+  'pimenta moída', 'pimenta em grão',
+  'pimenta da jamaica',
+  'malagueta', 'piri-piri', 'piri piri',
+  'noz moscada', 'nóz moscada', 'noz-moscada',
+  'louro', 'folha de louro', 'folhas de louro',
+  'tomilho', 'orégãos', 'oregãos', 'oregao', 'oregão',
+  'salsa', 'coentros', 'estragão', 'manjericão seco',
+  'paprika', 'colorau', 'cominhos', 'cúrcuma', 'curcuma',
+  'canela em pó', 'anis', 'erva doce',
+  'açafrão', 'acafrao',
+  'vinagre', 'vinagre de vinho', 'vinagre de maçã',
+  'mostarda', 'mostarda de dijon',
+  'molho de soja', 'worcestershire', 'tabasco',
+]);
+
 export function normalizarNomeIngrediente(nome: string): string {
   let n = nome.replace(/\s+/g, ' ').trim();
   if (!n) return n;
+  // Verificar aliases
+  const chave = n.toLowerCase();
+  if (ALIASES_CULINARIOS[chave]) return ALIASES_CULINARIOS[chave];
   return n.charAt(0).toUpperCase() + n.slice(1);
 }
 
@@ -382,9 +480,21 @@ export function processarIngrediente(
   let produto = normalizarNomeIngrediente(limparMarcas(nome.trim()));
   const isQB = /q\.?b\.?|a\s+gosto|quanto\s+baste/i.test(String(qtRaw));
 
-  // Verificar se deve excluir (água)
+  // Verificar se deve excluir (água, sal, especiarias de despensa)
   if (deveExcluirDaRequisicao(produto)) {
     return { produto, qtKg: 0, und: 'kg', isQB, excluir: true, avisos, isDerivado: false, isPreparacao: false, perguntarProfessor: false };
+  }
+  // Excluir ingredientes de despensa (sal, especiarias)
+  // EXCEPTO se a quantidade for significativa (>50g) — então deve aparecer
+  if (DESPENSA_EXCLUIR.has(produto.toLowerCase())) {
+    const qtNum2 = parseFloat(String(qtRaw).replace(',', '.')) || 0;
+    const undLow2 = (undRaw || '').toLowerCase().trim();
+    const qtGramas = ['g','gr','gramas'].includes(undLow2) ? qtNum2 : qtNum2 * 1000;
+    if (qtGramas < 50 || isQB) {
+      return { produto, qtKg: 0, und: 'kg', isQB: true, excluir: true, avisos: ['despensa'], isDerivado: false, isPreparacao: false, perguntarProfessor: false };
+    }
+    // Quantidade grande (>50g) — incluir na requisição
+    avisos.push('ℹ️ Quantidade elevada — verificar stock de despensa');
   }
 
   // Converter para kg/l base
