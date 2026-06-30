@@ -34,7 +34,9 @@ export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbx
 
 // Sheet de Alunos — registo central de alunos, PINs e timestamps
 // Preencher após criar o Apps Script de alunos (conta eclisboa.net)
-export let SHEETS_ALUNOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbz_uOq2o8ntMasiRM_V-RkPh7_FlErVnd6ZezTjlxYQ9CXDShAEtWhRfLDARLybzbBeVg/exec';
+// Login partilhado — mesma Sheet e Apps Script do KitchenFlow
+// O aluno cria PIN num lado e fica disponível no outro automaticamente
+export let SHEETS_ALUNOS_URL = 'https://script.google.com/macros/s/AKfycbyP34XxTPKvhxrG9dvmb4J28q_dKh1v6WqPgDSykZUGgwZ5zuygKapchAsVkrMao0SMKg/exec';
 
 // ── Integração KitchenFlow ECL ───────────────────────────────
 // URL do Apps Script do KitchenFlow — envia registos em background
@@ -114,6 +116,7 @@ export async function registarNaoConformidadeKitchenFlow(
 export function abrirKitchenFlow(modulo?: string, user?: {
   turma: string; numero?: number; pin?: string; tipo?: string;
   ucId?: string; ucNome?: string; pratos?: string[];
+  planoHoraInicio?: string; planoHoraFim?: string; planoData?: string;
 }): void {
   const params = new URLSearchParams();
   if (modulo) params.set('mod', modulo);
@@ -124,6 +127,10 @@ export function abrirKitchenFlow(modulo?: string, user?: {
   if (user?.ucId) params.set('uc', user.ucId);
   if (user?.ucNome) params.set('ucNome', user.ucNome);
   if (user?.pratos?.length) params.set('pratos', user.pratos.join('|'));
+  // Passar zona temporal do plano para o KitchenFlow controlar registos
+  if (user?.planoHoraInicio) params.set('horaInicio', user.planoHoraInicio);
+  if (user?.planoHoraFim) params.set('horaFim', user.planoHoraFim);
+  if (user?.planoData) params.set('planoData', user.planoData);
   const query = params.toString();
   const url = query ? `${KITCHENFLOW_APP_URL}?${query}` : KITCHENFLOW_APP_URL;
   window.open(url, '_blank', 'noopener');
@@ -298,9 +305,9 @@ export function getTurmas(): Turma[] {
   const t = load<Turma>(KEYS.turmas);
   if (t.length === 0) {
     const seed: Turma[] = [
-      { id: '1º CP', nome: '1º CP — Cozinha e Pastelaria' },
-      { id: '2º CP', nome: '2º CP — Cozinha e Pastelaria' },
-      { id: '3º CP', nome: '3º CP — Cozinha e Pastelaria' },
+      { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+      { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
+      { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
     ];
     save(KEYS.turmas, seed);
     return seed;
@@ -444,6 +451,72 @@ export function extrairRegistosObrigatorios(ficha: FichaProducao): string[] {
   return Array.from(tipos);
 }
 
+
+// ════════════════════════════════════════════════════════════════
+// PORTEFÓLIO — Backup permanente na Google Sheet
+// Escreve em paralelo com o localStorage para garantir que nada
+// se perde mesmo que o browser seja limpo ou o dispositivo avarie.
+// ════════════════════════════════════════════════════════════════
+
+// URL do Apps Script do Portefólio — criar nova Sheet e publicar
+// Deixar vazio até ter o URL — a escrita falha silenciosamente
+export let SHEETS_PORTEFOLIO_URL = '';
+
+async function escreverPortefolio(tipo: string, dados: Record<string, unknown>): Promise<void> {
+  if (!SHEETS_PORTEFOLIO_URL) return;
+  try {
+    await fetch(SHEETS_PORTEFOLIO_URL, {
+      method: 'POST',
+      body: JSON.stringify({ tipo, ...dados }),
+    });
+  } catch { /* falha silenciosa — localStorage é a fonte primária */ }
+}
+
+/** Registar presença no Portefólio */
+export async function registarPresencaPortefolio(presenca: RegistoPresenca, nomeAluno?: string): Promise<void> {
+  await escreverPortefolio('presenca', { presenca: { ...presenca, nomeAluno } });
+}
+
+/** Registar validação de competências no Portefólio */
+export async function registarCompetenciaPortefolio(dados: {
+  data: string; turmaId: string; alunoId: string; nomeAluno: string;
+  planoId: string; ucId: string; fichaNome: string;
+  competenciaId: string; competenciaNome: string; categoria: string;
+  nivelAluno: string; nivelProfessor: string; temEvidenciaKF: boolean;
+  avaliadorNome: string; validadoEm: string;
+}): Promise<void> {
+  await escreverPortefolio('competencia', { competencia: dados });
+}
+
+/** Registar historial de aluno no Portefólio */
+export async function registarHistorialPortefolio(dados: {
+  alunoId: string; nomeAluno: string; turmaId: string;
+  competenciaId: string; competenciaNome: string;
+  vezesTreinada: number; media: number; nivelAtual: string;
+  dominada: boolean; ultimaAvaliacao: string;
+}): Promise<void> {
+  await escreverPortefolio('historial', { historial: dados });
+}
+
+/** Registar evidência KitchenFlow no Portefólio */
+export async function registarEvidenciaKFPortefolio(dados: {
+  data: string; turmaId: string; alunoId: string; nomeAluno: string;
+  planoId: string; ucId: string; moduloKF: string;
+  competenciaECL: string; registadoEm: string;
+}): Promise<void> {
+  await escreverPortefolio('evidencia_kf', { evidencia: dados });
+}
+
+/** Sincronizar plano de aula com Portefólio */
+export async function sincronizarPlanoPortefolio(plano: PlanoAula): Promise<void> {
+  await escreverPortefolio('plano', { plano });
+}
+
+/** Sincronizar ficha técnica com Portefólio */
+export async function sincronizarFichaPortefolio(ficha: FichaProducao): Promise<void> {
+  await escreverPortefolio('ficha', { ficha });
+}
+
 // ── Seed de alunos fictícios para testes ─────────────────────
 // Criados automaticamente na primeira vez que a app é aberta.
 // Permitem simular cenários reais sem dados de alunos reais.
@@ -456,7 +529,7 @@ export function seedAlunosTeste(): void {
     {
       // Aluno 1 — perfil universal, sem historial, primeiro acesso
       id: '1ºCP-1',
-      turmaId: '1º CP',
+      turmaId: '1º ACP',
       numero: 1,
       ano: 1,
       nome: 'Mariana Costa',
@@ -468,7 +541,7 @@ export function seedAlunosTeste(): void {
     {
       // Aluno 2 — nível 3 NEE, historial misto (algumas técnicas consolidadas, outras em regressão)
       id: '1ºCP-2',
-      turmaId: '1º CP',
+      turmaId: '1º ACP',
       numero: 2,
       ano: 1,
       nome: 'Tomás Ferreira',
@@ -480,7 +553,7 @@ export function seedAlunosTeste(): void {
     {
       // Aluno 3 — perfil avançado, maioria das técnicas consolidadas
       id: '1ºCP-3',
-      turmaId: '1º CP',
+      turmaId: '1º ACP',
       numero: 3,
       ano: 1,
       nome: 'Beatriz Rodrigues',
@@ -492,7 +565,7 @@ export function seedAlunosTeste(): void {
     {
       // Aluno 4 — 2º ano, historial de atrasos e faltas, competências em falta
       id: '2ºCP-4',
-      turmaId: '2º CP',
+      turmaId: '2º ACP',
       numero: 4,
       ano: 2,
       nome: 'João Mendes',
@@ -589,7 +662,7 @@ export function seedPlanoTeste(): void {
   // ── Plano de Aula ─────────────────────────────────────────
   const plano = {
     id: planoId,
-    turmaId: '1º CP',
+    turmaId: '1º ACP',
     professor: 'Rosa Almeida',
     data: hoje,
     horaInicio: '08:30',
@@ -610,7 +683,7 @@ export function seedPlanoTeste(): void {
   const requisicao = {
     id: reqId,
     planoAulaId: planoId,
-    turmaId: '1º CP',
+    turmaId: '1º ACP',
     dataAula: hoje,
     professor: 'Rosa Almeida',
     fichasIds: [fichaId],
@@ -665,7 +738,7 @@ export function seedHistorialTeste(): void {
     notas.forEach((nota, i) => {
       avaliacoes.push({
         id: `seed_tomas_${id}_${i}`,
-        alunoId: '1ºCP-2', turmaId: '1º CP',
+        alunoId: '1ºCP-2', turmaId: '1º ACP',
         planoAulaId: `plano_seed_${i}`, fichaId: '',
         ucId: 'UC01999', microcompetenciaId: id,
         nota, data: datas[i], validadoPor: 'professor',
@@ -676,7 +749,7 @@ export function seedHistorialTeste(): void {
   datas.slice(0, 9).forEach((data, i) => {
     presencas.push({
       id: `seed_tomas_pres_${i}`,
-      alunoId: '1ºCP-2', turmaId: '1º CP',
+      alunoId: '1ºCP-2', turmaId: '1º ACP',
       planoAulaId: `plano_seed_${i}`, ucId: 'UC01999',
       presente: i !== 3 && i !== 6, // faltou à 4ª e 7ª aula
       atrasado: i === 1 || i === 5,
@@ -699,7 +772,7 @@ export function seedHistorialTeste(): void {
     notas.forEach((nota, i) => {
       avaliacoes.push({
         id: `seed_beatriz_${id}_${i}`,
-        alunoId: '1ºCP-3', turmaId: '1º CP',
+        alunoId: '1ºCP-3', turmaId: '1º ACP',
         planoAulaId: `plano_seed_${i}`, fichaId: '',
         ucId: 'UC01999', microcompetenciaId: id,
         nota, data: datas[i], validadoPor: 'professor',
@@ -709,7 +782,7 @@ export function seedHistorialTeste(): void {
   datas.slice(0, 9).forEach((data, i) => {
     presencas.push({
       id: `seed_beatriz_pres_${i}`,
-      alunoId: '1ºCP-3', turmaId: '1º CP',
+      alunoId: '1ºCP-3', turmaId: '1º ACP',
       planoAulaId: `plano_seed_${i}`, ucId: 'UC01999',
       presente: true, atrasado: false, atrasadoMins: 0, fardamentoOk: true,
     });
@@ -726,7 +799,7 @@ export function seedHistorialTeste(): void {
     notas.forEach((nota, i) => {
       avaliacoes.push({
         id: `seed_joao_${id}_${i}`,
-        alunoId: '2ºCP-4', turmaId: '2º CP',
+        alunoId: '2ºCP-4', turmaId: '2º ACP',
         planoAulaId: `plano_seed_${i}`, fichaId: '',
         ucId: 'UC02003', microcompetenciaId: id,
         nota, data: datas[i], validadoPor: 'professor',
@@ -737,7 +810,7 @@ export function seedHistorialTeste(): void {
   datas.slice(0, 9).forEach((data, i) => {
     presencas.push({
       id: `seed_joao_pres_${i}`,
-      alunoId: '2ºCP-4', turmaId: '2º CP',
+      alunoId: '2ºCP-4', turmaId: '2º ACP',
       planoAulaId: `plano_seed_${i}`, ucId: 'UC02003',
       presente: ![2, 4, 6, 8].includes(i), // faltou a 4 aulas
       atrasado: [0, 1, 5].includes(i),
@@ -816,9 +889,45 @@ async function sincronizarAlunoComSheet(aluno: Aluno): Promise<void> {
 
 /** Carrega todos os alunos da Sheet para localStorage (usado pela coordenadora). */
 export async function sincronizarAlunosDaSheet(): Promise<void> {
-  if (!SHEETS_ALUNOS_URL) return;
+  // Usa a Sheet do KitchenFlow como fonte única de alunos
+  const url = KITCHENFLOW_SHEET_URL || SHEETS_ALUNOS_URL;
+  if (!url) return;
   try {
-    const json = await lerDoSheets(SHEETS_ALUNOS_URL, { tipo: 'get_alunos' });
+    // Ler separador Alunos directamente via tabela=Alunos
+    const json = await lerDoSheets(url, { tabela: 'Alunos' });
+    // Converter formato KitchenFlow → formato Avaliação ECL
+    if (json?.ok && Array.isArray(json.dados) && json.dados.length > 4) {
+      const all = getAlunos();
+      json.dados.slice(4).forEach((row: any[]) => {
+        if (!row[0]) return;
+        const numero = Number(row[0]);
+        const nome = String(row[1] || '').trim();
+        const turma = String(row[2] || '').trim();
+        const pin = String(row[3] || '').trim();
+        const ativo = String(row[4] || 'ativo').toLowerCase() === 'ativo';
+        const pinData = String(row[6] || '').trim();
+        const pinHora = String(row[7] || '').trim();
+        if (!numero || !turma) return;
+        const id = turma + '-' + numero;
+        const existing = all.find(a => a.id === id);
+        if (existing) {
+          if (nome) existing.nome = nome;
+          if (pin) existing.pin = pin;
+          if (pinData) existing.pinCriadoEm = pinData + (pinHora ? ' ' + pinHora : '');
+          existing.ativo = ativo;
+        } else {
+          all.push({
+            id, turmaId: turma, numero, ano: 1,
+            nome: nome || undefined, pin: pin || undefined,
+            pinCriadoEm: pinData || undefined, ativo,
+          });
+        }
+      });
+      save(KEYS.alunos, all);
+      return;
+    }
+    // Fallback formato antigo
+    const jsonAntigo = await lerDoSheets(SHEETS_ALUNOS_URL, { tipo: 'get_alunos' });
     if (!Array.isArray(json)) return;
     const all = getAlunos();
     json.forEach((row: any) => {
