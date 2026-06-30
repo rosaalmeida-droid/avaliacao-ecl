@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { gerarPDFGuiao } from './GerarPDFGuiao';
 
 // ============================================================
 // Guia de Apoio à Produção — Renderizador Visual ECL
@@ -6,7 +7,7 @@ import React, { useState } from 'react';
 // ============================================================
 
 // ── Tipos ─────────────────────────────────────────────────────
-interface SecaoGuia {
+export interface SecaoGuia {
   num: number;
   titulo: string;
   icone: string;
@@ -15,7 +16,7 @@ interface SecaoGuia {
   conteudo: string;
 }
 
-interface DadosGuia {
+export interface DadosGuia {
   nomePrato: string;
   secoes: SecaoGuia[];
   equilibrioSensorial?: { componente: string; intensidade: string; notas: string }[];
@@ -586,14 +587,23 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
               </div>
             )}
           </div>
-          {onFechar && (
-            <button onClick={onFechar} style={{ background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
-              padding: '6px 12px', color: '#faf7f2', cursor: 'pointer', fontSize: 12,
-              flexShrink: 0 }}>
-              ✕
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button
+              className="no-print"
+              onClick={() => gerarPDFGuiao({ nomePrato, ucId, ucNome, guia, textoOriginal: textoGuia })}
+              style={{ background: 'var(--copper)', border: 'none', borderRadius: 8,
+                padding: '7px 14px', color: '#fff', cursor: 'pointer', fontSize: 12,
+                fontWeight: 700 }}>
+              ⬇ PDF
             </button>
-          )}
+            {onFechar && (
+              <button onClick={onFechar} style={{ background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
+                padding: '6px 12px', color: '#faf7f2', cursor: 'pointer', fontSize: 12 }}>
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Chips de navegação rápida */}
