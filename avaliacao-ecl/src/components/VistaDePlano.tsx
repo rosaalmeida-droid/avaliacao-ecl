@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao,
-  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente,
+  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -817,6 +817,37 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               ))}
             </div>
           )}
+
+          {/* Quem já entrou hoje */}
+          {(() => {
+            const presencasHoje = getPresencas().filter((r: any) => r.planoAulaId === plano.id || r.data === plano.data?.slice(0,10));
+            const alunosDaTurma = getAlunos().filter(a => a.turmaId === plano.turmaId);
+            if (alunosDaTurma.length === 0) return null;
+            return (
+              <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px',
+                border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+                  textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+                  👤 Presenças — {presencasHoje.length}/{alunosDaTurma.length} alunos
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {alunosDaTurma.map(a => {
+                    const presente = presencasHoje.find((p: any) => p.alunoId === a.id);
+                    return (
+                      <div key={a.id} style={{ padding: '4px 10px', borderRadius: 100,
+                        fontSize: 11, fontWeight: 600,
+                        background: presente ? '#f0fdf4' : 'rgba(26,23,20,0.05)',
+                        color: presente ? '#15803d' : 'rgba(26,23,20,0.4)',
+                        border: `1px solid ${presente ? '#bbf7d0' : 'rgba(26,23,20,0.08)'}` }}>
+                        {presente ? '✓ ' : ''}{a.nome || a.id}
+                        {presente?.atrasado && <span style={{ color: '#dc2626' }}> ⚠</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* KitchenFlow */}
           <div style={{ background: '#0e7490', borderRadius: 14, padding: '14px 16px',
