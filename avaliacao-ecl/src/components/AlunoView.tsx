@@ -5,7 +5,7 @@ import {
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
   addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
-  registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL,
+  registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
 } from '../backend';
 import {
@@ -620,61 +620,101 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     return 'pendente';
   };
 
+  // Contar passos concluídos para barra de progresso
+  const totalPassos = PASSOS.length;
+  const passosConcluidos = PASSOS.filter(p => estadoPasso(p.id) === 'concluido').length;
+  const pctProgresso = Math.round(passosConcluidos / totalPassos * 100);
+
   return (
-    <div style={{ minHeight:'100vh', background:T.cream }}>
-      {/* Cabeçalho do plano */}
-      <div style={{ background:T.charcoal, padding:'16px 20px 20px' }}>
-        <div style={{ maxWidth:900, margin:'0 auto' }}>
-          <button onClick={onVoltar} style={{ background:'rgba(247,241,230,0.12)', border:'none',
-            borderRadius:8, padding:'6px 14px', color:'rgba(247,241,230,0.7)', fontSize:13,
-            cursor:'pointer', marginBottom:14 }}>
-            ← Voltar
-          </button>
-          <div style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:700,
-            color:'#faf7f2', marginBottom:4 }}>{plano.titulo}</div>
-          <div style={{ fontSize:13, color:'rgba(247,241,230,0.45)' }}>
-            {formatarData(plano.data)} · {plano.horaInicio}–{plano.horaFim}
-          </div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:8 }}>
-            {plano.ucNome && (
-              <div style={{ padding:'4px 12px', background:'rgba(181,101,29,0.3)',
-                borderRadius:100, fontSize:12, color:'rgba(247,241,230,0.8)', fontWeight:600 }}>
-                {plano.ucId} · {plano.ucNome}
+    <div style={{ minHeight:'100vh', background:'#f0f4f8' }}>
+
+      {/* ── CABEÇALHO REDESENHADO ── */}
+      <div style={{ background:'linear-gradient(135deg, #1a1714 0%, #2d2520 100%)',
+        padding:'16px 16px 0', position:'sticky', top:0, zIndex:100,
+        boxShadow:'0 4px 20px rgba(26,23,20,0.3)' }}>
+        <div style={{ maxWidth:600, margin:'0 auto' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+            <button onClick={onVoltar} style={{ background:'rgba(255,255,255,0.1)',
+              border:'none', borderRadius:10, padding:'8px 14px',
+              color:'rgba(247,241,230,0.8)', fontSize:13, cursor:'pointer',
+              fontWeight:700, flexShrink:0 }}>
+              ←
+            </button>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:16, fontWeight:800, color:'#faf7f2',
+                lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis',
+                whiteSpace:'nowrap' }}>{plano.titulo}</div>
+              <div style={{ fontSize:11, color:'rgba(247,241,230,0.45)', marginTop:2 }}>
+                {formatarData(plano.data)}
+                {plano.horaInicio && ` · ${plano.horaInicio}`}
+                {plano.horaFim && `–${plano.horaFim}`}
               </div>
-            )}
-            {aluno.nivelMedidas && aluno.nivelMedidas > 1 && (
-              <div style={{ padding:'4px 12px', borderRadius:100, fontSize:12, fontWeight:700,
-                background: aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.3)' : 'rgba(181,101,29,0.2)',
-                color: aluno.nivelMedidas === 3 ? '#ff9a9a' : '#ffd0a0',
-                border: `1px solid ${aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.5)' : 'rgba(181,101,29,0.4)'}` }}>
-                {aluno.nivelMedidas === 3 ? '🔴 Nível 3 — Medidas Adicionais' : '🟡 Nível 2 — Medidas Seletivas'}
+            </div>
+            {/* Badge de progresso */}
+            <div style={{ background: pctProgresso === 100 ? '#22c55e' : 'rgba(255,255,255,0.12)',
+              borderRadius:100, padding:'6px 12px', textAlign:'center', flexShrink:0 }}>
+              <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>
+                {pctProgresso === 100 ? '🎉' : `${passosConcluidos}/${totalPassos}`}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Barra de progresso dos 4 passos */}
-          <div style={{ display:'flex', gap:6, marginTop:16 }}>
-            {PASSOS.map(p => {
+          {/* Barra de progresso visual */}
+          <div style={{ height:4, background:'rgba(255,255,255,0.1)',
+            borderRadius:2, marginBottom:0, overflow:'hidden' }}>
+            <div style={{ height:'100%', width:`${pctProgresso}%`,
+              background:'linear-gradient(90deg, #b5651d, #22c55e)',
+              borderRadius:2, transition:'width 0.5s ease' }} />
+          </div>
+
+          {/* Passos — botões grandes e coloridos */}
+          <div style={{ display:'flex', gap:4, marginTop:0, padding:'10px 0 0' }}>
+            {PASSOS.map((p, idx) => {
               const est = estadoPasso(p.id);
+              const ativo = secAberta === p.id;
               return (
-                <div key={p.id} onClick={() => setSecAberta(p.id)} style={{
-                  flex:1, padding:'8px 6px', borderRadius:10, cursor:'pointer',
-                  background: est==='concluido' ? T.sage : est==='ativo' ? p.cor+'25' : 'rgba(247,241,230,0.08)',
-                  border: `1.5px solid ${est==='concluido' ? T.sage : est==='ativo' ? p.cor : 'transparent'}`,
-                  textAlign:'center', transition:'all 0.15s',
+                <button key={p.id} onClick={() => setSecAberta(p.id)} style={{
+                  flex:1, padding:'10px 4px 12px', border:'none',
+                  borderRadius:'12px 12px 0 0', cursor:'pointer',
+                  background: ativo ? '#f0f4f8'
+                    : est==='concluido' ? 'rgba(34,197,94,0.2)'
+                    : 'rgba(255,255,255,0.06)',
+                  transition:'all 0.2s', position:'relative',
                 }}>
-                  <div style={{ fontSize:18 }}>{est==='concluido' ? '✓' : p.emoji}</div>
-                  <div style={{ fontSize:10, fontWeight:700, color: est==='concluido'?'#fff':est==='ativo'?p.cor:'rgba(247,241,230,0.4)',
-                    marginTop:2, display:'none' /* esconde em mobile */ }}>{p.label}</div>
-                </div>
+                  {/* Número do passo */}
+                  <div style={{ fontSize:9, fontWeight:700, letterSpacing:'0.05em',
+                    color: ativo ? p.cor
+                      : est==='concluido' ? '#22c55e'
+                      : 'rgba(247,241,230,0.3)',
+                    marginBottom:3 }}>
+                    {(idx+1).toString().padStart(2,'0')}
+                  </div>
+                  {/* Emoji grande */}
+                  <div style={{ fontSize:22, lineHeight:1 }}>
+                    {est==='concluido' ? '✅' : p.emoji}
+                  </div>
+                  {/* Label */}
+                  <div style={{ fontSize:9, fontWeight:700, marginTop:3,
+                    color: ativo ? p.cor
+                      : est==='concluido' ? '#22c55e'
+                      : 'rgba(247,241,230,0.35)',
+                    lineHeight:1.2 }}>
+                    {p.label.split(' ').slice(0,2).join(' ')}
+                  </div>
+                  {/* Indicador activo */}
+                  {ativo && (
+                    <div style={{ position:'absolute', bottom:0, left:'10%',
+                      width:'80%', height:3, background:p.cor, borderRadius:'3px 3px 0 0' }} />
+                  )}
+                </button>
               );
             })}
           </div>
         </div>
       </div>
 
-      {/* Conteúdo dos passos */}
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'20px' }}>
+      {/* ── CONTEÚDO DOS PASSOS ── */}
+      <div style={{ maxWidth:600, margin:'0 auto', padding:'0' }}>
         {PASSOS.map(p => {
           const est = estadoPasso(p.id);
           const aberto = secAberta === p.id;
@@ -902,6 +942,9 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
             ucId: plano.ucId,
             ucNome: plano.ucNome,
             pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
+            planoHoraInicio: plano.horaInicio,
+            planoHoraFim: plano.horaFim,
+            planoData: plano.data,
           })} style={{
           padding: '10px 16px', borderRadius: 9, border: 'none',
           background: '#185FA5', color: '#fff', fontSize: 13,
@@ -913,12 +956,16 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
 
       {/* Botão continuar */}
       <button onClick={onContinuar} style={{
-        width: '100%', padding: '16px', borderRadius: 14, border: 'none',
-        background: 'var(--copper)', color: '#fff', fontSize: 16,
-        fontWeight: 700, cursor: 'pointer',
-        boxShadow: '0 4px 16px rgba(181,101,29,0.3)',
+        width: '100%', padding: '20px', borderRadius: 18, border: 'none',
+        background: 'linear-gradient(135deg, #b5651d, #8b4513)',
+        color: '#fff', fontSize: 18, fontWeight: 900, cursor: 'pointer',
+        boxShadow: '0 8px 24px rgba(181,101,29,0.4)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+        letterSpacing: '0.02em',
       }}>
-        Entendido — Iniciar aula →
+        <span style={{ fontSize: 26 }}>🚀</span>
+        Vamos começar!
+        <span style={{ fontSize: 22 }}>→</span>
       </button>
     </div>
   );
@@ -1288,7 +1335,30 @@ function SecaoGuiao({ fichas, plano, onConcluido }: {
         </div>
       )}
 
-      {/* Guião */}
+      {/* Botão PDF no topo */}
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
+        <button
+          onClick={() => {
+            import('./GerarPDFGuiao').then(({ gerarPDFGuiao }) => {
+              const guia = (fichaGuiao as any).guiaParsed || { secoes: [], equilibrioSensorial: [] };
+              gerarPDFGuiao({
+                nomePrato: fichaGuiao.nomePrato || '',
+                ucId: plano.ucId,
+                ucNome: plano.ucNome,
+                guia,
+                textoOriginal: (fichaGuiao as any).textoGuia || '',
+              });
+            });
+          }}
+          style={{ padding:'8px 16px', borderRadius:10, border:'none',
+            background:'#b5651d', color:'#fff', fontSize:13,
+            fontWeight:700, cursor:'pointer', display:'flex',
+            alignItems:'center', gap:6 }}>
+          ⬇ PDF do Guião
+        </button>
+      </div>
+
+      {/* Guião completo — todas as secções com scroll */}
       <GuiaProducao
         textoGuia={(fichaGuiao as any).textoGuia}
         nomePrato={fichaGuiao.nomePrato || ''}
@@ -1296,10 +1366,15 @@ function SecaoGuiao({ fichas, plano, onConcluido }: {
         ucNome={plano.ucNome}
       />
 
-      <button onClick={onConcluido} style={{ width:'100%', padding:'14px',
-        borderRadius:12, border:'none', background:'#1a6b5a', color:'#fff',
-        fontSize:15, fontWeight:700, cursor:'pointer', marginTop:16 }}>
-        Li o guião → Continuar
+      <button onClick={onConcluido} style={{ width:'100%', padding:'18px',
+        borderRadius:16, border:'none',
+        background:'linear-gradient(135deg, #1a6b5a, #0f4a3d)',
+        color:'#fff', fontSize:17, fontWeight:800, cursor:'pointer',
+        marginTop:16, boxShadow:'0 6px 20px rgba(26,107,90,0.4)',
+        display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
+        <span style={{ fontSize:22 }}>📖</span>
+        Li o guião — Continuar
+        <span style={{ fontSize:20 }}>→</span>
       </button>
     </div>
   );
