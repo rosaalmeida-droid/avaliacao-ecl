@@ -2207,3 +2207,32 @@ export function addOrUpdateTecnicaCustom(t: Omit<TecnicaCustom, 'id' | 'criadoEm
 export function eliminarTecnicaCustom(id: string): void {
   save(KEYS.tecnicasCustom, getTecnicasCustom().filter(t => t.id !== id));
 }
+
+// ═══════════════════════════════════════════════════════════════
+// CLASSROOM — publicação automática
+// ═══════════════════════════════════════════════════════════════
+
+export type TipoPublicacaoClassroom = 'plano' | 'ficha' | 'guiao' | 'competencias' | 'requisicao';
+
+export async function publicarNoClassroom(
+  tipo: TipoPublicacaoClassroom,
+  turmaId: string,
+  conteudo: Record<string, unknown>
+): Promise<{ ok: boolean; erro?: string }> {
+  try {
+    const resp = await fetch(KITCHENFLOW_SHEET_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'publicarClassroom',
+        tipo,
+        turmaId,
+        conteudo,
+      }),
+    });
+    const data = await resp.json();
+    return data;
+  } catch (e) {
+    return { ok: false, erro: String(e) };
+  }
+}
