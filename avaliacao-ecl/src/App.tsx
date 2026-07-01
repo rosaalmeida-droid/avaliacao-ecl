@@ -37,7 +37,6 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   );
 }
 
-// Tipo para a vista global do professor
 type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual';
 
 function AppInterno() {
@@ -65,12 +64,11 @@ function AppInterno() {
       .catch(() => setSyncStatus('offline'));
   }
 
-  // Seed de dados de teste — só corre se não houver dados ainda
   useEffect(() => {
-    getTurmas();          // garante turmas CZ1A/CZ2A
-    seedAlunosTeste();    // cria os 4 alunos fictícios
-    seedHistorialTeste(); // cria historial de avaliações e presenças
-    seedPlanoTeste();     // cria plano de aula + ficha Pudim de Ovos + requisição
+    getTurmas();
+    seedAlunosTeste();
+    seedHistorialTeste();
+    seedPlanoTeste();
   }, []);
 
   useEffect(() => {
@@ -109,9 +107,8 @@ function AppInterno() {
   }
 
   function irPara(vista: VistaProf) {
-    if (vista === vistaGlobal && !planoAberto) return; // já está aqui, não faz nada
+    if (vista === vistaGlobal && !planoAberto) return;
     navegarCom(() => {
-      // Se há um plano aberto, fica em pausa em vez de se perder — modo livre
       if (planoAberto) setPlanoEmPausa(planoAberto);
       setPlanoAberto(null);
       limparAlteracoes();
@@ -128,8 +125,6 @@ function AppInterno() {
       const numero = parseInt(partes[partes.length - 1], 10) || 0;
       const novoAluno: Aluno = { id: alunoId, turmaId: turmaIdRecebida || turmaId || 'CP1', numero, ano: 1 };
       setAluno(novoAluno);
-      // Registar o aluno na lista persistente — necessário para o professor
-      // conseguir ver/filtrar este aluno em Avaliação por UC, Reabrir, etc.
       addAluno(novoAluno);
     }
   }
@@ -143,21 +138,18 @@ function AppInterno() {
 
   if (!perfil) return <Login onLogin={handleLogin} />;
 
-  // ── Tabs da navegação global do professor ──────────────────
-  // Cada módulo tem cor própria — ajuda o professor a saber sempre,
-  // num relance, em que área de trabalho está.
   const tabsProf: { id: VistaProf; label: string; icone: string; cor: string; corPale: string }[] = [
-    { id: 'planos',     label: 'Planos de Aula', icone: '📋', cor: 'var(--copper)', corPale: 'var(--copper-pale)' },
-    { id: 'ficha',      label: 'Ficha',          icone: '📄', cor: 'var(--sage)', corPale: 'var(--sage-pale)' },
-    { id: 'guia',       label: 'Guia',           icone: '📚', cor: 'var(--guia)', corPale: 'var(--guia-pale)' },
-    { id: 'requisicao', label: 'Requisição',      icone: '🛒', cor: 'var(--requisicao)', corPale: 'var(--requisicao-pale)' },
-    { id: 'validacao',  label: 'Validação',       icone: '✓',  cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
-    { id: 'biblioteca', label: 'Biblioteca',      icone: '🗂️', cor: 'var(--sage)', corPale: 'var(--sage-pale)' },
-      { id: 'manual',     label: 'Manual do Cozinheiro', icone: '📖', cor: 'var(--charcoal)', corPale: 'rgba(26,23,20,0.06)' },
-    { id: 'avaliacao_uc', label: 'Avaliação por UC', icone: '📊', cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
-    { id: 'copia_seguranca', label: 'Cópia de Segurança', icone: '💾', cor: 'var(--charcoal-mid)', corPale: 'var(--cream-dark)' },
-    { id: 'gestao_recuperacoes', label: 'Recuperações', icone: '🔄', cor: 'var(--recuperacao)', corPale: 'var(--recuperacao-pale)' },
-    { id: 'mapa_competencias', label: 'Mapa de Competências', icone: '🗺️', cor: 'var(--competencias)', corPale: 'var(--competencias-pale)' },
+    { id: 'planos',              label: 'Planos de Aula',       icone: '📋', cor: 'var(--copper)',        corPale: 'var(--copper-pale)' },
+    { id: 'ficha',               label: 'Ficha',                icone: '📄', cor: 'var(--sage)',           corPale: 'var(--sage-pale)' },
+    { id: 'guia',                label: 'Guia',                 icone: '📚', cor: 'var(--guia)',           corPale: 'var(--guia-pale)' },
+    { id: 'requisicao',          label: 'Requisição',           icone: '🛒', cor: 'var(--requisicao)',     corPale: 'var(--requisicao-pale)' },
+    { id: 'validacao',           label: 'Validação',            icone: '✓',  cor: 'var(--charcoal-mid)',  corPale: 'var(--cream-dark)' },
+    { id: 'biblioteca',          label: 'Biblioteca',           icone: '🗂️', cor: 'var(--sage)',           corPale: 'var(--sage-pale)' },
+    { id: 'manual',              label: 'Manual do Cozinheiro', icone: '📖', cor: 'var(--charcoal)',       corPale: 'rgba(26,23,20,0.06)' },
+    { id: 'avaliacao_uc',        label: 'Avaliação por UC',     icone: '📊', cor: 'var(--charcoal-mid)',  corPale: 'var(--cream-dark)' },
+    { id: 'copia_seguranca',     label: 'Cópia de Segurança',   icone: '💾', cor: 'var(--charcoal-mid)',  corPale: 'var(--cream-dark)' },
+    { id: 'gestao_recuperacoes', label: 'Recuperações',         icone: '🔄', cor: 'var(--recuperacao)',   corPale: 'var(--recuperacao-pale)' },
+    { id: 'mapa_competencias',   label: 'Mapa de Competências', icone: '🗺️', cor: 'var(--competencias)',  corPale: 'var(--competencias-pale)' },
   ];
 
   return (
@@ -176,7 +168,6 @@ function AppInterno() {
 
       {perfil === 'professor' && (
         <div>
-          {/* Navegação global — modo livre, sem associar a nenhum plano */}
           <div className="tab-nav no-print" style={{ overflowX: 'auto', display: 'flex', gap: 4, paddingBottom: 2 }}>
             {tabsProf.map(t => {
               const ativo = !planoAberto && vistaGlobal === t.id;
@@ -196,7 +187,6 @@ function AppInterno() {
             })}
           </div>
 
-          {/* Banner para voltar ao plano que ficou em pausa */}
           {planoEmPausa && !planoAberto && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--copper-pale)', borderRadius: 10, marginTop: 8, marginBottom: 4 }}>
               <span style={{ fontSize: 13, color: 'var(--copper)', flex: 1 }}>
@@ -209,7 +199,6 @@ function AppInterno() {
             </div>
           )}
 
-          {/* Plano aberto — vista dedicada */}
           {planoAberto ? (
             <VistaDePlano
               key={refreshKey}
@@ -223,7 +212,6 @@ function AppInterno() {
             />
           ) : (
             <div>
-              {/* Conteúdo por vista */}
               {vistaGlobal === 'planos' && (
                 <PlanoAula
                   key={refreshKey}
@@ -236,51 +224,30 @@ function AppInterno() {
                 />
               )}
               {vistaGlobal === 'ficha' && (
-                <ProfessorView
-                  turmaId={turmaId}
-                  nomeProfessor={nomeProfessor}
-                  onAlteracao={registarAlteracao}
-                  onGuardado={limparAlteracoes}
-                />
+                <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+                  onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
               )}
               {vistaGlobal === 'guia' && (
-                <ProfessorView
-                  turmaId={turmaId}
-                  nomeProfessor={nomeProfessor}
-                  modoGuia={true}
-                  onAlteracao={registarAlteracao}
-                  onGuardado={limparAlteracoes}
-                />
+                <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+                  modoGuia={true} onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
               )}
               {vistaGlobal === 'requisicao' && (
                 <Requisicao nomeProfessor={nomeProfessor} turmaId={turmaId} />
               )}
-              {vistaGlobal === 'validacao' && (
-                <ValidacaoView turmaId={turmaId} />
-              )}
+              {vistaGlobal === 'validacao' && <ValidacaoView turmaId={turmaId} />}
               {vistaGlobal === 'manual' && (
                 <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />
               )}
               {vistaGlobal === 'biblioteca' && (
-                <ProfessorView
-                  turmaId={turmaId}
-                  nomeProfessor={nomeProfessor}
-                  onAlteracao={registarAlteracao}
-                  onGuardado={limparAlteracoes}
-                />
+                <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+                  onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
               )}
-              {vistaGlobal === 'avaliacao_uc' && (
-                <AvaliacaoPorUC turmaId={turmaId} />
-              )}
-              {vistaGlobal === 'copia_seguranca' && (
-                <CopiaSegurancaView />
-              )}
+              {vistaGlobal === 'avaliacao_uc' && <AvaliacaoPorUC turmaId={turmaId} />}
+              {vistaGlobal === 'copia_seguranca' && <CopiaSegurancaView />}
               {vistaGlobal === 'gestao_recuperacoes' && (
                 <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />
               )}
-              {vistaGlobal === 'mapa_competencias' && (
-                <MapaCompetencias turmaId={turmaId} />
-              )}
+              {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
             </div>
           )}
         </div>
@@ -295,8 +262,6 @@ function AppInterno() {
             perfil={perfil || undefined}
             onNavegar={(aviso) => {
               const tab = (aviso.contexto?.tabDestino as VistaProf) || 'planos';
-              // Se o aviso tem planoId mas o plano pode ter sido apagado
-              // verificar antes de navegar
               const planoId = aviso.contexto?.planoId;
               irPara(tab);
               if (planoId) setPlanoIdAlvo(planoId);
