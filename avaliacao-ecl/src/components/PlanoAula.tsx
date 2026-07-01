@@ -9,8 +9,7 @@ import {
   gerarCodigoPlano,
   getPlanosArquivados,
   getFichasProducao,
-  getAlunos,
-} from '../backend';
+  getAlunos, publicarNoClassroom } from '../backend';
 import { PlanoAula as TPlanoAula } from '../types';
 import { Card } from './ui';
 import ProfessorView from './ProfessorView';
@@ -330,7 +329,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo || 'Plano de aula'}</div>
-                      {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}</div>}
+                      {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId}{p.numeroPlan ? ' · Plano ' + p.numeroPlan : ''}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                       <div className="muted" style={{ fontSize: 12 }}>{horaI && horaF ? `${horaI}-${horaF}` : ''} {p.turmaId ? '· ' + p.turmaId : ''}</div>
                     </div>
                     <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
@@ -533,7 +532,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo || 'Plano de aula'}</div>
-                  {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}</div>}
+                  {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId}{p.numeroPlan ? ' · Plano ' + p.numeroPlan : ''}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                   <div className="muted" style={{ fontSize: 12 }}>{p.data} · {horaI && horaF ? `${horaI}-${horaF}` : ''} · {p.turmaId}</div>
                 </div>
                 <button onClick={() => {
@@ -654,12 +653,12 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>
-                  {p.numeroPlan ? <span style={{ color:'var(--copper)', marginRight:6 }}>Plano {p.numeroPlan}</span> : null}
                   {p.titulo || 'Plano de aula'}
                 </div>
                 {p.ucId && (
-                  <div style={{ fontSize:13, color:'var(--copper)', fontWeight:600, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {p.ucId} {p.ucNome ? '- ' + p.ucNome : ''}
+                  <div style={{ fontSize:12, color:'var(--copper)', fontWeight:600, marginBottom:2, lineHeight:1.4 }}>
+                    {p.ucId}{p.numeroPlan ? ` · Plano ${p.numeroPlan}` : ''}
+                    {p.ucNome && <div style={{ fontSize:12, color:'var(--copper)', fontWeight:500, opacity:0.85 }}>{p.ucNome}</div>}
                   </div>
                 )}
                 <div className="muted" style={{ fontSize:13 }}>
@@ -723,6 +722,22 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     } as TPlanoAula;
     addOrUpdatePlanoAula(p);
     onGuardado?.();
+    // Perguntar se quer publicar no Classroom
+    if (window.confirm('📚 Publicar este plano de aula no Google Classroom?')) {
+      publicarNoClassroom('plano', turmaId, {
+        titulo: p.titulo,
+        data: p.data,
+        horaInicio: p.horaInicio,
+        horaFim: p.horaFim,
+        ucId: p.ucId,
+        ucNome: p.ucNome,
+        pratos: [],
+        observacoes: (p as any).observacoes || '',
+      }).then(res => {
+        if (res.ok) alert('✅ Plano publicado no Classroom!');
+        else console.warn('Classroom:', res.erro);
+      });
+    }
     onConcluido(p);
   }
 
