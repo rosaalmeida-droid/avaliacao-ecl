@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom } from '../backend';
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
@@ -1358,6 +1358,19 @@ Apresentar o cenário em 1-2 parágrafos concretos e terminar com uma pergunta c
 Gerar entre 5 e 8 questões de reflexão individual sobre esta produção específica, para o aluno responder por si, ligadas ao que realmente aprendeu e onde sentiu mais dificuldade.
 
 ---
+---
+# 15. CULTURA E GASTRONOMIA
+
+Contextualizar o prato na cultura e gastronomia portuguesa. Incluir:
+- Referências: Virgílio Nóbrega Gomes, Olleboma, Alfredo Saramago, Maria de Lourdes Modesto, Ana Patuleia Ortins
+- Região de origem e contexto histórico do prato
+- Variantes regionais, curiosidades gastronómicas
+- Festas ou eventos populares associados
+- Influências de outras culturas se aplicável
+
+Escrever em tom narrativo, 2-3 parágrafos.
+
+---
 IMPORTANTE: termina com uma secção final "RESUMO" com os pontos-chave de cada secção, de forma esquemática (bullets curtos), para revisão rápida antes da aula prática.`;
 }
 
@@ -2289,7 +2302,23 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
         )}
 
         <button className="btn btn-block no-print" style={{ marginTop: 10, background: 'var(--copper)', color: 'white' }}
-          onClick={() => { if (textoGuia && !guardadoOk) guardarGuia(); onGuardado?.(); }}>
+          onClick={() => {
+            if (textoGuia && !guardadoOk) guardarGuia();
+            onGuardado?.();
+            // Perguntar se quer publicar no Classroom
+            if (textoGuia && window.confirm('📖 Publicar este guião de produção no Google Classroom?')) {
+              const planos = getPlanosAula();
+              const planoAtual = planoId ? planos.find(p => p.id === planoId) : null;
+              publicarNoClassroom('guiao', (planoAtual as any)?.turmaId || '', {
+                plano: planoAtual || { ucId: ucId || '', ucNome: ucNome || '', data: new Date().toISOString().slice(0,10) },
+                ficha: { nomePrato: nomePratoInicial || '' },
+                textoGuia,
+              }).then(res => {
+                if (res.ok) alert('✅ Guião publicado no Classroom!');
+                else console.warn('Classroom:', res.erro);
+              });
+            }
+          }}>
           ✓ Concluir Guia
         </button>
       </Card>
@@ -2439,6 +2468,25 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       recarregar();
       onGuardado?.();
       setUltimaFichaIdGuardada(novaFichaId);
+      // Perguntar se quer publicar no Classroom
+      if (window.confirm('📄 Publicar esta ficha técnica no Google Classroom?')) {
+        const planoAtual = planoId ? getPlanosAula().find(p => p.id === planoId) : null;
+        publicarNoClassroom('ficha', turmaId, {
+          plano: planoAtual || { ucId: ucId || '', ucNome: ucNome || '', data: new Date().toISOString().slice(0,10), horaInicio: '', horaFim: '' },
+          ficha: {
+            nomePrato: nomeFinal,
+            numPorcoes: fichaConfirmada.numPorcoes,
+            alergenicos: fichaConfirmada.alergenicos,
+            ingredientes: fichaConfirmada.ingredientes || [],
+            tecnicas: (fichaConfirmada as any).tecnicas || [],
+            foodCostTotal: (fichaConfirmada as any).foodCostTotal,
+            foodCostPorcao: (fichaConfirmada as any).foodCostPorcao,
+          },
+        }).then(res => {
+          if (res.ok) alert('✅ Ficha publicada no Classroom!');
+          else console.warn('Classroom:', res.erro);
+        });
+      }
       const nomeOriginal = fichaConfirmada.nomePrato || '';
       setGuardadoMsg(nomeFinal !== nomeOriginal
         ? `${nomeFinal} (renomeado de "${nomeOriginal}" — já existia uma ficha com esse nome)`
