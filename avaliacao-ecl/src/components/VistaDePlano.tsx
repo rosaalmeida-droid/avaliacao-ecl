@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao,
-  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas,
-} from '../backend';
+  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC,
@@ -413,6 +412,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // Após criar/associar ficha — recarrega o plano actualizado do backend
   // (necessário porque o ProfessorView altera o plano directamente no backend,
   // sem o componente pai saber automaticamente).
+  // ── Classroom ───────────────────────────────────
+  const [modalClassroom, setModalClassroom] = React.useState<{tipo: string; conteudo: any} | null>(null);
+  const [classroomEnviado, setClassroomEnviado] = React.useState(false);
+
+  async function enviarParaClassroom(tipo: string, conteudo: any) {
+    const res = await publicarNoClassroom(tipo as any, turmaId, conteudo);
+    setClassroomEnviado(res.ok);
+    setModalClassroom(null);
+  }
+
   function aposGuardarFicha() {
     const planoAtualizado = getPlanosAula().find(p => p.id === plano.id);
     if (planoAtualizado) onPlanoActualizado(planoAtualizado);
