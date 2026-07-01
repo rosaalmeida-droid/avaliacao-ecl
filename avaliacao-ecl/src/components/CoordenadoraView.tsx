@@ -12,21 +12,44 @@ import { GuiaProducao } from './GuiaProducao';
 export function CoordenadoraView() {
   const [tab, setTab] = useState<'avisos' | 'presencas' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config'>('avisos');
 
+  const TABS_COORD = [
+    { id:'avisos',     emoji:'🔔', label:'Avisos',           cor:'#e63946' },
+    { id:'presencas',  emoji:'👤', label:'Presenças',        cor:'#2ec4b6' },
+    { id:'fichas',     emoji:'🗂️', label:'Fichas',           cor:'#f4a900' },
+    { id:'planos',     emoji:'📅', label:'Planos',           cor:'#1d6fa4' },
+    { id:'ranking',    emoji:'🏆', label:'Ranking',          cor:'#9b59b6' },
+    { id:'atividades', emoji:'🎯', label:'Eventos',          cor:'#e67e22' },
+    { id:'pedagogico', emoji:'📊', label:'Pedagógico',       cor:'#27ae60' },
+    { id:'alunos',     emoji:'👥', label:'Alunos',           cor:'#2980b9' },
+    { id:'config',     emoji:'⚙️', label:'Config',           cor:'#8e44ad' },
+  ] as const;
+
   return (
     <div>
-      <Card>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Button variant={tab === 'avisos' ? 'primary' : 'ghost'} onClick={() => setTab('avisos')}>🔔 Avisos</Button>
-          <Button variant={tab === 'presencas' ? 'primary' : 'ghost'} onClick={() => setTab('presencas')}>👤 Presenças</Button>
-          <Button variant={tab === 'fichas' ? 'primary' : 'ghost'} onClick={() => setTab('fichas')}>🗂️ Fichas Técnicas</Button>
-          <Button variant={tab === 'planos' ? 'primary' : 'ghost'} onClick={() => setTab('planos')}>📅 Planos de Aula</Button>
-          <Button variant={tab === 'ranking' ? 'primary' : 'ghost'} onClick={() => setTab('ranking')}>Ranking</Button>
-          <Button variant={tab === 'atividades' ? 'primary' : 'ghost'} onClick={() => setTab('atividades')}>Eventos/Concursos</Button>
-          <Button variant={tab === 'pedagogico' ? 'primary' : 'ghost'} onClick={() => setTab('pedagogico')}>📊 Visão Pedagógica</Button>
-          <Button variant={tab === 'alunos' ? 'primary' : 'ghost'} onClick={() => setTab('alunos')}>👥 Gestão de Alunos</Button>
-          <Button variant={tab === 'config' ? 'primary' : 'ghost'} onClick={() => setTab('config')}>⚙️ Configurações</Button>
+      {/* Cabeçalho roxo com abas coloridas */}
+      <div style={{ background:'#6d28d9', padding:'14px 16px 0' }}>
+        <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', fontWeight:700,
+          textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
+          Avaliação ECL
         </div>
-      </Card>
+        <div style={{ fontSize:18, fontWeight:800, color:'#fff', marginBottom:12 }}>
+          Coordenadora 👋
+        </div>
+        <div style={{ overflowX:'auto', display:'flex', gap:6, paddingBottom:14 }}>
+          {TABS_COORD.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id as any)} style={{
+              whiteSpace:'nowrap', flexShrink:0, padding:'8px 12px',
+              border:'none', cursor:'pointer', fontSize:12, fontWeight:800,
+              borderRadius:10,
+              background: tab === t.id ? t.cor : 'rgba(255,255,255,0.15)',
+              color: tab === t.id ? '#fff' : 'rgba(255,255,255,0.55)',
+              transition:'all 0.15s',
+            }}>
+              {t.emoji} {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
       {tab === 'avisos' && (
         <div style={{ marginTop: 12 }}>
           <CentroAvisos perfil="coordenadora" />
