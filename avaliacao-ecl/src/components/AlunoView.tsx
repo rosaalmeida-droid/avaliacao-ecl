@@ -270,48 +270,85 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
   const dias = diasParaData(plano.data);
   const d = parseDataSegura(plano.data) || new Date();
 
-  let estadoLabel = '';
-  let estadoCor = T.sage;
-  let estadoBg = T.sageP;
-  if (hoje) { estadoLabel='HOJE'; estadoCor=T.copper; estadoBg=T.copperP; }
-  else if (dias === 1) { estadoLabel='AMANHÃ'; estadoCor=T.info; estadoBg=T.infoP; }
-  else if (futuro && dias <= 7) { estadoLabel=`em ${dias} dias`; estadoCor=T.info; estadoBg=T.infoP; }
-  else if (!futuro) { estadoLabel='Passada'; estadoCor='rgba(26,23,20,0.4)'; estadoBg='rgba(26,23,20,0.05)'; }
+  // Card de aula passada — compacto
+  if (!hoje && !futuro) {
+    return (
+      <div onClick={onAbrir} style={{
+        display:'flex', alignItems:'center', gap:12, padding:'12px 14px',
+        borderRadius:14, background:'#fff',
+        border:'1px solid rgba(26,23,20,0.08)',
+        cursor:'pointer', marginBottom:8,
+      }}>
+        <div style={{ background:'rgba(26,23,20,0.06)', borderRadius:10,
+          padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:44 }}>
+          <div style={{ fontSize:18, fontWeight:700, color:T.charcoal, lineHeight:1 }}>
+            {d.getDate().toString().padStart(2,'0')}
+          </div>
+          <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
+            color:'rgba(26,23,20,0.4)', marginTop:1 }}>
+            {d.toLocaleDateString('pt-PT',{month:'short'})}
+          </div>
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:T.charcoal,
+            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {plano.titulo}
+          </div>
+          {plano.ucNome && (
+            <div style={{ fontSize:11, color:T.copper, marginTop:2 }}>{plano.ucNome}</div>
+          )}
+        </div>
+        <ChipEstado texto="Passada" cor="rgba(26,23,20,0.4)" bg="rgba(26,23,20,0.06)" />
+        <span style={{ fontSize:18, color:'rgba(26,23,20,0.2)', flexShrink:0 }}>›</span>
+      </div>
+    );
+  }
+
+  // Card de aula de hoje ou futura — grande e colorido
+  const corFundo = hoje ? T.copper : '#2563eb';
+  const diasLabel = dias === 1 ? 'AMANHÃ' : dias <= 7 ? `em ${dias} dias` : '';
 
   return (
     <div onClick={onAbrir} style={{
-      display:'flex', gap:14, padding:'14px 16px', borderRadius:16,
-      background: hoje ? T.copperP : '#fff',
-      border: `1.5px solid ${hoje ? T.copper+'60' : T.border}`,
-      boxShadow: hoje ? `0 4px 16px ${T.copper}20` : '0 1px 4px rgba(26,23,20,0.06)',
-      cursor:'pointer', marginBottom:8, transition:'all 0.15s',
+      borderRadius:20, overflow:'hidden', cursor:'pointer', marginBottom:12,
+      boxShadow: hoje ? '0 8px 24px rgba(181,101,29,0.35)' : '0 4px 16px rgba(37,99,235,0.2)',
     }}>
-      {/* Data */}
-      <div style={{ background: hoje ? T.copper : 'rgba(26,23,20,0.06)', borderRadius:12,
-        padding:'10px 12px', textAlign:'center', flexShrink:0, minWidth:52 }}>
-        <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700, lineHeight:1,
-          color: hoje ? '#fff' : T.charcoal }}>
-          {d.getDate().toString().padStart(2,'0')}
+      {/* Faixa colorida */}
+      <div style={{ background:`linear-gradient(135deg, ${corFundo}, ${corFundo}dd)`,
+        padding:'16px 18px' }}>
+        {hoje && (
+          <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.65)',
+            textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:4 }}>
+            🔥 Aula de hoje
+          </div>
+        )}
+        {!hoje && diasLabel && (
+          <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.65)',
+            textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
+            📅 {diasLabel}
+          </div>
+        )}
+        <div style={{ fontSize:18, fontWeight:800, color:'#fff', lineHeight:1.3,
+          marginBottom:6 }}>
+          {plano.titulo}
         </div>
-        <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
-          color: hoje ? 'rgba(255,255,255,0.8)' : 'rgba(26,23,20,0.4)', marginTop:2 }}>
-          {d.toLocaleDateString('pt-PT',{month:'short'})}
-        </div>
+        {plano.horaInicio && (
+          <div style={{ fontSize:12, color:'rgba(255,255,255,0.7)' }}>
+            🕗 {plano.horaInicio}–{plano.horaFim}
+            {plano.ucId && <span style={{ marginLeft:8, background:'rgba(255,255,255,0.2)',
+              padding:'1px 8px', borderRadius:100, fontSize:11 }}>{plano.ucId}</span>}
+          </div>
+        )}
       </div>
-
-      {/* Info */}
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:4 }}>
-          <div style={{ fontWeight:700, fontSize:15, color:T.charcoal }}>{plano.titulo}</div>
-          {estadoLabel && <ChipEstado texto={estadoLabel} cor={estadoCor} bg={estadoBg} />}
-        </div>
-        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>
-          🕐 {plano.horaInicio}–{plano.horaFim}
-          {plano.ucNome && <> · <span style={{ color:T.copper }}>{plano.ucNome}</span></>}
-        </div>
+      {/* Botão entrar */}
+      <div style={{ background: hoje ? '#8b4513' : '#1d4ed8',
+        padding:'13px 18px', display:'flex', alignItems:'center',
+        justifyContent:'center', gap:8 }}>
+        <span style={{ fontSize:16, fontWeight:800, color:'#fff', letterSpacing:'0.02em' }}>
+          {hoje ? '🚀 Entrar na aula' : '📋 Ver plano'}
+        </span>
+        <span style={{ fontSize:20, color:'rgba(255,255,255,0.7)' }}>→</span>
       </div>
-
-      <span style={{ fontSize:20, color:'rgba(26,23,20,0.25)', alignSelf:'center', flexShrink:0 }}>›</span>
     </div>
   );
 }
@@ -374,11 +411,11 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
     <div style={{ minHeight:'100vh', background:T.cream }}>
 
       {/* ── CABEÇALHO ─────────────────────────────────────── */}
-      <div style={{ background:T.charcoal, padding:'20px 20px 0' }}>
+      <div style={{ background:'#6d28d9', padding:'20px 20px 0' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
             <div>
-              <div style={{ fontSize:13, color:'rgba(247,241,230,0.5)', fontWeight:600,
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)', fontWeight:600,
                 textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
                 Avaliação ECL · {aluno.turmaId}
               </div>
@@ -419,19 +456,19 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div style={{ display:'flex', gap:4 }}>
+          {/* Tabs coloridas */}
+          <div style={{ display:'flex', gap:6, paddingBottom:14 }}>
             {([
-              { id:'hoje', emoji:'🏠', label:'Início' },
-              { id:'calendario', emoji:'📅', label:'Calendário' },
-              { id:'manual', emoji:'📖', label:'Manual' },
-              { id:'perfil', emoji:'🪪', label:'O meu perfil' },
+              { id:'hoje',      emoji:'🏠', label:'Início',      cor:'#f4a900' },
+              { id:'calendario',emoji:'📅', label:'Calendário',  cor:'#2ec4b6' },
+              { id:'manual',    emoji:'📖', label:'Manual',      cor:'#e63946' },
+              { id:'perfil',    emoji:'🪪', label:'O meu perfil',cor:'#1d6fa4' },
             ] as const).map(tab => (
               <button key={tab.id} onClick={() => setAba(tab.id)} style={{
-                padding:'10px 20px', border:'none', cursor:'pointer', fontSize:14, fontWeight:600,
-                borderRadius:'10px 10px 0 0',
-                background: aba === tab.id ? T.cream : 'transparent',
-                color: aba === tab.id ? T.charcoal : 'rgba(247,241,230,0.6)',
+                flex:1, padding:'9px 4px', border:'none', cursor:'pointer',
+                fontSize:12, fontWeight:800, borderRadius:10,
+                background: aba === tab.id ? tab.cor : 'rgba(255,255,255,0.15)',
+                color: aba === tab.id ? '#fff' : 'rgba(255,255,255,0.55)',
                 transition:'all 0.15s',
               }}>
                 {tab.emoji} {tab.label}
@@ -488,14 +525,19 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                   </div>
                 </div>
               ) : (
-                <div style={{ background:'rgba(26,23,20,0.04)', borderRadius:16, padding:'20px',
-                  textAlign:'center', marginBottom:20 }}>
-                  <div style={{ fontSize:36, marginBottom:8 }}>😴</div>
-                  <div style={{ fontWeight:600, fontSize:15 }}>Sem aula hoje</div>
-                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>
-                    {proximasAulas[0]
-                      ? `Próxima aula: ${formatarData(proximasAulas[0].data)}`
-                      : 'Sem aulas agendadas próximas.'}
+                <div style={{ borderRadius:20, overflow:'hidden', marginBottom:20,
+                  border:'2px dashed rgba(26,23,20,0.12)' }}>
+                  <div style={{ padding:'24px 20px', textAlign:'center',
+                    background:'rgba(26,23,20,0.03)' }}>
+                    <div style={{ fontSize:48, marginBottom:8 }}>😴</div>
+                    <div style={{ fontWeight:800, fontSize:17, color:'rgba(26,23,20,0.6)' }}>
+                      Sem aula hoje
+                    </div>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)', marginTop:4 }}>
+                      {proximasAulas[0]
+                        ? `Próxima aula: ${formatarData(proximasAulas[0].data)}`
+                        : 'Sem aulas agendadas próximas.'}
+                    </div>
                   </div>
                 </div>
               )}
@@ -506,12 +548,34 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                   letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:2 }}>
                   ⚡ Ações rápidas
                 </div>
-                <BotaoGrande onClick={() => setAba('calendario')}
-                  cor={T.info} emoji="📅"
-                  label="Ver calendário" sublabel="Todas as tuas aulas" outline />
-                <BotaoGrande onClick={() => setAba('perfil')}
-                  cor={T.sage} emoji="📊"
-                  label="O meu progresso" sublabel="Competências e avaliações" outline />
+                <button onClick={() => setAba('calendario')} style={{
+                  display:'flex', alignItems:'center', gap:14, padding:'16px 18px',
+                  borderRadius:16, border:'2px solid #2563eb',
+                  background:'#eff6ff', cursor:'pointer', textAlign:'left',
+                }}>
+                  <div style={{ width:44, height:44, borderRadius:12, background:'#2563eb',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    fontSize:22, flexShrink:0 }}>📅</div>
+                  <div>
+                    <div style={{ fontSize:15, fontWeight:800, color:'#1d4ed8' }}>Ver calendário</div>
+                    <div style={{ fontSize:12, color:'#3b82f6', marginTop:1 }}>Todas as tuas aulas</div>
+                  </div>
+                  <span style={{ fontSize:22, color:'#2563eb', marginLeft:'auto' }}>→</span>
+                </button>
+                <button onClick={() => setAba('perfil')} style={{
+                  display:'flex', alignItems:'center', gap:14, padding:'16px 18px',
+                  borderRadius:16, border:'2px solid #15803d',
+                  background:'#f0fdf4', cursor:'pointer', textAlign:'left',
+                }}>
+                  <div style={{ width:44, height:44, borderRadius:12, background:'#15803d',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    fontSize:22, flexShrink:0 }}>📊</div>
+                  <div>
+                    <div style={{ fontSize:15, fontWeight:800, color:'#15803d' }}>O meu progresso</div>
+                    <div style={{ fontSize:12, color:'#16a34a', marginTop:1 }}>Competências e avaliações</div>
+                  </div>
+                  <span style={{ fontSize:22, color:'#15803d', marginLeft:'auto' }}>→</span>
+                </button>
               </div>
             </div>
 
