@@ -168,23 +168,34 @@ function AppInterno() {
 
       {perfil === 'professor' && (
         <div>
-          <div className="tab-nav no-print" style={{ overflowX: 'auto', display: 'flex', gap: 4, paddingBottom: 2 }}>
-            {tabsProf.map(t => {
-              const ativo = !planoAberto && vistaGlobal === t.id;
-              return (
-                <button key={t.id} onClick={() => irPara(t.id)}
-                  className="tab-btn"
-                  style={{
-                    whiteSpace: 'nowrap', flexShrink: 0,
-                    background: ativo ? t.corPale : undefined,
-                    color: ativo ? t.cor : undefined,
-                    borderColor: ativo ? t.cor : undefined,
-                    fontWeight: ativo ? 700 : undefined,
+          {/* Cabeçalho roxo com abas coloridas */}
+          <div className="no-print" style={{ background:'#6d28d9', padding:'14px 16px 0' }}>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', fontWeight:700,
+              textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
+              Avaliação ECL · Professor
+            </div>
+            <div style={{ fontSize:18, fontWeight:800, color:'#fff', marginBottom:12 }}>
+              {nomeProfessor || 'Professor'} 👋
+            </div>
+            <div style={{ overflowX:'auto', display:'flex', gap:6, paddingBottom:14 }}>
+              {tabsProf.map((t, idx) => {
+                const CORES_TAB = ['#f4a900','#e63946','#2ec4b6','#1d6fa4','#9b59b6','#e67e22','#27ae60','#2980b9','#c0392b','#8e44ad','#16a085'];
+                const corTab = CORES_TAB[idx % CORES_TAB.length];
+                const ativo = !planoAberto && vistaGlobal === t.id;
+                return (
+                  <button key={t.id} onClick={() => irPara(t.id)} style={{
+                    whiteSpace:'nowrap', flexShrink:0, padding:'8px 14px',
+                    border:'none', cursor:'pointer', fontSize:12, fontWeight:800,
+                    borderRadius:10,
+                    background: ativo ? corTab : 'rgba(255,255,255,0.15)',
+                    color: ativo ? '#fff' : 'rgba(255,255,255,0.55)',
+                    transition:'all 0.15s',
                   }}>
-                  {t.icone} {t.label}
-                </button>
-              );
-            })}
+                    {t.icone} {t.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {planoEmPausa && !planoAberto && (
