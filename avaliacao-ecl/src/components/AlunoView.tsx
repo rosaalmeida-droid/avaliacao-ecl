@@ -950,134 +950,105 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
   return (
     <div style={{ fontFamily: 'var(--font-sans)' }}>
 
-      {/* Cabeçalho da aula */}
-      <div style={{ background: 'linear-gradient(135deg, #1a1714, #2d2520)',
-        borderRadius: 16, padding: '18px 20px', marginBottom: 14, color: '#faf7f2' }}>
-        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em',
-          color: 'rgba(247,241,230,0.5)', marginBottom: 6 }}>
-          📋 Plano de hoje
-        </div>
-        <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2, marginBottom: 6 }}>
-          {plano.titulo}
-        </div>
-        {plano.ucId && (
-          <div style={{ fontSize: 12, color: 'rgba(247,241,230,0.5)' }}>
+      {/* Cabeçalho da aula — bloco roxo */}
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:10 }}>
+        <div style={{ width:64, background:'rgba(109,40,217,0.8)', display:'flex',
+          alignItems:'center', justifyContent:'center', fontSize:32, flexShrink:0 }}>📋</div>
+        <div style={{ flex:1, background:'#6d28d9', padding:'14px 14px' }}>
+          <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+            textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3 }}>Plano de hoje</div>
+          <div style={{ fontSize:16, fontWeight:800, color:'#fff', lineHeight:1.25 }}>{plano.titulo}</div>
+          {plano.ucId && <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginTop:3 }}>
             {plano.ucId}{plano.ucNome ? ` — ${plano.ucNome}` : ''}
-          </div>
-        )}
-        {(plano.horaInicio || plano.horaFim) && (
-          <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(247,241,230,0.6)',
-            display: 'flex', gap: 12 }}>
-            {plano.horaInicio && <span>🕗 Início: {plano.horaInicio}</span>}
-            {plano.horaFim && <span>🕛 Fim: {plano.horaFim}</span>}
-          </div>
-        )}
+            {plano.horaInicio && ` · ${plano.horaInicio}–${plano.horaFim}`}
+          </div>}
+        </div>
       </div>
 
-      {/* O que vamos produzir */}
-      {fichas.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px',
-          border: '1px solid rgba(26,23,20,0.08)', marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
-            textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-            🍽️ O que vamos produzir hoje
+      {/* O que vamos produzir — bloco amarelo */}
+      {fichas.length > 0 && fichas.map((f, i) => (
+        <div key={i} style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#c47f00', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🍽️</div>
+          <div style={{ flex:1, background:'#f4a900', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Produção {i+1}</div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>{f.nomePrato}</div>
+            {(f.numPorcoes || f.tempoPrep) && <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:2 }}>
+              {f.numPorcoes && `${f.numPorcoes} doses`}{f.tempoPrep && ` · ${f.tempoPrep}`}
+            </div>}
           </div>
-          {fichas.map((f, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10,
-              padding: '8px 10px', borderRadius: 8, marginBottom: 6,
-              background: 'rgba(181,101,29,0.05)',
-              border: '1px solid rgba(181,101,29,0.15)' }}>
-              <span style={{ fontSize: 20, flexShrink: 0 }}>🍽️</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{f.nomePrato}</div>
-                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
-                  {f.numPorcoes && `${f.numPorcoes} doses`}
-                  {f.tempoPrep && ` · Prep: ${f.tempoPrep}`}
-                  {f.tempoConf && ` · Conf: ${f.tempoConf}`}
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
-      )}
+      ))}
 
-      {/* Alertas HACCP */}
+      {/* Alertas HACCP — bloco coral */}
       {alertasHACCP.length > 0 && (
-        <div style={{ background: '#FCEBEB', borderRadius: 14, padding: '14px 16px',
-          border: '1.5px solid #F7C1C1', marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#A32D2D',
-            textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-            ⚠️ Pontos críticos desta aula — lê antes de começar!
-          </div>
-          {alertasHACCP.slice(0, 5).map((a, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6,
-              fontSize: 13, color: '#7b1b10', lineHeight: 1.5 }}>
-              <span style={{ flexShrink: 0, fontWeight: 700 }}>⚠️</span>
-              <span>{a}</span>
+        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#b5291e', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>⚠️</div>
+          <div style={{ flex:1, background:'#e63946', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>
+              Pontos críticos — lê antes de começar!
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Alergénios */}
-      {alergenios.length > 0 && (
-        <div style={{ background: '#FEF9EC', borderRadius: 12, padding: '12px 14px',
-          border: '1px solid #FAC775', marginBottom: 10 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#854F0B',
-            marginBottom: 8 }}>🏷️ Alergénios presentes nesta produção</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {alergenios.map((a, i) => (
-              <span key={i} style={{ padding: '3px 10px', borderRadius: 100,
-                background: '#fff', border: '1px solid #FAC775',
-                fontSize: 12, fontWeight: 600, color: '#854F0B' }}>{a}</span>
+            {alertasHACCP.slice(0,3).map((a,i) => (
+              <div key={i} style={{ fontSize:12, color:'#fff', marginBottom:3 }}>▸ {a}</div>
             ))}
           </div>
         </div>
       )}
 
-      {/* KitchenFlow — abrir agora */}
-      <div style={{ background: '#E6F1FB', borderRadius: 14, padding: '14px 16px',
-        border: '1.5px solid #B5D4F4', marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 6 }}>
-          🏭 KitchenFlow ECL — registos iniciais
+      {/* Alergénios — bloco âmbar */}
+      {alergenios.length > 0 && (
+        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#c47f00', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🏷️</div>
+          <div style={{ flex:1, background:'#f4a900', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Alergénios presentes</div>
+            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+              {alergenios.map((a,i) => (
+                <span key={i} style={{ padding:'2px 8px', borderRadius:100,
+                  background:'rgba(255,255,255,0.25)', fontSize:11, fontWeight:800, color:'#fff' }}>{a}</span>
+              ))}
+            </div>
+          </div>
         </div>
-        <div style={{ fontSize: 13, color: '#185FA5', marginBottom: 12, lineHeight: 1.5 }}>
-          Antes de começar a produzir, verifica as condições da cozinha e regista no KitchenFlow.
-          A tua higiene pessoal será registada automaticamente quando confirmares a entrada.
+      )}
+
+      {/* KitchenFlow — bloco turquesa */}
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:10,
+        cursor:'pointer' }} onClick={() => abrirKitchenFlow(undefined, {
+          turma:aluno.turmaId, numero:aluno.numero, pin:aluno.pin, tipo:'aluno',
+          ucId:plano.ucId, ucNome:plano.ucNome,
+          pratos:fichas.map((f:any) => f.nomePrato).filter(Boolean),
+          planoHoraInicio:plano.horaInicio, planoHoraFim:plano.horaFim, planoData:plano.data,
+        })}>
+        <div style={{ width:64, background:'#1a9e94', display:'flex',
+          alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🏭</div>
+        <div style={{ flex:1, background:'#2ec4b6', padding:'12px 14px' }}>
+          <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
+            textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>KitchenFlow ECL</div>
+          <div style={{ fontSize:14, fontWeight:800, color:'#fff' }}>Abrir registos iniciais →</div>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.65)', marginTop:2 }}>Higiene pessoal registada automaticamente</div>
         </div>
-        <button onClick={() => abrirKitchenFlow(undefined, {
-            turma: aluno.turmaId,
-            numero: aluno.numero,
-            pin: aluno.pin,
-            tipo: 'aluno',
-            ucId: plano.ucId,
-            ucNome: plano.ucNome,
-            pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
-            planoHoraInicio: plano.horaInicio,
-            planoHoraFim: plano.horaFim,
-            planoData: plano.data,
-          })} style={{
-          padding: '10px 16px', borderRadius: 9, border: 'none',
-          background: '#185FA5', color: '#fff', fontSize: 13,
-          fontWeight: 700, cursor: 'pointer', width: '100%',
-        }}>
-          🔗 Abrir KitchenFlow ECL — entrar automaticamente
-        </button>
       </div>
 
-      {/* Botão continuar */}
-      <button onClick={onContinuar} style={{
-        width: '100%', padding: '20px', borderRadius: 18, border: 'none',
-        background: 'linear-gradient(135deg, #b5651d, #8b4513)',
-        color: '#fff', fontSize: 18, fontWeight: 900, cursor: 'pointer',
-        boxShadow: '0 8px 24px rgba(181,101,29,0.4)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-        letterSpacing: '0.02em',
-      }}>
-        <span style={{ fontSize: 26 }}>🚀</span>
-        Vamos começar!
-        <span style={{ fontSize: 22 }}>→</span>
-      </button>
+      {/* Botão continuar — bloco roxo grande */}
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', cursor:'pointer' }}
+        onClick={onContinuar}>
+        <div style={{ width:64, background:'#5b21b6', display:'flex',
+          alignItems:'center', justifyContent:'center', fontSize:32, flexShrink:0 }}>🚀</div>
+        <div style={{ flex:1, background:'#6d28d9', padding:'16px 14px',
+          display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Ação principal</div>
+            <div style={{ fontSize:18, fontWeight:800, color:'#fff' }}>Vamos começar!</div>
+          </div>
+          <span style={{ fontSize:30, color:'rgba(255,255,255,0.5)' }}>›</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1126,60 +1097,73 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
 
   return (
     <div>
-      {/* Pontualidade */}
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:15, fontWeight:700, marginBottom:12 }}>⏰ Chegaste a horas?</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+      {/* Pontualidade — blocos coloridos */}
+      <div style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#5b21b6', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>⏰</div>
+          <div style={{ flex:1, background:'#6d28d9', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Passo 1</div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Chegaste a horas?</div>
+          </div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
           {(['sim','atras'] as const).map(v => (
             <button key={v} onClick={() => setPont(v)} style={{
-              padding:'20px 12px', borderRadius:14, fontSize:14, fontWeight:700, cursor:'pointer',
-              border:`2px solid ${pontVal===v ? (v==='sim'?T.sage:T.danger) : T.border}`,
-              background: pontVal===v ? (v==='sim'?T.sageP:T.dangerP) : '#fff',
-              color: pontVal===v ? (v==='sim'?T.sage:T.danger) : 'rgba(26,23,20,0.5)',
               display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+              padding:'18px 12px', borderRadius:14, fontSize:14, fontWeight:800, cursor:'pointer',
+              border:'none',
+              background: pontVal===v ? (v==='sim'?'#2ec4b6':'#e63946') : 'rgba(26,23,20,0.07)',
+              color: pontVal===v ? '#fff' : 'rgba(26,23,20,0.5)',
+              transition:'all 0.15s',
             }}>
               <span style={{ fontSize:36 }}>{v==='sim'?'✅':'⏳'}</span>
-              {v==='sim' ? 'Sim, cheguei a horas' : 'Não, cheguei atrasado/a'}
+              {v==='sim' ? 'Sim, a horas' : 'Não, atrasado/a'}
             </button>
           ))}
         </div>
         {pontVal==='atras' && (
-          <div style={{ marginTop:10, padding:'12px 14px', background:T.dangerP,
-            borderRadius:12, border:`1px solid ${T.danger}30`, display:'flex', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:24 }}>⏰</span>
-            <div>
-              <div style={{ fontSize:13, fontWeight:700, color:T.danger }}>
-                Atraso registado automaticamente
-              </div>
-              <div style={{ fontSize:13, color:T.danger, opacity:0.8, marginTop:2 }}>
-                A aula começou às {plano.horaInicio} — o sistema calcula os minutos no momento em que confirmares.
+          <div style={{ marginTop:8, display:'flex', borderRadius:12, overflow:'hidden' }}>
+            <div style={{ width:48, background:'#b5291e', display:'flex',
+              alignItems:'center', justifyContent:'center', fontSize:22 }}>⚠️</div>
+            <div style={{ flex:1, background:'#e63946', padding:'10px 12px' }}>
+              <div style={{ fontSize:13, fontWeight:800, color:'#fff' }}>Atraso registado automaticamente</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', marginTop:2 }}>
+                Aula começou às {plano.horaInicio}
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Fardamento */}
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>👔 Fardamento e higiene</div>
-        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:12 }}>
-          Toca em cada item — verde = sim ✓, vermelho = não ✗
+      {/* Fardamento — blocos coloridos */}
+      <div style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#1a9e94', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>👔</div>
+          <div style={{ flex:1, background:'#2ec4b6', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Passo 2</div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Fardamento e higiene</div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.65)', marginTop:1 }}>Toca em cada item para confirmar</div>
+          </div>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
           {FARD_ITEMS.map(item => {
             const v = fardState[item.id];
             return (
               <button key={item.id} onClick={() => toggleFard(item.id)} style={{
-                display:'flex', alignItems:'center', gap:10, padding:'14px 12px',
-                borderRadius:12, cursor:'pointer', fontSize:14, fontWeight:600,
-                border:`2px solid ${v===true?T.sage:v===false?T.danger:T.border}`,
-                background: v===true?T.sageP : v===false?T.dangerP : '#fff',
-                color: v===true?T.sage : v===false?T.danger : 'rgba(26,23,20,0.6)',
+                display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+                padding:'14px 10px', borderRadius:12, cursor:'pointer',
+                fontSize:13, fontWeight:800, border:'none',
+                background: v===true ? '#2ec4b6' : v===false ? '#e63946' : 'rgba(26,23,20,0.07)',
+                color: v!==null ? '#fff' : 'rgba(26,23,20,0.5)',
                 transition:'all 0.15s',
               }}>
-                <span style={{ fontSize:22 }}>{item.emoji}</span>
-                <span style={{ flex:1, textAlign:'left', lineHeight:1.2 }}>{item.label}</span>
-                <span style={{ fontSize:18, flexShrink:0 }}>
+                <span style={{ fontSize:28 }}>{item.emoji}</span>
+                <span style={{ textAlign:'center', lineHeight:1.2, fontSize:12 }}>{item.label}</span>
+                <span style={{ fontSize:20, fontWeight:900 }}>
                   {v===true ? '✓' : v===false ? '✗' : '?'}
                 </span>
               </button>
@@ -1188,15 +1172,21 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
         </div>
       </div>
 
-      <button onClick={confirmar} disabled={!entradaOk} style={{
-        width:'100%', padding:'16px', borderRadius:14, border:'none',
-        background: entradaOk ? T.copper : 'rgba(26,23,20,0.08)',
-        color: entradaOk ? '#fff' : 'rgba(26,23,20,0.3)',
-        fontSize:16, fontWeight:700, cursor: entradaOk ? 'pointer' : 'not-allowed',
-        boxShadow: entradaOk ? `0 4px 16px ${T.copper}40` : 'none', transition:'all 0.2s',
-      }}>
-        {entradaOk ? 'Confirmar e continuar →' : 'Preenche todos os campos primeiro'}
-      </button>
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden',
+        cursor: entradaOk ? 'pointer' : 'not-allowed', opacity: entradaOk ? 1 : 0.45 }}
+        onClick={entradaOk ? confirmar : undefined}>
+        <div style={{ width:64, background: entradaOk ? '#c47f00' : 'rgba(26,23,20,0.15)',
+          display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>
+          {entradaOk ? '✅' : '⏳'}
+        </div>
+        <div style={{ flex:1, background: entradaOk ? '#f4a900' : 'rgba(26,23,20,0.1)',
+          padding:'14px 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ fontSize:15, fontWeight:800, color: entradaOk ? '#fff' : 'rgba(26,23,20,0.4)' }}>
+            {entradaOk ? 'Confirmar e continuar' : 'Preenche todos os campos primeiro'}
+          </div>
+          <span style={{ fontSize:28, color: entradaOk ? 'rgba(255,255,255,0.6)' : 'rgba(26,23,20,0.2)' }}>›</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1672,10 +1662,16 @@ function SecaoRequisicao({ requisicao, onConcluido }: { requisicao: any; onConcl
           </tbody>
         </table>
       </div>
-      <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12,
-        border:'none', background:'#7d4f8c', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer' }}>
-        Continuar para a Avaliação →
-      </button>
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', cursor:'pointer', marginTop:10 }}
+        onClick={onConcluido}>
+        <div style={{ width:64, background:'#5b21b6', display:'flex',
+          alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>🎯</div>
+        <div style={{ flex:1, background:'#6d28d9', padding:'14px',
+          display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Continuar para a Avaliação</div>
+          <span style={{ fontSize:28, color:'rgba(255,255,255,0.5)' }}>›</span>
+        </div>
+      </div>
     </div>
   );
 }
