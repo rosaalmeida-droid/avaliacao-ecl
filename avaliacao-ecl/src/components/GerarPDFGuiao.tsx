@@ -1,21 +1,6 @@
-import { jsPDF } from 'jspdf';
 import { DadosGuia } from './GuiaProducao';
 
-// ─────────────────────────────────────────────────────────────
-// Cores e tipografia — replicar o estilo do PDF do Gemini
-// ─────────────────────────────────────────────────────────────
-const COR_PRIMARIA   = '#1a1714';
-const COR_COBRE      = '#b5651d';
-const COR_COBRE_PALE = '#fdf0e6';
-const COR_AZUL_HCAP  = '#dc2626';
-const COR_VERDE_OK   = '#15803d';
-const COR_CINZA      = '#6b7280';
-const COR_LINHA_PAR  = '#f8fafc';
-const LARGURA_PAGINA = 210; // A4 mm
-const MARGEM         = 15;
-const LARGURA_UTIL   = LARGURA_PAGINA - MARGEM * 2;
-
-interface OpcoesPDF {
+export interface OpcoesPDF {
   nomePrato: string;
   ucId?: string;
   ucNome?: string;
@@ -23,533 +8,197 @@ interface OpcoesPDF {
   textoOriginal: string;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Utilitários de desenho
-// ─────────────────────────────────────────────────────────────
-function hexToRgb(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return [r, g, b];
-}
+// Cores por secção
+const CORES: Record<number, string> = {
+  1:'#0f766e',2:'#2563eb',3:'#dc2626',4:'#0891b2',
+  5:'#7c3aed',6:'#d97706',7:'#0369a1',8:'#059669',
+  9:'#b45309',10:'#1e40af',11:'#6d28d9',12:'#0c4a6e',
+  13:'#9d174d',14:'#374151',15:'#1a1714',
+};
 
-function setFill(doc: jsPDF, hex: string) {
-  const [r, g, b] = hexToRgb(hex);
-  doc.setFillColor(r, g, b);
-}
+const ICONES: Record<number, string> = {
+  1:'📖',2:'🎯',3:'⚠️',4:'⚖️',5:'👥',6:'🌈',7:'💡',
+  8:'♻️',9:'💶',10:'🔬',11:'📚',12:'❓',13:'🧩',14:'🪞',15:'📖',
+};
 
-function setTextColor(doc: jsPDF, hex: string) {
-  const [r, g, b] = hexToRgb(hex);
-  doc.setTextColor(r, g, b);
-}
+function renderSecao(secao: { num: number; titulo: string; conteudo: string; equilibrioSensorial?: any[] }): string {
+  const cor = CORES[secao.num] || '#374151';
+  const icone = ICONES[secao.num] || '•';
+  const conteudo = secao.conteudo || '';
 
-function setDrawColor(doc: jsPDF, hex: string) {
-  const [r, g, b] = hexToRgb(hex);
-  doc.setDrawColor(r, g, b);
-}
+  // Secção 6 — equilíbrio sensorial
+  if (secao.num === 6 && secao.equilibrioSensorial?.length) {
+    const rodaHtml = secao.equilibrioSensorial.map((e: any) => {
+      const nivelMap: Record<string, number> = { 'Forte':4,'Presente':3,'Ligeiro':2,'Ausente':0 };
+      const n = nivelMap[e.intensidade] ?? 0;
+      const bolinhas = Array.from({length:4},(_,i) =>
+        `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${i<n?cor:'#e5e7eb'};margin:0 2px;"></span>`
+      ).join('');
+      return `<div style="text-align:center;margin:0 8px;">
+        <div style="font-size:10px;font-weight:700;color:#374151;margin-bottom:4px;">${e.componente||''}</div>
+        <div>${bolinhas}</div>
+        <div style="font-size:9px;color:#6b7280;margin-top:3px;">${e.intensidade||''}</div>
+      </div>`;
+    }).join('');
 
-// Texto com wrap automático — devolve nova posição Y
-function textoComWrap(
-  doc: jsPDF, texto: string, x: number, y: number,
-  maxWidth: number, lineHeight: number
-): number {
-  const linhas = doc.splitTextToSize(texto, maxWidth);
-  doc.text(linhas, x, y);
-  return y + linhas.length * lineHeight;
-}
+    const analise = conteudo.split('\n')
+      .filter((l: string) => !l.match(/^(DOCE|ÁCIDO|SALGADO|AMARGO|UMAMI):/i))
+      .join(' ').trim();
 
-// Verificar espaço na página — nova página se necessário
-function verificarPagina(doc: jsPDF, y: number, espaco: number, margemBase: number): number {
-  const alturaUtil = 297 - margemBase - 15;
-  if (y + espaco > alturaUtil) {
-    doc.addPage();
-    return margemBase + 10;
-  }
-  return y;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Cabeçalho da página
-// ─────────────────────────────────────────────────────────────
-function desenharCabecalho(doc: jsPDF, nomePrato: string, ucId?: string, ucNome?: string): number {
-  let y = MARGEM;
-
-  // Bloco superior — fundo escuro
-  setFill(doc, COR_PRIMARIA);
-  doc.rect(MARGEM, y, LARGURA_UTIL, 28, 'F');
-
-  // Título do guião
-  setTextColor(doc, '#ffffff');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('GUIA DE APOIO À PRODUÇÃO', MARGEM + 6, y + 10);
-
-  // Nome do prato
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'normal');
-  doc.text(nomePrato.toUpperCase(), MARGEM + 6, y + 20);
-
-  y += 30;
-
-  // Faixa UC
-  if (ucId || ucNome) {
-    setFill(doc, COR_COBRE);
-    doc.rect(MARGEM, y, LARGURA_UTIL, 8, 'F');
-    setTextColor(doc, '#ffffff');
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    const textoUC = [ucId, ucNome].filter(Boolean).join(' — ');
-    doc.text(textoUC, MARGEM + 4, y + 5.5);
-    y += 10;
+    return `
+      <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:4px;padding:12px 0;">
+        ${rodaHtml}
+      </div>
+      ${analise ? `<p style="font-size:11px;color:#374151;line-height:1.6;margin-top:8px;">${analise}</p>` : ''}
+    `;
   }
 
-  // Linha separadora
-  setDrawColor(doc, COR_COBRE);
-  doc.setLineWidth(0.3);
-  doc.line(MARGEM, y, MARGEM + LARGURA_UTIL, y);
-  y += 6;
-
-  return y;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Título de secção
-// ─────────────────────────────────────────────────────────────
-function desenharTituloSeccao(
-  doc: jsPDF, numero: number, titulo: string, icone: string, cor: string, y: number
-): number {
-  y = verificarPagina(doc, y, 14, MARGEM);
-
-  setFill(doc, cor);
-  doc.rect(MARGEM, y, LARGURA_UTIL, 9, 'F');
-
-  setTextColor(doc, '#ffffff');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text(`${icone}  ${numero}. ${titulo.toUpperCase()}`, MARGEM + 4, y + 6.2);
-
-  return y + 12;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Tabela genérica
-// ─────────────────────────────────────────────────────────────
-function desenharTabela(
-  doc: jsPDF, cabecalhos: string[], linhas: string[][], corCabecalho: string, y: number
-): number {
-  const numCols = cabecalhos.length;
-  const larguraCols = LARGURA_UTIL / numCols;
-  const altLinha = 7;
-
-  y = verificarPagina(doc, y, altLinha * (linhas.length + 1) + 4, MARGEM);
-
-  // Cabeçalho
-  setFill(doc, corCabecalho);
-  doc.rect(MARGEM, y, LARGURA_UTIL, altLinha + 1, 'F');
-  setTextColor(doc, '#ffffff');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  cabecalhos.forEach((cab, i) => {
-    doc.text(cab, MARGEM + i * larguraCols + 2, y + 5.5);
-  });
-  y += altLinha + 1;
-
-  // Linhas
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  linhas.forEach((linha, ri) => {
-    y = verificarPagina(doc, y, altLinha + 2, MARGEM);
-    if (ri % 2 === 0) {
-      setFill(doc, COR_LINHA_PAR);
-      doc.rect(MARGEM, y, LARGURA_UTIL, altLinha + 2, 'F');
-    }
-    setTextColor(doc, COR_PRIMARIA);
-    setDrawColor(doc, '#e5e7eb');
-    doc.setLineWidth(0.1);
-    doc.line(MARGEM, y + altLinha + 2, MARGEM + LARGURA_UTIL, y + altLinha + 2);
-
-    linha.forEach((cel, ci) => {
-      const textoLimpo = cel.replace(/\*\*/g, '');
-      const linhasTexto = doc.splitTextToSize(textoLimpo, larguraCols - 4);
-      doc.text(linhasTexto, MARGEM + ci * larguraCols + 2, y + 5);
-    });
-    y += altLinha + 2;
-  });
-
-  return y + 4;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Bullet list
-// ─────────────────────────────────────────────────────────────
-function desenharBullets(doc: jsPDF, items: string[], y: number, corBullet: string): number {
-  doc.setFontSize(9);
-  items.forEach(item => {
-    y = verificarPagina(doc, y, 8, MARGEM);
-    setTextColor(doc, corBullet);
-    doc.setFont('helvetica', 'bold');
-    doc.text('▸', MARGEM + 2, y);
-    setTextColor(doc, COR_PRIMARIA);
-    doc.setFont('helvetica', 'normal');
-    const linhas = doc.splitTextToSize(item.replace(/^[-•·▸]\s*/, '').replace(/\*\*/g, ''), LARGURA_UTIL - 10);
-    doc.text(linhas, MARGEM + 8, y);
-    y += linhas.length * 5 + 2;
-  });
-  return y + 2;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Texto de parágrafo
-// ─────────────────────────────────────────────────────────────
-function desenharParagrafo(doc: jsPDF, texto: string, y: number): number {
-  y = verificarPagina(doc, y, 10, MARGEM);
-  setTextColor(doc, COR_PRIMARIA);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  const linhas = doc.splitTextToSize(texto.replace(/\*\*/g, ''), LARGURA_UTIL);
-  doc.text(linhas, MARGEM, y);
-  return y + linhas.length * 5 + 3;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Roda Sensorial
-// ─────────────────────────────────────────────────────────────
-function desenharRodaSensorial(doc: jsPDF, items: {sabor: string; nivel: string; cor: string}[], y: number): number {
-  y = verificarPagina(doc, y, 30, MARGEM);
-
-  const nomes = ['DOCE', 'ÁCIDO', 'SALGADO', 'AMARGO', 'UMAMI'];
-  const cores: Record<string, string> = {
-    'Forte': '#1d4ed8', 'Presente': '#0891b2',
-    'Ligeiro': '#6b7280', 'Ausente': '#e5e7eb'
-  };
-
-  doc.setFontSize(8);
-  items.forEach((item, i) => {
-    const xBase = MARGEM + i * (LARGURA_UTIL / 5);
-    const nivel = item.nivel || 'Ausente';
-
-    setTextColor(doc, COR_PRIMARIA);
-    doc.setFont('helvetica', 'bold');
-    doc.text(nomes[i] || item.sabor, xBase + 2, y);
-
-    // Bolinhas
-    const maxBolinhas = 4;
-    const nivelMap: Record<string, number> = { 'Forte': 4, 'Presente': 3, 'Ligeiro': 2, 'Ausente': 0 };
-    const preenchidas = nivelMap[nivel] ?? 0;
-
-    for (let b = 0; b < maxBolinhas; b++) {
-      const corBolinha = b < preenchidas ? (cores[nivel] || '#0891b2') : '#e5e7eb';
-      setFill(doc, corBolinha);
-      doc.circle(xBase + 3 + b * 7, y + 6, 2.5, 'F');
-    }
-
-    setTextColor(doc, COR_CINZA);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.text(nivel, xBase + 2, y + 14);
-  });
-
-  return y + 22;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Questões
-// ─────────────────────────────────────────────────────────────
-function desenharQuestoes(doc: jsPDF, conteudo: string, cor: string, y: number): number {
-  // Separar perguntas de respostas
-  const blocoPergs = conteudo.split(/RESPOSTAS?\s*:/i)[0].replace(/PERGUNTAS?\s*:/i, '').trim();
-  const blocoResps = conteudo.includes('RESPOSTAS') ? conteudo.split(/RESPOSTAS?\s*:/i)[1]?.trim() || '' : '';
-
-  const respostasCorretas: Record<string, string> = {};
-  if (blocoResps) {
-    blocoResps.split('\n').forEach((l: string) => {
+  // Secção 12 — questões
+  if (secao.num === 12) {
+    const blocos = conteudo.split(/RESPOSTAS?\s*:/i);
+    const pergs = blocos[0].replace(/PERGUNTAS?\s*:/i,'').trim();
+    const respsRaw = blocos[1] || '';
+    const resps: Record<string,string> = {};
+    respsRaw.split('\n').forEach((l: string) => {
       const m = l.trim().match(/^(\d+)[.)]\s*(.+)/);
-      if (m) respostasCorretas[m[1]] = m[2].trim();
+      if (m) resps[m[1]] = m[2];
     });
-  }
-
-  // Desenhar perguntas
-  const linhas = blocoPergs.split('\n').filter((l: string) => l.trim());
-  let numQ = 0;
-  let iLinha = 0;
-
-  while (iLinha < linhas.length) {
-    const l = linhas[iLinha].trim();
-    const mNum = l.match(/^(\d+)[.)]\s+(.+)/);
-
-    if (mNum) {
-      numQ++;
-      y = verificarPagina(doc, y, 10, MARGEM);
-
-      // Número da questão
-      setFill(doc, cor);
-      doc.circle(MARGEM + 3, y - 1, 3, 'F');
-      setTextColor(doc, '#ffffff');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.text(mNum[1], MARGEM + 1.5, y + 0.5);
-
-      // Texto da questão
-      setTextColor(doc, COR_PRIMARIA);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      const pergLinhas = doc.splitTextToSize(mNum[2].replace(/\(verdadeiro\/falso\)/i, '(V/F)').replace(/\(resposta curta\)/i, ''), LARGURA_UTIL - 10);
-      doc.text(pergLinhas, MARGEM + 8, y);
-      y += pergLinhas.length * 5 + 2;
-
-      // Opções a/b/c/d
-      iLinha++;
-      while (iLinha < linhas.length) {
-        const opt = linhas[iLinha].trim();
-        if (opt.match(/^[a-dA-D][.)]/)) {
-          y = verificarPagina(doc, y, 6, MARGEM);
-          setTextColor(doc, COR_CINZA);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
-          const optLinhas = doc.splitTextToSize(opt, LARGURA_UTIL - 14);
-          doc.text(optLinhas, MARGEM + 12, y);
-          y += optLinhas.length * 5;
-          iLinha++;
-        } else break;
-      }
-
-      // Resposta correcta
-      if (respostasCorretas[mNum[1]]) {
-        y = verificarPagina(doc, y, 6, MARGEM);
-        setFill(doc, '#f0fdf4');
-        doc.rect(MARGEM + 8, y - 1, LARGURA_UTIL - 8, 6, 'F');
-        setTextColor(doc, COR_VERDE_OK);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.text(`✓ ${respostasCorretas[mNum[1]]}`, MARGEM + 10, y + 3.5);
-        y += 8;
-      }
-
-      y += 3;
-    } else {
-      iLinha++;
+    const linhas = pergs.split('\n').filter((l: string) => l.trim());
+    let html = '';
+    let i = 0;
+    while (i < linhas.length) {
+      const l = linhas[i].trim();
+      const mNum = l.match(/^(\d+)[.)]\s+(.+)/);
+      if (mNum) {
+        html += `<div style="margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:8px;border-left:3px solid ${cor};">
+          <div style="font-weight:700;font-size:11px;color:#1a1714;margin-bottom:6px;">${mNum[1]}. ${mNum[2]}</div>`;
+        i++;
+        while (i < linhas.length && linhas[i].trim().match(/^[a-dA-D][.)]/)) {
+          html += `<div style="font-size:10px;color:#6b7280;padding:2px 0 2px 10px;">${linhas[i].trim()}</div>`;
+          i++;
+        }
+        if (resps[mNum[1]]) {
+          html += `<div style="margin-top:6px;padding:4px 8px;background:#f0fdf4;border-radius:4px;font-size:10px;color:#15803d;font-weight:600;">✓ ${resps[mNum[1]]}</div>`;
+        }
+        html += '</div>';
+      } else { i++; }
     }
+    return html;
   }
 
-  return y;
-}
+  // Tabelas markdown
+  if (conteudo.includes('|')) {
+    const linhas = conteudo.split('\n');
+    let html = '';
+    let emTabela = false;
+    let cabecalho: string[] = [];
+    let linhasTabela: string[][] = [];
 
-// ─────────────────────────────────────────────────────────────
-// Alerta HACCP
-// ─────────────────────────────────────────────────────────────
-function desenharAlertaHACCP(doc: jsPDF, texto: string, y: number): number {
-  y = verificarPagina(doc, y, 10, MARGEM);
-  setFill(doc, '#fef2f2');
-  const linhas = doc.splitTextToSize(texto.replace(/\*\*/g, ''), LARGURA_UTIL - 10);
-  doc.rect(MARGEM, y - 2, LARGURA_UTIL, linhas.length * 5 + 6, 'F');
-  setTextColor(doc, COR_AZUL_HCAP);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('⚠ ', MARGEM + 2, y + 3);
-  doc.setFont('helvetica', 'normal');
-  doc.text(linhas, MARGEM + 8, y + 3);
-  return y + linhas.length * 5 + 8;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Rodapé
-// ─────────────────────────────────────────────────────────────
-function desenharRodape(doc: jsPDF, nomePrato: string, ucId?: string, ucNome?: string) {
-  const totalPaginas = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPaginas; p++) {
-    doc.setPage(p);
-    const yRodape = 297 - 10;
-    setDrawColor(doc, '#e5e7eb');
-    doc.setLineWidth(0.3);
-    doc.line(MARGEM, yRodape - 4, MARGEM + LARGURA_UTIL, yRodape - 4);
-
-    setTextColor(doc, COR_CINZA);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-
-    const textoEsq = `Guião de Apoio à Produção · ${nomePrato}`;
-    const textoCentro = ucId ? `${ucId}${ucNome ? ` — ${ucNome.slice(0, 40)}` : ''}` : '';
-    const textoDir = `${p} / ${totalPaginas}`;
-
-    doc.text(textoEsq, MARGEM, yRodape);
-    if (textoCentro) {
-      doc.text(textoCentro, LARGURA_PAGINA / 2, yRodape, { align: 'center' });
+    linhas.forEach((l: string) => {
+      const t = l.trim();
+      if (t.startsWith('|')) {
+        const cols = t.split('|').filter((c: string) => c.trim());
+        if (cols.every((c: string) => c.trim().match(/^-+$/))) return;
+        if (!emTabela) { cabecalho = cols.map((c: string) => c.trim()); emTabela = true; }
+        else { linhasTabela.push(cols.map((c: string) => c.trim())); }
+      } else {
+        if (emTabela && linhasTabela.length > 0) {
+          html += `<table style="width:100%;border-collapse:collapse;font-size:10px;margin:8px 0;">
+            <tr>${cabecalho.map(c => `<th style="background:${cor};color:#fff;padding:6px 8px;text-align:left;font-weight:700;">${c}</th>`).join('')}</tr>
+            ${linhasTabela.map((lr,ri) => `<tr style="background:${ri%2===0?'#f8fafc':'#fff'}">${lr.map(c=>`<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;">${c}</td>`).join('')}</tr>`).join('')}
+          </table>`;
+          cabecalho = []; linhasTabela = []; emTabela = false;
+        }
+        if (t) {
+          if (t.match(/^[-•·]\s/)) {
+            html += `<div style="padding:3px 0 3px 16px;font-size:11px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
+          } else if (t.match(/^#+\s/)) {
+            html += `<div style="font-weight:700;font-size:11px;color:${cor};margin:8px 0 4px;">${t.replace(/^#+\s/,'')}</div>`;
+          } else {
+            html += `<p style="font-size:11px;color:#374151;line-height:1.6;margin:4px 0;">${t}</p>`;
+          }
+        }
+      }
+    });
+    if (emTabela && linhasTabela.length > 0) {
+      html += `<table style="width:100%;border-collapse:collapse;font-size:10px;margin:8px 0;">
+        <tr>${cabecalho.map(c=>`<th style="background:${cor};color:#fff;padding:6px 8px;text-align:left;">${c}</th>`).join('')}</tr>
+        ${linhasTabela.map((lr,ri)=>`<tr style="background:${ri%2===0?'#f8fafc':'#fff'}">${lr.map(c=>`<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;">${c}</td>`).join('')}</tr>`).join('')}
+      </table>`;
     }
-    doc.text(textoDir, MARGEM + LARGURA_UTIL, yRodape, { align: 'right' });
-
-    // Logo ECL
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    setTextColor(doc, COR_COBRE);
-    doc.text('ECL', MARGEM + LARGURA_UTIL - 20, yRodape);
+    return html;
   }
+
+  // Texto genérico
+  return conteudo.split('\n').map((l: string) => {
+    const t = l.trim();
+    if (!t) return '';
+    if (t.match(/^[-•·]\s/)) return `<div style="padding:3px 0 3px 16px;font-size:11px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
+    if (t.match(/^#+\s/)) return `<div style="font-weight:700;font-size:11px;color:${cor};margin:8px 0 4px;">${t.replace(/^#+\s/,'')}</div>`;
+    if (t.match(/⚠️|PCC|crítico/i)) return `<div style="padding:6px 10px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:4px;font-size:10px;color:#b91c1c;margin:4px 0;">${t}</div>`;
+    return `<p style="font-size:11px;color:#374151;line-height:1.6;margin:3px 0;">${t}</p>`;
+  }).join('');
 }
 
-// ─────────────────────────────────────────────────────────────
-// FUNÇÃO PRINCIPAL — Gerar PDF completo
-// ─────────────────────────────────────────────────────────────
 export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
   const { nomePrato, ucId, ucNome, guia } = opcoes;
 
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
+  const secoesHtml = guia.secoes.map(secao => {
+    const cor = CORES[secao.num] || '#374151';
+    const icone = ICONES[secao.num] || '•';
+    const secaoComRoda = { ...secao, equilibrioSensorial: guia.equilibrioSensorial };
+    return `
+      <div style="margin-bottom:20px;page-break-inside:avoid;">
+        <div style="background:${cor};color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:14px;">${icone}</span>
+          <span style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">${secao.num}. ${secao.titulo}</span>
+        </div>
+        <div style="background:#fff;border:1px solid ${cor}30;border-top:none;border-radius:0 0 6px 6px;padding:12px 14px;">
+          ${renderSecao(secaoComRoda as any)}
+        </div>
+      </div>
+    `;
+  }).join('');
 
-  // Metadados
-  doc.setProperties({
-    title: `Guião de Apoio à Produção — ${nomePrato}`,
-    subject: ucNome || ucId || 'Cozinha e Pastelaria',
-    author: 'Avaliação ECL — Escola de Comércio de Lisboa',
-    creator: 'KitchenFlow ECL',
-  });
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Guião — ${nomePrato}</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #1a1714; background: #fff; margin: 0; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+  <!-- Cabeçalho -->
+  <div style="background:#1a1714;color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:8px;">
+    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;opacity:0.5;margin-bottom:4px;">Guia de Apoio à Produção</div>
+    <div style="font-size:18px;font-weight:900;line-height:1.2;">${nomePrato.toUpperCase()}</div>
+    ${ucId || ucNome ? `<div style="margin-top:8px;background:#b5651d;padding:4px 10px;border-radius:4px;display:inline-block;font-size:9px;font-weight:700;">${[ucId,ucNome].filter(Boolean).join(' — ')}</div>` : ''}
+  </div>
 
-  let y = desenharCabecalho(doc, nomePrato, ucId, ucNome);
+  <!-- Secções -->
+  ${secoesHtml}
 
-  // Cores por secção — replicar as do GuiaProducao
-  const CORES_SECCAO: Record<number, string> = {
-    1: '#0f766e', 2: '#2563eb', 3: '#dc2626', 4: '#0891b2',
-    5: '#7c3aed', 6: '#d97706', 7: '#0369a1', 8: '#059669',
-    9: '#b45309', 10: '#1e40af', 11: '#6d28d9', 12: '#0c4a6e',
-    13: '#9d174d', 14: '#374151', 15: '#1a1714',
+  <!-- Rodapé -->
+  <div style="margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:9px;color:#9ca3af;display:flex;justify-content:space-between;">
+    <span>Guião de Apoio à Produção · ${nomePrato}</span>
+    <span>Avaliação ECL · Escola de Comércio de Lisboa</span>
+  </div>
+</body>
+</html>`;
+
+  // Abrir numa nova janela e imprimir
+  const janela = window.open('', '_blank', 'width=900,height=700');
+  if (!janela) { alert('Permite popups para gerar o PDF'); return; }
+  janela.document.write(html);
+  janela.document.close();
+  janela.onload = () => {
+    setTimeout(() => {
+      janela.focus();
+      janela.print();
+    }, 500);
   };
-
-  const ICONES_SECCAO: Record<number, string> = {
-    1: '📖', 2: '🎯', 3: '⚠️', 4: '⚖️', 5: '👥',
-    6: '🌈', 7: '💡', 8: '♻️', 9: '💶', 10: '🔬',
-    11: '📚', 12: '❓', 13: '🧩', 14: '🪞', 15: '📖',
-  };
-
-  // Renderizar cada secção
-  for (const secao of guia.secoes) {
-    const cor = CORES_SECCAO[secao.num] || '#374151';
-    const icone = ICONES_SECCAO[secao.num] || '•';
-
-    y = desenharTituloSeccao(doc, secao.num, secao.titulo, icone, cor, y);
-
-    const conteudo = secao.conteudo || '';
-    const linhas = conteudo.split('\n').filter((l: string) => l.trim());
-
-    if (secao.num === 3) {
-      // HACCP — tabela
-      const cabHACCP = ['Etapa', 'Perigo', 'Ponto Crítico', 'Medida de Controlo'];
-      const linhasTabela: string[][] = [];
-      let linhaAtual: string[] = [];
-
-      linhas.forEach((l: string) => {
-        const t = l.trim().replace(/\*\*/g, '');
-        if (t.startsWith('|')) {
-          const cols = t.split('|').filter((c: string) => c.trim() && !c.trim().match(/^-+$/));
-          if (cols.length >= 3 && !cols[0].toLowerCase().includes('etapa')) {
-            linhasTabela.push(cols.map((c: string) => c.trim()));
-          }
-        } else if (t && !t.match(/^#+/) && linhaAtual.length < 4) {
-          linhaAtual.push(t);
-          if (linhaAtual.length === 4) {
-            linhasTabela.push([...linhaAtual]);
-            linhaAtual = [];
-          }
-        }
-      });
-
-      if (linhasTabela.length > 0) {
-        y = desenharTabela(doc, cabHACCP, linhasTabela, cor, y);
-      } else {
-        y = desenharBullets(doc, linhas.filter((l: string) => l.trim()), y, cor);
-      }
-
-    } else if (secao.num === 6) {
-      // Equilíbrio sensorial
-      if (guia.equilibrioSensorial && guia.equilibrioSensorial.length > 0) {
-        const rodaFormatada = guia.equilibrioSensorial.map(e => ({ sabor: e.componente || '', nivel: e.intensidade || '', cor: '' }));
-        y = desenharRodaSensorial(doc, rodaFormatada, y);
-      }
-      // Parágrafo de análise
-      const analise = linhas.filter(l => !l.match(/^(DOCE|ÁCIDO|SALGADO|AMARGO|UMAMI):/i)).join(' ');
-      if (analise) y = desenharParagrafo(doc, analise, y);
-
-    } else if (secao.num === 12) {
-      // Questões
-      y = desenharQuestoes(doc, conteudo, cor, y);
-
-    } else if (secao.num === 4) {
-      // Tabela de rendimentos
-      const cabRend = ['Apresentação Comercial', 'Rendimento', 'Vantagens', 'Desvantagens'];
-      const linhasTabela: string[][] = [];
-      linhas.forEach((l: string) => {
-        const t = l.trim().replace(/\*\*/g, '');
-        if (t.startsWith('|')) {
-          const cols = t.split('|').filter((c: string) => c.trim() && !c.trim().match(/^-+$/));
-          if (cols.length >= 3 && !cols[0].toLowerCase().includes('apresentação')) {
-            linhasTabela.push(cols.slice(0, 4).map((c: string) => c.trim()));
-          }
-        }
-      });
-      if (linhasTabela.length > 0) {
-        y = desenharTabela(doc, cabRend, linhasTabela, cor, y);
-      } else {
-        y = desenharBullets(doc, linhas.filter((l: string) => l.trim()), y, cor);
-      }
-
-    } else {
-      // Conteúdo genérico — parágrafos e bullets
-      let emTabela = false;
-      const tabelaLinhas: string[][] = [];
-      let tabelaCabecalho: string[] = [];
-
-      linhas.forEach((l: string) => {
-        const t = l.trim();
-
-        if (t.startsWith('|')) {
-          const cols = t.split('|').filter(c => c.trim());
-          if (cols.some(c => c.trim().match(/^-+$/))) return; // linha separadora
-          if (tabelaCabecalho.length === 0) {
-            tabelaCabecalho = cols.map((c: string) => c.trim().replace(/\*\*/g, ''));
-          } else {
-            tabelaLinhas.push(cols.map((c: string) => c.trim()));
-          }
-          emTabela = true;
-        } else {
-          if (emTabela && tabelaLinhas.length > 0) {
-            y = desenharTabela(doc, tabelaCabecalho, tabelaLinhas, cor, y);
-            tabelaCabecalho = [];
-            tabelaLinhas.length = 0;
-            emTabela = false;
-          }
-          if (t.match(/^[-•·▸*]\s+/) || t.match(/^\d+\.\s+/)) {
-            const ehHACCP = /⚠️|PCC|Crítico|temperatura.*°C/i.test(t);
-            if (ehHACCP) {
-              y = desenharAlertaHACCP(doc, t, y);
-            } else {
-              y = desenharBullets(doc, [t], y, cor);
-            }
-          } else if (t.match(/^#+\s+/)) {
-            // Subtítulo
-            y = verificarPagina(doc, y, 8, MARGEM);
-            setTextColor(doc, cor);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9);
-            doc.text(t.replace(/^#+\s+/, ''), MARGEM, y);
-            y += 6;
-          } else if (t) {
-            y = desenharParagrafo(doc, t, y);
-          }
-        }
-      });
-
-      if (emTabela && tabelaLinhas.length > 0) {
-        y = desenharTabela(doc, tabelaCabecalho, tabelaLinhas, cor, y);
-      }
-    }
-
-    y += 4; // espaço entre secções
-  }
-
-  // Rodapé em todas as páginas
-  desenharRodape(doc, nomePrato, ucId, ucNome);
-
-  // Download
-  const nomeArquivo = `Guiao_${nomePrato.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-  doc.save(nomeArquivo);
 }
