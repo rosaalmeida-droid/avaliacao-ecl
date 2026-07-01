@@ -36,11 +36,11 @@ export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbx
 // Preencher após criar o Apps Script de alunos (conta eclisboa.net)
 // Login partilhado — mesma Sheet e Apps Script do KitchenFlow
 // O aluno cria PIN num lado e fica disponível no outro automaticamente
-export let SHEETS_ALUNOS_URL = 'https://script.google.com/macros/s/AKfycbyP34XxTPKvhxrG9dvmb4J28q_dKh1v6WqPgDSykZUGgwZ5zuygKapchAsVkrMao0SMKg/exec';
+export let SHEETS_ALUNOS_URL = 'https://script.google.com/macros/s/AKfycbzmt7yGx09nFF_8HUbdD0p29q9iS1ttKku-vbnoGxm-w7eq2cp8WlzZRm_jJyVIcKwF/exec';
 
 // ── Integração KitchenFlow ECL ───────────────────────────────
 // URL do Apps Script do KitchenFlow — envia registos em background
-export const KITCHENFLOW_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyP34XxTPKvhxrG9dvmb4J28q_dKh1v6WqPgDSykZUGgwZ5zuygKapchAsVkrMao0SMKg/exec';
+export const KITCHENFLOW_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzmt7yGx09nFF_8HUbdD0p29q9iS1ttKku-vbnoGxm-w7eq2cp8WlzZRm_jJyVIcKwF/exec';
 export const KITCHENFLOW_APP_URL = 'https://ecl-haccp.vercel.app/';
 
 // Formato: { tabela: string, linha: any[] }
