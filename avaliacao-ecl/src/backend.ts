@@ -2235,20 +2235,32 @@ export async function publicarNoClassroom(
   turmaId: string,
   conteudo: Record<string, unknown>
 ): Promise<{ ok: boolean; erro?: string }> {
+  console.log('[Classroom] A publicar...', { tipo, turmaId, url: CLASSROOM_SCRIPT_URL });
   try {
+    const body = JSON.stringify({
+      action: 'publicarClassroom',
+      tipo,
+      turmaId,
+      conteudo,
+    });
+    console.log('[Classroom] Body:', body);
     const resp = await fetch(CLASSROOM_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        action: 'publicarClassroom',
-        tipo,
-        turmaId,
-        conteudo,
-      }),
+      body,
     });
-    const data = await resp.json();
-    return data;
+    console.log('[Classroom] Resposta HTTP:', resp.status, resp.statusText);
+    const texto = await resp.text();
+    console.log('[Classroom] Resposta texto:', texto);
+    try {
+      const data = JSON.parse(texto);
+      console.log('[Classroom] Resposta JSON:', data);
+      return data;
+    } catch {
+      return { ok: false, erro: 'Resposta inválida: ' + texto.slice(0, 200) };
+    }
   } catch (e) {
+    console.error('[Classroom] Erro fetch:', e);
     return { ok: false, erro: String(e) };
   }
 }
