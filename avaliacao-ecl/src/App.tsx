@@ -16,6 +16,7 @@ import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
 import { MapaCompetencias } from './components/MapaCompetencias';
 import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { EventosWizard } from './components/EventosWizard';
 import { sincronizarDoSheets, getEstadoSync, addAluno, seedAlunosTeste, seedHistorialTeste, seedPlanoTeste, getTurmas } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
@@ -37,7 +38,7 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   );
 }
 
-type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual';
+type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos';
 
 function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -259,6 +260,7 @@ function AppInterno() {
                 <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />
               )}
               {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
+              {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             </div>
           )}
         </div>
