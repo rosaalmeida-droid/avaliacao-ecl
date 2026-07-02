@@ -313,7 +313,22 @@ export function getTurmas(): Turma[] {
     save(KEYS.turmas, seed);
     return seed;
   }
-  return t;
+  // Migração: corrigir nomes antigos (1º CP → 1º ACP)
+  const mapa: Record<string, {id: string, nome: string}> = {
+    '1º CP': { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+    '2º CP': { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
+    '3º CP': { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
+    'CP1':   { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+    'CP2':   { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
+    'CP3':   { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
+  };
+  let alterou = false;
+  const corrigidas = t.map(turma => {
+    if (mapa[turma.id]) { alterou = true; return mapa[turma.id]; }
+    return turma;
+  });
+  if (alterou) save(KEYS.turmas, corrigidas);
+  return alterou ? corrigidas : t;
 }
 
 
