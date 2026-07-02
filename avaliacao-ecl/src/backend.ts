@@ -26,21 +26,22 @@ const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
 // modelo com ingredientes, preços, turma, data, formador, responsável e atividade.
-export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbxoSOznjK5Hz13-oKChFg8fwzLNsa1rD0peshcbkBFLGv1dsm7Loyg8J3gIBOrlw64kAw/exec';
+export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbzmt7yGx09nFF_8HUbdD0p29q9iS1ttKku-vbnoGxm-w7eq2cp8WlzZRm_jJyVIcKwF/exec';
 // ID do Google Sheets da Requisição — para abrir directamente após o envio
 export const SHEETS_REQUISICAO_ID = ''; // preencher quando confirmado
 
-export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbxoSOznjK5Hz13-oKChFg8fwzLNsa1rD0peshcbkBFLGv1dsm7Loyg8J3gIBOrlw64kAw/exec';
+export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbzmt7yGx09nFF_8HUbdD0p29q9iS1ttKku-vbnoGxm-w7eq2cp8WlzZRm_jJyVIcKwF/exec';
 
 // Sheet de Alunos — registo central de alunos, PINs e timestamps
 // Preencher após criar o Apps Script de alunos (conta eclisboa.net)
 // Login partilhado — mesma Sheet e Apps Script do KitchenFlow
 // O aluno cria PIN num lado e fica disponível no outro automaticamente
-export let SHEETS_ALUNOS_URL = 'https://script.google.com/macros/s/AKfycbxoSOznjK5Hz13-oKChFg8fwzLNsa1rD0peshcbkBFLGv1dsm7Loyg8J3gIBOrlw64kAw/exec';
+export let SHEETS_ALUNOS_URL = 'https://script.google.com/macros/s/AKfycbzmt7yGx09nFF_8HUbdD0p29q9iS1ttKku-vbnoGxm-w7eq2cp8WlzZRm_jJyVIcKwF/exec';
 
 // ── Integração KitchenFlow ECL ───────────────────────────────
 // URL do Apps Script do KitchenFlow — envia registos em background
-export const KITCHENFLOW_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxoSOznjK5Hz13-oKChFg8fwzLNsa1rD0peshcbkBFLGv1dsm7Loyg8J3gIBOrlw64kAw/exec';
+export const CLASSROOM_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxoSOznjK5Hz13-oKChFg8fwzLNsa1rD0peshcbkBFLGv1dsm7Loyg8J3gIBOrlw64kAw/exec';
+export const KITCHENFLOW_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzmt7yGx09nFF_8HUbdD0p29q9iS1ttKku-vbnoGxm-w7eq2cp8WlzZRm_jJyVIcKwF/exec';
 export const KITCHENFLOW_APP_URL = 'https://ecl-haccp.vercel.app/';
 
 // Formato: { tabela: string, linha: any[] }
@@ -1384,7 +1385,7 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
 
 // ── Recuperação de Módulos ──────────────────────────────────────
 // Script dedicado de Recuperações/Evidências — deploy concluído em 21/06/2026.
-export const SHEETS_RECUPERACAO_URL = 'https://script.google.com/macros/s/AKfycbxoSOznjK5Hz13-oKChFg8fwzLNsa1rD0peshcbkBFLGv1dsm7Loyg8J3gIBOrlw64kAw/exec';
+export const SHEETS_RECUPERACAO_URL = 'https://script.google.com/macros/s/AKfycbzmt7yGx09nFF_8HUbdD0p29q9iS1ttKku-vbnoGxm-w7eq2cp8WlzZRm_jJyVIcKwF/exec';
 
 export function getRecuperacoes(): RecuperacaoModulo[] {
   return load<RecuperacaoModulo>(KEYS.recuperacoes);
@@ -2220,7 +2221,7 @@ export async function publicarNoClassroom(
   conteudo: Record<string, unknown>
 ): Promise<{ ok: boolean; erro?: string }> {
   try {
-    const resp = await fetch(KITCHENFLOW_SHEET_URL, {
+    const resp = await fetch(CLASSROOM_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({
