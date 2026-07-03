@@ -582,6 +582,156 @@ function gerarTarefas(respostas: RespostaWizard[], nome: string): TarefaEvento[]
   return tarefas;
 }
 
+// ── Relatório PDF do Evento ────────────────────────────────────────────────────
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function labelDeResposta(pergunta: Pergunta | undefined, resp: RespostaWizard): string {
+  const resolve = (v: string): string => {
+    if (v === 'ver_depois') return 'Por definir (ver mais tarde)';
+    const op = pergunta?.opcoes?.find(o => o.valor === v);
+    return op ? op.label : v;
+  };
+  if (Array.isArray(resp.valor)) return resp.valor.map(resolve).join(', ');
+  return resolve(resp.valor);
+}
+
+function gerarRelatorioHTML(evento: Evento, opcoesCustom: Record<string, string[]>): string {
+  const perguntas = getPerguntas(opcoesCustom);
+  const dataCriacao = new Date(evento.criadoEm).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const dataHoje = new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const feitos = evento.checklist.filter(c => c.estado === 'feito').length;
+  const total = evento.checklist.length;
+
+  // Respostas agrupadas por bloco
+  const blocos: { bloco: string; linhas: { pergunta: string; resposta: string }[] }[] = [];
+  for (const resp of evento.respostas) {
+    const p = perguntas.find(q => q.id === resp.perguntaId);
+    if (!p) continue;
+    let grupo = blocos.find(b => b.bloco === p.bloco);
+    if (!grupo) { grupo = { bloco: p.bloco, linhas: [] }; blocos.push(grupo); }
+    grupo.linhas.push({ pergunta: p.texto, resposta: labelDeResposta(p, resp) });
+  }
+
+  const linhasRespostas = blocos.map(b => `
+    <tr class="bloco"><td colspan="2">${escapeHtml(b.bloco)}</td></tr>
+    ${b.linhas.map(l => `
+      <tr>
+        <td class="pergunta">${escapeHtml(l.pergunta)}</td>
+        <td class="resposta">${escapeHtml(l.resposta)}</td>
+      </tr>`).join('')}
+  `).join('');
+
+  // Checklist agrupada por categoria
+  const categorias = [...new Set(evento.checklist.map(c => c.categoria))];
+  const linhasChecklist = categorias.map(cat => `
+    <tr class="bloco"><td colspan="3">${escapeHtml(cat)}</td></tr>
+    ${evento.checklist.filter(c => c.categoria === cat).map(item => `
+      <tr>
+        <td class="check">${item.estado === 'feito' ? '☑' : '☐'}</td>
+        <td>${escapeHtml(item.texto)}${item.obrigatorio ? '' : ' <span class="opcional">(opcional)</span>'}</td>
+        <td class="resp">${escapeHtml(item.responsavel)}</td>
+      </tr>`).join('')}
+  `).join('');
+
+  const tarefasSel = evento.tarefas.filter(t => t.selecionada);
+  const linhasTarefas = tarefasSel.length === 0
+    ? '<tr><td colspan="2">Nenhuma tarefa seleccionada para o Classroom.</td></tr>'
+    : tarefasSel.map(t => `
+      <tr>
+        <td><strong>${escapeHtml(t.titulo)}</strong><br><span class="desc">${escapeHtml(t.descricao)}</span></td>
+        <td class="resp">${escapeHtml(t.disciplina)}</td>
+      </tr>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Evento — ${escapeHtml(evento.nome)}</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #1a1714; font-size: 11px; line-height: 1.45; margin: 0; }
+  .cabecalho { border-bottom: 3px solid #6d28d9; padding-bottom: 12px; margin-bottom: 18px; }
+  .cabecalho h1 { font-size: 20px; margin: 0 0 2px; color: #6d28d9; }
+  .cabecalho .sub { font-size: 12px; color: #6b7280; }
+  .meta { display: flex; gap: 24px; flex-wrap: wrap; margin: 14px 0 20px; }
+  .meta div { font-size: 11px; }
+  .meta strong { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
+  .estado-pub { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 10px; }
+  .pub-sim { background: #d1fae5; color: #059669; }
+  .pub-nao { background: #ede9fe; color: #6d28d9; }
+  h2 { font-size: 13px; color: #6d28d9; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 22px 0 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr.bloco td { background: #f3f4f6; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #374151; padding: 4px 8px; }
+  td.pergunta { width: 55%; color: #374151; }
+  td.resposta { font-weight: 600; }
+  td.check { width: 24px; font-size: 14px; text-align: center; }
+  td.resp { width: 25%; color: #6b7280; font-size: 10px; }
+  .opcional { color: #9ca3af; font-style: italic; font-size: 10px; }
+  .desc { color: #6b7280; font-size: 10px; }
+  .rodape { margin-top: 28px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #9ca3af; display: flex; justify-content: space-between; }
+  .assinaturas { margin-top: 36px; display: flex; gap: 40px; }
+  .assinaturas div { flex: 1; text-align: center; font-size: 10px; color: #374151; }
+  .assinaturas .linha { border-top: 1px solid #1a1714; margin-bottom: 4px; padding-top: 4px; }
+  @media print { .no-print { display: none; } }
+</style>
+</head>
+<body>
+  <div class="no-print" style="background:#ede9fe; padding:10px 14px; border-radius:8px; margin-bottom:16px; font-size:12px;">
+    💡 Para guardar como PDF: no menu de impressão escolhe <strong>"Guardar como PDF"</strong> como destino.
+  </div>
+
+  <div class="cabecalho">
+    <h1>🎯 Relatório de Evento Pedagógico</h1>
+    <div class="sub">Escola de Comércio de Lisboa · Técnico/a de Cozinha e Restauração (811RA144)</div>
+  </div>
+
+  <div class="meta">
+    <div><strong>Evento</strong>${escapeHtml(evento.nome)}</div>
+    <div><strong>Turma</strong>${escapeHtml(evento.turmaId)}</div>
+    <div><strong>Criado em</strong>${dataCriacao}</div>
+    <div><strong>Progresso</strong>${feitos}/${total} itens concluídos</div>
+    <div><strong>Classroom</strong><span class="estado-pub ${evento.publicado ? 'pub-sim' : 'pub-nao'}">${evento.publicado ? '✓ Publicado' : 'Rascunho'}</span></div>
+  </div>
+
+  <h2>1. Definição do Evento — Respostas do Planeamento</h2>
+  <table>${linhasRespostas}</table>
+
+  <h2>2. Checklist de Organização</h2>
+  <table>${linhasChecklist}</table>
+
+  <h2>3. Tarefas Publicadas no Google Classroom</h2>
+  <table>${linhasTarefas}</table>
+
+  <div class="assinaturas">
+    <div><div class="linha"></div>Professor(a) Responsável</div>
+    <div><div class="linha"></div>Coordenadora</div>
+  </div>
+
+  <div class="rodape">
+    <span>Avaliação ECL · Eventos Pedagógicos</span>
+    <span>Gerado em ${dataHoje}</span>
+  </div>
+</body>
+</html>`;
+}
+
+function abrirRelatorioPDF(evento: Evento, opcoesCustom: Record<string, string[]>) {
+  const html = gerarRelatorioHTML(evento, opcoesCustom);
+  const win = window.open('', '_blank');
+  if (!win) {
+    alert('O navegador bloqueou a janela do relatório. Permite pop-ups para este site e tenta de novo.');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => { try { win.focus(); win.print(); } catch { /* utilizador imprime manualmente */ } }, 500);
+}
+
 // ── Componente Principal ───────────────────────────────────────────────────────
 export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nomeProfessor?: string }) {
   const [estado, setEstado] = useState<EstadoWizard>('inicio');
@@ -886,6 +1036,12 @@ export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nom
             </div>
           ))}
         </div>
+
+        {/* Relatório PDF */}
+        <button style={{ ...btnPrimario('#1a1714'), width: '100%', padding: '14px', fontSize: 15, marginBottom: 8 }}
+          onClick={() => abrirRelatorioPDF(eventoAtual, opcoesCustom)}>
+          📄 Relatório PDF do Evento
+        </button>
 
         {/* Publicar */}
         {!eventoAtual.publicado && (
