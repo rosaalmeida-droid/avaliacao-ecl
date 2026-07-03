@@ -597,7 +597,7 @@ function labelDeResposta(pergunta: Pergunta | undefined, resp: RespostaWizard): 
   return resolve(resp.valor);
 }
 
-function gerarRelatorioHTML(evento: Evento, opcoesCustom: Record<string, string[]>): string {
+function gerarRelatorioHTML(evento: Evento, opcoesCustom: Record<string, string[]>, paraClassroom = false): string {
   const perguntas = getPerguntas(opcoesCustom);
   const dataCriacao = new Date(evento.criadoEm).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const dataHoje = new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -656,9 +656,9 @@ function gerarRelatorioHTML(evento: Evento, opcoesCustom: Record<string, string[
   .cabecalho { border-bottom: 3px solid #6d28d9; padding-bottom: 12px; margin-bottom: 18px; }
   .cabecalho h1 { font-size: 20px; margin: 0 0 2px; color: #6d28d9; }
   .cabecalho .sub { font-size: 12px; color: #6b7280; }
-  .meta { display: flex; gap: 24px; flex-wrap: wrap; margin: 14px 0 20px; }
-  .meta div { font-size: 11px; }
-  .meta strong { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
+  table.meta { width: 100%; border-collapse: collapse; margin: 14px 0 20px; }
+  table.meta td { border: none; padding: 0 24px 0 0; font-size: 11px; white-space: nowrap; }
+  table.meta strong { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
   .estado-pub { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 10px; }
   .pub-sim { background: #d1fae5; color: #059669; }
   .pub-nao { background: #ede9fe; color: #6d28d9; }
@@ -672,30 +672,32 @@ function gerarRelatorioHTML(evento: Evento, opcoesCustom: Record<string, string[
   td.resp { width: 25%; color: #6b7280; font-size: 10px; }
   .opcional { color: #9ca3af; font-style: italic; font-size: 10px; }
   .desc { color: #6b7280; font-size: 10px; }
-  .rodape { margin-top: 28px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #9ca3af; display: flex; justify-content: space-between; }
-  .assinaturas { margin-top: 36px; display: flex; gap: 40px; }
-  .assinaturas div { flex: 1; text-align: center; font-size: 10px; color: #374151; }
-  .assinaturas .linha { border-top: 1px solid #1a1714; margin-bottom: 4px; padding-top: 4px; }
+  table.rodape { width: 100%; border-collapse: collapse; margin-top: 28px; border-top: 1px solid #e5e7eb; }
+  table.rodape td { border: none; padding-top: 10px; font-size: 9px; color: #9ca3af; }
+  table.rodape td.dir { text-align: right; }
+  table.assinaturas { width: 100%; border-collapse: separate; border-spacing: 40px 0; margin-top: 36px; }
+  table.assinaturas td { border: none; width: 50%; text-align: center; font-size: 10px; color: #374151; padding: 0; }
+  table.assinaturas .linha { border-top: 1px solid #1a1714; margin-bottom: 4px; padding-top: 4px; }
   @media print { .no-print { display: none; } }
 </style>
 </head>
 <body>
-  <div class="no-print" style="background:#ede9fe; padding:10px 14px; border-radius:8px; margin-bottom:16px; font-size:12px;">
+  ${paraClassroom ? '' : `<div class="no-print" style="background:#ede9fe; padding:10px 14px; border-radius:8px; margin-bottom:16px; font-size:12px;">
     💡 Para guardar como PDF: no menu de impressão escolhe <strong>"Guardar como PDF"</strong> como destino.
-  </div>
+  </div>`}
 
   <div class="cabecalho">
-    <h1>🎯 Relatório de Evento Pedagógico</h1>
+    <h1>${paraClassroom ? '' : '🎯 '}Relatório de Evento Pedagógico</h1>
     <div class="sub">Escola de Comércio de Lisboa · Técnico/a de Cozinha e Restauração (811RA144)</div>
   </div>
 
-  <div class="meta">
-    <div><strong>Evento</strong>${escapeHtml(evento.nome)}</div>
-    <div><strong>Turma</strong>${escapeHtml(evento.turmaId)}</div>
-    <div><strong>Criado em</strong>${dataCriacao}</div>
-    <div><strong>Progresso</strong>${feitos}/${total} itens concluídos</div>
-    <div><strong>Classroom</strong><span class="estado-pub ${evento.publicado ? 'pub-sim' : 'pub-nao'}">${evento.publicado ? '✓ Publicado' : 'Rascunho'}</span></div>
-  </div>
+  <table class="meta"><tr>
+    <td><strong>Evento</strong>${escapeHtml(evento.nome)}</td>
+    <td><strong>Turma</strong>${escapeHtml(evento.turmaId)}</td>
+    <td><strong>Criado em</strong>${dataCriacao}</td>
+    <td><strong>Progresso</strong>${feitos}/${total} itens concluídos</td>
+    <td><strong>Classroom</strong><span class="estado-pub ${evento.publicado ? 'pub-sim' : 'pub-nao'}">${evento.publicado ? '✓ Publicado' : 'Rascunho'}</span></td>
+  </tr></table>
 
   <h2>1. Definição do Evento — Respostas do Planeamento</h2>
   <table>${linhasRespostas}</table>
@@ -706,15 +708,15 @@ function gerarRelatorioHTML(evento: Evento, opcoesCustom: Record<string, string[
   <h2>3. Tarefas Publicadas no Google Classroom</h2>
   <table>${linhasTarefas}</table>
 
-  <div class="assinaturas">
-    <div><div class="linha"></div>Professor(a) Responsável</div>
-    <div><div class="linha"></div>Coordenadora</div>
-  </div>
+  <table class="assinaturas"><tr>
+    <td><div class="linha"></div>Professor(a) Responsável</td>
+    <td><div class="linha"></div>Coordenadora</td>
+  </tr></table>
 
-  <div class="rodape">
-    <span>Avaliação ECL · Eventos Pedagógicos</span>
-    <span>Gerado em ${dataHoje}</span>
-  </div>
+  <table class="rodape"><tr>
+    <td>Avaliação ECL · Eventos Pedagógicos</td>
+    <td class="dir">Gerado em ${dataHoje}</td>
+  </tr></table>
 </body>
 </html>`;
 }
@@ -804,6 +806,7 @@ export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nom
         data: eventoAtual.respostas.find(r => r.perguntaId === 'data')?.valor || '',
         tarefas: tarefasSel,
         visibilidade: 'cozinha',
+        relatorioHtml: gerarRelatorioHTML(eventoAtual, opcoesCustom, true),
       });
       if (res.ok) {
         const ev2 = eventos.map(e => e.id === eventoAtual.id ? { ...e, publicado: true } : e);
