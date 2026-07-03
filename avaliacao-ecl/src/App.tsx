@@ -151,6 +151,7 @@ function AppInterno() {
     { id: 'copia_seguranca',     label: 'Cópia de Segurança',   icone: '💾', cor: 'var(--charcoal-mid)',  corPale: 'var(--cream-dark)' },
     { id: 'gestao_recuperacoes', label: 'Recuperações',         icone: '🔄', cor: 'var(--recuperacao)',   corPale: 'var(--recuperacao-pale)' },
     { id: 'mapa_competencias',   label: 'Mapa de Competências', icone: '🗺️', cor: 'var(--competencias)',  corPale: 'var(--competencias-pale)' },
+    { id: 'eventos',             label: 'Eventos',              icone: '🎯', cor: '#059669',              corPale: '#d1fae5' },
   ];
 
   return (
