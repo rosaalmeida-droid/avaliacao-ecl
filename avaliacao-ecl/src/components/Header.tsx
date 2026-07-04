@@ -270,10 +270,10 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
   onAtualizar?: () => void;
   children: React.ReactNode;
 }) {
-  const [sidebarAberta, setSidebarAberta] = useState(true);
+  const [sidebarAberta, setSidebarAberta] = useState(false);
 
   // No mobile começa fechada
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(false);
   React.useEffect(() => {
     const fn = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', fn);
