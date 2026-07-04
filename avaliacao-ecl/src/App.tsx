@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Perfil, Aluno, PlanoAula as TPlanoAula } from './types';
 import { Login } from './components/Login';
 import { ManualCozinheiro } from './components/ManualCozinheiro';
-import { Header } from './components/Header';
+import { Header, LayoutProfessor, VistaProf } from './components/Header';
 import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
@@ -37,8 +37,6 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
     </div>
   );
 }
-
-type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos';
 
 function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -139,141 +137,85 @@ function AppInterno() {
 
   if (!perfil) return <Login onLogin={handleLogin} />;
 
-  const tabsProf: { id: VistaProf; label: string; icone: string; cor: string; corPale: string }[] = [
-    { id: 'planos',              label: 'Planos de Aula',       icone: '📋', cor: 'var(--copper)',        corPale: 'var(--copper-pale)' },
-    { id: 'ficha',               label: 'Ficha',                icone: '📄', cor: 'var(--sage)',           corPale: 'var(--sage-pale)' },
-    { id: 'guia',                label: 'Guia',                 icone: '📚', cor: 'var(--guia)',           corPale: 'var(--guia-pale)' },
-    { id: 'requisicao',          label: 'Requisição',           icone: '🛒', cor: 'var(--requisicao)',     corPale: 'var(--requisicao-pale)' },
-    { id: 'validacao',           label: 'Validação',            icone: '✓',  cor: 'var(--charcoal-mid)',  corPale: 'var(--cream-dark)' },
-    { id: 'biblioteca',          label: 'Biblioteca',           icone: '🗂️', cor: 'var(--sage)',           corPale: 'var(--sage-pale)' },
-    { id: 'manual',              label: 'Manual do Cozinheiro', icone: '📖', cor: 'var(--charcoal)',       corPale: 'rgba(26,23,20,0.06)' },
-    { id: 'avaliacao_uc',        label: 'Avaliação por UC',     icone: '📊', cor: 'var(--charcoal-mid)',  corPale: 'var(--cream-dark)' },
-    { id: 'copia_seguranca',     label: 'Cópia de Segurança',   icone: '💾', cor: 'var(--charcoal-mid)',  corPale: 'var(--cream-dark)' },
-    { id: 'gestao_recuperacoes', label: 'Recuperações',         icone: '🔄', cor: 'var(--recuperacao)',   corPale: 'var(--recuperacao-pale)' },
-    { id: 'mapa_competencias',   label: 'Mapa de Competências', icone: '🗺️', cor: 'var(--competencias)',  corPale: 'var(--competencias-pale)' },
-    { id: 'eventos',             label: 'Eventos',              icone: '🎯', cor: '#059669',              corPale: '#d1fae5' },
-  ];
+  // ── Vista Professor ──────────────────────────────────────────────────────
+  if (perfil === 'professor') {
+    return (
+      <LayoutProfessor
+        vistaAtiva={vistaGlobal}
+        onNavegar={irPara}
+        nomeProfessor={nomeProfessor}
+        onSair={sair}
+        syncStatus={syncStatus}
+        onAtualizar={atualizarDados}
+      >
+        {modalAberto && (
+          <ModalGuardar mensagem={modalMensagem}
+            onGuardar={() => { setModalAberto(false); if (guardarCallback) guardarCallback(); limparAlteracoes(); if (acaoPendente) acaoPendente(); setAcaoPendente(null); }}
+            onDescartar={() => { setModalAberto(false); limparAlteracoes(); if (acaoPendente) acaoPendente(); setAcaoPendente(null); }}
+            onCancelar={() => { setModalAberto(false); setAcaoPendente(null); }}
+          />
+        )}
 
-  return (
-    <div className="app-shell">
-      {modalAberto && (
-        <ModalGuardar mensagem={modalMensagem}
-          onGuardar={() => { setModalAberto(false); if (guardarCallback) guardarCallback(); limparAlteracoes(); if (acaoPendente) acaoPendente(); setAcaoPendente(null); }}
-          onDescartar={() => { setModalAberto(false); limparAlteracoes(); if (acaoPendente) acaoPendente(); setAcaoPendente(null); }}
-          onCancelar={() => { setModalAberto(false); setAcaoPendente(null); }}
-        />
-      )}
-
-      <div className="no-print">
-        <Header perfil={perfil} onSair={sair} nomeProfessor={nomeProfessor} syncStatus={syncStatus} onAtualizar={atualizarDados} />
-      </div>
-
-      {perfil === 'professor' && (
-        <div>
-          {/* Cabeçalho roxo com abas coloridas */}
-          <div className="no-print" style={{ background:'#6d28d9', padding:'14px 16px 0' }}>
-            <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', fontWeight:700,
-              textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
-              Avaliação ECL · Professor
-            </div>
-            <div style={{ fontSize:18, fontWeight:800, color:'#fff', marginBottom:12 }}>
-              {nomeProfessor || 'Professor'} 👋
-            </div>
-            <div style={{ overflowX:'auto', display:'flex', gap:6, paddingBottom:14 }}>
-              {tabsProf.map((t, idx) => {
-                const CORES_TAB = ['#f4a900','#e63946','#2ec4b6','#1d6fa4','#9b59b6','#e67e22','#27ae60','#2980b9','#c0392b','#8e44ad','#16a085'];
-                const corTab = CORES_TAB[idx % CORES_TAB.length];
-                const ativo = !planoAberto && vistaGlobal === t.id;
-                return (
-                  <button key={t.id} onClick={() => irPara(t.id)} style={{
-                    whiteSpace:'nowrap', flexShrink:0, padding:'8px 14px',
-                    border:'none', cursor:'pointer', fontSize:12, fontWeight:800,
-                    borderRadius:10,
-                    background: ativo ? corTab : 'rgba(255,255,255,0.15)',
-                    color: ativo ? '#fff' : 'rgba(255,255,255,0.55)',
-                    transition:'all 0.15s',
-                  }}>
-                    {t.icone} {t.label}
-                  </button>
-                );
-              })}
-            </div>
+        {/* Plano em pausa */}
+        {planoEmPausa && !planoAberto && (
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'#fef3c7', borderRadius:10, marginBottom:12, border:'1px solid #fcd34d' }}>
+            <span style={{ fontSize:13, color:'#92400e', flex:1 }}>
+              📋 Tens o plano "{planoEmPausa.titulo}" em pausa
+            </span>
+            <button onClick={() => setPlanoAberto(planoEmPausa)}
+              style={{ fontSize:12, padding:'5px 12px', borderRadius:8, border:'none', background:'#f59e0b', color:'white', fontWeight:600, cursor:'pointer' }}>
+              ← Voltar ao plano
+            </button>
           </div>
+        )}
 
-          {planoEmPausa && !planoAberto && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--copper-pale)', borderRadius: 10, marginTop: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 13, color: 'var(--copper)', flex: 1 }}>
-                📋 Tens o plano "{planoEmPausa.titulo}" em pausa
-              </span>
-              <button onClick={() => { setPlanoAberto(planoEmPausa); }}
-                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
-                ← Voltar ao plano
-              </button>
-            </div>
-          )}
+        {/* Conteúdo da vista activa */}
+        {planoAberto ? (
+          <VistaDePlano
+            key={refreshKey}
+            plano={planoAberto}
+            turmaId={turmaId}
+            nomeProfessor={nomeProfessor}
+            onVoltar={fecharPlano}
+            onPlanoActualizado={p => setPlanoAberto(p)}
+            onAlteracao={registarAlteracao}
+            onGuardado={limparAlteracoes}
+          />
+        ) : (
+          <>
+            {vistaGlobal === 'planos' && (
+              <PlanoAula key={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
+                onAlteracao={registarAlteracao}
+                onGuardado={(p?: TPlanoAula) => { limparAlteracoes(); if (p) abrirPlano(p); }}
+                planoIdInicial={planoIdAlvo || undefined}
+                onPlanoIdInicialUsado={() => setPlanoIdAlvo(null)} />
+            )}
+            {vistaGlobal === 'ficha' && (
+              <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+                onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
+            )}
+            {vistaGlobal === 'guia' && (
+              <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+                modoGuia={true} onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
+            )}
+            {vistaGlobal === 'requisicao' && <Requisicao nomeProfessor={nomeProfessor} turmaId={turmaId} />}
+            {vistaGlobal === 'validacao' && <ValidacaoView turmaId={turmaId} />}
+            {vistaGlobal === 'manual' && <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />}
+            {vistaGlobal === 'biblioteca' && (
+              <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+                onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
+            )}
+            {vistaGlobal === 'avaliacao_uc' && <AvaliacaoPorUC turmaId={turmaId} />}
+            {vistaGlobal === 'copia_seguranca' && <CopiaSegurancaView />}
+            {vistaGlobal === 'gestao_recuperacoes' && <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />}
+            {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
+            {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}
+          </>
+        )}
 
-          {planoAberto ? (
-            <VistaDePlano
-              key={refreshKey}
-              plano={planoAberto}
-              turmaId={turmaId}
-              nomeProfessor={nomeProfessor}
-              onVoltar={fecharPlano}
-              onPlanoActualizado={p => setPlanoAberto(p)}
-              onAlteracao={registarAlteracao}
-              onGuardado={limparAlteracoes}
-            />
-          ) : (
-            <div>
-              {vistaGlobal === 'planos' && (
-                <PlanoAula
-                  key={refreshKey}
-                  turmaId={turmaId}
-                  nomeProfessor={nomeProfessor}
-                  onAlteracao={registarAlteracao}
-                  onGuardado={(p?: TPlanoAula) => { limparAlteracoes(); if (p) abrirPlano(p); }}
-                  planoIdInicial={planoIdAlvo || undefined}
-                  onPlanoIdInicialUsado={() => setPlanoIdAlvo(null)}
-                />
-              )}
-              {vistaGlobal === 'ficha' && (
-                <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
-                  onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
-              )}
-              {vistaGlobal === 'guia' && (
-                <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
-                  modoGuia={true} onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
-              )}
-              {vistaGlobal === 'requisicao' && (
-                <Requisicao nomeProfessor={nomeProfessor} turmaId={turmaId} />
-              )}
-              {vistaGlobal === 'validacao' && <ValidacaoView turmaId={turmaId} />}
-              {vistaGlobal === 'manual' && (
-                <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />
-              )}
-              {vistaGlobal === 'biblioteca' && (
-                <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
-                  onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
-              )}
-              {vistaGlobal === 'avaliacao_uc' && <AvaliacaoPorUC turmaId={turmaId} />}
-              {vistaGlobal === 'copia_seguranca' && <CopiaSegurancaView />}
-              {vistaGlobal === 'gestao_recuperacoes' && (
-                <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />
-              )}
-              {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
-              {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}
-            </div>
-          )}
-        </div>
-      )}
-
-      {perfil === 'aluno' && aluno && <AlunoView key={refreshKey} aluno={aluno} />}
-      {perfil === 'coordenadora' && <CoordenadoraView />}
-
-      {perfil === 'professor' && (
         <div className="no-print">
           <CentroAvisos
-            perfil={perfil || undefined}
+            perfil="professor"
             onNavegar={(aviso) => {
               const tab = (aviso.contexto?.tabDestino as VistaProf) || 'planos';
               const planoId = aviso.contexto?.planoId;
@@ -282,7 +224,18 @@ function AppInterno() {
             }}
           />
         </div>
-      )}
+      </LayoutProfessor>
+    );
+  }
+
+  // ── Aluno e Coordenadora ─────────────────────────────────────────────────
+  return (
+    <div className="app-shell">
+      <div className="no-print">
+        <Header perfil={perfil} onSair={sair} nomeProfessor={nomeProfessor} syncStatus={syncStatus} onAtualizar={atualizarDados} />
+      </div>
+      {perfil === 'aluno' && aluno && <AlunoView key={refreshKey} aluno={aluno} />}
+      {perfil === 'coordenadora' && <CoordenadoraView />}
     </div>
   );
 }
