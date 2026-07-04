@@ -60,20 +60,21 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
-function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, onSair, aberta, onFechar }: {
+function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, onSair, aberta, onFechar, isMobile }: {
   vistaAtiva: VistaProf;
   onNavegar: (v: VistaProf) => void;
   nomeProfessor: string;
   onSair: () => void;
   aberta: boolean;
   onFechar: () => void;
+  isMobile: boolean;
 }) {
   const secoes = [...new Set(NAV_ITEMS.map(n => n.secao))];
   const iniciais = nomeProfessor ? nomeProfessor.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() : 'P';
 
   return (
     <>
-      {/* Overlay mobile */}
+      {/* Overlay mobile — só em mobile */}
       {aberta && isMobile && (
         <div onClick={onFechar} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 199 }} />
       )}
@@ -293,6 +294,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
         nomeProfessor={nomeProfessor}
         onSair={onSair}
         aberta={aberta}
+        isMobile={isMobile}
         onFechar={() => setSidebarAberta(false)}
       />
 
