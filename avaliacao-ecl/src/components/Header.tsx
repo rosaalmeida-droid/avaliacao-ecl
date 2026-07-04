@@ -74,7 +74,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, onSair, aberta, onFecha
   return (
     <>
       {/* Overlay mobile */}
-      {aberta && (
+      {aberta && isMobile && (
         <div onClick={onFechar} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 199 }} />
       )}
 
