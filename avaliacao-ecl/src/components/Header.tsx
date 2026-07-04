@@ -32,7 +32,7 @@ const TEXT_MAIN = '#1e293b';
 const TEXT_MUTED = '#64748b';
 const BORDER = '#e2e8f0';
 const WHITE = '#ffffff';
-const SURFACE = '#f8fafc';
+const SURFACE = '#ffffff';
 
 // ─── Tipos de navegação ──────────────────────────────────────────────────────
 export type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos';
@@ -186,7 +186,7 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, o
   return (
     <header style={{
       height: 60,
-      background: WHITE,
+      background: '#ffffff',
       borderBottom: `1px solid ${BORDER}`,
       display: 'flex', alignItems: 'center',
       padding: '0 16px 0 20px',
@@ -285,7 +285,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
   const itemAtivo = NAV_ITEMS.find(n => n.id === vistaAtiva);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: SURFACE, fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Sidebar */}
       <Sidebar
         vistaAtiva={vistaAtiva}
@@ -297,7 +297,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
       />
 
       {/* Área principal — com margem para a sidebar no desktop */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: isMobile ? 0 : 240, minWidth: 0, transition: 'margin-left 0.25s' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', marginLeft: isMobile ? 0 : 240, minWidth: 0, transition: 'margin-left 0.25s' }}>
         {/* Topbar */}
         <Topbar
           perfil="professor"
@@ -325,7 +325,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
         </div>
 
         {/* Conteúdo */}
-        <main style={{ flex: 1, padding: '16px 24px 32px', minWidth: 0 }}>
+        <main style={{ flex: 1, padding: '16px 24px 32px', background: '#ffffff', minWidth: 0 }}>
           {children}
         </main>
       </div>
@@ -333,6 +333,9 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .app-shell { background: #ffffff !important; }
+        body { background: #ffffff !important; }
+        #root { background: #ffffff !important; }
       `}</style>
     </div>
   );
