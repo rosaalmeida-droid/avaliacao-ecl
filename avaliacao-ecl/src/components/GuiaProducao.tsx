@@ -750,6 +750,16 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
         );
       })()}
 
+      {/* Botão PDF em baixo */}
+      <button
+        className="no-print"
+        onClick={() => gerarPDFGuiao({ nomePrato, ucId, ucNome, guia, textoOriginal: textoGuia })}
+        style={{ width: '100%', background: 'var(--copper)', border: 'none', borderRadius: 10,
+          padding: '13px', color: '#fff', cursor: 'pointer', fontSize: 14,
+          fontWeight: 700, marginBottom: 12 }}>
+        ⬇ PDF — Guião de Produção
+      </button>
+
       {/* Rodapé */}
       <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 11, color: 'rgba(26,23,20,0.3)' }}>
         Escola de Comércio de Lisboa · Avaliação ECL · {new Date().getFullYear()}
