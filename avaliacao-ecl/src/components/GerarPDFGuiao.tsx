@@ -180,8 +180,20 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
     @media print {
       body > *:not(#ecl-print-overlay) { display: none !important; }
       .ecl-sidebar, .ecl-topbar, aside, nav, header { display: none !important; }
-      #ecl-print-overlay { position: static !important; overflow: visible !important; }
+      #ecl-print-overlay {
+        position: static !important;
+        overflow: visible !important;
+        width: 100% !important;
+        max-width: none !important;
+      }
       #ecl-print-overlay .ecl-barra-overlay { display: none !important; }
+      #ecl-print-overlay .ecl-conteudo {
+        max-width: none !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       @page { size: A4; margin: 15mm; }
     }
   `;
@@ -217,6 +229,7 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
   // Conteúdo — largura total A4
   const conteudo = document.createElement('div');
   conteudo.style.cssText = 'padding:24px 28px;width:100%;max-width:800px;margin:0 auto;box-sizing:border-box;';
+  conteudo.className = 'ecl-conteudo';
   conteudo.innerHTML = cabecalhoHtml + secoesHtml + rodapeHtml;
 
   overlay.appendChild(barra);
