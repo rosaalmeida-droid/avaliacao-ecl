@@ -1,10 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 /* ── Tokens ─────────────────────────────────────────────────── */
 :root {
-  --cream:        #ffffff;
-  --cream-dark:   #F2F5FF;
+  --cream:        #faf7f2;
+  --cream-dark:   #f0ebe1;
   --charcoal:     #1a1714;
   --charcoal-mid: #3d3830;
   --copper:       #b5651d;
@@ -18,16 +17,20 @@
   --info:         #2563eb;
   --info-pale:    #eff6ff;
 
-  --guia:         #4a5a8a;
+  /* ── Cores por módulo ──────────────────────────────────────
+     Cada área de trabalho principal tem a sua cor própria, para
+     o professor saber sempre, num relance, em que módulo está.
+     --copper (Planos) e --sage (Fichas) já existiam — mantidos. */
+  --guia:         #4a5a8a;  /* azul-ardósia — Guia de Apoio */
   --guia-light:   #7382ad;
   --guia-pale:    #eef1f8;
-  --requisicao:       #9c5840;
+  --requisicao:       #9c5840;  /* terracota — Requisição */
   --requisicao-light: #bd7e69;
   --requisicao-pale:  #f7eee9;
-  --recuperacao:       #7d4f8c;
+  --recuperacao:       #7d4f8c;  /* ameixa — Recuperações */
   --recuperacao-light: #a47bb0;
   --recuperacao-pale:  #f4eef7;
-  --competencias:       #2f7d72;
+  --competencias:       #2f7d72;  /* verde-petróleo — Competências/Mapa */
   --competencias-light: #5fa297;
   --competencias-pale:  #eef6f5;
 
@@ -43,7 +46,7 @@
   --radius-full:  100px;
 
   --font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-display: 'Nunito', 'Fraunces', Georgia, serif;
+  --font-display: 'Fraunces', Georgia, serif;
   --font-mono:    'JetBrains Mono', monospace;
 }
 
@@ -58,9 +61,9 @@ html, body, #root {
 
 body {
   font-family: var(--font-body);
-  font-size: 17px;
+  font-size: 15px;
   line-height: 1.6;
-  background: #ffffff;
+  background: var(--cream);
   color: var(--charcoal);
 }
 
@@ -83,9 +86,11 @@ code, .mono {
   margin: 0 auto;
   padding: 20px 16px 40px;
   min-height: 100vh;
-  background: #ffffff;
 }
 
+/* Em ecrãs largos (computador/tablet), aproveitar muito mais espaço —
+   90% do trabalho do professor acontece em computador, e a app ficava
+   estreita e centrada com muito espaço vazio à volta. */
 @media (min-width: 900px) {
   .app-shell {
     max-width: 1400px;
@@ -174,10 +179,24 @@ code, .mono {
   color: var(--charcoal);
 }
 
-.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
 .btn-block { width: 100%; }
-.btn-sm { font-size: 12px; padding: 6px 12px; border-radius: 7px; }
-.btn-lg { font-size: 16px; padding: 13px 24px; border-radius: 11px; }
+
+.btn-sm {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 7px;
+}
+
+.btn-lg {
+  font-size: 16px;
+  padding: 13px 24px;
+  border-radius: 11px;
+}
 
 /* ── Inputs ──────────────────────────────────────────────────── */
 .input, select.input, textarea.input {
@@ -275,7 +294,11 @@ label.field-label {
   transition: all 0.15s ease;
 }
 .chip:hover { border-color: var(--copper-light); background: var(--copper-pale); }
-.chip.selected { background: var(--charcoal); color: #fff; border-color: var(--charcoal); }
+.chip.selected {
+  background: var(--charcoal);
+  color: #fff;
+  border-color: var(--charcoal);
+}
 .chip.suggested:not(.selected) {
   border-color: var(--copper-light);
   background: var(--copper-pale);
@@ -313,7 +336,11 @@ label.field-label {
   font-weight: 400;
 }
 
-.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
 
 /* ── Option cards ────────────────────────────────────────────── */
 .option-card {
@@ -464,9 +491,11 @@ tr:nth-child(even) td { background: var(--cream); }
   .tab-btn { font-size: 12px; padding: 8px 8px; }
 }
 
-/* ── ACESSIBILIDADE ──────────────────────────────────────────── */
+/* ── ACESSIBILIDADE — tamanhos mínimos ───────────────────────── */
+/* Nenhum texto visível abaixo de 12px */
 * { min-font-size: 12px; }
 
+/* Botões de acção principal — sempre grandes e visíveis */
 .btn-primary, .btn-secondary {
   font-size: 15px !important;
   padding: 13px 20px !important;
@@ -480,6 +509,7 @@ tr:nth-child(even) td { background: var(--cream); }
   border-radius: 12px !important;
 }
 
+/* Labels e campos — mais legíveis */
 label.field-label {
   font-size: 13px !important;
   color: var(--charcoal) !important;
@@ -492,18 +522,23 @@ label.field-label {
   min-height: 48px;
 }
 
-textarea.input { min-height: 100px !important; }
+textarea.input {
+  min-height: 100px !important;
+}
 
+/* Texto muted — contraste mínimo */
 .muted {
   color: rgba(26,23,20,0.6) !important;
   font-size: 13px !important;
 }
 
+/* Option cards — mais espaço, mais fácil de tocar */
 .option-card {
   padding: 16px 18px !important;
   margin-bottom: 10px !important;
 }
 
+/* Tabs — mais visíveis */
 .tab-btn {
   font-size: 14px !important;
   padding: 10px 14px !important;
@@ -515,11 +550,13 @@ textarea.input { min-height: 100px !important; }
   font-weight: 700 !important;
 }
 
+/* Cards — mais respiro */
 .card {
   padding: 20px !important;
   margin-bottom: 14px !important;
 }
 
+/* Botão guardar/avançar — sempre em destaque */
 .btn-guardar {
   background: var(--sage) !important;
   color: white !important;
@@ -535,6 +572,7 @@ textarea.input { min-height: 100px !important; }
   margin-top: 8px;
 }
 
+/* Informação secundária — visível mas não a gritar */
 .info-box {
   background: var(--cream-dark);
   border-radius: 10px;
@@ -545,6 +583,7 @@ textarea.input { min-height: 100px !important; }
   margin-bottom: 12px;
 }
 
+/* Secção de passos — numeração clara */
 .passo-numero {
   display: inline-flex;
   align-items: center;
@@ -559,6 +598,7 @@ textarea.input { min-height: 100px !important; }
   flex-shrink: 0;
 }
 
+/* Títulos de secção */
 .secao-titulo {
   font-size: 16px !important;
   font-weight: 700 !important;
@@ -566,13 +606,18 @@ textarea.input { min-height: 100px !important; }
   margin-bottom: 12px;
 }
 
+/* Erros e alertas — nunca invisíveis */
 .alert-danger, [style*="danger"] {
   font-size: 13px !important;
   font-weight: 600 !important;
 }
 
-/* ── Secção Cultura e Gastronomia ────────────────────────────── */
-.guia-cultura-gastronomia { background: #f8f6f0 !important; }
+/* ── Secção Cultura e Gastronomia ──────────────────────────────────
+   Estilo especial para a secção 15 — fundo levemente creme,
+   citações destacadas, fontes na impressão sempre visíveis */
+.guia-cultura-gastronomia {
+  background: #f8f6f0 !important;
+}
 
 .guia-cultura-gastronomia blockquote {
   border-left: 3px solid #2c3e50;
@@ -589,39 +634,50 @@ textarea.input { min-height: 100px !important; }
   }
 }
 
-/* ── IMPRESSÃO DO GUIA ───────────────────────────────────────── */
+/* ── IMPRESSÃO DO GUIA ─────────────────────────────────────────────
+   Regras específicas para impressão do Guia de Apoio à Produção.
+   Objectivos:
+   1. Mostrar todas as secções do acordeão (mesmo as fechadas)
+   2. Esconder toda a interface da app
+   3. Evitar cortes no meio de tabelas e secções
+   4. Remover LaTeX e artefactos visuais da web
+   5. Tipografia e espaçamento adequados para papel A4
+*/
 @media print {
+
+  /* Reset geral para impressão */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
+  /* Ocultar toda a interface da app */
   .no-print,
   nav, header, footer,
   aside,
+  .ecl-sidebar,
+  .ecl-topbar,
   [role="navigation"],
   button:not(.guia-print-visible) {
     display: none !important;
   }
 
-  /* Esconder sidebar e topbar da app */
-  aside,
-  [style*="position: fixed"],
-  [style*="position:fixed"] {
-    display: none !important;
-  }
-
-  /* Área de conteúdo — ocupar toda a largura */
-  body > div > div:last-child,
-  main {
+  /* Área de conteúdo — ocupar página toda sem offset da sidebar */
+  body > div > div:last-child {
     margin-left: 0 !important;
     width: 100% !important;
-    max-width: 100% !important;
   }
 
-  .guia-conteudo-print { display: block !important; }
+  /* Mostrar todas as secções do acordeão */
+  .guia-conteudo-print {
+    display: block !important;
+  }
 
-  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  /* Página A4 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+  }
 
   body {
     font-size: 11pt;
@@ -630,13 +686,20 @@ textarea.input { min-height: 100px !important; }
     background: white !important;
   }
 
-  h1, h2, h3, h4 { page-break-after: avoid; break-after: avoid; }
+  /* Títulos de secção — nunca ficam sozinhos no fim de página */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
 
-  .guia-secao, .guia-secao-card {
+  /* Secções do guia — não partir no meio */
+  .guia-secao,
+  .guia-secao-card {
     page-break-inside: avoid;
     break-inside: avoid;
   }
 
+  /* Tabelas — repetir cabeçalho e não cortar linhas */
   table {
     page-break-inside: auto;
     break-inside: auto;
@@ -645,23 +708,27 @@ textarea.input { min-height: 100px !important; }
     font-size: 10pt;
   }
 
-  thead { display: table-header-group; }
-  tfoot { display: table-footer-group; }
-  tr { page-break-inside: avoid; break-inside: avoid; }
-
-  td, th {
-    word-break: normal;
-    overflow-wrap: normal;
-    hyphens: none;
-    white-space: normal;
-    font-size: 9pt;
-    padding: 4pt 6pt !important;
+  thead {
+    display: table-header-group; /* repete cabeçalho em cada página */
   }
 
-  /* Tabelas de guião — colunas com largura mínima */
-  table td:first-child { min-width: 120pt; }
-  table td:nth-child(2) { min-width: 80pt; }
+  tfoot {
+    display: table-footer-group;
+  }
 
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  td, th {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
+  /* Texto truncado — remover clamps e overflows que cortam conteúdo */
+  /* NÃO forçar display:block — quebra layouts flex/grid */
   * {
     overflow: visible !important;
     text-overflow: unset !important;
@@ -669,21 +736,33 @@ textarea.input { min-height: 100px !important; }
     max-height: none !important;
   }
 
-  p, li, span, td, th { white-space: normal !important; }
+  /* Texto que usa white-space:nowrap pode ser forçado a quebrar */
+  p, li, span, td, th {
+    white-space: normal !important;
+  }
 
-  .guia-pcc, .guia-alerta { page-break-inside: avoid; break-inside: avoid; }
+  /* Alertas HACCP e PCC — nunca partir */
+  .guia-pcc,
+  .guia-alerta {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 
+  /* Roda sensorial — centrar e não partir */
   .guia-roda-sensorial {
     page-break-inside: avoid;
     break-inside: avoid;
     text-align: center;
   }
 
+  /* Remover sombras, borders desnecessários */
   .card, [class*="card"] {
     box-shadow: none !important;
     border: 1px solid #ddd !important;
   }
 
+  /* Rodapé de impressão — usa o atributo data-rodape gerado pelo React
+     com: nome do prato · código UC — nome UC · ECL ano */
   .guia-area-impressao::after {
     content: attr(data-rodape);
     display: block;
@@ -696,3 +775,4 @@ textarea.input { min-height: 100px !important; }
     font-style: italic;
   }
 }
+
