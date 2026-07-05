@@ -63,7 +63,6 @@ export const UCS_COZINHA = [
   { id:'UC03597', nome:'Planear e confecionar massas especiais de panificacao' },
 ];
 
-// Parseia a data de um plano, lidando com vários formatos possíveis
 function parsearDataPlano(dataStr?: string): Date {
   try {
     if (!dataStr || dataStr === 'undefined') throw new Error();
@@ -85,21 +84,23 @@ function limparHora(h?: string): string {
     : h.substring(0, 5);
 }
 
-// ── Calendário mensal — vista visual dos planos de aula ────────
+// ── ALTERAÇÃO 1: Helper para ler eventos do EventosWizard ─────────────────
+function getEventosDaTurma(turmaId: string) {
+  try {
+    const todos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]');
+    return todos.filter((e: any) => e.turmaId === turmaId);
+  } catch { return []; }
+}
+
+// ── Calendário mensal ─────────────────────────────────────────────────────
 function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: TPlanoAula[]; onAbrirPlano: (p: TPlanoAula) => void; onPlanoEliminado?: () => void }) {
   const hoje = new Date();
   const [modoVista, setModoVista] = useState<'semana' | 'mes' | '2meses'>('mes');
   const [dataReferencia, setDataReferencia] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
-  // Dia em foco — só muda quando o utilizador clica explicitamente num dia.
-  // Antes, navegar entre meses reiniciava sempre para null; agora mantém-se
-  // o dia que estava a ser trabalhado (pedido de 21/06/2026).
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(hoje);
-  // Modo de seleção múltipla — também no Calendário, não só na vista Lista
-  // (pedido de 21/06/2026: "estamos a eliminar sempre um a um").
   const [modoSelecaoCal, setModoSelecaoCal] = useState(false);
   const [planosSelecionadosCal, setPlanosSelecionadosCal] = useState<Set<string>>(new Set());
 
-  // Agrupar planos por dia (yyyy-mm-dd)
   const planosPorDia = new Map<string, TPlanoAula[]>();
   planos.forEach(p => {
     const d = parsearDataPlano(p.data);
@@ -121,7 +122,6 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
     else if (modoVista === 'mes') nova.setMonth(nova.getMonth() + direcao);
     else nova.setMonth(nova.getMonth() + direcao * 2);
     setDataReferencia(nova);
-    // Mantém o dia selecionado — não reinicia para null ao navegar.
   }
 
   function irParaHoje() {
@@ -131,7 +131,6 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
 
   const diasSemana = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
 
-  // Gera as células de um mês específico (ano/mês 0-indexed)
   function gerarMes(ano: number, mes: number) {
     const primeiroDiaSemana = (new Date(ano, mes, 1).getDay() + 6) % 7;
     const diasNoMes = new Date(ano, mes + 1, 0).getDate();
@@ -141,9 +140,8 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
     return celulas;
   }
 
-  // Gera os 7 dias da semana que contém dataReferencia (segunda a domingo)
   function gerarSemana(ref: Date) {
-    const diaSemana = (ref.getDay() + 6) % 7; // 0=segunda
+    const diaSemana = (ref.getDay() + 6) % 7;
     const inicio = new Date(ref);
     inicio.setDate(ref.getDate() - diaSemana);
     return Array.from({ length: 7 }, (_, i) => {
@@ -210,7 +208,6 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
 
   return (
     <div>
-      {/* Seletor de modo de vista */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
         {(['semana', 'mes', '2meses'] as const).map(m => (
           <button key={m} onClick={() => setModoVista(m)}
@@ -223,7 +220,6 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
         ))}
       </div>
 
-      {/* Navegação */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <button onClick={() => navegar(-1)}
           style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 13 }}>‹</button>
@@ -236,7 +232,6 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
         Hoje
       </button>
 
-      {/* Grelha — varia consoante o modo */}
       {modoVista === 'semana' && (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
@@ -261,7 +256,6 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
         </div>
       )}
 
-      {/* Lista de planos do dia selecionado */}
       {diaSelecionado !== null && (() => {
         const chave = chaveDia(diaSelecionado);
         const planosDoDia = planosPorDia.get(chave) || [];
@@ -286,7 +280,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                 </span>
                 <button onClick={() => {
                   if (planosSelecionadosCal.size === 0) return;
-                  if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosCal.size} plano(s)? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeito.`)) {
+                  if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosCal.size} plano(s)?`)) {
                     planosSelecionadosCal.forEach(id => eliminarPlanoAulaDefinitivamente(id));
                     setPlanosSelecionadosCal(new Set());
                     setModoSelecaoCal(false);
@@ -342,21 +336,15 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                         e.stopPropagation();
                         const escolha = window.prompt(
                           `O que queres fazer com "${p.titulo || 'este plano'}"?\n\n` +
-                          `Escreve 1 para ARQUIVAR (reversível — sai da lista mas fica guardado)\n` +
-                          `Escreve 2 para ELIMINAR DEFINITIVAMENTE (remove tudo, do telemóvel e do Google Sheets — não pode ser desfeito)\n\n` +
-                          `Ou cancela para não fazer nada.`
+                          `Escreve 1 para ARQUIVAR\nEscreve 2 para ELIMINAR DEFINITIVAMENTE\n\nOu cancela.`
                         );
-                        if (escolha === '1') {
-                          arquivarPlanoAula(p.id);
-                          onPlanoEliminado?.();
-                        } else if (escolha === '2') {
-                          if (confirm(`Confirma: eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"? Não pode ser desfeita.`)) {
-                            eliminarPlanoAulaDefinitivamente(p.id);
-                            onPlanoEliminado?.();
+                        if (escolha === '1') { arquivarPlanoAula(p.id); onPlanoEliminado?.(); }
+                        else if (escolha === '2') {
+                          if (confirm(`Eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"?`)) {
+                            eliminarPlanoAulaDefinitivamente(p.id); onPlanoEliminado?.();
                           }
                         }
-                      }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
-                        title="Arquivar ou eliminar">
+                      }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}>
                         🗑️
                       </button>
                     )}
@@ -386,13 +374,8 @@ function FichaSelector({ todasFichas, fichasSel, onChange }: {
           {fichasSel.length} ficha{fichasSel.length>1?'s':''} selecionada{fichasSel.length>1?'s':''}
         </div>
       )}
-      <input
-        className="input"
-        value={pesquisa}
-        onChange={e=>setPesquisa(e.target.value)}
-        placeholder="Pesquisar fichas por nome ou tipo..."
-        style={{marginBottom:8}}
-      />
+      <input className="input" value={pesquisa} onChange={e=>setPesquisa(e.target.value)}
+        placeholder="Pesquisar fichas por nome ou tipo..." style={{marginBottom:8}} />
       <div style={{maxHeight:280,overflowY:'auto',border:'1px solid var(--border)',borderRadius:10,padding:6}}>
         {fichasFiltradas.length===0&&<div className="muted" style={{padding:10,textAlign:'center'}}>Sem resultados para "{pesquisa}"</div>}
         {fichasFiltradas.map(f=>{
@@ -459,30 +442,21 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>('calendario');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
 
-  // Abrir plano específico vindo de um aviso
   React.useEffect(() => {
     if (!planoIdInicial) return;
     const todos = getPlanosAulaPorTurma(turmaId, true);
     const plano = todos.find(p => p.id === planoIdInicial);
-    if (plano) {
-      setPlanoAtivo(plano);
-      setVista('detalhe');
-    } else {
-      // Plano não existe — aviso ficou órfão, não navegar
-      console.warn('PlanoAula: planoIdInicial não encontrado:', planoIdInicial);
-    }
+    if (plano) { setPlanoAtivo(plano); setVista('detalhe'); }
+    else console.warn('PlanoAula: planoIdInicial não encontrado:', planoIdInicial);
     onPlanoIdInicialUsado?.();
   }, [planoIdInicial]);
+
   const [refreshKey, setRefreshKey] = useState(0);
-  // Modo de seleção múltipla — eliminar vários planos de uma vez (ponto 9
-  // do documento de 21/06/2026).
   const [modoSelecaoPlanos, setModoSelecaoPlanos] = useState(false);
   const [planosSelecionadosIds, setPlanosSelecionadosIds] = useState<Set<string>>(new Set());
   const planos = getPlanosAulaPorTurma(turmaId);
 
-  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => {
-    onGuardado?.(p);
-  }} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
+  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => { onGuardado?.(p); }} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
 
   if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
 
@@ -519,11 +493,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
         <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 14 }}>
           Planos arquivados não aparecem no calendário nem na lista. Podes sempre trazê-los de volta.
         </div>
-        {arquivados.length === 0 && (
-          <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>
-            O arquivo está vazio.
-          </div>
-        )}
+        {arquivados.length === 0 && <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>O arquivo está vazio.</div>}
         {arquivados.map(p => {
           const horaI = limparHora(p.horaInicio);
           const horaF = limparHora(p.horaFim);
@@ -535,20 +505,8 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                   {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId}{p.numeroPlan ? ' · Plano ' + p.numeroPlan : ''}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                   <div className="muted" style={{ fontSize: 12 }}>{p.data} · {horaI && horaF ? `${horaI}-${horaF}` : ''} · {p.turmaId}</div>
                 </div>
-                <button onClick={() => {
-                  desarquivarPlanoAula(p.id);
-                  setRefreshKey(k => k + 1);
-                }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-                  ↩️ Restaurar
-                </button>
-                <button onClick={() => {
-                  if (confirm(`Eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeita.`)) {
-                    eliminarPlanoAulaDefinitivamente(p.id);
-                    setRefreshKey(k => k + 1);
-                  }
-                }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--danger)', background: '#fff', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-                  🗑️ Eliminar
-                </button>
+                <button onClick={() => { desarquivarPlanoAula(p.id); setRefreshKey(k => k + 1); }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>↩️ Restaurar</button>
+                <button onClick={() => { if (confirm(`Eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"?`)) { eliminarPlanoAulaDefinitivamente(p.id); setRefreshKey(k => k + 1); } }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--danger)', background: '#fff', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>🗑️ Eliminar</button>
               </div>
             </div>
           );
@@ -578,16 +536,12 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
       </div>
       {modoSelecaoPlanos && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
-            {planosSelecionadosIds.size} plano(s) selecionado(s)
-          </span>
+          <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{planosSelecionadosIds.size} plano(s) selecionado(s)</span>
           <button onClick={() => {
             if (planosSelecionadosIds.size === 0) return;
-            if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosIds.size} plano(s)? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeito.`)) {
+            if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosIds.size} plano(s)?`)) {
               planosSelecionadosIds.forEach(id => eliminarPlanoAulaDefinitivamente(id));
-              setPlanosSelecionadosIds(new Set());
-              setModoSelecaoPlanos(false);
-              setRefreshKey(k => k + 1);
+              setPlanosSelecionadosIds(new Set()); setModoSelecaoPlanos(false); setRefreshKey(k => k + 1);
             }
           }} disabled={planosSelecionadosIds.size === 0}
             style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12, cursor: planosSelecionadosIds.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosIds.size === 0 ? 0.4 : 1 }}>
@@ -603,41 +557,20 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
         </div>
       )}
       {planos.map(p=>{
-        // Corrigir data que pode vir em vários formatos
         let d: Date;
         try {
           if (!p.data || p.data === 'undefined') throw new Error();
-          // Formato ISO: 2026-07-09
-          if (/^\d{4}-\d{2}-\d{2}$/.test(p.data)) {
-            d = new Date(p.data + 'T12:00:00');
-          // Formato com hora: 2026-07-09T...
-          } else if (p.data.includes('T')) {
-            d = new Date(p.data);
-          } else {
-            d = new Date(p.data);
-          }
+          if (/^\d{4}-\d{2}-\d{2}$/.test(p.data)) d = new Date(p.data + 'T12:00:00');
+          else if (p.data.includes('T')) d = new Date(p.data);
+          else d = new Date(p.data);
           if (isNaN(d.getTime())) throw new Error();
-        } catch {
-          d = new Date();
-        }
-        // Hora limpa
-        const horaI = (p.horaInicio||'').includes('T')
-          ? new Date(p.horaInicio).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})
-          : (p.horaInicio||'').substring(0,5);
-        const horaF = (p.horaFim||'').includes('T')
-          ? new Date(p.horaFim).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})
-          : (p.horaFim||'').substring(0,5);
+        } catch { d = new Date(); }
+        const horaI = (p.horaInicio||'').includes('T') ? new Date(p.horaInicio).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}) : (p.horaInicio||'').substring(0,5);
+        const horaF = (p.horaFim||'').includes('T') ? new Date(p.horaFim).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}) : (p.horaFim||'').substring(0,5);
 
         return (
           <div key={p.id} className="option-card" onClick={() => {
-            if (modoSelecaoPlanos) {
-              setPlanosSelecionadosIds(prev => {
-                const novo = new Set(prev);
-                if (novo.has(p.id)) novo.delete(p.id); else novo.add(p.id);
-                return novo;
-              });
-              return;
-            }
+            if (modoSelecaoPlanos) { setPlanosSelecionadosIds(prev => { const novo = new Set(prev); if (novo.has(p.id)) novo.delete(p.id); else novo.add(p.id); return novo; }); return; }
             onGuardado?.(p);
           }}>
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
@@ -652,9 +585,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
               </div>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>
-                  {p.titulo || 'Plano de aula'}
-                </div>
+                <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{p.titulo || 'Plano de aula'}</div>
                 {p.ucId && (
                   <div style={{ fontSize:12, color:'var(--copper)', fontWeight:600, marginBottom:2, lineHeight:1.4 }}>
                     {p.ucId}{p.numeroPlan ? ` · Plano ${p.numeroPlan}` : ''}
@@ -699,11 +630,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   function guardar() {
     const now = new Date().toISOString();
     const ucSel = UCS_COZINHA.find(u => u.id === dados.ucId);
-    // Numeração sequencial robusta — baseada no maior número já usado, não em
-    // .length (que descia ao eliminar planos e podia repetir números).
     const numeroPlan = proximoNumeroPlano();
-    // Código formal do plano: Ano-UC-Número, ex: "1-UC03586-100" — sem data,
-    // já existe como campo próprio do plano.
     const codigoPlano = gerarCodigoPlano(turmaId, dados.ucId, numeroPlan);
     const titulo = dados.titulo || `${codigoPlano} — ${dados.tipoAtividade}`;
     const p: TPlanoAula = {
@@ -722,21 +649,11 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     } as TPlanoAula;
     addOrUpdatePlanoAula(p);
     onGuardado?.();
-    // Perguntar se quer publicar no Classroom
     if (window.confirm('📚 Publicar este plano de aula no Google Classroom?')) {
       publicarNoClassroom('plano', turmaId, {
-        titulo: p.titulo,
-        data: p.data,
-        horaInicio: p.horaInicio,
-        horaFim: p.horaFim,
-        ucId: p.ucId,
-        ucNome: p.ucNome,
-        pratos: [],
-        observacoes: (p as any).observacoes || '',
-      }).then(res => {
-        if (res.ok) alert('✅ Plano publicado no Classroom!');
-        else console.warn('Classroom:', res.erro);
-      });
+        titulo: p.titulo, data: p.data, horaInicio: p.horaInicio, horaFim: p.horaFim,
+        ucId: p.ucId, ucNome: p.ucNome, pratos: [], observacoes: (p as any).observacoes || '',
+      }).then(res => { if (res.ok) alert('✅ Plano publicado no Classroom!'); else console.warn('Classroom:', res.erro); });
     }
     onConcluido(p);
   }
@@ -746,24 +663,15 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   return (
     <div>
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
-        <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: '1px solid rgba(247,241,230,0.2)', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>
-          ← Voltar
-        </button>
-        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>
-          Novo Plano de Aula
-        </div>
+        <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: '1px solid rgba(247,241,230,0.2)', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>← Voltar</button>
+        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>Novo Plano de Aula</div>
         <div style={{ fontSize: 13, color: 'rgba(247,241,230,0.5)', marginTop: 3 }}>ECL · {turmaId}</div>
       </div>
-
       <Card>
-        {/* Data — primeiro campo, define imediatamente quando o plano fica agendado */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
           <div className="field">
-            <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)' }}>
-              Data <span style={{ color: 'var(--danger)' }}>*</span>
-            </label>
-            <input type="date" className="input" value={dados.data} onChange={e => setD('data', e.target.value)}
-              style={{ border: !dados.data ? '2px solid var(--danger)' : undefined, fontSize: 14 }} />
+            <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)' }}>Data <span style={{ color: 'var(--danger)' }}>*</span></label>
+            <input type="date" className="input" value={dados.data} onChange={e => setD('data', e.target.value)} style={{ border: !dados.data ? '2px solid var(--danger)' : undefined, fontSize: 14 }} />
           </div>
           <div className="field">
             <label className="field-label">Início</label>
@@ -774,59 +682,33 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
           </div>
         </div>
-
-        {/* UC */}
         <div className="field" style={{ marginBottom: 16 }}>
-          <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>
-            Unidade de Competência <span style={{ color: 'var(--danger)' }}>*</span>
-          </label>
-          <select className="input" value={dados.ucId}
-            onChange={e => setD('ucId', e.target.value)}
-            style={{ border: !dados.ucId ? '2px solid var(--danger)' : undefined, fontSize: 14 }}>
+          <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>Unidade de Competência <span style={{ color: 'var(--danger)' }}>*</span></label>
+          <select className="input" value={dados.ucId} onChange={e => setD('ucId', e.target.value)} style={{ border: !dados.ucId ? '2px solid var(--danger)' : undefined, fontSize: 14 }}>
             <option value="">— Selecciona a UC desta aula —</option>
             {UCS_COZINHA.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)}
           </select>
-          {!dados.ucId && (
-            <div style={{ fontSize: 13, color: 'var(--danger)', marginTop: 4 }}>Obrigatório — define as competências da aula</div>
-          )}
-          {dados.ucId && (
-            <div style={{ fontSize: 13, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>
-              ✓ {UCS_COZINHA.find(u => u.id === dados.ucId)?.nome}
-            </div>
-          )}
+          {!dados.ucId && <div style={{ fontSize: 13, color: 'var(--danger)', marginTop: 4 }}>Obrigatório — define as competências da aula</div>}
+          {dados.ucId && <div style={{ fontSize: 13, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>✓ {UCS_COZINHA.find(u => u.id === dados.ucId)?.nome}</div>}
         </div>
-
-        {/* Tipo */}
         <div className="field" style={{ marginBottom: 14 }}>
           <label className="field-label">Tipo de actividade</label>
           <select className="input" value={dados.tipoAtividade} onChange={e => setD('tipoAtividade', e.target.value)}>
             {TIPOS_ATIVIDADE.map(t => <option key={t}>{t}</option>)}
           </select>
         </div>
-
-        {/* Título — opcional */}
         <div className="field" style={{ marginBottom: 20 }}>
           <label className="field-label">Título (opcional)</label>
-          <input className="input" value={dados.titulo}
-            onChange={e => setD('titulo', e.target.value)}
-            placeholder={`Plano — ${dados.tipoAtividade} — ${dados.data}`} />
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
-            Se não preencheres, o título é gerado automaticamente com número sequencial
-          </div>
+          <input className="input" value={dados.titulo} onChange={e => setD('titulo', e.target.value)} placeholder={`Plano — ${dados.tipoAtividade} — ${dados.data}`} />
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>Se não preencheres, o título é gerado automaticamente com número sequencial</div>
         </div>
-
-        <button
-          className="btn btn-primary btn-block"
-          disabled={!podeGuardar}
-          onClick={guardar}
-          style={{ fontSize: 15, padding: '14px', opacity: podeGuardar ? 1 : 0.4 }}>
+        <button className="btn btn-primary btn-block" disabled={!podeGuardar} onClick={guardar} style={{ fontSize: 15, padding: '14px', opacity: podeGuardar ? 1 : 0.4 }}>
           {podeGuardar ? 'Criar plano e começar →' : 'Selecciona a UC para continuar'}
         </button>
       </Card>
     </div>
   );
 }
-
 
 function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
   plano:TPlanoAula; turmaId:string; onVoltar:()=>void; onEditar:()=>void; onIrParaFicha?:()=>void;
@@ -837,6 +719,8 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
   const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
   const [grelhaAberta, setGrelhaAberta] = useState(false);
   const [mostrarAdicionarFicha, setMostrarAdicionarFicha] = useState(false);
+  // ALTERAÇÃO 2: estado para evento seleccionado
+  const [eventoSel, setEventoSel] = useState<string>(plano.eventoId || '');
   const temFichas = fichas.length > 0;
   const publicado = plano.estado === 'publicado';
 
@@ -877,6 +761,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
         </div>
       </div>
 
+      {/* Estado do plano */}
       <div className="card" style={{marginBottom:12}}>
         <div style={{fontSize:12,fontWeight:700,color:'var(--charcoal)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>Estado do plano</div>
         {[
@@ -890,6 +775,44 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
         ))}
       </div>
 
+      {/* ALTERAÇÃO 3: card Evento Pedagógico */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{fontSize:12,fontWeight:700,color:'var(--copper)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>🎯 Evento Pedagógico</div>
+        {(() => {
+          const eventos = getEventosDaTurma(turmaId);
+          return (
+            <div>
+              {plano.eventoId && (
+                <div style={{padding:'8px 10px',background:'var(--copper-pale)',borderRadius:8,marginBottom:8,fontSize:13,color:'var(--copper)',fontWeight:600}}>
+                  ✅ Associado a: {eventos.find((e: any) => e.id === plano.eventoId)?.nome || 'Evento'}
+                </div>
+              )}
+              {eventos.length === 0 ? (
+                <div className="muted">Nenhum evento criado para esta turma ainda.</div>
+              ) : (
+                <>
+                  <select className="input" value={eventoSel} onChange={e => setEventoSel(e.target.value)} style={{fontSize:13,marginBottom:8}}>
+                    <option value="">— Sem evento associado —</option>
+                    {eventos.map((e: any) => (
+                      <option key={e.id} value={e.id}>{e.nome} ({e.dias?.length || 0} dia(s))</option>
+                    ))}
+                  </select>
+                  <button className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      addOrUpdatePlanoAula({ ...plano, eventoId: eventoSel || undefined, atualizadoEm: new Date().toISOString() });
+                      alert(eventoSel ? '✅ Plano associado ao evento!' : '✅ Associação removida.');
+                    }}
+                    style={{background:'var(--copper)',color:'white'}}>
+                    {eventoSel ? 'Guardar associação' : 'Remover associação'}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Fichas de produção */}
       <div className="card">
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
           <div style={{fontSize:12,fontWeight:700,color:'var(--copper)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de producao</div>
