@@ -167,7 +167,7 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
 <title>Guião — ${nomePrato}</title>
 <style>
   @page { size: A4; margin: 15mm; }
-  body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #1a1714; background: #fff; margin: 0; text-align: justify; }
+  body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #1a1714; background: #fff; margin: 0; padding: 0; text-align: justify; width: 100%; max-width: none; box-sizing: border-box; }
   p, li, div, td, th, span { font-family: 'Arial Narrow', Arial, sans-serif; line-height: 1.5; text-align: justify; }
   h1, h2, h3, h4, .titulo, [style*='font-weight:900'], [style*='font-weight:700'] { text-align: left; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
