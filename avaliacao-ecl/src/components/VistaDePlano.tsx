@@ -494,7 +494,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 </button>
               </div>
             )}
-            {todasRequisicoesDoPlano.map(r => (
+            {todasRequisicoesDoPlano.filter(r => r && r.id).map(r => (
               <div key={r.id} onClick={() => { if (!modoSelecaoReq) return; setReqSelecionadasIds(prev => { const novo = new Set(prev); if (novo.has(r.id)) novo.delete(r.id); else novo.add(r.id); return novo; }); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: '#fff', marginBottom: 4, cursor: modoSelecaoReq ? 'pointer' : 'default' }}>
                 {modoSelecaoReq && (
@@ -504,7 +504,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 )}
                 <span style={{ fontSize: 12, flex: 1 }}>
                   {r.criadaEm ? new Date(r.criadaEm).toLocaleDateString('pt-PT') + ' ' + new Date(r.criadaEm).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : r.id}
-                  {' · '}{r.linhas?.length || 0} ingredientes
+                  {' · '}{(r?.linhas || []).length} ingredientes
                 </span>
                 {!modoSelecaoReq && (
                   <button onClick={(e) => { e.stopPropagation(); if (confirm('Eliminar DEFINITIVAMENTE esta requisição?')) { eliminarRequisicaoDefinitivamente(r.id); onPlanoActualizado({ ...plano }); } }}
