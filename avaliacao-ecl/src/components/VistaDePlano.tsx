@@ -11,7 +11,6 @@ import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
 
-// ── Tipos ─────────────────────────────────────────────────────
 type Modulo = 'inicio' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'competencias' | 'registos';
 
 interface Props {
@@ -22,6 +21,50 @@ interface Props {
   onPlanoActualizado: (p: PlanoAula) => void;
   onAlteracao?: () => void;
   onGuardado?: () => void;
+}
+
+// ── NOVO: Associar plano a evento ────────────────────────────
+function EventoAssociador({ plano, turmaId, onPlanoActualizado }: {
+  plano: PlanoAula; turmaId: string; onPlanoActualizado: (p: PlanoAula) => void;
+}) {
+  const [eventoSel, setEventoSel] = useState<string>(plano.eventoId || '');
+  let eventos: any[] = [];
+  try {
+    eventos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]')
+      .filter((e: any) => e.turmaId === turmaId);
+  } catch {}
+  const eventoAssociado = eventos.find((e: any) => e.id === plano.eventoId);
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+        🎯 Evento Pedagógico
+      </div>
+      {eventoAssociado && (
+        <div style={{ padding: '8px 10px', background: 'var(--copper-pale)', borderRadius: 8, marginBottom: 8, fontSize: 13, color: 'var(--copper)', fontWeight: 600 }}>
+          ✅ {eventoAssociado.nome} ({eventoAssociado.dias?.length || 0} dia(s))
+        </div>
+      )}
+      {eventos.length === 0 ? (
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)' }}>Nenhum evento criado para esta turma ainda.</div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <select value={eventoSel} onChange={e => setEventoSel(e.target.value)}
+            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', fontSize: 13, background: '#fff' }}>
+            <option value="">— Sem evento associado —</option>
+            {eventos.map((e: any) => <option key={e.id} value={e.id}>{e.nome}</option>)}
+          </select>
+          <button onClick={() => {
+            const p = { ...plano, eventoId: eventoSel || undefined, atualizadoEm: new Date().toISOString() };
+            addOrUpdatePlanoAula(p as any);
+            onPlanoActualizado(p as any);
+            alert(eventoSel ? '✅ Associado ao evento!' : '✅ Associação removida.');
+          }} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+            Guardar
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Cabeçalho do Plano ────────────────────────────────────────
@@ -35,9 +78,6 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
     if (isNaN(d.getTime())) throw new Error();
   } catch { d = new Date(); }
   const diaSemana = d.toLocaleDateString('pt-PT', { weekday: 'long' });
-  const dataFormatada = d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' });
-
-  // Limpar formato das horas — podem vir como ISO completo do Sheets
   const horaI = (plano.horaInicio || '').includes('T')
     ? new Date(plano.horaInicio).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
     : (plano.horaInicio || '').substring(0, 5);
@@ -47,12 +87,9 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
 
   return (
     <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '16px 18px', marginBottom: 16 }}>
-      {/* Botão voltar */}
       <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 12, cursor: 'pointer', marginBottom: 12 }}>
         ← Todos os planos
       </button>
-
-      {/* Tabs internas do plano — navegação dentro deste plano específico */}
       {modulo && setModulo && (
         <div style={{ display: 'flex', gap: 4, overflowX: 'auto', marginBottom: 14, paddingBottom: 2 }}>
           {([
@@ -65,33 +102,18 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
             { id: 'registos', label: 'Reabrir', icone: '🔓' },
           ] as { id: Modulo; label: string; icone: string }[]).map(t => (
             <button key={t.id} onClick={() => setModulo(t.id)}
-              style={{
-                whiteSpace: 'nowrap', flexShrink: 0, padding: '7px 12px', borderRadius: 8, border: 'none',
-                background: modulo === t.id ? 'var(--copper)' : 'rgba(247,241,230,0.1)',
-                color: modulo === t.id ? 'white' : 'rgba(247,241,230,0.6)',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              }}>
+              style={{ whiteSpace: 'nowrap', flexShrink: 0, padding: '7px 12px', borderRadius: 8, border: 'none', background: modulo === t.id ? 'var(--copper)' : 'rgba(247,241,230,0.1)', color: modulo === t.id ? 'white' : 'rgba(247,241,230,0.6)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               {t.icone} {t.label}
             </button>
           ))}
         </div>
       )}
-
-      {/* Identificação clara do plano */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        {/* Data em destaque */}
         <div style={{ background: 'var(--copper)', borderRadius: 12, padding: '10px 14px', textAlign: 'center', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'white', lineHeight: 1 }}>
-            {d.getDate().toString().padStart(2, '0')}
-          </div>
-          <div style={{ fontSize:13, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', fontWeight: 600 }}>
-            {d.toLocaleDateString('pt-PT', { month: 'short' })}
-          </div>
-          <div style={{ fontSize:13, color: 'rgba(255,255,255,0.6)' }}>
-            {d.getFullYear()}
-          </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'white', lineHeight: 1 }}>{d.getDate().toString().padStart(2, '0')}</div>
+          <div style={{ fontSize:13, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
+          <div style={{ fontSize:13, color: 'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
         </div>
-
         <div style={{ flex: 1 }}>
           <div style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>
             {plano.numeroPlan ? `Plano ${plano.numeroPlan} · ` : ''}{diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {String(plano.turmaId ?? '')}
@@ -99,8 +121,6 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 6 }}>
             {String(plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`)}
           </div>
-
-          {/* UC — muito visível */}
           {plano.ucId ? (
             <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 12px', marginTop: 4, display: 'inline-block' }}>
               <div style={{ fontSize:12, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Unidade de Competência</div>
@@ -113,8 +133,6 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
             </div>
           )}
         </div>
-
-        {/* Estado */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize:13, padding: '4px 10px', borderRadius: 20, background: plano.estado === 'publicado' ? 'var(--sage)' : 'rgba(247,241,230,0.6)', color: 'white', fontWeight: 600 }}>
             {plano.estado === 'publicado' ? '✓ Publicado' : plano.estado === 'fichas_pendentes' ? 'Fichas pendentes' : 'Rascunho'}
@@ -125,7 +143,6 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
   );
 }
 
-// ── Barra fixa com UC ─────────────────────────────────────────
 function BarraUC({ plano }: { plano: PlanoAula }) {
   if (!plano.ucId) return null;
   return (
@@ -138,6 +155,7 @@ function BarraUC({ plano }: { plano: PlanoAula }) {
     </div>
   );
 }
+
 function ModuloCard({ icone, titulo, descricao, estado, cor, onClick, desativado }: {
   icone: string; titulo: string; descricao: string;
   estado: 'pendente' | 'em_curso' | 'concluido' | 'bloqueado';
@@ -150,15 +168,8 @@ function ModuloCard({ icone, titulo, descricao, estado, cor, onClick, desativado
     bloqueado: { bg: 'var(--cream-dark)', border: 'var(--border)', icon: 'rgba(26,23,20,0.55)' },
   };
   const c = cores[estado];
-
   return (
-    <div onClick={desativado ? undefined : onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
-      borderRadius: 14, border: `1.5px solid ${c.border}`, background: c.bg,
-      cursor: desativado ? 'not-allowed' : 'pointer', marginBottom: 10,
-      opacity: estado === 'bloqueado' ? 0.5 : 1,
-      transition: 'all 0.15s',
-    }}>
+    <div onClick={desativado ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${c.border}`, background: c.bg, cursor: desativado ? 'not-allowed' : 'pointer', marginBottom: 10, opacity: estado === 'bloqueado' ? 0.5 : 1, transition: 'all 0.15s' }}>
       <div style={{ width: 44, height: 44, borderRadius: 12, background: estado === 'concluido' ? 'var(--sage)' : `${cor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
         {estado === 'concluido' ? '✓' : icone}
       </div>
@@ -166,14 +177,11 @@ function ModuloCard({ icone, titulo, descricao, estado, cor, onClick, desativado
         <div style={{ fontWeight: 700, fontSize: 14, color: estado === 'bloqueado' ? 'rgba(26,23,20,0.4)' : 'var(--charcoal)' }}>{titulo}</div>
         <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{descricao}</div>
       </div>
-      {estado !== 'bloqueado' && (
-        <span style={{ fontSize: 20, color: estado === 'concluido' ? 'var(--sage)' : cor }}>›</span>
-      )}
+      {estado !== 'bloqueado' && <span style={{ fontSize: 20, color: estado === 'concluido' ? 'var(--sage)' : cor }}>›</span>}
     </div>
   );
 }
 
-// ── Modal de próximo passo ────────────────────────────────────
 function ModalProximoPasso({ titulo, opcoes, onEscolha }: {
   titulo: string;
   opcoes: { label: string; icone: string; valor: string; destaque?: boolean }[];
@@ -185,13 +193,7 @@ function ModalProximoPasso({ titulo, opcoes, onEscolha }: {
         <div style={{ fontWeight: 700, fontSize: 17, textAlign: 'center', marginBottom: 16 }}>{titulo}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {opcoes.map(op => (
-            <button key={op.valor} onClick={() => onEscolha(op.valor)} style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
-              borderRadius: 12, border: `1.5px solid ${op.destaque ? 'var(--copper)' : 'var(--border)'}`,
-              background: op.destaque ? 'var(--copper-pale)' : '#fff',
-              cursor: 'pointer', fontSize: 14, fontWeight: op.destaque ? 700 : 500,
-              color: op.destaque ? 'var(--copper)' : 'var(--charcoal)',
-            }}>
+            <button key={op.valor} onClick={() => onEscolha(op.valor)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, border: `1.5px solid ${op.destaque ? 'var(--copper)' : 'var(--border)'}`, background: op.destaque ? 'var(--copper-pale)' : '#fff', cursor: 'pointer', fontSize: 14, fontWeight: op.destaque ? 700 : 500, color: op.destaque ? 'var(--copper)' : 'var(--charcoal)' }}>
               <span style={{ fontSize: 20 }}>{op.icone}</span>
               {op.label}
             </button>
@@ -202,36 +204,23 @@ function ModalProximoPasso({ titulo, opcoes, onEscolha }: {
   );
 }
 
-// ── Modal Requisição após Guia ────────────────────────────────
 function ModalRequisicao({ plano, fichas, onSim, onNao }: {
-  plano: PlanoAula;
-  fichas: FichaProducao[];
-  onSim: (fichasIds: string[]) => void;
-  onNao: () => void;
+  plano: PlanoAula; fichas: FichaProducao[];
+  onSim: (fichasIds: string[]) => void; onNao: () => void;
 }) {
   const [sel, setSel] = React.useState<string[]>(fichas.map(f => f.id));
-
-  function toggle(id: string) {
-    setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
-  }
-
+  function toggle(id: string) { setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]); }
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
       <div style={{ background:'#fff', borderRadius:20, padding:24, maxWidth:380, width:'100%' }}>
         <div style={{ fontSize:32, textAlign:'center', marginBottom:8 }}>🛒</div>
         <div style={{ fontWeight:700, fontSize:17, textAlign:'center', marginBottom:6 }}>Guia guardado!</div>
-        <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', textAlign:'center', marginBottom:20 }}>
-          Queres criar agora a Requisição de ingredientes?
-        </div>
-
+        <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', textAlign:'center', marginBottom:20 }}>Queres criar agora a Requisição de ingredientes?</div>
         {fichas.length > 0 && (
           <div style={{ marginBottom:16 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>
-              Fichas a incluir na requisição:
-            </div>
+            <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Fichas a incluir na requisição:</div>
             {fichas.map(f => (
-              <div key={f.id}
-                onClick={() => toggle(f.id)}
+              <div key={f.id} onClick={() => toggle(f.id)}
                 style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:`1.5px solid ${sel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, background: sel.includes(f.id) ? 'var(--copper-pale)' : '#fff', cursor:'pointer', marginBottom:6 }}>
                 <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${sel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, background: sel.includes(f.id) ? 'var(--copper)' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   {sel.includes(f.id) && <span style={{ color:'white', fontSize:12, fontWeight:700 }}>✓</span>}
@@ -244,16 +233,12 @@ function ModalRequisicao({ plano, fichas, onSim, onNao }: {
             ))}
           </div>
         )}
-
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          <button
-            onClick={() => onSim(sel)}
-            disabled={sel.length === 0}
+          <button onClick={() => onSim(sel)} disabled={sel.length === 0}
             style={{ padding:'14px', borderRadius:12, border:'none', background: sel.length > 0 ? 'var(--copper)' : 'var(--border)', color:'white', fontWeight:700, fontSize:15, cursor: sel.length > 0 ? 'pointer' : 'not-allowed' }}>
             ✓ Sim — criar Requisição {sel.length > 0 ? `(${sel.length} ficha${sel.length > 1 ? 's' : ''})` : ''}
           </button>
-          <button
-            onClick={onNao}
+          <button onClick={onNao}
             style={{ padding:'12px', borderRadius:12, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
             Não — voltar ao plano
           </button>
@@ -263,7 +248,6 @@ function ModalRequisicao({ plano, fichas, onSim, onNao }: {
   );
 }
 
-// ── Registos dos Alunos — ver e reabrir autoavaliações ─────────
 function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string }) {
   const [alunos, setAlunos] = React.useState<{ id: string; nome?: string; numero: number }[]>([]);
   const [reabrirConfirm, setReabrirConfirm] = React.useState<string | null>(null);
@@ -294,25 +278,15 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
       <div style={{ padding:'10px 14px', background:'rgba(22,160,133,0.08)', borderRadius:10, fontSize:13, color:'#16a085', marginBottom:14, border:'1px solid rgba(22,160,133,0.2)' }}>
         O histórico completo de cada aluno está no Google Sheets. Aqui só destrancas a autoavaliação se um aluno se enganou.
       </div>
-
-      {alunos.length === 0 && (
-        <div style={{ textAlign:'center', padding:'30px 0', color:'rgba(26,23,20,0.4)' }}>
-          Nenhum aluno encontrado para esta turma.
-        </div>
-      )}
-
+      {alunos.length === 0 && <div style={{ textAlign:'center', padding:'30px 0', color:'rgba(26,23,20,0.4)' }}>Nenhum aluno encontrado para esta turma.</div>}
       {alunos.map(a => {
         const { submetido, hora } = estaSubmetido(a.id);
         return (
           <div key={a.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12, border:`1.5px solid ${submetido ? 'rgba(90,122,78,0.3)' : 'var(--border)'}`, background: submetido ? 'var(--sage-pale)' : '#fff', marginBottom:8 }}>
-            <div style={{ width:36, height:36, borderRadius:10, background: submetido ? 'var(--sage)' : 'var(--cream-dark)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14, color: submetido ? 'white' : 'rgba(26,23,20,0.4)', flexShrink:0 }}>
-              {a.numero}
-            </div>
+            <div style={{ width:36, height:36, borderRadius:10, background: submetido ? 'var(--sage)' : 'var(--cream-dark)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14, color: submetido ? 'white' : 'rgba(26,23,20,0.4)', flexShrink:0 }}>{a.numero}</div>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:600, fontSize:14 }}>{a.nome || `Aluno ${a.numero}`}</div>
-              <div style={{ fontSize:12, color: submetido ? 'var(--sage)' : 'rgba(26,23,20,0.4)' }}>
-                {submetido ? `✓ Submetido em ${hora}` : 'Ainda não submeteu'}
-              </div>
+              <div style={{ fontSize:12, color: submetido ? 'var(--sage)' : 'rgba(26,23,20,0.4)' }}>{submetido ? `✓ Submetido em ${hora}` : 'Ainda não submeteu'}</div>
             </div>
             {submetido && (
               <button onClick={() => setReabrirConfirm(a.id)}
@@ -323,25 +297,15 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
           </div>
         );
       })}
-
-      {/* Modal confirmação de reabertura */}
       {reabrirConfirm && (
         <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
           <div style={{ background:'#fff', borderRadius:20, padding:24, maxWidth:340, width:'100%', textAlign:'center' }}>
             <div style={{ fontSize:32, marginBottom:8 }}>🔓</div>
             <div style={{ fontWeight:700, fontSize:16, marginBottom:8 }}>Reabrir autoavaliação?</div>
-            <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginBottom:20 }}>
-              O aluno vai poder preencher novamente as competências desta aula. O registo anterior fica substituído pelo novo.
-            </div>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginBottom:20 }}>O aluno vai poder preencher novamente as competências desta aula.</div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              <button onClick={() => reabrir(reabrirConfirm)}
-                style={{ padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>
-                ✓ Sim, reabrir
-              </button>
-              <button onClick={() => setReabrirConfirm(null)}
-                style={{ padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontSize:13, cursor:'pointer' }}>
-                Cancelar
-              </button>
+              <button onClick={() => reabrir(reabrirConfirm)} style={{ padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>✓ Sim, reabrir</button>
+              <button onClick={() => setReabrirConfirm(null)} style={{ padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontSize:13, cursor:'pointer' }}>Cancelar</button>
             </div>
           </div>
         </div>
@@ -350,14 +314,11 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
   );
 }
 
-
 // ════════════════════════════════════════════════════════════════
 export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoActualizado, onAlteracao, onGuardado }: Props) {
   const [modulo, setModulo] = useState<Modulo>('inicio');
   const [modalProximo, setModalProximo] = useState<string | null>(null);
   const [fichasParaRequisicao, setFichasParaRequisicao] = React.useState<string[]>([]);
-  // Hooks de competências — têm de estar aqui, ANTES de qualquer return condicional,
-  // nunca depois (violar as Regras dos Hooks causa erros React imprevisíveis).
   const [tabInicio, setTabInicio] = useState<'orientacao' | 'resumo' | 'competencias'>('orientacao');
   const [compRemovidas, setCompRemovidas] = useState<string[]>(
     Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []
@@ -368,8 +329,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
-  // Um plano pode ter várias requisições (decisão de 21/06/2026) — lista
-  // completa para gestão e eliminação múltipla, não só a mais recente.
   const todasRequisicoesDoPlano = getRequisicoesPorPlano(plano.id);
   const [modoSelecaoReq, setModoSelecaoReq] = useState(false);
   const [reqSelecionadasIds, setReqSelecionadasIds] = useState<Set<string>>(new Set());
@@ -390,7 +349,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     onPlanoActualizado(p);
   }
 
-  // Determinar estados dos módulos
   function estadoModulo(m: string) {
     if (m === 'ficha') return temFichas ? 'concluido' : 'pendente';
     if (m === 'guia') {
@@ -405,14 +363,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   function publicar() {
     const p = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
-    addOrUpdatePlanoAula(p); // já envia para o Sheets — alunos vêem sempre a versão mais recente
+    addOrUpdatePlanoAula(p);
     onPlanoActualizado(p);
   }
 
-  // Após criar/associar ficha — recarrega o plano actualizado do backend
-  // (necessário porque o ProfessorView altera o plano directamente no backend,
-  // sem o componente pai saber automaticamente).
-  // ── Classroom ───────────────────────────────────
   const [modalClassroom, setModalClassroom] = React.useState<{tipo: string; conteudo: any} | null>(null);
   const [classroomEnviado, setClassroomEnviado] = React.useState(false);
 
@@ -429,7 +383,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     setModalProximo('apos_ficha');
   }
 
-  // ── Modal Sim/Não ─────────────────────────────────────────────
   if (modalProximo === 'apos_ficha') {
     const fichasActuais = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
     const ordenadas = [...fichasActuais].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
@@ -440,22 +393,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ background:'#fff', borderRadius:20, padding:28, maxWidth:360, width:'100%', textAlign:'center' }}>
           <div style={{ fontSize:36, marginBottom:12 }}>📚</div>
           <div style={{ fontWeight:700, fontSize:18, marginBottom:8 }}>Ficha guardada!</div>
-          {nomePrato && (
-            <div style={{ fontSize:14, color:'var(--copper)', fontWeight:600, marginBottom:12 }}>
-              {nomePrato}
-            </div>
-          )}
-          <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:24 }}>
-            Queres criar agora o Guia de Apoio à Produção?
-          </div>
+          {nomePrato && <div style={{ fontSize:14, color:'var(--copper)', fontWeight:600, marginBottom:12 }}>{nomePrato}</div>}
+          <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:24 }}>Queres criar agora o Guia de Apoio à Produção?</div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            <button
-              onClick={() => { setModalProximo(null); setModulo('guia'); }}
+            <button onClick={() => { setModalProximo(null); setModulo('guia'); }}
               style={{ padding:'14px', borderRadius:12, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:15, cursor:'pointer' }}>
               ✓ Sim — criar o Guia agora
             </button>
-            <button
-              onClick={() => { setModalProximo(null); setModulo('inicio'); }}
+            <button onClick={() => { setModalProximo(null); setModulo('inicio'); }}
               style={{ padding:'12px', borderRadius:12, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
               Não — voltar ao plano
             </button>
@@ -465,7 +410,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     );
   }
 
-  // ── Renderizar módulo activo ──────────────────────────────────
   if (modulo === 'ficha') {
     return (
       <div>
@@ -474,13 +418,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ background: 'var(--copper-pale)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>
           📄 A criar Ficha de Produção para este plano — será associada automaticamente
         </div>
-        <ProfessorView
-          turmaId={turmaId}
-          nomeProfessor={nomeProfessor}
-          planoId={plano.id}
-          onAlteracao={onAlteracao}
-          onGuardado={aposGuardarFicha}
-        />
+        <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id} onAlteracao={onAlteracao} onGuardado={aposGuardarFicha} />
         {modalProximo === 'apos_ficha' && (
           <ModalProximoPasso
             titulo="Ficha guardada! Qual é o próximo passo?"
@@ -490,13 +428,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               { label: 'Criar Requisição', icone: '🛒', valor: 'requisicao' },
               { label: 'Voltar ao Plano de Aula', icone: '←', valor: 'inicio' },
             ]}
-            onEscolha={v => {
-              setModalProximo(null);
-              if (v === 'guia') setModulo('guia');
-              else if (v === 'nova_ficha') setModulo('ficha');
-              else if (v === 'requisicao') setModulo('requisicao');
-              else setModulo('inicio');
-            }}
+            onEscolha={v => { setModalProximo(null); if (v === 'guia') setModulo('guia'); else if (v === 'nova_ficha') setModulo('ficha'); else if (v === 'requisicao') setModulo('requisicao'); else setModulo('inicio'); }}
           />
         )}
       </div>
@@ -508,7 +440,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     const ordenadas = [...fichasActuais].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
     const ultimaFicha = ordenadas[ordenadas.length - 1];
     const nomePratoGuia = ultimaFicha?.nomePrato || '';
-
     return (
       <div>
         <div className="no-print">
@@ -520,23 +451,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
           )}
         </div>
-        <ProfessorView
-          turmaId={turmaId}
-          nomeProfessor={nomeProfessor}
-          planoId={plano.id}
-          modoGuia={true}
-          nomePratoInicial={nomePratoGuia}
-          onAlteracao={onAlteracao}
-          onGuardado={() => {
-            onGuardado?.();
-            setModalProximo('apos_guia');
-          }}
-        />
-        {/* Modal após guardar guia */}
+        <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id} modoGuia={true} nomePratoInicial={nomePratoGuia} onAlteracao={onAlteracao}
+          onGuardado={() => { onGuardado?.(); setModalProximo('apos_guia'); }} />
         {modalProximo === 'apos_guia' && (
-          <ModalRequisicao
-            plano={plano}
-            fichas={fichasActuais}
+          <ModalRequisicao plano={plano} fichas={fichasActuais}
             onSim={(ids) => { setFichasParaRequisicao(ids); setModalProximo(null); setModulo('requisicao'); }}
             onNao={() => { setModalProximo(null); setModulo('inicio'); }}
           />
@@ -553,9 +471,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {todasRequisicoesDoPlano.length > 0 && (
           <div style={{ background: 'var(--sage-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: modoSelecaoReq ? 8 : 0 }}>
-              <span style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 600 }}>
-                ✓ {todasRequisicoesDoPlano.length} requisição(ões) para este plano
-              </span>
+              <span style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 600 }}>✓ {todasRequisicoesDoPlano.length} requisição(ões) para este plano</span>
               {todasRequisicoesDoPlano.length > 1 && (
                 <button onClick={() => { setModoSelecaoReq(!modoSelecaoReq); setReqSelecionadasIds(new Set()); }}
                   style={{ fontSize: 11, fontWeight: 700, color: 'var(--sage)', background: 'none', border: '1px solid var(--sage)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
@@ -565,16 +481,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
             {modoSelecaoReq && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
-                  {reqSelecionadasIds.size} selecionada(s)
-                </span>
+                <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{reqSelecionadasIds.size} selecionada(s)</span>
                 <button onClick={() => {
                   if (reqSelecionadasIds.size === 0) return;
-                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} requisição(ões)? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeito.`)) {
+                  if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} requisição(ões)?`)) {
                     reqSelecionadasIds.forEach(id => eliminarRequisicaoDefinitivamente(id));
-                    setReqSelecionadasIds(new Set());
-                    setModoSelecaoReq(false);
-                    onPlanoActualizado({ ...plano });
+                    setReqSelecionadasIds(new Set()); setModoSelecaoReq(false); onPlanoActualizado({ ...plano });
                   }
                 }} disabled={reqSelecionadasIds.size === 0}
                   style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 11, cursor: reqSelecionadasIds.size === 0 ? 'default' : 'pointer', opacity: reqSelecionadasIds.size === 0 ? 0.4 : 1 }}>
@@ -583,14 +495,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </div>
             )}
             {todasRequisicoesDoPlano.map(r => (
-              <div key={r.id} onClick={() => {
-                if (!modoSelecaoReq) return;
-                setReqSelecionadasIds(prev => {
-                  const novo = new Set(prev);
-                  if (novo.has(r.id)) novo.delete(r.id); else novo.add(r.id);
-                  return novo;
-                });
-              }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: '#fff', marginBottom: 4, cursor: modoSelecaoReq ? 'pointer' : 'default' }}>
+              <div key={r.id} onClick={() => { if (!modoSelecaoReq) return; setReqSelecionadasIds(prev => { const novo = new Set(prev); if (novo.has(r.id)) novo.delete(r.id); else novo.add(r.id); return novo; }); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: '#fff', marginBottom: 4, cursor: modoSelecaoReq ? 'pointer' : 'default' }}>
                 {modoSelecaoReq && (
                   <div style={{ width: 18, height: 18, borderRadius: 5, border: '2px solid var(--sage)', background: reqSelecionadasIds.has(r.id) ? 'var(--sage)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 10, color: 'white' }}>
                     {reqSelecionadasIds.has(r.id) && '✓'}
@@ -601,53 +507,35 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   {' · '}{r.linhas?.length || 0} ingredientes
                 </span>
                 {!modoSelecaoReq && (
-                  <button onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm('Eliminar DEFINITIVAMENTE esta requisição? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeita.')) {
-                      eliminarRequisicaoDefinitivamente(r.id);
-                      onPlanoActualizado({ ...plano });
-                    }
-                  }} style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: 'pointer', padding: '2px 6px' }}
-                    title="Eliminar esta requisição">
-                    🗑️
-                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Eliminar DEFINITIVAMENTE esta requisição?')) { eliminarRequisicaoDefinitivamente(r.id); onPlanoActualizado({ ...plano }); } }}
+                    style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: 'pointer', padding: '2px 6px' }}>🗑️</button>
                 )}
               </div>
             ))}
           </div>
         )}
-        <Requisicao
-          nomeProfessor={nomeProfessor}
-          planoIdFixo={plano.id}
-          turmaId={turmaId}
+        <Requisicao nomeProfessor={nomeProfessor} planoIdFixo={plano.id} turmaId={turmaId}
           fichasIniciais={fichasParaRequisicao.length ? fichasParaRequisicao : undefined}
-          onGuardado={() => setModalProximo('apos_requisicao')}
-        />
-        {/* Modal após guardar requisição — publicar? */}
+          onGuardado={() => setModalProximo('apos_requisicao')} />
         {modalProximo === 'apos_requisicao' && (
           <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
             <div style={{ background:'#fff', borderRadius:20, padding:28, maxWidth:360, width:'100%', textAlign:'center' }}>
               <div style={{ fontSize:36, marginBottom:8 }}>🚀</div>
               <div style={{ fontWeight:700, fontSize:18, marginBottom:8 }}>Requisição guardada!</div>
-              <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:24 }}>
-                Quer publicar agora este plano de aula para os alunos?
-              </div>
+              <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:24 }}>Quer publicar agora este plano de aula para os alunos?</div>
               <div style={{ background:'var(--cream-dark)', borderRadius:10, padding:'10px 14px', marginBottom:20, fontSize:13, color:'rgba(26,23,20,0.6)', textAlign:'left' }}>
                 Os alunos poderão ver as fichas, fazer a autoavaliação e registar a presença.
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <button
-                  onClick={() => { publicar(); setModalProximo(null); setModulo('inicio'); }}
+                <button onClick={() => { publicar(); setModalProximo(null); setModulo('inicio'); }}
                   style={{ padding:'14px', borderRadius:12, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:15, cursor:'pointer' }}>
                   ✓ Sim — publicar para os alunos
                 </button>
-                <button
-                  onClick={() => { setModalProximo(null); setModulo('competencias'); }}
+                <button onClick={() => { setModalProximo(null); setModulo('competencias'); }}
                   style={{ padding:'12px', borderRadius:12, border:'1.5px solid var(--copper)', background:'var(--copper-pale)', color:'var(--copper)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
                   🎯 Antes, rever as Competências
                 </button>
-                <button
-                  onClick={() => { setModalProximo(null); setModulo('inicio'); }}
+                <button onClick={() => { setModalProximo(null); setModulo('inicio'); }}
                   style={{ padding:'12px', borderRadius:12, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
                   Guardar para mais tarde
                 </button>
@@ -664,12 +552,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
-
         <div style={{ padding:'10px 14px', background:'var(--copper-pale)', borderRadius:10, fontSize:13, color:'var(--copper)', marginBottom:14, border:'1px solid rgba(181,101,29,0.2)' }}>
           <strong>{totalComp} competências</strong> para esta aula. As obrigatórias não podem ser removidas.
         </div>
-
-        {/* OBRIGATÓRIAS */}
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--sage)', marginBottom:8 }}>🔒 Obrigatórias — sempre presentes</div>
           {compObrigatorias.map(c => (
@@ -680,8 +565,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
           ))}
         </div>
-
-        {/* TÉCNICAS */}
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas — UC {plano.ucId}</div>
           {microsDaUC.slice(0, 8).map(m => {
@@ -689,10 +572,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             return (
               <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
                 <span>{removida ? '○' : '●'}</span>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
-                  {m.criterios.length > 0 && <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)' }}>{m.criterios.length} critérios</div>}
-                </div>
+                <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)' }}>{m.criterios.length} critérios</div>}</div>
                 <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
                   style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                   {removida ? '+ Incluir' : '− Remover'}
@@ -701,8 +581,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             );
           })}
         </div>
-
-        {/* ATITUDES */}
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#8e44ad', marginBottom:8 }}>💡 Atitudes</div>
           {ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 6).map(a => {
@@ -719,11 +597,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             );
           })}
         </div>
-
         <div style={{ padding:'12px 14px', background:'var(--cream-dark)', borderRadius:10, textAlign:'center', marginBottom:16 }}>
           <div style={{ fontWeight:700, fontSize:16 }}>Total: {totalComp} competências</div>
         </div>
-
         {!publicado && (
           <button onClick={() => { publicar(); setModulo('inicio'); }}
             style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:15, cursor:'pointer' }}>
@@ -744,79 +620,53 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     );
   }
 
-  // modulo === 'validacao'
-  return (
-    <div>
-      <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-      <BarraUC plano={plano} />
-      <ValidacaoView turmaId={turmaId} planoId={plano.id} />
-    </div>
-  );
+  if (modulo === 'validacao') {
+    return (
+      <div>
+        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
+        <BarraUC plano={plano} />
+        <ValidacaoView turmaId={turmaId} planoId={plano.id} />
+      </div>
+    );
+  }
 
-
-
-  // ── INÍCIO — visão geral do plano ─────────────────────────────
+  // ── INÍCIO ───────────────────────────────────────────────────
   return (
     <div>
       <CabecalhoPlano plano={plano} onVoltar={onVoltar} modulo={modulo} setModulo={setModulo} />
 
-      {/* Sub-navegação: Orientação, Resumo, Competências */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10, flexWrap: 'wrap' }}>
-        <button onClick={() => setTabInicio('orientacao')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'orientacao' ? '#0e7490' : 'transparent', color: tabInicio === 'orientacao' ? 'white' : 'rgba(26,23,20,0.5)' }}>
-          🚦 Orientação
-        </button>
-        <button onClick={() => setTabInicio('resumo')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'resumo' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'resumo' ? 'white' : 'rgba(26,23,20,0.5)' }}>
-          📋 Resumo
-        </button>
-        <button onClick={() => setTabInicio('competencias')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'competencias' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'competencias' ? 'white' : 'rgba(26,23,20,0.5)' }}>
-          🎯 Competências ({totalComp})
-        </button>
+        <button onClick={() => setTabInicio('orientacao')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'orientacao' ? '#0e7490' : 'transparent', color: tabInicio === 'orientacao' ? 'white' : 'rgba(26,23,20,0.5)' }}>🚦 Orientação</button>
+        <button onClick={() => setTabInicio('resumo')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'resumo' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'resumo' ? 'white' : 'rgba(26,23,20,0.5)' }}>📋 Resumo</button>
+        <button onClick={() => setTabInicio('competencias')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'competencias' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'competencias' ? 'white' : 'rgba(26,23,20,0.5)' }}>🎯 Competências ({totalComp})</button>
       </div>
 
-      {/* TAB ORIENTAÇÃO — para o professor */}
+      {/* TAB ORIENTAÇÃO */}
       {tabInicio === 'orientacao' && (
         <div>
-          {/* Checklist do professor */}
-          <div style={{ background: '#E6F1FB', borderRadius: 14, padding: '14px 16px',
-            border: '1.5px solid #B5D4F4', marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 10 }}>
-              🚦 Antes de começar — verificar
-            </div>
+          <div style={{ background: '#E6F1FB', borderRadius: 14, padding: '14px 16px', border: '1.5px solid #B5D4F4', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 10 }}>🚦 Antes de começar — verificar</div>
             {[
               { ok: temFichas, label: 'Fichas de produção criadas', acao: () => setModulo('ficha'), acaoLabel: 'Criar ficha →' },
               { ok: fichasDoPlano.some((f: any) => f.textoGuia), label: 'Guião de produção gerado', acao: () => setModulo('guia'), acaoLabel: 'Gerar guião →' },
               { ok: temRequisicao, label: 'Requisição enviada', acao: () => setModulo('requisicao'), acaoLabel: 'Fazer requisição →' },
               { ok: publicado, label: 'Plano publicado para os alunos', acao: null, acaoLabel: '' },
             ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 12px', borderRadius: 9, marginBottom: 6,
-                background: item.ok ? '#EAF3DE' : '#fff',
-                border: `1px solid ${item.ok ? '#C0DD97' : 'rgba(14,116,144,0.2)'}` }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 9, marginBottom: 6, background: item.ok ? '#EAF3DE' : '#fff', border: `1px solid ${item.ok ? '#C0DD97' : 'rgba(14,116,144,0.2)'}` }}>
                 <span style={{ fontSize: 18, flexShrink: 0 }}>{item.ok ? '✅' : '⭕'}</span>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: item.ok ? 500 : 600,
-                  color: item.ok ? '#27500A' : '#0C447C' }}>{item.label}</span>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: item.ok ? 500 : 600, color: item.ok ? '#27500A' : '#0C447C' }}>{item.label}</span>
                 {!item.ok && item.acao && (
-                  <button onClick={item.acao} style={{ padding: '4px 10px', borderRadius: 7,
-                    border: 'none', background: '#0e7490', color: '#fff',
-                    fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                    {item.acaoLabel}
-                  </button>
+                  <button onClick={item.acao} style={{ padding: '4px 10px', borderRadius: 7, border: 'none', background: '#0e7490', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>{item.acaoLabel}</button>
                 )}
               </div>
             ))}
           </div>
 
-          {/* O que se vai produzir */}
           {fichasDoPlano.length > 0 && (
-            <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px',
-              border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
-                textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-                🍽️ Produção desta aula
-              </div>
+            <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>🍽️ Produção desta aula</div>
               {fichasDoPlano.map((f: any, i: number) => (
-                <div key={i} style={{ padding: '8px 10px', borderRadius: 8, marginBottom: 6,
-                  background: 'rgba(181,101,29,0.05)', border: '1px solid rgba(181,101,29,0.15)' }}>
+                <div key={i} style={{ padding: '8px 10px', borderRadius: 8, marginBottom: 6, background: 'rgba(181,101,29,0.05)', border: '1px solid rgba(181,101,29,0.15)' }}>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{f.nomePrato}</div>
                   <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
                     {f.numPorcoes && `${f.numPorcoes} doses`}
@@ -827,29 +677,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
           )}
 
-          {/* Quem já entrou hoje */}
           {(() => {
             const presencasHoje = getPresencas().filter((r: any) => r.planoAulaId === plano.id || r.data === plano.data?.slice(0,10));
             const alunosDaTurma = getAlunos().filter(a => a.turmaId === plano.turmaId);
             if (alunosDaTurma.length === 0) return null;
             return (
-              <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px',
-                border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
-                  textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-                  👤 Presenças — {presencasHoje.length}/{alunosDaTurma.length} alunos
-                </div>
+              <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>👤 Presenças — {presencasHoje.length}/{alunosDaTurma.length} alunos</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {alunosDaTurma.map(a => {
                     const presente = presencasHoje.find((p: any) => p.alunoId === a.id);
                     return (
-                      <div key={a.id} style={{ padding: '4px 10px', borderRadius: 100,
-                        fontSize: 11, fontWeight: 600,
-                        background: presente ? '#f0fdf4' : 'rgba(26,23,20,0.05)',
-                        color: presente ? '#15803d' : 'rgba(26,23,20,0.4)',
-                        border: `1px solid ${presente ? '#bbf7d0' : 'rgba(26,23,20,0.08)'}` }}>
-                        {presente ? '✓ ' : ''}{a.nome || a.id}
-                        {presente?.atrasado && <span style={{ color: '#dc2626' }}> ⚠</span>}
+                      <div key={a.id} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: presente ? '#f0fdf4' : 'rgba(26,23,20,0.05)', color: presente ? '#15803d' : 'rgba(26,23,20,0.4)', border: `1px solid ${presente ? '#bbf7d0' : 'rgba(26,23,20,0.08)'}` }}>
+                        {presente ? '✓ ' : ''}{a.nome || a.id}{presente?.atrasado && <span style={{ color: '#dc2626' }}> ⚠</span>}
                       </div>
                     );
                   })}
@@ -858,38 +698,29 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             );
           })()}
 
-          {/* KitchenFlow */}
-          <div style={{ background: '#0e7490', borderRadius: 14, padding: '14px 16px',
-            marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 6 }}>
-              🏭 KitchenFlow ECL
-            </div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 10, lineHeight: 1.5 }}>
-              Abre o KitchenFlow para verificar os registos da cozinha antes de começar a aula.
-            </div>
+          <div style={{ background: '#0e7490', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 6 }}>🏭 KitchenFlow ECL</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 10, lineHeight: 1.5 }}>Abre o KitchenFlow para verificar os registos da cozinha antes de começar a aula.</div>
             <button onClick={() => window.open('https://ecl-haccp.vercel.app/', '_blank')}
-              style={{ padding: '10px 16px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.3)',
-                background: 'rgba(255,255,255,0.12)', color: '#fff',
-                fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+              style={{ padding: '10px 16px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
               🔗 Abrir KitchenFlow ECL →
             </button>
           </div>
+
+          {/* ── NOVO: Evento Pedagógico ── */}
+          <EventoAssociador plano={plano} turmaId={turmaId} onPlanoActualizado={onPlanoActualizado} />
+
         </div>
       )}
 
       {/* TAB COMPETÊNCIAS */}
       {tabInicio === 'competencias' && (
         <div>
-          {/* Info */}
           <div style={{ padding: '10px 14px', background: 'var(--copper-pale)', borderRadius: 10, fontSize: 12, color: 'var(--copper)', marginBottom: 14, border: '1px solid rgba(181,101,29,0.2)' }}>
-            <strong>{totalComp} competências</strong> no total para esta aula. As obrigatórias (higiene, HACCP, assiduidade) não podem ser removidas. As restantes podem ser ajustadas.
+            <strong>{totalComp} competências</strong> no total para esta aula.
           </div>
-
-          {/* OBRIGATÓRIAS — não removíveis */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>
-              🔒 Obrigatórias — sempre presentes
-            </div>
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>🔒 Obrigatórias — sempre presentes</div>
             {compObrigatorias.map(c => (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'var(--sage-pale)', marginBottom: 6, border: '1px solid rgba(90,122,78,0.2)' }}>
                 <span style={{ fontSize: 14 }}>✓</span>
@@ -898,171 +729,92 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </div>
             ))}
           </div>
-
-          {/* TÉCNICAS sugeridas pela UC */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>
-              🔬 Técnicas — sugeridas pela UC {plano.ucId}
-            </div>
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Técnicas — sugeridas pela UC {plano.ucId}</div>
             {microsDaUC.slice(0, 8).map(m => {
               const removida = compRemovidas.includes(m.id);
               return (
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(181,101,29,0.2)'}`, opacity: removida ? 0.5 : 1 }}>
                   <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
-                    {m.criterios.length > 0 && <div style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>{m.criterios.length} critérios observáveis</div>}
-                  </div>
-                  <button onClick={() => {
-                    const novas = removida
-                      ? compRemovidas.filter(x => x !== m.id)
-                      : [...compRemovidas, m.id];
-                    guardarCompetencias(novas, compAdicionadas);
-                  }} style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
+                  <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>{m.criterios.length} critérios observáveis</div>}</div>
+                  <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id]; guardarCompetencias(novas, compAdicionadas); }}
+                    style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
                 </div>
               );
             })}
           </div>
-
-          {/* ATITUDES */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>
-              💡 Atitudes — sugeridas para esta aula
-            </div>
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>💡 Atitudes — sugeridas para esta aula</div>
             {ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 6).map(a => {
               const removida = compRemovidas.includes(a.id);
               return (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'rgba(142,68,173,0.06)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(142,68,173,0.15)'}`, opacity: removida ? 0.5 : 1 }}>
                   <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
                   <div style={{ flex: 1, fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{a.nome}</div>
-                  <button onClick={() => {
-                    const novas = removida
-                      ? compRemovidas.filter(x => x !== a.id)
-                      : [...compRemovidas, a.id];
-                    guardarCompetencias(novas, compAdicionadas);
-                  }} style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
+                  <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== a.id) : [...compRemovidas, a.id]; guardarCompetencias(novas, compAdicionadas); }}
+                    style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
                 </div>
               );
             })}
           </div>
-
-          {/* Resumo */}
           <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 12, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
-            <div style={{ color: 'rgba(26,23,20,0.5)' }}>
-              {compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compAtitudes.length} atitudes
-              {compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}
-            </div>
-            {totalComp > 7 && (
-              <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>
-                ⚠️ São muitas competências para uma aula. Considera remover algumas.
-              </div>
-            )}
-            {totalComp <= 5 && (
-              <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>
-                ✓ Número adequado para uma aula.
-              </div>
-            )}
+            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compAtitudes.length} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
+            {totalComp > 7 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
+            {totalComp <= 5 && <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>✓ Número adequado para uma aula.</div>}
           </div>
         </div>
       )}
 
       {/* TAB RESUMO */}
       {tabInicio === 'resumo' && (<>
-
-      {/* Fichas associadas */}
-      {fichasDoPlano.length > 0 && (
-        <div style={{ marginBottom: 14, padding: '10px 14px', background: 'var(--cream-dark)', borderRadius: 12, border: '1px solid var(--border)' }}>
-          <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 8 }}>
-            Fichas de Produção — {fichasDoPlano.length}
-          </div>
-          {fichasDoPlano.map(f => (
-            <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ fontSize: 16 }}>📄</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{f.nomePrato}</div>
-                <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.numPorcoes} doses</div>
+        {fichasDoPlano.length > 0 && (
+          <div style={{ marginBottom: 14, padding: '10px 14px', background: 'var(--cream-dark)', borderRadius: 12, border: '1px solid var(--border)' }}>
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 8 }}>Fichas de Produção — {fichasDoPlano.length}</div>
+            {fichasDoPlano.map(f => (
+              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 16 }}>📄</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{f.nomePrato}</div>
+                  <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.numPorcoes} doses</div>
+                </div>
+                {(f as any).textoGuia && <span style={{ fontSize:13, color: 'var(--sage)', fontWeight: 600 }}>+ Guia ✓</span>}
               </div>
-              {(f as any).textoGuia && <span style={{ fontSize:13, color: 'var(--sage)', fontWeight: 600 }}>+ Guia ✓</span>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Módulos */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>
-          Construir esta aula
-        </div>
-
-        <ModuloCard icone="🎯" titulo={`Competências (${totalComp})`} cor="var(--copper)"
-          descricao={`${compObrigatorias.length} obrigatórias · ${compTecnicas.length} técnicas · ${compAtitudes.length} atitudes — ajustar se necessário`}
-          estado="pendente"
-          onClick={() => setModulo('competencias')} />
-
-        <ModuloCard icone="📄" titulo="Ficha de Produção" cor="var(--copper)"
-          descricao={temFichas ? `${fichasDoPlano.length} ficha${fichasDoPlano.length > 1 ? 's' : ''} criada${fichasDoPlano.length > 1 ? 's' : ''} — adicionar mais?` : 'Criar ficha com ingredientes, preparação e HACCP'}
-          estado={estadoModulo('ficha') as any}
-          onClick={() => setModulo('ficha')} />
-
-        <ModuloCard icone="📚" titulo="Guia de Apoio à Produção" cor="var(--sage)"
-          descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Documento pedagógico com rendimentos, food cost e questões'}
-          estado={estadoModulo('guia') as any}
-          desativado={!temFichas}
-          onClick={() => temFichas && setModulo('guia')} />
-
-        <ModuloCard icone="🛒" titulo="Requisição" cor="#2980b9"
-          descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : temRequisicao ? 'Requisição criada — ver ou editar' : 'Consolidar ingredientes para a aula'}
-          estado={estadoModulo('requisicao') as any}
-          desativado={!temFichas}
-          onClick={() => temFichas && setModulo('requisicao')} />
-
-        <ModuloCard icone="✓" titulo="Validação e Avaliação" cor="#8e44ad"
-          descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Validar autoavaliações dos alunos'}
-          estado={estadoModulo('validacao') as any}
-          desativado={!temFichas}
-          onClick={() => temFichas && setModulo('validacao')} />
-
-        <ModuloCard icone="🔓" titulo="Reabrir Autoavaliação" cor="#16a085"
-          descricao="Aluno enganou-se? Destranca para ele corrigir"
-          estado="pendente"
-          onClick={() => setModulo('registos')} />
-      </div>
-
-      {/* Publicar / Estado */}
-      <div style={{ padding: '14px 16px', borderRadius: 14, border: `2px solid ${publicado ? 'var(--sage)' : 'var(--copper)'}`, background: publicado ? 'var(--sage-pale)' : 'var(--copper-pale)' }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: publicado ? 'var(--sage)' : 'var(--copper)' }}>
-          {publicado ? '✓ Aula publicada para os alunos' : '🚀 Publicar para os alunos'}
-        </div>
-        {publicado && plano.atualizadoEm && (
-          <div style={{ fontSize: 12, color: 'var(--sage)', marginBottom: 6, fontWeight: 600 }}>
-            Última publicação: {new Date(plano.atualizadoEm).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' })} às {new Date(plano.atualizadoEm).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' })}
+            ))}
           </div>
         )}
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
-          {publicado
-            ? 'Os alunos vêem sempre a versão mais recente. Edita à vontade — as alterações são automáticas.'
-            : 'Quando estiver pronto, publica para os alunos poderem aceder.'}
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>Construir esta aula</div>
+          <ModuloCard icone="🎯" titulo={`Competências (${totalComp})`} cor="var(--copper)" descricao={`${compObrigatorias.length} obrigatórias · ${compTecnicas.length} técnicas · ${compAtitudes.length} atitudes`} estado="pendente" onClick={() => setModulo('competencias')} />
+          <ModuloCard icone="📄" titulo="Ficha de Produção" cor="var(--copper)" descricao={temFichas ? `${fichasDoPlano.length} ficha${fichasDoPlano.length > 1 ? 's' : ''} criada${fichasDoPlano.length > 1 ? 's' : ''}` : 'Criar ficha com ingredientes, preparação e HACCP'} estado={estadoModulo('ficha') as any} onClick={() => setModulo('ficha')} />
+          <ModuloCard icone="📚" titulo="Guia de Apoio à Produção" cor="var(--sage)" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Documento pedagógico com rendimentos, food cost e questões'} estado={estadoModulo('guia') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('guia')} />
+          <ModuloCard icone="🛒" titulo="Requisição" cor="#2980b9" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : temRequisicao ? 'Requisição criada — ver ou editar' : 'Consolidar ingredientes para a aula'} estado={estadoModulo('requisicao') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('requisicao')} />
+          <ModuloCard icone="✓" titulo="Validação e Avaliação" cor="#8e44ad" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Validar autoavaliações dos alunos'} estado={estadoModulo('validacao') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('validacao')} />
+          <ModuloCard icone="🔓" titulo="Reabrir Autoavaliação" cor="#16a085" descricao="Aluno enganou-se? Destranca para ele corrigir" estado="pendente" onClick={() => setModulo('registos')} />
         </div>
-        {publicado ? (
-          <div style={{ display:'flex', gap:8 }}>
-            <div style={{ flex:1, padding:'8px 12px', borderRadius:8, background:'rgba(90,122,78,0.15)', fontSize:13, color:'var(--sage)', fontWeight:600, textAlign:'center' }}>
-              ✓ Visível para os alunos
+
+        <div style={{ padding: '14px 16px', borderRadius: 14, border: `2px solid ${publicado ? 'var(--sage)' : 'var(--copper)'}`, background: publicado ? 'var(--sage-pale)' : 'var(--copper-pale)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: publicado ? 'var(--sage)' : 'var(--copper)' }}>{publicado ? '✓ Aula publicada para os alunos' : '🚀 Publicar para os alunos'}</div>
+          {publicado && plano.atualizadoEm && (
+            <div style={{ fontSize: 12, color: 'var(--sage)', marginBottom: 6, fontWeight: 600 }}>
+              Última publicação: {new Date(plano.atualizadoEm).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' })} às {new Date(plano.atualizadoEm).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' })}
             </div>
-            <button onClick={publicar} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid var(--sage)', background:'#fff', color:'var(--sage)', fontWeight:600, fontSize:13, cursor:'pointer' }}>
-              🔄 Re-publicar
-            </button>
-          </div>
-        ) : (
-          <button onClick={publicar} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>
-            🚀 Publicar esta aula para os alunos
-          </button>
-        )}
-      </div>
+          )}
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>{publicado ? 'Os alunos vêem sempre a versão mais recente.' : 'Quando estiver pronto, publica para os alunos poderem aceder.'}</div>
+          {publicado ? (
+            <div style={{ display:'flex', gap:8 }}>
+              <div style={{ flex:1, padding:'8px 12px', borderRadius:8, background:'rgba(90,122,78,0.15)', fontSize:13, color:'var(--sage)', fontWeight:600, textAlign:'center' }}>✓ Visível para os alunos</div>
+              <button onClick={publicar} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid var(--sage)', background:'#fff', color:'var(--sage)', fontWeight:600, fontSize:13, cursor:'pointer' }}>🔄 Re-publicar</button>
+            </div>
+          ) : (
+            <button onClick={publicar} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>🚀 Publicar esta aula para os alunos</button>
+          )}
+        </div>
       </>)}
     </div>
   );
