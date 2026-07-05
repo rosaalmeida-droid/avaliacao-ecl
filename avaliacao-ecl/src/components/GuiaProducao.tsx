@@ -702,6 +702,54 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
         </div>
       ))}
 
+      {/* Secção 15 — Cultura e Gastronomia (aparece só se existir) */}
+      {temCultura && (() => {
+        const s15 = guia.secoes.find(s => s.num === 15)!;
+        return (
+          <div key={15} className="guia-secao-card" style={{
+            marginBottom: 10, borderRadius: 16, overflow: 'hidden',
+            border: secaoAberta === 15 ? `2px solid #2c3e50` : `1px solid #2c3e5025`,
+            boxShadow: secaoAberta === 15 ? `0 6px 24px #2c3e5025` : '0 1px 4px rgba(26,23,20,0.06)',
+            transition: 'all 0.2s',
+          }}>
+            <button onClick={() => setSecaoAberta(secaoAberta === 15 ? null : 15)} style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+              padding: '14px 18px',
+              background: secaoAberta === 15
+                ? 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)'
+                : '#fff',
+              border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
+            }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 13, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+                background: secaoAberta === 15 ? 'rgba(255,255,255,0.22)' : '#2c3e5018',
+              }}>📖</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  color: secaoAberta === 15 ? 'rgba(255,255,255,0.65)' : '#2c3e5090', marginBottom: 2 }}>
+                  Secção 15
+                </div>
+                <div style={{ fontWeight: 800, fontSize: 15, lineHeight: 1.2,
+                  color: secaoAberta === 15 ? '#fff' : '#1a1714' }}>
+                  Cultura e Gastronomia
+                </div>
+              </div>
+              <span style={{ fontSize: 22, color: secaoAberta === 15 ? 'rgba(255,255,255,0.7)' : '#2c3e5080',
+                transform: secaoAberta === 15 ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }}>›</span>
+            </button>
+            {secaoAberta === 15 && (
+              <div className="guia-conteudo-print guia-cultura-gastronomia" style={{
+                padding: '18px 18px 20px', background: '#f8f6f0',
+                borderTop: '3px solid #2c3e50',
+              }}>
+                <RenderConteudo texto={s15.conteudo} cor="#2c3e50" />
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Rodapé */}
       <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 11, color: 'rgba(26,23,20,0.3)' }}>
         Escola de Comércio de Lisboa · Avaliação ECL · {new Date().getFullYear()}
