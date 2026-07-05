@@ -1,22 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { publicarNoClassroom } from '../backend';
+import React, { useState } from 'react';
+import { publicarNoClassroom, getPlanosAulaPorTurma, addOrUpdatePlanoAula } from '../backend';
+import { PlanoAula as TPlanoAula } from '../types';
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
-interface RespostaWizard {
-  perguntaId: string;
-  valor: string | string[];
-  outro?: string;
+// ══════════════════════════════════════════════════════════════════
+// TIPOS
+// ══════════════════════════════════════════════════════════════════
+
+type TipoMomento = 'pequeno_almoco' | 'coffee_break_manha' | 'almoco' | 'coffee_break_tarde' | 'jantar' | 'cocktail';
+
+interface MomentoRefeicao {
+  id: string;
+  tipo: TipoMomento;
+  numPessoas: number;
+  restricoes: string[];
+  tipoServico: string;
+  nivelMenu: string;
+  proteina: string;
+  tipoCozinha: string;
+  estruturaMenu: string[];
+  bebidas: string;
+  pao: string;
+  menuImpresso: boolean;
+  linguasMenu: string[];
+  notasExtra: string;
 }
 
-interface Evento {
+interface DiaEvento {
   id: string;
-  nome: string;
-  turmaId: string;
-  respostas: RespostaWizard[];
-  checklist: ItemChecklist[];
-  tarefas: TarefaEvento[];
-  publicado: boolean;
-  criadoEm: string;
+  data: string; // YYYY-MM-DD
+  momentos: MomentoRefeicao[];
 }
 
 interface ItemChecklist {
@@ -25,7 +37,7 @@ interface ItemChecklist {
   texto: string;
   obrigatorio: boolean;
   responsavel: string;
-  estado: 'pendente' | 'feito' | 'nao_aplica' | 'ver_depois';
+  estado: 'pendente' | 'feito';
 }
 
 interface TarefaEvento {
@@ -33,766 +45,687 @@ interface TarefaEvento {
   titulo: string;
   disciplina: string;
   descricao: string;
-  tipo: 'cozinha' | 'sala' | 'comunicacao' | 'interdisciplinar';
   selecionada: boolean;
 }
 
-type EstadoWizard = 'inicio' | 'wizard' | 'checklist' | 'publicar' | 'concluido';
-
-// ── Storage ───────────────────────────────────────────────────────────────────
-const EVENTOS_KEY = 'ecl_eventos_v2';
-const OPCOES_CUSTOM_KEY = 'ecl_wizard_opcoes_custom';
-
-function loadEventos(): Evento[] {
-  try { return JSON.parse(localStorage.getItem(EVENTOS_KEY) || '[]'); } catch { return []; }
-}
-function saveEventos(ev: Evento[]) { localStorage.setItem(EVENTOS_KEY, JSON.stringify(ev)); }
-
-function loadOpcoesCustom(): Record<string, string[]> {
-  try { return JSON.parse(localStorage.getItem(OPCOES_CUSTOM_KEY) || '{}'); } catch { return {}; }
-}
-function saveOpcoesCustom(op: Record<string, string[]>) { localStorage.setItem(OPCOES_CUSTOM_KEY, JSON.stringify(op)); }
-
-// ── Perguntas do Wizard ───────────────────────────────────────────────────────
-interface Pergunta {
+interface Evento {
   id: string;
-  bloco: string;
-  texto: string;
-  tipo: 'botoes' | 'multi' | 'texto' | 'numero';
-  opcoes?: { valor: string; label: string; emoji?: string }[];
-  permiteOutro?: boolean;
-  permiteVerDepois?: boolean;
-  obrigatoria?: boolean;
-  condicao?: (respostas: RespostaWizard[]) => boolean;
+  numero: number;
+  nome: string;
+  turmaId: string;
+  local: string;
+  localOutro?: string;
+  tipoPublico: string;
+  outrasTurmas: string[];
+  protocolo: boolean;
+  tema: string;
+  reservas: boolean;
+  divulgacao: boolean;
+  // Logística externa
+  visita: string;
+  transporteAlunos: boolean;
+  transporteProducao: string;
+  orcamento: string;
+  disposicaoMesas: string;
+  loica: string;
+  dias: DiaEvento[];
+  checklist: ItemChecklist[];
+  tarefas: TarefaEvento[];
+  publicado: boolean;
+  criadoEm: string;
 }
 
-function getPerguntas(opcoesCustom: Record<string, string[]>): Pergunta[] {
-  const custom = (id: string) => (opcoesCustom[id] || []).map(v => ({ valor: v, label: v, emoji: '⭐' }));
-
-  return [
-    // ── BLOCO A — DEFINIÇÃO ──────────────────────────────────────────────────
-    {
-      id: 'nome',
-      bloco: 'Definição',
-      texto: 'Qual é o nome do evento?',
-      tipo: 'texto',
-      obrigatoria: true,
-    },
-    {
-      id: 'local',
-      bloco: 'Definição',
-      texto: 'O evento é interno ou externo?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'interno', label: 'Interno — na escola', emoji: '🏫' },
-        { valor: 'externo', label: 'Externo — noutro local', emoji: '🚌' },
-        ...custom('local'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'tipo_evento',
-      bloco: 'Definição',
-      texto: 'Que tipo de evento é este?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'coffee_break', label: 'Coffee Break', emoji: '☕' },
-        { valor: 'almoco_buffet', label: 'Almoço Buffet', emoji: '🥗' },
-        { valor: 'almoco_mesa', label: 'Almoço à Mesa', emoji: '🍽️' },
-        { valor: 'jantar', label: 'Jantar', emoji: '🌙' },
-        { valor: 'cocktail', label: 'Cocktail', emoji: '🥂' },
-        { valor: 'catering_externo', label: 'Catering Externo', emoji: '🚛' },
-        ...custom('tipo_evento'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'num_coffee_breaks',
-      bloco: 'Definição',
-      texto: 'Quantos coffee breaks são?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      condicao: r => r.find(x => x.perguntaId === 'tipo_evento')?.valor === 'coffee_break',
-      opcoes: [
-        { valor: '1_manha', label: '1 — Só de manhã', emoji: '🌅' },
-        { valor: '1_tarde', label: '1 — Só de tarde', emoji: '🌇' },
-        { valor: '2_ambos', label: '2 — Manhã e tarde', emoji: '☀️' },
-      ],
-    },
-    {
-      id: 'data',
-      bloco: 'Definição',
-      texto: 'Qual é a data e horário do evento?',
-      tipo: 'texto',
-      obrigatoria: true,
-    },
-    {
-      id: 'protocolo',
-      bloco: 'Definição',
-      texto: 'O evento tem protocolo formal?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'sim', label: 'Sim — tem protocolo', emoji: '🎩' },
-        { valor: 'nao', label: 'Não — informal', emoji: '😊' },
-      ],
-    },
-    {
-      id: 'tema',
-      bloco: 'Definição',
-      texto: 'O evento tem um tema específico?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'nao', label: 'Não tem tema', emoji: '❌' },
-        { valor: 'natal', label: 'Natal', emoji: '🎄' },
-        { valor: 'pascoa', label: 'Páscoa', emoji: '🐣' },
-        { valor: 'portugues', label: 'Cozinha Portuguesa', emoji: '🇵🇹' },
-        { valor: 'internacional', label: 'Cozinha Internacional', emoji: '🌍' },
-        { valor: 'sim', label: 'Sim — outro tema', emoji: '🎨' },
-        ...custom('tema'),
-      ],
-      permiteOutro: true,
-    },
-    // ── BLOCO B — PÚBLICO ────────────────────────────────────────────────────
-    {
-      id: 'num_pessoas',
-      bloco: 'Público',
-      texto: 'Para quantas pessoas é o evento?',
-      tipo: 'numero',
-      obrigatoria: true,
-    },
-    {
-      id: 'tipo_publico',
-      bloco: 'Público',
-      texto: 'Qual é o tipo de público?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'adultos', label: 'Adultos', emoji: '👨‍💼' },
-        { valor: 'criancas', label: 'Crianças', emoji: '👶' },
-        { valor: 'misto', label: 'Adultos + crianças', emoji: '👨‍👩‍👧' },
-        { valor: 'corporativo', label: 'Corporativo', emoji: '🏢' },
-        { valor: 'escolar', label: 'Escolar', emoji: '🎓' },
-        ...custom('tipo_publico'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'restricoes',
-      bloco: 'Público',
-      texto: 'Existem restrições alimentares ou alergias?',
-      tipo: 'multi',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'nenhuma', label: 'Nenhuma conhecida', emoji: '✅' },
-        { valor: 'sem_gluten', label: 'Sem glúten', emoji: '🌾' },
-        { valor: 'sem_lactose', label: 'Sem lactose', emoji: '🥛' },
-        { valor: 'vegetariano', label: 'Vegetariano', emoji: '🥦' },
-        { valor: 'vegan', label: 'Vegan', emoji: '🌱' },
-        { valor: 'halal', label: 'Halal', emoji: '☪️' },
-        { valor: 'sem_marisco', label: 'Alergia a marisco', emoji: '🦐' },
-        { valor: 'sem_frutos_secos', label: 'Alergia a frutos secos', emoji: '🥜' },
-        { valor: 'diabetico', label: 'Diabético', emoji: '💉' },
-        ...custom('restricoes'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'outras_turmas',
-      bloco: 'Público',
-      texto: 'Estão envolvidas outras turmas ou disciplinas?',
-      tipo: 'multi',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'nao', label: 'Não', emoji: '❌' },
-        { valor: 'restaurante_bar', label: 'Restaurante/Bar', emoji: '🍷' },
-        { valor: 'turismo', label: 'Turismo', emoji: '✈️' },
-        { valor: 'gestao_controlo', label: 'Gestão e Controlo', emoji: '📊' },
-        { valor: 'ingles', label: 'Inglês Técnico', emoji: '🇬🇧' },
-        { valor: 'area_projeto', label: 'Área de Projecto', emoji: '📐' },
-        { valor: 'area_integracao', label: 'Área de Integração', emoji: '🔗' },
-        { valor: 'portugues', label: 'Português', emoji: '📝' },
-        { valor: 'matematica', label: 'Matemática', emoji: '🔢' },
-        ...custom('outras_turmas'),
-      ],
-      permiteOutro: true,
-    },
-    // ── BLOCO C — MENU ───────────────────────────────────────────────────────
-    {
-      id: 'tipo_servico',
-      bloco: 'Menu',
-      texto: 'Como vai ser servida a comida?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'empratado', label: 'Serviço à mesa (empratado)', emoji: '🍽️' },
-        { valor: 'buffet', label: 'Buffet', emoji: '🥗' },
-        { valor: 'finger_food', label: 'Finger food / Cocktail', emoji: '🤏' },
-        { valor: 'misto', label: 'Misto', emoji: '🔄' },
-        ...custom('tipo_servico'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'nivel_menu',
-      bloco: 'Menu',
-      texto: 'Qual é o nível do menu?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'simples', label: 'Simples — 2 pratos + sobremesa', emoji: '🟢' },
-        { valor: 'medio', label: 'Médio — 3 pratos + sobremesa', emoji: '🟡' },
-        { valor: 'elaborado', label: 'Elaborado — 4+ pratos com entrada', emoji: '🔴' },
-        ...custom('nivel_menu'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'proteina',
-      bloco: 'Menu',
-      texto: 'Qual é a proteína principal?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'peixe', label: 'Peixe', emoji: '🐟' },
-        { valor: 'carne', label: 'Carne', emoji: '🥩' },
-        { valor: 'peixe_carne', label: 'Peixe e Carne', emoji: '🐟🥩' },
-        { valor: 'vegetariano', label: 'Vegetariano', emoji: '🥦' },
-        { valor: 'mundo', label: 'Cozinha do Mundo', emoji: '🌍' },
-        ...custom('proteina'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'tipo_cozinha',
-      bloco: 'Menu',
-      texto: 'Que estilo de cozinha se pretende?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'tradicional_pt', label: 'Tradicional portuguesa', emoji: '🇵🇹' },
-        { valor: 'internacional', label: 'Internacional', emoji: '🌍' },
-        { valor: 'criativa', label: 'Criativa/contemporânea', emoji: '🎨' },
-        { valor: 'saudavel', label: 'Saudável/dietética', emoji: '🥗' },
-        { valor: 'tematica', label: 'Temática', emoji: '🌶️' },
-        ...custom('tipo_cozinha'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'estrutura_menu',
-      bloco: 'Menu',
-      texto: 'Que elementos tem o menu?',
-      tipo: 'multi',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'entrada', label: 'Entrada', emoji: '🥗' },
-        { valor: 'sopa', label: 'Sopa', emoji: '🍲' },
-        { valor: 'prato_peixe', label: 'Prato de peixe', emoji: '🐟' },
-        { valor: 'prato_carne', label: 'Prato de carne', emoji: '🥩' },
-        { valor: 'sobremesa', label: 'Sobremesa', emoji: '🍮' },
-        { valor: 'fruta', label: 'Fruta', emoji: '🍎' },
-        { valor: 'cafe', label: 'Café', emoji: '☕' },
-        { valor: 'digestivo', label: 'Digestivo', emoji: '🥃' },
-        ...custom('estrutura_menu'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'pao',
-      bloco: 'Menu',
-      texto: 'O pão para o serviço é produzido na escola ou comprado?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'escola', label: 'Produzido na escola', emoji: '🏫' },
-        { valor: 'comprado', label: 'Comprado', emoji: '🛒' },
-        { valor: 'nao', label: 'Sem pão', emoji: '❌' },
-        ...custom('pao'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'bebidas',
-      bloco: 'Menu',
-      texto: 'O evento inclui serviço de bebidas?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'agua', label: 'Só água', emoji: '💧' },
-        { valor: 'agua_vinho', label: 'Água + vinho', emoji: '🍷' },
-        { valor: 'completo', label: 'Completo (água, vinho, sumos, café)', emoji: '🥂' },
-        { valor: 'nao', label: 'Não inclui', emoji: '❌' },
-        ...custom('bebidas'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'orcamento',
-      bloco: 'Menu',
-      texto: 'Existe orçamento definido?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'aprovado', label: 'Sim — já aprovado', emoji: '✅' },
-        { valor: 'falta_criar', label: 'Não — falta criar proposta', emoji: '📝' },
-        { valor: 'nao_necessario', label: 'Não é necessário', emoji: '❌' },
-        ...custom('orcamento'),
-      ],
-    },
-    // ── BLOCO D — SALA ───────────────────────────────────────────────────────
-    {
-      id: 'disposicao_mesas',
-      bloco: 'Sala',
-      texto: 'Como devem ser dispostas as mesas?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'escola', label: 'Escola (filas)', emoji: '🪑' },
-        { valor: 'u', label: 'Formato U', emoji: '🔷' },
-        { valor: 'banquete', label: 'Banquete (redondas)', emoji: '⭕' },
-        { valor: 'cocktail', label: 'Cocktail (em pé)', emoji: '🥂' },
-        { valor: 'familiar', label: 'Mesa longa (familiar)', emoji: '🏠' },
-        ...custom('disposicao_mesas'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'loica',
-      bloco: 'Sala',
-      texto: 'A louça de serviço é da escola ou é necessário tratar?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'escola', label: 'Da escola', emoji: '🏫' },
-        { valor: 'alugar', label: 'Alugar', emoji: '🛒' },
-        { valor: 'descartavel', label: 'Descartável', emoji: '🥤' },
-        { valor: 'misto', label: 'Misto', emoji: '🔄' },
-        ...custom('loica'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'tipo_copo',
-      bloco: 'Sala',
-      texto: 'Que tipo de copos?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      condicao: r => {
-        const loica = r.find(x => x.perguntaId === 'loica')?.valor;
-        return loica === 'descartavel' || loica === 'misto';
-      },
-      opcoes: [
-        { valor: 'vidro', label: 'Copos de vidro', emoji: '🥛' },
-        { valor: 'plastico', label: 'Copos de plástico', emoji: '🥤' },
-        { valor: 'misto', label: 'Misto (vidro + plástico)', emoji: '🔄' },
-        ...custom('tipo_copo'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'menu_impresso',
-      bloco: 'Sala',
-      texto: 'O evento tem menu impresso para os convidados?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'sim', label: 'Sim', emoji: '✅' },
-        { valor: 'nao', label: 'Não', emoji: '❌' },
-        ...custom('menu_impresso'),
-      ],
-    },
-    {
-      id: 'lingua_menu',
-      bloco: 'Sala',
-      texto: 'Em que língua(s) é o menu impresso?',
-      tipo: 'multi',
-      permiteVerDepois: true,
-      condicao: r => r.find(x => x.perguntaId === 'menu_impresso')?.valor === 'sim',
-      opcoes: [
-        { valor: 'pt', label: 'Português', emoji: '🇵🇹' },
-        { valor: 'en', label: 'Inglês', emoji: '🇬🇧' },
-        { valor: 'fr', label: 'Francês', emoji: '🇫🇷' },
-        ...custom('lingua_menu'),
-      ],
-      permiteOutro: true,
-    },
-    // ── BLOCO E — COMUNICAÇÃO ────────────────────────────────────────────────
-    {
-      id: 'reservas',
-      bloco: 'Comunicação',
-      texto: 'O evento requer sistema de reservas?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'sim', label: 'Sim', emoji: '✅' },
-        { valor: 'nao', label: 'Não — lista fechada', emoji: '❌' },
-        ...custom('reservas'),
-      ],
-    },
-    {
-      id: 'divulgacao',
-      bloco: 'Comunicação',
-      texto: 'O evento é divulgado publicamente?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      opcoes: [
-        { valor: 'sim', label: 'Sim — divulgação pública', emoji: '📢' },
-        { valor: 'nao', label: 'Não — evento privado', emoji: '🔒' },
-        ...custom('divulgacao'),
-      ],
-    },
-    // ── BLOCO F — LOGÍSTICA EXTERNA (só se externo) ──────────────────────────
-    {
-      id: 'visita_local',
-      bloco: 'Logística Externa',
-      texto: 'Já foi feita uma visita prévia ao local do evento?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      condicao: r => r.find(x => x.perguntaId === 'local')?.valor === 'externo',
-      opcoes: [
-        { valor: 'sim', label: 'Sim — já visitado', emoji: '✅' },
-        { valor: 'nao', label: 'Não — falta fazer', emoji: '❌' },
-      ],
-    },
-    {
-      id: 'transporte_producao',
-      bloco: 'Logística Externa',
-      texto: 'A comida vai quente ou fria para o local?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      condicao: r => r.find(x => x.perguntaId === 'local')?.valor === 'externo',
-      opcoes: [
-        { valor: 'quente', label: 'Vai quente (caixas térmicas)', emoji: '🔥' },
-        { valor: 'fria', label: 'Vai fria (termina no local)', emoji: '❄️' },
-        { valor: 'misto', label: 'Misto', emoji: '🔄' },
-        ...custom('transporte_producao'),
-      ],
-      permiteOutro: true,
-    },
-    {
-      id: 'transporte_alunos',
-      bloco: 'Logística Externa',
-      texto: 'Os alunos precisam de transporte para o local?',
-      tipo: 'botoes',
-      permiteVerDepois: true,
-      condicao: r => r.find(x => x.perguntaId === 'local')?.valor === 'externo',
-      opcoes: [
-        { valor: 'sim', label: 'Sim', emoji: '🚌' },
-        { valor: 'nao', label: 'Não — vão por conta própria', emoji: '❌' },
-      ],
-    },
-  ];
+// ══════════════════════════════════════════════════════════════════
+// STORAGE
+// ══════════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'ecl_eventos_v3';
+function loadEventos(): Evento[] {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 }
+function saveEventos(ev: Evento[]) { localStorage.setItem(STORAGE_KEY, JSON.stringify(ev)); }
 
-// ── Gerar checklist com base nas respostas ────────────────────────────────────
-function gerarChecklist(respostas: RespostaWizard[]): ItemChecklist[] {
-  const r = (id: string) => respostas.find(x => x.perguntaId === id)?.valor || '';
-  const externo = r('local') === 'externo';
-  const temMenuImpresso = r('menu_impresso') === 'sim';
-  const temReservas = r('reservas') === 'sim';
-  const temDivulgacao = r('divulgacao') === 'sim';
-  const paoComprado = r('pao') === 'comprado';
-  const faltaOrcamento = r('orcamento') === 'falta_criar';
-  const temProtocolo = r('protocolo') === 'sim';
+// ══════════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO DOS MOMENTOS
+// ══════════════════════════════════════════════════════════════════
+const MOMENTOS_CONFIG: Record<TipoMomento, { label: string; emoji: string; cor: string }> = {
+  pequeno_almoco: { label: 'Pequeno-almoço', emoji: '🌅', cor: '#f59e0b' },
+  coffee_break_manha: { label: 'Coffee Break Manhã', emoji: '☕', cor: '#8b5cf6' },
+  almoco: { label: 'Almoço', emoji: '🍽️', cor: '#059669' },
+  coffee_break_tarde: { label: 'Coffee Break Tarde', emoji: '🍪', cor: '#8b5cf6' },
+  jantar: { label: 'Jantar', emoji: '🌙', cor: '#1d4ed8' },
+  cocktail: { label: 'Cocktail / Recepção', emoji: '🥂', cor: '#db2777' },
+};
 
-  const items: ItemChecklist[] = [
-    { id: 'nome_confirmado', categoria: 'Definição', texto: 'Nome e tipo de evento confirmados', obrigatorio: true, responsavel: 'Coordenadora', estado: 'pendente' },
-    { id: 'data_confirmada', categoria: 'Definição', texto: 'Data e horário confirmados', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' },
-    { id: 'num_pessoas', categoria: 'Definição', texto: `Número final de convidados confirmado (+10% margem = ${Math.ceil(parseInt(String(r('num_pessoas') || '0')) * 1.1)} pessoas)`, obrigatorio: true, responsavel: 'Professor', estado: 'pendente' },
-    { id: 'restricoes', categoria: 'Definição', texto: 'Alergias e restrições alimentares recolhidas e comunicadas à cozinha', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' },
-    // Cozinha
-    { id: 'fichas_tecnicas', categoria: 'Cozinha', texto: 'Fichas técnicas criadas com capitações correctas', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' },
-    { id: 'guiao_producao', categoria: 'Cozinha', texto: 'Guião de produção com timings elaborado', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' },
-    { id: 'requisicao', categoria: 'Cozinha', texto: 'Requisição de ingredientes enviada', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' },
-    { id: 'haccp', categoria: 'Cozinha', texto: 'Registos HACCP identificados e fichas impressas', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' },
-    // Sala
-    { id: 'planta_sala', categoria: 'Sala', texto: 'Planta da sala definida e comunicada', obrigatorio: true, responsavel: 'Professor Sala', estado: 'pendente' },
-    { id: 'loica_contada', categoria: 'Sala', texto: 'Louça por coberto verificada e contada', obrigatorio: true, responsavel: 'Professor Sala', estado: 'pendente' },
-    { id: 'toalhas', categoria: 'Sala', texto: 'Toalhas de mesa preparadas', obrigatorio: true, responsavel: 'Professor Sala', estado: 'pendente' },
-    { id: 'mise_en_place_sala', categoria: 'Sala', texto: 'Mise-en-place da sala planeada', obrigatorio: true, responsavel: 'Professor Sala', estado: 'pendente' },
-    { id: 'briefing', categoria: 'Sala', texto: 'Briefing da equipa realizado no dia', obrigatorio: true, responsavel: 'Chef', estado: 'pendente' },
-  ];
+const ORDEM_MOMENTOS: TipoMomento[] = [
+  'pequeno_almoco', 'coffee_break_manha', 'almoco', 'coffee_break_tarde', 'jantar', 'cocktail'
+];
 
-  // Condicionais
-  if (paoComprado) items.push({ id: 'pao_encomendado', categoria: 'Cozinha', texto: 'Pão encomendado ao fornecedor — data e quantidade confirmadas', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' });
-  if (faltaOrcamento) items.push({ id: 'orcamento_criar', categoria: 'Gestão', texto: '⚠️ URGENTE: Elaborar proposta de orçamento (food cost + mão de obra + equipamento)', obrigatorio: true, responsavel: 'Coordenadora', estado: 'pendente' });
-  if (temProtocolo) items.push({ id: 'programa_evento', categoria: 'Protocolo', texto: 'Programa do evento elaborado e aprovado', obrigatorio: true, responsavel: 'Coordenadora', estado: 'pendente' });
-  if (temMenuImpresso) {
-    items.push({ id: 'menu_design', categoria: 'Comunicação', texto: 'Design do menu criado', obrigatorio: true, responsavel: 'Alunos', estado: 'pendente' });
-    items.push({ id: 'menu_impresso', categoria: 'Comunicação', texto: 'Menus impressos em quantidade suficiente', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
+// ══════════════════════════════════════════════════════════════════
+// CÁLCULO DE LOUÇA POR MOMENTO
+// ══════════════════════════════════════════════════════════════════
+interface ItemLouca { item: string; quantidade: number; nota?: string }
+
+function calcularLouca(momento: MomentoRefeicao): ItemLouca[] {
+  const n = Math.ceil(momento.numPessoas * 1.1); // +10% margem
+  const t = momento.tipo;
+  const items: ItemLouca[] = [];
+
+  const add = (item: string, qty: number, nota?: string) => items.push({ item, quantidade: qty, nota });
+
+  // Água — sempre
+  add('Copos de água', n);
+
+  if (t === 'almoco' || t === 'jantar') {
+    add('Pratos de sopa', n);
+    add('Colheres de sopa', n);
+    add('Pratos rasos', n);
+    add('Pratos de sobremesa', n);
+    add('Garfos', n * 2, 'entrada + prato');
+    add('Facas', n * 2, 'entrada + prato');
+    add('Colheres de sobremesa', n);
+    add('Guardanapos de pano', n);
+    if (momento.bebidas === 'agua_vinho' || momento.bebidas === 'completo') {
+      add('Copos de vinho', n);
+    }
+    if (momento.bebidas === 'completo') {
+      add('Chávenas de café + pires', n);
+      add('Colheres de café', n);
+    }
+    if (momento.estruturaMenu.includes('entrada')) {
+      add('Pratos de entrada', n);
+    }
   }
-  if (temReservas) items.push({ id: 'formulario_reservas', categoria: 'Comunicação', texto: 'Formulário de reservas criado e divulgado', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
-  if (temDivulgacao) items.push({ id: 'cartaz', categoria: 'Comunicação', texto: 'Cartaz/flyer criado e publicado nas redes sociais', obrigatorio: true, responsavel: 'Alunos', estado: 'pendente' });
-  if (externo) {
-    items.push({ id: 'visita_local', categoria: 'Logística Externa', texto: 'Visita prévia ao local realizada (água, luz, gás, espaço, WC)', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
-    items.push({ id: 'transporte_alunos', categoria: 'Logística Externa', texto: 'Transporte de alunos reservado', obrigatorio: true, responsavel: 'Coordenadora', estado: 'pendente' });
-    items.push({ id: 'transporte_producao', categoria: 'Logística Externa', texto: 'Transporte de produção e equipamento reservado', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
-    items.push({ id: 'caixas_termicas', categoria: 'Logística Externa', texto: 'Caixas térmicas preparadas e testadas', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' });
-    items.push({ id: 'material_consumivel', categoria: 'Logística Externa', texto: 'Material consumível verificado: sacos de lixo, fita-cola, tesoura, película, papel cozinha, luvas, detergente', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
-    items.push({ id: 'loica_servico', categoria: 'Logística Externa', texto: 'Louça de serviço para cliente separada, contada e embalada', obrigatorio: true, responsavel: 'Professor Sala', estado: 'pendente' });
-    items.push({ id: 'haccp_transporte', categoria: 'Logística Externa', texto: 'Registo HACCP de temperatura de transporte preparado', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' });
+
+  if (t === 'pequeno_almoco') {
+    add('Chávenas de café/leite + pires', n);
+    add('Colheres de chá', n);
+    add('Pratos de sobremesa (pão/manteiga)', n);
+    add('Facas de manteiga', n);
+    add('Guardanapos de papel', n);
+    add('Copos de sumo', n);
   }
-  // Pós-evento sempre
-  items.push({ id: 'plano_limpeza', categoria: 'Pós-Evento', texto: 'Plano de limpeza e encerramento definido', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
-  items.push({ id: 'sobras', categoria: 'Pós-Evento', texto: 'Destino das sobras definido (aproveitar / descartar)', obrigatorio: false, responsavel: 'Professor Cozinha', estado: 'pendente' });
-  items.push({ id: 'avaliacao', categoria: 'Pós-Evento', texto: 'Reunião de avaliação pós-evento agendada', obrigatorio: false, responsavel: 'Coordenadora', estado: 'pendente' });
+
+  if (t === 'coffee_break_manha' || t === 'coffee_break_tarde') {
+    add('Chávenas de café + pires', n);
+    add('Colheres de café', n);
+    add('Pratos de pastelaria', n);
+    add('Guardanapos de papel', n * 2, 'uso múltiplo');
+    add('Copos de sumo/água', n);
+  }
+
+  if (t === 'cocktail') {
+    add('Copos de champagne/prosecco', n);
+    add('Guardanapos de papel (cóctel)', n * 3, 'uso múltiplo');
+    add('Palitos/pegadores', n * 5);
+  }
 
   return items;
 }
 
-// ── Gerar tarefas com base nas respostas ──────────────────────────────────────
-function gerarTarefas(respostas: RespostaWizard[], nome: string): TarefaEvento[] {
-  const tarefas: TarefaEvento[] = [
-    { id: 'plano_aula', titulo: 'Plano de Aula — Cozinha', disciplina: 'Serviços de Cozinha e Pastelaria', descricao: `Planeamento e execução da produção culinária para: ${nome}`, tipo: 'cozinha', selecionada: true },
-    { id: 'ficha_tecnica', titulo: 'Ficha Técnica de Produção', disciplina: 'Serviços de Cozinha e Pastelaria', descricao: 'Fichas técnicas com ingredientes, capitações, alergénios e food cost', tipo: 'cozinha', selecionada: true },
-    { id: 'guiao_producao', titulo: 'Guião de Produção', disciplina: 'Serviços de Cozinha e Pastelaria', descricao: 'Guião passo a passo com timings, responsabilidades e sequência de produção', tipo: 'cozinha', selecionada: true },
-    { id: 'requisicao', titulo: 'Requisição de Materiais', disciplina: 'Serviços de Cozinha e Pastelaria', descricao: 'Lista completa de ingredientes e materiais necessários para o evento', tipo: 'cozinha', selecionada: true },
-    { id: 'haccp', titulo: 'Registos HACCP', disciplina: 'Tecnologia Alimentar', descricao: 'Identificação dos PCCs e preenchimento dos registos de segurança alimentar obrigatórios', tipo: 'cozinha', selecionada: true },
+// ══════════════════════════════════════════════════════════════════
+// GERAR CHECKLIST
+// ══════════════════════════════════════════════════════════════════
+function gerarChecklist(evento: Evento): ItemChecklist[] {
+  const ext = evento.local === 'externo';
+  const items: ItemChecklist[] = [
+    { id: 'data_conf', categoria: 'Definição', texto: 'Data(s) e horários confirmados com todas as partes', obrigatorio: true, responsavel: 'Coordenadora', estado: 'pendente' },
+    { id: 'num_conf', categoria: 'Definição', texto: 'Número final de participantes confirmado por dia/momento', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' },
+    { id: 'restricoes_conf', categoria: 'Definição', texto: 'Alergias e restrições alimentares recolhidas e comunicadas à cozinha', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' },
+    { id: 'fichas', categoria: 'Cozinha', texto: 'Fichas técnicas criadas para todos os momentos', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' },
+    { id: 'guiao', categoria: 'Cozinha', texto: 'Guião de produção com timings por momento', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' },
+    { id: 'req', categoria: 'Cozinha', texto: 'Requisição de ingredientes enviada (total do evento)', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' },
+    { id: 'haccp', categoria: 'Cozinha', texto: 'Registos HACCP identificados para cada momento de produção', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' },
+    { id: 'loica', categoria: 'Sala', texto: 'Louça contada e verificada por coberto e por momento', obrigatorio: true, responsavel: 'Professor Sala', estado: 'pendente' },
+    { id: 'sala_layout', categoria: 'Sala', texto: 'Planta de sala definida', obrigatorio: true, responsavel: 'Professor Sala', estado: 'pendente' },
+    { id: 'toalhas', categoria: 'Sala', texto: 'Toalhas e roupas de mesa preparadas', obrigatorio: true, responsavel: 'Professor Sala', estado: 'pendente' },
+    { id: 'briefing', categoria: 'Sala', texto: 'Briefing da equipa realizado antes de cada momento', obrigatorio: true, responsavel: 'Chef', estado: 'pendente' },
+    { id: 'limpeza', categoria: 'Pós-Evento', texto: 'Plano de limpeza e encerramento definido', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' },
+    { id: 'sobras', categoria: 'Pós-Evento', texto: 'Destino das sobras definido', obrigatorio: false, responsavel: 'Professor Cozinha', estado: 'pendente' },
+    { id: 'avaliacao', categoria: 'Pós-Evento', texto: 'Reunião de avaliação pós-evento agendada', obrigatorio: false, responsavel: 'Coordenadora', estado: 'pendente' },
   ];
 
-  const outras = respostas.find(x => x.perguntaId === 'outras_turmas')?.valor as string[] || [];
+  if (evento.protocolo) items.push({ id: 'programa', categoria: 'Protocolo', texto: 'Programa do evento elaborado e aprovado', obrigatorio: true, responsavel: 'Coordenadora', estado: 'pendente' });
+  if (evento.reservas) items.push({ id: 'form_reservas', categoria: 'Comunicação', texto: 'Formulário de reservas criado e divulgado', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
+  if (evento.divulgacao) items.push({ id: 'cartaz', categoria: 'Comunicação', texto: 'Cartaz/flyer criado e publicado', obrigatorio: true, responsavel: 'Alunos', estado: 'pendente' });
+  if (evento.orcamento === 'falta_criar') items.push({ id: 'orc', categoria: 'Gestão', texto: '⚠️ URGENTE: Elaborar proposta de orçamento', obrigatorio: true, responsavel: 'Coordenadora', estado: 'pendente' });
 
-  if (outras.includes('restaurante_bar')) {
-    tarefas.push({ id: 'sala_mise', titulo: 'Mise-en-Place de Sala', disciplina: 'Restaurante/Bar', descricao: 'Planeamento e execução da mise-en-place de sala para o evento', tipo: 'sala', selecionada: true });
-    tarefas.push({ id: 'plano_servico', titulo: 'Plano de Serviço', disciplina: 'Restaurante/Bar', descricao: 'Definição de postos, responsabilidades e protocolo de serviço à mesa', tipo: 'sala', selecionada: true });
+  const temMenuImpresso = evento.dias.some(d => d.momentos.some(m => m.menuImpresso));
+  if (temMenuImpresso) {
+    items.push({ id: 'menu_design', categoria: 'Comunicação', texto: 'Design do menu impresso criado', obrigatorio: true, responsavel: 'Alunos', estado: 'pendente' });
+    items.push({ id: 'menu_print', categoria: 'Comunicação', texto: 'Menus impressos em quantidade suficiente', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
   }
-  if (outras.includes('ingles')) {
-    tarefas.push({ id: 'menu_en', titulo: 'Menu Bilingue PT/EN', disciplina: 'Inglês Técnico', descricao: `Tradução e adaptação do menu do evento "${nome}" para inglês com vocabulário gastronómico correcto`, tipo: 'interdisciplinar', selecionada: true });
+
+  if (ext) {
+    items.push({ id: 'visita', categoria: 'Logística Externa', texto: 'Visita prévia ao local realizada (água, luz, gás, espaço, WC)', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
+    items.push({ id: 'transp_alunos', categoria: 'Logística Externa', texto: 'Transporte de alunos reservado', obrigatorio: true, responsavel: 'Coordenadora', estado: 'pendente' });
+    items.push({ id: 'transp_prod', categoria: 'Logística Externa', texto: 'Transporte de produção reservado', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
+    items.push({ id: 'caixas', categoria: 'Logística Externa', texto: 'Caixas térmicas preparadas e testadas', obrigatorio: true, responsavel: 'Professor Cozinha', estado: 'pendente' });
+    items.push({ id: 'material_cons', categoria: 'Logística Externa', texto: 'Material consumível verificado: sacos de lixo, película, luvas, papel cozinha, detergente', obrigatorio: true, responsavel: 'Professor', estado: 'pendente' });
   }
-  if (outras.includes('gestao_controlo')) {
-    tarefas.push({ id: 'orcamento', titulo: 'Orçamento e Food Cost', disciplina: 'Gestão e Controlo', descricao: 'Elaboração do orçamento do evento, cálculo do food cost e análise de resultados', tipo: 'interdisciplinar', selecionada: true });
+
+  return items;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GERAR TAREFAS CLASSROOM
+// ══════════════════════════════════════════════════════════════════
+function gerarTarefas(evento: Evento): TarefaEvento[] {
+  const tarefas: TarefaEvento[] = [
+    { id: 'plano_aula', titulo: 'Plano de Aula — Evento', disciplina: 'Serviços de Cozinha e Pastelaria', descricao: `Planeamento e execução da produção culinária para: ${evento.nome}`, selecionada: true },
+    { id: 'ficha_tecnica', titulo: 'Fichas Técnicas de Produção', disciplina: 'Serviços de Cozinha e Pastelaria', descricao: 'Fichas técnicas com ingredientes, capitações, alergénios e food cost', selecionada: true },
+    { id: 'guiao', titulo: 'Guião de Produção', disciplina: 'Serviços de Cozinha e Pastelaria', descricao: 'Guião com timings, responsabilidades e sequência de produção por momento', selecionada: true },
+    { id: 'req', titulo: 'Requisição de Materiais', disciplina: 'Serviços de Cozinha e Pastelaria', descricao: 'Lista completa de ingredientes e materiais para todos os momentos do evento', selecionada: true },
+    { id: 'haccp', titulo: 'Registos HACCP', disciplina: 'Tecnologia Alimentar', descricao: 'Identificação dos PCCs e registos de segurança alimentar por momento', selecionada: true },
+  ];
+
+  if (evento.outrasTurmas.includes('restaurante_bar')) {
+    tarefas.push({ id: 'sala', titulo: 'Mise-en-Place de Sala + Plano de Serviço', disciplina: 'Restaurante/Bar', descricao: 'Planeamento e execução da mise-en-place e protocolo de serviço', selecionada: true });
   }
-  if (outras.includes('area_projeto') || outras.includes('portugues')) {
-    tarefas.push({ id: 'cartaz', titulo: 'Cartaz e Comunicação do Evento', disciplina: outras.includes('area_projeto') ? 'Área de Projecto' : 'Português', descricao: `Criação do cartaz, texto de divulgação e material de comunicação para o evento "${nome}"`, tipo: 'comunicacao', selecionada: true });
+  if (evento.outrasTurmas.includes('ingles')) {
+    tarefas.push({ id: 'menu_en', titulo: 'Menu Bilingue PT/EN', disciplina: 'Inglês Técnico', descricao: `Tradução do menu do evento "${evento.nome}" para inglês`, selecionada: true });
   }
-  if (outras.includes('matematica')) {
-    tarefas.push({ id: 'capitacoes', titulo: 'Cálculo de Capitações', disciplina: 'Matemática Aplicada', descricao: `Cálculo de capitações para o número de convidados do evento, escalonamento de receitas e análise de proporções`, tipo: 'interdisciplinar', selecionada: true });
+  if (evento.outrasTurmas.includes('gestao_controlo')) {
+    tarefas.push({ id: 'orc', titulo: 'Orçamento e Food Cost', disciplina: 'Gestão e Controlo', descricao: 'Orçamento do evento, cálculo do food cost e análise de resultados', selecionada: true });
   }
-  if (outras.includes('area_integracao')) {
-    tarefas.push({ id: 'historia_pratos', titulo: 'Investigação — História dos Pratos', disciplina: 'Área de Integração', descricao: `Investigação e apresentação da história e contexto cultural dos pratos do evento "${nome}"`, tipo: 'interdisciplinar', selecionada: true });
+  if (evento.outrasTurmas.includes('area_projeto') || evento.outrasTurmas.includes('portugues')) {
+    tarefas.push({ id: 'cartaz', titulo: 'Cartaz e Comunicação', disciplina: evento.outrasTurmas.includes('area_projeto') ? 'Área de Projecto' : 'Português', descricao: `Cartaz e material de comunicação para o evento "${evento.nome}"`, selecionada: true });
   }
-  if (outras.includes('turismo')) {
-    tarefas.push({ id: 'roteiro', titulo: 'Roteiro Gastronómico', disciplina: 'Turismo', descricao: 'Criação de um roteiro gastronómico associado ao tema do evento para os convidados', tipo: 'interdisciplinar', selecionada: true });
+  if (evento.outrasTurmas.includes('matematica')) {
+    tarefas.push({ id: 'cap', titulo: 'Cálculo de Capitações', disciplina: 'Matemática Aplicada', descricao: 'Capitações por momento e escalonamento de receitas', selecionada: true });
   }
 
   return tarefas;
 }
 
-// ── Relatório PDF do Evento ────────────────────────────────────────────────────
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// ══════════════════════════════════════════════════════════════════
+// HTML DO RELATÓRIO PDF
+// ══════════════════════════════════════════════════════════════════
+function escapeHtml(s: string) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function labelDeResposta(pergunta: Pergunta | undefined, resp: RespostaWizard): string {
-  const resolve = (v: string): string => {
-    if (v === 'ver_depois') return 'Por definir (ver mais tarde)';
-    const op = pergunta?.opcoes?.find(o => o.valor === v);
-    return op ? op.label : v;
-  };
-  if (Array.isArray(resp.valor)) return resp.valor.map(resolve).join(', ');
-  return resolve(resp.valor);
-}
-
-function gerarRelatorioHTML(evento: Evento, opcoesCustom: Record<string, string[]>, paraClassroom = false): string {
-  const perguntas = getPerguntas(opcoesCustom);
-  const dataCriacao = new Date(evento.criadoEm).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const dataHoje = new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+function gerarRelatorioHTML(evento: Evento, paraClassroom = false): string {
+  const hoje = new Date().toLocaleDateString('pt-PT');
+  const criado = new Date(evento.criadoEm).toLocaleDateString('pt-PT');
   const feitos = evento.checklist.filter(c => c.estado === 'feito').length;
   const total = evento.checklist.length;
 
-  // Respostas agrupadas por bloco
-  const blocos: { bloco: string; linhas: { pergunta: string; resposta: string }[] }[] = [];
-  for (const resp of evento.respostas) {
-    const p = perguntas.find(q => q.id === resp.perguntaId);
-    if (!p) continue;
-    let grupo = blocos.find(b => b.bloco === p.bloco);
-    if (!grupo) { grupo = { bloco: p.bloco, linhas: [] }; blocos.push(grupo); }
-    grupo.linhas.push({ pergunta: p.texto, resposta: labelDeResposta(p, resp) });
-  }
+  const linhasDias = evento.dias.map(d => {
+    const dataFmt = d.data ? new Date(d.data + 'T12:00:00').toLocaleDateString('pt-PT') : '—';
+    const linhasMomentos = d.momentos.map(m => {
+      const cfg = MOMENTOS_CONFIG[m.tipo];
+      const louca = calcularLouca(m);
+      const loucaStr = louca.map(l => `${l.item}: ${l.quantidade}${l.nota ? ' (' + l.nota + ')' : ''}`).join(', ');
+      return `
+        <tr class="bloco"><td colspan="2">${cfg.emoji} ${cfg.label} — ${m.numPessoas} pessoas (+10% = ${Math.ceil(m.numPessoas * 1.1)})</td></tr>
+        <tr><td class="pergunta">Restrições alimentares</td><td>${escapeHtml(m.restricoes.join(', ') || 'Nenhuma')}</td></tr>
+        <tr><td class="pergunta">Tipo de serviço</td><td>${escapeHtml(m.tipoServico || '—')}</td></tr>
+        <tr><td class="pergunta">Nível do menu</td><td>${escapeHtml(m.nivelMenu || '—')}</td></tr>
+        <tr><td class="pergunta">Proteína</td><td>${escapeHtml(m.proteina || '—')}</td></tr>
+        <tr><td class="pergunta">Estilo de cozinha</td><td>${escapeHtml(m.tipoCozinha || '—')}</td></tr>
+        <tr><td class="pergunta">Estrutura do menu</td><td>${escapeHtml(m.estruturaMenu.join(', ') || '—')}</td></tr>
+        <tr><td class="pergunta">Bebidas</td><td>${escapeHtml(m.bebidas || '—')}</td></tr>
+        <tr><td class="pergunta">Pão</td><td>${escapeHtml(m.pao || '—')}</td></tr>
+        <tr><td class="pergunta">Menu impresso</td><td>${m.menuImpresso ? 'Sim — ' + m.linguasMenu.join(', ') : 'Não'}</td></tr>
+        <tr><td class="pergunta">Louça necessária</td><td style="font-size:10px">${escapeHtml(loucaStr)}</td></tr>
+        ${m.notasExtra ? `<tr><td class="pergunta">Notas</td><td>${escapeHtml(m.notasExtra)}</td></tr>` : ''}
+      `;
+    }).join('');
+    return `<tr class="dia"><td colspan="2">📅 ${dataFmt}</td></tr>${linhasMomentos}`;
+  }).join('');
 
-  const linhasRespostas = blocos.map(b => `
-    <tr class="bloco"><td colspan="2">${escapeHtml(b.bloco)}</td></tr>
-    ${b.linhas.map(l => `
-      <tr>
-        <td class="pergunta">${escapeHtml(l.pergunta)}</td>
-        <td class="resposta">${escapeHtml(l.resposta)}</td>
-      </tr>`).join('')}
-  `).join('');
-
-  // Checklist agrupada por categoria
   const categorias = [...new Set(evento.checklist.map(c => c.categoria))];
   const linhasChecklist = categorias.map(cat => `
     <tr class="bloco"><td colspan="3">${escapeHtml(cat)}</td></tr>
-    ${evento.checklist.filter(c => c.categoria === cat).map(item => `
+    ${evento.checklist.filter(c => c.categoria === cat).map(i => `
       <tr>
-        <td class="check">${item.estado === 'feito' ? '☑' : '☐'}</td>
-        <td>${escapeHtml(item.texto)}${item.obrigatorio ? '' : ' <span class="opcional">(opcional)</span>'}</td>
-        <td class="resp">${escapeHtml(item.responsavel)}</td>
+        <td class="check">${i.estado === 'feito' ? '☑' : '☐'}</td>
+        <td>${escapeHtml(i.texto)}</td>
+        <td class="resp">${escapeHtml(i.responsavel)}</td>
       </tr>`).join('')}
   `).join('');
 
   const tarefasSel = evento.tarefas.filter(t => t.selecionada);
-  const linhasTarefas = tarefasSel.length === 0
-    ? '<tr><td colspan="2">Nenhuma tarefa seleccionada para o Classroom.</td></tr>'
-    : tarefasSel.map(t => `
-      <tr>
-        <td><strong>${escapeHtml(t.titulo)}</strong><br><span class="desc">${escapeHtml(t.descricao)}</span></td>
-        <td class="resp">${escapeHtml(t.disciplina)}</td>
-      </tr>`).join('');
+  const linhasTarefas = tarefasSel.map(t => `
+    <tr>
+      <td><strong>${escapeHtml(t.titulo)}</strong><br><span style="font-size:10px;color:#6b7280">${escapeHtml(t.descricao)}</span></td>
+      <td class="resp">${escapeHtml(t.disciplina)}</td>
+    </tr>`).join('');
 
-  return `<!DOCTYPE html>
-<html lang="pt">
-<head>
-<meta charset="UTF-8">
-<title>Relatório de Evento — ${escapeHtml(evento.nome)}</title>
+  return `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
+<title>Relatório — ${escapeHtml(evento.nome)}</title>
 <style>
-  @page { size: A4; margin: 18mm 15mm; }
-  * { box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; color: #1a1714; font-size: 11px; line-height: 1.45; margin: 0; }
-  .cabecalho { border-bottom: 3px solid #6d28d9; padding-bottom: 12px; margin-bottom: 18px; }
-  .cabecalho h1 { font-size: 20px; margin: 0 0 2px; color: #6d28d9; }
-  .cabecalho .sub { font-size: 12px; color: #6b7280; }
-  table.meta { width: 100%; border-collapse: collapse; margin: 14px 0 20px; }
-  table.meta td { border: none; padding: 0 24px 0 0; font-size: 11px; white-space: nowrap; }
-  table.meta strong { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
-  .estado-pub { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 10px; }
-  .pub-sim { background: #d1fae5; color: #059669; }
-  .pub-nao { background: #ede9fe; color: #6d28d9; }
-  h2 { font-size: 13px; color: #6d28d9; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 22px 0 8px; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
-  tr.bloco td { background: #f3f4f6; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #374151; padding: 4px 8px; }
-  td.pergunta { width: 55%; color: #374151; }
-  td.resposta { font-weight: 600; }
-  td.check { width: 24px; font-size: 14px; text-align: center; }
-  td.resp { width: 25%; color: #6b7280; font-size: 10px; }
-  .opcional { color: #9ca3af; font-style: italic; font-size: 10px; }
-  .desc { color: #6b7280; font-size: 10px; }
-  table.rodape { width: 100%; border-collapse: collapse; margin-top: 28px; border-top: 1px solid #e5e7eb; }
-  table.rodape td { border: none; padding-top: 10px; font-size: 9px; color: #9ca3af; }
-  table.rodape td.dir { text-align: right; }
-  table.assinaturas { width: 100%; border-collapse: separate; border-spacing: 40px 0; margin-top: 36px; }
-  table.assinaturas td { border: none; width: 50%; text-align: center; font-size: 10px; color: #374151; padding: 0; }
-  table.assinaturas .linha { border-top: 1px solid #1a1714; margin-bottom: 4px; padding-top: 4px; }
-  @media print { .no-print { display: none; } }
-</style>
-</head>
-<body>
-  ${paraClassroom ? '' : `<div class="no-print" style="background:#ede9fe; padding:10px 14px; border-radius:8px; margin-bottom:16px; font-size:12px;">
-    💡 Para guardar como PDF: no menu de impressão escolhe <strong>"Guardar como PDF"</strong> como destino.
-  </div>`}
-
-  <div class="cabecalho">
-    <h1>${paraClassroom ? '' : '🎯 '}Relatório de Evento Pedagógico</h1>
-    <div class="sub">Escola de Comércio de Lisboa · Técnico/a de Cozinha e Restauração (811RA144)</div>
-  </div>
-
-  <table class="meta"><tr>
-    <td><strong>Evento</strong>${escapeHtml(evento.nome)}</td>
-    <td><strong>Turma</strong>${escapeHtml(evento.turmaId)}</td>
-    <td><strong>Criado em</strong>${dataCriacao}</td>
-    <td><strong>Progresso</strong>${feitos}/${total} itens concluídos</td>
-    <td><strong>Classroom</strong><span class="estado-pub ${evento.publicado ? 'pub-sim' : 'pub-nao'}">${evento.publicado ? '✓ Publicado' : 'Rascunho'}</span></td>
-  </tr></table>
-
-  <h2>1. Definição do Evento — Respostas do Planeamento</h2>
-  <table>${linhasRespostas}</table>
-
-  <h2>2. Checklist de Organização</h2>
-  <table>${linhasChecklist}</table>
-
-  <h2>3. Tarefas Publicadas no Google Classroom</h2>
-  <table>${linhasTarefas}</table>
-
-  <table class="assinaturas"><tr>
-    <td><div class="linha"></div>Professor(a) Responsável</td>
-    <td><div class="linha"></div>Coordenadora</td>
-  </tr></table>
-
-  <table class="rodape"><tr>
-    <td>Avaliação ECL · Eventos Pedagógicos</td>
-    <td class="dir">Gerado em ${dataHoje}</td>
-  </tr></table>
-</body>
-</html>`;
+@page{size:A4;margin:18mm 15mm}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:11px;color:#1a1714;line-height:1.45;margin:0}
+.cab{border-bottom:3px solid #6d28d9;padding-bottom:10px;margin-bottom:14px}
+.cab h1{font-size:19px;margin:0 0 2px;color:#6d28d9}
+.cab .sub{font-size:11px;color:#6b7280}
+table.meta td{font-size:11px;padding:0 20px 6px 0;border:none;white-space:nowrap}
+table.meta strong{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280}
+h2{font-size:12px;color:#6d28d9;border-bottom:1px solid #e5e7eb;padding-bottom:3px;margin:18px 0 7px}
+table.dados{width:100%;border-collapse:collapse}
+table.dados td{padding:4px 7px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+tr.bloco td{background:#ede9fe;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#5b21b6;padding:4px 7px}
+tr.dia td{background:#1a1714;color:#fff;font-weight:700;font-size:11px;padding:5px 7px}
+td.pergunta{width:45%;color:#374151}
+td.check{width:20px;font-size:13px;text-align:center}
+td.resp{width:25%;color:#6b7280;font-size:10px}
+table.ass{width:100%;border-collapse:separate;border-spacing:40px 0;margin-top:32px}
+table.ass td{width:50%;text-align:center;font-size:10px;border:none;padding:0}
+.linha{border-top:1px solid #1a1714;margin-bottom:4px;padding-top:4px}
+table.rod{width:100%;border-collapse:collapse;margin-top:20px;border-top:1px solid #e5e7eb}
+table.rod td{border:none;padding-top:8px;font-size:9px;color:#9ca3af}
+table.rod td.dir{text-align:right}
+.estado-pub{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:700;font-size:10px}
+.pub-sim{background:#d1fae5;color:#059669}.pub-nao{background:#ede9fe;color:#6d28d9}
+@media print{.no-print{display:none}}
+</style></head><body>
+${paraClassroom ? '' : `<div class="no-print" style="background:#ede9fe;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px">
+💡 Para guardar como PDF: no menu de impressão escolhe <strong>"Guardar como PDF"</strong>.</div>`}
+<div class="cab"><h1>Relatório de Evento Pedagógico</h1>
+<div class="sub">Escola de Comércio de Lisboa · Técnico/a de Cozinha e Restauração (811RA144)</div></div>
+<table class="meta"><tr>
+<td><strong>Evento</strong>${escapeHtml(evento.nome)}</td>
+<td><strong>Turma</strong>${escapeHtml(evento.turmaId)}</td>
+<td><strong>Local</strong>${escapeHtml(evento.local === 'externo' ? 'Externo' : 'Interno')}</td>
+<td><strong>Dias</strong>${evento.dias.length}</td>
+<td><strong>Criado em</strong>${criado}</td>
+<td><strong>Progresso</strong>${feitos}/${total} itens</td>
+<td><strong>Classroom</strong><span class="estado-pub ${evento.publicado ? 'pub-sim' : 'pub-nao'}">${evento.publicado ? '✓ Publicado' : 'Rascunho'}</span></td>
+</tr></table>
+<h2>1. Programa do Evento — Dias e Momentos</h2>
+<table class="dados">${linhasDias}</table>
+<h2>2. Checklist de Organização</h2>
+<table class="dados">${linhasChecklist}</table>
+<h2>3. Tarefas Publicadas no Classroom</h2>
+<table class="dados">${linhasTarefas}</table>
+<table class="ass"><tr>
+<td><div class="linha"></div>Professor(a) Responsável</td>
+<td><div class="linha"></div>Coordenadora</td>
+</tr></table>
+<table class="rod"><tr><td>Avaliação ECL · Eventos Pedagógicos</td><td class="dir">Gerado em ${hoje}</td></tr></table>
+</body></html>`;
 }
 
-function abrirRelatorioPDF(evento: Evento, opcoesCustom: Record<string, string[]>) {
-  const html = gerarRelatorioHTML(evento, opcoesCustom);
-  const win = window.open('', '_blank');
-  if (!win) {
-    alert('O navegador bloqueou a janela do relatório. Permite pop-ups para este site e tenta de novo.');
-    return;
+// ══════════════════════════════════════════════════════════════════
+// DEFAULTS
+// ══════════════════════════════════════════════════════════════════
+function defaultMomento(tipo: TipoMomento, numPessoas = 20): MomentoRefeicao {
+  const isRefeicao = tipo === 'almoco' || tipo === 'jantar';
+  return {
+    id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    tipo,
+    numPessoas,
+    restricoes: [],
+    tipoServico: isRefeicao ? 'empratado' : 'buffet',
+    nivelMenu: isRefeicao ? 'medio' : 'simples',
+    proteina: '',
+    tipoCozinha: '',
+    estruturaMenu: isRefeicao ? ['sopa', 'prato_peixe', 'sobremesa'] : ['cafe'],
+    bebidas: isRefeicao ? 'agua_vinho' : 'agua',
+    pao: isRefeicao ? 'escola' : 'nao',
+    menuImpresso: false,
+    linguasMenu: ['pt'],
+    notasExtra: '',
+  };
+}
+
+function defaultDia(data = ''): DiaEvento {
+  return { id: `d-${Date.now()}`, data, momentos: [] };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ESTILOS
+// ══════════════════════════════════════════════════════════════════
+const COR = {
+  roxo: '#6d28d9', roxoClaro: '#ede9fe',
+  verde: '#059669', verdeClaro: '#d1fae5',
+  cinza: '#6b7280', cinzaClaro: '#f3f4f6',
+  preto: '#1a1714',
+};
+
+const btn = (bg: string, color = '#fff'): React.CSSProperties => ({
+  padding: '12px 20px', borderRadius: 10, border: 'none', background: bg,
+  color, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Arial, sans-serif',
+});
+const btnOutline: React.CSSProperties = {
+  ...btn('#fff', COR.cinza), border: '1.5px solid #e5e7eb',
+};
+const input: React.CSSProperties = {
+  width: '100%', padding: '10px 14px', borderRadius: 10,
+  border: '1.5px solid #e5e7eb', fontSize: 14, fontFamily: 'Arial', boxSizing: 'border-box',
+};
+const label: React.CSSProperties = {
+  fontSize: 11, fontWeight: 700, color: COR.cinza,
+  textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block',
+};
+
+// ══════════════════════════════════════════════════════════════════
+// SUBCOMPONENTE: Editor de Momento
+// ══════════════════════════════════════════════════════════════════
+function EditorMomento({ momento, onChange, onRemove }: {
+  momento: MomentoRefeicao;
+  onChange: (m: MomentoRefeicao) => void;
+  onRemove: () => void;
+}) {
+  const cfg = MOMENTOS_CONFIG[momento.tipo];
+  const [aberto, setAberto] = useState(false);
+
+  const isRefeicao = momento.tipo === 'almoco' || momento.tipo === 'jantar';
+  const isCoffee = momento.tipo === 'coffee_break_manha' || momento.tipo === 'coffee_break_tarde';
+  const isPequeno = momento.tipo === 'pequeno_almoco';
+
+  const louca = calcularLouca(momento);
+
+  function toggle<T>(arr: T[], val: T): T[] {
+    return arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val];
   }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  setTimeout(() => { try { win.focus(); win.print(); } catch { /* utilizador imprime manualmente */ } }, 500);
+
+  return (
+    <div style={{ border: `2px solid ${cfg.cor}`, borderRadius: 12, marginBottom: 10, overflow: 'hidden' }}>
+      {/* Cabeçalho do momento */}
+      <div onClick={() => setAberto(a => !a)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: cfg.cor + '18', cursor: 'pointer' }}>
+        <span style={{ fontSize: 22 }}>{cfg.emoji}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 800, fontSize: 14, color: COR.preto }}>{cfg.label}</div>
+          <div style={{ fontSize: 12, color: COR.cinza }}>{momento.numPessoas} pessoas · {momento.tipoServico || '—'}</div>
+        </div>
+        <button onClick={e => { e.stopPropagation(); onRemove(); }} style={{ ...btn('#fee2e2', '#991b1b'), padding: '6px 12px', fontSize: 12 }}>✕</button>
+        <span style={{ color: COR.cinza, fontSize: 16 }}>{aberto ? '▲' : '▼'}</span>
+      </div>
+
+      {aberto && (
+        <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Número de pessoas */}
+          <div>
+            <span style={label}>Número de pessoas</span>
+            <input type="number" style={input} value={momento.numPessoas} min={1}
+              onChange={e => onChange({ ...momento, numPessoas: parseInt(e.target.value) || 1 })} />
+            <div style={{ fontSize: 11, color: COR.cinza, marginTop: 4 }}>
+              Com margem de 10%: <strong>{Math.ceil(momento.numPessoas * 1.1)}</strong> pessoas
+            </div>
+          </div>
+
+          {/* Restrições */}
+          <div>
+            <span style={label}>Restrições alimentares</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {['Nenhuma', 'Sem glúten', 'Sem lactose', 'Vegetariano', 'Vegan', 'Halal', 'Alergia a marisco', 'Alergia a frutos secos', 'Diabético'].map(r => {
+                const sel = momento.restricoes.includes(r);
+                return <button key={r} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 12, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
+                  onClick={() => onChange({ ...momento, restricoes: toggle(momento.restricoes, r) })}>{r}</button>;
+              })}
+            </div>
+          </div>
+
+          {/* Tipo de serviço */}
+          {(isRefeicao || momento.tipo === 'cocktail') && (
+            <div>
+              <span style={label}>Tipo de serviço</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[['empratado', '🍽️ Empratado'], ['buffet', '🥗 Buffet'], ['finger_food', '🤏 Finger Food'], ['misto', '🔄 Misto']].map(([v, l]) => (
+                  <button key={v} style={{ ...btn(momento.tipoServico === v ? COR.roxo : '#fff', momento.tipoServico === v ? '#fff' : COR.cinza), padding: '8px 14px', fontSize: 13, border: `1.5px solid ${momento.tipoServico === v ? COR.roxo : '#e5e7eb'}` }}
+                    onClick={() => onChange({ ...momento, tipoServico: v })}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Nível do menu — só refeições principais */}
+          {isRefeicao && (
+            <div>
+              <span style={label}>Nível do menu</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[['simples', '🟢 Simples (2 pratos)'], ['medio', '🟡 Médio (3 pratos)'], ['elaborado', '🔴 Elaborado (4+ pratos)']].map(([v, l]) => (
+                  <button key={v} style={{ ...btn(momento.nivelMenu === v ? COR.roxo : '#fff', momento.nivelMenu === v ? '#fff' : COR.cinza), padding: '8px 14px', fontSize: 13, border: `1.5px solid ${momento.nivelMenu === v ? COR.roxo : '#e5e7eb'}` }}
+                    onClick={() => onChange({ ...momento, nivelMenu: v })}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Proteína — só refeições */}
+          {isRefeicao && (
+            <div>
+              <span style={label}>Proteína principal</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[['peixe', '🐟 Peixe'], ['carne', '🥩 Carne'], ['peixe_carne', '🐟🥩 Peixe e Carne'], ['vegetariano', '🥦 Vegetariano'], ['mundo', '🌍 Cozinha do Mundo']].map(([v, l]) => (
+                  <button key={v} style={{ ...btn(momento.proteina === v ? COR.roxo : '#fff', momento.proteina === v ? '#fff' : COR.cinza), padding: '8px 14px', fontSize: 13, border: `1.5px solid ${momento.proteina === v ? COR.roxo : '#e5e7eb'}` }}
+                    onClick={() => onChange({ ...momento, proteina: v })}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Estilo de cozinha — só refeições */}
+          {isRefeicao && (
+            <div>
+              <span style={label}>Estilo de cozinha</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[['tradicional_pt', '🇵🇹 Tradicional'], ['internacional', '🌍 Internacional'], ['criativa', '🎨 Criativa'], ['saudavel', '🥗 Saudável'], ['tematica', '🌶️ Temática']].map(([v, l]) => (
+                  <button key={v} style={{ ...btn(momento.tipoCozinha === v ? COR.roxo : '#fff', momento.tipoCozinha === v ? '#fff' : COR.cinza), padding: '8px 14px', fontSize: 13, border: `1.5px solid ${momento.tipoCozinha === v ? COR.roxo : '#e5e7eb'}` }}
+                    onClick={() => onChange({ ...momento, tipoCozinha: v })}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Estrutura do menu */}
+          {(isRefeicao || isPequeno) && (
+            <div>
+              <span style={label}>Elementos do menu</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {(isRefeicao
+                  ? [['entrada', '🥗 Entrada'], ['sopa', '🍲 Sopa'], ['prato_peixe', '🐟 Prato peixe'], ['prato_carne', '🥩 Prato carne'], ['sobremesa', '🍮 Sobremesa'], ['fruta', '🍎 Fruta'], ['cafe', '☕ Café'], ['digestivo', '🥃 Digestivo']]
+                  : [['sumo', '🍊 Sumo'], ['cafe', '☕ Café/chá'], ['iogurte', '🥛 Iogurte'], ['fruta', '🍎 Fruta'], ['pastelaria', '🥐 Pastelaria'], ['torradas', '🍞 Torradas/pão']]
+                ).map(([v, l]) => {
+                  const sel = momento.estruturaMenu.includes(v);
+                  return <button key={v} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 12, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
+                    onClick={() => onChange({ ...momento, estruturaMenu: toggle(momento.estruturaMenu, v) })}>{l}</button>;
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Bebidas */}
+          <div>
+            <span style={label}>Serviço de bebidas</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(isRefeicao
+                ? [['agua', '💧 Só água'], ['agua_vinho', '🍷 Água + vinho'], ['completo', '🥂 Completo'], ['nao', '❌ Não inclui']]
+                : [['agua', '💧 Água'], ['sumos', '🍊 Sumos'], ['completo', '☕ Completo'], ['nao', '❌ Não inclui']]
+              ).map(([v, l]) => (
+                <button key={v} style={{ ...btn(momento.bebidas === v ? COR.roxo : '#fff', momento.bebidas === v ? '#fff' : COR.cinza), padding: '8px 14px', fontSize: 13, border: `1.5px solid ${momento.bebidas === v ? COR.roxo : '#e5e7eb'}` }}
+                  onClick={() => onChange({ ...momento, bebidas: v })}>{l}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Pão — só refeições */}
+          {isRefeicao && (
+            <div>
+              <span style={label}>Pão</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[['escola', '🏫 Produzido na escola'], ['comprado', '🛒 Comprado'], ['nao', '❌ Sem pão']].map(([v, l]) => (
+                  <button key={v} style={{ ...btn(momento.pao === v ? COR.roxo : '#fff', momento.pao === v ? '#fff' : COR.cinza), padding: '8px 14px', fontSize: 13, border: `1.5px solid ${momento.pao === v ? COR.roxo : '#e5e7eb'}` }}
+                    onClick={() => onChange({ ...momento, pao: v })}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Menu impresso */}
+          {isRefeicao && (
+            <div>
+              <span style={label}>Menu impresso para convidados?</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[['sim', '✅ Sim'], ['nao', '❌ Não']].map(([v, l]) => (
+                  <button key={v} style={{ ...btn((momento.menuImpresso ? 'sim' : 'nao') === v ? COR.roxo : '#fff', (momento.menuImpresso ? 'sim' : 'nao') === v ? '#fff' : COR.cinza), padding: '8px 14px', fontSize: 13, border: `1.5px solid ${(momento.menuImpresso ? 'sim' : 'nao') === v ? COR.roxo : '#e5e7eb'}` }}
+                    onClick={() => onChange({ ...momento, menuImpresso: v === 'sim' })}>{l}</button>
+                ))}
+              </div>
+              {momento.menuImpresso && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  {[['pt', '🇵🇹 PT'], ['en', '🇬🇧 EN'], ['fr', '🇫🇷 FR']].map(([v, l]) => {
+                    const sel = momento.linguasMenu.includes(v);
+                    return <button key={v} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 13, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
+                      onClick={() => onChange({ ...momento, linguasMenu: toggle(momento.linguasMenu, v) })}>{l}</button>;
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Notas extra */}
+          <div>
+            <span style={label}>Notas / observações</span>
+            <textarea style={{ ...input, minHeight: 60, resize: 'vertical' } as React.CSSProperties}
+              value={momento.notasExtra}
+              onChange={e => onChange({ ...momento, notasExtra: e.target.value })}
+              placeholder="Detalhes específicos deste momento..." />
+          </div>
+
+          {/* Louça calculada */}
+          <div style={{ background: COR.cinzaClaro, borderRadius: 10, padding: 12 }}>
+            <div style={label}>📊 Louça necessária (calculada automaticamente)</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+              {louca.map(l => (
+                <div key={l.item} style={{ fontSize: 12, color: COR.preto }}>
+                  <strong>{l.quantidade}×</strong> {l.item}{l.nota ? <span style={{ color: COR.cinza }}> ({l.nota})</span> : ''}
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
 }
 
-// ── Componente Principal ───────────────────────────────────────────────────────
-export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nomeProfessor?: string }) {
-  const [estado, setEstado] = useState<EstadoWizard>('inicio');
+
+// ── Funções auxiliares: ligação plano ↔ evento ────────────────────────────────
+function getPlanosDoEvento(turmaId: string, eventoId: string): TPlanoAula[] {
+  return getPlanosAulaPorTurma(turmaId, true).filter((p: TPlanoAula) => p.eventoId === eventoId);
+}
+
+function getPlanosDisponiveis(turmaId: string, eventoId: string): TPlanoAula[] {
+  return getPlanosAulaPorTurma(turmaId, true).filter((p: TPlanoAula) => !p.eventoId || p.eventoId === eventoId);
+}
+
+function associarPlano(plano: TPlanoAula, eventoId: string) {
+  addOrUpdatePlanoAula({ ...plano, eventoId, atualizadoEm: new Date().toISOString() });
+}
+
+function desassociarPlano(plano: TPlanoAula) {
+  const novo = { ...plano, atualizadoEm: new Date().toISOString() } as any;
+  delete novo.eventoId;
+  addOrUpdatePlanoAula(novo);
+}
+// ══════════════════════════════════════════════════════════════════
+// COMPONENTE PRINCIPAL
+// ══════════════════════════════════════════════════════════════════
+export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: string }) {
   const [eventos, setEventos] = useState<Evento[]>(loadEventos);
-  const [opcoesCustom, setOpcoesCustom] = useState<Record<string, string[]>>(loadOpcoesCustom);
-  const [respostas, setRespostas] = useState<RespostaWizard[]>([]);
-  const [indicePergunta, setIndicePergunta] = useState(0);
-  const [outroTexto, setOutroTexto] = useState('');
-  const [multiSel, setMultiSel] = useState<string[]>([]);
-  const [textoInput, setTextoInput] = useState('');
+  const [vista, setVista] = useState<'lista' | 'novo' | 'detalhe'>('lista');
   const [eventoAtual, setEventoAtual] = useState<Evento | null>(null);
   const [publicando, setPublicando] = useState(false);
   const [msg, setMsg] = useState('');
-  const [verEventos, setVerEventos] = useState(false);
+  const [mostrarSeletorPlanos, setMostrarSeletorPlanos] = useState(false);
+  const [planosEvento, setPlanosEvento] = useState<TPlanoAula[]>([]);
 
-  const perguntas = getPerguntas(opcoesCustom).filter(p => !p.condicao || p.condicao(respostas));
-  const perguntaAtual = perguntas[indicePergunta];
+  // ── estado do formulário de criação ──
+  const [nome, setNome] = useState('');
+  const [local, setLocal] = useState('');
+  const [protocolo, setProtocolo] = useState(false);
+  const [tema, setTema] = useState('');
+  const [tipoPublico, setTipoPublico] = useState('');
+  const [outrasTurmas, setOutrasTurmas] = useState<string[]>([]);
+  const [reservas, setReservas] = useState(false);
+  const [divulgacao, setDivulgacao] = useState(false);
+  const [orcamento, setOrcamento] = useState('nao_necessario');
+  const [disposicaoMesas, setDisposicaoMesas] = useState('');
+  const [loica, setLoica] = useState('escola');
+  const [dias, setDias] = useState<DiaEvento[]>([defaultDia()]);
 
   function salvarEventos(ev: Evento[]) { setEventos(ev); saveEventos(ev); }
 
-  function responder(valor: string | string[], outro?: string) {
-    if (!perguntaAtual) return;
+  function criarEvento() {
+    if (!nome.trim() || !local) { setMsg('⚠️ Preenche o nome e o local do evento.'); return; }
+    if (dias.some(d => !d.data)) { setMsg('⚠️ Preenche a data de todos os dias.'); return; }
+    if (dias.some(d => d.momentos.length === 0)) { setMsg('⚠️ Adiciona pelo menos um momento a cada dia.'); return; }
 
-    // Guardar opção custom
-    if (outro && perguntaAtual.permiteOutro) {
-      const novas = { ...opcoesCustom };
-      novas[perguntaAtual.id] = [...(novas[perguntaAtual.id] || []), outro].filter((v, i, a) => a.indexOf(v) === i);
-      setOpcoesCustom(novas);
-      saveOpcoesCustom(novas);
-    }
+    const todosEv = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]');
+    const maiorNum = todosEv.reduce((m: number, e: any) => Math.max(m, e.numero || 0), 0);
+    const proxNum = Math.max(maiorNum + 1, 100);
 
-    const novasRespostas = respostas.filter(r => r.perguntaId !== perguntaAtual.id);
-    novasRespostas.push({ perguntaId: perguntaAtual.id, valor, outro });
-    setRespostas(novasRespostas);
-    setOutroTexto('');
-    setMultiSel([]);
-    setTextoInput('');
+    const ev: Evento = {
+      id: `ev-${Date.now()}`,
+      numero: proxNum,
+      nome: nome.trim(), turmaId, local,
+      protocolo, tema, tipoPublico,
+      outrasTurmas, reservas, divulgacao, orcamento,
+      disposicaoMesas, loica,
+      visita: '', transporteAlunos: false, transporteProducao: '',
+      dias,
+      checklist: [],
+      tarefas: [],
+      publicado: false,
+      criadoEm: new Date().toISOString(),
+    };
+    ev.checklist = gerarChecklist(ev);
+    ev.tarefas = gerarTarefas(ev);
+    salvarEventos([ev, ...eventos]);
+    setEventoAtual(ev);
+    setVista('detalhe');
+    setMsg('');
+  }
 
-    // Avançar
-    const proximas = getPerguntas(opcoesCustom).filter(p => !p.condicao || p.condicao(novasRespostas));
-    if (indicePergunta + 1 < proximas.length) {
-      setIndicePergunta(indicePergunta + 1);
-    } else {
-      // Concluído — gerar evento
-      const nome = novasRespostas.find(r => r.perguntaId === 'nome')?.valor as string || 'Evento';
-      const ev: Evento = {
-        id: `ev-${Date.now()}`,
-        nome,
-        turmaId,
-        respostas: novasRespostas,
-        checklist: gerarChecklist(novasRespostas),
-        tarefas: gerarTarefas(novasRespostas, nome),
-        publicado: false,
-        criadoEm: new Date().toISOString(),
-      };
-      setEventoAtual(ev);
-      salvarEventos([ev, ...eventos]);
-      setEstado('checklist');
-    }
+  function atualizarDia(diaIdx: number, novoDia: DiaEvento) {
+    setDias(ds => ds.map((d, i) => i === diaIdx ? novoDia : d));
+  }
+
+  function adicionarDia() {
+    setDias(ds => [...ds, defaultDia()]);
+  }
+
+  function removerDia(idx: number) {
+    setDias(ds => ds.filter((_, i) => i !== idx));
+  }
+
+  function adicionarMomento(diaIdx: number, tipo: TipoMomento) {
+    const primeiroNum = dias[diaIdx].momentos[0]?.numPessoas || 20;
+    setDias(ds => ds.map((d, i) => i === diaIdx
+      ? { ...d, momentos: [...d.momentos, defaultMomento(tipo, primeiroNum)] }
+      : d));
+  }
+
+  function atualizarMomento(diaIdx: number, mIdx: number, m: MomentoRefeicao) {
+    setDias(ds => ds.map((d, i) => i === diaIdx
+      ? { ...d, momentos: d.momentos.map((x, j) => j === mIdx ? m : x) }
+      : d));
+  }
+
+  function removerMomento(diaIdx: number, mIdx: number) {
+    setDias(ds => ds.map((d, i) => i === diaIdx
+      ? { ...d, momentos: d.momentos.filter((_, j) => j !== mIdx) }
+      : d));
+  }
+
+  function toggleItem(id: string) {
+    if (!eventoAtual) return;
+    const nova = { ...eventoAtual, checklist: eventoAtual.checklist.map(c => c.id === id ? { ...c, estado: (c.estado === 'feito' ? 'pendente' : 'feito') as any } : c) };
+    setEventoAtual(nova);
+    salvarEventos(eventos.map(e => e.id === nova.id ? nova : e));
+  }
+
+  function toggleTarefa(id: string) {
+    if (!eventoAtual) return;
+    const nova = { ...eventoAtual, tarefas: eventoAtual.tarefas.map(t => t.id === id ? { ...t, selecionada: !t.selecionada } : t) };
+    setEventoAtual(nova);
+    salvarEventos(eventos.map(e => e.id === nova.id ? nova : e));
   }
 
   async function publicar() {
@@ -800,20 +733,17 @@ export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nom
     setPublicando(true);
     setMsg('A publicar no Classroom...');
     try {
-      const tarefasSel = eventoAtual.tarefas.filter(t => t.selecionada);
       const res = await publicarNoClassroom('evento', turmaId, {
         nomeEvento: eventoAtual.nome,
-        data: eventoAtual.respostas.find(r => r.perguntaId === 'data')?.valor || '',
-        tarefas: tarefasSel,
-        visibilidade: 'cozinha',
-        relatorioHtml: gerarRelatorioHTML(eventoAtual, opcoesCustom, true),
+        data: eventoAtual.dias.map(d => d.data).join(', '),
+        tarefas: eventoAtual.tarefas.filter(t => t.selecionada),
+        relatorioHtml: gerarRelatorioHTML(eventoAtual, true),
       });
       if (res.ok) {
-        const ev2 = eventos.map(e => e.id === eventoAtual.id ? { ...e, publicado: true } : e);
-        salvarEventos(ev2);
-        setEventoAtual(e => e ? { ...e, publicado: true } : e);
+        const nova = { ...eventoAtual, publicado: true };
+        setEventoAtual(nova);
+        salvarEventos(eventos.map(e => e.id === nova.id ? nova : e));
         setMsg('✅ Evento publicado no Classroom!');
-        setEstado('concluido');
       } else {
         setMsg('❌ Erro: ' + (res.erro || 'erro desconhecido'));
       }
@@ -823,189 +753,264 @@ export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nom
     setPublicando(false);
   }
 
-  // ── Estilos ─────────────────────────────────────────────────────────────────
-  const COR = { roxo: '#6d28d9', roxoClaro: '#ede9fe', verde: '#059669', verdeClaro: '#d1fae5', laranja: '#ea580c', laranjaClaro: '#ffedd5', cinza: '#6b7280', cinzaClaro: '#f3f4f6' };
-  const btnPrimario = (cor = COR.roxo): React.CSSProperties => ({ padding: '14px 24px', borderRadius: 12, border: 'none', background: cor, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Arial, sans-serif', transition: 'opacity 0.15s' });
-  const btnSecundario: React.CSSProperties = { padding: '12px 20px', borderRadius: 10, border: '1.5px solid #e5e7eb', background: '#fff', color: COR.cinza, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'Arial, sans-serif' };
+  function abrirPDF() {
+    if (!eventoAtual) return;
+    const html = gerarRelatorioHTML(eventoAtual, false);
+    const win = window.open('', '_blank');
+    if (!win) { alert('O navegador bloqueou a janela. Permite pop-ups e tenta de novo.'); return; }
+    win.document.open(); win.document.write(html); win.document.close();
+    setTimeout(() => { try { win.focus(); win.print(); } catch { } }, 500);
+  }
 
-  // ── RENDER INÍCIO ────────────────────────────────────────────────────────────
-  if (estado === 'inicio') return (
-    <div style={{ padding: 24, maxWidth: 600, margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
-      <div style={{ textAlign: 'center', padding: '40px 0' }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>🎯</div>
-        <h2 style={{ fontSize: 28, fontWeight: 800, color: COR.roxo, margin: '0 0 8px' }}>Eventos Pedagógicos</h2>
-        <p style={{ fontSize: 15, color: COR.cinza, margin: '0 0 32px' }}>{turmaId} — planear, organizar e publicar</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <button style={btnPrimario()} onClick={() => { setEstado('wizard'); setIndicePergunta(0); setRespostas([]); }}>
-            + Criar Novo Evento
-          </button>
-          {eventos.filter(e => e.turmaId === turmaId).length > 0 && (
-            <button style={btnSecundario} onClick={() => setVerEventos(!verEventos)}>
-              📋 Ver eventos anteriores ({eventos.filter(e => e.turmaId === turmaId).length})
-            </button>
-          )}
-        </div>
+  function toggleOutrasTurmas(v: string) {
+    setOutrasTurmas(s => s.includes(v) ? s.filter(x => x !== v) : [...s, v]);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // RENDER — LISTA
+  // ══════════════════════════════════════════════════════════════════
+  if (vista === 'lista') return (
+    <div style={{ padding: 20, maxWidth: 640, margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ textAlign: 'center', padding: '32px 0 24px' }}>
+        <div style={{ fontSize: 56, marginBottom: 12 }}>🎯</div>
+        <h2 style={{ fontSize: 26, fontWeight: 800, color: COR.roxo, margin: '0 0 6px' }}>Eventos Pedagógicos</h2>
+        <p style={{ fontSize: 14, color: COR.cinza, margin: '0 0 24px' }}>{turmaId}</p>
+        <button style={{ ...btn(COR.roxo), width: '100%', padding: '14px', fontSize: 15 }}
+          onClick={() => {
+            setNome(''); setLocal(''); setProtocolo(false); setTema(''); setTipoPublico('');
+            setOutrasTurmas([]); setReservas(false); setDivulgacao(false);
+            setOrcamento('nao_necessario'); setDisposicaoMesas(''); setLoica('escola');
+            setDias([defaultDia()]); setMsg('');
+            setVista('novo');
+          }}>
+          + Criar Novo Evento
+        </button>
       </div>
-      {verEventos && (
-        <div style={{ marginTop: 24 }}>
-          {eventos.filter(e => e.turmaId === turmaId).map(ev => (
-            <div key={ev.id} onClick={() => { setEventoAtual(ev); setEstado('checklist'); }}
-              style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 12, border: `2px solid ${ev.publicado ? COR.verde : COR.roxo}`, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <div style={{ fontWeight: 800, fontSize: 16, color: '#1a1714' }}>{ev.nome}</div>
-              <div style={{ fontSize: 13, color: COR.cinza, marginTop: 4 }}>
-                {ev.checklist.filter(c => c.estado === 'feito').length}/{ev.checklist.length} itens concluídos
-                {ev.publicado ? ' · ✅ Publicado no Classroom' : ''}
-              </div>
-            </div>
-          ))}
+
+      {eventos.filter(e => e.turmaId === turmaId).map(ev => (
+        <div key={ev.id} onClick={() => { setEventoAtual(ev); setVista('detalhe'); }}
+          style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 10, border: `2px solid ${ev.publicado ? COR.verde : COR.roxo}`, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>EVT-{ev.numero || '—'} · {ev.nome}</div>
+          <div style={{ fontSize: 12, color: COR.cinza, marginTop: 4 }}>
+            {ev.dias.length} dia(s) · {ev.dias.reduce((acc, d) => acc + d.momentos.length, 0)} momentos · {ev.checklist.filter(c => c.estado === 'feito').length}/{ev.checklist.length} itens feitos
+            {ev.publicado ? ' · ✅ Publicado' : ''}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 
-  // ── RENDER WIZARD ────────────────────────────────────────────────────────────
-  if (estado === 'wizard' && perguntaAtual) {
-    const progresso = Math.round((indicePergunta / perguntas.length) * 100);
-    return (
-      <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Arial, sans-serif' }}>
-        {/* Progresso */}
-        <div style={{ width: '100%', maxWidth: 560, marginBottom: 32 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, color: COR.cinza }}>
-            <span>{perguntaAtual.bloco}</span>
-            <span>{indicePergunta + 1} / {perguntas.length}</span>
-          </div>
-          <div style={{ height: 6, background: COR.cinzaClaro, borderRadius: 99 }}>
-            <div style={{ height: '100%', width: `${progresso}%`, background: COR.roxo, borderRadius: 99, transition: 'width 0.3s' }} />
-          </div>
-        </div>
+  // ══════════════════════════════════════════════════════════════════
+  // RENDER — NOVO EVENTO
+  // ══════════════════════════════════════════════════════════════════
+  if (vista === 'novo') return (
+    <div style={{ padding: 20, maxWidth: 640, margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <button style={btnOutline} onClick={() => setVista('lista')}>←</button>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: COR.roxo }}>Novo Evento</h2>
+      </div>
 
-        {/* Pergunta */}
-        <div style={{ width: '100%', maxWidth: 560, textAlign: 'center', marginBottom: 32 }}>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1714', margin: 0 }}>{perguntaAtual.texto}</h2>
-        </div>
+      {msg && <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fee2e2', color: '#991b1b', fontSize: 13, marginBottom: 16, fontWeight: 600 }}>{msg}</div>}
 
-        {/* Respostas — BOTÕES */}
-        {perguntaAtual.tipo === 'botoes' && (
-          <div style={{ width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {(perguntaAtual.opcoes || []).map(op => (
-              <button key={op.valor} style={{ ...btnPrimario('#fff'), color: '#1a1714', border: '1.5px solid #e5e7eb', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, fontSize: 15 }}
-                onClick={() => responder(op.valor)}>
-                {op.emoji && <span style={{ fontSize: 20 }}>{op.emoji}</span>}
-                {op.label}
-              </button>
+      {/* Nome */}
+      <div style={{ marginBottom: 18 }}>
+        <span style={label}>Nome do evento *</span>
+        <input style={input} placeholder="Ex: Jantar de Natal ECL 2025" value={nome} onChange={e => setNome(e.target.value)} />
+      </div>
+
+      {/* Local */}
+      <div style={{ marginBottom: 18 }}>
+        <span style={label}>Local *</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[['interno', '🏫 Interno — na escola'], ['externo', '🚌 Externo — noutro local']].map(([v, l]) => (
+            <button key={v} style={{ ...btn(local === v ? COR.roxo : '#fff', local === v ? '#fff' : COR.cinza), flex: 1, border: `1.5px solid ${local === v ? COR.roxo : '#e5e7eb'}` }}
+              onClick={() => setLocal(v)}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tipo de público */}
+      <div style={{ marginBottom: 18 }}>
+        <span style={label}>Tipo de público</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {[['adultos', '👨‍💼 Adultos'], ['criancas', '👶 Crianças'], ['misto', '👨‍👩‍👧 Misto'], ['corporativo', '🏢 Corporativo'], ['escolar', '🎓 Escolar']].map(([v, l]) => (
+            <button key={v} style={{ ...btn(tipoPublico === v ? COR.roxo : '#fff', tipoPublico === v ? '#fff' : COR.cinza), padding: '8px 14px', fontSize: 13, border: `1.5px solid ${tipoPublico === v ? COR.roxo : '#e5e7eb'}` }}
+              onClick={() => setTipoPublico(v)}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Protocolo + Orçamento */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
+        <div style={{ flex: 1 }}>
+          <span style={label}>Protocolo formal?</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[['sim', '🎩 Sim'], ['nao', '😊 Não']].map(([v, l]) => (
+              <button key={v} style={{ ...btn((protocolo ? 'sim' : 'nao') === v ? COR.roxo : '#fff', (protocolo ? 'sim' : 'nao') === v ? '#fff' : COR.cinza), flex: 1, border: `1.5px solid ${(protocolo ? 'sim' : 'nao') === v ? COR.roxo : '#e5e7eb'}` }}
+                onClick={() => setProtocolo(v === 'sim')}>{l}</button>
             ))}
-            {/* Outro */}
-            {perguntaAtual.permiteOutro && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <input style={{ flex: 1, padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e5e7eb', fontSize: 14, fontFamily: 'Arial' }} placeholder="Outro — escreve aqui..." value={outroTexto} onChange={e => setOutroTexto(e.target.value)} onKeyDown={e => e.key === 'Enter' && outroTexto && responder(outroTexto, outroTexto)} />
-                {outroTexto && <button style={btnPrimario()} onClick={() => responder(outroTexto, outroTexto)}>→</button>}
-              </div>
-            )}
-            {/* Ver mais tarde */}
-            {perguntaAtual.permiteVerDepois && (
-              <button style={{ ...btnSecundario, textAlign: 'center', color: COR.cinza }} onClick={() => responder('ver_depois')}>
-                ❓ Ver mais tarde
-              </button>
-            )}
           </div>
-        )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={label}>Orçamento</span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[['aprovado', '✅ Aprovado'], ['falta_criar', '📝 Falta criar'], ['nao_necessario', '❌ N/A']].map(([v, l]) => (
+              <button key={v} style={{ ...btn(orcamento === v ? COR.roxo : '#fff', orcamento === v ? '#fff' : COR.cinza), flex: 1, fontSize: 12, padding: '8px 8px', border: `1.5px solid ${orcamento === v ? COR.roxo : '#e5e7eb'}` }}
+                onClick={() => setOrcamento(v)}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-        {/* Respostas — MULTI */}
-        {perguntaAtual.tipo === 'multi' && (
-          <div style={{ width: '100%', maxWidth: 560 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-              {(perguntaAtual.opcoes || []).map(op => {
-                const sel = multiSel.includes(op.valor);
-                return (
-                  <button key={op.valor} style={{ ...btnPrimario(sel ? COR.roxo : '#fff'), color: sel ? '#fff' : '#1a1714', border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}`, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}
-                    onClick={() => setMultiSel(s => s.includes(op.valor) ? s.filter(x => x !== op.valor) : [...s, op.valor])}>
-                    {op.emoji && <span style={{ fontSize: 18 }}>{op.emoji}</span>}
-                    {op.label}
-                    {sel && <span style={{ marginLeft: 'auto' }}>✓</span>}
-                  </button>
-                );
-              })}
-              {perguntaAtual.permiteOutro && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 14, fontFamily: 'Arial' }} placeholder="Outro..." value={outroTexto} onChange={e => setOutroTexto(e.target.value)} />
-                  {outroTexto && <button style={btnPrimario()} onClick={() => { setMultiSel(s => [...s, outroTexto]); setOutroTexto(''); }}>+</button>}
-                </div>
+      {/* Outras turmas */}
+      <div style={{ marginBottom: 18 }}>
+        <span style={label}>Outras turmas / disciplinas envolvidas</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {[['restaurante_bar', '🍷 Restaurante/Bar'], ['turismo', '✈️ Turismo'], ['gestao_controlo', '📊 Gestão e Controlo'], ['ingles', '🇬🇧 Inglês Técnico'], ['area_projeto', '📐 Área de Projecto'], ['portugues', '📝 Português'], ['matematica', '🔢 Matemática']].map(([v, l]) => {
+            const sel = outrasTurmas.includes(v);
+            return <button key={v} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 12, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
+              onClick={() => toggleOutrasTurmas(v)}>{l}</button>;
+          })}
+        </div>
+      </div>
+
+      {/* Reservas + Divulgação */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <div style={{ flex: 1 }}>
+          <span style={label}>Sistema de reservas?</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[['sim', '✅ Sim'], ['nao', '❌ Não']].map(([v, l]) => (
+              <button key={v} style={{ ...btn((reservas ? 'sim' : 'nao') === v ? COR.roxo : '#fff', (reservas ? 'sim' : 'nao') === v ? '#fff' : COR.cinza), flex: 1, border: `1.5px solid ${(reservas ? 'sim' : 'nao') === v ? COR.roxo : '#e5e7eb'}` }}
+                onClick={() => setReservas(v === 'sim')}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <span style={label}>Divulgação pública?</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[['sim', '📢 Sim'], ['nao', '🔒 Não']].map(([v, l]) => (
+              <button key={v} style={{ ...btn((divulgacao ? 'sim' : 'nao') === v ? COR.roxo : '#fff', (divulgacao ? 'sim' : 'nao') === v ? '#fff' : COR.cinza), flex: 1, border: `1.5px solid ${(divulgacao ? 'sim' : 'nao') === v ? COR.roxo : '#e5e7eb'}` }}
+                onClick={() => setDivulgacao(v === 'sim')}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── DIAS E MOMENTOS ── */}
+      <div style={{ borderTop: `2px solid ${COR.roxo}`, paddingTop: 20, marginBottom: 20 }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: COR.roxo }}>📅 Dias e Momentos do Evento</h3>
+
+        {dias.map((dia, diaIdx) => (
+          <div key={dia.id} style={{ background: '#f9f9f9', borderRadius: 12, padding: 16, marginBottom: 14, border: '1.5px solid #e5e7eb' }}>
+            {/* Cabeçalho do dia */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ fontWeight: 800, fontSize: 14, color: COR.preto }}>Dia {diaIdx + 1}</span>
+              <input type="date" style={{ ...input, flex: 1 }} value={dia.data}
+                onChange={e => atualizarDia(diaIdx, { ...dia, data: e.target.value })} />
+              {dias.length > 1 && (
+                <button style={{ ...btn('#fee2e2', '#991b1b'), padding: '6px 12px', fontSize: 12 }}
+                  onClick={() => removerDia(diaIdx)}>✕ Dia</button>
               )}
             </div>
-            <button style={{ ...btnPrimario(), width: '100%' }} onClick={() => responder(multiSel.length > 0 ? multiSel : ['nenhuma'])}>
-              Confirmar →
-            </button>
-            {perguntaAtual.permiteVerDepois && (
-              <button style={{ ...btnSecundario, width: '100%', marginTop: 8 }} onClick={() => responder('ver_depois')}>❓ Ver mais tarde</button>
-            )}
-          </div>
-        )}
 
-        {/* Respostas — TEXTO / NÚMERO */}
-        {(perguntaAtual.tipo === 'texto' || perguntaAtual.tipo === 'numero') && (
-          <div style={{ width: '100%', maxWidth: 560 }}>
-            <input type={perguntaAtual.tipo === 'numero' ? 'number' : 'text'} style={{ width: '100%', padding: '16px 18px', borderRadius: 12, border: '1.5px solid #e5e7eb', fontSize: 18, fontFamily: 'Arial', boxSizing: 'border-box', marginBottom: 12 }} placeholder={perguntaAtual.tipo === 'numero' ? 'Número de pessoas...' : 'Escreve aqui...'} value={textoInput} onChange={e => setTextoInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && textoInput && responder(textoInput)} autoFocus />
-            <button style={{ ...btnPrimario(), width: '100%' }} onClick={() => textoInput && responder(textoInput)} disabled={!textoInput}>
-              Confirmar →
-            </button>
-          </div>
-        )}
+            {/* Momentos do dia */}
+            {dia.momentos.map((m, mIdx) => (
+              <EditorMomento key={m.id} momento={m}
+                onChange={novo => atualizarMomento(diaIdx, mIdx, novo)}
+                onRemove={() => removerMomento(diaIdx, mIdx)} />
+            ))}
 
-        {/* Voltar */}
-        {indicePergunta > 0 && (
-          <button style={{ ...btnSecundario, marginTop: 20 }} onClick={() => setIndicePergunta(i => i - 1)}>← Voltar</button>
-        )}
+            {/* Adicionar momento */}
+            <div style={{ marginTop: 10 }}>
+              <div style={label}>Adicionar momento</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {ORDEM_MOMENTOS.filter(t => !dia.momentos.some(m => m.tipo === t)).map(tipo => {
+                  const cfg = MOMENTOS_CONFIG[tipo];
+                  return (
+                    <button key={tipo} style={{ ...btnOutline, padding: '7px 13px', fontSize: 12 }}
+                      onClick={() => adicionarMomento(diaIdx, tipo)}>
+                      {cfg.emoji} {cfg.label}
+                    </button>
+                  );
+                })}
+                {ORDEM_MOMENTOS.every(t => dia.momentos.some(m => m.tipo === t)) && (
+                  <span style={{ fontSize: 12, color: COR.cinza, padding: '8px 0' }}>Todos os momentos já adicionados</span>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <button style={{ ...btnOutline, width: '100%', marginTop: 4 }} onClick={adicionarDia}>
+          + Adicionar dia
+        </button>
       </div>
-    );
-  }
 
-  // ── RENDER CHECKLIST ─────────────────────────────────────────────────────────
-  if ((estado === 'checklist' || estado === 'concluido') && eventoAtual) {
-    const categorias = [...new Set(eventoAtual.checklist.map(c => c.categoria))];
+      {/* Criar */}
+      <button style={{ ...btn(COR.verde), width: '100%', padding: '16px', fontSize: 16 }}
+        onClick={criarEvento}>
+        Criar Evento →
+      </button>
+    </div>
+  );
+
+  // ══════════════════════════════════════════════════════════════════
+  // RENDER — DETALHE DO EVENTO
+  // ══════════════════════════════════════════════════════════════════
+  if (vista === 'detalhe' && eventoAtual) {
     const feitos = eventoAtual.checklist.filter(c => c.estado === 'feito').length;
     const total = eventoAtual.checklist.length;
-
-    function toggleItem(id: string) {
-      const novaChecklist = eventoAtual!.checklist.map(c =>
-        c.id === id ? { ...c, estado: c.estado === 'feito' ? 'pendente' : 'feito' as any } : c
-      );
-      const evAtualizado = { ...eventoAtual!, checklist: novaChecklist };
-      setEventoAtual(evAtualizado);
-      salvarEventos(eventos.map((e: Evento) => e.id === evAtualizado.id ? evAtualizado : e));
-    }
-
-    function toggleTarefa(id: string) {
-      const novasTarefas = eventoAtual!.tarefas.map(t => t.id === id ? { ...t, selecionada: !t.selecionada } : t);
-      const evAtualizado = { ...eventoAtual!, tarefas: novasTarefas };
-      setEventoAtual(evAtualizado);
-      salvarEventos(eventos.map(e => e.id === evAtualizado.id ? evAtualizado : e));
-    }
+    const categorias = [...new Set(eventoAtual.checklist.map(c => c.categoria))];
 
     return (
-      <div style={{ padding: '16px', maxWidth: 640, margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
-        {/* Cabeçalho */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <button style={btnSecundario} onClick={() => setEstado('inicio')}>←</button>
+      <div style={{ padding: 16, maxWidth: 640, margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <button style={btnOutline} onClick={() => setVista('lista')}>←</button>
           <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#1a1714' }}>{eventoAtual.nome}</h2>
-            <div style={{ fontSize: 13, color: COR.cinza }}>{feitos}/{total} itens concluídos</div>
+            <div style={{ fontSize: 11, color: COR.cinza, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>EVT-{eventoAtual.numero || '—'}</div>
+            <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>{eventoAtual.nome}</h2>
+            <div style={{ fontSize: 12, color: COR.cinza }}>{feitos}/{total} itens · {eventoAtual.dias.length} dia(s)</div>
           </div>
-          <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: eventoAtual.publicado ? COR.verdeClaro : COR.roxoClaro, color: eventoAtual.publicado ? COR.verde : COR.roxo }}>
+          <span style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 700, background: eventoAtual.publicado ? COR.verdeClaro : COR.roxoClaro, color: eventoAtual.publicado ? COR.verde : COR.roxo }}>
             {eventoAtual.publicado ? '✅ Publicado' : '⏳ Rascunho'}
           </span>
         </div>
 
         {/* Barra de progresso */}
-        <div style={{ height: 8, background: COR.cinzaClaro, borderRadius: 99, marginBottom: 20 }}>
+        <div style={{ height: 8, background: COR.cinzaClaro, borderRadius: 99, marginBottom: 16 }}>
           <div style={{ height: '100%', width: `${Math.round((feitos / total) * 100)}%`, background: COR.verde, borderRadius: 99, transition: 'width 0.3s' }} />
         </div>
 
-        {msg && <div style={{ padding: '10px 16px', borderRadius: 8, background: msg.startsWith('❌') ? '#fee2e2' : '#d1fae5', color: msg.startsWith('❌') ? '#991b1b' : '#065f46', fontSize: 13, marginBottom: 16, fontWeight: 600 }}>{msg}</div>}
+        {/* Resumo por dia */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={label}>Programa</div>
+          {eventoAtual.dias.map(d => {
+            const dataFmt = d.data ? new Date(d.data + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' }) : '—';
+            return (
+              <div key={d.id} style={{ background: COR.cinzaClaro, borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>📅 {dataFmt}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {d.momentos.map(m => {
+                    const cfg = MOMENTOS_CONFIG[m.tipo];
+                    return (
+                      <span key={m.id} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: cfg.cor + '22', color: cfg.cor }}>
+                        {cfg.emoji} {cfg.label} — {m.numPessoas} pax
+                      </span>
+                    );
+                  })}
+                  {d.momentos.length === 0 && <span style={{ fontSize: 12, color: COR.cinza }}>Nenhum momento</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
-        {/* Checklist por categoria */}
+        {msg && <div style={{ padding: '10px 14px', borderRadius: 8, background: msg.startsWith('❌') ? '#fee2e2' : '#d1fae5', color: msg.startsWith('❌') ? '#991b1b' : '#065f46', fontSize: 13, marginBottom: 14, fontWeight: 600 }}>{msg}</div>}
+
+        {/* Checklist */}
         {categorias.map(cat => (
-          <div key={cat} style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: COR.cinza, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{cat}</div>
+          <div key={cat} style={{ marginBottom: 16 }}>
+            <div style={label}>{cat}</div>
             {eventoAtual.checklist.filter(c => c.categoria === cat).map(item => (
               <div key={item.id} onClick={() => toggleItem(item.id)}
                 style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${item.estado === 'feito' ? COR.verde : '#e5e7eb'}`, background: item.estado === 'feito' ? COR.verdeClaro + '44' : '#fff', cursor: 'pointer', marginBottom: 6 }}>
@@ -1013,18 +1018,17 @@ export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nom
                   {item.estado === 'feito' && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: item.estado === 'feito' ? COR.verde : '#1a1714', textDecoration: item.estado === 'feito' ? 'line-through' : 'none' }}>{item.texto}</div>
-                  <div style={{ fontSize: 11, color: COR.cinza, marginTop: 2 }}>{item.responsavel}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: item.estado === 'feito' ? COR.verde : COR.preto, textDecoration: item.estado === 'feito' ? 'line-through' : 'none' }}>{item.texto}</div>
+                  <div style={{ fontSize: 11, color: COR.cinza }}>{item.responsavel}</div>
                 </div>
               </div>
             ))}
           </div>
         ))}
 
-        {/* Tarefas para Classroom */}
+        {/* Tarefas Classroom */}
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: COR.cinza, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Tarefas para o Classroom</div>
-          <p style={{ fontSize: 12, color: COR.cinza, margin: '0 0 10px' }}>Selecciona as tarefas a publicar no Google Classroom</p>
+          <div style={label}>Tarefas para o Google Classroom</div>
           {eventoAtual.tarefas.map(t => (
             <div key={t.id} onClick={() => toggleTarefa(t.id)}
               style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${t.selecionada ? COR.roxo : '#e5e7eb'}`, background: t.selecionada ? COR.roxoClaro + '44' : '#fff', cursor: 'pointer', marginBottom: 6 }}>
@@ -1032,7 +1036,7 @@ export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nom
                 {t.selecionada && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{t.titulo}</div>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{t.titulo}</div>
                 <div style={{ fontSize: 11, color: COR.roxo, fontWeight: 600 }}>{t.disciplina}</div>
                 <div style={{ fontSize: 12, color: COR.cinza }}>{t.descricao}</div>
               </div>
@@ -1040,25 +1044,76 @@ export function EventosWizard({ turmaId, nomeProfessor }: { turmaId: string; nom
           ))}
         </div>
 
-        {/* Relatório PDF */}
-        <button style={{ ...btnPrimario('#1a1714'), width: '100%', padding: '14px', fontSize: 15, marginBottom: 8 }}
-          onClick={() => abrirRelatorioPDF(eventoAtual, opcoesCustom)}>
+        {/* ── Planos de Aula Associados ── */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ ...label, marginBottom: 10 }}>📋 Planos de Aula Associados</div>
+          {(() => {
+            const planosAssociados = getPlanosDoEvento(turmaId, eventoAtual.id);
+            const planosDisponiveis = getPlanosDisponiveis(turmaId, eventoAtual.id).filter(p => !p.eventoId);
+            return (
+              <>
+                {planosAssociados.length === 0 && !mostrarSeletorPlanos && (
+                  <div style={{ fontSize: 13, color: COR.cinza, marginBottom: 10, padding: '10px 14px', background: COR.cinzaClaro, borderRadius: 8 }}>
+                    Nenhum plano de aula associado a este evento.
+                  </div>
+                )}
+                {planosAssociados.map(p => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${COR.roxo}`, background: COR.roxoClaro + '44', marginBottom: 6 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{p.titulo || 'Plano de aula'}</div>
+                      <div style={{ fontSize: 11, color: COR.cinza }}>{p.data} · {p.ucId || '—'} · {p.turmaId}</div>
+                    </div>
+                    <button onClick={() => { desassociarPlano(p); setPlanosEvento(getPlanosDoEvento(turmaId, eventoAtual.id)); }}
+                      style={{ ...btn('#fee2e2', '#991b1b'), padding: '5px 10px', fontSize: 11 }}>
+                      ✕ Remover
+                    </button>
+                  </div>
+                ))}
+                {mostrarSeletorPlanos && planosDisponiveis.length > 0 && (
+                  <div style={{ background: COR.cinzaClaro, borderRadius: 10, padding: 12, marginBottom: 10 }}>
+                    <div style={{ fontSize: 12, color: COR.cinza, marginBottom: 8 }}>Selecciona os planos a associar a este evento:</div>
+                    {planosDisponiveis.map(p => (
+                      <div key={p.id} onClick={() => { associarPlano(p, eventoAtual.id); setPlanosEvento(getPlanosDoEvento(turmaId, eventoAtual.id)); setMostrarSeletorPlanos(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', marginBottom: 6 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{p.titulo || 'Plano de aula'}</div>
+                          <div style={{ fontSize: 11, color: COR.cinza }}>{p.data} · {p.ucId || '—'}</div>
+                        </div>
+                        <span style={{ fontSize: 12, color: COR.roxo, fontWeight: 700 }}>+ Associar</span>
+                      </div>
+                    ))}
+                    {planosDisponiveis.length === 0 && (
+                      <div style={{ fontSize: 12, color: COR.cinza }}>Não há planos disponíveis para associar.</div>
+                    )}
+                  </div>
+                )}
+                <button style={{ ...btnOutline, width: '100%', marginTop: 4 }}
+                  onClick={() => setMostrarSeletorPlanos(s => !s)}>
+                  {mostrarSeletorPlanos ? '✕ Fechar seletor' : '+ Associar plano de aula'}
+                </button>
+              </>
+            );
+          })()}
+        </div>
+
+        {/* Botões de ação */}
+        <button style={{ ...btn('#1a1714'), width: '100%', padding: 14, fontSize: 15, marginBottom: 8 }}
+          onClick={abrirPDF}>
           📄 Relatório PDF do Evento
         </button>
 
-        {/* Publicar */}
-        {!eventoAtual.publicado && (
-          <button style={{ ...btnPrimario(COR.verde), width: '100%', padding: '16px', fontSize: 16, marginBottom: 8 }}
+        {!eventoAtual.publicado ? (
+          <button style={{ ...btn(COR.verde), width: '100%', padding: 14, fontSize: 15, marginBottom: 8 }}
             onClick={publicar} disabled={publicando}>
             {publicando ? '⏳ A publicar...' : '📢 Publicar no Google Classroom'}
           </button>
-        )}
-        {eventoAtual.publicado && (
-          <div style={{ padding: 16, borderRadius: 12, background: COR.verdeClaro, textAlign: 'center', color: COR.verde, fontWeight: 700, fontSize: 15, marginBottom: 8 }}>
-            ✅ Evento publicado no Classroom com sucesso!
+        ) : (
+          <div style={{ padding: 14, borderRadius: 12, background: COR.verdeClaro, textAlign: 'center', color: COR.verde, fontWeight: 700, fontSize: 15, marginBottom: 8 }}>
+            ✅ Publicado no Classroom com sucesso!
           </div>
         )}
-        <button style={{ ...btnSecundario, width: '100%' }} onClick={() => setEstado('inicio')}>← Voltar à lista</button>
+
+        <button style={{ ...btnOutline, width: '100%' }} onClick={() => setVista('lista')}>← Voltar à lista</button>
       </div>
     );
   }
