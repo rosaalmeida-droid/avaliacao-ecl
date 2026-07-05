@@ -2732,6 +2732,16 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             }));
             setPasso('ficha');
             setFichaEmEdicaoId(f.id);
+            // Associar ao plano actual se ainda não estiver
+            if (planoId && f.planoAulaId !== planoId) {
+              addOrUpdateFichaProducao({ ...f, planoAulaId: planoId, atualizadoEm: new Date().toISOString() });
+              // Também adicionar ao fichasIds do plano
+              const planos = getPlanosAula();
+              const plano = planos.find(p => p.id === planoId);
+              if (plano && !plano.fichasIds.includes(f.id)) {
+                addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, f.id], atualizadoEm: new Date().toISOString() });
+              }
+            }
             setVista('editar');
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
