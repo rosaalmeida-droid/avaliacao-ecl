@@ -86,7 +86,7 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   SECOES_CONFIG.forEach(cfg => {
     // Padrões de cabeçalho: "# 1.", "## 1.", "1.", "SECÇÃO 1"
     const regex = new RegExp(
-      `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:ENQUADRAMENTO|COMPETÊNCIAS|MICROCOMPETÊNCIAS|HACCP|RENDIMENTOS|CAPACITAÇÃO|EQUILÍBRIO|SUGESTÕES|SUSTENTABILIDADE|FOOD COST|TÉCNICAS|CONHECIMENTOS|QUESTÕES|CASO|AUTOAVALIAÇÃO)[^\\n]*\\n([\\s\\S]*?)(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*|$)`,
+      `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:ENQUADRAMENTO|COMPETÊNCIAS|MICROCOMPETÊNCIAS|HACCP|RENDIMENTOS|CAPACITAÇÃO|EQUILÍBRIO|SUGESTÕES|SUSTENTABILIDADE|FOOD COST|TÉCNICAS|CONHECIMENTOS|QUESTÕES|CASO|AUTOAVALIAÇÃO|CULTURA)[^\\n]*\\n([\\s\\S]*?)(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*|$)`,
       'i'
     );
     const m = texto.match(regex);
@@ -95,8 +95,8 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
     }
   });
 
-  // Se não encontrou secções pelo número, tentar pelos títulos
-  if (secoes.length < 3) {
+  // Tentar pelos títulos em paralelo (sempre, não só quando falha)
+  if (true) {
     const padroesTitulo = [
       { regex: /(?:ENQUADRAMENTO|enquadramento)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:COMPETÊNCIAS|HACCP|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|TÉCNI|CONHE|QUEST|CASO|AUTOAV)|$)/i, num: 1 },
       { regex: /(?:COMPETÊNCIAS|competências)[^#\n]*\n([\s\S]*?)(?=(?:##|#|\d+\.)\s*(?:HACCP|RENDI|CAPACI|EQUIL|SUGE|SUST|FOOD|TÉCNI|CONHE|QUEST|CASO|AUTOAV)|$)/i, num: 2 },
