@@ -1235,6 +1235,8 @@ Listar as responsabilidades técnicas concretas exigidas nesta produção, basea
 | Responsabilidade | Como se observa nesta produção |
 |---|---|
 
+**Síntese pedagógica:** escreve 1 parágrafo final a explicar de forma integrada o que esta produção concreta desenvolve no aluno do ponto de vista técnico e organizativo, e a sua relevância para o percurso profissional. Liga às competências e responsabilidades listadas acima.
+
 ---
 # 3. HACCP E PONTOS CRÍTICOS DE CONTROLO (PCC)
 
