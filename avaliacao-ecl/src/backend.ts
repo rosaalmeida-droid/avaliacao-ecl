@@ -1014,6 +1014,14 @@ export function proximoNumeroFicha(): number {
   return Math.max(maior + 1, PISO_NUMERACAO);
 }
 
+export function proximoNumeroEvento(): number {
+  try {
+    const todos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]');
+    const maior = todos.reduce((m: number, e: any) => Math.max(m, e.numero || 0), 0);
+    return Math.max(maior + 1, PISO_NUMERACAO);
+  } catch { return PISO_NUMERACAO; }
+}
+
 export function proximoNumeroRecuperacao(): number {
   const todas = getRecuperacoes();
   const maior = todas.reduce((m, r) => {
@@ -1026,8 +1034,9 @@ export function proximoNumeroRecuperacao(): number {
 // Código do Plano de Aula: Ano-UC-Número, ex: "1-UC03586-100".
 // Sem data — já existe como campo próprio do plano, não precisa duplicar.
 export function gerarCodigoPlano(turmaId: string, ucId: string | undefined, numeroPlan: number): string {
-  const aluno = getAlunos().find(a => a.turmaId === turmaId);
-  const ano = aluno?.ano || '?';
+  // Derivar o ano do nome da turma (1º ACP → 1, 2º ACP → 2, 3º ACP → 3)
+  const match = (turmaId || '').match(/^(\d)/);
+  const ano = match ? match[1] : (getAlunos().find(a => a.turmaId === turmaId)?.ano || '1');
   const ucLimpo = ucId || 'SemUC';
   return `${ano}-${ucLimpo}-${numeroPlan}`;
 }
