@@ -158,6 +158,25 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, onSair, aberta, isMobil
           <div style={{ color: SIDEBAR_TXT, fontSize: 10, marginTop: 5 }}>62% concluído</div>
         </div>
 
+        {/* KitchenFlow */}
+        <div style={{ padding: '0 10px 8px' }}>
+          <button onClick={() => window.open('https://ecl-haccp.vercel.app/', '_blank')}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+              padding: '9px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)',
+              background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)',
+              fontSize: 13, fontWeight: 600, textAlign: 'left', cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.15)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)'; }}
+          >
+            <span style={{ fontSize: 16, flexShrink: 0 }}>🏭</span>
+            <span>KitchenFlow ECL</span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.5 }}>↗</span>
+          </button>
+        </div>
+
         {/* Sair */}
         <div style={{ padding: '0 10px 14px' }}>
           <button onClick={onSair} style={{
