@@ -5,34 +5,31 @@
 export type Categoria = 'TECNICAS' | 'ATITUDES' | 'RESPONSABILIDADES';
 
 export interface Competencia {
-  id: string;            // ex: "T01"
+  id: string;
   categoria: Categoria;
-  nome: string;          // texto curto mostrado ao aluno
-  descricao?: string;    // detalhe opcional
-  uc: string[];          // códigos UC de origem (rastreabilidade ao referencial)
-  palavrasChave?: string[]; // para sugestão automática a partir da receita
-  tecnicaMaeId?: string;    // se for subtécnica, id da técnica "grupo" (T01-T33) de onde deriva
+  nome: string;
+  descricao?: string;
+  uc: string[];
+  palavrasChave?: string[];
+  tecnicaMaeId?: string;
 }
 
 export interface Turma {
   id: string;
-  nome: string; // ex: "CP-Cozinha-2526"
+  nome: string;
 }
 
 export interface Aluno {
-  id: string;       // turma+numero, ex: "CP1-12"
+  id: string;
   turmaId: string;
   numero: number;
-  ano: 1 | 2 | 3;    // ano do curso — define o nº mínimo de competências exigidas
+  ano: 1 | 2 | 3;
   nome?: string;
-  pin?: string;              // PIN pessoal definido pelo aluno (4 dígitos)
-  pinCriadoEm?: string;     // ISO timestamp — quando o aluno criou o PIN pela primeira vez
-  pinAlteradoEm?: string;   // ISO timestamp — quando o PIN foi alterado (se alguma vez)
-  // Nível de medidas educativas (DL 54/2018) — adapta a extensão, linguagem
-  // e complexidade do Plano de Recuperação Individual gerado por IA.
-  // Nunca retira competências essenciais da UC, só adapta a FORMA de acesso.
+  pin?: string;
+  pinCriadoEm?: string;
+  pinAlteradoEm?: string;
   nivelMedidas?: 1 | 2 | 3;
-  ativo?: boolean;           // false = aluno saiu/transferido (mantém histórico)
+  ativo?: boolean;
 }
 
 export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
@@ -43,13 +40,10 @@ export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
 
 export type Perfil = 'aluno' | 'professor' | 'coordenadora';
 
-// --------------------------------------------------------
-// Contexto da comanda
-// --------------------------------------------------------
 export type ModoTrabalho = 'individual' | 'grupo';
 
 export type TipoServico =
-  | 'normal'           // aula normal de cozinha, sem serviço especial
+  | 'normal'
   | 'buffet'
   | 'servico_carta'
   | 'a_la_minute'
@@ -71,32 +65,26 @@ export const TIPO_SERVICO_LABEL: Record<TipoServico, string> = {
   catering: 'Catering',
 };
 
-// --------------------------------------------------------
-// Comanda do dia (criada pelo professor)
-// --------------------------------------------------------
 export interface Comanda {
   id: string;
   turmaId: string;
-  data: string;          // ISO date
-  titulo: string;        // nome da receita
-  linkOuTexto: string;    // link ou texto colado da receita
+  data: string;
+  titulo: string;
+  linkOuTexto: string;
   fatorConversao?: number;
   modo: ModoTrabalho;
   tipoServico: TipoServico;
   atendimentoCliente: boolean;
-  alunosIds: string[];     // alunos atribuídos a esta comanda (1 se individual, N se grupo)
-  tecnicasSugeridas: string[];        // ids de Competencia (categoria TECNICAS)
-  atitudesSugeridas: string[];        // ids de Competencia (categoria ATITUDES)
-  responsabilidadesSugeridas: string[]; // ids de Competencia (categoria RESPONSABILIDADES)
-  tecnicasFixas: string[];        // escolhidas pelo professor, obrigatórias (não removíveis)
+  alunosIds: string[];
+  tecnicasSugeridas: string[];
+  atitudesSugeridas: string[];
+  responsabilidadesSugeridas: string[];
+  tecnicasFixas: string[];
   atitudesFixas: string[];
   responsabilidadesFixas: string[];
-  criadaEm: string;       // ISO datetime
+  criadaEm: string;
 }
 
-// --------------------------------------------------------
-// Autoavaliação — escala qualitativa mapeada para 0-20
-// --------------------------------------------------------
 export type NivelAuto = 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei';
 
 export const NIVEL_AUTO_LABEL: Record<NivelAuto, string> = {
@@ -118,9 +106,6 @@ export interface AutoavaliacaoCompetencia {
   nivel: NivelAuto;
 }
 
-// --------------------------------------------------------
-// Seleção do aluno para uma comanda
-// --------------------------------------------------------
 export interface SelecaoAluno {
   id: string;
   comandaId: string;
@@ -137,13 +122,10 @@ export interface SelecaoAluno {
   criadaEm: string;
 }
 
-// --------------------------------------------------------
-// Validação do professor (uma por competência escolhida)
-// --------------------------------------------------------
 export interface NotaCompetencia {
   competenciaId: string;
-  nota: number;       // 0-20, nota final (validada ou herdada da autoavaliação)
-  origem: 'auto' | 'professor'; // se o professor ajustou ou aceitou a autoavaliação
+  nota: number;
+  origem: 'auto' | 'professor';
 }
 
 export interface Validacao {
@@ -160,16 +142,12 @@ export interface Validacao {
   validadoEm: string;
 }
 
-// --------------------------------------------------------
-// Histórico agregado por aluno × competência
-// (derivado das Validações, usado para o sistema de progressão)
-// --------------------------------------------------------
 export interface HistoricoCompetencia {
   competenciaId: string;
-  notas: number[];     // todas as notas recebidas nessa competência
-  vezesTreinada: number; // = notas.length, exposto explicitamente
-  media: number;       // média calculada
-  dominada: boolean;   // media >= 12
+  notas: number[];
+  vezesTreinada: number;
+  media: number;
+  dominada: boolean;
 }
 
 export interface HistoricoAluno {
@@ -181,31 +159,23 @@ export interface HistoricoAluno {
   totalGrupo: number;
 }
 
-// --------------------------------------------------------
-// Atividades extracurriculares — eventos fora de horas e
-// concursos de cozinha. Registo factual de participação,
-// sem ligação (por agora) ao sistema de competências.
-// --------------------------------------------------------
 export type TipoAtividade = 'evento' | 'concurso';
 
 export interface Atividade {
   id: string;
   turmaId: string;
   tipo: TipoAtividade;
-  titulo: string;       // ex: "Jantar de Gala - Hotel X" / "Concurso Jovem Chef 2026"
-  data: string;          // ISO date
-  participantesIds: string[]; // alunos que participaram
+  titulo: string;
+  data: string;
+  participantesIds: string[];
   criadaEm: string;
 }
 
-// --------------------------------------------------------
-// Fichas de Produção
-// --------------------------------------------------------
 export interface IngredienteFicha {
   id: string;
   componente: string;
   qt: string;
-  un: string;        // unidade (g, kg, ml, l, un)
+  un: string;
   produto: string;
   tPrep: string;
   tConf: string;
@@ -222,7 +192,6 @@ export interface PassoFicha {
   haccp: string;
 }
 
-// Famílias de fichas técnicas — lista fechada, extensível no futuro
 export type FamiliaFicha =
   | 'Preparações Base e Molhos'
   | 'Sopas e Caldos'
@@ -241,7 +210,6 @@ export type FamiliaFicha =
   | 'Pastelaria — Doçaria e Petit Fours'
   | 'Bebidas';
 
-// Etiquetas válidas — lista fechada, extensível no futuro
 export const ETIQUETAS_FICHA = {
   proteina: [
     'Vaca', 'Porco', 'Frango', 'Pato', 'Borrego', 'Caça',
@@ -287,11 +255,11 @@ export interface FichaProducao {
   id: string;
   nomePrato: string;
   classificacao: string;
-  familia1?: FamiliaFicha;        // família principal — define microcompetências primárias
-  familia2?: FamiliaFicha;        // família secundária — quando duas técnicas têm peso equivalente
-  etiquetas?: string[];           // contexto adicional — máx 3 (proteína cruzada, método, cultural)
+  familia1?: FamiliaFicha;
+  familia2?: FamiliaFicha;
+  etiquetas?: string[];
   fichaNum?: string;
-  codigo?: string;        // ex: 1A, 1B, 2A — Plano N + letra
+  codigo?: string;
   numPorcoes: string;
   tempoPrep?: string;
   tempoConf?: string;
@@ -309,7 +277,7 @@ export interface FichaProducao {
   data?: string;
   planoAulaId?: string;
   textoGuia?: string;
-  htmlCompleto?: string;  // ficha formatada pronta a mostrar/imprimir — gerada ao guardar
+  htmlCompleto?: string;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -334,22 +302,19 @@ export interface PlanoAula {
   numeroPlan?: number;
   compRemovidas?: string[];
   compAdicionadas?: string[];
+  eventoId?: string;        // ← ID do evento pedagógico associado (EventosWizard)
   criadoEm: string;
   atualizadoEm: string;
 }
 
-// ── Banco de Evidências ──────────────────────────────────────
-// Registo de qualquer observação de competência/atitude/responsabilidade,
-// independente da UC em que ocorreu. Permite validar atitudes transversais
-// em contexto diferente daquele em que ficaram pendentes.
 export interface Evidencia {
   id: string;
   alunoId: string;
   competenciaId: string;
-  ucId: string;            // UC em que a evidência foi recolhida (pode ser diferente da UC de origem da competência)
+  ucId: string;
   planoAulaId?: string;
   fichaId?: string;
-  tipoEvidencia: string;   // ex: 'observacao_direta', 'defesa_oral', 'video_demonstrativo'...
+  tipoEvidencia: string;
   nivel: 0 | 1 | 2 | 3 | 4;
   observacaoQualitativa?: string;
   professor: string;
@@ -363,28 +328,20 @@ export interface RecuperacaoModulo {
   turmaId: string;
   ucId: string;
   ucNome: string;
-  // Código sequencial da recuperação — ex: "100-UC03586". Gerado a partir
-  // de 100 (decisão de 21/06/2026), sequencial, sempre com a UC.
   numeroRecuperacao?: number;
   tipoUC: 'tecnica' | 'organizacional' | 'hibrida';
-  planosIds: string[];           // planos de aula que esta recuperação cobre
-  competenciasIds: string[];     // competências/microcompetências herdadas dos planos
+  planosIds: string[];
+  competenciasIds: string[];
   atitudesIds: string[];
   responsabilidadesIds: string[];
   estado: 'gerada' | 'em_curso' | 'submetida' | 'em_analise' | 'devolvida' | 'aguardar_defesa_oral' | 'validada' | 'nao_validada' | 'pendente_observacao_futura'
-    // estados antigos mantidos para compatibilidade com recuperações já criadas
     | 'pendente' | 'em_avaliacao' | 'concluida';
-  trabalhoTeorico?: string;      // texto/respostas do aluno
+  trabalhoTeorico?: string;
   investigacao?: string;
   casoProfissional?: string;
   autoavaliacao?: string;
-  // Anexos de evidências (ponto 6-7 da adenda) — Opção C: link manual (Drive/
-  // OneDrive), mais simples de implementar já sem precisar de infraestrutura
-  // própria de upload. O aluno cola o link, a app só guarda a referência.
-  evidenciasUrls?: string[];     // mantido por compatibilidade
+  evidenciasUrls?: string[];
   anexos?: { tipo: 'foto' | 'video' | 'audio' | 'documento' | 'link'; url: string; descricao?: string; criadoEm: string }[];
-  // Validação com apoio de IA (pontos 11-13) — a IA NUNCA decide a nota final,
-  // só apoia o professor com um relatório preliminar.
   analiseIA?: {
     relatorioConsistencia: string;
     lacunasDetetadas: string[];
@@ -392,27 +349,20 @@ export interface RecuperacaoModulo {
     sugestaoEstado: 'suficiente_para_defesa' | 'necessita_correcao' | 'evidencia_insuficiente' | 'validavel_observacao_futura';
     geradoEm: string;
   };
-  dataLimite?: string;            // data limite para o aluno submeter (1 mês após criação)
-  // Quando passa a dataLimite sem o aluno ter submetido, a recuperação fica
-  // trancada automaticamente — só o professor a pode destrancar (dar mais tempo).
+  dataLimite?: string;
   trancada?: boolean;
   destrancadaPorProfessor?: boolean;
   avaliacaoCompetencias?: { competenciaId: string; nivel: 'nao_demonstrada' | 'em_desenvolvimento' | 'consolidada' | 'avancada' }[];
   comentarioProfessor?: string;
   professorAvaliador?: string;
-  // Defesa Oral — pontos 10-11 do documento pedagógico: nenhuma recuperação
-  // deve ser validada exclusivamente por trabalho escrito.
   perguntasDefesaOral?: { competenciaId: string; pergunta: string }[];
   defesaOralRealizada?: boolean;
-  defesaOralNotas?: string;       // notas do professor durante a defesa oral
+  defesaOralNotas?: string;
   defesaOralData?: string;
-  // Plano de Recuperação Individual — gerado por IA a partir do prompt único
-  // construído pela app (competências em falta, evidências existentes, nível
-  // de medidas do aluno). Diferente para cada aluno, mesmo na mesma UC.
   nivelMedidasUsado?: 1 | 2 | 3;
-  promptPlanoIndividual?: string;     // prompt fechado dado ao aluno/professor para colar na IA
-  planoIndividualTexto?: string;      // resultado colado pelo professor depois de gerar com IA
-  planoIndividualAprovado?: boolean;  // professor reviu/aprovou antes de o aluno usar
+  promptPlanoIndividual?: string;
+  planoIndividualTexto?: string;
+  planoIndividualAprovado?: boolean;
   dataAtribuicao: string;
   dataSubmissao?: string;
   dataValidacao?: string;
@@ -420,9 +370,6 @@ export interface RecuperacaoModulo {
   atualizadoEm: string;
 }
 
-// --------------------------------------------------------
-// Distribuição de Fichas
-// --------------------------------------------------------
 export type ModoDistribuicaoFicha = 'todos' | 'grupo' | 'individual';
 
 export interface GrupoFicha {
@@ -447,9 +394,6 @@ export interface DistribuicaoFicha {
   publicada: boolean;
 }
 
-// --------------------------------------------------------
-// Checklist do Aluno por Ficha
-// --------------------------------------------------------
 export interface ChecklistAlunoFicha {
   id: string;
   planoAulaId: string;
@@ -468,9 +412,6 @@ export interface ChecklistAlunoFicha {
   atualizadoEm: string;
 }
 
-// --------------------------------------------------------
-// Requisição
-// --------------------------------------------------------
 export interface LinhaRequisicao {
   id: string;
   produto: string;
@@ -496,9 +437,6 @@ export interface RequisicaoAula {
   atualizadaEm: string;
 }
 
-// --------------------------------------------------------
-// Matérias-Primas e Preços
-// --------------------------------------------------------
 export interface MateriaPrima {
   id: string;
   nome: string;
@@ -520,15 +458,12 @@ export interface HistoricoPreco {
   data: string;
 }
 
-// ── Centro de Avisos ──────────────────────────────────────────
-// Painel transversal a toda a app — lista problemas pendentes que o
-// professor precisa de rever (ex: ingrediente sem preço confirmado).
 export interface Aviso {
   id: string;
   tipo: 'ingrediente_nao_encontrado' | 'ingrediente_ambiguo' | 'ficha_incompleta'
     | 'plano_sem_ficha' | 'ficha_sem_guia' | 'plano_sem_requisicao'
     | 'recuperacao_por_avaliar' | 'validacao_pendente' | 'outro'
-    | 'sugestao_ingrediente'; // professor sugere correcção à base — Coordenadora aprova
+    | 'sugestao_ingrediente';
   titulo: string;
   descricao: string;
   contexto?: {
@@ -536,17 +471,16 @@ export interface Aviso {
     planoId?: string;
     ingredienteNome?: string;
     tabDestino?: string;
-    // campos específicos de sugestao_ingrediente
     sugestao?: {
-      nomeOriginal: string;       // como veio da ficha
-      nomeCorrigido?: string;     // sugestão do professor
-      precoKg?: number;           // preço sugerido por kg
-      precoUnitario?: number;     // preço sugerido por unidade
-      unidadeCompra?: string;     // kg, un, L...
-      categoria?: string;         // Proteína, Vegetal, Laticínio...
-      observacao?: string;        // nota livre do professor
-      sugeridoPor?: string;       // nome do professor
-      sugeridoEm?: string;        // timestamp
+      nomeOriginal: string;
+      nomeCorrigido?: string;
+      precoKg?: number;
+      precoUnitario?: number;
+      unidadeCompra?: string;
+      categoria?: string;
+      observacao?: string;
+      sugeridoPor?: string;
+      sugeridoEm?: string;
       estadoAprovacao?: 'pendente' | 'aprovado' | 'rejeitado';
     };
   };
@@ -555,10 +489,6 @@ export interface Aviso {
   resolvidoEm?: string;
 }
 
-// Ingrediente/matéria-prima adicionado ou corrigido pelo professor — fica
-// guardado por cima da base "de fábrica" (MATERIAS_PRIMAS_BASE), sem a
-// alterar diretamente. Permite à base crescer com o uso real, sem o
-// professor ter de ir a um ecrã de gestão dedicado.
 export interface MateriaPrimaCustom {
   id: string;
   nome: string;
@@ -570,10 +500,6 @@ export interface MateriaPrimaCustom {
   criadoEm: string;
   atualizadoEm: string;
 }
-
-// ════════════════════════════════════════════════════════════════
-// MANUAL DO COZINHEIRO — Biblioteca técnica de referência permanente
-// ════════════════════════════════════════════════════════════════
 
 export type CategoriaManual =
   | 'Higiene e Preparação'
