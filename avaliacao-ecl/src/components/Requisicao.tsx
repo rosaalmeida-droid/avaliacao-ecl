@@ -659,7 +659,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         </div>
 
         {/* 2. Fichas e doses */}
-        {planoSel && (
+        {(planoSel || fichasIniciais) && (
           <div id="req-fichas" style={S.card}>
             <label style={S.lbl}>2. Fichas de producao e doses</label>
             <div style={{ ...S.muted, marginBottom: 10 }}>Seleciona as fichas e define as doses pretendidas para cada uma.</div>
@@ -907,6 +907,26 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               {f.nomePrato} · {paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 1} doses
             </span>
           ))}
+        </div>
+        {/* Ajustar doses inline */}
+        <div style={{ marginTop: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.08)', borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Ajustar doses</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {fichasSelecionadas.map(f => (
+              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'rgba(247,241,230,0.8)', flex: 1 }}>{f.nomePrato}</span>
+                <span style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)' }}>base: {f.numPorcoes}</span>
+                <input type="number" min={1} value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
+                  onChange={e => {
+                    setPaxPorFicha(p => ({ ...p, [f.id]: Number(e.target.value) }));
+                    // Recalcular linhas automaticamente
+                    setTimeout(() => gerarLinhas(), 50);
+                  }}
+                  style={{ width: 60, padding: '4px 8px', borderRadius: 6, border: 'none', fontSize: 13, textAlign: 'center', background: 'rgba(255,255,255,0.15)', color: 'white', fontWeight: 700 }} />
+                <span style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)' }}>doses</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
