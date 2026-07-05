@@ -134,7 +134,7 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
     const t = l.trim();
     if (!t) return '';
     if (t.match(/^[-•·]\s/)) return `<div style="padding:3px 0 3px 16px;font-size:11px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
-    if (t.match(/^#+\s/)) return `<div style="font-weight:700;font-size:11px;color:${cor};margin:8px 0 4px;">${t.replace(/^#+\s/,'')}</div>`;
+    if (t.match(/^#+\s/)) return `<div style="font-weight:800;font-size:12px;color:${cor};margin:12px 0 6px;padding:4px 0;border-bottom:1px solid ${cor}30;page-break-after:avoid;">${t.replace(/^#+\s/,'')}</div>`;
     if (t.match(/⚠️|PCC|crítico/i)) return `<div style="padding:6px 10px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:4px;font-size:10px;color:#b91c1c;margin:4px 0;">${t}</div>`;
     return `<p style="font-size:11px;color:#374151;line-height:1.6;margin:3px 0;">${t}</p>`;
   }).join('');
@@ -148,10 +148,10 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
     const icone = ICONES[secao.num] || '•';
     const secaoComRoda = { ...secao, equilibrioSensorial: guia.equilibrioSensorial };
     return `
-      <div style="margin-bottom:20px;page-break-inside:avoid;">
-        <div style="background:${cor};color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:8px;">
-          <span style="font-size:14px;">${icone}</span>
-          <span style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">${secao.num}. ${secao.titulo}</span>
+      <div style="margin-bottom:20px;">
+        <div style="background:${cor};color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;display:table;width:100%;page-break-after:avoid;">
+          <span style="font-size:14px;margin-right:8px;">${icone}</span>
+          <span style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">${secao.num}. ${secao.titulo}</span>
         </div>
         <div style="background:#fff;border:1px solid ${cor}30;border-top:none;border-radius:0 0 6px 6px;padding:12px 14px;">
           ${renderSecao(secaoComRoda as any)}
@@ -208,6 +208,12 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
   <!-- Secções -->
   ${secoesHtml}
 
+  <!-- Botão imprimir — escondido na impressão -->
+  <div style="position:fixed;top:12px;right:12px;display:flex;gap:8px;z-index:9999;" class="no-print">
+    <button onclick="window.print()" style="padding:10px 20px;background:#b5651d;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">🖨️ Imprimir / PDF</button>
+    <button onclick="window.close()" style="padding:10px 16px;background:#1a1714;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">✕</button>
+  </div>
+
   <!-- Rodapé -->
   <table style="margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;width:100%;border-collapse:collapse;">
     <tr>
@@ -218,20 +224,10 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
 </body>
 </html>`;
 
-  // Abrir numa nova janela maximizada e imprimir
-  const janela = window.open('', '_blank');
-  if (!janela) { alert('Permite popups para gerar o PDF'); return; }
-  janela.document.open();
-  janela.document.write(html);
-  janela.document.close();
-  setTimeout(() => {
-    try {
-      janela.moveTo(0, 0);
-      janela.resizeTo(screen.width, screen.height);
-      janela.focus();
-      janela.print();
-    } catch (e) {
-      janela.print();
-    }
-  }, 800);
+  // Abrir num novo separador completamente isolado
+  const novoTab = window.open('about:blank', '_blank');
+  if (!novoTab) { alert('Permite popups para este site e tenta de novo.'); return; }
+  novoTab.document.open();
+  novoTab.document.write(html);
+  novoTab.document.close();
 }
