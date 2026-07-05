@@ -79,7 +79,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, onSair, aberta, isMobil
       {aberta && isMobile && (
         <div onClick={onFechar} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 199 }} />
       )}
-      <aside style={{
+      <aside className="ecl-sidebar" style={{
         position: 'fixed', top: 0, left: 0, bottom: 0, width: 240,
         background: SIDEBAR_BG,
         display: 'flex', flexDirection: 'column',
@@ -195,7 +195,7 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, s
   const perfilLabel: Record<Perfil, string> = { aluno: 'Aluno', professor: 'Professor', coordenadora: 'Coordenadora' };
 
   return (
-    <header style={{
+    <header className="ecl-topbar" style={{
       height: 58,
       background: CARD_BG,
       borderBottom: `1px solid ${BORDER}`,
@@ -324,6 +324,11 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
         body { background: ${APP_BG} !important; }
         #root { background: ${APP_BG} !important; }
         .app-shell { background: ${APP_BG} !important; }
+        @media print {
+          .ecl-sidebar, .ecl-topbar { display: none !important; }
+          body > div > div:last-child { margin-left: 0 !important; width: 100% !important; }
+          main { padding: 0 !important; }
+        }
       `}</style>
     </div>
   );
