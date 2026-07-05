@@ -8,14 +8,12 @@ export interface OpcoesPDF {
   textoOriginal: string;
 }
 
-// Cores por secção
 const CORES: Record<number, string> = {
   1:'#0f766e',2:'#2563eb',3:'#dc2626',4:'#0891b2',
   5:'#7c3aed',6:'#d97706',7:'#0369a1',8:'#059669',
   9:'#b45309',10:'#1e40af',11:'#6d28d9',12:'#0c4a6e',
   13:'#9d174d',14:'#374151',15:'#1a1714',
 };
-
 const ICONES: Record<number, string> = {
   1:'📖',2:'🎯',3:'⚠️',4:'⚖️',5:'👥',6:'🌈',7:'💡',
   8:'♻️',9:'💶',10:'🔬',11:'📚',12:'❓',13:'🧩',14:'🪞',15:'📖',
@@ -23,10 +21,8 @@ const ICONES: Record<number, string> = {
 
 function renderSecao(secao: { num: number; titulo: string; conteudo: string; equilibrioSensorial?: any[] }): string {
   const cor = CORES[secao.num] || '#374151';
-  const icone = ICONES[secao.num] || '•';
   const conteudo = secao.conteudo || '';
 
-  // Secção 6 — equilíbrio sensorial
   if (secao.num === 6 && secao.equilibrioSensorial?.length) {
     const rodaHtml = secao.equilibrioSensorial.map((e: any) => {
       const nivelMap: Record<string, number> = { 'Forte':4,'Presente':3,'Ligeiro':2,'Ausente':0 };
@@ -40,11 +36,9 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
         <div style="font-size:9px;color:#6b7280;margin-top:3px;">${e.intensidade||''}</div>
       </div>`;
     }).join('');
-
     const analise = conteudo.split('\n')
       .filter((l: string) => !l.match(/^(DOCE|ÁCIDO|SALGADO|AMARGO|UMAMI):/i))
       .join(' ').trim();
-
     return `
       <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:4px;padding:12px 0;">
         ${rodaHtml}
@@ -53,7 +47,6 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
     `;
   }
 
-  // Secção 12 — questões
   if (secao.num === 12) {
     const blocos = conteudo.split(/RESPOSTAS?\s*:/i);
     const pergs = blocos[0].replace(/PERGUNTAS?\s*:/i,'').trim();
@@ -86,14 +79,12 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
     return html;
   }
 
-  // Tabelas markdown
   if (conteudo.includes('|')) {
     const linhas = conteudo.split('\n');
     let html = '';
     let emTabela = false;
     let cabecalho: string[] = [];
     let linhasTabela: string[][] = [];
-
     linhas.forEach((l: string) => {
       const t = l.trim();
       if (t.startsWith('|')) {
@@ -113,9 +104,9 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
           if (t.match(/^[-•·]\s/)) {
             html += `<div style="padding:3px 0 3px 16px;font-size:11px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
           } else if (t.match(/^#+\s/)) {
-            html += `<div style="font-weight:700;font-size:11px;color:${cor};margin:8px 0 4px;">${t.replace(/^#+\s/,'')}</div>`;
-          } else {
-            html += `<p style="font-size:11px;color:#374151;line-height:1.6;margin:4px 0;">${t}</p>`;
+            html += `<div style="font-weight:800;font-size:12px;color:${cor};margin:12px 0 6px;padding:4px 0;border-bottom:1px solid ${cor}30;">${t.replace(/^#+\s/,'')}</div>`;
+          } else if (t) {
+            html += `<p style="font-size:11px;color:#374151;line-height:1.5;margin:4px 0;text-align:justify;">${t}</p>`;
           }
         }
       }
@@ -129,14 +120,13 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
     return html;
   }
 
-  // Texto genérico
   return conteudo.split('\n').map((l: string) => {
     const t = l.trim();
     if (!t) return '';
     if (t.match(/^[-•·]\s/)) return `<div style="padding:3px 0 3px 16px;font-size:11px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
     if (t.match(/^#+\s/)) return `<div style="font-weight:800;font-size:12px;color:${cor};margin:12px 0 6px;padding:4px 0;border-bottom:1px solid ${cor}30;page-break-after:avoid;">${t.replace(/^#+\s/,'')}</div>`;
     if (t.match(/⚠️|PCC|crítico/i)) return `<div style="padding:6px 10px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:4px;font-size:10px;color:#b91c1c;margin:4px 0;">${t}</div>`;
-    return `<p style="font-size:11px;color:#374151;line-height:1.6;margin:3px 0;">${t}</p>`;
+    return `<p style="font-size:11px;color:#374151;line-height:1.5;margin:3px 0;text-align:justify;">${t}</p>`;
   }).join('');
 }
 
@@ -148,8 +138,8 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
     const icone = ICONES[secao.num] || '•';
     const secaoComRoda = { ...secao, equilibrioSensorial: guia.equilibrioSensorial };
     return `
-      <div style="margin-bottom:20px;">
-        <div style="background:${cor};color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;display:table;width:100%;page-break-after:avoid;">
+      <div style="margin-bottom:20px;page-break-inside:avoid;">
+        <div style="background:${cor};color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;page-break-after:avoid;">
           <span style="font-size:14px;margin-right:8px;">${icone}</span>
           <span style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">${secao.num}. ${secao.titulo}</span>
         </div>
@@ -160,74 +150,85 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
     `;
   }).join('');
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Guião — ${nomePrato}</title>
-<style>
-  @page { size: A4; margin: 15mm; }
-  * { box-sizing: border-box; }
-  body {
-    font-family: 'Arial Narrow', Arial, sans-serif;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #1a1714;
-    background: #fff;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    max-width: 100%;
-    text-align: justify;
+  const cabecalhoHtml = `
+    <div style="background:#1a1714;color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:16px;">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;opacity:0.5;margin-bottom:4px;">Guia de Apoio à Produção</div>
+      <div style="font-size:20px;font-weight:900;line-height:1.2;font-family:'Arial Narrow',Arial,sans-serif;">${nomePrato.toUpperCase()}</div>
+      ${ucId || ucNome ? `<div style="margin-top:8px;background:#b5651d;padding:4px 10px;border-radius:4px;display:inline-block;font-size:9px;font-weight:700;">${[ucId,ucNome].filter(Boolean).join(' — ')}</div>` : ''}
+    </div>
+  `;
+
+  const rodapeHtml = `
+    <table style="margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;width:100%;border-collapse:collapse;">
+      <tr>
+        <td style="font-size:9px;color:#9ca3af;padding:0;border:none;text-align:left;">Guião de Apoio à Produção · ${nomePrato} · ${ucId || ''}</td>
+        <td style="font-size:9px;color:#9ca3af;padding:0;border:none;text-align:right;">Escola de Comércio de Lisboa · Avaliação ECL · 2026</td>
+      </tr>
+    </table>
+  `;
+
+  // CSS de impressão — esconde tudo excepto o overlay
+  const styleId = 'ecl-print-style';
+  let styleEl = document.getElementById(styleId) as HTMLStyleElement;
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = styleId;
+    document.head.appendChild(styleEl);
   }
-  p { margin: 4px 0; text-align: justify; }
-  h1, h2, h3, .titulo { text-align: left; }
-  table { width: 100%; border-collapse: collapse; }
-  td, th {
-    font-family: 'Arial Narrow', Arial, sans-serif;
-    font-size: 11px;
-    line-height: 1.5;
-    word-break: normal;
-    hyphens: none;
-    padding: 5px 8px;
-  }
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .no-print { display: none !important; }
-  }
-</style>
-</head>
-<body>
-  <!-- Cabeçalho -->
-  <div style="background:#1a1714;color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:8px;">
-    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;opacity:0.5;margin-bottom:4px;">Guia de Apoio à Produção</div>
-    <div style="font-size:18px;font-weight:900;line-height:1.2;">${nomePrato.toUpperCase()}</div>
-    ${ucId || ucNome ? `<div style="margin-top:8px;background:#b5651d;padding:4px 10px;border-radius:4px;display:inline-block;font-size:9px;font-weight:700;">${[ucId,ucNome].filter(Boolean).join(' — ')}</div>` : ''}
-  </div>
+  styleEl.textContent = `
+    @media print {
+      body > *:not(#ecl-print-overlay) { display: none !important; }
+      #ecl-print-overlay { position: static !important; overflow: visible !important; }
+      #ecl-print-overlay .ecl-barra-overlay { display: none !important; }
+      @page { size: A4; margin: 15mm; }
+    }
+  `;
 
-  <!-- Secções -->
-  ${secoesHtml}
+  // Remover overlay anterior
+  const anterior = document.getElementById('ecl-print-overlay');
+  if (anterior) anterior.remove();
 
-  <!-- Botão imprimir — escondido na impressão -->
-  <div style="position:fixed;top:12px;right:12px;display:flex;gap:8px;z-index:9999;" class="no-print">
-    <button onclick="window.print()" style="padding:10px 20px;background:#b5651d;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">🖨️ Imprimir / PDF</button>
-    <button onclick="window.close()" style="padding:10px 16px;background:#1a1714;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">✕</button>
-  </div>
+  // Criar overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'ecl-print-overlay';
+  overlay.style.cssText = `
+    position: fixed; inset: 0; z-index: 99999; background: #fff;
+    overflow-y: auto; font-family: 'Arial Narrow', Arial, sans-serif;
+    font-size: 12px; line-height: 1.5; color: #1a1714;
+  `;
 
-  <!-- Rodapé -->
-  <table style="margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;width:100%;border-collapse:collapse;">
-    <tr>
-      <td style="font-size:9px;color:#9ca3af;padding:0;border:none;text-align:left;">Guião de Apoio à Produção · ${nomePrato} · ${ucId || ''}</td>
-      <td style="font-size:9px;color:#9ca3af;padding:0;border:none;text-align:right;">Escola de Comércio de Lisboa · Avaliação ECL · 2026</td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  // Barra superior
+  const barra = document.createElement('div');
+  barra.className = 'ecl-barra-overlay';
+  barra.style.cssText = 'position:sticky;top:0;z-index:2;background:#1a1714;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;';
+  barra.innerHTML = `
+    <div style="flex:1;min-width:0;">
+      <div style="color:#fff;font-weight:700;font-size:14px;font-family:Arial,sans-serif;">📄 ${nomePrato}</div>
+      <div style="color:rgba(255,255,255,0.55);font-size:11px;font-family:Arial,sans-serif;margin-top:2px;">
+        Clica em <strong style="color:#f59e0b;">Imprimir</strong> → destino <strong style="color:#f59e0b;">"Guardar como PDF"</strong> → desactiva cabeçalhos e rodapés
+      </div>
+    </div>
+    <button id="ecl-btn-print" style="padding:10px 20px;background:#b5651d;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;white-space:nowrap;">🖨️ Imprimir / PDF</button>
+    <button id="ecl-btn-fechar" style="padding:10px 16px;background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">✕</button>
+  `;
 
-  // Abrir num novo separador completamente isolado
-  const novoTab = window.open('about:blank', '_blank');
-  if (!novoTab) { alert('Permite popups para este site e tenta de novo.'); return; }
-  novoTab.document.open();
-  novoTab.document.write(html);
-  novoTab.document.close();
+  // Conteúdo — largura total A4
+  const conteudo = document.createElement('div');
+  conteudo.style.cssText = 'padding:24px 28px;width:100%;max-width:800px;margin:0 auto;box-sizing:border-box;';
+  conteudo.innerHTML = cabecalhoHtml + secoesHtml + rodapeHtml;
+
+  overlay.appendChild(barra);
+  overlay.appendChild(conteudo);
+  document.body.appendChild(overlay);
+
+  document.getElementById('ecl-btn-fechar')!.onclick = () => {
+    overlay.remove();
+    styleEl.textContent = '';
+  };
+
+  document.getElementById('ecl-btn-print')!.onclick = () => {
+    barra.style.display = 'none';
+    window.print();
+    setTimeout(() => { barra.style.display = ''; }, 1500);
+  };
 }
