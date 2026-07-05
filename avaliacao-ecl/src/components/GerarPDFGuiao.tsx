@@ -139,9 +139,10 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
     const secaoComRoda = { ...secao, equilibrioSensorial: guia.equilibrioSensorial };
     return `
       <div style="margin-bottom:20px;page-break-inside:avoid;">
-        <div style="background:${cor};color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;page-break-after:avoid;">
+        <div style="background:${cor};color:#fff;padding:10px 14px;border-radius:6px 6px 0 0;page-break-after:avoid;display:block;">
+          <span style="font-size:11px;opacity:0.7;display:block;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px;">Secção ${secao.num}</span>
           <span style="font-size:14px;margin-right:8px;">${icone}</span>
-          <span style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">${secao.num}. ${secao.titulo}</span>
+          <span style="font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:0.05em;">${secao.titulo}</span>
         </div>
         <div style="background:#fff;border:1px solid ${cor}30;border-top:none;border-radius:0 0 6px 6px;padding:12px 14px;">
           ${renderSecao(secaoComRoda as any)}
@@ -178,6 +179,7 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
   styleEl.textContent = `
     @media print {
       body > *:not(#ecl-print-overlay) { display: none !important; }
+      .ecl-sidebar, .ecl-topbar, aside, nav, header { display: none !important; }
       #ecl-print-overlay { position: static !important; overflow: visible !important; }
       #ecl-print-overlay .ecl-barra-overlay { display: none !important; }
       @page { size: A4; margin: 15mm; }
