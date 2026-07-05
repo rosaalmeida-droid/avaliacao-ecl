@@ -2329,12 +2329,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
           {guardadoOk ? '✅ Guia guardado!' : '💾 Guardar Guia'}
         </button>
 
-        {textoGuia && (
-          <button className="btn btn-ghost btn-block no-print" style={{ marginTop: 10 }}
-            onClick={() => window.print()}>
-            🖨️ Imprimir Guia
-          </button>
-        )}
+
 
         <button className="btn btn-block no-print" style={{ marginTop: 10, background: 'var(--copper)', color: 'white' }}
           onClick={() => {
