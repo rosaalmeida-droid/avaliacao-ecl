@@ -598,9 +598,25 @@ textarea.input { min-height: 100px !important; }
 
   .no-print,
   nav, header, footer,
+  aside,
   [role="navigation"],
   button:not(.guia-print-visible) {
     display: none !important;
+  }
+
+  /* Esconder sidebar e topbar da app */
+  aside,
+  [style*="position: fixed"],
+  [style*="position:fixed"] {
+    display: none !important;
+  }
+
+  /* Área de conteúdo — ocupar toda a largura */
+  body > div > div:last-child,
+  main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .guia-conteudo-print { display: block !important; }
@@ -634,10 +650,17 @@ textarea.input { min-height: 100px !important; }
   tr { page-break-inside: avoid; break-inside: avoid; }
 
   td, th {
-    word-break: break-word;
-    overflow-wrap: break-word;
-    hyphens: auto;
+    word-break: normal;
+    overflow-wrap: normal;
+    hyphens: none;
+    white-space: normal;
+    font-size: 9pt;
+    padding: 4pt 6pt !important;
   }
+
+  /* Tabelas de guião — colunas com largura mínima */
+  table td:first-child { min-width: 120pt; }
+  table td:nth-child(2) { min-width: 80pt; }
 
   * {
     overflow: visible !important;
