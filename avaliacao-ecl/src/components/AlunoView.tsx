@@ -1637,6 +1637,18 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
 // SECÇÃO 3 — Requisição
 // ─────────────────────────────────────────────────────────────
 function SecaoRequisicao({ requisicao, onConcluido }: { requisicao: any; onConcluido: () => void }) {
+  if (!requisicao) {
+    return (
+      <div>
+        <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:14, padding:'14px', background:'var(--cream-dark)', borderRadius:10 }}>
+          🛒 Nenhuma requisição criada para esta aula ainda.
+        </div>
+        <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background:'#7d4f8c', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer', marginTop:6 }}>
+          Continuar →
+        </button>
+      </div>
+    );
+  }
   return (
     <div>
       <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:14 }}>
