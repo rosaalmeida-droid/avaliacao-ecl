@@ -1235,7 +1235,7 @@ Listar as responsabilidades técnicas concretas exigidas nesta produção, basea
 | Responsabilidade | Como se observa nesta produção |
 |---|---|
 
-**Síntese pedagógica:** escreve 1 parágrafo final a explicar de forma integrada o que esta produção concreta desenvolve no aluno do ponto de vista técnico e organizativo, e a sua relevância para o percurso profissional. Liga às competências e responsabilidades listadas acima.
+**Síntese pedagógica:** escreve 1 parágrafo a explicar de forma integrada o que esta produção concreta desenvolve no aluno do ponto de vista técnico e organizativo, e a sua relevância para o percurso profissional. Liga às competências e responsabilidades técnicas listadas acima. NÃO repetir este texto noutras secções.
 
 ---
 # 3. HACCP E PONTOS CRÍTICOS DE CONTROLO (PCC)
@@ -1254,7 +1254,40 @@ Compara pelo menos 2 formas diferentes de apresentar comercialmente este prato (
 ---
 # 5. CAPACITAÇÃO
 
-Que capacidades técnicas e organizativas esta produção desenvolve no aluno, e porquê são relevantes para o seu percurso profissional.
+OBRIGATÓRIO: antes de responder, pesquisa na internet tabelas de capitações profissionais para esta preparação específica. Consulta fontes como manuais de restauração portuguesa, tabelas de capitações da APHORT, FAO, Escola de Hotelaria e Turismo de Portugal, ou publicações técnicas de gastronomia profissional. Usa os valores encontrados como base — não inventes valores sem fundamento. Indica a fonte consultada.
+
+Indica as quantidades recomendadas desta preparação por pessoa, variando obrigatoriamente em função de três factores: (1) tipo de evento/serviço, (2) papel do ingrediente/prato no menu, (3) número de outras opções disponíveis no mesmo serviço.
+
+Apresenta em duas tabelas:
+
+**Tabela 1 — Por tipo de serviço/evento** (pelo menos 7 contextos, valores concretos em gramas ou unidades):
+
+| Tipo de Serviço/Evento | Papel no menu | Quantidade por pessoa | Justificação técnica |
+|---|---|---|---|
+| Coffee break de manhã | Peça única | | Ex: pausa sem refeição principal |
+| Coffee break de tarde | Peça única | | Ex: menor fome, contexto informal |
+| Pequeno-almoço | Acompanhamento | | Ex: partilhado com outros elementos |
+| Almoço — prato único | Principal | | Ex: capitação completa |
+| Almoço — com 3+ pratos | Acompanhamento/guarnição | | Ex: reduz com mais pratos no menu |
+| Jantar de gala (5+ pratos) | Entrada ou sobremesa | | Ex: porções pequenas, menu extenso |
+| Cocktail / Finger food | Peça individual | | Ex: 2-3 unidades, circulação contínua |
+| Buffet | Livre escolha | | Ex: quantidade média consumida |
+
+**Tabela 2 — Por perfil do público** (para o contexto de almoço/jantar com prato principal):
+
+| Perfil do público | Quantidade por pessoa | Ajuste em % face à base | Justificação |
+|---|---|---|---|
+| Crianças (até 12 anos) | | -40 a -50% | Necessidades energéticas menores |
+| Adolescentes | | -15 a -20% | |
+| Adultos misto | | base (100%) | Referência |
+| Maioria mulheres | | -10 a -15% | |
+| Maioria homens | | +10 a +20% | Maior necessidade calórica média |
+| Idosos | | -10 a -15% | Menor apetite, digestão mais lenta |
+| Atletas / alta actividade | | +20 a +30% | |
+
+Termina com 2 parágrafos:
+1. Os critérios que determinam as capitações nesta preparação específica — liga ao valor energético, à riqueza do ingrediente, ao papel no equilíbrio do menu e ao contexto formal ou informal do serviço.
+2. Impacto na requisição: explica como a capitação escolhida afecta directamente a quantidade de ingredientes a requisitar. Por exemplo: se a ficha técnica tem capitação base de 150g por pessoa mas o evento é um jantar de 5 pratos, a requisição deve ser calculada com 80-100g. Dá um exemplo concreto com esta preparação, com os cálculos (nº pessoas × capitação ajustada = quantidade a requisitar). ATENÇÃO: não escrever aqui sobre competências do aluno — esse conteúdo pertence à secção 2.
 
 ---
 # 6. EQUILÍBRIO SENSORIAL
