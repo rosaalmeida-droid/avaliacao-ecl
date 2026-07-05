@@ -35,7 +35,7 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
         `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${i<n?cor:'#e5e7eb'};margin:0 2px;"></span>`
       ).join('');
       return `<div style="text-align:center;margin:0 8px;">
-        <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;">${e.componente||''}</div>
+        <div style="font-size:10px;font-weight:700;color:#374151;margin-bottom:4px;">${e.componente||''}</div>
         <div>${bolinhas}</div>
         <div style="font-size:9px;color:#6b7280;margin-top:3px;">${e.intensidade||''}</div>
       </div>`;
@@ -49,7 +49,7 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
       <div style="display:flex;justify-content:center;flex-wrap:wrap;gap:4px;padding:12px 0;">
         ${rodaHtml}
       </div>
-      ${analise ? `<p style="font-size:12px;color:#374151;line-height:1.5;margin-top:8px;">${analise}</p>` : ''}
+      ${analise ? `<p style="font-size:11px;color:#374151;line-height:1.6;margin-top:8px;">${analise}</p>` : ''}
     `;
   }
 
@@ -71,14 +71,14 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
       const mNum = l.match(/^(\d+)[.)]\s+(.+)/);
       if (mNum) {
         html += `<div style="margin-bottom:12px;padding:10px;background:#f8fafc;border-radius:8px;border-left:3px solid ${cor};">
-          <div style="font-weight:700;font-size:12px;color:#1a1714;margin-bottom:6px;">${mNum[1]}. ${mNum[2]}</div>`;
+          <div style="font-weight:700;font-size:11px;color:#1a1714;margin-bottom:6px;">${mNum[1]}. ${mNum[2]}</div>`;
         i++;
         while (i < linhas.length && linhas[i].trim().match(/^[a-dA-D][.)]/)) {
-          html += `<div style="font-size:11px;color:#6b7280;padding:2px 0 2px 10px;">${linhas[i].trim()}</div>`;
+          html += `<div style="font-size:10px;color:#6b7280;padding:2px 0 2px 10px;">${linhas[i].trim()}</div>`;
           i++;
         }
         if (resps[mNum[1]]) {
-          html += `<div style="margin-top:6px;padding:4px 8px;background:#f0fdf4;border-radius:4px;font-size:11px;color:#15803d;font-weight:600;">✓ ${resps[mNum[1]]}</div>`;
+          html += `<div style="margin-top:6px;padding:4px 8px;background:#f0fdf4;border-radius:4px;font-size:10px;color:#15803d;font-weight:600;">✓ ${resps[mNum[1]]}</div>`;
         }
         html += '</div>';
       } else { i++; }
@@ -103,7 +103,7 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
         else { linhasTabela.push(cols.map((c: string) => c.trim())); }
       } else {
         if (emTabela && linhasTabela.length > 0) {
-          html += `<table style="width:100%;border-collapse:collapse;font-size:11px;margin:8px 0;">
+          html += `<table style="width:100%;border-collapse:collapse;font-size:10px;margin:8px 0;">
             <tr>${cabecalho.map(c => `<th style="background:${cor};color:#fff;padding:6px 8px;text-align:left;font-weight:700;">${c}</th>`).join('')}</tr>
             ${linhasTabela.map((lr,ri) => `<tr style="background:${ri%2===0?'#f8fafc':'#fff'}">${lr.map(c=>`<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;">${c}</td>`).join('')}</tr>`).join('')}
           </table>`;
@@ -111,17 +111,17 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
         }
         if (t) {
           if (t.match(/^[-•·]\s/)) {
-            html += `<div style="padding:3px 0 3px 16px;font-size:12px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
+            html += `<div style="padding:3px 0 3px 16px;font-size:11px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
           } else if (t.match(/^#+\s/)) {
-            html += `<div style="font-weight:700;font-size:12px;color:${cor};margin:8px 0 4px;">${t.replace(/^#+\s/,'')}</div>`;
+            html += `<div style="font-weight:700;font-size:11px;color:${cor};margin:8px 0 4px;">${t.replace(/^#+\s/,'')}</div>`;
           } else {
-            html += `<p style="font-size:12px;color:#374151;line-height:1.5;margin:4px 0;">${t}</p>`;
+            html += `<p style="font-size:11px;color:#374151;line-height:1.6;margin:4px 0;">${t}</p>`;
           }
         }
       }
     });
     if (emTabela && linhasTabela.length > 0) {
-      html += `<table style="width:100%;border-collapse:collapse;font-size:11px;margin:8px 0;">
+      html += `<table style="width:100%;border-collapse:collapse;font-size:10px;margin:8px 0;">
         <tr>${cabecalho.map(c=>`<th style="background:${cor};color:#fff;padding:6px 8px;text-align:left;">${c}</th>`).join('')}</tr>
         ${linhasTabela.map((lr,ri)=>`<tr style="background:${ri%2===0?'#f8fafc':'#fff'}">${lr.map(c=>`<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;">${c}</td>`).join('')}</tr>`).join('')}
       </table>`;
@@ -133,10 +133,10 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
   return conteudo.split('\n').map((l: string) => {
     const t = l.trim();
     if (!t) return '';
-    if (t.match(/^[-•·]\s/)) return `<div style="padding:3px 0 3px 16px;font-size:12px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
-    if (t.match(/^#+\s/)) return `<div style="font-weight:700;font-size:12px;color:${cor};margin:8px 0 4px;">${t.replace(/^#+\s/,'')}</div>`;
-    if (t.match(/⚠️|PCC|crítico/i)) return `<div style="padding:6px 10px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:4px;font-size:11px;color:#b91c1c;margin:4px 0;">${t}</div>`;
-    return `<p style="font-size:12px;color:#374151;line-height:1.5;margin:3px 0;">${t}</p>`;
+    if (t.match(/^[-•·]\s/)) return `<div style="padding:3px 0 3px 16px;font-size:11px;color:#374151;position:relative;"><span style="position:absolute;left:4px;color:${cor};">▸</span>${t.replace(/^[-•·]\s/,'')}</div>`;
+    if (t.match(/^#+\s/)) return `<div style="font-weight:700;font-size:11px;color:${cor};margin:8px 0 4px;">${t.replace(/^#+\s/,'')}</div>`;
+    if (t.match(/⚠️|PCC|crítico/i)) return `<div style="padding:6px 10px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:4px;font-size:10px;color:#b91c1c;margin:4px 0;">${t}</div>`;
+    return `<p style="font-size:11px;color:#374151;line-height:1.6;margin:3px 0;">${t}</p>`;
   }).join('');
 }
 
@@ -151,7 +151,7 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
       <div style="margin-bottom:20px;page-break-inside:avoid;">
         <div style="background:${cor};color:#fff;padding:8px 12px;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:8px;">
           <span style="font-size:14px;">${icone}</span>
-          <span style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">${secao.num}. ${secao.titulo}</span>
+          <span style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">${secao.num}. ${secao.titulo}</span>
         </div>
         <div style="background:#fff;border:1px solid ${cor}30;border-top:none;border-radius:0 0 6px 6px;padding:12px 14px;">
           ${renderSecao(secaoComRoda as any)}
@@ -167,10 +167,34 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
 <title>Guião — ${nomePrato}</title>
 <style>
   @page { size: A4; margin: 15mm; }
-  body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #1a1714; background: #fff; margin: 0; padding: 0; text-align: justify; width: 100%; max-width: none; box-sizing: border-box; }
-  p, li, div, td, th, span { font-family: 'Arial Narrow', Arial, sans-serif; line-height: 1.5; text-align: justify; }
-  h1, h2, h3, h4, .titulo, [style*='font-weight:900'], [style*='font-weight:700'] { text-align: left; }
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Arial Narrow', Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #1a1714;
+    background: #fff;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+    text-align: justify;
+  }
+  p { margin: 4px 0; text-align: justify; }
+  h1, h2, h3, .titulo { text-align: left; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th {
+    font-family: 'Arial Narrow', Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.5;
+    word-break: normal;
+    hyphens: none;
+    padding: 5px 8px;
+  }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -185,22 +209,29 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
   ${secoesHtml}
 
   <!-- Rodapé -->
-  <div style="margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:9px;color:#9ca3af;display:flex;justify-content:space-between;">
-    <span>Guião de Apoio à Produção · ${nomePrato}</span>
-    <span>Avaliação ECL · Escola de Comércio de Lisboa</span>
-  </div>
+  <table style="margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;width:100%;border-collapse:collapse;">
+    <tr>
+      <td style="font-size:9px;color:#9ca3af;padding:0;border:none;text-align:left;">Guião de Apoio à Produção · ${nomePrato} · ${ucId || ''}</td>
+      <td style="font-size:9px;color:#9ca3af;padding:0;border:none;text-align:right;">Escola de Comércio de Lisboa · Avaliação ECL · 2026</td>
+    </tr>
+  </table>
 </body>
 </html>`;
 
-  // Abrir numa nova janela e imprimir
-  const janela = window.open('', '_blank', 'width=900,height=700');
+  // Abrir numa nova janela maximizada e imprimir
+  const janela = window.open('', '_blank');
   if (!janela) { alert('Permite popups para gerar o PDF'); return; }
+  janela.document.open();
   janela.document.write(html);
   janela.document.close();
-  janela.onload = () => {
-    setTimeout(() => {
+  setTimeout(() => {
+    try {
+      janela.moveTo(0, 0);
+      janela.resizeTo(screen.width, screen.height);
       janela.focus();
       janela.print();
-    }, 500);
-  };
+    } catch (e) {
+      janela.print();
+    }
+  }, 800);
 }
