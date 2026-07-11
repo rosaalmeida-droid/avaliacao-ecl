@@ -8,7 +8,11 @@ import { DadosGuia, SecaoGuia } from '../types';
 // ============================================================
 
 // ── Tipos ─────────────────────────────────────────────────────
-// DadosGuia movido para types.ts
+[];
+  rendimentos?: { produto: string; comprado: string; utilizavel: string; rendimento: string; perdas: string }[];
+  haccp?: { perigo: string; pcc: string; temperatura: string; medida: string; conservacao: string }[];
+  questoes?: { tipo: string; pergunta: string; opcoes?: string[]; resposta?: string }[];
+}
 
 // ── Configuração das secções ──────────────────────────────────
 const SECOES_CONFIG = [
@@ -300,7 +304,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
     // Tabela markdown
     if (l.includes('|')) {
       emTabela = true;
-      const celulas = (l as string).split('|').map((c: string) => c.trim()).filter((c: string) => c);
+      const celulas = l.split('|').map((c: string) => c.trim()).filter((c: string) => c);
       tabelaAtual.push(celulas);
       return;
     }
