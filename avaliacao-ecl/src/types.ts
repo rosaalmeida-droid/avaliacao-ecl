@@ -297,7 +297,7 @@ export interface PlanoAula {
   titulo: string;
   observacoes: string;
   fichasIds: string[];
-  estado: 'rascunho' | 'fichas_pendentes' | 'requisicao_pendente' | 'publicado' | 'arquivado';
+  estado: 'rascunho' | 'fichas_pendentes' | 'requisicao_pendente' | 'publicado' | 'realizada' | 'arquivado';
   requisicaoId?: string;
   ucId?: string;
   ucNome?: string;
@@ -305,6 +305,11 @@ export interface PlanoAula {
   compRemovidas?: string[];
   compAdicionadas?: string[];
   eventoId?: string;        // ← ID do evento pedagógico associado (EventosWizard)
+  /** Critérios congelados no momento em que o professor marca a aula como realizada.
+   *  A partir daqui, CriteriosComp lê daqui em vez do código atual.
+   *  Formato: { [competenciaId]: { criterio: string; como?: string }[] } */
+  criteriosCongelados?: Record<string, { criterio: string; como?: string }[]>;
+  realizadaEm?: string;     // ISO timestamp — quando o professor marcou como realizada
   // Registo de alterações após publicação — visível ao aluno como aviso
   ultimaAlteracao?: {
     tipo: 'ficha' | 'guia' | 'requisicao' | 'competencias' | 'geral';
