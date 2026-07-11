@@ -12,6 +12,8 @@ export interface Competencia {
   uc: string[];
   palavrasChave?: string[];
   tecnicaMaeId?: string;
+  /** Critérios observáveis — presentes nas subtécnicas e microcompetências */
+  criterios?: { criterio: string; como?: string }[];
 }
 
 export interface Turma {
