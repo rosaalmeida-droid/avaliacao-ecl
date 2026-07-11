@@ -5,7 +5,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
-  microsPorUC,
+  microsPorUC, encontrarMicro,
 } from '../competenciasECL';
 import { sugerirSubtecnicas, SUBTECNICAS } from '../subtecnicas';
 import ProfessorView from './ProfessorView';
@@ -334,6 +334,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // Estado do botão de publicar atualização
   const [aPublicarAtualizacao, setAPublicarAtualizacao] = useState(false);
   const [atualizacaoPublicada, setAtualizacaoPublicada] = useState(false);
+  // Estado da aula realizada
+  const realizada = (plano as any).estado === 'realizada';
+  const [aMarcarRealizada, setAMarcarRealizada] = useState(false);
+  const [confirmandoRealizada, setConfirmandoRealizada] = useState(false);
 
   const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
@@ -414,6 +418,42 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   /** Botão "Publicar atualização" — envia para Sheets + Classroom */
+  /** Congela os critérios de todas as competências do plano */
+  function gerarCriteriosCongelados(): Record<string, { criterio: string; como?: string }[]> {
+    const snapshot: Record<string, { criterio: string; como?: string }[]> = {};
+    // Obrigatórias
+    compObrigatorias.forEach((o: any) => {
+      const m = encontrarMicro ? encontrarMicro(o.id) : undefined;
+      if (m?.criterios?.length) snapshot[o.id] = m.criterios;
+    });
+    // Técnicas
+    compTecnicas.forEach((m: any) => {
+      if (m.criterios?.length) snapshot[m.id] = m.criterios;
+    });
+    // Subtécnicas
+    compSubtecnicas.forEach((s: any) => {
+      if (s.criterios?.length) snapshot[s.id] = s.criterios;
+    });
+    return snapshot;
+  }
+
+  async function marcarAulaRealizada() {
+    setAMarcarRealizada(true);
+    const agora = new Date().toISOString();
+    const criteriosCongelados = gerarCriteriosCongelados();
+    const p = {
+      ...plano,
+      estado: 'realizada' as const,
+      realizadaEm: agora,
+      atualizadoEm: agora,
+      criteriosCongelados,
+    };
+    addOrUpdatePlanoAula(p);
+    onPlanoActualizado(p);
+    setAMarcarRealizada(false);
+    setConfirmandoRealizada(false);
+  }
+
   async function publicarAtualizacao() {
     setAPublicarAtualizacao(true);
     const agora = new Date().toISOString();
@@ -952,6 +992,52 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               {atualizacaoPublicada && (
                 <div style={{ fontSize: 11, color: 'var(--sage)', textAlign: 'center' }}>
                   Sheets e Classroom notificados · Os alunos vêem o aviso ao refrescar a app
+                </div>
+              )}
+
+              {/* Botão Aula Realizada */}
+              {!realizada && !confirmandoRealizada && (
+                <button
+                  onClick={() => setConfirmandoRealizada(true)}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 9,
+                    border: '2px solid #7C3AED', background: 'white',
+                    color: '#7C3AED', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  🏁 Marcar aula como realizada
+                </button>
+              )}
+
+              {!realizada && confirmandoRealizada && (
+                <div style={{ padding: '12px', borderRadius: 10, background: '#EDE9FE', border: '1px solid #7C3AED' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#5B21B6', marginBottom: 8 }}>
+                    Confirmar que a aula foi realizada?
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6D28D9', marginBottom: 10 }}>
+                    Os critérios de avaliação ficam congelados neste momento. Recuperações e avaliações continuam abertas.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={marcarAulaRealizada} disabled={aMarcarRealizada}
+                      style={{ flex: 1, padding: '9px', borderRadius: 8, border: 'none', background: '#7C3AED', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                      {aMarcarRealizada ? '⏳ A guardar...' : '✓ Sim, aula realizada'}
+                    </button>
+                    <button onClick={() => setConfirmandoRealizada(false)}
+                      style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #7C3AED', background: 'white', color: '#7C3AED', fontSize: 13, cursor: 'pointer' }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {realizada && (
+                <div style={{ padding: '10px 14px', borderRadius: 9, background: '#EDE9FE', fontSize: 13, color: '#5B21B6', fontWeight: 600, textAlign: 'center' }}>
+                  🏁 Aula realizada · critérios congelados
+                  {(plano as any).realizadaEm && (
+                    <div style={{ fontSize: 11, fontWeight: 400, marginTop: 2, color: '#7C3AED' }}>
+                      {new Date((plano as any).realizadaEm).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })} às {new Date((plano as any).realizadaEm).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
