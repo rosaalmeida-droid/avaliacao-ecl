@@ -22,10 +22,12 @@ interface Props {
 export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = false }: Props) {
   const [aberta, setAberta] = useState(abertaInicial);
 
-  // Resolver a competência — pode ser micro ou atitude
-  const micro  = encontrarMicro(compId);
+  // Resolver a competência — micro, atitude ou subtécnica direta
+  const micro   = encontrarMicro(compId);
   const atitude = !micro ? encontrarAtitude(compId) : null;
 
+  // criterios: vêm da micro (que já inclui subtécnicas via encontrarMicro expandido)
+  // ou do prop criteriosExtra (critérios dinâmicos da ficha técnica)
   const criterios: { criterio: string; como?: string }[] = micro?.criterios || [];
 
   if (criterios.length === 0) return null;
