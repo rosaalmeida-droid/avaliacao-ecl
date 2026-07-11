@@ -1287,6 +1287,62 @@ export interface RegistoAvaliacao {
   data: string;
   observacao?: string;
   validadoPor: string;
+  /** Quando professor escolhe "considerar feito" em vez de reavaliar */
+  consideradoFeito?: boolean;
+  /** true = nota conta para média; false = só registo histórico */
+  contaParaMedia?: boolean;
+}
+
+/** Verifica se um aluno já foi avaliado numa competência para uma UC/UFCD.
+ *  Aceita código UC (ex: 'UC03584') ou UFCD (ex: 'UFCD 12') — resolve
+ *  equivalências automaticamente via cronograma.ts. */
+export function registosAnteriores(
+  alunoId: string,
+  ucOuUfcd: string,
+  microcompetenciaId: string
+): RegistoAvaliacao[] {
+  const todos = getHistoricoAvaliacoes();
+  // Resolver equivalências UFCD→UC
+  let ucsAVerificar: string[] = [ucOuUfcd];
+  try {
+    const { ucsEquivalentes } = require('./cronograma');
+    ucsAVerificar = ucsEquivalentes(ucOuUfcd);
+    if (!ucsAVerificar.includes(ucOuUfcd)) ucsAVerificar.push(ucOuUfcd);
+  } catch {}
+  return todos.filter(r =>
+    r.alunoId === alunoId &&
+    ucsAVerificar.includes(r.ucId) &&
+    r.microcompetenciaId === microcompetenciaId
+  );
+}
+
+/** Para um conjunto de alunos e competências, devolve quais já foram avaliados.
+ *  Resultado: { [alunoId]: { [microId]: RegistoAvaliacao[] } } */
+export function mapaAvaliacoesAnteriores(
+  alunoIds: string[],
+  ucOuUfcd: string,
+  microIds: string[]
+): Record<string, Record<string, RegistoAvaliacao[]>> {
+  const todos = getHistoricoAvaliacoes();
+  let ucsAVerificar: string[] = [ucOuUfcd];
+  try {
+    const { ucsEquivalentes } = require('./cronograma');
+    ucsAVerificar = ucsEquivalentes(ucOuUfcd);
+    if (!ucsAVerificar.includes(ucOuUfcd)) ucsAVerificar.push(ucOuUfcd);
+  } catch {}
+
+  const mapa: Record<string, Record<string, RegistoAvaliacao[]>> = {};
+  for (const alunoId of alunoIds) {
+    mapa[alunoId] = {};
+    for (const microId of microIds) {
+      mapa[alunoId][microId] = todos.filter(r =>
+        r.alunoId === alunoId &&
+        ucsAVerificar.includes(r.ucId) &&
+        r.microcompetenciaId === microId
+      );
+    }
+  }
+  return mapa;
 }
 
 export function getHistoricoAvaliacoes(): RegistoAvaliacao[] {
