@@ -1018,6 +1018,34 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         </div>
       )}
 
+      {/* DOSES — editável na fase editar */}
+      <div style={{ ...S.card, background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.2)' }}>
+        <label style={{ ...S.lbl, color: 'var(--copper)' }}>Nº de doses por ficha</label>
+        {fichasSelecionadas.map(f => (
+          <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>
+              {f.nomePrato}
+              <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.45)', marginLeft: 6, fontSize: 11 }}>(base: {f.numPorcoes})</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, (p[f.id] || parseFloat(f.numPorcoes) || 4) - 1) }))}
+                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+              <input type="number" min={1}
+                value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
+                onChange={e => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, Number(e.target.value)) }))}
+                style={{ width: 60, textAlign: 'center', fontWeight: 700, fontSize: 15, padding: '4px 6px', borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)' }} />
+              <button onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: (p[f.id] || parseFloat(f.numPorcoes) || 4) + 1 }))}
+                style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+            </div>
+          </div>
+        ))}
+        <button
+          onClick={() => setLinhas(agregarIngredientes(fichasSelecionadas, paxPorFicha))}
+          style={{ marginTop: 8, padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', width: '100%' }}>
+          🔄 Recalcular para {fichasSelecionadas.reduce((s, f) => s + (paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4), 0)} doses
+        </button>
+      </div>
+
       {/* Resumo financeiro */}
       <div style={S.card}>
         <label style={S.lbl}>Resumo financeiro</label>
