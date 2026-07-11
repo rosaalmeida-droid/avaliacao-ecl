@@ -7,7 +7,7 @@
 // ── Tipos ───────────────────────────────────────────────────
 export interface CriterioObservavel {
   criterio: string;
-  como: string; // como observar em aula
+  como?: string; // como observar em aula (opcional nas subtécnicas)
 }
 
 export interface MicroCompetencia {
@@ -427,30 +427,32 @@ export const BANCO_TECNICAS: TecnicaDetalhada[] = [
 
 // ── Funções utilitárias ─────────────────────────────────────
 
+// Registo externo de subtécnicas — injetado por subtecnicas.ts ao carregar
+// Evita dependência circular sem usar require()
+let _subtecnicasRegistry: Array<{ id: string; nome: string; uc?: string[]; criterios?: { criterio: string; como?: string }[] }> = [];
+export function registarSubtecnicas(subs: typeof _subtecnicasRegistry) {
+  _subtecnicasRegistry = subs;
+}
+
 export function encontrarMicro(id: string): MicroCompetencia | undefined {
-  // Procurar primeiro nas microcompetências clássicas (M...)
+  // Procurar nas microcompetências clássicas (M...)
   const micro = MICROCOMPETENCIAS.find(m => m.id === id);
   if (micro) return micro;
-  // Se não encontrar, procurar nas subtécnicas (S...) e adaptar o formato
-  try {
-    // Importação dinâmica — evita dependência circular em bundlers ES
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { SUBTECNICAS } = require('./subtecnicas');
-    const sub = SUBTECNICAS.find((s: { id: string }) => s.id === id);
-    if (sub) {
-      return {
-        id: sub.id,
-        nome: sub.nome,
-        ucPrincipal: (sub.uc || [])[0] || '',
-        ucNome: '',
-        ucsRelacionadas: (sub.uc || []).slice(1),
-        categoria: sub.categoria || 'Técnica',
-        prioridade: 'B' as const,
-        criterios: (sub.criterios || []),
-        nUCs: (sub.uc || []).length,
-      };
-    }
-  } catch {}
+  // Procurar nas subtécnicas registadas (S...)
+  const sub = _subtecnicasRegistry.find(s => s.id === id);
+  if (sub) {
+    return {
+      id: sub.id,
+      nome: sub.nome,
+      ucPrincipal: (sub.uc || [])[0] || '',
+      ucNome: '',
+      ucsRelacionadas: (sub.uc || []).slice(1),
+      categoria: 'Técnica',
+      prioridade: 'B' as const,
+      criterios: sub.criterios || [],
+      nUCs: (sub.uc || []).length,
+    };
+  }
   return undefined;
 }
 
@@ -711,41 +713,34 @@ export function microsPorFamilia(
 
 export function microsPorUC(uc: string): MicroCompetencia[] {
   const micros = MICROCOMPETENCIAS.filter(m => m.ucPrincipal === uc || m.ucsRelacionadas.includes(uc));
-  // Adicionar subtécnicas desta UC que não têm microcompetência equivalente
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { SUBTECNICAS } = require('./subtecnicas');
-    const IDS_MICRO_JA_PRESENTES = new Set(micros.map((m: MicroCompetencia) => m.id));
-    // IDs de subtécnicas que são equivalentes a microcompetências existentes
-    // (para não duplicar na UI)
-    const IDS_EQUIV_MICRO = new Set([
-      'S050','S051','S056','S054','S090','S093','S092','S095',
-      'S097','S099','S100','S101','S102','S107',
-      'S030','S031','S032','S034','S035','S033',
-      'S040','S041','S042','S043','S103','S098',
-      'S164','S164B','S165','S166','S160','S161','S163',
-      'S075','S074','S070','S071','S072','S082','S081',
-    ]);
-    const subsDaUC: MicroCompetencia[] = SUBTECNICAS
-      .filter((s: { id: string; uc?: string[] }) =>
-        (s.uc || []).includes(uc) && !IDS_EQUIV_MICRO.has(s.id)
-      )
-      .map((s: { id: string; nome: string; uc?: string[]; criterios?: { criterio: string; como?: string }[] }) => ({
-        id: s.id,
-        nome: s.nome,
-        ucPrincipal: uc,
-        ucNome: '',
-        ucsRelacionadas: (s.uc || []).filter((u: string) => u !== uc),
-        categoria: 'Técnica',
-        prioridade: 'B' as const,
-        criterios: s.criterios || [],
-        nUCs: (s.uc || []).length,
-      }));
-    // Juntar: micros clássicas + subtécnicas únicas, sem duplicar
-    return [...micros, ...subsDaUC.filter(s => !IDS_MICRO_JA_PRESENTES.has(s.id))];
-  } catch {
-    return micros;
-  }
+  if (_subtecnicasRegistry.length === 0) return micros;
+
+  const IDS_MICRO_JA_PRESENTES = new Set(micros.map(m => m.id));
+  // IDs de subtécnicas equivalentes a microcompetências existentes — não duplicar
+  const IDS_EQUIV_MICRO = new Set([
+    'S050','S051','S056','S054','S090','S093','S092','S095',
+    'S097','S099','S100','S101','S102','S107',
+    'S030','S031','S032','S034','S035','S033',
+    'S040','S041','S042','S043','S103','S098',
+    'S164','S164B','S165','S166','S160','S161','S163',
+    'S075','S074','S070','S071','S072','S082','S081',
+  ]);
+
+  const subsDaUC: MicroCompetencia[] = _subtecnicasRegistry
+    .filter(s => (s.uc || []).includes(uc) && !IDS_EQUIV_MICRO.has(s.id))
+    .map(s => ({
+      id: s.id,
+      nome: s.nome,
+      ucPrincipal: uc,
+      ucNome: '',
+      ucsRelacionadas: (s.uc || []).filter(u => u !== uc),
+      categoria: 'Técnica',
+      prioridade: 'B' as const,
+      criterios: s.criterios || [],
+      nUCs: (s.uc || []).length,
+    }));
+
+  return [...micros, ...subsDaUC.filter(s => !IDS_MICRO_JA_PRESENTES.has(s.id))];
 }
 
 export function aptidoesPorUC(uc: string): AptidaoUC[] {
