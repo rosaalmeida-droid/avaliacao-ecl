@@ -1397,13 +1397,13 @@ Gerar entre 5 e 8 questões de reflexão individual sobre esta produção espec�
 # 15. CULTURA E GASTRONOMIA
 
 Contextualizar o prato na cultura e gastronomia portuguesa. Incluir:
-- Referências: Virgílio Nóbrega Gomes, Olleboma, Alfredo Saramago, Maria de Lourdes Modesto, Ana Patuleia Ortins
 - Região de origem e contexto histórico do prato
-- Variantes regionais, curiosidades gastronómicas
-- Festas ou eventos populares associados
+- Variantes regionais e curiosidades gastronómicas
+- Festas ou eventos populares associados ao prato
 - Influências de outras culturas se aplicável
+- NÃO inventar citações nem atribuir afirmações a pessoas reais. Não mencionar nomes de autores a não ser que o facto seja verificável e amplamente conhecido.
 
-Escrever em tom narrativo, 2-3 parágrafos.
+Escrever em tom narrativo, 2-3 parágrafos. Basear apenas em factos conhecidos da gastronomia portuguesa.
 
 ---
 IMPORTANTE: termina com uma secção final "RESUMO" com os pontos-chave de cada secção, de forma esquemática (bullets curtos), para revisão rápida antes da aula prática.`;
