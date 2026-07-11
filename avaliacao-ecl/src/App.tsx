@@ -18,6 +18,7 @@ import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventosWizard } from './components/EventosWizard';
 import { CronogramaTab } from './components/CronogramaTab';
+import { DicionarioComp } from './components/DicionarioComp';
 import { sincronizarDoSheets, getEstadoSync, addAluno, seedAlunosTeste, seedHistorialTeste, seedPlanoTeste, getTurmas } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
@@ -212,6 +213,7 @@ function AppInterno() {
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
             {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'cronograma' && <CronogramaTab turmaId={turmaId} />}
+            {vistaGlobal === 'dicionario' && <DicionarioComp perfil="professor" nomeProfessor={nomeProfessor} turmaId={turmaId} />}
           </>
         )}
 
