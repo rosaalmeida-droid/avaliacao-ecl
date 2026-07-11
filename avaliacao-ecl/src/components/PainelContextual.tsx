@@ -197,11 +197,14 @@ function TabKitchenFlow({ turmaId, plano }: { turmaId: string; plano?: PlanoAula
 // ── Componente principal ──────────────────────────────────────
 export function PainelContextual({ contexto, isMobile }: Props) {
   const [tabAtiva, setTabAtiva] = useState<TabId>('competencias');
+  // Lazy — só calcular após montagem para evitar erro de inicialização
+  const [nAvisos, setNAvisos] = useState(0);
+  React.useEffect(() => {
+    try { setNAvisos(getAvisosPendentes().length); } catch {}
+  }, [tabAtiva]);
 
   // Não mostrar no mobile
   if (isMobile) return null;
-
-  const nAvisos = getAvisosPendentes().length;
 
   const TABS: Tab[] = [
     { id: 'competencias', emoji: '📋', label: 'Competências' },
