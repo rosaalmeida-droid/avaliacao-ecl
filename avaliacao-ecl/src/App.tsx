@@ -149,6 +149,12 @@ function AppInterno() {
         onSair={sair}
         syncStatus={syncStatus}
         onAtualizar={atualizarDados}
+        contextoPainel={{
+          turmaId,
+          nomeProfessor,
+          plano: planoAberto || undefined,
+          ucId: planoAberto?.ucId,
+        }}
       >
         {modalAberto && (
           <ModalGuardar mensagem={modalMensagem}
