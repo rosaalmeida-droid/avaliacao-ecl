@@ -568,3 +568,22 @@ export const CORES_NIVEL: Record<NivelManual, { bg: string; cor: string }> = {
   'Intermédio': { bg: '#E6F1FB', cor: '#0C447C' },
   'Avançado':   { bg: '#EEEDFE', cor: '#3C3489' },
 };
+
+// ── Guia de Apoio à Produção ─────────────────────────────────
+export interface SecaoGuia {
+  num: number;
+  titulo: string;
+  icone: string;
+  cor: string;
+  corTexto: string;
+  conteudo: string;
+}
+
+export interface DadosGuia {
+  nomePrato: string;
+  secoes: SecaoGuia[];
+  equilibrioSensorial?: { componente: string; intensidade: string; notas: string }[];
+  rendimentos?: { produto: string; comprado: string; utilizavel: string; rendimento: string; perdas: string }[];
+  haccp?: { perigo: string; pcc: string; temperatura: string; medida: string; conservacao: string }[];
+  questoes?: { tipo: string; pergunta: string; opcoes?: string[]; resposta?: string }[];
+}
