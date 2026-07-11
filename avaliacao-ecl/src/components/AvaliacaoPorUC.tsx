@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { getHistoricoAvaliacoes, getAlunos, addAluno, RegistoAvaliacao } from '../backend';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude } from '../competenciasECL';
+import { CriteriosComp } from './CriteriosComp';
 import { UCS_COZINHA } from './PlanoAula';
 
 function getNomeComp(id: string): string {
@@ -234,7 +235,10 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
           {vistaPor === 'competencia' && porCompetencia.map(c => (
             <div key={c.compId} style={{ marginBottom: 10, border: '1px solid var(--border)', borderRadius: 12, padding: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{c.nome}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{c.nome}</div>
+                  <CriteriosComp compId={c.compId} cor="var(--copper)" />
+                </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: c.media >= 12 ? 'var(--sage)' : 'var(--danger)' }}>{c.media.toFixed(1)}</div>
                   <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)' }}>{c.n} avaliações · {c.nAlunos} alunos</div>
