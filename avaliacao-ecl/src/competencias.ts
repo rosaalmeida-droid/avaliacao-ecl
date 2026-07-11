@@ -134,9 +134,7 @@ export const RESPONSABILIDADES: Competencia[] = [
   { id: 'R12', categoria: 'RESPONSABILIDADES', nome: 'Utilizar corretamente equipamento de proteção individual (EPI)', uc: ['UC03584'] },
 ];
 
-import { SUBTECNICAS } from './subtecnicas';
-
-export const TODAS_COMPETENCIAS: Competencia[] = [...TECNICAS, ...ATITUDES, ...RESPONSABILIDADES, ...SUBTECNICAS];
+export const TODAS_COMPETENCIAS: Competencia[] = [...TECNICAS, ...ATITUDES, ...RESPONSABILIDADES];
 
 export function getCompetencia(id: string): Competencia | undefined {
   return TODAS_COMPETENCIAS.find(c => c.id === id);
@@ -148,7 +146,7 @@ export function getCompetencia(id: string): Competencia | undefined {
 export function sugerirTecnicas(textoReceita: string): string[] {
   const texto = textoReceita.toLowerCase();
   // Sugerir tanto técnicas-mãe como subtécnicas específicas
-  const todas = [...TECNICAS, ...SUBTECNICAS];
+  const todas = [...TECNICAS];
   const sugeridas = todas.filter(t =>
     (t.palavrasChave || []).some(p => texto.includes(p.toLowerCase()))
   );
