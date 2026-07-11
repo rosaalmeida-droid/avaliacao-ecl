@@ -426,24 +426,32 @@ const ALIASES_CULINARIOS: Record<string, string> = {
   'fundo de carne': 'Caldo de carne (produzido em aula)',
 };
 
-// Ingredientes de despensa — excluir da requisição
-// (sal, especiarias em pequenas quantidades — sempre há em stock)
+// ── DESPENSA PERMANENTE — nunca entram na requisição ─────────────────
+// Especiarias secas, condimentos embalados — sempre em stock,
+// nunca se ficam sem eles independentemente da quantidade usada.
+//
+// NÃO incluir aqui: alho, cebola, salsa fresca, coentros, tomilho fresco,
+// manjericão fresco, piri-piri fresco, malagueta fresca, limão, laranja,
+// baunilha, açafrão em estigmas, gengibre fresco — são sazonais/consumo
+// rápido e DEVEM sempre entrar na requisição, mesmo em quantidade residual.
 const DESPENSA_EXCLUIR = new Set([
+  // Sal
   'sal', 'sal fino', 'sal grosso', 'flor de sal',
+  // Pimenta seca (moída ou em grão)
   'pimenta', 'pimenta preta', 'pimenta branca', 'pimenta rosa',
-  'pimenta moída', 'pimenta em grão',
-  'pimenta da jamaica',
-  'malagueta', 'piri-piri', 'piri piri',
+  'pimenta moída', 'pimenta em grão', 'pimenta da jamaica',
+  // Especiarias secas — nunca se ficam sem
   'noz moscada', 'nóz moscada', 'noz-moscada',
   'louro', 'folha de louro', 'folhas de louro',
-  'tomilho', 'orégãos', 'oregãos', 'oregao', 'oregão',
-  'salsa', 'coentros', 'estragão', 'manjericão seco',
+  'orégãos', 'oregãos', 'oregao', 'oregão',
   'paprika', 'colorau', 'cominhos', 'cúrcuma', 'curcuma',
-  'canela em pó', 'anis', 'erva doce',
-  'açafrão', 'acafrao',
-  'vinagre', 'vinagre de vinho', 'vinagre de maçã',
+  'canela em pó', 'canela em pau', 'anis', 'erva doce',
+  'estragão seco', 'manjericão seco', 'tomilho seco',
+  // Condimentos embalados
   'mostarda', 'mostarda de dijon',
   'molho de soja', 'worcestershire', 'tabasco',
+  // Outros sempre em stock
+  'bicarbonato', 'bicarbonato de sódio',
 ]);
 
 export function normalizarNomeIngrediente(nome: string): string {
@@ -480,7 +488,7 @@ export function processarIngrediente(
   let produto = normalizarNomeIngrediente(limparMarcas(nome.trim()));
   const isQB = /q\.?b\.?|a\s+gosto|quanto\s+baste/i.test(String(qtRaw));
 
-  // Verificar se deve excluir (água, sal, especiarias de despensa)
+  // Verificar se deve excluir (água, sal, especiarias de despensa permanente)
   if (deveExcluirDaRequisicao(produto)) {
     return { produto, qtKg: 0, und: 'kg', isQB, excluir: true, avisos, isDerivado: false, isPreparacao: false, perguntarProfessor: false };
   }
