@@ -17,18 +17,20 @@ interface Props {
   cor?: string;
   /** Se true, abre imediatamente (útil quando já está num accordion pai) */
   abertaInicial?: boolean;
+  /** Critérios congelados do plano (quando aula já foi realizada) — têm prioridade */
+  criteriosCongelados?: Record<string, { criterio: string; como?: string }[]>;
 }
 
-export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = false }: Props) {
+export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = false, criteriosCongelados }: Props) {
   const [aberta, setAberta] = useState(abertaInicial);
 
   // Resolver a competência — micro, atitude ou subtécnica direta
   const micro   = encontrarMicro(compId);
   const atitude = !micro ? encontrarAtitude(compId) : null;
 
-  // criterios: vêm da micro (que já inclui subtécnicas via encontrarMicro expandido)
-  // ou do prop criteriosExtra (critérios dinâmicos da ficha técnica)
-  const criterios: { criterio: string; como?: string }[] = micro?.criterios || [];
+  // Prioridade: 1º critérios congelados do plano (aula realizada), 2º critérios do código
+  const criterios: { criterio: string; como?: string }[] =
+    (criteriosCongelados?.[compId]) || micro?.criterios || [];
 
   if (criterios.length === 0) return null;
 
