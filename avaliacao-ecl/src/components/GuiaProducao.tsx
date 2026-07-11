@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { gerarPDFGuiao } from './GerarPDFGuiao';
+import { DadosGuia, SecaoGuia } from '../types';
 
 // ============================================================
 // Guia de Apoio à Produção — Renderizador Visual ECL
@@ -7,23 +8,7 @@ import { gerarPDFGuiao } from './GerarPDFGuiao';
 // ============================================================
 
 // ── Tipos ─────────────────────────────────────────────────────
-export interface SecaoGuia {
-  num: number;
-  titulo: string;
-  icone: string;
-  cor: string;
-  corTexto: string;
-  conteudo: string;
-}
-
-export interface DadosGuia {
-  nomePrato: string;
-  secoes: SecaoGuia[];
-  equilibrioSensorial?: { componente: string; intensidade: string; notas: string }[];
-  rendimentos?: { produto: string; comprado: string; utilizavel: string; rendimento: string; perdas: string }[];
-  haccp?: { perigo: string; pcc: string; temperatura: string; medida: string; conservacao: string }[];
-  questoes?: { tipo: string; pergunta: string; opcoes?: string[]; resposta?: string }[];
-}
+// DadosGuia movido para types.ts
 
 // ── Configuração das secções ──────────────────────────────────
 const SECOES_CONFIG = [
