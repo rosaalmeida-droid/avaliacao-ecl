@@ -143,7 +143,7 @@ function renderSecao(secao: { num: number; titulo: string; conteudo: string; equ
 export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
   const { nomePrato, ucId, ucNome, guia } = opcoes;
 
-  const secoesHtml = guia.secoes.map(secao => {
+  const secoesHtml = guia.secoes.map((secao: SecaoGuia) => {
     const cor = CORES[secao.num] || '#374151';
     const icone = ICONES[secao.num] || '•';
     const secaoComRoda = { ...secao, equilibrioSensorial: guia.equilibrioSensorial };
