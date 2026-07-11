@@ -262,9 +262,7 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
   const [tick, setTick] = React.useState(0);
 
   React.useEffect(() => {
-    import('../backend').then(({ getAlunos }) => {
-      setAlunos(getAlunos().filter((a: any) => a.turmaId === turmaId).sort((a: any, b: any) => a.numero - b.numero));
-    });
+    setAlunos(getAlunos().filter((a: any) => a.turmaId === turmaId).sort((a: any, b: any) => a.numero - b.numero));
   }, [turmaId]);
 
   function estaSubmetido(alunoId: string): { submetido: boolean; hora: string } {
