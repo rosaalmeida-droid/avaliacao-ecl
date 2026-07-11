@@ -1,4 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { SUBTECNICAS } from './subtecnicas';
+import { registarSubtecnicas } from './competenciasECL';
+registarSubtecnicas(SUBTECNICAS as any);
 import { Perfil, Aluno, PlanoAula as TPlanoAula } from './types';
 import { Login } from './components/Login';
 import { ManualCozinheiro } from './components/ManualCozinheiro';
