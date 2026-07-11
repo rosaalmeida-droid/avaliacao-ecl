@@ -8,20 +8,23 @@ import { UCS_COZINHA } from './PlanoAula';
 import { Card, Button, Field, Badge } from './ui';
 import { CentroAvisos } from './CentroAvisos';
 import { GuiaProducao } from './GuiaProducao';
+import { CronogramaTab } from './CronogramaTab';
+import { coresDaTurma } from '../cores';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'presencas' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'presencas' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma'>('avisos');
 
   const TABS_COORD = [
-    { id:'avisos',     emoji:'🔔', label:'Avisos',           cor:'#e63946' },
-    { id:'presencas',  emoji:'👤', label:'Presenças',        cor:'#2ec4b6' },
-    { id:'fichas',     emoji:'🗂️', label:'Fichas',           cor:'#f4a900' },
-    { id:'planos',     emoji:'📅', label:'Planos',           cor:'#1d6fa4' },
-    { id:'ranking',    emoji:'🏆', label:'Ranking',          cor:'#9b59b6' },
-    { id:'atividades', emoji:'🎯', label:'Eventos',          cor:'#e67e22' },
-    { id:'pedagogico', emoji:'📊', label:'Pedagógico',       cor:'#27ae60' },
-    { id:'alunos',     emoji:'👥', label:'Alunos',           cor:'#2980b9' },
-    { id:'config',     emoji:'⚙️', label:'Config',           cor:'#8e44ad' },
+    { id:'avisos',      emoji:'🔔', label:'Avisos',      cor:'#e63946' },
+    { id:'presencas',   emoji:'👤', label:'Presenças',   cor:'#2ec4b6' },
+    { id:'fichas',      emoji:'🗂️', label:'Fichas',      cor:'#f4a900' },
+    { id:'planos',      emoji:'📅', label:'Planos',      cor:'#1d6fa4' },
+    { id:'cronograma',  emoji:'📆', label:'Cronograma',  cor:'#5C3D8F' },
+    { id:'ranking',     emoji:'🏆', label:'Ranking',     cor:'#9b59b6' },
+    { id:'atividades',  emoji:'🎯', label:'Eventos',     cor:'#e67e22' },
+    { id:'pedagogico',  emoji:'📊', label:'Pedagógico',  cor:'#27ae60' },
+    { id:'alunos',      emoji:'👥', label:'Alunos',      cor:'#2980b9' },
+    { id:'config',      emoji:'⚙️', label:'Config',      cor:'#8e44ad' },
   ] as const;
 
   return (
@@ -58,6 +61,7 @@ export function CoordenadoraView() {
       {tab === 'presencas' && <PresencasTab />}
       {tab === 'fichas' && <BibliotecaFichasTab />}
       {tab === 'planos' && <BibliotecaPlanosTab />}
+      {tab === 'cronograma' && <CronogramaTab />}
       {tab === 'ranking' && <RankingTab />}
       {tab === 'atividades' && <AtividadesTab />}
       {tab === 'pedagogico' && <VisaoPedagogicaTab />}
