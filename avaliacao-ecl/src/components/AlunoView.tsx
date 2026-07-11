@@ -966,6 +966,29 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
         </div>
       </div>
 
+      {/* Aviso de alteração pelo professor após publicação */}
+      {(plano as any).ultimaAlteracao && (
+        <div style={{
+          margin: '8px 0', padding: '12px 14px', borderRadius: 12,
+          background: '#FFF3D6', border: '1.5px solid #FBC02D',
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+        }}>
+          <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#5A3E00', marginBottom: 2 }}>
+              O professor atualizou este plano
+            </div>
+            <div style={{ fontSize: 12, color: '#7A5500' }}>
+              {(plano as any).ultimaAlteracao.descricao} ·{' '}
+              {new Date((plano as any).ultimaAlteracao.em).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(90,62,0,0.6)', marginTop: 4 }}>
+              Verifica as fichas, guia e requisição antes de começar.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* O que vamos produzir — bloco amarelo */}
       {fichas.length > 0 && fichas.map((f, i) => (
         <div key={i} style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
