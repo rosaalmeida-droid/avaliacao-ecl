@@ -234,7 +234,16 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
           };
           const idx = merged.findIndex((x: PlanoAula) => x.id === p.id);
           if (idx >= 0) {
-            if (new Date(p.atualizadoEm) > new Date((merged[idx] as any).atualizadoEm || '')) merged[idx] = p;
+            if (new Date(p.atualizadoEm) > new Date((merged[idx] as any).atualizadoEm || '')) {
+              // Preservar campos que a Sheet pode não guardar (eventoId, criteriosCongelados, ultimaAlteracao)
+              merged[idx] = {
+                ...p,
+                eventoId: p.eventoId || (merged[idx] as any).eventoId || undefined,
+                criteriosCongelados: p.criteriosCongelados || (merged[idx] as any).criteriosCongelados || undefined,
+                ultimaAlteracao: p.ultimaAlteracao || (merged[idx] as any).ultimaAlteracao || undefined,
+                realizadaEm: p.realizadaEm || (merged[idx] as any).realizadaEm || undefined,
+              };
+            }
           } else merged.push(p);
         }
         save(KEYS.planos, merged);
