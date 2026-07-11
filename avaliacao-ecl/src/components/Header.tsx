@@ -1,5 +1,23 @@
 import React, { useState } from 'react';
 import { PainelContextual, ContextoPainel } from './PainelContextual';
+
+// Calcula progresso real do ano letivo 2026-2027
+// Datas fixas do cronograma ECL: 17 set 2026 → 1 jun 2027
+function calcularAnoLetivo(): { anoLetivo: string; semestre: string; percentagem: number } {
+  const hoje = new Date();
+  const inicio = new Date('2026-09-17');
+  const fim    = new Date('2027-06-01');
+  const total  = fim.getTime() - inicio.getTime();
+  const decorrido = Math.max(0, Math.min(hoje.getTime() - inicio.getTime(), total));
+  const pct = Math.round((decorrido / total) * 100);
+  const mes = hoje.getMonth(); // 0=jan
+  const semestre = (mes >= 8 || mes === 0) ? '1º Semestre' : '2º Semestre';
+  return {
+    anoLetivo: '2026/27',
+    semestre: `${semestre} em curso`,
+    percentagem: pct,
+  };
+}
 import { Perfil } from '../types';
 import { LOGO_ECL as logoEcl } from '../logo_ecl';
 
@@ -155,12 +173,17 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, onSair, aberta, isMobil
 
         {/* Ano lectivo */}
         <div style={{ margin: '0 12px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.10)', padding: '12px 14px', border: `1px solid ${SIDEBAR_BDR}` }}>
-          <div style={{ color: WHITE, fontSize: 12, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Lectivo 2025/26</div>
-          <div style={{ color: SIDEBAR_TXT, fontSize: 11, marginBottom: 8 }}>2º Semestre em curso</div>
-          <div style={{ height: 5, background: 'rgba(255,255,255,0.15)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: '62%', background: WHITE, borderRadius: 99 }} />
-          </div>
-          <div style={{ color: SIDEBAR_TXT, fontSize: 10, marginTop: 5 }}>62% concluído</div>
+          {(() => {
+            const al = calcularAnoLetivo();
+            return (<>
+              <div style={{ color: WHITE, fontSize: 12, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Lectivo {al.anoLetivo}</div>
+              <div style={{ color: SIDEBAR_TXT, fontSize: 11, marginBottom: 8 }}>{al.semestre}</div>
+              <div style={{ height: 5, background: 'rgba(255,255,255,0.15)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${al.percentagem}%`, background: WHITE, borderRadius: 99, transition: 'width 0.4s' }} />
+              </div>
+              <div style={{ color: SIDEBAR_TXT, fontSize: 10, marginTop: 5 }}>{al.percentagem}% concluído</div>
+            </>);
+          })()}
         </div>
 
         {/* KitchenFlow */}
