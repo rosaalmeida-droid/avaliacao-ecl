@@ -370,10 +370,20 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     ? sugerirSubtecnicas(textoFichas)
     : [];
   const idsSubFicha = new Set(subtecnicasDaFicha.map(s => s.id));
-  // Cruzamento: só aparecem se estão na UC E foram detetadas na ficha
-  const compSubtecnicas = subtecnicasDaUC
-    .filter(s => idsSubFicha.has(s.id) && !compRemovidas.includes(s.id))
-    .slice(0, 8);
+  // União: subtécnicas da UC + subtécnicas detetadas na ficha
+  // O professor pode remover as que não quer avaliar nesta UC.
+  // Lógica: mostrar tudo o que é relevante — da UC E da receita —
+  // para apoiar a evolução do aluno mesmo quando a ficha sai fora da UC.
+  const idsJaNasTecnicas = new Set(compTecnicas.map((m: any) => m.id));
+  const subtecnicasDaFichaUnicas = subtecnicasDaFicha.filter(s =>
+    !subtecnicasDaUC.some(u => u.id === s.id) // não duplicar as que já vêm da UC
+  );
+  const compSubtecnicas = [
+    ...subtecnicasDaUC,
+    ...subtecnicasDaFichaUnicas,
+  ]
+    .filter(s => !compRemovidas.includes(s.id) && !idsJaNasTecnicas.has(s.id))
+    .slice(0, 12);
 
   const compAtitudes = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 4).filter(a => !compRemovidas.includes(a.id));
   const totalComp = compObrigatorias.length + compTecnicas.length + compSubtecnicas.length + compAtitudes.length + compAdicionadas.length;
@@ -689,16 +699,37 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas — UC {plano.ucId}</div>
-          {microsDaUC.slice(0, 8).map(m => {
+          {compTecnicas.map(m => {
             const removida = compRemovidas.includes(m.id);
+            const aberta = compAberta === m.id;
             return (
-              <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
-                <span>{removida ? '○' : '●'}</span>
-                <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)' }}>{m.criterios.length} critérios</div>}</div>
-                <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
-                  style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
-                  {removida ? '+ Incluir' : '− Remover'}
-                </button>
+              <div key={m.id} style={{ borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1, overflow:'hidden' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px' }}>
+                  <span>{removida ? '○' : '●'}</span>
+                  <div style={{ flex:1, cursor: m.criterios?.length > 0 ? 'pointer' : 'default' }} onClick={() => m.criterios?.length > 0 && toggleComp(m.id)}>
+                    <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
+                    {m.criterios?.length > 0 && (
+                      <div style={{ fontSize:11, color:'rgba(181,101,29,0.7)', display:'flex', alignItems:'center', gap:4 }}>
+                        {m.criterios.length} critérios <span style={{ fontSize:9, transform: aberta ? 'rotate(90deg)' : 'none', display:'inline-block', transition:'0.15s' }}>▶</span>
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
+                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    {removida ? '+ Incluir' : '− Remover'}
+                  </button>
+                </div>
+                {aberta && m.criterios?.length > 0 && (
+                  <div style={{ padding:'0 12px 10px 36px', borderTop:'1px solid rgba(181,101,29,0.12)' }}>
+                    {m.criterios.map((cr: any, i: number) => (
+                      <div key={i} style={{ fontSize:12, color:'rgba(26,23,20,0.7)', padding:'4px 0', borderBottom: i < m.criterios.length-1 ? '1px solid rgba(181,101,29,0.08)' : 'none' }}>
+                        <span style={{ color:'var(--copper)', fontWeight:700, marginRight:6 }}>✓</span>
+                        {cr.criterio}
+                        {cr.como && <div style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginTop:2, marginLeft:16 }}>{cr.como}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -853,7 +884,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Técnicas — sugeridas pela UC {plano.ucId}</div>
-            {microsDaUC.slice(0, 8).map(m => {
+            {compTecnicas.map(m => {
               const removida = compRemovidas.includes(m.id);
               const aberta = compAberta === m.id;
               return (
