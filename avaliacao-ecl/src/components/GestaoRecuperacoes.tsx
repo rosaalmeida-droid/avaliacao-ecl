@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } from '../competenciasECL';
+import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
 import { GuiaProducao } from './GuiaProducao';
 import { SeletorIA } from './SeletorIA';
@@ -395,8 +396,9 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
 
       {todasComp.map(compId => (
         <div key={compId} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{getNomeComp(compId)}</div>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{getNomeComp(compId)}</div>
+          <CriteriosComp compId={compId} cor="var(--copper)" />
+          <div style={{ marginTop: 8, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {NIVEIS.map(n => (
               <button key={n.v} onClick={() => setNiveis(prev => ({ ...prev, [compId]: n.v }))}
                 style={{
