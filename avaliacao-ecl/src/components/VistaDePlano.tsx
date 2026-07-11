@@ -362,18 +362,18 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     'ATT_16', // Respeito normas higiene alimentar → coberto por OBR_02
     'ATT_17', // Respeito normas SST → coberto por OBR_02
   ]);
+
+  // ── Deduplicação global — DECLARAR ANTES de usar ─────────────────────────
+  const IDS_JA_USADOS = new Set<string>([
+    ...compObrigatorias.map(o => o.id),
+  ]);
+
   const compTecnicas = microsDaUC
     .filter(m => !IDS_DUPLICAM_OBRIGATORIAS.has(m.id) && !IDS_JA_USADOS.has(m.id))
     .slice(0, 6)
     .filter(m => !compRemovidas.includes(m.id));
   // Registar técnicas usadas
   compTecnicas.forEach(m => IDS_JA_USADOS.add(m.id));
-
-  // ── Deduplicação global — nenhuma competência aparece duas vezes ──────────
-  // Construir conjunto de ids já comprometidos (obrigatórias + técnicas)
-  const IDS_JA_USADOS = new Set<string>([
-    ...compObrigatorias.map(o => o.id),
-  ]);
 
   // Subtécnicas: cruzamento entre as detetadas nas fichas E as da UC do plano
   const textoFichas = fichasDoPlano.map(f =>
