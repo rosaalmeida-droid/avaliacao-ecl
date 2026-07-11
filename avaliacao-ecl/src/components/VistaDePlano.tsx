@@ -11,6 +11,7 @@ import { sugerirSubtecnicas, SUBTECNICAS } from '../subtecnicas';
 import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
+import { AvisoAvaliacaoAnterior } from './AvisoAvaliacaoAnterior';
 
 type Modulo = 'inicio' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'competencias' | 'registos';
 
@@ -356,10 +357,25 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     'M0150', // Lavar maos/fardamento → já coberto por OBR_01 (Higiene pessoal)
     'M0196', // Registar HACCP → já coberto por OBR_02 (Higiene e Segurança Alimentar)
   ]);
+
+  // Atitudes que duplicam as obrigatórias — não mostrar nas sugeridas
+  const IDS_ATITUDES_DUPLICAM = new Set([
+    'ATT_03', // Cuidado com apresentação pessoal → coberto por OBR_01 (Higiene pessoal)
+    'ATT_16', // Respeito normas higiene alimentar → coberto por OBR_02
+    'ATT_17', // Respeito normas SST → coberto por OBR_02
+  ]);
   const compTecnicas = microsDaUC
-    .filter(m => !IDS_DUPLICAM_OBRIGATORIAS.has(m.id))
+    .filter(m => !IDS_DUPLICAM_OBRIGATORIAS.has(m.id) && !IDS_JA_USADOS.has(m.id))
     .slice(0, 6)
     .filter(m => !compRemovidas.includes(m.id));
+  // Registar técnicas usadas
+  compTecnicas.forEach(m => IDS_JA_USADOS.add(m.id));
+
+  // ── Deduplicação global — nenhuma competência aparece duas vezes ──────────
+  // Construir conjunto de ids já comprometidos (obrigatórias + técnicas)
+  const IDS_JA_USADOS = new Set<string>([
+    ...compObrigatorias.map(o => o.id),
+  ]);
 
   // Subtécnicas: cruzamento entre as detetadas nas fichas E as da UC do plano
   const textoFichas = fichasDoPlano.map(f =>
@@ -374,10 +390,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const idsSubFicha = new Set(subtecnicasDaFicha.map(s => s.id));
   // Cruzamento: só aparecem se estão na UC E foram detetadas na ficha
   const compSubtecnicas = subtecnicasDaUC
-    .filter(s => idsSubFicha.has(s.id) && !compRemovidas.includes(s.id))
+    .filter(s => !compRemovidas.includes(s.id) && !IDS_JA_USADOS.has(s.id))
     .slice(0, 8);
+  // Registar subtécnicas usadas
+  compSubtecnicas.forEach(s => IDS_JA_USADOS.add(s.id));
 
-  const compAtitudes = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 4).filter(a => !compRemovidas.includes(a.id));
+  const compAtitudes = ATITUDES
+    .filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente')
+      && !IDS_ATITUDES_DUPLICAM.has(a.id)
+      && !IDS_JA_USADOS.has(a.id))
+    .slice(0, 4)
+    .filter(a => !compRemovidas.includes(a.id));
   const totalComp = compObrigatorias.length + compTecnicas.length + compSubtecnicas.length + compAtitudes.length + compAdicionadas.length;
 
   function guardarCompetencias(removidas: string[], adicionadas: string[]) {
@@ -671,7 +694,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#8e44ad', marginBottom:8 }}>💡 Atitudes</div>
-          {ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 6).map(a => {
+          {ATITUDES.filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente') && !IDS_ATITUDES_DUPLICAM.has(a.id)).slice(0, 5).map(a => {
             const removida = compRemovidas.includes(a.id);
             return (
               <div key={a.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'rgba(142,68,173,0.06)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
@@ -709,10 +732,25 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   if (modulo === 'validacao') {
+    const alunosDaTurma = getAlunos().filter(a => a.turmaId === turmaId);
+    // Obrigatórias aparecem sempre — não faz sentido avisar que já foram avaliadas
+    const todasMicros = [
+      ...compTecnicas.map(m => m.id),
+      ...compSubtecnicas.map(s => s.id),
+      ...compAtitudes.map(a => a.id),
+    ];
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
+        {plano.ucId && alunosDaTurma.length > 0 && todasMicros.length > 0 && (
+          <AvisoAvaliacaoAnterior
+            plano={plano}
+            alunos={alunosDaTurma}
+            microIds={todasMicros}
+            nomeProfessor={nomeProfessor}
+          />
+        )}
         <ValidacaoView turmaId={turmaId} planoId={plano.id} />
       </div>
     );
@@ -859,16 +897,36 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0f766e', marginBottom: 8 }}>⚙️ Subtécnicas — da ficha e UC {plano.ucId}</div>
               {compSubtecnicas.map(s => {
                 const removida = compRemovidas.includes(s.id);
+                const aberta = compAberta === s.id;
+                const criterios = (s as any).criterios || [];
                 return (
-                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'rgba(15,118,110,0.06)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(15,118,110,0.18)'}`, opacity: removida ? 0.5 : 1 }}>
-                    <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{s.nome}</div>
+                  <div key={s.id} style={{ borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'rgba(15,118,110,0.06)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(15,118,110,0.18)'}`, opacity: removida ? 0.5 : 1, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }}>
+                      <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
+                      <div style={{ flex: 1, cursor: criterios.length > 0 ? 'pointer' : 'default' }} onClick={() => criterios.length > 0 && toggleComp(s.id)}>
+                        <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{s.nome}</div>
+                        {criterios.length > 0 && (
+                          <div style={{ fontSize: 11, color: '#0f766e', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {criterios.length} critérios <span style={{ fontSize: 9, transform: aberta ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: '0.15s' }}>▶</span>
+                          </div>
+                        )}
+                      </div>
+                      <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== s.id) : [...compRemovidas, s.id]; guardarCompetencias(novas, compAdicionadas); }}
+                        style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
+                        {removida ? '+ Incluir' : '− Remover'}
+                      </button>
                     </div>
-                    <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== s.id) : [...compRemovidas, s.id]; guardarCompetencias(novas, compAdicionadas); }}
-                      style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
-                      {removida ? '+ Incluir' : '− Remover'}
-                    </button>
+                    {aberta && criterios.length > 0 && (
+                      <div style={{ padding: '0 12px 10px 36px', borderTop: '1px solid rgba(15,118,110,0.12)' }}>
+                        {criterios.map((cr: any, i: number) => (
+                          <div key={i} style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: i < criterios.length-1 ? '1px solid rgba(15,118,110,0.08)' : 'none' }}>
+                            <span style={{ color: '#0f766e', fontWeight: 700, marginRight: 6 }}>✓</span>
+                            {cr.criterio}
+                            {cr.como && <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 16 }}>{cr.como}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -876,7 +934,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           )}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>💡 Atitudes — sugeridas para esta aula</div>
-            {ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 6).map(a => {
+            {ATITUDES.filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente') && !IDS_ATITUDES_DUPLICAM.has(a.id)).slice(0, 5).map(a => {
               const removida = compRemovidas.includes(a.id);
               return (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'rgba(142,68,173,0.06)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(142,68,173,0.15)'}`, opacity: removida ? 0.5 : 1 }}>
