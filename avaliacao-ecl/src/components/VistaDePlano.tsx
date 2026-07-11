@@ -368,17 +368,29 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     ...compObrigatorias.map(o => o.id),
   ]);
 
+  // Texto das fichas — calculado ANTES de compTecnicas para cruzamento
+  const textoFichas = fichasDoPlano.map(f =>
+    [f.nomePrato, f.classificacao, ...(f.ingredientes || []).map(i => i.produto), ...(f.preparacao || []).map(p => p.descricao)].join(' ')
+  ).join(' ').toLowerCase();
+
+  // Técnicas: filtrar por palavras-chave da ficha quando há ficha associada
+  // Sem ficha → mostrar as da UC sem filtro (professor remove as que não se aplicam)
   const compTecnicas = microsDaUC
-    .filter(m => !IDS_DUPLICAM_OBRIGATORIAS.has(m.id) && !IDS_JA_USADOS.has(m.id))
-    .slice(0, 6)
+    .filter(m => {
+      if (IDS_DUPLICAM_OBRIGATORIAS.has(m.id) || IDS_JA_USADOS.has(m.id)) return false;
+      // Se há ficha técnica, cruzar pelo nome da técnica e palavras-chave
+      if (textoFichas.length > 10) {
+        const nomeMicro = m.nome.toLowerCase();
+        // Verificar se o nome da técnica ou palavras relacionadas aparecem na ficha
+        const palavras = nomeMicro.split(/[\s\/]+/);
+        return palavras.some(p => p.length > 3 && textoFichas.includes(p));
+      }
+      return true;
+    })
+    .slice(0, 8)
     .filter(m => !compRemovidas.includes(m.id));
   // Registar técnicas usadas
   compTecnicas.forEach(m => IDS_JA_USADOS.add(m.id));
-
-  // Subtécnicas: cruzamento entre as detetadas nas fichas E as da UC do plano
-  const textoFichas = fichasDoPlano.map(f =>
-    [f.nomePrato, f.classificacao, ...(f.ingredientes || []).map(i => i.produto), ...(f.preparacao || []).map(p => p.descricao)].join(' ')
-  ).join(' ');
   const subtecnicasDaUC = plano.ucId
     ? SUBTECNICAS.filter(s => (s.uc || []).includes(plano.ucId!))
     : [];
