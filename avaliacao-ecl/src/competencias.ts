@@ -7,7 +7,7 @@
 // ── Tipos ───────────────────────────────────────────────────
 export interface CriterioObservavel {
   criterio: string;
-  como: string; // como observar em aula
+  como?: string; // como observar em aula (opcional nas subtécnicas)
 }
 
 export interface MicroCompetencia {
