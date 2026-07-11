@@ -7,6 +7,7 @@ import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC,
 } from '../competenciasECL';
+import { sugerirSubtecnicas, SUBTECNICAS } from '../subtecnicas';
 import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
@@ -326,6 +327,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [compAdicionadas, setCompAdicionadas] = useState<string[]>(
     Array.isArray((plano as any).compAdicionadas) ? (plano as any).compAdicionadas : []
   );
+  // Accordion — id da competência expandida (null = todas fechadas)
+  const [compAberta, setCompAberta] = useState<string | null>(null);
+  function toggleComp(id: string) { setCompAberta(prev => prev === id ? null : id); }
+
+  // Estado do botão de publicar atualização
+  const [aPublicarAtualizacao, setAPublicarAtualizacao] = useState(false);
+  const [atualizacaoPublicada, setAtualizacaoPublicada] = useState(false);
 
   const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
@@ -337,13 +345,39 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const publicado = plano.estado === 'publicado';
   const microsDaUC = plano.ucId ? microsPorUC(plano.ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
   const compObrigatorias = OBRIGATORIAS;
-  const compTecnicas = microsDaUC.slice(0, 6).filter(m => !compRemovidas.includes(m.id));
+  // Ids de microcompetências que duplicam as obrigatórias — nunca mostrar nas sugeridas
+  const IDS_DUPLICAM_OBRIGATORIAS = new Set([
+    'M0150', // Lavar maos/fardamento → já coberto por OBR_01 (Higiene pessoal)
+    'M0196', // Registar HACCP → já coberto por OBR_02 (Higiene e Segurança Alimentar)
+  ]);
+  const compTecnicas = microsDaUC
+    .filter(m => !IDS_DUPLICAM_OBRIGATORIAS.has(m.id))
+    .slice(0, 6)
+    .filter(m => !compRemovidas.includes(m.id));
+
+  // Subtécnicas: cruzamento entre as detetadas nas fichas E as da UC do plano
+  const textoFichas = fichasDoPlano.map(f =>
+    [f.nomePrato, f.classificacao, ...(f.ingredientes || []).map(i => i.produto), ...(f.preparacao || []).map(p => p.descricao)].join(' ')
+  ).join(' ');
+  const subtecnicasDaUC = plano.ucId
+    ? SUBTECNICAS.filter(s => (s.uc || []).includes(plano.ucId!))
+    : [];
+  const subtecnicasDaFicha = textoFichas.length > 10
+    ? sugerirSubtecnicas(textoFichas)
+    : [];
+  const idsSubFicha = new Set(subtecnicasDaFicha.map(s => s.id));
+  // Cruzamento: só aparecem se estão na UC E foram detetadas na ficha
+  const compSubtecnicas = subtecnicasDaUC
+    .filter(s => idsSubFicha.has(s.id) && !compRemovidas.includes(s.id))
+    .slice(0, 8);
+
   const compAtitudes = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 4).filter(a => !compRemovidas.includes(a.id));
-  const totalComp = compObrigatorias.length + compTecnicas.length + compAtitudes.length + compAdicionadas.length;
+  const totalComp = compObrigatorias.length + compTecnicas.length + compSubtecnicas.length + compAtitudes.length + compAdicionadas.length;
 
   function guardarCompetencias(removidas: string[], adicionadas: string[]) {
     setCompRemovidas(removidas);
     setCompAdicionadas(adicionadas);
+    registarAlteracaoPublicado('competencias', 'Competências da aula atualizadas pelo professor');
     const p = { ...plano, compRemovidas: removidas, compAdicionadas: adicionadas, atualizadoEm: new Date().toISOString() } as any;
     addOrUpdatePlanoAula(p);
     onPlanoActualizado(p);
@@ -362,9 +396,56 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   function publicar() {
-    const p = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
+    const p = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString(), ultimaAlteracao: undefined };
     addOrUpdatePlanoAula(p);
     onPlanoActualizado(p);
+  }
+
+  /** Regista uma alteração num plano já publicado e propaga ao AlunoView */
+  function registarAlteracaoPublicado(tipo: 'ficha' | 'guia' | 'requisicao' | 'competencias' | 'geral', descricao: string) {
+    if (plano.estado !== 'publicado') return;
+    const p = {
+      ...plano,
+      atualizadoEm: new Date().toISOString(),
+      ultimaAlteracao: { tipo, descricao, em: new Date().toISOString() },
+    };
+    addOrUpdatePlanoAula(p);
+    onPlanoActualizado(p);
+  }
+
+  /** Botão "Publicar atualização" — envia para Sheets + Classroom */
+  async function publicarAtualizacao() {
+    setAPublicarAtualizacao(true);
+    const agora = new Date().toISOString();
+    // 1. Atualizar o plano com ultimaAlteracao → Sheets (via addOrUpdatePlanoAula)
+    const p = {
+      ...plano,
+      atualizadoEm: agora,
+      ultimaAlteracao: {
+        tipo: 'geral' as const,
+        descricao: 'Plano de aula atualizado pelo professor',
+        em: agora,
+      },
+    };
+    addOrUpdatePlanoAula(p);
+    onPlanoActualizado(p);
+
+    // 2. Publicar no Classroom com mensagem de atualização
+    const fichasActuais = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
+    const requisicao = getRequisicaoPorPlano(plano.id);
+    try {
+      await publicarNoClassroom('plano', turmaId, {
+        plano: p,
+        fichas: fichasActuais,
+        requisicao,
+        isAtualizacao: true,
+        mensagemAtualizacao: `⚠️ O professor atualizou o plano de aula "${plano.titulo}". Por favor refresca a app para ver as alterações.`,
+      });
+    } catch {}
+
+    setAPublicarAtualizacao(false);
+    setAtualizacaoPublicada(true);
+    setTimeout(() => setAtualizacaoPublicada(false), 4000);
   }
 
   const [modalClassroom, setModalClassroom] = React.useState<{tipo: string; conteudo: any} | null>(null);
@@ -377,6 +458,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   function aposGuardarFicha() {
+    registarAlteracaoPublicado('ficha', 'Ficha técnica atualizada pelo professor');
     const planoAtualizado = getPlanosAula().find(p => p.id === plano.id);
     if (planoAtualizado) onPlanoActualizado(planoAtualizado);
     onGuardado?.();
@@ -452,7 +534,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           )}
         </div>
         <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id} modoGuia={true} nomePratoInicial={nomePratoGuia} onAlteracao={onAlteracao}
-          onGuardado={() => { onGuardado?.(); setModalProximo('apos_guia'); }} />
+          onGuardado={() => { registarAlteracaoPublicado('guia', 'Guia de produção atualizado pelo professor'); onGuardado?.(); setModalProximo('apos_guia'); }} />
         {modalProximo === 'apos_guia' && (
           <ModalRequisicao plano={plano} fichas={fichasActuais}
             onSim={(ids) => { setFichasParaRequisicao(ids); setModalProximo(null); setModulo('requisicao'); }}
@@ -516,7 +598,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         )}
         <Requisicao nomeProfessor={nomeProfessor} planoIdFixo={plano.id} turmaId={turmaId}
           fichasIniciais={fichasParaRequisicao.length ? fichasParaRequisicao : undefined}
-          onGuardado={() => setModalProximo('apos_requisicao')} />
+          onGuardado={() => { registarAlteracaoPublicado('requisicao', 'Requisição atualizada pelo professor'); setModalProximo('apos_requisicao'); }} />
         {modalProximo === 'apos_requisicao' && (
           <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
             <div style={{ background:'#fff', borderRadius:20, padding:28, maxWidth:360, width:'100%', textAlign:'center' }}>
@@ -733,18 +815,59 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Técnicas — sugeridas pela UC {plano.ucId}</div>
             {microsDaUC.slice(0, 8).map(m => {
               const removida = compRemovidas.includes(m.id);
+              const aberta = compAberta === m.id;
               return (
-                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(181,101,29,0.2)'}`, opacity: removida ? 0.5 : 1 }}>
-                  <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
-                  <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>{m.criterios.length} critérios observáveis</div>}</div>
-                  <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id]; guardarCompetencias(novas, compAdicionadas); }}
-                    style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
-                    {removida ? '+ Incluir' : '− Remover'}
-                  </button>
+                <div key={m.id} style={{ borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(181,101,29,0.2)'}`, opacity: removida ? 0.5 : 1, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }}>
+                    <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
+                    <div style={{ flex: 1, cursor: m.criterios.length > 0 ? 'pointer' : 'default' }} onClick={() => m.criterios.length > 0 && toggleComp(m.id)}>
+                      <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
+                      {m.criterios.length > 0 && (
+                        <div style={{ fontSize: 12, color: 'rgba(181,101,29,0.7)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {m.criterios.length} critérios observáveis <span style={{ fontSize: 10 }}>{aberta ? '▲' : '▼'}</span>
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id]; guardarCompetencias(novas, compAdicionadas); }}
+                      style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
+                      {removida ? '+ Incluir' : '− Remover'}
+                    </button>
+                  </div>
+                  {aberta && m.criterios.length > 0 && (
+                    <div style={{ padding: '0 12px 10px 36px', borderTop: '1px solid rgba(181,101,29,0.12)' }}>
+                      {m.criterios.map((cr: any, i: number) => (
+                        <div key={i} style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: i < m.criterios.length - 1 ? '1px solid rgba(181,101,29,0.08)' : 'none' }}>
+                          <span style={{ color: 'var(--copper)', fontWeight: 600, marginRight: 6 }}>✓</span>
+                          {cr.criterio}
+                          {cr.como && <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 16 }}>{cr.como}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
+          {compSubtecnicas.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0f766e', marginBottom: 8 }}>⚙️ Subtécnicas — da ficha e UC {plano.ucId}</div>
+              {compSubtecnicas.map(s => {
+                const removida = compRemovidas.includes(s.id);
+                return (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'rgba(15,118,110,0.06)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(15,118,110,0.18)'}`, opacity: removida ? 0.5 : 1 }}>
+                    <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{s.nome}</div>
+                    </div>
+                    <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== s.id) : [...compRemovidas, s.id]; guardarCompetencias(novas, compAdicionadas); }}
+                      style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
+                      {removida ? '+ Incluir' : '− Remover'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>💡 Atitudes — sugeridas para esta aula</div>
             {ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 6).map(a => {
@@ -763,7 +886,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
           <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 12, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
-            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compAtitudes.length} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
+            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{compAtitudes.length} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
             {totalComp > 7 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
             {totalComp <= 5 && <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>✓ Número adequado para uma aula.</div>}
           </div>
@@ -807,9 +930,30 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           )}
           <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>{publicado ? 'Os alunos vêem sempre a versão mais recente.' : 'Quando estiver pronto, publica para os alunos poderem aceder.'}</div>
           {publicado ? (
-            <div style={{ display:'flex', gap:8 }}>
-              <div style={{ flex:1, padding:'8px 12px', borderRadius:8, background:'rgba(90,122,78,0.15)', fontSize:13, color:'var(--sage)', fontWeight:600, textAlign:'center' }}>✓ Visível para os alunos</div>
-              <button onClick={publicar} style={{ padding:'8px 14px', borderRadius:8, border:'1px solid var(--sage)', background:'#fff', color:'var(--sage)', fontWeight:600, fontSize:13, cursor:'pointer' }}>🔄 Re-publicar</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ padding:'8px 12px', borderRadius:8, background:'rgba(90,122,78,0.15)', fontSize:13, color:'var(--sage)', fontWeight:600, textAlign:'center' }}>
+                ✓ Visível para os alunos
+              </div>
+              <button
+                onClick={publicarAtualizacao}
+                disabled={aPublicarAtualizacao}
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 9, border: 'none',
+                  background: atualizacaoPublicada ? 'var(--sage)' : '#1A5C7A',
+                  color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  opacity: aPublicarAtualizacao ? 0.6 : 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                {aPublicarAtualizacao ? '⏳ A publicar...'
+                  : atualizacaoPublicada ? '✓ Atualização publicada!'
+                  : '🔄 Publicar atualização para alunos e Classroom'}
+              </button>
+              {atualizacaoPublicada && (
+                <div style={{ fontSize: 11, color: 'var(--sage)', textAlign: 'center' }}>
+                  Sheets e Classroom notificados · Os alunos vêem o aviso ao refrescar a app
+                </div>
+              )}
             </div>
           ) : (
             <button onClick={publicar} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>🚀 Publicar esta aula para os alunos</button>
