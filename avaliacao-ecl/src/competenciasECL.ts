@@ -429,9 +429,11 @@ export const BANCO_TECNICAS: TecnicaDetalhada[] = [
 
 // Registo externo de subtécnicas — injetado por subtecnicas.ts ao carregar
 // Evita dependência circular sem usar require()
-let _subtecnicasRegistry: Array<{ id: string; nome: string; uc?: string[]; criterios?: { criterio: string; como?: string }[] }> = [];
+// Usar const com array mutável em vez de let — evita problema de hoisting no bundle
+const _subtecnicasRegistry: Array<{ id: string; nome: string; uc?: string[]; criterios?: { criterio: string; como?: string }[] }> = [];
 export function registarSubtecnicas(subs: typeof _subtecnicasRegistry) {
-  _subtecnicasRegistry = subs;
+  _subtecnicasRegistry.length = 0;
+  subs.forEach(s => _subtecnicasRegistry.push(s));
 }
 
 export function encontrarMicro(id: string): MicroCompetencia | undefined {
