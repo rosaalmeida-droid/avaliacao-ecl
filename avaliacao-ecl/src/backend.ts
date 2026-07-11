@@ -4,6 +4,7 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
+import { ucsEquivalentes } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
   Turma, Aluno, PlanoAula, FichaProducao,
@@ -384,14 +385,51 @@ export function pesquisarManual(query: string): EntradaManual[] {
 // ════════════════════════════════════════════════════════════════
 
 // Mapa de registos KitchenFlow → competências da Avaliação ECL
+// Só subtécnicas (S...) e microcompetências (M...) — as obrigatórias
+// são avaliadas sempre e não precisam de evidência KF para tal.
 const MAPA_KF_COMPETENCIAS: Record<string, string[]> = {
-  'Higiene Pessoal':      ['OBR_01'],
-  'Temperatura Serviço':  ['OBR_02'],
-  'NãoConformidades':     ['OBR_02'],
-  'Conservação':          ['OBR_02'],
-  'Controlo de Óleos':    ['OBR_02'],
-  'Presença':             ['OBR_01'],
+  // Registos de receção e armazenamento
+  'Temperatura Receção':      ['S011', 'S203'],
+  'Temperatura Confeção':     ['S203', 'M0065'],
+  'Temperatura Frio':         ['S203', 'S015'],
+  'Abatimento Temperatura':   ['S017', 'M0060'],
+  'Rotulagem':                ['S014', 'M0116'],
+  'Receção Mercadorias':      ['S010', 'S011', 'S012', 'S013'],
+  'Conservação':              ['S015', 'S017'],
+  // Registos de produção
+  'Controlo de Óleos':        ['S106'],
+  'Mise en Place':            ['S003', 'S004', 'M0172'],
+  'Ficha Técnica':            ['S002', 'M0148'],
+  'Limpeza Equipamentos':     ['S202'],
 };
+
+/** Inverso: dado um id de competência, quais tipos de registo KF a evidenciam */
+export function tiposKFParaCompetencia(competenciaId: string): string[] {
+  return Object.entries(MAPA_KF_COMPETENCIAS)
+    .filter(([, ids]) => ids.includes(competenciaId))
+    .map(([tipo]) => tipo);
+}
+
+/** Verifica se um aluno tem registos KitchenFlow que evidenciam uma competência.
+ *  Consulta o localStorage de evidências já sincronizadas (não vai à Sheet). */
+export function evidenciasKFPorCompetencia(
+  alunoId: string,
+  competenciaId: string,
+  data?: string  // YYYY-MM-DD — se fornecida, filtra por data
+): { tipo: string; registadoEm?: string }[] {
+  const tiposKF = tiposKFParaCompetencia(competenciaId);
+  if (tiposKF.length === 0) return [];
+
+  // Ler evidências já sincronizadas do localStorage
+  const chave = `ecl_evidencias_kf_${alunoId}`;
+  let evidencias: { tipo: string; registadoEm?: string; data?: string }[] = [];
+  try { evidencias = JSON.parse(localStorage.getItem(chave) || '[]'); } catch {}
+
+  return evidencias.filter(e =>
+    tiposKF.includes(e.tipo) &&
+    (!data || e.data === data || e.registadoEm?.startsWith(data))
+  );
+}
 
 export interface EvidenciaKitchenFlow {
   competenciaId: string;
@@ -1303,12 +1341,8 @@ export function registosAnteriores(
 ): RegistoAvaliacao[] {
   const todos = getHistoricoAvaliacoes();
   // Resolver equivalências UFCD→UC
-  let ucsAVerificar: string[] = [ucOuUfcd];
-  try {
-    const { ucsEquivalentes } = require('./cronograma');
-    ucsAVerificar = ucsEquivalentes(ucOuUfcd);
-    if (!ucsAVerificar.includes(ucOuUfcd)) ucsAVerificar.push(ucOuUfcd);
-  } catch {}
+  const ucsBase = ucsEquivalentes(ucOuUfcd);
+  const ucsAVerificar = ucsBase.includes(ucOuUfcd) ? ucsBase : [...ucsBase, ucOuUfcd];
   return todos.filter(r =>
     r.alunoId === alunoId &&
     ucsAVerificar.includes(r.ucId) &&
@@ -1324,12 +1358,8 @@ export function mapaAvaliacoesAnteriores(
   microIds: string[]
 ): Record<string, Record<string, RegistoAvaliacao[]>> {
   const todos = getHistoricoAvaliacoes();
-  let ucsAVerificar: string[] = [ucOuUfcd];
-  try {
-    const { ucsEquivalentes } = require('./cronograma');
-    ucsAVerificar = ucsEquivalentes(ucOuUfcd);
-    if (!ucsAVerificar.includes(ucOuUfcd)) ucsAVerificar.push(ucOuUfcd);
-  } catch {}
+  const ucsBase2 = ucsEquivalentes(ucOuUfcd);
+  const ucsAVerificar = ucsBase2.includes(ucOuUfcd) ? ucsBase2 : [...ucsBase2, ucOuUfcd];
 
   const mapa: Record<string, Record<string, RegistoAvaliacao[]>> = {};
   for (const alunoId of alunoIds) {
