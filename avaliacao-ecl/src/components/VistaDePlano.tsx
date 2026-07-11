@@ -5,7 +5,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
-  microsPorUC, encontrarMicro,
+  microsPorUC,
 } from '../competenciasECL';
 import { sugerirSubtecnicas, SUBTECNICAS } from '../subtecnicas';
 import ProfessorView from './ProfessorView';
@@ -29,6 +29,12 @@ function EventoAssociador({ plano, turmaId, onPlanoActualizado }: {
   plano: PlanoAula; turmaId: string; onPlanoActualizado: (p: PlanoAula) => void;
 }) {
   const [eventoSel, setEventoSel] = useState<string>(plano.eventoId || '');
+
+  // Sincronizar quando o plano muda externamente (navegação, recarregar)
+  React.useEffect(() => {
+    setEventoSel(plano.eventoId || '');
+  }, [plano.id, plano.eventoId]);
+
   let eventos: any[] = [];
   try {
     eventos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]')
@@ -334,10 +340,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // Estado do botão de publicar atualização
   const [aPublicarAtualizacao, setAPublicarAtualizacao] = useState(false);
   const [atualizacaoPublicada, setAtualizacaoPublicada] = useState(false);
-  // Estado da aula realizada
-  const realizada = (plano as any).estado === 'realizada';
-  const [aMarcarRealizada, setAMarcarRealizada] = useState(false);
-  const [confirmandoRealizada, setConfirmandoRealizada] = useState(false);
 
   const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
@@ -370,20 +372,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     ? sugerirSubtecnicas(textoFichas)
     : [];
   const idsSubFicha = new Set(subtecnicasDaFicha.map(s => s.id));
-  // União: subtécnicas da UC + subtécnicas detetadas na ficha
-  // O professor pode remover as que não quer avaliar nesta UC.
-  // Lógica: mostrar tudo o que é relevante — da UC E da receita —
-  // para apoiar a evolução do aluno mesmo quando a ficha sai fora da UC.
-  const idsJaNasTecnicas = new Set(compTecnicas.map((m: any) => m.id));
-  const subtecnicasDaFichaUnicas = subtecnicasDaFicha.filter(s =>
-    !subtecnicasDaUC.some(u => u.id === s.id) // não duplicar as que já vêm da UC
-  );
-  const compSubtecnicas = [
-    ...subtecnicasDaUC,
-    ...subtecnicasDaFichaUnicas,
-  ]
-    .filter(s => !compRemovidas.includes(s.id) && !idsJaNasTecnicas.has(s.id))
-    .slice(0, 12);
+  // Cruzamento: só aparecem se estão na UC E foram detetadas na ficha
+  const compSubtecnicas = subtecnicasDaUC
+    .filter(s => idsSubFicha.has(s.id) && !compRemovidas.includes(s.id))
+    .slice(0, 8);
 
   const compAtitudes = ATITUDES.filter(a => a.prioridade === 'permanente' || a.prioridade === 'recorrente').slice(0, 4).filter(a => !compRemovidas.includes(a.id));
   const totalComp = compObrigatorias.length + compTecnicas.length + compSubtecnicas.length + compAtitudes.length + compAdicionadas.length;
@@ -428,42 +420,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   /** Botão "Publicar atualização" — envia para Sheets + Classroom */
-  /** Congela os critérios de todas as competências do plano */
-  function gerarCriteriosCongelados(): Record<string, { criterio: string; como?: string }[]> {
-    const snapshot: Record<string, { criterio: string; como?: string }[]> = {};
-    // Obrigatórias
-    compObrigatorias.forEach((o: any) => {
-      const m = encontrarMicro ? encontrarMicro(o.id) : undefined;
-      if (m?.criterios?.length) snapshot[o.id] = m.criterios;
-    });
-    // Técnicas
-    compTecnicas.forEach((m: any) => {
-      if (m.criterios?.length) snapshot[m.id] = m.criterios;
-    });
-    // Subtécnicas
-    compSubtecnicas.forEach((s: any) => {
-      if (s.criterios?.length) snapshot[s.id] = s.criterios;
-    });
-    return snapshot;
-  }
-
-  async function marcarAulaRealizada() {
-    setAMarcarRealizada(true);
-    const agora = new Date().toISOString();
-    const criteriosCongelados = gerarCriteriosCongelados();
-    const p = {
-      ...plano,
-      estado: 'realizada' as const,
-      realizadaEm: agora,
-      atualizadoEm: agora,
-      criteriosCongelados,
-    };
-    addOrUpdatePlanoAula(p);
-    onPlanoActualizado(p);
-    setAMarcarRealizada(false);
-    setConfirmandoRealizada(false);
-  }
-
   async function publicarAtualizacao() {
     setAPublicarAtualizacao(true);
     const agora = new Date().toISOString();
@@ -699,37 +655,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas — UC {plano.ucId}</div>
-          {compTecnicas.map(m => {
+          {microsDaUC.slice(0, 8).map(m => {
             const removida = compRemovidas.includes(m.id);
-            const aberta = compAberta === m.id;
             return (
-              <div key={m.id} style={{ borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1, overflow:'hidden' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px' }}>
-                  <span>{removida ? '○' : '●'}</span>
-                  <div style={{ flex:1, cursor: m.criterios?.length > 0 ? 'pointer' : 'default' }} onClick={() => m.criterios?.length > 0 && toggleComp(m.id)}>
-                    <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
-                    {m.criterios?.length > 0 && (
-                      <div style={{ fontSize:11, color:'rgba(181,101,29,0.7)', display:'flex', alignItems:'center', gap:4 }}>
-                        {m.criterios.length} critérios <span style={{ fontSize:9, transform: aberta ? 'rotate(90deg)' : 'none', display:'inline-block', transition:'0.15s' }}>▶</span>
-                      </div>
-                    )}
-                  </div>
-                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
-                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
-                    {removida ? '+ Incluir' : '− Remover'}
-                  </button>
-                </div>
-                {aberta && m.criterios?.length > 0 && (
-                  <div style={{ padding:'0 12px 10px 36px', borderTop:'1px solid rgba(181,101,29,0.12)' }}>
-                    {m.criterios.map((cr: any, i: number) => (
-                      <div key={i} style={{ fontSize:12, color:'rgba(26,23,20,0.7)', padding:'4px 0', borderBottom: i < m.criterios.length-1 ? '1px solid rgba(181,101,29,0.08)' : 'none' }}>
-                        <span style={{ color:'var(--copper)', fontWeight:700, marginRight:6 }}>✓</span>
-                        {cr.criterio}
-                        {cr.como && <div style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginTop:2, marginLeft:16 }}>{cr.como}</div>}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
+                <span>{removida ? '○' : '●'}</span>
+                <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)' }}>{m.criterios.length} critérios</div>}</div>
+                <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
+                  style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                  {removida ? '+ Incluir' : '− Remover'}
+                </button>
               </div>
             );
           })}
@@ -884,7 +819,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Técnicas — sugeridas pela UC {plano.ucId}</div>
-            {compTecnicas.map(m => {
+            {microsDaUC.slice(0, 8).map(m => {
               const removida = compRemovidas.includes(m.id);
               const aberta = compAberta === m.id;
               return (
@@ -1023,52 +958,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               {atualizacaoPublicada && (
                 <div style={{ fontSize: 11, color: 'var(--sage)', textAlign: 'center' }}>
                   Sheets e Classroom notificados · Os alunos vêem o aviso ao refrescar a app
-                </div>
-              )}
-
-              {/* Botão Aula Realizada */}
-              {!realizada && !confirmandoRealizada && (
-                <button
-                  onClick={() => setConfirmandoRealizada(true)}
-                  style={{
-                    width: '100%', padding: '10px 14px', borderRadius: 9,
-                    border: '2px solid #7C3AED', background: 'white',
-                    color: '#7C3AED', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                  }}
-                >
-                  🏁 Marcar aula como realizada
-                </button>
-              )}
-
-              {!realizada && confirmandoRealizada && (
-                <div style={{ padding: '12px', borderRadius: 10, background: '#EDE9FE', border: '1px solid #7C3AED' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#5B21B6', marginBottom: 8 }}>
-                    Confirmar que a aula foi realizada?
-                  </div>
-                  <div style={{ fontSize: 12, color: '#6D28D9', marginBottom: 10 }}>
-                    Os critérios de avaliação ficam congelados neste momento. Recuperações e avaliações continuam abertas.
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={marcarAulaRealizada} disabled={aMarcarRealizada}
-                      style={{ flex: 1, padding: '9px', borderRadius: 8, border: 'none', background: '#7C3AED', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                      {aMarcarRealizada ? '⏳ A guardar...' : '✓ Sim, aula realizada'}
-                    </button>
-                    <button onClick={() => setConfirmandoRealizada(false)}
-                      style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #7C3AED', background: 'white', color: '#7C3AED', fontSize: 13, cursor: 'pointer' }}>
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {realizada && (
-                <div style={{ padding: '10px 14px', borderRadius: 9, background: '#EDE9FE', fontSize: 13, color: '#5B21B6', fontWeight: 600, textAlign: 'center' }}>
-                  🏁 Aula realizada · critérios congelados
-                  {(plano as any).realizadaEm && (
-                    <div style={{ fontSize: 11, fontWeight: 400, marginTop: 2, color: '#7C3AED' }}>
-                      {new Date((plano as any).realizadaEm).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })} às {new Date((plano as any).realizadaEm).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
