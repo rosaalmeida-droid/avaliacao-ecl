@@ -9,10 +9,11 @@ import { Card, Button, Field, Badge } from './ui';
 import { CentroAvisos } from './CentroAvisos';
 import { GuiaProducao } from './GuiaProducao';
 import { CronogramaTab } from './CronogramaTab';
+import { DicionarioComp } from './DicionarioComp';
 import { coresDaTurma } from '../cores';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'presencas' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'presencas' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'dicionario'>('avisos');
 
   const TABS_COORD = [
     { id:'avisos',      emoji:'🔔', label:'Avisos',      cor:'#e63946' },
@@ -25,6 +26,7 @@ export function CoordenadoraView() {
     { id:'pedagogico',  emoji:'📊', label:'Pedagógico',  cor:'#27ae60' },
     { id:'alunos',      emoji:'👥', label:'Alunos',      cor:'#2980b9' },
     { id:'config',      emoji:'⚙️', label:'Config',      cor:'#8e44ad' },
+    { id:'dicionario',  emoji:'📖', label:'Dicionário',  cor:'#0f766e' },
   ] as const;
 
   return (
@@ -62,6 +64,7 @@ export function CoordenadoraView() {
       {tab === 'fichas' && <BibliotecaFichasTab />}
       {tab === 'planos' && <BibliotecaPlanosTab />}
       {tab === 'cronograma' && <CronogramaTab />}
+      {tab === 'dicionario' && <DicionarioComp perfil="coordenadora" />}
       {tab === 'ranking' && <RankingTab />}
       {tab === 'atividades' && <AtividadesTab />}
       {tab === 'pedagogico' && <VisaoPedagogicaTab />}
