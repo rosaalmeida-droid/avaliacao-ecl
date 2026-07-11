@@ -303,6 +303,12 @@ export interface PlanoAula {
   compRemovidas?: string[];
   compAdicionadas?: string[];
   eventoId?: string;        // ← ID do evento pedagógico associado (EventosWizard)
+  // Registo de alterações após publicação — visível ao aluno como aviso
+  ultimaAlteracao?: {
+    tipo: 'ficha' | 'guia' | 'requisicao' | 'competencias' | 'geral';
+    descricao: string;      // ex: "Ficha técnica atualizada"
+    em: string;             // ISO timestamp
+  };
   criadoEm: string;
   atualizadoEm: string;
 }
