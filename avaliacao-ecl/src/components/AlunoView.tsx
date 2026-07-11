@@ -13,6 +13,7 @@ import {
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
 } from '../competenciasECL';
 import { GuiaProducao } from './GuiaProducao';
+import { CriteriosComp } from './CriteriosComp';
 import { ManualCozinheiro } from './ManualCozinheiro';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
@@ -1830,6 +1831,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               </button>
               {microAberta===m.id && (
                 <div style={{ padding:'12px 16px', borderTop:`2px solid ${T.copper}`, background:'#fdfcfb' }}>
+                  <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
+                  <div style={{ marginTop: 12 }} />
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
                     {OPCOES.map(op => (
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
