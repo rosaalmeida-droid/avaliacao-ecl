@@ -7,12 +7,7 @@ import { DadosGuia, SecaoGuia } from '../types';
 // Transforma o texto da IA num documento visual e acessível
 // ============================================================
 
-// ── Tipos ─────────────────────────────────────────────────────
-[];
-  rendimentos?: { produto: string; comprado: string; utilizavel: string; rendimento: string; perdas: string }[];
-  haccp?: { perigo: string; pcc: string; temperatura: string; medida: string; conservacao: string }[];
-  questoes?: { tipo: string; pergunta: string; opcoes?: string[]; resposta?: string }[];
-}
+// ── Tipos (importados de types.ts) ───────────────────────────
 
 // ── Configuração das secções ──────────────────────────────────
 const SECOES_CONFIG = [
