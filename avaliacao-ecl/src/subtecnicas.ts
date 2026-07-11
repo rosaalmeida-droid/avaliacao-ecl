@@ -316,5 +316,4 @@ export function subtecnicasPorMae(maeId: string): Competencia[] {
 
 // Auto-registo em competenciasECL para que encontrarMicro() e microsPorUC()
 // encontrem subtécnicas sem usar require() (incompatível com módulos ES/Vite)
-import { registarSubtecnicas } from './competenciasECL';
-registarSubtecnicas(SUBTECNICAS as any);
+
