@@ -165,7 +165,8 @@ const fQ = (n: number, und: string) => {
 const fQn = (n: number, und: string) => {
   if (n === 0) return '';
   if (und === 'un') return String(Math.round(n));
-  return n >= 1 ? ptPT(n, 3) : ptPT(n, 4);
+  // Igual ao fQ mas sem símbolo de unidade — converte <1kg para gramas
+  return n >= 1 ? `${ptPT(n, 3)} ${und}` : `${(n * 1000).toFixed(0)} g`;
 };
 
 // Versão para ENVIO ao Sheets — nunca devolve string vazia (o Apps Script
@@ -758,6 +759,39 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           </div>
         )}
 
+        {/* Ajuste de doses — aparece sempre que há fichas selecionadas, mesmo com só 1 */}
+        {planoSel && fichasSel.length > 0 && (
+          <div style={S.card}>
+            <label style={S.lbl}>Nº de doses por ficha</label>
+            {fichasSelecionadas.map(f => (
+              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.15)' }}>
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--copper)' }}>
+                  {f.nomePrato}
+                  <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.5)', marginLeft: 6, fontSize: 12 }}>
+                    (receita base: {f.numPorcoes} doses)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, (p[f.id] || parseFloat(f.numPorcoes) || 4) - 1) }))}
+                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                  <input
+                    type="number" min={1}
+                    value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
+                    onChange={e => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, Number(e.target.value)) }))}
+                    style={{ ...S.inp, width: 60, textAlign: 'center', fontWeight: 700, fontSize: 15 }} />
+                  <button
+                    onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: (p[f.id] || parseFloat(f.numPorcoes) || 4) + 1 }))}
+                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                </div>
+              </div>
+            ))}
+            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.45)', textAlign: 'right', marginTop: 2 }}>
+              Total: {paxEncTotal} doses
+            </div>
+          </div>
+        )}
+
         {/* 3. Dados adicionais */}
         {planoSel && fichasSel.length > 0 && (
           <div style={S.card}>
@@ -901,6 +935,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         </div>
         {atividade && <div style={{ marginTop: 8, fontSize:13, color: 'rgba(247,241,230,0.7)' }}>Atividade: {atividade}</div>}
         {responsavel && <div style={{ fontSize:13, color: 'rgba(247,241,230,0.6)' }}>Resp. compras: {responsavel}</div>}
+        {Object.values(consumo).some(v => v) && (
+          <div style={{ fontSize:13, color: 'rgba(247,241,230,0.6)', marginTop: 2 }}>
+            Tipo de serviço: {Object.entries(consumo).filter(([, v]) => v).map(([k]) =>
+              k === 'bar' ? 'ECL BAR' : k === 'rest' ? 'ECL Restaurante' : k === 'interno' ? 'Consumo Interno' : 'Convidados'
+            ).join(', ')}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
           {fichasSelecionadas.map(f => (
             <span key={f.id} style={{ fontSize:13, padding: '2px 8px', borderRadius: 20, background: 'rgba(247,241,230,0.6)', color: 'var(--cream)' }}>
