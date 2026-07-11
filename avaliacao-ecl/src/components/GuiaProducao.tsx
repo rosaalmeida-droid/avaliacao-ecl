@@ -142,7 +142,7 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
         for (const v of variantes) {
           const linhaTab = linhas.find(l => l.includes('|') && l.toUpperCase().includes(v));
           if (linhaTab) {
-            const celulas = linhaTab.split('|').map(c => c.trim()).filter(c => c && !c.match(/^[-:]+$/));
+            const celulas = linhaTab.split('|').map((c: string) => c.trim()).filter((c: string) => c && !c.match(/^[-:]+$/));
             if (celulas.length >= 2) { valor = celulas[1]; break; }
           }
         }
@@ -300,7 +300,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
     // Tabela markdown
     if (l.includes('|')) {
       emTabela = true;
-      const celulas = l.split('|').map(c => c.trim()).filter(c => c);
+      const celulas = (l as string).split('|').map((c: string) => c.trim()).filter((c: string) => c);
       tabelaAtual.push(celulas);
       return;
     }
@@ -417,7 +417,7 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
     });
   }
 
-  const linhas = blocoPerguntas.split('\n').filter(l => l.trim());
+  const linhas = blocoPerguntas.split('\n').filter((l: string) => l.trim());
   const questoes: { tipo: string; pergunta: string; opcoes: string[]; id: string }[] = [];
   let qAtual: typeof questoes[0] | null = null;
 
@@ -593,7 +593,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
 
         {/* Chips de navegação rápida */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 16 }}>
-          {guia.secoes.map(s => (
+          {guia.secoes.map((s: SecaoGuia) => (
             <button key={s.num}
               onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)}
               style={{
@@ -611,7 +611,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
       </div>
 
       {/* ── SECÇÕES ── */}
-      {guia.secoes.map(s => (
+      {guia.secoes.map((s: SecaoGuia) => (
         <div key={s.num} className="guia-secao-card" style={{
           marginBottom: 10, borderRadius: 16, overflow: 'hidden',
           border: secaoAberta === s.num ? `2px solid ${s.cor}` : `1px solid ${s.cor}25`,
