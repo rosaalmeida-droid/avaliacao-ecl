@@ -7,12 +7,14 @@ import {
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
+  sincronizarDoSheets,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
 } from '../competenciasECL';
 import { GuiaProducao } from './GuiaProducao';
+import { gerarPDFGuiao } from './GerarPDFGuiao';
 import { CriteriosComp } from './CriteriosComp';
 import { ManualCozinheiro } from './ManualCozinheiro';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
@@ -365,11 +367,9 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   );
 
   useEffect(() => {
-    import('../backend').then(({ sincronizarDoSheets }) => {
-      sincronizarDoSheets(aluno.turmaId).then(() => {
-        setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
-      }).catch(() => {});
-    });
+    sincronizarDoSheets(aluno.turmaId).then(() => {
+      setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
+    }).catch(() => {});
   }, [aluno.turmaId]);
 
   const historicoAluno = getHistoricoAluno(aluno.id);
@@ -1464,15 +1464,13 @@ function SecaoGuiao({ fichas, plano, onConcluido }: {
       <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
         <button
           onClick={() => {
-            import('./GerarPDFGuiao').then(({ gerarPDFGuiao }) => {
-              const guia = (fichaGuiao as any).guiaParsed || { secoes: [], equilibrioSensorial: [] };
-              gerarPDFGuiao({
-                nomePrato: fichaGuiao.nomePrato || '',
-                ucId: plano.ucId,
-                ucNome: plano.ucNome,
-                guia,
-                textoOriginal: (fichaGuiao as any).textoGuia || '',
-              });
+            const guia = (fichaGuiao as any).guiaParsed || { secoes: [], equilibrioSensorial: [] };
+            gerarPDFGuiao({
+              nomePrato: fichaGuiao.nomePrato || '',
+              ucId: plano.ucId,
+              ucNome: plano.ucNome,
+              guia,
+              textoOriginal: (fichaGuiao as any).textoGuia || '',
             });
           }}
           style={{ padding:'8px 16px', borderRadius:10, border:'none',
