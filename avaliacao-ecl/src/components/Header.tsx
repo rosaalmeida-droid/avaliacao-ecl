@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PainelContextual, ContextoPainel } from './PainelContextual';
 import { Perfil } from '../types';
 import { LOGO_ECL as logoEcl } from '../logo_ecl';
 
@@ -277,13 +278,14 @@ export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus, o
 }
 
 // ── Layout completo do professor ────────────────────────────────
-export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, syncStatus, onAtualizar, children }: {
+export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, syncStatus, onAtualizar, contextoPainel, children }: {
   vistaAtiva: VistaProf;
   onNavegar: (v: VistaProf) => void;
   nomeProfessor: string;
   onSair: () => void;
   syncStatus?: 'idle' | 'syncing' | 'ok' | 'offline';
   onAtualizar?: () => void;
+  contextoPainel?: ContextoPainel;
   children: React.ReactNode;
 }) {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
@@ -311,35 +313,45 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: isMobile ? 0 : 240, minWidth: 0, transition: 'margin-left 0.22s', background: APP_BG }}>
-        <Topbar
-          perfil="professor"
-          nomeProfessor={nomeProfessor}
-          syncStatus={syncStatus}
-          onAtualizar={onAtualizar}
-          onAbrirMenu={() => setSidebarAberta(s => !s)}
-          subtitulo={itemAtivo?.label}
-        />
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          {/* Área principal */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <Topbar
+              perfil="professor"
+              nomeProfessor={nomeProfessor}
+              syncStatus={syncStatus}
+              onAtualizar={onAtualizar}
+              onAbrirMenu={() => setSidebarAberta(s => !s)}
+              subtitulo={itemAtivo?.label}
+            />
 
-        {/* Banner da secção activa */}
-        <div style={{ padding: '20px 28px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: PRIMARY + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: PRIMARY }}>
-              {itemAtivo?.icon}
+            {/* Banner da secção activa */}
+            <div style={{ padding: '20px 28px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: PRIMARY + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: PRIMARY }}>
+                  {itemAtivo?.icon}
+                </div>
+                <div>
+                  <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: FG, fontFamily: "'Nunito', 'DM Sans', sans-serif", lineHeight: 1.2 }}>
+                    {itemAtivo?.label || 'Avaliação ECL'}
+                  </h1>
+                  <p style={{ margin: 0, fontSize: 12, color: MUTED, marginTop: 2 }}>
+                    Avaliação ECL · {nomeProfessor}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: FG, fontFamily: "'Nunito', 'DM Sans', sans-serif", lineHeight: 1.2 }}>
-                {itemAtivo?.label || 'Avaliação ECL'}
-              </h1>
-              <p style={{ margin: 0, fontSize: 12, color: MUTED, marginTop: 2 }}>
-                Avaliação ECL · {nomeProfessor}
-              </p>
-            </div>
+
+            <main style={{ flex: 1, padding: '0 28px 36px', minWidth: 0, background: APP_BG }}>
+              {children}
+            </main>
           </div>
-        </div>
 
-        <main style={{ flex: 1, padding: '0 28px 36px', minWidth: 0, background: APP_BG }}>
-          {children}
-        </main>
+          {/* Painel contextual fixo à direita — só desktop */}
+          {!isMobile && contextoPainel && (
+            <PainelContextual contexto={contextoPainel} isMobile={isMobile} />
+          )}
+        </div>
       </div>
 
       <style>{`
