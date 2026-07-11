@@ -1,4 +1,4 @@
-import { DadosGuia } from './GuiaProducao';
+import { DadosGuia } from '../types';
 
 export interface OpcoesPDF {
   nomePrato: string;
