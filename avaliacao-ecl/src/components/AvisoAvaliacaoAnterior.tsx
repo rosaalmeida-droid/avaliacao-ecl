@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { mapaAvaliacoesAnteriores, addRegistoAvaliacao, RegistoAvaliacao } from '../backend';
-import { encontrarMicro, OBRIGATORIAS } from '../competenciasECL';
+import { encontrarMicro, OBRIGATORIAS } from '../compatECL';
 import { Aluno, PlanoAula } from '../types';
 import { ucsEquivalentes } from '../cronograma';
 
