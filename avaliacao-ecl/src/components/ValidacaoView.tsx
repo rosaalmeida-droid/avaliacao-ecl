@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SelecaoAluno, Validacao } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao } from '../backend';
-import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude } from '../competenciasECL';
+import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude } from '../compatECL';
 import { Card, Button, Field } from './ui';
 
 const NIVEIS_PROF = [
