@@ -12,7 +12,7 @@ import {
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
-} from '../competenciasECL';
+} from '../compatECL';
 import { GuiaProducao } from './GuiaProducao';
 import { gerarPDFGuiao } from './GerarPDFGuiao';
 import { CriteriosComp } from './CriteriosComp';
