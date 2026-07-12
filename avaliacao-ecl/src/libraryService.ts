@@ -12,8 +12,7 @@ import type {
 
 // ── Base URL dos ficheiros JSON ───────────────────────────────
 // Em produção: GitHub raw ou Vercel static
-const BASE_URL = import.meta.env.VITE_LIBRARY_BASE_URL
-  || 'https://raw.githubusercontent.com/rosaalmeida-droid/avaliacao-ecl/main/public/library';
+const BASE_URL = 'https://raw.githubusercontent.com/rosaalmeida-droid/avaliacao-ecl/main/public/library';
 
 // ── Singleton cache ───────────────────────────────────────────
 let _library: Library | null = null;
@@ -23,7 +22,7 @@ let _loading: Promise<Library> | null = null;
 async function fetchJSON<T>(name: string): Promise<T> {
   const res = await fetch(`${BASE_URL}/${name}`);
   if (!res.ok) throw new Error(`Erro ao carregar ${name}: ${res.status}`);
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 export async function loadLibrary(): Promise<Library> {
