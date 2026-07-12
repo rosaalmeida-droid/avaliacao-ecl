@@ -5,9 +5,9 @@ import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, bus
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
-import { obterComponenteCulinario } from '../componentesCulinarios';
+import { obterComponenteCulinario } from '../compatECL';
 import { GuiaProducao } from './GuiaProducao';
-import { sugerirSubtecnicas } from '../subtecnicas';
+import { sugerirSubtecnicas } from '../compatECL';
 import { getReferencialUC } from '../referencial811RA144';
 import { exportDOCX, exportPDF, gerarHTML } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
