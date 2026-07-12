@@ -6,8 +6,8 @@ import {
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC,
-} from '../competenciasECL';
-import { sugerirSubtecnicas, SUBTECNICAS } from '../subtecnicas';
+} from '../compatECL';
+import { sugerirSubtecnicas, SUBTECNICAS } from '../compatECL';
 import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
