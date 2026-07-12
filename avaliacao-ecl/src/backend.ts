@@ -11,7 +11,7 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
 } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './competenciasECL';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 
