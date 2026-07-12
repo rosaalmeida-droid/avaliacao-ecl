@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { getHistoricoAvaliacoes, getAlunos, addAluno, RegistoAvaliacao } from '../backend';
-import { OBRIGATORIAS, encontrarMicro, encontrarAtitude } from '../competenciasECL';
+import { OBRIGATORIAS, encontrarMicro, encontrarAtitude } from '../compatECL';
 import { CriteriosComp } from './CriteriosComp';
 import { UCS_COZINHA } from './PlanoAula';
 
