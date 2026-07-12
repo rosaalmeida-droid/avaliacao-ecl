@@ -31,29 +31,30 @@ export async function loadLibrary(): Promise<Library> {
 
   _loading = (async () => {
     console.log('[Library] A carregar biblioteca V10...');
+    const results = await Promise.all([
+      fetchJSON<any[]>('tecnicas.json'),
+      fetchJSON<any[]>('subtecnicas.json'),
+      fetchJSON<any[]>('perfis.json'),
+      fetchJSON<any[]>('criterios.json'),
+      fetchJSON<any[]>('conhecimentos.json'),
+      fetchJSON<any[]>('aptidoes.json'),
+      fetchJSON<any[]>('aparelhos.json'),
+      fetchJSON<any[]>('produtos.json'),
+      fetchJSON<any[]>('preparacoes_mlm.json'),
+      fetchJSON<any[]>('preparacoes_int.json'),
+      fetchJSON<any[]>('preparacoes_base.json'),
+      fetchJSON<any[]>('atitudes.json'),
+      fetchJSON<any[]>('uc_base.json'),
+      fetchJSON<any[]>('uc_ufcd_map.json'),
+      fetchJSON<any>('uc_ufcd_lookup.json'),
+      fetchJSON<any>('index.json'),
+    ]);
     const [
       tecnicas, subtecnicas, perfis, criterios,
       conhecimentos, aptidoes, aparelhos, produtos,
       preparacoes_mlm, preparacoes_int, preparacoes_base,
       atitudes, uc_base, uc_ufcd_map, lookup, index
-    ] = await Promise.all([
-      fetchJSON('tecnicas.json'),
-      fetchJSON('subtecnicas.json'),
-      fetchJSON('perfis.json'),
-      fetchJSON('criterios.json'),
-      fetchJSON('conhecimentos.json'),
-      fetchJSON('aptidoes.json'),
-      fetchJSON('aparelhos.json'),
-      fetchJSON('produtos.json'),
-      fetchJSON('preparacoes_mlm.json'),
-      fetchJSON('preparacoes_int.json'),
-      fetchJSON('preparacoes_base.json'),
-      fetchJSON('atitudes.json'),
-      fetchJSON('uc_base.json'),
-      fetchJSON('uc_ufcd_map.json'),
-      fetchJSON('uc_ufcd_lookup.json'),
-      fetchJSON('index.json'),
-    ]);
+    ] = results;
 
     _library = {
       tecnicas, subtecnicas, perfis, criterios,
@@ -66,7 +67,7 @@ export async function loadLibrary(): Promise<Library> {
       gerado_em: (index as any).gerado_em,
     } as Library;
 
-    console.log(`[Library] ✅ V${_library.version} carregada — ${perfis.length} perfis, ${criterios.length} critérios`);
+    console.log(`[Library] ✅ V${_library.version} carregada — ${(perfis as any[]).length} perfis, ${(criterios as any[]).length} critérios`);
     return _library;
   })();
 
