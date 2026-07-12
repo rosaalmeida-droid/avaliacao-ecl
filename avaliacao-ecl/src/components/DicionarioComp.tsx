@@ -10,8 +10,8 @@
 // ============================================================
 
 import React, { useState, useMemo } from 'react';
-import { SUBTECNICAS } from '../subtecnicas';
-import { MICROCOMPETENCIAS, encontrarMicro } from '../competenciasECL';
+import { SUBTECNICAS } from '../compatECL';
+import { MICROCOMPETENCIAS, encontrarMicro } from '../compatECL';
 import { addAviso } from '../backend';
 
 interface Props {
