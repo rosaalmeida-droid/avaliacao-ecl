@@ -8,7 +8,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
-import { encontrarMicro, encontrarAtitude } from '../competenciasECL';
+import { encontrarMicro, encontrarAtitude } from '../compatECL';
 
 interface Props {
   /** ID da competência (ex: 'M0065', 'ATT_01', 'OBR_01') */
