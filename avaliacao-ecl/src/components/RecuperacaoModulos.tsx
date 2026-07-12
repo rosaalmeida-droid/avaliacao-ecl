@@ -7,7 +7,7 @@ import {
   gerarPlanoRecuperacaoComIA,
   recuperacaoEstaTrancada,
 } from '../backend';
-import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } from '../competenciasECL';
+import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } from '../compatECL';
 import { gerarPerguntasDefesaOral } from '../matrizEvidencias';
 import { getReferencialUC } from '../referencial811RA144';
 import { UCS_COZINHA } from './PlanoAula';
