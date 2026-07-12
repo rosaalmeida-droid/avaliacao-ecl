@@ -7,7 +7,7 @@
 // ============================================================
 
 import { Validacao, HistoricoAluno, HistoricoCompetencia, Categoria, SelecaoAluno, Comanda, Atividade, NIVEL_AUTO_NOTA } from './types';
-import { TECNICAS, ATITUDES, RESPONSABILIDADES, TODAS_COMPETENCIAS } from './competencias';
+import { TECNICAS, ATITUDES, RESPONSABILIDADES, TODAS_COMPETENCIAS } from './compatECL';
 
 export const LIMIAR_DOMINIO = 12;
 
