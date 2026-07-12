@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Comanda, ModoTrabalho, TipoServico, TIPO_SERVICO_LABEL, Categoria } from '../types';
 import { Button, Card, Field, Chip } from './ui';
-import { sugerirTecnicas, sugerirTecnicasPorServico, sugerirAtitudes, sugerirResponsabilidades, getCompetencia } from '../competencias';
+import { sugerirTecnicas, sugerirTecnicasPorServico, sugerirAtitudes, sugerirResponsabilidades, getCompetencia } from '../compatECL';
 import { getAlunos } from '../backend';
 
 export interface EditorComandaState {
