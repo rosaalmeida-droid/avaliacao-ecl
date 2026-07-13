@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, nomeCompetencia } from '../compatECL';
+import { getLibrary } from '../libraryService';
 
 interface Props {
   compId: string;
