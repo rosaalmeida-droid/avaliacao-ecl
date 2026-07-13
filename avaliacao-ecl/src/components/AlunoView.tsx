@@ -1914,7 +1914,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
                   {notasMicro[m.id] && (() => {
                     const frases = getFrasesParaCompetencia(m.id, m.nome);
-                    const idx = ['nao','ajuda','sozinho','autonomia'].indexOf(notasMicro[m.id]);
+                    const idx = ['nao','ajuda','sozinho','autonomia'].indexOf(notasMicro[m.id] as string);
                     return idx >= 0 ? (
                       <div style={{ margin:'10px 0', padding:'10px 12px', borderRadius:8,
                         background:'rgba(181,101,29,0.06)', fontSize:12, color:'rgba(26,23,20,0.7)', fontStyle:'italic' }}>
