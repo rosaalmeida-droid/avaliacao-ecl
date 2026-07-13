@@ -5,9 +5,9 @@ import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, bus
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
-import { obterComponenteCulinario } from '../compatECL';
+import { obterComponenteCulinario } from '../componentesCulinarios';
 import { GuiaProducao } from './GuiaProducao';
-import { sugerirSubtecnicas } from '../compatECL';
+import { sugerirSubtecnicas } from '../subtecnicas';
 import { getReferencialUC } from '../referencial811RA144';
 import { exportDOCX, exportPDF, gerarHTML } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
@@ -898,45 +898,58 @@ NÃO incluir técnicas de outras famílias — se a família é Sobremesas, não
 
 Microcompetências técnicas — usa EXACTAMENTE estes nomes (máx 6):
   CORTES E PREPARAÇÕES BASE:
-    Brunoise | Juliana | Chiffonade | Rondelles | Mirepoix | Macedónia | Paisana
+    Brunoise | Juliana | Chiffonade | Rodelas | Meias-luas | Gomos | Mirepoix | Paysanne | Macedónia | Bâtonnet | Jardineira
+    Tiras finas | Lâminas finas | Cubos pequenos | Concassé de tomate | Ciselar cebola
     Filetar peixe | Escamar peixe | Retirar espinhas | Retirar pele peixe | Porcionar peixe
     Preparar marisco | Descascar camarão | Abrir bivalves
     Aparar carne | Desossar | Selar carne | Porcionar carne | Bridage/atar aves
-    Tornear legumes | Corte em jardineira
+    Tornear legumes | Escalopes | Medalhões | Supremos
 
   MÉTODOS DE CONFEÇÃO:
-    Cozer em água | Cozer a vapor | Escalfar/pochar | Branquear
+    Fervura suave | Fervura controlada | Cozer por absorção | Cozer massa al dente
+    Cozer arroz solto | Cozer arroz cremoso | Cozer caldo/fundo
+    Branquear | Escalfar | Cozer a vapor | Cozer em banho-maria | Cozer sous-vide
     Saltear | Fritar por imersão | Grelhar | Assar no forno
-    Estufar | Guisar | Brasear | Confitar | Gratinar
-    Cozer em banho-maria | Cozer sous-vide
+    Estufar | Guisar | Brasear | Confitar | Gratinar | Desidratar
 
-  FUNDOS E MOLHOS:
+  FUNDOS, MOLHOS E LIGAÇÕES:
     Fundo branco | Fundo escuro | Fumet de peixe | Fundo de legumes
-    Bechamel | Velouté | Redução de molho | Emulsão quente | Emulsão fria
-    Molho de tomate | Demi-glace
+    Roux branco | Roux louro | Roux escuro | Beurre manié | Amido disperso a frio
+    Ligação com gema | Ligação com natas | Ligação por redução
+    Gelatinização de amido em creme pasteleiro
+    Bechamel | Velouté | Maionese | Molho holandês | Ganache
+    Redução de molho | Emulsão quente | Emulsão fria | Molho de tomate | Demi-glace
 
   PASTELARIA E DOÇARIA:
-    Massa folhada | Détrempe | Tourage | Massa quebrada/areada
-    Massa choux | Génoise/massa montada | Biscuit | Dacquoise
-    Creme pasteleiro | Creme inglês | Chantilly | Ganache
-    Mousse | Bavaroise | Panna cotta | Creme de nata
-    Coulis/compota | Caramelizar | Temperagem de chocolate
-    Macaron | Éclair | Mille-feuille | Sobremesa empratada
+    Laminar massa folhada clássica | Détrempe | Tourage | Massa quebrada/areada
+    Massa choux clássica | Biscuit | Dacquoise
+    Bater pão-de-ló quente | Bater pão-de-ló frio | Bater gemas com açúcar
+    Montar claras em espuma firme | Montar natas firmes
+    Creme pasteleiro | Creme inglês | Chantilly | Ganache montada
+    Mousse | Bavaroise | Panna cotta
+    Caramelo seco | Caramelo húmido | Caramelização superficial com maçarico
+    Temperagem por tablage | Temperagem por semeadura
+    Macaron | Éclair | Mille-feuille | Sobremesa empratada | Coulis/compota
 
   PANIFICAÇÃO:
-    Amassar | Fermentar | Dividir e bolear | Moldar pão | Cozer pão
-    Poolish/fermento prévio | Massa mãe/levain | Slash/golpear
+    Amassadura direta de pão | Fermentação direta | Fermentação com poolish
+    Fermentação com levain | Modelar baguete | Modelar boule | Assar pão
+    Golpear | Levedar
 
   HIGIENE E CONTROLO:
     Organizar posto de trabalho | Controlar temperaturas
     Armazenamento refrigerado | Etiquetagem e lote | Verificar validades
 
-Subtécnicas específicas — usa EXACTAMENTE estes nomes quando aplicável:
-  S058a — Corte em Rondelle/Demi-lune
-  S058b — Corte em Gomos
-  S058c — Corte em Bâton
-  S162B — Massa montada (génoise, esponja, pão de ló, biscuit)
-  S164D — Mousse (técnica de incorporação de ar)
+Subtécnicas específicas — usa EXACTAMENTE estes nomes e IDs quando aplicável:
+  SUB-COR-030-009 — Rodelas
+  SUB-COR-030-010 — Meias-luas
+  SUB-COR-030-011 — Gomos
+  SUB-COR-030-006 — Bâtonnet
+  SUB-PAP-075-008 — Bater pão-de-ló quente
+  SUB-PAP-075-009 — Bater pão-de-ló frio
+  SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro
+  SUB-PAP-086-008 — Caramelização superficial com maçarico
+  SUB-PAP-087-001 — Temperagem por tablage
 
 ═══════════════════════════════════════════════════
 FORMATO DE RESPOSTA (manter exactamente)
@@ -1001,7 +1014,7 @@ MICROCOMPETÊNCIAS DETECTADAS:
 [máx 6, uma por linha]
 
 SUBTÉCNICAS DETECTADAS:
-[lista de subtécnicas específicas (S058a, S058b, S058c, S162B, S164D) se aplicável]
+[lista de subtécnicas específicas com ID e nome — ex: SUB-COR-030-009 — Rodelas]
 [ou "nenhuma"]
 
 ---
@@ -1141,7 +1154,7 @@ Cozer no forno
 Controlar temperaturas
 
 SUBTÉCNICAS DETECTADAS:
-S162B — Massa montada (se a variante usar génoise como base)
+SUB-PAP-075-008 — Bater pão-de-ló quente (se a variante usar génoise como base)
 
 
 ---
