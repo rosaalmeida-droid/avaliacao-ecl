@@ -12,7 +12,11 @@ import {
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
+, encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos, nomeCompetencia,
+  encontrarConhecimento,
 } from '../compatECL';
+import { getLibrary } from '../libraryService';
+import { getFrasesParaCompetencia } from '../frases_subtecnicas';
 import { GuiaProducao } from './GuiaProducao';
 import { gerarPDFGuiao } from './GerarPDFGuiao';
 import { CriteriosComp } from './CriteriosComp';
@@ -1739,19 +1743,59 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     return evidenciasKF.some(e => e.competenciaId === compId);
   }
 
-  // Usar família das fichas como filtro principal — mais preciso que filtro por UC
-  // Combina família1 + família2 + etiquetas de todas as fichas do plano
+  // ── Competências desta aula — usa SUB-xxx e APP-xxx da ficha ─
+  function _nivelPermitido(nivel: number): boolean {
+    if (!aluno.nivelMedidas || aluno.nivelMedidas === 1) return true;
+    if (aluno.nivelMedidas === 2) return nivel <= 2;
+    if (aluno.nivelMedidas === 3) return nivel === 1;
+    return true;
+  }
+
+  // SUB-xxx: subtécnicas da biblioteca
+  const subIdsRaw = fichas.flatMap((f: any) => (f.tecnicasSugeridas || []).filter((id: string) => id.startsWith('SUB-')));
+  const subIdsFiltrados = [...new Set(subIdsRaw)].filter((id: string) => !compRemovidas.includes(id));
+
+  // APP-xxx: aparelhos filtrados pelo nível de medidas
+  const appIdsRaw = fichas.flatMap((f: any) => ((f as any).aparelhosDetectados || []).filter((id: string) => id.startsWith('APP-')));
+  const appIdsFiltrados = [...new Set(appIdsRaw)].filter((id: string) => {
+    if (compRemovidas.includes(id)) return false;
+    const app = encontrarAparelho(id);
+    return app ? _nivelPermitido(app.nivel) : true;
+  });
+
+  // Subtécnicas como objectos para display
+  const subsSug = subIdsFiltrados.slice(0, 6).map((id: string) => {
+    const sub = encontrarSubtecnica(id);
+    const hist = getHistoricoAlunoMicro(aluno.id, id);
+    const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+    const emReg = estaEmRegressao(avs);
+    const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliada' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidada';
+    return { id, nome: sub?.nome || id, motivo };
+  });
+
+  // Aparelhos como objectos para display
+  const aparelhosSug = appIdsFiltrados.slice(0, 4).map((id: string) => {
+    const app = encontrarAparelho(id);
+    const hist = getHistoricoAlunoMicro(aluno.id, id);
+    const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+    const emReg = estaEmRegressao(avs);
+    const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca preparado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
+    return { id, nome: app?.nome || id, nivel: app?.nivel || 1, categoria: app?.categoria || '', motivo };
+  });
+
+  // Fallback — se não há SUB/APP da ficha, usar sistema antigo
+  const usarFallback = subsSug.length === 0 && aparelhosSug.length === 0;
   const familia1 = fichas.length > 0 ? (fichas[0] as any).familia1 : undefined;
   const familia2 = fichas.length > 0 ? (fichas[0] as any).familia2 : undefined;
   const etiquetas = fichas.flatMap((f: any) => f.etiquetas || []);
-  const microsDaUCEsp = (familia1 || familia2)
+  const microsDaUCEsp = usarFallback ? ((familia1 || familia2)
     ? microsPorFamilia(familia1, familia2, etiquetas, ucId)
-    : ucId ? microsPorUC(ucId) : [];
+    : ucId ? microsPorUC(ucId) : []) : [];
   const microsEstr = MICROCOMPETENCIAS.filter(m => m.prioridade==='A');
   const microsDaUC = microsDaUCEsp.length>=3
     ? microsDaUCEsp
     : [...microsDaUCEsp,...microsEstr.filter(m=>!microsDaUCEsp.find(x=>x.id===m.id))].slice(0,8);
-  const microsSug = microsDaUC
+  const microsSug = usarFallback ? microsDaUC
     .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
     .map(m => {
       const hist = getHistoricoAlunoMicro(aluno.id, m.id);
@@ -1759,7 +1803,23 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       const emReg = estaEmRegressao(avs);
       const motivo = emReg?'⚠️ Em regressão':avs.length===0?'★ Nunca avaliada':!jaTeveSucesso(avs)?'↑ Em desenvolvimento':'✓ Consolidada';
       return {...m, motivo};
-    });
+    }) : [];
+
+  // ── Conhecimentos — visíveis em planos teóricos ou mistos ──
+  const tipoPlanAula = (plano as any).tipoPlanAula || (subIdsFiltrados.length === 0 && appIdsFiltrados.length === 0 ? 'teorico' : 'pratico');
+  const knwIds = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('KNW-'));
+  // Em plano teórico: mostrar KNW das compAdicionadas (professor acrescenta via VistaDePlano)
+  const conhecimentosSug = (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto') ? knwIds
+    .filter((id: string) => !compRemovidas.includes(id))
+    .slice(0, 6)
+    .map((id: string) => {
+      const knw = encontrarConhecimento(id);
+      const hist = getHistoricoAlunoMicro(aluno.id, id);
+      const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+      const emReg = estaEmRegressao(avs);
+      const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
+      return { id, nome: knw?.nome || id, definicao: knw?.definicao || '', motivo };
+    }) : [];
 
   const [nivelHigiene, setNivelHigiene] = useState<string|null>(null);
   const [nivelHaccp, setNivelHaccp] = useState<string|null>(null);
@@ -1772,9 +1832,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   });
 
   const OPCOES = [
-    { v:'sozinho', label:'Consigo sozinho/a', emoji:'💪', cor:T.sage,   bg:T.sageP },
-    { v:'ajuda',   label:'Com ajuda',          emoji:'🤝', cor:T.copper, bg:T.copperP },
-    { v:'nao',     label:'Ainda não consigo',  emoji:'📖', cor:T.danger, bg:T.dangerP },
+    { v:'nao',       label:'Não consegui',   emoji:'📖', cor:T.danger, bg:T.dangerP },
+    { v:'ajuda',     label:'Com ajuda',       emoji:'🤝', cor:T.copper, bg:T.copperP },
+    { v:'sozinho',   label:'Consegui',        emoji:'✅', cor:T.sage,   bg:T.sageP },
+    { v:'autonomia', label:'Com autonomia',   emoji:'🌟', cor:'#0369a1', bg:'rgba(3,105,161,0.08)' },
   ];
 
   const prontoParaSubmeter = nivelHigiene!==null && nivelHaccp!==null;
@@ -1829,7 +1890,164 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         ))}
       </div>
 
-      {/* Técnicas */}
+      {/* Subtécnicas (SUB-xxx) */}
+      {subsSug.length>0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:T.copper, marginBottom:12 }}>🔬 Técnicas desta aula</div>
+          {subsSug.map(m => (
+            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
+              border:`1.5px solid ${microAberta===m.id?T.copper:T.border}` }}>
+              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+                background:microAberta===m.id?T.copperP:'#fff', border:'none', cursor:'pointer', textAlign:'left',
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
+                </div>
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+              </button>
+              {microAberta===m.id && (
+                <div style={{ padding:'12px 16px', borderTop:`2px solid ${T.copper}`, background:'#fdfcfb' }}>
+                  <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
+                  {notasMicro[m.id] && (() => {
+                    const frases = getFrasesParaCompetencia(m.id, m.nome);
+                    const idx = ['nao','ajuda','sozinho','autonomia'].indexOf(notasMicro[m.id]);
+                    return idx >= 0 ? (
+                      <div style={{ margin:'10px 0', padding:'10px 12px', borderRadius:8,
+                        background:'rgba(181,101,29,0.06)', fontSize:12, color:'rgba(26,23,20,0.7)', fontStyle:'italic' }}>
+                        "{frases[idx]}"
+                      </div>
+                    ) : null;
+                  })()}
+                  <div style={{ marginTop:12 }} />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                    {OPCOES.map(op => (
+                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
+                        padding:'10px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
+                        background:notasMicro[m.id]===op.v?op.bg:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        fontSize:11, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                      }}>
+                        <span style={{ fontSize:20 }}>{op.emoji}</span>{op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Aparelhos (APP-xxx) — preparações base, filtradas pelo nível de medidas */}
+      {aparelhosSug.length>0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:'#5B67EA', marginBottom:12 }}>🧪 Preparações base desta aula</div>
+          {aluno.nivelMedidas === 3 && (
+            <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
+              background:'rgba(181,101,29,0.06)', borderRadius:8 }}>
+              ℹ️ Só são apresentadas preparações de Nível 1 (adequadas ao teu plano de estudos)
+            </div>
+          )}
+          {aluno.nivelMedidas === 2 && (
+            <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
+              background:'rgba(181,101,29,0.06)', borderRadius:8 }}>
+              ℹ️ São apresentadas preparações de Nível 1 e 2 (adequadas ao teu plano de estudos)
+            </div>
+          )}
+          {aparelhosSug.map(m => (
+            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
+              border:`1.5px solid ${microAberta===m.id?'#5B67EA':T.border}` }}>
+              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+                background:microAberta===m.id?'rgba(91,103,234,0.06)':'#fff', border:'none', cursor:'pointer', textAlign:'left',
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
+                    <span style={{ fontSize:10, fontWeight:700, padding:'2px 6px', borderRadius:100,
+                      background: m.nivel===1?'rgba(90,122,78,0.15)':m.nivel===2?'rgba(181,101,29,0.15)':'rgba(192,57,43,0.15)',
+                      color: m.nivel===1?'#5a7a4e':m.nivel===2?'#b5651d':'#c0392b' }}>N{m.nivel}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.categoria} · {m.motivo}</div>
+                </div>
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                <span style={{ fontSize:18, color:'#5B67EA', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+              </button>
+              {microAberta===m.id && (
+                <div style={{ padding:'12px 16px', borderTop:'2px solid #5B67EA', background:'#fdfcfb' }}>
+                  <CriteriosComp compId={m.id} cor='#5B67EA' abertaInicial={true} />
+                  <div style={{ marginTop:12 }} />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                    {OPCOES.map(op => (
+                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
+                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
+                        background:notasMicro[m.id]===op.v?op.bg:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                      }}>
+                        <span style={{ fontSize:24 }}>{op.emoji}</span>{op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Conhecimentos (KNW-xxx) — plano teórico ou misto */}
+      {conhecimentosSug.length>0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:'#0369a1', marginBottom:12 }}>📚 Conhecimentos desta aula</div>
+          {conhecimentosSug.map(m => (
+            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
+              border:`1.5px solid ${microAberta===m.id?'#0369a1':T.border}` }}>
+              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+                background:microAberta===m.id?'rgba(3,105,161,0.06)':'#fff', border:'none', cursor:'pointer', textAlign:'left',
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
+                </div>
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                <span style={{ fontSize:18, color:'#0369a1', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+              </button>
+              {microAberta===m.id && (
+                <div style={{ padding:'12px 16px', borderTop:'2px solid #0369a1', background:'#fdfcfb' }}>
+                  {m.definicao && (
+                    <div style={{ fontSize:12, color:'rgba(26,23,20,0.6)', marginBottom:12, padding:'8px', background:'rgba(3,105,161,0.05)', borderRadius:8 }}>
+                      {m.definicao}
+                    </div>
+                  )}
+                  <div style={{ marginTop:12 }} />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                    {OPCOES.map(op => (
+                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
+                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
+                        background:notasMicro[m.id]===op.v?op.bg:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                      }}>
+                        <span style={{ fontSize:24 }}>{op.emoji}</span>{op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Fallback — sistema antigo quando não há SUB/APP */}
       {microsSug.length>0 && (
         <div style={{ marginBottom:20 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
@@ -1845,15 +2063,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
                   <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
                 </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>
-                  {notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}
-                </span>}
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
               </button>
               {microAberta===m.id && (
                 <div style={{ padding:'12px 16px', borderTop:`2px solid ${T.copper}`, background:'#fdfcfb' }}>
                   <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
-                  <div style={{ marginTop: 12 }} />
+                  <div style={{ marginTop:12 }} />
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
                     {OPCOES.map(op => (
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
@@ -1862,8 +2078,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                         fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
-                        <span style={{ fontSize:24 }}>{op.emoji}</span>
-                        {op.label}
+                        <span style={{ fontSize:24 }}>{op.emoji}</span>{op.label}
                       </button>
                     ))}
                   </div>
