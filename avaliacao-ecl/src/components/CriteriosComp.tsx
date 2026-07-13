@@ -1,38 +1,65 @@
 // ============================================================
 // CriteriosComp.tsx
-// Accordion reutilizável para mostrar critérios observáveis
-// de uma microcompetência ou competência.
-//
-// Usado em: AlunoView, GestaoRecuperacoes, AvaliacaoPorUC,
-//           VistaDePlano (professor)
+// Accordion reutilizável para critérios observáveis.
+// Resolve: PERF-xxx (perfis), SUB-xxx (subtécnicas),
+//          APP-xxx (aparelhos), ATT_xx (atitudes), OBR_xx
 // ============================================================
 
 import React, { useState } from 'react';
-import { encontrarMicro, encontrarAtitude } from '../compatECL';
+import { encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, nomeCompetencia } from '../compatECL';
 
 interface Props {
-  /** ID da competência (ex: 'M0065', 'ATT_01', 'OBR_01') */
   compId: string;
-  /** Cor de destaque — adapta ao contexto (cobre para técnicas, roxo para atitudes) */
   cor?: string;
-  /** Se true, abre imediatamente (útil quando já está num accordion pai) */
   abertaInicial?: boolean;
-  /** Critérios congelados do plano (quando aula já foi realizada) — têm prioridade */
   criteriosCongelados?: Record<string, { criterio: string; como?: string }[]>;
 }
 
 export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = false, criteriosCongelados }: Props) {
   const [aberta, setAberta] = useState(abertaInicial);
 
-  // Resolver a competência — micro, atitude ou subtécnica direta
-  const micro   = encontrarMicro(compId);
-  const atitude = !micro ? encontrarAtitude(compId) : null;
+  // ── Resolver o item pelo tipo do ID ──────────────────────
+  let criterios: { criterio: string; como?: string }[] = [];
+  let nomeItem = compId;
+  let descricao = '';
 
-  // Prioridade: 1º critérios congelados do plano (aula realizada), 2º critérios do código
-  const criterios: { criterio: string; como?: string }[] =
-    (criteriosCongelados?.[compId]) || micro?.criterios || [];
+  // 1. Critérios congelados do plano têm sempre prioridade
+  if (criteriosCongelados?.[compId]) {
+    criterios = criteriosCongelados[compId];
+  }
 
-  if (criterios.length === 0) return null;
+  if (criterios.length === 0) {
+    if (compId.startsWith('SUB-')) {
+      const sub = encontrarSubtecnica(compId);
+      nomeItem = sub?.nome || compId;
+      descricao = sub?.definicao || '';
+      if (sub?.resultado_esperado) {
+        criterios = [{ criterio: sub.resultado_esperado, como: 'Resultado observável final' }];
+      }
+    } else if (compId.startsWith('KNW-')) {
+      const lib = getLibrary();
+      const knw = (lib.conhecimentos as any[]).find(k => k.id === compId);
+      nomeItem = knw?.nome || compId;
+      descricao = knw?.definicao || '';
+      // Conhecimentos não têm critérios — a definição É o critério
+    } else if (compId.startsWith('APP-')) {
+      const app = encontrarAparelho(compId);
+      nomeItem = app?.nome || compId;
+      descricao = app?.definicao || '';
+      if ((app as any)?.ambito_profissional) {
+        criterios = [
+          { criterio: `Preparação correcta: ${(app as any).ambito_profissional}`, como: 'Âmbito profissional' },
+        ];
+      }
+    } else {
+      const micro = encontrarMicro(compId);
+      const atitude = !micro ? encontrarAtitude(compId) : null;
+      nomeItem = micro?.nome || atitude?.nome || compId;
+      criterios = micro?.criterios || [];
+    }
+  }
+
+  if (criterios.length === 0 && !descricao) return null;
 
   return (
     <div style={{ marginTop: 6 }}>
@@ -45,7 +72,7 @@ export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = f
         }}
       >
         <span style={{ fontSize: 10, transform: aberta ? 'rotate(90deg)' : 'none', transition: '0.15s', display: 'inline-block' }}>▶</span>
-        {aberta ? 'Esconder' : `Ver ${criterios.length} critérios observáveis`}
+        {aberta ? 'Esconder' : criterios.length > 0 ? `Ver ${criterios.length} critérios observáveis` : 'Ver descrição'}
       </button>
 
       {aberta && (
@@ -54,6 +81,11 @@ export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = f
           background: 'rgba(0,0,0,0.03)', borderRadius: 8,
           borderLeft: `3px solid ${cor}`,
         }}>
+          {descricao && (
+            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 6, fontStyle: 'italic' }}>
+              {descricao}
+            </div>
+          )}
           {criterios.map((cr, i) => (
             <div key={i} style={{
               fontSize: 12, color: 'rgba(26,23,20,0.75)',
