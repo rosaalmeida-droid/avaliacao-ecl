@@ -288,3 +288,94 @@ export function obterComponenteCulinario(categoria?: string): string {
 
 // ── no-op ────────────────────────────────────────────────────
 export function registarSubtecnicas(_subs: unknown): void {}
+
+// ════════════════════════════════════════════════════════════
+// NOVAS FUNÇÕES V10 — aparelhos, subtécnicas, conhecimentos
+// ════════════════════════════════════════════════════════════
+
+// ── Aparelhos (APP-xxxx) ─────────────────────────────────────
+export function encontrarAparelho(id: string): {
+  id: string; nome: string; categoria: string; nivel: number;
+  definicao?: string; ambito_profissional?: string;
+} | undefined {
+  return (getLibrary().aparelhos as any[]).find(a => a.id === id);
+}
+
+// ── Subtécnicas (SUB-xxx-xxx-xxx) ────────────────────────────
+export function encontrarSubtecnica(id: string): {
+  id: string; nome: string; tecnica_id?: string;
+  definicao?: string; resultado_esperado?: string;
+} | undefined {
+  return (getLibrary().subtecnicas as any[]).find(s => s.id === id) as any;
+}
+
+// ── Conhecimentos (KNW-xxxxx) ─────────────────────────────────
+export function encontrarConhecimento(id: string): {
+  id: string; nome: string; nivel: number; dominio: string;
+  familia_tecnica: string; definicao: string;
+} | undefined {
+  return (getLibrary().conhecimentos as any[]).find(k => k.id === id);
+}
+
+// ── Aptidões (APT-xxxxx) ──────────────────────────────────────
+export function encontrarAptidao(id: string): {
+  id: string; nome: string; nivel: number; dominio: string;
+  familia_tecnica: string; manifestacao_observavel: string;
+} | undefined {
+  return (getLibrary().aptidoes as any[]).find(a => a.id === id);
+}
+
+// ── Nome de qualquer ID ───────────────────────────────────────
+export function nomeCompetencia(id: string): string {
+  if (id.startsWith('SUB-')) return encontrarSubtecnica(id)?.nome || id;
+  if (id.startsWith('APP-')) return encontrarAparelho(id)?.nome || id;
+  if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;
+  if (id.startsWith('KNW-')) return encontrarConhecimento(id)?.nome || id;
+  if (id.startsWith('APT-')) return encontrarAptidao(id)?.nome || id;
+  if (id.startsWith('OBR_')) {
+    const obrs: Record<string,string> = {
+      'OBR_01': 'Higiene pessoal',
+      'OBR_02': 'Higiene e Segurança Alimentar / KitchenFlow',
+      'OBR_03': 'Assiduidade e pontualidade',
+    };
+    return obrs[id] || id;
+  }
+  return encontrarMicro(id)?.nome || id;
+}
+
+// ── Tipo de qualquer ID ───────────────────────────────────────
+export function tipoCompetencia(id: string): 'subtecnica' | 'aparelho' | 'conhecimento' | 'aptidao' | 'micro' | 'atitude' | 'obrigatoria' {
+  if (id.startsWith('SUB-')) return 'subtecnica';
+  if (id.startsWith('APP-')) return 'aparelho';
+  if (id.startsWith('KNW-')) return 'conhecimento';
+  if (id.startsWith('APT-')) return 'aptidao';
+  if (id.startsWith('ATT_')) return 'atitude';
+  if (id.startsWith('OBR_')) return 'obrigatoria';
+  return 'micro';
+}
+
+// ── Nível de aparelho ─────────────────────────────────────────
+export function nivelAparelho(id: string): number {
+  return encontrarAparelho(id)?.nivel || 1;
+}
+
+// ── Filtrar aparelhos por nível de medidas do aluno ───────────
+// nivelMedidas: undefined/1=regular(tudo), 2=seletivas(nível 1-2), 3=adicionais(só 1)
+export function aparelhosPermitidos(ids: string[], nivelMedidas?: number): string[] {
+  return ids.filter(id => {
+    if (!id.startsWith('APP-')) return true;
+    const nivel = nivelAparelho(id);
+    if (!nivelMedidas || nivelMedidas === 1) return true;
+    if (nivelMedidas === 2) return nivel <= 2;
+    if (nivelMedidas === 3) return nivel === 1;
+    return true;
+  });
+}
+
+// ── Conhecimentos da biblioteca por domínio/família ───────────
+export function conhecimentosDaBiblioteca(familia?: string, dominio?: string): any[] {
+  let items = getLibrary().conhecimentos as any[];
+  if (familia) items = items.filter(k => k.familia_tecnica === familia);
+  if (dominio) items = items.filter(k => k.dominio === dominio);
+  return items;
+}
