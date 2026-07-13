@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao } from '../backend';
-import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } , encontrarAparelho, encontrarSubtecnica, nomeCompetencia,
-} from '../compatECL';
+import { encontrarMicro, encontrarAtitude, OBRIGATORIAS, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
 import { GuiaProducao } from './GuiaProducao';
