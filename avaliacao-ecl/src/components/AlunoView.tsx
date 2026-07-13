@@ -12,8 +12,8 @@ import {
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
-, encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos, nomeCompetencia,
-  encontrarConhecimento,
+  encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos,
+  nomeCompetencia, encontrarConhecimento,
 } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { getFrasesParaCompetencia } from '../frases_subtecnicas';
