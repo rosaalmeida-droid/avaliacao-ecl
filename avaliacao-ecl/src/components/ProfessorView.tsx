@@ -5,7 +5,7 @@ import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, bus
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
-import { obterComponenteCulinario } from '../componentesCulinarios';
+import { obterComponenteCulinario } from '../compatECL';
 import { GuiaProducao } from './GuiaProducao';
 import { sugerirSubtecnicas } from '../compatECL';
 import { getReferencialUC } from '../referencial811RA144';
@@ -197,6 +197,7 @@ interface FichaTecnica {
   etiquetas?: string[];     // contexto adicional — máx 3
   tecnicasDetectadas?: string[];
   textoGuia?: string;       // texto do Guia de Apoio à Produção colado pelo professor
+  aparelhosDetectados?: string[];
 }
 
 const FICHA_VAZIA: FichaTecnica = {
@@ -2676,7 +2677,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         regeneracao: fichaConfirmada.regeneracao || '',
         kitchenflow: fichaConfirmada.kitchenflow || '',
         tecnicasSugeridas: fichaConfirmada.tecnicasDetectadas || [],
-        aparelhosDetectados: (fichaConfirmada as any).aparelhosDetectados || [],
+        ...({ aparelhosDetectados: (fichaConfirmada as any).aparelhosDetectados || [] } as any),
         ucsAssociadas: [ucId].filter(Boolean),
         elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
         data: fichaConfirmada.data || now,
