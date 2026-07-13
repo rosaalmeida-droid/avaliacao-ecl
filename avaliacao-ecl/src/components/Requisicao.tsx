@@ -1109,7 +1109,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 const i = linhas.indexOf(l);
                 const rend = obterRendimento(l.produto);
                 const nomeLimpo = l.produto.replace(/\s*\([^)]*\)/g,'').trim();
-                const { mp: mpFormas } = encontrarMateriaPrimaComConfianca(nomeLimpo, custom);
+                const { mp: mpFormas } = encontrarMateriaPrimaComConfianca(nomeLimpo, getMateriasPrimasCustom());
                 const formas = mpFormas?.formasComerciais || [];
                 return (
                   <tr key={l.id} style={{ background: '#fff', borderBottom: '1px solid var(--border)' }}>
