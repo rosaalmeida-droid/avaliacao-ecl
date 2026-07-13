@@ -18,6 +18,9 @@ interface Linha {
   qt1pax: number;        // qty por 1 dose (base de cálculo)
   qtReceita: number;     // qty total receita base (soma das fichas)
   qtEncomenda: number;   // qty para o nº doses pedido (editável)
+  formaCompra?: string;  // forma comercial seleccionada (ex: 'Inteiro eviscerado')
+  rendimento?: number;   // rendimento aplicado (ex: 0.60)
+  qtCompra?: number;     // qty real a comprar após aplicar rendimento
   // Preços
   precoUnitario: string; // €/kg ou €/un (editável)
   precoReceita: number;  // precoUnitario × qtReceita
@@ -77,7 +80,13 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
       const chaveNormal = `${produtoChave}__${proc.und === 'un' ? 'un' : 'kg'}`;
 
       const custom = getMateriasPrimasCustom();
-      const { mp, confianca } = encontrarMateriaPrimaComConfianca(proc.produto, custom);
+      // Limpar nome antes de pesquisar: remover descritores de quantidade entre parênteses
+      // ex: "Salmão fresco (2 lombos de 200g)" → "Salmão fresco"
+      const nomeLimpo = proc.produto
+        .replace(/\s*\([^)]*\)/g, '')  // remover (...)
+        .replace(/\s*\d+\s*x\s*\d+[gkGK]*/g, '') // remover 2x200g
+        .trim();
+      const { mp, confianca } = encontrarMateriaPrimaComConfianca(nomeLimpo, custom);
       // Ingredientes vendidos por unidade (ovos, etc.) têm precoKg = 0 — usar
       // precoUnitario nesse caso. Ingredientes vendidos a peso/volume usam precoKg.
       const precoMP = mp ? (proc.und === 'un' ? mp.precoUnitario : mp.precoKg) : 0;
@@ -211,12 +220,23 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       const f = getFichasProducao().find(x => x.id === fid);
       if (f) r[fid] = parseFloat(f.numPorcoes) || 4;
     });
+
+  // Auto-recalcular quantidades de encomenda quando o nº de doses muda
+  React.useEffect(() => {
+    if (linhas.length > 0) {
+      setLinhas(agregarIngredientes(fichasSelecionadas, paxPorFicha));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paxPorFicha]);
+
     return r;
   });
   const [quebras, setQuebras] = useState(10);
   const [bevCost, setBevCost] = useState(20);
   const [consumo, setConsumo] = useState({ bar: false, rest: true, interno: false, convidados: false });
-  const [sugestaoAberta, setSugestaoAberta] = useState<string | null>(null); // nome do ingrediente em sugestão
+  const [sugestaoAberta, setSugestaoAberta] = useState<string | null>(null);
+  const [painelMicrogreens, setPainelMicrogreens] = useState(false);
+  const [mgFiltro, setMgFiltro] = useState(''); // nome do ingrediente em sugestão
   const [sugestaoForm, setSugestaoForm] = useState({ precoKg: '', unidadeCompra: 'kg', categoria: '', observacao: '' });
   const [sugestaoEnviada, setSugestaoEnviada] = useState(false);
   const [responsavel, setResponsavel] = useState(() => {
@@ -1088,13 +1108,19 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               {linhasNormais.map(l => {
                 const i = linhas.indexOf(l);
                 const rend = obterRendimento(l.produto);
+                const nomeLimpo = l.produto.replace(/\s*\([^)]*\)/g,'').trim();
+                const { mp: mpFormas } = encontrarMateriaPrimaComConfianca(nomeLimpo, custom);
+                const formas = mpFormas?.formasComerciais || [];
                 return (
                   <tr key={l.id} style={{ background: '#fff', borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '3px 4px' }}>
-                      <input value={l.produto} onChange={e => setL(i, 'produto', e.target.value)} style={{ ...S.inp, width: '100%', fontSize:13 }} />
+                      <input value={l.produto} onChange={e => {
+                        setL(i, 'produto', e.target.value);
+                        if (/microgreen|microvegeta/i.test(e.target.value)) setPainelMicrogreens(true);
+                      }} style={{ ...S.inp, width: '100%', fontSize:13 }} />
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                         {l.daBD && <span style={{ fontSize:12, color: 'var(--sage)' }}>BD</span>}
-                        {rend && <span style={{ fontSize:12, color: 'rgba(26,23,20,0.35)' }}>Rend. {Math.round(rend.rendimento * 100)}%</span>}
+                        {rend && !formas.length && <span style={{ fontSize:12, color: 'rgba(26,23,20,0.35)' }}>Rend. {Math.round(rend.rendimento * 100)}%</span>}
                         {!l.daBD && (
                           <button type="button"
                             onClick={() => setSugestaoAberta(l.produto)}
@@ -1103,12 +1129,43 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                           </button>
                         )}
                       </div>
+                      {formas.length > 0 && (
+                        <div style={{ marginTop: 4 }}>
+                          <select
+                            value={l.formaCompra || ''}
+                            onChange={e => {
+                              const forma = formas.find(f => f.forma === e.target.value);
+                              const rend2 = forma?.rendimento || 1;
+                              setL(i, 'formaCompra', e.target.value);
+                              setL(i, 'rendimento', rend2);
+                              setL(i, 'qtCompra', rend2 > 0 ? l.qtEncomenda / rend2 : l.qtEncomenda);
+                            }}
+                            style={{ fontSize:11, padding:'2px 4px', borderRadius:4, border:'1px solid rgba(181,101,29,0.4)', background:'#fff', width:'100%', cursor:'pointer' }}
+                          >
+                            <option value=''>🛒 Forma de compra...</option>
+                            {formas.map(f => (
+                              <option key={f.forma} value={f.forma}>
+                                {f.forma} ({Math.round(f.rendimento*100)}%)
+                                {f.precoKg ? ` · €${f.precoKg}/kg` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          {l.formaCompra && l.rendimento && l.rendimento < 1 && (
+                            <div style={{ fontSize:11, color:'#b5651d', marginTop:3, fontWeight:600 }}>
+                              → Comprar: {((l.qtEncomenda||0) / (l.rendimento||1)).toFixed(3)} {l.und}
+                              {formas.find(f=>f.forma===l.formaCompra)?.nota && (
+                                <span style={{ color:'rgba(26,23,20,0.4)', fontWeight:400 }}> · {formas.find(f=>f.forma===l.formaCompra)?.nota}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '3px 4px', textAlign: 'right', color: 'rgba(26,23,20,0.4)', fontSize:13 }}>{fQn(l.qt1pax, l.und)}</td>
                     <td style={{ padding: '3px 4px', textAlign: 'right', color: 'rgba(26,23,20,0.4)', fontSize:13 }}>{fQn(l.qtReceita, l.und)}</td>
                     <td style={{ padding: '3px 3px' }}>
-                      <select value={l.und} onChange={e => setL(i, 'und', e.target.value)} style={{ ...S.inp, width: 45, padding: '4px 3px', fontSize:13 }}>
-                        <option>kg</option><option>l</option><option>un</option><option>q.b.</option>
+                      <select value={l.und} onChange={e => setL(i, 'und', e.target.value)} style={{ ...S.inp, width: 45, padding: '4px 3px', fontSize:13, background: l.und === 'un' && !['ovo','ovos','limão','lima','laranja','maracujá','pão'].some(u => l.produto.toLowerCase().includes(u)) ? 'rgba(181,101,29,0.08)' : 'inherit' }}>
+                        <option>kg</option><option>l</option><option>un</option><option>q.b.</option><option>g</option><option>ml</option>
                       </select>
                     </td>
                     <td style={{ padding: '3px 3px' }}>
@@ -1116,7 +1173,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                         onChange={e => setQtEnc(i, parseFloat(e.target.value) || 0)}
                         style={{ ...S.inp, width: 65, textAlign: 'right', fontSize:13 }} />
                     </td>
-                    <td style={{ padding: '3px 3px' }}>
+                    <td style={{ padding: '3px 3px', position: 'relative' }}>
+                      {!l.precoUnitario && l.produto && (
+                        <div style={{ fontSize:10, color:'#b5651d', fontWeight:700, marginBottom:2,
+                          background:'rgba(181,101,29,0.08)', borderRadius:4, padding:'2px 5px' }}>
+                          ⚠️ Introduza o preço
+                        </div>
+                      )}
                       <input value={l.precoUnitario}
                         onChange={e => {
                           setL(i, 'precoUnitario', e.target.value);
@@ -1204,6 +1267,78 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           setTimeout(() => window.print(), 150);
         }}>🖨️ Imprimir / PDF</button>
       </div>
+      {/* ── Painel lateral de microgreens ────────────────────────── */}
+      {painelMicrogreens && (() => {
+        const MG_VARIEDADES = MATERIAS_PRIMAS_BASE.filter(mp => mp.categoria === 'Microgreens' && (mp as any).foto);
+        const mgVisiveis = mgFiltro ? MG_VARIEDADES.filter(mg => mg.nome.toLowerCase().includes(mgFiltro.toLowerCase())) : MG_VARIEDADES;
+        return (
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, width: 300,
+            background: '#fff', borderLeft: '2px solid var(--border)',
+            boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
+            zIndex: 1000, overflowY: 'auto', display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', background: '#5B67EA', color: '#fff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>🌱 Escolher microgreens</div>
+                <button onClick={() => setPainelMicrogreens(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>Clica numa variedade para seleccionar</div>
+            </div>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+              <input
+                placeholder="Filtrar variedade..."
+                value={mgFiltro}
+                onChange={e => setMgFiltro(e.target.value)}
+                style={{ ...S.inp, width: '100%', fontSize: 12 }}
+              />
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+              {mgVisiveis.map(mg => (
+                <div key={mg.id}
+                  onClick={() => {
+                    // Actualizar a linha que tem microgreens genérico
+                    const idx = linhas.findIndex(l => /microgreen|microvegeta/i.test(l.produto));
+                    if (idx >= 0) {
+                      const preco = mg.precoKg > 0 ? mg.precoKg.toFixed(2).replace('.', ',') : '';
+                      setL(idx, 'produto', mg.nome);
+                      setL(idx, 'precoUnitario', preco);
+                    }
+                    setPainelMicrogreens(false);
+                    setMgFiltro('');
+                  }}
+                  style={{ cursor: 'pointer', marginBottom: 8, borderRadius: 10, overflow: 'hidden',
+                    border: '1px solid var(--border)', transition: 'box-shadow 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 10px rgba(91,103,234,0.2)')}
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+                >
+                  {(mg as any).foto && (
+                    <img
+                      src={(mg as any).foto}
+                      alt={mg.nome}
+                      style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }}
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
+                  <div style={{ padding: '8px 10px' }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1714' }}>{mg.nome}</div>
+                    {(mg as any).descricaoVisual && (
+                      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.55)', marginTop: 3 }}>{(mg as any).descricaoVisual}</div>
+                    )}
+                    <div style={{ fontSize: 11, color: '#5B67EA', marginTop: 4, fontWeight: 600 }}>
+                      ~€{mg.precoKg}/kg · {mg.fonte}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', fontSize: 10, color: 'rgba(26,23,20,0.4)', textAlign: 'center' }}>
+              Preços estimados · actualizar com Makro
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
