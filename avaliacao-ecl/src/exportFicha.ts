@@ -397,29 +397,29 @@ export function gerarHTML(ficha: FichaTecnicaExport): string {
       <td style="text-align:center;font-weight:bold">${p.num}</td>
       <td>${p.descricao}</td><td>${p.temperatura}</td>
       <td>${p.tempo}</td><td>${p.obs}</td>
-      <td style="color:#B5651D;font-size:9pt">${p.haccp || ''}</td>
+      <td style="color:#B5651D;font-size:7pt">${p.haccp || ''}</td>
     </tr>`).join('');
 
   return `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
   <title>Ficha Técnica — ${ficha.nomePrato}</title>
   <style>
     @page { size: A4; margin: 1cm; }
-    body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; margin: 0; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-    td, th { border: 1px solid #aaa; padding: 5px 7px; vertical-align: top; }
+    body { font-family: Calibri, Arial, sans-serif; font-size: 7pt; margin: 0; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 7px; }
+    td, th { border: 1px solid #aaa; padding: 3px 5px; vertical-align: top; }
     .header-ecl { background: #004F5C; color: #fff; font-weight: bold; text-align: center; }
-    .header-table th { background: #004F5C; color: #fff; font-weight: bold; font-size: 10pt; }
+    .header-table th { background: #004F5C; color: #fff; font-weight: bold; font-size: 8.5pt; }
     .info-fill { background: #D6E4E8; }
-    .section-title { color: #004F5C; font-weight: bold; font-size: 12pt; margin: 10px 0 4px 0; }
-    .rodape { font-size: 9pt; }
+    .section-title { color: #004F5C; font-weight: bold; font-size: 8.5pt; margin: 6px 0 3px 0; }
+    .rodape { font-size: 7pt; }
     img.logo { width: 50px; height: 50px; }
   </style>
   </head><body>
   <table>
     <tr>
       <td style="width:80px;text-align:center"><img class="logo" src="data:image/png;base64,${LOGO_ECL_B64}"></td>
-      <td class="header-ecl" style="font-size:14pt">Escola de Comércio de Lisboa<br><span style="font-size:16pt">FICHA TÉCNICA DE COZINHA</span></td>
-      <td class="info-fill" style="width:120px;font-size:9pt">
+      <td class="header-ecl" style="font-size:8.5pt">Escola de Comércio de Lisboa<br><span style="font-size:8.5pt">FICHA TÉCNICA DE COZINHA</span></td>
+      <td class="info-fill" style="width:120px;font-size:7pt">
         <b>CLASSIFICAÇÃO:</b><br>${ficha.classificacao}<br>
         <b>FICHA Nº:</b><br>${ficha.fichaNum}
       </td>
@@ -468,17 +468,17 @@ export function gerarHTML(ficha: FichaTecnicaExport): string {
       <th>Hidratos de Carbono (g)</th>
     </tr>
     <tr>
-      <td style="text-align:center;font-weight:bold;font-size:13pt">${ficha.nutricao.calorias}</td>
+      <td style="text-align:center;font-weight:bold;font-size:7pt">${ficha.nutricao.calorias}</td>
       <td style="text-align:center">${ficha.nutricao.proteinas}</td>
       <td style="text-align:center">${ficha.nutricao.gorduras}</td>
       <td style="text-align:center">${ficha.nutricao.hidratos}</td>
     </tr>
   </table>
-  <div style="font-size:8pt;color:#666;margin-bottom:8px">⚠️ Valores estimados com base na tabela INSA. Verificar com tabela oficial.</div>
+  <div style="font-size:7pt;color:#666;margin-bottom:4px">⚠️ Valores estimados com base na tabela INSA. Verificar com tabela oficial.</div>
   ` : ''}
-  <div style="margin-top:16px;padding:10px 12px;border:2px solid #004F5C;border-radius:4px;background:#F0F8FF;">
-    <div style="font-weight:bold;color:#004F5C;font-size:10pt;margin-bottom:6px">📋 REGISTOS OBRIGATÓRIOS — KitchenFlow ECL</div>
-    <div style="font-size:9pt;color:#333">${
+  <div style="margin-top:8px;padding:10px 12px;border:2px solid #004F5C;border-radius:4px;background:#F0F8FF;">
+    <div style="font-weight:bold;color:#004F5C;font-size:8.5pt;margin-bottom:3px">📋 REGISTOS OBRIGATÓRIOS — KitchenFlow ECL</div>
+    <div style="font-size:7pt;color:#333">${
       (ficha.kitchenflow || 'Temperatura de serviço · Higiene pessoal · Não conformidades')
         .split('\n')
         .filter((l: string) => l.trim())
@@ -489,22 +489,22 @@ export function gerarHTML(ficha: FichaTecnicaExport): string {
   ${(ficha.tecnicasSugeridas && ficha.tecnicasSugeridas.length > 0) || (ficha.aparelhosDetectados && ficha.aparelhosDetectados.length > 0) ? `
   <div style="margin-top:10px;padding:8px 12px;border:1px solid #CBD5E1;border-radius:4px;background:#F8FAFC;">
     ${ficha.tecnicasSugeridas && ficha.tecnicasSugeridas.length > 0 ? `
-    <div style="font-weight:bold;color:#5B67EA;font-size:9pt;margin-bottom:4px">SUBTÉCNICAS DETECTADAS:</div>
-    <div style="font-size:9pt;color:#333;margin-bottom:6px">${ficha.tecnicasSugeridas.map((s: string) => {
+    <div style="font-weight:bold;color:#5B67EA;font-size:7pt;margin-bottom:4px">SUBTÉCNICAS DETECTADAS:</div>
+    <div style="font-size:7pt;color:#333;margin-bottom:3px">${ficha.tecnicasSugeridas.map((s: string) => {
       const partes = s.split(' — ');
       return partes.length > 1 ? `${partes[0]} — <b>${partes[1]}</b>` : s;
     }).join(' · ')}</div>
     ` : ''}
     ${ficha.aparelhosDetectados && ficha.aparelhosDetectados.length > 0 ? `
-    <div style="font-weight:bold;color:#5B67EA;font-size:9pt;margin-bottom:4px">APARELHOS DETECTADOS:</div>
-    <div style="font-size:9pt;color:#333">${ficha.aparelhosDetectados.map((a: string) => {
+    <div style="font-weight:bold;color:#5B67EA;font-size:7pt;margin-bottom:4px">APARELHOS DETECTADOS:</div>
+    <div style="font-size:7pt;color:#333">${ficha.aparelhosDetectados.map((a: string) => {
       const partes = a.split(' — ');
       return partes.length > 1 ? `${partes[0]} — <b>${partes[1]}</b>` : a;
     }).join(' · ')}</div>
     ` : ''}
   </div>
   ` : ''}
-  <table class="rodape" style="margin-top:20px">
+  <table class="rodape" style="margin-top:10px">
     <tr>
       <td class="info-fill"><b>ELABORADO POR:</b> ${ficha.elaboradoPor}</td>
       <td class="info-fill"><b>DATA:</b> ${ficha.data}</td>
