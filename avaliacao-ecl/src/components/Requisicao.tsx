@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
-import { encontrarMateriaPrimaComConfianca } from '../materiasPrimasBase';
+import { encontrarMateriaPrimaComConfianca , MATERIAS_PRIMAS_BASE } from '../materiasPrimasBase';
 import {
   processarIngrediente,
   obterRendimento,
@@ -1269,8 +1269,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       </div>
       {/* ── Painel lateral de microgreens ────────────────────────── */}
       {painelMicrogreens && (() => {
-        const MG_VARIEDADES = MATERIAS_PRIMAS_BASE.filter(mp => mp.categoria === 'Microgreens' && (mp as any).foto);
-        const mgVisiveis = mgFiltro ? MG_VARIEDADES.filter(mg => mg.nome.toLowerCase().includes(mgFiltro.toLowerCase())) : MG_VARIEDADES;
+        const MG_VARIEDADES = MATERIAS_PRIMAS_BASE.filter((mp: any) => mp.categoria === 'Microgreens' && mp.foto);
+        const mgVisiveis = mgFiltro ? MG_VARIEDADES.filter((mg: any) => mg.nome.toLowerCase().includes(mgFiltro.toLowerCase())) : MG_VARIEDADES;
         return (
           <div style={{
             position: 'fixed', top: 0, right: 0, bottom: 0, width: 300,
@@ -1294,7 +1294,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-              {mgVisiveis.map(mg => (
+              {mgVisiveis.map((mg: any) => (
                 <div key={mg.id}
                   onClick={() => {
                     // Actualizar a linha que tem microgreens genérico
