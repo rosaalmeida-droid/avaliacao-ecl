@@ -1,0 +1,173 @@
+{
+  "version": "10.0",
+  "gerado_em": "2026-07-12T19:45:53.186093",
+  "fonte": "Biblioteca_Tecnica_Profissional_V10_Consolidada.xlsx",
+  "escola": "Escola de Comércio de Lisboa",
+  "curso": "Técnico/a de Cozinha e Restauração",
+  "referenciais": [
+    "811RA144",
+    "811183"
+  ],
+  "ficheiros": {
+    "tecnicas": {
+      "registos": 104,
+      "descricao": "Técnicas culinárias base"
+    },
+    "subtecnicas": {
+      "registos": 533,
+      "descricao": "Subtécnicas observáveis"
+    },
+    "perfis": {
+      "registos": 300,
+      "descricao": "Perfis técnicos com níveis 1-3"
+    },
+    "criterios": {
+      "registos": 1201,
+      "descricao": "Critérios observáveis — texto aluno + professor"
+    },
+    "conhecimentos": {
+      "registos": 425,
+      "descricao": "Conhecimentos de ciência alimentar"
+    },
+    "aptidoes": {
+      "registos": 405,
+      "descricao": "Aptidões observáveis"
+    },
+    "aparelhos": {
+      "registos": 93,
+      "descricao": "Aparelhos, bases, molhos, fundos"
+    },
+    "produtos": {
+      "registos": 144,
+      "descricao": "Produtos alimentares por categoria"
+    },
+    "preparacoes_mlm": {
+      "registos": 262,
+      "descricao": "Cozinha portuguesa por região (MLM)"
+    },
+    "preparacoes_int": {
+      "registos": 87,
+      "descricao": "Cozinha internacional por país"
+    },
+    "preparacoes_base": {
+      "registos": 63,
+      "descricao": "Preparações base (V9)"
+    },
+    "atitudes": {
+      "registos": 22,
+      "descricao": "Atitudes profissionais"
+    },
+    "competencias": {
+      "registos": 44,
+      "descricao": "Competências base"
+    },
+    "uc_base": {
+      "registos": 37,
+      "descricao": "UCs do referencial 811RA144"
+    },
+    "relacoes": {
+      "registos": 1686,
+      "descricao": "Relações entre entidades"
+    },
+    "uc_ufcd_map": {
+      "registos": 25,
+      "descricao": "Mapeamento UC novo↔UFCD antigo"
+    }
+  },
+  "escala_avaliacao": {
+    "aluno": [
+      {
+        "valor": 0,
+        "codigo": "NTO",
+        "emoji": "⬜",
+        "texto": "Não tive oportunidade",
+        "entra_calculo": false
+      },
+      {
+        "valor": 1,
+        "codigo": "NF",
+        "emoji": "🔸",
+        "texto": "Não fiz",
+        "entra_calculo": false,
+        "sinal_atitude": true
+      },
+      {
+        "valor": 2,
+        "codigo": "NC",
+        "emoji": "🔴",
+        "texto": "Não consegui",
+        "entra_calculo": true
+      },
+      {
+        "valor": 3,
+        "codigo": "AD",
+        "emoji": "🟡",
+        "texto": "Tive algumas dificuldades",
+        "entra_calculo": true
+      },
+      {
+        "valor": 4,
+        "codigo": "FS",
+        "emoji": "🟢",
+        "texto": "Fiz sem dificuldade",
+        "entra_calculo": true
+      }
+    ],
+    "professor_interpretacao": {
+      "FS": "Executou com autonomia e obteve o resultado esperado",
+      "AD": "Executou mas não obteve o resultado esperado",
+      "NC": "Tentou mas não concluiu o processo",
+      "NF": "Não realizou — verificar se havia oportunidade ou é questão de atitude",
+      "NTO": "Sem oportunidade — fora do cálculo"
+    },
+    "professor_validacao": [
+      {
+        "codigo": "CONFIRM",
+        "emoji": "✅",
+        "texto": "Confirma"
+      },
+      {
+        "codigo": "UP",
+        "emoji": "⬆️",
+        "texto": "Sobe 1 nível — aluno subestimou-se"
+      },
+      {
+        "codigo": "DOWN",
+        "emoji": "⬇️",
+        "texto": "Desce 1 nível — aluno sobrestimou-se"
+      },
+      {
+        "codigo": "NO",
+        "emoji": "⬜",
+        "texto": "Não observou"
+      }
+    ]
+  },
+  "parametros_avaliacao": {
+    "max_competencias_professor": 4,
+    "max_competencias_aluno": 1,
+    "n_sucessos_consolidada": 2,
+    "nota_minima_sucesso": 12,
+    "pesos_tempo": {
+      "ate_3_meses": 1.0,
+      "ate_6_meses": 0.75,
+      "ate_12_meses": 0.5,
+      "mais_12_meses": 0.25
+    },
+    "niveis_acesso_medidas": {
+      "regular": [
+        1,
+        2,
+        3
+      ],
+      "seletivas": [
+        1,
+        2,
+        3
+      ],
+      "adicionais": [
+        1
+      ]
+    }
+  }
+}

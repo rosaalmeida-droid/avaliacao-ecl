@@ -1,0 +1,3402 @@
+[
+  {
+    "id": "KNW-00001",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas quebradas",
+    "nome": "Fundamentos de Pâte brisée / massa quebrada salgada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pâte brisée / massa quebrada salgada."
+  },
+  {
+    "id": "KNW-00002",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas quebradas",
+    "nome": "Fundamentos de Pâte sucrée",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pâte sucrée."
+  },
+  {
+    "id": "KNW-00003",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas quebradas",
+    "nome": "Fundamentos de Pâte sablée",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pâte sablée."
+  },
+  {
+    "id": "KNW-00004",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Fundamentos de Massa folhada clássica",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Massa folhada clássica."
+  },
+  {
+    "id": "KNW-00005",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Controlo técnico de Massa folhada clássica",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00006",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Fundamentos de Massa folhada invertida",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Massa folhada invertida."
+  },
+  {
+    "id": "KNW-00007",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Controlo técnico de Massa folhada invertida",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00008",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Ciência e especialização de Massa folhada invertida",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00009",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas escaldadas",
+    "nome": "Fundamentos de Massa choux",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Massa choux."
+  },
+  {
+    "id": "KNW-00010",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas batidas",
+    "nome": "Fundamentos de Pão-de-ló tipo génoise",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pão-de-ló tipo génoise."
+  },
+  {
+    "id": "KNW-00011",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas batidas",
+    "nome": "Fundamentos de Pão-de-ló separado / espuma de claras",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pão-de-ló separado / espuma de claras."
+  },
+  {
+    "id": "KNW-00012",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos amanteigados",
+    "nome": "Fundamentos de Método de cremagem",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Método de cremagem."
+  },
+  {
+    "id": "KNW-00013",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos amanteigados",
+    "nome": "Fundamentos de Método all-in / mistura direta",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Método all-in / mistura direta."
+  },
+  {
+    "id": "KNW-00014",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas de pão",
+    "nome": "Fundamentos de Pão de baixa hidratação",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pão de baixa hidratação."
+  },
+  {
+    "id": "KNW-00015",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas de pão",
+    "nome": "Fundamentos de Pão de hidratação média",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pão de hidratação média."
+  },
+  {
+    "id": "KNW-00016",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas de pão",
+    "nome": "Fundamentos de Pão de alta hidratação",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pão de alta hidratação."
+  },
+  {
+    "id": "KNW-00017",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas enriquecidas",
+    "nome": "Fundamentos de Brioche",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Brioche."
+  },
+  {
+    "id": "KNW-00018",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas enriquecidas",
+    "nome": "Controlo técnico de Brioche",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00019",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas laminadas fermentadas",
+    "nome": "Fundamentos de Croissant",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Croissant."
+  },
+  {
+    "id": "KNW-00020",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas laminadas fermentadas",
+    "nome": "Controlo técnico de Croissant",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00021",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas laminadas fermentadas",
+    "nome": "Fundamentos de Danish",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Danish."
+  },
+  {
+    "id": "KNW-00022",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas laminadas fermentadas",
+    "nome": "Controlo técnico de Danish",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00023",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas de pizza",
+    "nome": "Fundamentos de Pizza de fermentação direta",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pizza de fermentação direta."
+  },
+  {
+    "id": "KNW-00024",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Fundamentos de Buttercream americano",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Buttercream americano."
+  },
+  {
+    "id": "KNW-00025",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Fundamentos de Buttercream suíço",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Buttercream suíço."
+  },
+  {
+    "id": "KNW-00026",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Controlo técnico de Buttercream suíço",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00027",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Ciência e especialização de Buttercream suíço",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00028",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Fundamentos de Buttercream italiano",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Buttercream italiano."
+  },
+  {
+    "id": "KNW-00029",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Controlo técnico de Buttercream italiano",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00030",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Ciência e especialização de Buttercream italiano",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00031",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Fundamentos de Buttercream francês",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Buttercream francês."
+  },
+  {
+    "id": "KNW-00032",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Controlo técnico de Buttercream francês",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00033",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Ciência e especialização de Buttercream francês",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00034",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Fundamentos de Buttercream alemão",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Buttercream alemão."
+  },
+  {
+    "id": "KNW-00035",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Controlo técnico de Buttercream alemão",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00036",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Ciência e especialização de Buttercream alemão",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00037",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Fundamentos de Ermine frosting",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ermine frosting."
+  },
+  {
+    "id": "KNW-00038",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Fundamentos de Buttercream russo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Buttercream russo."
+  },
+  {
+    "id": "KNW-00039",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Fundamentos de Bife bovino grelhado — mal passado/rosado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bife bovino grelhado — mal passado/rosado."
+  },
+  {
+    "id": "KNW-00040",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Fundamentos de Bife bovino grelhado — médio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bife bovino grelhado — médio."
+  },
+  {
+    "id": "KNW-00041",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Fundamentos de Repouso de bife bovino",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Repouso de bife bovino."
+  },
+  {
+    "id": "KNW-00042",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Controlo técnico de Repouso de bife bovino",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00043",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Fundamentos de Repouso de peça bovina assada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Repouso de peça bovina assada."
+  },
+  {
+    "id": "KNW-00044",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Controlo técnico de Repouso de peça bovina assada",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00045",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne suína",
+    "nome": "Fundamentos de Peça suína grelhada/assada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peça suína grelhada/assada."
+  },
+  {
+    "id": "KNW-00046",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Aves",
+    "nome": "Fundamentos de Frango assado inteiro",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Frango assado inteiro."
+  },
+  {
+    "id": "KNW-00047",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Aves",
+    "nome": "Fundamentos de Repouso de ave inteira assada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Repouso de ave inteira assada."
+  },
+  {
+    "id": "KNW-00048",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Aves",
+    "nome": "Controlo técnico de Repouso de ave inteira assada",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00049",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Borrego",
+    "nome": "Fundamentos de Costeleta de borrego grelhada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Costeleta de borrego grelhada."
+  },
+  {
+    "id": "KNW-00050",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Borrego",
+    "nome": "Fundamentos de Repouso de perna/rack de borrego",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Repouso de perna/rack de borrego."
+  },
+  {
+    "id": "KNW-00051",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Borrego",
+    "nome": "Controlo técnico de Repouso de perna/rack de borrego",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00052",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Peixe",
+    "nome": "Fundamentos de Filete de peixe grelhado com pele",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Filete de peixe grelhado com pele."
+  },
+  {
+    "id": "KNW-00053",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Peixe",
+    "nome": "Fundamentos de Peixe escalfado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peixe escalfado."
+  },
+  {
+    "id": "KNW-00054",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Molhos",
+    "nome": "Fundamentos de Béchamel",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Béchamel."
+  },
+  {
+    "id": "KNW-00055",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Molhos",
+    "nome": "Fundamentos de Holandês",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Holandês."
+  },
+  {
+    "id": "KNW-00056",
+    "nivel": 2,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Molhos",
+    "nome": "Controlo técnico de Holandês",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00057",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Molhos",
+    "nome": "Fundamentos de Maionese",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Maionese."
+  },
+  {
+    "id": "KNW-00058",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Sopas",
+    "nome": "Fundamentos de Creme triturado de hortícolas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Creme triturado de hortícolas."
+  },
+  {
+    "id": "KNW-00059",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Chocolate",
+    "nome": "Fundamentos de Ganache clássica",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ganache clássica."
+  },
+  {
+    "id": "KNW-00060",
+    "nivel": 2,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Chocolate",
+    "nome": "Controlo técnico de Ganache clássica",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00061",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Fundos e caldos",
+    "nome": "Fundamentos de Fundo branco de aves",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Fundo branco de aves."
+  },
+  {
+    "id": "KNW-00062",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Fundos e caldos",
+    "nome": "Fundamentos de Fundo escuro de carne",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Fundo escuro de carne."
+  },
+  {
+    "id": "KNW-00063",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Fundos e caldos",
+    "nome": "Fundamentos de Fumet de peixe",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Fumet de peixe."
+  },
+  {
+    "id": "KNW-00064",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Sopas",
+    "nome": "Fundamentos de Consommé clarificado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Consommé clarificado."
+  },
+  {
+    "id": "KNW-00065",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Sopas",
+    "nome": "Controlo técnico de Consommé clarificado",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00066",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Sopas",
+    "nome": "Fundamentos de Sopa com elementos inteiros",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Sopa com elementos inteiros."
+  },
+  {
+    "id": "KNW-00067",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Fundamentos de Ovo cozido com gema líquida",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ovo cozido com gema líquida."
+  },
+  {
+    "id": "KNW-00068",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Fundamentos de Ovo cozido com gema cremosa",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ovo cozido com gema cremosa."
+  },
+  {
+    "id": "KNW-00069",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Fundamentos de Ovo escalfado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ovo escalfado."
+  },
+  {
+    "id": "KNW-00070",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Fundamentos de Omelete francesa",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Omelete francesa."
+  },
+  {
+    "id": "KNW-00071",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Fundamentos de Ovos mexidos cremosos",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ovos mexidos cremosos."
+  },
+  {
+    "id": "KNW-00072",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Arroz",
+    "nome": "Fundamentos de Arroz branco por absorção",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Arroz branco por absorção."
+  },
+  {
+    "id": "KNW-00073",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Arroz",
+    "nome": "Fundamentos de Risotto / arroz cremoso",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Risotto / arroz cremoso."
+  },
+  {
+    "id": "KNW-00074",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Arroz",
+    "nome": "Controlo técnico de Risotto / arroz cremoso",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00075",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Massas alimentícias",
+    "nome": "Fundamentos de Massa seca al dente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Massa seca al dente."
+  },
+  {
+    "id": "KNW-00076",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Massas alimentícias",
+    "nome": "Fundamentos de Massa fresca de ovos",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Massa fresca de ovos."
+  },
+  {
+    "id": "KNW-00077",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Fundamentos de Hortícolas verdes branqueados",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Hortícolas verdes branqueados."
+  },
+  {
+    "id": "KNW-00078",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Fundamentos de Tubérculos assados",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Tubérculos assados."
+  },
+  {
+    "id": "KNW-00079",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Fundamentos de Legumes salteados",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Legumes salteados."
+  },
+  {
+    "id": "KNW-00080",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Fundamentos de Puré de tubérculos",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Puré de tubérculos."
+  },
+  {
+    "id": "KNW-00081",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Mariscos e moluscos",
+    "nome": "Fundamentos de Camarão salteado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Camarão salteado."
+  },
+  {
+    "id": "KNW-00082",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Mariscos e moluscos",
+    "nome": "Fundamentos de Mexilhão aberto ao vapor",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Mexilhão aberto ao vapor."
+  },
+  {
+    "id": "KNW-00083",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Mariscos e moluscos",
+    "nome": "Fundamentos de Polvo cozido para corte",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Polvo cozido para corte."
+  },
+  {
+    "id": "KNW-00084",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Mariscos e moluscos",
+    "nome": "Fundamentos de Lula salteada rapidamente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Lula salteada rapidamente."
+  },
+  {
+    "id": "KNW-00085",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Creme pasteleiro",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Creme pasteleiro."
+  },
+  {
+    "id": "KNW-00086",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Creme diplomata",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Creme diplomata."
+  },
+  {
+    "id": "KNW-00087",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlo técnico de Creme diplomata",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00088",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Creme mousseline",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Creme mousseline."
+  },
+  {
+    "id": "KNW-00089",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlo técnico de Creme mousseline",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00090",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Creme chiboust",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Creme chiboust."
+  },
+  {
+    "id": "KNW-00091",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlo técnico de Creme chiboust",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00092",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Ganache de cobertura",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ganache de cobertura."
+  },
+  {
+    "id": "KNW-00093",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlo técnico de Ganache de cobertura",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00094",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Ganache para recheio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ganache para recheio."
+  },
+  {
+    "id": "KNW-00095",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlo técnico de Ganache para recheio",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00096",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Bolo de método chiffon",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bolo de método chiffon."
+  },
+  {
+    "id": "KNW-00097",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Bolo de método foaming com gordura adicionada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bolo de método foaming com gordura adicionada."
+  },
+  {
+    "id": "KNW-00098",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Dacquoise",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Dacquoise."
+  },
+  {
+    "id": "KNW-00099",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Joconde",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Joconde."
+  },
+  {
+    "id": "KNW-00100",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Fundamentos de Chocolate negro temperado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Chocolate negro temperado."
+  },
+  {
+    "id": "KNW-00101",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Controlo técnico de Chocolate negro temperado",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00102",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Fundamentos de Chocolate de leite temperado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Chocolate de leite temperado."
+  },
+  {
+    "id": "KNW-00103",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Controlo técnico de Chocolate de leite temperado",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00104",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Fundamentos de Chocolate branco temperado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Chocolate branco temperado."
+  },
+  {
+    "id": "KNW-00105",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Controlo técnico de Chocolate branco temperado",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00106",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Fundamentos de Caramelo seco âmbar",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Caramelo seco âmbar."
+  },
+  {
+    "id": "KNW-00107",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Fundamentos de Caramelo húmido",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Caramelo húmido."
+  },
+  {
+    "id": "KNW-00108",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Serviços especiais",
+    "nome": "Fundamentos de Coffee break simples",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Coffee break simples."
+  },
+  {
+    "id": "KNW-00109",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Serviços especiais",
+    "nome": "Fundamentos de Buffet frio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Buffet frio."
+  },
+  {
+    "id": "KNW-00110",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Serviços especiais",
+    "nome": "Fundamentos de Buffet quente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Buffet quente."
+  },
+  {
+    "id": "KNW-00111",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Serviços especiais",
+    "nome": "Fundamentos de Encerramento de evento",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Encerramento de evento."
+  },
+  {
+    "id": "KNW-00112",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Juliana de hortícolas firmes",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Juliana de hortícolas firmes."
+  },
+  {
+    "id": "KNW-00113",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Brunoise fina",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Brunoise fina."
+  },
+  {
+    "id": "KNW-00114",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Mirepoix para fundo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Mirepoix para fundo."
+  },
+  {
+    "id": "KNW-00115",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Chiffonade de folhas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Chiffonade de folhas."
+  },
+  {
+    "id": "KNW-00116",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Bâtonnet de tubérculos",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bâtonnet de tubérculos."
+  },
+  {
+    "id": "KNW-00117",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Macedónia de hortícolas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Macedónia de hortícolas."
+  },
+  {
+    "id": "KNW-00118",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Concassé de tomate",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Concassé de tomate."
+  },
+  {
+    "id": "KNW-00119",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Ciselar cebola",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ciselar cebola."
+  },
+  {
+    "id": "KNW-00120",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Corte contra a fibra",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Corte contra a fibra."
+  },
+  {
+    "id": "KNW-00121",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Filetes de peixe",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Filetes de peixe."
+  },
+  {
+    "id": "KNW-00122",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Supremo de ave",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Supremo de ave."
+  },
+  {
+    "id": "KNW-00123",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Fundamentos de Medalhões de carne",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Medalhões de carne."
+  },
+  {
+    "id": "KNW-00124",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Velouté",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Velouté."
+  },
+  {
+    "id": "KNW-00125",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Molho espanhol",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Molho espanhol."
+  },
+  {
+    "id": "KNW-00126",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Demi-glace",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Demi-glace."
+  },
+  {
+    "id": "KNW-00127",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Controlo técnico de Demi-glace",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00128",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Molho tomate clássico",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Molho tomate clássico."
+  },
+  {
+    "id": "KNW-00129",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Beurre blanc",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Beurre blanc."
+  },
+  {
+    "id": "KNW-00130",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Controlo técnico de Beurre blanc",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00131",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Béarnaise",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Béarnaise."
+  },
+  {
+    "id": "KNW-00132",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Controlo técnico de Béarnaise",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00133",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Molho de assado / jus",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Molho de assado / jus."
+  },
+  {
+    "id": "KNW-00134",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Vinagrete clássica",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Vinagrete clássica."
+  },
+  {
+    "id": "KNW-00135",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Molho pesto",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Molho pesto."
+  },
+  {
+    "id": "KNW-00136",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Molho caramelo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Molho caramelo."
+  },
+  {
+    "id": "KNW-00137",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Fundamentos de Canapé frio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Canapé frio."
+  },
+  {
+    "id": "KNW-00138",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Fundamentos de Salada composta",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Salada composta."
+  },
+  {
+    "id": "KNW-00139",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Fundamentos de Terrina prensada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Terrina prensada."
+  },
+  {
+    "id": "KNW-00140",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Fundamentos de Paté emulsionado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Paté emulsionado."
+  },
+  {
+    "id": "KNW-00141",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Fundamentos de Ceviche / marinado ácido",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ceviche / marinado ácido."
+  },
+  {
+    "id": "KNW-00142",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Fundamentos de Peixe inteiro assado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peixe inteiro assado."
+  },
+  {
+    "id": "KNW-00143",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Fundamentos de Lombo de salmão assado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Lombo de salmão assado."
+  },
+  {
+    "id": "KNW-00144",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Fundamentos de Bacalhau confitado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bacalhau confitado."
+  },
+  {
+    "id": "KNW-00145",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Controlo técnico de Bacalhau confitado",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00146",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Fundamentos de Peixe frito em polme",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peixe frito em polme."
+  },
+  {
+    "id": "KNW-00147",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Fundamentos de Peixe cozido a vapor",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peixe cozido a vapor."
+  },
+  {
+    "id": "KNW-00148",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Fundamentos de Peixe grelhado inteiro",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peixe grelhado inteiro."
+  },
+  {
+    "id": "KNW-00149",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Vitela assada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Vitela assada."
+  },
+  {
+    "id": "KNW-00150",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Porco assado — lombo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Porco assado — lombo."
+  },
+  {
+    "id": "KNW-00151",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Entrecosto braseado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Entrecosto braseado."
+  },
+  {
+    "id": "KNW-00152",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Controlo técnico de Entrecosto braseado",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00153",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Peito de frango grelhado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peito de frango grelhado."
+  },
+  {
+    "id": "KNW-00154",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Coxa de frango assada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Coxa de frango assada."
+  },
+  {
+    "id": "KNW-00155",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Pato assado — peito rosado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pato assado — peito rosado."
+  },
+  {
+    "id": "KNW-00156",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Coelho estufado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Coelho estufado."
+  },
+  {
+    "id": "KNW-00157",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Cabrito assado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cabrito assado."
+  },
+  {
+    "id": "KNW-00158",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Fundamentos de Caça de pelo estufada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Caça de pelo estufada."
+  },
+  {
+    "id": "KNW-00159",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Fundamentos de Baguete francesa",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Baguete francesa."
+  },
+  {
+    "id": "KNW-00160",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Fundamentos de Pão de forma",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pão de forma."
+  },
+  {
+    "id": "KNW-00161",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Fundamentos de Focaccia",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Focaccia."
+  },
+  {
+    "id": "KNW-00162",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Fundamentos de Bagel",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bagel."
+  },
+  {
+    "id": "KNW-00163",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Fundamentos de Pretzel",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pretzel."
+  },
+  {
+    "id": "KNW-00164",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Fundamentos de Pão de levain",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pão de levain."
+  },
+  {
+    "id": "KNW-00165",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Fundamentos de Pão de centeio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pão de centeio."
+  },
+  {
+    "id": "KNW-00166",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Fundamentos de Pain au chocolat",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pain au chocolat."
+  },
+  {
+    "id": "KNW-00167",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Fundamentos de Brioche à tête",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Brioche à tête."
+  },
+  {
+    "id": "KNW-00168",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlo técnico de Brioche à tête",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00169",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Fundamentos de Kouign-amann",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Kouign-amann."
+  },
+  {
+    "id": "KNW-00170",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlo técnico de Kouign-amann",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00171",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Ciência e especialização de Kouign-amann",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00172",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Fundamentos de Danish com creme e fruta",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Danish com creme e fruta."
+  },
+  {
+    "id": "KNW-00173",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlo técnico de Danish com creme e fruta",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00174",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Fundamentos de Cobertura lisa com buttercream",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cobertura lisa com buttercream."
+  },
+  {
+    "id": "KNW-00175",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Fundamentos de Cobertura com pasta de açúcar",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cobertura com pasta de açúcar."
+  },
+  {
+    "id": "KNW-00176",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Fundamentos de Piping de conchas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Piping de conchas."
+  },
+  {
+    "id": "KNW-00177",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Fundamentos de Flores de buttercream",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Flores de buttercream."
+  },
+  {
+    "id": "KNW-00178",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Fundamentos de Estrutura de bolo de andares",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Estrutura de bolo de andares."
+  },
+  {
+    "id": "KNW-00179",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinha alternativa e sustentável",
+    "nome": "Fundamentos de Substituição de ovo em bolo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Substituição de ovo em bolo."
+  },
+  {
+    "id": "KNW-00180",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinha alternativa e sustentável",
+    "nome": "Fundamentos de Massa sem glúten para bolo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Massa sem glúten para bolo."
+  },
+  {
+    "id": "KNW-00181",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinha alternativa e sustentável",
+    "nome": "Fundamentos de Hambúrguer vegetal",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Hambúrguer vegetal."
+  },
+  {
+    "id": "KNW-00182",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinha alternativa e sustentável",
+    "nome": "Fundamentos de Aproveitamento de aparas em fundo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Aproveitamento de aparas em fundo."
+  },
+  {
+    "id": "KNW-00183",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Fundamentos de Planeamento de produção por lotes",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Planeamento de produção por lotes."
+  },
+  {
+    "id": "KNW-00184",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Fundamentos de Receção de matérias-primas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Receção de matérias-primas."
+  },
+  {
+    "id": "KNW-00185",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Fundamentos de Rotação FIFO/FEFO",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Rotação FIFO/FEFO."
+  },
+  {
+    "id": "KNW-00186",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Fundamentos de Cálculo de custo por dose",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cálculo de custo por dose."
+  },
+  {
+    "id": "KNW-00187",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Fundamentos de Comunicação de passe",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Comunicação de passe."
+  },
+  {
+    "id": "KNW-00188",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Fundamentos de Avaliação de alergénios",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Avaliação de alergénios."
+  },
+  {
+    "id": "KNW-00189",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Higiene alimentar",
+    "nome": "Fundamentos de Lavagem higiénica das mãos",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Lavagem higiénica das mãos."
+  },
+  {
+    "id": "KNW-00190",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Higiene alimentar",
+    "nome": "Fundamentos de Prevenção de contaminação cruzada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Prevenção de contaminação cruzada."
+  },
+  {
+    "id": "KNW-00191",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Higiene alimentar",
+    "nome": "Fundamentos de Controlo de arrefecimento rápido",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Controlo de arrefecimento rápido."
+  },
+  {
+    "id": "KNW-00192",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Higiene alimentar",
+    "nome": "Fundamentos de Controlo de alergénios na produção",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Controlo de alergénios na produção."
+  },
+  {
+    "id": "KNW-00193",
+    "nivel": 1,
+    "dominio": "sst",
+    "familia_tecnica": "Segurança no trabalho",
+    "nome": "Fundamentos de Utilização segura de faca",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Utilização segura de faca."
+  },
+  {
+    "id": "KNW-00194",
+    "nivel": 1,
+    "dominio": "sst",
+    "familia_tecnica": "Segurança no trabalho",
+    "nome": "Fundamentos de Utilização segura de forno e equipamentos quentes",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Utilização segura de forno e equipamentos quentes."
+  },
+  {
+    "id": "KNW-00195",
+    "nivel": 1,
+    "dominio": "sst",
+    "familia_tecnica": "Segurança no trabalho",
+    "nome": "Fundamentos de Operação segura de equipamento mecânico",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Operação segura de equipamento mecânico."
+  },
+  {
+    "id": "KNW-00196",
+    "nivel": 1,
+    "dominio": "sustentabilidade",
+    "familia_tecnica": "Sustentabilidade",
+    "nome": "Fundamentos de Aproveitamento integral de hortícolas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Aproveitamento integral de hortícolas."
+  },
+  {
+    "id": "KNW-00197",
+    "nivel": 1,
+    "dominio": "sustentabilidade",
+    "familia_tecnica": "Sustentabilidade",
+    "nome": "Fundamentos de Gestão eficiente de água e energia",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Gestão eficiente de água e energia."
+  },
+  {
+    "id": "KNW-00198",
+    "nivel": 1,
+    "dominio": "nutricao",
+    "familia_tecnica": "Nutrição e inclusão",
+    "nome": "Fundamentos de Adaptação de porção e composição nutricional",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Adaptação de porção e composição nutricional."
+  },
+  {
+    "id": "KNW-00199",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Fundamentos de Gelado de base inglesa",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Gelado de base inglesa."
+  },
+  {
+    "id": "KNW-00200",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Fundamentos de Gelado de base sem ovos",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Gelado de base sem ovos."
+  },
+  {
+    "id": "KNW-00201",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Fundamentos de Sorbet de fruta",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Sorbet de fruta."
+  },
+  {
+    "id": "KNW-00202",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Fundamentos de Granizado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Granizado."
+  },
+  {
+    "id": "KNW-00203",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Fundamentos de Parfait congelado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Parfait congelado."
+  },
+  {
+    "id": "KNW-00204",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Fundamentos de Semifreddo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Semifreddo."
+  },
+  {
+    "id": "KNW-00205",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Merengue francês",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Merengue francês."
+  },
+  {
+    "id": "KNW-00206",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Merengue francês",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00207",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Merengue francês",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00208",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Merengue suíço",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Merengue suíço."
+  },
+  {
+    "id": "KNW-00209",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Merengue suíço",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00210",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Merengue suíço",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00211",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Merengue italiano",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Merengue italiano."
+  },
+  {
+    "id": "KNW-00212",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Merengue italiano",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00213",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Merengue italiano",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00214",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Pâte à bombe",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pâte à bombe."
+  },
+  {
+    "id": "KNW-00215",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Pâte à bombe",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00216",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Pâte à bombe",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00217",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Mousse de chocolate com pâte à bombe",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Mousse de chocolate com pâte à bombe."
+  },
+  {
+    "id": "KNW-00218",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Mousse de chocolate com pâte à bombe",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00219",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Mousse de chocolate com pâte à bombe",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00220",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Mousse de fruta",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Mousse de fruta."
+  },
+  {
+    "id": "KNW-00221",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Mousse de fruta",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00222",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Mousse de fruta",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00223",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Crème brûlée",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Crème brûlée."
+  },
+  {
+    "id": "KNW-00224",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Crème brûlée",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00225",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Crème brûlée",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00226",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Crème caramel",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Crème caramel."
+  },
+  {
+    "id": "KNW-00227",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Crème caramel",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00228",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Crème caramel",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00229",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Panna cotta",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Panna cotta."
+  },
+  {
+    "id": "KNW-00230",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Panna cotta",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00231",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Panna cotta",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00232",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Entremet em camadas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Entremet em camadas."
+  },
+  {
+    "id": "KNW-00233",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Entremet em camadas",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00234",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Entremet em camadas",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00235",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Fundamentos de Sobremesa empratada quente e fria",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Sobremesa empratada quente e fria."
+  },
+  {
+    "id": "KNW-00236",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlo técnico de Sobremesa empratada quente e fria",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00237",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Ciência e especialização de Sobremesa empratada quente e fria",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00238",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Macaron francês",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Macaron francês."
+  },
+  {
+    "id": "KNW-00239",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Macaron italiano",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Macaron italiano."
+  },
+  {
+    "id": "KNW-00240",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Controlo técnico de Macaron italiano",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00241",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Ciência e especialização de Macaron italiano",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00242",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Madeleine",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Madeleine."
+  },
+  {
+    "id": "KNW-00243",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Financier",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Financier."
+  },
+  {
+    "id": "KNW-00244",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Bolacha por método de cremagem",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bolacha por método de cremagem."
+  },
+  {
+    "id": "KNW-00245",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Trufa de chocolate",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Trufa de chocolate."
+  },
+  {
+    "id": "KNW-00246",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Praliné de frutos secos",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Praliné de frutos secos."
+  },
+  {
+    "id": "KNW-00247",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Nougat / torrone",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Nougat / torrone."
+  },
+  {
+    "id": "KNW-00248",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Fundamentos de Marshmallow",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Marshmallow."
+  },
+  {
+    "id": "KNW-00249",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Fundamentos de Royal icing de consistência para contorno",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Royal icing de consistência para contorno."
+  },
+  {
+    "id": "KNW-00250",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Fundamentos de Royal icing de consistência para preenchimento",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Royal icing de consistência para preenchimento."
+  },
+  {
+    "id": "KNW-00251",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Fundamentos de Pastillage",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pastillage."
+  },
+  {
+    "id": "KNW-00252",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlo técnico de Pastillage",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00253",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Ciência e especialização de Pastillage",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00254",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Fundamentos de Gum paste / pasta de flores",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Gum paste / pasta de flores."
+  },
+  {
+    "id": "KNW-00255",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlo técnico de Gum paste / pasta de flores",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00256",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Ciência e especialização de Gum paste / pasta de flores",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00257",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Fundamentos de Chocolate moldado em bombom",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Chocolate moldado em bombom."
+  },
+  {
+    "id": "KNW-00258",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlo técnico de Chocolate moldado em bombom",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00259",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Ciência e especialização de Chocolate moldado em bombom",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00260",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Fundamentos de Decoração de chocolate em acetato",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Decoração de chocolate em acetato."
+  },
+  {
+    "id": "KNW-00261",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Fundamentos de Açúcar puxado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Açúcar puxado."
+  },
+  {
+    "id": "KNW-00262",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlo técnico de Açúcar puxado",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00263",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Ciência e especialização de Açúcar puxado",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00264",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Fundamentos de Açúcar soprado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Açúcar soprado."
+  },
+  {
+    "id": "KNW-00265",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlo técnico de Açúcar soprado",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00266",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Ciência e especialização de Açúcar soprado",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00267",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Fundamentos de Bacalhau confitado em azeite",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bacalhau confitado em azeite."
+  },
+  {
+    "id": "KNW-00268",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Controlo técnico de Bacalhau confitado em azeite",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00269",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Fundamentos de Arroz malandrinho",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Arroz malandrinho."
+  },
+  {
+    "id": "KNW-00270",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Fundamentos de Cataplana de peixe e marisco",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cataplana de peixe e marisco."
+  },
+  {
+    "id": "KNW-00271",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Fundamentos de Curry com especiarias tostadas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Curry com especiarias tostadas."
+  },
+  {
+    "id": "KNW-00272",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Fundamentos de Risotto italiano",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Risotto italiano."
+  },
+  {
+    "id": "KNW-00273",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Controlo técnico de Risotto italiano",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00274",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Fundamentos de Tempura",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Tempura."
+  },
+  {
+    "id": "KNW-00275",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Fundamentos de Cuscuz por hidratação e vaporização",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cuscuz por hidratação e vaporização."
+  },
+  {
+    "id": "KNW-00276",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Fundamentos de Autólise em massas de pão",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Autólise em massas de pão."
+  },
+  {
+    "id": "KNW-00277",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlo técnico de Autólise em massas de pão",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00278",
+    "nivel": 3,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Ciência e especialização de Autólise em massas de pão",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00279",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Fundamentos de Bassinage em massa de alta hidratação",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Bassinage em massa de alta hidratação."
+  },
+  {
+    "id": "KNW-00280",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlo técnico de Bassinage em massa de alta hidratação",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00281",
+    "nivel": 3,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Ciência e especialização de Bassinage em massa de alta hidratação",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00282",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Fundamentos de Teste de membrana / windowpane",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Teste de membrana / windowpane."
+  },
+  {
+    "id": "KNW-00283",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlo técnico de Teste de membrana / windowpane",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00284",
+    "nivel": 3,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Ciência e especialização de Teste de membrana / windowpane",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00285",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Fundamentos de Fermentação em massa / bulk fermentation",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Fermentação em massa / bulk fermentation."
+  },
+  {
+    "id": "KNW-00286",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlo técnico de Fermentação em massa / bulk fermentation",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00287",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Fundamentos de Fermentação final / proof",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Fermentação final / proof."
+  },
+  {
+    "id": "KNW-00288",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlo técnico de Fermentação final / proof",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00289",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Fundamentos de Fermentação retardada a frio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Fermentação retardada a frio."
+  },
+  {
+    "id": "KNW-00290",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlo técnico de Fermentação retardada a frio",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00291",
+    "nivel": 3,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Ciência e especialização de Fermentação retardada a frio",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00292",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Estrutura das massas",
+    "nome": "Fundamentos de Desenvolvimento mínimo de glúten em massas quebradas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Desenvolvimento mínimo de glúten em massas quebradas."
+  },
+  {
+    "id": "KNW-00293",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Estrutura das massas",
+    "nome": "Fundamentos de Laminação com plasticidade equivalente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Laminação com plasticidade equivalente."
+  },
+  {
+    "id": "KNW-00294",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Estrutura das massas",
+    "nome": "Controlo técnico de Laminação com plasticidade equivalente",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00295",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Estrutura das massas",
+    "nome": "Ciência e especialização de Laminação com plasticidade equivalente",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00296",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Fundamentos de Carne bovina sous-vide",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Carne bovina sous-vide."
+  },
+  {
+    "id": "KNW-00297",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Controlo técnico de Carne bovina sous-vide",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00298",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Ciência e especialização de Carne bovina sous-vide",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00299",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Fundamentos de Ave sous-vide com segurança controlada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ave sous-vide com segurança controlada."
+  },
+  {
+    "id": "KNW-00300",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Controlo técnico de Ave sous-vide com segurança controlada",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00301",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Ciência e especialização de Ave sous-vide com segurança controlada",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00302",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Fundamentos de Peixe a baixa temperatura",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peixe a baixa temperatura."
+  },
+  {
+    "id": "KNW-00303",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Controlo técnico de Peixe a baixa temperatura",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00304",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Ciência e especialização de Peixe a baixa temperatura",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00305",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Fundamentos de Salmoura húmida para carne suína",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Salmoura húmida para carne suína."
+  },
+  {
+    "id": "KNW-00306",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Controlo técnico de Salmoura húmida para carne suína",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00307",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Fundamentos de Salmoura para aves",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Salmoura para aves."
+  },
+  {
+    "id": "KNW-00308",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Controlo técnico de Salmoura para aves",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00309",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Fundamentos de Cura seca de peixe",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cura seca de peixe."
+  },
+  {
+    "id": "KNW-00310",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Controlo técnico de Cura seca de peixe",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00311",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Ciência e especialização de Cura seca de peixe",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00312",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Fundamentos de Cura seca de carne",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cura seca de carne."
+  },
+  {
+    "id": "KNW-00313",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Controlo técnico de Cura seca de carne",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00314",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Ciência e especialização de Cura seca de carne",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00315",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Fundamentos de Defumação a quente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Defumação a quente."
+  },
+  {
+    "id": "KNW-00316",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Controlo técnico de Defumação a quente",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00317",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Fundamentos de Defumação a frio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Defumação a frio."
+  },
+  {
+    "id": "KNW-00318",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Controlo técnico de Defumação a frio",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00319",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Ciência e especialização de Defumação a frio",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00320",
+    "nivel": 1,
+    "dominio": "conservacao",
+    "familia_tecnica": "Conservação",
+    "nome": "Fundamentos de Congelação de preparação culinária",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Congelação de preparação culinária."
+  },
+  {
+    "id": "KNW-00321",
+    "nivel": 1,
+    "dominio": "conservacao",
+    "familia_tecnica": "Conservação",
+    "nome": "Fundamentos de Descongelação refrigerada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Descongelação refrigerada."
+  },
+  {
+    "id": "KNW-00322",
+    "nivel": 1,
+    "dominio": "conservacao",
+    "familia_tecnica": "Regeneração",
+    "nome": "Fundamentos de Regeneração de preparação quente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Regeneração de preparação quente."
+  },
+  {
+    "id": "KNW-00323",
+    "nivel": 2,
+    "dominio": "conservacao",
+    "familia_tecnica": "Regeneração",
+    "nome": "Controlo técnico de Regeneração de preparação quente",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00324",
+    "nivel": 1,
+    "dominio": "conservacao",
+    "familia_tecnica": "Conservação",
+    "nome": "Fundamentos de Embalagem a vácuo de produto frio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Embalagem a vácuo de produto frio."
+  },
+  {
+    "id": "KNW-00325",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Conservação",
+    "nome": "Fundamentos de Manutenção quente em serviço",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Manutenção quente em serviço."
+  },
+  {
+    "id": "KNW-00326",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Conservação",
+    "nome": "Fundamentos de Manutenção fria em serviço",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Manutenção fria em serviço."
+  },
+  {
+    "id": "KNW-00327",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Fundamentos de Controlo do passe",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Controlo do passe."
+  },
+  {
+    "id": "KNW-00328",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Fundamentos de Empratamento com porção consistente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Empratamento com porção consistente."
+  },
+  {
+    "id": "KNW-00329",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Controlo técnico de Empratamento com porção consistente",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00330",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Fundamentos de Preservação de elemento crocante",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Preservação de elemento crocante."
+  },
+  {
+    "id": "KNW-00331",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Fundamentos de Aplicação controlada de molho",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Aplicação controlada de molho."
+  },
+  {
+    "id": "KNW-00332",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesa empratada",
+    "nome": "Fundamentos de Quenelle de creme ou gelado",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Quenelle de creme ou gelado."
+  },
+  {
+    "id": "KNW-00333",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesa empratada",
+    "nome": "Fundamentos de Molho espelho no prato",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Molho espelho no prato."
+  },
+  {
+    "id": "KNW-00334",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Fundamentos de Mise en place de serviço de bebidas",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Mise en place de serviço de bebidas."
+  },
+  {
+    "id": "KNW-00335",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Fundamentos de Serviço de vinho tranquilo",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Serviço de vinho tranquilo."
+  },
+  {
+    "id": "KNW-00336",
+    "nivel": 2,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Controlo técnico de Serviço de vinho tranquilo",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00337",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Fundamentos de Serviço de espumante",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Serviço de espumante."
+  },
+  {
+    "id": "KNW-00338",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Fundamentos de Preparação de café espresso",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Preparação de café espresso."
+  },
+  {
+    "id": "KNW-00339",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Fundamentos de Espumar leite para cappuccino",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Espumar leite para cappuccino."
+  },
+  {
+    "id": "KNW-00340",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Atendimento",
+    "nome": "Fundamentos de Acolhimento e confirmação do pedido",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Acolhimento e confirmação do pedido."
+  },
+  {
+    "id": "KNW-00341",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Atendimento",
+    "nome": "Fundamentos de Gestão inicial de reclamação",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Gestão inicial de reclamação."
+  },
+  {
+    "id": "KNW-00342",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Fundamentos de Forrar tarteira com pâte brisée",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Forrar tarteira com pâte brisée."
+  },
+  {
+    "id": "KNW-00343",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Fundamentos de Cozedura em branco com pesos",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Cozedura em branco com pesos."
+  },
+  {
+    "id": "KNW-00344",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Controlo técnico de Cozedura em branco com pesos",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00345",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Fundamentos de Pâte foncer",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pâte foncer."
+  },
+  {
+    "id": "KNW-00346",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Controlo técnico de Pâte foncer",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00347",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Fundamentos de Pâte à linzer",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Pâte à linzer."
+  },
+  {
+    "id": "KNW-00348",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Controlo técnico de Pâte à linzer",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00349",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Ciência e especialização de Pâte à linzer",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00350",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massa choux",
+    "nome": "Fundamentos de Éclair",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Éclair."
+  },
+  {
+    "id": "KNW-00351",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massa choux",
+    "nome": "Fundamentos de Paris-Brest",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Paris-Brest."
+  },
+  {
+    "id": "KNW-00352",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massa choux",
+    "nome": "Controlo técnico de Paris-Brest",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00353",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Fundamentos de Croissant de amêndoa",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Croissant de amêndoa."
+  },
+  {
+    "id": "KNW-00354",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlo técnico de Croissant de amêndoa",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00355",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Fundamentos de Palmier",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Palmier."
+  },
+  {
+    "id": "KNW-00356",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlo técnico de Palmier",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00357",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Biscuit cuillère",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Biscuit cuillère."
+  },
+  {
+    "id": "KNW-00358",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Controlo técnico de Biscuit cuillère",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00359",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Biscuit roulade",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Biscuit roulade."
+  },
+  {
+    "id": "KNW-00360",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Sponge cake por método quente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Sponge cake por método quente."
+  },
+  {
+    "id": "KNW-00361",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Controlo técnico de Sponge cake por método quente",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00362",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Devil’s food cake",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Devil’s food cake."
+  },
+  {
+    "id": "KNW-00363",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Controlo técnico de Devil’s food cake",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00364",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Fundamentos de Angel food cake",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Angel food cake."
+  },
+  {
+    "id": "KNW-00365",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Controlo técnico de Angel food cake",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00366",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Ciência e especialização de Angel food cake",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00367",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Crème anglaise",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Crème anglaise."
+  },
+  {
+    "id": "KNW-00368",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Crème légère",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Crème légère."
+  },
+  {
+    "id": "KNW-00369",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlo técnico de Crème légère",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00370",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Crème frangipane",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Crème frangipane."
+  },
+  {
+    "id": "KNW-00371",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlo técnico de Crème frangipane",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00372",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Fundamentos de Namelaka",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Namelaka."
+  },
+  {
+    "id": "KNW-00373",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlo técnico de Namelaka",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00374",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Ciência e especialização de Namelaka",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00375",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Fundamentos de Ganache de moldagem",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Ganache de moldagem."
+  },
+  {
+    "id": "KNW-00376",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Controlo técnico de Ganache de moldagem",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00377",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Ciência e especialização de Ganache de moldagem",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00378",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Fundamentos de Praliné feuilletine",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Praliné feuilletine."
+  },
+  {
+    "id": "KNW-00379",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Controlo técnico de Praliné feuilletine",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00380",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Fundamentos de Dragées de chocolate",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Dragées de chocolate."
+  },
+  {
+    "id": "KNW-00381",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Controlo técnico de Dragées de chocolate",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00382",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Ciência e especialização de Dragées de chocolate",
+    "definicao": "Interpretar transformações físico-químicas, limites e alternativas profissionais."
+  },
+  {
+    "id": "KNW-00383",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Fundos e caldos",
+    "nome": "Fundamentos de Fundo vegetal",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Fundo vegetal."
+  },
+  {
+    "id": "KNW-00384",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Molho mornay",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Molho mornay."
+  },
+  {
+    "id": "KNW-00385",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Fundamentos de Molho suprême",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Molho suprême."
+  },
+  {
+    "id": "KNW-00386",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Controlo técnico de Molho suprême",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00387",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Fundamentos de Batata gratin dauphinois",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Batata gratin dauphinois."
+  },
+  {
+    "id": "KNW-00388",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Fundamentos de Batata duchesse",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Batata duchesse."
+  },
+  {
+    "id": "KNW-00389",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Controlo técnico de Batata duchesse",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00390",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Carne suína",
+    "nome": "Fundamentos de Costeleta de porco grelhada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Costeleta de porco grelhada."
+  },
+  {
+    "id": "KNW-00391",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Aves",
+    "nome": "Fundamentos de Peito de pato grelhado com pele",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Peito de pato grelhado com pele."
+  },
+  {
+    "id": "KNW-00392",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Aves",
+    "nome": "Controlo técnico de Peito de pato grelhado com pele",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00393",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Borrego e caça",
+    "nome": "Fundamentos de Perna de borrego assada",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Perna de borrego assada."
+  },
+  {
+    "id": "KNW-00394",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Borrego e caça",
+    "nome": "Controlo técnico de Perna de borrego assada",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00395",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Eventos e serviços especiais",
+    "nome": "Fundamentos de Finger food frio",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Finger food frio."
+  },
+  {
+    "id": "KNW-00396",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Eventos e serviços especiais",
+    "nome": "Fundamentos de Finger food quente",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Finger food quente."
+  },
+  {
+    "id": "KNW-00397",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Eventos e serviços especiais",
+    "nome": "Fundamentos de Serviço volante",
+    "definicao": "Compreender a finalidade, os produtos, as etapas e o resultado esperado de Serviço volante."
+  },
+  {
+    "id": "KNW-00398",
+    "nivel": 2,
+    "dominio": "eventos",
+    "familia_tecnica": "Eventos e serviços especiais",
+    "nome": "Controlo técnico de Serviço volante",
+    "definicao": "Relacionar tempo, temperatura, estrutura, equipamento e sinais do processo."
+  },
+  {
+    "id": "KNW-00399",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Reação de Maillard",
+    "definicao": "Reação química entre aminoácidos e açúcares redutores que ocorre a temperaturas acima de 140°C, produzindo cor acastanhada, aroma e sabor complexo. É responsável pela crosta do pão, cor da carne grelhada e cor da batata frita."
+  },
+  {
+    "id": "KNW-00400",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Condições para Maillard",
+    "definicao": "A reação de Maillard ocorre mais rapidamente em superfícies secas, a temperaturas superiores a 140°C, com pH neutro a alcalino. A presença de água inibe a reação — por isso é necessário secar a superfície dos alimentos antes de grelhar ou saltear."
+  },
+  {
+    "id": "KNW-00401",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Maillard vs Caramelização",
+    "definicao": "A caramelização envolve apenas açúcares (sem proteínas) e ocorre a temperaturas superiores a 160°C. A reação de Maillard envolve açúcares E proteínas e ocorre a partir de 140°C. São fenómenos diferentes mas frequentemente ocorrem em simultâneo."
+  },
+  {
+    "id": "KNW-00402",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Coagulação das proteínas",
+    "definicao": "Processo pelo qual as proteínas mudam de estrutura sob o efeito do calor, tornando-se sólidas ou semi-sólidas. No ovo, a clara coagula entre 60°C e 65°C e a gema entre 65°C e 70°C. No peixe, a coagulação ocorre entre 55°C e 65°C. Na carne, as proteínas musculares coagulam progressivamente a partir de 50°C."
+  },
+  {
+    "id": "KNW-00403",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Temperatura de coagulação por produto",
+    "definicao": "Ovo inteiro: 73°C. Clara: 60–65°C. Gema: 65–70°C. Peixe: 55–65°C. Carne de ave: 75°C mínimo. Carne bovina (médio): 60–65°C no centro. Carne de porco: 71°C mínimo."
+  },
+  {
+    "id": "KNW-00404",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Coagulação excessiva — efeitos",
+    "definicao": "Quando as proteínas coagulam além do ponto ideal, expulsam água (sinérese), tornando o produto seco e fibroso. É o que acontece quando um ovo coze em excesso, o peixe fica seco ou a carne fica fibrosa e sem sucos."
+  },
+  {
+    "id": "KNW-00405",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Gelatinização do amido",
+    "definicao": "Processo pelo qual os grânulos de amido absorvem água e incham quando aquecidos, aumentando a viscosidade da preparação. O amido de trigo gelatiniza entre 60°C e 75°C; o amido de milho entre 62°C e 72°C; a fécula de batata entre 58°C e 68°C."
+  },
+  {
+    "id": "KNW-00406",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Retrogradação do amido",
+    "definicao": "Fenómeno pelo qual os amidos gelatinizados voltam a cristalizar ao arrefecer, tornando a preparação mais firme. É o que acontece ao pão que fica duro, ao pudim que solidifica ou à maizena que fica gelatinosa ao arrefecer. Pode ser revertido com aquecimento."
+  },
+  {
+    "id": "KNW-00407",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Amido como espessante",
+    "definicao": "Para espessar 1 litro de líquido: roux (farinha+manteiga) requer 60–80g de farinha; amido de milho requer 25–30g; fécula de batata requer 20–25g. O amido de milho produz resultado mais transparente; o roux produz resultado opaco."
+  },
+  {
+    "id": "KNW-00408",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Emulsão — definição",
+    "definicao": "Mistura estável de dois líquidos imiscíveis (geralmente água e gordura) através de um emulsionante. A lecitina da gema de ovo e a proteína do leite são emulsionantes naturais. Sem emulsionante, os líquidos separam-se."
+  },
+  {
+    "id": "KNW-00409",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Emulsão fria vs emulsão quente",
+    "definicao": "Emulsão fria: maionese (azeite + gema + vinagre). Emulsão quente: molho holandês (manteiga + gema + ácido a calor controlado). As emulsões quentes são mais instáveis — temperatura excessiva coagula a gema e quebra a emulsão."
+  },
+  {
+    "id": "KNW-00410",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Causas de quebra de emulsão",
+    "definicao": "Temperatura demasiado alta que coagula a gema; adição de gordura demasiado rápida; ausência de emulsionante suficiente; contaminação com água quando não pretendido; congelação que quebra a estrutura."
+  },
+  {
+    "id": "KNW-00411",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Glúten — formação",
+    "definicao": "O glúten forma-se quando as proteínas da farinha de trigo (gliadina e glutenina) entram em contacto com a água e são trabalhadas mecanicamente. Cria uma rede elástica e extensível que retém os gases da fermentação, dando estrutura ao pão."
+  },
+  {
+    "id": "KNW-00412",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Glúten — efeito na pastelaria",
+    "definicao": "Em pastelaria, o glúten pode tornar as massas elásticas e duras. Para o evitar: usar farinha de baixo teor proteico (T55 ou tipo pastelaria), trabalhar a massa o mínimo necessário e respeitar o tempo de repouso para relaxar a rede de glúten."
+  },
+  {
+    "id": "KNW-00413",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Desenvolvimento do glúten no pão",
+    "definicao": "No pão, quer-se glúten bem desenvolvido: amassar até a massa ficar lisa, elástica e não se rasgar. A janela de glúten verifica-se ao esticar uma porção de massa — deve ficar translúcida sem rasgar."
+  },
+  {
+    "id": "KNW-00414",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Fermentação biológica — leveduras",
+    "definicao": "As leveduras (Saccharomyces cerevisiae) fermentam os açúcares da farinha e produzem CO₂ e álcool. O CO₂ fica retido na rede de glúten e faz a massa crescer. Temperatura ideal: 24–28°C. Acima de 50°C as leveduras morrem."
+  },
+  {
+    "id": "KNW-00415",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Fermentação — temperatura e tempo",
+    "definicao": "Temperatura mais alta = fermentação mais rápida mas sabor menos complexo. Fermentação longa e fria (4–8°C) produz sabores mais desenvolvidos e massa mais digestível. A fermentação retardada no frigorífico pode ir de 12 a 72 horas."
+  },
+  {
+    "id": "KNW-00416",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Fermentação — pontos de controlo",
+    "definicao": "Primeira fermentação (em massa): até dobrar o volume. Segunda fermentação (após moldar): volume aumenta 80%. Verificação do ponto: marcar a massa com o dedo — se recuperar lentamente, está pronta. Se recuperar rápido, precisa de mais tempo."
+  },
+  {
+    "id": "KNW-00417",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Cristalização do açúcar",
+    "definicao": "O açúcar em solução pode recristalizar quando arrefece ou quando existem superfícies irregulares onde os cristais se formam. A cristalização indesejada torna o caramelo granuloso. Pode ser evitada com ácido (cremor tártaro, limão) ou glucose."
+  },
+  {
+    "id": "KNW-00418",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Pontos do açúcar e temperaturas",
+    "definicao": "Fio (103–105°C); Pérola (106–110°C); Bola mole (112–116°C); Bola firme (118–121°C); Quebra mole (132–143°C); Quebra dura (146–154°C); Caramelo claro (160°C); Caramelo escuro (170–175°C)."
+  },
+  {
+    "id": "KNW-00419",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Caramelo a seco vs caramelo húmido",
+    "definicao": "Caramelo a seco: fundir o açúcar sem água — mais rápido mas risco de cristalização. Caramelo húmido: dissolver açúcar em água primeiro — mais controlado e uniforme mas mais lento."
+  },
+  {
+    "id": "KNW-00420",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Propriedades das matérias-primas",
+    "nome": "Ponto de fumo das gorduras",
+    "definicao": "Temperatura a que a gordura começa a degradar-se e a libertar compostos nocivos. Manteiga: 150°C. Azeite virgem extra: 190°C. Óleo de girassol: 230°C. Banha: 190°C. Para saltear use gordura com ponto de fumo acima de 180°C."
+  },
+  {
+    "id": "KNW-00421",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Propriedades das matérias-primas",
+    "nome": "Manteiga clarificada — função",
+    "definicao": "A clarificação remove a água e as proteínas do leite, elevando o ponto de fumo da manteiga de 150°C para cerca de 250°C. Permite grelhar e saltear com sabor a manteiga sem queimar. Também é usada para conservação."
+  },
+  {
+    "id": "KNW-00422",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Propriedades das matérias-primas",
+    "nome": "Colagénio e gelatina",
+    "definicao": "O colagénio é uma proteína do tecido conjuntivo das carnes. Com calor húmido prolongado (estufar, brasear) acima de 70°C, converte-se em gelatina, que dá corpo e brilho aos molhos. É por isso que os estufados de carnes de 2.ª têm molho mais rico."
+  },
+  {
+    "id": "KNW-00423",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Propriedades das matérias-primas",
+    "nome": "Sazonalidade e qualidade",
+    "definicao": "Produtos na época têm melhor sabor, textura e valor nutricional, e são mais económicos. Morango de agosto e tomate de inverno têm sabores incomparáveis com os da época. A sazonalidade influencia diretamente o resultado culinário."
+  },
+  {
+    "id": "KNW-00424",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Propriedades das matérias-primas",
+    "nome": "Oxidação e escurecimento enzimático",
+    "definicao": "Quando certas frutas e legumes (maçã, batata, abacate) são cortadas e expostas ao ar, enzimas reagem com o oxigénio e produzem pigmentos escuros. Pode ser evitado com ácido (limão), água, vácuo ou calor que inativa as enzimas."
+  },
+  {
+    "id": "KNW-00425",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Propriedades das matérias-primas",
+    "nome": "Ácido e álcali na cozinha",
+    "definicao": "Ingredientes ácidos (limão, vinagre, vinho) alteram cor, sabor e textura. Os ácidos preservam a cor de legumes verdes se usados com moderação; realçam sabores; tenderizam carnes em marinadas. O bicarbonato (álcali) acelera a caramelização e amacia leguminosas."
+  }
+]

@@ -1,0 +1,4194 @@
+[
+  {
+    "id": "PREP-0064",
+    "nome": "Caldo verde à minhota",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Sopa de puré de batata com couve-galega migada e chouriço. A couve é adicionada apenas nos últimos minutos para manter a cor.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0065",
+    "nome": "Açorda da mãe",
+    "categoria": "Açorda",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Açorda de coelho ou galinha com pão, azeite, alho e coentros. Receita de família minhotas com caldo rico.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0066",
+    "nome": "Papas de sarrabulho",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Papa espessa de farinha de milho, sangue de porco, carne picada e especiarias. Prato festivo do Natal e matança do porco.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0067",
+    "nome": "Sopa dourada",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Sopa de frango com gemas batidas que dão cor dourada. Nome devido à cor característica das gemas dissolvidas no caldo.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0068",
+    "nome": "Bacalhau à Gomes de Sá",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Porto",
+    "descricao": "Bacalhau demolhado e desfiado, grelhado, disposto em camadas com batata e ovo cozido, cebola, azeite e azeitonas.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0069",
+    "nome": "Bacalhau à Zé do Pipo",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Porto",
+    "descricao": "Postas de bacalhau grelhadas cobertas com maionese e gratinadas com cebola e pimento. Especialidade portuense.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0070",
+    "nome": "Bacalhau à Margarida da Praça",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Bacalhau cozido desfiado com azeite, alho, batata e ovo. Variante minhotas do bacalhau cozido com todos.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0071",
+    "nome": "Lampreia à moda do Minho",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Lampreia guisada no próprio sangue com vinho verde tinto. Prato festivo sazonal de janeiro a março.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0072",
+    "nome": "Arroz de lampreia à moda de Entre-os-Rios",
+    "categoria": "Arroz/Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Arroz cozinhado com o caldo e sangue da lampreia. Prato emblemático da Bacia do Douro.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0073",
+    "nome": "Santola no carro",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Santola recheada com o próprio miolo misturado com broa, salsa e vinho. Servida na carapaça.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0074",
+    "nome": "Feijão com bacalhau e couve",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Guisado de feijão branco com bacalhau desfiado e couve-galega. Prato humilde e nutritivo.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0075",
+    "nome": "Bolinhos de bacalhau",
+    "categoria": "Petisco",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Nacional",
+    "descricao": "Croquetes de bacalhau desfiado com batata, ovo, salsa e cebola. Fritos em óleo. Diferente das pataniscas — têm forma oval.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0076",
+    "nome": "Rojões à moda do Minho",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Cubos de lombinho de porco marinados em vinho verde, alho e cominhos, salteados em banha. Servidos com papas de milho.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0077",
+    "nome": "Arroz de pato à moda de Braga",
+    "categoria": "Arroz",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Braga",
+    "descricao": "Pato cozido, desossado e desfiado, misturado com o arroz cozinhado no caldo, depois assado no forno com chouriço.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0078",
+    "nome": "Arroz de sarrabulho",
+    "categoria": "Arroz",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Arroz cozinhado com sangue de porco, carnes e especiarias. Acompanha os rojões e as papas.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0079",
+    "nome": "Cabrito ou anho assado",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Cabrito ou cordeiro assado no forno com vinho verde, alho, azeite e ervas. Prato de Páscoa e festas.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0080",
+    "nome": "Tripas à moda do Porto",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Porto",
+    "descricao": "Tripas de vaca com feijão branco, enchidos, presunto e pé de porco. Prato que deu o nome 'tripeiro' aos portuenses.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0081",
+    "nome": "Cozido minhoto",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Cozido com feijão branco, couve-galega, batata, carne de vaca, frango, enchidos e presunto. Variante regional do cozido.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0082",
+    "nome": "Pão-de-ló de Margaride",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Felgueiras",
+    "descricao": "Pão-de-ló húmido com miolo semi-líquido. A cozedura é propositadamente curta para manter o interior cremoso.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0083",
+    "nome": "Cavacas minhotas",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Bolachas fritas e cobertas com açúcar. Doce tradicional das festas e feiras minhotas.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0084",
+    "nome": "Foguetes de Amarante",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Amarante",
+    "descricao": "Tubos de massa estaladiça recheados com doce de ovo. Associados às festas de S. Gonçalo de Amarante.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0085",
+    "nome": "Massapães minhotos",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Bolinhos de amêndoa e açúcar em formas variadas. Versão minhotas dos marzipans.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0086",
+    "nome": "Aletria com ovos",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Nacional",
+    "descricao": "Massa aletria cozinhada em leite com açúcar, gemas e canela. Tradicional do Natal.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0087",
+    "nome": "Sopa de alheiras",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Sopa com alheira desfeita no caldo de legumes e batata. Aproveitamento e valorização do enchido transmontano.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0088",
+    "nome": "Água de unto",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Caldo aguado com unto (gordura de porco fumado), batata e pão. Sopa de inverno muito humilde e sustentante.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0089",
+    "nome": "Caldeirada de feijão frade",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Sopa substancial de feijão frade com batata, cebola, alho e enchidos. Versão transmontana muito apurada.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0090",
+    "nome": "Bacalhau assado com pão de centeio",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Lombo de bacalhau assado coberto com migalhas de pão de centeio, alho e azeite. Crosta crocante característica.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0091",
+    "nome": "Trutas do rio",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Trutas de rio grelhadas ou fritas em manteiga e temperadas com limão. Produto genuíno dos rios transmontanos.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0092",
+    "nome": "Migas de caldeirada de bacalhau",
+    "categoria": "Peixe/Acompanhamento",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Pão de centeio embebido no caldo do bacalhau, servido como acompanhamento da caldeirada.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0093",
+    "nome": "Posta mirandesa",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes / Miranda do Douro",
+    "descricao": "Bife grosso de vitela mirandesa grelhado. Raça autóctone DOP. Espessura de 3-5 cm, servida mal passada.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0094",
+    "nome": "Alheira grelhada",
+    "categoria": "Enchido",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Enchido de pão, carnes e azeite com colorau, grelhado ou assado. Criação dos judeus sefarditas para enganar a Inquisição.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0095",
+    "nome": "Carne de porco estufada com castanhas",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Porco estufado com castanhas-piladas, vinho tinto e especiarias. Prato de outono da região.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0096",
+    "nome": "Coelho à transmontana",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Coelho guisado com vinho, alho, azeite e piri-piri. Servido com batatas ou arroz.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0097",
+    "nome": "Feijoada à transmontana",
+    "categoria": "Carne/Leguminosas",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Feijão encarnado com carnes de porco fumadas, salpicão, chouriço e alheira. Diferente da brasileira.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0098",
+    "nome": "Perdiz com molho vilão",
+    "categoria": "Aves/Caça",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Perdiz estufada servida com molho de cebola e vinagre. Molho vilão é o nome transmontano para este molho ácido.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0099",
+    "nome": "Cabrito assado no espeto e recheado",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Cabrito recheado com arroz, miúdos e presunto, assado no espeto ou no forno. Prato festivo de Páscoa.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0100",
+    "nome": "Butelo com casulas",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes / Bragança",
+    "descricao": "Enchido de ossos de porco temperado com vinho, cozido com feijão verde seco (casulas). Especialidade de Bragança.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0101",
+    "nome": "Toucinho-do-céu de Murça",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes / Murça",
+    "descricao": "Bolo rico de amêndoa, gemas, açúcar e banha. Origem conventual, versão transmontana com azeite.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0102",
+    "nome": "Papos-de-anjo de Mirandela",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes / Mirandela",
+    "descricao": "Gemas batidas com açúcar e água, cozidas em forminhas. Doce conventual de origem árabe.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0103",
+    "nome": "Queijadas de Murça",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes / Murça",
+    "descricao": "Queijadas com massa fina e recheio de queijo fresco, ovos e açúcar. Variante transmontana.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0104",
+    "nome": "Folar de Valpaços",
+    "categoria": "Panificação festiva",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes / Valpaços",
+    "descricao": "Pão doce enriquecido com ovos e manteiga, com um ovo inteiro cozido por cima. Tradicional da Páscoa.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC03593",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ]
+  },
+  {
+    "id": "PREP-0105",
+    "nome": "Chanfana",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Cabra ou carneiro cozinhado lentamente em vinho tinto numa panela de barro. O vinho substitui a água. Prato de Miranda do Corvo.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0106",
+    "nome": "Leitão recheado à moda da Beira Alta",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Leitão recheado com arroz, miúdos, enchidos e presunto, assado no forno. Diferente do leitão da Bairrada.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0107",
+    "nome": "Queijada de Penamacor",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Penamacor",
+    "descricao": "Queijadas de massa muito fina com recheio de queijo de ovelha curado, ovos e açúcar.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0108",
+    "nome": "Arroz doce à moda da Beira Alta",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Arroz agulha cozinhado em leite com açúcar, gemas e casca de limão. Decorado com canela. Versão mais cremosa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0109",
+    "nome": "Pão-de-ló de Midões",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Midões",
+    "descricao": "Pão-de-ló húmido de miolo pastoso com muitas gemas. Variante da região de Tábua.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0110",
+    "nome": "Bacalhau à moda da Beira Alta",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Bacalhau demolhado assado em cama de batata, cebola e azeite com pão de centeio esfarelado.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0111",
+    "nome": "Caldo de ossos",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Caldo rico de ossos de porco com feijão, batata e hortícolas. Sopa robusta de inverno serrano.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0112",
+    "nome": "Queijo da Serra (produção e empratamento)",
+    "categoria": "Queijo",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Serra da Estrela",
+    "descricao": "Queijo DOP de leite de ovelha com coalho vegetal (cardo). Empratamento e serviço correto: abrir com faca especial e servir a colher.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0113",
+    "nome": "Tigelada de Abrantes",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa / Abrantes",
+    "descricao": "Pudim de ovos, leite, açúcar e casca de limão cozinhado em tigelinha de barro. Textura entre leite-creme e pudim.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0114",
+    "nome": "Ensopado de borrego à moda da Beira Baixa",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Borrego guisado em caldo com pão, azeite e alho. Servido sobre fatias de pão do campo.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0115",
+    "nome": "Perdiz estufada à moda da Beira Baixa",
+    "categoria": "Aves/Caça",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Perdiz estufada com azeite, vinho branco, alho e louro. Prato de caça típico da região.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0116",
+    "nome": "Sericaia",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa / Elvas",
+    "descricao": "Pudim de ovos e açúcar com canela em pó, cozinhado em forno lento. Tradicional de Elvas, acompanha ameixas.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0117",
+    "nome": "Bolo de mel de Castelo Branco",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Bolo escuro e húmido com mel, especiarias e frutos secos. Diferente do bolo de mel da Madeira.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0118",
+    "nome": "Cozido do campo",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Cozido com carne de carneiro, enchidos, grão, batata e couve. Versão da Beira Baixa com mais borrego.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0119",
+    "nome": "Amêndoa coberta de Mértola",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Amêndoas cobertas com açúcar em várias cores. Tradição da região fronteiriça.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0120",
+    "nome": "Leitão da Bairrada",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Bairrada",
+    "descricao": "Leitão de 5-7 kg assado em forno a lenha a temperatura muito alta. Pele crocante e dourada, carne suculenta. IGP.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0121",
+    "nome": "Chanfana de Coimbra",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Coimbra",
+    "descricao": "Cabra velha estufada em vinho tinto numa panela de barro preta. Versão de Coimbra com cabra em vez de carneiro.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0122",
+    "nome": "Enguias da Ria de Aveiro fritas",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Aveiro",
+    "descricao": "Enguias limpas, temperadas com alho e limão, passadas por farinha e fritas. Especialidade da Ria de Aveiro.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0123",
+    "nome": "Ovos moles de Aveiro",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Aveiro",
+    "descricao": "Gemas batidas com calda de açúcar, servidas em cálices de hóstia ou em conchas de barro. DOP de Aveiro.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0124",
+    "nome": "Pão-de-ló de Ovar",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Ovar",
+    "descricao": "Pão-de-ló muito húmido com miolo semi-líquido de gemas. Assado em formas de papel, serve-se ainda húmido.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0125",
+    "nome": "Bacalhau à Gomes de Sá de Coimbra",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Coimbra",
+    "descricao": "Variante conimbricense com mais cebola e azeite. Servido numa cataplana ou caçarola de barro.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0126",
+    "nome": "Pastel de Tentúgal",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Tentúgal",
+    "descricao": "Pastel de massa filo muito fina com recheio de ovos-moles. Origem no Convento de Tentúgal. IGP.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0127",
+    "nome": "Queijada de Coimbra",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Coimbra",
+    "descricao": "Queijada com recheio de queijo fresco, ovos e açúcar. Tradição da Universidade de Coimbra.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0128",
+    "nome": "Caldeirada de enguias",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Aveiro",
+    "descricao": "Enguias guisadas em caldeirada com tomate, cebola, pimento e azeite. Prato emblemático da Ria.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0129",
+    "nome": "Arroz de tamboril",
+    "categoria": "Arroz/Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Litoral",
+    "descricao": "Arroz cremoso com tamboril, tomate e coentros. Muito popular em toda a costa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0130",
+    "nome": "Sopa da pedra de Almeirim",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Ribatejo / Almeirim",
+    "descricao": "Sopa substancial de feijão encarnado, carne de porco, salpicão, chouriço e morcela com batata e couve.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0131",
+    "nome": "Caldeirada de enguias do Tejo",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Enguias do Rio Tejo guisadas com batata, pimento, tomate e muito azeite e salsa.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0132",
+    "nome": "Ensopado de borrego à ribatejana",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Borrego guisado em caldo com pão e azeite. Versão ribatejana com mais tomate que a alentejana.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0133",
+    "nome": "Favas à ribatejana",
+    "categoria": "Legumes",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Favas guisadas com chouriço, bacon, cebola e coentros. Muito populares na primavera.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0134",
+    "nome": "Açorda de coelho",
+    "categoria": "Açorda",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Açorda de coelho — caldo rico com coelho guisado e pão. Versão ribatejana com muito coentros.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0135",
+    "nome": "Tigeladas de Abrantes",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Ribatejo / Abrantes",
+    "descricao": "Pudim de ovos e leite cozido em tigelinhas de barro. Versão ribatejana muito popular.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0136",
+    "nome": "Sardinha na telha",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Ribatejo / Nacional",
+    "descricao": "Sardinha assada em telha de barro no forno ou na brasa. Método muito antigo de cozinhar a sardinha.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0137",
+    "nome": "Sopa rica de peixes",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Estremadura",
+    "descricao": "Sopa de peixe variado com tomate, cebola, cominhos e pão. Muito servida na Nazaré e Costa de Lisboa.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0138",
+    "nome": "Creme de camarão",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bisque português — camarão com tomate, natas e brandy. Servido com croutons.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0139",
+    "nome": "Amêijoas à Bulhão Pato",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Amêijoas abertas em azeite com alho e coentros. Nome em homenagem ao poeta Bulhão Pato.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0140",
+    "nome": "Bacalhau à Brás",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bacalhau desfiado com batata palha, ovos mexidos, salsa e azeitonas. Prato emblemático de Lisboa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0141",
+    "nome": "Pataniscas de bacalhau",
+    "categoria": "Petisco",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bolinhos fritos de bacalhau desfiado com ovo e salsa. Acompanham arroz de feijão. Petisco lisboeta.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0142",
+    "nome": "Caldeirada à Setubalense",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Setúbal",
+    "descricao": "Caldeirada com peixe variado, batata em camadas, tomate, cebola e pimento. Não se mexe durante a cozedura.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0143",
+    "nome": "Caldeirada à Nazaré",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Nazaré",
+    "descricao": "Caldeirada de peixe diverso da costa da Nazaré com cominhos. O cumim distingue esta versão das outras.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0144",
+    "nome": "Rissóis de camarão",
+    "categoria": "Petisco",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Meias-luas de massa tenra recheadas com creme de camarão, panadas e fritas. Petisco nacional.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0145",
+    "nome": "Peixinhos da horta",
+    "categoria": "Petisco/Legumes",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Feijão verde panado com polme de farinha e frito. Considerado o precursor da tempura japonesa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0146",
+    "nome": "Caracóis à portuguesa",
+    "categoria": "Petisco",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Caracóis cozidos em água, azeite, chouriço, alho, orégãos e poejos. Petisco de verão lisboeta.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0147",
+    "nome": "Bife à café",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bife fino de vaca frito em manteiga com alho e limão. Servido com batatas fritas. Restaurante popular lisboeta.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0148",
+    "nome": "Bifes de cebolada",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bifes de vaca cobertos com cebola caramelizada e louro. Prato caseiro muito popular.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0149",
+    "nome": "Coelho à caçadora",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Estremadura",
+    "descricao": "Coelho guisado com tomate, alho, vinho branco e ervas. Versão portuguesa do chasseur.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0150",
+    "nome": "Feijoada à portuguesa",
+    "categoria": "Carne/Leguminosas",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Nacional",
+    "descricao": "Feijão com carnes de porco variadas, chouriço e morcela. Versão portuguesa — diferente da brasileira.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0151",
+    "nome": "Pastéis de Belém / Pastel de nata",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa / Belém",
+    "descricao": "Tarteletes de massa folhada com creme de ovos e açúcar, polvilhados com canela e açúcar em pó. IGP.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0152",
+    "nome": "Torta de laranja de Setúbal",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Setúbal",
+    "descricao": "Bolo enrolado muito fino com recheio de creme de laranja. Apenas ovos, açúcar e sumo de laranja.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0153",
+    "nome": "Queijadas de Sintra",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Sintra",
+    "descricao": "Queijadas com recheio de queijo fresco, ovos, manteiga e açúcar numa caixinha de massa muito fina. IGP.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0154",
+    "nome": "Travesseiros de Sintra",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Sintra",
+    "descricao": "Pastéis de massa folhada em forma de almofada recheados com creme de amêndoa. IGP de Sintra.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0155",
+    "nome": "Farófias",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Nacional",
+    "descricao": "Claras montadas cozidas no leite, servidas sobre creme inglês de limão e canela.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0156",
+    "nome": "Pudim flan",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Nacional",
+    "descricao": "Pudim de ovos, leite e açúcar com caramelo. Versão portuguesa do flan espanhol ou crème caramel francês.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0157",
+    "nome": "Bolo-rei",
+    "categoria": "Panificação festiva",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Nacional",
+    "descricao": "Bolo de massa brioche com frutos cristalizados e frutos secos. Tradicional do Natal e Reis.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC03593",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ]
+  },
+  {
+    "id": "PREP-0158",
+    "nome": "Trouxas das Caldas",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Caldas da Rainha",
+    "descricao": "Gemas batidas com calda enroladas em bolinhos. Origem conventual.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0159",
+    "nome": "Açorda à alentejana",
+    "categoria": "Açorda",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Pão alentejano com água a ferver, alho pisado com sal, coentros, azeite e ovos escalfados. Receita da MLM.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0160",
+    "nome": "Gaspacho alentejano",
+    "categoria": "Sopa fria",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Sopa fria de tomate, pepino, pimento, alho, azeite, vinagre e pão. Servido em pedaços — diferente do andaluz.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0161",
+    "nome": "Sopa de beldroegas com queijo e ovos",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Sopa aromática com beldroegas (planta silvestre), queijo fresco e ovos. Cozinha de sobrevivência alentejana.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0162",
+    "nome": "Sopa de espargos bravos",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Caldo de espargos silvestres com ovos e pão. Sopa primaveril da cozinha de campo alentejana.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0163",
+    "nome": "Sopa de poejos com ovos",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Caldo com erva-poejos, batata e ovos escalfados. Sopa aromática típica do Alentejo.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0164",
+    "nome": "Tibornia",
+    "categoria": "Petisco",
+    "pais": "Portugal",
+    "regiao": "Alentejo / Alto Alentejo",
+    "descricao": "Fatias de pão fritas em azeite, polvilhadas com açúcar e canela, regadas com sumo de laranja e vinho tinto.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0165",
+    "nome": "Sopa de cação",
+    "categoria": "Sopa/Peixe",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Sopa de cação (tubarão pequeno) com coentros, alho e vinagre. Prato típico das vilas alentejanas próximas da costa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0166",
+    "nome": "Bacalhau albardado",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Bacalhau passado por polme de farinha e ovo e frito. Servido com laranja e azeitonas. Alentejo tem muito bacalhau.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0167",
+    "nome": "Carne de porco à alentejana",
+    "categoria": "Carne/Marisco",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Cubos de porco em vinha-d'alho (massa de pimentão) salteados com amêijoas. Combinação terra-mar emblemática.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0168",
+    "nome": "Ensopado de borrego",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Borrego guisado em caldo com azeite, alho e coentros. Servido sobre fatias de pão alentejano.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0169",
+    "nome": "Migas à alentejana",
+    "categoria": "Acompanhamento",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Pão alentejano embebido em água, sal e azeite quente. Acompanha carnes de porco e enchidos.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0170",
+    "nome": "Migas de batata",
+    "categoria": "Acompanhamento",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Batatas cozidas amassadas com azeite e alho. Versão mais leve e económica das migas.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0171",
+    "nome": "Cabrito assado à alentejana",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Cabrito assado com azeite, alho, vinho branco, louro e cominhos. Prato de Páscoa alentejano.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0172",
+    "nome": "Empadas de galinha alentejanas",
+    "categoria": "Pastelaria salgada",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Empadas de massa quebrada com recheio de galinha desfiada, presunto e ovo. Petisco festivo alentejano.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0173",
+    "nome": "Lebre frita",
+    "categoria": "Caça",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Lebre marinada em vinho, alho e especiarias, frita em azeite. Caça importante no Alentejo.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0174",
+    "nome": "Favas guisadas à alentejana",
+    "categoria": "Legumes",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Favas guisadas com chouriço, bacon, cebola e coentros. Base da gastronomia de primavera alentejana.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0175",
+    "nome": "Sericaia com ameixas de Elvas",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Alentejo / Elvas",
+    "descricao": "Pudim de ovos, leite e canela assado, acompanhado com ameixas de Elvas em calda. DOP.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0176",
+    "nome": "Encharcada do Convento de Santa Clara",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Alentejo / Évora",
+    "descricao": "Gemas com calda de açúcar espessada, envolvida em ovos batidos e tostada. Origem conventual.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0177",
+    "nome": "Queijada de Évora",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Alentejo / Évora",
+    "descricao": "Queijada de massa muito fina com recheio de queijo de ovelha fresco, ovos e açúcar.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0178",
+    "nome": "Pão de rala",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Doce de amêndoa ralada com açúcar e gemas. Origem conventual do Sul do país.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0179",
+    "nome": "Bolo de amêndoa do Convento da Vidigueira",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Alentejo / Vidigueira",
+    "descricao": "Bolo muito rico de amêndoa, gemas e açúcar. Origem no Convento da Vidigueira.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0180",
+    "nome": "Dom Rodrigo",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Algarve / Alentejo",
+    "descricao": "Gemas com açúcar, amêndoa e fios de ovos. Embrulhado em papel de prata. Especialidade do Algarve.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0181",
+    "nome": "Morgado de amêndoa",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Bolo de amêndoa moída com açúcar e ovos, decorado com amêndoas inteiras. Doçaria algarvia de amêndoa.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0182",
+    "nome": "Amêijoas na cataplana",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Amêijoas com presunto, chouriço, pimento, tomate e vinho branco fechadas na cataplana. Prato emblemático.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0183",
+    "nome": "Cataplana de marisco",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Marisco variado com tomate, cebola, pimento, coentros e vinho branco na cataplana de cobre.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0184",
+    "nome": "Arroz de berbigão",
+    "categoria": "Arroz/Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Arroz húmido com berbigão aberto, tomate, cebola e coentros. Prato das praias algarvias.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0185",
+    "nome": "Arroz de tamboril à pescador",
+    "categoria": "Arroz/Peixe",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Arroz cremoso com tamboril em postas, tomate e coentros. Versão algarvia muito saborosa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0186",
+    "nome": "Xarém com conquilhas",
+    "categoria": "Cereal/Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Papa de farinha de milho grossa cozinhada com conquilhas abertas no vapor. Prato ancestral algarvioque.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0187",
+    "nome": "Sopa de cação à algarvia",
+    "categoria": "Sopa/Peixe",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Sopa de cação com coentros, alho, vinagre e pão. Igual à alentejana mas com cabeça de peixe.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0188",
+    "nome": "Caldeirada algarvia de peixe variado",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Caldeirada com peixe típico algarvio — linguado, cherne, robalo — em camadas com batata e tomate.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0189",
+    "nome": "Lulas recheadas à algarvia",
+    "categoria": "Cefalópode",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Lulas recheiadas com a própria tinta, tomate, cebola e presunto. Assadas no forno.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0190",
+    "nome": "Linguado à algarvia",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Linguado grelhado ou frito com manteiga de alho e salsa. Peixe achatado mais apreciado no Algarve.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0191",
+    "nome": "Bifes de atum com tomate",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Postas de atum fresco grelhadas ou com molho de tomate e cebola. Peixe muito presente na costa algarvia.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0192",
+    "nome": "Arjamolho algarvio",
+    "categoria": "Sopa fria",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Sopa fria de pão, azeite, alho, tomate e vinagre. Variante algarvia do gaspacho, com mais azeite.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0193",
+    "nome": "Perdizes com amêijoas na cataplana",
+    "categoria": "Caça/Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Combinação terra-mar — perdiz com amêijoas na cataplana. Contraste de sabores típico algarvio.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0194",
+    "nome": "Dom Rodrigo algarvio",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Algarve / Vila Real de Santo António",
+    "descricao": "Gemas com açúcar, amêndoa e fios de ovos. Embrulhado em papel de prata. Especialidade IGP do Algarve.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0195",
+    "nome": "Morgado de amêndoa algarvio",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Bolo de amêndoa moída com açúcar e ovos em forma decorada. Doçaria regional de amêndoa.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0196",
+    "nome": "Figos em calda ou figos secos recheados",
+    "categoria": "Doce de fruta",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Figos secos recheados com amêndoa e chocolate. Produto endémico do Algarve com DOP.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0197",
+    "nome": "Alfarroba — produtos",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Compotas, xaropes e derivados de alfarroba. Produto típico do Algarve com usos múltiplos em doçaria.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0198",
+    "nome": "Espetada madeirense",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Cubos de vaca marinados em alho e sal em espeto de pau de loureiro, grelhados na brasa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0199",
+    "nome": "Carne de vinha-d'alhos",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Carne de porco marinada em vinha-d'alho (vinho, alho, louro) por dias, depois frita. Origem do carne de vinha d'alhos.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0200",
+    "nome": "Espada com banana",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Peixe-espada preto frito acompanhado com banana frita e arroz. Combinação emblemática da Madeira.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0201",
+    "nome": "Lapas grelhadas com manteiga",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Lapas grelhadas na carapaça com manteiga, alho e sumo de limão. Petisco emblemático da Madeira e Açores.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0202",
+    "nome": "Bolo do caco",
+    "categoria": "Panificação",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Pão chato cozinhado em pedra de basalto quente (caco). Servido com manteiga de alho.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC03593",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ]
+  },
+  {
+    "id": "PREP-0203",
+    "nome": "Bolo de mel da Madeira",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Bolo escuro e denso com mel de cana, especiarias e frutos secos. Tradição de mais de 100 anos. IGP.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0204",
+    "nome": "Milho frito",
+    "categoria": "Acompanhamento",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Polenta frita em quadradinhos. Acompanhamento típico madeirense da espetada e outros grelhados.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0205",
+    "nome": "Açorda de tomate da Madeira",
+    "categoria": "Açorda",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Açorda com tomate, alho, ovos e pão de cevada. Variante madeirense com ingredientes locais.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0206",
+    "nome": "Cozido das Furnas",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Açores / São Miguel",
+    "descricao": "Cozido com carnes de vaca, porco, frango, enchidos e legumes, cozinhado pelo calor vulcânico das Furnas.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0207",
+    "nome": "Alcatra terceirense",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Açores / Terceira",
+    "descricao": "Vaca guisada em vinho tinto com cebola, alho e louro numa panela de barro. Prato emblemático da Terceira.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0208",
+    "nome": "Lapas grelhadas dos Açores",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Lapas grelhadas na carapaça com manteiga e alho. Servidas quentes como petisco.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0209",
+    "nome": "Polvo guisado à moda dos Açores",
+    "categoria": "Cefalópode",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Polvo guisado com vinho, cebola e tomate. Os Açores têm dos melhores polvos do mundo.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0210",
+    "nome": "Queijadas da Vila Franca",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Açores / Vila Franca do Campo",
+    "descricao": "Queijadas de queijo fresco dos Açores com ovos e açúcar. Tamanho menor que as continentais.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0211",
+    "nome": "Massa sovada açoriana",
+    "categoria": "Panificação doce",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Pão doce fermentado com ovos, açúcar e manteiga. Tradicional da Páscoa açoriana.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC03593",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ]
+  },
+  {
+    "id": "PREP-0212",
+    "nome": "Alcatra de borrego",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Açores / Terceira",
+    "descricao": "Variante da alcatra com borrego em vez de vaca. Mais leve e delicada.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0213",
+    "nome": "Bolo lêvedo de Amarante",
+    "categoria": "Panificação doce",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Amarante",
+    "descricao": "Bolo doce redondo de massa muito densa com ovos, açúcar e manteiga. Associado às festas de S. Gonçalo.",
+    "nivel": 1,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC03593",
+    "fontes": "SRC-009",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ]
+  },
+  {
+    "id": "PREP-0214",
+    "nome": "Bacalhau às postas à minhota",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Postas grossas de bacalhau demolhado grelhadas na brasa ou frigideira de ferro. Servidas com broa e grelos.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0215",
+    "nome": "Polvo guisado à minhota",
+    "categoria": "Cefalópode",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Polvo cozido e depois guisado com cebola, tomate, azeite e vinho verde. Servido com arroz ou batata.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0216",
+    "nome": "Sardinhas frescas de caldeirada",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Caldeirada de sardinhas frescas com batata, tomate, cebola, pimento e azeite. Cozinhada em camadas.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0217",
+    "nome": "Pescada à poveira",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho / Póvoa de Varzim",
+    "descricao": "Pescada cozida com batata, cenoura e ovos, regada com molho de azeite e alho. Especialidade da Póvoa.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0218",
+    "nome": "Sável de escabeche",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Sável frito em postas conservado em escabeche de vinagre, louro, cebola e azeite. Peixe migrató.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0219",
+    "nome": "Cozido minhoto — rancho",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Versão festiva do cozido com grão, macarrão, carne de vaca, frango e enchidos variados.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0220",
+    "nome": "Torta de camarão",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Omelete enrolada com camarão miúdo, salsa e cebola. Petisco regional muito popular.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0221",
+    "nome": "Mexidos do Natal",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Preparação de ovos mexidos com açúcar, manteiga e nozes. Doce tradicional do Natal minhoto.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0222",
+    "nome": "Mexidos de ovos com amêndoas",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Gemas batidas com açúcar e amêndoa laminada. Doce conventual muito rico da região.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0223",
+    "nome": "Regueifas e pão doce minhoto",
+    "categoria": "Panificação doce",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Argolas de massa doce com ovos, manteiga e açúcar. Oferecidas nas festas e feiras.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC03593",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ]
+  },
+  {
+    "id": "PREP-0224",
+    "nome": "Vinho quente com especiarias",
+    "categoria": "Bebida",
+    "pais": "Portugal",
+    "regiao": "Entre Douro e Minho",
+    "descricao": "Vinho verde tinto aquecido com canela, casca de laranja, açúcar e cravinho. Magusto e São Martinho.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0225",
+    "nome": "Caldo de cebola transmontano",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Sopa simples de cebola com ovo estrelado e fatias de pão de centeio. Base da cozinha transmontana.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0226",
+    "nome": "Bola mirandesa",
+    "categoria": "Pastelaria salgada",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes / Miranda do Douro",
+    "descricao": "Bola de pão recheada com carne de porco, chouriça e presunto. Especialidade de Miranda do Douro.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0227",
+    "nome": "Fricassé de pato com canela",
+    "categoria": "Aves",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Pato estufado com molho de canela, vinagre e gemas. Prato festivo com sabor agridoce.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0228",
+    "nome": "Leitão à transmontana",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Leitão assado no forno com alho, azeite e ervas. Versão transmontana recheada com arroz e miúdos.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0229",
+    "nome": "Arroz de forno transmontano",
+    "categoria": "Arroz",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Arroz cozinhado no forno com enchidos, frango e toucinho. Versão simples e aromática.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0230",
+    "nome": "Perdiz com cogumelos silvestres",
+    "categoria": "Caça",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Perdiz estufada com cogumelos silvestres da região, vinho e aromáticos.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0231",
+    "nome": "Peru assado de Natal",
+    "categoria": "Aves",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Peru recheado com farinheira, chouriça e arroz. Prato central da ceia de Natal transmontana.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0232",
+    "nome": "Migas doces de Natal",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Papa doce de farinha de milho com mel, açúcar e banha. Doce típico da época natalícia.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0233",
+    "nome": "Queijadinhas de abóbora",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Queijadas de massa fina com recheio de abóbora, ovos e açúcar. Variante regional muito aromática.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0234",
+    "nome": "Rosquilhas transmontanas",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Argolas de massa frita com erva-doce, polvilhadas com açúcar e canela.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0235",
+    "nome": "Rancho à moda de Viseu",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Viseu",
+    "descricao": "Sopa substancial com grão, macarrão, carne de vaca, frango e chouriço. Prato de festa da Beira Alta.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0236",
+    "nome": "Caldo de castanhas",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Caldo simples de castanhas piladas com feijão e couve. Sopa de outono serrana.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0237",
+    "nome": "Bacalhau com leite",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Bacalhau demolhado e desfiado cozinhado em molho de leite com batata e cebola no forno.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0238",
+    "nome": "Trutas abafadas da Serra",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Serra da Estrela",
+    "descricao": "Trutas cozinhadas tapadas em azeite com alho, vinagre e louro. Técnica de abafar preserva suculência.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0239",
+    "nome": "Arroz de pato à Lafões",
+    "categoria": "Arroz",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Lafões",
+    "descricao": "Pato cozido desfiado com arroz cozinhado no caldo, chouriço e morcela. Versão da sub-região de Lafões.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0240",
+    "nome": "Vitela assada à moda de Lafões",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Lafões",
+    "descricao": "Vitela assada com alho, azeite e vinho branco. Lafões produz uma das melhores vitelas do país.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0241",
+    "nome": "Carne de porco em vinha-d'alhos da Beira",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Porco marinado em vinho branco, alho e louro, depois frito em banha. Variante serrana.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0242",
+    "nome": "Tigelada de Oliveira do Hospital",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Oliveira do Hospital",
+    "descricao": "Pudim de ovos, leite e açúcar cozinhado em tigelinha de barro. Variante da sub-região.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0243",
+    "nome": "Filhós tendidas no joelho",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Beira Alta",
+    "descricao": "Massa de farinha e ovos esticada no joelho, frita e polvilhada com açúcar e canela. Natal e Carnaval.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0244",
+    "nome": "Argolas de Galizes",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Beira Alta / Galizes",
+    "descricao": "Biscoitos em forma de argola com manteiga, ovos e açúcar. Doce regional de festividades.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0245",
+    "nome": "Caldo da panela da Beira Baixa",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Caldo rico de carne, feijão e legumes com pão. Sopa quotidiana do interior.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0246",
+    "nome": "Sopas de boda",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Sopa espessa servida nos casamentos com pão, carne de vaca e chouriço. Tradição festiva.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0247",
+    "nome": "Açorda de bacalhau com tomate",
+    "categoria": "Açorda",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Açorda de pão com bacalhau desfiado, tomate, alho e coentros. Versão da Beira Baixa mais seca.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0248",
+    "nome": "Trutas de escabeche da Beira",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Trutas fritas conservadas em escabeche de vinagre, louro e cebola. Conserva tradicional.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0249",
+    "nome": "Carapaus no forno",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Carapaus assados no forno com azeite, alho, tomate e pimento. Receita simples e saborosa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0250",
+    "nome": "Perdiz estufada com beringela",
+    "categoria": "Caça",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Perdiz estufada com beringela, tomate e especiarias. Combinação invulgar da região.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0251",
+    "nome": "Laburdo de Castelo Branco",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa / Castelo Branco",
+    "descricao": "Guisado de carnes variadas com legumes e especiarias. Prato de festa da região.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0252",
+    "nome": "Grão guisado com ovos",
+    "categoria": "Legumes",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Grão cozinhado com refogado de tomate e cebola, finalizado com ovos escalfados no próprio guisado.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0253",
+    "nome": "Míscaros com ovos",
+    "categoria": "Legumes",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Cogumelos silvestres (míscaros) salteados com ovos mexidos e alho. Produto selvagem da região.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0254",
+    "nome": "Tigelada da Beira Baixa",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Pudim de ovos, leite e açúcar aromatizado com canela e limão cozido em tigelinhas de barro.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0255",
+    "nome": "Nógados de Castelo Branco",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Rebuçados de mel com nozes. Doce típico da região confeccionado na época da apanha da azeitona.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0256",
+    "nome": "Canja de galinha à serrana",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral",
+    "descricao": "Caldo rico de galinha com arroz carolino. Versão da Serra com galinha criada ao ar livre.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0257",
+    "nome": "Arroz de sardinha",
+    "categoria": "Arroz/Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral",
+    "descricao": "Arroz malandrinho com sardinhas frescas, tomate, cebola e coentros. Prato de verão económico.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0258",
+    "nome": "Bacalhau assado com batatas a murro",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral",
+    "descricao": "Lombos de bacalhau assados no forno acompanhados de batatas esmagadas na mão regadas com azeite.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0259",
+    "nome": "Mexilhões à moda de Aveiro",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Aveiro",
+    "descricao": "Mexilhões abertos em azeite com alho, salsa e vinho branco. Petisco da Ria de Aveiro.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0260",
+    "nome": "Raia enxambrada",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral",
+    "descricao": "Raia cozida fria com vinagrete de azeite, vinagre, alho e salsa. Petisco regional invulgar.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0261",
+    "nome": "Bucho recheado da Beira Litoral",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral",
+    "descricao": "Estômago de porco recheado com carnes, enchidos, arroz e especiarias, cozido em caldo.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0262",
+    "nome": "Cabrito à serrana",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Serra",
+    "descricao": "Cabrito da Serra grelhado na brasa ou assado com azeite e alho. Sabor característico da pastagem serrana.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0263",
+    "nome": "Febras na brasa",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral",
+    "descricao": "Fatias de lombo de porco marinadas em alho, vinagre e pimentão, grelhadas na brasa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0264",
+    "nome": "Perdiz com molho de bruxa",
+    "categoria": "Caça",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral",
+    "descricao": "Perdiz estufada coberta com molho picante de alho, azeite, vinagre e piri-piri.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0265",
+    "nome": "Arroz doce à moda de Ílhavo",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral / Ílhavo",
+    "descricao": "Arroz agulha cozinhado em leite com açúcar e gemas batidas. Versão mais amarela e rica.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0266",
+    "nome": "Sopa de feijão verde ribatejana",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Sopa de feijão verde com batata, cebola e chouriço. Prato de verão da Lezíria do Tejo.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0267",
+    "nome": "Açorda de sável",
+    "categoria": "Açorda",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Açorda preparada com o caldo do sável cozinhado, pão, alho e coentros.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0268",
+    "nome": "Barbos de molhata",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Barbos do Rio Tejo fritos e conservados em molhata — vinagre, louro e cebola.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0269",
+    "nome": "Fataça na telha",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Peixe-fataça assado em telha de barro com azeite, alho e limão. Método ancestral da pesca ribatejana.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0270",
+    "nome": "Cabrito frito ribatejano",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Cabrito cortado em pedaços, temperado com alho e limão, frito em azeite. Servido com arroz.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0271",
+    "nome": "Chispe com feijão branco",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Pé de porco guisado com feijão branco, chouriço e tomate. Prato de inverno substancial.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0272",
+    "nome": "Favas com chouriço à ribatejana",
+    "categoria": "Legumes",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Favas guisadas com chouriço de carne, bacon, cebola e coentros. Versão mais encorpada da região.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0273",
+    "nome": "Fatias de Tomar",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Ribatejo / Tomar",
+    "descricao": "Fatias de pão embebidas em calda de ovos e açúcar. Doce conventual do Convento de Cristo.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0274",
+    "nome": "Pão-de-ló de Alpiarça",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Ribatejo / Alpiarça",
+    "descricao": "Pão-de-ló húmido característico de Alpiarça. Versão com muitas gemas e interior cremoso.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0275",
+    "nome": "Queijinhos do céu",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Bolinhos de amêndoa e ovos em forma de queijinho, cobertos com açúcar. Origem conventual.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0276",
+    "nome": "Bife à Marrare",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bife de vaca com molho de nata e conhaque. Nome em homenagem ao tasqueiro que o popularizou em Lisboa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0277",
+    "nome": "Bife com ovo a cavalo",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bife de vaca com ovo estrelado por cima e batatas fritas. Clássico da tasca lisboeta.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0278",
+    "nome": "Bacalhau guisado à Lisboa antiga",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bacalhau em postas guisado com cebola, tomate, pimento, azeite e azeitonas. Receita tradicional.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0279",
+    "nome": "Pargo no forno à lisboeta",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Pargo assado no forno com batata, cebola, tomate e azeite. Peixe nobre da costa atlântica.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0280",
+    "nome": "Peixe frito de escabeche",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Estremadura",
+    "descricao": "Carapaus ou outros peixes fritos conservados em escabeche de vinagre, louro e cebola.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0281",
+    "nome": "Salada de bacalhau assado com pimentos",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Lisboa",
+    "descricao": "Bacalhau assado desfiado com pimentos assados, azeite e azeitonas. Entrada fria emblemática.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0282",
+    "nome": "Favada à portuguesa",
+    "categoria": "Carne/Leguminosas",
+    "pais": "Portugal",
+    "regiao": "Estremadura",
+    "descricao": "Favas com carnes de porco, chouriço e entremeada. Versão portuguesa diferente da catalã.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0283",
+    "nome": "Areias de Cascais",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Cascais",
+    "descricao": "Biscoitos de manteiga muito quebradiços polvilhados com açúcar. Nome devido à textura arenosa.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0284",
+    "nome": "Fatias reais",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Estremadura",
+    "descricao": "Fatias de pão encharcadas em ovos, fritas e cobertas com calda de açúcar. Doce conventual.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0285",
+    "nome": "Pão-de-ló de Alfeizerão",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Estremadura / Alfeizerão",
+    "descricao": "Pão-de-ló muito húmido assado em formas de papel. Especialidade da vila de Alfeizerão.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0286",
+    "nome": "Carneiro assado à alentejana",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Carneiro assado com alho, azeite e ervas aromáticas. Sabor mais intenso que o borrego.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0287",
+    "nome": "Coelho em vinha-d'alho alentejano",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Coelho marinado em vinho branco, alho e louro, depois frito ou assado.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0288",
+    "nome": "Galinholas à alentejana",
+    "categoria": "Caça",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Galinholas estufadas com azeite, alho e vinho. Caça apreciada na época outonal alentejana.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0289",
+    "nome": "Cozido de grão com vagens",
+    "categoria": "Legumes/Carne",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Grão cozinhado com feijão verde, carne de porco, chouriço e hortelã. Prato alentejano frugal.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0290",
+    "nome": "Túberas de fricassé",
+    "categoria": "Caça",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Túberas (codornizes) preparadas em fricassé com molho de ovo e limão. Caça pequena do cerrado.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0291",
+    "nome": "Feijão verde à alentejana",
+    "categoria": "Legumes",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Feijão verde guisado com tomate, azeite e chouriço. Acompanhamento de verão.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0292",
+    "nome": "Geladinhos do Convento da Conceição",
+    "categoria": "Doce conventual",
+    "pais": "Portugal",
+    "regiao": "Alentejo / Beja",
+    "descricao": "Docinhos frios de ovos e açúcar servidos em formas pequenas. Origem no Convento da Conceição.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0293",
+    "nome": "Rendinhas alentejanas",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Bolinhos fritos em forma de renda com açúcar e canela. Nome devido ao padrão rendado.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0294",
+    "nome": "Boleima alentejana",
+    "categoria": "Bolo",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Bolo de massa fina com recheio de doce de abóbora e canela. Tradição conventual da região.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0295",
+    "nome": "Cavacas de Avis",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Alentejo / Avis",
+    "descricao": "Bolachas fritas e cobertas com açúcar. Especialidade da vila de Avis no Alto Alentejo.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0296",
+    "nome": "Arroz de polvo à algarvia",
+    "categoria": "Arroz/Cefalópode",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Arroz malandrinho com polvo guisado, tomate e coentros. O polvo fica muito tenro nesta versão.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0297",
+    "nome": "Arroz de choco",
+    "categoria": "Arroz/Cefalópode",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Arroz cozinhado com choco, tinta de choco, tomate e coentros. Cor negra característica.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0298",
+    "nome": "Feijoada de marisco",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Feijão branco guisado com mexilhão, amêijoas, berbigão e chouriço. Receita robusta algarvia.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0299",
+    "nome": "Açorda de marisco à algarvia",
+    "categoria": "Açorda/Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Açorda de pão com marisco variado, tomate, coentros e fumet. Versão algarvia mais rica.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0300",
+    "nome": "Tamboril com massa",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Tamboril guisado com massa esparguete, tomate, azeite e coentros. Peixe firme que aguenta bem.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0301",
+    "nome": "Galinha cerejada",
+    "categoria": "Aves",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Frango guisado com cereja azeda, vinho e especiarias. Combinação agridoce típica algarvia.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0302",
+    "nome": "Lombinhos de porco com conquilhas",
+    "categoria": "Carne/Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Lombinho de porco salteado com conquilhas abertas em azeite, alho e coentros. Terra-mar algarvio.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0303",
+    "nome": "Sopa de lingueirão",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Sopa de lingueirão com batata, cebola, coentros e azeite. Produto emblémático da costa algarvia.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0304",
+    "nome": "Ostras à algarvia",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Ostras abertas e servidas com limão ou gratinadas com manteiga e alho. Produzidas na Ria Formosa.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0305",
+    "nome": "Tarte de amêndoa algarvia",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Tarte de massa quebrada com creme de amêndoa, mel e canela. Doçaria emblémática do Algarve.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0306",
+    "nome": "Atum assado à madeirense",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Atum fresco assado no forno com azeite, alho e tomate. O atum da Madeira é de qualidade excepcional.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0307",
+    "nome": "Bifes de atum em cebolada",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Postas de atum frescas cobertas com cebolada de tomate e vinagre. Prato diário madeirense.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0308",
+    "nome": "Espada de vinha-d'alhos",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Peixe-espada marinado em vinha-d'alho madeirense, depois frito. Variante da carne de vinha-d'alhos.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0309",
+    "nome": "Cavalas com molho de vilão",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Cavalas fritas cobertas com molho de cebola, vinagre e louro. Peixe azul de baixo custo.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0310",
+    "nome": "Cozido à madeirense",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Cozido com carne de vaca, porco, linguiça, inhame e cará. O inhame substitui a batata.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0311",
+    "nome": "Sarapatel madeirense",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Guisado de miúdos de porco com sangue, vinagre e especiarias. Herdado da tradição portuguesa.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02004",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0312",
+    "nome": "Inhame cozido",
+    "categoria": "Legumes",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Inhame cozido com sal. Tuberculo característico da Madeira, substituto da batata em muitos pratos.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0313",
+    "nome": "Queijadas da Madeira",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Queijadas de massa muito fina com recheio de queijo fresco, ovos e açúcar. Versão madeirense.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0314",
+    "nome": "Pudim de papaia",
+    "categoria": "Doce de colher",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Pudim frio de papaia da Madeira com leite condensado e gelatina. Fruta tropical endémica.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0315",
+    "nome": "Broas de mel madeirenses",
+    "categoria": "Panificação doce",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Broinhas de mel de cana com especiarias e frutos secos. Versão individual do bolo de mel.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0316",
+    "nome": "Sopa do Espírito Santo",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Caldo de carne com pão e especiarias. Distribuída nas festas do Espírito Santo em toda a comunidade.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0317",
+    "nome": "Sopa azeda dos Açores",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Sopa com couve, feijão e vinagre que lhe dá a acidez característica. Típica de São Miguel.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0318",
+    "nome": "Caldo de peixe açoriano",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Caldo rico de peixe fresco com batata, cebola e coentros. A riqueza piscatória dos Açores.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0319",
+    "nome": "Arroz de lapas",
+    "categoria": "Arroz/Marisco",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Arroz malandrinho com lapas abertas, manteiga e alho. Versão em arroz do petisco mais famoso.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0320",
+    "nome": "Lapas com molho afonso",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Lapas grelhadas com manteiga, alho e molho de especiarias. Variante com o característico molho afonso.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0321",
+    "nome": "Chicharros na sertã com molho verde",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Chicharros fritos em sertã com molho verde de salsa e alho. Peixe muito abundante nos Açores.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ]
+  },
+  {
+    "id": "PREP-0322",
+    "nome": "Bolos lêvedos de Vila Franca",
+    "categoria": "Panificação doce",
+    "pais": "Portugal",
+    "regiao": "Açores / Vila Franca do Campo",
+    "descricao": "Pão doce redondo de massa muito densa com ovos e açúcar. Produto com selo de origem açoriana.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC03593",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ]
+  },
+  {
+    "id": "PREP-0323",
+    "nome": "Fofas do Faial",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Açores / Faial",
+    "descricao": "Bolinhos esponjosos de massa fermentada com açúcar. Especialidade da ilha do Faial.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0324",
+    "nome": "Espécies de São Jorge",
+    "categoria": "Doce",
+    "pais": "Portugal",
+    "regiao": "Açores / São Jorge",
+    "descricao": "Bolachas muito finas e estaladiças com especiarias. Nome dado ao doce mais característico da ilha.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  },
+  {
+    "id": "PREP-0325",
+    "nome": "Pastéis de arroz dos Açores",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Pastéis de massa fina recheados com creme de arroz doce. Versão açoriana da queijada.",
+    "nivel": 2,
+    "prioridade_curricular": "REGIONAL",
+    "UC": "UC03586; UC02005",
+    "fontes": "SRC-009; SRC-010",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ]
+  }
+]

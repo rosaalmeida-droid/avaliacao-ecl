@@ -1,0 +1,1438 @@
+[
+  {
+    "id": "PREP-0001",
+    "nome": "Caldo verde",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Minho",
+    "descricao": "Sopa de puré de batata com couve-galega em chiffonade e enchido.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "aparelhos": "APP-0029",
+    "perfis": "PERF-COZ-0039; PERF-COZ-0085; PERF-COZ-0045",
+    "produtos": "PROD-0011; PROD-0012; PROD-0023; PROD-0021; PROD-0018",
+    "ocasiao": "Popular e festiva",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0039",
+      "PERF-COZ-0085",
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0002",
+    "nome": "Sopa da pedra",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Sopa substancial de feijão, carnes, enchidos e hortícolas.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "aparelhos": "APP-0029",
+    "perfis": "PERF-COZ-0045",
+    "produtos": "PROD-0019; PROD-0018; PROD-0023; PROD-0011",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0003",
+    "nome": "Açorda alentejana",
+    "categoria": "Sopa/Açorda",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Preparação de pão, caldo aromático, alho, coentros, azeite e ovo.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "perfis": "PERF-COZ-0048; PERF-COZ-0045",
+    "produtos": "PROD-0020; PROD-0024; PROD-0025; PROD-0021; PROD-0001",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0048",
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0004",
+    "nome": "Arroz de pato",
+    "categoria": "Arroz",
+    "pais": "Portugal",
+    "regiao": "Centro/Norte",
+    "descricao": "Arroz de forno com pato cozido/desfiado, enchidos e gratinação.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004; UC02002",
+    "aparelhos": "APP-0029",
+    "perfis": "PERF-COZ-0051; PERF-CAR-0030",
+    "produtos": "PROD-0015; PROD-0010; PROD-0018; PROD-0023",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02004",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0051",
+      "PERF-CAR-0030"
+    ]
+  },
+  {
+    "id": "PREP-0005",
+    "nome": "Arroz de marisco",
+    "categoria": "Arroz",
+    "pais": "Portugal",
+    "regiao": "Litoral",
+    "descricao": "Arroz malandrinho de mariscos com fundo aromático e tomate.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003; UC02002",
+    "aparelhos": "APP-0031",
+    "perfis": "PERF-COZ-0052; PERF-COZ-0059; PERF-COZ-0060",
+    "produtos": "PROD-0010; PROD-0022; PROD-0023; PROD-0024",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02003",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0052",
+      "PERF-COZ-0059",
+      "PERF-COZ-0060"
+    ]
+  },
+  {
+    "id": "PREP-0006",
+    "nome": "Bacalhau à Brás",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Lisboa",
+    "descricao": "Bacalhau lascado com cebola, batata palha e ovos ligados.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003; UC02002",
+    "perfis": "PERF-COZ-0111; PERF-COZ-0050; PERF-COZ-0082",
+    "produtos": "PROD-0013; PROD-0011; PROD-0001; PROD-0023; PROD-0021",
+    "ocasiao": "Nacional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02003",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0111",
+      "PERF-COZ-0050",
+      "PERF-COZ-0082"
+    ]
+  },
+  {
+    "id": "PREP-0007",
+    "nome": "Bacalhau à Gomes de Sá",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Porto",
+    "descricao": "Bacalhau em lascas com batata, cebola, ovo e azeite.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "perfis": "PERF-COZ-0111; PERF-COZ-0056",
+    "produtos": "PROD-0013; PROD-0011; PROD-0001; PROD-0023; PROD-0021",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0111",
+      "PERF-COZ-0056"
+    ]
+  },
+  {
+    "id": "PREP-0008",
+    "nome": "Polvo à lagareiro",
+    "categoria": "Cefalópode",
+    "pais": "Portugal",
+    "regiao": "Beiras",
+    "descricao": "Polvo cozido e assado com batata a murro, alho e azeite.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "perfis": "PERF-COZ-0061; PERF-COZ-0056",
+    "produtos": "PROD-0014; PROD-0011; PROD-0024; PROD-0021",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0061",
+      "PERF-COZ-0056"
+    ]
+  },
+  {
+    "id": "PREP-0009",
+    "nome": "Cataplana de peixe e marisco",
+    "categoria": "Peixe/Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Peixe e mariscos cozinhados em recipiente fechado com aromáticos.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "aparelhos": "APP-0031",
+    "perfis": "PERF-COZ-0196; PERF-COZ-0060",
+    "produtos": "PROD-0022; PROD-0023; PROD-0024; PROD-0021",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0196",
+      "PERF-COZ-0060"
+    ]
+  },
+  {
+    "id": "PREP-0010",
+    "nome": "Cabrito assado",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beiras/Trás-os-Montes",
+    "descricao": "Cabrito marinado e assado, normalmente com batata.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0122; PERF-COZ-0056",
+    "produtos": "PROD-0016; PROD-0011; PROD-0024; PROD-0021",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0122",
+      "PERF-COZ-0056"
+    ]
+  },
+  {
+    "id": "PREP-0011",
+    "nome": "Cozido à portuguesa",
+    "categoria": "Carne/Legumes",
+    "pais": "Portugal",
+    "regiao": "Nacional",
+    "descricao": "Conjunto de carnes, enchidos e hortícolas cozidos em sequência.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004; UC02002",
+    "aparelhos": "APP-0029",
+    "perfis": "PERF-COZ-0045",
+    "produtos": "PROD-0018; PROD-0011; PROD-0012",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02004",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0012",
+    "nome": "Rojões à minhota",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Minho",
+    "descricao": "Carne de porco marinada e frita/estufada com guarnições regionais.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0029",
+    "produtos": "PROD-0018; PROD-0024; PROD-0021",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0029"
+    ]
+  },
+  {
+    "id": "PREP-0013",
+    "nome": "Leite-creme",
+    "categoria": "Sobremesa de colher",
+    "pais": "Portugal",
+    "regiao": "Nacional",
+    "descricao": "Creme de leite, gemas, açúcar e amido, queimado na superfície.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0002; APP-0033",
+    "perfis": "PERF-PAS-0063; PERF-PAS-0076",
+    "produtos": "PROD-0002; PROD-0001; PROD-0007; PROD-0026; PROD-0027",
+    "ocasiao": "Nacional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0063",
+      "PERF-PAS-0076"
+    ]
+  },
+  {
+    "id": "PREP-0014",
+    "nome": "Arroz doce",
+    "categoria": "Sobremesa de colher",
+    "pais": "Portugal",
+    "regiao": "Nacional",
+    "descricao": "Arroz cozido em leite, açúcar, casca de limão e canela.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "perfis": "PERF-COZ-0051",
+    "produtos": "PROD-0010; PROD-0002; PROD-0007; PROD-0026; PROD-0027",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0051"
+    ]
+  },
+  {
+    "id": "PREP-0015",
+    "nome": "Pudim Abade de Priscos",
+    "categoria": "Pudim",
+    "pais": "Portugal",
+    "regiao": "Braga",
+    "descricao": "Pudim rico de gemas, açúcar e gordura de porco em banho-maria.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0002; APP-0034",
+    "perfis": "PERF-PAS-0173; PERF-PAS-0077",
+    "produtos": "PROD-0001; PROD-0007; PROD-0018",
+    "ocasiao": "Conventual/Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0173",
+      "PERF-PAS-0077"
+    ]
+  },
+  {
+    "id": "PREP-0016",
+    "nome": "Pão de ló de Ovar",
+    "categoria": "Bolo tradicional",
+    "pais": "Portugal",
+    "regiao": "Ovar",
+    "descricao": "Bolo de ovos com centro húmido e cozedura curta.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "perfis": "PERF-PAS-0007; PERF-PAS-0247",
+    "produtos": "PROD-0001; PROD-0007; PROD-0005",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0007",
+      "PERF-PAS-0247"
+    ]
+  },
+  {
+    "id": "PREP-0017",
+    "nome": "Sericaia",
+    "categoria": "Sobremesa/Bolo",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Doce de ovos, leite, farinha e canela, cozido em prato com abertura característica.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0002",
+    "perfis": "PERF-PAS-0247",
+    "produtos": "PROD-0001; PROD-0002; PROD-0007; PROD-0026",
+    "ocasiao": "Regional",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0247"
+    ]
+  },
+  {
+    "id": "PREP-0018",
+    "nome": "Toucinho do céu",
+    "categoria": "Doçaria conventual",
+    "pais": "Portugal",
+    "regiao": "Norte/Centro",
+    "descricao": "Doce rico de gemas, açúcar e amêndoa.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0013; APP-0032",
+    "perfis": "PERF-PAS-0077",
+    "produtos": "PROD-0001; PROD-0007; PROD-0009",
+    "ocasiao": "Conventual",
+    "fontes": "SRC-008",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0077"
+    ]
+  },
+  {
+    "id": "PREP-0019",
+    "nome": "Quiche Lorraine",
+    "categoria": "Tarte salgada",
+    "pais": "França",
+    "regiao": "Lorena",
+    "descricao": "Tarte de pâte brisée com aparelho de ovos/natas e guarnição.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC02002; UC03588",
+    "aparelhos": "APP-0021; APP-0001",
+    "perfis": "PERF-PAS-0001; PERF-PAS-0237",
+    "produtos": "PROD-0001; PROD-0003; PROD-0005; PROD-0004; PROD-0018",
+    "ocasiao": "Cozinha internacional",
+    "fontes": "SRC-019; SRC-020",
+    "uc_list": [
+      "UC02002",
+      "UC03588"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0001",
+      "PERF-PAS-0237"
+    ]
+  },
+  {
+    "id": "PREP-0020",
+    "nome": "Crème brûlée",
+    "categoria": "Sobremesa de colher",
+    "pais": "França",
+    "regiao": "França",
+    "descricao": "Creme de gemas e natas coagulado e finalizado com açúcar caramelizado.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC02005; UC03588",
+    "aparelhos": "APP-0002; APP-0033",
+    "perfis": "PERF-PAS-0172; PERF-PAS-0076",
+    "produtos": "PROD-0001; PROD-0003; PROD-0007",
+    "ocasiao": "Sobremesa clássica",
+    "fontes": "SRC-017; SRC-019",
+    "uc_list": [
+      "UC02005",
+      "UC03588"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0172",
+      "PERF-PAS-0076"
+    ]
+  },
+  {
+    "id": "PREP-0021",
+    "nome": "Éclair de chocolate",
+    "categoria": "Pastelaria individual",
+    "pais": "França",
+    "regiao": "França",
+    "descricao": "Massa choux alongada recheada com creme e coberta com chocolate.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC02005; UC03592",
+    "aparelhos": "APP-0025; APP-0009; APP-0015",
+    "perfis": "PERF-PAS-0241; PERF-PAS-0063; PERF-PAS-0067",
+    "produtos": "PROD-0001; PROD-0005; PROD-0004; PROD-0008; PROD-0002",
+    "ocasiao": "Pastelaria clássica",
+    "fontes": "SRC-017; SRC-019",
+    "uc_list": [
+      "UC02005",
+      "UC03592"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0241",
+      "PERF-PAS-0063",
+      "PERF-PAS-0067"
+    ]
+  },
+  {
+    "id": "PREP-0022",
+    "nome": "Papas de sarrabulho",
+    "categoria": "Sopa/Papa",
+    "pais": "Portugal",
+    "regiao": "Minho",
+    "descricao": "Preparação espessa de carnes, sangue, pão/farinha e caldo.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "aparelhos": "APP-0057",
+    "perfis": "PERF-COZ-0045",
+    "produtos": "PROD-0018; PROD-0074; PROD-0020",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0023",
+    "nome": "Arroz de sarrabulho",
+    "categoria": "Arroz",
+    "pais": "Portugal",
+    "regiao": "Minho",
+    "descricao": "Arroz ligado com caldo de carnes e sangue, servido com rojões.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004; UC02002",
+    "aparelhos": "APP-0057",
+    "perfis": "PERF-COZ-0052",
+    "produtos": "PROD-0010; PROD-0018",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0052"
+    ]
+  },
+  {
+    "id": "PREP-0024",
+    "nome": "Tripas à moda do Porto",
+    "categoria": "Carne/Leguminosas",
+    "pais": "Portugal",
+    "regiao": "Porto",
+    "descricao": "Tripas e carnes com feijão branco, enchidos e hortícolas.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "aparelhos": "APP-0057",
+    "perfis": "PERF-COZ-0045",
+    "produtos": "PROD-0030; PROD-0018; PROD-0074; PROD-0036; PROD-0023",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0025",
+    "nome": "Bacalhau à Zé do Pipo",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Porto",
+    "descricao": "Bacalhau com cebola, maionese e puré, gratinado.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "aparelhos": "APP-0053; APP-0045",
+    "perfis": "PERF-COZ-0111; PERF-COZ-0058",
+    "produtos": "PROD-0013; PROD-0011; PROD-0023; PROD-0021",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0111",
+      "PERF-COZ-0058"
+    ]
+  },
+  {
+    "id": "PREP-0026",
+    "nome": "Papas de milho",
+    "categoria": "Acompanhamento",
+    "pais": "Portugal",
+    "regiao": "Minho",
+    "descricao": "Preparação de farinha de milho cozida em água/caldo.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "produtos": "PROD-0006",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0027",
+    "nome": "Aletria",
+    "categoria": "Sobremesa de colher",
+    "pais": "Portugal",
+    "regiao": "Norte",
+    "descricao": "Massa fina cozida em leite, açúcar, limão e canela.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "perfis": "PERF-COZ-0053",
+    "produtos": "PROD-0002; PROD-0007; PROD-0026; PROD-0027",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0053"
+    ]
+  },
+  {
+    "id": "PREP-0028",
+    "nome": "Posta mirandesa",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Posta alta de bovino grelhada e repousada.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "aparelhos": "APP-0041",
+    "perfis": "PERF-CAR-0026; PERF-CAR-0027",
+    "produtos": "PROD-0070; PROD-0024; PROD-0021",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0026",
+      "PERF-CAR-0027"
+    ]
+  },
+  {
+    "id": "PREP-0029",
+    "nome": "Alheira grelhada",
+    "categoria": "Enchidos",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Alheira grelhada/assada sem rebentar, servida com guarnição.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "produtos": "PROD-0076",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0030",
+    "nome": "Butelo com casulas",
+    "categoria": "Carne/Leguminosas",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Enchido de ossos e carne com vagens secas de feijão.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "aparelhos": "APP-0057",
+    "produtos": "PROD-0018; PROD-0030",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0031",
+    "nome": "Folar transmontano",
+    "categoria": "Panificação salgada",
+    "pais": "Portugal",
+    "regiao": "Trás-os-Montes",
+    "descricao": "Massa fermentada enriquecida com carnes e enchidos.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC03593",
+    "perfis": "PERF-PAN-0012",
+    "produtos": "PROD-0005; PROD-0001; PROD-0004; PROD-0074; PROD-0078",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ],
+    "perfil_ids": [
+      "PERF-PAN-0012"
+    ]
+  },
+  {
+    "id": "PREP-0032",
+    "nome": "Chanfana",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Beira Litoral",
+    "descricao": "Cabra/ovelha velha cozinhada lentamente em vinho tinto e barro.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0123",
+    "produtos": "PROD-0016; PROD-0049; PROD-0023; PROD-0024; PROD-0052",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0123"
+    ]
+  },
+  {
+    "id": "PREP-0033",
+    "nome": "Leitão da Bairrada",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Bairrada",
+    "descricao": "Leitão assado com pele estaladiça e carne suculenta.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0029",
+    "produtos": "PROD-0018; PROD-0024; PROD-0082",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0029"
+    ]
+  },
+  {
+    "id": "PREP-0034",
+    "nome": "Arroz de lampreia",
+    "categoria": "Arroz/Peixe",
+    "pais": "Portugal",
+    "regiao": "Minho/Centro",
+    "descricao": "Arroz ligado preparado com lampreia e o próprio sangue.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "perfis": "PERF-COZ-0052",
+    "produtos": "PROD-0010; PROD-0049; PROD-0023",
+    "ocasiao": "Sazonal",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0052"
+    ]
+  },
+  {
+    "id": "PREP-0035",
+    "nome": "Caldeirada de peixe",
+    "categoria": "Peixe",
+    "pais": "Portugal",
+    "regiao": "Litoral/Centro",
+    "descricao": "Peixes em camadas com batata, tomate, cebola e caldo curto.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "aparelhos": "APP-0031",
+    "perfis": "PERF-COZ-0109; PERF-COZ-0045",
+    "produtos": "PROD-0011; PROD-0022; PROD-0023; PROD-0048; PROD-0059",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0109",
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0036",
+    "nome": "Tigelada",
+    "categoria": "Sobremesa de colher",
+    "pais": "Portugal",
+    "regiao": "Beira Baixa",
+    "descricao": "Mistura de ovos, leite, açúcar e canela cozida em recipiente de barro.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0002",
+    "perfis": "PERF-PAS-0173",
+    "produtos": "PROD-0001; PROD-0002; PROD-0007; PROD-0026",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0173"
+    ]
+  },
+  {
+    "id": "PREP-0037",
+    "nome": "Pastel de Tentúgal",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Centro",
+    "descricao": "Massa extremamente fina com recheio doce de ovos.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005; UC03592",
+    "aparelhos": "APP-0065",
+    "perfis": "PERF-PAS-0004",
+    "produtos": "PROD-0001; PROD-0007; PROD-0005",
+    "ocasiao": "Conventual",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005",
+      "UC03592"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0004"
+    ]
+  },
+  {
+    "id": "PREP-0038",
+    "nome": "Queijada de Coimbra",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Coimbra",
+    "descricao": "Pequena tarte com recheio de queijo/requeijão, ovos e açúcar.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0002",
+    "perfis": "PERF-PAS-0002",
+    "produtos": "PROD-0080; PROD-0001; PROD-0007; PROD-0005",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0002"
+    ]
+  },
+  {
+    "id": "PREP-0039",
+    "nome": "Amêijoas à Bulhão Pato",
+    "categoria": "Marisco",
+    "pais": "Portugal",
+    "regiao": "Lisboa",
+    "descricao": "Amêijoas abertas com azeite, alho, vinho e coentros.",
+    "nivel": 1,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "perfis": "PERF-COZ-0060",
+    "produtos": "PROD-0063; PROD-0024; PROD-0025; PROD-0021; PROD-0048",
+    "ocasiao": "Nacional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0060"
+    ]
+  },
+  {
+    "id": "PREP-0040",
+    "nome": "Bife à portuguesa",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Lisboa",
+    "descricao": "Bife frito/grelhado com molho, alho e presunto.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0026; PERF-CAR-0027",
+    "produtos": "PROD-0070; PROD-0078; PROD-0024; PROD-0048",
+    "ocasiao": "Nacional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0026",
+      "PERF-CAR-0027"
+    ]
+  },
+  {
+    "id": "PREP-0041",
+    "nome": "Favas à portuguesa",
+    "categoria": "Leguminosas/Carne",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Favas estufadas com enchidos e ervas.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004; UC02002",
+    "perfis": "PERF-COZ-0045",
+    "produtos": "PROD-0033; PROD-0074; PROD-0075; PROD-0023; PROD-0054",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004",
+      "UC02002"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0042",
+    "nome": "Sopa de peixe ribatejana",
+    "categoria": "Sopa",
+    "pais": "Portugal",
+    "regiao": "Ribatejo",
+    "descricao": "Sopa de peixe com caldo, pão ou massa e aromáticos.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "aparelhos": "APP-0031",
+    "perfis": "PERF-COZ-0045",
+    "produtos": "PROD-0058; PROD-0022; PROD-0023; PROD-0025",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0043",
+    "nome": "Pastel de nata",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Lisboa",
+    "descricao": "Massa folhada com aparelho de nata/ovos cozido a alta temperatura.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005; UC03592",
+    "aparelhos": "APP-0024; APP-0002",
+    "perfis": "PERF-PAS-0004; PERF-PAS-0172",
+    "produtos": "PROD-0005; PROD-0004; PROD-0001; PROD-0002; PROD-0007",
+    "ocasiao": "Nacional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005",
+      "UC03592"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0004",
+      "PERF-PAS-0172"
+    ]
+  },
+  {
+    "id": "PREP-0044",
+    "nome": "Queijada de Sintra",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Sintra",
+    "descricao": "Massa fina com recheio de queijo, açúcar e canela.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0002",
+    "perfis": "PERF-PAS-0002",
+    "produtos": "PROD-0080; PROD-0001; PROD-0007; PROD-0026",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0002"
+    ]
+  },
+  {
+    "id": "PREP-0045",
+    "nome": "Sopa de cação",
+    "categoria": "Sopa/Peixe",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Cação em caldo de coentros, alho e vinagre, ligado com farinha.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "aparelhos": "APP-0031",
+    "perfis": "PERF-COZ-0045",
+    "produtos": "PROD-0025; PROD-0024; PROD-0048",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0045"
+    ]
+  },
+  {
+    "id": "PREP-0046",
+    "nome": "Migas alentejanas",
+    "categoria": "Acompanhamento",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Pão hidratado e trabalhado com gordura e aromáticos.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02002",
+    "aparelhos": "APP-0044",
+    "produtos": "PROD-0020; PROD-0024; PROD-0021",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0047",
+    "nome": "Carne de porco à alentejana",
+    "categoria": "Carne/Marisco",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Carne de porco marinada com amêijoas e batata.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004; UC02003",
+    "perfis": "PERF-CAR-0029; PERF-COZ-0060",
+    "produtos": "PROD-0018; PROD-0063; PROD-0011; PROD-0082; PROD-0025",
+    "ocasiao": "Nacional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0029",
+      "PERF-COZ-0060"
+    ]
+  },
+  {
+    "id": "PREP-0048",
+    "nome": "Ensopado de borrego",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Borrego estufado servido sobre pão.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0032",
+    "produtos": "PROD-0017; PROD-0020; PROD-0023; PROD-0052",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0032"
+    ]
+  },
+  {
+    "id": "PREP-0049",
+    "nome": "Sericaia com ameixas de Elvas",
+    "categoria": "Sobremesa",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Doce de ovos e leite, com abertura superficial, servido com ameixa.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0002",
+    "perfis": "PERF-PAS-0247",
+    "produtos": "PROD-0001; PROD-0002; PROD-0007; PROD-0026",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0247"
+    ]
+  },
+  {
+    "id": "PREP-0050",
+    "nome": "Encharcada",
+    "categoria": "Doçaria conventual",
+    "pais": "Portugal",
+    "regiao": "Alentejo",
+    "descricao": "Doce de gemas incorporadas em calda de açúcar.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0067; APP-0065",
+    "perfis": "PERF-PAS-0077",
+    "produtos": "PROD-0001; PROD-0007",
+    "ocasiao": "Conventual",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0077"
+    ]
+  },
+  {
+    "id": "PREP-0051",
+    "nome": "Xarém com conquilhas",
+    "categoria": "Cereal/Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Papa de milho com bivalves e caldo.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003; UC02002",
+    "aparelhos": "APP-0056",
+    "produtos": "PROD-0006; PROD-0063; PROD-0025",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003",
+      "UC02002"
+    ]
+  },
+  {
+    "id": "PREP-0052",
+    "nome": "Arroz de lingueirão",
+    "categoria": "Arroz/Marisco",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Arroz malandrinho de lingueirão e caldo de bivalves.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "aparelhos": "APP-0056",
+    "perfis": "PERF-COZ-0052",
+    "produtos": "PROD-0010; PROD-0022; PROD-0023; PROD-0025",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0052"
+    ]
+  },
+  {
+    "id": "PREP-0053",
+    "nome": "Dom Rodrigo",
+    "categoria": "Doçaria conventual",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Doce de fios de ovos, ovos-moles e amêndoa.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0065; APP-0066",
+    "perfis": "PERF-PAS-0077",
+    "produtos": "PROD-0001; PROD-0007; PROD-0009",
+    "ocasiao": "Conventual",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0077"
+    ]
+  },
+  {
+    "id": "PREP-0054",
+    "nome": "Morgado de amêndoa",
+    "categoria": "Doçaria regional",
+    "pais": "Portugal",
+    "regiao": "Algarve",
+    "descricao": "Massa de amêndoa recheada com doce de ovos.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0066; APP-0065",
+    "perfis": "PERF-PAS-0003",
+    "produtos": "PROD-0009; PROD-0007; PROD-0001",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0003"
+    ]
+  },
+  {
+    "id": "PREP-0055",
+    "nome": "Espetada madeirense",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Cubos de bovino grelhados em espeto com sal e louro.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0026",
+    "produtos": "PROD-0070; PROD-0052; PROD-0024",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0026"
+    ]
+  },
+  {
+    "id": "PREP-0056",
+    "nome": "Carne de vinha-d’alhos",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Carne suína marinada em vinho, alho e especiarias.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0029",
+    "produtos": "PROD-0018; PROD-0048; PROD-0024; PROD-0052",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0029"
+    ]
+  },
+  {
+    "id": "PREP-0057",
+    "nome": "Bolo do caco",
+    "categoria": "Panificação",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Pão achatado cozido sobre superfície quente.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC03593",
+    "perfis": "PERF-PAN-0012",
+    "produtos": "PROD-0005; PROD-0011",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC03593"
+    ],
+    "perfil_ids": [
+      "PERF-PAN-0012"
+    ]
+  },
+  {
+    "id": "PREP-0058",
+    "nome": "Bolo de mel da Madeira",
+    "categoria": "Bolo tradicional",
+    "pais": "Portugal",
+    "regiao": "Madeira",
+    "descricao": "Bolo denso de mel, especiarias, frutos secos e vinho.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0068",
+    "perfis": "PERF-PAS-0010",
+    "produtos": "PROD-0081; PROD-0005; PROD-0009; PROD-0026; PROD-0050",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0010"
+    ]
+  },
+  {
+    "id": "PREP-0059",
+    "nome": "Cozido das Furnas",
+    "categoria": "Carne/Legumes",
+    "pais": "Portugal",
+    "regiao": "Açores — São Miguel",
+    "descricao": "Cozido de carnes, enchidos e hortícolas por calor geotérmico.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "aparelhos": "APP-0057",
+    "produtos": "PROD-0018; PROD-0073; PROD-0074; PROD-0075; PROD-0011; PROD-0038",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ]
+  },
+  {
+    "id": "PREP-0060",
+    "nome": "Alcatra terceirense",
+    "categoria": "Carne",
+    "pais": "Portugal",
+    "regiao": "Açores — Terceira",
+    "descricao": "Carne bovina cozinhada lentamente em alguidar de barro com vinho e especiarias.",
+    "nivel": 3,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02004",
+    "perfis": "PERF-CAR-0115",
+    "produtos": "PROD-0070; PROD-0049; PROD-0023; PROD-0024",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02004"
+    ],
+    "perfil_ids": [
+      "PERF-CAR-0115"
+    ]
+  },
+  {
+    "id": "PREP-0061",
+    "nome": "Polvo guisado à moda dos Açores",
+    "categoria": "Cefalópode",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Polvo estufado com vinho, tomate e aromáticos.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02003",
+    "aparelhos": "APP-0055",
+    "perfis": "PERF-COZ-0061",
+    "produtos": "PROD-0014; PROD-0049; PROD-0022; PROD-0023",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02003"
+    ],
+    "perfil_ids": [
+      "PERF-COZ-0061"
+    ]
+  },
+  {
+    "id": "PREP-0062",
+    "nome": "Massa sovada",
+    "categoria": "Panificação doce",
+    "pais": "Portugal",
+    "regiao": "Açores",
+    "descricao": "Massa fermentada doce enriquecida com ovos, açúcar e gordura.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC03593; UC02005",
+    "perfis": "PERF-PAN-0014",
+    "produtos": "PROD-0005; PROD-0001; PROD-0007; PROD-0004",
+    "ocasiao": "Festiva",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC03593",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAN-0014"
+    ]
+  },
+  {
+    "id": "PREP-0063",
+    "nome": "Queijadas da Vila Franca",
+    "categoria": "Pastelaria regional",
+    "pais": "Portugal",
+    "regiao": "Açores — São Miguel",
+    "descricao": "Pequenas queijadas doces de textura húmida.",
+    "nivel": 2,
+    "prioridade_curricular": "CORE",
+    "UC": "UC03586; UC02005",
+    "aparelhos": "APP-0002",
+    "perfis": "PERF-PAS-0002",
+    "produtos": "PROD-0001; PROD-0002; PROD-0007",
+    "ocasiao": "Regional",
+    "fontes": "SRC-022; SRC-023; SRC-025",
+    "uc_list": [
+      "UC03586",
+      "UC02005"
+    ],
+    "perfil_ids": [
+      "PERF-PAS-0002"
+    ]
+  }
+]

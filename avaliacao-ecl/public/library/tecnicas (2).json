@@ -1,0 +1,730 @@
+[
+  {
+    "id": "TEC-PLA-001",
+    "nome": "Interpretar ficha técnica",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de interpretar ficha técnica, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-002",
+    "nome": "Planear sequência de produção",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de planear sequência de produção, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-003",
+    "nome": "Dimensionar produção",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de dimensionar produção, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-004",
+    "nome": "Calcular capitação",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de calcular capitação, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-005",
+    "nome": "Organizar mise en place",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de organizar mise en place, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-006",
+    "nome": "Distribuir tarefas",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de distribuir tarefas, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-007",
+    "nome": "Controlar tempo",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de controlar tempo, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-008",
+    "nome": "Controlar temperatura",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de controlar temperatura, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-009",
+    "nome": "Registar controlo",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de registar controlo, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PLA-010",
+    "nome": "Provar e avaliar sensorialmente",
+    "categoria": "Planeamento e controlo",
+    "definicao": "Operação profissional de provar e avaliar sensorialmente, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-011",
+    "nome": "Selecionar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de selecionar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-012",
+    "nome": "Lavar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de lavar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-013",
+    "nome": "Higienizar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de higienizar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-014",
+    "nome": "Descascar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de descascar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-015",
+    "nome": "Aparar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de aparar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-016",
+    "nome": "Descaroçar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de descaroçar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-017",
+    "nome": "Eviscerar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de eviscerar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-018",
+    "nome": "Amanhar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de amanhar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-019",
+    "nome": "Desossar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de desossar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-020",
+    "nome": "Filetar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de filetar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-021",
+    "nome": "Porcionar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de porcionar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-022",
+    "nome": "Pesar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de pesar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-023",
+    "nome": "Medir",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de medir, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-024",
+    "nome": "Demolhar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de demolhar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-025",
+    "nome": "Dessalgar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de dessalgar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-026",
+    "nome": "Marinar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de marinar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-027",
+    "nome": "Temperar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de temperar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-028",
+    "nome": "Enfarinhar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de enfarinhar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PRE-029",
+    "nome": "Panar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Operação profissional de panar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-030",
+    "nome": "Cortar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de cortar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-031",
+    "nome": "Picar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de picar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-032",
+    "nome": "Ralar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de ralar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-033",
+    "nome": "Fatiar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de fatiar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-034",
+    "nome": "Laminar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de laminar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-035",
+    "nome": "Tornear",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de tornear, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-036",
+    "nome": "Esmagar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de esmagar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-037",
+    "nome": "Moer",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de moer, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-038",
+    "nome": "Triturar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de triturar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-039",
+    "nome": "Passar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de passar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-COR-040",
+    "nome": "Peneirar",
+    "categoria": "Cortes e redução",
+    "definicao": "Operação profissional de peneirar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CHU-041",
+    "nome": "Cozer em líquido",
+    "categoria": "Calor húmido",
+    "definicao": "Operação profissional de cozer em líquido, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CHU-042",
+    "nome": "Escaldar",
+    "categoria": "Calor húmido",
+    "definicao": "Operação profissional de escaldar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CHU-043",
+    "nome": "Branquear",
+    "categoria": "Calor húmido",
+    "definicao": "Operação profissional de branquear, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CHU-044",
+    "nome": "Escalfar",
+    "categoria": "Calor húmido",
+    "definicao": "Operação profissional de escalfar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CHU-045",
+    "nome": "Cozer a vapor",
+    "categoria": "Calor húmido",
+    "definicao": "Operação profissional de cozer a vapor, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CHU-046",
+    "nome": "Cozer em banho-maria",
+    "categoria": "Calor húmido",
+    "definicao": "Operação profissional de cozer em banho-maria, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CSE-047",
+    "nome": "Assar",
+    "categoria": "Calor seco",
+    "definicao": "Operação profissional de assar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CSE-048",
+    "nome": "Grelhar",
+    "categoria": "Calor seco",
+    "definicao": "Operação profissional de grelhar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CSE-049",
+    "nome": "Chapar",
+    "categoria": "Calor seco",
+    "definicao": "Operação profissional de chapar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CSE-050",
+    "nome": "Tostar",
+    "categoria": "Calor seco",
+    "definicao": "Operação profissional de tostar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CSE-051",
+    "nome": "Gratinar",
+    "categoria": "Calor seco",
+    "definicao": "Operação profissional de gratinar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CSE-052",
+    "nome": "Desidratar",
+    "categoria": "Calor seco",
+    "definicao": "Operação profissional de desidratar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-CSE-053",
+    "nome": "Defumar",
+    "categoria": "Calor seco",
+    "definicao": "Operação profissional de defumar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-GCM-054",
+    "nome": "Saltear",
+    "categoria": "Gordura e calor misto",
+    "definicao": "Operação profissional de saltear, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-GCM-055",
+    "nome": "Fritar",
+    "categoria": "Gordura e calor misto",
+    "definicao": "Operação profissional de fritar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-GCM-056",
+    "nome": "Confitar em gordura",
+    "categoria": "Gordura e calor misto",
+    "definicao": "Operação profissional de confitar em gordura, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-GCM-057",
+    "nome": "Refogar",
+    "categoria": "Gordura e calor misto",
+    "definicao": "Operação profissional de refogar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-GCM-058",
+    "nome": "Suar",
+    "categoria": "Gordura e calor misto",
+    "definicao": "Operação profissional de suar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-GCM-059",
+    "nome": "Estufar",
+    "categoria": "Gordura e calor misto",
+    "definicao": "Operação profissional de estufar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-GCM-060",
+    "nome": "Brasear",
+    "categoria": "Gordura e calor misto",
+    "definicao": "Operação profissional de brasear, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-GCM-061",
+    "nome": "Guisar",
+    "categoria": "Gordura e calor misto",
+    "definicao": "Operação profissional de guisar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-062",
+    "nome": "Extrair",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de extrair, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-063",
+    "nome": "Escumar",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de escumar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-064",
+    "nome": "Clarificar",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de clarificar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-065",
+    "nome": "Reduzir",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de reduzir, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-066",
+    "nome": "Deglacear",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de deglacear, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-067",
+    "nome": "Ligar",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de ligar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-068",
+    "nome": "Emulsionar",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de emulsionar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-069",
+    "nome": "Montar com gordura",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de montar com gordura, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-070",
+    "nome": "Espumar",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de espumar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-071",
+    "nome": "Gelificar",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de gelificar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-072",
+    "nome": "Engrossar",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de engrossar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-MOL-073",
+    "nome": "Ajustar consistência",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Operação profissional de ajustar consistência, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-074",
+    "nome": "Misturar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de misturar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-075",
+    "nome": "Bater",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de bater, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-076",
+    "nome": "Cremar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de cremar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-077",
+    "nome": "Envolver",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de envolver, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-078",
+    "nome": "Amassar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de amassar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-079",
+    "nome": "Dobrar massa",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de dobrar massa, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-080",
+    "nome": "Laminar massa",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de laminar massa, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-081",
+    "nome": "Escaldar massa",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de escaldar massa, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-082",
+    "nome": "Fermentar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de fermentar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-083",
+    "nome": "Modelar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de modelar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-084",
+    "nome": "Golpear",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de golpear, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-085",
+    "nome": "Levedar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de levedar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-086",
+    "nome": "Caramelizar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de caramelizar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-087",
+    "nome": "Temperar chocolate",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de temperar chocolate, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-088",
+    "nome": "Cristalizar açúcar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de cristalizar açúcar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-089",
+    "nome": "Montar creme",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de montar creme, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-PAP-090",
+    "nome": "Arejar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Operação profissional de arejar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-091",
+    "nome": "Retificar tempero",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de retificar tempero, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-092",
+    "nome": "Empratar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de empratar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-093",
+    "nome": "Decorar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de decorar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-094",
+    "nome": "Glacear",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de glacear, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-095",
+    "nome": "Abrilhantar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de abrilhantar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-096",
+    "nome": "Arrefecer rapidamente",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de arrefecer rapidamente, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-097",
+    "nome": "Acondicionar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de acondicionar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-098",
+    "nome": "Etiquetar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de etiquetar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-099",
+    "nome": "Conservar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de conservar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-100",
+    "nome": "Regenerar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de regenerar, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-101",
+    "nome": "Servir",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de servir, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-102",
+    "nome": "Repor",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de repor, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-103",
+    "nome": "Montar buffet",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de montar buffet, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-104",
+    "nome": "Desmontar serviço",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Operação profissional de desmontar serviço, aplicada com controlo do produto, do processo e do resultado.",
+    "fontes": "SRC-001; SRC-002; SRC-003"
+  }
+]

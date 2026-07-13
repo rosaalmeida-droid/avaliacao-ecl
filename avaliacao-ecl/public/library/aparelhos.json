@@ -1,0 +1,864 @@
+[
+  {
+    "id": "APP-0001",
+    "nome": "Aparelho de quiche",
+    "categoria": "Aparelhos salgados",
+    "definicao": "Mistura de ovos, leite ou natas e temperos destinada a coagular no forno.",
+    "ambito_profissional": "Quiches, tartes salgadas e flans salgados",
+    "nivel": 1,
+    "fontes": "SRC-019; SRC-020"
+  },
+  {
+    "id": "APP-0002",
+    "nome": "Aparelho de crème prise",
+    "categoria": "Aparelhos doces",
+    "definicao": "Mistura de ovos, leite/natas e açúcar que coagula suavemente.",
+    "ambito_profissional": "Crème brûlée, crème caramel, pudins e flans",
+    "nivel": 1,
+    "fontes": "SRC-019; SRC-020"
+  },
+  {
+    "id": "APP-0003",
+    "nome": "Aparelho de soufflé salgado",
+    "categoria": "Aparelhos salgados",
+    "definicao": "Base ligada enriquecida com gemas e claras montadas.",
+    "ambito_profissional": "Soufflés salgados",
+    "nivel": 2,
+    "fontes": "SRC-001; SRC-002"
+  },
+  {
+    "id": "APP-0004",
+    "nome": "Aparelho de soufflé doce",
+    "categoria": "Aparelhos doces",
+    "definicao": "Base aromatizada enriquecida com claras montadas.",
+    "ambito_profissional": "Soufflés doces",
+    "nivel": 2,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0005",
+    "nome": "Pâte à bombe",
+    "categoria": "Aparelhos doces",
+    "definicao": "Ovos ou gemas montados com calda de açúcar quente.",
+    "ambito_profissional": "Mousses, parfaits e cremes de manteiga",
+    "nivel": 3,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0006",
+    "nome": "Merengue francês",
+    "categoria": "Espumas",
+    "definicao": "Claras montadas com açúcar adicionado progressivamente.",
+    "ambito_profissional": "Biscoitos, macarons, dacquoise e decoração",
+    "nivel": 1,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0007",
+    "nome": "Merengue suíço",
+    "categoria": "Espumas",
+    "definicao": "Claras e açúcar aquecidos e posteriormente montados.",
+    "ambito_profissional": "Buttercream, decoração e merengues cozidos",
+    "nivel": 2,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0008",
+    "nome": "Merengue italiano",
+    "categoria": "Espumas",
+    "definicao": "Claras montadas estabilizadas por calda de açúcar.",
+    "ambito_profissional": "Mousses, buttercream, tartes e decoração",
+    "nivel": 3,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0009",
+    "nome": "Creme pasteleiro",
+    "categoria": "Cremes",
+    "definicao": "Creme cozido de leite, ovos/gemas, açúcar e amido.",
+    "ambito_profissional": "Recheios, tartes, viennoiserie e derivados",
+    "nivel": 1,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0010",
+    "nome": "Creme diplomata",
+    "categoria": "Cremes",
+    "definicao": "Creme pasteleiro aligeirado com natas e estabilizado quando necessário.",
+    "ambito_profissional": "Recheios leves e entremets",
+    "nivel": 2,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0011",
+    "nome": "Creme mousseline",
+    "categoria": "Cremes",
+    "definicao": "Creme pasteleiro emulsionado com manteiga.",
+    "ambito_profissional": "Paris-Brest, fraisier e recheios estruturados",
+    "nivel": 2,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0012",
+    "nome": "Creme chiboust",
+    "categoria": "Cremes",
+    "definicao": "Creme pasteleiro com gelatina e merengue italiano.",
+    "ambito_profissional": "Saint-Honoré e entremets",
+    "nivel": 3,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0013",
+    "nome": "Creme de amêndoa",
+    "categoria": "Cremes e recheios",
+    "definicao": "Manteiga, açúcar, ovos e amêndoa.",
+    "ambito_profissional": "Tartes, galette e viennoiserie",
+    "nivel": 1,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0014",
+    "nome": "Frangipane",
+    "categoria": "Cremes e recheios",
+    "definicao": "Creme de amêndoa combinado com creme pasteleiro.",
+    "ambito_profissional": "Galette des rois e tartes",
+    "nivel": 2,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0015",
+    "nome": "Ganache clássica",
+    "categoria": "Ganaches",
+    "definicao": "Emulsão de chocolate e natas.",
+    "ambito_profissional": "Cobertura, recheio e decoração",
+    "nivel": 1,
+    "fontes": "SRC-017; SRC-018"
+  },
+  {
+    "id": "APP-0016",
+    "nome": "Ganache montada",
+    "categoria": "Ganaches",
+    "definicao": "Ganache maturada e aerada.",
+    "ambito_profissional": "Recheio leve e decoração",
+    "nivel": 2,
+    "fontes": "SRC-017; SRC-018"
+  },
+  {
+    "id": "APP-0017",
+    "nome": "Ganache de corte",
+    "categoria": "Ganaches",
+    "definicao": "Ganache formulada para cristalizar e cortar.",
+    "ambito_profissional": "Bombons, trufas e barras",
+    "nivel": 3,
+    "fontes": "SRC-018"
+  },
+  {
+    "id": "APP-0018",
+    "nome": "Buttercream americano",
+    "categoria": "Cremes de manteiga",
+    "definicao": "Manteiga/gordura com açúcar em pó e líquido.",
+    "ambito_profissional": "Cobertura e piping",
+    "nivel": 1,
+    "fontes": "SRC-017"
+  },
+  {
+    "id": "APP-0019",
+    "nome": "Buttercream suíço",
+    "categoria": "Cremes de manteiga",
+    "definicao": "Merengue suíço emulsionado com manteiga.",
+    "ambito_profissional": "Cobertura e cake design",
+    "nivel": 2,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0020",
+    "nome": "Buttercream italiano",
+    "categoria": "Cremes de manteiga",
+    "definicao": "Merengue italiano emulsionado com manteiga.",
+    "ambito_profissional": "Cobertura estável e decoração",
+    "nivel": 3,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0021",
+    "nome": "Pâte brisée",
+    "categoria": "Massas base",
+    "definicao": "Massa quebrada pouco açucarada ou salgada.",
+    "ambito_profissional": "Quiches e tartes",
+    "nivel": 1,
+    "fontes": "SRC-019; SRC-020"
+  },
+  {
+    "id": "APP-0022",
+    "nome": "Pâte sucrée",
+    "categoria": "Massas base",
+    "definicao": "Massa doce firme e friável.",
+    "ambito_profissional": "Tartes doces",
+    "nivel": 1,
+    "fontes": "SRC-019; SRC-020"
+  },
+  {
+    "id": "APP-0023",
+    "nome": "Pâte sablée",
+    "categoria": "Massas base",
+    "definicao": "Massa muito friável e arenosa.",
+    "ambito_profissional": "Tartes e bolachas",
+    "nivel": 2,
+    "fontes": "SRC-019; SRC-020"
+  },
+  {
+    "id": "APP-0024",
+    "nome": "Massa folhada clássica",
+    "categoria": "Massas laminadas",
+    "definicao": "Détrempe laminada com manteiga em voltas sucessivas.",
+    "ambito_profissional": "Mille-feuille, vol-au-vent, palmiers",
+    "nivel": 2,
+    "fontes": "SRC-019"
+  },
+  {
+    "id": "APP-0025",
+    "nome": "Massa choux",
+    "categoria": "Massas escaldadas",
+    "definicao": "Panade escaldada enriquecida com ovos.",
+    "ambito_profissional": "Éclairs, profiteroles e Paris-Brest",
+    "nivel": 1,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0026",
+    "nome": "Roux branco",
+    "categoria": "Ligações",
+    "definicao": "Farinha e gordura cozidas sem coloração.",
+    "ambito_profissional": "Béchamel e molhos claros",
+    "nivel": 1,
+    "fontes": "SRC-001; SRC-002"
+  },
+  {
+    "id": "APP-0027",
+    "nome": "Roux louro",
+    "categoria": "Ligações",
+    "definicao": "Farinha e gordura com ligeira coloração.",
+    "ambito_profissional": "Veloutés",
+    "nivel": 1,
+    "fontes": "SRC-001; SRC-002"
+  },
+  {
+    "id": "APP-0028",
+    "nome": "Roux escuro",
+    "categoria": "Ligações",
+    "definicao": "Farinha e gordura tostadas até castanho.",
+    "ambito_profissional": "Molhos escuros",
+    "nivel": 2,
+    "fontes": "SRC-001; SRC-002"
+  },
+  {
+    "id": "APP-0029",
+    "nome": "Fundo branco de aves",
+    "categoria": "Fundos",
+    "definicao": "Extração suave de carcaças de aves e aromáticos.",
+    "ambito_profissional": "Sopas, veloutés, molhos e arroz",
+    "nivel": 1,
+    "fontes": "SRC-001; SRC-002"
+  },
+  {
+    "id": "APP-0030",
+    "nome": "Fundo escuro de carne",
+    "categoria": "Fundos",
+    "definicao": "Extração de ossos tostados, aromáticos e tomate.",
+    "ambito_profissional": "Molhos escuros e estufados",
+    "nivel": 2,
+    "fontes": "SRC-001; SRC-002"
+  },
+  {
+    "id": "APP-0031",
+    "nome": "Fumet de peixe",
+    "categoria": "Fundos",
+    "definicao": "Extração curta de espinhas de peixe e aromáticos.",
+    "ambito_profissional": "Molhos e sopas de peixe",
+    "nivel": 2,
+    "fontes": "SRC-001; SRC-002"
+  },
+  {
+    "id": "APP-0032",
+    "nome": "Calda de açúcar 1:1",
+    "categoria": "Xaropes",
+    "definicao": "Solução de partes iguais de açúcar e água.",
+    "ambito_profissional": "Embeber, bebidas e conservação",
+    "nivel": 1,
+    "fontes": "SRC-017"
+  },
+  {
+    "id": "APP-0033",
+    "nome": "Caramelo seco",
+    "categoria": "Açúcar",
+    "definicao": "Açúcar fundido sem água.",
+    "ambito_profissional": "Molhos, decoração e moldes",
+    "nivel": 1,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0034",
+    "nome": "Caramelo húmido",
+    "categoria": "Açúcar",
+    "definicao": "Açúcar dissolvido em água e caramelizado.",
+    "ambito_profissional": "Pudins, molhos e decoração",
+    "nivel": 1,
+    "fontes": "SRC-017; SRC-019"
+  },
+  {
+    "id": "APP-0035",
+    "nome": "Aparelho de flan salgado",
+    "categoria": "Aparelhos salgados",
+    "definicao": "Mistura de ovos e líquido para coagulação suave.",
+    "ambito_profissional": "Flans de legumes, peixe e carne",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0036",
+    "nome": "Aparelho de terrina",
+    "categoria": "Aparelhos salgados",
+    "definicao": "Mistura de produto principal, gordura, ovos e temperos.",
+    "ambito_profissional": "Terrinas e pâtés",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0037",
+    "nome": "Aparelho de recheio de ave",
+    "categoria": "Recheios salgados",
+    "definicao": "Mistura ligada destinada a rechear aves.",
+    "ambito_profissional": "Aves recheadas e ballotines",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0038",
+    "nome": "Farce mousseline de peixe",
+    "categoria": "Recheios salgados",
+    "definicao": "Peixe triturado e emulsionado com nata e clara.",
+    "ambito_profissional": "Quenelles, terrinas e recheios",
+    "nivel": 3,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0039",
+    "nome": "Farce mousseline de ave",
+    "categoria": "Recheios salgados",
+    "definicao": "Ave triturada e emulsionada com nata e clara.",
+    "ambito_profissional": "Terrinas, ballotines e quenelles",
+    "nivel": 3,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0040",
+    "nome": "Duxelles de cogumelos",
+    "categoria": "Bases salgadas",
+    "definicao": "Cogumelos picados e cozinhados até perder água.",
+    "ambito_profissional": "Recheios, molhos e Wellington",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0041",
+    "nome": "Manteiga maître d’hôtel",
+    "categoria": "Manteigas compostas",
+    "definicao": "Manteiga com salsa, limão e tempero.",
+    "ambito_profissional": "Carnes e peixes grelhados",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0042",
+    "nome": "Manteiga de alho",
+    "categoria": "Manteigas compostas",
+    "definicao": "Manteiga aromatizada com alho.",
+    "ambito_profissional": "Pães, carnes e mariscos",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0043",
+    "nome": "Beurre manié",
+    "categoria": "Ligações",
+    "definicao": "Mistura crua de manteiga e farinha.",
+    "ambito_profissional": "Correção e ligação final de molhos",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0044",
+    "nome": "Panade de pão",
+    "categoria": "Ligações",
+    "definicao": "Pão hidratado usado como ligação.",
+    "ambito_profissional": "Recheios, almôndegas e farces",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0045",
+    "nome": "Puré de batata base",
+    "categoria": "Guarnições base",
+    "definicao": "Batata cozida, passada e enriquecida.",
+    "ambito_profissional": "Duchesse, croquetes e guarnições",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0046",
+    "nome": "Puré de leguminosas",
+    "categoria": "Guarnições base",
+    "definicao": "Leguminosas cozidas e trituradas.",
+    "ambito_profissional": "Sopas, guarnições e cozinha vegetal",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0047",
+    "nome": "Molho béchamel",
+    "categoria": "Molhos",
+    "definicao": "Leite ligado com roux branco.",
+    "ambito_profissional": "Gratinados, recheios e derivados",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0048",
+    "nome": "Molho velouté",
+    "categoria": "Molhos",
+    "definicao": "Fundo claro ligado com roux louro.",
+    "ambito_profissional": "Molhos de ave, peixe e legumes",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0049",
+    "nome": "Molho espanhol",
+    "categoria": "Molhos",
+    "definicao": "Fundo escuro ligado e aromatizado.",
+    "ambito_profissional": "Molhos escuros e derivados",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0050",
+    "nome": "Demi-glace",
+    "categoria": "Molhos",
+    "definicao": "Redução de molho espanhol e fundo escuro.",
+    "ambito_profissional": "Carnes e molhos derivados",
+    "nivel": 3,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0051",
+    "nome": "Molho holandês",
+    "categoria": "Emulsões quentes",
+    "definicao": "Gemas emulsionadas com manteiga e ácido.",
+    "ambito_profissional": "Ovos, peixes e legumes",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0052",
+    "nome": "Molho béarnaise",
+    "categoria": "Emulsões quentes",
+    "definicao": "Holandês aromatizado com redução de estragão.",
+    "ambito_profissional": "Carnes grelhadas",
+    "nivel": 3,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0053",
+    "nome": "Maionese",
+    "categoria": "Emulsões frias",
+    "definicao": "Emulsão de gema/ovo, óleo e ácido.",
+    "ambito_profissional": "Molhos frios e saladas",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0054",
+    "nome": "Vinagrete",
+    "categoria": "Emulsões frias",
+    "definicao": "Mistura temporária de óleo e ácido.",
+    "ambito_profissional": "Saladas e marinadas",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0055",
+    "nome": "Caldo de cozedura de polvo",
+    "categoria": "Fundos e caldos",
+    "definicao": "Líquido resultante da cozedura controlada de polvo.",
+    "ambito_profissional": "Arrozes e molhos de cefalópodes",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0056",
+    "nome": "Caldo de marisco",
+    "categoria": "Fundos e caldos",
+    "definicao": "Extração de cascas e cabeças de crustáceos.",
+    "ambito_profissional": "Arrozes, bisques e molhos",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0057",
+    "nome": "Caldo de carne para cozido",
+    "categoria": "Fundos e caldos",
+    "definicao": "Líquido aromático resultante da cozedura de carnes e enchidos.",
+    "ambito_profissional": "Sopas, arroz e serviço do cozido",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0058",
+    "nome": "Aparelho de arroz doce",
+    "categoria": "Aparelhos doces",
+    "definicao": "Arroz, leite, açúcar e aromáticos em cozedura controlada.",
+    "ambito_profissional": "Arroz doce regional",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0059",
+    "nome": "Aparelho de leite-creme",
+    "categoria": "Aparelhos doces",
+    "definicao": "Leite, gemas, açúcar e espessante.",
+    "ambito_profissional": "Leite-creme e variações",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0060",
+    "nome": "Aparelho de pudim de ovos",
+    "categoria": "Aparelhos doces",
+    "definicao": "Ovos/gemas, açúcar e líquido para banho-maria.",
+    "ambito_profissional": "Pudins portugueses",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0061",
+    "nome": "Aparelho de pão de ló",
+    "categoria": "Massas batidas",
+    "definicao": "Ovos e açúcar aerados com farinha variável.",
+    "ambito_profissional": "Pães de ló regionais",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0062",
+    "nome": "Massa de filhoses",
+    "categoria": "Massas fritas",
+    "definicao": "Massa fermentada ou química destinada a fritura.",
+    "ambito_profissional": "Filhoses e sonhos",
+    "nivel": 1,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0063",
+    "nome": "Massa de sonhos",
+    "categoria": "Massas fritas/escaldadas",
+    "definicao": "Massa escaldada frita.",
+    "ambito_profissional": "Sonhos e fritos doces",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0064",
+    "nome": "Massa de pastéis de massa tenra",
+    "categoria": "Massas base",
+    "definicao": "Massa fina, pouco desenvolvida e própria para fritar.",
+    "ambito_profissional": "Pastéis de massa tenra",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0065",
+    "nome": "Recheio de ovos-moles",
+    "categoria": "Recheios doces",
+    "definicao": "Gemas ligadas em calda de açúcar.",
+    "ambito_profissional": "Ovos-moles e pastelaria conventual",
+    "nivel": 3,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0066",
+    "nome": "Recheio de amêndoa conventual",
+    "categoria": "Recheios doces",
+    "definicao": "Amêndoa, açúcar e gemas.",
+    "ambito_profissional": "Toucinho do céu e doçaria conventual",
+    "nivel": 3,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0067",
+    "nome": "Calda de açúcar para doçaria conventual",
+    "categoria": "Xaropes",
+    "definicao": "Calda em ponto ajustado ao doce.",
+    "ambito_profissional": "Doces de gemas e amêndoa",
+    "nivel": 3,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0068",
+    "nome": "Aparelho de bolo de mel",
+    "categoria": "Massas batidas/enriquecidas",
+    "definicao": "Mistura de mel, especiarias, gordura e farinha.",
+    "ambito_profissional": "Bolo de mel da Madeira",
+    "nivel": 2,
+    "fontes": "SRC-022; SRC-026"
+  },
+  {
+    "id": "APP-0069",
+    "nome": "Molho Mornay",
+    "categoria": "Molhos derivados",
+    "definicao": "Béchamel com adição de gema e queijo ralado — Gruyère e/ou Parmesão.",
+    "ambito_profissional": "Gratinados, lasanhas, ovos e vegetais gratinados",
+    "nivel": 1,
+    "aliases": "mornay; béchamel com queijo",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0070",
+    "nome": "Molho Soubise",
+    "categoria": "Molhos derivados",
+    "definicao": "Béchamel com cebola suada incorporada e coada.",
+    "ambito_profissional": "Carnes brancas, ovos, pratos de cebola",
+    "nivel": 2,
+    "aliases": "soubise; béchamel cebola",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0071",
+    "nome": "Molho Nantua",
+    "categoria": "Molhos derivados",
+    "definicao": "Béchamel com manteiga de crustáceo e camarão ou lagosta.",
+    "ambito_profissional": "Peixe, marisco, entradas requintadas",
+    "nivel": 2,
+    "aliases": "nantua; béchamel lagosta",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0072",
+    "nome": "Molho Aurora",
+    "categoria": "Molhos derivados",
+    "definicao": "Béchamel com purée de tomate incorporado.",
+    "ambito_profissional": "Ovos, peixe, massas gratinadas",
+    "nivel": 1,
+    "aliases": "aurora; béchamel tomate",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0073",
+    "nome": "Molho Allemande",
+    "categoria": "Molhos derivados",
+    "definicao": "Velouté de aves ligado com gemas e natas — reduzido e acetinado.",
+    "ambito_profissional": "Aves, pratos clássicos franceses",
+    "nivel": 2,
+    "aliases": "allemande; velouté ligado",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0074",
+    "nome": "Molho Suprême",
+    "categoria": "Molhos derivados",
+    "definicao": "Velouté de aves com natas reduzidas — mais rico e brilhante.",
+    "ambito_profissional": "Frango, pato, pratos de aves",
+    "nivel": 1,
+    "aliases": "suprême; velouté natas",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0075",
+    "nome": "Molho Vin Blanc",
+    "categoria": "Molhos derivados",
+    "definicao": "Fumet reduzido com vinho branco, natas e manteiga.",
+    "ambito_profissional": "Peixe pochado, frutos do mar",
+    "nivel": 2,
+    "aliases": "vin blanc; molho de vinho branco para peixe",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0076",
+    "nome": "Glace de viande",
+    "categoria": "Fundos",
+    "definicao": "Fundo escuro de carne muito reduzido até consistência de geleia.",
+    "ambito_profissional": "Molhos, glacear carnes, enriquecer preparações",
+    "nivel": 3,
+    "aliases": "glace de viande; meat glaze; demi-glace reduzido",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0077",
+    "nome": "Fundo de legumes V2",
+    "categoria": "Fundos",
+    "definicao": "Caldo aromático de legumes sem gordura — base neutra.",
+    "ambito_profissional": "Sopas, risotto, preparações vegetarianas e veganas",
+    "nivel": 1,
+    "aliases": "fundo legumes; vegetable stock; caldo vegetal",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0078",
+    "nome": "Jus de rôti",
+    "categoria": "Fundos",
+    "definicao": "Sucos de assado deglaceados com fundo — concentrado e brilhante.",
+    "ambito_profissional": "Aves, carnes assadas, acompanhamento direto",
+    "nivel": 2,
+    "aliases": "jus; suco de assado; jus de veau",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0079",
+    "nome": "Molho de tomate base",
+    "categoria": "Molhos",
+    "definicao": "Tomate pelado cozinhado com aromáticos — base para derivados.",
+    "ambito_profissional": "Massas, pizzas, base para outros molhos",
+    "nivel": 1,
+    "aliases": "molho de tomate; tomato sauce; salsa di pomodoro",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0080",
+    "nome": "Concassé de tomate",
+    "categoria": "Bases salgadas",
+    "definicao": "Tomate pelado, sem sementes e em cubos — escaldado brevemente.",
+    "ambito_profissional": "Guarnição, base de molhos, tartar, acabamentos",
+    "nivel": 1,
+    "aliases": "concassé; concasse de tomate; tomate pelado",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0081",
+    "nome": "Coulis de tomate",
+    "categoria": "Molhos",
+    "definicao": "Purée de tomate cru ou levemente cozinhado — coado fino.",
+    "ambito_profissional": "Apresentação, base de molhos frios, empratar",
+    "nivel": 2,
+    "aliases": "coulis tomate; tomato coulis",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0082",
+    "nome": "Manteiga de ervas",
+    "categoria": "Manteigas compostas",
+    "definicao": "Manteiga em pomada com ervas aromáticas frescas picadas.",
+    "ambito_profissional": "Carnes grelhadas, peixe, pão, finalização",
+    "nivel": 1,
+    "aliases": "manteiga ervas; herb butter; beurre aux fines herbes",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0083",
+    "nome": "Manteiga de lagosta",
+    "categoria": "Manteigas compostas",
+    "definicao": "Manteiga clarificada com carapaça de crustáceo triturada e coada.",
+    "ambito_profissional": "Molhos de marisco, bisque, peixe requintado",
+    "nivel": 3,
+    "aliases": "manteiga lagosta; lobster butter; beurre de crustacé",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0084",
+    "nome": "Duxelles seca",
+    "categoria": "Bases salgadas",
+    "definicao": "Cogumelos picados finamente salteados até evaporação total da água.",
+    "ambito_profissional": "Recheios, Wellington, croûtes, guarnições",
+    "nivel": 1,
+    "aliases": "duxelles; cogumelos salteados secos",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0085",
+    "nome": "Farce fine de carne",
+    "categoria": "Recheios salgados",
+    "definicao": "Carne picada misturada com gordura, aromáticos e liga — textura homogénea.",
+    "ambito_profissional": "Rissóis, croquetes, recheios de ave, terrinas",
+    "nivel": 2,
+    "aliases": "farce; farce de carne; forcemeat",
+    "fontes": "SRC-001; SRC-002; SRC-003; SRC-004"
+  },
+  {
+    "id": "APP-0086",
+    "nome": "Creme de limão",
+    "categoria": "Cremes e recheios",
+    "definicao": "Creme à base de limão, ovos, manteiga e açúcar — textura cremosa.",
+    "ambito_profissional": "Tartes de limão, macarons, entremets",
+    "nivel": 1,
+    "aliases": "creme de limão; lemon curd; lemon cream",
+    "fontes": "SRC-001; SRC-003; SRC-004; SRC-005; SRC-006"
+  },
+  {
+    "id": "APP-0087",
+    "nome": "Creme de passionfruit",
+    "categoria": "Cremes e recheios",
+    "definicao": "Creme ácido à base de maracujá, ovos, manteiga e açúcar.",
+    "ambito_profissional": "Tartes, entremets, sobremesas modernas",
+    "nivel": 2,
+    "aliases": "creme maracujá; passionfruit curd",
+    "fontes": "SRC-001; SRC-003; SRC-004; SRC-005; SRC-006"
+  },
+  {
+    "id": "APP-0088",
+    "nome": "Namelaka",
+    "categoria": "Cremes e recheios",
+    "definicao": "Creme ultra-sedoso com cobertura de chocolate, leite e gelatina.",
+    "ambito_profissional": "Entremets, inserções de mousse, decoração",
+    "nivel": 3,
+    "aliases": "namelaka; creme chocolate sedoso",
+    "fontes": "SRC-001; SRC-003; SRC-004; SRC-005; SRC-006"
+  },
+  {
+    "id": "APP-0089",
+    "nome": "Massa brioche",
+    "categoria": "Massas base",
+    "definicao": "Massa fermentada muito enriquecida com manteiga e ovos — textura macia e amanteigada.",
+    "ambito_profissional": "Pão especial, bases de sobremesas, sandwiches gourmet",
+    "nivel": 2,
+    "aliases": "brioche; massa brioche; brioche dough",
+    "fontes": "SRC-005; SRC-007"
+  },
+  {
+    "id": "APP-0090",
+    "nome": "Massa de pizza",
+    "categoria": "Massas base",
+    "definicao": "Massa fermentada de hidratação média — textura elástica e crocante após cozer.",
+    "ambito_profissional": "Pizza, focaccia base, calzone",
+    "nivel": 1,
+    "aliases": "massa pizza; pizza dough",
+    "fontes": "SRC-005; SRC-007"
+  },
+  {
+    "id": "APP-0091",
+    "nome": "Massa filo",
+    "categoria": "Massas laminadas",
+    "definicao": "Massa esticada até transparente — folhas muito finas.",
+    "ambito_profissional": "Strudel, baklava, charutos de queijo",
+    "nivel": 2,
+    "aliases": "massa filo; filo; phyllo dough",
+    "fontes": "SRC-001; SRC-003; SRC-004; SRC-005; SRC-006"
+  },
+  {
+    "id": "APP-0092",
+    "nome": "Calda de açúcar 28°Bé",
+    "categoria": "Xaropes",
+    "definicao": "Calda equilibrada para embeber bolos e savarin.",
+    "ambito_profissional": "Savarin, baba, bolos embebidos",
+    "nivel": 1,
+    "aliases": "calda 28 baumé; xarope embebimento; simple syrup",
+    "fontes": "SRC-001; SRC-003; SRC-004; SRC-005; SRC-006"
+  },
+  {
+    "id": "APP-0093",
+    "nome": "Calda de açúcar 32°Bé",
+    "categoria": "Xaropes",
+    "definicao": "Calda mais concentrada para frutas e doçaria conventual.",
+    "ambito_profissional": "Fruta em calda, doçaria conventual portuguesa",
+    "nivel": 2,
+    "aliases": "calda concentrada; xarope 32",
+    "fontes": "SRC-001; SRC-003; SRC-004; SRC-005; SRC-006"
+  }
+]

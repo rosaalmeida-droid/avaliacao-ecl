@@ -1,0 +1,202 @@
+[
+  {
+    "uc_id": "UC03584",
+    "uc_nome": "Implementar regras de higiene e segurança alimentar",
+    "ufcd_id": "3285",
+    "ufcd_nome": "Higiene e segurança alimentar — HACCP",
+    "status": "IGUAL",
+    "notas": "Conteúdo essencialmente idêntico"
+  },
+  {
+    "uc_id": "UC03576",
+    "uc_nome": "Planear e organizar a produção de cozinha",
+    "ufcd_id": "3286",
+    "ufcd_nome": "Organização e planificação de cozinha",
+    "status": "SIMILAR",
+    "notas": "Muito próximas — UC tem mais foco em planeamento digital"
+  },
+  {
+    "uc_id": "UC01999",
+    "uc_nome": "Preparar e executar confeções de cozinha",
+    "ufcd_id": "3291",
+    "ufcd_nome": "Técnicas de cozinha — fundamentos",
+    "status": "IGUAL",
+    "notas": "Técnicas base — essencialmente idênticas"
+  },
+  {
+    "uc_id": "UC03577",
+    "uc_nome": "Preparar e confecionar molhos e fundos de cozinha",
+    "ufcd_id": "3292",
+    "ufcd_nome": "Fundos, molhos e bases de cozinha",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC02002",
+    "uc_nome": "Preparar e confecionar acepipes, sopas, entradas, ovos e massas",
+    "ufcd_id": "3293",
+    "ufcd_nome": "Sopas, entradas, ovos e massas",
+    "status": "IGUAL",
+    "notas": "UC inclui acepipes explicitamente — conteúdo igual"
+  },
+  {
+    "uc_id": "UC02003",
+    "uc_nome": "Preparar e confecionar peixes, mariscos e guarnições",
+    "ufcd_id": "3294",
+    "ufcd_nome": "Peixes, mariscos e guarnições",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC02004",
+    "uc_nome": "Preparar e confecionar carnes, aves, caça e guarnições",
+    "ufcd_id": "3295",
+    "ufcd_nome": "Carnes, aves, caça e guarnições",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC02005",
+    "uc_nome": "Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria",
+    "ufcd_id": "3296",
+    "ufcd_nome": "Pastelaria — massas, cremes e recheios",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03579",
+    "uc_nome": "Gerir aprovisionamentos e controlar custos",
+    "ufcd_id": "3297",
+    "ufcd_nome": "Aprovisionamento, stocks e custos",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03580",
+    "uc_nome": "Atender o cliente e gerir reclamações na restauração",
+    "ufcd_id": "3298",
+    "ufcd_nome": "Atendimento e relação com o cliente",
+    "status": "SIMILAR",
+    "notas": "Muito próximas — UC tem mais foco em restauração"
+  },
+  {
+    "uc_id": "UC03578",
+    "uc_nome": "Interagir em inglês no serviço de cozinha e restaurante/bar",
+    "ufcd_id": "3299",
+    "ufcd_nome": "Língua inglesa — vocabulário técnico de cozinha",
+    "status": "SIMILAR",
+    "notas": "Conteúdo próximo — UC mais ampla"
+  },
+  {
+    "uc_id": "UC00596",
+    "uc_nome": "Implementar princípios de nutrição e dietética",
+    "ufcd_id": "3300",
+    "ufcd_nome": "Nutrição e dietética",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03585",
+    "uc_nome": "Conservar matérias-primas alimentares",
+    "ufcd_id": "3301",
+    "ufcd_nome": "Conservação de matérias-primas",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03586",
+    "uc_nome": "Preparar iguarias da cozinha e doçaria tradicional portuguesa",
+    "ufcd_id": "3302",
+    "ufcd_nome": "Cozinha tradicional portuguesa",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03587",
+    "uc_nome": "Preparar iguarias da pastelaria e doçaria tradicional portuguesa",
+    "ufcd_id": "3303",
+    "ufcd_nome": "Pastelaria e doçaria portuguesa",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03588",
+    "uc_nome": "Preparar iguarias da gastronomia do mundo",
+    "ufcd_id": "3304",
+    "ufcd_nome": "Gastronomia do mundo",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03592",
+    "uc_nome": "Planear e confecionar pastelaria internacional",
+    "ufcd_id": "3305",
+    "ufcd_nome": "Pastelaria internacional",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03593",
+    "uc_nome": "Planear e confecionar massas básicas de panificação",
+    "ufcd_id": "3306",
+    "ufcd_nome": "Panificação",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03589",
+    "uc_nome": "Implementar novas tendências na cozinha",
+    "ufcd_id": "3307",
+    "ufcd_nome": "Novas tendências em cozinha",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC03591",
+    "uc_nome": "Planear e executar serviços especiais de cozinha",
+    "ufcd_id": "3308",
+    "ufcd_nome": "Serviços especiais — banquetes e eventos",
+    "status": "SIMILAR",
+    "notas": "Muito próximas — verificar com Rosa"
+  },
+  {
+    "uc_id": "UC03590",
+    "uc_nome": "Confecionar produtos sustentáveis",
+    "ufcd_id": null,
+    "ufcd_nome": null,
+    "status": "NOVO",
+    "notas": "Sem equivalente no referencial antigo 811183"
+  },
+  {
+    "uc_id": "UC03596",
+    "uc_nome": "Planear e confecionar cozinha criativa",
+    "ufcd_id": null,
+    "ufcd_nome": null,
+    "status": "NOVO",
+    "notas": "Sem equivalente no referencial antigo — VERIFICAR"
+  },
+  {
+    "uc_id": "UC03595",
+    "uc_nome": "Planear e confecionar cozinha alternativa",
+    "ufcd_id": null,
+    "ufcd_nome": null,
+    "status": "NOVO",
+    "notas": "Sem equivalente no referencial antigo — VERIFICAR"
+  },
+  {
+    "uc_id": "UC00039",
+    "uc_nome": "Implementar normas de segurança e saúde no trabalho",
+    "ufcd_id": "3309",
+    "ufcd_nome": "Segurança e saúde no trabalho",
+    "status": "IGUAL",
+    "notas": "Idênticas"
+  },
+  {
+    "uc_id": "UC00034",
+    "uc_nome": "Colaborar e trabalhar em equipa",
+    "ufcd_id": "7842",
+    "ufcd_nome": "Trabalho em equipa",
+    "status": "SIMILAR",
+    "notas": "UC mais recente com abordagem DUA"
+  }
+]

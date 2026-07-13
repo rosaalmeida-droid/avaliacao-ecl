@@ -1,0 +1,1307 @@
+[
+  {
+    "id": "PREP-0214",
+    "nome": "Tagine de frango com alperce",
+    "categoria": "Carne",
+    "pais": "Marrocos/África do Sul",
+    "regiao_geografica": "África — Norte e Sul",
+    "descricao": "Frango estufado em tagine com grão, tomate, alperces secos e canela. Coberto com iogurte e salsa.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0215",
+    "nome": "Babaganush — pasta de beringela assada",
+    "categoria": "Petisco",
+    "pais": "Egipto",
+    "regiao_geografica": "África — Nordeste",
+    "descricao": "Beringela assada no forno com cebola, azeite e pasta de tomate, triturada grosseiramente. Acompanha pão pita.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0216",
+    "nome": "Shakshuka",
+    "categoria": "Ovos",
+    "pais": "Tunísia",
+    "regiao_geografica": "África — Norte",
+    "descricao": "Ovos escalfados em molho de tomate, pimento e especiarias. Servido na frigideira com pão para mergulhar.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0217",
+    "nome": "Kofta — kebab de carne picada",
+    "categoria": "Carne",
+    "pais": "Egipto",
+    "regiao_geografica": "África — Nordeste",
+    "descricao": "Espetadas de carne picada com cebola ralada, cúrcuma e limão. Grelhadas e servidas com pão pita.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0218",
+    "nome": "Salada de frango com caril — estilo marroquino",
+    "categoria": "Aves",
+    "pais": "Marrocos",
+    "regiao_geografica": "África — Norte",
+    "descricao": "Frango pochado desfiado com maionese, iogurte grego, manga, uvas, caril e gengibre.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0219",
+    "nome": "Couscous marroquino com legumes e borrego",
+    "categoria": "Cereal",
+    "pais": "Marrocos",
+    "regiao_geografica": "África — Norte",
+    "descricao": "Sémola cozida a vapor com borrego estufado, legumes e especiarias ras el hanout. Prato de sexta-feira.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0220",
+    "nome": "Injera com doro wat",
+    "categoria": "Panificação/Carne",
+    "pais": "Etiópia",
+    "regiao_geografica": "África — Leste",
+    "descricao": "Pão fermentado esponjoso de farinha de teff. Acompanha ensopado de frango com berbere. Come-se com a mão.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0221",
+    "nome": "Jollof rice",
+    "categoria": "Arroz",
+    "pais": "Nigéria/África Ocidental",
+    "regiao_geografica": "África — Oeste",
+    "descricao": "Arroz cozinhado em molho de tomate, pimento e cebola com especiarias. Prato mais disputado de África.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0222",
+    "nome": "Ramen tonkotsu",
+    "categoria": "Sopa",
+    "pais": "Japão",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Sopa de caldo de osso de porco cozinhado 12+ horas com macarrão, ovo marinado, nori e chashu.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0223",
+    "nome": "Nigiri sushi",
+    "categoria": "Peixe",
+    "pais": "Japão",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Arroz avinagrado moldado à mão com peixe fresco por cima. Técnica de nigirizushi — forma oval pressionada.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0224",
+    "nome": "Tempura de camarão e legumes",
+    "categoria": "Fritos",
+    "pais": "Japão",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Polme muito leve de água gelada e farinha. Frito em óleo limpo a 180°C. Textura crocante transparente.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0225",
+    "nome": "Miso soup",
+    "categoria": "Sopa",
+    "pais": "Japão",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Caldo dashi com pasta de miso dissolvida, tofu, wakame e cebolinha. Base do pequeno-almoço japonês.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0226",
+    "nome": "Frango chow mein",
+    "categoria": "Massas",
+    "pais": "China",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Macarrão salteado em wok com frango, legumes, molho de soja e óleo de sésamo.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0227",
+    "nome": "Arroz frito cantonês",
+    "categoria": "Arroz",
+    "pais": "China",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Arroz do dia anterior salteado em wok a temperatura muito alta com ovo, legumes e molho de soja.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0228",
+    "nome": "Dim sum — har gow de camarão",
+    "categoria": "Pastelaria salgada",
+    "pais": "China",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Ravioli de camarão em massa translúcida cozida a vapor. Técnica de massa muito delicada.",
+    "nivel": 3,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0229",
+    "nome": "Peking duck",
+    "categoria": "Aves",
+    "pais": "China",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Pato assado com pele lacada e crocante. Servido com crepes finos, pepino, cebolinha e molho hoisin.",
+    "nivel": 3,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0230",
+    "nome": "Kimchi",
+    "categoria": "Fermentado",
+    "pais": "Coreia",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Couve napa fermentada com gochugaru, alho, gengibre e molho de peixe. Base da cozinha coreana.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0231",
+    "nome": "Vegetable pad thai",
+    "categoria": "Massas",
+    "pais": "Tailândia",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Macarrão de arroz salteado com ovo, tofu, molho de tamarindo, amendoins e lima.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0232",
+    "nome": "Papa de arroz preto",
+    "categoria": "Cereal",
+    "pais": "Indonésia",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Arroz preto cozinhado em leite de coco com açúcar de palma. Pequeno-almoço ou sobremesa.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0233",
+    "nome": "Sopa quente e azeda",
+    "categoria": "Sopa",
+    "pais": "Filipinas",
+    "regiao_geografica": "Ásia Oriental",
+    "descricao": "Sopa com cogumelos, tofu, ovo, vinagre e pimenta branca. Textura espessada com amido.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0234",
+    "nome": "Dal de lentilhas com tarka",
+    "categoria": "Leguminosas",
+    "pais": "Índia",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Lentilhas vermelhas cozinhadas com leite de coco e especiarias, temperadas com cebola, alho e cominhos em óleo quente.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0235",
+    "nome": "Grão assado crocante",
+    "categoria": "Petisco",
+    "pais": "Índia",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Grão-de-bico cozido assado no forno com azeite e especiarias até ficar crocante. Snack saudável.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0236",
+    "nome": "Samosas de batata-doce e lentilhas",
+    "categoria": "Pastelaria salgada",
+    "pais": "Paquistão",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Pastéis triangulares de massa fina com recheio de batata-doce e lentilhas assados no forno.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0237",
+    "nome": "Arroz joia — jeweled rice",
+    "categoria": "Arroz",
+    "pais": "Irão",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Arroz basmati com açafrão, frutos secos, casca de laranja cristalizada e pistácios. Prato festivo persa.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0238",
+    "nome": "Lassi de manga e baunilha",
+    "categoria": "Bebida",
+    "pais": "Índia",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Batido de iogurte com manga fresca, leite e baunilha. Bebida refrescante do norte da Índia.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0239",
+    "nome": "Falafel de grão crocante",
+    "categoria": "Petisco",
+    "pais": "Turquia/Médio Oriente",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Bolinhos de grão com coentros, salsa e especiarias assados no forno. Servidos com pão pita.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0240",
+    "nome": "Hummus com azeite e pimentão",
+    "categoria": "Petisco",
+    "pais": "Líbano",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Purée de grão com tahini, limão, alho e azeite. Base da cozinha do Médio Oriente.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0241",
+    "nome": "Biryani de frango",
+    "categoria": "Arroz",
+    "pais": "Índia/Paquistão",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Arroz basmati com frango marinado em iogurte e especiarias, cozinhado em camadas (dum).",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0242",
+    "nome": "Tagine de borrego com ameixa e amêndoa",
+    "categoria": "Carne",
+    "pais": "Marrocos",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Borrego estufado com ameixas, mel, amêndoas, canela e açafrão em tagine de barro.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0243",
+    "nome": "Spanakopita",
+    "categoria": "Pastelaria salgada",
+    "pais": "Grécia/Médio Oriente",
+    "regiao_geografica": "Ásia Ocidental",
+    "descricao": "Pastel de massa filo com recheio de espinafres e queijo feta. Assado até dourado e crocante.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0244",
+    "nome": "Baleadas de feijão preto",
+    "categoria": "Panificação/Leguminosas",
+    "pais": "Honduras",
+    "regiao_geografica": "América Central",
+    "descricao": "Tortilhas de farinha com feijão preto, queijo e creme azedo. Street food hondurenho.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0245",
+    "nome": "Sopa de feijão preto e legumes com chipotle",
+    "categoria": "Sopa",
+    "pais": "Costa Rica",
+    "regiao_geografica": "América Central",
+    "descricao": "Sopa espessa de feijão preto com legumes e pimento chipotle fumado.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0246",
+    "nome": "Jerk spice rub jamaicano",
+    "categoria": "Tempero",
+    "pais": "Jamaica",
+    "regiao_geografica": "América Central",
+    "descricao": "Mistura de especiarias com pimento scotch bonnet, allspice, cominhos e tomilho para marinar carnes.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0247",
+    "nome": "Tacos de picadillo de peru",
+    "categoria": "Carne",
+    "pais": "Honduras",
+    "regiao_geografica": "América Central",
+    "descricao": "Recheio de peru picado com tomate, azeite, especiarias e ervas. Servido em tortilhas.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0248",
+    "nome": "Cacao quente especiado guatemalteco",
+    "categoria": "Bebida",
+    "pais": "Guatemala",
+    "regiao_geografica": "América Central",
+    "descricao": "Cacau cozido com leite, canela, cardamomo e pimenta da Jamaica. Bebida pré-hispânica.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0249",
+    "nome": "Guacamole básico",
+    "categoria": "Petisco",
+    "pais": "México",
+    "regiao_geografica": "América do Norte",
+    "descricao": "Abacate amassado com lima, coentros, jalapeño, cebola e tomate. Clássico mexicano.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0250",
+    "nome": "Calabacitas con elote",
+    "categoria": "Legumes",
+    "pais": "México",
+    "regiao_geografica": "América do Norte",
+    "descricao": "Refogado de curgete com milho, pimento, cebola e queijo. Acompanhamento mexicano de verão.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0251",
+    "nome": "Turkey sausage jambalaya",
+    "categoria": "Arroz",
+    "pais": "EUA — Louisiana",
+    "regiao_geografica": "América do Norte",
+    "descricao": "Arroz com salsicha de peru, pimento, cebola, aipo e especiarias cajun. Prato da Louisiana.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0252",
+    "nome": "Eggs Benedict",
+    "categoria": "Ovos",
+    "pais": "EUA — Nova Iorque",
+    "regiao_geografica": "América do Norte",
+    "descricao": "Ovo escalfado sobre fatia de bacon e muffin inglês, coberto com molho holandês.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0253",
+    "nome": "Maple-glazed baked salmon",
+    "categoria": "Peixe",
+    "pais": "Canadá",
+    "regiao_geografica": "América do Norte",
+    "descricao": "Salmão assado no forno com glaze de mel de bordo, mostarda e alho.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0254",
+    "nome": "Sopa de ervilhas amarelas",
+    "categoria": "Sopa",
+    "pais": "Canadá",
+    "regiao_geografica": "América do Norte",
+    "descricao": "Sopa espessa de ervilhas amarelas com presunto e legumes. Prato de inverno canadiano.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0255",
+    "nome": "Cheesecake nova-iorquino",
+    "categoria": "Sobremesa",
+    "pais": "EUA — Nova Iorque",
+    "regiao_geografica": "América do Norte",
+    "descricao": "Base de bolacha graham com recheio de cream cheese assado. Textura densa e cremosa.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0256",
+    "nome": "Haupia — pudim de coco do Havai",
+    "categoria": "Sobremesa",
+    "pais": "EUA — Havai",
+    "regiao_geografica": "América do Norte",
+    "descricao": "Pudim firme de leite de coco, amido de milho e açúcar. Sobremesa tradicional havaiana.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0257",
+    "nome": "Arepas assadas",
+    "categoria": "Panificação",
+    "pais": "Venezuela",
+    "regiao_geografica": "América do Sul",
+    "descricao": "Pão de farinha de milho pré-cozida assado no forno. Recheado com queijo, carne ou feijão.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0258",
+    "nome": "Tostones com molho mojo",
+    "categoria": "Petisco",
+    "pais": "Colômbia",
+    "regiao_geografica": "América do Sul",
+    "descricao": "Rodelas de plátano frito duas vezes, achatadas e tostadas. Servidas com mojo de alho e limão.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0259",
+    "nome": "Lombo de porco com chimichurri",
+    "categoria": "Carne",
+    "pais": "Argentina",
+    "regiao_geografica": "América do Sul",
+    "descricao": "Lombinho assado no forno coberto com molho verde de salsa, alho, vinagre e pimento vermelho.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0260",
+    "nome": "Empanadas de palmito assadas",
+    "categoria": "Pastelaria salgada",
+    "pais": "Brasil",
+    "regiao_geografica": "América do Sul",
+    "descricao": "Pastéis assados com recheio de palmito, tomate e queijo. Versão vegetariana das empanadas.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0261",
+    "nome": "Feijoada brasileira",
+    "categoria": "Carne/Leguminosas",
+    "pais": "Brasil",
+    "regiao_geografica": "América do Sul",
+    "descricao": "Ensopado de feijão preto com carnes de porco fumadas, linguiça e bacon. Prato nacional do Brasil.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0262",
+    "nome": "Brigadeiro",
+    "categoria": "Doce",
+    "pais": "Brasil",
+    "regiao_geografica": "América do Sul",
+    "descricao": "Doce de leite condensado, manteiga e cacau, enrolado e coberto com granulado.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0263",
+    "nome": "Ceviche peruano",
+    "categoria": "Peixe",
+    "pais": "Peru",
+    "regiao_geografica": "América do Sul",
+    "descricao": "Peixe branco marinado em sumo de lima (leche de tigre), cebola roxa, coentros e ají.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0264",
+    "nome": "Peixe branco com molho de pepino e alcaparras",
+    "categoria": "Peixe",
+    "pais": "Austrália",
+    "regiao_geografica": "Oceânia",
+    "descricao": "Filetes de peixe branco grelhados com molho frio de pepino, alcaparras e iogurte.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0265",
+    "nome": "Pavlova com lemon curd",
+    "categoria": "Sobremesa",
+    "pais": "Nova Zelândia",
+    "regiao_geografica": "Oceânia",
+    "descricao": "Base de merengue crocante com interior macio, coberta com curd de limão e fruta fresca.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0266",
+    "nome": "Sopa cremosa de abóbora",
+    "categoria": "Sopa",
+    "pais": "Austrália",
+    "regiao_geografica": "Oceânia",
+    "descricao": "Sopa aveludada de abóbora com creme de coco e especiarias. Muito popular no inverno australiano.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0267",
+    "nome": "Savory meat pie — pastel de carne",
+    "categoria": "Pastelaria salgada",
+    "pais": "Austrália/Tasmânia",
+    "regiao_geografica": "Oceânia",
+    "descricao": "Pastel de massa quebrada com recheio de carne picada e molho. Snack nacional australiano.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0268",
+    "nome": "Borscht de beterraba assada",
+    "categoria": "Sopa",
+    "pais": "Rússia/Ucrânia",
+    "regiao_geografica": "Europa de Leste",
+    "descricao": "Sopa de beterraba com couve, batata, carne e creme azedo. Cor vermelha intensa e sabor ácido.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0269",
+    "nome": "Salada marinada de pepino — estilo dinamarquês",
+    "categoria": "Salada",
+    "pais": "Dinamarca",
+    "regiao_geografica": "Europa de Leste",
+    "descricao": "Pepino fatiado com vinagre, endro, açúcar e cebola. Acompanhamento fresco nórdico.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0270",
+    "nome": "Ovos pochados com salmão slow cooker",
+    "categoria": "Peixe",
+    "pais": "Suécia",
+    "regiao_geografica": "Europa de Leste",
+    "descricao": "Salmão pochado a baixa temperatura com ovos escalfados e espinafres. Receita escandinava.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0271",
+    "nome": "Latkes de batata-doce",
+    "categoria": "Petisco",
+    "pais": "Ucrânia",
+    "regiao_geografica": "Europa de Leste",
+    "descricao": "Bolinhos fritos de batata-doce ralada com ovos e farinha. Versão ucraniana dos latkes.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0272",
+    "nome": "Pão de abobrinha com especiarias piernik",
+    "categoria": "Panificação",
+    "pais": "Polónia",
+    "regiao_geografica": "Europa de Leste",
+    "descricao": "Bolo húmido de curgete com especiarias de pão de mel polaco — cardamomo, canela e cravo.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0273",
+    "nome": "Rolinhos de couve desconstruídos",
+    "categoria": "Carne",
+    "pais": "Hungria",
+    "regiao_geografica": "Europa de Leste",
+    "descricao": "Carne picada com arroz e couve, cozinhada em molho de tomate. Versão simplificada dos töltött káposzta.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0274",
+    "nome": "Pierogies — pastéis polacos",
+    "categoria": "Pastelaria salgada",
+    "pais": "Polónia",
+    "regiao_geografica": "Europa de Leste",
+    "descricao": "Pastéis de massa macia recheados com batata, queijo ou carne. Cozidos e depois salteados em manteiga.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0275",
+    "nome": "Stroganoff de vaca",
+    "categoria": "Carne",
+    "pais": "Rússia",
+    "regiao_geografica": "Europa de Leste",
+    "descricao": "Vaca em tiras com cogumelos, cebola e creme azedo. Servido com macarrão ou arroz.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0276",
+    "nome": "Couve roxa braseada com mel e vinagre",
+    "categoria": "Legumes",
+    "pais": "Áustria",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Couve roxa cozinhada lentamente com maçã, mel, vinagre e especiarias. Acompanhamento típico austríaco.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0277",
+    "nome": "Crepes clássicos belgas",
+    "categoria": "Panificação",
+    "pais": "Bélgica",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Crepes finos com manteiga, açúcar e sumo de limão. Diferentes dos crepes bretons por serem mais finos.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0278",
+    "nome": "Shepherd's pie em frigideira",
+    "categoria": "Carne",
+    "pais": "Irlanda",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Carne de borrego picada com legumes coberta com purée de batata, gratinada no forno.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0279",
+    "nome": "Peras assadas com mel",
+    "categoria": "Sobremesa",
+    "pais": "Suíça",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Peras glaceadas com mel, vinho branco e baunilha, assadas no forno até caramelizar.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0280",
+    "nome": "Fish and chips assado no forno",
+    "categoria": "Peixe",
+    "pais": "Reino Unido",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Peixe branco em polme de cerveja assado com batatas em cunha. Versão mais saudável do clássico.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0281",
+    "nome": "Spätzle — massa alemã caseira",
+    "categoria": "Massas",
+    "pais": "Alemanha",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Massa irregular extrudida em água a ferver. Servida com manteiga, queijo ou como acompanhamento.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0282",
+    "nome": "Coq au vin",
+    "categoria": "Carne",
+    "pais": "França",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Frango estufado em vinho tinto de Borgonha com cogumelos, bacon e cebolas pérola.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0283",
+    "nome": "Boeuf bourguignon",
+    "categoria": "Carne",
+    "pais": "França",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Estufado de vaca em vinho de Borgonha com cenoura, cogumelos e cebola. Cozedura mínima 2h.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0284",
+    "nome": "Crème brûlée",
+    "categoria": "Sobremesa",
+    "pais": "França",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Creme de gemas e natas com camada de açúcar caramelizado a maçarico. Textura sedosa.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0285",
+    "nome": "Mousse au chocolat",
+    "categoria": "Sobremesa",
+    "pais": "França",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Mousse de chocolate negro com claras montadas. Leveza e intensidade de chocolate.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0286",
+    "nome": "Quiche lorraine",
+    "categoria": "Tarte salgada",
+    "pais": "França",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Tarte de massa quebrada com recheio de bacon, natas e ovos. Clássico da Lorena.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0287",
+    "nome": "Profiteroles",
+    "categoria": "Pastelaria",
+    "pais": "França",
+    "regiao_geografica": "Europa Ocidental",
+    "descricao": "Choux recheados com gelado de baunilha cobertos com chocolate quente.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0288",
+    "nome": "Paella de frango com couscous",
+    "categoria": "Arroz",
+    "pais": "Espanha",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Versão simplificada da paella com couscous, frango e açafrão. Socarrat no fundo.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0289",
+    "nome": "Beringela à parmigiana assada",
+    "categoria": "Legumes",
+    "pais": "Itália",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Camadas de beringela frita com molho de tomate e queijo mozzarella, assadas no forno.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0290",
+    "nome": "Kebabs de borrego com tzatziki",
+    "categoria": "Carne",
+    "pais": "Grécia",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Espetadas de borrego com legumes grelhados, servidas com tzatziki de iogurte e pepino.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0291",
+    "nome": "Ratatouille provençal",
+    "categoria": "Legumes",
+    "pais": "França",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Estufado de legumes de verão — beringela, curgete, pimento, tomate — com ervas de Provença.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0292",
+    "nome": "Tiramisu vegetariano",
+    "categoria": "Sobremesa",
+    "pais": "Itália",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Sobremesa de mascarpone, gemas, espresso e biscoitos savoiardi. Versão sem gelatina.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0293",
+    "nome": "Risotto alla milanese",
+    "categoria": "Arroz",
+    "pais": "Itália",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Arroz arbório com açafrão, tutano e vinho branco. Textura all'onda. Clássico milanês.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0294",
+    "nome": "Pasta carbonara",
+    "categoria": "Massas",
+    "pais": "Itália",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Esparguete com guanciale, gemas, pecorino e pimenta. Cremosidade vem das gemas — sem natas.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0295",
+    "nome": "Pasta cacio e pepe",
+    "categoria": "Massas",
+    "pais": "Itália",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Tonnarelli com pecorino romano e pimenta preta. Técnica de emulsão com água de cozedura.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0296",
+    "nome": "Gazpacho andaluz",
+    "categoria": "Sopa fria",
+    "pais": "Espanha",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Sopa fria de tomate, pepino, pimento, alho, azeite e vinagre de Jerez. Triturado e coado.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0297",
+    "nome": "Tortilla española",
+    "categoria": "Ovos",
+    "pais": "Espanha",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Omelete espessa com batata e cebola caramelizada. Cozinhada dos dois lados.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0298",
+    "nome": "Moussaka",
+    "categoria": "Carne",
+    "pais": "Grécia",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Camadas de beringela, ragù de borrego e molho béchamel. Assado em forno até dourar.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0299",
+    "nome": "Ossobuco alla milanese",
+    "categoria": "Carne",
+    "pais": "Itália",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Jarrete de vitela estufado em vinho branco com gremolata de casca de limão, alho e salsa.",
+    "nivel": 2,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "uc_list": [
+      "UC03588"
+    ]
+  },
+  {
+    "id": "PREP-0300",
+    "nome": "Salada de batata com legumes à portuguesa",
+    "categoria": "Salada",
+    "pais": "Portugal",
+    "regiao_geografica": "Europa Mediterrânica",
+    "descricao": "Salada de batata cozida com feijão verde, cenoura, ovo, atum e azeitonas. Servida com azeite.",
+    "nivel": 1,
+    "prioridade_curricular": "COMPLEMENTAR",
+    "UC": "UC03588",
+    "fontes": "VA Cooking Around the World 2022",
+    "uc_list": [
+      "UC03588"
+    ]
+  }
+]

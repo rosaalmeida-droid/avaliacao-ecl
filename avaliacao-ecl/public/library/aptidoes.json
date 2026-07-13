@@ -1,0 +1,3242 @@
+[
+  {
+    "id": "APT-00001",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas quebradas",
+    "nome": "Executar Pâte brisée / massa quebrada salgada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00002",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas quebradas",
+    "nome": "Executar Pâte sucrée",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00003",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas quebradas",
+    "nome": "Executar Pâte sablée",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00004",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Executar Massa folhada clássica",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00005",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Controlar Massa folhada clássica",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00006",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Executar Massa folhada invertida",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00007",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Controlar Massa folhada invertida",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00008",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas laminadas",
+    "nome": "Diagnosticar e recuperar Massa folhada invertida",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00009",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas escaldadas",
+    "nome": "Executar Massa choux",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00010",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas batidas",
+    "nome": "Executar Pão-de-ló tipo génoise",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00011",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas batidas",
+    "nome": "Executar Pão-de-ló separado / espuma de claras",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00012",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos amanteigados",
+    "nome": "Executar Método de cremagem",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00013",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos amanteigados",
+    "nome": "Executar Método all-in / mistura direta",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00014",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas de pão",
+    "nome": "Executar Pão de baixa hidratação",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00015",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas de pão",
+    "nome": "Executar Pão de hidratação média",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00016",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas de pão",
+    "nome": "Executar Pão de alta hidratação",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00017",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas enriquecidas",
+    "nome": "Executar Brioche",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00018",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas enriquecidas",
+    "nome": "Controlar Brioche",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00019",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas laminadas fermentadas",
+    "nome": "Executar Croissant",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00020",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas laminadas fermentadas",
+    "nome": "Controlar Croissant",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00021",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas laminadas fermentadas",
+    "nome": "Executar Danish",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00022",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas laminadas fermentadas",
+    "nome": "Controlar Danish",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00023",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Massas de pizza",
+    "nome": "Executar Pizza de fermentação direta",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00024",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Executar Buttercream americano",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00025",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Executar Buttercream suíço",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00026",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Controlar Buttercream suíço",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00027",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Diagnosticar e recuperar Buttercream suíço",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00028",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Executar Buttercream italiano",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00029",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Controlar Buttercream italiano",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00030",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Diagnosticar e recuperar Buttercream italiano",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00031",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Executar Buttercream francês",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00032",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Controlar Buttercream francês",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00033",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Diagnosticar e recuperar Buttercream francês",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00034",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Executar Buttercream alemão",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00035",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Controlar Buttercream alemão",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00036",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Diagnosticar e recuperar Buttercream alemão",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00037",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Executar Ermine frosting",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00038",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes de manteiga",
+    "nome": "Executar Buttercream russo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00039",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Executar Bife bovino grelhado — mal passado/rosado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00040",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Executar Bife bovino grelhado — médio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00041",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Executar Repouso de bife bovino",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00042",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Controlar Repouso de bife bovino",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00043",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Executar Repouso de peça bovina assada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00044",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne bovina",
+    "nome": "Controlar Repouso de peça bovina assada",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00045",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carne suína",
+    "nome": "Executar Peça suína grelhada/assada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00046",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Aves",
+    "nome": "Executar Frango assado inteiro",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00047",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Aves",
+    "nome": "Executar Repouso de ave inteira assada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00048",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Aves",
+    "nome": "Controlar Repouso de ave inteira assada",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00049",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Borrego",
+    "nome": "Executar Costeleta de borrego grelhada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00050",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Borrego",
+    "nome": "Executar Repouso de perna/rack de borrego",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00051",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Borrego",
+    "nome": "Controlar Repouso de perna/rack de borrego",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00052",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Peixe",
+    "nome": "Executar Filete de peixe grelhado com pele",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00053",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Peixe",
+    "nome": "Executar Peixe escalfado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00054",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Molhos",
+    "nome": "Executar Béchamel",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00055",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Molhos",
+    "nome": "Executar Holandês",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00056",
+    "nivel": 2,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Molhos",
+    "nome": "Controlar Holandês",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00057",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Molhos",
+    "nome": "Executar Maionese",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00058",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Sopas",
+    "nome": "Executar Creme triturado de hortícolas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00059",
+    "nivel": 1,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Chocolate",
+    "nome": "Executar Ganache clássica",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00060",
+    "nivel": 2,
+    "dominio": "cozinha_profissional",
+    "familia_tecnica": "Chocolate",
+    "nome": "Controlar Ganache clássica",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00061",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Fundos e caldos",
+    "nome": "Executar Fundo branco de aves",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00062",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Fundos e caldos",
+    "nome": "Executar Fundo escuro de carne",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00063",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Fundos e caldos",
+    "nome": "Executar Fumet de peixe",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00064",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Sopas",
+    "nome": "Executar Consommé clarificado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00065",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Sopas",
+    "nome": "Controlar Consommé clarificado",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00066",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Sopas",
+    "nome": "Executar Sopa com elementos inteiros",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00067",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Executar Ovo cozido com gema líquida",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00068",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Executar Ovo cozido com gema cremosa",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00069",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Executar Ovo escalfado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00070",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Executar Omelete francesa",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00071",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ovos",
+    "nome": "Executar Ovos mexidos cremosos",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00072",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Arroz",
+    "nome": "Executar Arroz branco por absorção",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00073",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Arroz",
+    "nome": "Executar Risotto / arroz cremoso",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00074",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Arroz",
+    "nome": "Controlar Risotto / arroz cremoso",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00075",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Massas alimentícias",
+    "nome": "Executar Massa seca al dente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00076",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Massas alimentícias",
+    "nome": "Executar Massa fresca de ovos",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00077",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Executar Hortícolas verdes branqueados",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00078",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Executar Tubérculos assados",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00079",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Executar Legumes salteados",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00080",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Executar Puré de tubérculos",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00081",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Mariscos e moluscos",
+    "nome": "Executar Camarão salteado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00082",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Mariscos e moluscos",
+    "nome": "Executar Mexilhão aberto ao vapor",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00083",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Mariscos e moluscos",
+    "nome": "Executar Polvo cozido para corte",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00084",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Mariscos e moluscos",
+    "nome": "Executar Lula salteada rapidamente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00085",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Creme pasteleiro",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00086",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Creme diplomata",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00087",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlar Creme diplomata",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00088",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Creme mousseline",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00089",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlar Creme mousseline",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00090",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Creme chiboust",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00091",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlar Creme chiboust",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00092",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Ganache de cobertura",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00093",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlar Ganache de cobertura",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00094",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Ganache para recheio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00095",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlar Ganache para recheio",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00096",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Bolo de método chiffon",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00097",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Bolo de método foaming com gordura adicionada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00098",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Dacquoise",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00099",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Joconde",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00100",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Executar Chocolate negro temperado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00101",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Controlar Chocolate negro temperado",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00102",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Executar Chocolate de leite temperado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00103",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Controlar Chocolate de leite temperado",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00104",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Executar Chocolate branco temperado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00105",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Controlar Chocolate branco temperado",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00106",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Executar Caramelo seco âmbar",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00107",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e açúcar",
+    "nome": "Executar Caramelo húmido",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00108",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Serviços especiais",
+    "nome": "Executar Coffee break simples",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00109",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Serviços especiais",
+    "nome": "Executar Buffet frio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00110",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Serviços especiais",
+    "nome": "Executar Buffet quente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00111",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Serviços especiais",
+    "nome": "Executar Encerramento de evento",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00112",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Juliana de hortícolas firmes",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00113",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Brunoise fina",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00114",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Mirepoix para fundo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00115",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Chiffonade de folhas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00116",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Bâtonnet de tubérculos",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00117",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Macedónia de hortícolas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00118",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Concassé de tomate",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00119",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Ciselar cebola",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00120",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Corte contra a fibra",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00121",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Filetes de peixe",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00122",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Supremo de ave",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00123",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cortes de cozinha",
+    "nome": "Executar Medalhões de carne",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00124",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Velouté",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00125",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Molho espanhol",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00126",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Demi-glace",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00127",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Controlar Demi-glace",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00128",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Molho tomate clássico",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00129",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Beurre blanc",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00130",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Controlar Beurre blanc",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00131",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Béarnaise",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00132",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Controlar Béarnaise",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00133",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Molho de assado / jus",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00134",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Vinagrete clássica",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00135",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Molho pesto",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00136",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Molho caramelo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00137",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Executar Canapé frio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00138",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Executar Salada composta",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00139",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Executar Terrina prensada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00140",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Executar Paté emulsionado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00141",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Acepipes e preparações frias",
+    "nome": "Executar Ceviche / marinado ácido",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00142",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Executar Peixe inteiro assado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00143",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Executar Lombo de salmão assado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00144",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Executar Bacalhau confitado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00145",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Controlar Bacalhau confitado",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00146",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Executar Peixe frito em polme",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00147",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Executar Peixe cozido a vapor",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00148",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Peixes",
+    "nome": "Executar Peixe grelhado inteiro",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00149",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Vitela assada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00150",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Porco assado — lombo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00151",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Entrecosto braseado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00152",
+    "nivel": 2,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Controlar Entrecosto braseado",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00153",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Peito de frango grelhado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00154",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Coxa de frango assada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00155",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Pato assado — peito rosado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00156",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Coelho estufado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00157",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Cabrito assado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00158",
+    "nivel": 1,
+    "dominio": "carnes",
+    "familia_tecnica": "Carnes, aves e caça",
+    "nome": "Executar Caça de pelo estufada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00159",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Executar Baguete francesa",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00160",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Executar Pão de forma",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00161",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Executar Focaccia",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00162",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Executar Bagel",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00163",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Executar Pretzel",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00164",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Executar Pão de levain",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00165",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Panificação",
+    "nome": "Executar Pão de centeio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00166",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Executar Pain au chocolat",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00167",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Executar Brioche à tête",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00168",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlar Brioche à tête",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00169",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Executar Kouign-amann",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00170",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlar Kouign-amann",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00171",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Diagnosticar e recuperar Kouign-amann",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00172",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Executar Danish com creme e fruta",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00173",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlar Danish com creme e fruta",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00174",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Executar Cobertura lisa com buttercream",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00175",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Executar Cobertura com pasta de açúcar",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00176",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Executar Piping de conchas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00177",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Executar Flores de buttercream",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00178",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cake design e acabamento",
+    "nome": "Executar Estrutura de bolo de andares",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00179",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinha alternativa e sustentável",
+    "nome": "Executar Substituição de ovo em bolo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00180",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinha alternativa e sustentável",
+    "nome": "Executar Massa sem glúten para bolo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00181",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinha alternativa e sustentável",
+    "nome": "Executar Hambúrguer vegetal",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00182",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinha alternativa e sustentável",
+    "nome": "Executar Aproveitamento de aparas em fundo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00183",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Executar Planeamento de produção por lotes",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00184",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Executar Receção de matérias-primas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00185",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Executar Rotação FIFO/FEFO",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00186",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Executar Cálculo de custo por dose",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00187",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Executar Comunicação de passe",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00188",
+    "nivel": 1,
+    "dominio": "transversal",
+    "familia_tecnica": "Competências transversais",
+    "nome": "Executar Avaliação de alergénios",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00189",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Higiene alimentar",
+    "nome": "Executar Lavagem higiénica das mãos",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00190",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Higiene alimentar",
+    "nome": "Executar Prevenção de contaminação cruzada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00191",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Higiene alimentar",
+    "nome": "Executar Controlo de arrefecimento rápido",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00192",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Higiene alimentar",
+    "nome": "Executar Controlo de alergénios na produção",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00193",
+    "nivel": 1,
+    "dominio": "sst",
+    "familia_tecnica": "Segurança no trabalho",
+    "nome": "Executar Utilização segura de faca",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00194",
+    "nivel": 1,
+    "dominio": "sst",
+    "familia_tecnica": "Segurança no trabalho",
+    "nome": "Executar Utilização segura de forno e equipamentos quentes",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00195",
+    "nivel": 1,
+    "dominio": "sst",
+    "familia_tecnica": "Segurança no trabalho",
+    "nome": "Executar Operação segura de equipamento mecânico",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00196",
+    "nivel": 1,
+    "dominio": "sustentabilidade",
+    "familia_tecnica": "Sustentabilidade",
+    "nome": "Executar Aproveitamento integral de hortícolas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00197",
+    "nivel": 1,
+    "dominio": "sustentabilidade",
+    "familia_tecnica": "Sustentabilidade",
+    "nome": "Executar Gestão eficiente de água e energia",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00198",
+    "nivel": 1,
+    "dominio": "nutricao",
+    "familia_tecnica": "Nutrição e inclusão",
+    "nome": "Executar Adaptação de porção e composição nutricional",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00199",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Executar Gelado de base inglesa",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00200",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Executar Gelado de base sem ovos",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00201",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Executar Sorbet de fruta",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00202",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Executar Granizado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00203",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Executar Parfait congelado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00204",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Gelados e sobremesas congeladas",
+    "nome": "Executar Semifreddo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00205",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Merengue francês",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00206",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Merengue francês",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00207",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Merengue francês",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00208",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Merengue suíço",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00209",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Merengue suíço",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00210",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Merengue suíço",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00211",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Merengue italiano",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00212",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Merengue italiano",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00213",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Merengue italiano",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00214",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Pâte à bombe",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00215",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Pâte à bombe",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00216",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Pâte à bombe",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00217",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Mousse de chocolate com pâte à bombe",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00218",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Mousse de chocolate com pâte à bombe",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00219",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Mousse de chocolate com pâte à bombe",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00220",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Mousse de fruta",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00221",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Mousse de fruta",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00222",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Mousse de fruta",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00223",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Crème brûlée",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00224",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Crème brûlée",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00225",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Crème brûlée",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00226",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Crème caramel",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00227",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Crème caramel",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00228",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Crème caramel",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00229",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Panna cotta",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00230",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Panna cotta",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00231",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Panna cotta",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00232",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Entremet em camadas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00233",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Entremet em camadas",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00234",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Entremet em camadas",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00235",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Executar Sobremesa empratada quente e fria",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00236",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Controlar Sobremesa empratada quente e fria",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00237",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesas e entremets",
+    "nome": "Diagnosticar e recuperar Sobremesa empratada quente e fria",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00238",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Macaron francês",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00239",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Macaron italiano",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00240",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Controlar Macaron italiano",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00241",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Diagnosticar e recuperar Macaron italiano",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00242",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Madeleine",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00243",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Financier",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00244",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Bolacha por método de cremagem",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00245",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Trufa de chocolate",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00246",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Praliné de frutos secos",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00247",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Nougat / torrone",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00248",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Confeitaria e petits fours",
+    "nome": "Executar Marshmallow",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00249",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Executar Royal icing de consistência para contorno",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00250",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Executar Royal icing de consistência para preenchimento",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00251",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Executar Pastillage",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00252",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlar Pastillage",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00253",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Diagnosticar e recuperar Pastillage",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00254",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Executar Gum paste / pasta de flores",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00255",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlar Gum paste / pasta de flores",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00256",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Diagnosticar e recuperar Gum paste / pasta de flores",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00257",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Executar Chocolate moldado em bombom",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00258",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlar Chocolate moldado em bombom",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00259",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Diagnosticar e recuperar Chocolate moldado em bombom",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00260",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Executar Decoração de chocolate em acetato",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00261",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Executar Açúcar puxado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00262",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlar Açúcar puxado",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00263",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Diagnosticar e recuperar Açúcar puxado",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00264",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Executar Açúcar soprado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00265",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Controlar Açúcar soprado",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00266",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Decoração e peças artísticas",
+    "nome": "Diagnosticar e recuperar Açúcar soprado",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00267",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Executar Bacalhau confitado em azeite",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00268",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Controlar Bacalhau confitado em azeite",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00269",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Executar Arroz malandrinho",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00270",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Executar Cataplana de peixe e marisco",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00271",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Executar Curry com especiarias tostadas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00272",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Executar Risotto italiano",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00273",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Controlar Risotto italiano",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00274",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Executar Tempura",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00275",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Cozinhas portuguesa e do mundo",
+    "nome": "Executar Cuscuz por hidratação e vaporização",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00276",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Executar Autólise em massas de pão",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00277",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlar Autólise em massas de pão",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00278",
+    "nivel": 3,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Diagnosticar e recuperar Autólise em massas de pão",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00279",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Executar Bassinage em massa de alta hidratação",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00280",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlar Bassinage em massa de alta hidratação",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00281",
+    "nivel": 3,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Diagnosticar e recuperar Bassinage em massa de alta hidratação",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00282",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Executar Teste de membrana / windowpane",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00283",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlar Teste de membrana / windowpane",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00284",
+    "nivel": 3,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Diagnosticar e recuperar Teste de membrana / windowpane",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00285",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Executar Fermentação em massa / bulk fermentation",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00286",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlar Fermentação em massa / bulk fermentation",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00287",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Executar Fermentação final / proof",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00288",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlar Fermentação final / proof",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00289",
+    "nivel": 1,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Executar Fermentação retardada a frio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00290",
+    "nivel": 2,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Controlar Fermentação retardada a frio",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00291",
+    "nivel": 3,
+    "dominio": "panificacao",
+    "familia_tecnica": "Estrutura e fermentação",
+    "nome": "Diagnosticar e recuperar Fermentação retardada a frio",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00292",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Estrutura das massas",
+    "nome": "Executar Desenvolvimento mínimo de glúten em massas quebradas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00293",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Estrutura das massas",
+    "nome": "Executar Laminação com plasticidade equivalente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00294",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Estrutura das massas",
+    "nome": "Controlar Laminação com plasticidade equivalente",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00295",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Estrutura das massas",
+    "nome": "Diagnosticar e recuperar Laminação com plasticidade equivalente",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00296",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Executar Carne bovina sous-vide",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00297",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Controlar Carne bovina sous-vide",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00298",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Diagnosticar e recuperar Carne bovina sous-vide",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00299",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Executar Ave sous-vide com segurança controlada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00300",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Controlar Ave sous-vide com segurança controlada",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00301",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Diagnosticar e recuperar Ave sous-vide com segurança controlada",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00302",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Executar Peixe a baixa temperatura",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00303",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Controlar Peixe a baixa temperatura",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00304",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Baixa temperatura",
+    "nome": "Diagnosticar e recuperar Peixe a baixa temperatura",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00305",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Executar Salmoura húmida para carne suína",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00306",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Controlar Salmoura húmida para carne suína",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00307",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Executar Salmoura para aves",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00308",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Controlar Salmoura para aves",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00309",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Executar Cura seca de peixe",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00310",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Controlar Cura seca de peixe",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00311",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Diagnosticar e recuperar Cura seca de peixe",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00312",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Executar Cura seca de carne",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00313",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Controlar Cura seca de carne",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00314",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Salmouras e curas",
+    "nome": "Diagnosticar e recuperar Cura seca de carne",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00315",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Executar Defumação a quente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00316",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Controlar Defumação a quente",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00317",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Executar Defumação a frio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00318",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Controlar Defumação a frio",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00319",
+    "nivel": 3,
+    "dominio": "cozinha",
+    "familia_tecnica": "Defumação",
+    "nome": "Diagnosticar e recuperar Defumação a frio",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00320",
+    "nivel": 1,
+    "dominio": "conservacao",
+    "familia_tecnica": "Conservação",
+    "nome": "Executar Congelação de preparação culinária",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00321",
+    "nivel": 1,
+    "dominio": "conservacao",
+    "familia_tecnica": "Conservação",
+    "nome": "Executar Descongelação refrigerada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00322",
+    "nivel": 1,
+    "dominio": "conservacao",
+    "familia_tecnica": "Regeneração",
+    "nome": "Executar Regeneração de preparação quente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00323",
+    "nivel": 2,
+    "dominio": "conservacao",
+    "familia_tecnica": "Regeneração",
+    "nome": "Controlar Regeneração de preparação quente",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00324",
+    "nivel": 1,
+    "dominio": "conservacao",
+    "familia_tecnica": "Conservação",
+    "nome": "Executar Embalagem a vácuo de produto frio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00325",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Conservação",
+    "nome": "Executar Manutenção quente em serviço",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00326",
+    "nivel": 1,
+    "dominio": "haccp",
+    "familia_tecnica": "Conservação",
+    "nome": "Executar Manutenção fria em serviço",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00327",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Executar Controlo do passe",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00328",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Executar Empratamento com porção consistente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00329",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Controlar Empratamento com porção consistente",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00330",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Executar Preservação de elemento crocante",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00331",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Finalização e serviço",
+    "nome": "Executar Aplicação controlada de molho",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00332",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesa empratada",
+    "nome": "Executar Quenelle de creme ou gelado",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00333",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Sobremesa empratada",
+    "nome": "Executar Molho espelho no prato",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00334",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Executar Mise en place de serviço de bebidas",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00335",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Executar Serviço de vinho tranquilo",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00336",
+    "nivel": 2,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Controlar Serviço de vinho tranquilo",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00337",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Executar Serviço de espumante",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00338",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Executar Preparação de café espresso",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00339",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Bebidas e serviço",
+    "nome": "Executar Espumar leite para cappuccino",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00340",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Atendimento",
+    "nome": "Executar Acolhimento e confirmação do pedido",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00341",
+    "nivel": 1,
+    "dominio": "servico",
+    "familia_tecnica": "Atendimento",
+    "nome": "Executar Gestão inicial de reclamação",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00342",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Executar Forrar tarteira com pâte brisée",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00343",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Executar Cozedura em branco com pesos",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00344",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Controlar Cozedura em branco com pesos",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00345",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Executar Pâte foncer",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00346",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Controlar Pâte foncer",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00347",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Executar Pâte à linzer",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00348",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Controlar Pâte à linzer",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00349",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massas de tartes",
+    "nome": "Diagnosticar e recuperar Pâte à linzer",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00350",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massa choux",
+    "nome": "Executar Éclair",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00351",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massa choux",
+    "nome": "Executar Paris-Brest",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00352",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Massa choux",
+    "nome": "Controlar Paris-Brest",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00353",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Executar Croissant de amêndoa",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00354",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlar Croissant de amêndoa",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00355",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Executar Palmier",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00356",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Viennoiserie",
+    "nome": "Controlar Palmier",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00357",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Biscuit cuillère",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00358",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Controlar Biscuit cuillère",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00359",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Biscuit roulade",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00360",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Sponge cake por método quente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00361",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Controlar Sponge cake por método quente",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00362",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Devil’s food cake",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00363",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Controlar Devil’s food cake",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00364",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Executar Angel food cake",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00365",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Controlar Angel food cake",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00366",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Bolos e biscuits",
+    "nome": "Diagnosticar e recuperar Angel food cake",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00367",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Crème anglaise",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00368",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Crème légère",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00369",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlar Crème légère",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00370",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Crème frangipane",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00371",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlar Crème frangipane",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00372",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Executar Namelaka",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00373",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Controlar Namelaka",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00374",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Cremes e recheios",
+    "nome": "Diagnosticar e recuperar Namelaka",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00375",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Executar Ganache de moldagem",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00376",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Controlar Ganache de moldagem",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00377",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Diagnosticar e recuperar Ganache de moldagem",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00378",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Executar Praliné feuilletine",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00379",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Controlar Praliné feuilletine",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00380",
+    "nivel": 1,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Executar Dragées de chocolate",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00381",
+    "nivel": 2,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Controlar Dragées de chocolate",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00382",
+    "nivel": 3,
+    "dominio": "pastelaria",
+    "familia_tecnica": "Chocolate e confeitaria",
+    "nome": "Diagnosticar e recuperar Dragées de chocolate",
+    "manifestacao_observavel": "Identifica causas técnicas e aplica recuperação quando possível."
+  },
+  {
+    "id": "APT-00383",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Fundos e caldos",
+    "nome": "Executar Fundo vegetal",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00384",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Molho mornay",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00385",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Executar Molho suprême",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00386",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Molhos e ligações",
+    "nome": "Controlar Molho suprême",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00387",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Executar Batata gratin dauphinois",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00388",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Executar Batata duchesse",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00389",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Hortícolas e tubérculos",
+    "nome": "Controlar Batata duchesse",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00390",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Carne suína",
+    "nome": "Executar Costeleta de porco grelhada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00391",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Aves",
+    "nome": "Executar Peito de pato grelhado com pele",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00392",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Aves",
+    "nome": "Controlar Peito de pato grelhado com pele",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00393",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Borrego e caça",
+    "nome": "Executar Perna de borrego assada",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00394",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Borrego e caça",
+    "nome": "Controlar Perna de borrego assada",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00395",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Eventos e serviços especiais",
+    "nome": "Executar Finger food frio",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00396",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Eventos e serviços especiais",
+    "nome": "Executar Finger food quente",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00397",
+    "nivel": 1,
+    "dominio": "eventos",
+    "familia_tecnica": "Eventos e serviços especiais",
+    "nome": "Executar Serviço volante",
+    "manifestacao_observavel": "Realiza as etapas essenciais e obtém o resultado base previsto."
+  },
+  {
+    "id": "APT-00398",
+    "nivel": 2,
+    "dominio": "eventos",
+    "familia_tecnica": "Eventos e serviços especiais",
+    "nome": "Controlar Serviço volante",
+    "manifestacao_observavel": "Ajusta o processo com base nos sinais observáveis."
+  },
+  {
+    "id": "APT-00399",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Promover a reação de Maillard",
+    "manifestacao_observavel": "Seca a superfície do produto, aquece a superfície de cozedura a temperatura elevada e não mexe o produto nos primeiros momentos para deixar desenvolver a crosta."
+  },
+  {
+    "id": "APT-00400",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Controlar a coagulação",
+    "manifestacao_observavel": "Usa termómetro de sonda ou verifica visualmente e ao toque o ponto de cozedura, retirando o produto do calor antes de atingir a temperatura de sobrecozedura."
+  },
+  {
+    "id": "APT-00401",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Usar amido como espessante",
+    "manifestacao_observavel": "Dilui o amido em líquido frio antes de adicionar ao líquido quente, mexendo sempre para evitar grumos, e aquece até atingir o ponto de gelatinização."
+  },
+  {
+    "id": "APT-00402",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Estabilizar uma emulsão quebrada",
+    "manifestacao_observavel": "Recomeça com uma nova base (gema ou mostarda) e vai adicionando a emulsão quebrada em fio muito fino, batendo sempre."
+  },
+  {
+    "id": "APT-00403",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Verificar desenvolvimento do glúten",
+    "manifestacao_observavel": "Retira uma porção de massa e estica lentamente entre os dedos — se ficar translúcida sem rasgar, o glúten está desenvolvido."
+  },
+  {
+    "id": "APT-00404",
+    "nivel": 1,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Controlar a fermentação",
+    "manifestacao_observavel": "Verifica o crescimento por volume e pelo teste do dedo, ajusta a temperatura ambiente para controlar a velocidade e não deixa fermentar em excesso."
+  },
+  {
+    "id": "APT-00405",
+    "nivel": 2,
+    "dominio": "cozinha",
+    "familia_tecnica": "Ciência alimentar",
+    "nome": "Fazer caramelo sem cristalizar",
+    "manifestacao_observavel": "Não mexe o caramelo durante a fusão, usa uma pincel húmido nas paredes da frigideira para dissolver cristais e adiciona ácido se pretender evitar recristalização."
+  }
+]

@@ -1,0 +1,224 @@
+[
+  {
+    "id": "UC03576",
+    "ano": 1,
+    "designacao": "Planear e organizar a produção de cozinha",
+    "dominio": "planeamento"
+  },
+  {
+    "id": "UC01999",
+    "ano": 1,
+    "designacao": "Preparar e executar confeções de cozinha",
+    "dominio": "confeção geral"
+  },
+  {
+    "id": "UC02002",
+    "ano": 1,
+    "designacao": "Preparar e confecionar acepipes, sopas, entradas, ovos e massas",
+    "dominio": "sopas_entradas_ovos_massas"
+  },
+  {
+    "id": "UC02005",
+    "ano": 1,
+    "designacao": "Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria",
+    "dominio": "pastelaria"
+  },
+  {
+    "id": "UC03577",
+    "ano": 1,
+    "designacao": "Preparar e confecionar molhos e fundos de cozinha",
+    "dominio": "fundos_molhos"
+  },
+  {
+    "id": "UC03584",
+    "ano": 1,
+    "designacao": "Implementar regras de higiene e segurança alimentar",
+    "dominio": "haccp"
+  },
+  {
+    "id": "UC00039",
+    "ano": 1,
+    "designacao": "Implementar normas de segurança e saúde no trabalho",
+    "dominio": "sst"
+  },
+  {
+    "id": "UC03579",
+    "ano": 1,
+    "designacao": "Gerir aprovisionamentos e controlar custos",
+    "dominio": "gestao"
+  },
+  {
+    "id": "UC03580",
+    "ano": 1,
+    "designacao": "Atender o cliente e gerir reclamações na restauração",
+    "dominio": "atendimento"
+  },
+  {
+    "id": "UC03581",
+    "ano": 1,
+    "designacao": "Planear e executar o serviço casual de restaurante/bar",
+    "dominio": "servico"
+  },
+  {
+    "id": "UC03578",
+    "ano": 1,
+    "designacao": "Interagir em inglês no serviço de cozinha e restaurante/bar",
+    "dominio": "comunicacao"
+  },
+  {
+    "id": "UC00054",
+    "ano": 1,
+    "designacao": "Atuar em situações de emergência em hotelaria e restauração",
+    "dominio": "emergencia"
+  },
+  {
+    "id": "UC00596",
+    "ano": 2,
+    "designacao": "Implementar princípios de nutrição e dietética",
+    "dominio": "nutricao"
+  },
+  {
+    "id": "UC03585",
+    "ano": 2,
+    "designacao": "Conservar matérias-primas alimentares",
+    "dominio": "conservacao"
+  },
+  {
+    "id": "UC00034",
+    "ano": 2,
+    "designacao": "Colaborar e trabalhar em equipa",
+    "dominio": "equipa"
+  },
+  {
+    "id": "UC00035",
+    "ano": 2,
+    "designacao": "Desenvolver competências pessoais e criativas",
+    "dominio": "criatividade"
+  },
+  {
+    "id": "UC00068",
+    "ano": 2,
+    "designacao": "Aplicar expressão dramática em contexto profissional",
+    "dominio": "comunicacao"
+  },
+  {
+    "id": "UC02003",
+    "ano": 2,
+    "designacao": "Preparar e confecionar peixes, mariscos e guarnições",
+    "dominio": "peixes_mariscos"
+  },
+  {
+    "id": "UC02004",
+    "ano": 2,
+    "designacao": "Preparar e confecionar carnes, aves, caça e guarnições",
+    "dominio": "carnes"
+  },
+  {
+    "id": "UC03586",
+    "ano": 2,
+    "designacao": "Preparar iguarias da cozinha e doçaria tradicional portuguesa",
+    "dominio": "cozinha_portuguesa"
+  },
+  {
+    "id": "UC03591",
+    "ano": 2,
+    "designacao": "Planear e executar serviços especiais de cozinha",
+    "dominio": "eventos"
+  },
+  {
+    "id": "UC03582",
+    "ano": 2,
+    "designacao": "Planear e executar serviço de bebidas simples",
+    "dominio": "bebidas"
+  },
+  {
+    "id": "UC00595",
+    "ano": 2,
+    "designacao": "Aconselhar vinhos e orientar o cliente",
+    "dominio": "vinhos"
+  },
+  {
+    "id": "UC00032",
+    "ano": 3,
+    "designacao": "Elaborar o plano de negócios",
+    "dominio": "negocio"
+  },
+  {
+    "id": "UC00038",
+    "ano": 3,
+    "designacao": "Prestar informação sobre o setor do turismo",
+    "dominio": "turismo"
+  },
+  {
+    "id": "UC00056",
+    "ano": 3,
+    "designacao": "Implementar requisitos do turismo acessível e inclusivo",
+    "dominio": "inclusao"
+  },
+  {
+    "id": "UC00069",
+    "ano": 3,
+    "designacao": "Implementar normas do setor da hotelaria e restauração",
+    "dominio": "normas"
+  },
+  {
+    "id": "UC00031",
+    "ano": 3,
+    "designacao": "Criar e desenvolver ideias de negócio",
+    "dominio": "negocio"
+  },
+  {
+    "id": "UC03589",
+    "ano": 3,
+    "designacao": "Implementar novas tendências na cozinha",
+    "dominio": "tendencias"
+  },
+  {
+    "id": "UC00077",
+    "ano": 3,
+    "designacao": "Aplicar storytelling na comunicação",
+    "dominio": "storytelling"
+  },
+  {
+    "id": "UC03583",
+    "ano": 3,
+    "designacao": "Interagir em língua estrangeira no serviço",
+    "dominio": "comunicacao"
+  },
+  {
+    "id": "UC03593",
+    "ano": 3,
+    "designacao": "Planear e confecionar massas básicas de panificação",
+    "dominio": "panificacao"
+  },
+  {
+    "id": "UC03592",
+    "ano": 3,
+    "designacao": "Planear e confecionar pastelaria internacional",
+    "dominio": "pastelaria_internacional"
+  },
+  {
+    "id": "UC03588",
+    "ano": 3,
+    "designacao": "Preparar iguarias da gastronomia do mundo",
+    "dominio": "gastronomia_mundo"
+  },
+  {
+    "id": "UC03590",
+    "ano": 3,
+    "designacao": "Confecionar produtos sustentáveis",
+    "dominio": "sustentabilidade"
+  },
+  {
+    "id": "UC03595",
+    "ano": 3,
+    "designacao": "Planear e confecionar cozinha alternativa",
+    "dominio": "cozinha_alternativa"
+  },
+  {
+    "id": "UC03596",
+    "ano": 3,
+    "designacao": "Planear e confecionar cozinha criativa",
+    "dominio": "cozinha_criativa"
+  }
+]

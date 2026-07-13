@@ -1,0 +1,134 @@
+[
+  {
+    "id": "ATI-001",
+    "nome": "Responsabilidade pelas suas ações",
+    "texto_aluno": "Quero que seja observado se demonstrei responsabilidade pelas suas ações nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-002",
+    "nome": "Autonomia no âmbito das suas funções",
+    "texto_aluno": "Quero que seja observado se demonstrei autonomia no âmbito das suas funções nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-003",
+    "nome": "Cuidado com a apresentação pessoal",
+    "texto_aluno": "Quero que seja observado se demonstrei cuidado com a apresentação pessoal nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-004",
+    "nome": "Iniciativa",
+    "texto_aluno": "Quero que seja observado se demonstrei iniciativa nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-005",
+    "nome": "Autocontrolo",
+    "texto_aluno": "Quero que seja observado se demonstrei autocontrolo nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-006",
+    "nome": "Assertividade",
+    "texto_aluno": "Quero que seja observado se demonstrei assertividade nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-007",
+    "nome": "Empatia",
+    "texto_aluno": "Quero que seja observado se demonstrei empatia nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-008",
+    "nome": "Escuta ativa",
+    "texto_aluno": "Quero que seja observado se demonstrei escuta ativa nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-009",
+    "nome": "Cooperação com a equipa",
+    "texto_aluno": "Quero que seja observado se demonstrei cooperação com a equipa nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-010",
+    "nome": "Empenho e persistência na resolução de problemas",
+    "texto_aluno": "Quero que seja observado se demonstrei empenho e persistência na resolução de problemas nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-011",
+    "nome": "Sentido de organização",
+    "texto_aluno": "Quero que seja observado se demonstrei sentido de organização nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-012",
+    "nome": "Flexibilidade e adaptabilidade",
+    "texto_aluno": "Quero que seja observado se demonstrei flexibilidade e adaptabilidade nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-013",
+    "nome": "Disponibilidade para aprender",
+    "texto_aluno": "Quero que seja observado se demonstrei disponibilidade para aprender nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-014",
+    "nome": "Respeito pelos princípios da sustentabilidade",
+    "texto_aluno": "Quero que seja observado se demonstrei respeito pelos princípios da sustentabilidade nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-015",
+    "nome": "Respeito pelas regras e normas definidas",
+    "texto_aluno": "Quero que seja observado se demonstrei respeito pelas regras e normas definidas nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-016",
+    "nome": "Respeito pelas normas de higiene e segurança alimentar",
+    "texto_aluno": "Quero que seja observado se demonstrei respeito pelas normas de higiene e segurança alimentar nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-017",
+    "nome": "Respeito pelas normas de segurança e saúde no trabalho",
+    "texto_aluno": "Quero que seja observado se demonstrei respeito pelas normas de segurança e saúde no trabalho nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-018",
+    "nome": "Respeito pela sensibilidade e bem-estar dos outros",
+    "texto_aluno": "Quero que seja observado se demonstrei respeito pela sensibilidade e bem-estar dos outros nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-019",
+    "nome": "Autoconfiança",
+    "texto_aluno": "Quero que seja observado se demonstrei autoconfiança nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-020",
+    "nome": "Postura profissional",
+    "texto_aluno": "Quero que seja observado se demonstrei postura profissional nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-021",
+    "nome": "Sentido crítico",
+    "texto_aluno": "Quero que seja observado se demonstrei sentido crítico nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  },
+  {
+    "id": "ATI-022",
+    "nome": "Respeito pelas diferenças individuais",
+    "texto_aluno": "Quero que seja observado se demonstrei respeito pelas diferenças individuais nesta atividade.",
+    "regra_observacao": "Avaliar apenas quando existir comportamento concreto e observável no contexto."
+  }
+]
