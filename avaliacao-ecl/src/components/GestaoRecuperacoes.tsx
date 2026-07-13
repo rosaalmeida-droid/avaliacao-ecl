@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao } from '../backend';
-import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } from '../compatECL';
+import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } , encontrarAparelho, encontrarSubtecnica, nomeCompetencia,
+} from '../compatECL';
 import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
 import { GuiaProducao } from './GuiaProducao';
@@ -9,7 +10,7 @@ import { SeletorIA } from './SeletorIA';
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
   if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;
-  return encontrarMicro(id)?.nome || id;
+  return nomeCompetencia(id);
 }
 
 const NIVEIS: { v: 'nao_demonstrada' | 'em_desenvolvimento' | 'consolidada' | 'avancada'; label: string; cor: string }[] = [
