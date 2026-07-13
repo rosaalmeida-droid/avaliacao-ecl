@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { SelecaoAluno, Validacao } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao } from '../backend';
-import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude } from '../compatECL';
+import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
+import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
 
 const NIVEIS_PROF = [
@@ -98,10 +99,17 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
 
   function getNomeComp(id: string): string {
     if (id.startsWith('OBR_')) {
-      return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
+      const obrs: Record<string,string> = {
+        'OBR_01': 'Higiene pessoal', 'OBR_02': 'Higiene e Segurança Alimentar', 'OBR_03': 'Assiduidade',
+      };
+      return obrs[id] || id;
     }
-    if (id.startsWith('ATT_')) {
-      return encontrarAtitude(id)?.nome || id;
+    if (id.startsWith('SUB-')) return encontrarSubtecnica(id)?.nome || id;
+    if (id.startsWith('APP-')) return encontrarAparelho(id)?.nome || id;
+    if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;
+    if (id.startsWith('KNW-')) {
+      const lib = getLibrary();
+      return (lib.conhecimentos as any[]).find(k => k.id === id)?.nome || id;
     }
     return encontrarMicro(id)?.nome || id;
   }
@@ -197,6 +205,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
       {autoavaliacoes.map(auto => {
         const nome = getNomeComp(auto.competenciaId);
         const criterios = getCriterios(auto.competenciaId);
+        const _isApp = auto.competenciaId.startsWith('APP-');
+        const _isSub = auto.competenciaId.startsWith('SUB-');
+        const _isKnw = auto.competenciaId.startsWith('KNW-');
+        const _app = _isApp ? encontrarAparelho(auto.competenciaId) : null;
         const notaProf = notasProf[auto.competenciaId];
         const notaAlunoPct = auto.nivel === 'superei' ? 1 : auto.nivel === 'atingi' ? 0.75 : auto.nivel === 'desenvolvimento' ? 0.5 : 0.25;
         const notaFinal = notaProf ? calcularNotaFinal(notaProf, notaAlunoPct) : null;
@@ -208,7 +220,22 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
         return (
           <div key={auto.competenciaId} style={{ marginBottom: 10, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
             {/* Nome da competência */}
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{nome}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>{nome}</span>
+              {_isApp && _app && (
+                <span style={{ fontSize:10, fontWeight:700, padding:'2px 6px', borderRadius:100,
+                  background: _app.nivel===1?'rgba(90,122,78,0.15)':_app.nivel===2?'rgba(181,101,29,0.15)':'rgba(192,57,43,0.15)',
+                  color: _app.nivel===1?'#5a7a4e':_app.nivel===2?'#b5651d':'#c0392b' }}>
+                  Aparelho N{_app.nivel} · {_app.categoria}
+                </span>
+              )}
+              {_isSub && (
+                <span style={{ fontSize:10, color:'rgba(26,23,20,0.4)', fontStyle:'italic' }}>subtécnica</span>
+              )}
+              {auto.competenciaId.startsWith('KNW-') && (
+                <span style={{ fontSize:10, color:'#0369a1', fontStyle:'italic', fontWeight:600 }}>conhecimento</span>
+              )}
+            </div>
 
             {/* Autoavaliação do aluno */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 10px', background: 'var(--cream-dark)', borderRadius: 8 }}>
