@@ -390,7 +390,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     ? (lib.conhecimentos as any[])
         .filter((k: any) => !compRemovidas.includes(k.id) && !IDS_JA_USADOS.has(k.id))
         .slice(0, 6)
-        .map((k: any) => ({ id: k.id, nome: k.nome, definicao: k.definicao }))
+        .map((k: any) => ({ id: k.id, nome: k.nome, definicao: k.definicao, criterios: [] as any[] }))
     : [];
   compConhecimentos.forEach(k => IDS_JA_USADOS.add(k.id));
 
@@ -964,11 +964,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 <div key={m.id} style={{ borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(181,101,29,0.2)'}`, opacity: removida ? 0.5 : 1, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }}>
                     <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
-                    <div style={{ flex: 1, cursor: m.criterios.length > 0 ? 'pointer' : 'default' }} onClick={() => m.criterios.length > 0 && toggleComp(m.id)}>
+                    <div style={{ flex: 1, cursor: (m as any).criterios?.length > 0 ? 'pointer' : 'default' }} onClick={() => (m as any).criterios?.length > 0 && toggleComp(m.id)}>
                       <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
-                      {m.criterios.length > 0 && (
+                      {(m as any).criterios?.length > 0 && (
                         <div style={{ fontSize: 12, color: 'rgba(181,101,29,0.7)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {m.criterios.length} critérios observáveis <span style={{ fontSize: 10 }}>{aberta ? '▲' : '▼'}</span>
+                          {(m as any).criterios?.length} critérios observáveis <span style={{ fontSize: 10 }}>{aberta ? '▲' : '▼'}</span>
                         </div>
                       )}
                     </div>
@@ -977,10 +977,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                       {removida ? '+ Incluir' : '− Remover'}
                     </button>
                   </div>
-                  {aberta && m.criterios.length > 0 && (
+                  {aberta && (m as any).criterios?.length > 0 && (
                     <div style={{ padding: '0 12px 10px 36px', borderTop: '1px solid rgba(181,101,29,0.12)' }}>
-                      {m.criterios.map((cr: any, i: number) => (
-                        <div key={i} style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: i < m.criterios.length - 1 ? '1px solid rgba(181,101,29,0.08)' : 'none' }}>
+                      {((m as any).criterios || []).map((cr: any, i: number) => (
+                        <div key={i} style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: i < (m as any).criterios?.length - 1 ? '1px solid rgba(181,101,29,0.08)' : 'none' }}>
                           <span style={{ color: 'var(--copper)', fontWeight: 600, marginRight: 6 }}>✓</span>
                           {cr.criterio}
                           {cr.como && <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 16 }}>{cr.como}</div>}
