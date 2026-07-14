@@ -1,0 +1,1482 @@
+[
+  {
+    "id": "PROD-0001",
+    "nome": "Ovos",
+    "familia": "Ovos e ovoprodutos",
+    "subfamilia": "Ovo de galinha",
+    "funcao_tecnica": "Coagulação, emulsão, aeração e ligação",
+    "riscos_tecnicos": "Risco microbiológico; coagulação excessiva"
+  },
+  {
+    "id": "PROD-0002",
+    "nome": "Leite",
+    "familia": "Laticínios",
+    "subfamilia": "Leite",
+    "funcao_tecnica": "Fase aquosa, sabor, lactose e proteínas",
+    "riscos_tecnicos": "Escaldar; contaminação; separação"
+  },
+  {
+    "id": "PROD-0003",
+    "nome": "Natas",
+    "familia": "Laticínios",
+    "subfamilia": "Natas",
+    "funcao_tecnica": "Gordura, emulsão, aeração e enriquecimento",
+    "riscos_tecnicos": "Talhar; sobrebater; cadeia de frio"
+  },
+  {
+    "id": "PROD-0004",
+    "nome": "Manteiga",
+    "familia": "Gorduras",
+    "subfamilia": "Manteiga",
+    "funcao_tecnica": "Plasticidade, sabor, laminação e emulsão",
+    "riscos_tecnicos": "Derreter; separar; temperatura inadequada"
+  },
+  {
+    "id": "PROD-0005",
+    "nome": "Farinha de trigo T55",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Farinha de trigo",
+    "funcao_tecnica": "Estrutura e desenvolvimento de glúten",
+    "riscos_tecnicos": "Excesso de glúten; hidratação variável"
+  },
+  {
+    "id": "PROD-0006",
+    "nome": "Farinha de milho",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Milho",
+    "funcao_tecnica": "Estrutura sem glúten e sabor",
+    "riscos_tecnicos": "Hidratação irregular; textura seca"
+  },
+  {
+    "id": "PROD-0007",
+    "nome": "Açúcar",
+    "familia": "Açúcares",
+    "subfamilia": "Sacarose",
+    "funcao_tecnica": "Doçura, conservação, aeração e caramelização",
+    "riscos_tecnicos": "Cristalização; queimadura"
+  },
+  {
+    "id": "PROD-0008",
+    "nome": "Chocolate negro",
+    "familia": "Chocolate e cacau",
+    "subfamilia": "Chocolate de cobertura",
+    "funcao_tecnica": "Emulsão, estrutura e cristalização",
+    "riscos_tecnicos": "Água; sobreaquecimento; perda de tempero"
+  },
+  {
+    "id": "PROD-0009",
+    "nome": "Amêndoa",
+    "familia": "Frutos secos",
+    "subfamilia": "Amêndoa",
+    "funcao_tecnica": "Gordura, textura, sabor e estrutura",
+    "riscos_tecnicos": "Rancidez; alergénio"
+  },
+  {
+    "id": "PROD-0010",
+    "nome": "Arroz carolino",
+    "familia": "Cereais",
+    "subfamilia": "Arroz português",
+    "funcao_tecnica": "Libertação de amido e absorção",
+    "riscos_tecnicos": "Sobrecozedura; empapamento"
+  },
+  {
+    "id": "PROD-0011",
+    "nome": "Batata",
+    "familia": "Tubérculos",
+    "subfamilia": "Batata",
+    "funcao_tecnica": "Amido, ligação, guarnição e textura",
+    "riscos_tecnicos": "Escurecimento; excesso de processamento"
+  },
+  {
+    "id": "PROD-0012",
+    "nome": "Couve-galega",
+    "familia": "Hortícolas",
+    "subfamilia": "Folha",
+    "funcao_tecnica": "Cor, fibra e identidade do caldo verde",
+    "riscos_tecnicos": "Sobrecozedura; corte irregular"
+  },
+  {
+    "id": "PROD-0013",
+    "nome": "Bacalhau salgado",
+    "familia": "Peixes",
+    "subfamilia": "Bacalhau",
+    "funcao_tecnica": "Proteína, gelatina e identidade gastronómica",
+    "riscos_tecnicos": "Demolha inadequada; espinhas"
+  },
+  {
+    "id": "PROD-0014",
+    "nome": "Polvo",
+    "familia": "Cefalópodes",
+    "subfamilia": "Polvo",
+    "funcao_tecnica": "Proteína e textura",
+    "riscos_tecnicos": "Dureza; sobrecozedura"
+  },
+  {
+    "id": "PROD-0015",
+    "nome": "Pato",
+    "familia": "Aves",
+    "subfamilia": "Pato",
+    "funcao_tecnica": "Carne, gordura e fundo",
+    "riscos_tecnicos": "Segurança; excesso de gordura"
+  },
+  {
+    "id": "PROD-0016",
+    "nome": "Cabrito",
+    "familia": "Carnes",
+    "subfamilia": "Caprino jovem",
+    "funcao_tecnica": "Carne e identidade regional",
+    "riscos_tecnicos": "Sobrecozedura; secura"
+  },
+  {
+    "id": "PROD-0017",
+    "nome": "Borrego",
+    "familia": "Carnes",
+    "subfamilia": "Ovino jovem",
+    "funcao_tecnica": "Carne e gordura aromática",
+    "riscos_tecnicos": "Ponto inadequado; odor forte"
+  },
+  {
+    "id": "PROD-0018",
+    "nome": "Porco",
+    "familia": "Carnes",
+    "subfamilia": "Suíno",
+    "funcao_tecnica": "Carne, gordura e enchidos",
+    "riscos_tecnicos": "Segurança; secura"
+  },
+  {
+    "id": "PROD-0019",
+    "nome": "Feijão encarnado",
+    "familia": "Leguminosas",
+    "subfamilia": "Feijão",
+    "funcao_tecnica": "Amido, proteína vegetal e ligação",
+    "riscos_tecnicos": "Demolha/cozedura insuficiente"
+  },
+  {
+    "id": "PROD-0020",
+    "nome": "Pão alentejano",
+    "familia": "Panificação",
+    "subfamilia": "Pão regional",
+    "funcao_tecnica": "Espessante, suporte e identidade",
+    "riscos_tecnicos": "Pão demasiado fresco; desagregação"
+  },
+  {
+    "id": "PROD-0021",
+    "nome": "Azeite",
+    "familia": "Gorduras",
+    "subfamilia": "Azeite",
+    "funcao_tecnica": "Emulsão, confeção e sabor",
+    "riscos_tecnicos": "Oxidação; sobreaquecimento"
+  },
+  {
+    "id": "PROD-0022",
+    "nome": "Tomate",
+    "familia": "Hortícolas",
+    "subfamilia": "Fruto",
+    "funcao_tecnica": "Acidez, água, cor e umami",
+    "riscos_tecnicos": "Acidez desequilibrada; excesso de água"
+  },
+  {
+    "id": "PROD-0023",
+    "nome": "Cebola",
+    "familia": "Hortícolas",
+    "subfamilia": "Bolbo",
+    "funcao_tecnica": "Base aromática e doçura",
+    "riscos_tecnicos": "Queimadura; corte irregular"
+  },
+  {
+    "id": "PROD-0024",
+    "nome": "Alho",
+    "familia": "Hortícolas",
+    "subfamilia": "Bolbo",
+    "funcao_tecnica": "Aroma e identidade",
+    "riscos_tecnicos": "Queimadura; excesso"
+  },
+  {
+    "id": "PROD-0025",
+    "nome": "Coentros",
+    "familia": "Ervas",
+    "subfamilia": "Erva aromática",
+    "funcao_tecnica": "Aroma e identidade regional",
+    "riscos_tecnicos": "Oxidação; excesso"
+  },
+  {
+    "id": "PROD-0026",
+    "nome": "Canela",
+    "familia": "Especiarias",
+    "subfamilia": "Casca",
+    "funcao_tecnica": "Aroma de doçaria",
+    "riscos_tecnicos": "Excesso; textura"
+  },
+  {
+    "id": "PROD-0027",
+    "nome": "Limão",
+    "familia": "Frutas",
+    "subfamilia": "Citrino",
+    "funcao_tecnica": "Acidez, aroma e controlo de oxidação",
+    "riscos_tecnicos": "Amargor da parte branca"
+  },
+  {
+    "id": "PROD-0028",
+    "nome": "Arroz agulha",
+    "familia": "Cereais",
+    "subfamilia": "Arroz",
+    "funcao_tecnica": "Grão solto e acompanhamentos",
+    "riscos_tecnicos": "Empapamento; relação líquido inadequada"
+  },
+  {
+    "id": "PROD-0029",
+    "nome": "Arroz vaporizado",
+    "familia": "Cereais",
+    "subfamilia": "Arroz",
+    "funcao_tecnica": "Maior resistência à sobrecozedura",
+    "riscos_tecnicos": "Textura excessivamente firme"
+  },
+  {
+    "id": "PROD-0030",
+    "nome": "Feijão branco",
+    "familia": "Leguminosas",
+    "subfamilia": "Feijão",
+    "funcao_tecnica": "Sopas, dobradas e guarnições",
+    "riscos_tecnicos": "Demolha/cozedura insuficiente"
+  },
+  {
+    "id": "PROD-0031",
+    "nome": "Feijão-frade",
+    "familia": "Leguminosas",
+    "subfamilia": "Feijão",
+    "funcao_tecnica": "Saladas e acompanhamentos",
+    "riscos_tecnicos": "Sobrecozedura"
+  },
+  {
+    "id": "PROD-0032",
+    "nome": "Grão-de-bico",
+    "familia": "Leguminosas",
+    "subfamilia": "Grão",
+    "funcao_tecnica": "Sopas, purés e guarnições",
+    "riscos_tecnicos": "Demolha e cozedura"
+  },
+  {
+    "id": "PROD-0033",
+    "nome": "Favas",
+    "familia": "Leguminosas",
+    "subfamilia": "Fava",
+    "funcao_tecnica": "Estufados e guarnições",
+    "riscos_tecnicos": "Película dura; sobrecozedura"
+  },
+  {
+    "id": "PROD-0034",
+    "nome": "Ervilhas",
+    "familia": "Leguminosas frescas",
+    "subfamilia": "Ervilha",
+    "funcao_tecnica": "Sopas, purés, guarnições",
+    "riscos_tecnicos": "Perda de cor; sobrecozedura"
+  },
+  {
+    "id": "PROD-0035",
+    "nome": "Nabo",
+    "familia": "Hortícolas",
+    "subfamilia": "Raiz",
+    "funcao_tecnica": "Sopas, cozidos e purés",
+    "riscos_tecnicos": "Amargor; corte irregular"
+  },
+  {
+    "id": "PROD-0036",
+    "nome": "Cenoura",
+    "familia": "Hortícolas",
+    "subfamilia": "Raiz",
+    "funcao_tecnica": "Mirepoix, sopas, guarnições",
+    "riscos_tecnicos": "Corte irregular; sobrecozedura"
+  },
+  {
+    "id": "PROD-0037",
+    "nome": "Alho-francês",
+    "familia": "Hortícolas",
+    "subfamilia": "Caule/folha",
+    "funcao_tecnica": "Sopas, fundos e guarnições",
+    "riscos_tecnicos": "Areia; sobrecozedura"
+  },
+  {
+    "id": "PROD-0038",
+    "nome": "Couve-lombarda",
+    "familia": "Hortícolas",
+    "subfamilia": "Folha",
+    "funcao_tecnica": "Cozidos e sopas",
+    "riscos_tecnicos": "Sobrecozedura; odor sulfuroso"
+  },
+  {
+    "id": "PROD-0039",
+    "nome": "Grelos",
+    "familia": "Hortícolas",
+    "subfamilia": "Folha",
+    "funcao_tecnica": "Guarnições e pratos regionais",
+    "riscos_tecnicos": "Amargor; cozedura longa"
+  },
+  {
+    "id": "PROD-0040",
+    "nome": "Espinafres",
+    "familia": "Hortícolas",
+    "subfamilia": "Folha",
+    "funcao_tecnica": "Salteados, recheios e sopas",
+    "riscos_tecnicos": "Perda de cor; água excessiva"
+  },
+  {
+    "id": "PROD-0041",
+    "nome": "Pimento vermelho",
+    "familia": "Hortícolas",
+    "subfamilia": "Fruto",
+    "funcao_tecnica": "Bases aromáticas, assados e molhos",
+    "riscos_tecnicos": "Pele; queimadura"
+  },
+  {
+    "id": "PROD-0042",
+    "nome": "Abóbora",
+    "familia": "Hortícolas",
+    "subfamilia": "Fruto",
+    "funcao_tecnica": "Sopas, purés e doces",
+    "riscos_tecnicos": "Água excessiva"
+  },
+  {
+    "id": "PROD-0043",
+    "nome": "Castanha",
+    "familia": "Frutos secos/amidos",
+    "subfamilia": "Castanha",
+    "funcao_tecnica": "Guarnições, sopas e doçaria",
+    "riscos_tecnicos": "Pele; secura"
+  },
+  {
+    "id": "PROD-0044",
+    "nome": "Maçã",
+    "familia": "Fruta",
+    "subfamilia": "Pomóidea",
+    "funcao_tecnica": "Compotas, tartes e guarnições",
+    "riscos_tecnicos": "Oxidação; desagregação"
+  },
+  {
+    "id": "PROD-0045",
+    "nome": "Pera",
+    "familia": "Fruta",
+    "subfamilia": "Pomóidea",
+    "funcao_tecnica": "Sobremesas e conservação",
+    "riscos_tecnicos": "Oxidação; maturação"
+  },
+  {
+    "id": "PROD-0046",
+    "nome": "Figo",
+    "familia": "Fruta",
+    "subfamilia": "Figo",
+    "funcao_tecnica": "Doçaria, compotas e acompanhamentos",
+    "riscos_tecnicos": "Maturação; açúcar elevado"
+  },
+  {
+    "id": "PROD-0047",
+    "nome": "Laranja",
+    "familia": "Fruta",
+    "subfamilia": "Citrino",
+    "funcao_tecnica": "Aroma, sumo e doçaria",
+    "riscos_tecnicos": "Amargor da parte branca"
+  },
+  {
+    "id": "PROD-0048",
+    "nome": "Vinho branco",
+    "familia": "Bebidas",
+    "subfamilia": "Vinho",
+    "funcao_tecnica": "Deglacear, marinar e aromatizar",
+    "riscos_tecnicos": "Álcool residual; acidez"
+  },
+  {
+    "id": "PROD-0049",
+    "nome": "Vinho tinto",
+    "familia": "Bebidas",
+    "subfamilia": "Vinho",
+    "funcao_tecnica": "Marinadas, estufados e molhos",
+    "riscos_tecnicos": "Taninos; redução excessiva"
+  },
+  {
+    "id": "PROD-0050",
+    "nome": "Vinho do Porto",
+    "familia": "Bebidas",
+    "subfamilia": "Vinho fortificado",
+    "funcao_tecnica": "Molhos, sobremesas e redução",
+    "riscos_tecnicos": "Doçura; álcool"
+  },
+  {
+    "id": "PROD-0051",
+    "nome": "Colorau",
+    "familia": "Especiarias",
+    "subfamilia": "Pimentão",
+    "funcao_tecnica": "Cor e tempero tradicional",
+    "riscos_tecnicos": "Queimadura; excesso"
+  },
+  {
+    "id": "PROD-0052",
+    "nome": "Louro",
+    "familia": "Ervas e especiarias",
+    "subfamilia": "Folha",
+    "funcao_tecnica": "Aromatização de fundos e estufados",
+    "riscos_tecnicos": "Excesso; remoção antes do serviço"
+  },
+  {
+    "id": "PROD-0053",
+    "nome": "Salsa",
+    "familia": "Ervas",
+    "subfamilia": "Erva aromática",
+    "funcao_tecnica": "Finalização e fundos",
+    "riscos_tecnicos": "Oxidação; excesso"
+  },
+  {
+    "id": "PROD-0054",
+    "nome": "Hortelã",
+    "familia": "Ervas",
+    "subfamilia": "Erva aromática",
+    "funcao_tecnica": "Sopas e pratos regionais",
+    "riscos_tecnicos": "Oxidação; excesso"
+  },
+  {
+    "id": "PROD-0055",
+    "nome": "Bacalhau fresco",
+    "familia": "Peixes",
+    "subfamilia": "Gadídeo",
+    "funcao_tecnica": "Assar, cozer e confitar",
+    "riscos_tecnicos": "Sobrecozedura"
+  },
+  {
+    "id": "PROD-0056",
+    "nome": "Sardinha",
+    "familia": "Peixes",
+    "subfamilia": "Peixe gordo",
+    "funcao_tecnica": "Grelhar e conservar",
+    "riscos_tecnicos": "Frescura; espinhas"
+  },
+  {
+    "id": "PROD-0057",
+    "nome": "Carapau",
+    "familia": "Peixes",
+    "subfamilia": "Peixe gordo",
+    "funcao_tecnica": "Grelhar, fritar e marinar",
+    "riscos_tecnicos": "Frescura; espinhas"
+  },
+  {
+    "id": "PROD-0058",
+    "nome": "Pescada",
+    "familia": "Peixes",
+    "subfamilia": "Peixe branco",
+    "funcao_tecnica": "Cozer, fritar e assar",
+    "riscos_tecnicos": "Desagregação; sobrecozedura"
+  },
+  {
+    "id": "PROD-0059",
+    "nome": "Robalo",
+    "familia": "Peixes",
+    "subfamilia": "Peixe branco",
+    "funcao_tecnica": "Grelhar e assar",
+    "riscos_tecnicos": "Escamas; sobrecozedura"
+  },
+  {
+    "id": "PROD-0060",
+    "nome": "Dourada",
+    "familia": "Peixes",
+    "subfamilia": "Peixe branco",
+    "funcao_tecnica": "Grelhar e assar",
+    "riscos_tecnicos": "Escamas; espinhas"
+  },
+  {
+    "id": "PROD-0061",
+    "nome": "Cherne",
+    "familia": "Peixes",
+    "subfamilia": "Peixe branco firme",
+    "funcao_tecnica": "Caldeiradas e assados",
+    "riscos_tecnicos": "Sobrecozedura"
+  },
+  {
+    "id": "PROD-0062",
+    "nome": "Tamboril",
+    "familia": "Peixes",
+    "subfamilia": "Peixe firme",
+    "funcao_tecnica": "Arrozes e caldeiradas",
+    "riscos_tecnicos": "Membranas; sobrecozedura"
+  },
+  {
+    "id": "PROD-0063",
+    "nome": "Ameijoa",
+    "familia": "Bivalves",
+    "subfamilia": "Molusco",
+    "funcao_tecnica": "Abrir ao vapor e cataplanas",
+    "riscos_tecnicos": "Areia; exemplares mortos"
+  },
+  {
+    "id": "PROD-0064",
+    "nome": "Berbigão",
+    "familia": "Bivalves",
+    "subfamilia": "Molusco",
+    "funcao_tecnica": "Arrozes e sopas",
+    "riscos_tecnicos": "Areia; exemplares mortos"
+  },
+  {
+    "id": "PROD-0065",
+    "nome": "Camarão",
+    "familia": "Crustáceos",
+    "subfamilia": "Camarão",
+    "funcao_tecnica": "Cozer, saltear e arrozes",
+    "riscos_tecnicos": "Sobrecozedura"
+  },
+  {
+    "id": "PROD-0066",
+    "nome": "Lavagante",
+    "familia": "Crustáceos",
+    "subfamilia": "Lavagante",
+    "funcao_tecnica": "Cozer e assar",
+    "riscos_tecnicos": "Sobrecozedura"
+  },
+  {
+    "id": "PROD-0067",
+    "nome": "Choco",
+    "familia": "Cefalópodes",
+    "subfamilia": "Choco",
+    "funcao_tecnica": "Fritar, grelhar e estufar",
+    "riscos_tecnicos": "Dureza; tinta"
+  },
+  {
+    "id": "PROD-0068",
+    "nome": "Lula",
+    "familia": "Cefalópodes",
+    "subfamilia": "Lula",
+    "funcao_tecnica": "Grelhar, fritar e rechear",
+    "riscos_tecnicos": "Cozedura intermédia prolongada"
+  },
+  {
+    "id": "PROD-0069",
+    "nome": "Vitela",
+    "familia": "Carnes",
+    "subfamilia": "Bovino jovem",
+    "funcao_tecnica": "Assar e estufar",
+    "riscos_tecnicos": "Secura; ponto"
+  },
+  {
+    "id": "PROD-0070",
+    "nome": "Vaca",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto",
+    "funcao_tecnica": "Grelhar, assar e estufar",
+    "riscos_tecnicos": "Corte e ponto"
+  },
+  {
+    "id": "PROD-0071",
+    "nome": "Coelho",
+    "familia": "Carnes",
+    "subfamilia": "Coelho",
+    "funcao_tecnica": "Estufar e assar",
+    "riscos_tecnicos": "Secura"
+  },
+  {
+    "id": "PROD-0072",
+    "nome": "Peru",
+    "familia": "Aves",
+    "subfamilia": "Peru",
+    "funcao_tecnica": "Assar e rechear",
+    "riscos_tecnicos": "Secura; segurança"
+  },
+  {
+    "id": "PROD-0073",
+    "nome": "Frango",
+    "familia": "Aves",
+    "subfamilia": "Frango",
+    "funcao_tecnica": "Assar, grelhar e estufar",
+    "riscos_tecnicos": "Segurança; secura"
+  },
+  {
+    "id": "PROD-0074",
+    "nome": "Chouriço",
+    "familia": "Enchidos",
+    "subfamilia": "Enchido",
+    "funcao_tecnica": "Aromatizar, guarnecer e grelhar",
+    "riscos_tecnicos": "Sal; gordura"
+  },
+  {
+    "id": "PROD-0075",
+    "nome": "Morcela",
+    "familia": "Enchidos",
+    "subfamilia": "Enchido",
+    "funcao_tecnica": "Cozidos e pratos regionais",
+    "riscos_tecnicos": "Rebentar; sal"
+  },
+  {
+    "id": "PROD-0076",
+    "nome": "Alheira",
+    "familia": "Enchidos",
+    "subfamilia": "Enchido",
+    "funcao_tecnica": "Grelhar, fritar e assar",
+    "riscos_tecnicos": "Rebentar; gordura"
+  },
+  {
+    "id": "PROD-0077",
+    "nome": "Farinheira",
+    "familia": "Enchidos",
+    "subfamilia": "Enchido",
+    "funcao_tecnica": "Cozidos e pratos regionais",
+    "riscos_tecnicos": "Rebentar; sal"
+  },
+  {
+    "id": "PROD-0078",
+    "nome": "Presunto",
+    "familia": "Charcutaria",
+    "subfamilia": "Curado",
+    "funcao_tecnica": "Entradas e guarnições",
+    "riscos_tecnicos": "Sal; conservação"
+  },
+  {
+    "id": "PROD-0079",
+    "nome": "Queijo da Serra",
+    "familia": "Laticínios",
+    "subfamilia": "Queijo curado",
+    "funcao_tecnica": "Serviço e recheios",
+    "riscos_tecnicos": "Alergénio; conservação"
+  },
+  {
+    "id": "PROD-0080",
+    "nome": "Requeijão",
+    "familia": "Laticínios",
+    "subfamilia": "Queijo fresco",
+    "funcao_tecnica": "Sobremesas e recheios",
+    "riscos_tecnicos": "Cadeia de frio"
+  },
+  {
+    "id": "PROD-0081",
+    "nome": "Mel",
+    "familia": "Açúcares",
+    "subfamilia": "Mel",
+    "funcao_tecnica": "Doçaria, marinadas e molhos",
+    "riscos_tecnicos": "Queimadura; sabor dominante"
+  },
+  {
+    "id": "PROD-0082",
+    "nome": "Massa de pimentão",
+    "familia": "Condimentos",
+    "subfamilia": "Pimento fermentado/salgado",
+    "funcao_tecnica": "Marinadas portuguesas",
+    "riscos_tecnicos": "Sal excessivo"
+  },
+  {
+    "id": "PROD-0083",
+    "nome": "Lombo de vaca",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto — lombo",
+    "funcao_tecnica": "Peça nobre, textura macia, pouca gordura intramuscular",
+    "riscos_tecnicos": "Sobrecozedura; repouso insuficiente",
+    "aliases": "lombo; sirloin",
+    "aliases_list": [
+      "lombo",
+      "sirloin"
+    ]
+  },
+  {
+    "id": "PROD-0084",
+    "nome": "Vazia de vaca",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto — traseiro",
+    "funcao_tecnica": "Grelhados e assados; boa marmorização",
+    "riscos_tecnicos": "Temperatura interna incorreta; repouso insuficiente",
+    "aliases": "vazia; rump steak",
+    "aliases_list": [
+      "vazia",
+      "rump steak"
+    ]
+  },
+  {
+    "id": "PROD-0085",
+    "nome": "Entrecôte",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto — costilhar",
+    "funcao_tecnica": "Peça com gordura intramuscular; ideal para grelhar",
+    "riscos_tecnicos": "Temperatura de grelha insuficiente",
+    "aliases": "entrecôte; rib-eye",
+    "aliases_list": [
+      "entrecôte",
+      "rib-eye"
+    ]
+  },
+  {
+    "id": "PROD-0086",
+    "nome": "Alcatra de vaca",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto — traseiro",
+    "funcao_tecnica": "Guisados e assados de baixa temperatura",
+    "riscos_tecnicos": "Demasiado calor seco que resseca",
+    "aliases": "alcatra; topside",
+    "aliases_list": [
+      "alcatra",
+      "topside"
+    ]
+  },
+  {
+    "id": "PROD-0087",
+    "nome": "Chambão de vaca",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto — perna",
+    "funcao_tecnica": "Estufados lentos; colagénio que gelifica",
+    "riscos_tecnicos": "Cozedura curta que não quebra colagénio",
+    "aliases": "chambão; ossobuco; shin",
+    "aliases_list": [
+      "chambão",
+      "ossobuco",
+      "shin"
+    ]
+  },
+  {
+    "id": "PROD-0088",
+    "nome": "Acém de vaca",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto — pescoço",
+    "funcao_tecnica": "Estufados e braseados; sabor intenso",
+    "riscos_tecnicos": "Cozedura rápida que endurece",
+    "aliases": "acém; chuck",
+    "aliases_list": [
+      "acém",
+      "chuck"
+    ]
+  },
+  {
+    "id": "PROD-0089",
+    "nome": "Pá de vaca",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto — dianteiro",
+    "funcao_tecnica": "Braseados e guisados; textura desfibrada",
+    "riscos_tecnicos": "Temperatura alta que resseca",
+    "aliases": "pá; shoulder",
+    "aliases_list": [
+      "pá",
+      "shoulder"
+    ]
+  },
+  {
+    "id": "PROD-0090",
+    "nome": "Costela de vaca",
+    "familia": "Carnes",
+    "subfamilia": "Bovino adulto — costilhar",
+    "funcao_tecnica": "Assados lentos; osso que enriquece molho",
+    "riscos_tecnicos": "Sobrecozedura sem repouso",
+    "aliases": "costela; short rib; ribs",
+    "aliases_list": [
+      "costela",
+      "short rib",
+      "ribs"
+    ]
+  },
+  {
+    "id": "PROD-0091",
+    "nome": "Lombo de porco",
+    "familia": "Carnes",
+    "subfamilia": "Suíno — lombo",
+    "funcao_tecnica": "Assados e medalhões; textura macia",
+    "riscos_tecnicos": "Sobrecozedura — resseca rapidamente",
+    "aliases": "lombinho; pork tenderloin",
+    "aliases_list": [
+      "lombinho",
+      "pork tenderloin"
+    ]
+  },
+  {
+    "id": "PROD-0092",
+    "nome": "Entrecosto de porco",
+    "familia": "Carnes",
+    "subfamilia": "Suíno — costilhar",
+    "funcao_tecnica": "Assados e grelhados; osso que aromatiza",
+    "riscos_tecnicos": "Temperatura insuficiente para colagénio",
+    "aliases": "entrecosto; spare ribs",
+    "aliases_list": [
+      "entrecosto",
+      "spare ribs"
+    ]
+  },
+  {
+    "id": "PROD-0093",
+    "nome": "Pá de porco",
+    "familia": "Carnes",
+    "subfamilia": "Suíno — dianteiro",
+    "funcao_tecnica": "Estufados e pulled pork; sabor intenso",
+    "riscos_tecnicos": "Cozedura insuficiente para desfibrar",
+    "aliases": "pá de porco; pork shoulder",
+    "aliases_list": [
+      "pá de porco",
+      "pork shoulder"
+    ]
+  },
+  {
+    "id": "PROD-0094",
+    "nome": "Pernil de porco",
+    "familia": "Carnes",
+    "subfamilia": "Suíno — perna",
+    "funcao_tecnica": "Assados festivos; pele que crocantifica",
+    "riscos_tecnicos": "Pele húmida que não crocantifica",
+    "aliases": "pernil; pork leg; perna de porco",
+    "aliases_list": [
+      "pernil",
+      "pork leg",
+      "perna de porco"
+    ]
+  },
+  {
+    "id": "PROD-0095",
+    "nome": "Peito de frango",
+    "familia": "Carnes",
+    "subfamilia": "Aves — frango",
+    "funcao_tecnica": "Salteados e grelhados; baixo teor de gordura",
+    "riscos_tecnicos": "Resseca rapidamente com calor excessivo",
+    "aliases": "peito de frango; chicken breast",
+    "aliases_list": [
+      "peito de frango",
+      "chicken breast"
+    ]
+  },
+  {
+    "id": "PROD-0096",
+    "nome": "Coxa de frango",
+    "familia": "Carnes",
+    "subfamilia": "Aves — frango",
+    "funcao_tecnica": "Estufados, assados; gordura intramuscular que mantém suculência",
+    "riscos_tecnicos": "Temperatura interna insuficiente; 75°C mínimo",
+    "aliases": "coxa; chicken thigh",
+    "aliases_list": [
+      "coxa",
+      "chicken thigh"
+    ]
+  },
+  {
+    "id": "PROD-0097",
+    "nome": "Perna de frango",
+    "familia": "Carnes",
+    "subfamilia": "Aves — frango",
+    "funcao_tecnica": "Assados e grelhados; osso que aromatiza",
+    "riscos_tecnicos": "Temperatura interna insuficiente; 75°C mínimo",
+    "aliases": "perna de frango; chicken drumstick",
+    "aliases_list": [
+      "perna de frango",
+      "chicken drumstick"
+    ]
+  },
+  {
+    "id": "PROD-0098",
+    "nome": "Magret de pato",
+    "familia": "Carnes",
+    "subfamilia": "Aves — pato",
+    "funcao_tecnica": "Grelhar com pele; gordura subcutânea abundante",
+    "riscos_tecnicos": "Não marcar a pele antes de grelhar",
+    "aliases": "magret; duck breast",
+    "aliases_list": [
+      "magret",
+      "duck breast"
+    ]
+  },
+  {
+    "id": "PROD-0099",
+    "nome": "Coelho inteiro",
+    "familia": "Carnes",
+    "subfamilia": "Coelho",
+    "funcao_tecnica": "Estufados e assados; carne magra",
+    "riscos_tecnicos": "Resseca com calor seco sem gordura",
+    "aliases": "coelho; rabbit",
+    "aliases_list": [
+      "coelho",
+      "rabbit"
+    ]
+  },
+  {
+    "id": "PROD-0100",
+    "nome": "Borrego — perna",
+    "familia": "Carnes",
+    "subfamilia": "Ovino jovem — perna",
+    "funcao_tecnica": "Assados e braseados; sabor característico",
+    "riscos_tecnicos": "Temperatura interna incorreta; sabor forte se mal preparado",
+    "aliases": "perna de borrego; leg of lamb",
+    "aliases_list": [
+      "perna de borrego",
+      "leg of lamb"
+    ]
+  },
+  {
+    "id": "PROD-0101",
+    "nome": "Borrego — costoletas",
+    "familia": "Carnes",
+    "subfamilia": "Ovino jovem — costilhar",
+    "funcao_tecnica": "Grelhados rápidos; pouco tempo de cozedura",
+    "riscos_tecnicos": "Sobrecozedura que resseca",
+    "aliases": "costeletas de borrego; lamb chops",
+    "aliases_list": [
+      "costeletas de borrego",
+      "lamb chops"
+    ]
+  },
+  {
+    "id": "PROD-0102",
+    "nome": "Cabrito — perna",
+    "familia": "Carnes",
+    "subfamilia": "Caprino jovem",
+    "funcao_tecnica": "Assados tradicionais portugueses; sabor delicado",
+    "riscos_tecnicos": "Temperatura alta que resseca",
+    "aliases": "cabrito assado; roast kid",
+    "aliases_list": [
+      "cabrito assado",
+      "roast kid"
+    ]
+  },
+  {
+    "id": "PROD-0103",
+    "nome": "Linguado inteiro",
+    "familia": "Peixes",
+    "subfamilia": "Peixe achatado",
+    "funcao_tecnica": "Filetes delicados; escalfar ou grelhar na manteiga",
+    "riscos_tecnicos": "Fragilidade — desfaz facilmente; sobrecozedura",
+    "aliases": "linguado; sole; Dover sole",
+    "aliases_list": [
+      "linguado",
+      "sole",
+      "dover sole"
+    ]
+  },
+  {
+    "id": "PROD-0104",
+    "nome": "Pregado inteiro",
+    "familia": "Peixes",
+    "subfamilia": "Peixe achatado",
+    "funcao_tecnica": "Assados no forno; carne firme e saborosa",
+    "riscos_tecnicos": "Cozedura uniforme difícil por espessura variável",
+    "aliases": "pregado; turbot",
+    "aliases_list": [
+      "pregado",
+      "turbot"
+    ]
+  },
+  {
+    "id": "PROD-0105",
+    "nome": "Robalo em filete",
+    "familia": "Peixes",
+    "subfamilia": "Peixe redondo — branco",
+    "funcao_tecnica": "Grelhar com pele; textura firme",
+    "riscos_tecnicos": "Pele que agarra se grelha fria",
+    "aliases": "robalo filete; sea bass fillet",
+    "aliases_list": [
+      "robalo filete",
+      "sea bass fillet"
+    ]
+  },
+  {
+    "id": "PROD-0106",
+    "nome": "Dourada em filete",
+    "familia": "Peixes",
+    "subfamilia": "Peixe redondo — branco",
+    "funcao_tecnica": "Grelhar, assar; textura média",
+    "riscos_tecnicos": "Pele que encolhe se não marcar antes",
+    "aliases": "dourada filete; sea bream fillet",
+    "aliases_list": [
+      "dourada filete",
+      "sea bream fillet"
+    ]
+  },
+  {
+    "id": "PROD-0107",
+    "nome": "Bacalhau em lombo",
+    "familia": "Peixes",
+    "subfamilia": "Gadídeo — bacalhau",
+    "funcao_tecnica": "Confitar, grelhar, assar; lascas grossas",
+    "riscos_tecnicos": "Demolha incorreta; sobrecozedura",
+    "aliases": "lombo de bacalhau; bacalhau lombo; salt cod loin",
+    "aliases_list": [
+      "lombo de bacalhau",
+      "bacalhau lombo",
+      "salt cod loin"
+    ]
+  },
+  {
+    "id": "PROD-0108",
+    "nome": "Bacalhau em posta",
+    "familia": "Peixes",
+    "subfamilia": "Gadídeo — bacalhau",
+    "funcao_tecnica": "Grelhar, assar, cozer; com espinha",
+    "riscos_tecnicos": "Demolha irregular; temperatura interna alta demais",
+    "aliases": "posta de bacalhau; bacalhau posta",
+    "aliases_list": [
+      "posta de bacalhau",
+      "bacalhau posta"
+    ]
+  },
+  {
+    "id": "PROD-0109",
+    "nome": "Salmão em filete",
+    "familia": "Peixes",
+    "subfamilia": "Peixe gordo",
+    "funcao_tecnica": "Grelhar, confitar, assar; alto teor de gordura",
+    "riscos_tecnicos": "Temperatura alta que liberta gordura branca",
+    "aliases": "salmão filete; salmon fillet",
+    "aliases_list": [
+      "salmão filete",
+      "salmon fillet"
+    ]
+  },
+  {
+    "id": "PROD-0110",
+    "nome": "Atum em posta",
+    "familia": "Peixes",
+    "subfamilia": "Peixe gordo",
+    "funcao_tecnica": "Grelhar ao ponto; carne compacta",
+    "riscos_tecnicos": "Sobrecozedura — fica seco e escuro",
+    "aliases": "atum posta; tuna steak",
+    "aliases_list": [
+      "atum posta",
+      "tuna steak"
+    ]
+  },
+  {
+    "id": "PROD-0111",
+    "nome": "Sardinha inteira",
+    "familia": "Peixes",
+    "subfamilia": "Peixe gordo pequeno",
+    "funcao_tecnica": "Grelhar; alto teor de gordura",
+    "riscos_tecnicos": "Espinhas finas; grelha suja com gordura",
+    "aliases": "sardinha; sardine",
+    "aliases_list": [
+      "sardinha",
+      "sardine"
+    ]
+  },
+  {
+    "id": "PROD-0112",
+    "nome": "Carapau inteiro",
+    "familia": "Peixes",
+    "subfamilia": "Peixe gordo pequeno",
+    "funcao_tecnica": "Grelhar, fritar; acessível e saboroso",
+    "riscos_tecnicos": "Espinhas; frescura crítica",
+    "aliases": "carapau; horse mackerel; chicharro",
+    "aliases_list": [
+      "carapau",
+      "horse mackerel",
+      "chicharro"
+    ]
+  },
+  {
+    "id": "PROD-0113",
+    "nome": "Pescada em filete",
+    "familia": "Peixes",
+    "subfamilia": "Gadídeo — pescada",
+    "funcao_tecnica": "Fritar, grelhar; carne branca e macia",
+    "riscos_tecnicos": "Desfaz facilmente; sobrecozedura",
+    "aliases": "pescada filete; hake fillet",
+    "aliases_list": [
+      "pescada filete",
+      "hake fillet"
+    ]
+  },
+  {
+    "id": "PROD-0114",
+    "nome": "Tamboril em medalhão",
+    "familia": "Peixes",
+    "subfamilia": "Peixe firme",
+    "funcao_tecnica": "Grelhar, saltear; carne firme e sem espinhas",
+    "riscos_tecnicos": "Pele gelatinosa deve ser retirada; sem espinhas mas cartilagem central",
+    "aliases": "tamboril medalhão; monkfish medallion",
+    "aliases_list": [
+      "tamboril medalhão",
+      "monkfish medallion"
+    ]
+  },
+  {
+    "id": "PROD-0115",
+    "nome": "Cherne em posta",
+    "familia": "Peixes",
+    "subfamilia": "Peixe branco firme",
+    "funcao_tecnica": "Grelhar, assar; carne firme e saborosa",
+    "riscos_tecnicos": "Espinha central; sobrecozedura",
+    "aliases": "cherne posta; wreckfish",
+    "aliases_list": [
+      "cherne posta",
+      "wreckfish"
+    ]
+  },
+  {
+    "id": "PROD-0116",
+    "nome": "Pimenta preta em grão",
+    "familia": "Especiarias",
+    "subfamilia": "Pimenta",
+    "funcao_tecnica": "Aromatizar caldos, fundos, molhos, marinadas",
+    "riscos_tecnicos": "Usar em grão para fundos; moer para temperar",
+    "aliases": "pimenta; black pepper; peppercorn",
+    "aliases_list": [
+      "pimenta",
+      "black pepper",
+      "peppercorn"
+    ]
+  },
+  {
+    "id": "PROD-0117",
+    "nome": "Pimenta branca moída",
+    "familia": "Especiarias",
+    "subfamilia": "Pimenta",
+    "funcao_tecnica": "Temperar molhos brancos, purés, peixes",
+    "riscos_tecnicos": "Perda rápida de aroma; não aquecer em excesso",
+    "aliases": "pimenta branca; white pepper",
+    "aliases_list": [
+      "pimenta branca",
+      "white pepper"
+    ]
+  },
+  {
+    "id": "PROD-0118",
+    "nome": "Noz-moscada",
+    "familia": "Especiarias",
+    "subfamilia": "Noz-moscada",
+    "funcao_tecnica": "Molho béchamel, purés, ovos mexidos; aromatizar",
+    "riscos_tecnicos": "Usar com moderação — domina; ralar fresco",
+    "aliases": "noz-moscada; nutmeg; moscada",
+    "aliases_list": [
+      "noz-moscada",
+      "nutmeg",
+      "moscada"
+    ]
+  },
+  {
+    "id": "PROD-0119",
+    "nome": "Cravinho",
+    "familia": "Especiarias",
+    "subfamilia": "Cravinho",
+    "funcao_tecnica": "Caldos de carne, court-bouillon, sachet d'épices",
+    "riscos_tecnicos": "Usar em quantidade reduzida — sabor intenso",
+    "aliases": "cravinho; clove; cravo-da-índia",
+    "aliases_list": [
+      "cravinho",
+      "clove",
+      "cravo-da-índia"
+    ]
+  },
+  {
+    "id": "PROD-0120",
+    "nome": "Açafrão",
+    "familia": "Especiarias",
+    "subfamilia": "Açafrão",
+    "funcao_tecnica": "Cor dourada e aroma; arroz, fundos, molhos",
+    "riscos_tecnicos": "Falso açafrão — verificar origem; dissolver em líquido quente",
+    "aliases": "açafrão; saffron",
+    "aliases_list": [
+      "açafrão",
+      "saffron"
+    ]
+  },
+  {
+    "id": "PROD-0121",
+    "nome": "Curcuma",
+    "familia": "Especiarias",
+    "subfamilia": "Curcuma",
+    "funcao_tecnica": "Cor amarela; curry, sopas, arroz",
+    "riscos_tecnicos": "Não substitui açafrão em sabor; mancha",
+    "aliases": "curcuma; açafrão-das-índias; turmeric",
+    "aliases_list": [
+      "curcuma",
+      "açafrão-das-índias",
+      "turmeric"
+    ]
+  },
+  {
+    "id": "PROD-0122",
+    "nome": "Cominhos",
+    "familia": "Especiarias",
+    "subfamilia": "Cominhos",
+    "funcao_tecnica": "Cozinha portuguesa e norte-africana; carnes e leguminosas",
+    "riscos_tecnicos": "Torrar antes de usar intensifica o sabor",
+    "aliases": "cominhos; cumin; cominho",
+    "aliases_list": [
+      "cominhos",
+      "cumin",
+      "cominho"
+    ]
+  },
+  {
+    "id": "PROD-0123",
+    "nome": "Pimentão doce",
+    "familia": "Especiarias",
+    "subfamilia": "Pimentão",
+    "funcao_tecnica": "Cor vermelha; ensopados, temperos, empadão",
+    "riscos_tecnicos": "Queima rapidamente — não fritar em gordura quente",
+    "aliases": "pimentão doce; sweet paprika; colorau suave",
+    "aliases_list": [
+      "pimentão doce",
+      "sweet paprika",
+      "colorau suave"
+    ]
+  },
+  {
+    "id": "PROD-0124",
+    "nome": "Pimentão fumado",
+    "familia": "Especiarias",
+    "subfamilia": "Pimentão",
+    "funcao_tecnica": "Sabor defumado; carnes, sopas, ensopados",
+    "riscos_tecnicos": "Domina facilmente o sabor; usar com moderação",
+    "aliases": "pimentão fumado; smoked paprika",
+    "aliases_list": [
+      "pimentão fumado",
+      "smoked paprika"
+    ]
+  },
+  {
+    "id": "PROD-0125",
+    "nome": "Canela em pau",
+    "familia": "Especiarias",
+    "subfamilia": "Canela",
+    "funcao_tecnica": "Caldos de carne, doçaria, arrozes; aroma quente",
+    "riscos_tecnicos": "Retirar antes de servir; não moer para caldos",
+    "aliases": "canela pau; cinnamon stick",
+    "aliases_list": [
+      "canela pau",
+      "cinnamon stick"
+    ]
+  },
+  {
+    "id": "PROD-0126",
+    "nome": "Baunilha — vagem",
+    "familia": "Especiarias",
+    "subfamilia": "Baunilha",
+    "funcao_tecnica": "Cremes, pastelaria, sobremesas; aroma complexo",
+    "riscos_tecnicos": "Falsificação frequente; a vagem contém as sementes",
+    "aliases": "baunilha vagem; vanilla bean",
+    "aliases_list": [
+      "baunilha vagem",
+      "vanilla bean"
+    ]
+  },
+  {
+    "id": "PROD-0127",
+    "nome": "Cardamomo",
+    "familia": "Especiarias",
+    "subfamilia": "Cardamomo",
+    "funcao_tecnica": "Pastelaria nórdica, curry; aroma floral e picante",
+    "riscos_tecnicos": "Usar as sementes — a casca é amarga",
+    "aliases": "cardamomo; cardamom",
+    "aliases_list": [
+      "cardamomo",
+      "cardamom"
+    ]
+  },
+  {
+    "id": "PROD-0128",
+    "nome": "Feno-grego",
+    "familia": "Especiarias",
+    "subfamilia": "Feno-grego",
+    "funcao_tecnica": "Curry; aroma a avelã torrada",
+    "riscos_tecnicos": "Amargo se em excesso",
+    "aliases": "feno-grego; fenugreek",
+    "aliases_list": [
+      "feno-grego",
+      "fenugreek"
+    ]
+  },
+  {
+    "id": "PROD-0129",
+    "nome": "Farinha de trigo T65",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Farinha de trigo",
+    "funcao_tecnica": "Pão rústico; mais glúten que T55; melhor para fermentação longa",
+    "riscos_tecnicos": "Absorção de água variável",
+    "aliases": "farinha T65; bread flour tipo 65",
+    "aliases_list": [
+      "farinha t65",
+      "bread flour tipo 65"
+    ]
+  },
+  {
+    "id": "PROD-0130",
+    "nome": "Farinha integral",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Farinha de trigo",
+    "funcao_tecnica": "Pão integral; fibra; sabor intenso",
+    "riscos_tecnicos": "Glúten mais fraco; massa densa; menos volume",
+    "aliases": "farinha integral; wholemeal flour",
+    "aliases_list": [
+      "farinha integral",
+      "wholemeal flour"
+    ]
+  },
+  {
+    "id": "PROD-0131",
+    "nome": "Farinha de centeio",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Farinha de centeio",
+    "funcao_tecnica": "Pão de centeio; sabor ácido; pentosanas em vez de glúten",
+    "riscos_tecnicos": "Não forma rede de glúten; massa muito pegajosa",
+    "aliases": "centeio; rye flour",
+    "aliases_list": [
+      "centeio",
+      "rye flour"
+    ]
+  },
+  {
+    "id": "PROD-0132",
+    "nome": "Farinha de espelta",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Farinha de espelta",
+    "funcao_tecnica": "Pão e pastelaria alternativa; sabor a noz",
+    "riscos_tecnicos": "Glúten fraco — massa frágil; misturar com T55",
+    "aliases": "espelta; spelt flour",
+    "aliases_list": [
+      "espelta",
+      "spelt flour"
+    ]
+  },
+  {
+    "id": "PROD-0133",
+    "nome": "Amido de milho",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Amido",
+    "funcao_tecnica": "Espessar molhos, cremes; sem glúten",
+    "riscos_tecnicos": "Gelatiniza a temperatura específica; perder espessura ao ferver demasiado",
+    "aliases": "maizena; amido de milho; cornstarch",
+    "aliases_list": [
+      "maizena",
+      "amido de milho",
+      "cornstarch"
+    ]
+  },
+  {
+    "id": "PROD-0134",
+    "nome": "Fécula de batata",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Amido",
+    "funcao_tecnica": "Espessar sopas; textura mais sedosa que amido de milho",
+    "riscos_tecnicos": "Temperatura de gelatinização diferente",
+    "aliases": "fécula; potato starch",
+    "aliases_list": [
+      "fécula",
+      "potato starch"
+    ]
+  },
+  {
+    "id": "PROD-0135",
+    "nome": "Farinha de arroz",
+    "familia": "Cereais e farinhas",
+    "subfamilia": "Farinha de arroz",
+    "funcao_tecnica": "Pastelaria sem glúten; revestimento para fritos",
+    "riscos_tecnicos": "Textura granulada; misturar com outras farinhas",
+    "aliases": "farinha de arroz; rice flour",
+    "aliases_list": [
+      "farinha de arroz",
+      "rice flour"
+    ]
+  },
+  {
+    "id": "PROD-0136",
+    "nome": "Manteiga com sal",
+    "familia": "Laticínios",
+    "subfamilia": "Manteiga",
+    "funcao_tecnica": "Finalização de pratos salgados; sabor mais intenso",
+    "riscos_tecnicos": "Controlo de sal na preparação — já contém sal",
+    "aliases": "manteiga com sal; salted butter",
+    "aliases_list": [
+      "manteiga com sal",
+      "salted butter"
+    ]
+  },
+  {
+    "id": "PROD-0137",
+    "nome": "Iogurte natural",
+    "familia": "Laticínios",
+    "subfamilia": "Iogurte",
+    "funcao_tecnica": "Marinadas, molhos frios, sobremesas; acidez e cremosidade",
+    "riscos_tecnicos": "Talha com calor intenso; usar fora do lume",
+    "aliases": "iogurte; yogurt; iogurt",
+    "aliases_list": [
+      "iogurte",
+      "yogurt",
+      "iogurt"
+    ]
+  },
+  {
+    "id": "PROD-0138",
+    "nome": "Queijo parmesão",
+    "familia": "Laticínios",
+    "subfamilia": "Queijo curado",
+    "funcao_tecnica": "Gratinar, aromatizar massas, risotto; sabor intenso umami",
+    "riscos_tecnicos": "Falsificação — verificar DOP; não fundir bem",
+    "aliases": "parmesão; parmigiano reggiano; parmesan",
+    "aliases_list": [
+      "parmesão",
+      "parmigiano reggiano",
+      "parmesan"
+    ]
+  },
+  {
+    "id": "PROD-0139",
+    "nome": "Queijo mozzarella",
+    "familia": "Laticínios",
+    "subfamilia": "Queijo fresco",
+    "funcao_tecnica": "Fundir em pizza, lasanha; textura elástica",
+    "riscos_tecnicos": "Libertação de água — secar antes; perda de forma ao aquecer",
+    "aliases": "mozzarella; mozarela",
+    "aliases_list": [
+      "mozzarella",
+      "mozarela"
+    ]
+  },
+  {
+    "id": "PROD-0140",
+    "nome": "Crème fraîche",
+    "familia": "Laticínios",
+    "subfamilia": "Natas fermentadas",
+    "funcao_tecnica": "Molhos quentes; não talha com calor como natas; acidez suave",
+    "riscos_tecnicos": "Substituível por natas + limão mas diferente",
+    "aliases": "crème fraîche; natas azedas; soured cream",
+    "aliases_list": [
+      "crème fraîche",
+      "natas azedas",
+      "soured cream"
+    ]
+  },
+  {
+    "id": "PROD-0141",
+    "nome": "Leite de soja",
+    "familia": "Laticínios",
+    "subfamilia": "Alternativa vegetal",
+    "funcao_tecnica": "Substituição em preparações lácteas; proteína vegetal",
+    "riscos_tecnicos": "Comportamento diferente em aquecimento; sem caseína",
+    "aliases": "leite de soja; soy milk",
+    "aliases_list": [
+      "leite de soja",
+      "soy milk"
+    ]
+  },
+  {
+    "id": "PROD-0142",
+    "nome": "Gema de ovo",
+    "familia": "Ovos e ovoprodutos",
+    "subfamilia": "Ovoproduto",
+    "funcao_tecnica": "Emulsão, ligação, cor; lecitina emulsionante",
+    "riscos_tecnicos": "Coagula a 65°C — controlar temperatura",
+    "aliases": "gema; egg yolk; jaune d'oeuf",
+    "aliases_list": [
+      "gema",
+      "egg yolk",
+      "jaune d'oeuf"
+    ]
+  },
+  {
+    "id": "PROD-0143",
+    "nome": "Clara de ovo",
+    "familia": "Ovos e ovoprodutos",
+    "subfamilia": "Ovoproduto",
+    "funcao_tecnica": "Aeração, merengues, clarificação; proteína coagulante",
+    "riscos_tecnicos": "Contaminação com gema impede montagem",
+    "aliases": "clara; egg white; blanc d'oeuf",
+    "aliases_list": [
+      "clara",
+      "egg white",
+      "blanc d'oeuf"
+    ]
+  },
+  {
+    "id": "PROD-0144",
+    "nome": "Ovo de codorniz",
+    "familia": "Ovos e ovoprodutos",
+    "subfamilia": "Ovo de codorniz",
+    "funcao_tecnica": "Guarnição, apresentação; sabor delicado",
+    "riscos_tecnicos": "Fragilidade; dificuldade de descascar cozido",
+    "aliases": "ovo de codorniz; quail egg",
+    "aliases_list": [
+      "ovo de codorniz",
+      "quail egg"
+    ]
+  }
+]
