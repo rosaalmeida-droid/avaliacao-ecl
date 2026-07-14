@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { loadLibrary } from './libraryService';
 import { inicializarCompat } from './compatECL';
+import { loadLibrary } from './libraryService';
 import { Perfil, Aluno, PlanoAula as TPlanoAula } from './types';
 import { Login } from './components/Login';
 import { ManualCozinheiro } from './components/ManualCozinheiro';
@@ -58,20 +58,6 @@ function AppInterno() {
   const [modalAberto, setModalAberto] = useState(false);
   const [modalMensagem, setModalMensagem] = useState('');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'ok' | 'offline'>('idle');
-  const [bibliotecaPronta, setBibliotecaPronta] = useState(false);
-
-  // ── Carregar biblioteca V10 no arranque ─────────────────────
-  useEffect(() => {
-    loadLibrary()
-      .then(() => {
-        inicializarCompat();
-        setBibliotecaPronta(true);
-      })
-      .catch(err => {
-        console.error('[App] Erro ao carregar biblioteca:', err);
-        setBibliotecaPronta(true); // continuar mesmo com erro
-      });
-  }, []);
 
   function atualizarDados() {
     if (!turmaId) return;
@@ -82,6 +68,13 @@ function AppInterno() {
   }
 
   useEffect(() => {
+    // Carregar biblioteca pedagógica V10 e inicializar compatECL
+    loadLibrary()
+      .then(() => {
+        inicializarCompat();
+        console.log('[App] Biblioteca V10 carregada.');
+      })
+      .catch(e => console.error('[App] Erro ao carregar biblioteca:', e));
     getTurmas();
     seedAlunosTeste();
     seedHistorialTeste();
@@ -151,16 +144,6 @@ function AppInterno() {
       setPerfil(null); setAluno(null); setNomeProfessor('');
       setPlanoAberto(null); setVistaGlobal('planos'); limparAlteracoes();
     }, 'Se saíres agora perdes o que estás a preencher.');
-  }
-
-  // Ecrã de carregamento enquanto a biblioteca não está pronta
-  if (!bibliotecaPronta) {
-    return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:12 }}>
-        <div style={{ fontSize:32 }}>📚</div>
-        <div style={{ fontSize:14, color:'rgba(26,23,20,0.5)' }}>A carregar biblioteca pedagógica…</div>
-      </div>
-    );
   }
 
   if (!perfil) return <Login onLogin={handleLogin} />;
