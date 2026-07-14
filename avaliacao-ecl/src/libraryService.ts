@@ -12,7 +12,7 @@ import type {
 
 // ── Base URL dos ficheiros JSON ───────────────────────────────
 // Em produção: GitHub raw ou Vercel static
-const BASE_URL = 'https://raw.githubusercontent.com/rosaalmeida-droid/avaliacao-ecl/main/public/library';
+const BASE_URL = 'https://raw.githubusercontent.com/rosaalmeida-droid/avaliacao-ecl/main/avaliacao-ecl/public/library';
 
 // ── Singleton cache ───────────────────────────────────────────
 let _library: Library | null = null;
