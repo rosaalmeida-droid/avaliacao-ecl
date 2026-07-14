@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
-import { encontrarMateriaPrimaComConfianca , MATERIAS_PRIMAS_BASE } from '../materiasPrimasBase';
+import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
 import {
   processarIngrediente,
   obterRendimento,
@@ -1269,7 +1269,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       </div>
       {/* ── Painel lateral de microgreens ────────────────────────── */}
       {painelMicrogreens && (() => {
-        const MG_VARIEDADES = MATERIAS_PRIMAS_BASE.filter((mp: any) => mp.categoria === 'Microgreens' && mp.foto);
+        const MG_VARIEDADES = getMateriaPrimasBase().filter((mp: any) => mp.categoria === 'Microgreens' && mp.foto);
         const mgVisiveis = mgFiltro ? MG_VARIEDADES.filter((mg: any) => mg.nome.toLowerCase().includes(mgFiltro.toLowerCase())) : MG_VARIEDADES;
         return (
           <div style={{
