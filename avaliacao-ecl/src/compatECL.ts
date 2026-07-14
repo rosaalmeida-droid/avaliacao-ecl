@@ -298,7 +298,7 @@ export function encontrarAparelho(id: string): {
   id: string; nome: string; categoria: string; nivel: number;
   definicao?: string; ambito_profissional?: string;
 } | undefined {
-  return (getLibrary().aparelhos as any[]).find(a => a.id === id);
+  try { return (getLibrary().aparelhos as any[]).find(a => a.id === id); } catch { return undefined; }
 }
 
 // ── Subtécnicas (SUB-xxx-xxx-xxx) ────────────────────────────
@@ -306,7 +306,7 @@ export function encontrarSubtecnica(id: string): {
   id: string; nome: string; tecnica_id?: string;
   definicao?: string; resultado_esperado?: string;
 } | undefined {
-  return (getLibrary().subtecnicas as any[]).find(s => s.id === id) as any;
+  try { return (getLibrary().subtecnicas as any[]).find(s => s.id === id) as any; } catch { return undefined; }
 }
 
 // ── Conhecimentos (KNW-xxxxx) ─────────────────────────────────
@@ -314,7 +314,7 @@ export function encontrarConhecimento(id: string): {
   id: string; nome: string; nivel: number; dominio: string;
   familia_tecnica: string; definicao: string;
 } | undefined {
-  return (getLibrary().conhecimentos as any[]).find(k => k.id === id);
+  try { return (getLibrary().conhecimentos as any[]).find(k => k.id === id); } catch { return undefined; }
 }
 
 // ── Aptidões (APT-xxxxx) ──────────────────────────────────────
