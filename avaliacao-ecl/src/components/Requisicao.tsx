@@ -220,15 +220,6 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       const f = getFichasProducao().find(x => x.id === fid);
       if (f) r[fid] = parseFloat(f.numPorcoes) || 4;
     });
-
-  // Auto-recalcular quantidades de encomenda quando o nº de doses muda
-  React.useEffect(() => {
-    if (linhas.length > 0) {
-      setLinhas(agregarIngredientes(fichasSelecionadas, paxPorFicha));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paxPorFicha]);
-
     return r;
   });
   const [quebras, setQuebras] = useState(10);
@@ -266,6 +257,15 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   });
   const [msg, setMsg] = useState('');
   const [linkSheets, setLinkSheets] = useState(''); // URL do Google Sheets para abrir directamente
+
+  // Auto-recalcular quantidades quando o nº de doses muda (correctamente APÓS todos os useState)
+  React.useEffect(() => {
+    if (linhas.length > 0 && fichasSel.length > 0) {
+      const fsel = getFichasProducao().filter(f => fichasSel.includes(f.id));
+      setLinhas(agregarIngredientes(fsel, paxPorFicha));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paxPorFicha]);
   // Preços por ingrediente na pré-requisição — chave: produto.toLowerCase()
   const [precosPreReq, setPrecosPreReq] = useState<Record<string, string>>({});
 
