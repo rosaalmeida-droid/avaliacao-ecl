@@ -493,3 +493,8 @@ export function encontrarMateriaPrimaComConfianca(
   // 3. Nada encontrado
   return { mp: undefined, confianca: 'nenhuma' };
 }
+
+// ── Lazy getter — evita TDZ em bundles Rollup/Vite ──────────
+export function getMateriaPrimasBase(): MateriaPrimaBase[] {
+  return MATERIAS_PRIMAS_BASE;
+}
