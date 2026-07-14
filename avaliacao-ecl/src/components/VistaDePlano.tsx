@@ -5,9 +5,10 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
-  microsPorUC,
+  microsPorUC, encontrarAparelho, encontrarSubtecnica,
+  nomeCompetencia, aparelhosPermitidos,
 } from '../compatECL';
-import { sugerirSubtecnicas, SUBTECNICAS } from '../compatECL';
+import { getLibrary } from '../libraryService';
 import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
@@ -348,70 +349,84 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const temFichas = fichasDoPlano.length > 0;
   const temRequisicao = !!requisicao;
   const publicado = plano.estado === 'publicado';
-  const microsDaUC = plano.ucId ? microsPorUC(plano.ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
+  // ── Competências ────────────────────────────────────────────
   const compObrigatorias = OBRIGATORIAS;
-  // Ids de microcompetências que duplicam as obrigatórias — nunca mostrar nas sugeridas
-  const IDS_DUPLICAM_OBRIGATORIAS = new Set([
-    'M0150', // Lavar maos/fardamento → já coberto por OBR_01 (Higiene pessoal)
-    'M0196', // Registar HACCP → já coberto por OBR_02 (Higiene e Segurança Alimentar)
-  ]);
+  const IDS_JA_USADOS = new Set<string>(compObrigatorias.map(o => o.id));
 
-  // Atitudes que duplicam as obrigatórias — não mostrar nas sugeridas
   const IDS_ATITUDES_DUPLICAM = new Set([
-    'ATT_03', // Cuidado com apresentação pessoal → coberto por OBR_01 (Higiene pessoal)
-    'ATT_16', // Respeito normas higiene alimentar → coberto por OBR_02
-    'ATT_17', // Respeito normas SST → coberto por OBR_02
+    'ATT_03', 'ATT_16', 'ATT_17',
   ]);
 
-  // ── Deduplicação global — DECLARAR ANTES de usar ─────────────────────────
-  const IDS_JA_USADOS = new Set<string>([
-    ...compObrigatorias.map(o => o.id),
-  ]);
+  // Tipo de plano: 'pratico' (tem fichas) | 'teorico' (sem fichas)
+  const tipoPlanAula = (plano as any).tipoPlanAula || (temFichas ? 'pratico' : 'teorico');
 
-  // Texto das fichas — calculado ANTES de compTecnicas para cruzamento
+  // ── SUB-xxx: subtécnicas da ficha (plano prático) ──────────
+  const subIdsRaw = fichasDoPlano.flatMap(f => (f.tecnicasSugeridas || []).filter((id: string) => id.startsWith('SUB-')));
+  const compSub = [...new Set(subIdsRaw)]
+    .filter(id => !compRemovidas.includes(id) && !IDS_JA_USADOS.has(id))
+    .slice(0, 6)
+    .map(id => {
+      const sub = encontrarSubtecnica(id);
+      return { id, nome: sub?.nome || id, criterios: [] as any[] };
+    });
+  compSub.forEach(s => IDS_JA_USADOS.add(s.id));
+
+  // ── APP-xxx: aparelhos da ficha (plano prático) ────────────
+  const appIdsRaw = fichasDoPlano.flatMap(f => ((f as any).aparelhosDetectados || []).filter((id: string) => id.startsWith('APP-')));
+  const compApp = [...new Set(appIdsRaw)]
+    .filter(id => !compRemovidas.includes(id) && !IDS_JA_USADOS.has(id))
+    .slice(0, 4)
+    .map(id => {
+      const app = encontrarAparelho(id);
+      return { id, nome: app?.nome || id, nivel: app?.nivel || 1, categoria: app?.categoria || '', criterios: [] as any[] };
+    });
+  compApp.forEach(a => IDS_JA_USADOS.add(a.id));
+
+  // ── KNW-xxx: conhecimentos da UC (plano teórico ou misto) ──
+  // Biblioteca pode ainda não estar carregada — proteger com try/catch
+  let lib: ReturnType<typeof getLibrary> | null = null;
+  try { lib = getLibrary(); } catch { lib = null; }
+  const compConhecimentos = tipoPlanAula !== 'pratico' && plano.ucId && lib
+    ? (lib.conhecimentos as any[])
+        .filter((k: any) => !compRemovidas.includes(k.id) && !IDS_JA_USADOS.has(k.id))
+        .slice(0, 6)
+        .map((k: any) => ({ id: k.id, nome: k.nome, definicao: k.definicao }))
+    : [];
+  compConhecimentos.forEach(k => IDS_JA_USADOS.add(k.id));
+
+  // ── Fallback: sistema antigo (microsPorUC) se não há SUB/APP ─
+  const usarFallback = compSub.length === 0 && compApp.length === 0 && tipoPlanAula === 'pratico';
+  const microsDaUC = usarFallback
+    ? (plano.ucId ? microsPorUC(plano.ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A'))
+    : [];
+  const IDS_DUPLICAM_OBRIGATORIAS = new Set(['M0150', 'M0196']);
   const textoFichas = fichasDoPlano.map(f =>
-    [f.nomePrato, f.classificacao, ...(f.ingredientes || []).map(i => i.produto), ...(f.preparacao || []).map(p => p.descricao)].join(' ')
+    [f.nomePrato, ...(f.ingredientes || []).map((i: any) => i.produto)].join(' ')
   ).join(' ').toLowerCase();
-
-  // Técnicas: filtrar por palavras-chave da ficha quando há ficha associada
-  // Sem ficha → mostrar as da UC sem filtro (professor remove as que não se aplicam)
-  const compTecnicas = microsDaUC
+  const compTecnicas = usarFallback ? microsDaUC
     .filter(m => {
       if (IDS_DUPLICAM_OBRIGATORIAS.has(m.id) || IDS_JA_USADOS.has(m.id)) return false;
-      // Se há ficha técnica, cruzar pelo nome da técnica e palavras-chave
       if (textoFichas.length > 10) {
-        const nomeMicro = m.nome.toLowerCase();
-        // Verificar se o nome da técnica ou palavras relacionadas aparecem na ficha
-        const palavras = nomeMicro.split(/[\s\/]+/);
-        return palavras.some(p => p.length > 3 && textoFichas.includes(p));
+        const palavras = m.nome.toLowerCase().split(/[\s\/]+/);
+        return palavras.some((p: string) => p.length > 3 && textoFichas.includes(p));
       }
       return true;
-    })
-    .slice(0, 8)
-    .filter(m => !compRemovidas.includes(m.id));
-  // Registar técnicas usadas
+    }).slice(0, 8).filter(m => !compRemovidas.includes(m.id)) : [];
   compTecnicas.forEach(m => IDS_JA_USADOS.add(m.id));
-  const subtecnicasDaUC = plano.ucId
-    ? SUBTECNICAS.filter(s => (s.uc || []).includes(plano.ucId!))
-    : [];
-  const subtecnicasDaFicha = textoFichas.length > 10
-    ? sugerirSubtecnicas(textoFichas)
-    : [];
-  const idsSubFicha = new Set(subtecnicasDaFicha.map(s => s.id));
-  // Cruzamento: só aparecem se estão na UC E foram detetadas na ficha
-  const compSubtecnicas = subtecnicasDaUC
-    .filter(s => !compRemovidas.includes(s.id) && !IDS_JA_USADOS.has(s.id))
-    .slice(0, 8);
-  // Registar subtécnicas usadas
-  compSubtecnicas.forEach(s => IDS_JA_USADOS.add(s.id));
 
+  // ── Atitudes ────────────────────────────────────────────────
   const compAtitudes = ATITUDES
     .filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente')
       && !IDS_ATITUDES_DUPLICAM.has(a.id)
       && !IDS_JA_USADOS.has(a.id))
     .slice(0, 4)
     .filter(a => !compRemovidas.includes(a.id));
-  const totalComp = compObrigatorias.length + compTecnicas.length + compSubtecnicas.length + compAtitudes.length + compAdicionadas.length;
+
+  // ── Subtécnicas (fallback) ──────────────────────────────────
+  const compSubtecnicas: any[] = [];
+
+  const totalComp = compObrigatorias.length + compSub.length + compApp.length
+    + compConhecimentos.length + compTecnicas.length + compAtitudes.length + compAdicionadas.length;
 
   function guardarCompetencias(removidas: string[], adicionadas: string[]) {
     setCompRemovidas(removidas);
@@ -686,22 +701,94 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
           ))}
         </div>
-        <div style={{ marginBottom:14 }}>
-          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas — UC {plano.ucId}</div>
-          {microsDaUC.slice(0, 8).map(m => {
-            const removida = compRemovidas.includes(m.id);
-            return (
-              <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
-                <span>{removida ? '○' : '●'}</span>
-                <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)' }}>{m.criterios.length} critérios</div>}</div>
-                <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
-                  style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
-                  {removida ? '+ Incluir' : '− Remover'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+        {/* ── Subtécnicas da ficha (SUB-xxx) ── */}
+        {compSub.length > 0 && (
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas desta aula</div>
+            {compSub.map(m => {
+              const removida = compRemovidas.includes(m.id);
+              return (
+                <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
+                  <span>{removida ? '○' : '●'}</span>
+                  <div style={{ flex:1, fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
+                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
+                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    {removida ? '+ Incluir' : '− Remover'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Aparelhos da ficha (APP-xxx) ── */}
+        {compApp.length > 0 && (
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#5B67EA', marginBottom:8 }}>🧪 Preparações base</div>
+            {compApp.map(m => {
+              const removida = compRemovidas.includes(m.id);
+              return (
+                <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'rgba(91,103,234,0.06)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
+                  <span>{removida ? '○' : '●'}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
+                    <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)' }}>
+                      {m.categoria} ·
+                      <span style={{ fontWeight:700, marginLeft:4, color: m.nivel===1?'#5a7a4e':m.nivel===2?'#b5651d':'#c0392b' }}>N{m.nivel}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
+                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    {removida ? '+ Incluir' : '− Remover'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Conhecimentos da UC (aula teórica/mista) ── */}
+        {compConhecimentos.length > 0 && (
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#0369a1', marginBottom:8 }}>📚 Conhecimentos da UC</div>
+            {compConhecimentos.map(k => {
+              const removida = compRemovidas.includes(k.id);
+              return (
+                <div key={k.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'rgba(3,105,161,0.06)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
+                  <span>{removida ? '○' : '●'}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{k.nome}</div>
+                    {k.definicao && <div style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginTop:2 }}>{k.definicao.slice(0, 80)}{k.definicao.length > 80 ? '…' : ''}</div>}
+                  </div>
+                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== k.id) : [...compRemovidas, k.id], compAdicionadas)}
+                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    {removida ? '+ Incluir' : '− Remover'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Fallback sistema antigo (sem SUB/APP) ── */}
+        {compTecnicas.length > 0 && (
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas — UC {plano.ucId}</div>
+            {compTecnicas.map(m => {
+              const removida = compRemovidas.includes(m.id);
+              return (
+                <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
+                  <span>{removida ? '○' : '●'}</span>
+                  <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)' }}>{m.criterios.length} critérios</div>}</div>
+                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
+                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    {removida ? '+ Incluir' : '− Remover'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#8e44ad', marginBottom:8 }}>💡 Atitudes</div>
           {ATITUDES.filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente') && !IDS_ATITUDES_DUPLICAM.has(a.id)).slice(0, 5).map(a => {
@@ -745,6 +832,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     const alunosDaTurma = getAlunos().filter(a => a.turmaId === turmaId);
     // Obrigatórias aparecem sempre — não faz sentido avisar que já foram avaliadas
     const todasMicros = [
+      ...compSub.map(m => m.id),
+      ...compApp.map(a => a.id),
+      ...compConhecimentos.map(k => k.id),
       ...compTecnicas.map(m => m.id),
       ...compSubtecnicas.map(s => s.id),
       ...compAtitudes.map(a => a.id),
@@ -866,8 +956,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             ))}
           </div>
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Técnicas — sugeridas pela UC {plano.ucId}</div>
-            {microsDaUC.slice(0, 8).map(m => {
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Competências desta aula</div>
+            {[...compSub, ...compApp, ...compConhecimentos, ...compTecnicas].slice(0, 8).map(m => {
               const removida = compRemovidas.includes(m.id);
               const aberta = compAberta === m.id;
               return (
