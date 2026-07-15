@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import {
   getRecuperacoesPorAluno, addOrUpdateRecuperacao, criarRecuperacaoAutomatica,
@@ -170,7 +171,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                 <span style={{ fontSize: 20 }}>✅</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>Concluída em {r.dataValidacao ? new Date(r.dataValidacao).toLocaleDateString('pt-PT') : ''}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>Concluída em {r.dataValidacao ? fmtData(r.dataValidacao) : ''}</div>
                 </div>
               </div>
             </div>
