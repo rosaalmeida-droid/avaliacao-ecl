@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente } from '../backend';
+import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getRequisicaoPorPlano, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
 import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
 import {
@@ -1251,8 +1251,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         <button style={S.btnP} onClick={async () => {
           // 1. Guardar localmente
           if (planoSel) {
+            // Reutilizar ID da requisição existente — evita duplicados ao editar
+            const reqExistente = getRequisicaoPorPlano(planoSel.id);
             addOrUpdateRequisicao({
-              id: `req_${planoSel.id}_${Date.now()}`, planoAulaId: planoSel.id, turmaId: planoSel.turmaId,
+              id: reqExistente?.id || `req_${planoSel.id}`, planoAulaId: planoSel.id, turmaId: planoSel.turmaId,
               dataAula: planoSel.data, professor: planoSel.professor, fichasIds: fichasSel,
               linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: parseFloat(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
               custoTotal: crTotal, estado: 'enviada', criadaEm: new Date().toISOString(), atualizadaEm: new Date().toISOString(),
