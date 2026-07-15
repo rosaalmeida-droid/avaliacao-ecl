@@ -89,7 +89,7 @@ import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventosWizard } from './components/EventosWizard';
 import { CronogramaTab } from './components/CronogramaTab';
-import { sincronizarDoSheets, getEstadoSync, addAluno, seedAlunosTeste, seedHistorialTeste, seedPlanoTeste, getTurmas } from './backend';
+import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -146,6 +146,7 @@ function AppInterno() {
     getTurmas();
     // Sincronizar dados do Sheets ao arrancar — garante dados actualizados em qualquer dispositivo
     sincronizarDoSheets(turmaId).catch(e => console.warn('[App] Sync inicial falhou:', e));
+    seedAlunosReais(); // popula alunos reais se ainda não existirem
     // seedAlunosTeste/seedHistorialTeste/seedPlanoTeste removidos — não injectar dados de teste em produção
   }, []);
 
