@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { Aluno, PlanoAula, FichaProducao } from '../types';
+import { Aluno, PlanoAula, FichaProducao, INICIATIVA_FRASES, calcularNotaPlano, PESOS_AULA } from '../types';
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
@@ -1744,6 +1744,35 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     return evidenciasKF.some(e => e.competenciaId === compId);
   }
 
+  // ── Iniciativa (aulas teóricas) ──────────────────────────────
+  function SecaoIniciativa() {
+    if (tipoPlanAula !== 'teorico') return null;
+    return (
+      <div style={{ marginTop:16, padding:'14px 16px', borderRadius:12,
+        background:'rgba(181,101,29,0.05)', border:'1px solid rgba(181,101,29,0.2)' }}>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>💡 Iniciativa</div>
+        <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginBottom:12 }}>
+          Como avalias a tua iniciativa hoje na cozinha?
+        </div>
+        {INICIATIVA_FRASES.map(f => (
+          <button key={f.nivel} onClick={() => setNivelIniciativa(f.nivel)}
+            style={{ width:'100%', textAlign:'left', padding:'10px 12px', marginBottom:6,
+              borderRadius:10, cursor:'pointer', fontSize:13,
+              border:`2px solid ${nivelIniciativa===f.nivel ? '#b5651d' : 'rgba(26,23,20,0.08)'}`,
+              background: nivelIniciativa===f.nivel ? 'rgba(181,101,29,0.08)' : '#fff',
+              fontWeight: nivelIniciativa===f.nivel ? 700 : 400 }}>
+            <span style={{ display:'inline-block', width:20, height:20, borderRadius:'50%',
+              background: nivelIniciativa===f.nivel ? '#b5651d' : 'rgba(26,23,20,0.1)',
+              color: nivelIniciativa===f.nivel ? '#fff' : 'rgba(26,23,20,0.4)',
+              fontSize:11, fontWeight:800, textAlign:'center', lineHeight:'20px',
+              marginRight:8, flexShrink:0 }}>{f.nivel}</span>
+            {f.texto}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   // Badge KF — mostra ao aluno que os seus registos do KitchenFlow foram verificados
   const BadgeKF = () => {
     if (!kfCarregado) return null;
@@ -1849,6 +1878,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [notasMicro, setNotasMicro] = useState<Record<string,string|null>>({});
   const [microAberta, setMicroAberta] = useState<string|null>(null);
   const [atitudeEscolhida, setAtitudeEscolhida] = useState<string|null>(null);
+  const [nivelIniciativa, setNivelIniciativa] = useState<number>(0); // 0 = não avaliado
   const [modalConfirmar, setModalConfirmar] = useState(false);
   const [submetido, setSubmetido] = useState(() => {
     try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
@@ -1890,6 +1920,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,nota:paraNota(nivelHaccp)}]:[]),
       ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
       ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:3}]:[]),
+      ...(tipoPlanAula==='teorico'&&nivelIniciativa>0?[{competenciaId:'INI-001',nivel:`ini_${nivelIniciativa}`,nota:nivelIniciativa}]:[]),
     ];
     addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:atitudeEscolhida?[atitudeEscolhida]:[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,criadaEm:agora});
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
@@ -1952,9 +1983,20 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           const vals = (() => { try { return JSON.parse(localStorage.getItem('ecl_validacoes') || '[]'); } catch { return []; } })();
           const val = vals.find((v: any) => v.planoAulaId === plano.id && v.alunoId === aluno.id);
           if (val && val.notaMedia) {
+            // Calcular nota com pesos por categoria
+            const notasComCat = (val.notas || []).map((n: any) => {
+              const cat = n.competenciaId?.startsWith('OBR_') ? 'OBR'
+                : n.competenciaId?.startsWith('SUB-') || n.competenciaId?.startsWith('APP-') ? 'SUB'
+                : n.competenciaId?.startsWith('KNW-') ? 'KNW'
+                : n.competenciaId?.startsWith('INI-') ? 'INI'
+                : 'ATI';
+              return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.nota };
+            });
+            const tipoPlano = (plano as any).tipoPlanAula || 'pratico';
+            const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlano);
             const notaFinal = val.notaMedia;
-            const cor = notaFinal >= 3.5 ? '#0369a1' : notaFinal >= 3 ? '#5a7a4e' : notaFinal >= 2 ? '#b5651d' : '#c0392b';
-            const label = notaFinal >= 3.5 ? 'Excelente' : notaFinal >= 3 ? 'Bom' : notaFinal >= 2 ? 'Suficiente' : 'Insuficiente';
+            const cor = nota20 >= 16 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
+            const label = nota20 >= 16 ? 'Muito Bom' : nota20 >= 14 ? 'Bom' : nota20 >= 10 ? 'Suficiente' : 'Insuficiente';
             return (
               <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(90,122,78,0.06)', border:'1.5px solid rgba(90,122,78,0.2)' }}>
                 <div style={{ fontSize:12, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', marginBottom:8 }}>
@@ -1964,10 +2006,17 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{notaFinal.toFixed(1)}</span>
                   <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/4</span>
                   <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)', marginLeft:4 }}>→</span>
-                  <span style={{ fontFamily:'var(--font-display)', fontSize:28, fontWeight:900, color:cor, marginLeft:4 }}>{Math.round(notaFinal*5)}</span>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:28, fontWeight:900, color:cor, marginLeft:4 }}>{nota20}</span>
                   <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/20</span>
                   <span style={{ marginLeft:'auto', fontSize:14, fontWeight:700, color:cor }}>{label}</span>
                 </div>
+                {detalhes && (
+                  <div style={{ marginTop:10, fontSize:11, color:'rgba(26,23,20,0.45)',
+                    padding:'6px 10px', borderRadius:8, background:'rgba(26,23,20,0.03)',
+                    fontFamily:'monospace' }}>
+                    {detalhes}
+                  </div>
+                )}
               </div>
             );
           }
