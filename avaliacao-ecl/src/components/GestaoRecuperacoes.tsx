@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { CriteriosComp } from './CriteriosComp';
@@ -98,9 +99,9 @@ function ListaHistorico({ items, nomeAluno, onClick }: { items: RecuperacaoModul
                   {nConsolidadas}/{nTotal} competências consolidadas
                 </div>
                 <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
-                  Atribuída: {r.dataAtribuicao ? new Date(r.dataAtribuicao).toLocaleDateString('pt-PT') : '—'}
-                  {' · '}Submetida: {r.dataSubmissao ? new Date(r.dataSubmissao).toLocaleDateString('pt-PT') : '—'}
-                  {' · '}Validada: {r.dataValidacao ? new Date(r.dataValidacao).toLocaleDateString('pt-PT') : '—'}
+                  Atribuída: {r.dataAtribuicao ? fmtData(r.dataAtribuicao) : '—'}
+                  {' · '}Submetida: {r.dataSubmissao ? fmtData(r.dataSubmissao) : '—'}
+                  {' · '}Validada: {r.dataValidacao ? fmtData(r.dataValidacao) : '—'}
                   {r.professorAvaliador ? ` · por ${r.professorAvaliador}` : ''}
                 </div>
               </div>
@@ -127,8 +128,8 @@ function Lista({ items, nomeAluno, vazio, onClick }: { items: RecuperacaoModulo[
               <div className="muted" style={{ fontSize: 12 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
               <div style={{ fontSize: 11, color: 'var(--copper)' }}>{r.planosIds.length} aula(s) em falta</div>
               <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
-                Atribuída em {r.dataAtribuicao ? new Date(r.dataAtribuicao).toLocaleDateString('pt-PT') : '—'}
-                {r.dataSubmissao ? ` · submetida em ${new Date(r.dataSubmissao).toLocaleDateString('pt-PT')}` : ''}
+                Atribuída em {r.dataAtribuicao ? fmtData(r.dataAtribuicao) : '—'}
+                {r.dataSubmissao ? ` · submetida em ${fmtData(r.dataSubmissao)}` : ''}
               </div>
             </div>
             <span className="stamp">Ver</span>
@@ -213,7 +214,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
 
     // Registar no histórico — competências consolidadas/avançadas contam como sucesso
     avaliacaoCompetencias.forEach(a => {
-      const nota = a.nivel === 'avancada' ? 18 : a.nivel === 'consolidada' ? 14 : a.nivel === 'em_desenvolvimento' ? 10 : 5;
+      const nota = a.nivel === 'avancada' ? 4 : a.nivel === 'consolidada' ? 3 : a.nivel === 'em_desenvolvimento' ? 2 : 1;
       addRegistoAvaliacao({
         id: `recup_av_${r.id}_${a.competenciaId}_${Date.now()}`,
         alunoId: r.alunoId, turmaId: r.turmaId, planoAulaId: r.planosIds[0] || '',
