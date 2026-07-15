@@ -1,4 +1,3 @@
-
 {
   "version": "10.0",
   "gerado_em": "2026-07-12T19:45:53.186093",
@@ -76,71 +75,75 @@
     }
   },
   "escala_avaliacao": {
-    "aluno": [
-      {
-        "valor": 0,
-        "codigo": "NTO",
-        "emoji": "⬜",
-        "texto": "Não tive oportunidade",
-        "entra_calculo": false
-      },
+    "niveis": [
       {
         "valor": 1,
         "codigo": "NF",
-        "emoji": "🔸",
-        "texto": "Não fiz",
-        "entra_calculo": false,
-        "sinal_atitude": true
+        "texto": "Ainda não fiz",
+        "nota20": 4,
+        "cor": "#c8cfd6",
+        "corTexto": "#4a5568"
       },
       {
         "valor": 2,
-        "codigo": "NC",
-        "emoji": "🔴",
-        "texto": "Não consegui",
-        "entra_calculo": true
+        "codigo": "TP",
+        "texto": "Tentei mas ainda preciso de mais prática",
+        "nota20": 8,
+        "cor": "#96a4b0",
+        "corTexto": "#2d3748"
       },
       {
         "valor": 3,
-        "codigo": "AD",
-        "emoji": "🟡",
-        "texto": "Tive algumas dificuldades",
-        "entra_calculo": true
+        "codigo": "CA",
+        "texto": "Consegui com ajuda",
+        "nota20": 12,
+        "cor": "#647a8a",
+        "corTexto": "#ffffff"
       },
       {
         "valor": 4,
         "codigo": "FS",
-        "emoji": "🟢",
-        "texto": "Fiz sem dificuldade",
-        "entra_calculo": true
+        "texto": "Faço sozinho/a",
+        "nota20": 16,
+        "cor": "#3d5a6e",
+        "corTexto": "#ffffff"
+      },
+      {
+        "valor": 5,
+        "codigo": "MBR",
+        "texto": "Faço com muito bom resultado",
+        "nota20": 20,
+        "cor": "#1e3a4a",
+        "corTexto": "#ffffff"
       }
     ],
-    "professor_interpretacao": {
-      "FS": "Executou com autonomia e obteve o resultado esperado",
-      "AD": "Executou mas não obteve o resultado esperado",
-      "NC": "Tentou mas não concluiu o processo",
-      "NF": "Não realizou — verificar se havia oportunidade ou é questão de atitude",
-      "NTO": "Sem oportunidade — fora do cálculo"
+    "conversao_0_20": {
+      "formula": "nota_1_5 × 4",
+      "exemplos": {
+        "1": 4,
+        "2": 8,
+        "3": 12,
+        "4": 16,
+        "5": 20
+      },
+      "nota_minima_sucesso_0_20": 12
     },
     "professor_validacao": [
       {
         "codigo": "CONFIRM",
-        "emoji": "✅",
-        "texto": "Confirma"
+        "texto": "Confirma — o aluno avaliou correctamente"
       },
       {
         "codigo": "UP",
-        "emoji": "⬆️",
         "texto": "Sobe 1 nível — aluno subestimou-se"
       },
       {
         "codigo": "DOWN",
-        "emoji": "⬇️",
         "texto": "Desce 1 nível — aluno sobrestimou-se"
       },
       {
         "codigo": "NO",
-        "emoji": "⬜",
-        "texto": "Não observou"
+        "texto": "Não observou nesta aula"
       }
     ]
   },
@@ -148,7 +151,7 @@
     "max_competencias_professor": 4,
     "max_competencias_aluno": 1,
     "n_sucessos_consolidada": 2,
-    "nota_minima_sucesso": 12,
+    "nota_minima_sucesso": 3,
     "pesos_tempo": {
       "ate_3_meses": 1.0,
       "ate_6_meses": 0.75,
@@ -169,6 +172,8 @@
       "adicionais": [
         1
       ]
-    }
+    },
+    "nota_minima_sucesso_0_20": 12,
+    "escala": "1-5 (×4 = 0-20)"
   }
 }
