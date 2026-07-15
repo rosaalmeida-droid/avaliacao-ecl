@@ -305,6 +305,69 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       }
     }
 
+    // ── Sincronizar Avaliações (historico_avaliacoes) ──────────────────
+    if (SHEETS_HISTORICO_URL) {
+      const jsonAval = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
+      if (jsonAval?.ok && jsonAval.dados?.length > 0) {
+        const locais = getHistoricoAvaliacoes();
+        const idsLocais = new Set(locais.map((r: RegistoAvaliacao) => r.id));
+        const novas = jsonAval.dados.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
+        if (novas.length > 0) save(KEY_HIST, [...locais, ...novas]);
+      }
+
+      // ── Sincronizar Validações ──────────────────────────────────────
+      const jsonVal = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_validacoes', turmaId });
+      if (jsonVal?.ok && jsonVal.dados?.length > 0) {
+        const locais = getValidacoes();
+        const merged = [...locais];
+        for (const v of jsonVal.dados) {
+          const idx = merged.findIndex((x: Validacao) => x.id === v.id);
+          if (idx < 0) merged.push(v);
+          else if ((v.validadoEm || '') > (merged[idx].validadoEm || '')) merged[idx] = v;
+        }
+        save(KEYS.validacoes, merged);
+      }
+
+      // ── Sincronizar Presenças ───────────────────────────────────────
+      const jsonPres = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId });
+      if (jsonPres?.ok && jsonPres.dados?.length > 0) {
+        const locais = getPresencas();
+        const idsLocais = new Set(locais.map((p: any) => p.id));
+        const novas = jsonPres.dados.filter((p: any) => !idsLocais.has(p.id));
+        if (novas.length > 0) save(KEYS.presencas, [...locais, ...novas]);
+      }
+    }
+
+    // ── Sincronizar Alunos ──────────────────────────────────────────────
+    if (SHEETS_ALUNOS_URL) {
+      const jsonAlunos = await lerDoSheets(SHEETS_ALUNOS_URL, { tipo: 'get_alunos', turmaId });
+      if (jsonAlunos?.ok && jsonAlunos.dados?.length > 0) {
+        const locais = getAlunos();
+        const merged = [...locais];
+        for (const a of jsonAlunos.dados) {
+          const idx = merged.findIndex((x: Aluno) => x.id === a.id);
+          if (idx < 0) merged.push(a);
+          else merged[idx] = { ...merged[idx], ...a, pin: merged[idx].pin || a.pin };
+        }
+        save(KEYS.alunos, merged);
+      }
+    }
+
+    // ── Sincronizar Autoavaliações (Selecoes) ───────────────────────────
+    if (SHEETS_HISTORICO_URL) {
+      const jsonSel = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId });
+      if (jsonSel?.ok && jsonSel.dados?.length > 0) {
+        const locais = getSelecoes();
+        const merged = [...locais];
+        for (const s of jsonSel.dados) {
+          const idx = merged.findIndex((x: SelecaoAluno) => x.id === s.id);
+          if (idx < 0) merged.push(s);
+          else if ((s.criadaEm || '') > (merged[idx].criadaEm || '')) merged[idx] = s;
+        }
+        save(KEYS.selecoes, merged);
+      }
+    }
+
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
   } catch (e) {
     console.warn('Sincronização falhou — a usar dados locais:', e);
@@ -1290,9 +1353,18 @@ export function addOrUpdateSelecao(s: SelecaoAluno): void {
   const idx = all.findIndex(x => x.id === s.id);
   if (idx >= 0) all[idx] = s; else all.push(s);
   save(KEYS.selecoes, all);
-  // Não enviar para o Sheets aqui — os dados reais por competência já vão
-  // individualmente via addRegistoAvaliacao() chamado em AlunoView.submeter().
-  // Enviar a SelecaoAluno completa como 'avaliacao' criava linhas vazias/lixo na sheet do aluno.
+  // Enviar selecao para Sheets — necessário para sincronização entre dispositivos
+  // Tipo 'selecao' é diferente de 'avaliacao' para não criar linhas duplicadas
+  enviar(SHEETS_HISTORICO_URL, 'selecao', {
+    id: s.id,
+    planoAulaId: s.planoAulaId,
+    alunoId: s.alunoId,
+    turmaId: s.turmaId,
+    tecnicas: s.tecnicas,
+    atitudes: s.atitudes,
+    autoavaliacoes: s.autoavaliacoes,
+    criadaEm: s.criadaEm,
+  });
 }
 
 export function addOrUpdateValidacao(v: Validacao): void {
@@ -1300,7 +1372,17 @@ export function addOrUpdateValidacao(v: Validacao): void {
   const idx = all.findIndex(x => x.id === v.id);
   if (idx >= 0) all[idx] = v; else all.push(v);
   save(KEYS.validacoes, all);
-  enviar(SHEETS_HISTORICO_URL, 'validacao', v as unknown as Record<string, unknown>);
+  // Calcular nota média para o Sheet
+  const notaMediaVal = v.notas.length
+    ? v.notas.reduce((s, n) => s + n.nota, 0) / v.notas.length : 0;
+  const aluno_val = getAlunos().find(a => a.id === v.alunoId);
+  enviar(SHEETS_HISTORICO_URL, 'validacao', {
+    ...(v as unknown as Record<string, unknown>),
+    nomeAluno: aluno_val?.nome || ('Aluno ' + (aluno_val?.numero || 0)),
+    turma: v.turmaId,
+    nota_media_1_5: Math.round(notaMediaVal * 10) / 10,
+    nota_media_0_20: Math.min(20, Math.round(notaMediaVal * 4)),
+  });
 }
 
 export function addOrUpdateAtividade(a: Atividade): void {
@@ -1414,17 +1496,29 @@ export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
   const plano = getPlanosAula().find(p => p.id === r.planoAulaId);
   const ficha = getFichasProducao().find(f => f.id === r.fichaId);
 
+  // Label legível do nível (escala 1-5)
+  const LABEL_NIVEL: Record<number, string> = {
+    1: 'Ainda não fiz', 2: 'Preciso de mais prática',
+    3: 'Consegui com ajuda', 4: 'Faço sozinho/a', 5: 'Faço com muito bom resultado',
+  };
+  const nota20 = Math.min(20, Math.round(r.nota * 4));
+
   enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
     ...r,
     tipo: 'avaliacao',
     nomeAluno: aluno?.nome || ('Aluno ' + (aluno?.numero || 0)),
     numero: aluno?.numero || 0,
+    turma: r.turmaId,
     ano: aluno?.ano || 1,
     planoTitulo: plano?.titulo || '',
+    planoData: plano?.data || '',
     ucId: r.ucId || plano?.ucId || '',
+    ucNome: plano?.ucNome || '',
     fichaNome: ficha?.nomePrato || '',
     microcompetencia: r.microcompetenciaId,
-    nota: r.nota,
+    nota_1_5: r.nota,
+    nota_0_20: nota20,
+    nivel_label: LABEL_NIVEL[r.nota] || String(r.nota),
     data: r.data,
     validadoPor: r.validadoPor,
   });
@@ -1620,7 +1714,7 @@ export function getEstadoCompetenciasUC(alunoId: string, ucId: string): {
   const micros = microsPorUC(ucId);
   const total = micros.length;
   const historico = getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.validadoPor !== 'recuperacao');
-  const demonstradasEmAula = new Set(historico.filter(r => r.nota >= 12).map(r => r.microcompetenciaId)).size;
+  const demonstradasEmAula = new Set(historico.filter(r => r.nota >= 3).map(r => r.microcompetenciaId)).size;
   const recuperacoesConcluidas = getRecuperacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.estado === 'concluida');
   const competenciasRecuperadas = new Set<string>();
   recuperacoesConcluidas.forEach(r => {
@@ -1819,10 +1913,10 @@ export function addEvidencia(e: Evidencia): void {
 
 // Nível mais alto já registado para uma competência de um aluno — usado para
 // não "recuar" o estado se já tiver sido observado um nível superior antes.
-export function getNivelMaximoEvidencia(alunoId: string, competenciaId: string): 0 | 1 | 2 | 3 | 4 {
+export function getNivelMaximoEvidencia(alunoId: string, competenciaId: string): 0 | 1 | 2 | 3 | 4 | 5 {
   const evidencias = getEvidenciasPorCompetencia(alunoId, competenciaId);
   if (evidencias.length === 0) return 0;
-  return evidencias.reduce((max, e) => (e.nivel > max ? e.nivel : max), 0 as 0 | 1 | 2 | 3 | 4);
+  return evidencias.reduce((max, e) => (e.nivel > max ? e.nivel : max), 0 as 0 | 1 | 2 | 3 | 4 | 5);
 }
 
 // ── Perfil Profissional do Aluno ─────────────────────────────────
@@ -1832,7 +1926,7 @@ export function getNivelMaximoEvidencia(alunoId: string, competenciaId: string):
 export interface ItemPerfil {
   competenciaId: string;
   nome: string;
-  nivel: 0 | 1 | 2 | 3 | 4;
+  nivel: 0 | 1 | 2 | 3 | 4 | 5;
   origem: 'aula' | 'recuperacao' | 'evidencia' | 'nao_observado';
   ultimaData?: string;
 }
@@ -1846,11 +1940,19 @@ export interface PerfilProfissionalAluno {
   areasADesenvolver: string[];
 }
 
-function notaParaNivel(nota: number): 0 | 1 | 2 | 3 | 4 {
-  if (nota >= 16) return 4;
+function notaParaNivel(nota: number): 0 | 1 | 2 | 3 | 4 | 5 {
+  // Escala 1-5 directa
+  if (nota >= 5) return 5;
+  if (nota >= 4) return 4;
+  if (nota >= 3) return 3;
+  if (nota >= 2) return 2;
+  if (nota >= 1) return 1;
+  // Compatibilidade com notas antigas (5/10/15/18/20)
+  if (nota >= 20) return 5;
+  if (nota >= 15) return 4;
   if (nota >= 12) return 3;
-  if (nota >= 8) return 2;
-  if (nota > 0) return 1;
+  if (nota >= 8)  return 2;
+  if (nota > 0)   return 1;
   return 0;
 }
 
@@ -1860,7 +1962,7 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
 
   // Agrupar por competência: pegar sempre no nível mais alto já demonstrado
   // (consolidação não regride — ver ponto 29 do documento pedagógico).
-  const porCompetencia = new Map<string, { nivel: 0 | 1 | 2 | 3 | 4; origem: ItemPerfil['origem']; data: string }>();
+  const porCompetencia = new Map<string, { nivel: 0 | 1 | 2 | 3 | 4 | 5; origem: ItemPerfil['origem']; data: string }>();
 
   historico.forEach(r => {
     const nivel = notaParaNivel(r.nota);
