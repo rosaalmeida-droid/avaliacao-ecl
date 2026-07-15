@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
 import { Button, Card, Field } from './ui';
 import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom } from '../backend';
@@ -3019,6 +3020,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               conservacao: f.conservacao||'', regeneracao: f.regeneracao||'',
               kitchenflow: f.kitchenflow||'',
             }));
+            setVista('editar');
             setPasso('ficha');
             setFichaEmEdicaoId(f.id);
             // Associar ao plano actual se ainda não estiver
