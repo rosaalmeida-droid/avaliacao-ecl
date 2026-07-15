@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getAlunos, getPerfilProfissionalAluno, addAluno } from '../backend';
 
 export function MapaCompetencias({ turmaId }: { turmaId: string }) {
