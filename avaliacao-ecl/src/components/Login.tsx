@@ -47,7 +47,8 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
 
   function entrarStaff(perfil: Exclude<Perfil, 'aluno'>) {
     if (pin !== PINS[perfil]) { setErro('PIN incorreto.'); return; }
-    onLogin(perfil, undefined, perfil === 'professor' ? turmaId : undefined, nomeProfessor || undefined);
+    if (perfil === 'professor' && !nomeProfessor.trim()) { setErro('Por favor introduz o teu nome.'); return; }
+    onLogin(perfil, undefined, perfil === 'professor' ? turmaId : undefined, nomeProfessor.trim() || undefined);
   }
 
   /* ── Cabeçalho com logo ── */
