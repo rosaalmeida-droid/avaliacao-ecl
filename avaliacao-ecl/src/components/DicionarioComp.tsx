@@ -211,6 +211,14 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
   const [ucFiltro, setUcFiltro] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState<'todos' | 'subtecnica' | 'micro'>('todos');
   const [abaVista, setAbaVista] = useState<'dicionario' | 'sugestoes'>('dicionario');
+  // Re-render quando a biblioteca carrega (MICROCOMPETENCIAS começa vazio)
+  const [, forceUpdate] = useState(0);
+  React.useEffect(() => {
+    if (MICROCOMPETENCIAS.length === 0) {
+      const t = setTimeout(() => forceUpdate(n => n + 1), 800);
+      return () => clearTimeout(t);
+    }
+  }, []);
   const [criteriosCustom, setCriteriosCustom] = useState<Record<string, { criterio: string; como?: string }[]>>(carregarCriteriosCustom);
 
   // Sugestões pendentes (só coordenadora vê)
