@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import {
   EntradaManual, CategoriaManual, NivelManual,
   CATEGORIAS_MANUAL, ICONES_CATEGORIA, CORES_NIVEL,
@@ -20,9 +21,7 @@ function gerarId(): string {
 }
 
 function formatarData(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-PT', {
-    day: 'numeric', month: 'long', year: 'numeric'
-  });
+  return fmtData(iso);
 }
 
 // ─────────────────────────────────────────────────────────────
