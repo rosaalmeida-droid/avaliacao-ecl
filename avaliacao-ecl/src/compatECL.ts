@@ -253,7 +253,7 @@ export const PARAMETROS_AVALIACAO = {
   maxAluno: 1,
   totalMax: 5,
   maxMicroPorCompetencia: 2,
-  notaMinimaSucesso: 12,
+  notaMinimaSucesso: 3,  // escala 1-5: sucesso a partir de 3 (Consegui com ajuda = 12/20)
   nSucessosConsolidada: 2,
   diferencaMinSignificativa: 2,
   regressaoRelevante: -2,
