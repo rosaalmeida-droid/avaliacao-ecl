@@ -9,10 +9,79 @@ import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
 import { CoordenadoraView } from './components/CoordenadoraView';
-import Requisicao from './components/Requisicao';
 import PlanoAula from './components/PlanoAula';
 import { VistaDePlano } from './components/VistaDePlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
+import { MomentosAvaliacao } from './components/MomentosAvaliacao';
+import Requisicao from './components/Requisicao';
+
+// Wrapper Orçamentos — fichas e requisições sem plano
+function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
+  turmaId: string; nomeProfessor: string;
+  onAlteracao: () => void; onGuardado: () => void;
+}) {
+  const [tab, setTab] = React.useState<'fichas' | 'requisicoes'>('fichas');
+  return (
+    <div>
+      <div style={{ background: '#fff7ed', borderRadius: 14, padding: '14px 16px',
+        marginBottom: 14, border: '1.5px solid #fcd34d' }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: '#92400e', marginBottom: 4 }}>💰 Orçamentos</div>
+        <div style={{ fontSize: 13, color: '#78350f' }}>
+          Fichas e requisições <strong>sem ligação a plano de aula</strong> — para calcular custos e preparar produções.
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {([
+          { id: 'fichas',      label: '📄 Fichas Técnicas' },
+          { id: 'requisicoes', label: '🛒 Requisições' },
+        ] as const).map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: tab === t.id ? 700 : 400,
+              background: tab === t.id ? '#b5651d' : 'rgba(26,23,20,0.06)',
+              color: tab === t.id ? '#fff' : 'rgba(26,23,20,0.6)' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'fichas' && (
+        <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+          onAlteracao={onAlteracao} onGuardado={onGuardado} />
+      )}
+      {tab === 'requisicoes' && (
+        <Requisicao nomeProfessor={nomeProfessor} turmaId={turmaId} />
+      )}
+    </div>
+  );
+}
+import { FichaRegistoUC } from './components/FichaRegistoUC';
+
+// Wrapper que combina Historial + Momentos + Ficha de Registo
+function HistorialView({ turmaId }: { turmaId: string }) {
+  const [tab, setTab] = React.useState<'historial' | 'momentos' | 'ficha'>('historial');
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+        {([
+          { id: 'historial', label: '📊 Historial' },
+          { id: 'momentos',  label: '📐 Momentos' },
+          { id: 'ficha',     label: '📋 Ficha de Registo' },
+        ] as const).map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{ flex: 1, padding: '10px 6px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: tab === t.id ? 700 : 400, minWidth: 80,
+              background: tab === t.id ? '#b5651d' : 'rgba(26,23,20,0.06)',
+              color: tab === t.id ? '#fff' : 'rgba(26,23,20,0.6)' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'historial' && <AvaliacaoPorUC turmaId={turmaId} />}
+      {tab === 'momentos'  && <MomentosAvaliacao turmaId={turmaId} />}
+      {tab === 'ficha'     && <FichaRegistoUC turmaId={turmaId} />}
+    </div>
+  );
+}
 import { CopiaSegurancaView } from './components/CopiaSeguranca';
 import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
 import { MapaCompetencias } from './components/MapaCompetencias';
@@ -20,7 +89,6 @@ import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventosWizard } from './components/EventosWizard';
 import { CronogramaTab } from './components/CronogramaTab';
-import { DicionarioComp } from './components/DicionarioComp';
 import { sincronizarDoSheets, getEstadoSync, addAluno, seedAlunosTeste, seedHistorialTeste, seedPlanoTeste, getTurmas } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
@@ -45,7 +113,7 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
 function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [aluno, setAluno] = useState<Aluno | null>(null);
-  const [turmaId, setTurmaId] = useState<string>('CP1');
+  const [turmaId, setTurmaId] = useState<string>('1º ACP');
   const [nomeProfessor, setNomeProfessor] = useState<string>('');
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -76,9 +144,9 @@ function AppInterno() {
       })
       .catch(e => console.error('[App] Erro ao carregar biblioteca:', e));
     getTurmas();
-    seedAlunosTeste();
-    seedHistorialTeste();
-    seedPlanoTeste();
+    // Sincronizar dados do Sheets ao arrancar — garante dados actualizados em qualquer dispositivo
+    sincronizarDoSheets(turmaId).catch(e => console.warn('[App] Sync inicial falhou:', e));
+    // seedAlunosTeste/seedHistorialTeste/seedPlanoTeste removidos — não injectar dados de teste em produção
   }, []);
 
   useEffect(() => {
@@ -128,12 +196,20 @@ function AppInterno() {
 
   function handleLogin(perfilRecebido: Perfil, alunoId?: string, turmaIdRecebida?: string, nomeUser?: string) {
     setPerfil(perfilRecebido);
-    if (turmaIdRecebida) setTurmaId(turmaIdRecebida);
+    if (turmaIdRecebida) {
+      setTurmaId(turmaIdRecebida);
+      // Sincronizar dados desta turma ao fazer login
+      sincronizarDoSheets(turmaIdRecebida).catch(() => {});
+    }
     if (nomeUser) setNomeProfessor(nomeUser);
     if (perfilRecebido === 'aluno' && alunoId) {
       const partes = alunoId.split('-');
       const numero = parseInt(partes[partes.length - 1], 10) || 0;
-      const novoAluno: Aluno = { id: alunoId, turmaId: turmaIdRecebida || turmaId || 'CP1', numero, ano: 1 };
+      const tId = turmaIdRecebida || turmaId || '1º ACP';
+      // Derivar ano do turmaId — '1º ACP' → 1, '2º ACP' → 2, '3º ACP' → 3
+      const anoMatch = tId.match(/[123]/);
+      const ano = anoMatch ? (parseInt(anoMatch[0]) as 1|2|3) : 1;
+      const novoAluno: Aluno = { id: alunoId, turmaId: tId, numero, ano };
       setAluno(novoAluno);
       addAluno(novoAluno);
     }
@@ -216,6 +292,13 @@ function AppInterno() {
                 modoGuia={true} onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
             )}
             {vistaGlobal === 'requisicao' && <Requisicao nomeProfessor={nomeProfessor} turmaId={turmaId} />}
+            {/* Novos items do menu */}
+            {vistaGlobal === 'orcamentos' && (
+              <OrcamentosView turmaId={turmaId} nomeProfessor={nomeProfessor}
+                onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
+            )}
+            {vistaGlobal === 'historial' && <HistorialView turmaId={turmaId} />}
+            {vistaGlobal === 'ajuda' && <AjudaProfessor />}
             {vistaGlobal === 'validacao' && <ValidacaoView turmaId={turmaId} />}
             {vistaGlobal === 'manual' && <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'biblioteca' && (
@@ -228,7 +311,7 @@ function AppInterno() {
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
             {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'cronograma' && <CronogramaTab turmaId={turmaId} />}
-            {vistaGlobal === 'dicionario' && <DicionarioComp perfil="professor" nomeProfessor={nomeProfessor} turmaId={turmaId} />}
+            {/* Dicionário movido para o ecrã do aluno */}
           </>
         )}
 
@@ -255,6 +338,39 @@ function AppInterno() {
       </div>
       {perfil === 'aluno' && aluno && <AlunoView key={refreshKey} aluno={aluno} />}
       {perfil === 'coordenadora' && <CoordenadoraView />}
+    </div>
+  );
+}
+
+
+// ── Componente de Ajuda ────────────────────────────────────────
+function AjudaProfessor() {
+  const faqs = [
+    { q: 'Como crio um plano de aula?', r: 'Em "Planos de Aula", clica no botão + no canto. Preenche a data, selecciona a UC/UFCD e o tipo de aula.' },
+    { q: 'Qual a diferença entre Prática, Mista e Teórica?', r: 'Prática: avalia subtécnicas e aparelhos. Teórica: avalia só conhecimentos da UC. Mista: avalia os dois.' },
+    { q: 'O aluno esqueceu o PIN. O que faço?', r: 'Dentro do plano, vai ao tab "PIN temp." e gera um PIN temporário. A coordenadora será avisada.' },
+    { q: 'Porque vejo um aviso de "sem cruzamento" na aula?', r: 'A ficha técnica não cruza com a UC activa. Muda para aula Mista e adiciona conhecimentos da UC.' },
+    { q: 'Onde vejo as autoavaliações dos alunos?', r: 'Dentro do plano, no tab "Autoavaliações". Vês quem submeteu e as notas por componente.' },
+    { q: 'Como vejo a evolução de um aluno?', r: 'Em "Historial" no menu. Filtra por UC, trimestre ou aluno.' },
+    { q: 'O que são Orçamentos?', r: 'Fichas técnicas e requisições sem ligação a uma aula — para calcular custos ou preparar fichas.' },
+    { q: 'Como fecho um trimestre?', r: 'No Historial, filtra pelo trimestre e UC. Verifica o equilíbrio antes de lançar a nota.' },
+  ];
+  return (
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', padding: 4 }}>
+      <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2' }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800 }}>❓ Ajuda</h2>
+        <div style={{ fontSize: 12, opacity: 0.5 }}>Respostas às dúvidas mais frequentes</div>
+      </div>
+      {faqs.map((f, i) => (
+        <details key={i} style={{ marginBottom: 8, borderRadius: 10, border: '1px solid rgba(26,23,20,0.08)', overflow: 'hidden', background: '#fff' }}>
+          <summary style={{ padding: '12px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 14, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: '#b5651d', fontWeight: 800 }}>Q</span> {f.q}
+          </summary>
+          <div style={{ padding: '10px 14px 14px', fontSize: 13, color: 'rgba(26,23,20,0.7)', lineHeight: 1.6, borderTop: '1px solid rgba(26,23,20,0.06)', background: '#faf7f2' }}>
+            {f.r}
+          </div>
+        </details>
+      ))}
     </div>
   );
 }
