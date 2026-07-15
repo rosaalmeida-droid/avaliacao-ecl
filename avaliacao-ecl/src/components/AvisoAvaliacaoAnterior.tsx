@@ -8,6 +8,7 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { mapaAvaliacoesAnteriores, addRegistoAvaliacao, RegistoAvaliacao } from '../backend';
 import { encontrarMicro, OBRIGATORIAS } from '../compatECL';
 import { Aluno, PlanoAula } from '../types';
@@ -25,14 +26,11 @@ interface Decisao {
   tipo: 'reavaliar' | 'feito_nota' | 'feito_registo' | null;
 }
 
-function formatarData(iso: string) {
-  try { return new Date(iso).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: '2-digit' }); }
-  catch { return iso; }
-}
+// formatarData → importado de ../datas
 
 function NotaBadge({ nota }: { nota: number }) {
-  const cor = nota >= 16 ? '#15803d' : nota >= 12 ? '#1d6fa4' : '#c0392b';
-  const bg  = nota >= 16 ? '#f0fdf4'  : nota >= 12 ? '#e8f1fb'  : '#fef2f2';
+  const cor = nota >= 4 ? '#15803d' : nota >= 3 ? '#1d6fa4' : nota >= 2 ? '#b5651d' : '#c0392b';
+  const bg  = nota >= 4 ? '#f0fdf4'  : nota >= 3 ? '#e8f1fb'  : nota >= 2 ? '#fff7ed' : '#fef2f2';
   return (
     <span style={{ background: bg, color: cor, fontWeight: 800, fontSize: 13, padding: '2px 8px', borderRadius: 6, display: 'inline-block' }}>
       {nota}
@@ -140,7 +138,7 @@ export function AvisoAvaliacaoAnterior({ plano, alunos, microIds, nomeProfessor,
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <NotaBadge nota={maisRecente.nota} />
                 <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
-                  {formatarData(maisRecente.data)}
+                  {fmtData(maisRecente.data)}
                 </div>
               </div>
             </div>
