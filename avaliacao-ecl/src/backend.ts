@@ -712,6 +712,67 @@ export function seedAlunosReais(): void {
   alunos.forEach((a: Aluno) => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a }));
 }
 
+
+// ── Limpar dados de teste ────────────────────────────────────────
+// Remove todos os alunos de teste excepto 1 por turma
+// Remove todos os planos, fichas, guias e requisições de teste criados antes de hoje
+export function limparDadosTeste(): void {
+  const hoje = new Date().toISOString().slice(0, 10);
+
+  // 1. Alunos — manter 1 por turma com nome "Teste"
+  const alunos = getAlunos();
+  const turmas = [...new Set(alunos.map(a => a.turmaId))];
+  const alunosManter: string[] = [];
+  for (const turma of turmas) {
+    const daTurma = alunos.filter(a => a.turmaId === turma);
+    // Manter o primeiro aluno de cada turma (para testes)
+    const aTeste = daTurma.find(a =>
+      a.nome?.toLowerCase().includes('teste') ||
+      a.nome?.toLowerCase().includes('test') ||
+      a.id.includes('CP-') ||
+      a.numero === 9999
+    ) || daTurma[0];
+    if (aTeste) alunosManter.push(aTeste.id);
+  }
+  const alunosFiltrados = alunos.filter(a => alunosManter.includes(a.id));
+  save(KEYS.alunos, alunosFiltrados);
+
+  // 2. Planos de aula — remover os criados antes de hoje
+  const planos = getPlanosAula();
+  const planosFiltrados = planos.filter(p => (p.data || '') >= hoje);
+  save(KEYS.planos, planosFiltrados);
+  const planoIdsValidos = new Set(planosFiltrados.map(p => p.id));
+
+  // 3. Fichas — remover as que não têm plano válido E foram criadas antes de hoje
+  const fichas = getFichasProducao();
+  const fichasFiltradas = fichas.filter(f =>
+    (f.planoAulaId && planoIdsValidos.has(f.planoAulaId)) ||
+    ((f as any).criadaEm || (f as any).atualizadoEm || '') >= hoje
+  );
+  save(KEYS.fichas, fichasFiltradas);
+  const fichaIdsValidas = new Set(fichasFiltradas.map(f => f.id));
+
+  // 4. Requisições — remover as antigas
+  const requisicoes = getRequisicoes();
+  const requisicoesFilter = requisicoes.filter(r =>
+    planoIdsValidos.has(r.planoAulaId || '') ||
+    (r.dataAula || '') >= hoje
+  );
+  save(KEYS.requisicoes, requisicoesFilter);
+
+  // 5. Avaliações, validações, presenças, selecoes — limpar as de teste
+  const hist = getHistoricoAvaliacoes().filter(r => (r.data || '') >= hoje);
+  save(KEY_HIST, hist);
+  const vals = getValidacoes().filter(v => (v.validadoEm || '') >= hoje);
+  save(KEYS.validacoes, vals);
+  const pres = getPresencas().filter((p: any) => (p.data || '') >= hoje);
+  save(KEYS.presencas, pres);
+  const sels = getSelecoes().filter(s => (s.criadaEm || '') >= hoje);
+  save(KEYS.selecoes, sels);
+
+  console.log(`[limparDadosTeste] Mantidos: ${alunosFiltrados.length} alunos, ${planosFiltrados.length} planos, ${fichasFiltradas.length} fichas`);
+}
+
 function seedAlunosTeste(): void {
   const todos = getAlunos();
   if (todos.length > 0) return; // já existem alunos, não fazer seed
