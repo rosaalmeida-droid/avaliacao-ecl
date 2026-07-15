@@ -20,7 +20,11 @@
       "TEC-PAP-078",
       "TEC-PAP-080",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0002",
@@ -44,7 +48,11 @@
       "TEC-PAP-078",
       "TEC-PAP-080",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0003",
@@ -67,7 +75,11 @@
       "TEC-PAP-078",
       "TEC-PAP-080",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0004",
@@ -91,7 +103,11 @@
       "TEC-PAP-080",
       "TEC-PAP-079",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0005",
@@ -115,7 +131,11 @@
       "TEC-PAP-080",
       "TEC-PAP-079",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0006",
@@ -138,7 +158,11 @@
       "TEC-PAP-075",
       "TEC-PAP-083",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0007",
@@ -160,7 +184,11 @@
       "TEC-PAP-075",
       "TEC-PAP-077",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0008",
@@ -182,7 +210,11 @@
       "TEC-PAP-075",
       "TEC-PAP-077",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0009",
@@ -205,7 +237,11 @@
       "TEC-PAP-075",
       "TEC-PAP-074",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0010",
@@ -227,7 +263,11 @@
       "TEC-PAP-074",
       "TEC-PAP-075",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAN-0011",
@@ -251,7 +291,11 @@
       "TEC-PAP-083",
       "TEC-PAP-084",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC03593"
+    ],
+    "UC_aplicaveis": "UC03593"
   },
   {
     "id": "PERF-PAN-0012",
@@ -276,7 +320,11 @@
       "TEC-PAP-083",
       "TEC-PAP-084",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC03593"
+    ],
+    "UC_aplicaveis": "UC03593"
   },
   {
     "id": "PERF-PAN-0013",
@@ -301,7 +349,11 @@
       "TEC-PAP-082",
       "TEC-PAP-083",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC03593"
+    ],
+    "UC_aplicaveis": "UC03593"
   },
   {
     "id": "PERF-PAN-0014",
@@ -325,7 +377,12 @@
       "TEC-PAP-082",
       "TEC-PAP-083",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005",
+      "UC03593"
+    ],
+    "UC_aplicaveis": "UC02005; UC03593"
   },
   {
     "id": "PERF-PAN-0015",
@@ -350,7 +407,12 @@
       "TEC-PAP-082",
       "TEC-PAP-083",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005",
+      "UC03593"
+    ],
+    "UC_aplicaveis": "UC02005; UC03593"
   },
   {
     "id": "PERF-PAN-0016",
@@ -375,7 +437,12 @@
       "TEC-PAP-082",
       "TEC-PAP-083",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005",
+      "UC03593"
+    ],
+    "UC_aplicaveis": "UC02005; UC03593"
   },
   {
     "id": "PERF-PAN-0017",
@@ -398,7 +465,12 @@
       "TEC-PAP-082",
       "TEC-PAP-083",
       "TEC-CSE-047"
-    ]
+    ],
+    "uc_list": [
+      "UC02005",
+      "UC03593"
+    ],
+    "UC_aplicaveis": "UC02005; UC03593"
   },
   {
     "id": "PERF-PAS-0018",
@@ -420,7 +492,11 @@
       "TEC-PAP-076",
       "TEC-PAP-075",
       "TEC-PAP-089"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0019",
@@ -442,7 +518,11 @@
       "TEC-MOL-068",
       "TEC-PAP-075",
       "TEC-PAP-089"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0020",
@@ -464,7 +544,11 @@
       "TEC-MOL-068",
       "TEC-PAP-075",
       "TEC-PAP-089"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0021",
@@ -486,7 +570,11 @@
       "TEC-PAP-075",
       "TEC-MOL-068",
       "TEC-PAP-089"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0022",
@@ -509,7 +597,11 @@
       "TEC-PAP-076",
       "TEC-MOL-068",
       "TEC-PAP-089"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0023",
@@ -532,7 +624,11 @@
       "TEC-PAP-075",
       "TEC-MOL-068",
       "TEC-PAP-089"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-PAS-0024",
@@ -554,7 +650,11 @@
       "TEC-PAP-076",
       "TEC-MOL-068",
       "TEC-PAP-089"
-    ]
+    ],
+    "uc_list": [
+      "UC02005"
+    ],
+    "UC_aplicaveis": "UC02005"
   },
   {
     "id": "PERF-CAR-0025",
@@ -577,7 +677,12 @@
       "TEC-CSE-048",
       "TEC-PLA-008",
       "TEC-FCS-091"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-CAR-0026",
@@ -600,7 +705,12 @@
       "TEC-CSE-048",
       "TEC-PLA-008",
       "TEC-FCS-091"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-CAR-0027",
@@ -621,7 +731,12 @@
     "tecnica_ids": [
       "TEC-PLA-007",
       "TEC-PLA-008"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-CAR-0028",
@@ -642,7 +757,12 @@
     "tecnica_ids": [
       "TEC-PLA-007",
       "TEC-PLA-008"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-CAR-0029",
@@ -665,7 +785,12 @@
       "TEC-CSE-048",
       "TEC-CSE-047",
       "TEC-PLA-008"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-CAR-0030",
@@ -688,7 +813,12 @@
       "TEC-CSE-047",
       "TEC-PLA-008",
       "TEC-PLA-007"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-CAR-0031",
@@ -709,7 +839,12 @@
     "tecnica_ids": [
       "TEC-PLA-007",
       "TEC-PLA-008"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-CAR-0032",
@@ -731,7 +866,12 @@
       "TEC-PRE-027",
       "TEC-CSE-048",
       "TEC-PLA-008"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-CAR-0033",
@@ -752,7 +892,12 @@
     "tecnica_ids": [
       "TEC-PLA-007",
       "TEC-PLA-008"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02003"
+    ],
+    "UC_aplicaveis": "UC02002; UC02003"
   },
   {
     "id": "PERF-COZ-0034",
@@ -775,7 +920,12 @@
       "TEC-PRE-027",
       "TEC-CSE-048",
       "TEC-PLA-008"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02004"
+    ],
+    "UC_aplicaveis": "UC02002; UC02004"
   },
   {
     "id": "PERF-COZ-0035",
@@ -797,7 +947,12 @@
       "TEC-CHU-044",
       "TEC-PLA-008",
       "TEC-PLA-007"
-    ]
+    ],
+    "uc_list": [
+      "UC02002",
+      "UC02004"
+    ],
+    "UC_aplicaveis": "UC02002; UC02004"
   },
   {
     "id": "PERF-COZ-0036",
@@ -820,7 +975,12 @@
       "TEC-PAP-075",
       "TEC-PLA-008",
       "TEC-FCS-091"
-    ]
+    ],
+    "uc_list": [
+      "UC01999",
+      "UC02002"
+    ],
+    "UC_aplicaveis": "UC01999; UC02002"
   },
   {
     "id": "PERF-COZ-0037",
@@ -843,7 +1003,12 @@
       "TEC-PLA-008",
       "TEC-PAP-075",
       "TEC-FCS-091"
-    ]
+    ],
+    "uc_list": [
+      "UC01999",
+      "UC02002"
+    ],
+    "UC_aplicaveis": "UC01999; UC02002"
   },
   {
     "id": "PERF-COZ-0038",
@@ -865,7 +1030,12 @@
       "TEC-MOL-068",
       "TEC-PAP-075",
       "TEC-FCS-091"
-    ]
+    ],
+    "uc_list": [
+      "UC01999",
+      "UC02002"
+    ],
+    "UC_aplicaveis": "UC01999; UC02002"
   },
   {
     "id": "PERF-COZ-0039",
@@ -889,7 +1059,11 @@
       "TEC-COR-039",
       "TEC-MOL-073",
       "TEC-FCS-091"
-    ]
+    ],
+    "uc_list": [
+      "UC02002"
+    ],
+    "UC_aplicaveis": "UC02002"
   },
   {
     "id": "PERF-COZ-0040",
@@ -911,7 +1085,12 @@
       "TEC-MOL-068",
       "TEC-PLA-008",
       "TEC-PAP-089"
-    ]
+    ],
+    "uc_list": [
+      "UC02005",
+      "UC03592"
+    ],
+    "UC_aplicaveis": "UC02005; UC03592"
   },
   {
     "id": "PERF-COZ-0041",
