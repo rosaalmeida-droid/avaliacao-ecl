@@ -270,7 +270,7 @@ function AppInterno() {
             turmaId={turmaId}
             nomeProfessor={nomeProfessor}
             onVoltar={fecharPlano}
-            onPlanoActualizado={p => setPlanoAberto(p)}
+            onPlanoActualizado={(p: any) => setPlanoAberto(p)}
             onAlteracao={registarAlteracao}
             onGuardado={limparAlteracoes}
           />
