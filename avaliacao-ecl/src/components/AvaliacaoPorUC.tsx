@@ -1,264 +1,292 @@
 import React, { useState, useMemo } from 'react';
-import { getHistoricoAvaliacoes, getAlunos, addAluno, RegistoAvaliacao } from '../backend';
-import { OBRIGATORIAS, encontrarMicro, encontrarAtitude } from '../compatECL';
-import { CriteriosComp } from './CriteriosComp';
-import { UCS_COZINHA } from './PlanoAula';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, RegistoAvaliacao } from '../backend';
+import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
+import { modulosDaTurma } from '../cronograma';
 
+// ── Helpers ───────────────────────────────────────────────────
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
+  if (id.startsWith('ATI-')) return getAtitudeDetalhada(id)?.nome || encontrarAtitude(id)?.nome || id;
+  if (id.startsWith('SUB-')) return encontrarSubtecnica(id)?.nome || id;
+  if (id.startsWith('APP-')) return encontrarAparelho(id)?.nome || id;
+  if (id.startsWith('KNW-')) return encontrarConhecimento(id)?.nome || id;
   if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;
   return encontrarMicro(id)?.nome || id;
 }
 
-// Formata uma data de forma segura — nunca mostra "Invalid Date" se vier malformada
-function formatarDataSegura(dataStr: string, opcoes?: Intl.DateTimeFormatOptions): string {
-  const d = new Date(dataStr);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('pt-PT', opcoes);
+function labelNota(nota: number): { emoji: string; label: string; cor: string } {
+  if (nota >= 4)   return { emoji: '🌟', label: 'Faço com muito bom resultado', cor: '#0369a1' };
+  if (nota >= 3)   return { emoji: '✅', label: 'Faz sozinho/a',     cor: '#5a7a4e' };
+  if (nota >= 2)   return { emoji: '🤝', label: 'Consegui com ajuda',     cor: '#b5651d' };
+  if (nota >= 1)   return { emoji: '📖', label: 'Não conseguiu', cor: '#c0392b' };
+  return { emoji: '—', label: '—', cor: 'rgba(26,23,20,0.3)' };
 }
 
-interface LinhaComp {
-  compId: string;
-  nome: string;
-  registos: RegistoAvaliacao[];
-  n: number;
-  media: number;
+function media(arr: number[]): number {
+  if (!arr.length) return 0;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
-interface LinhaAluno {
-  alunoId: string;
-  nome: string;
-  numero: number;
-  competencias: LinhaComp[];
-  mediaGeral: number;
-  totalAvaliacoes: number;
+function formatarData(iso: string): string {
+  try { return fmtData(iso); }
+  catch { return ''; }
 }
 
+// ── Trimestre actual ──────────────────────────────────────────
+function trimestreActual(): 1 | 2 | 3 {
+  const mes = new Date().getMonth() + 1;
+  if (mes >= 9 || mes <= 1) return 1;
+  if (mes <= 4) return 2;
+  return 3;
+}
+
+function datasDoTrimestre(tri: 1 | 2 | 3, ano = 2026): { inicio: string; fim: string } {
+  if (tri === 1) return { inicio: `${ano}-09-01`,   fim: `${ano}-12-31` };
+  if (tri === 2) return { inicio: `${ano + 1}-01-01`, fim: `${ano + 1}-04-15` };
+  return { inicio: `${ano + 1}-04-16`, fim: `${ano + 1}-07-31` };
+}
+
+// ── Componente principal ──────────────────────────────────────
 export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
-  const [ucId, setUcId] = useState('');
-  const [filtroAluno, setFiltroAluno] = useState<string>('todos');
-  const [excluidos, setExcluidos] = useState<Set<string>>(new Set()); // ids de registos excluídos
-  const [vistaPor, setVistaPor] = useState<'aluno' | 'competencia'>('aluno');
-  const [refresh, setRefresh] = useState(0);
+  const modulos = modulosDaTurma(turmaId);
+  const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
+  const todosRegistos = getHistoricoAvaliacoes();
+  const planos = getPlanosAulaPorTurma(turmaId);
 
-  const alunos = useMemo(() => getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero), [turmaId, refresh]);
-  const todosRegistos = useMemo(() => getHistoricoAvaliacoes(), [refresh]);
+  // Filtros
+  const [filtroUC, setFiltroUC] = useState('');
+  const [filtroAluno, setFiltroAluno] = useState('todos');
+  const [filtroPeriodo, setFiltroPeriodo] = useState<'tudo' | 'T1' | 'T2' | 'T3' | 'personalizado'>('tudo');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
+  const [vistaAluno, setVistaAluno] = useState<string | null>(null);
 
-  function criarListaAlunos(quantidade: number) {
-    for (let n = 1; n <= quantidade; n++) {
-      addAluno({ id: `${turmaId}-${n}`, turmaId, numero: n, ano: 1 });
-    }
-    setRefresh(r => r + 1);
-  }
+  // Datas do período seleccionado
+  const datas = useMemo(() => {
+    if (filtroPeriodo === 'tudo') return null;
+    if (filtroPeriodo === 'personalizado') return dataInicio && dataFim ? { inicio: dataInicio, fim: dataFim } : null;
+    const t = parseInt(filtroPeriodo[1]) as 1|2|3;
+    return datasDoTrimestre(t);
+  }, [filtroPeriodo, dataInicio, dataFim]);
 
-  // Registos filtrados por UC (e aluno, se aplicável)
-  const registosUC = useMemo(() => {
-    if (!ucId) return [];
-    return todosRegistos.filter(r =>
-      r.ucId === ucId &&
-      (filtroAluno === 'todos' || r.alunoId === filtroAluno) &&
-      !excluidos.has(r.id)
-    );
-  }, [todosRegistos, ucId, filtroAluno, excluidos]);
+  // Registos filtrados
+  const registosFiltrados = useMemo(() => {
+    let regs = todosRegistos.filter(r => r.turmaId === turmaId);
+    if (filtroUC) regs = regs.filter(r => r.ucId === filtroUC);
+    if (datas) regs = regs.filter(r => r.data >= datas.inicio && r.data <= datas.fim);
+    return regs;
+  }, [todosRegistos, turmaId, filtroUC, datas]);
 
-  // Agrupar por aluno → competência
-  const porAluno: LinhaAluno[] = useMemo(() => {
-    const alunosAlvo = filtroAluno === 'todos' ? alunos : alunos.filter(a => a.id === filtroAluno);
-    return alunosAlvo.map(a => {
-      const regsAluno = registosUC.filter(r => r.alunoId === a.id);
+  // Dados por aluno
+  const dadosPorAluno = useMemo(() => {
+    const alunosVisiveis = filtroAluno === 'todos' ? alunos : alunos.filter(a => a.id === filtroAluno);
+    return alunosVisiveis.map(aluno => {
+      const regs = registosFiltrados.filter(r => r.alunoId === aluno.id);
       const porComp = new Map<string, RegistoAvaliacao[]>();
-      regsAluno.forEach(r => {
-        const arr = porComp.get(r.microcompetenciaId) || [];
-        arr.push(r);
-        porComp.set(r.microcompetenciaId, arr);
+      regs.forEach(r => {
+        if (!porComp.has(r.microcompetenciaId)) porComp.set(r.microcompetenciaId, []);
+        porComp.get(r.microcompetenciaId)!.push(r);
       });
-      const competencias: LinhaComp[] = Array.from(porComp.entries()).map(([compId, regs]) => ({
-        compId, nome: getNomeComp(compId), registos: regs,
-        n: regs.length, media: regs.reduce((s, r) => s + r.nota, 0) / regs.length,
-      })).sort((x, y) => x.nome.localeCompare(y.nome));
-      const totalAvaliacoes = regsAluno.length;
-      const mediaGeral = totalAvaliacoes > 0 ? regsAluno.reduce((s, r) => s + r.nota, 0) / totalAvaliacoes : 0;
-      return { alunoId: a.id, nome: (a as any).nome || `Aluno ${a.numero}`, numero: a.numero, competencias, mediaGeral, totalAvaliacoes };
-    }).filter(l => l.totalAvaliacoes > 0 || filtroAluno !== 'todos');
-  }, [alunos, registosUC, filtroAluno]);
-
-  // Agrupar por competência → todos os alunos
-  const porCompetencia = useMemo(() => {
-    const porComp = new Map<string, RegistoAvaliacao[]>();
-    registosUC.forEach(r => {
-      const arr = porComp.get(r.microcompetenciaId) || [];
-      arr.push(r);
-      porComp.set(r.microcompetenciaId, arr);
+      const comps = Array.from(porComp.entries()).map(([id, rs]) => ({
+        id, nome: getNomeComp(id),
+        n: rs.length,
+        media: media(rs.map(r => r.nota)),
+        ultima: rs.sort((a, b) => b.data.localeCompare(a.data))[0],
+        todas: rs.sort((a, b) => b.data.localeCompare(a.data)),
+      }));
+      return {
+        aluno,
+        comps,
+        mediaGeral: comps.length ? media(comps.map(c => c.media)) : 0,
+        total: regs.length,
+        consolidadas: comps.filter(c => c.media >= 3).length,
+        emRecuperacao: comps.filter(c => c.media < 3 && c.n > 0).length,
+      };
     });
-    return Array.from(porComp.entries()).map(([compId, regs]) => ({
-      compId, nome: getNomeComp(compId), registos: regs,
-      n: regs.length, media: regs.reduce((s, r) => s + r.nota, 0) / regs.length,
-      nAlunos: new Set(regs.map(r => r.alunoId)).size,
-    })).sort((x, y) => x.nome.localeCompare(y.nome));
-  }, [registosUC]);
+  }, [registosFiltrados, alunos, filtroAluno]);
 
-  function toggleExcluir(id: string) {
-    setExcluidos(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  }
+  // Análise de equilíbrio (para aviso ao professor)
+  const analiseEquilibrio = useMemo(() => {
+    if (!filtroUC) return null;
+    const regsUC = registosFiltrados;
+    const nSUB = regsUC.filter(r => r.microcompetenciaId.startsWith('SUB-')).length;
+    const nAPP = regsUC.filter(r => r.microcompetenciaId.startsWith('APP-')).length;
+    const nKNW = regsUC.filter(r => r.microcompetenciaId.startsWith('KNW-')).length;
+    const nATI = regsUC.filter(r => r.microcompetenciaId.startsWith('ATI-')).length;
+    const pratica = nSUB + nAPP;
+    const teoria = nKNW;
+    return { pratica, teoria, atitudes: nATI, temPratica: pratica > 0, temTeoria: teoria > 0 };
+  }, [registosFiltrados, filtroUC]);
 
-  function limparExclusoes() {
-    setExcluidos(new Set());
-  }
-
-  const ucNome = UCS_COZINHA.find(u => u.id === ucId)?.nome || '';
+  const ucSelNome = modulos.find(m => m.id === filtroUC)?.nome || '';
+  const T = {
+    copper: '#b5651d', sage: '#5a7a4e', azul: '#0369a1',
+    border: 'rgba(26,23,20,0.08)', cream: '#f8f6f2',
+  };
 
   return (
-    <div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
-        Avaliação por Unidade de Competência
-      </div>
-      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 16 }}>
-        Filtra por UC para ver médias, frequências e ajustar o que entra no cálculo.
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+
+      {/* Cabeçalho */}
+      <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2' }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, fontFamily: 'Nunito, sans-serif' }}>
+          📊 Historial de Avaliações
+        </h2>
+        <div style={{ fontSize: 12, opacity: 0.5 }}>Consulta e filtra o que foi avaliado — por UC, período ou aluno</div>
       </div>
 
-      {alunos.length === 0 && (
-        <div style={{ padding: '14px 16px', background: 'var(--copper-pale)', borderRadius: 10, marginBottom: 16, border: '1px solid rgba(181,101,29,0.25)' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--copper)', marginBottom: 6 }}>
-            ⚠️ Ainda não há alunos registados nesta turma ({turmaId})
+      {/* Filtros */}
+      <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: `1px solid ${T.border}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          {/* UC/UFCD */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>
+              {modulos.some(m => m.tipo === 'UFCD') ? 'UFCD' : 'UC'}
+            </div>
+            <select value={filtroUC} onChange={e => setFiltroUC(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13 }}>
+              <option value="">Todas</option>
+              {modulos.map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome.slice(0, 35)}{m.nome.length > 35 ? '…' : ''}</option>)}
+            </select>
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
-            Os alunos registam-se automaticamente quando fazem login pela primeira vez. Se quiseres já filtrar por aluno sem esperar, cria já a lista de números:
+          {/* Aluno */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>Aluno</div>
+            <select value={filtroAluno} onChange={e => setFiltroAluno(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13 }}>
+              <option value="todos">Turma toda</option>
+              {alunos.map(a => <option key={a.id} value={a.id}>{a.nome || `Nº ${a.numero}`}</option>)}
+            </select>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => criarListaAlunos(28)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              Criar 1 a 28
-            </button>
-            <button onClick={() => {
-              const n = prompt('Quantos alunos tem a turma?');
-              const num = parseInt(n || '', 10);
-              if (num > 0 && num <= 40) criarListaAlunos(num);
-            }} style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid var(--copper)', background: '#fff', color: 'var(--copper)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-              Outro nº
-            </button>
+        </div>
+        {/* Período */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 6 }}>Período</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {([
+              { v: 'tudo', label: 'Todo o ano' },
+              { v: 'T1', label: '1º Trimestre' },
+              { v: 'T2', label: '2º Trimestre' },
+              { v: 'T3', label: '3º Trimestre' },
+              { v: 'personalizado', label: '📅 Personalizado' },
+            ] as const).map(opt => (
+              <button key={opt.v} onClick={() => setFiltroPeriodo(opt.v)}
+                style={{ padding: '6px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  background: filtroPeriodo === opt.v ? T.copper : 'rgba(26,23,20,0.06)',
+                  color: filtroPeriodo === opt.v ? '#fff' : 'rgba(26,23,20,0.5)' }}>
+                {opt.label}
+              </button>
+            ))}
           </div>
+          {filtroPeriodo === 'personalizado' && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+                style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13 }} />
+              <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+                style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13 }} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Aviso de equilíbrio */}
+      {analiseEquilibrio && (
+        <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, border: '1.5px solid',
+          borderColor: (!analiseEquilibrio.temPratica || !analiseEquilibrio.temTeoria) ? '#f59e0b' : 'rgba(90,122,78,0.3)',
+          background: (!analiseEquilibrio.temPratica || !analiseEquilibrio.temTeoria) ? '#fffbeb' : 'rgba(90,122,78,0.05)' }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
+            {(!analiseEquilibrio.temPratica || !analiseEquilibrio.temTeoria) ? '⚠️ Avaliação desequilibrada' : '✅ Avaliação equilibrada'}
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            <span>🔪 Prática: <strong>{analiseEquilibrio.pratica}</strong> registos</span>
+            <span>📚 Conhecimentos: <strong>{analiseEquilibrio.teoria}</strong> registos</span>
+            <span>💡 Atitudes: <strong>{analiseEquilibrio.atitudes}</strong> registos</span>
+          </div>
+          {!analiseEquilibrio.temTeoria && (
+            <div style={{ fontSize: 12, color: '#b45309', marginTop: 6, fontWeight: 600 }}>
+              Não foram avaliados conhecimentos desta {modulos.some(m=>m.tipo==='UFCD')?'UFCD':'UC'} — considera adicionar uma aula teórica ou mista.
+            </div>
+          )}
+          {!analiseEquilibrio.temPratica && (
+            <div style={{ fontSize: 12, color: '#b45309', marginTop: 6, fontWeight: 600 }}>
+              Não foram avaliadas técnicas práticas — o referencial exige evidências observáveis.
+            </div>
+          )}
         </div>
       )}
 
-      {/* Filtro UC */}
-      <div className="field" style={{ marginBottom: 12 }}>
-        <label className="field-label">Unidade de Competência</label>
-        <select className="input" value={ucId} onChange={e => { setUcId(e.target.value); setExcluidos(new Set()); }}>
-          <option value="">— Selecciona a UC —</option>
-          {UCS_COZINHA.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)}
-        </select>
-        {ucNome && (
-          <div style={{ fontSize: 12, color: 'var(--copper)', marginTop: 4, fontWeight: 600 }}>
-            ✓ {ucId} — {ucNome}
-          </div>
-        )}
-      </div>
-
-      {ucId && (
-        <>
-          {/* Filtro aluno — decisão principal: toda a turma ou um aluno */}
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>
-              Aplicar a
-            </label>
-            <select className="input" value={filtroAluno} onChange={e => setFiltroAluno(e.target.value)} style={{ fontSize: 14 }}>
-              <option value="todos">👥 Toda a turma ({alunos.length} alunos)</option>
-              {alunos.map(a => <option key={a.id} value={a.id}>👤 {a.numero} — {(a as any).nome || `Aluno ${a.numero}`}</option>)}
-            </select>
-            {filtroAluno !== 'todos' && (
-              <div style={{ fontSize: 12, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>
-                ✓ A mostrar só: {alunos.find(a => a.id === filtroAluno)?.numero} — {(alunos.find(a => a.id === filtroAluno) as any)?.nome || ''}
-              </div>
-            )}
-          </div>
-
-          {/* Vista */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
-              <button onClick={() => setVistaPor('aluno')} style={{ flex: 1, padding: '10px 14px', border: 'none', background: vistaPor === 'aluno' ? 'var(--copper)' : '#fff', color: vistaPor === 'aluno' ? '#fff' : 'rgba(26,23,20,0.6)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Por aluno</button>
-              <button onClick={() => setVistaPor('competencia')} style={{ flex: 1, padding: '10px 14px', border: 'none', background: vistaPor === 'competencia' ? 'var(--copper)' : '#fff', color: vistaPor === 'competencia' ? '#fff' : 'rgba(26,23,20,0.6)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>Por competência</button>
-            </div>
-          </div>
-
-          {excluidos.size > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--copper-pale)', borderRadius: 8, marginBottom: 12, fontSize: 13, color: 'var(--copper)' }}>
-              <span style={{ flex: 1 }}>{excluidos.size} avaliação{excluidos.size !== 1 ? 'ões' : ''} excluída{excluidos.size !== 1 ? 's' : ''} do cálculo</span>
-              <button onClick={limparExclusoes} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--copper)', background: '#fff', color: 'var(--copper)', cursor: 'pointer', fontWeight: 600 }}>Repor todas</button>
-            </div>
-          )}
-
-          {registosUC.length === 0 && excluidos.size === 0 && (
-            <div style={{ textAlign: 'center', padding: '30px 0', color: 'rgba(26,23,20,0.4)' }}>
-              Sem avaliações registadas para esta UC{filtroAluno !== 'todos' ? ' e este aluno' : ''}.
-            </div>
-          )}
-
-          {/* VISTA POR ALUNO */}
-          {vistaPor === 'aluno' && porAluno.map(la => (
-            <div key={la.alunoId} style={{ marginBottom: 14, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ padding: '10px 14px', background: 'var(--charcoal)', color: 'var(--cream)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{la.numero}</div>
-                <div style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{la.nome}</div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700 }}>{la.mediaGeral.toFixed(1)}</div>
-                  <div style={{ fontSize: 11, opacity: 0.6 }}>{la.totalAvaliacoes} avaliações</div>
+      {/* Resultados */}
+      {dadosPorAluno.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(26,23,20,0.4)' }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
+          <div style={{ fontWeight: 600 }}>Sem avaliações com estes filtros</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Tenta seleccionar uma UC/UFCD diferente ou alargar o período</div>
+        </div>
+      ) : (
+        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao }) => {
+          const aberto = vistaAluno === aluno.id;
+          const { emoji, cor } = labelNota(mediaGeral);
+          return (
+            <div key={aluno.id} style={{ marginBottom: 8, borderRadius: 12, overflow: 'hidden', border: `1px solid ${T.border}` }}>
+              {/* Cabeçalho do aluno */}
+              <button onClick={() => setVistaAluno(aberto ? null : aluno.id)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                  background: aberto ? 'rgba(181,101,29,0.06)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: T.copper, color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
+                  {aluno.numero}
                 </div>
-              </div>
-              <div style={{ padding: '10px 14px' }}>
-                {la.competencias.map(c => (
-                  <div key={c.compId} style={{ marginBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{c.nome}</div>
-                      <div style={{ fontSize: 13, color: c.media >= 12 ? 'var(--sage)' : 'var(--danger)', fontWeight: 700 }}>{c.media.toFixed(1)}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)' }}>({c.n}x)</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                      {c.registos.map(r => (
-                        <button key={r.id} onClick={() => toggleExcluir(r.id)}
-                          title={`${formatarDataSegura(r.data)} — clica para excluir`}
-                          style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', color: 'rgba(26,23,20,0.6)', cursor: 'pointer' }}>
-                          {r.nota} · {formatarDataSegura(r.data, { day: '2-digit', month: '2-digit' })} ✕
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {la.competencias.length === 0 && <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}>Sem avaliações nesta UC.</div>}
-              </div>
-            </div>
-          ))}
-
-          {/* VISTA POR COMPETÊNCIA */}
-          {vistaPor === 'competencia' && porCompetencia.map(c => (
-            <div key={c.compId} style={{ marginBottom: 10, border: '1px solid var(--border)', borderRadius: 12, padding: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{c.nome}</div>
-                  <CriteriosComp compId={c.compId} cor="var(--copper)" />
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{aluno.nome || `Aluno ${aluno.numero}`}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
+                    {total} avaliações · {consolidadas} consolidadas
+                    {emRecuperacao > 0 && <span style={{ color: '#c0392b', marginLeft: 6 }}>· {emRecuperacao} em recuperação</span>}
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: c.media >= 12 ? 'var(--sage)' : 'var(--danger)' }}>{c.media.toFixed(1)}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)' }}>{c.n} avaliações · {c.nAlunos} alunos</div>
+                {mediaGeral > 0 && (
+                  <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{mediaGeral.toFixed(1)}</div>
+                    <div style={{ fontSize: 9, color: 'rgba(26,23,20,0.4)' }}>média /4</div>
+                  </div>
+                )}
+                <span style={{ fontSize: 14, color: 'rgba(26,23,20,0.3)' }}>{aberto ? '▲' : '▼'}</span>
+              </button>
+
+              {/* Detalhe por competência */}
+              {aberto && (
+                <div style={{ padding: '12px 14px', borderTop: `1px solid ${T.border}` }}>
+                  {comps.length === 0 ? (
+                    <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', textAlign: 'center', padding: '16px 0' }}>
+                      Sem competências avaliadas com estes filtros
+                    </div>
+                  ) : (
+                    comps.sort((a, b) => a.media - b.media).map(c => {
+                      const { cor: cr } = labelNota(c.media);
+                      return (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '8px 10px', borderRadius: 8, marginBottom: 6,
+                          background: c.media >= 3 ? 'rgba(90,122,78,0.05)' : c.media >= 2 ? 'rgba(181,101,29,0.05)' : 'rgba(192,57,43,0.05)',
+                          border: `1px solid ${c.media >= 3 ? 'rgba(90,122,78,0.15)' : c.media >= 2 ? 'rgba(181,101,29,0.15)' : 'rgba(192,57,43,0.15)'}` }}>
+                          <span style={{ fontSize: 16, flexShrink: 0 }}></span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600 }}>{c.nome}</div>
+                            <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
+                              {c.n} avaliação{c.n !== 1 ? 'ões' : ''} · última: {formatarData(c.ultima?.data || '')}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: cr }}>{c.media.toFixed(1)}</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {c.registos.map(r => {
-                  const aluno = alunos.find(a => a.id === r.alunoId);
-                  return (
-                    <button key={r.id} onClick={() => toggleExcluir(r.id)}
-                      title="clica para excluir"
-                      style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', color: 'rgba(26,23,20,0.6)', cursor: 'pointer' }}>
-                      #{aluno?.numero || '?'} · {r.nota} ✕
-                    </button>
-                  );
-                })}
-              </div>
+              )}
             </div>
-          ))}
-        </>
+          );
+        })
       )}
     </div>
   );
