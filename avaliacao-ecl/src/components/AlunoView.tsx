@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno, PlanoAula, FichaProducao } from '../types';
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
@@ -13,7 +14,7 @@ import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
   encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos,
-  nomeCompetencia, encontrarConhecimento,
+  nomeCompetencia, encontrarConhecimento, dicaRecuperacaoAtitude, nivelComplexidadeAtitude, getAtitudeDetalhada,
 } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { getFrasesParaCompetencia } from '../frases_subtecnicas';
@@ -23,6 +24,8 @@ import { CriteriosComp } from './CriteriosComp';
 import { ManualCozinheiro } from './ManualCozinheiro';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
+import { DicionarioComp } from './DicionarioComp';
+import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
 // ─────────────────────────────────────────────────────────────
 // TOKENS — tudo derivado das CSS vars do projeto
@@ -70,11 +73,7 @@ function parseDataSegura(iso: string): Date | null {
   return new Date(iso.slice(0,10) + 'T12:00:00');
 }
 
-function formatarData(iso: string): string {
-  const d = parseDataSegura(iso);
-  if (!d) return '—';
-  return d.toLocaleDateString('pt-PT', { weekday:'long', day:'numeric', month:'long' });
-}
+// formatarData → importado de ../datas
 
 function isHoje(iso: string): boolean {
   if (!parseDataSegura(iso)) return false;
@@ -365,7 +364,7 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
 // ═════════════════════════════════════════════════════════════
 export function AlunoView({ aluno }: { aluno: Aluno }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
-  const [aba, setAba] = useState<'hoje' | 'calendario' | 'manual' | 'perfil'>('hoje');
+  const [aba, setAba] = useState<'hoje' | 'calendario' | 'perfil'>('hoje');
   const [planos, setPlanos] = useState<PlanoAula[]>(() =>
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
@@ -466,7 +465,6 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             {([
               { id:'hoje',      emoji:'🏠', label:'Início',      cor:'#f4a900' },
               { id:'calendario',emoji:'📅', label:'Calendário',  cor:'#2ec4b6' },
-              { id:'manual',    emoji:'📖', label:'Manual',      cor:'#e63946' },
               { id:'perfil',    emoji:'🪪', label:'O meu perfil',cor:'#1d6fa4' },
             ] as const).map(tab => (
               <button key={tab.id} onClick={() => setAba(tab.id)} style={{
@@ -540,7 +538,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                     </div>
                     <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)', marginTop:4 }}>
                       {proximasAulas[0]
-                        ? `Próxima aula: ${formatarData(proximasAulas[0].data)}`
+                        ? `Próxima aula: ${fmtData(proximasAulas[0].data)}`
                         : 'Sem aulas agendadas próximas.'}
                     </div>
                   </div>
@@ -651,17 +649,26 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
           </div>
         )}
 
-        {/* ── ABA MANUAL ── */}
-        {aba === 'manual' && (
-          <ManualCozinheiro modoProf={false} />
-        )}
-
         {/* ── ABA PERFIL ── */}
         {aba === 'perfil' && (
           <div>
             <PerfilProfissionalAluno aluno={aluno} />
             <div style={{ marginTop:24 }}>
               <RecuperacaoModulosAluno aluno={aluno} />
+            </div>
+            <div style={{ marginTop:24 }}>
+              <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                📊 O meu historial de avaliações
+              </div>
+              <AvaliacaoPorUC turmaId={aluno.turmaId} />
+            </div>
+            <div style={{ marginTop:24 }}>
+              <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                📖 Dicionário de Cozinha
+              </div>
+              <DicionarioComp perfil="professor" turmaId={aluno.turmaId} />
             </div>
           </div>
         )}
@@ -728,7 +735,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               {plano.titulo}
             </div>
             <div style={{ fontSize:10, color:'rgba(247,241,230,0.4)', marginTop:1 }}>
-              {formatarData(plano.data)}{plano.horaInicio && ` · ${plano.horaInicio}–${plano.horaFim}`}
+              {fmtData(plano.data)}{plano.horaInicio && ` · ${plano.horaInicio}–${plano.horaFim}`}
             </div>
           </div>
           <div style={{ background: pctProgresso===100 ? '#22c55e' : 'rgba(255,255,255,0.12)',
@@ -737,12 +744,6 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               {pctProgresso===100 ? '🎉' : `${passosConcluidos}/${totalPassos}`}
             </div>
           </div>
-        </div>
-        <div style={{ height:3, background:'rgba(255,255,255,0.1)',
-          borderRadius:2, marginTop:8, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:`${pctProgresso}%`,
-            background:'linear-gradient(90deg,#b5651d,#22c55e)',
-            borderRadius:2, transition:'width 0.5s ease' }} />
         </div>
       </div>
 
@@ -1743,6 +1744,28 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     return evidenciasKF.some(e => e.competenciaId === compId);
   }
 
+  // Badge KF — mostra ao aluno que os seus registos do KitchenFlow foram verificados
+  const BadgeKF = () => {
+    if (!kfCarregado) return null;
+    const nEvidencias = evidenciasKF.length;
+    if (nEvidencias === 0) return null;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+        borderRadius: 10, background: 'rgba(3,105,161,0.08)', border: '1px solid rgba(3,105,161,0.2)',
+        marginBottom: 10 }}>
+        <span style={{ fontSize: 16 }}>🍳</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
+            {nEvidencias} registo{nEvidencias !== 1 ? 's' : ''} do KitchenFlow verificado{nEvidencias !== 1 ? 's' : ''}
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginTop: 1 }}>
+            As competências marcadas com 🍳 têm evidência no KitchenFlow
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ── Competências desta aula — usa SUB-xxx e APP-xxx da ficha ─
   function _nivelPermitido(nivel: number): boolean {
     if (!aluno.nivelMedidas || aluno.nivelMedidas === 1) return true;
@@ -1832,36 +1855,176 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   });
 
   const OPCOES = [
-    { v:'nao',       label:'Não consegui',   emoji:'📖', cor:T.danger, bg:T.dangerP },
-    { v:'ajuda',     label:'Com ajuda',       emoji:'🤝', cor:T.copper, bg:T.copperP },
-    { v:'sozinho',   label:'Consegui',        emoji:'✅', cor:T.sage,   bg:T.sageP },
-    { v:'autonomia', label:'Com autonomia',   emoji:'🌟', cor:'#0369a1', bg:'rgba(3,105,161,0.08)' },
+    { v:'nf',  nota:1, label:'Ainda não fiz',                           cor:'#c8cfd6', corTxt:'#4a5568' },
+    { v:'tp',  nota:2, label:'Tentei mas ainda preciso de mais prática', cor:'#96a4b0', corTxt:'#2d3748' },
+    { v:'ca',  nota:3, label:'Consegui com ajuda',                       cor:'#647a8a', corTxt:'#ffffff' },
+    { v:'fs',  nota:4, label:'Faço sozinho/a',                           cor:'#3d5a6e', corTxt:'#ffffff' },
+    { v:'mbr', nota:5, label:'Faço com muito bom resultado',             cor:'#1e3a4a', corTxt:'#ffffff' },
   ];
 
   const prontoParaSubmeter = nivelHigiene!==null && nivelHaccp!==null;
 
   function submeterDefinitivo() {
     const agora = new Date().toISOString();
-    const paraNivel = (v:string|null): 'nao_atingi'|'desenvolvimento'|'atingi'|'superei' =>
-      v==='sozinho'?'atingi':v==='ajuda'?'desenvolvimento':'nao_atingi';
-    if (nivelHigiene) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hig_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_01',nota:nivelHigiene==='sozinho'?15:nivelHigiene==='ajuda'?10:5,data:agora,validadoPor:'aluno'});
-    if (nivelHaccp) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hac_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_02',nota:nivelHaccp==='sozinho'?15:nivelHaccp==='ajuda'?10:5,data:agora,validadoPor:'aluno'});
-    Object.entries(notasMicro).forEach(([mId,v])=>{if(v)addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${mId}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:mId,nota:v==='sozinho'?15:v==='ajuda'?10:5,data:agora,validadoPor:'aluno'});});
-    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:atitudeEscolhida?[atitudeEscolhida]:[],responsabilidades:[],autoavaliacoes:[],criadaEm:agora});
+    // Converter nível da autoavaliação para nota 1-5
+    const paraNota = (v:string|null): number => {
+      if (v==='mbr' || v==='autonomia' || v==='superei') return 5;
+      if (v==='fs'  || v==='sozinho'   || v==='atingi')  return 4;
+      if (v==='ca'  || v==='ajuda'     || v==='desenvolvimento') return 3;
+      if (v==='tp')  return 2;
+      if (v==='nf'  || v==='nao'       || v==='nao_atingi') return 1;
+      return 0;
+    };
+    // Converter nota 1-5 para /20 (×4)
+    const para20 = (n: number): number => Math.min(20, Math.round(n * 4));
+    // Guardar OBR com escala 1-4
+    if (nivelHigiene) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hig_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_01',nota:paraNota(nivelHigiene),data:agora,validadoPor:'aluno'});
+    if (nivelHaccp) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hac_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_02',nota:paraNota(nivelHaccp),data:agora,validadoPor:'aluno'});
+    // Guardar todas as competências com escala 1-4
+    Object.entries(notasMicro).forEach(([mId,v])=>{if(v)addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${mId}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:mId,nota:paraNota(v as string),data:agora,validadoPor:'aluno'});});
+    // Guardar atitude escolhida
+    if (atitudeEscolhida) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeEscolhida}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeEscolhida,nota:3,data:agora,validadoPor:'aluno'});
+    // Guardar SelecaoAluno com autoavaliacoes preenchidas para o professor validar
+    const todasAutoavaliacoes = [
+      ...(nivelHigiene?[{competenciaId:'OBR_01',nivel:nivelHigiene as string,nota:paraNota(nivelHigiene)}]:[]),
+      ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,nota:paraNota(nivelHaccp)}]:[]),
+      ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
+      ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:3}]:[]),
+    ];
+    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:atitudeEscolhida?[atitudeEscolhida]:[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,criadaEm:agora});
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
     setSubmetido(true); setModalConfirmar(false); onConcluido();
   }
 
-  if (submetido) return (
-    <div style={{ textAlign:'center', padding:'24px' }}>
-      <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
-      <div style={{ fontSize:17, fontWeight:700, color:T.sage }}>Autoavaliação enviada!</div>
-      <div style={{ fontSize:14, color:'rgba(26,23,20,0.55)', marginTop:6 }}>O professor vai validar o teu registo.</div>
-    </div>
-  );
+  if (submetido) {
+    // Buscar o que o aluno submeteu para mostrar feedback
+    const historicoSubmissao: any[] = [];
+    const selecaoSubmetida = (() => {
+      try {
+        const sels = JSON.parse(localStorage.getItem('ecl_selecoes') || '[]');
+        return sels.find((s: any) => s.planoAulaId === plano.id && s.alunoId === aluno.id);
+      } catch { return null; }
+    })();
+    const autoavsSubmetidas: any[] = selecaoSubmetida?.autoavaliacoes || [];
+    const dataSubmissao = (() => {
+      try { return localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`) || ''; } catch { return ''; }
+    })();
+    const isPassada = new Date(plano.data) < new Date(new Date().toDateString());
+    
+    return (
+      <div style={{ padding:'16px' }}>
+        <div style={{ background:T.sageP, borderRadius:14, padding:'16px', textAlign:'center', marginBottom:16, border:`1px solid rgba(90,122,78,0.2)` }}>
+          <div style={{ fontSize:40, marginBottom:8 }}>✅</div>
+          <div style={{ fontSize:16, fontWeight:700, color:T.sage }}>Autoavaliação enviada!</div>
+          {dataSubmissao && (
+            <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)', marginTop:4 }}>
+              {fmtDataHora(dataSubmissao)}
+            </div>
+          )}
+          <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:6 }}>O professor vai confirmar o teu registo.</div>
+        </div>
+
+        {/* Mostrar o que foi submetido */}
+        {autoavsSubmetidas.length > 0 && (
+          <div style={{ marginBottom:16 }}>
+            <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+              O que submeteste
+            </div>
+            {autoavsSubmetidas.map((av: any, i: number) => {
+              const nivel = av.nivel || '';
+              const emoji = nivel==='autonomia'||nivel==='superei'?'🌟':nivel==='sozinho'||nivel==='atingi'?'✅':nivel==='ajuda'||nivel==='desenvolvimento'?'🤝':'📖';
+              const label = nivel==='autonomia'?'Faço com muito bom resultado':nivel==='sozinho'||nivel==='atingi'?'Faço sozinho/a':nivel==='ajuda'||nivel==='desenvolvimento'?'Consegui com ajuda':'Não consegui';
+              const nomeComp = av.competenciaId?.startsWith('OBR_01')?'Higiene pessoal':av.competenciaId?.startsWith('OBR_02')?'Higiene e segurança alimentar':av.competenciaId || '';
+              return (
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background:'#fff', border:`1px solid ${T.border}`, marginBottom:6 }}>
+                  <span style={{ fontSize:18, flexShrink:0 }}>{emoji}</span>
+                  <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{nomeComp}</div>
+                  <span style={{ fontSize:12, fontWeight:600, color:'rgba(26,23,20,0.5)' }}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Bloquear re-submissão para aulas passadas */}
+        {(() => {
+          // Ver se o professor já validou
+          const vals = (() => { try { return JSON.parse(localStorage.getItem('ecl_validacoes') || '[]'); } catch { return []; } })();
+          const val = vals.find((v: any) => v.planoAulaId === plano.id && v.alunoId === aluno.id);
+          if (val && val.notaMedia) {
+            const notaFinal = val.notaMedia;
+            const cor = notaFinal >= 3.5 ? '#0369a1' : notaFinal >= 3 ? '#5a7a4e' : notaFinal >= 2 ? '#b5651d' : '#c0392b';
+            const label = notaFinal >= 3.5 ? 'Excelente' : notaFinal >= 3 ? 'Bom' : notaFinal >= 2 ? 'Suficiente' : 'Insuficiente';
+            return (
+              <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(90,122,78,0.06)', border:'1.5px solid rgba(90,122,78,0.2)' }}>
+                <div style={{ fontSize:12, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', marginBottom:8 }}>
+                  ✅ Professor confirmou
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{notaFinal.toFixed(1)}</span>
+                  <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/4</span>
+                  <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)', marginLeft:4 }}>→</span>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:28, fontWeight:900, color:cor, marginLeft:4 }}>{Math.round(notaFinal*5)}</span>
+                  <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/20</span>
+                  <span style={{ marginLeft:'auto', fontSize:14, fontWeight:700, color:cor }}>{label}</span>
+                </div>
+              </div>
+            );
+          }
+          return isPassada ? (
+            <div style={{ padding:'12px 14px', borderRadius:10, background:'rgba(26,23,20,0.04)', border:`1px solid ${T.border}`, textAlign:'center' }}>
+              <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)' }}>Esta aula já foi encerrada. Não é possível alterar a avaliação.</div>
+            </div>
+          ) : (
+            <div style={{ padding:'12px 14px', borderRadius:10, background:'rgba(26,23,20,0.04)', border:`1px solid ${T.border}`, textAlign:'center' }}>
+              <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)' }}>Aguarda a confirmação do professor.</div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  }
 
   return (
     <div>
+      {/* ── Aviso de recuperação ── */}
+      {(() => {
+        const idsAtitudes = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('ATI-'));
+        const atitudesEmRecup = idsAtitudes.filter((id: string) => {
+          const hist = getHistoricoAlunoMicro(aluno.id, id);
+          if (!hist.length) return false;
+          return hist[hist.length - 1].nota < 3;
+        });
+        if (!atitudesEmRecup.length) return null;
+        return (
+          <div style={{ margin:'0 0 16px', padding:'12px 14px', borderRadius:10,
+            background:'rgba(192,57,43,0.06)', border:'2px solid rgba(192,57,43,0.3)' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#c0392b', marginBottom:8 }}>
+              🔁 Tens competências em recuperação nesta aula
+            </div>
+            {atitudesEmRecup.map((id: string) => {
+              const a = getAtitudeDetalhada(id);
+              const dica = dicaRecuperacaoAtitude(id, 1);
+              const nivel = nivelComplexidadeAtitude(id, 1);
+              return (
+                <div key={id} style={{ marginBottom:8, padding:'8px 10px', borderRadius:8,
+                  background:'rgba(192,57,43,0.04)', border:'1px solid rgba(192,57,43,0.15)' }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'#c0392b' }}>🔁 {a?.nome ?? id}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
+                    <strong>Tens de mostrar que melhoraste.</strong> {dica}
+                  </div>
+                  {nivel && (
+                    <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginTop:4, fontStyle:'italic' }}>
+                      {nivel ? `Nível esperado: ${nivel}` : ''}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {/* Obrigatórias */}
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
@@ -1877,11 +2040,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               {OPCOES.map(op => (
                 <button key={op.v} onClick={() => obr.set(op.v)} style={{
                   padding:'12px 6px', borderRadius:10, border:`2px solid ${obr.val===op.v?op.cor:T.border}`,
-                  background:obr.val===op.v?op.bg:'#fff', color:obr.val===op.v?op.cor:'rgba(26,23,20,0.5)',
+                  background:obr.val===op.v?op.cor:'#fff', color:obr.val===op.v?op.cor:'rgba(26,23,20,0.5)',
                   fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
                   display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                 }}>
-                  <span style={{ fontSize:24 }}>{op.emoji}</span>
+                  <span style={{ fontSize:24 }}>{op.nota}</span>
                   {op.label}
                 </button>
               ))}
@@ -1927,11 +2090,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                     {OPCOES.map(op => (
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
                         padding:'10px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
-                        background:notasMicro[m.id]===op.v?op.bg:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
                         fontSize:11, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
-                        <span style={{ fontSize:20 }}>{op.emoji}</span>{op.label}
+                        <span style={{ fontSize:20 }}>{op.nota}</span>{op.label}
                       </button>
                     ))}
                   </div>
@@ -1986,11 +2149,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                     {OPCOES.map(op => (
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
                         padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
-                        background:notasMicro[m.id]===op.v?op.bg:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
                         fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
-                        <span style={{ fontSize:24 }}>{op.emoji}</span>{op.label}
+                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
                       </button>
                     ))}
                   </div>
@@ -2032,11 +2195,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                     {OPCOES.map(op => (
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
                         padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
-                        background:notasMicro[m.id]===op.v?op.bg:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
                         fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
-                        <span style={{ fontSize:24 }}>{op.emoji}</span>{op.label}
+                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
                       </button>
                     ))}
                   </div>
@@ -2074,11 +2237,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                     {OPCOES.map(op => (
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
                         padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
-                        background:notasMicro[m.id]===op.v?op.bg:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
                         fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
-                        <span style={{ fontSize:24 }}>{op.emoji}</span>{op.label}
+                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
                       </button>
                     ))}
                   </div>
@@ -2139,8 +2302,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               </div>
             </div>
             <div style={{ background:T.cream, borderRadius:12, padding:'12px 16px', marginBottom:20, fontSize:14 }}>
-              <div>🔒 Higiene: {nivelHigiene==='sozinho'?'💪 Sozinho/a':nivelHigiene==='ajuda'?'🤝 Com ajuda':'📖 A aprender'}</div>
-              <div style={{ marginTop:4 }}>🔒 HACCP: {nivelHaccp==='sozinho'?'💪 Sozinho/a':nivelHaccp==='ajuda'?'🤝 Com ajuda':'📖 A aprender'}</div>
+              <div>🔒 Higiene: {nivelHigiene==='sozinho'?'💪 Sozinho/a':nivelHigiene==='ajuda'?'🤝 Consegui com ajuda':'📖 A aprender'}</div>
+              <div style={{ marginTop:4 }}>🔒 HACCP: {nivelHaccp==='sozinho'?'💪 Sozinho/a':nivelHaccp==='ajuda'?'🤝 Consegui com ajuda':'📖 A aprender'}</div>
               {atitudeEscolhida && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeEscolhida)?.nome}</div>}
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
