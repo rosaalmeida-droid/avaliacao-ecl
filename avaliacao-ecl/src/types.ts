@@ -624,3 +624,58 @@ export interface DadosGuia {
   haccp?: { perigo: string; pcc: string; temperatura: string; medida: string; conservacao: string }[];
   questoes?: { tipo: string; pergunta: string; opcoes?: string[]; resposta?: string }[];
 }
+
+// ── Pesos por tipo de aula ────────────────────────────────────
+export const PESOS_AULA = {
+  pratico: { OBR: 0.20, SUB: 0.50, KNW: 0.20, ATI: 0.10, INI: 0.00 },
+  misto:   { OBR: 0.20, SUB: 0.50, KNW: 0.20, ATI: 0.10, INI: 0.00 },
+  teorico: { OBR: 0.20, SUB: 0.00, KNW: 0.65, ATI: 0.10, INI: 0.05 },
+} as const;
+
+// ── Iniciativa — autoavaliação do aluno em aulas teóricas ─────
+export const INICIATIVA_FRASES = [
+  { nivel: 1, texto: 'Não tomei iniciativa — esperei sempre que me dissessem o que fazer' },
+  { nivel: 2, texto: 'Tentei tomar iniciativa mas precisei de orientação' },
+  { nivel: 3, texto: 'Organizei algumas tarefas de cozinha sem precisar de ser pedido' },
+  { nivel: 4, texto: 'Geri o meu trabalho de forma autónoma e organizada' },
+  { nivel: 5, texto: 'Antecipei necessidades, apoiei colegas e contribuí além do que era esperado' },
+];
+
+// ── Função central: calcular nota 0-20 de um plano ───────────
+export function calcularNotaPlano(
+  notas: { categoria: 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI'; nota: number }[],
+  tipoPlan: 'pratico' | 'misto' | 'teorico'
+): { nota20: number; porCategoria: Record<string, number>; detalhes: string } {
+  const pesos = PESOS_AULA[tipoPlan];
+  const porCat: Record<string, number[]> = { OBR: [], SUB: [], KNW: [], ATI: [], INI: [] };
+
+  for (const n of notas) {
+    if (porCat[n.categoria]) porCat[n.categoria].push(n.nota);
+  }
+
+  const media = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+
+  let soma = 0;
+  let pesoTotal = 0;
+  const porCategoria: Record<string, number> = {};
+
+  for (const [cat, peso] of Object.entries(pesos)) {
+    if (peso === 0) continue;
+    const m = media(porCat[cat]);
+    if (m !== null) {
+      soma += m * peso;
+      pesoTotal += peso;
+      porCategoria[cat] = Math.round(m * 4 * 10) / 10; // em /20
+    }
+  }
+
+  // Normalizar se alguma categoria não foi avaliada
+  const nota14 = pesoTotal > 0 ? soma / pesoTotal : 0;
+  const nota20 = Math.min(20, Math.round(nota14 * 4 * 10) / 10);
+
+  const detalhes = Object.entries(porCategoria)
+    .map(([cat, n]) => `${cat}: ${n}/20`)
+    .join(' | ');
+
+  return { nota20, porCategoria, detalhes };
+}
