@@ -37,7 +37,7 @@ const ACCENT       = '#00B8A9';
 const WHITE        = '#ffffff';
 
 // ── Tipo de vistas ─────────────────────────────────────────────
-export type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'dicionario';
+export type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'orcamentos' | 'historial' | 'ajuda';
 
 // ── Ícones SVG inline ─────────────────────────────────────────
 const Icons = {
@@ -66,18 +66,15 @@ const Icons = {
 interface NavItem { id: VistaProf; label: string; icon: JSX.Element; secao: string }
 
 const NAV: NavItem[] = [
-  { id: 'planos',              label: 'Planos de Aula',       icon: Icons.planos,     secao: 'Pedagógico' },
-  { id: 'cronograma',          label: 'Cronograma',           icon: Icons.cronograma, secao: 'Pedagógico' },
-  { id: 'dicionario',          label: 'Dicionário',           icon: Icons.dicionario, secao: 'Pedagógico' },
-  { id: 'ficha',               label: 'Ficha Técnica',        icon: Icons.ficha,      secao: 'Pedagógico' },
-  { id: 'guia',                label: 'Guia de Produção',     icon: Icons.guia,      secao: 'Pedagógico' },
-  { id: 'requisicao',          label: 'Requisição',           icon: Icons.req,       secao: 'Pedagógico' },
-  { id: 'eventos',             label: 'Eventos',              icon: Icons.eventos,   secao: 'Pedagógico' },
-  { id: 'validacao',           label: 'Validação',            icon: Icons.validacao, secao: 'Avaliação' },
-  { id: 'avaliacao_uc',        label: 'Avaliação por UC',     icon: Icons.avaliacao, secao: 'Avaliação' },
+  // ── DIA A DIA ──────────────────────────────────────────
+  { id: 'planos',              label: 'Planos de Aula',       icon: Icons.planos,      secao: 'Dia a dia' },
+  { id: 'eventos',             label: 'Eventos',              icon: Icons.eventos,     secao: 'Dia a dia' },
+  { id: 'orcamentos',          label: 'Orçamentos',           icon: Icons.req,         secao: 'Dia a dia' },
+  // ── AVALIAÇÃO ──────────────────────────────────────────
+  { id: 'historial',           label: 'Historial',            icon: Icons.avaliacao,   secao: 'Avaliação' },
+  { id: 'avaliacao_uc',        label: 'Avaliação por UC',     icon: Icons.avaliacao,   secao: 'Avaliação' },
   { id: 'mapa_competencias',   label: 'Mapa de Competências', icon: Icons.mapa,      secao: 'Avaliação' },
   { id: 'gestao_recuperacoes', label: 'Recuperações',         icon: Icons.recuper,   secao: 'Avaliação' },
-  { id: 'biblioteca',          label: 'Biblioteca',           icon: Icons.biblioteca,secao: 'Recursos' },
   { id: 'manual',              label: 'Manual do Cozinheiro', icon: Icons.manual,    secao: 'Recursos' },
   { id: 'copia_seguranca',     label: 'Cópia de Segurança',   icon: Icons.backup,    secao: 'Recursos' },
 ];
