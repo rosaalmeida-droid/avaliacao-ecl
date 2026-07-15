@@ -80,14 +80,15 @@ export function getRegrasCompetencia(competenciaId: string): RegrasGrupo {
 // Níveis de domínio — usados em toda a app para classificar o estado
 // de uma competência (substituindo o anterior 4-níveis simples por um
 // 0-4 mais granular, alinhado com o documento pedagógico).
-export type NivelDominio = 0 | 1 | 2 | 3 | 4;
+export type NivelDominio = 0 | 1 | 2 | 3 | 4 | 5;
 
 export const NIVEL_DOMINIO_LABEL: Record<NivelDominio, string> = {
   0: 'Não Observado',
-  1: 'Observado',
+  1: 'Ainda não fez',
   2: 'Em Desenvolvimento',
   3: 'Consolidado',
   4: 'Avançado',
+  5: 'Excelente',
 };
 
 export const NIVEL_DOMINIO_DESCRICAO: Record<NivelDominio, string> = {
@@ -96,6 +97,7 @@ export const NIVEL_DOMINIO_DESCRICAO: Record<NivelDominio, string> = {
   2: 'O aluno demonstra parcialmente a competência.',
   3: 'O aluno demonstra com consistência.',
   4: 'O aluno demonstra autonomia, adaptação e capacidade de justificar decisões.',
+  5: 'O aluno executa com total domínio e muito bom resultado.',
 };
 
 // Para atitudes transversais, estados especiais que não bloqueiam a UC
