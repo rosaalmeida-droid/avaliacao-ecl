@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca } from '../backend';
 import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas } from '../backend';
@@ -11,22 +12,23 @@ import { GuiaProducao } from './GuiaProducao';
 import { CronogramaTab } from './CronogramaTab';
 import { DicionarioComp } from './DicionarioComp';
 import { coresDaTurma } from '../cores';
+import { EventosWizard } from './EventosWizard';
+import { ManualCoordenador } from './ManualCoordenador';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'presencas' | 'fichas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'dicionario'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual'>('avisos');
 
   const TABS_COORD = [
     { id:'avisos',      emoji:'🔔', label:'Avisos',      cor:'#e63946' },
     { id:'presencas',   emoji:'👤', label:'Presenças',   cor:'#2ec4b6' },
-    { id:'fichas',      emoji:'🗂️', label:'Fichas',      cor:'#f4a900' },
-    { id:'planos',      emoji:'📅', label:'Planos',      cor:'#1d6fa4' },
-    { id:'cronograma',  emoji:'📆', label:'Cronograma',  cor:'#5C3D8F' },
-    { id:'ranking',     emoji:'🏆', label:'Ranking',     cor:'#9b59b6' },
-    { id:'atividades',  emoji:'🎯', label:'Eventos',     cor:'#e67e22' },
     { id:'pedagogico',  emoji:'📊', label:'Pedagógico',  cor:'#27ae60' },
     { id:'alunos',      emoji:'👥', label:'Alunos',      cor:'#2980b9' },
+    { id:'ranking',     emoji:'🏆', label:'Ranking',     cor:'#9b59b6' },
+    { id:'planos',      emoji:'📅', label:'Planos',      cor:'#1d6fa4' },
+    { id:'cronograma',  emoji:'📆', label:'Cronograma',  cor:'#5C3D8F' },
+    { id:'atividades',  emoji:'🎯', label:'Eventos',     cor:'#e67e22' },
     { id:'config',      emoji:'⚙️', label:'Config',      cor:'#8e44ad' },
-    { id:'dicionario',  emoji:'📖', label:'Dicionário',  cor:'#0f766e' },
+    { id:'manual',      emoji:'📋', label:'Manual',      cor:'#b5651d' },
   ] as const;
 
   return (
@@ -61,12 +63,23 @@ export function CoordenadoraView() {
         </div>
       )}
       {tab === 'presencas' && <PresencasTab />}
-      {tab === 'fichas' && <BibliotecaFichasTab />}
       {tab === 'planos' && <BibliotecaPlanosTab />}
       {tab === 'cronograma' && <CronogramaTab />}
-      {tab === 'dicionario' && <DicionarioComp perfil="coordenadora" />}
+      {tab === 'manual' && <ManualCoordenador turmaId={getTurmas()[0]?.id || '1º ACP'} />}
       {tab === 'ranking' && <RankingTab />}
-      {tab === 'atividades' && <AtividadesTab />}
+      {tab === 'atividades' && (
+        <div>
+          {getTurmas().map((t: any) => (
+            <div key={t.id} style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+                letterSpacing: '0.06em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>
+                {t.nome}
+              </div>
+              <EventosWizard turmaId={t.id} />
+            </div>
+          ))}
+        </div>
+      )}
       {tab === 'pedagogico' && <VisaoPedagogicaTab />}
       {tab === 'alunos' && <GestaoAlunosTab />}
       {tab === 'config' && <ConfigTab />}
@@ -813,8 +826,8 @@ function GestaoAlunosTab() {
                 {aluno.pin ? (
                   <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>
                     🔑 PIN definido
-                    {aluno.pinCriadoEm && ` · criado ${new Date(aluno.pinCriadoEm).toLocaleDateString('pt-PT')} às ${new Date(aluno.pinCriadoEm).toLocaleTimeString('pt-PT', {hour:'2-digit',minute:'2-digit'})}`}
-                    {aluno.pinAlteradoEm && ` · alterado ${new Date(aluno.pinAlteradoEm).toLocaleDateString('pt-PT')}`}
+                    {aluno.pinCriadoEm && ` · criado ${fmtData(aluno.pinCriadoEm)} às ${new Date(aluno.pinCriadoEm).toLocaleTimeString('pt-PT', {hour:'2-digit',minute:'2-digit'})}`}
+                    {aluno.pinAlteradoEm && ` · alterado ${fmtData(aluno.pinAlteradoEm)}`}
                   </div>
                 ) : (
                   <div style={{ fontSize:12, color:'var(--copper)', marginTop:2 }}>⚠️ Sem PIN — aluno ainda não fez login</div>
@@ -891,7 +904,8 @@ function GestaoAlunosTab() {
 // Estado global da turma, competências críticas, alunos com muitas
 // recuperações, e alertas automáticos.
 function VisaoPedagogicaTab() {
-  const [turmaFiltro, setTurmaFiltro] = useState('CP1');
+  const turmasDisp = getTurmas();
+  const [turmaFiltro, setTurmaFiltro] = useState(() => turmasDisp[0]?.id || '1º ACP');
   const turmas = getTurmas();
   const alunos = getAlunos().filter(a => a.turmaId === turmaFiltro);
   const recuperacoes = getRecuperacoesPorTurma(turmaFiltro);
