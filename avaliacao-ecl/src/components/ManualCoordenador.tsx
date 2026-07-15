@@ -87,8 +87,8 @@ function Badge({ texto, cor }: { texto: string; cor: string }) {
 }
 
 export function ManualCoordenador({ turmaId }: { turmaId: string }) {
-  const historico = getHistoricoAvaliacoes(turmaId);
-  const alunos = getAlunos(turmaId);
+  const historico = getHistoricoAvaliacoes();
+  const alunos = getAlunos();
   const [tabActiva, setTabActiva] = useState<'manual'|'relatorio'>('manual');
 
   // Calcular estatísticas para relatório
@@ -154,10 +154,10 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
               <Tabela
                 headers={['Nível', 'Descrição', 'Significado pedagógico']}
                 rows={[
-                  [<Badge texto="1" cor="#c0392b" />, '📖 Não consegui', 'Competência não demonstrada — necessita de recuperação obrigatória.'],
-                  [<Badge texto="2" cor="#b5651d" />, '🤝 Com ajuda', 'Em desenvolvimento — competência parcialmente demonstrada.'],
+                  [<Badge texto="1" cor="#c0392b" />, 'Ainda não fiz', 'Competência não demonstrada — necessita de recuperação obrigatória.'],
+                  [<Badge texto="2" cor="#b5651d" />, 'Consegui com ajuda', 'Em desenvolvimento — competência parcialmente demonstrada.'],
                   [<Badge texto="3" cor={T.sage} />, '✅ Consegui', 'Adquirido — competência demonstrada de forma independente.'],
-                  [<Badge texto="4" cor={T.azul} />, '🌟 Com autonomia', 'Consolidado — demonstra excelência e apoia colegas.'],
+                  [<Badge texto="4" cor={T.azul} />, 'Faço com muito bom resultado', 'Consolidado — demonstra excelência e apoia colegas.'],
                 ]}
               />
               <p style={{ margin: '12px 0 0', fontSize: 13, color: T.textLight }}>
@@ -310,7 +310,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                 headers={['Acção', 'Descrição']}
                 rows={[
                   ['Ver competências', 'Antes da aula, o aluno vê o que vai ser avaliado e o que significa cada competência.'],
-                  ['Autoavaliar', 'No final da aula, avalia-se nos 4 níveis para cada competência.'],
+                  ['Autoavaliar', 'No final da aula, avalia-se nos 5 níveis para cada competência.'],
                   ['Escolher atitude', 'Para as atitudes, o aluno escolhe o nível que acha que atingiu.'],
                   ['Ver recuperação', 'Se tiver recuperação pendente, vê aviso claro com dica antes de autoavaliar.'],
                   ['Portfólio', 'Acesso ao historial completo das suas competências avaliadas ao longo do curso.'],
