@@ -10,6 +10,7 @@ import {
   getPlanosArquivados,
   getFichasProducao,
   getAlunos, publicarNoClassroom } from '../backend';
+import { modulosDaTurma } from '../cronograma';
 import { PlanoAula as TPlanoAula } from '../types';
 import { Card } from './ui';
 import ProfessorView from './ProfessorView';
@@ -20,23 +21,7 @@ const TIPOS_ATIVIDADE = [
   'Buffet','Evento externo','Outro',
 ];
 
-const COMP_PERM = [
-  'Responsabilidade pelas suas acoes',
-  'Autonomia no ambito das suas funcoes',
-  'Respeito pelas normas de higiene e seguranca alimentar',
-  'Sentido de organizacao',
-  'Respeito pelas regras e normas definidas',
-  'Respeito pelas normas de seguranca e saude no trabalho',
-];
-
-const COMP_OPC = [
-  'Empatia','Empenho e persistencia na resolucao de problemas','Escuta ativa',
-  'Cooperacao com a equipa','Assertividade','Cuidado com a apresentacao pessoal',
-  'Flexibilidade e adaptabilidade','Iniciativa','Autocontrolo',
-  'Disponibilidade para aprender','Respeito pela sensibilidade e bem-estar dos outros',
-  'Respeito pelos principios da sustentabilidade','Sentido critico',
-  'Autoconfianca','Postura profissional','Respeito pelas diferencas individuais',
-];
+// COMP_PERM e COMP_OPC removidos — sistema de avaliação antigo substituído por OBR/SUB/APP/KNW/ATI
 
 export const UCS_COZINHA = [
   { id:'UC03576', nome:'Planear e organizar a producao de cozinha' },
@@ -458,7 +443,8 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
 
   if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => { onGuardado?.(p); }} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
 
-  if (vista==='detalhe' && planoAtivo) return <DetalhePlano plano={planoAtivo} turmaId={turmaId} onVoltar={()=>setVista('lista')} onEditar={()=>setVista('lista')} />;
+  // DetalhePlano unificado — usar VistaDePlano via onGuardado
+  if (vista==='detalhe' && planoAtivo) { onGuardado?.(planoAtivo); return null; }
 
   if (vista==='calendario') return (
     <div>
@@ -623,13 +609,15 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     titulo: '',
     professor: nomeProfessor || '',
     tipoAtividade: 'Aula prática',
+    tipoPlanAula: 'pratico' as 'pratico' | 'teorico' | 'misto',
   });
 
   function setD(k: string, v: string) { setDados(p => ({ ...p, [k]: v })); onAlteracao?.(); }
 
   function guardar() {
     const now = new Date().toISOString();
-    const ucSel = UCS_COZINHA.find(u => u.id === dados.ucId);
+    const modulos = modulosDaTurma(turmaId);
+    const ucSel = modulos.find(m => m.id === dados.ucId) || UCS_COZINHA.find(u => u.id === dados.ucId);
     const numeroPlan = proximoNumeroPlano();
     const codigoPlano = gerarCodigoPlano(turmaId, dados.ucId, numeroPlan);
     const titulo = dados.titulo || `${codigoPlano} — ${dados.tipoAtividade}`;
@@ -647,6 +635,8 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       ucNome: ucSel?.nome || '',
       numeroPlan,
     } as TPlanoAula;
+    // Guardar tipoPlanAula no plano
+    (p as any).tipoPlanAula = dados.tipoPlanAula;
     addOrUpdatePlanoAula(p);
     onGuardado?.();
     if (window.confirm('📚 Publicar este plano de aula no Google Classroom?')) {
@@ -683,13 +673,47 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
           </div>
         </div>
         <div className="field" style={{ marginBottom: 16 }}>
-          <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>Unidade de Competência <span style={{ color: 'var(--danger)' }}>*</span></label>
-          <select className="input" value={dados.ucId} onChange={e => setD('ucId', e.target.value)} style={{ border: !dados.ucId ? '2px solid var(--danger)' : undefined, fontSize: 14 }}>
-            <option value="">— Selecciona a UC desta aula —</option>
-            {UCS_COZINHA.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)}
-          </select>
-          {!dados.ucId && <div style={{ fontSize: 13, color: 'var(--danger)', marginTop: 4 }}>Obrigatório — define as competências da aula</div>}
-          {dados.ucId && <div style={{ fontSize: 13, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>✓ {UCS_COZINHA.find(u => u.id === dados.ucId)?.nome}</div>}
+          <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>
+            {modulosDaTurma(turmaId).some(m => m.tipo === 'UFCD') ? 'UFCD' : 'Unidade de Competência'} <span style={{ color: 'var(--danger)' }}>*</span>
+          </label>
+          {(() => {
+            // Módulos do cronograma para esta turma — UC ou UFCD conforme o referencial
+            const modulos = modulosDaTurma(turmaId);
+            const isUFCD = modulos.some(m => m.tipo === 'UFCD');
+            const label = isUFCD ? 'UFCD' : 'UC';
+            const selNome = modulos.find(m => m.id === dados.ucId)?.nome || UCS_COZINHA.find(u => u.id === dados.ucId)?.nome || '';
+            return (<>
+              <select className="input" value={dados.ucId} onChange={e => setD('ucId', e.target.value)} style={{ border: !dados.ucId ? '2px solid var(--danger)' : undefined, fontSize: 14 }}>
+                <option value="">— Selecciona a {label} desta aula —</option>
+                {modulos.length > 0
+                  ? modulos.map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome}</option>)
+                  : UCS_COZINHA.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)
+                }
+              </select>
+              {!dados.ucId && <div style={{ fontSize: 13, color: 'var(--danger)', marginTop: 4 }}>Obrigatório — define as competências da aula</div>}
+              {dados.ucId && <div style={{ fontSize: 13, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>✓ {selNome}</div>}
+            </>);
+          })()}
+        </div>
+        <div className="field" style={{ marginBottom: 14 }}>
+          <label className="field-label" style={{ fontSize: 13, fontWeight: 700 }}>Tipo de aula</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {([
+              { v: 'pratico',  label: '🔪 Prática',  desc: 'Produção em cozinha' },
+              { v: 'misto',    label: '📚+🔪 Mista',  desc: 'Teoria + produção' },
+              { v: 'teorico',  label: '📚 Teórica',  desc: 'Só conhecimentos' },
+            ] as const).map(opt => (
+              <button key={opt.v} type="button" onClick={() => setD('tipoPlanAula', opt.v)}
+                style={{ flex: 1, padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
+                  border: `2px solid ${dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'var(--border)'}`,
+                  background: dados.tipoPlanAula === opt.v ? 'var(--copper-pale)' : '#fff',
+                  color: dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'rgba(26,23,20,0.5)',
+                  fontSize: 12, fontWeight: dados.tipoPlanAula === opt.v ? 700 : 400, textAlign: 'center' }}>
+                <div>{opt.label}</div>
+                <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{opt.desc}</div>
+              </button>
+            ))}
+          </div>
         </div>
         <div className="field" style={{ marginBottom: 14 }}>
           <label className="field-label">Tipo de actividade</label>
@@ -730,10 +754,9 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
   }
 
   type Nota='S'|'A'|'R'|null;
-  const comps = COMP_PERM.map(n=>({id:n,abrev:n.split(' ').slice(0,2).join(' ')}));
-  const [notas,setNotas]=useState<Record<string,Record<string,Nota>>>(()=>
-    Object.fromEntries(alunos.map(a=>[a.id,Object.fromEntries(comps.map(c=>[c.id,null]))]))
-  );
+  // Grelha antiga removida — avaliação agora via sistema OBR/SUB/APP/KNW/ATI
+  const comps: {id:string;abrev:string}[] = [];
+  const [notas,setNotas]=useState<Record<string,Record<string,Nota>>>({});
   const [compExtra,setCompExtra]=useState('');
   const [compExtraAtiva,setCompExtraAtiva]=useState<string|null>(null);
   const [notasExtra,setNotasExtra]=useState<Record<string,Nota>>({});
