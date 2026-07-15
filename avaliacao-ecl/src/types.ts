@@ -87,21 +87,58 @@ export interface Comanda {
   criadaEm: string;
 }
 
-export type NivelAuto = 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei';
+// NivelAuto: escala 1-5 + retrocompatibilidade com labels antigos
+export type NivelAuto = 'nf' | 'tp' | 'ca' | 'fs' | 'mbr'
+  | 'nao' | 'ajuda' | 'sozinho' | 'autonomia'
+  | 'nao_atingi' | 'desenvolvimento' | 'atingi' | 'superei';
+
+// Cores da escala — tons de ardósia progressivos (neutros, sem verde/vermelho)
+export const NIVEL_AUTO_COR: Partial<Record<NivelAuto, { bg: string; texto: string }>> = {
+  nf:  { bg: '#c8cfd6', texto: '#4a5568' },
+  tp:  { bg: '#96a4b0', texto: '#2d3748' },
+  ca:  { bg: '#647a8a', texto: '#ffffff' },
+  fs:  { bg: '#3d5a6e', texto: '#ffffff' },
+  mbr: { bg: '#1e3a4a', texto: '#ffffff' },
+};
 
 export const NIVEL_AUTO_LABEL: Record<NivelAuto, string> = {
-  nao_atingi: 'Não atingi',
-  desenvolvimento: 'Em desenvolvimento',
-  atingi: 'Atingi',
-  superei: 'Superei / domino bem',
+  // Escala nova 1-5
+  nf:  'Ainda não fiz',
+  tp:  'Tentei mas ainda preciso de mais prática',
+  ca:  'Consegui com ajuda',
+  fs:  'Faço sozinho/a',
+  mbr: 'Faço com muito bom resultado',
+  // Retrocompatibilidade escala antiga 1-4
+  nao:          'Ainda não fiz',
+  ajuda:        'Consegui com ajuda',
+  sozinho:      'Faço sozinho/a',
+  autonomia:    'Faço com muito bom resultado',
+  nao_atingi:   'Ainda não fiz',
+  desenvolvimento: 'Tentei mas ainda preciso de mais prática',
+  atingi:       'Faço sozinho/a',
+  superei:      'Faço com muito bom resultado',
 };
 
 export const NIVEL_AUTO_NOTA: Record<NivelAuto, number> = {
-  nao_atingi: 5,
-  desenvolvimento: 10,
-  atingi: 15,
-  superei: 18,
+  // Escala nova 1-5 (×4 = /20)
+  nf:  1,
+  tp:  2,
+  ca:  3,
+  fs:  4,
+  mbr: 5,
+  // Retrocompatibilidade escala antiga 1-4 → mapeado para 1-5
+  nao:          1,
+  ajuda:        3,
+  sozinho:      4,
+  autonomia:    5,
+  nao_atingi:   1,
+  desenvolvimento: 2,
+  atingi:       4,
+  superei:      5,
 };
+
+// Converter nota 1-5 para /20
+export function notaPara20(n: number): number { return Math.min(20, Math.round(n * 4)); }
 
 export interface AutoavaliacaoCompetencia {
   competenciaId: string;
