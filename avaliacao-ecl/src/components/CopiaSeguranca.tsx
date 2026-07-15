@@ -1,9 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { descarregarCopiaSeguranca, restaurarCopiaSeguranca, exportarTudo, CopiaSeguranca } from '../backend';
+import { descarregarCopiaSeguranca, restaurarCopiaSeguranca, exportarTudo, CopiaSeguranca, limparDadosTeste } from '../backend';
 
 export function CopiaSegurancaView() {
   const [importando, setImportando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [confirmLimpeza, setConfirmLimpeza] = useState(false);
+
+  function executarLimpeza() {
+    limparDadosTeste();
+    setConfirmLimpeza(false);
+    setResultado({ ok: true, msg: '✅ Dados de teste removidos. Mantido 1 aluno por turma e dados a partir de hoje.' });
+    setTimeout(() => window.location.reload(), 1500);
+  }
   const [ficheiroEscolhido, setFicheiroEscolhido] = useState<CopiaSeguranca | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +62,40 @@ export function CopiaSegurancaView() {
       setResultado({ ok: false, msg: 'Erro ao restaurar: ' + String(e) });
     }
   }
+
+  // Bloco de limpeza de dados de teste
+  const blocoLimpeza = (
+    <div style={{ marginTop:16, padding:'14px 16px', borderRadius:12,
+      border:'1.5px solid rgba(220,38,38,0.2)', background:'rgba(220,38,38,0.03)' }}>
+      <div style={{ fontWeight:700, fontSize:14, color:'#dc2626', marginBottom:6 }}>
+        🗑️ Limpar dados de teste
+      </div>
+      <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginBottom:10 }}>
+        Remove todos os planos, fichas, guias, requisições e avaliações criados antes de hoje.
+        Mantém 1 aluno por turma para continuar a testar.
+      </div>
+      {!confirmLimpeza ? (
+        <button onClick={() => setConfirmLimpeza(true)}
+          style={{ padding:'10px 16px', borderRadius:10, border:'none',
+            background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>
+          Limpar dados de teste
+        </button>
+      ) : (
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={executarLimpeza}
+            style={{ padding:'10px 16px', borderRadius:10, border:'none',
+              background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>
+            ✓ Confirmar limpeza
+          </button>
+          <button onClick={() => setConfirmLimpeza(false)}
+            style={{ padding:'10px 16px', borderRadius:10, border:'1px solid rgba(26,23,20,0.15)',
+              background:'#fff', cursor:'pointer', fontSize:13 }}>
+            Cancelar
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div>
@@ -124,8 +166,8 @@ export function CopiaSegurancaView() {
           </div>
         )}
       </div>
+
+      {blocoLimpeza}
     </div>
   );
 }
-
-export default CopiaSegurancaView;
