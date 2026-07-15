@@ -58,10 +58,11 @@ const MODULOS_1CP: ModuloCronograma[] = [
 
   // — Gestão e Controlo (50h) —
   { id: 'UC03579', tipo: 'UC', numeroModulo: '10', nome: 'Gerir aprovisionamentos e controlar custos', disciplina: 'Gestão e Controlo', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 26, dataInicio: '2026-09-17', dataFim: '2026-12-15', docente: 'Raquel Ratado' },
-  // ⚠️ CONFIRMAR: no cronograma o módulo 17 aparece sem código de UC.
-  // Por eliminação no referencial 811RA144 (Gestão e Controlo = UC03579,
-  // UC00054, UC00034 [2º ano], UC00032 [3º ano]) só pode ser a UC00054.
-  { id: 'UC00054', tipo: 'UC', numeroModulo: '17', nome: 'Atuar em situações de emergência em hotelaria e restauração', disciplina: 'Gestão e Controlo', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2027-01-04', dataFim: '2027-06-01' },
+  // UC00596 — Nutrição e Dietética (25h, Tecnologia Alimentar, 1º CP)
+  // Confirmado no cronograma ECL 2026-2029: módulo 09, Tecnologia Alimentar
+  { id: 'UC00596', tipo: 'UC', numeroModulo: '09', nome: 'Implementar os princípios de nutrição e dietética', disciplina: 'Tecnologia Alimentar', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2027-01-04', dataFim: '2027-03-31' },
+  // UC03593 — Panificação (25h, Serviços de Cozinha-Pastelaria, 1º CP)
+  { id: 'UC03593', tipo: 'UC', numeroModulo: '09', nome: 'Planear e confecionar massas básicas de panificação', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2027-04-01', dataFim: '2027-06-01' },
 ];
 
 // ------------------------------------------------------------------
@@ -142,7 +143,7 @@ export const EQUIVALENCIAS_UFCD_UC: Record<string, string[]> = {
   'UFCD 18':   ['UC03589'],              // novas tendências
   'UFCD 19':   ['UC03591'],              // serviços especiais de cozinha
   'UFCD 53.1': ['UC00054'],              // emergência (doença súbita/acidente)
-  'UFCD 04':   ['UC03584'],              // qualidade em restauração ≈ higiene/segurança/procedimentos
+  'UFCD 04':   ['UC03579', 'UC03580'],   // qualidade em restauração ≈ gestão/controlo + atendimento
   'UFCD 08':   ['UC00034'],              // colaboração e trabalho em equipa
   'UFCD 09':   ['UC00056'],              // turismo inclusivo
   'UFCD 24':   ['UC03576', 'UC03591'],   // coordenação de equipas ≈ organizar produção/brigadas
