@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import { getPerfilProfissionalAluno, ItemPerfil } from '../backend';
 import { NIVEL_DOMINIO_LABEL } from '../matrizEvidencias';
