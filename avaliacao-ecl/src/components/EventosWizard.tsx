@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { publicarNoClassroom, getPlanosAulaPorTurma, addOrUpdatePlanoAula } from '../backend';
 import { PlanoAula as TPlanoAula } from '../types';
 
@@ -246,12 +247,12 @@ function escapeHtml(s: string) {
 
 function gerarRelatorioHTML(evento: Evento, paraClassroom = false): string {
   const hoje = new Date().toLocaleDateString('pt-PT');
-  const criado = new Date(evento.criadoEm).toLocaleDateString('pt-PT');
+  const criado = fmtData(evento.criadoEm);
   const feitos = evento.checklist.filter(c => c.estado === 'feito').length;
   const total = evento.checklist.length;
 
   const linhasDias = evento.dias.map(d => {
-    const dataFmt = d.data ? new Date(d.data + 'T12:00:00').toLocaleDateString('pt-PT') : '—';
+    const dataFmt = d.data ? fmtData(d.data + 'T12:00:00') : '—';
     const linhasMomentos = d.momentos.map(m => {
       const cfg = MOMENTOS_CONFIG[m.tipo];
       const louca = calcularLouca(m);
@@ -629,7 +630,8 @@ function desassociarPlano(plano: TPlanoAula) {
 // ══════════════════════════════════════════════════════════════════
 export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: string }) {
   const [eventos, setEventos] = useState<Evento[]>(loadEventos);
-  const [vista, setVista] = useState<'lista' | 'novo' | 'detalhe'>('lista');
+  const [vista, setVista] = useState<'lista' | 'novo' | 'editar' | 'detalhe'>('lista');
+  const [eventoEmEdicaoId, setEventoEmEdicaoId] = useState<string | null>(null);
   const [eventoAtual, setEventoAtual] = useState<Evento | null>(null);
   const [publicando, setPublicando] = useState(false);
   const [msg, setMsg] = useState('');
@@ -661,8 +663,10 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
     const maiorNum = todosEv.reduce((m: number, e: any) => Math.max(m, e.numero || 0), 0);
     const proxNum = Math.max(maiorNum + 1, 100);
 
+    // Reutilizar ID se estiver a editar evento existente
+    const idFinal = eventoEmEdicaoId || `ev-${Date.now()}`;
     const ev: Evento = {
-      id: `ev-${Date.now()}`,
+      id: idFinal,
       numero: proxNum,
       nome: nome.trim(), turmaId, local,
       protocolo, tema, tipoPublico,
@@ -985,7 +989,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
         <div style={{ marginBottom: 20 }}>
           <div style={label}>Programa</div>
           {eventoAtual.dias.map(d => {
-            const dataFmt = d.data ? new Date(d.data + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: 'long' }) : '—';
+            const dataFmt = d.data ? fmtData(d.data + 'T12:00:00') : '—';
             return (
               <div key={d.id} style={{ background: COR.cinzaClaro, borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>📅 {dataFmt}</div>
@@ -1097,6 +1101,12 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
         </div>
 
         {/* Botões de ação */}
+        {!eventoAtual.publicado && (
+          <button style={{ ...btnOutline, width: '100%', padding: 12, fontSize: 14, marginBottom: 8 }}
+            onClick={() => { setEventoEmEdicaoId(eventoAtual.id); setVista('editar'); }}>
+            ✏️ Editar este evento
+          </button>
+        )}
         <button style={{ ...btn('#1a1714'), width: '100%', padding: 14, fontSize: 15, marginBottom: 8 }}
           onClick={abrirPDF}>
           📄 Relatório PDF do Evento
