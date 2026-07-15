@@ -2,7 +2,7 @@
 // Progressão — histórico por aluno × competência e sugestões
 //
 // Regra: cada competência tem média própria (notas 0-20).
-// Se média >= 12 -> competência "dominada": a app sugere
+// Se média >= 3 -> competência "dominada" (escala 1-4): a app sugere
 // trocá-la na próxima seleção. Não bloqueia — apenas sugere.
 // ============================================================
 
@@ -110,7 +110,7 @@ export function construirHistoricoProvisorio(
 
 /**
  * Para uma dada categoria, devolve:
- *  - dominadas: ids com média >= 12 (sugestão: trocar)
+ *  - dominadas: ids com média >= 3 (escala 1-4)
  *  - emDesenvolvimento: ids já tentados mas média < 12 (continuar a treinar)
  *  - novas: ids nunca tentados (prioridade para sugestão de novidade)
  */
@@ -197,7 +197,7 @@ export function alertaEquilibrioModo(historico: HistoricoAluno): string | null {
 // Progresso por Unidade de Competência (UC) do referencial 811RA144
 //
 // Critério: uma competência conta como "realizada" numa UC quando
-// está "dominada" (média >= 12). Progresso da UC = % de competências
+// está "dominada" (média >= 3, escala 1-4). Progresso da UC = % de competências
 // dominadas entre as que pertencem a essa UC.
 // ------------------------------------------------------------------
 export interface ProgressoUC {
@@ -247,7 +247,7 @@ export interface ParticipacaoExtra {
   /** true se o aluno participou em pelo menos 1 concurso entre os oferecidos */
   participouAlgumConcurso: boolean;
   /**
-   * Regra para nota final > 17:
+   * Regra para nota final >= 3.5:
    * - se houve concursos oferecidos, exige participação em pelo menos um
    * - se nunca houve concursos oferecidos, não restringe
    */
