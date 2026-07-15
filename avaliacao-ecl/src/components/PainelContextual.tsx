@@ -7,6 +7,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { PlanoAula } from '../types';
 import { getAvisosPendentes } from '../backend';
 import { CentroAvisos } from './CentroAvisos';
