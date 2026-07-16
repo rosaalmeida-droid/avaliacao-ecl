@@ -69,7 +69,9 @@ export const REGRAS_POR_GRUPO: Record<GrupoCompetencia, RegrasGrupo> = {
 // ATT_ = atitude, outros = microcompetência técnica).
 export function classificarGrupoCompetencia(competenciaId: string): GrupoCompetencia {
   if (competenciaId.startsWith('OBR_')) return 'responsabilidade';
-  if (competenciaId.startsWith('ATT_')) return 'atitude';
+  // ATI- é o prefixo real usado pelas 22 competências atitudinais (compatECL ATITUDES_DETALHADAS)
+  // ATT_ mantido por compatibilidade com dados antigos
+  if (competenciaId.startsWith('ATI-') || competenciaId.startsWith('ATT_')) return 'atitude';
   return 'tecnica';
 }
 
