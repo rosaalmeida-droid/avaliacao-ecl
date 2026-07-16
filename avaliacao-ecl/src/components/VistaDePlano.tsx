@@ -452,9 +452,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   // ── Determinar ano do curso pela turma ─────────────────────
   const anoTurma = turmaId?.includes('1') ? 1 : turmaId?.includes('3') ? 3 : 2;
-  // Trimestre actual (simplificado por mês)
-  const mesActual = new Date().getMonth() + 1;
-  const trimestreActual = mesActual <= 4 ? 1 : mesActual <= 8 ? 3 : mesActual <= 12 ? 2 : 1;
+  // Trimestre actual — alinhado com calendário pedagógico ECL
+  const mesActual = new Date().getMonth() + 1; // 1=jan ... 12=dez
+  const trimestreActual: 1 | 2 | 3 = mesActual >= 9 ? 1 : mesActual <= 3 ? 2 : mesActual <= 6 ? 3 : 1;
+  // 1º Trimestre: set(9)-dez(12) | 2º Trimestre: jan(1)-mar(3) | 3º Trimestre: abr(4)-jun(6) | jul-ago → assume 1
   // Atitude do trimestre para este ano/turma
   const atitudesActivas = ATITUDES_DETALHADAS.filter(
     a => a.ano === anoTurma && a.trimestre === trimestreActual
