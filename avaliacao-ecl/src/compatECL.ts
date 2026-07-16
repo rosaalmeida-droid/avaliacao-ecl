@@ -111,9 +111,52 @@ export function inicializarCompat() {
     prioridade: (a.prioridade as any) || 'recorrente',
   }));
 
-  OBRIGATORIAS = lib.perfis
-    .filter(p => p.essencialidade === 'ESSENTIAL' && p.nivel === 1)
-    .map(p => perfilParaMicro(p, critMap[p.id] || []));
+  // OBRIGATÓRIAS são fixas — apenas 3 competências transversais sempre presentes
+  // NÃO são as microcompetências de resultado de produto da biblioteca
+  // OBRIGATÓRIAS — apenas 3 competências transversais fixas
+  OBRIGATORIAS = [
+    {
+      id: 'OBR_01',
+      nome: 'Higiene pessoal',
+      ucPrincipal: 'OBR',
+      ucNome: 'Competências Obrigatórias',
+      ucsRelacionadas: [],
+      categoria: 'OBR' as Categoria,
+      prioridade: 'A' as const,
+      criterios: [
+        { criterio: 'Fardamento completo: touca, avental, farda, sapatos de segurança.', como: 'Verificar visualmente antes de entrar na cozinha.' },
+        { criterio: 'Sem unhas postiças, fones ou adornos.', como: 'Verificar antes de iniciar a produção.' },
+        { criterio: 'Higiene das mãos realizada.', como: 'Registo no KitchenFlow — Higiene Pessoal.' },
+      ],
+    },
+    {
+      id: 'OBR_02',
+      nome: 'Higiene e Segurança Alimentar',
+      ucPrincipal: 'OBR',
+      ucNome: 'Competências Obrigatórias',
+      ucsRelacionadas: [],
+      categoria: 'OBR' as Categoria,
+      prioridade: 'A' as const,
+      criterios: [
+        { criterio: 'Temperaturas dos equipamentos registadas.', como: 'Registo no KitchenFlow — Temperaturas.' },
+        { criterio: 'Temperatura de serviço correcta.', como: 'Registo no KitchenFlow — Temperatura Serviço.' },
+        { criterio: 'Não conformidades registadas quando ocorrem.', como: 'Registo no KitchenFlow — Não Conformidades.' },
+      ],
+    },
+    {
+      id: 'OBR_03',
+      nome: 'Assiduidade e pontualidade',
+      ucPrincipal: 'OBR',
+      ucNome: 'Competências Obrigatórias',
+      ucsRelacionadas: [],
+      categoria: 'OBR' as Categoria,
+      prioridade: 'A' as const,
+      criterios: [
+        { criterio: 'Chegada a horas ou atraso justificado.', como: 'Registo de presença na entrada do plano.' },
+        { criterio: 'Presença durante toda a aula.', como: 'Verificar no final da aula.' },
+      ],
+    },
+  ];
 
   TECNICAS = lib.perfis.map(p => ({
     id: p.id,
