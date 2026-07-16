@@ -6,6 +6,7 @@ import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
+import { CriteriosComp } from './CriteriosComp';
 
 // Escala 1-4 alinhada com a autoavaliação do aluno
 // Escala 1-5 — cores de ardósia progressivas (neutras, sem verde/vermelho)
@@ -318,8 +319,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
               </div>
             )}
 
+            {/* Critérios observáveis do Dicionário — ajuda o professor a validar com precisão */}
+            <CriteriosComp compId={auto.competenciaId} cor="var(--sage)" />
+
             {/* Avaliação do professor (1-4) */}
-            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, color: 'rgba(26,23,20,0.5)' }}>
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, marginTop: 10, color: 'rgba(26,23,20,0.5)' }}>
               Avaliação do professor
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, marginBottom: notaFinal ? 8 : 0 }}>
