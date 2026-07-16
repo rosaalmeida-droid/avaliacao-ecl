@@ -232,6 +232,7 @@ function AppInterno() {
         vistaAtiva={vistaGlobal}
         onNavegar={irPara}
         nomeProfessor={nomeProfessor}
+        turmaId={turmaId}
         onSair={sair}
         syncStatus={syncStatus}
         onAtualizar={atualizarDados}
