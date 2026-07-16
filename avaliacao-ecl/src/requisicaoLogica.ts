@@ -499,7 +499,9 @@ export function processarIngrediente(
     const undLow2 = (undRaw || '').toLowerCase().trim();
     const qtGramas = ['g','gr','gramas'].includes(undLow2) ? qtNum2 : qtNum2 * 1000;
     if (qtGramas < 50 || isQB) {
-      return { produto, qtKg: 0, und: 'kg', isQB: true, excluir: true, avisos: ['despensa'], isDerivado: false, isPreparacao: false, perguntarProfessor: false };
+      // Q.b. ou quantidade pequena — incluir na requisição com qtKg=0 para o professor definir
+      // Não excluir: extrato de baunilha q.b. pode ser caro e deve aparecer
+      return { produto, qtKg: 0, und: isQB ? 'q.b.' : 'kg', isQB: true, excluir: false, avisos: isQB ? ['⚠️ Quantidade q.b. — define a quantidade necessária'] : ['despensa'], isDerivado: false, isPreparacao: false, perguntarProfessor: isQB };
     }
     // Quantidade grande (>50g) — incluir na requisição
     avisos.push('ℹ️ Quantidade elevada — verificar stock de despensa');
