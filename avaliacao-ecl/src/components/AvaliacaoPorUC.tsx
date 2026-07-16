@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, RegistoAvaliacao } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, RegistoAvaliacao, calcularBonusAssiduidadeUC } from '../backend';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
+import { calcularNotaPlano } from '../types';
 
 // ── Helpers ───────────────────────────────────────────────────
 function getNomeComp(id: string): string {
@@ -35,10 +36,13 @@ function formatarData(iso: string): string {
 
 // ── Trimestre actual ──────────────────────────────────────────
 function trimestreActual(): 1 | 2 | 3 {
-  const mes = new Date().getMonth() + 1;
-  if (mes >= 9 || mes <= 1) return 1;
-  if (mes <= 4) return 2;
-  return 3;
+  const mes = new Date().getMonth() + 1; // 1=jan ... 12=dez
+  // 1º Trimestre: set(9)-dez(12) | 2º Trimestre: jan(1)-mar(3) | 3º Trimestre: abr(4)-jun(6)
+  // jul-ago (férias): assume 1º trimestre (próximo período)
+  if (mes >= 9 && mes <= 12) return 1;
+  if (mes >= 1 && mes <= 3)  return 2;
+  if (mes >= 4 && mes <= 6)  return 3;
+  return 1; // jul-ago → próximo ano lectivo começa no 1º trimestre
 }
 
 function datasDoTrimestre(tri: 1 | 2 | 3, ano = 2026): { inicio: string; fim: string } {
@@ -95,10 +99,38 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
         ultima: rs.sort((a, b) => b.data.localeCompare(a.data))[0],
         todas: rs.sort((a, b) => b.data.localeCompare(a.data)),
       }));
+      // Calcular nota ponderada usando calcularNotaPlano com pesos por categoria
+      const planos = getPlanosAula();
+      const notasComCat = regs.map(r => {
+        const cat = r.microcompetenciaId?.startsWith('OBR_') ? 'OBR'
+          : r.microcompetenciaId?.startsWith('SUB-') || r.microcompetenciaId?.startsWith('APP-') ? 'SUB'
+          : r.microcompetenciaId?.startsWith('KNW-') ? 'KNW'
+          : r.microcompetenciaId?.startsWith('INI-') ? 'INI'
+          : 'ATI';
+        return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: r.nota };
+      });
+      // Tipo de plano mais comum nas avaliações deste aluno
+      const tiposPlano = regs.map(r => {
+        const p = planos.find(pl => pl.id === r.planoAulaId);
+        return (p as any)?.tipoPlanAula || 'pratico';
+      });
+      const tipoDominante = tiposPlano.filter(t => t === 'teorico').length > tiposPlano.length / 2
+        ? 'teorico' : tiposPlano.filter(t => t === 'misto').length > tiposPlano.length / 2
+        ? 'misto' : 'pratico';
+      const { nota20 } = notasComCat.length > 0
+        ? calcularNotaPlano(notasComCat, tipoDominante as 'pratico'|'misto'|'teorico')
+        : { nota20: 0 };
+      // Bónus de Assiduidade/Pontualidade/Fardamento (máx. 2 valores) — só faz
+      // sentido somar quando se está a ver UMA UC específica (filtroUC activo),
+      // porque o bónus é calculado por UC, não de forma genérica.
+      const bonus = filtroUC ? calcularBonusAssiduidadeUC(aluno.id, turmaId, filtroUC) : null;
+      const nota20ComBonus = bonus ? Math.min(20, nota20 + bonus.total) : nota20;
       return {
         aluno,
         comps,
-        mediaGeral: comps.length ? media(comps.map(c => c.media)) : 0,
+        mediaGeral: nota20ComBonus,
+        mediaGeralSemBonus: nota20,
+        bonus,
         total: regs.length,
         consolidadas: comps.filter(c => c.media >= 3).length,
         emRecuperacao: comps.filter(c => c.media < 3 && c.n > 0).length,
@@ -224,7 +256,7 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
           <div style={{ fontSize: 13, marginTop: 4 }}>Tenta seleccionar uma UC/UFCD diferente ou alargar o período</div>
         </div>
       ) : (
-        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao }) => {
+        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, bonus }) => {
           const aberto = vistaAluno === aluno.id;
           const { emoji, cor } = labelNota(mediaGeral);
           return (
@@ -247,7 +279,13 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
                 {mediaGeral > 0 && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{mediaGeral.toFixed(1)}</div>
-                    <div style={{ fontSize: 9, color: 'rgba(26,23,20,0.4)' }}>média /4</div>
+                    <div style={{ fontSize: 9, color: 'rgba(26,23,20,0.4)' }}>/20</div>
+                    {bonus && bonus.total > 0 && (
+                      <div style={{ fontSize: 9, color: 'var(--sage)', fontWeight: 700, marginTop: 2 }}
+                        title={`Pontualidade +${bonus.pontualidade} · Assiduidade +${bonus.assiduidade} · Farda +${bonus.fardamento} (${bonus.detalhe.faltas} faltas, ${bonus.detalhe.atrasos} atrasos, ${bonus.detalhe.fardaIncompleta} farda incompleta)`}>
+                        +{bonus.total} bónus
+                      </div>
+                    )}
                   </div>
                 )}
                 <span style={{ fontSize: 14, color: 'rgba(26,23,20,0.3)' }}>{aberto ? '▲' : '▼'}</span>
