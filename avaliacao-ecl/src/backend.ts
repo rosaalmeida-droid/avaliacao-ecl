@@ -2087,16 +2087,40 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   const historico = getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId);
   const evidencias = getEvidenciasPorAluno(alunoId);
 
-  // Agrupar por competência: pegar sempre no nível mais alto já demonstrado
-  // (consolidação não regride — ver ponto 29 do documento pedagógico).
+  // Passo 1 — dentro da MESMA aula (planoAulaId + competência), a nota do professor
+  // é sempre a autoritativa quando existe: substitui a nota provisória do aluno,
+  // em vez de disputar por "qual é mais alta". Ambas as notas ficam registadas no
+  // histórico (contam efetivamente), mas só uma entra na progressão por aula.
+  const porAula = new Map<string, { nota: number; validadoPor: string; data: string }>();
+  historico.forEach(r => {
+    const chave = `${r.planoAulaId}__${r.microcompetenciaId}`;
+    const actual = porAula.get(chave);
+    const ehProfessor = r.validadoPor === 'professor' || r.validadoPor === 'recuperacao';
+    if (!actual) {
+      porAula.set(chave, { nota: r.nota, validadoPor: r.validadoPor, data: r.data });
+    } else {
+      const actualEhProfessor = actual.validadoPor === 'professor' || actual.validadoPor === 'recuperacao';
+      // Professor substitui aluno; entre duas do professor, fica a mais recente.
+      if (ehProfessor && !actualEhProfessor) {
+        porAula.set(chave, { nota: r.nota, validadoPor: r.validadoPor, data: r.data });
+      } else if (ehProfessor === actualEhProfessor && r.data >= actual.data) {
+        porAula.set(chave, { nota: r.nota, validadoPor: r.validadoPor, data: r.data });
+      }
+    }
+  });
+
+  // Passo 2 — progressão ao longo do ano: entre aulas diferentes, mantém o nível
+  // mais alto já validado (consolidação não regride — ver ponto 29 do documento
+  // pedagógico), mas agora usando sempre a nota resolvida por aula (passo 1).
   const porCompetencia = new Map<string, { nivel: 0 | 1 | 2 | 3 | 4 | 5; origem: ItemPerfil['origem']; data: string }>();
 
-  historico.forEach(r => {
-    const nivel = notaParaNivel(r.nota);
-    const actual = porCompetencia.get(r.microcompetenciaId);
+  porAula.forEach((info, chave) => {
+    const competenciaId = chave.split('__')[1];
+    const nivel = notaParaNivel(info.nota);
+    const actual = porCompetencia.get(competenciaId);
     if (!actual || nivel > actual.nivel) {
-      porCompetencia.set(r.microcompetenciaId, {
-        nivel, origem: r.validadoPor === 'recuperacao' ? 'recuperacao' : 'aula', data: r.data,
+      porCompetencia.set(competenciaId, {
+        nivel, origem: info.validadoPor === 'recuperacao' ? 'recuperacao' : 'aula', data: info.data,
       });
     }
   });
@@ -2129,6 +2153,96 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   const areasADesenvolver = todos.filter(i => i.nivel <= 1).map(i => i.nome);
 
   return { alunoId, tecnicas, responsabilidades, atitudes, pontosFortes, areasADesenvolver };
+}
+
+
+// ── Sistema de pontos por regularidade — bónus KitchenFlow ─────
+// Conta dias distintos com registo de entrada (higiene) no KitchenFlow.
+// NOTA: usa apenas as presenças e evidências já sincronizadas localmente.
+// Para contar registos VOLUNTÁRIOS (além do obrigatório da ficha), é preciso
+// um endpoint novo no KitchenFlow (get_registos_aluno) que devolva todos os
+// registos do aluno, não só os ligados a uma ficha específica — a acrescentar
+// quando decidido.
+export interface PontosRegularidade {
+  pontos: number;
+  diasComRegisto: number;
+  nivel: 'sem_nivel' | 'bronze' | 'prata' | 'ouro';
+  proximoNivel: { nivel: string; faltam: number } | null;
+}
+
+export function calcularPontosRegularidade(alunoId: string): PontosRegularidade {
+  const presencas = getPresencas().filter(p => p.alunoId === alunoId);
+  // Dias distintos em que o aluno cumpriu o registo de entrada (higiene) — cada
+  // dia conta como 1 ponto de regularidade, com bónus extra se a farda estava completa.
+  const diasUnicos = new Set(presencas.map(p => p.data));
+  const diasComFardaCompleta = presencas.filter(p => p.fardamentoOk).length;
+
+  const pontos = diasUnicos.size + diasComFardaCompleta; // 1pt/dia + 1pt bónus farda completa
+
+  const NIVEIS: { nivel: PontosRegularidade['nivel']; min: number }[] = [
+    { nivel: 'ouro', min: 40 },
+    { nivel: 'prata', min: 20 },
+    { nivel: 'bronze', min: 8 },
+    { nivel: 'sem_nivel', min: 0 },
+  ];
+  const atual = NIVEIS.find(n => pontos >= n.min) || NIVEIS[NIVEIS.length - 1];
+  const idxAtual = NIVEIS.findIndex(n => n.nivel === atual.nivel);
+  const proximo = idxAtual > 0 ? NIVEIS[idxAtual - 1] : null;
+
+  return {
+    pontos,
+    diasComRegisto: diasUnicos.size,
+    nivel: atual.nivel,
+    proximoNivel: proximo ? { nivel: proximo.nivel, faltam: proximo.min - pontos } : null,
+  };
+}
+
+
+// ── Bónus de Assiduidade/Pontualidade/Fardamento por UC ─────────
+// Máximo 2 valores somados directamente à nota final da UC (acumulado ao
+// longo de todo o trimestre/ano nessa UC, não por aula):
+//   · 0.5 valores — Pontualidade (chegar a horas)
+//   · 0.5 valores — Assiduidade (não faltar)
+//   · 1.0 valor   — Fardamento (farda completa)
+// Cada aluno começa no máximo (2.0) e desce por cada falha. Os valores de
+// desconto por falha (abaixo) são um ponto de partida — ajustar livremente.
+const DESCONTO_POR_ATRASO = 0.1;   // por cada atraso registado
+const DESCONTO_POR_FALTA = 0.25;   // por cada aula da UC em que o aluno faltou
+const DESCONTO_POR_FARDA_INCOMPLETA = 0.1; // por cada aula com farda incompleta
+
+export interface BonusAssiduidadeUC {
+  pontualidade: number;    // 0 a 0.5
+  assiduidade: number;     // 0 a 0.5
+  fardamento: number;      // 0 a 1.0
+  total: number;           // 0 a 2.0 — somar directamente à nota /20
+  detalhe: { aulas: number; faltas: number; atrasos: number; fardaIncompleta: number };
+}
+
+export function calcularBonusAssiduidadeUC(alunoId: string, turmaId: string, ucId: string): BonusAssiduidadeUC {
+  const planosDaUC = getPlanosAulaPorTurma(turmaId)
+    .filter(p => p.ucId === ucId && p.estado !== 'rascunho');
+  const presencas = getPresencas().filter(p => p.alunoId === alunoId);
+
+  let faltas = 0, atrasos = 0, fardaIncompleta = 0;
+
+  planosDaUC.forEach(p => {
+    const pres = presencas.find(x => x.planoAulaId === p.id);
+    if (!pres || pres.presente === false) { faltas++; return; }
+    if (pres.atrasado) atrasos++;
+    if (!pres.fardamentoOk) fardaIncompleta++;
+  });
+
+  const pontualidade = Math.max(0, 0.5 - atrasos * DESCONTO_POR_ATRASO);
+  const assiduidade = Math.max(0, 0.5 - faltas * DESCONTO_POR_FALTA);
+  const fardamento = Math.max(0, 1.0 - fardaIncompleta * DESCONTO_POR_FARDA_INCOMPLETA);
+
+  return {
+    pontualidade: Math.round(pontualidade * 100) / 100,
+    assiduidade: Math.round(assiduidade * 100) / 100,
+    fardamento: Math.round(fardamento * 100) / 100,
+    total: Math.round((pontualidade + assiduidade + fardamento) * 100) / 100,
+    detalhe: { aulas: planosDaUC.length, faltas, atrasos, fardaIncompleta },
+  };
 }
 
 function getNomeCompetenciaGenerica(id: string): string {
