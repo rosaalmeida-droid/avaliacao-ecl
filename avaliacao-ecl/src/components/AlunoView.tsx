@@ -514,7 +514,12 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                     <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)',
                       textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
                       {planoHoje.horaInicio}–{planoHoje.horaFim}
-                      {planoHoje.ucNome && ` · ${planoHoje.ucNome}`}
+                      {planoHoje.ucNome && (
+                        <div style={{ fontSize:10, marginTop:2, opacity:0.8,
+                          whiteSpace:'normal', lineHeight:1.3 }}>
+                          {planoHoje.ucNome}
+                        </div>
+                      )}
                     </div>
                     <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
                       color:'#fff', marginBottom:16 }}>{planoHoje.titulo}</div>
@@ -684,11 +689,23 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
 }) {
   const [secAberta, setSecAberta] = React.useState<string>('orientacao');
-  const [orientacaoConcluida, setOrientacaoConcluida] = React.useState(false);
-  const [entradaConcluida, setEntradaConcluida] = React.useState(false);
-  const [fichaConcluida, setFichaConcluida] = React.useState(false);
-  const [guiaoConcluido, setGuiaoConcluido] = React.useState(false);
-  const [avaliacaoConcluida, setAvaliacaoConcluida] = React.useState(false);
+  // Estados persistentes — sobrevivem a saídas e reentradas do aluno no plano
+  const _key = (s: string) => `ecl_passo_${plano.id}_${aluno.id}_${s}`;
+  const _load = (s: string) => { try { return !!localStorage.getItem(_key(s)); } catch { return false; } };
+  const _save = (s: string) => { try { localStorage.setItem(_key(s), '1'); } catch {} };
+
+  const [orientacaoConcluida, setOrientacaoConcluida] = React.useState(() => _load('orientacao'));
+  const [entradaConcluida, setEntradaConcluida] = React.useState(() => {
+    // Verificar também nas presenças guardadas
+    const presencas = getPresencas();
+    const jaEntrou = presencas.some(p => p.alunoId === aluno.id && p.planoAulaId === plano.id);
+    return _load('entrada') || jaEntrou;
+  });
+  const [fichaConcluida, setFichaConcluida] = React.useState(() => _load('ficha'));
+  const [guiaoConcluido, setGuiaoConcluido] = React.useState(() => _load('guia'));
+  const [avaliacaoConcluida, setAvaliacaoConcluida] = React.useState(() => {
+    try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
+  });
 
   const fichas = getFichasPorPlano(plano.id);
   const requisicao = getRequisicaoPorPlano(plano.id);
@@ -846,20 +863,20 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
           <div style={{ flex:1, overflowY:'auto', padding:'14px 14px 80px' }}>
             {secAberta==='orientacao' && (
               <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno}
-                onContinuar={() => { setOrientacaoConcluida(true); setSecAberta('entrada'); }} />
+                onContinuar={() => { setOrientacaoConcluida(true); _save('orientacao'); setSecAberta('entrada'); }} />
             )}
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
-                onConcluido={() => { setEntradaConcluida(true); setSecAberta('ficha'); }} />
+                onConcluido={() => { setEntradaConcluida(true); _save('entrada'); setSecAberta('ficha'); }} />
             )}
             {secAberta==='ficha' && (
               <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
-                onConcluido={() => { setFichaConcluida(true);
+                onConcluido={() => { setFichaConcluida(true); _save('ficha');
                   setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : 'requisicao'); }} />
             )}
             {secAberta==='guia' && (
               <SecaoGuiao fichas={fichas} plano={plano}
-                onConcluido={() => { setGuiaoConcluido(true); setSecAberta('requisicao'); }} />
+                onConcluido={() => { setGuiaoConcluido(true); _save('guia'); setSecAberta('requisicao'); }} />
             )}
             {secAberta==='requisicao' && (
               <SecaoRequisicao requisicao={requisicao}
@@ -965,8 +982,9 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
             textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3 }}>Plano de hoje</div>
           <div style={{ fontSize:16, fontWeight:800, color:'#fff', lineHeight:1.25 }}>{plano.titulo}</div>
           {plano.ucId && <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginTop:3 }}>
-            {plano.ucId}{plano.ucNome ? ` — ${plano.ucNome}` : ''}
-            {plano.horaInicio && ` · ${plano.horaInicio}–${plano.horaFim}`}
+            {plano.ucId}
+            {plano.ucNome && <div style={{ fontSize:11, marginTop:1, opacity:0.75, whiteSpace:'normal', lineHeight:1.3 }}>{plano.ucNome}</div>}
+            {plano.horaInicio && <div style={{ fontSize:11, marginTop:1, opacity:0.75 }}>{plano.horaInicio}–{plano.horaFim}</div>}
           </div>}
         </div>
       </div>
@@ -1090,6 +1108,8 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
     Object.fromEntries(FARD_ITEMS.map(f => [f.id, null]))
   );
   const fardCompleto = Object.values(fardState).every(v => v !== null);
+  const fardTudoOk = Object.values(fardState).every(v => v === true);
+  const fardItensEmFalta = FARD_ITEMS.filter(f => fardState[f.id] === false).map(f => f.label);
   const entradaOk = pontVal !== null && fardCompleto;
 
   function calcularMinutosAtraso(): number {
@@ -1116,6 +1136,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id,
       presente: true, atrasado: pontVal==='atras',
       atrasadoMins: pontVal==='atras' ? calcularMinutosAtraso() : 0, fardamentoOk,
+      observacao: fardItensEmFalta.length > 0 ? `Farda incompleta: ${fardItensEmFalta.join(', ')}` : '',
     });
     // Enviar automaticamente para o KitchenFlow — o aluno não precisa de fazer nada
     const nomeAluno = aluno.nome || `Aluno ${aluno.numero}`;
@@ -1201,6 +1222,17 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
         </div>
       </div>
 
+      {/* Aviso farda incompleta — visível ao aluno, registado para o professor */}
+      {fardItensEmFalta.length > 0 && fardCompleto && (
+        <div style={{ margin:'0 0 10px', padding:'10px 14px', borderRadius:10,
+          background:'rgba(230,57,70,0.08)', border:'1px solid rgba(230,57,70,0.3)',
+          fontSize:13, color:'#e63946' }}>
+          ⚠️ Farda incompleta: <strong>{fardItensEmFalta.join(', ')}</strong>
+          <div style={{ fontSize:11, marginTop:4, color:'rgba(26,23,20,0.5)' }}>
+            O professor vai ser alertado. Corrige antes de iniciares a produção.
+          </div>
+        </div>
+      )}
       <div style={{ display:'flex', borderRadius:14, overflow:'hidden',
         cursor: entradaOk ? 'pointer' : 'not-allowed', opacity: entradaOk ? 1 : 0.45 }}
         onClick={entradaOk ? confirmar : undefined}>
