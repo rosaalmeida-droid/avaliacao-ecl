@@ -319,6 +319,7 @@ export interface FichaProducao {
   htmlCompleto?: string;
   criadoEm: string;
   atualizadoEm: string;
+  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
 }
 
 // --------------------------------------------------------
@@ -355,6 +356,7 @@ export interface PlanoAula {
   };
   criadoEm: string;
   atualizadoEm: string;
+  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
 }
 
 export interface Evidencia {
@@ -418,6 +420,7 @@ export interface RecuperacaoModulo {
   dataValidacao?: string;
   criadoEm: string;
   atualizadoEm: string;
+  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
 }
 
 export type ModoDistribuicaoFicha = 'todos' | 'grupo' | 'individual';
@@ -549,6 +552,7 @@ export interface MateriaPrimaCustom {
   aliases: string[];
   criadoEm: string;
   atualizadoEm: string;
+  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
 }
 
 export type CategoriaManual =
@@ -574,6 +578,7 @@ export interface EntradaManual {
   criadoPor: string;
   criadoEm: string;
   atualizadoEm: string;
+  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
 }
 
 export const CATEGORIAS_MANUAL: CategoriaManual[] = [
