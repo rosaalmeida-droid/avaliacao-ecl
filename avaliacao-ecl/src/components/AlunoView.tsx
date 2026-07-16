@@ -8,7 +8,7 @@ import {
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
-  sincronizarDoSheets,
+  sincronizarDoSheets, calcularPontosRegularidade,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -430,6 +430,21 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
               <div style={{ fontSize:13, color:'rgba(247,241,230,0.45)', marginTop:4 }}>
                 {aluno.ano}º ano · Nº {aluno.numero}
               </div>
+              {(() => {
+                const pr = calcularPontosRegularidade(aluno.id);
+                if (pr.nivel === 'sem_nivel') return null;
+                const EMOJI: Record<string,string> = { bronze:'🥉', prata:'🥈', ouro:'🥇' };
+                const LABEL: Record<string,string> = { bronze:'Bronze', prata:'Prata', ouro:'Ouro' };
+                return (
+                  <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:8,
+                    padding:'4px 10px', borderRadius:99, background:'rgba(247,241,230,0.12)' }}>
+                    <span style={{ fontSize:15 }}>{EMOJI[pr.nivel]}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'rgba(247,241,230,0.85)' }}>
+                      Regularidade {LABEL[pr.nivel]} · {pr.pontos} pts
+                    </span>
+                  </div>
+                );
+              })()}
               {aluno.nivelMedidas && aluno.nivelMedidas > 1 && (
                 <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6,
                   padding:'4px 12px', borderRadius:100,
@@ -1132,11 +1147,33 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   async function confirmar() {
     if (pontVal==='atras') incHist(`ecl_atrasos_${aluno.id}`);
     const fardamentoOk = Object.values(fardState).every(v => v===true);
+    const atrasoMins = pontVal==='atras' ? calcularMinutosAtraso() : 0;
     addRegistoPresenca({
       alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id,
       presente: true, atrasado: pontVal==='atras',
-      atrasadoMins: pontVal==='atras' ? calcularMinutosAtraso() : 0, fardamentoOk,
+      atrasadoMins: atrasoMins, fardamentoOk,
       observacao: fardItensEmFalta.length > 0 ? `Farda incompleta: ${fardItensEmFalta.join(', ')}` : '',
+    });
+    // Pontualidade e Fardamento são competências INDEPENDENTES — uma não substitui
+    // nem mascara a outra. Cada uma gera a sua própria nota, ambas pesam na categoria OBR.
+
+    // OBR_03 — Pontualidade — depende SÓ da hora de chegada, nunca da farda.
+    let notaPontualidade = 5;
+    if (pontVal === 'atras') notaPontualidade = atrasoMins >= 10 ? 2 : 3;
+    addRegistoAvaliacao({
+      id: `${plano.id}_${aluno.id}_pont_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
+      planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'OBR_03',
+      nota: notaPontualidade, data: new Date().toISOString(), validadoPor: 'aluno',
+    });
+
+    // OBR_01 — Higiene pessoal (inclui fardamento) — depende SÓ do estado da farda,
+    // nunca da pontualidade. Fardamento completo (8/8 itens) = 5; cada item em falta desce 1.
+    const itensEmFalta = fardItensEmFalta.length;
+    const notaFardamento = Math.max(1, 5 - itensEmFalta);
+    addRegistoAvaliacao({
+      id: `${plano.id}_${aluno.id}_farda_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
+      planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'OBR_01',
+      nota: notaFardamento, data: new Date().toISOString(), validadoPor: 'aluno',
     });
     // Enviar automaticamente para o KitchenFlow — o aluno não precisa de fazer nada
     const nomeAluno = aluno.nome || `Aluno ${aluno.numero}`;
