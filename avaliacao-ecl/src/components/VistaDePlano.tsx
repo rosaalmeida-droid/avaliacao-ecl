@@ -1072,8 +1072,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   {alunosDaTurma.map(a => {
                     const presente = presencasHoje.find((p: any) => p.alunoId === a.id);
                     return (
-                      <div key={a.id} style={{ padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: presente ? '#f0fdf4' : 'rgba(26,23,20,0.05)', color: presente ? '#15803d' : 'rgba(26,23,20,0.4)', border: `1px solid ${presente ? '#bbf7d0' : 'rgba(26,23,20,0.08)'}` }}>
-                        {presente ? '✓ ' : ''}{a.nome || a.id}{presente?.atrasado && <span style={{ color: '#dc2626' }}> ⚠</span>}
+                      <div key={a.id} style={{ padding: '6px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: presente ? (presente.fardamentoOk===false?'#fff7ed':'#f0fdf4') : 'rgba(26,23,20,0.05)', color: presente ? '#15803d' : 'rgba(26,23,20,0.4)', border: `1px solid ${presente ? (presente.fardamentoOk===false?'#fed7aa':'#bbf7d0') : 'rgba(26,23,20,0.08)'}` }}>
+                        <div style={{ fontWeight:700 }}>{presente ? '✓' : '—'} {a.nome || a.id}</div>
+                        {presente && (
+                          <div style={{ fontSize:10, marginTop:2, color: presente.atrasado ? '#dc2626' : '#15803d' }}>
+                            {presente.horaEntrada || ''}
+                            {presente.atrasado && ` · ${presente.atrasadoMins || '?'}min atraso`}
+                            {presente.fardamentoOk === false && <span style={{ color:'#dc2626' }}> · farda ⚠</span>}
+                            {presente.observacao && <div style={{ color:'#b5651d', fontSize:9 }}>{presente.observacao}</div>}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
