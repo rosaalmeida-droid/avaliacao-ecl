@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { publicarNoClassroom, getPlanosAulaPorTurma, addOrUpdatePlanoAula } from '../backend';
+import { publicarNoClassroom, getPlanosAulaPorTurma, addOrUpdatePlanoAula, getFichasProducao, getRequisicaoPorPlano } from '../backend';
 import { PlanoAula as TPlanoAula } from '../types';
 
 // ══════════════════════════════════════════════════════════════════
@@ -737,11 +737,43 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
     setPublicando(true);
     setMsg('A publicar no Classroom...');
     try {
+      // Encontrar planos de aula associados a este evento (via eventoId)
+      const planosDoEvento = getPlanosAulaPorTurma(turmaId)
+        .filter(p => p.eventoId === eventoAtual.id);
+
+      // Juntar as fichas técnicas (HTML já pronto, gerado quando a ficha foi guardada)
+      const todasFichas = getFichasProducao();
+      const fichasDoEvento = planosDoEvento
+        .flatMap(p => todasFichas.filter(f => f.planoAulaId === p.id));
+      const fichasHtml = fichasDoEvento.length > 0
+        ? fichasDoEvento.map(f => (f as any).htmlCompleto || '').filter(Boolean).join('\n<hr/>\n')
+        : '';
+
+      // Juntar os guiões de apoio (texto já gerado, guardado em textoGuia)
+      const guiaoHtml = fichasDoEvento.length > 0
+        ? fichasDoEvento.map(f => f.textoGuia || '').filter(Boolean).join('\n<hr/>\n')
+        : '';
+
+      // Juntar as requisições dos planos deste evento
+      const requisicoesDoEvento = planosDoEvento
+        .map(p => getRequisicaoPorPlano(p.id))
+        .filter((r): r is NonNullable<typeof r> => !!r);
+      const requisicaoHtml = requisicoesDoEvento.length > 0
+        ? requisicoesDoEvento.map(r =>
+            `<h3>Requisição — ${r.dataAula}</h3><ul>` +
+            r.linhas.map(l => `<li>${(l as any).produto || ''} — ${(l as any).qtEncomenda || ''} ${(l as any).und || ''}</li>`).join('') +
+            `</ul>`
+          ).join('\n<hr/>\n')
+        : '';
+
       const res = await publicarNoClassroom('evento', turmaId, {
         nomeEvento: eventoAtual.nome,
         data: eventoAtual.dias.map(d => d.data).join(', '),
         tarefas: eventoAtual.tarefas.filter(t => t.selecionada),
         relatorioHtml: gerarRelatorioHTML(eventoAtual, true),
+        fichasHtml,
+        guiaoHtml,
+        requisicaoHtml,
       });
       if (res.ok) {
         const nova = { ...eventoAtual, publicado: true };
