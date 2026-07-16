@@ -1,24 +1,60 @@
 import React, { useState } from 'react';
-import { SelecaoAluno, Validacao } from '../types';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
+import { SelecaoAluno, Validacao, calcularNotaPlano } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao } from '../backend';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
 
+// Escala 1-4 alinhada com a autoavaliação do aluno
+// Escala 1-5 — cores de ardósia progressivas (neutras, sem verde/vermelho)
 const NIVEIS_PROF = [
-  { v: 4,  label: 'Supera expectativas', cor: 'rgba(37,99,235,0.1)',  txt: 'var(--info)' },
-  { v: 3,  label: 'Atingiu',             cor: 'var(--sage-pale)',      txt: 'var(--sage)' },
-  { v: 2,  label: 'Em desenvolvimento',  cor: 'var(--copper-pale)',    txt: 'var(--copper)' },
-  { v: 1,  label: 'Não atingiu',         cor: 'var(--danger-pale)',    txt: 'var(--danger)' },
+  { v: 5, label: 'Faço com muito bom resultado',             cor: '#1e3a4a22', txt: '#1e3a4a' },
+  { v: 4, label: 'Faço sozinho/a',                           cor: '#3d5a6e22', txt: '#3d5a6e' },
+  { v: 3, label: 'Consegui com ajuda',                       cor: '#647a8a22', txt: '#647a8a' },
+  { v: 2, label: 'Tentei mas ainda preciso de mais prática', cor: '#96a4b022', txt: '#96a4b0' },
+  { v: 1, label: 'Ainda não fiz',                            cor: '#c8cfd622', txt: '#4a5568' },
 ];
 
-// Converter nota do professor (1-4) + autoavaliação aluno (0-1) → nota final (0-20)
+// Label do nível do aluno (vem da autoavaliação)
+function labelNivelAluno(nivel: string): string {
+  if (nivel === 'mbr' || nivel === 'autonomia' || nivel === 'superei') return 'Faço com muito bom resultado';
+  if (nivel === 'fs'  || nivel === 'sozinho'   || nivel === 'atingi')  return 'Faço sozinho/a';
+  if (nivel === 'ca'  || nivel === 'ajuda'     || nivel === 'desenvolvimento') return 'Consegui com ajuda';
+  if (nivel === 'tp')  return 'Tentei mas ainda preciso de mais prática';
+  if (nivel === 'nf'  || nivel === 'nao'       || nivel === 'nao_atingi') return 'Ainda não fiz';
+  return nivel;
+}
+
+function corNivelAluno(nivel: string): string {
+  if (nivel === 'autonomia' || nivel === 'superei')          return '#0369a1';
+  if (nivel === 'sozinho'   || nivel === 'atingi')           return 'var(--sage)';
+  if (nivel === 'ajuda'     || nivel === 'desenvolvimento')  return 'var(--copper)';
+  return 'var(--danger)';
+}
+
+// Nota final = média entre professor (1-4) e aluno (1-4)
 function calcularNotaFinal(notaProf: number, notaAluno: number): number {
-  // Max professor = 4, max aluno = 1, total = 5
-  // Escala: 5/5 = 20, 4/5 = 16, 3/5 = 12, 2/5 = 8, 1/5 = 4
-  const total = notaProf + notaAluno;
-  return Math.round((total / 5) * 20);
+  if (!notaAluno) return notaProf;
+  return Math.round(((notaProf + notaAluno) / 2) * 10) / 10;
+}
+
+// Conversão 1-4 → 0-20 (×5)
+function para20(n: number): number { return n > 0 ? Math.min(20, Math.round(n * 4)) : 0; }
+
+function labelNotaFinal(nota: number): string {
+  if (nota >= 4.5) return 'Excelente';
+  if (nota >= 3.5) return 'Muito Bom';
+  if (nota >= 3)   return 'Bom';
+  if (nota >= 2)   return 'Suficiente';
+  return 'Insuficiente';
+}
+
+function corNotaFinal(nota: number): string {
+  if (nota >= 3) return 'var(--sage)';
+  if (nota >= 2) return 'var(--copper)';
+  return 'var(--danger)';
 }
 
 export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?: string }) {
@@ -39,6 +75,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         planoTitulo={plano?.titulo || ''}
         ucId={plano?.ucId || ''}
         fichasNomes={fichas.map(f => f.nomePrato)}
+        tipoPlanAula={(plano as any)?.tipoPlanAula || 'pratico'}
         onVoltar={() => setAtiva(null)}
       />
     );
@@ -83,11 +120,12 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────
-function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
+function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula, onVoltar }: {
   selecao: SelecaoAluno;
   planoTitulo: string;
   ucId: string;
   fichasNomes: string[];
+  tipoPlanAula?: 'pratico' | 'misto' | 'teorico';
   onVoltar: () => void;
 }) {
   const [notasProf, setNotasProf] = useState<Record<string, number>>({});
@@ -122,12 +160,15 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
 
   function guardar() {
     const agora = new Date().toISOString();
-    const notasFinais = autoavaliacoes.map(auto => {
+    const notasFinais = autoavaliacoes.map((auto: any) => {
       const notaProf = notasProf[auto.competenciaId] || 2;
-      // Converter nível do aluno para nota numérica (0-1)
-      const notaAluno = auto.nivel === 'superei' ? 1
-        : auto.nivel === 'atingi' ? 0.75
-        : auto.nivel === 'desenvolvimento' ? 0.5 : 0.25;
+      // Nota do aluno em escala 1-5
+      const notaAluno = (auto as any).nota || (
+        auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
+        auto.nivel === 'fs'  || auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 4 :
+        auto.nivel === 'ca'  || auto.nivel === 'ajuda'     || auto.nivel === 'desenvolvimento' ? 3 :
+        auto.nivel === 'tp' ? 2 : 1
+      );
       const notaFinal = calcularNotaFinal(notaProf, notaAluno);
       return { competenciaId: auto.competenciaId, notaProf, notaAluno, notaFinal };
     });
@@ -150,6 +191,21 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
       validadoPor: 'professor',
       validadoEm: agora,
     };
+    // Calcular nota ponderada com pesos por categoria
+    const notasComCat = notasFinais.map(n => {
+      const cat = n.competenciaId?.startsWith('OBR_') ? 'OBR'
+        : n.competenciaId?.startsWith('SUB-') || n.competenciaId?.startsWith('APP-') ? 'SUB'
+        : n.competenciaId?.startsWith('KNW-') ? 'KNW'
+        : n.competenciaId?.startsWith('INI-') ? 'INI'
+        : 'ATI';
+      return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.notaFinal };
+    });
+    const { nota20 } = calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
+    const notaMedia = notasFinais.length
+      ? notasFinais.reduce((s, n) => s + n.notaFinal, 0) / notasFinais.length
+      : 0;
+    (validacao as any).notaMedia = Math.round(notaMedia * 10) / 10;
+    (validacao as any).notaMedia20 = nota20; // usa pesos por categoria, não média simples
     addOrUpdateValidacao(validacao as any);
 
     // Registar no histórico de avaliações
@@ -210,12 +266,17 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
         const _isKnw = auto.competenciaId.startsWith('KNW-');
         const _app = _isApp ? encontrarAparelho(auto.competenciaId) : null;
         const notaProf = notasProf[auto.competenciaId];
-        const notaAlunoPct = auto.nivel === 'superei' ? 1 : auto.nivel === 'atingi' ? 0.75 : auto.nivel === 'desenvolvimento' ? 0.5 : 0.25;
-        const notaFinal = notaProf ? calcularNotaFinal(notaProf, notaAlunoPct) : null;
+        // Usar nota 1-4 directamente (novo sistema), com fallback para labels antigos
+        const notaAluno14 = (auto as any).nota || (
+          auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 4 :
+          auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 3 :
+          auto.nivel === 'ajuda'     || auto.nivel === 'desenvolvimento' ? 2 : 1
+        );
+        const notaFinal = notaProf ? calcularNotaFinal(notaProf, notaAluno14) : null;
 
-        // Cor do nível do aluno
-        const corAluno = auto.nivel === 'superei' || auto.nivel === 'atingi' ? 'var(--sage)' : auto.nivel === 'desenvolvimento' ? 'var(--copper)' : 'var(--danger)';
-        const labelAluno = auto.nivel === 'superei' ? 'Faço com segurança' : auto.nivel === 'atingi' ? 'Consigo sozinho/a' : auto.nivel === 'desenvolvimento' ? 'Consigo com ajuda' : 'Ainda não consigo';
+        // Cor e label do nível do aluno — suporta escala nova e antiga
+        const corAluno = corNivelAluno((auto as any).nivel || '');
+        const labelAluno = labelNivelAluno((auto as any).nivel || '');
 
         return (
           <div key={auto.competenciaId} style={{ marginBottom: 10, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
@@ -277,14 +338,19 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, onVoltar }: {
 
             {/* Nota final calculada */}
             {notaFinal !== null && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: notaFinal >= 12 ? 'var(--sage-pale)' : 'var(--danger-pale)', borderRadius: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: notaFinal >= 3 ? 'var(--sage-pale)' : notaFinal >= 2 ? 'var(--copper-pale)' : 'var(--danger-pale)', borderRadius: 8 }}>
                 <span style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>Nota final:</span>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: notaFinal >= 12 ? 'var(--sage)' : 'var(--danger)' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: corNotaFinal(notaFinal) }}>
                   {notaFinal}
                 </span>
+                <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/4</span>
+                <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)', marginLeft: 8 }}>→</span>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: corNotaFinal(notaFinal), marginLeft: 4 }}>
+                  {para20(notaFinal)}
+                </span>
                 <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/20</span>
-                <span style={{ fontSize:13, marginLeft: 'auto', color: notaFinal >= 12 ? 'var(--sage)' : 'var(--danger)', fontWeight: 600 }}>
-                  {notaFinal >= 17 ? 'Excelente' : notaFinal >= 14 ? 'Bom' : notaFinal >= 12 ? 'Suficiente' : 'Insuficiente'}
+                <span style={{ fontSize:13, marginLeft: 'auto', color: corNotaFinal(notaFinal), fontWeight: 600 }}>
+                  {labelNotaFinal(notaFinal)}
                 </span>
               </div>
             )}
