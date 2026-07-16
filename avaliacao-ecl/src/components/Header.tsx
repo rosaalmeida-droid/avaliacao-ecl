@@ -11,11 +11,18 @@ function calcularAnoLetivo(): { anoLetivo: string; semestre: string; percentagem
   const decorrido = Math.max(0, Math.min(hoje.getTime() - inicio.getTime(), total));
   const pct = Math.round((decorrido / total) * 100);
   const mes = hoje.getMonth(); // 0=jan
-  const semestre = (mes >= 8 || mes === 0) ? '1º Semestre' : '2º Semestre';
+  // Trimestres pedagógicos reais ECL
+  // 1º Trimestre: set(8)-dez(11) | 2º Trimestre: jan(0)-mar(2) | 3º Trimestre: abr(3)-jun(5)
+  // Fora do ano lectivo: jul(6)-ago(7)
+  let periodo: string;
+  if (mes >= 8 && mes <= 11)      periodo = '1º Trimestre em curso';
+  else if (mes >= 0 && mes <= 2)  periodo = '2º Trimestre em curso';
+  else if (mes >= 3 && mes <= 5)  periodo = '3º Trimestre em curso';
+  else                             periodo = 'Férias de Verão';
   return {
     anoLetivo: '2026/27',
-    semestre: `${semestre} em curso`,
-    percentagem: pct,
+    semestre: periodo,
+    percentagem: pct < 0 ? 0 : pct > 100 ? 100 : pct,
   };
 }
 import { Perfil } from '../types';
@@ -80,10 +87,11 @@ const NAV: NavItem[] = [
 ];
 
 // ── Sidebar ────────────────────────────────────────────────────
-function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, onSair, aberta, isMobile, onFechar }: {
+function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta, isMobile, onFechar }: {
   vistaAtiva: VistaProf;
   onNavegar: (v: VistaProf) => void;
   nomeProfessor: string;
+  turmaId?: string;
   onSair: () => void;
   aberta: boolean;
   isMobile: boolean;
@@ -174,6 +182,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, onSair, aberta, isMobil
             const al = calcularAnoLetivo();
             return (<>
               <div style={{ color: WHITE, fontSize: 12, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Lectivo {al.anoLetivo}</div>
+              {turmaId && <div style={{ color: WHITE, fontSize: 13, fontWeight: 800, marginBottom: 2 }}>🏫 {turmaId}</div>}
               <div style={{ color: SIDEBAR_TXT, fontSize: 11, marginBottom: 8 }}>{al.semestre}</div>
               <div style={{ height: 5, background: 'rgba(255,255,255,0.15)', borderRadius: 99, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${al.percentagem}%`, background: WHITE, borderRadius: 99, transition: 'width 0.4s' }} />
@@ -298,10 +307,11 @@ export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus, o
 }
 
 // ── Layout completo do professor ────────────────────────────────
-export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, syncStatus, onAtualizar, contextoPainel, children }: {
+export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, syncStatus, onAtualizar, contextoPainel, children }: {
   vistaAtiva: VistaProf;
   onNavegar: (v: VistaProf) => void;
   nomeProfessor: string;
+  turmaId?: string;
   onSair: () => void;
   syncStatus?: 'idle' | 'syncing' | 'ok' | 'offline';
   onAtualizar?: () => void;
@@ -326,6 +336,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, onSair, 
         vistaAtiva={vistaAtiva}
         onNavegar={onNavegar}
         nomeProfessor={nomeProfessor}
+        turmaId={turmaId}
         onSair={onSair}
         aberta={aberta}
         isMobile={isMobile}
