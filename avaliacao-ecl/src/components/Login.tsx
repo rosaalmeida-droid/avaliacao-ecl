@@ -13,7 +13,8 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
   const [modo, setModo] = useState<Perfil | null>(null);
   const [turmaId, setTurmaId] = useState(getTurmas()[0]?.id || '');
   const [numero, setNumero] = useState('');
-  const [ano, setAno] = useState<1 | 2 | 3>(1);
+  // Ano derivado automaticamente da turma — 1º ACP=1, 2º ACP=2, 3º ACP=3
+  const ano: 1 | 2 | 3 = turmaId.startsWith('1') ? 1 : turmaId.startsWith('2') ? 2 : 3;
   const [pinAluno, setPinAluno] = useState('');
   const [pin, setPin] = useState('');
   const [nomeProfessor, setNomeProfessor] = useState('');
@@ -23,10 +24,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
   const turmas = getTurmas();
 
   // Detecta se o aluno já tem PIN definido (primeiro acesso vs. regresso)
-  const alunoExistente = numero
-    ? getAlunos().find(a => a.id === `${turmaId}-${numero}`)
-    : undefined;
-  const primeiroAcesso = !alunoExistente?.pin;
+
 
   async function entrarAluno() {
     setErro('');
@@ -105,28 +103,9 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
               <Field label="Número de aluno">
                 <input className="input" type="number" value={numero} onChange={e => setNumero(e.target.value)} placeholder="ex: 12" />
               </Field>
-              <Field label="Ano do curso">
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {[1, 2, 3].map(a => (
-                    <button key={a} type="button" className={`chip${ano === a ? ' selected' : ''}`} onClick={() => setAno(a as 1 | 2 | 3)}>
-                      {a}º ano
-                    </button>
-                  ))}
-                </div>
-              </Field>
 
-              {/* Mensagem diferente conforme primeiro acesso ou regresso */}
-              {numero && (
-                <div style={{ padding: '8px 12px', borderRadius: 8, fontSize: 12, marginBottom: 8,
-                  background: primeiroAcesso ? 'var(--copper-pale)' : 'var(--sage-pale)',
-                  color: primeiroAcesso ? 'var(--copper)' : 'var(--sage)' }}>
-                  {primeiroAcesso
-                    ? '✦ Primeiro acesso — escolhe um PIN de 4 dígitos. Vai ser sempre o teu.'
-                    : '✓ Bem-vindo/a de volta! Introduz o teu PIN.'}
-                </div>
-              )}
 
-              <Field label={primeiroAcesso ? 'Escolhe um PIN (4 dígitos)' : 'PIN pessoal'}>
+              <Field label="PIN pessoal (4 dígitos)">
                 <input
                   className="input"
                   type="password"
@@ -141,7 +120,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
 
               {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
               <Button block onClick={entrarAluno} disabled={loading}>
-                {loading ? 'A verificar...' : primeiroAcesso ? 'Criar PIN e Entrar' : 'Entrar'}
+                {loading ? 'A verificar...' : 'Entrar'}
               </Button>
             </>
           )}
