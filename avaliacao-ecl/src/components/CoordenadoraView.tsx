@@ -825,7 +825,7 @@ function GestaoAlunosTab() {
                 </div>
                 {aluno.pin ? (
                   <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>
-                    🔑 PIN definido
+                    🔑 PIN: <span style={{ fontFamily:'monospace', fontWeight:700, color:'#1a1714', letterSpacing:2 }}>{aluno.pin}</span>
                     {aluno.pinCriadoEm && ` · criado ${fmtData(aluno.pinCriadoEm)} às ${new Date(aluno.pinCriadoEm).toLocaleTimeString('pt-PT', {hour:'2-digit',minute:'2-digit'})}`}
                     {aluno.pinAlteradoEm && ` · alterado ${fmtData(aluno.pinAlteradoEm)}`}
                   </div>
