@@ -3746,29 +3746,32 @@
   {
     "id": "SUB-CHU-046-001",
     "tecnica_id": "TEC-CHU-046",
-    "nome": "Cozer em banho-maria — Aplicação base",
-    "definicao": "Cozer em banho-maria executado como aplicação base, com controlo do processo.",
+    "nome": "Fundir/aquecer em banho-maria",
+    "definicao": "Aquecimento indirecto através de banho-maria — usado para fundir chocolate, manteiga, ou aquecer preparados delicados sem contacto directo com o calor.",
     "ambito": "Aplicável quando a ficha técnica identifica esta operação.",
-    "resultado_esperado": "Resultado observável correspondente a cozer em banho-maria.",
-    "fontes": "SRC-001; SRC-002; SRC-003"
+    "resultado_esperado": "Produto fundido ou aquecido uniformemente sem queimar, com temperatura controlada (chocolate: 45-50°C; creme: até 82°C).",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "nome_fr": "Fondre/chauffer au bain-marie"
   },
   {
     "id": "SUB-CHU-046-002",
     "tecnica_id": "TEC-CHU-046",
-    "nome": "Cozer em banho-maria — Aplicação controlada",
-    "definicao": "Cozer em banho-maria executado como aplicação controlada, com controlo do processo.",
+    "nome": "Fundir/aquecer em banho-maria",
+    "definicao": "Aquecimento indirecto através de banho-maria — usado para fundir chocolate, manteiga, ou aquecer preparados delicados sem contacto directo com o calor.",
     "ambito": "Aplicável quando a ficha técnica identifica esta operação.",
-    "resultado_esperado": "Resultado observável correspondente a cozer em banho-maria.",
-    "fontes": "SRC-001; SRC-002; SRC-003"
+    "resultado_esperado": "Produto fundido ou aquecido uniformemente sem queimar, com temperatura controlada (chocolate: 45-50°C; creme: até 82°C).",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "nome_fr": "Fondre/chauffer au bain-marie"
   },
   {
     "id": "SUB-CHU-046-003",
     "tecnica_id": "TEC-CHU-046",
-    "nome": "Cozer em banho-maria — Aplicação em contexto de produção",
-    "definicao": "Cozer em banho-maria executado como aplicação em contexto de produção, com controlo do processo.",
+    "nome": "Fundir/aquecer em banho-maria",
+    "definicao": "Aquecimento indirecto através de banho-maria — usado para fundir chocolate, manteiga, ou aquecer preparados delicados sem contacto directo com o calor.",
     "ambito": "Aplicável quando a ficha técnica identifica esta operação.",
-    "resultado_esperado": "Resultado observável correspondente a cozer em banho-maria.",
-    "fontes": "SRC-001; SRC-002; SRC-003"
+    "resultado_esperado": "Produto fundido ou aquecido uniformemente sem queimar, com temperatura controlada (chocolate: 45-50°C; creme: até 82°C).",
+    "fontes": "SRC-001; SRC-002; SRC-003",
+    "nome_fr": "Fondre/chauffer au bain-marie"
   },
   {
     "id": "SUB-CSE-049-001",
