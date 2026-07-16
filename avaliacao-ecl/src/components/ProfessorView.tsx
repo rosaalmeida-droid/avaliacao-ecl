@@ -1352,6 +1352,153 @@ APP-0009 — Creme pasteleiro (Nível 1)
 ${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu conhecimento culinário e aplica todas as regras acima.'}`;
 }
 
+// ══════════════════════════════════════════════════════════════
+// PROMPT UNIFICADO — Ficha Técnica + Guião numa só chamada à IA
+// O professor cola o link uma vez e recebe os dois documentos
+// ══════════════════════════════════════════════════════════════
+function gerarPromptUnificado(linkReceita: string, ucId?: string, ucNome?: string, modoProf?: boolean): string {
+  const ucContexto = ucId
+    ? `\nCONTEXTO PEDAGÓGICO: Esta ficha pertence à UC ${ucId} — ${ucNome || ''}.\nAs técnicas, famílias e competências devem ser específicas desta UC.`
+    : '';
+
+  const blocoProf = modoProf ? `
+
+═══════════════════════════════════════════════════
+MODO PROFISSIONAL — LÊ ANTES DE TUDO O RESTO
+═══════════════════════════════════════════════════
+Esta ficha é para uma cozinha pedagógica profissional de nível Secundário (Curso Profissional).
+Usa o link como INSPIRAÇÃO — não como receita literal a copiar.
+Eleva para nível profissional: técnicas clássicas, cortes com nomenclatura correcta, empratamento profissional.
+Caldos: NUNCA usar cubos — sempre "produzidos em aula".
+Massas base: colocar como ingrediente + nota "⚠️ Produzir em aula — criar Ficha Técnica separada".
+` : '';
+
+  return `Vais gerar DOIS DOCUMENTOS numa só resposta: a Ficha Técnica e o Guião de Apoio à Produção.
+Separa os dois com o marcador exacto: ===GUIÃO===
+${ucContexto}${blocoProf}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DOCUMENTO 1 — FICHA TÉCNICA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REGRAS ABSOLUTAS:
+- NUNCA usar HTML: proibido <br>, <b>, <table>, etc.
+- Todas as frases terminam com ponto final
+- Unidades: GRAMAS (g) ou MILILITROS (ml) — excepção: OVOS em "un"
+- Caldos/fundos: sempre "produzidos em aula"
+- Formato exacto de cada secção abaixo
+
+NOME DO PRATO
+[nome em português, título case]
+
+FAMÍLIA
+[escolher UMA: Sopas e Cremes | Entradas Frias | Entradas Quentes | Peixes | Mariscos e Moluscos | Carnes | Caça e Miudezas | Massas e Cereais | Ovos | Legumes e Hortícolas | Saladas | Pastelaria | Panificação | Gelados e Sobremesas Frias | Petit Fours e Chocolates]
+
+CLASSIFICAÇÃO
+[Entrada | Prato Principal | Sobremesa | Acompanhamento | Snack]
+
+DOSES
+[número inteiro]
+
+TEMPO PREPARAÇÃO
+[em minutos, ex: 30 min]
+
+TEMPO CONFEÇÃO
+[em minutos, ex: 45 min]
+
+INGREDIENTES
+Componente | Produto | Quantidade | Unidade | T.Prep | T.Conf | Observações
+[uma linha por ingrediente, usar | como separador]
+
+PREPARAÇÃO
+[Nº] | [Descrição do passo — terminologia profissional] | [Temperatura °C ou "—"] | [Tempo ou "—"] | [Observações/HACCP ou "—"]
+[um passo por linha]
+
+EMPRATAMENTO
+[descrição do empratamento profissional — elemento de altura, molho, guarnição]
+
+ALERGÉNICOS
+[lista separada por vírgulas: Glúten | Ovos | Laticínios | Frutos de casca rija | Peixe | Crustáceos | Soja | Aipo | Mostarda | Sésamo | Sulfitos | Tremoços | Moluscos]
+
+CONSERVAÇÃO
+[instruções de conservação com temperatura e prazo]
+
+REGENERAÇÃO
+[instruções de regeneração, ou "Consumir no próprio dia"]
+
+REGISTOS KITCHENFLOW
+[lista de registos obrigatórios — formato: REGISTO | PRODUTO | MOTIVO — um por linha]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUBTÉCNICAS — identificadas a partir da preparação
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REGRA CRÍTICA: só listar subtécnicas que correspondem a operações EXPLICITAMENTE descritas
+nos passos de PREPARAÇÃO acima. NÃO sugerir cortes ou técnicas que não aparecem na preparação.
+Máximo 6. Se não existirem, escrever "nenhuma".
+
+LISTA DE SUBTÉCNICAS DISPONÍVEIS (usa ID exacto):
+CORTES (COR-030): SUB-COR-030-001 Juliana | SUB-COR-030-002 Brunoise | SUB-COR-030-003 Mirepoix | SUB-COR-030-004 Paysanne | SUB-COR-030-005 Chiffonade | SUB-COR-030-006 Bâtonnet | SUB-COR-030-007 Jardineira | SUB-COR-030-008 Macedónia | SUB-COR-030-009 Rodelas | SUB-COR-030-010 Meias-luas | SUB-COR-030-011 Gomos | SUB-COR-030-012 Cubos pequenos | SUB-COR-030-013 Cubos médios | SUB-COR-030-019 Concassé de tomate | SUB-COR-030-020 Ciselar cebola | SUB-COR-030-021 Escalopes | SUB-COR-030-022 Medalhões | SUB-COR-030-023 Supremos
+COZEDURA HÚMIDA (CHU): SUB-CHU-041-003 Fervura suave | SUB-CHU-041-004 Fervura controlada | SUB-CHU-041-006 Cozer por absorção | SUB-CHU-041-007 Cozer massa al dente | SUB-CHU-041-008 Cozer arroz solto | SUB-CHU-041-009 Cozer arroz cremoso | SUB-CHU-041-010 Cozer leguminosas | SUB-CHU-041-011 Cozer tubérculos para puré | SUB-CHU-041-013 Cozer crustáceos | SUB-CHU-041-014 Cozer moluscos | SUB-CHU-041-016 Cozer caldo/fundo | SUB-CHU-042-001 Escaldar | SUB-CHU-043-001 Branquear | SUB-CHU-044-001 Escalfar | SUB-CHU-045-001 Cozer a vapor | SUB-CHU-046-001 Fundir/aquecer em banho-maria
+CALOR SECO (CSE): SUB-CSE-047-001 Assar peça bovina | SUB-CSE-047-002 Assar peça suína | SUB-CSE-047-003 Assar ave inteira | SUB-CSE-047-004 Assar peças de ave | SUB-CSE-047-006 Assar peixe inteiro | SUB-CSE-047-007 Assar filetes de peixe | SUB-CSE-047-008 Assar hortícolas | SUB-CSE-047-009 Assar tubérculos | SUB-CSE-047-010 Assar bolo amanteigado | SUB-CSE-047-011 Assar pão-de-ló | SUB-CSE-047-012 Assar massa quebrada | SUB-CSE-047-013 Assar massa folhada | SUB-CSE-047-014 Assar massa choux | SUB-CSE-048-001 Grelhar bife bovino fino | SUB-CSE-048-002 Grelhar bife bovino espesso | SUB-CSE-048-006 Grelhar peito de frango | SUB-CSE-048-008 Grelhar peixe inteiro | SUB-CSE-048-009 Grelhar filete de peixe | SUB-CSE-048-011 Grelhar legumes | SUB-CSE-051-001 Gratinar
+GORDURA (GCM): SUB-GCM-055-001 Fritura profunda | SUB-GCM-055-002 Fritura rasa | SUB-GCM-055-003 Dupla fritura | SUB-GCM-055-006 Fritura de peixe panado | SUB-GCM-055-007 Fritura de peixe em polme | SUB-GCM-055-009 Fritura de carne panada | SUB-GCM-055-010 Fritura de legumes | SUB-GCM-055-013 Fritura de pastelaria
+MOLHOS E LIGAÇÕES (MOL): SUB-MOL-067-001 Roux branco | SUB-MOL-067-002 Roux louro | SUB-MOL-067-003 Roux escuro | SUB-MOL-067-005 Amido disperso a frio | SUB-MOL-067-007 Ligação com gema | SUB-MOL-067-008 Ligação com natas | SUB-MOL-067-010 Ligação por redução | SUB-MOL-067-014 Gelatinização de amido em creme pasteleiro | SUB-MOL-067-015 Ligação de velouté | SUB-MOL-067-016 Ligação de béchamel | SUB-MOL-068-002 Maionese | SUB-MOL-068-004 Molho holandês | SUB-MOL-068-007 Ganache
+PASTELARIA — BATER (PAP-075): SUB-PAP-075-001 Bater ovos inteiros | SUB-PAP-075-002 Bater gemas com açúcar | SUB-PAP-075-003 Montar claras em espuma mole | SUB-PAP-075-004 Montar claras em espuma firme | SUB-PAP-075-005 Montar natas macias | SUB-PAP-075-006 Montar natas firmes | SUB-PAP-075-007 Bater massa de bolo amanteigado | SUB-PAP-075-008 Bater pão-de-ló quente | SUB-PAP-075-009 Bater pão-de-ló frio | SUB-PAP-076-001 Cremagem manteiga-açúcar
+PASTELARIA — MASSAS (PAP-078): SUB-PAP-078-001 Amassadura curta de massa quebrada | SUB-PAP-078-005 Amassadura directa de pão | SUB-PAP-078-008 Amassadura de brioche | SUB-PAP-079-005 Dobra de massa folhada simples | SUB-PAP-079-006 Dobra de massa folhada dupla | SUB-PAP-080-001 Abrir massa quebrada | SUB-PAP-080-004 Laminar massa folhada clássica | SUB-PAP-080-008 Laminar massa filo | SUB-PAP-081-001 Massa choux clássica
+PASTELARIA — CARAMELO E CHOCOLATE (PAP-086/087): SUB-PAP-086-001 Caramelo seco | SUB-PAP-086-002 Caramelo húmido | SUB-PAP-086-003 Caramelo claro | SUB-PAP-086-004 Caramelo âmbar | SUB-PAP-086-008 Caramelização com maçarico | SUB-PAP-087-001 Temperagem por tablage | SUB-PAP-087-002 Temperagem por semeadura
+
+SUBTÉCNICAS DETECTADAS:
+[ID — Nome, uma por linha | só as que aparecem nos passos acima | máximo 6 | ou "nenhuma"]
+
+APARELHOS DETECTADOS:
+[APP-xxxx — Nome (Nível N), uma por linha | só se o aluno PRODUZ o aparelho nesta receita | ou "nenhum"]
+
+===GUIÃO===
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DOCUMENTO 2 — GUIÃO DE APOIO À PRODUÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Gera um Guia de Apoio à Produção completo para a ficha técnica que acabaste de criar.
+Usa EXACTAMENTE os mesmos ingredientes e preparação do Documento 1.
+Destina-se a alunos de 14-18 anos do Curso Profissional de Cozinha e Pastelaria.
+
+ESTRUTURA OBRIGATÓRIA DO GUIÃO:
+
+## 1. MISE EN PLACE
+Tabela: Material | Ingredientes a pesar/preparar | Pré-aquecimentos
+Tudo o que o aluno deve ter pronto antes de começar a produção.
+
+## 2. FLUXO DE PRODUÇÃO
+Sequência cronológica dos passos com tempo estimado por passo.
+Formato: PASSO N (X min) — [descrição técnica detalhada]
+Incluir temperatura exacta, indicadores visuais e sensoriais ("até dourar", "até atingir 85°C").
+Alertas HACCP em cada passo crítico: ⚠️ PCC: [descrição]
+
+## 3. PONTOS CRÍTICOS (HACCP)
+Tabela: PCC | Perigo | Limite crítico | Acção correctiva
+
+## 4. TÉCNICAS-CHAVE
+Para cada subtécnica identificada no Documento 1:
+- Nome da técnica e descrição precisa do gesto
+- Erros comuns e como evitá-los
+- Indicador de sucesso observável
+
+## 5. CONTEXTO E CULTURA
+[português ou internacional conforme o prato — factos concretos, não genéricos]
+
+## 6. VOCABULÁRIO TÉCNICO
+Glossário: Termo | Definição | Exemplo nesta receita
+
+## RESUMO FINAL
+Bullets curtos dos pontos-chave para revisão antes da aula prática.
+
+---
+${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Usa o teu conhecimento culinário e aplica todas as regras acima.'}`;
+}
+
+
+
 // ── Código que estava fora do template (removido) ──
 
 
@@ -1819,6 +1966,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
   const [copiadoFicha, setCopiadoFicha] = useState(false);
   const [copiadoGuia, setCopiadoGuia] = useState(false);
   const [modoProf, setModoProf] = useState(false); // modo profissional — eleva técnicas
+  const promptUnificado = gerarPromptUnificado(link, ucId, ucNome, modoProf);
 
   // Prompts calculados em tempo real
   const promptFicha = gerarPrompt(link, ucId, ucNome, modoProf);
@@ -1860,9 +2008,25 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
       return;
     }
     try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
-    const textoFinal = textoManual.includes('NOME DO PRATO:')
-      ? textoManual
-      : (nomePrato ? nomePrato + '\n' : '') + textoManual;
+
+    // ── Prompt unificado: separar Ficha + Guião pelo marcador ===GUIÃO===
+    const separador = '===GUIÃO===';
+    let textoFicha = textoManual;
+    let textoGuiaoExtraido = '';
+    if (textoManual.includes(separador)) {
+      const partes = textoManual.split(separador);
+      textoFicha = partes[0].trim();
+      textoGuiaoExtraido = partes.slice(1).join(separador).trim();
+    }
+
+    const textoFinal = textoFicha.includes('NOME DO PRATO:')
+      ? textoFicha
+      : (nomePrato ? nomePrato + '\n' : '') + textoFicha;
+
+    // Guardar o guião extraído para ser associado à ficha depois de guardar
+    if (textoGuiaoExtraido) {
+      try { localStorage.setItem('ecl_guiao_pendente', textoGuiaoExtraido); } catch {}
+    }
     onContinuar(textoFinal, link);
   }
 
@@ -1914,25 +2078,16 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           </div>
         )}
 
-        <SeletorIA prompt={promptFicha} />
+        <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(90,122,78,0.06)',
+          border:'1px solid rgba(90,122,78,0.15)', marginBottom:10, fontSize:12, color:'var(--sage)' }}>
+          ✨ <strong>Prompt unificado</strong> — a IA gera a Ficha Técnica e o Guião de Apoio numa só resposta.
+          Cola o resultado na app: primeiro o bloco da Ficha, depois o bloco do Guião (separados por ===GUIÃO===).
+        </div>
+        <SeletorIA prompt={promptUnificado} corPrincipal="var(--copper)" />
         <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:12 }}
-          onClick={() => copiarTexto(promptFicha, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
-          {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt'}
+          onClick={() => copiarTexto(promptUnificado, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
+          {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt unificado'}
         </button>
-
-        {/* Guia — só aparece se já tem nome do prato */}
-        {nomePrato && (
-          <div style={{ marginTop:14, paddingTop:12, borderTop:'1px solid rgba(181,101,29,0.2)' }}>
-            <div style={{ fontWeight:700, fontSize:14, color:'var(--sage)', marginBottom:4 }}>
-              📚 Passo 2 — Gerar o Guia de Apoio (depois da ficha pronta)
-            </div>
-            <SeletorIA prompt={promptGuia} corPrincipal="var(--guia)" />
-            <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:12, borderColor:'var(--sage)', color:'var(--sage)' }}
-              onClick={() => copiarTexto(promptGuia, () => { setCopiadoGuia(true); setTimeout(()=>setCopiadoGuia(false),3000); }, () => {})}>
-              {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt do Guia'}
-            </button>
-          </div>
-        )}
         {!nomePrato && (
           <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(90,122,78,0.08)', borderRadius:8, fontSize:12, color:'var(--sage)' }}>
             💡 Preenche o nome do prato acima para activar o Guia de Apoio
@@ -1950,7 +2105,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         </div>
         <textarea className="input" value={textoManual}
           onChange={e => { setTextoManual(e.target.value); setErro(''); onAlteracao?.(); }}
-          placeholder={'Cola aqui o texto gerado pela IA...\n\nExemplo:\nNOME DO PRATO: Sopa Juliana\nCLASSIFICAÇÃO: Sopa\nNº DE DOSES: 4\n\nINGREDIENTES:\n...\nPREPARAÇÃO:\n...'}
+          placeholder={'Cola aqui a resposta da IA...\n\nSe usaste o prompt unificado, a app separa automaticamente a Ficha Técnica e o Guião de Apoio.\n\nExemplo (Ficha):\nNOME DO PRATO: Mousse de Chocolate\nCLASSIFICAÇÃO: Sobremesa\n...\n\n===GUIÃO===\n## 1. MISE EN PLACE\n...'}
           style={{ minHeight:180, fontSize:13, fontFamily:'monospace', background:'#fff' }} />
         {textoManual && (
           <button type="button" className="btn btn-primary" style={{ width:'100%', marginTop:8 }}
@@ -2629,19 +2784,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
           onClick={() => {
             if (textoGuia && !guardadoOk) guardarGuia();
             onGuardado?.();
-            // Perguntar se quer publicar no Classroom
-            if (textoGuia && window.confirm('📖 Publicar este guião de produção no Google Classroom?')) {
-              const planos = getPlanosAula();
-              const planoAtual = planoId ? planos.find(p => p.id === planoId) : null;
-              publicarNoClassroom('guiao', (planoAtual as any)?.turmaId || '', {
-                plano: planoAtual || { ucId: ucId || '', ucNome: ucNome || '', data: new Date().toISOString().slice(0,10) },
-                ficha: { nomePrato: nomePratoInicial || '' },
-                textoGuia,
-              }).then(res => {
-                if (res.ok) alert('✅ Guião publicado no Classroom!');
-                else console.warn('Classroom:', res.erro);
-              });
-            }
+            // Publicação no Classroom disponível na VistaDePlano → botão Publicar
           }}>
           ✓ Concluir Guia
         </button>
@@ -2772,7 +2915,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         ucsAssociadas: [ucId].filter(Boolean),
         elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
         data: fichaConfirmada.data || now,
-        planoAulaId: fichaOriginal?.planoAulaId || planoId || undefined,
+        planoAulaId: planoId || fichaOriginal?.planoAulaId || undefined,
         textoGuia: fichaConfirmada.textoGuia || fichaOriginal?.textoGuia,
         htmlCompleto,
         criadoEm: fichaOriginal?.criadoEm || now,
@@ -2790,28 +2933,23 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       }
 
       try { localStorage.removeItem('ecl_ficha_draft'); localStorage.removeItem('ecl_link_draft'); } catch {}
+
+      // ── Guião pendente (prompt unificado) — associar automaticamente
+      try {
+        const guiaoPendente = localStorage.getItem('ecl_guiao_pendente');
+        if (guiaoPendente && guiaoPendente.length > 50) {
+          const fichaActual = getFichasProducao().find(f => f.id === novaFichaId);
+          if (fichaActual) {
+            addOrUpdateFichaProducao({ ...fichaActual as any, textoGuia: guiaoPendente, atualizadoEm: new Date().toISOString() } as any);
+          }
+          localStorage.removeItem('ecl_guiao_pendente');
+        }
+      } catch {}
+
       recarregar();
       onGuardado?.();
       setUltimaFichaIdGuardada(novaFichaId);
-      // Perguntar se quer publicar no Classroom
-      if (window.confirm('📄 Publicar esta ficha técnica no Google Classroom?')) {
-        const planoAtual = planoId ? getPlanosAula().find(p => p.id === planoId) : null;
-        publicarNoClassroom('ficha', turmaId, {
-          plano: planoAtual || { ucId: ucId || '', ucNome: ucNome || '', data: new Date().toISOString().slice(0,10), horaInicio: '', horaFim: '' },
-          ficha: {
-            nomePrato: nomeFinal,
-            numPorcoes: fichaConfirmada.numPorcoes,
-            alergenicos: fichaConfirmada.alergenicos,
-            ingredientes: fichaConfirmada.ingredientes || [],
-            tecnicas: (fichaConfirmada as any).tecnicas || [],
-            foodCostTotal: (fichaConfirmada as any).foodCostTotal,
-            foodCostPorcao: (fichaConfirmada as any).foodCostPorcao,
-          },
-        }).then(res => {
-          if (res.ok) alert('✅ Ficha publicada no Classroom!');
-          else console.warn('Classroom:', res.erro);
-        });
-      }
+            // Publicação no Classroom disponível na VistaDePlano → botão Publicar
       const nomeOriginal = fichaConfirmada.nomePrato || '';
       setGuardadoMsg(nomeFinal !== nomeOriginal
         ? `${nomeFinal} (renomeado de "${nomeOriginal}" — já existia uma ficha com esse nome)`
@@ -2904,7 +3042,11 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   if (vista === 'biblioteca') {
     // Por defeito, só mostrar fichas associadas a ESTE plano específico
     const fichasDoPlano = planoId
-      ? fichasGuardadas.filter(f => (f as any).planoAulaId === planoId)
+      ? fichasGuardadas.filter(f => {
+          const fPlanoId = (f as any).planoAulaId;
+          // Incluir fichas associadas a este plano OU sem plano (criadas directamente)
+          return fPlanoId === planoId || !fPlanoId;
+        })
       : fichasGuardadas;
     const fichasParaMostrar = mostrarBibliotecaCompleta ? fichasGuardadas : fichasDoPlano;
 
@@ -3019,6 +3161,11 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               data: f.data||'', equipamento: f.equipamento||'',
               conservacao: f.conservacao||'', regeneracao: f.regeneracao||'',
               kitchenflow: f.kitchenflow||'',
+              familia1: (f as any).familia1 || undefined,
+              familia2: (f as any).familia2 || undefined,
+              etiquetas: (f as any).etiquetas || [],
+              tecnicasDetectadas: (f as any).tecnicasDetectadas || [],
+              aparelhosDetectados: (f as any).aparelhosDetectados || [],
             }));
             setVista('editar');
             setPasso('ficha');
