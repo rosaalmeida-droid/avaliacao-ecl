@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { ModalFullscreen } from './ModalFullscreen';
+import { RecuperacaoFCTAluno } from './RecuperacaoFCT';
+import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
+import { gerarPDFRecuperacaoFCTViaScript } from '../backend';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import {
@@ -7,7 +10,7 @@ import {
   getPlanosFaltadosPorUC, getPlanosAulaPorTurma, getEstadoCompetenciasUC, getGuiasDaRecuperacao,
   construirPromptPlanoIndividual,
   gerarPlanoRecuperacaoComIA,
-  recuperacaoEstaTrancada,
+  recuperacaoEstaTrancada, getAlunos,
 } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS } from '../compatECL';
 import { gerarPerguntasDefesaOral } from '../matrizEvidencias';
@@ -229,8 +232,38 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
       </button>
 
       {aberta && (
-        <ModalFullscreen titulo={`${r.ucId} — ${r.ucNome}`} subtitulo="Recuperação de módulo" onFechar={onToggle}>
-          {trancada ? (
+        <ModalFullscreen titulo={`${r.ucId} — ${r.ucNome}`} subtitulo={r.viaFCT ? 'Recuperação via FCT' : 'Recuperação de módulo'} onFechar={onToggle}>
+          {r.viaFCT ? (
+            // Recuperação via FCT — fluxo completamente diferente: o aluno
+            // não escreve trabalho teórico, preenche evidências reais.
+            <>
+              <RecuperacaoFCTAluno recuperacao={r} onAtualizado={onAtualizado} />
+              <button onClick={async () => {
+                const alunoDaRecuperacao = getAlunos().find(a => a.id === r.alunoId);
+                const nomeAluno = alunoDaRecuperacao?.nome || `Aluno ${alunoDaRecuperacao?.numero || ''}`;
+                // Tenta primeiro gerar o PDF oficial (fiel ao Word da escola) via Apps
+                // Script — só cai para a versão impressa pelo browser se esse script
+                // ainda não estiver configurado.
+                const resultado = await gerarPDFRecuperacaoFCTViaScript({
+                  nomeAluno, turma: r.turmaId, modulo: `${r.ucId} — ${r.ucNome}`,
+                  competencias: (r.fct?.competenciasAEvidenciar || []),
+                  exigirHoras: r.fct?.exigirHoras || false, horasMinimas: r.fct?.horasMinimasExigidas,
+                  localFCT: r.fct?.localFCT,
+                });
+                if (resultado.ok && resultado.pdfUrl) {
+                  window.open(resultado.pdfUrl, '_blank');
+                } else {
+                  gerarPDFRecuperacaoFCT({
+                    nomeAluno, numero: alunoDaRecuperacao?.numero || '', turmaId: r.turmaId,
+                    ucId: r.ucId, ucNome: r.ucNome, recuperacao: r,
+                  });
+                }
+              }} style={{ width: '100%', marginTop: 14, padding: 12, borderRadius: 10, border: '1px solid #6d28d9',
+                background: 'transparent', color: '#6d28d9', fontWeight: 700, cursor: 'pointer' }}>
+                📄 Gerar folha de recuperação (PDF)
+              </button>
+            </>
+          ) : trancada ? (
             <div style={{ fontSize: 13, color: 'var(--danger)', background: 'var(--danger-pale)', borderRadius: 10, padding: 14 }}>
               🔒 O prazo de 1 mês para esta recuperação terminou. Fala com o professor para reabrir.
             </div>
