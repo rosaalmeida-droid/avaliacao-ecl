@@ -326,7 +326,7 @@ export interface DadosPromptCompetenciasUC {
 export function gerarPromptCompetenciasUC(d: DadosPromptCompetenciasUC): string {
   const realizacoes = d.realizacoesOficiais.length > 0
     ? d.realizacoesOficiais.map(r => `- ${r}`).join('\n')
-    : '(referencial não disponível — usa o teu conhecimento geral desta área)';
+    : '(referencial não disponível — usa o teu conhecimento geral desta área, mas mantém-te sempre dentro do contexto de cozinha/restaurante, nunca genérico)';
 
   const criterios = d.criteriosDesempenho && d.criteriosDesempenho.length > 0
     ? `\nCritérios de desempenho do referencial:\n${d.criteriosDesempenho.map(c => `- ${c}`).join('\n')}\n`
@@ -337,42 +337,55 @@ export function gerarPromptCompetenciasUC(d: DadosPromptCompetenciasUC): string 
 Esta Unidade de Competência não tem microcompetências técnicas mapeadas na
 biblioteca da escola (é uma UC organizacional/sociocultural, não de cozinha).
 
-Preciso que destiles o essencial desta UC em ${'4 a 5'} características GERAIS
-— não os detalhes específicos do referencial, mas aquilo que esta UC
-representa na sua essência, de forma a que qualquer empresa (independente do
-sector) consiga observar e confirmar se o aluno demonstrou isso no dia a dia
-de trabalho.
+Preciso que destiles o essencial desta UC em ${'4 a 5'} características GERAIS,
+mas com uma condição inegociável: o aluno é formando de Cozinha/Pastelaria e
+faz FCT num restaurante, cozinha ou espaço de restauração — TUDO tem de estar
+ancorado nessa rotina de trabalho real, nunca em algo genérico que sirva para
+qualquer negócio (loja, escritório, hotel na receção, etc.).
 
 Referencial oficial desta UC (811RA144):
 ${realizacoes}
 ${criterios}
-## Regra essencial
-Cada característica tem DUAS partes, sempre juntas:
+## Regra essencial — DUAS partes, sempre juntas
 1. O NOME TÉCNICO — mantém a linguagem técnica/pedagógica correcta desta UC,
    tal como apareceria num documento oficial. Não simplifiques esta parte.
 2. A EXPLICAÇÃO SIMPLES — logo a seguir, entre parênteses, traduz esse termo
-   para uma frase directa e concreta que qualquer pessoa sem formação
-   pedagógica entenda em 2 segundos e consiga confirmar se aconteceu ou não
-   no dia a dia de trabalho. Usa verbos de acção simples (fala, ajuda,
-   resolve, avisa, pergunta, trata).
+   para uma frase directa e concreta, situada especificamente na cozinha ou
+   no serviço de sala de um restaurante, que um chefe de cozinha ou
+   encarregado de sala (sem formação pedagógica) entenda em 2 segundos e
+   consiga confirmar se aconteceu ou não.
 
-Cada característica também tem de ser:
-- GERAL — um traço amplo desta UC, não uma tarefa específica de sala de aula
-- Directamente enraizada no que esta UC representa — não genérica ao ponto
-  de servir para qualquer UC
+## O que TORNA uma característica válida (as 3 têm de ser verdade ao mesmo tempo)
+1. GERAL — um traço amplo desta UC, não uma tarefa isolada de uma aula
+2. ESPECÍFICA DESTA UC — liga-se claramente ao que ${d.ucId} — ${d.ucNome}
+   realmente ensina, não é um soft-skill que serve para qualquer UC
+   ("atender bem", "comunicar", "ser simpático" sozinhos NÃO CHEGAM — têm de
+   estar amarrados a uma situação concreta de cozinha/restaurante)
+3. ROTINA REAL DE COZINHA/RESTAURANTE — algo que acontece no dia a dia de
+   trabalho num restaurante (na cozinha, na copa, na sala, no atendimento à
+   mesa, na gestão de comandas, na preparação, no serviço), nunca uma
+   situação de loja, escritório, receção de hotel ou outro sector
+
+## Teste antes de responderes
+Antes de escreveres cada característica, pergunta-te: "Isto só faz sentido
+porque o aluno está numa cozinha/restaurante, ou faria igual sentido numa
+loja de roupa?" Se a segunda resposta for sim, a característica está
+demasiado genérica — reescreve-a ligada a uma situação real de cozinha ou
+sala de restaurante.
 
 ## O que deves gerar
 Exactamente 4 a 5 características, uma por linha, no formato:
-Termo técnico (explicação simples e observável na prática)
+Termo técnico (explicação simples, situada na cozinha/restaurante, observável na prática)
 
-Exemplo (para Turismo Inclusivo):
-Identificação proactiva de barreiras à acessibilidade (repara sozinho/a
-quando algo dificulta a vida a um cliente com mobilidade reduzida, sem
-precisar que lhe digam)
-Adaptação da linguagem a necessidades específicas (fala mais devagar ou
-explica de outra forma quando percebe que o cliente não está a entender)
-Atendimento empático e sem discriminação (trata todos os clientes com o
-mesmo respeito, seja qual for a sua idade, aparência ou limitação)`;
+Exemplo BOM (para uma UC de trabalho em equipa, no contexto certo):
+Coordenação em momentos de pressão (durante o rush do almoço, ajusta o
+próprio ritmo ao dos colegas de cozinha sem que ninguém tenha de pedir)
+Comunicação clara entre cozinha e sala (avisa a tempo quando um prato vai
+demorar mais, para o empregado de mesa poder gerir a expectativa do cliente)
+
+Exemplo MAU (genérico demais, evitar este estilo):
+Comunicação com colegas de equipa (fala bem com as pessoas)
+Atendimento ao cliente (trata bem quem vem à empresa)`;
 }
 
 export function gerarPromptRecuperacaoFCT(d: DadosRecuperacaoFCT): string {
