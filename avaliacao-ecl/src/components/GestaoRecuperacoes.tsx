@@ -268,10 +268,10 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
         <button onClick={async () => {
           const resultado = await gerarPDFRecuperacaoFCTViaScript({
             nomeAluno: nomeParaMostrar, turma: r.fct?.turmaAlunoManual || r.turmaId,
-            modulo: `${r.ucId} — ${r.ucNome}`,
+            ucId: r.ucId, ucNome: r.ucNome, modulo: `${r.ucId} — ${r.ucNome}`,
             competencias: r.fct?.competenciasAEvidenciar || [],
             exigirHoras: r.fct?.exigirHoras || false, horasMinimas: r.fct?.horasMinimasExigidas,
-            localFCT: r.fct?.localFCT,
+            localFCT: r.fct?.localFCT, dataInicio: r.fct?.dataInicio, dataTermo: r.fct?.dataTermo,
           });
           if (resultado.ok && resultado.pdfUrl) {
             const janelaP = window.open(resultado.pdfUrl, '_blank');
