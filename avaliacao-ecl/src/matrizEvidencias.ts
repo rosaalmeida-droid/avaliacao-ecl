@@ -311,6 +311,55 @@ export interface DadosRecuperacaoFCT {
   criteriosDesempenho?: string[];
 }
 
+// ── Gerar competências desta UC via IA (quando a biblioteca não tem
+// nenhuma microcompetência técnica mapeada — típico de UCs socioculturais/
+// organizacionais, ex: Turismo inclusivo, Trabalho em equipa). O professor
+// copia o prompt, cola numa IA, e recebe uma lista de competências a
+// evidenciar na FCT, baseada no referencial oficial da UC.
+export interface DadosPromptCompetenciasUC {
+  ucId: string;
+  ucNome: string;
+  realizacoesOficiais: string[];
+  criteriosDesempenho?: string[];
+}
+
+export function gerarPromptCompetenciasUC(d: DadosPromptCompetenciasUC): string {
+  const realizacoes = d.realizacoesOficiais.length > 0
+    ? d.realizacoesOficiais.map(r => `- ${r}`).join('\n')
+    : '(referencial não disponível — usa o teu conhecimento geral desta área)';
+
+  const criterios = d.criteriosDesempenho && d.criteriosDesempenho.length > 0
+    ? `\nCritérios de desempenho do referencial:\n${d.criteriosDesempenho.map(c => `- ${c}`).join('\n')}\n`
+    : '';
+
+  return `# COMPETÊNCIAS A EVIDENCIAR EM FCT — ${d.ucId} — ${d.ucNome}
+
+Esta Unidade de Competência não tem microcompetências técnicas mapeadas na
+biblioteca da escola (é uma UC organizacional/sociocultural, não de cozinha).
+Preciso de uma lista curta e concreta de competências que um aluno possa
+evidenciar através de trabalho real numa empresa (Formação em Contexto de
+Trabalho), relacionadas com esta UC.
+
+Referencial oficial desta UC (811RA144):
+${realizacoes}
+${criterios}
+## O que deves gerar
+Uma lista de 4 a 8 competências, cada uma:
+- Nomeada de forma curta e clara (2 a 6 palavras), como um título de checklist
+- Que faça sentido ser observada/demonstrada no dia a dia de uma empresa,
+  não só em contexto de sala de aula
+- Directamente ligada ao que esta UC realmente pede, não genérica
+
+Formato da resposta — uma competência por linha, sem numeração nem
+explicação adicional, só o nome:
+
+Exemplo (para uma UC de trabalho em equipa):
+Comunicação com colegas de equipa
+Cumprimento de instruções do supervisor
+Resolução de pequenos conflitos no trabalho
+Pontualidade e assiduidade no local de trabalho`;
+}
+
 export function gerarPromptRecuperacaoFCT(d: DadosRecuperacaoFCT): string {
   const blocoHoras = d.exigirHoras
     ? `\n## Horas de formação exigidas\nEsta recuperação exige um mínimo de ${d.horasMinimasExigidas || 0} horas de FCT dedicadas a estas competências. O aluno deve registar as horas efetivamente realizadas, com datas.\n`
