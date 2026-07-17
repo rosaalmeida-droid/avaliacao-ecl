@@ -1855,7 +1855,7 @@ export function criarRecuperacaoAutomatica(alunoId: string, turmaId: string, ucI
 export function criarRecuperacaoFCT(
   alunoId: string, turmaId: string, ucId: string, ucNome: string,
   competenciasAEvidenciar: string[], exigirHoras: boolean, horasMinimasExigidas?: number,
-  localFCT?: string, supervisorFCT?: string
+  localFCT?: string, supervisorFCT?: string, dataInicio?: string, dataTermo?: string
 ): RecuperacaoModulo {
   const agora = new Date().toISOString();
   const dataLimite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -1879,6 +1879,8 @@ export function criarRecuperacaoFCT(
       horasMinimasExigidas,
       localFCT,
       supervisorFCT,
+      dataInicio,
+      dataTermo,
       competenciasAEvidenciar,
       evidencias: [],
     },
@@ -2369,6 +2371,7 @@ export function calcularPontosDisponibilidadeEvento(dias: { data: string; horaIn
 // depender de ninguém gerar manualmente) ────────────────────────────
 export async function gerarPDFRecuperacaoFCTViaScript(dados: {
   nomeAluno: string; turma: string; anoLetivo?: string; area?: string; modulo: string;
+  ucId?: string; ucNome?: string;
   competencias: string[]; exigirHoras: boolean; horasMinimas?: number;
   localFCT?: string; dataInicio?: string; dataTermo?: string;
 }): Promise<{ ok: boolean; pdfUrl?: string; mensagem?: string }> {
