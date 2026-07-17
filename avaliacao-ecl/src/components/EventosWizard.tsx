@@ -49,7 +49,7 @@ interface TarefaEvento {
   selecionada: boolean;
 }
 
-interface Evento {
+export interface Evento {
   id: string;
   numero: number;
   nome: string;
@@ -80,7 +80,7 @@ interface Evento {
 // STORAGE
 // ══════════════════════════════════════════════════════════════════
 const STORAGE_KEY = 'ecl_eventos_v3';
-function loadEventos(): Evento[] {
+export function loadEventos(): Evento[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 }
 function saveEventos(ev: Evento[]) { localStorage.setItem(STORAGE_KEY, JSON.stringify(ev)); }
