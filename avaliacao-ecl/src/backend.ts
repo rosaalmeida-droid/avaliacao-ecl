@@ -464,6 +464,11 @@ const MAPA_KF_COMPETENCIAS: Record<string, string[]> = {
   'Mise en Place':            ['S003', 'S004', 'M0172'],
   'Ficha Técnica':            ['S002', 'M0148'],
   'Limpeza Equipamentos':     ['S202'],
+  // Cruzamento KF ↔ Obrigatórias (decidido 28/06/2026):
+  // Higiene Pessoal KF → OBR_01 · Temperatura Serviço/NC resolvida KF → OBR_02
+  'Higiene Pessoal':          ['OBR_01'],
+  'Temperatura Serviço':      ['OBR_02'],
+  'NãoConformidades':         ['OBR_02'],
 };
 
 /** Inverso: dado um id de competência, quais tipos de registo KF a evidenciam */
@@ -535,7 +540,13 @@ export async function sincronizarEvidenciasKitchenFlow(
                (idAluno === alunoId || idAluno === String(alunoId).split('-').pop());
       });
 
-      if (registoAluno) {
+      // Não Conformidades só conta como evidência positiva de OBR_02 quando
+      // resolvida — um registo em aberto não deve "ajudar" a nota do aluno.
+      // Coluna "Estado" é a 9ª (índice 8) na sheet NãoConformidades.
+      const passaFiltroEstado = tipoRegisto !== 'NãoConformidades'
+        || (registoAluno && String(registoAluno[8] || '').toLowerCase().includes('resolv'));
+
+      if (registoAluno && passaFiltroEstado) {
         const competencias = MAPA_KF_COMPETENCIAS[tipoRegisto] || [];
         competencias.forEach(compId => {
           evidencias.push({
