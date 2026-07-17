@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, RegistoAvaliacao, calcularBonusAssiduidadeUC } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, calcularBonusAssiduidadeUC } from '../backend';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
 import { calcularNotaPlano } from '../types';
+import { ModalFullscreen } from './ModalFullscreen';
 
 // ── Helpers ───────────────────────────────────────────────────
 function getNomeComp(id: string): string {
@@ -60,6 +61,16 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
 
   // Filtros
   const [filtroUC, setFiltroUC] = useState('');
+  // Impressão de 1 aluno específico — quando definido, o CSS de impressão
+  // esconde todos os outros cartões, mostrando só este.
+  const [imprimirApenas, setImprimirApenas] = useState<string | null>(null);
+  function imprimirAluno(alunoId: string) {
+    setImprimirApenas(alunoId);
+    setTimeout(() => {
+      window.print();
+      setImprimirApenas(null);
+    }, 100);
+  }
   const [filtroAluno, setFiltroAluno] = useState('todos');
   const [filtroPeriodo, setFiltroPeriodo] = useState<'tudo' | 'T1' | 'T2' | 'T3' | 'personalizado'>('tudo');
   const [dataInicio, setDataInicio] = useState('');
@@ -125,12 +136,21 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
       // porque o bónus é calculado por UC, não de forma genérica.
       const bonus = filtroUC ? calcularBonusAssiduidadeUC(aluno.id, turmaId, filtroUC) : null;
       const nota20ComBonus = bonus ? Math.min(20, nota20 + bonus.total) : nota20;
+      // Decomposição por categoria — reaproveita a última validação guardada
+      // deste aluno nesta UC, para o professor perceber SEMPRE como a nota
+      // se formou (OBR/SUB/KNW/ATI), não só ver o número final.
+      const validacoesAluno = getValidacoes().filter(v => v.alunoId === aluno.id);
+      const ultimaValidacaoComBreakdown = validacoesAluno
+        .filter(v => (v as any).porCategoria)
+        .sort((a, b) => String((b as any).validadoEm||'').localeCompare(String((a as any).validadoEm||'')))[0];
+      const porCategoriaUltima = (ultimaValidacaoComBreakdown as any)?.porCategoria || null;
       return {
         aluno,
         comps,
         mediaGeral: nota20ComBonus,
         mediaGeralSemBonus: nota20,
         bonus,
+        porCategoriaUltima,
         total: regs.length,
         consolidadas: comps.filter(c => c.media >= 3).length,
         emRecuperacao: comps.filter(c => c.media < 3 && c.n > 0).length,
@@ -161,12 +181,26 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
 
       {/* Cabeçalho */}
-      <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2' }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, fontFamily: 'Nunito, sans-serif' }}>
-          📊 Historial de Avaliações
-        </h2>
-        <div style={{ fontSize: 12, opacity: 0.5 }}>Consulta e filtra o que foi avaliado — por UC, período ou aluno</div>
+      <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+        <div>
+          <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, fontFamily: 'Nunito, sans-serif' }}>
+            📊 Historial de Avaliações
+          </h2>
+          <div style={{ fontSize: 12, opacity: 0.5 }}>Consulta e filtra o que foi avaliado — por UC, período ou aluno</div>
+        </div>
+        <button className="no-print" onClick={() => window.print()} style={{
+          background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:8,
+          color:'#faf7f2', fontSize:12, fontWeight:700, padding:'8px 14px', cursor:'pointer', whiteSpace:'nowrap' }}>
+          🖨️ Imprimir turma
+        </button>
       </div>
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          ${imprimirApenas ? `.aluno-card:not([data-aluno-id="${imprimirApenas}"]) { display: none !important; }` : ''}
+        }
+      `}</style>
 
       {/* Filtros */}
       <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: `1px solid ${T.border}` }}>
@@ -256,12 +290,19 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
           <div style={{ fontSize: 13, marginTop: 4 }}>Tenta seleccionar uma UC/UFCD diferente ou alargar o período</div>
         </div>
       ) : (
-        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, bonus }) => {
+        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, bonus, porCategoriaUltima }) => {
           const aberto = vistaAluno === aluno.id;
           const { emoji, cor } = labelNota(mediaGeral);
           return (
-            <div key={aluno.id} style={{ marginBottom: 8, borderRadius: 12, overflow: 'hidden', border: `1px solid ${T.border}` }}>
+            <div key={aluno.id} className="aluno-card" data-aluno-id={aluno.id}
+              style={{ marginBottom: 8, borderRadius: 12, overflow: 'hidden', border: `1px solid ${T.border}` }}>
               {/* Cabeçalho do aluno */}
+              <button className="no-print" onClick={(e) => { e.stopPropagation(); imprimirAluno(aluno.id); }}
+                title="Imprimir situação deste aluno" style={{
+                  float: 'right', margin: '10px 10px 0 0', background: 'transparent', border: 'none',
+                  cursor: 'pointer', fontSize: 16, opacity: 0.5 }}>
+                🖨️
+              </button>
               <button onClick={() => setVistaAluno(aberto ? null : aluno.id)}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
                   background: aberto ? 'rgba(181,101,29,0.06)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
@@ -279,7 +320,12 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
                 {mediaGeral > 0 && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{mediaGeral.toFixed(1)}</div>
-                    <div style={{ fontSize: 9, color: 'rgba(26,23,20,0.4)' }}>/20</div>
+                    <div style={{ fontSize: 9, color: 'rgba(26,23,20,0.4)' }}
+                      title={porCategoriaUltima
+                        ? 'Como esta nota foi calculada: ' + Object.entries(porCategoriaUltima).map(([c,n]) => `${c} ${n}/20`).join(' · ')
+                        : 'Sem decomposição disponível — aguarda a próxima validação do professor'}>
+                      /20 {porCategoriaUltima ? 'ⓘ' : ''}
+                    </div>
                     {bonus && bonus.total > 0 && (
                       <div style={{ fontSize: 9, color: 'var(--sage)', fontWeight: 700, marginTop: 2 }}
                         title={`Pontualidade +${bonus.pontualidade} · Assiduidade +${bonus.assiduidade} · Farda +${bonus.fardamento} (${bonus.detalhe.faltas} faltas, ${bonus.detalhe.atrasos} atrasos, ${bonus.detalhe.fardaIncompleta} farda incompleta)`}>
@@ -291,9 +337,14 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
                 <span style={{ fontSize: 14, color: 'rgba(26,23,20,0.3)' }}>{aberto ? '▲' : '▼'}</span>
               </button>
 
-              {/* Detalhe por competência */}
+              {/* Detalhe por competência — abre em modal quase-fullscreen,
+                  em vez de empurrar o resto da lista de alunos para baixo. */}
               {aberto && (
-                <div style={{ padding: '12px 14px', borderTop: `1px solid ${T.border}` }}>
+                <ModalFullscreen
+                  titulo={aluno.nome || `Aluno ${aluno.numero}`}
+                  subtitulo={`Nº ${aluno.numero} · ${aluno.turmaId}${filtroUC ? ' · ' + filtroUC : ''}`}
+                  onFechar={() => setVistaAluno(null)}
+                >
                   {comps.length === 0 ? (
                     <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', textAlign: 'center', padding: '16px 0' }}>
                       Sem competências avaliadas com estes filtros
@@ -320,7 +371,7 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
                       );
                     })
                   )}
-                </div>
+                </ModalFullscreen>
               )}
             </div>
           );
