@@ -8,7 +8,7 @@ import {
 import { microsPorUC, encontrarMicro } from '../compatECL';
 import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
-import { gerarPromptRecuperacaoFCT } from '../matrizEvidencias';
+import { gerarPromptRecuperacaoFCT, gerarPromptCompetenciasUC } from '../matrizEvidencias';
 import { getReferencialUC } from '../referencial811RA144';
 import { SeletorIA } from './SeletorIA';
 
@@ -32,6 +32,7 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   const [turmaExterno, setTurmaExterno] = useState('');
   const [ucId, setUcId] = useState('');
   const [competenciasSel, setCompetenciasSel] = useState<Set<string>>(new Set());
+  const [competenciaManual, setCompetenciaManual] = useState('');
   const [exigirHoras, setExigirHoras] = useState(false);
   const [horasMinimas, setHorasMinimas] = useState(10);
   const [localFCT, setLocalFCT] = useState('');
@@ -48,6 +49,13 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
       novo.has(id) ? novo.delete(id) : novo.add(id);
       return novo;
     });
+  }
+
+  function adicionarCompetenciaManual() {
+    const texto = competenciaManual.trim();
+    if (!texto) return;
+    setCompetenciasSel(prev => new Set(prev).add(texto));
+    setCompetenciaManual('');
   }
 
   function criar() {
@@ -133,14 +141,50 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
                 Competências a evidenciar na FCT ({competenciasSel.size} seleccionadas)
               </div>
-              <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #eee', borderRadius: 8, padding: 8 }}>
+              <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #eee', borderRadius: 8, padding: 8, marginBottom: 8 }}>
                 {competenciasDaUC.map(c => (
                   <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px', cursor: 'pointer' }}>
                     <input type="checkbox" checked={competenciasSel.has(c.id)} onChange={() => toggleComp(c.id)} />
                     <span style={{ fontSize: 13 }}>{c.nome}</span>
                   </label>
                 ))}
-                {competenciasDaUC.length === 0 && <div style={{ fontSize: 12, color: '#999' }}>Sem competências mapeadas para esta UC.</div>}
+                {Array.from(competenciasSel).filter(id => !competenciasDaUC.some(c => c.id === id)).map(texto => (
+                  <label key={texto} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px' }}>
+                    <input type="checkbox" checked readOnly onChange={() => toggleComp(texto)} />
+                    <span style={{ fontSize: 13 }}>{texto}</span>
+                    <button onClick={() => toggleComp(texto)} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: '#c00', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                  </label>
+                ))}
+              </div>
+              {competenciasDaUC.length === 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+                    Sem competências mapeadas para esta UC — gera uma sugestão por IA,
+                    baseada no referencial oficial, e cola-as no campo abaixo:
+                  </div>
+                  <SeletorIA
+                    corPrincipal="#6d28d9"
+                    prompt={gerarPromptCompetenciasUC({
+                      ucId, ucNome: uc?.nome || '',
+                      realizacoesOficiais: getReferencialUC(ucId)?.realizacoes || [],
+                      criteriosDesempenho: getReferencialUC(ucId)?.criteriosDesempenho,
+                    })}
+                  />
+                </div>
+              )}
+              {/* Sempre visível — a biblioteca não tem competências mapeadas para
+                  todas as UCs (ex: sociocultural), o professor tem de conseguir
+                  escrever a competência à mão para o formulário nunca ficar bloqueado. */}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input value={competenciaManual} onChange={e => setCompetenciaManual(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); adicionarCompetenciaManual(); } }}
+                  placeholder="Escrever competência (ex: Trabalho em equipa)"
+                  style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, boxSizing: 'border-box' }} />
+                <button onClick={adicionarCompetenciaManual} style={{
+                  padding: '8px 14px', borderRadius: 8, border: 'none', background: '#6d28d9', color: '#fff',
+                  fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                  + Adicionar
+                </button>
               </div>
             </div>
           )}
