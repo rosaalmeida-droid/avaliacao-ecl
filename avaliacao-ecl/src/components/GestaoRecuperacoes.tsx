@@ -6,6 +6,8 @@ import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
 import { GuiaProducao } from './GuiaProducao';
 import { SeletorIA } from './SeletorIA';
+import { CriarRecuperacaoFCT, RecuperacaoFCTAluno } from './RecuperacaoFCT';
+import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
 
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
@@ -51,6 +53,10 @@ export function GestaoRecuperacoes({ turmaId, nomeProfessor }: { turmaId: string
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
           Trabalhos de recuperação submetidos pelos alunos, por validar.
         </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <CriarRecuperacaoFCT turmaId={turmaId} onCriada={() => setRefresh(r => r + 1)} />
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
