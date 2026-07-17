@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getRequisicaoPorPlano, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
+import { loadEventos } from './EventosWizard';
 import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
 import {
   processarIngrediente,
@@ -216,9 +217,20 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const [fichasSel, setFichasSel] = useState<string[]>(fichasSelInicial);
   const [paxPorFicha, setPaxPorFicha] = useState<Record<string, number>>(() => {
     const r: Record<string, number> = {};
+    // Se o plano está associado a um evento, usar a capacitação (nº pessoas)
+    // desse evento como ponto de partida das doses — em vez do nº de porções
+    // "de receita" da ficha, que é só uma referência genérica.
+    let paxDoEvento: number | null = null;
+    if (planoInicial?.eventoId) {
+      const eventos = loadEventos();
+      const evento = eventos.find((e: any) => e.id === planoInicial.eventoId);
+      const dia = evento?.dias?.find((d: any) => d.data === planoInicial.data);
+      const totalPax = (dia?.momentos || []).reduce((s: number, m: any) => s + (m.numPessoas || 0), 0);
+      if (totalPax > 0) paxDoEvento = totalPax;
+    }
     fichasSelInicial.forEach(fid => {
       const f = getFichasProducao().find(x => x.id === fid);
-      if (f) r[fid] = parseFloat(f.numPorcoes) || 4;
+      if (f) r[fid] = paxDoEvento || parseFloat(f.numPorcoes) || 4;
     });
     return r;
   });
