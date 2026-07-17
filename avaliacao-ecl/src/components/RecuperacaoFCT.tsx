@@ -122,7 +122,11 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
     // Aluno externo/antigo — gera um ID próprio (não existe em getAlunos()),
     // o nome fica guardado directamente na recuperação para a impressão/PDF.
     const idParaUsar = tipoAluno === 'turma' ? alunoId : `externo_${Date.now()}`;
-    const turmaParaUsar = tipoAluno === 'turma' ? turmaId : (turmaExterno || 'Aluno antigo');
+    // A recuperação tem de ficar guardada sempre com a turma ACTUAL (onde o
+    // professor está a trabalhar) — é isso que decide em que lista aparece.
+    // A turma de origem de um aluno externo/antigo é só informativa, guarda-se
+    // à parte (turmaAlunoManual), nunca substitui a turma real da recuperação.
+    const turmaParaUsar = turmaId;
 
     const nova = criarRecuperacaoFCT(
       idParaUsar, turmaParaUsar, ucId, uc?.nome || '',
