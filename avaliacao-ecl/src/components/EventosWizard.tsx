@@ -30,6 +30,8 @@ interface DiaEvento {
   id: string;
   data: string; // YYYY-MM-DD
   momentos: MomentoRefeicao[];
+  horaInicio?: string; // HH:mm — para calcular pontos de disponibilidade (noite = 19h+)
+  horaFim?: string;
 }
 
 interface ItemChecklist {
@@ -54,6 +56,10 @@ export interface Evento {
   numero: number;
   nome: string;
   turmaId: string;
+  // Eventos extracurriculares (fora de horas letivas/aulas práticas) — ex:
+  // concursos, visitas de estudo fora do horário normal — recebem pontos
+  // de disponibilidade extra: fim de semana e/ou noite (19h+) pesam mais.
+  extracurricular?: boolean;
   local: string;
   localOutro?: string;
   tipoPublico: string;
