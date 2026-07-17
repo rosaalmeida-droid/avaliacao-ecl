@@ -24,6 +24,10 @@ const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 
 // Fichas de Produção (preencher após criar o Sheets de Fichas)
 const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
+// Deployment do script RecuperacaoFCT_PDF_ECL.gs — a Rosa preenche isto
+// depois de instalar o script (ver instruções no topo do ficheiro .gs).
+const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbx7h4jNIwFHnmLEonsIjP4yJBDcFmn2kPEGl1ILeSChq26pUTlgbmf4ADwkKICqjyh38w/exec';
+
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
 // modelo com ingredientes, preços, turma, data, formador, responsável e atividade.
@@ -1844,6 +1848,59 @@ export function criarRecuperacaoAutomatica(alunoId: string, turmaId: string, ucI
   };
 }
 
+
+// ── Criar recuperação via FCT — tipo adicional, não substitui a anterior ──
+// O professor escolhe as competências a evidenciar e se exige horas mínimas.
+// O aluno preenche evidências reais da FCT em vez de trabalho teórico.
+export function criarRecuperacaoFCT(
+  alunoId: string, turmaId: string, ucId: string, ucNome: string,
+  competenciasAEvidenciar: string[], exigirHoras: boolean, horasMinimasExigidas?: number,
+  localFCT?: string, supervisorFCT?: string
+): RecuperacaoModulo {
+  const agora = new Date().toISOString();
+  const dataLimite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    id: `recup_fct_${alunoId}_${ucId}_${Date.now()}`,
+    alunoId, turmaId, ucId, ucNome,
+    numeroRecuperacao: proximoNumeroRecuperacao(),
+    tipoUC: classificarTipoUC(ucId),
+    planosIds: [],
+    competenciasIds: competenciasAEvidenciar,
+    atitudesIds: [],
+    responsabilidadesIds: [],
+    estado: 'pendente',
+    dataAtribuicao: agora,
+    dataLimite,
+    criadoEm: agora,
+    atualizadoEm: agora,
+    viaFCT: true,
+    fct: {
+      exigirHoras,
+      horasMinimasExigidas,
+      localFCT,
+      supervisorFCT,
+      competenciasAEvidenciar,
+      evidencias: [],
+    },
+  };
+}
+
+// ── Adicionar/actualizar uma evidência de FCT numa recuperação existente ──
+export function addEvidenciaFCT(
+  recuperacaoId: string,
+  evidencia: { id: string; competenciaId: string; descricao: string; dataOcorrencia?: string; anexoUrl?: string }
+): void {
+  const all = getRecuperacoes();
+  const idx = all.findIndex(r => r.id === recuperacaoId);
+  if (idx < 0 || !all[idx].fct) return;
+  const evidenciasAtuais = all[idx].fct!.evidencias || [];
+  const idxEv = evidenciasAtuais.findIndex(e => e.id === evidencia.id);
+  if (idxEv >= 0) evidenciasAtuais[idxEv] = { ...evidenciasAtuais[idxEv], ...evidencia };
+  else evidenciasAtuais.push({ ...evidencia, validadoPeloSupervisor: false });
+  all[idx] = { ...all[idx], fct: { ...all[idx].fct!, evidencias: evidenciasAtuais }, atualizadoEm: new Date().toISOString() };
+  save(KEYS.recuperacoes, all);
+}
+
 // Resumo de progresso de competências de uma UC para um aluno — combina o que
 // foi demonstrado em aula com o que foi recuperado posteriormente.
 export function getEstadoCompetenciasUC(alunoId: string, ucId: string): {
@@ -2305,6 +2362,29 @@ export function calcularPontosDisponibilidadeEvento(dias: { data: string; horaIn
   const totalPontos = somaBruta > 0 ? Math.min(20, Math.max(1, Math.round(somaBruta * 10) / 10)) : 0;
 
   return { detalhePorDia, totalPontos };
+}
+
+
+// ── Gerar PDF da Recuperação FCT via Apps Script (dentro da app, sem
+// depender de ninguém gerar manualmente) ────────────────────────────
+export async function gerarPDFRecuperacaoFCTViaScript(dados: {
+  nomeAluno: string; turma: string; anoLetivo?: string; area?: string; modulo: string;
+  competencias: string[]; exigirHoras: boolean; horasMinimas?: number;
+  localFCT?: string; dataInicio?: string; dataTermo?: string;
+}): Promise<{ ok: boolean; pdfUrl?: string; mensagem?: string }> {
+  if (!RECUPERACAO_FCT_PDF_URL) {
+    return { ok: false, mensagem: 'Script de PDF ainda não configurado — falta o URL do deployment.' };
+  }
+  try {
+    const res = await fetch(RECUPERACAO_FCT_PDF_URL, {
+      method: 'POST',
+      body: JSON.stringify({ dados: JSON.stringify(dados) }),
+    });
+    const json = await res.json();
+    return json;
+  } catch (err) {
+    return { ok: false, mensagem: 'Erro de ligação ao script de PDF.' };
+  }
 }
 
 function getNomeCompetenciaGenerica(id: string): string {
