@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getPlanosAulaPorTurma, getHistoricoAvaliacoes, getAlunos } from '../backend';
 import { modulosDaTurma } from '../cronograma';
@@ -134,10 +135,11 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
                   )}
                 </div>
                 {aberto && (
-                  <div style={{ padding: '12px 14px', borderTop: `1px solid ${T.border}` }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 8 }}>
-                      Notas por aluno
-                    </div>
+                  <ModalFullscreen
+                    titulo={momento.nome}
+                    subtitulo={`${planosDoMomento.length} aula${planosDoMomento.length !== 1 ? 's' : ''} · Notas por aluno`}
+                    onFechar={() => setMomentoAberto(null)}
+                  >
                     {alunos.map(aluno => {
                       const nota = notaMomentoAluno(momento, aluno.id);
                       const { emoji, cor, label } = labelNota(nota);
@@ -160,7 +162,7 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
                         </div>
                       );
                     })}
-                  </div>
+                  </ModalFullscreen>
                 )}
               </div>
             );
