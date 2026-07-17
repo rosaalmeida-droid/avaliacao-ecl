@@ -2256,6 +2256,57 @@ export function calcularBonusAssiduidadeUC(alunoId: string, turmaId: string, ucI
   };
 }
 
+
+// ── Pontos de Disponibilidade — Eventos Extracurriculares ──────
+// Só se aplica a eventos marcados como "extracurricular" (fora de horas
+// letivas/aulas práticas — concursos, visitas fora do horário normal).
+// Regras (ponto de partida — ajustar os factores livremente):
+//   · Base: 1 ponto por dia de participação
+//   · Fim de semana (sáb/dom): ×2
+//   · Noite — evento com horaInicio às 19h ou mais tarde: ×1.5
+//   · Fim de semana + noite: os dois multiplicadores acumulam (×3)
+export interface PontosDisponibilidadeDia {
+  data: string;
+  ehFimDeSemana: boolean;
+  ehNoite: boolean;
+  pontos: number;
+}
+
+const MULTIPLICADOR_FIM_DE_SEMANA = 2;
+const MULTIPLICADOR_NOITE = 1.5;
+const HORA_INICIO_NOITE = 19;
+
+export function calcularPontosDisponibilidadeEvento(dias: { data: string; horaInicio?: string }[]): {
+  detalhePorDia: PontosDisponibilidadeDia[];
+  totalPontos: number; // nota única, 1 a 20 — nunca cresce sem limite
+} {
+  const detalhePorDia = dias.map(d => {
+    const dataObj = new Date(d.data + 'T00:00:00');
+    const diaSemana = dataObj.getDay(); // 0=domingo, 6=sábado
+    const ehFimDeSemana = diaSemana === 0 || diaSemana === 6;
+
+    let ehNoite = false;
+    if (d.horaInicio) {
+      const hora = parseInt(d.horaInicio.split(':')[0], 10);
+      ehNoite = !isNaN(hora) && hora >= HORA_INICIO_NOITE;
+    }
+
+    let pontos = 1; // base por dia
+    if (ehFimDeSemana) pontos *= MULTIPLICADOR_FIM_DE_SEMANA;
+    if (ehNoite) pontos *= MULTIPLICADOR_NOITE;
+
+    return { data: d.data, ehFimDeSemana, ehNoite, pontos: Math.round(pontos * 10) / 10 };
+  });
+
+  // Soma bruta dos pontos de todos os dias do evento — depois normalizada
+  // para uma nota única de 1 a 20 (nunca uma soma que cresce sem limite,
+  // mesmo que o evento dure muitos dias).
+  const somaBruta = detalhePorDia.reduce((s, d) => s + d.pontos, 0);
+  const totalPontos = somaBruta > 0 ? Math.min(20, Math.max(1, Math.round(somaBruta * 10) / 10)) : 0;
+
+  return { detalhePorDia, totalPontos };
+}
+
 function getNomeCompetenciaGenerica(id: string): string {
   if (id.startsWith('OBR_')) {
     const o = OBRIGATORIAS.find(x => x.id === id);
