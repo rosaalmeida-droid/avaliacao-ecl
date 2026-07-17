@@ -2376,9 +2376,13 @@ export async function gerarPDFRecuperacaoFCTViaScript(dados: {
     return { ok: false, mensagem: 'Script de PDF ainda não configurado — falta o URL do deployment.' };
   }
   try {
+    // Mesmo formato simples e directo usado por todos os outros scripts da
+    // app (ver enviar()) — sem embrulhar duas vezes em JSON, que estava a
+    // esconder os campos reais do script (nomeAluno, competências, etc.
+    // chegavam sempre vazios).
     const res = await fetch(RECUPERACAO_FCT_PDF_URL, {
       method: 'POST',
-      body: JSON.stringify({ dados: JSON.stringify(dados) }),
+      body: JSON.stringify(dados),
     });
     const json = await res.json();
     return json;
