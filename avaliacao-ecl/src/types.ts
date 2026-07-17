@@ -434,6 +434,8 @@ export interface RecuperacaoModulo {
     horasRegistadasPeloAluno?: number;
     localFCT?: string;                 // empresa/entidade onde decorre a FCT
     supervisorFCT?: string;            // nome do orientador na empresa
+    dataInicio?: string;               // início do período de FCT (YYYY-MM-DD)
+    dataTermo?: string;                // termo do período de FCT (YYYY-MM-DD)
     competenciasAEvidenciar: string[]; // competenciaIds que o professor definiu como alvo desta recuperação FCT
     // Aluno externo/antigo — não está na lista de alunos actual da turma
     // (ex: já terminou o curso e está a recuperar um módulo em falta).
