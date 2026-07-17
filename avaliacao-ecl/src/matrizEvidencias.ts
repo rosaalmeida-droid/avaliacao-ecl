@@ -347,25 +347,32 @@ Referencial oficial desta UC (811RA144):
 ${realizacoes}
 ${criterios}
 ## Regra essencial
-Cada característica tem de ser:
-1. GERAL — um traço amplo desta UC, não uma tarefa específica de sala de aula
-2. OBSERVÁVEL NA PRÁTICA — algo que um orientador de estágio, sem formação
-   pedagógica, consiga olhar para o trabalho do aluno e dizer "sim, isto
-   aconteceu" ou "não, isto não aconteceu" — nada abstracto ou difícil de
-   verificar
-3. Directamente enraizada no que esta UC representa — não genérica ao ponto
-   de servir para qualquer UC
+Cada característica tem DUAS partes, sempre juntas:
+1. O NOME TÉCNICO — mantém a linguagem técnica/pedagógica correcta desta UC,
+   tal como apareceria num documento oficial. Não simplifiques esta parte.
+2. A EXPLICAÇÃO SIMPLES — logo a seguir, entre parênteses, traduz esse termo
+   para uma frase directa e concreta que qualquer pessoa sem formação
+   pedagógica entenda em 2 segundos e consiga confirmar se aconteceu ou não
+   no dia a dia de trabalho. Usa verbos de acção simples (fala, ajuda,
+   resolve, avisa, pergunta, trata).
+
+Cada característica também tem de ser:
+- GERAL — um traço amplo desta UC, não uma tarefa específica de sala de aula
+- Directamente enraizada no que esta UC representa — não genérica ao ponto
+  de servir para qualquer UC
 
 ## O que deves gerar
-Exactamente 4 a 5 características, uma por linha, sem numeração nem
-explicação adicional — só o nome, curto e claro (3 a 6 palavras):
+Exactamente 4 a 5 características, uma por linha, no formato:
+Termo técnico (explicação simples e observável na prática)
 
-Exemplo (para uma UC de trabalho em equipa):
-Comunicação clara com colegas
-Cumprimento de instruções da chefia
-Resolução construtiva de conflitos
-Pontualidade e assiduidade
-Autonomia na resolução de problemas do dia a dia`;
+Exemplo (para Turismo Inclusivo):
+Identificação proactiva de barreiras à acessibilidade (repara sozinho/a
+quando algo dificulta a vida a um cliente com mobilidade reduzida, sem
+precisar que lhe digam)
+Adaptação da linguagem a necessidades específicas (fala mais devagar ou
+explica de outra forma quando percebe que o cliente não está a entender)
+Atendimento empático e sem discriminação (trata todos os clientes com o
+mesmo respeito, seja qual for a sua idade, aparência ou limitação)`;
 }
 
 export function gerarPromptRecuperacaoFCT(d: DadosRecuperacaoFCT): string {
