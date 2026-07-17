@@ -256,8 +256,13 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                   localFCT: r.fct?.localFCT,
                 });
                 if (resultado.ok && resultado.pdfUrl) {
-                  window.open(resultado.pdfUrl, '_blank');
+                  const janelaP = window.open(resultado.pdfUrl, '_blank');
+                  if (!janelaP) {
+                    alert('PDF gerado com sucesso, mas o browser bloqueou a abertura automática. Link: ' + resultado.pdfUrl + '\n\n(Foi copiado — permite pop-ups para abrir automaticamente da próxima vez.)');
+                    try { navigator.clipboard.writeText(resultado.pdfUrl); } catch {}
+                  }
                 } else {
+                  alert('Não consegui gerar o PDF automaticamente (' + (resultado.mensagem || 'motivo desconhecido') + '). A tentar o método alternativo (impressão do browser)...');
                   gerarPDFRecuperacaoFCT({
                     nomeAluno, numero: alunoDaRecuperacao?.numero || '', turmaId: turmaParaImprimir,
                     ucId: r.ucId, ucNome: r.ucNome, recuperacao: r,
