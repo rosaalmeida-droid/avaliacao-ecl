@@ -1356,23 +1356,13 @@ ${linkReceita ? `RECEITA A ANALISAR: ${linkReceita}` : 'Analisa com base no teu 
 // PROMPT UNIFICADO — Ficha Técnica + Guião numa só chamada à IA
 // O professor cola o link uma vez e recebe os dois documentos
 // ══════════════════════════════════════════════════════════════
+// REVERTIDO — o prompt único foi testado e não funciona bem: o guião precisa
+// das técnicas/aparelhos que só ficam identificados DEPOIS de gerar a ficha,
+// por isso pedir os dois de uma vez obriga a IA a "adivinhar" sem ainda ter
+// feito essa detecção. Volta a ser dois passos separados: gera a ficha
+// primeiro, depois usa o nome do prato já confirmado para gerar o guião.
 function gerarPromptUnificado(linkReceita: string, ucId?: string, ucNome?: string, modoProf?: boolean): string {
-  // Prompt unificado = prompt da ficha + separador + prompt do guião
-  // O professor copia uma vez, cola na IA, e a IA devolve os dois blocos separados por ===GUIÃO===
-  const promptFichaBloco = gerarPrompt(linkReceita, ucId, ucNome, modoProf);
-  const nomePratoPlaceholder = '[Nome do Prato]';
-  const promptGuiaoBloco = gerarPromptGuia(nomePratoPlaceholder, ucId, ucNome);
-  
-  return `${promptFichaBloco}
-
-═══════════════════════════════════════════════════════════════
-ATENÇÃO — DEPOIS DE GERAR A FICHA TÉCNICA, GERA TAMBÉM O GUIÃO
-Separa os dois blocos com exactamente esta linha: ===GUIÃO===
-═══════════════════════════════════════════════════════════════
-
-===GUIÃO===
-
-${promptGuiaoBloco}`;
+  return gerarPrompt(linkReceita, ucId, ucNome, modoProf);
 }
 
 
