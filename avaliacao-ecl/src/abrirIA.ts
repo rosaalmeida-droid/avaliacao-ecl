@@ -26,7 +26,11 @@ export async function abrirIA(destino: IADestino, prompt: string) {
       alert('Este prompt é demasiado longo para abrir directamente. Usa "Copiar prompt" e cola manualmente.');
       return;
     }
-    window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
+    const janela = window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank');
+    if (!janela) {
+      await copiarTextoSeguro(prompt);
+      alert('O browser bloqueou a abertura de uma nova aba. O prompt já foi copiado — permite pop-ups para este site e tenta outra vez, ou abre o Claude manualmente e cola (Ctrl+V).');
+    }
     return;
   }
   if (destino === 'chatgpt') {
@@ -37,16 +41,27 @@ export async function abrirIA(destino: IADestino, prompt: string) {
       window.open('https://chatgpt.com/', '_blank');
       alert('Prompt copiado! O ChatGPT abriu — faz Ctrl+V para colar.');
     } else {
-      window.open('https://chatgpt.com/?q=' + encodeURIComponent(prompt), '_blank');
+      const janela = window.open('https://chatgpt.com/?q=' + encodeURIComponent(prompt), '_blank');
+      if (!janela) {
+        await copiarTextoSeguro(prompt);
+        alert('O browser bloqueou a abertura de uma nova aba. O prompt já foi copiado — permite pop-ups para este site e tenta outra vez, ou abre o ChatGPT manualmente e cola (Ctrl+V).');
+      }
     }
     return;
   }
   if (destino === 'gemini') {
     // Gemini não tem URL pública para pré-preencher — copiar e abrir
     await copiarTextoSeguro(prompt);
-    window.open('https://gemini.google.com/app', '_blank');
-    // Aviso subtil em vez de alert — não interrompe o fluxo
-    console.info('Gemini: prompt copiado para a área de transferência — Ctrl+V para colar');
+    const janela = window.open('https://gemini.google.com/app', '_blank');
+    if (!janela) {
+      // Bloqueador de pop-ups impediu a nova aba — avisar de forma visível,
+      // porque sem isto parece que o botão "não fez nada".
+      alert('O browser bloqueou a abertura de uma nova aba. O prompt já foi copiado — permite pop-ups para este site e tenta outra vez, ou abre o Gemini manualmente e cola (Ctrl+V).');
+      return;
+    }
+    // Aviso visível — antes só ia para a consola do programador, invisível
+    // para quem usa a app normalmente.
+    alert('Prompt copiado! O Gemini abriu numa nova aba — faz Ctrl+V para colar.');
     return;
   }
 }
