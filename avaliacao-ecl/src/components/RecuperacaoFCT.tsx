@@ -91,9 +91,26 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   }
 
   function adicionarCompetenciaManual() {
-    const texto = competenciaManual.trim();
-    if (!texto) return;
-    setCompetenciasSel(prev => new Set(prev).add(texto));
+    // Aceita colar a lista toda de uma vez. Nem sempre a quebra de linha
+    // sobrevive ao copiar de uma IA (às vezes cola tudo numa linha só) —
+    // por isso, se não houver \n suficientes, tenta separar pelo padrão
+    // "Termo técnico (explicação)" que este prompt sempre produz: cada
+    // competência fecha com ")" antes da próxima começar com maiúscula.
+    let itens = competenciaManual.split('\n').map(l => l.trim()).filter(Boolean);
+    if (itens.length <= 1) {
+      const texto = competenciaManual.trim();
+      const partes = texto.split(/\)\s+(?=[A-ZÀ-Ú])/).map((p, i, arr) => {
+        // Repõe o ")" que o split apanhou, excepto na última parte se já o tiver
+        return i < arr.length - 1 && !p.trim().endsWith(')') ? p.trim() + ')' : p.trim();
+      }).filter(Boolean);
+      if (partes.length > 1) itens = partes;
+    }
+    if (itens.length === 0) return;
+    setCompetenciasSel(prev => {
+      const novo = new Set(prev);
+      itens.forEach(l => novo.add(l));
+      return novo;
+    });
     setCompetenciaManual('');
   }
 
@@ -214,16 +231,20 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
               )}
               {/* Sempre visível — a biblioteca não tem competências mapeadas para
                   todas as UCs (ex: sociocultural), o professor tem de conseguir
-                  escrever a competência à mão para o formulário nunca ficar bloqueado. */}
+                  colar a lista toda de uma vez (não uma a uma) para o formulário
+                  nunca ficar bloqueado nem obrigar a trabalho repetitivo. */}
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>
+                Cola aqui a lista toda que a IA devolveu (uma competência por linha) —
+                não precisas de as escrever uma a uma.
+              </div>
+              <textarea value={competenciaManual} onChange={e => setCompetenciaManual(e.target.value)}
+                placeholder={'Cola aqui a lista da IA — ex:\nComunicação clara com colegas\nCumprimento de instruções\nPontualidade'}
+                style={{ width: '100%', minHeight: 90, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, boxSizing: 'border-box', marginBottom: 6, fontFamily: 'inherit' }} />
               <div style={{ display: 'flex', gap: 6 }}>
-                <input value={competenciaManual} onChange={e => setCompetenciaManual(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); adicionarCompetenciaManual(); } }}
-                  placeholder="Escrever competência (ex: Trabalho em equipa)"
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, boxSizing: 'border-box' }} />
                 <button onClick={adicionarCompetenciaManual} style={{
                   padding: '8px 14px', borderRadius: 8, border: 'none', background: '#6d28d9', color: '#fff',
                   fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-                  + Adicionar
+                  + Adicionar todas as linhas
                 </button>
               </div>
             </div>
