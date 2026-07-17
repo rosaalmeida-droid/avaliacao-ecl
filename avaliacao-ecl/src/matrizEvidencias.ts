@@ -336,28 +336,36 @@ export function gerarPromptCompetenciasUC(d: DadosPromptCompetenciasUC): string 
 
 Esta Unidade de Competência não tem microcompetências técnicas mapeadas na
 biblioteca da escola (é uma UC organizacional/sociocultural, não de cozinha).
-Preciso de uma lista curta e concreta de competências que um aluno possa
-evidenciar através de trabalho real numa empresa (Formação em Contexto de
-Trabalho), relacionadas com esta UC.
+
+Preciso que destiles o essencial desta UC em ${'4 a 5'} características GERAIS
+— não os detalhes específicos do referencial, mas aquilo que esta UC
+representa na sua essência, de forma a que qualquer empresa (independente do
+sector) consiga observar e confirmar se o aluno demonstrou isso no dia a dia
+de trabalho.
 
 Referencial oficial desta UC (811RA144):
 ${realizacoes}
 ${criterios}
-## O que deves gerar
-Uma lista de 4 a 8 competências, cada uma:
-- Nomeada de forma curta e clara (2 a 6 palavras), como um título de checklist
-- Que faça sentido ser observada/demonstrada no dia a dia de uma empresa,
-  não só em contexto de sala de aula
-- Directamente ligada ao que esta UC realmente pede, não genérica
+## Regra essencial
+Cada característica tem de ser:
+1. GERAL — um traço amplo desta UC, não uma tarefa específica de sala de aula
+2. OBSERVÁVEL NA PRÁTICA — algo que um orientador de estágio, sem formação
+   pedagógica, consiga olhar para o trabalho do aluno e dizer "sim, isto
+   aconteceu" ou "não, isto não aconteceu" — nada abstracto ou difícil de
+   verificar
+3. Directamente enraizada no que esta UC representa — não genérica ao ponto
+   de servir para qualquer UC
 
-Formato da resposta — uma competência por linha, sem numeração nem
-explicação adicional, só o nome:
+## O que deves gerar
+Exactamente 4 a 5 características, uma por linha, sem numeração nem
+explicação adicional — só o nome, curto e claro (3 a 6 palavras):
 
 Exemplo (para uma UC de trabalho em equipa):
-Comunicação com colegas de equipa
-Cumprimento de instruções do supervisor
-Resolução de pequenos conflitos no trabalho
-Pontualidade e assiduidade no local de trabalho`;
+Comunicação clara com colegas
+Cumprimento de instruções da chefia
+Resolução construtiva de conflitos
+Pontualidade e assiduidade
+Autonomia na resolução de problemas do dia a dia`;
 }
 
 export function gerarPromptRecuperacaoFCT(d: DadosRecuperacaoFCT): string {
