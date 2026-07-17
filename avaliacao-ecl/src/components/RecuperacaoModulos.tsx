@@ -250,10 +250,10 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                 // Script — só cai para a versão impressa pelo browser se esse script
                 // ainda não estiver configurado.
                 const resultado = await gerarPDFRecuperacaoFCTViaScript({
-                  nomeAluno, turma: turmaParaImprimir, modulo: `${r.ucId} — ${r.ucNome}`,
+                  nomeAluno, turma: turmaParaImprimir, ucId: r.ucId, ucNome: r.ucNome, modulo: `${r.ucId} — ${r.ucNome}`,
                   competencias: (r.fct?.competenciasAEvidenciar || []),
                   exigirHoras: r.fct?.exigirHoras || false, horasMinimas: r.fct?.horasMinimasExigidas,
-                  localFCT: r.fct?.localFCT,
+                  localFCT: r.fct?.localFCT, dataInicio: r.fct?.dataInicio, dataTermo: r.fct?.dataTermo,
                 });
                 if (resultado.ok && resultado.pdfUrl) {
                   const janelaP = window.open(resultado.pdfUrl, '_blank');
