@@ -6,11 +6,15 @@ import {
   getRecuperacoesPorAluno,
 } from '../backend';
 import { microsPorUC, encontrarMicro } from '../compatECL';
-import { UCS_COZINHA } from './PlanoAula';
+import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
 import { gerarPromptRecuperacaoFCT } from '../matrizEvidencias';
 import { getReferencialUC } from '../referencial811RA144';
 import { SeletorIA } from './SeletorIA';
+
+// Lista completa de UC/UFCD de todos os anos — recuperações FCT podem ser
+// de alunos antigos, a recuperar módulos de qualquer ano, não só da turma actual.
+const TODOS_OS_MODULOS = CRONOGRAMA_2026_2027.map(m => ({ id: m.id, nome: m.nome }));
 
 // ═══════════════════════════════════════════════════════════════
 // Recuperação via FCT — lado do PROFESSOR
@@ -20,7 +24,12 @@ import { SeletorIA } from './SeletorIA';
 
 export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; onCriada: () => void }) {
   const [aberto, setAberto] = useState(false);
+  // Aluno desta turma (dropdown) OU aluno externo/antigo (nome escrito à mão,
+  // para quem já terminou o curso e está a recuperar um módulo em falta).
+  const [tipoAluno, setTipoAluno] = useState<'turma' | 'externo'>('turma');
   const [alunoId, setAlunoId] = useState('');
+  const [nomeExterno, setNomeExterno] = useState('');
+  const [turmaExterno, setTurmaExterno] = useState('');
   const [ucId, setUcId] = useState('');
   const [competenciasSel, setCompetenciasSel] = useState<Set<string>>(new Set());
   const [exigirHoras, setExigirHoras] = useState(false);
@@ -29,8 +38,9 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   const [supervisorFCT, setSupervisorFCT] = useState('');
 
   const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
-  const uc = UCS_COZINHA.find(u => u.id === ucId);
+  const uc = TODOS_OS_MODULOS.find(u => u.id === ucId);
   const competenciasDaUC = ucId ? microsPorUC(ucId) : [];
+  const formularioValido = tipoAluno === 'turma' ? !!alunoId : nomeExterno.trim().length > 0;
 
   function toggleComp(id: string) {
     setCompetenciasSel(prev => {
@@ -41,19 +51,27 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   }
 
   function criar() {
-    if (!alunoId || !ucId || competenciasSel.size === 0) {
+    if (!formularioValido || !ucId || competenciasSel.size === 0) {
       alert('Escolhe o aluno, a UC, e pelo menos uma competência a evidenciar.');
       return;
     }
-    const aluno = alunos.find(a => a.id === alunoId);
+    // Aluno externo/antigo — gera um ID próprio (não existe em getAlunos()),
+    // o nome fica guardado directamente na recuperação para a impressão/PDF.
+    const idParaUsar = tipoAluno === 'turma' ? alunoId : `externo_${Date.now()}`;
+    const turmaParaUsar = tipoAluno === 'turma' ? turmaId : (turmaExterno || 'Aluno antigo');
+
     const nova = criarRecuperacaoFCT(
-      alunoId, turmaId, ucId, uc?.nome || '',
+      idParaUsar, turmaParaUsar, ucId, uc?.nome || '',
       Array.from(competenciasSel), exigirHoras, exigirHoras ? horasMinimas : undefined,
       localFCT || undefined, supervisorFCT || undefined
     );
+    if (tipoAluno === 'externo' && nova.fct) {
+      nova.fct.nomeAlunoManual = nomeExterno.trim();
+      nova.fct.turmaAlunoManual = turmaExterno.trim() || undefined;
+    }
     addOrUpdateRecuperacao(nova);
     setAberto(false);
-    setAlunoId(''); setUcId(''); setCompetenciasSel(new Set());
+    setAlunoId(''); setNomeExterno(''); setTurmaExterno(''); setUcId(''); setCompetenciasSel(new Set());
     setExigirHoras(false); setLocalFCT(''); setSupervisorFCT('');
     onCriada();
   }
@@ -71,19 +89,42 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
         <ModalFullscreen titulo="Nova recuperação via FCT" subtitulo="Formação em Contexto de Trabalho" onFechar={() => setAberto(false)}>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Aluno</div>
-            <select value={alunoId} onChange={e => setAlunoId(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}>
-              <option value="">Seleccionar...</option>
-              {alunos.map(a => <option key={a.id} value={a.id}>{a.numero} — {a.nome}</option>)}
-            </select>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <button onClick={() => setTipoAluno('turma')} style={{
+                flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                border: tipoAluno === 'turma' ? '2px solid #6d28d9' : '1px solid #ddd',
+                background: tipoAluno === 'turma' ? '#f3f0fb' : '#fff', color: tipoAluno === 'turma' ? '#6d28d9' : '#666',
+              }}>Aluno desta turma</button>
+              <button onClick={() => setTipoAluno('externo')} style={{
+                flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                border: tipoAluno === 'externo' ? '2px solid #6d28d9' : '1px solid #ddd',
+                background: tipoAluno === 'externo' ? '#f3f0fb' : '#fff', color: tipoAluno === 'externo' ? '#6d28d9' : '#666',
+              }}>Aluno externo / antigo</button>
+            </div>
+            {tipoAluno === 'turma' ? (
+              <select value={alunoId} onChange={e => setAlunoId(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}>
+                <option value="">Seleccionar...</option>
+                {alunos.map(a => <option key={a.id} value={a.id}>{a.numero} — {a.nome}</option>)}
+              </select>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
+                <input value={nomeExterno} onChange={e => setNomeExterno(e.target.value)} placeholder="Nome completo do aluno"
+                  style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+                <input value={turmaExterno} onChange={e => setTurmaExterno(e.target.value)} placeholder="Turma de origem (opcional)"
+                  style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Unidade de Competência</div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+              Unidade de Competência / UFCD <span style={{ fontWeight: 400, color: '#999' }}>(todos os anos e planos — inclui alunos de coortes anteriores)</span>
+            </div>
             <select value={ucId} onChange={e => { setUcId(e.target.value); setCompetenciasSel(new Set()); }}
               style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}>
               <option value="">Seleccionar...</option>
-              {UCS_COZINHA.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)}
+              {TODOS_OS_MODULOS.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)}
             </select>
           </div>
 
@@ -141,7 +182,7 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
               <SeletorIA
                 corPrincipal="#6d28d9"
                 prompt={gerarPromptRecuperacaoFCT({
-                  nomeAluno: alunos.find(a => a.id === alunoId)?.nome || 'Aluno',
+                  nomeAluno: tipoAluno === 'turma' ? (alunos.find(a => a.id === alunoId)?.nome || 'Aluno') : (nomeExterno || 'Aluno'),
                   ucId, ucNome: uc?.nome || '', tipoUC: 'tecnica',
                   competenciasAEvidenciar: Array.from(competenciasSel).map(id => ({
                     id, nome: encontrarMicro(id)?.nome || id,
@@ -158,11 +199,11 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
             </div>
           )}
 
-          <button onClick={criar} disabled={!alunoId || !ucId || competenciasSel.size === 0}
+          <button onClick={criar} disabled={!formularioValido || !ucId || competenciasSel.size === 0}
             style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 14,
-              background: (!alunoId || !ucId || competenciasSel.size === 0) ? '#eee' : '#6d28d9',
-              color: (!alunoId || !ucId || competenciasSel.size === 0) ? '#999' : '#fff',
-              cursor: (!alunoId || !ucId || competenciasSel.size === 0) ? 'default' : 'pointer' }}>
+              background: (!formularioValido || !ucId || competenciasSel.size === 0) ? '#eee' : '#6d28d9',
+              color: (!formularioValido || !ucId || competenciasSel.size === 0) ? '#999' : '#fff',
+              cursor: (!formularioValido || !ucId || competenciasSel.size === 0) ? 'default' : 'pointer' }}>
             Criar recuperação via FCT
           </button>
         </ModalFullscreen>
