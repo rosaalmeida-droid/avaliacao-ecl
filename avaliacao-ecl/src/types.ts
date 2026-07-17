@@ -435,6 +435,11 @@ export interface RecuperacaoModulo {
     localFCT?: string;                 // empresa/entidade onde decorre a FCT
     supervisorFCT?: string;            // nome do orientador na empresa
     competenciasAEvidenciar: string[]; // competenciaIds que o professor definiu como alvo desta recuperação FCT
+    // Aluno externo/antigo — não está na lista de alunos actual da turma
+    // (ex: já terminou o curso e está a recuperar um módulo em falta).
+    // Quando preenchido, sobrepõe-se ao nome/turma vindos de getAlunos().
+    nomeAlunoManual?: string;
+    turmaAlunoManual?: string;
     evidencias: {
       id: string;
       competenciaId: string;
