@@ -33,9 +33,11 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   const [ucId, setUcId] = useState('');
   const [competenciasSel, setCompetenciasSel] = useState<Set<string>>(new Set());
   const [competenciaManual, setCompetenciaManual] = useState('');
-  const [exigirHoras, setExigirHoras] = useState(false);
+  const [exigirHoras, setExigirHoras] = useState(true); // por defeito ligado — a Rosa confirmou que quer sempre exigir horas
   const [horasMinimas, setHorasMinimas] = useState(10);
   const [localFCT, setLocalFCT] = useState('');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataTermo, setDataTermo] = useState('');
   const [supervisorFCT, setSupervisorFCT] = useState('');
 
   const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
@@ -64,6 +66,8 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
         setHorasMinimas(r.horasMinimas || 10);
         setLocalFCT(r.localFCT || '');
         setSupervisorFCT(r.supervisorFCT || '');
+        setDataInicio(r.dataInicio || '');
+        setDataTermo(r.dataTermo || '');
       }
     } catch {}
   }, [aberto]);
@@ -73,10 +77,10 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
     const rascunho = {
       tipoAluno, alunoId, nomeExterno, turmaExterno, ucId,
       competenciasSel: Array.from(competenciasSel),
-      exigirHoras, horasMinimas, localFCT, supervisorFCT,
+      exigirHoras, horasMinimas, localFCT, supervisorFCT, dataInicio, dataTermo,
     };
     try { localStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(rascunho)); } catch {}
-  }, [aberto, tipoAluno, alunoId, nomeExterno, turmaExterno, ucId, competenciasSel, exigirHoras, horasMinimas, localFCT, supervisorFCT]);
+  }, [aberto, tipoAluno, alunoId, nomeExterno, turmaExterno, ucId, competenciasSel, exigirHoras, horasMinimas, localFCT, supervisorFCT, dataInicio, dataTermo]);
 
   function limparRascunho() {
     try { localStorage.removeItem(CHAVE_RASCUNHO); } catch {}
@@ -131,7 +135,8 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
     const nova = criarRecuperacaoFCT(
       idParaUsar, turmaParaUsar, ucId, uc?.nome || '',
       Array.from(competenciasSel), exigirHoras, exigirHoras ? horasMinimas : undefined,
-      localFCT || undefined, supervisorFCT || undefined
+      localFCT || undefined, supervisorFCT || undefined,
+      dataInicio || undefined, dataTermo || undefined
     );
     if (tipoAluno === 'externo' && nova.fct) {
       nova.fct.nomeAlunoManual = nomeExterno.trim();
@@ -141,7 +146,7 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
     limparRascunho();
     setAberto(false);
     setAlunoId(''); setNomeExterno(''); setTurmaExterno(''); setUcId(''); setCompetenciasSel(new Set());
-    setExigirHoras(false); setLocalFCT(''); setSupervisorFCT('');
+    setExigirHoras(false); setLocalFCT(''); setSupervisorFCT(''); setDataInicio(''); setDataTermo('');
     onCriada();
   }
 
@@ -211,6 +216,11 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
                   <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', marginBottom: 4 }}>
                       Referencial oficial desta UC
+                    </div>
+                    <div style={{ fontSize: 11, color: '#b5651d', marginBottom: 6 }}>
+                      ⚠️ Escolhe UM estilo por competência — ou isto (frase oficial curta), ou a
+                      versão elaborada pela IA abaixo. Marcar os dois para a mesma ideia repete a
+                      informação no documento final.
                     </div>
                     {(getReferencialUC(ucId)?.realizacoes || []).map(r => (
                       <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px', cursor: 'pointer' }}>
@@ -294,6 +304,19 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
                 Sem exigência de horas — só contam as evidências das competências, seja qual for o tempo dedicado.
               </div>
             )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Início do período de FCT</div>
+              <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Termo do período de FCT</div>
+              <input type="date" value={dataTermo} onChange={e => setDataTermo(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
