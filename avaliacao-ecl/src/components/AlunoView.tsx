@@ -1978,7 +1978,15 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     const para20 = (n: number): number => Math.min(20, Math.round(n * 4));
     // Guardar OBR com escala 1-4
     if (nivelHigiene) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hig_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_01',nota:paraNota(nivelHigiene),data:agora,validadoPor:'aluno'});
-    if (nivelHaccp) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hac_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_02',nota:paraNota(nivelHaccp),data:agora,validadoPor:'aluno'});
+    // OBR_02 depende de evidência REAL no KitchenFlow — se o aluno não
+    // registou lá (mesmo tendo feito a técnica correctamente), a competência
+    // de registo fica a 1 (mínimo), independentemente do que auto-declarou
+    // aqui. A técnica em si (SUB) nunca é afectada por isto — só o registo.
+    if (nivelHaccp) {
+      const notaAutoDeclarada = paraNota(nivelHaccp);
+      const notaFinalHaccp = temEvidenciaKF('OBR_02') ? notaAutoDeclarada : 1;
+      addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hac_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_02',nota:notaFinalHaccp,data:agora,validadoPor:'aluno'});
+    }
     // Guardar todas as competências com escala 1-4
     Object.entries(notasMicro).forEach(([mId,v])=>{if(v)addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${mId}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:mId,nota:paraNota(v as string),data:agora,validadoPor:'aluno'});});
     // Guardar atitude escolhida
@@ -2200,6 +2208,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 </button>
               ))}
             </div>
+            {obr.id === 'hac' && obr.val && !temEvidenciaKF('OBR_02') && (
+              <div style={{ marginTop:10, padding:'8px 10px', borderRadius:8, fontSize:11,
+                background:'rgba(181,101,29,0.1)', color:'#8a4a15' }}>
+                ⚠️ Não encontrámos registo teu no KitchenFlow para esta aula — mesmo que
+                tenhas feito tudo bem, esta competência fica ao mínimo até haver registo.
+                Regista no KitchenFlow para esta nota reflectir o que fizeste.
+              </div>
+            )}
           </div>
         ))}
       </div>
