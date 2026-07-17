@@ -8,7 +8,7 @@ import {
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
-  sincronizarDoSheets, calcularPontosRegularidade,
+  sincronizarDoSheets, calcularPontosRegularidade, getSelecoes,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -2066,6 +2066,24 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             const notaFinal = val.notaMedia;
             const cor = nota20 >= 16 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             const label = nota20 >= 16 ? 'Muito Bom' : nota20 >= 14 ? 'Bom' : nota20 >= 10 ? 'Suficiente' : 'Insuficiente';
+
+            // Comparação com a autoavaliação — não conta para a nota, mas ajuda o
+            // aluno a perceber se se avalia acima ou abaixo do que o professor observa.
+            const selecaoOriginal = getSelecoes().find(s => s.id === (val as any).selecaoId);
+            const comparacoes = (selecaoOriginal?.autoavaliacoes || []).map((auto: any) => {
+              const notaProfDaCompetencia = (val.notas || []).find((n: any) => n.competenciaId === auto.competenciaId)?.nota;
+              const notaAlunoProposta = auto.nota || (
+                auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
+                auto.nivel === 'fs'  || auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 4 :
+                auto.nivel === 'ca'  || auto.nivel === 'ajuda'     || auto.nivel === 'desenvolvimento' ? 3 :
+                auto.nivel === 'tp' ? 2 : 1
+              );
+              return { competenciaId: auto.competenciaId, alunoDisse: notaAlunoProposta, professorValidou: notaProfDaCompetencia };
+            }).filter(c => c.professorValidou != null);
+            const diferencaMedia = comparacoes.length
+              ? comparacoes.reduce((s, c) => s + (c.alunoDisse - (c.professorValidou as number)), 0) / comparacoes.length
+              : 0;
+
             return (
               <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(90,122,78,0.06)', border:'1.5px solid rgba(90,122,78,0.2)' }}>
                 <div style={{ fontSize:12, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', marginBottom:8 }}>
@@ -2085,6 +2103,21 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                     fontFamily:'monospace' }}>
                     {detalhes}
                   </div>
+                )}
+                {comparacoes.length > 0 && (
+                  <details style={{ marginTop:8 }}>
+                    <summary style={{ fontSize:10, color:'rgba(26,23,20,0.35)', cursor:'pointer', userSelect:'none' }}>
+                      A tua autoavaliação
+                    </summary>
+                    <div style={{ marginTop:6, paddingTop:6 }}>
+                      {comparacoes.map(c => (
+                        <div key={c.competenciaId} style={{ display:'flex', justifyContent:'space-between', fontSize:11, padding:'2px 0', color:'rgba(26,23,20,0.4)' }}>
+                          <span>{c.competenciaId}</span>
+                          <span>Tu: {c.alunoDisse} · Professor: {c.professorValidou}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 )}
               </div>
             );
