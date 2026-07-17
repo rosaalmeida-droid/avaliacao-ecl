@@ -292,6 +292,80 @@ export interface DadosAnalisePreliminar {
   planoIndividualTexto?: string;  // o plano gerado, se existir, para comparar
 }
 
+// ── Recuperação via FCT (Formação em Contexto de Trabalho) ──────────────
+// Tipo de recuperação DIFERENTE das anteriores — o aluno recupera um módulo
+// tecnológico evidenciando trabalho REAL feito na empresa onde faz FCT, em
+// vez de trabalho teórico/investigação. O professor decide se exige um
+// número mínimo de horas de formação, ou se aceita evidências das
+// competências independentemente das horas registadas.
+export interface DadosRecuperacaoFCT {
+  nomeAluno: string;
+  ucId: string;
+  ucNome: string;
+  tipoUC: 'tecnica' | 'organizacional' | 'hibrida';
+  competenciasAEvidenciar: { id: string; nome: string; descricao?: string }[];
+  exigirHoras: boolean;
+  horasMinimasExigidas?: number;
+  localFCT?: string;
+  realizacoesOficiais: string[];   // referencial 811RA144 da UC
+  criteriosDesempenho?: string[];
+}
+
+export function gerarPromptRecuperacaoFCT(d: DadosRecuperacaoFCT): string {
+  const blocoHoras = d.exigirHoras
+    ? `\n## Horas de formação exigidas\nEsta recuperação exige um mínimo de ${d.horasMinimasExigidas || 0} horas de FCT dedicadas a estas competências. O aluno deve registar as horas efetivamente realizadas, com datas.\n`
+    : `\n## Horas de formação — NÃO obrigatórias\nO professor decidiu que, para esta recuperação, as horas de FCT não são o critério — o que conta são as EVIDÊNCIAS concretas de que as competências foram demonstradas na prática, independentemente do número de horas.\n`;
+
+  const competenciasTexto = d.competenciasAEvidenciar
+    .map(c => `- ${c.nome}${c.descricao ? ` — ${c.descricao}` : ''}`)
+    .join('\n');
+
+  const criterios = d.criteriosDesempenho && d.criteriosDesempenho.length > 0
+    ? `\nCritérios de desempenho do referencial (o que conta como prova válida):\n${d.criteriosDesempenho.map(c => `- ${c}`).join('\n')}\n`
+    : '';
+
+  return `# RECUPERAÇÃO VIA FCT — ${d.nomeAluno}
+
+Gera um guião estruturado para ajudar ${d.nomeAluno} a documentar, de forma
+credível e verificável, como as competências abaixo foram demonstradas
+durante a Formação em Contexto de Trabalho${d.localFCT ? ` em ${d.localFCT}` : ''}.
+
+## Unidade de Competência a recuperar
+${d.ucId} — ${d.ucNome} (${d.tipoUC === 'tecnica' ? 'técnica' : d.tipoUC === 'organizacional' ? 'organizacional/sociocultural' : 'híbrida'})
+
+## Competências que têm de ser evidenciadas
+${competenciasTexto}
+${blocoHoras}
+Referencial oficial desta UC (811RA144):
+${d.realizacoesOficiais.map(r => `- ${r}`).join('\n') || '(não disponível)'}
+${criterios}
+## O QUE A FCT TEM DE VANTAGEM AQUI
+Trabalho real numa empresa é a prova mais forte que existe — mais forte do
+que um trabalho escrito ou uma simulação em sala de aula. Por isso o guião
+deve ajudar o aluno a ligar o que fez no dia a dia da empresa a cada
+competência, com exemplos concretos e datados, não descrições vagas.
+
+## O que deves gerar
+Para cada competência da lista acima, gera:
+1. Uma pergunta orientadora que ajuda o aluno a lembrar-se de uma situação
+   real onde aplicou essa competência na empresa
+2. O que deve escrever: o que fez, quando, com quem, que resultado teve
+3. Que tipo de prova reforça isto (ex: fotografia do trabalho feito, uma
+   nota do supervisor, um documento da empresa) — sem exigir nada que a
+   empresa normalmente não daria
+4. Um alerta claro: descrições genéricas ("ajudei a equipa") não chegam —
+   tem de ser um episódio concreto e verificável
+
+No final, gera também:
+- Uma checklist final de evidências mínimas para esta recuperação ficar completa
+- Se aplicável, um modelo curto de declaração que o supervisor da empresa
+  pode assinar a confirmar o que o aluno descreveu
+
+IMPORTANTE: isto não é um trabalho de casa — é uma reflexão estruturada
+sobre trabalho que já foi feito. O aluno não deve inventar nada; só
+organizar e comprovar o que já viveu na FCT.`;
+}
+
 export function gerarPromptAnalisePreliminar(d: DadosAnalisePreliminar): string {
   return `# ANÁLISE PRELIMINAR DE RECUPERAÇÃO — apoio à decisão do professor
 
