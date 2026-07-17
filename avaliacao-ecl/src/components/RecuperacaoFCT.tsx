@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Aluno, RecuperacaoModulo } from '../types';
 import { ModalFullscreen } from './ModalFullscreen';
 import {
@@ -43,6 +43,45 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   const competenciasDaUC = ucId ? microsPorUC(ucId) : [];
   const formularioValido = tipoAluno === 'turma' ? !!alunoId : nomeExterno.trim().length > 0;
 
+  // ── Rascunho automático — se o modal fechar por qualquer motivo antes de
+  // "Criar recuperação via FCT" (ex: clique sem querer fora do modal, ou
+  // ao voltar de uma aba da IA), o que já foi preenchido não se perde.
+  const CHAVE_RASCUNHO = `ecl_rascunho_fct_${turmaId}`;
+
+  useEffect(() => {
+    if (!aberto) return;
+    try {
+      const guardado = localStorage.getItem(CHAVE_RASCUNHO);
+      if (guardado) {
+        const r = JSON.parse(guardado);
+        setTipoAluno(r.tipoAluno || 'turma');
+        setAlunoId(r.alunoId || '');
+        setNomeExterno(r.nomeExterno || '');
+        setTurmaExterno(r.turmaExterno || '');
+        setUcId(r.ucId || '');
+        setCompetenciasSel(new Set(r.competenciasSel || []));
+        setExigirHoras(r.exigirHoras || false);
+        setHorasMinimas(r.horasMinimas || 10);
+        setLocalFCT(r.localFCT || '');
+        setSupervisorFCT(r.supervisorFCT || '');
+      }
+    } catch {}
+  }, [aberto]);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const rascunho = {
+      tipoAluno, alunoId, nomeExterno, turmaExterno, ucId,
+      competenciasSel: Array.from(competenciasSel),
+      exigirHoras, horasMinimas, localFCT, supervisorFCT,
+    };
+    try { localStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(rascunho)); } catch {}
+  }, [aberto, tipoAluno, alunoId, nomeExterno, turmaExterno, ucId, competenciasSel, exigirHoras, horasMinimas, localFCT, supervisorFCT]);
+
+  function limparRascunho() {
+    try { localStorage.removeItem(CHAVE_RASCUNHO); } catch {}
+  }
+
   function toggleComp(id: string) {
     setCompetenciasSel(prev => {
       const novo = new Set(prev);
@@ -78,6 +117,7 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
       nova.fct.turmaAlunoManual = turmaExterno.trim() || undefined;
     }
     addOrUpdateRecuperacao(nova);
+    limparRascunho();
     setAberto(false);
     setAlunoId(''); setNomeExterno(''); setTurmaExterno(''); setUcId(''); setCompetenciasSel(new Set());
     setExigirHoras(false); setLocalFCT(''); setSupervisorFCT('');
