@@ -202,7 +202,29 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
                 Competências a evidenciar na FCT ({competenciasSel.size} seleccionadas)
               </div>
-              <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #eee', borderRadius: 8, padding: 8, marginBottom: 8 }}>
+              <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 8, padding: 8, marginBottom: 8 }}>
+                {/* Realizações oficiais do referencial 811RA144 — é a fonte mais
+                    fiável que existe (nunca está mal atribuída, ao contrário da
+                    biblioteca técnica que às vezes cruza UCs relacionadas).
+                    Aparece sempre primeiro, antes da biblioteca e da IA. */}
+                {(getReferencialUC(ucId)?.realizacoes || []).length > 0 && (
+                  <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', marginBottom: 4 }}>
+                      Referencial oficial desta UC
+                    </div>
+                    {(getReferencialUC(ucId)?.realizacoes || []).map(r => (
+                      <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={competenciasSel.has(r)} onChange={() => toggleComp(r)} />
+                        <span style={{ fontSize: 13 }}>{r}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {competenciasDaUC.length > 0 && (
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#999', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Técnicas da biblioteca (podem ser partilhadas com outras UCs relacionadas)
+                  </div>
+                )}
                 {competenciasDaUC.map(c => (
                   <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px', cursor: 'pointer' }}>
                     <input type="checkbox" checked={competenciasSel.has(c.id)} onChange={() => toggleComp(c.id)} />
@@ -217,22 +239,26 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
                   </label>
                 ))}
               </div>
-              {competenciasDaUC.length === 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
-                    Sem competências mapeadas para esta UC — gera uma sugestão por IA,
-                    baseada no referencial oficial, e cola-as no campo abaixo:
-                  </div>
-                  <SeletorIA
-                    corPrincipal="#6d28d9"
-                    prompt={gerarPromptCompetenciasUC({
-                      ucId, ucNome: uc?.nome || '',
-                      realizacoesOficiais: getReferencialUC(ucId)?.realizacoes || [],
-                      criteriosDesempenho: getReferencialUC(ucId)?.criteriosDesempenho,
-                    })}
-                  />
+              {/* Gerar por IA — sempre disponível, quer a UC já tenha
+                  competências mapeadas na biblioteca quer não. A biblioteca
+                  às vezes é boa (técnicas de cozinha), mas para FCT o
+                  professor pode preferir sempre a sugestão da IA, mais
+                  focada em evidências observáveis fora da sala de aula. */}
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+                  {competenciasDaUC.length === 0
+                    ? 'Sem competências mapeadas para esta UC — gera uma sugestão por IA, baseada no referencial oficial, e cola-as no campo abaixo:'
+                    : 'Preferes gerar por IA em vez de usar a lista da biblioteca acima? Gera uma sugestão baseada no referencial oficial:'}
                 </div>
-              )}
+                <SeletorIA
+                  corPrincipal="#6d28d9"
+                  prompt={gerarPromptCompetenciasUC({
+                    ucId, ucNome: uc?.nome || '',
+                    realizacoesOficiais: getReferencialUC(ucId)?.realizacoes || [],
+                    criteriosDesempenho: getReferencialUC(ucId)?.criteriosDesempenho,
+                  })}
+                />
+              </div>
               {/* Sempre visível — a biblioteca não tem competências mapeadas para
                   todas as UCs (ex: sociocultural), o professor tem de conseguir
                   colar a lista toda de uma vez (não uma a uma) para o formulário
