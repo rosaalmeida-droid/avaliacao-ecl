@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao } from '../backend';
+import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
@@ -245,6 +245,56 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
     });
 
     onVoltar();
+  }
+
+  // Recuperação via FCT — ecrã completamente diferente do fluxo teórico
+  // (trabalho escrito/investigação). Aqui o professor vê as evidências que
+  // o aluno já submeteu e pode gerar a folha de recuperação em PDF.
+  if (r.viaFCT) {
+    const nomeParaMostrar = r.fct?.nomeAlunoManual || nomeAluno;
+    return (
+      <div>
+        <button onClick={onVoltar} style={{ marginBottom: 12, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+          ← Voltar
+        </button>
+
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{nomeParaMostrar}</div>
+        <div style={{ fontSize: 13, color: '#6d28d9', fontWeight: 600, marginBottom: 16 }}>
+          🏢 Recuperação via FCT · {r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}
+        </div>
+
+        <RecuperacaoFCTAluno recuperacao={r} onAtualizado={() => {}} />
+
+        <button onClick={async () => {
+          const resultado = await gerarPDFRecuperacaoFCTViaScript({
+            nomeAluno: nomeParaMostrar, turma: r.fct?.turmaAlunoManual || r.turmaId,
+            modulo: `${r.ucId} — ${r.ucNome}`,
+            competencias: r.fct?.competenciasAEvidenciar || [],
+            exigirHoras: r.fct?.exigirHoras || false, horasMinimas: r.fct?.horasMinimasExigidas,
+            localFCT: r.fct?.localFCT,
+          });
+          if (resultado.ok && resultado.pdfUrl) {
+            window.open(resultado.pdfUrl, '_blank');
+          } else {
+            gerarPDFRecuperacaoFCT({
+              nomeAluno: nomeParaMostrar, numero: '', turmaId: r.fct?.turmaAlunoManual || r.turmaId,
+              ucId: r.ucId, ucNome: r.ucNome, recuperacao: r,
+            });
+          }
+        }} style={{ width: '100%', marginTop: 16, padding: 12, borderRadius: 10, border: '1px solid #6d28d9',
+          background: 'transparent', color: '#6d28d9', fontWeight: 700, cursor: 'pointer' }}>
+          📄 Gerar folha de recuperação (PDF)
+        </button>
+
+        <button onClick={() => {
+          addOrUpdateRecuperacao({ ...r, estado: 'concluida', dataValidacao: new Date().toISOString(), professorAvaliador: nomeProfessor });
+          onVoltar();
+        }} style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 10, border: 'none',
+          background: 'var(--sage)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+          ✓ Marcar como concluída
+        </button>
+      </div>
+    );
   }
 
   return (
