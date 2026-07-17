@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getAlunos, getPerfilProfissionalAluno, addAluno } from '../backend';
+import { ModalFullscreen } from './ModalFullscreen';
 
 export function MapaCompetencias({ turmaId }: { turmaId: string }) {
   const [alunoAberto, setAlunoAberto] = useState<string | null>(null);
@@ -44,14 +45,18 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
             </button>
 
             {aberto && (
-              <div style={{ padding: '12px 14px' }}>
+              <ModalFullscreen
+                titulo={a.nome || `Aluno ${a.numero}`}
+                subtitulo={`${consolidadas}/${total} competências consolidadas`}
+                onFechar={() => setAlunoAberto(null)}
+              >
                 <div style={{ marginBottom: 12, padding: 10, background: 'var(--cream-dark)', borderRadius: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.6)', textTransform: 'uppercase', marginBottom: 6 }}>
                     Nível de Medidas Educativas — adapta os planos de recuperação gerados por IA
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {[1, 2, 3].map(n => (
-                      <button key={n} onClick={() => { addAluno({ ...a, nivelMedidas: n as 1|2|3 }); setAlunoAberto(a.id); setRefresh(k => k + 1); }}
+                      <button key={n} onClick={() => { addAluno({ ...a, nivelMedidas: n as 1|2|3 }); setRefresh(k => k + 1); }}
                         style={{
                           flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
                           border: (a.nivelMedidas || 1) === n ? 'none' : '1px solid var(--border)',
@@ -75,7 +80,7 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
                 {perfil.atitudes.length > 0 && (
                   <MiniGrupo titulo="Atitudes" itens={perfil.atitudes} />
                 )}
-              </div>
+              </ModalFullscreen>
             )}
           </div>
         );
@@ -87,11 +92,17 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
 function MiniGrupo({ titulo, itens }: { titulo: string; itens: { nome: string; nivel: number }[] }) {
   const cor = (n: number) => n >= 4 ? '#2980b9' : n === 3 ? 'var(--sage)' : n === 2 ? 'var(--copper)' : n === 1 ? '#b8985a' : 'rgba(26,23,20,0.3)';
   return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{titulo}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{titulo} ({itens.length})</div>
+      {/* Grelha em vez de flex-wrap — cada etiqueta tem espaço próprio garantido,
+          nunca se sobrepõe mesmo com muitos itens de comprimentos diferentes. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 6 }}>
         {itens.map((item, i) => (
-          <span key={i} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 12, color: 'white', background: cor(item.nivel), fontWeight: 600 }}>
+          <span key={i} style={{
+            fontSize: 11, padding: '5px 10px', borderRadius: 8, color: 'white',
+            background: cor(item.nivel), fontWeight: 600, textAlign: 'center',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }} title={item.nome}>
             {item.nome}
           </span>
         ))}
