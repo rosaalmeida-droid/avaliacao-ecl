@@ -421,6 +421,30 @@ export interface RecuperacaoModulo {
   criadoEm: string;
   atualizadoEm: string;
   tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
+
+  // ── Recuperação via FCT — tipo adicional, coexiste com os anteriores ──
+  // O aluno recupera um módulo evidenciando trabalho real feito durante a
+  // Formação em Contexto de Trabalho, em vez de (ou além de) um trabalho
+  // teórico/investigação. O professor escolhe se exige horas mínimas de
+  // formação ou só evidências das competências, independentemente das horas.
+  viaFCT?: boolean;
+  fct?: {
+    exigirHoras: boolean;              // false = só evidências contam, horas não são obrigatórias
+    horasMinimasExigidas?: number;     // só relevante se exigirHoras = true
+    horasRegistadasPeloAluno?: number;
+    localFCT?: string;                 // empresa/entidade onde decorre a FCT
+    supervisorFCT?: string;            // nome do orientador na empresa
+    competenciasAEvidenciar: string[]; // competenciaIds que o professor definiu como alvo desta recuperação FCT
+    evidencias: {
+      id: string;
+      competenciaId: string;
+      descricao: string;               // o que o aluno fez, na prática, que demonstra a competência
+      dataOcorrencia?: string;
+      anexoUrl?: string;                // foto/documento comprovativo, se houver
+      validadoPeloSupervisor?: boolean; // se a empresa/orientador confirmou por escrito
+    }[];
+    promptGeradoParaAluno?: string;     // prompt que ajuda o aluno a estruturar a descrição das evidências
+  };
 }
 
 export type ModoDistribuicaoFicha = 'todos' | 'grupo' | 'individual';
