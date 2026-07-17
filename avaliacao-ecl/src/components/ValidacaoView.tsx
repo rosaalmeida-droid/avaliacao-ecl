@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
@@ -35,10 +35,11 @@ function corNivelAluno(nivel: string): string {
   return 'var(--danger)';
 }
 
-// Nota final = média entre professor (1-4) e aluno (1-4)
+// Nota final = a nota do professor, sempre. A autoavaliação do aluno é só uma
+// proposta/referência — o professor confirma, sobe ou desce, mas a decisão
+// final é sempre dele. O aluno só recebe a nota depois desta validação.
 function calcularNotaFinal(notaProf: number, notaAluno: number): number {
-  if (!notaAluno) return notaProf;
-  return Math.round(((notaProf + notaAluno) / 2) * 10) / 10;
+  return notaProf;
 }
 
 // Conversão 1-4 → 0-20 (×5)
@@ -129,7 +130,22 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   tipoPlanAula?: 'pratico' | 'misto' | 'teorico';
   onVoltar: () => void;
 }) {
-  const [notasProf, setNotasProf] = useState<Record<string, number>>({});
+  // Pré-preencher com a proposta do aluno — o professor só precisa de clicar
+  // onde quer discordar (subir ou descer); o resto fica já seleccionado, pronto
+  // a confirmar com um só toque em "Guardar".
+  const [notasProf, setNotasProf] = useState<Record<string, number>>(() => {
+    const inicial: Record<string, number> = {};
+    (selecao.autoavaliacoes || []).forEach((auto: any) => {
+      const notaAlunoProposta = auto.nota || (
+        auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
+        auto.nivel === 'fs'  || auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 4 :
+        auto.nivel === 'ca'  || auto.nivel === 'ajuda'     || auto.nivel === 'desenvolvimento' ? 3 :
+        auto.nivel === 'tp' ? 2 : 1
+      );
+      inicial[auto.competenciaId] = notaAlunoProposta;
+    });
+    return inicial;
+  });
   const [comentario, setComentario] = useState('');
   const [guardado, setGuardado] = useState(false);
 
@@ -158,6 +174,38 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     const m = encontrarMicro(id);
     return (m?.criterios || []).map((c: any) => c.criterio || c);
   }
+
+  // Pré-visualização em tempo real da nota final — actualiza a cada nota que o
+  // professor dá, para não haver surpresas: o professor vê SEMPRE a decomposição
+  // por categoria antes de confirmar, não só o número final.
+  const previsaoNota = useMemo(() => {
+    const notasComCat = autoavaliacoes.map((auto: any) => {
+      const notaProf = notasProf[auto.competenciaId];
+      const notaAluno = (auto as any).nota || (
+        auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
+        auto.nivel === 'fs'  || auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 4 :
+        auto.nivel === 'ca'  || auto.nivel === 'ajuda'     || auto.nivel === 'desenvolvimento' ? 3 :
+        auto.nivel === 'tp' ? 2 : 1
+      );
+      const nProf = notaProf || 2;
+      const notaFinal = calcularNotaFinal(nProf, notaAluno);
+      const cat = auto.competenciaId?.startsWith('OBR_') ? 'OBR'
+        : auto.competenciaId?.startsWith('SUB-') || auto.competenciaId?.startsWith('APP-') ? 'SUB'
+        : auto.competenciaId?.startsWith('KNW-') ? 'KNW'
+        : auto.competenciaId?.startsWith('INI-') ? 'INI'
+        : 'ATI';
+      return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: notaFinal };
+    });
+    return calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
+  }, [notasProf, autoavaliacoes, tipoPlanAula]);
+
+  const LABEL_CAT: Record<string,string> = {
+    OBR: 'Obrigatórias (higiene, HACCP, pontualidade)',
+    SUB: 'Técnicas/Subtécnicas',
+    KNW: 'Conhecimentos',
+    ATI: 'Atitude',
+    INI: 'Iniciativa',
+  };
 
   function guardar() {
     const agora = new Date().toISOString();
@@ -201,12 +249,17 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         : 'ATI';
       return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.notaFinal };
     });
-    const { nota20 } = calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
+    const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
     const notaMedia = notasFinais.length
       ? notasFinais.reduce((s, n) => s + n.notaFinal, 0) / notasFinais.length
       : 0;
     (validacao as any).notaMedia = Math.round(notaMedia * 10) / 10;
     (validacao as any).notaMedia20 = nota20; // usa pesos por categoria, não média simples
+    // Guardar a decomposição por categoria para o professor perceber sempre
+    // como a nota foi calculada (antes ficava só o número, sem explicação).
+    (validacao as any).porCategoria = porCategoria;
+    (validacao as any).detalhesNota = detalhes;
+    (validacao as any).tipoPlanAulaUsado = tipoPlanAula || 'pratico';
     addOrUpdateValidacao(validacao as any);
 
     // Registar no histórico de avaliações
@@ -361,6 +414,32 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           </div>
         );
       })}
+
+      {/* Pré-visualização da nota final — mostra SEMPRE a decomposição por
+          categoria, para o professor perceber como se chegou ao número, mesmo
+          antes de guardar. */}
+      <div style={{ background: 'rgba(90,122,78,0.06)', border: '1px solid var(--sage)', borderRadius: 14, padding: 16, marginBottom: 12 }}>
+        <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom: 8 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(26,23,20,0.5)' }}>
+            Nota prevista desta aula
+          </div>
+          <div style={{ fontSize:26, fontWeight:800, color:'var(--sage)' }}>
+            {previsaoNota.nota20}<span style={{fontSize:14, fontWeight:600, opacity:0.6}}>/20</span>
+          </div>
+        </div>
+        <div style={{ fontSize:12, color:'rgba(26,23,20,0.65)', lineHeight:1.6 }}>
+          {Object.entries(previsaoNota.porCategoria).map(([cat, n]) => (
+            <div key={cat} style={{ display:'flex', justifyContent:'space-between', padding:'2px 0' }}>
+              <span>{LABEL_CAT[cat] || cat}</span>
+              <span style={{ fontWeight:700 }}>{n}/20</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginTop:8 }}>
+          Ponderação de aula {tipoPlanAula === 'teorico' ? 'teórica' : tipoPlanAula === 'misto' ? 'mista' : 'prática'}.
+          Falta preencher {autoavaliacoes.filter(a => !notasProf[a.competenciaId]).length} de {autoavaliacoes.length} competências.
+        </div>
+      </div>
 
       {/* Comentário e guardar */}
       <Card>
