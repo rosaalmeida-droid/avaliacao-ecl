@@ -240,12 +240,17 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
               <RecuperacaoFCTAluno recuperacao={r} onAtualizado={onAtualizado} />
               <button onClick={async () => {
                 const alunoDaRecuperacao = getAlunos().find(a => a.id === r.alunoId);
-                const nomeAluno = alunoDaRecuperacao?.nome || `Aluno ${alunoDaRecuperacao?.numero || ''}`;
+                // Aluno externo/antigo — o nome fica guardado directamente na
+                // recuperação, não existe em getAlunos().
+                const nomeAluno = r.fct?.nomeAlunoManual
+                  || alunoDaRecuperacao?.nome
+                  || `Aluno ${alunoDaRecuperacao?.numero || ''}`;
+                const turmaParaImprimir = r.fct?.nomeAlunoManual ? (r.fct?.turmaAlunoManual || r.turmaId) : r.turmaId;
                 // Tenta primeiro gerar o PDF oficial (fiel ao Word da escola) via Apps
                 // Script — só cai para a versão impressa pelo browser se esse script
                 // ainda não estiver configurado.
                 const resultado = await gerarPDFRecuperacaoFCTViaScript({
-                  nomeAluno, turma: r.turmaId, modulo: `${r.ucId} — ${r.ucNome}`,
+                  nomeAluno, turma: turmaParaImprimir, modulo: `${r.ucId} — ${r.ucNome}`,
                   competencias: (r.fct?.competenciasAEvidenciar || []),
                   exigirHoras: r.fct?.exigirHoras || false, horasMinimas: r.fct?.horasMinimasExigidas,
                   localFCT: r.fct?.localFCT,
@@ -254,7 +259,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                   window.open(resultado.pdfUrl, '_blank');
                 } else {
                   gerarPDFRecuperacaoFCT({
-                    nomeAluno, numero: alunoDaRecuperacao?.numero || '', turmaId: r.turmaId,
+                    nomeAluno, numero: alunoDaRecuperacao?.numero || '', turmaId: turmaParaImprimir,
                     ucId: r.ucId, ucNome: r.ucNome, recuperacao: r,
                   });
                 }
