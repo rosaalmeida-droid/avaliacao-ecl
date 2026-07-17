@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import {
@@ -228,7 +229,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
       </button>
 
       {aberta && (
-        <div style={{ padding: 16 }}>
+        <ModalFullscreen titulo={`${r.ucId} — ${r.ucNome}`} subtitulo="Recuperação de módulo" onFechar={onToggle}>
           {trancada ? (
             <div style={{ fontSize: 13, color: 'var(--danger)', background: 'var(--danger-pale)', borderRadius: 10, padding: 14 }}>
               🔒 O prazo de 1 mês para esta recuperação terminou. Fala com o professor para reabrir.
@@ -325,7 +326,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
               </button>
             </>
           )}
-        </div>
+        </ModalFullscreen>
       )}
     </div>
   );
