@@ -1,453 +1,556 @@
+import React, { useState, useEffect } from 'react';
+import { Aluno, RecuperacaoModulo } from '../types';
+import { ModalFullscreen } from './ModalFullscreen';
+import {
+  getAlunos, criarRecuperacaoFCT, addEvidenciaFCT, addOrUpdateRecuperacao,
+  getRecuperacoesPorAluno,
+} from '../backend';
+import { microsPorUC, encontrarMicro } from '../compatECL';
+import { CRONOGRAMA_2026_2027 } from '../cronograma';
+import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
+import { gerarPromptRecuperacaoFCT, gerarPromptCompetenciasUC } from '../matrizEvidencias';
+import { getReferencialUC } from '../referencial811RA144';
+import { SeletorIA } from './SeletorIA';
+
+// Lista completa de UC/UFCD de todos os anos — recuperações FCT podem ser
+// de alunos antigos, a recuperar módulos de qualquer ano, não só da turma actual.
+const TODOS_OS_MODULOS = CRONOGRAMA_2026_2027.map(m => ({ id: m.id, nome: m.nome, disciplina: m.disciplina }));
+
 // ═══════════════════════════════════════════════════════════════
-// Apps Script — Gerar PDF de Recuperação via FCT
-// Usa um Google Doc modelo (convertido do Word original da escola)
-// com marcadores {{...}}, preenche com os dados do aluno, insere a
-// tabela de avaliação das competências pelo Orientador, e devolve
-// o PDF já pronto — chamado directamente pela app Avaliação ECL.
-//
-// INSTRUÇÕES DE INSTALAÇÃO:
-// 1. Carrega "Modelo_Recuperacao_FCT_com_placeholders.docx" para o
-//    Google Drive
-// 2. Clica com o botão direito → Abrir com → Google Docs
-// 3. Copia o ID do documento a partir do URL:
-//    https://docs.google.com/document/d/ESTE_ID_AQUI/edit
-// 4. Cola esse ID na constante ID_MODELO abaixo
-// 5. Extensões → Apps Script → cola este código
-// 6. Implementar → Nova implementação → Aplicação Web
-//    "Quem tem acesso": Qualquer pessoa
-// 7. Copia o URL do deployment e cola em RECUPERACAO_FCT_PDF_URL
-//    no backend.ts da app
+// Recuperação via FCT — lado do PROFESSOR
+// Cria uma recuperação nova, escolhendo aluno, UC, competências a
+// evidenciar, e se exige horas mínimas de formação ou só evidências.
 // ═══════════════════════════════════════════════════════════════
 
-var ID_MODELO = '1NzHjA7yJwMQclcv2l__DrdhoPcEjYKwqh6pNp_UNtzg'; // ← já preenchido
-var ID_PASTA_RECUPERACOES = '16Ie_znxPpCbQu3JKZ199-3GexyTvxGkB'; // pasta definida pela Rosa
+export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; onCriada: () => void }) {
+  const [aberto, setAberto] = useState(false);
+  // Aluno desta turma (dropdown) OU aluno externo/antigo (nome escrito à mão,
+  // para quem já terminou o curso e está a recuperar um módulo em falta).
+  const [tipoAluno, setTipoAluno] = useState<'turma' | 'externo'>('turma');
+  const [alunoId, setAlunoId] = useState('');
+  const [nomeExterno, setNomeExterno] = useState('');
+  const [turmaExterno, setTurmaExterno] = useState('');
+  const [ucId, setUcId] = useState('');
+  const [competenciasSel, setCompetenciasSel] = useState<Set<string>>(new Set());
+  const [competenciaManual, setCompetenciaManual] = useState('');
+  const [exigirHoras, setExigirHoras] = useState(true); // por defeito ligado — a Rosa confirmou que quer sempre exigir horas
+  const [horasMinimas, setHorasMinimas] = useState(10);
+  const [localFCT, setLocalFCT] = useState('');
+  const [dataInicio, setDataInicio] = useState('');
+  // Importância relativa de cada competência (1=baixa, 2=média, 3=alta) —
+  // usada para sugerir o peso % de cada uma na média final da tabela.
+  const [importancias, setImportancias] = useState<Record<string, number>>({});
+  // Pergunta de cenário gerada pela IA para cada competência (extraída do
+  // separador "::" na resposta) — usada no guião de reflexão em vez da
+  // fórmula fixa genérica.
+  const [perguntas, setPerguntas] = useState<Record<string, string>>({});
+  const [dataTermo, setDataTermo] = useState('');
+  // Decisão sobre defesa oral — tomada AGORA, na criação, nunca depois de
+  // avaliar. Por defeito não exige (o professor liga só se achar necessário).
+  const [possivelOral, setPossivelOral] = useState(false);
+  // Guião de apoio gerado pela IA — o professor cola aqui o resultado, e
+  // fica guardado para aparecer em anexo no documento final.
+  const [guiaoTexto, setGuiaoTexto] = useState('');
+  const [supervisorFCT, setSupervisorFCT] = useState('');
 
-// Escala de avaliação do Orientador — 4 níveis, cada um com o
-// intervalo de nota correspondente (0-20).
-function doPost(e) {
-  try {
-    var raw = (e.parameter && e.parameter.dados) || (e.postData && e.postData.contents) || '{}';
-    var dados = JSON.parse(raw);
-    return gerarPDF(dados);
-  } catch (err) {
-    return resposta(false, 'Erro: ' + err.toString());
-  }
-}
+  const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
+  const uc = TODOS_OS_MODULOS.find(u => u.id === ucId);
+  const competenciasDaUC = ucId ? microsPorUC(ucId) : [];
+  const formularioValido = tipoAluno === 'turma' ? !!alunoId : nomeExterno.trim().length > 0;
 
-function gerarPDF(dados) {
-  if (ID_MODELO === 'COLOCAR_AQUI_O_ID_DO_GOOGLE_DOC') {
-    return resposta(false, 'Script ainda não configurado — falta o ID do modelo (ver instruções no topo do script).');
-  }
+  // ── Rascunho automático — se o modal fechar por qualquer motivo antes de
+  // "Criar recuperação via FCT" (ex: clique sem querer fora do modal, ou
+  // ao voltar de uma aba da IA), o que já foi preenchido não se perde.
+  const CHAVE_RASCUNHO = `ecl_rascunho_fct_${turmaId}`;
 
-  var modelo;
-  try {
-    modelo = DriveApp.getFileById(ID_MODELO);
-  } catch (errFile) {
-    return resposta(false, 'ID_MODELO inválido — não encontrei nenhum ficheiro com esse ID no Drive. Verifica se copiaste o ID correcto do URL do Google Doc.');
-  }
+  useEffect(() => {
+    if (!aberto) return;
+    try {
+      const guardado = localStorage.getItem(CHAVE_RASCUNHO);
+      if (guardado) {
+        const r = JSON.parse(guardado);
+        setTipoAluno(r.tipoAluno || 'turma');
+        setAlunoId(r.alunoId || '');
+        setNomeExterno(r.nomeExterno || '');
+        setTurmaExterno(r.turmaExterno || '');
+        setUcId(r.ucId || '');
+        setCompetenciasSel(new Set(r.competenciasSel || []));
+        setExigirHoras(r.exigirHoras || false);
+        setHorasMinimas(r.horasMinimas || 10);
+        setLocalFCT(r.localFCT || '');
+        setSupervisorFCT(r.supervisorFCT || '');
+        setDataInicio(r.dataInicio || '');
+        setDataTermo(r.dataTermo || '');
+        setPossivelOral(r.possivelOral || false);
+        setGuiaoTexto(r.guiaoTexto || '');
+      }
+    } catch {}
+  }, [aberto]);
 
-  // Diagnóstico — confirma se o ficheiro é mesmo um Google Doc nativo
-  // (não um .docx em modo de compatibilidade, que o DocumentApp não consegue abrir).
-  var tipoFicheiro = modelo.getMimeType();
-  Logger.log('Tipo do ficheiro modelo: ' + tipoFicheiro);
-  if (tipoFicheiro !== 'application/vnd.google-apps.document') {
-    return resposta(false,
-      'O ficheiro do ID_MODELO NÃO é um Google Doc nativo — é do tipo "' + tipoFicheiro + '". ' +
-      'Abre o ficheiro no Drive, verifica se o título NÃO tem ".DOCX" ao lado (se tiver, vai a ' +
-      'Ficheiro → Guardar no formato Google Docs), e usa o ID do documento resultante — pode ' +
-      'ser um ID DIFERENTE do que tens agora.');
-  }
+  useEffect(() => {
+    if (!aberto) return;
+    const rascunho = {
+      tipoAluno, alunoId, nomeExterno, turmaExterno, ucId,
+      competenciasSel: Array.from(competenciasSel),
+      exigirHoras, horasMinimas, localFCT, supervisorFCT, dataInicio, dataTermo,
+      possivelOral, guiaoTexto,
+    };
+    try { localStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(rascunho)); } catch {}
+  }, [aberto, tipoAluno, alunoId, nomeExterno, turmaExterno, ucId, competenciasSel, exigirHoras, horasMinimas, localFCT, supervisorFCT, dataInicio, dataTermo, possivelOral, guiaoTexto]);
 
-  var pasta = DriveApp.getFolderById(ID_PASTA_RECUPERACOES); // pasta definida pela Rosa
-  // Nome do ficheiro: Plano_de_Recuperação_(aluno)_(UFCD/UC)_(disciplina)_(ano letivo)
-  var limpar = function(s) { return String(s || '').replace(/[^a-zA-Z0-9À-ú ]/g, '').trim().replace(/\s+/g, '_'); };
-  var nomeCopia = 'Plano_de_Recuperação'
-    + '_' + limpar(dados.nomeAluno || 'aluno')
-    + '_' + limpar(dados.ucId || '')
-    + '_' + limpar(dados.ucNome || '')
-    + '_' + limpar(dados.anoLetivo || '');
-  var copiaFicheiro = modelo.makeCopy(nomeCopia, pasta);
-
-  var doc;
-  try {
-    doc = DocumentApp.openById(copiaFicheiro.getId());
-  } catch (errDoc) {
-    return resposta(false, 'Não consegui abrir a cópia como Google Doc: ' + errDoc.toString());
-  }
-  var corpo = doc.getBody();
-  if (!corpo) {
-    return resposta(false, 'O documento abriu mas não tem corpo de texto — o modelo pode estar corrompido.');
-  }
-  var cabecalhos = doc.getHeader();
-
-  var textoHoras = dados.exigirHoras
-    ? 'Registo de um mínimo de ' + (dados.horasMinimas || 0) + ' horas de FCT dedicadas às competências acima, com datas e descrição das situações.'
-    : 'Não há um número mínimo de horas exigido — contam apenas as evidências concretas das competências acima, independentemente do tempo dedicado.';
-
-  // Tira o ponto final de cada competência antes de juntar — algumas vêm
-  // do referencial oficial (já terminam em ".") e outras da IA (podem ou
-  // não terminar em ")"). Sem isto, o texto final ficava com pontuação
-  // duplicada ("..") porque o modelo já acrescenta um ponto final a seguir.
-  var competenciasTexto = (dados.competencias || [])
-    .map(function(c) { return String(c || '').trim().replace(/\.+$/, ''); })
-    .join('; ');
-
-  var substituicoes = {
-    '{{NOME_ALUNO}}': String(dados.nomeAluno || ''),
-    '{{TURMA}}': String(dados.turma || ''),
-    '{{ANO_LETIVO}}': String(dados.anoLetivo || '2026/27'),
-    '{{AREA}}': String(dados.area || 'Curso de Cozinha/Pastelaria').toUpperCase(),
-    '{{DISCIPLINA}}': String(dados.disciplina || ''),
-    '{{TEXTO_ORAL}}': dados.possivelOral
-      ? 'Caso se verifique ser necessário, o aluno poderá ter de realizar uma defesa oral desta recuperação — decisão já prevista pelo professor no momento da criação desta recuperação.'
-      : '',
-    '{{MODULO}}': String(dados.modulo || ''),
-    '{{TEXTO_HORAS}}': String(textoHoras || ''),
-    '{{LOCAL_FCT}}': String(dados.localFCT || '________________'),
-    '{{DATA_INICIO}}': String(dados.dataInicio || '__/__/____'),
-    '{{DATA_TERMO}}': String(dados.dataTermo || '__/__/____'),
-  };
-
-  for (var chave in substituicoes) {
-    if (!substituicoes.hasOwnProperty(chave)) continue;
-    if (chave === '{{TABELA_COMPETENCIAS}}') continue; // tratado à parte, é uma tabela
-    if (chave === '{{ANEXO_GUIAO}}') continue; // tratado à parte, pode ter várias linhas
-    // {{LISTA_COMPETENCIAS}} não está em "substituicoes" — é tratado à parte, é uma lista
-    var valor = substituicoes[chave];
-    corpo.replaceText(escapeRegExp(chave), valor);
-    if (cabecalhos) cabecalhos.replaceText(escapeRegExp(chave), valor);
+  function limparRascunho() {
+    try { localStorage.removeItem(CHAVE_RASCUNHO); } catch {}
   }
 
-  // ── Inserir a tabela de avaliação das competências pelo Orientador ──
-  inserirListaCompetencias(corpo, dados.competencias || []);
-  inserirPerguntasPorCompetencia(corpo, dados.competencias || [], dados.perguntas || []);
-  inserirAnexoGuiao(corpo, dados.guiaoTexto || '');
-  // Se já há evidências reais submetidas pelo aluno, a tabela é construída
-  // a partir delas (uma linha por evidência, com o texto real escrito) —
-  // é isso que o Orientador realmente avalia. Se ainda não há nenhuma,
-  // usa as competências-alvo como pontos de partida (para o Orientador
-  // já saber o que vai ter de avaliar assim que houver evidências).
-  var linhasParaTabela = (dados.evidencias && dados.evidencias.length > 0)
-    ? dados.evidencias.map(function(e) { return String(e.descricao || e.competenciaId || ''); })
-    : (dados.competencias || []);
-  inserirTabelaCompetencias(corpo, linhasParaTabela, dados.importancias || []);
+  function toggleComp(id: string) {
+    setCompetenciasSel(prev => {
+      const novo = new Set(prev);
+      if (novo.has(id)) { novo.delete(id); } else { novo.add(id); }
+      return novo;
+    });
+    setImportancias(prev => {
+      const novo = { ...prev };
+      if (novo[id]) { delete novo[id]; } else { novo[id] = 2; } // 2 = média, por defeito
+      return novo;
+    });
+  }
 
-  doc.saveAndClose();
-
-  var pdfBlob = DriveApp.getFileById(copiaFicheiro.getId()).getAs('application/pdf');
-  pdfBlob.setName(nomeCopia + '.pdf');
-  var pdfFicheiro = pasta.createFile(pdfBlob);
-  pdfFicheiro.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-  copiaFicheiro.setTrashed(true);
-
-  return resposta(true, 'PDF gerado', { pdfUrl: pdfFicheiro.getUrl() });
-}
-
-// ── Substitui o parágrafo "{{LISTA_COMPETENCIAS}}" por uma lista real
-// (com marcas), uma competência por linha — mais fácil de o Orientador da
-// Empresa ler e validar item a item do que uma frase corrida.
-function inserirListaCompetencias(corpo, competencias) {
-  var numFilhos = corpo.getNumChildren();
-  var indiceMarcador = -1;
-
-  for (var i = 0; i < numFilhos; i++) {
-    var filho = corpo.getChild(i);
-    if (filho.getType() === DocumentApp.ElementType.PARAGRAPH) {
-      var texto = filho.asParagraph().getText();
-      if (texto.indexOf('{{LISTA_COMPETENCIAS}}') >= 0) { indiceMarcador = i; break; }
+  function adicionarCompetenciaManual() {
+    // Aceita colar a lista toda de uma vez. Nem sempre a quebra de linha
+    // sobrevive ao copiar de uma IA (às vezes cola tudo numa linha só) —
+    // por isso, se não houver \n suficientes, tenta separar pelo padrão
+    // "Termo técnico (explicação)" que este prompt sempre produz: cada
+    // competência fecha com ")" antes da próxima começar com maiúscula.
+    let itens = competenciaManual.split('\n').map(l => l.trim()).filter(Boolean);
+    if (itens.length <= 1) {
+      const texto = competenciaManual.trim();
+      const partes = texto.split(/\)\s+(?=[A-ZÀ-Ú])/).map((p, i, arr) => {
+        // Repõe o ")" que o split apanhou, excepto na última parte se já o tiver
+        return i < arr.length - 1 && !p.trim().endsWith(')') ? p.trim() + ')' : p.trim();
+      }).filter(Boolean);
+      if (partes.length > 1) itens = partes;
     }
-  }
+    if (itens.length === 0) return;
 
-  if (indiceMarcador < 0) return; // marcador não encontrado — modelo desactualizado
-
-  var listaCompetencias = competencias.length > 0
-    ? competencias
-    : ['(nenhuma competência definida)'];
-
-  // Inserir um item de lista por competência, a partir da posição do marcador
-  for (var j = 0; j < listaCompetencias.length; j++) {
-    var itemLista = corpo.insertListItem(indiceMarcador + j, String(listaCompetencias[j] || ''));
-    itemLista.setGlyphType(DocumentApp.GlyphType.BULLET);
-    itemLista.setFontSize(10);
-    itemLista.setIndentStart(24).setIndentFirstLine(24);
-  }
-
-  // Remover o parágrafo do marcador original — ficou empurrado para depois
-  // dos itens de lista que acabámos de inserir.
-  corpo.getChild(indiceMarcador + listaCompetencias.length).asParagraph().removeFromParent();
-}
-
-// ── Substitui o parágrafo "{{PERGUNTAS_POR_COMPETENCIA}}" por uma
-// pergunta situacional por cada competência — não uma pergunta genérica
-// solta. Aproveita a explicação que já vem entre parênteses em cada
-// competência (ex: "Termo técnico (explicação concreta e observável)")
-// como semente da pergunta, para o aluno recordar uma situação real e
-// específica, não escrever algo vago.
-function inserirPerguntasPorCompetencia(corpo, competencias, perguntasIA) {
-  var numFilhos = corpo.getNumChildren();
-  var indiceMarcador = -1;
-
-  for (var i = 0; i < numFilhos; i++) {
-    var filho = corpo.getChild(i);
-    if (filho.getType() === DocumentApp.ElementType.PARAGRAPH) {
-      var texto = filho.asParagraph().getText();
-      if (texto.indexOf('{{PERGUNTAS_POR_COMPETENCIA}}') >= 0) { indiceMarcador = i; break; }
-    }
-  }
-
-  if (indiceMarcador < 0) return; // marcador não encontrado — modelo desactualizado
-
-  var listaCompetencias = competencias.length > 0
-    ? competencias
-    : ['(nenhuma competência definida)'];
-
-  var posicao = indiceMarcador;
-  for (var j = 0; j < listaCompetencias.length; j++) {
-    var textoCompetencia = String(listaCompetencias[j] || '');
-
-    // Separar "Termo técnico" de "(explicação concreta)", se existir
-    var match = textoCompetencia.match(/^([^(]+)\(([^)]+)\)\s*\.?\s*$/);
-    var termo = match ? match[1].trim() : textoCompetencia;
-    var explicacao = match ? match[2].trim() : '';
-
-    // Cabeçalho da pergunta — número + termo técnico, a negrito
-    var paraguoTitulo = corpo.insertParagraph(posicao, (j + 1) + '. ' + termo);
-    paraguoTitulo.setBold(true).setFontSize(11).setSpacingBefore(j === 0 ? 0 : 14).setSpacingAfter(4);
-    posicao++;
-
-    // Pergunta situacional — usa a pergunta de cenário que a IA já gerou
-    // especificamente para esta competência, se existir (mais rica e
-    // variada). Só recorre à fórmula genérica de reserva se não houver
-    // nenhuma (ex: competência escrita à mão pelo professor, sem IA).
-    var perguntaDaIA = (perguntasIA && perguntasIA[j]) ? String(perguntasIA[j]).trim() : '';
-    var textoPergunta = perguntaDaIA
-      ? perguntaDaIA
-      : (explicacao
-          ? 'Conta uma situação real que viveste, ligada a isto: "' + explicacao + '". O que aconteceu, com quem, e o que fizeste exactamente?'
-          : 'Conta uma situação real que viveste, ligada a esta competência. O que aconteceu, com quem, e o que fizeste exactamente?');
-    var paragrafoPergunta = corpo.insertParagraph(posicao, textoPergunta);
-    paragrafoPergunta.setItalic(true).setFontSize(10).setSpacingAfter(8);
-    posicao++;
-
-    // 3 linhas em branco para o aluno escrever à mão — usa "____" em vez de
-    // um underline real, porque o Paragraph do Apps Script não tem API
-    // directa para underline/border de linha (só Table/TableCell têm).
-    for (var linha = 0; linha < 3; linha++) {
-      var paragrafoLinha = corpo.insertParagraph(posicao,
-        '_______________________________________________________________________');
-      paragrafoLinha.setFontSize(10).setForegroundColor('#cccccc').setSpacingAfter(6);
-      posicao++;
-    }
-  }
-
-  // Remover o parágrafo do marcador original — ficou empurrado para o fim
-  corpo.getChild(posicao).asParagraph().removeFromParent();
-}
-
-// ── Substitui o parágrafo "{{ANEXO_GUIAO}}" pelo texto do guião completo
-// (colado pelo professor), formatado como uma folha própria — cada linha
-// vira o seu próprio parágrafo (preserva a estrutura do guião gerado pela
-// IA), seguido de espaço em branco para o aluno responder à mão ou
-// preencher no computador.
-function inserirAnexoGuiao(corpo, guiaoTexto) {
-  var numFilhos = corpo.getNumChildren();
-  var indiceMarcador = -1;
-
-  for (var i = 0; i < numFilhos; i++) {
-    var filho = corpo.getChild(i);
-    if (filho.getType() === DocumentApp.ElementType.PARAGRAPH) {
-      var texto = filho.asParagraph().getText();
-      if (texto.indexOf('{{ANEXO_GUIAO}}') >= 0) { indiceMarcador = i; break; }
-    }
-  }
-
-  if (indiceMarcador < 0) return; // marcador não encontrado — modelo desactualizado
-
-  var posicao = indiceMarcador;
-
-  if (!guiaoTexto || !guiaoTexto.trim()) {
-    var paragrafoVazio = corpo.insertParagraph(posicao,
-      '(Esta recuperação não tem guião de apoio associado.)');
-    paragrafoVazio.setItalic(true).setForegroundColor('#999999').setFontSize(10);
-    posicao++;
-  } else {
-    var linhasGuiao = guiaoTexto.split('\n');
-    linhasGuiao.forEach(function(linha) {
-      var linhaLimpa = linha.trim();
-      if (!linhaLimpa) return; // salta linhas vazias do texto colado
-      var ehTitulo = /^#|^\*\*|^\d+\.\s/.test(linhaLimpa); // títulos markdown ou numerados
-      var p = corpo.insertParagraph(posicao, linhaLimpa.replace(/^#+\s*|\*\*/g, ''));
-      p.setFontSize(ehTitulo ? 11 : 10);
-      if (ehTitulo) p.setBold(true).setSpacingBefore(10);
-      posicao++;
+    // Extrair " :: Pergunta" (se existir) antes de tratar a importância —
+    // fica guardada à parte, associada ao texto limpo da competência.
+    const MAPA_IMPORTANCIA: Record<string, number> = { ALTA: 3, 'MÉDIA': 2, MEDIA: 2, BAIXA: 1 };
+    const itensLimpos: string[] = [];
+    const importanciasDetectadas: Record<string, number> = {};
+    const perguntasDetectadas: Record<string, string> = {};
+    itens.forEach(l => {
+      let linha = l;
+      let pergunta = '';
+      const idxSeparador = linha.indexOf(' :: ');
+      if (idxSeparador >= 0) {
+        pergunta = linha.slice(idxSeparador + 4).trim();
+        linha = linha.slice(0, idxSeparador).trim();
+      }
+      const match = linha.match(/^(.*?)\s*\[(ALTA|M[ÉE]DIA|BAIXA)\]\s*\.?\s*$/i);
+      if (match) {
+        const textoLimpo = match[1].trim();
+        const nivel = MAPA_IMPORTANCIA[match[2].toUpperCase()] || 2;
+        itensLimpos.push(textoLimpo);
+        importanciasDetectadas[textoLimpo] = nivel;
+        if (pergunta) perguntasDetectadas[textoLimpo] = pergunta;
+      } else {
+        itensLimpos.push(linha);
+        if (pergunta) perguntasDetectadas[linha] = pergunta;
+      }
     });
 
-    // Espaço em branco no fim — para o aluno escrever a resposta final,
-    // à mão ou no computador, depois de ler o guião completo.
-    var tituloEspaco = corpo.insertParagraph(posicao, 'RESPOSTA DO ALUNO');
-    tituloEspaco.setBold(true).setFontSize(11).setForegroundColor('#6d28d9').setSpacingBefore(16).setSpacingAfter(6);
-    posicao++;
-    for (var linha2 = 0; linha2 < 12; linha2++) {
-      var linhaEscrita = corpo.insertParagraph(posicao,
-        '_______________________________________________________________________');
-      linhaEscrita.setFontSize(10).setForegroundColor('#cccccc').setSpacingAfter(10);
-      posicao++;
-    }
+    setCompetenciasSel(prev => {
+      const novo = new Set(prev);
+      itensLimpos.forEach(l => novo.add(l));
+      return novo;
+    });
+    setImportancias(prev => {
+      const novo = { ...prev };
+      itensLimpos.forEach(l => { if (!novo[l]) novo[l] = importanciasDetectadas[l] || 2; });
+      return novo;
+    });
+    setPerguntas(prev => ({ ...prev, ...perguntasDetectadas }));
+    setCompetenciaManual('');
   }
 
-  // Remover o parágrafo do marcador original
-  corpo.getChild(posicao).asParagraph().removeFromParent();
+  function criar() {
+    if (!formularioValido || !ucId || competenciasSel.size === 0) {
+      alert('Escolhe o aluno, a UC, e pelo menos uma competência a evidenciar.');
+      return;
+    }
+    // Aluno externo/antigo — gera um ID próprio (não existe em getAlunos()),
+    // o nome fica guardado directamente na recuperação para a impressão/PDF.
+    const idParaUsar = tipoAluno === 'turma' ? alunoId : `externo_${Date.now()}`;
+    // A recuperação tem de ficar guardada sempre com a turma ACTUAL (onde o
+    // professor está a trabalhar) — é isso que decide em que lista aparece.
+    // A turma de origem de um aluno externo/antigo é só informativa, guarda-se
+    // à parte (turmaAlunoManual), nunca substitui a turma real da recuperação.
+    const turmaParaUsar = turmaId;
+
+    const listaCompetencias = Array.from(competenciasSel);
+    const listaImportancias = listaCompetencias.map(c => importancias[c] || 2);
+    const listaPerguntas = listaCompetencias.map(c => perguntas[c] || '');
+    const nova = criarRecuperacaoFCT(
+      idParaUsar, turmaParaUsar, ucId, uc?.nome || '',
+      listaCompetencias, exigirHoras, exigirHoras ? horasMinimas : undefined,
+      localFCT || undefined, supervisorFCT || undefined,
+      dataInicio || undefined, dataTermo || undefined,
+      listaImportancias, listaPerguntas, possivelOral
+    );
+    if (nova.fct) nova.fct.guiaoTexto = guiaoTexto || undefined;
+    if (tipoAluno === 'externo' && nova.fct) {
+      nova.fct.nomeAlunoManual = nomeExterno.trim();
+      nova.fct.turmaAlunoManual = turmaExterno.trim() || undefined;
+    }
+    addOrUpdateRecuperacao(nova);
+    limparRascunho();
+    setAberto(false);
+    setAlunoId(''); setNomeExterno(''); setTurmaExterno(''); setUcId(''); setCompetenciasSel(new Set());
+    setExigirHoras(false); setLocalFCT(''); setSupervisorFCT(''); setDataInicio(''); setDataTermo('');
+    setPossivelOral(false); setGuiaoTexto('');
+    onCriada();
+  }
+
+  return (
+    <>
+      <button onClick={() => setAberto(true)} style={{
+        width: '100%', padding: '12px', borderRadius: 10, border: '2px dashed #6d28d9',
+        background: 'transparent', color: '#6d28d9', cursor: 'pointer', fontSize: 14, fontWeight: 700,
+      }}>
+        🏢 Criar recuperação via FCT
+      </button>
+
+      {aberto && (
+        <ModalFullscreen titulo="Nova recuperação via FCT" subtitulo="Formação em Contexto de Trabalho" onFechar={() => setAberto(false)}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Aluno</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              <button onClick={() => setTipoAluno('turma')} style={{
+                flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                border: tipoAluno === 'turma' ? '2px solid #6d28d9' : '1px solid #ddd',
+                background: tipoAluno === 'turma' ? '#f3f0fb' : '#fff', color: tipoAluno === 'turma' ? '#6d28d9' : '#666',
+              }}>Aluno desta turma</button>
+              <button onClick={() => setTipoAluno('externo')} style={{
+                flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                border: tipoAluno === 'externo' ? '2px solid #6d28d9' : '1px solid #ddd',
+                background: tipoAluno === 'externo' ? '#f3f0fb' : '#fff', color: tipoAluno === 'externo' ? '#6d28d9' : '#666',
+              }}>Aluno externo / antigo</button>
+            </div>
+            {tipoAluno === 'turma' ? (
+              <select value={alunoId} onChange={e => setAlunoId(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}>
+                <option value="">Seleccionar...</option>
+                {alunos.map(a => <option key={a.id} value={a.id}>{a.numero} — {a.nome}</option>)}
+              </select>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
+                <input value={nomeExterno} onChange={e => setNomeExterno(e.target.value)} placeholder="Nome completo do aluno"
+                  style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+                <input value={turmaExterno} onChange={e => setTurmaExterno(e.target.value)} placeholder="Turma de origem (opcional)"
+                  style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+              Unidade de Competência / UFCD <span style={{ fontWeight: 400, color: '#999' }}>(todos os anos e planos — inclui alunos de coortes anteriores)</span>
+            </div>
+            <select value={ucId} onChange={e => { setUcId(e.target.value); setCompetenciasSel(new Set()); }}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}>
+              <option value="">Seleccionar...</option>
+              {TODOS_OS_MODULOS.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)}
+            </select>
+          </div>
+
+          {ucId && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                Competências a evidenciar na FCT ({competenciasSel.size} seleccionadas)
+              </div>
+              <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 8, padding: 8, marginBottom: 8 }}>
+                {/* Realizações oficiais do referencial 811RA144 — é a fonte mais
+                    fiável que existe (nunca está mal atribuída, ao contrário da
+                    biblioteca técnica que às vezes cruza UCs relacionadas).
+                    Aparece sempre primeiro, antes da biblioteca e da IA. */}
+                {(getReferencialUC(ucId)?.realizacoes || []).length > 0 && (
+                  <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', marginBottom: 4 }}>
+                      Referencial oficial desta UC
+                    </div>
+                    <div style={{ fontSize: 11, color: '#b5651d', marginBottom: 6 }}>
+                      ⚠️ Escolhe UM estilo por competência — ou isto (frase oficial curta), ou a
+                      versão elaborada pela IA abaixo. Marcar os dois para a mesma ideia repete a
+                      informação no documento final.
+                    </div>
+                    {(getReferencialUC(ucId)?.realizacoes || []).map(r => (
+                      <label key={r} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={competenciasSel.has(r)} onChange={() => toggleComp(r)} />
+                        <span style={{ fontSize: 13 }}>{r}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {competenciasDaUC.length > 0 && (
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#999', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Técnicas da biblioteca (podem ser partilhadas com outras UCs relacionadas)
+                  </div>
+                )}
+                {competenciasDaUC.map(c => (
+                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={competenciasSel.has(c.id)} onChange={() => toggleComp(c.id)} />
+                    <span style={{ fontSize: 13 }}>{c.nome}</span>
+                  </label>
+                ))}
+                {Array.from(competenciasSel).filter(id => !competenciasDaUC.some(c => c.id === id)).map(texto => (
+                  <label key={texto} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px' }}>
+                    <input type="checkbox" checked readOnly onChange={() => toggleComp(texto)} />
+                    <span style={{ fontSize: 13 }}>{texto}</span>
+                    <button onClick={() => toggleComp(texto)} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: '#c00', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                  </label>
+                ))}
+              </div>
+              {/* Gerar por IA — sempre disponível, quer a UC já tenha
+                  competências mapeadas na biblioteca quer não. A biblioteca
+                  às vezes é boa (técnicas de cozinha), mas para FCT o
+                  professor pode preferir sempre a sugestão da IA, mais
+                  focada em evidências observáveis fora da sala de aula. */}
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+                  {competenciasDaUC.length === 0
+                    ? 'Sem competências mapeadas para esta UC — gera uma sugestão por IA, baseada no referencial oficial, e cola-as no campo abaixo:'
+                    : 'Preferes gerar por IA em vez de usar a lista da biblioteca acima? Gera uma sugestão baseada no referencial oficial:'}
+                </div>
+                <SeletorIA
+                  corPrincipal="#6d28d9"
+                  prompt={gerarPromptCompetenciasUC({
+                    ucId, ucNome: uc?.nome || '',
+                    realizacoesOficiais: getReferencialUC(ucId)?.realizacoes || [],
+                    criteriosDesempenho: getReferencialUC(ucId)?.criteriosDesempenho,
+                  })}
+                />
+              </div>
+              {/* Sempre visível — a biblioteca não tem competências mapeadas para
+                  todas as UCs (ex: sociocultural), o professor tem de conseguir
+                  colar a lista toda de uma vez (não uma a uma) para o formulário
+                  nunca ficar bloqueado nem obrigar a trabalho repetitivo. */}
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>
+                Cola aqui a lista toda que a IA devolveu (uma competência por linha) —
+                não precisas de as escrever uma a uma.
+              </div>
+              <textarea value={competenciaManual} onChange={e => setCompetenciaManual(e.target.value)}
+                placeholder={'Cola aqui a lista da IA — ex:\nComunicação clara com colegas\nCumprimento de instruções\nPontualidade'}
+                style={{ width: '100%', minHeight: 90, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, boxSizing: 'border-box', marginBottom: 6, fontFamily: 'inherit' }} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={adicionarCompetenciaManual} style={{
+                  padding: '8px 14px', borderRadius: 8, border: 'none', background: '#6d28d9', color: '#fff',
+                  fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+                  + Adicionar todas as linhas
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginBottom: 14, padding: 12, background: '#f5f0e8', borderRadius: 8 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: exigirHoras ? 10 : 0 }}>
+              <input type="checkbox" checked={exigirHoras} onChange={e => setExigirHoras(e.target.checked)} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Exigir um número mínimo de horas de formação</span>
+            </label>
+            {exigirHoras && (
+              <input type="number" min={1} value={horasMinimas} onChange={e => setHorasMinimas(parseInt(e.target.value) || 0)}
+                placeholder="Horas mínimas" style={{ width: 120, padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd' }} />
+            )}
+            {!exigirHoras && (
+              <div style={{ fontSize: 11, color: '#8a4a15' }}>
+                Sem exigência de horas — só contam as evidências das competências, seja qual for o tempo dedicado.
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Início do período de FCT</div>
+              <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Termo do período de FCT</div>
+              <input type="date" value={dataTermo} onChange={e => setDataTermo(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Local de FCT (opcional)</div>
+              <input value={localFCT} onChange={e => setLocalFCT(e.target.value)} placeholder="Nome da empresa"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Supervisor na empresa (opcional)</div>
+              <input value={supervisorFCT} onChange={e => setSupervisorFCT(e.target.value)} placeholder="Nome do orientador"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+
+          {competenciasSel.size > 0 && (
+            <div style={{ marginBottom: 16, padding: 12, background: '#f9f7fc', borderRadius: 8, border: '1px solid #e4d9f7' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
+                Importância de cada competência na nota final ({competenciasSel.size})
+              </div>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 10 }}>
+                Define se cada competência pesa pouco, o normal, ou muito na média final — o peso %
+                é calculado automaticamente a partir disto e aparece já pronto na tabela do documento.
+              </div>
+              {Array.from(competenciasSel).map(comp => (
+                <div key={comp} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #eee' }}>
+                  <span style={{ flex: 1, fontSize: 12 }}>{comp.length > 70 ? comp.slice(0, 70) + '…' : comp}</span>
+                  <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                    {[
+                      { valor: 1, label: 'Baixa' },
+                      { valor: 2, label: 'Média' },
+                      { valor: 3, label: 'Alta' },
+                    ].map(op => (
+                      <button key={op.valor}
+                        onClick={() => setImportancias(prev => ({ ...prev, [comp]: op.valor }))}
+                        style={{
+                          padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                          border: (importancias[comp] || 2) === op.valor ? 'none' : '1px solid #ddd',
+                          background: (importancias[comp] || 2) === op.valor ? '#6d28d9' : '#fff',
+                          color: (importancias[comp] || 2) === op.valor ? '#fff' : '#666',
+                        }}>
+                        {op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {ucId && competenciasSel.size > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                Gerar guião de apoio (opcional, ajuda o aluno a estruturar as evidências)
+              </div>
+              <SeletorIA
+                corPrincipal="#6d28d9"
+                prompt={gerarPromptRecuperacaoFCT({
+                  nomeAluno: tipoAluno === 'turma' ? (alunos.find(a => a.id === alunoId)?.nome || 'Aluno') : (nomeExterno || 'Aluno'),
+                  ucId, ucNome: uc?.nome || '', tipoUC: 'tecnica',
+                  competenciasAEvidenciar: Array.from(competenciasSel).map(id => ({
+                    id, nome: encontrarMicro(id)?.nome || id,
+                  })),
+                  exigirHoras, horasMinimasExigidas: exigirHoras ? horasMinimas : undefined,
+                  localFCT: localFCT || undefined,
+                  realizacoesOficiais: getReferencialUC(ucId)?.realizacoes || [],
+                  criteriosDesempenho: getReferencialUC(ucId)?.criteriosDesempenho,
+                })}
+              />
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 8 }}>
+                Copia o prompt, cola numa IA, e o resultado ajuda o aluno a saber o que escrever em cada evidência.
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Colocar aqui o guião</div>
+              <textarea value={guiaoTexto} onChange={e => setGuiaoTexto(e.target.value)}
+                placeholder="Cola aqui o guião completo que a IA gerou — vai aparecer em anexo no documento final, numa folha própria para o aluno responder."
+                style={{ width: '100%', minHeight: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 12, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              {guiaoTexto && (
+                <div style={{ fontSize: 11, color: '#5a7a4e', marginTop: 4 }}>
+                  ✓ Vai aparecer em anexo, numa folha formatada para o aluno escrever.
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ marginBottom: 16, padding: 12, background: '#fdf0e6', borderRadius: 8, border: '1px solid #f0dcc4' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={possivelOral} onChange={e => setPossivelOral(e.target.checked)} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Pode vir a ser necessária defesa oral desta recuperação</span>
+            </label>
+            <div style={{ fontSize: 11, color: '#8a4a15', marginTop: 6 }}>
+              Decide isto agora — depois de avaliares a recuperação já não podes voltar a exigir uma
+              defesa oral que não tenhas previsto aqui.
+            </div>
+          </div>
+
+          <button onClick={criar} disabled={!formularioValido || !ucId || competenciasSel.size === 0}
+            style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', fontWeight: 700, fontSize: 14,
+              background: (!formularioValido || !ucId || competenciasSel.size === 0) ? '#eee' : '#6d28d9',
+              color: (!formularioValido || !ucId || competenciasSel.size === 0) ? '#999' : '#fff',
+              cursor: (!formularioValido || !ucId || competenciasSel.size === 0) ? 'default' : 'pointer' }}>
+            Criar recuperação via FCT
+          </button>
+        </ModalFullscreen>
+      )}
+    </>
+  );
 }
 
-// ── Substitui o parágrafo "{{TABELA_COMPETENCIAS}}" por uma tabela real de
-// validação: uma linha por competência/evidência, com o PESO % que essa
-// competência tem na nota final, a NOTA DO ORIENTADOR (0-20, escrita à mão),
-// espaço para a ASSINATURA do orientador nessa linha, e a NOTA DO FORMADOR
-// (0-20, a preencher depois pelo professor). No fim, uma linha de MÉDIA
-// FINAL PONDERADA, com a fórmula explicada para ficar definida pela escola.
-//
-// SUGESTÃO DE PESOS — por defeito, distribui 100% igualmente por todas as
-// competências (ex: 4 competências = 25% cada). Isto é só uma sugestão de
-// arranque: ajusta o array PESOS_MANUAIS abaixo se quiseres pesos diferentes
-// por competência (a soma tem de dar sempre 100).
-var PESOS_MANUAIS = null; // null = distribuição igual automática; ou define ex: [40, 30, 30]
+// ═══════════════════════════════════════════════════════════════
+// Recuperação via FCT — lado do ALUNO
+// Preenche as evidências: o que fez, quando, com base nas competências
+// que o professor definiu.
+// ═══════════════════════════════════════════════════════════════
 
-function inserirTabelaCompetencias(corpo, competencias, importancias) {
-  var numFilhos = corpo.getNumChildren();
-  var indiceMarcador = -1;
-
-  for (var i = 0; i < numFilhos; i++) {
-    var filho = corpo.getChild(i);
-    if (filho.getType() === DocumentApp.ElementType.PARAGRAPH) {
-      var texto = filho.asParagraph().getText();
-      if (texto.indexOf('{{TABELA_COMPETENCIAS}}') >= 0) { indiceMarcador = i; break; }
-    }
-  }
-
-  if (indiceMarcador < 0) return; // marcador não encontrado — modelo desactualizado
-
-  var listaCompetencias = competencias.length > 0 ? competencias : ['(nenhuma competência definida)'];
-  var n = listaCompetencias.length;
-
-  // Calcular os pesos — distribuição igual por defeito, ajustando o último
-  // para a soma dar sempre exactamente 100% (evita erros de arredondamento).
-  var pesos;
-  if (importancias && importancias.length === n && importancias.some(function(v) { return v && v !== 2; })) {
-    // A Rosa definiu importância relativa (1=baixa 2=média 3=alta) por
-    // competência no formulário — o peso % é proporcional a isso, em vez
-    // de distribuído sempre por igual.
-    var somaImportancias = importancias.reduce(function(a, b) { return a + (b || 2); }, 0);
-    pesos = importancias.map(function(v) { return Math.round(((v || 2) / somaImportancias) * 100); });
-    var somaAtual = pesos.reduce(function(a, b) { return a + b; }, 0);
-    pesos[n - 1] += 100 - somaAtual; // ajuste do resto no último, para dar sempre 100%
-  } else if (PESOS_MANUAIS && PESOS_MANUAIS.length === n) {
-    pesos = PESOS_MANUAIS;
-  } else {
-    // Sem importância definida — distribuição igual por defeito
-    var pesoBase = Math.floor(100 / n);
-    pesos = [];
-    for (var p = 0; p < n; p++) pesos.push(pesoBase);
-    pesos[n - 1] += 100 - (pesoBase * n);
-  }
-
-  // Montar os dados da tabela: cabeçalho + 1 linha por competência + 1 linha de média.
-  // O Orientador assinala um NÍVEL QUALITATIVO (não escreve um número directamente
-  // — mais fácil e rápido para quem não tem formação pedagógica), com legenda
-  // a explicar a correspondência. O Formador é que passa isso a nota (0-20).
-  var cabecalho = ['Competência / Evidência', 'Peso', 'Nível do Orientador\n(ver legenda)', 'Assinatura do Orientador', 'Nota\nFormador\n(0-20)'];
-  var linhas = [cabecalho];
-
-  var nivelQualitativo = '☐ Insuf.  ☐ Suf.  ☐ Bom  ☐ M.Bom';
-  listaCompetencias.forEach(function(c, idx) {
-    linhas.push([c, pesos[idx] + '%', nivelQualitativo, '', '_____']);
+export function RecuperacaoFCTAluno({ recuperacao, onAtualizado }: {
+  recuperacao: RecuperacaoModulo; onAtualizado: () => void;
+}) {
+  const fct = recuperacao.fct;
+  const [novaEvidencia, setNovaEvidencia] = useState<{ competenciaId: string; descricao: string; dataOcorrencia: string }>({
+    competenciaId: fct?.competenciasAEvidenciar[0] || '', descricao: '', dataOcorrencia: '',
   });
 
-  linhas.push(['MÉDIA FINAL PONDERADA (0 a 20)', '100%', '', 'Fórmula: Σ (Nota Formador × Peso%)', '_____']);
+  if (!fct) return null;
 
-  // Título da tabela
-  var tituloTabela = corpo.insertParagraph(indiceMarcador,
-    'VALIDAÇÃO DE COMPETÊNCIAS NA FORMAÇÃO EM CONTEXTO DE TRABALHO');
-  tituloTabela.setBold(true).setFontSize(12)
-    .setForegroundColor('#6d28d9')
-    .setAlignment(DocumentApp.HorizontalAlignment.CENTER)
-    .setSpacingBefore(10).setSpacingAfter(8);
-
-  var tabela = corpo.insertTable(indiceMarcador + 1, linhas);
-  tabela.setBorderWidth(1);
-  tabela.setBorderColor('#d8cdea');
-
-  // Larguras das colunas
-  tabela.setColumnWidth(0, 186); // Competência/Evidência
-  tabela.setColumnWidth(1, 40);  // Peso
-  tabela.setColumnWidth(2, 55);  // Nota Orientador
-  tabela.setColumnWidth(3, 130); // Assinatura
-  tabela.setColumnWidth(4, 55);  // Nota Formador
-
-  // Cabeçalho — fundo roxo sólido, texto branco a negrito
-  var linhaCab = tabela.getRow(0);
-  for (var c = 0; c < linhaCab.getNumCells(); c++) {
-    var celula = linhaCab.getCell(c);
-    celula.setBackgroundColor('#6d28d9');
-    celula.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    celula.editAsText().setBold(true).setFontSize(8).setForegroundColor('#ffffff');
-  }
-
-  // Linhas de dados — alternadas, excepto a última (média final), que fica
-  // destacada com fundo roxo claro forte e negrito.
-  for (var r = 1; r < tabela.getNumRows(); r++) {
-    var linhaAtual = tabela.getRow(r);
-    var ehLinhaMedia = (r === tabela.getNumRows() - 1);
-    var corFundo = ehLinhaMedia ? '#e4d9f7' : ((r % 2 === 0) ? '#f6f2fb' : '#ffffff');
-    for (var c2 = 0; c2 < linhaAtual.getNumCells(); c2++) {
-      var celulaAtual = linhaAtual.getCell(c2);
-      celulaAtual.setBackgroundColor(corFundo);
-      celulaAtual.setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(5).setPaddingRight(5);
-      var textoCelula = celulaAtual.editAsText();
-      textoCelula.setFontSize(c2 === 0 ? 9 : 9.5).setForegroundColor('#1a1714');
-      if (ehLinhaMedia) textoCelula.setBold(true);
-      if (c2 >= 1 && c2 !== 3) {
-        celulaAtual.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-      }
+  function adicionar() {
+    if (!novaEvidencia.competenciaId || !novaEvidencia.descricao.trim()) {
+      alert('Escolhe a competência e descreve a situação real.');
+      return;
     }
+    addEvidenciaFCT(recuperacao.id, {
+      id: `ev_${Date.now()}`,
+      competenciaId: novaEvidencia.competenciaId,
+      descricao: novaEvidencia.descricao,
+      dataOcorrencia: novaEvidencia.dataOcorrencia || undefined,
+    });
+    setNovaEvidencia({ competenciaId: fct!.competenciasAEvidenciar[0] || '', descricao: '', dataOcorrencia: '' });
+    onAtualizado();
   }
 
-  // Legenda dos níveis qualitativos — o que cada um corresponde em nota (0-20)
-  var legenda = corpo.insertParagraph(indiceMarcador + 2,
-    'Legenda: Insuficiente = 0 a 9  ·  Suficiente = 10 a 13  ·  Bom = 14 a 16  ·  Muito Bom = 17 a 20');
-  legenda.setFontSize(8).setForegroundColor('#6d28d9').setSpacingBefore(4).setSpacingAfter(4);
+  return (
+    <div>
+      <div style={{ marginBottom: 14, padding: 12, background: '#f5f0e8', borderRadius: 8, fontSize: 12 }}>
+        {fct.exigirHoras
+          ? `Esta recuperação exige um mínimo de ${fct.horasMinimasExigidas || 0} horas de FCT dedicadas a estas competências.`
+          : 'Esta recuperação não exige um número mínimo de horas — contam as evidências concretas do que fizeste.'}
+        {fct.localFCT && <div style={{ marginTop: 4 }}>Local: {fct.localFCT}</div>}
+      </div>
 
-  // Nota explicativa da fórmula, para a escola confirmar/definir o método
-  var notaFormula = corpo.insertParagraph(indiceMarcador + 3,
-    'Nota: a Média Final Ponderada é calculada pelo Formador, multiplicando a nota atribuída a cada ' +
-    'competência pelo respectivo peso percentual e somando os resultados — método a confirmar/definir ' +
-    'pela Escola de Comércio de Lisboa.');
-  notaFormula.setFontSize(8).setItalic(true).setForegroundColor('#999999').setSpacingBefore(6).setSpacingAfter(10);
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Evidências já registadas ({fct.evidencias.length})</div>
+      {fct.evidencias.map(e => (
+        <div key={e.id} style={{ padding: 10, borderRadius: 8, border: '1px solid #eee', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9' }}>{e.competenciaId} {e.dataOcorrencia ? `· ${e.dataOcorrencia}` : ''}</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>{e.descricao}</div>
+          {e.validadoPeloSupervisor && <div style={{ fontSize: 11, color: '#5a7a4e', marginTop: 4 }}>✓ Validado pelo supervisor</div>}
+        </div>
+      ))}
 
-  // Remover o parágrafo do marcador original — ficou empurrado para depois
-  // da tabela e da nota explicativa.
-  corpo.getChild(indiceMarcador + 4).asParagraph().removeFromParent();
-}
-
-function escapeRegExp(s) {
-  if (typeof s !== 'string') return '';
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function resposta(ok, mensagem, dados) {
-  var obj = { ok: ok, mensagem: mensagem };
-  if (dados !== undefined) obj.pdfUrl = dados.pdfUrl;
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
-}
-
-// ── Teste manual — executar depois de configurar ID_MODELO ──────
-function testarGeracao() {
-  var res = gerarPDF({
-    nomeAluno: 'Rosa Almeida', turma: '3º ACP', anoLetivo: '2026/27',
-    area: 'Tecnológica', modulo: 'UFCD 17 – Planeamento e confeção de cozinha internacional',
-    competencias: ['Trabalho em equipa', 'Gestão do tempo em produção', 'Postura profissional'],
-    exigirHoras: true, horasMinimas: 10, localFCT: 'Restaurante XPTO',
-    dataInicio: '01/09/2026', dataTermo: '30/09/2026',
-  });
-  Logger.log(res.getContent());
+      <div style={{ marginTop: 16, padding: 14, background: '#fafafa', borderRadius: 10, border: '1px dashed #ccc' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>+ Adicionar evidência</div>
+        <select value={novaEvidencia.competenciaId} onChange={e => setNovaEvidencia(p => ({ ...p, competenciaId: e.target.value }))}
+          style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', marginBottom: 8 }}>
+          {fct.competenciasAEvidenciar.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <textarea value={novaEvidencia.descricao} onChange={e => setNovaEvidencia(p => ({ ...p, descricao: e.target.value }))}
+          placeholder="Descreve uma situação real: o que fizeste, quando, com quem, que resultado teve..."
+          style={{ width: '100%', minHeight: 70, padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', marginBottom: 8, boxSizing: 'border-box' }} />
+        <input type="date" value={novaEvidencia.dataOcorrencia} onChange={e => setNovaEvidencia(p => ({ ...p, dataOcorrencia: e.target.value }))}
+          style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd', marginBottom: 10 }} />
+        <button onClick={adicionar} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none',
+          background: '#6d28d9', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+          Adicionar evidência
+        </button>
+      </div>
+    </div>
+  );
 }
