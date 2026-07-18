@@ -433,50 +433,42 @@ export function gerarPromptRecuperacaoFCT(d: DadosRecuperacaoFCT): string {
     .map(c => `- ${c.nome}${c.descricao ? ` — ${c.descricao}` : ''}`)
     .join('\n');
 
-  const criterios = d.criteriosDesempenho && d.criteriosDesempenho.length > 0
-    ? `\nCritérios de desempenho do referencial (o que conta como prova válida):\n${d.criteriosDesempenho.map(c => `- ${c}`).join('\n')}\n`
-    : '';
+  return `# GUIÃO DE APOIO (ANEXO) — RECUPERAÇÃO VIA FCT — ${d.nomeAluno}
 
-  return `# RECUPERAÇÃO VIA FCT — ${d.nomeAluno}
+ATENÇÃO — este guião é um ANEXO ao documento principal da recuperação, que
+já tem: a lista de competências, uma pergunta de cenário por competência
+(gerada noutro prompt), e a confirmação/assinatura do Orientador de Estágio.
 
-Gera um guião estruturado para ajudar ${d.nomeAluno} a documentar, de forma
-credível e verificável, como as competências abaixo foram demonstradas
-durante a Formação em Contexto de Trabalho${d.localFCT ? ` em ${d.localFCT}` : ''}.
+NÃO REPITAS NADA DISSO AQUI. Este guião serve só para complementar com o
+que ainda falta: como comprovar cada competência, e um alerta contra
+respostas vagas.
 
 ## Unidade de Competência a recuperar
 ${d.ucId} — ${d.ucNome} (${d.tipoUC === 'tecnica' ? 'técnica' : d.tipoUC === 'organizacional' ? 'organizacional/sociocultural' : 'híbrida'})
 
-## Competências que têm de ser evidenciadas
+## Competências já definidas (não as reformules, só usa como contexto)
 ${competenciasTexto}
 ${blocoHoras}
-Referencial oficial desta UC (811RA144):
-${d.realizacoesOficiais.map(r => `- ${r}`).join('\n') || '(não disponível)'}
-${criterios}
-## O QUE A FCT TEM DE VANTAGEM AQUI
-Trabalho real numa empresa é a prova mais forte que existe — mais forte do
-que um trabalho escrito ou uma simulação em sala de aula. Por isso o guião
-deve ajudar o aluno a ligar o que fez no dia a dia da empresa a cada
-competência, com exemplos concretos e datados, não descrições vagas.
+## O que deves gerar — SÓ ISTO, nada mais
+Para cada competência da lista acima, gera APENAS estas duas linhas
+(não repitas o nome da competência nem inventes uma pergunta nova):
 
-## O que deves gerar
-Para cada competência da lista acima, gera:
-1. Uma pergunta orientadora que ajuda o aluno a lembrar-se de uma situação
-   real onde aplicou essa competência na empresa
-2. O que deve escrever: o que fez, quando, com quem, que resultado teve
-3. Que tipo de prova reforça isto (ex: fotografia do trabalho feito, uma
-   nota do supervisor, um documento da empresa) — sem exigir nada que a
-   empresa normalmente não daria
-4. Um alerta claro: descrições genéricas ("ajudei a equipa") não chegam —
-   tem de ser um episódio concreto e verificável
+- Prova: [que tipo de prova comprova isto — fotografia do trabalho, nota
+  do supervisor, documento da empresa — sem exigir nada que a empresa
+  normalmente não daria]
+- Alerta: [um aviso curto e específico contra a resposta genérica mais
+  provável para ESTA competência em concreto — não um aviso genérico tipo
+  "sê específico", mas algo como "não chega dizer 'ajudei na cozinha' — tem
+  de identificar o prato, a quantidade e o momento exacto"]
 
-No final, gera também:
-- Uma checklist final de evidências mínimas para esta recuperação ficar completa
-- Se aplicável, um modelo curto de declaração que o supervisor da empresa
-  pode assinar a confirmar o que o aluno descreveu
+No final, gera SÓ:
+- Uma checklist curta (4 a 6 itens) do que falta para esta recuperação
+  ficar completa (ex: horas registadas, evidências fotográficas, etc.)
 
-IMPORTANTE: isto não é um trabalho de casa — é uma reflexão estruturada
-sobre trabalho que já foi feito. O aluno não deve inventar nada; só
-organizar e comprovar o que já viveu na FCT.`;
+NÃO GERES: perguntas orientadoras (já existem noutro documento), nem
+nenhum modelo de declaração/assinatura do supervisor (o documento
+principal já tem isso, com espaço de assinatura e carimbo próprios —
+duplicar isso cria confusão e duas assinaturas diferentes no mesmo processo).`;
 }
 
 export function gerarPromptAnalisePreliminar(d: DadosAnalisePreliminar): string {
