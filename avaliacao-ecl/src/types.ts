@@ -444,6 +444,13 @@ export interface RecuperacaoModulo {
     // ordem/índice que competenciasAEvidenciar) — usada no guião de
     // reflexão em vez da fórmula genérica fixa.
     perguntas?: string[];
+    // Decisão do professor, tomada na CRIAÇÃO da recuperação — nunca depois
+    // de avaliar — sobre se pode vir a ser necessária defesa oral.
+    possivelOral?: boolean;
+    // Guião de apoio gerado pela IA (texto completo, colado pelo professor)
+    // — aparece em anexo no documento final, como folha própria para o
+    // aluno responder (à mão ou por computador).
+    guiaoTexto?: string;
     competenciasAEvidenciar: string[]; // competenciaIds que o professor definiu como alvo desta recuperação FCT
     // Aluno externo/antigo — não está na lista de alunos actual da turma
     // (ex: já terminou o curso e está a recuperar um módulo em falta).
