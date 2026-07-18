@@ -373,19 +373,55 @@ loja de roupa?" Se a segunda resposta for sim, a característica está
 demasiado genérica — reescreve-a ligada a uma situação real de cozinha ou
 sala de restaurante.
 
+## Importância de cada característica
+Depois da explicação, acrescenta sempre no fim da mesma linha uma etiqueta
+com a importância dessa característica **para esta UC especificamente**
+(não em geral) — quanto essa característica pesa no que esta UC realmente
+avalia:
+- [ALTA] — é dos aspectos centrais desta UC, sem isto o aluno não a domina
+- [MÉDIA] — importante, mas complementar às características centrais
+- [BAIXA] — desejável, mas secundário face às outras
+
+Distribui as importâncias com juízo — nem tudo pode ser [ALTA]. Numa lista
+de 4-5, o normal é 1-2 [ALTA], 2 [MÉDIA], e no máximo 1 [BAIXA].
+
+## Pergunta de cenário para o aluno responder
+Depois da etiqueta de importância, acrescenta " :: " seguido de UMA pergunta
+para o aluno responder por escrito, sobre essa competência específica. Esta
+pergunta NÃO pode ser genérica ("descreve uma situação em que...") — tem de:
+
+1. PINTAR UM CENÁRIO CONCRETO E PLAUSÍVEL, com detalhes que o aluno consiga
+   visualizar de imediato (quantas pessoas, que tipo de situação, que
+   complicação surge) — não perguntar em abstracto, mas colocar o aluno
+   dentro de uma situação real de cozinha/restaurante
+2. TERMINAR NUM DESAFIO DIRECTO — "o que fizeste?", "como resolveste?",
+   "como diferenciaste X de Y?" — que obriga o aluno a responder com uma
+   acção concreta, não uma opinião vaga
+
+Exemplo do nível de detalhe esperado (para uma competência de atendimento a
+clientes com necessidades especiais): "O que fizeste quando, num grupo de 5
+clientes, havia dois idosos com mobilidade reduzida e o resto do grupo
+queria uma mesa no primeiro andar? Como diferenciaste o atendimento a esse
+grupo do atendimento habitual?"
+
 ## O que deves gerar
 Exactamente 4 a 5 características, uma por linha, no formato:
-Termo técnico (explicação simples, situada na cozinha/restaurante, observável na prática)
+Termo técnico (explicação simples, situada na cozinha/restaurante, observável na prática) [IMPORTÂNCIA] :: Pergunta de cenário concreta terminando num desafio directo
 
 Exemplo BOM (para uma UC de trabalho em equipa, no contexto certo):
 Coordenação em momentos de pressão (durante o rush do almoço, ajusta o
-próprio ritmo ao dos colegas de cozinha sem que ninguém tenha de pedir)
+próprio ritmo ao dos colegas de cozinha sem que ninguém tenha de pedir) [ALTA] :: Estavam três cozinheiros em falta numa noite de sexta-feira lotada e as
+comandas começaram a acumular-se no passe. O que fizeste para ajudar a
+equipa a recuperar o ritmo, e o que mudaste na forma como trabalhaste?
 Comunicação clara entre cozinha e sala (avisa a tempo quando um prato vai
-demorar mais, para o empregado de mesa poder gerir a expectativa do cliente)
+demorar mais, para o empregado de mesa poder gerir a expectativa do cliente) [MÉDIA] :: Um prato específico ia demorar 15 minutos a mais do que o normal numa
+mesa que já estava impaciente. Como avisaste a sala, e o que disseste
+exactamente para que pudessem gerir a situação com o cliente?
 
-Exemplo MAU (genérico demais, evitar este estilo):
-Comunicação com colegas de equipa (fala bem com as pessoas)
-Atendimento ao cliente (trata bem quem vem à empresa)`;
+Exemplo MAU (genérico demais, evitar este estilo — tanto na característica
+como na pergunta):
+Comunicação com colegas de equipa (fala bem com as pessoas) [ALTA] :: Descreve uma situação em que comunicaste bem com um colega.
+Atendimento ao cliente (trata bem quem vem à empresa) [MÉDIA] :: Conta uma vez em que atendeste bem um cliente.`;
 }
 
 export function gerarPromptRecuperacaoFCT(d: DadosRecuperacaoFCT): string {
