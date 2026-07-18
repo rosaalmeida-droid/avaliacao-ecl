@@ -10,6 +10,7 @@ import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
 import { CoordenadoraView } from './components/CoordenadoraView';
 import PlanoAula from './components/PlanoAula';
+import { ModalFullscreen } from './components/ModalFullscreen';
 import { VistaDePlano } from './components/VistaDePlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { MomentosAvaliacao } from './components/MomentosAvaliacao';
@@ -264,27 +265,35 @@ function AppInterno() {
           </div>
         )}
 
-        {/* Conteúdo da vista activa */}
-        {planoAberto ? (
-          <VistaDePlano
-            key={refreshKey}
-            plano={planoAberto}
-            turmaId={turmaId}
-            nomeProfessor={nomeProfessor}
-            onVoltar={fecharPlano}
-            onPlanoActualizado={(p: any) => setPlanoAberto(p)}
-            onAlteracao={registarAlteracao}
-            onGuardado={limparAlteracoes}
-          />
-        ) : (
-          <>
-            {vistaGlobal === 'planos' && (
-              <PlanoAula key={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
-                onAlteracao={registarAlteracao}
-                onGuardado={(p?: TPlanoAula) => { limparAlteracoes(); if (p) abrirPlano(p); }}
-                planoIdInicial={planoIdAlvo || undefined}
-                onPlanoIdInicialUsado={() => setPlanoIdAlvo(null)} />
-            )}
+        {/* Conteúdo da vista activa — o plano aberto passa a mostrar-se
+            num modal quase-fullscreen por cima do calendário, em vez de
+            substituir o ecrã todo. O calendário/lista continua por trás. */}
+        {planoAberto && (
+          <ModalFullscreen
+            titulo={planoAberto.titulo || 'Plano de Aula'}
+            subtitulo={turmaId}
+            onFechar={fecharPlano}
+          >
+            <VistaDePlano
+              key={refreshKey}
+              plano={planoAberto}
+              turmaId={turmaId}
+              nomeProfessor={nomeProfessor}
+              onVoltar={fecharPlano}
+              onPlanoActualizado={(p: any) => setPlanoAberto(p)}
+              onAlteracao={registarAlteracao}
+              onGuardado={limparAlteracoes}
+            />
+          </ModalFullscreen>
+        )}
+        <>
+          {vistaGlobal === 'planos' && (
+            <PlanoAula key={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
+              onAlteracao={registarAlteracao}
+              onGuardado={(p?: TPlanoAula) => { limparAlteracoes(); if (p) abrirPlano(p); }}
+              planoIdInicial={planoIdAlvo || undefined}
+              onPlanoIdInicialUsado={() => setPlanoIdAlvo(null)} />
+          )}
             {vistaGlobal === 'ficha' && (
               <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
@@ -315,7 +324,6 @@ function AppInterno() {
             {vistaGlobal === 'cronograma' && <CronogramaTab turmaId={turmaId} />}
             {/* Dicionário movido para o ecrã do aluno */}
           </>
-        )}
 
         <div className="no-print">
           <CentroAvisos
