@@ -436,6 +436,14 @@ export interface RecuperacaoModulo {
     supervisorFCT?: string;            // nome do orientador na empresa
     dataInicio?: string;               // início do período de FCT (YYYY-MM-DD)
     dataTermo?: string;                // termo do período de FCT (YYYY-MM-DD)
+    // Importância relativa de cada competência (mesma ordem/índice que
+    // competenciasAEvidenciar) — usada para calcular o peso % de cada uma
+    // na média final. 1=baixa, 2=média, 3=alta.
+    importancias?: number[];
+    // Pergunta de cenário gerada pela IA para cada competência (mesma
+    // ordem/índice que competenciasAEvidenciar) — usada no guião de
+    // reflexão em vez da fórmula genérica fixa.
+    perguntas?: string[];
     competenciasAEvidenciar: string[]; // competenciaIds que o professor definiu como alvo desta recuperação FCT
     // Aluno externo/antigo — não está na lista de alunos actual da turma
     // (ex: já terminou o curso e está a recuperar um módulo em falta).
