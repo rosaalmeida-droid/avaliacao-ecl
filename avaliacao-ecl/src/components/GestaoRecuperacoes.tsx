@@ -275,6 +275,8 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
             evidencias: (r.fct?.evidencias || []).map(e => ({ competenciaId: e.competenciaId, descricao: e.descricao })),
             importancias: r.fct?.importancias,
             perguntas: r.fct?.perguntas,
+            possivelOral: r.fct?.possivelOral,
+            guiaoTexto: r.fct?.guiaoTexto,
             exigirHoras: r.fct?.exigirHoras || false, horasMinimas: r.fct?.horasMinimasExigidas,
             localFCT: r.fct?.localFCT, dataInicio: r.fct?.dataInicio, dataTermo: r.fct?.dataTermo,
           });
