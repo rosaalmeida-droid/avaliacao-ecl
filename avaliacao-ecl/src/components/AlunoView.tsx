@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno, PlanoAula, FichaProducao, INICIATIVA_FRASES, calcularNotaPlano, PESOS_AULA } from '../types';
 import {
@@ -407,12 +408,20 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
       cor:T.sage, bg:T.sageP });
   }
 
-  if (planoAtivo) {
-    return <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)} />;
-  }
-
   return (
     <div style={{ minHeight:'100vh', background:T.cream }}>
+
+      {/* Plano de aula aberto — mostra-se num modal quase-fullscreen por
+          cima do ecrã do aluno, em vez de o substituir por completo. */}
+      {planoAtivo && (
+        <ModalFullscreen
+          titulo={planoAtivo.titulo || 'Plano de Aula'}
+          subtitulo={aluno.turmaId}
+          onFechar={() => setPlanoAtivo(null)}
+        >
+          <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)} />
+        </ModalFullscreen>
+      )}
 
       {/* ── CABEÇALHO ─────────────────────────────────────── */}
       <div style={{ background:'#6d28d9', padding:'20px 20px 0' }}>
