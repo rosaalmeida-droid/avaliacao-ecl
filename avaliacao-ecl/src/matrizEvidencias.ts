@@ -387,22 +387,34 @@ de 4-5, o normal é 1-2 [ALTA], 2 [MÉDIA], e no máximo 1 [BAIXA].
 
 ## Pergunta de cenário para o aluno responder
 Depois da etiqueta de importância, acrescenta " :: " seguido de UMA pergunta
-para o aluno responder por escrito, sobre essa competência específica. Esta
-pergunta NÃO pode ser genérica ("descreve uma situação em que...") — tem de:
+para o aluno responder por escrito, sobre essa competência específica.
 
-1. PINTAR UM CENÁRIO CONCRETO E PLAUSÍVEL, com detalhes que o aluno consiga
-   visualizar de imediato (quantas pessoas, que tipo de situação, que
-   complicação surge) — não perguntar em abstracto, mas colocar o aluno
-   dentro de uma situação real de cozinha/restaurante
-2. TERMINAR NUM DESAFIO DIRECTO — "o que fizeste?", "como resolveste?",
-   "como diferenciaste X de Y?" — que obriga o aluno a responder com uma
-   acção concreta, não uma opinião vaga
+Actua como um PERITO EM AVALIAÇÃO DE FCT para o curso de Cozinha e
+Pastelaria. O objectivo desta pergunta NÃO é que o aluno descreva receitas
+teóricas, passos de manuais escolares ou definições genéricas (ex: "o que é
+o HACCP" ou "como se faz um corte"). O objectivo exclusivo é OBRIGAR O ALUNO
+A COMPROVAR QUE REALMENTE EXECUTOU a actividade na cozinha do restaurante,
+extraindo detalhes físicos, memórias visuais, uso de ferramentas e gestão
+do stress do dia a dia real de estágio.
 
-Exemplo do nível de detalhe esperado (para uma competência de atendimento a
-clientes com necessidades especiais): "O que fizeste quando, num grupo de 5
-clientes, havia dois idosos com mobilidade reduzida e o resto do grupo
-queria uma mesa no primeiro andar? Como diferenciaste o atendimento a esse
-grupo do atendimento habitual?"
+Regras obrigatórias para a pergunta:
+1. DESAFIO NA PRIMEIRA PESSOA E NO PASSADO — "O que fizeste exactamente?",
+   "Como resolveste?", "Como avaliaste...?", "Que facas, panelas ou
+   equipamentos usaste fisicamente?"
+2. BLOQUEIA RESPOSTAS VAGAS/TEÓRICAS — ancora a pergunta num imprevisto real
+   da rotina de restauração: um desvio no "rush" do serviço, uma falha na
+   mise en place, controlo sensorial em tempo real (toque, textura, ponto de
+   cozedura, brilho), ou a escala real de produção (grandes volumes para a
+   sala do restaurante) — nunca algo copiável de um manual ou da internet
+3. VOCABULÁRIO 100% DE COZINHA PROFISSIONAL — usa termos reais sempre que
+   fizerem sentido (passe, brigada, comandas, economato, câmaras, abatedor,
+   partida) — se a pergunta soar a manual escolar ou for genérica, refaz
+
+Exemplo do nível de detalhe esperado (para uma competência de confecção de
+fundos/molhos): "Estavas a reduzir um fundo escuro e entraram três comandas
+em simultâneo que também precisavam da tua atenção no fogão. Como controlaste
+a fervura do fundo sem o deixar apurar demais nem descurar os outros
+pratos? Que teste fizeste para confirmares o ponto (nappé, cor, textura)?"
 
 ## O que deves gerar
 Exactamente 4 a 5 características, uma por linha, no formato:
