@@ -252,6 +252,9 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                 const resultado = await gerarPDFRecuperacaoFCTViaScript({
                   nomeAluno, turma: turmaParaImprimir, ucId: r.ucId, ucNome: r.ucNome, modulo: `${r.ucId} — ${r.ucNome}`,
                   competencias: (r.fct?.competenciasAEvidenciar || []),
+                  evidencias: (r.fct?.evidencias || []).map(e => ({ competenciaId: e.competenciaId, descricao: e.descricao })),
+                  importancias: r.fct?.importancias,
+                  perguntas: r.fct?.perguntas,
                   exigirHoras: r.fct?.exigirHoras || false, horasMinimas: r.fct?.horasMinimasExigidas,
                   localFCT: r.fct?.localFCT, dataInicio: r.fct?.dataInicio, dataTermo: r.fct?.dataTermo,
                 });
