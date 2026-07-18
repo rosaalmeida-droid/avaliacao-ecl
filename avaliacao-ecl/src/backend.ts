@@ -26,7 +26,7 @@ const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
 // Deployment do script RecuperacaoFCT_PDF_ECL.gs — a Rosa preenche isto
 // depois de instalar o script (ver instruções no topo do ficheiro .gs).
-const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbx7h4jNIwFHnmLEonsIjP4yJBDcFmn2kPEGl1ILeSChq26pUTlgbmf4ADwkKICqjyh38w/exec';
+const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbyDEwqtb0WEGKT5DEQTKsk0CFnVntV4KZaq5heJ7r0MwoGNJERh_xRkPhnT1AFB13HM7w/exec';
 
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
@@ -1856,7 +1856,7 @@ export function criarRecuperacaoFCT(
   alunoId: string, turmaId: string, ucId: string, ucNome: string,
   competenciasAEvidenciar: string[], exigirHoras: boolean, horasMinimasExigidas?: number,
   localFCT?: string, supervisorFCT?: string, dataInicio?: string, dataTermo?: string,
-  importancias?: number[], perguntas?: string[]
+  importancias?: number[], perguntas?: string[], possivelOral?: boolean
 ): RecuperacaoModulo {
   const agora = new Date().toISOString();
   const dataLimite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -1884,6 +1884,7 @@ export function criarRecuperacaoFCT(
       dataTermo,
       importancias,
       perguntas,
+      possivelOral,
       competenciasAEvidenciar,
       evidencias: [],
     },
@@ -2386,6 +2387,10 @@ export async function gerarPDFRecuperacaoFCTViaScript(dados: {
   // Pergunta de cenário da IA para cada competência (mesma ordem) — usada
   // no guião de reflexão em vez da fórmula genérica.
   perguntas?: string[];
+  // Decisão do professor sobre possível defesa oral, tomada na criação.
+  possivelOral?: boolean;
+  // Guião de apoio completo (texto colado pelo professor) — vai em anexo.
+  guiaoTexto?: string;
 }): Promise<{ ok: boolean; pdfUrl?: string; mensagem?: string }> {
   if (!RECUPERACAO_FCT_PDF_URL) {
     return { ok: false, mensagem: 'Script de PDF ainda não configurado — falta o URL do deployment.' };
