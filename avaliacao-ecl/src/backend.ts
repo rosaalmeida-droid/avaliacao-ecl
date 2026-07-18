@@ -1855,7 +1855,8 @@ export function criarRecuperacaoAutomatica(alunoId: string, turmaId: string, ucI
 export function criarRecuperacaoFCT(
   alunoId: string, turmaId: string, ucId: string, ucNome: string,
   competenciasAEvidenciar: string[], exigirHoras: boolean, horasMinimasExigidas?: number,
-  localFCT?: string, supervisorFCT?: string, dataInicio?: string, dataTermo?: string
+  localFCT?: string, supervisorFCT?: string, dataInicio?: string, dataTermo?: string,
+  importancias?: number[], perguntas?: string[]
 ): RecuperacaoModulo {
   const agora = new Date().toISOString();
   const dataLimite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -1881,6 +1882,8 @@ export function criarRecuperacaoFCT(
       supervisorFCT,
       dataInicio,
       dataTermo,
+      importancias,
+      perguntas,
       competenciasAEvidenciar,
       evidencias: [],
     },
@@ -2374,6 +2377,15 @@ export async function gerarPDFRecuperacaoFCTViaScript(dados: {
   ucId?: string; ucNome?: string;
   competencias: string[]; exigirHoras: boolean; horasMinimas?: number;
   localFCT?: string; dataInicio?: string; dataTermo?: string;
+  // Evidências reais já submetidas pelo aluno — é isto que o Orientador avalia
+  // na tabela final, uma linha por evidência (não por competência abstracta).
+  evidencias?: { competenciaId: string; descricao: string }[];
+  // Importância relativa de cada competência (mesma ordem que "competencias"),
+  // 1=baixa 2=média 3=alta — usada para calcular o peso % de cada uma na média.
+  importancias?: number[];
+  // Pergunta de cenário da IA para cada competência (mesma ordem) — usada
+  // no guião de reflexão em vez da fórmula genérica.
+  perguntas?: string[];
 }): Promise<{ ok: boolean; pdfUrl?: string; mensagem?: string }> {
   if (!RECUPERACAO_FCT_PDF_URL) {
     return { ok: false, mensagem: 'Script de PDF ainda não configurado — falta o URL do deployment.' };
