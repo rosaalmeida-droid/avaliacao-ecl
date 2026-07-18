@@ -37,6 +37,13 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   const [horasMinimas, setHorasMinimas] = useState(10);
   const [localFCT, setLocalFCT] = useState('');
   const [dataInicio, setDataInicio] = useState('');
+  // Importância relativa de cada competência (1=baixa, 2=média, 3=alta) —
+  // usada para sugerir o peso % de cada uma na média final da tabela.
+  const [importancias, setImportancias] = useState<Record<string, number>>({});
+  // Pergunta de cenário gerada pela IA para cada competência (extraída do
+  // separador "::" na resposta) — usada no guião de reflexão em vez da
+  // fórmula fixa genérica.
+  const [perguntas, setPerguntas] = useState<Record<string, string>>({});
   const [dataTermo, setDataTermo] = useState('');
   const [supervisorFCT, setSupervisorFCT] = useState('');
 
@@ -89,7 +96,12 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   function toggleComp(id: string) {
     setCompetenciasSel(prev => {
       const novo = new Set(prev);
-      novo.has(id) ? novo.delete(id) : novo.add(id);
+      if (novo.has(id)) { novo.delete(id); } else { novo.add(id); }
+      return novo;
+    });
+    setImportancias(prev => {
+      const novo = { ...prev };
+      if (novo[id]) { delete novo[id]; } else { novo[id] = 2; } // 2 = média, por defeito
       return novo;
     });
   }
@@ -110,11 +122,45 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
       if (partes.length > 1) itens = partes;
     }
     if (itens.length === 0) return;
+
+    // Extrair " :: Pergunta" (se existir) antes de tratar a importância —
+    // fica guardada à parte, associada ao texto limpo da competência.
+    const MAPA_IMPORTANCIA: Record<string, number> = { ALTA: 3, 'MÉDIA': 2, MEDIA: 2, BAIXA: 1 };
+    const itensLimpos: string[] = [];
+    const importanciasDetectadas: Record<string, number> = {};
+    const perguntasDetectadas: Record<string, string> = {};
+    itens.forEach(l => {
+      let linha = l;
+      let pergunta = '';
+      const idxSeparador = linha.indexOf(' :: ');
+      if (idxSeparador >= 0) {
+        pergunta = linha.slice(idxSeparador + 4).trim();
+        linha = linha.slice(0, idxSeparador).trim();
+      }
+      const match = linha.match(/^(.*?)\s*\[(ALTA|M[ÉE]DIA|BAIXA)\]\s*\.?\s*$/i);
+      if (match) {
+        const textoLimpo = match[1].trim();
+        const nivel = MAPA_IMPORTANCIA[match[2].toUpperCase()] || 2;
+        itensLimpos.push(textoLimpo);
+        importanciasDetectadas[textoLimpo] = nivel;
+        if (pergunta) perguntasDetectadas[textoLimpo] = pergunta;
+      } else {
+        itensLimpos.push(linha);
+        if (pergunta) perguntasDetectadas[linha] = pergunta;
+      }
+    });
+
     setCompetenciasSel(prev => {
       const novo = new Set(prev);
-      itens.forEach(l => novo.add(l));
+      itensLimpos.forEach(l => novo.add(l));
       return novo;
     });
+    setImportancias(prev => {
+      const novo = { ...prev };
+      itensLimpos.forEach(l => { if (!novo[l]) novo[l] = importanciasDetectadas[l] || 2; });
+      return novo;
+    });
+    setPerguntas(prev => ({ ...prev, ...perguntasDetectadas }));
     setCompetenciaManual('');
   }
 
@@ -132,11 +178,15 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
     // à parte (turmaAlunoManual), nunca substitui a turma real da recuperação.
     const turmaParaUsar = turmaId;
 
+    const listaCompetencias = Array.from(competenciasSel);
+    const listaImportancias = listaCompetencias.map(c => importancias[c] || 2);
+    const listaPerguntas = listaCompetencias.map(c => perguntas[c] || '');
     const nova = criarRecuperacaoFCT(
       idParaUsar, turmaParaUsar, ucId, uc?.nome || '',
-      Array.from(competenciasSel), exigirHoras, exigirHoras ? horasMinimas : undefined,
+      listaCompetencias, exigirHoras, exigirHoras ? horasMinimas : undefined,
       localFCT || undefined, supervisorFCT || undefined,
-      dataInicio || undefined, dataTermo || undefined
+      dataInicio || undefined, dataTermo || undefined,
+      listaImportancias, listaPerguntas
     );
     if (tipoAluno === 'externo' && nova.fct) {
       nova.fct.nomeAlunoManual = nomeExterno.trim();
@@ -331,6 +381,41 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
             </div>
           </div>
+
+          {competenciasSel.size > 0 && (
+            <div style={{ marginBottom: 16, padding: 12, background: '#f9f7fc', borderRadius: 8, border: '1px solid #e4d9f7' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
+                Importância de cada competência na nota final ({competenciasSel.size})
+              </div>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 10 }}>
+                Define se cada competência pesa pouco, o normal, ou muito na média final — o peso %
+                é calculado automaticamente a partir disto e aparece já pronto na tabela do documento.
+              </div>
+              {Array.from(competenciasSel).map(comp => (
+                <div key={comp} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #eee' }}>
+                  <span style={{ flex: 1, fontSize: 12 }}>{comp.length > 70 ? comp.slice(0, 70) + '…' : comp}</span>
+                  <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                    {[
+                      { valor: 1, label: 'Baixa' },
+                      { valor: 2, label: 'Média' },
+                      { valor: 3, label: 'Alta' },
+                    ].map(op => (
+                      <button key={op.valor}
+                        onClick={() => setImportancias(prev => ({ ...prev, [comp]: op.valor }))}
+                        style={{
+                          padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                          border: (importancias[comp] || 2) === op.valor ? 'none' : '1px solid #ddd',
+                          background: (importancias[comp] || 2) === op.valor ? '#6d28d9' : '#fff',
+                          color: (importancias[comp] || 2) === op.valor ? '#fff' : '#666',
+                        }}>
+                        {op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {ucId && competenciasSel.size > 0 && (
             <div style={{ marginBottom: 16 }}>
