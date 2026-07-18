@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
@@ -269,6 +270,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
           const resultado = await gerarPDFRecuperacaoFCTViaScript({
             nomeAluno: nomeParaMostrar, turma: r.fct?.turmaAlunoManual || r.turmaId,
             ucId: r.ucId, ucNome: r.ucNome, modulo: `${r.ucId} — ${r.ucNome}`,
+            disciplina: CRONOGRAMA_2026_2027.find(m => m.id === r.ucId)?.disciplina,
             competencias: r.fct?.competenciasAEvidenciar || [],
             evidencias: (r.fct?.evidencias || []).map(e => ({ competenciaId: e.competenciaId, descricao: e.descricao })),
             importancias: r.fct?.importancias,
