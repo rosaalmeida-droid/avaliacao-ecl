@@ -2374,7 +2374,7 @@ export function calcularPontosDisponibilidadeEvento(dias: { data: string; horaIn
 // depender de ninguém gerar manualmente) ────────────────────────────
 export async function gerarPDFRecuperacaoFCTViaScript(dados: {
   nomeAluno: string; turma: string; anoLetivo?: string; area?: string; modulo: string;
-  ucId?: string; ucNome?: string;
+  ucId?: string; ucNome?: string; disciplina?: string;
   competencias: string[]; exigirHoras: boolean; horasMinimas?: number;
   localFCT?: string; dataInicio?: string; dataTermo?: string;
   // Evidências reais já submetidas pelo aluno — é isto que o Orientador avalia
