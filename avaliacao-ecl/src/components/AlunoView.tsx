@@ -690,7 +690,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
                 📊 O meu historial de avaliações
               </div>
-              <AvaliacaoPorUC turmaId={aluno.turmaId} />
+              <AvaliacaoPorUC turmaId={aluno.turmaId} alunoId={aluno.id} />
             </div>
             <div style={{ marginTop:24 }}>
               <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
