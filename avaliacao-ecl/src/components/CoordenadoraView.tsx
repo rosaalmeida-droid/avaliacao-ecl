@@ -303,7 +303,7 @@ function BibliotecaPlanosTab() {
           borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
           fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>← Voltar aos planos</button>
         {fichaAberta.textoGuia
-          ? <GuiaProducao ficha={fichaAberta} modo="leitura" />
+          ? <GuiaProducao textoGuia={fichaAberta.textoGuia || ''} nomePrato={fichaAberta.nomePrato} ucId={fichaAberta.ucsAssociadas?.[0]} />
           : <div style={{ padding: 20, color: 'rgba(26,23,20,0.5)' }}>Esta ficha ainda não tem Guia gerado.</div>}
       </div>
     );
@@ -660,8 +660,8 @@ function RankingTab() {
 
   const ranking = useMemo(() => {
     return alunos.map(a => {
-      const extra = calcularParticipacaoExtra(a.id);
-      return { aluno: a, pontos: extra.total };
+      const ativs = getAtividades(); const extra = calcularParticipacaoExtra(a.id, ativs);
+      return { aluno: a, pontos: extra.eventosParticipados + extra.concursosParticipados };
     }).sort((x, y) => y.pontos - x.pontos);
   }, [alunos]);
 
