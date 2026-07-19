@@ -26,7 +26,7 @@ const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
 // Deployment do script RecuperacaoFCT_PDF_ECL.gs — a Rosa preenche isto
 // depois de instalar o script (ver instruções no topo do ficheiro .gs).
-const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbyDEwqtb0WEGKT5DEQTKsk0CFnVntV4KZaq5heJ7r0MwoGNJERh_xRkPhnT1AFB13HM7w/exec';
+const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbyS-yJU8VjmXiXE7kZUE5pUfppFECAUY7pC0WCy35FtIbR2XMSjER5TphyCcxunT0hc/exec';
 
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
@@ -658,10 +658,6 @@ export async function sincronizarFichaPortefolio(ficha: FichaProducao): Promise<
   await escreverPortefolio('ficha', { ficha });
 }
 
-// ── Seed de alunos fictícios para testes ─────────────────────
-// Criados automaticamente na primeira vez que a app é aberta.
-// Permitem simular cenários reais sem dados de alunos reais.
-
 // ── Alunos reais ECL 2025/2026 ──────────────────────────────────────────────
 // 2º CP = turma 1º ACP 2025/2028  |  3º CP = turma 2º ACP 2024/2027
 // PINs iniciais: 2NNN para 2ºCP, 3NNN para 3ºCP (professor altera depois)
@@ -728,123 +724,236 @@ export function seedAlunosReais(): void {
 }
 
 
-// ── Limpar dados de teste ────────────────────────────────────────
-// Remove todos os alunos de teste excepto 1 por turma
-// Remove todos os planos, fichas, guias e requisições de teste criados antes de hoje
-export function limparDadosTeste(): void {
-  const hoje = new Date().toISOString().slice(0, 10);
+// ════════════════════════════════════════════════════════════════
+// LIMPEZA SEGURA DE DADOS DE TESTE  (reescrita a 19/07/2026)
+//
+// A versão anterior fazia o CONTRÁRIO do que devia: mantinha 1 aluno
+// "de teste" por turma e APAGAVA todos os alunos reais, mais todo o
+// histórico anterior a hoje. Resultado: as turmas desapareceram.
+//
+// Regras da versão nova (definidas pela Rosa após o incidente):
+// 1. Só apaga o que corresponde POSITIVAMENTE a padrões de teste
+//    conhecidos — nunca "tudo menos X", nunca por data.
+// 2. Só corre se houver uma cópia de segurança descarregada há menos
+//    de 10 minutos (trava no próprio backend — mesmo que alguém chame
+//    a função por engano de outro sítio, ela recusa-se).
+// 3. Existe previewLimpezaDadosTeste() para a interface mostrar a
+//    lista NOMINAL do que vai ser apagado ANTES de confirmar.
+// 4. A função antiga limparDadosTeste() foi REMOVIDA — qualquer
+//    import antigo dela falha no build, de propósito.
+// ════════════════════════════════════════════════════════════════
 
-  // 1. Alunos — manter 1 por turma com nome "Teste"
-  const alunos = getAlunos();
-  const turmas = [...new Set(alunos.map(a => a.turmaId))];
-  const alunosManter: string[] = [];
-  for (const turma of turmas) {
-    const daTurma = alunos.filter(a => a.turmaId === turma);
-    // Manter o primeiro aluno de cada turma (para testes)
-    const aTeste = daTurma.find(a =>
-      a.nome?.toLowerCase().includes('teste') ||
-      a.nome?.toLowerCase().includes('test') ||
-      a.id.includes('CP-') ||
-      a.numero === 9999
-    ) || daTurma[0];
-    if (aTeste) alunosManter.push(aTeste.id);
-  }
-  const alunosFiltrados = alunos.filter(a => alunosManter.includes(a.id));
-  save(KEYS.alunos, alunosFiltrados);
+const KEY_ULTIMO_BACKUP = 'ecl_ultimo_backup_ts';
+const JANELA_BACKUP_MS = 10 * 60 * 1000; // 10 minutos
 
-  // 2. Planos de aula — remover os criados antes de hoje
-  const planos = getPlanosAula();
-  const planosFiltrados = planos.filter(p => (p.data || '') >= hoje);
-  save(KEYS.planos, planosFiltrados);
-  const planoIdsValidos = new Set(planosFiltrados.map(p => p.id));
-
-  // 3. Fichas — remover as que não têm plano válido E foram criadas antes de hoje
-  const fichas = getFichasProducao();
-  const fichasFiltradas = fichas.filter(f =>
-    (f.planoAulaId && planoIdsValidos.has(f.planoAulaId)) ||
-    ((f as any).criadaEm || (f as any).atualizadoEm || '') >= hoje
-  );
-  save(KEYS.fichas, fichasFiltradas);
-  const fichaIdsValidas = new Set(fichasFiltradas.map(f => f.id));
-
-  // 4. Requisições — remover as antigas
-  const requisicoes = getRequisicoes();
-  const requisicoesFilter = requisicoes.filter(r =>
-    planoIdsValidos.has(r.planoAulaId || '') ||
-    (r.dataAula || '') >= hoje
-  );
-  save(KEYS.requisicoes, requisicoesFilter);
-
-  // 5. Avaliações, validações, presenças, selecoes — limpar as de teste
-  const hist = getHistoricoAvaliacoes().filter(r => (r.data || '') >= hoje);
-  save(KEY_HIST, hist);
-  const vals = getValidacoes().filter(v => (v.validadoEm || '') >= hoje);
-  save(KEYS.validacoes, vals);
-  const pres = getPresencas().filter((p: any) => (p.data || '') >= hoje);
-  save(KEYS.presencas, pres);
-  const sels = getSelecoes().filter(s => (s.criadaEm || '') >= hoje);
-  save(KEYS.selecoes, sels);
-
-  console.log(`[limparDadosTeste] Mantidos: ${alunosFiltrados.length} alunos, ${planosFiltrados.length} planos, ${fichasFiltradas.length} fichas`);
+// Padrões que identificam POSITIVAMENTE dados de teste.
+// Notas importantes:
+// - IDs reais têm espaço: '2º ACP-1'. Os seeds de teste antigos usavam
+//   '1ºCP-1' / '2ºCP-4' (SEM espaço) — o regex abaixo só apanha esses.
+// - O bug antigo usava a.id.includes('CP-'), que apanhava TUDO
+//   (porque 'ACP-' contém 'CP-'). Nunca repetir esse teste.
+function ehAlunoTeste(a: Aluno): boolean {
+  const nome = (a.nome || '').toLowerCase();
+  return nome.includes('teste') || nome.includes('test') ||
+    /^[123]ºCP-/.test(a.id) ||
+    a.numero === 9999;
 }
 
-function seedAlunosTeste(): void {
-  const todos = getAlunos();
-  if (todos.length > 0) return; // já existem alunos, não fazer seed
+function ehPlanoTeste(p: PlanoAula): boolean {
+  return p.id.startsWith('plano_teste_') || p.id.startsWith('plano_seed_');
+}
 
-  const agora = new Date().toISOString();
-  const alunos: Aluno[] = [
-    {
-      // Aluno 1 — perfil universal, sem historial, primeiro acesso
-      id: '1ºCP-1',
-      turmaId: '1º ACP',
-      numero: 1,
-      ano: 1,
-      nome: 'Mariana Costa',
-      pin: '1001',
-      pinCriadoEm: agora,
-      nivelMedidas: 1,
-      ativo: true,
-    },
-    {
-      // Aluno 2 — nível 3 NEE, historial misto (algumas técnicas consolidadas, outras em regressão)
-      id: '1ºCP-2',
-      turmaId: '1º ACP',
-      numero: 2,
-      ano: 1,
-      nome: 'Tomás Ferreira',
-      pin: '1002',
-      pinCriadoEm: agora,
-      nivelMedidas: 3,
-      ativo: true,
-    },
-    {
-      // Aluno 3 — perfil avançado, maioria das técnicas consolidadas
-      id: '1ºCP-3',
-      turmaId: '1º ACP',
-      numero: 3,
-      ano: 1,
-      nome: 'Beatriz Rodrigues',
-      pin: '1003',
-      pinCriadoEm: agora,
-      nivelMedidas: 1,
-      ativo: true,
-    },
-    {
-      // Aluno 4 — 2º ano, historial de atrasos e faltas, competências em falta
-      id: '2ºCP-4',
-      turmaId: '2º ACP',
-      numero: 4,
-      ano: 2,
-      nome: 'João Mendes',
-      pin: '2004',
-      pinCriadoEm: agora,
-      nivelMedidas: 2,
-      ativo: true,
-    },
-  ];
+function ehFichaTeste(f: FichaProducao): boolean {
+  return f.id.startsWith('ficha_teste_');
+}
 
-  save(KEYS.alunos, alunos);
+function ehRequisicaoTeste(r: RequisicaoAula): boolean {
+  return r.id.startsWith('req_teste_');
+}
+
+function ehRegistoSeed(id: string): boolean {
+  return id.startsWith('seed_');
+}
+
+export interface PreviewLimpeza {
+  alunosApagar: Aluno[];
+  alunosManter: Aluno[];
+  planosApagar: PlanoAula[];
+  fichasApagar: FichaProducao[];
+  requisicoesApagar: RequisicaoAula[];
+  avaliacoesApagar: number;
+  presencasApagar: number;
+}
+
+/** Mostra EXATAMENTE o que a limpeza vai apagar e o que vai manter —
+ *  a interface usa isto para a confirmação nominal antes de executar. */
+export function previewLimpezaDadosTeste(): PreviewLimpeza {
+  const alunos = getAlunos();
+  return {
+    alunosApagar: alunos.filter(ehAlunoTeste),
+    alunosManter: alunos.filter(a => !ehAlunoTeste(a)),
+    planosApagar: getPlanosAula().filter(ehPlanoTeste),
+    fichasApagar: getFichasProducao().filter(ehFichaTeste),
+    requisicoesApagar: getRequisicoes().filter(ehRequisicaoTeste),
+    avaliacoesApagar: getHistoricoAvaliacoes().filter(r => ehRegistoSeed(r.id)).length,
+    presencasApagar: getPresencas().filter(p => ehRegistoSeed(p.id)).length,
+  };
+}
+
+/** true se foi descarregada uma cópia de segurança nos últimos 10 minutos. */
+export function backupRecente(): boolean {
+  try {
+    const ts = localStorage.getItem(KEY_ULTIMO_BACKUP);
+    if (!ts) return false;
+    return Date.now() - new Date(ts).getTime() < JANELA_BACKUP_MS;
+  } catch { return false; }
+}
+
+export interface ResultadoLimpeza {
+  ok: boolean;
+  mensagem: string;
+  removidos?: { alunos: number; planos: number; fichas: number; requisicoes: number; avaliacoes: number; presencas: number };
+}
+
+/** Executa a limpeza de dados de teste — SÓ apaga o que corresponde aos
+ *  padrões de teste, e SÓ se houver backup recente. Devolve relatório. */
+export function limparDadosTesteSeguro(): ResultadoLimpeza {
+  if (!backupRecente()) {
+    return {
+      ok: false,
+      mensagem: 'Bloqueado: é obrigatório descarregar uma cópia de segurança primeiro (há menos de 10 minutos). Descarrega o backup e volta a tentar.',
+    };
+  }
+
+  const pv = previewLimpezaDadosTeste();
+
+  save(KEYS.alunos, pv.alunosManter);
+  save(KEYS.planos, getPlanosAula().filter(p => !ehPlanoTeste(p)));
+  save(KEYS.fichas, getFichasProducao().filter(f => !ehFichaTeste(f)));
+  save(KEYS.requisicoes, getRequisicoes().filter(r => !ehRequisicaoTeste(r)));
+  save(KEY_HIST, getHistoricoAvaliacoes().filter(r => !ehRegistoSeed(r.id)));
+  save(KEYS.presencas, getPresencas().filter(p => !ehRegistoSeed(p.id)));
+  // Chave antiga 'ecl_historico_presencas' — só os seeds de teste escreviam
+  // aqui (a app real usa KEYS.presencas). Pode ir toda.
+  try { localStorage.removeItem('ecl_historico_presencas'); } catch {}
+
+  console.log('[limparDadosTesteSeguro] Removidos:', pv.alunosApagar.length, 'alunos de teste;',
+    pv.planosApagar.length, 'planos;', pv.fichasApagar.length, 'fichas;',
+    pv.requisicoesApagar.length, 'requisições;', pv.avaliacoesApagar, 'avaliações;',
+    pv.presencasApagar, 'presenças. Mantidos:', pv.alunosManter.length, 'alunos reais.');
+
+  return {
+    ok: true,
+    mensagem: `Limpeza concluída. Apagados ${pv.alunosApagar.length} alunos de teste — os ${pv.alunosManter.length} alunos reais ficaram intactos.`,
+    removidos: {
+      alunos: pv.alunosApagar.length,
+      planos: pv.planosApagar.length,
+      fichas: pv.fichasApagar.length,
+      requisicoes: pv.requisicoesApagar.length,
+      avaliacoes: pv.avaliacoesApagar,
+      presencas: pv.presencasApagar,
+    },
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// RESET DE INÍCIO DE ANO LETIVO  (decidido pela Rosa a 19/07/2026)
+//
+// Enquanto a app está em fase de testes, TODA a atividade é ensaio
+// — mesmo a feita com os alunos reais. Quando o ano letivo começar,
+// a Rosa quer poder apagar tudo isso de uma vez e começar limpa.
+//
+// O que SOBREVIVE (decisão dela: "apagar tudo menos os alunos reais"):
+//   · Alunos reais com os seus PINs
+//   · As turmas (estrutura)
+// O que DESAPARECE: absolutamente tudo o resto — avaliações,
+// presenças, comandas, autoavaliações, validações, recuperações,
+// evidências, planos, fichas, requisições, distribuições,
+// checklists, eventos, avisos, matérias-primas custom, técnicas
+// custom, manual do cozinheiro, rascunhos — todas as chaves ecl_*.
+// Alunos de teste também desaparecem.
+//
+// Mesma trava da limpeza: exige backup dos últimos 10 minutos.
+// ══════════════════════════════════════════════════════════════
+
+export interface PreviewReset {
+  alunosApagar: Aluno[];        // alunos de teste
+  alunosManter: Aluno[];        // alunos reais — a ÚNICA coisa que sobrevive
+  planosApagar: PlanoAula[];
+  fichasApagar: FichaProducao[];
+  requisicoesApagar: RequisicaoAula[];
+  avaliacoesApagar: number;
+  presencasApagar: number;
+  outrasContagens: { rotulo: string; n: number }[];
+}
+
+/** Lista tudo o que o reset de início de ano vai apagar e o que mantém. */
+export function previewResetInicioAno(): PreviewReset {
+  const alunos = getAlunos();
+  return {
+    alunosApagar: alunos.filter(ehAlunoTeste),
+    alunosManter: alunos.filter(a => !ehAlunoTeste(a)),
+    planosApagar: getPlanosAula(),
+    fichasApagar: getFichasProducao(),
+    requisicoesApagar: getRequisicoes(),
+    avaliacoesApagar: getHistoricoAvaliacoes().length,
+    presencasApagar: getPresencas().length,
+    outrasContagens: [
+      { rotulo: 'Comandas', n: getComandas().length },
+      { rotulo: 'Autoavaliações', n: getSelecoes().length },
+      { rotulo: 'Validações', n: getValidacoes().length },
+      { rotulo: 'Recuperações', n: getRecuperacoes().length },
+      { rotulo: 'Evidências', n: getEvidencias().length },
+      { rotulo: 'Distribuições', n: getDistribuicoes().length },
+      { rotulo: 'Checklists', n: getChecklists().length },
+    ],
+  };
+}
+
+/** Apaga TODAS as chaves ecl_* do localStorage, repõe as turmas e os
+ *  alunos reais (com PINs), e nada mais. Exige backup recente. */
+export function resetInicioAnoLetivo(): ResultadoLimpeza {
+  if (!backupRecente()) {
+    return {
+      ok: false,
+      mensagem: 'Bloqueado: é obrigatório descarregar uma cópia de segurança primeiro (há menos de 10 minutos). Descarrega o backup e volta a tentar.',
+    };
+  }
+
+  const pv = previewResetInicioAno();
+  const alunosReais = pv.alunosManter;
+  const turmas = getTurmas();
+
+  // Apagar TODAS as chaves ecl_* — inclusive as que a app ainda não
+  // conhece por nome (eventos, rascunhos, custom, manual, tombstones).
+  const aRemover: string[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('ecl_') && k !== KEY_ULTIMO_BACKUP) aRemover.push(k);
+    }
+  } catch {}
+  aRemover.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+
+  // Repor a única coisa que sobrevive: turmas (estrutura) + alunos reais.
+  save(KEYS.turmas, turmas);
+  save(KEYS.alunos, alunosReais);
+
+  console.log('[resetInicioAnoLetivo] Apagadas', aRemover.length, 'chaves ecl_*. Mantidos',
+    alunosReais.length, 'alunos reais e', turmas.length, 'turmas.');
+
+  return {
+    ok: true,
+    mensagem: `Reset concluído. A app está limpa para o ano letivo — mantidos apenas os ${alunosReais.length} alunos reais com os seus PINs. Tudo o resto foi apagado.`,
+    removidos: {
+      alunos: pv.alunosApagar.length,
+      planos: pv.planosApagar.length,
+      fichas: pv.fichasApagar.length,
+      requisicoes: pv.requisicoesApagar.length,
+      avaliacoes: pv.avaliacoesApagar,
+      presencas: pv.presencasApagar,
+    },
+  };
 }
 
 // ── Alunos ───────────────────────────────────────────────────
@@ -2437,6 +2546,10 @@ export function getEstadoSync(): { temSheets: boolean; ultimaSync: string | null
 // Junta TODOS os dados guardados localmente num único objeto, para o
 // professor poder descarregar e guardar como rede de segurança própria,
 // independente do Google Sheets.
+// Versão 2 (19/07/2026): passa a incluir também TODAS as outras chaves
+// ecl_* do localStorage em "extras" (eventos, matérias-primas custom,
+// técnicas custom, manual do cozinheiro, tombstones, avisos, etc.) —
+// antes ficavam de fora e perdiam-se num restauro.
 export interface CopiaSeguranca {
   versao: number;
   criadoEm: string;
@@ -2454,11 +2567,35 @@ export interface CopiaSeguranca {
   presencas: RegistoPresenca[];
   recuperacoes: RecuperacaoModulo[];
   evidencias: Evidencia[];
+  /** Todas as restantes chaves ecl_* do localStorage, em bruto (v2+). */
+  extras?: Record<string, string>;
 }
 
+// Chaves já cobertas pelos campos estruturados acima — não repetir em extras.
+const CHAVES_ESTRUTURADAS = new Set<string>([
+  KEYS.alunos, KEYS.planos, KEYS.fichas, KEYS.distribuicoes, KEYS.checklists,
+  KEYS.requisicoes, KEYS.comandas, KEYS.selecoes, KEYS.validacoes,
+  KEYS.atividades, KEYS.presencas, KEYS.recuperacoes, KEYS.evidencias,
+  KEY_HIST,
+]);
+
 export function exportarTudo(): CopiaSeguranca {
+  // Capturar todas as outras chaves ecl_* (eventos, custom, manual, avisos,
+  // tombstones, rascunhos...) tal como estão — o restauro repõe-nas em bruto.
+  const extras: Record<string, string> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith('ecl_')) continue;
+      if (CHAVES_ESTRUTURADAS.has(k)) continue;
+      if (k === KEY_ULTIMO_BACKUP) continue; // timestamp local — não faz sentido exportar
+      const v = localStorage.getItem(k);
+      if (v !== null) extras[k] = v;
+    }
+  } catch { /* extras são bónus — o export estruturado segue na mesma */ }
+
   return {
-    versao: 1,
+    versao: 2,
     criadoEm: new Date().toISOString(),
     alunos: getAlunos(),
     planos: getPlanosAula(),
@@ -2474,10 +2611,13 @@ export function exportarTudo(): CopiaSeguranca {
     presencas: getPresencas(),
     recuperacoes: getRecuperacoes(),
     evidencias: getEvidencias(),
+    extras,
   };
 }
 
-// Descarrega a cópia de segurança como ficheiro .json no computador do professor
+// Descarrega a cópia de segurança como ficheiro .json no computador do professor.
+// Regista também o timestamp do backup — é isto que desbloqueia a limpeza de
+// dados de teste (limparDadosTesteSeguro recusa-se a correr sem backup recente).
 export function descarregarCopiaSeguranca(): void {
   const dados = exportarTudo();
   const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
@@ -2490,6 +2630,7 @@ export function descarregarCopiaSeguranca(): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  try { localStorage.setItem(KEY_ULTIMO_BACKUP, new Date().toISOString()); } catch {}
 }
 
 // Restaura dados a partir de uma cópia de segurança previamente exportada.
@@ -2535,6 +2676,19 @@ export function restaurarCopiaSeguranca(dados: CopiaSeguranca, modo: 'substituir
       if (idx >= 0) merged[idx] = n; else merged.push(n);
     });
     save(KEY_HIST, merged);
+  }
+  // Extras (v2+) — chaves ecl_* em bruto. No modo 'substituir' repõem-se
+  // sempre; no modo 'juntar' só preenchem chaves que ainda não existem
+  // localmente (não há forma genérica de fazer merge de conteúdo bruto).
+  if (dados.extras) {
+    Object.entries(dados.extras).forEach(([k, v]) => {
+      if (!k.startsWith('ecl_')) return; // segurança — nunca escrever fora do espaço ecl_
+      try {
+        if (modo === 'substituir' || localStorage.getItem(k) === null) {
+          localStorage.setItem(k, v);
+        }
+      } catch { /* uma chave a mais não pode rebentar o restauro */ }
+    });
   }
 }
 
