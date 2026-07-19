@@ -53,7 +53,7 @@ function datasDoTrimestre(tri: 1 | 2 | 3, ano = 2026): { inicio: string; fim: st
 }
 
 // ── Componente principal ──────────────────────────────────────
-export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
+export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?: string }) {
   const modulos = modulosDaTurma(turmaId);
   const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
   const todosRegistos = getHistoricoAvaliacoes();
@@ -71,7 +71,7 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
       setImprimirApenas(null);
     }, 100);
   }
-  const [filtroAluno, setFiltroAluno] = useState('todos');
+  const [filtroAluno, setFiltroAluno] = useState(alunoId || 'todos');
   const [filtroPeriodo, setFiltroPeriodo] = useState<'tudo' | 'T1' | 'T2' | 'T3' | 'personalizado'>('tudo');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -216,7 +216,8 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
               {modulos.map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome.slice(0, 35)}{m.nome.length > 35 ? '…' : ''}</option>)}
             </select>
           </div>
-          {/* Aluno */}
+          {/* Aluno — só visível na vista do professor, não na vista do aluno */}
+          {!alunoId && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>Aluno</div>
             <select value={filtroAluno} onChange={e => setFiltroAluno(e.target.value)}
@@ -225,6 +226,7 @@ export function AvaliacaoPorUC({ turmaId }: { turmaId: string }) {
               {alunos.map(a => <option key={a.id} value={a.id}>{a.nome || `Nº ${a.numero}`}</option>)}
             </select>
           </div>
+          )}
         </div>
         {/* Período */}
         <div>
