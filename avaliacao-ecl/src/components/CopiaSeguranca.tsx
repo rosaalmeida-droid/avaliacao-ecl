@@ -1,17 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { descarregarCopiaSeguranca, restaurarCopiaSeguranca, exportarTudo, CopiaSeguranca, limparDadosTeste } from '../backend';
+import { descarregarCopiaSeguranca, restaurarCopiaSeguranca, exportarTudo, CopiaSeguranca } from '../backend';
+
+// NOTA (19/07/2026): a função "Limpar dados de teste" foi REMOVIDA deste ecrã.
+// Depois do incidente em que a limpeza apagou os alunos reais das turmas,
+// ficou decidido que qualquer apagamento de dados só existe do lado da
+// Coordenadora (CoordenadoraView → Config), com backup obrigatório antes.
+// Este ecrã do professor passa a ser só: exportar e restaurar.
 
 export function CopiaSegurancaView() {
   const [importando, setImportando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [confirmLimpeza, setConfirmLimpeza] = useState(false);
-
-  function executarLimpeza() {
-    limparDadosTeste();
-    setConfirmLimpeza(false);
-    setResultado({ ok: true, msg: '✅ Dados de teste removidos. Mantido 1 aluno por turma e dados a partir de hoje.' });
-    setTimeout(() => window.location.reload(), 1500);
-  }
   const [ficheiroEscolhido, setFicheiroEscolhido] = useState<CopiaSeguranca | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,40 +61,6 @@ export function CopiaSegurancaView() {
     }
   }
 
-  // Bloco de limpeza de dados de teste
-  const blocoLimpeza = (
-    <div style={{ marginTop:16, padding:'14px 16px', borderRadius:12,
-      border:'1.5px solid rgba(220,38,38,0.2)', background:'rgba(220,38,38,0.03)' }}>
-      <div style={{ fontWeight:700, fontSize:14, color:'#dc2626', marginBottom:6 }}>
-        🗑️ Limpar dados de teste
-      </div>
-      <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginBottom:10 }}>
-        Remove todos os planos, fichas, guias, requisições e avaliações criados antes de hoje.
-        Mantém 1 aluno por turma para continuar a testar.
-      </div>
-      {!confirmLimpeza ? (
-        <button onClick={() => setConfirmLimpeza(true)}
-          style={{ padding:'10px 16px', borderRadius:10, border:'none',
-            background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>
-          Limpar dados de teste
-        </button>
-      ) : (
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={executarLimpeza}
-            style={{ padding:'10px 16px', borderRadius:10, border:'none',
-              background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:700 }}>
-            ✓ Confirmar limpeza
-          </button>
-          <button onClick={() => setConfirmLimpeza(false)}
-            style={{ padding:'10px 16px', borderRadius:10, border:'1px solid rgba(26,23,20,0.15)',
-              background:'#fff', cursor:'pointer', fontSize:13 }}>
-            Cancelar
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
@@ -145,7 +109,7 @@ export function CopiaSegurancaView() {
               Ficheiro lido — criado em {new Date(ficheiroEscolhido.criadoEm).toLocaleString('pt-PT')}
             </div>
             <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
-              {ficheiroEscolhido.planos?.length || 0} planos · {ficheiroEscolhido.fichas?.length || 0} fichas · {ficheiroEscolhido.requisicoes?.length || 0} requisições
+              {ficheiroEscolhido.planos?.length || 0} planos · {ficheiroEscolhido.fichas?.length || 0} fichas · {ficheiroEscolhido.requisicoes?.length || 0} requisições · {ficheiroEscolhido.alunos?.length || 0} alunos
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button onClick={() => confirmarRestauro('juntar')}
@@ -166,8 +130,6 @@ export function CopiaSegurancaView() {
           </div>
         )}
       </div>
-
-      {blocoLimpeza}
     </div>
   );
 }
