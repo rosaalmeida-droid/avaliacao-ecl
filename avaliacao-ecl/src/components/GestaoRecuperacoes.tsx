@@ -255,9 +255,22 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
     const nomeParaMostrar = r.fct?.nomeAlunoManual || nomeAluno;
     return (
       <div>
-        <button onClick={onVoltar} style={{ marginBottom: 12, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
-          ← Voltar
-        </button>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <button onClick={onVoltar} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+            ← Voltar
+          </button>
+          <button onClick={() => {
+            // Guardar esta recuperação como template no localStorage
+            // para o CriarRecuperacaoFCT a pré-preencher
+            try { localStorage.setItem('ecl_template_fct', JSON.stringify(r)); } catch {}
+            // Abrir o modal de criar recuperação FCT — o utilizador só precisa
+            // de mudar o nome do aluno; tudo o resto fica igual
+            const evt = new CustomEvent('ecl:abrirFCT', { detail: { template: r } });
+            window.dispatchEvent(evt);
+          }} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #6d28d9', background: 'var(--purple-pale)', color: '#6d28d9', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+            📋 Duplicar para outro aluno
+          </button>
+        </div>
 
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{nomeParaMostrar}</div>
         <div style={{ fontSize: 13, color: '#6d28d9', fontWeight: 600, marginBottom: 16 }}>
