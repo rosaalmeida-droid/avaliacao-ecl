@@ -1,161 +1,601 @@
+import React, { useState } from 'react';
+import { CRONOGRAMA_2026_2027 } from '../cronograma';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
+import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript } from '../backend';
+import { encontrarMicro, encontrarAtitude, OBRIGATORIAS, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
+import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
+import { GuiaProducao } from './GuiaProducao';
+import { SeletorIA } from './SeletorIA';
+import { CriarRecuperacaoFCT, RecuperacaoFCTAluno } from './RecuperacaoFCT';
+import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
 
-// ═══════════════════════════════════════════════════════════════
-// Gerador de PDF — Plano de Recuperação via FCT
-// Segue o modelo oficial ECL_GAE_031_0 (Plano de Recuperação), adaptado
-// para o caso específico de recuperação evidenciada em FCT.
-// Mesmo padrão de impressão que gerarPDFGuiao — abre janela, imprime.
-// ═══════════════════════════════════════════════════════════════
-
-export interface OpcoesPDFRecuperacaoFCT {
-  nomeAluno: string;
-  numero: number | string;
-  turmaId: string;
-  ucId: string;
-  ucNome: string;
-  recuperacao: RecuperacaoModulo;
+function getNomeComp(id: string): string {
+  if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
+  if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;
+  return nomeCompetencia(id);
 }
 
-function checkbox(marcado: boolean, label: string): string {
-  return `<span style="white-space:nowrap;">( ${marcado ? 'X' : '&nbsp;'} ) ${label}</span>`;
+const NIVEIS: { v: 'nao_demonstrada' | 'em_desenvolvimento' | 'consolidada' | 'avancada'; label: string; cor: string }[] = [
+  { v: 'nao_demonstrada', label: 'Não demonstrada', cor: 'var(--danger)' },
+  { v: 'em_desenvolvimento', label: 'Em desenvolvimento', cor: 'var(--copper)' },
+  { v: 'consolidada', label: 'Consolidada', cor: 'var(--sage)' },
+  { v: 'avancada', label: 'Avançada', cor: '#2980b9' },
+];
+
+export function GestaoRecuperacoes({ turmaId, nomeProfessor }: { turmaId: string; nomeProfessor?: string }) {
+  const [tab, setTab] = useState<'pendentes' | 'submetidas' | 'concluidas'>('submetidas');
+  const [refresh, setRefresh] = useState(0);
+  const [activa, setActiva] = useState<RecuperacaoModulo | null>(null);
+
+  const todas = getRecuperacoesPorTurma(turmaId);
+  const alunos = getAlunos().filter(a => a.turmaId === turmaId);
+
+  const pendentes = todas.filter(r => r.estado === 'pendente');
+  const submetidas = todas.filter(r => r.estado === 'submetida' || r.estado === 'em_avaliacao');
+  const concluidas = todas.filter(r => r.estado === 'concluida');
+
+  function nomeAluno(alunoId: string) {
+    const a = alunos.find(x => x.id === alunoId);
+    return a ? `${a.numero} — ${a.nome || 'Aluno ' + a.numero}` : alunoId;
+  }
+
+  if (activa) {
+    return <AvaliarRecuperacao recuperacao={activa} nomeAluno={nomeAluno(activa.alunoId)} nomeProfessor={nomeProfessor}
+      onVoltar={() => { setActiva(null); setRefresh(r => r + 1); }} />;
+  }
+
+  return (
+    <div style={{ background: 'var(--recuperacao-pale)', borderRadius: 16, padding: 16 }}>
+      <div style={{ background: 'var(--recuperacao)', borderRadius: 14, padding: '16px 18px', marginBottom: 14 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'white' }}>
+          🔄 Gestão de Recuperações
+        </div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
+          Trabalhos de recuperação submetidos pelos alunos, por validar.
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <CriarRecuperacaoFCT turmaId={turmaId} onCriada={() => setRefresh(r => r + 1)} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        <button onClick={() => setTab('pendentes')} className={`tab-btn${tab === 'pendentes' ? ' active' : ''}`} style={{ flex: 1 }}>
+          Pendentes ({pendentes.length})
+        </button>
+        <button onClick={() => setTab('submetidas')} className={`tab-btn${tab === 'submetidas' ? ' active' : ''}`} style={{ flex: 1 }}>
+          Submetidas ({submetidas.length})
+        </button>
+        <button onClick={() => setTab('concluidas')} className={`tab-btn${tab === 'concluidas' ? ' active' : ''}`} style={{ flex: 1 }}>
+          Concluídas ({concluidas.length})
+        </button>
+      </div>
+
+      {tab === 'pendentes' && (
+        <Lista items={pendentes} nomeAluno={nomeAluno} vazio="Nenhuma recuperação atribuída por fazer." onClick={setActiva} />
+      )}
+      {tab === 'submetidas' && (
+        <Lista items={submetidas} nomeAluno={nomeAluno} vazio="Nenhum trabalho à espera de avaliação." onClick={setActiva} />
+      )}
+      {tab === 'concluidas' && (
+        <ListaHistorico items={concluidas} nomeAluno={nomeAluno} onClick={setActiva} />
+      )}
+    </div>
+  );
 }
 
-export function gerarPDFRecuperacaoFCT(opts: OpcoesPDFRecuperacaoFCT): void {
-  const { nomeAluno, numero, turmaId, ucId, ucNome, recuperacao } = opts;
-  const fct = recuperacao.fct;
-  if (!fct) { alert('Esta recuperação não tem dados de FCT associados.'); return; }
-
-  const dataHoje = new Date().toLocaleDateString('pt-PT');
-
-  const linhasEvidencias = (fct.evidencias || []).map((e, i) => `
-    <tr>
-      <td style="padding:8px;border:1px solid #999;font-size:10px;vertical-align:top;">${i + 1}</td>
-      <td style="padding:8px;border:1px solid #999;font-size:10px;vertical-align:top;">${e.competenciaId}</td>
-      <td style="padding:8px;border:1px solid #999;font-size:10px;vertical-align:top;">${e.descricao || ''}</td>
-      <td style="padding:8px;border:1px solid #999;font-size:10px;vertical-align:top;">${e.dataOcorrencia || ''}</td>
-      <td style="padding:8px;border:1px solid #999;font-size:10px;text-align:center;vertical-align:top;">${e.validadoPeloSupervisor ? '✓' : ''}</td>
-    </tr>`).join('') || `
-    <tr><td colspan="5" style="padding:12px;border:1px solid #999;font-size:10px;text-align:center;color:#999;">Sem evidências registadas ainda.</td></tr>`;
-
-  const html = `<!DOCTYPE html>
-<html lang="pt">
-<head>
-<meta charset="UTF-8">
-<title>Plano de Recuperação — ${nomeAluno}</title>
-<style>
-  @page { size: A4; margin: 15mm; }
-  body { font-family: 'Calibri', Arial, sans-serif; font-size: 12px; color: #1a1714; margin: 0; padding: 0; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-  .titulo-principal { text-align:center; font-size:18px; font-weight:700; margin-bottom:4px; letter-spacing:0.05em; }
-  .subtitulo { text-align:center; font-size:12px; color:#555; margin-bottom:18px; }
-  .cab-secao { background:#1f1b16; color:#fff; font-weight:700; font-size:12px; padding:8px 10px; }
-  .celula { border:1px solid #999; padding:10px; font-size:11px; vertical-align:top; }
-  .linha-assinatura { margin-top:6px; font-size:10px; }
-  .rotulo { font-weight:700; font-size:10px; text-transform:uppercase; color:#555; }
-</style>
-</head>
-<body>
-
-  <div class="titulo-principal">PLANO DE RECUPERAÇÃO — VIA FCT</div>
-  <div class="subtitulo">Formação em Contexto de Trabalho · Escola de Comércio de Lisboa</div>
-
-  <table>
-    <tr>
-      <td class="celula" style="width:50%;"><span class="rotulo">Aluno</span><br>${nomeAluno} (nº ${numero})</td>
-      <td class="celula" style="width:25%;"><span class="rotulo">Turma</span><br>${turmaId}</td>
-      <td class="celula" style="width:25%;"><span class="rotulo">Data</span><br>${dataHoje}</td>
-    </tr>
-    <tr>
-      <td class="celula" colspan="2"><span class="rotulo">Unidade de Competência</span><br>${ucId} — ${ucNome}</td>
-      <td class="celula"><span class="rotulo">Local de FCT</span><br>${fct.localFCT || '—'}</td>
-    </tr>
-  </table>
-
-  <table style="margin-top:10px;">
-    <tr><td class="cab-secao" colspan="2">DIAGNÓSTICO DA SITUAÇÃO</td></tr>
-    <tr>
-      <td class="celula" colspan="2">
-        ${checkbox(false, 'O Aluno excedeu o número limite de ausências.')}<br>
-        ${checkbox(true, 'O Aluno não atingiu os objetivos.')}<br>
-        ${checkbox(true, 'Situação de recuperação — via evidências de FCT.')}
-      </td>
-    </tr>
-  </table>
-
-  <table style="margin-top:10px;">
-    <tr><td class="cab-secao" colspan="2">COMPETÊNCIAS A EVIDENCIAR NA FCT</td></tr>
-    <tr>
-      <td class="celula" colspan="2">
-        ${(fct.competenciasAEvidenciar || []).map(c => `• ${c}`).join('<br>') || '(nenhuma definida)'}
-      </td>
-    </tr>
-  </table>
-
-  <table style="margin-top:10px;">
-    <tr><td class="cab-secao" colspan="2">HORAS DE FORMAÇÃO</td></tr>
-    <tr>
-      <td class="celula" colspan="2">
-        ${fct.exigirHoras
-          ? `${checkbox(true, `Horas mínimas exigidas: ${fct.horasMinimasExigidas || 0}h`)}<br>Horas registadas pelo aluno: ${fct.horasRegistadasPeloAluno ?? '____'}h`
-          : `${checkbox(true, 'Horas não são o critério — contam apenas as evidências das competências, independentemente do nº de horas.')}`}
-        ${fct.supervisorFCT ? `<br><br><span class="rotulo">Orientador/Supervisor na empresa</span><br>${fct.supervisorFCT}` : ''}
-      </td>
-    </tr>
-  </table>
-
-  <table style="margin-top:10px;">
-    <tr><td class="cab-secao" colspan="5">EVIDÊNCIAS APRESENTADAS</td></tr>
-    <tr>
-      <td style="padding:6px;border:1px solid #999;font-size:10px;font-weight:700;background:#f0ede6;">Nº</td>
-      <td style="padding:6px;border:1px solid #999;font-size:10px;font-weight:700;background:#f0ede6;">Competência</td>
-      <td style="padding:6px;border:1px solid #999;font-size:10px;font-weight:700;background:#f0ede6;">Descrição da situação real</td>
-      <td style="padding:6px;border:1px solid #999;font-size:10px;font-weight:700;background:#f0ede6;">Data</td>
-      <td style="padding:6px;border:1px solid #999;font-size:10px;font-weight:700;background:#f0ede6;">Validado pelo supervisor</td>
-    </tr>
-    ${linhasEvidencias}
-  </table>
-
-  <table style="margin-top:10px;">
-    <tr><td class="cab-secao" colspan="2">AVALIAÇÃO</td></tr>
-    <tr>
-      <td class="celula" style="width:50%;">
-        <b>Autoavaliação</b><br><br>
-        ${checkbox(false, 'Atingi os objetivos.')}<br>
-        ${checkbox(false, 'Não atingi os objetivos.')}<br><br>
-        <b>Justificação:</b><br><br><br>
-        Proposta de classificação: ______ valores
-      </td>
-      <td class="celula" style="width:50%;">
-        <b>Avaliação do Formador</b><br><br>
-        ${checkbox(false, 'Atingiu os objetivos.')}<br>
-        ${checkbox(false, 'Não atingiu os objetivos.')}<br><br>
-        <b>Justificação:</b><br><br><br>
-        Classificação atribuída: ______ valores
-      </td>
-    </tr>
-  </table>
-
-  <div class="linha-assinatura" style="margin-top:24px;display:flex;justify-content:space-between;">
-    <span>_____________________________<br>O Formador</span>
-    <span>_____________________________<br>O Aluno</span>
-  </div>
-
-  <div style="margin-top:20px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:9px;color:#9ca3af;display:flex;justify-content:space-between;">
-    <span>Plano de Recuperação via FCT · ${ucId}</span>
-    <span>Avaliação ECL · Escola de Comércio de Lisboa</span>
-  </div>
-
-</body>
-</html>`;
-
-  const janela = window.open('', '_blank', 'width=900,height=700');
-  if (!janela) { alert('Permite popups para gerar o PDF'); return; }
-  janela.document.write(html);
-  janela.document.close();
-  janela.onload = () => {
-    setTimeout(() => {
-      janela.focus();
-      janela.print();
-    }, 500);
-  };
+function ListaHistorico({ items, nomeAluno, onClick }: { items: RecuperacaoModulo[]; nomeAluno: (id: string) => string; onClick: (r: RecuperacaoModulo) => void }) {
+  if (items.length === 0) {
+    return <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>Ainda não há recuperações concluídas.</div>;
+  }
+  const ordenadas = [...items].sort((a, b) => (b.dataValidacao || '').localeCompare(a.dataValidacao || ''));
+  return (
+    <div>
+      {ordenadas.map(r => {
+        const nConsolidadas = (r.avaliacaoCompetencias || []).filter(a => a.nivel === 'consolidada' || a.nivel === 'avancada').length;
+        const nTotal = (r.avaliacaoCompetencias || []).length;
+        return (
+          <div key={r.id} className="option-card" onClick={() => onClick(r)} style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>✅</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{nomeAluno(r.alunoId)}</div>
+                <div className="muted" style={{ fontSize: 12 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
+                <div style={{ fontSize: 11, color: 'var(--sage)', marginTop: 2 }}>
+                  {nConsolidadas}/{nTotal} competências consolidadas
+                </div>
+                <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
+                  Atribuída: {r.dataAtribuicao ? fmtData(r.dataAtribuicao) : '—'}
+                  {' · '}Submetida: {r.dataSubmissao ? fmtData(r.dataSubmissao) : '—'}
+                  {' · '}Validada: {r.dataValidacao ? fmtData(r.dataValidacao) : '—'}
+                  {r.professorAvaliador ? ` · por ${r.professorAvaliador}` : ''}
+                </div>
+              </div>
+              <span className="stamp">Ver</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
+
+function Lista({ items, nomeAluno, vazio, onClick }: { items: RecuperacaoModulo[]; nomeAluno: (id: string) => string; vazio: string; onClick: (r: RecuperacaoModulo) => void }) {
+  if (items.length === 0) {
+    return <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>{vazio}</div>;
+  }
+  return (
+    <div>
+      {items.map(r => (
+        <div key={r.id} className="option-card" onClick={() => onClick(r)} style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{nomeAluno(r.alunoId)}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
+              <div style={{ fontSize: 11, color: 'var(--copper)' }}>{r.planosIds.length} aula(s) em falta</div>
+              <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
+                Atribuída em {r.dataAtribuicao ? fmtData(r.dataAtribuicao) : '—'}
+                {r.dataSubmissao ? ` · submetida em ${fmtData(r.dataSubmissao)}` : ''}
+              </div>
+            </div>
+            <span className="stamp">Ver</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }: { recuperacao: RecuperacaoModulo; nomeAluno: string; nomeProfessor?: string; onVoltar: () => void }) {
+  // refreshLocal força reler a recuperação mais recente do backend depois de
+  // guardar a análise IA ou aprovar o plano — sem recarregar a página inteira
+  // (que faria perder a sessão de login, como já aconteceu antes nesta app).
+  const [refreshLocal, setRefreshLocal] = useState(0);
+  const r = refreshLocal > 0
+    ? (getRecuperacoesPorTurma(recuperacao.turmaId).find(x => x.id === recuperacao.id) || recuperacao)
+    : recuperacao;
+  const [niveis, setNiveis] = useState<Record<string, 'nao_demonstrada' | 'em_desenvolvimento' | 'consolidada' | 'avancada'>>(() => {
+    const inicial: Record<string, any> = {};
+    (r.avaliacaoCompetencias || []).forEach(a => { inicial[a.competenciaId] = a.nivel; });
+    return inicial;
+  });
+  const [comentario, setComentario] = useState(r.comentarioProfessor || '');
+  const [defesaOralRealizada, setDefesaOralRealizada] = useState(r.defesaOralRealizada || false);
+  const [defesaOralNotas, setDefesaOralNotas] = useState(r.defesaOralNotas || '');
+  const [guiaAberto, setGuiaAberto] = useState<string | null>(null);
+  const [mostrarAnaliseIA, setMostrarAnaliseIA] = useState(false);
+  const [colandoAnalise, setColandoAnalise] = useState(false);
+  const [textoAnaliseColado, setTextoAnaliseColado] = useState('');
+  const [copiadoAnalise, setCopiadoAnalise] = useState(false);
+  const guias = getGuiasDaRecuperacao(r.planosIds);
+  const promptAnalise = construirPromptAnalisePreliminar(r.id);
+
+  function copiarPromptAnalise() {
+    navigator.clipboard.writeText(promptAnalise).then(() => {
+      setCopiadoAnalise(true);
+      setTimeout(() => setCopiadoAnalise(false), 2000);
+    });
+  }
+
+  function guardarAnaliseIA() {
+    addOrUpdateRecuperacao({
+      ...r,
+      analiseIA: {
+        relatorioConsistencia: textoAnaliseColado,
+        lacunasDetetadas: [],
+        sugestaoPerguntasDefesaOral: [],
+        sugestaoEstado: 'suficiente_para_defesa',
+        geradoEm: new Date().toISOString(),
+      },
+      atualizadoEm: new Date().toISOString(),
+    });
+    setColandoAnalise(false);
+    setMostrarAnaliseIA(false);
+    setRefreshLocal(k => k + 1);
+  }
+
+  // Grelha de avaliação cobre só Grupo A (técnicas) e Grupo B (responsabilidades).
+  // Atitudes (Grupo C) NÃO entram aqui — ficam pendentes de observação futura,
+  // nunca validadas por trabalho escrito (ver matrizEvidencias.ts).
+  const todasComp = [...r.competenciasIds, ...r.responsabilidadesIds];
+  const todasAvaliadas = todasComp.every(c => niveis[c]);
+
+  function concluir() {
+    if (!confirm('Concluir esta avaliação? O aluno vai ver o resultado.')) return;
+    const agora = new Date().toISOString();
+    const avaliacaoCompetencias = todasComp.map(c => ({ competenciaId: c, nivel: niveis[c] }));
+
+    addOrUpdateRecuperacao({
+      ...r,
+      estado: 'concluida',
+      avaliacaoCompetencias,
+      comentarioProfessor: comentario,
+      professorAvaliador: nomeProfessor || '',
+      defesaOralRealizada,
+      defesaOralNotas,
+      defesaOralData: agora,
+      dataValidacao: agora,
+      atualizadoEm: agora,
+    });
+
+    // Registar no histórico — competências consolidadas/avançadas contam como sucesso
+    avaliacaoCompetencias.forEach(a => {
+      const nota = a.nivel === 'avancada' ? 4 : a.nivel === 'consolidada' ? 3 : a.nivel === 'em_desenvolvimento' ? 2 : 1;
+      addRegistoAvaliacao({
+        id: `recup_av_${r.id}_${a.competenciaId}_${Date.now()}`,
+        alunoId: r.alunoId, turmaId: r.turmaId, planoAulaId: r.planosIds[0] || '',
+        fichaId: '', ucId: r.ucId, microcompetenciaId: a.competenciaId,
+        nota, data: agora, validadoPor: 'recuperacao',
+      });
+      // Ponto 16 da adenda: ligação explícita ao Banco de Evidências, com
+      // origem 'recuperacao' identificável, separado do histórico de notas.
+      const nivelEvidencia = a.nivel === 'avancada' ? 4 : a.nivel === 'consolidada' ? 3 : a.nivel === 'em_desenvolvimento' ? 2 : 1;
+      addEvidencia({
+        id: `ev_recup_${r.id}_${a.competenciaId}_${Date.now()}`,
+        alunoId: r.alunoId,
+        competenciaId: a.competenciaId,
+        ucId: r.ucId,
+        tipoEvidencia: defesaOralRealizada ? 'defesa_oral' : 'trabalho_pratico_documentado',
+        nivel: nivelEvidencia,
+        observacaoQualitativa: `Recuperação ${r.ucId} — ${comentario || 'sem comentário adicional'}`,
+        professor: nomeProfessor || '',
+        data: agora,
+        criadoEm: agora,
+      });
+    });
+
+    onVoltar();
+  }
+
+  // Recuperação via FCT — ecrã completamente diferente do fluxo teórico
+  // (trabalho escrito/investigação). Aqui o professor vê as evidências que
+  // o aluno já submeteu e pode gerar a folha de recuperação em PDF.
+  if (r.viaFCT) {
+    const nomeParaMostrar = r.fct?.nomeAlunoManual || nomeAluno;
+    return (
+      <div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <button onClick={onVoltar} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+            ← Voltar
+          </button>
+          <button onClick={() => {
+            // Guardar esta recuperação como template no localStorage
+            // para o CriarRecuperacaoFCT a pré-preencher
+            try {
+              localStorage.setItem('ecl_template_fct', JSON.stringify(r));
+              // Flag para o modal abrir sozinho ao voltar à lista — nesta
+              // vista de detalhe o CriarRecuperacaoFCT não está montado,
+              // por isso disparar o evento aqui não chega a lado nenhum.
+              localStorage.setItem('ecl_abrir_fct_auto', '1');
+            } catch {}
+            // Voltar à lista — ao montar, o CriarRecuperacaoFCT vê a flag
+            // e abre o modal já pré-preenchido; só falta mudar o aluno.
+            onVoltar();
+          }} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #6d28d9', background: 'var(--purple-pale)', color: '#6d28d9', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+            📋 Duplicar para outro aluno
+          </button>
+        </div>
+
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{nomeParaMostrar}</div>
+        <div style={{ fontSize: 13, color: '#6d28d9', fontWeight: 600, marginBottom: 16 }}>
+          🏢 Recuperação via FCT · {r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}
+        </div>
+
+        <RecuperacaoFCTAluno recuperacao={r} onAtualizado={() => {}} />
+
+        <button onClick={async () => {
+          const resultado = await gerarPDFRecuperacaoFCTViaScript({
+            nomeAluno: nomeParaMostrar, turma: r.fct?.turmaAlunoManual || r.turmaId,
+            ucId: r.ucId, ucNome: r.ucNome, modulo: `${r.ucId} — ${r.ucNome}`,
+            disciplina: CRONOGRAMA_2026_2027.find(m => m.id === r.ucId)?.disciplina,
+            competencias: r.fct?.competenciasAEvidenciar || [],
+            evidencias: (r.fct?.evidencias || []).map(e => ({ competenciaId: e.competenciaId, descricao: e.descricao })),
+            importancias: r.fct?.importancias,
+            perguntas: r.fct?.perguntas,
+            possivelOral: r.fct?.possivelOral,
+            guiaoTexto: r.fct?.guiaoTexto,
+            exigirHoras: r.fct?.exigirHoras || false, horasMinimas: r.fct?.horasMinimasExigidas,
+            localFCT: r.fct?.localFCT, dataInicio: r.fct?.dataInicio, dataTermo: r.fct?.dataTermo,
+          });
+          if (resultado.ok && resultado.pdfUrl) {
+            const janelaP = window.open(resultado.pdfUrl, '_blank');
+            if (!janelaP) {
+              alert('PDF gerado com sucesso, mas o browser bloqueou a abertura automática. Link: ' + resultado.pdfUrl + '\n\n(Foi copiado — permite pop-ups para abrir automaticamente da próxima vez.)');
+              try { navigator.clipboard.writeText(resultado.pdfUrl); } catch {}
+            }
+          } else {
+            alert('Não consegui gerar o PDF automaticamente (' + (resultado.mensagem || 'motivo desconhecido') + '). A tentar o método alternativo (impressão do browser)...');
+            gerarPDFRecuperacaoFCT({
+              nomeAluno: nomeParaMostrar, numero: '', turmaId: r.fct?.turmaAlunoManual || r.turmaId,
+              ucId: r.ucId, ucNome: r.ucNome, recuperacao: r,
+            });
+          }
+        }} style={{ width: '100%', marginTop: 16, padding: 12, borderRadius: 10, border: '1px solid #6d28d9',
+          background: 'transparent', color: '#6d28d9', fontWeight: 700, cursor: 'pointer' }}>
+          📄 Gerar folha de recuperação (PDF)
+        </button>
+
+        {/* Pauta de Avaliação FCT — na vista do professor aparece sempre
+            (mesmo sem evidências, para poder preparar a pauta à frente) */}
+        <button onClick={async () => {
+          const alunoDaRecuperacao = getAlunos().find(a => a.id === r.alunoId);
+          const evs = (r.fct?.competenciasAEvidenciar || []).map((c, i) => ({
+            nome: c.split('(')[0].trim(),
+            peso: (() => {
+              const imps = r.fct?.importancias || [];
+              const soma = imps.reduce((a: number, b: number) => a + (b || 2), 0) || 1;
+              return Math.round(((imps[i] || 2) / soma) * 100) / 100;
+            })(),
+          }));
+          const resultado = await gerarPautaFCTViaScript({
+            turma: r.fct?.turmaAlunoManual || r.turmaId,
+            disciplina: 'SCP — Serviços de Cozinha-Pastelaria',
+            formador: nomeProfessor || 'Rosa Almeida',
+            ucId: r.ucId, uc: `${r.ucId} — ${r.ucNome}`,
+            dataInicio: r.fct?.dataInicio || '',
+            dataTermo: r.fct?.dataTermo || '',
+            evidencias: evs,
+            alunos: [{
+              numero: alunoDaRecuperacao?.numero || 0,
+              nome: nomeParaMostrar,
+              numEvidencias: (r.fct?.evidencias || []).length,
+              notasProdutos: (r.fct?.evidencias || []).map(() => 0),
+              cm: 4, cl: 4, co: 4, cr: 4, notaFinal: 0,
+            }],
+          });
+          if (resultado.ok && resultado.pdfUrl) {
+            const janelaP = window.open(resultado.pdfUrl, '_blank');
+            if (!janelaP) {
+              alert('Pauta gerada, mas o browser bloqueou a abertura automática. Link: ' + resultado.pdfUrl);
+              try { navigator.clipboard.writeText(resultado.pdfUrl); } catch {}
+            }
+          } else {
+            alert('Não foi possível gerar a pauta: ' + (resultado.mensagem || 'erro desconhecido'));
+          }
+        }} style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 10, border: '1px solid #15803d',
+          background: 'transparent', color: '#15803d', fontWeight: 700, cursor: 'pointer' }}>
+          📊 Gerar Pauta de Avaliação FCT
+        </button>
+
+        <button onClick={() => {
+          addOrUpdateRecuperacao({ ...r, estado: 'concluida', dataValidacao: new Date().toISOString(), professorAvaliador: nomeProfessor });
+          onVoltar();
+        }} style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 10, border: 'none',
+          background: 'var(--sage)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+          ✓ Marcar como concluída
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button onClick={onVoltar} style={{ marginBottom: 12, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+        ← Voltar
+      </button>
+
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{nomeAluno}</div>
+      <div style={{ fontSize: 13, color: 'var(--copper)', fontWeight: 600, marginBottom: 16 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
+
+      {recuperacaoEstaTrancada(r) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+          <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>🔒 Prazo de 1 mês terminado — o aluno já não consegue submeter</span>
+          <button onClick={() => { destrancarRecuperacao(r.id); setRefreshLocal(k => k + 1); }}
+            style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            Destrancar (+1 mês)
+          </button>
+        </div>
+      )}
+
+      {r.planoIndividualTexto && (
+        <div style={{ marginBottom: 16, background: 'var(--copper-pale)', borderRadius: 10, padding: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--copper)', marginBottom: 8 }}>
+            🤖 Plano de Recuperação Individual (gerado por IA, único para este aluno)
+          </div>
+          <div style={{ background: '#fff', borderRadius: 8, padding: 10, fontSize: 12, whiteSpace: 'pre-wrap', maxHeight: 250, overflowY: 'auto', marginBottom: 8 }}>
+            {r.planoIndividualTexto}
+          </div>
+          {!r.planoIndividualAprovado ? (
+            <button onClick={() => { addOrUpdateRecuperacao({ ...r, planoIndividualAprovado: true, atualizadoEm: new Date().toISOString() }); setRefreshLocal(k => k + 1); }}
+              style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+              ✓ Aprovar este plano para o aluno usar
+            </button>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 700 }}>✓ Plano aprovado</div>
+          )}
+        </div>
+      )}
+
+      {guias.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--sage)', marginBottom: 6 }}>
+            📚 Guia(s) de Apoio desta recuperação (compara com o trabalho do aluno)
+          </div>
+          {guias.map(g => (
+            <div key={g.fichaId} style={{ marginBottom: 6, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              <button onClick={() => setGuiaAberto(guiaAberto === g.fichaId ? null : g.fichaId)}
+                style={{ width: '100%', padding: '8px 10px', background: guiaAberto === g.fichaId ? 'var(--sage-pale)' : '#fff', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                📄 {g.nomePrato} {guiaAberto === g.fichaId ? '▲' : '▼'}
+              </button>
+              {guiaAberto === g.fichaId && (
+                <div style={{ padding: 10, maxHeight: 400, overflowY: 'auto' }}>
+                  <GuiaProducao textoGuia={g.textoGuia} nomePrato={g.nomePrato} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {r.trabalhoTeorico && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>B. Trabalho Teórico</div>
+          <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{r.trabalhoTeorico}</div>
+        </div>
+      )}
+      {r.investigacao && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>C. Investigação</div>
+          <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{r.investigacao}</div>
+        </div>
+      )}
+      {r.casoProfissional && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>D. Caso Profissional</div>
+          <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{r.casoProfissional}</div>
+        </div>
+      )}
+      {r.autoavaliacao && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>E. Autoavaliação</div>
+          <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 12, fontSize: 13, whiteSpace: 'pre-wrap' }}>{r.autoavaliacao}</div>
+        </div>
+      )}
+
+      {r.anexos && r.anexos.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>F. Evidências anexadas pelo aluno</div>
+          {r.anexos.map((a, i) => {
+            const icones: Record<string, string> = { foto: '📷', video: '🎥', audio: '🎙️', documento: '📄', link: '🔗' };
+            return (
+              <a key={i} href={a.url} target="_blank" rel="noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--cream-dark)', borderRadius: 8, marginBottom: 4, fontSize: 12, color: 'var(--copper)' }}>
+                <span>{icones[a.tipo]}</span>
+                <span>{a.descricao || a.url}</span>
+              </a>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Análise Preliminar por IA (pontos 11-13 da adenda) — apoio, nunca decisão final */}
+      <div style={{ marginBottom: 18, border: '1px solid rgba(90,122,78,0.3)', borderRadius: 10, overflow: 'hidden' }}>
+        <button onClick={() => setMostrarAnaliseIA(!mostrarAnaliseIA)}
+          style={{ width: '100%', padding: '10px 14px', background: 'var(--sage-pale)', border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>🔍</span>
+          <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--sage)' }}>Análise Preliminar com IA (apoio à decisão)</span>
+          <span style={{ fontSize: 12 }}>{mostrarAnaliseIA ? '▲' : '▼'}</span>
+        </button>
+        {mostrarAnaliseIA && (
+          <div style={{ padding: 14 }}>
+            {!r.analiseIA ? (
+              <>
+                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.55)', marginBottom: 8 }}>
+                  A IA não decide a nota — só ajuda a preparar a defesa oral e a identificar lacunas. Abre directo no Claude (já preenchido) ou copia para outra IA.
+                </div>
+                <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 11, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
+                  {promptAnalise}
+                </div>
+                <SeletorIA prompt={promptAnalise} corPrincipal="var(--recuperacao)" />
+                <button onClick={copiarPromptAnalise} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--sage)', background: copiadoAnalise ? 'var(--sage)' : '#fff', color: copiadoAnalise ? 'white' : 'var(--sage)', fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 8 }}>
+                  {copiadoAnalise ? '✓ Copiado!' : '📋 Copiar prompt'}
+                </button>
+                {!colandoAnalise ? (
+                  <button onClick={() => setColandoAnalise(true)} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                    Já tenho a análise da IA →
+                  </button>
+                ) : (
+                  <>
+                    <textarea value={textoAnaliseColado} onChange={e => setTextoAnaliseColado(e.target.value)}
+                      placeholder="Cola aqui a análise que a IA devolveu..."
+                      style={{ width: '100%', minHeight: 120, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 12, marginBottom: 8 }} />
+                    <button onClick={guardarAnaliseIA} disabled={!textoAnaliseColado}
+                      style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: textoAnaliseColado ? 1 : 0.4 }}>
+                      Guardar Análise
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <div style={{ background: '#fff', borderRadius: 8, padding: 10, fontSize: 12, whiteSpace: 'pre-wrap', border: '1px solid var(--border)' }}>
+                {r.analiseIA.relatorioConsistencia}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--copper)', marginBottom: 10, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+        Grelha de Avaliação — Competências Técnicas e Responsabilidades
+      </div>
+      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
+        Apenas estas competências determinam se a UC fica completa. As atitudes transversais ficam registadas em baixo, sem bloquear a conclusão.
+      </div>
+
+      {todasComp.map(compId => (
+        <div key={compId} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{getNomeComp(compId)}</div>
+          <CriteriosComp compId={compId} cor="var(--copper)" />
+          <div style={{ marginTop: 8, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {NIVEIS.map(n => (
+              <button key={n.v} onClick={() => setNiveis(prev => ({ ...prev, [compId]: n.v }))}
+                style={{
+                  padding: '6px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  border: niveis[compId] === n.v ? 'none' : '1px solid var(--border)',
+                  background: niveis[compId] === n.v ? n.cor : '#fff',
+                  color: niveis[compId] === n.v ? 'white' : 'rgba(26,23,20,0.6)',
+                }}>
+                {n.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div style={{ marginTop: 14, marginBottom: 14, padding: 14, background: 'var(--copper-pale)', borderRadius: 10, border: '1px solid rgba(181,101,29,0.3)' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: 'var(--copper)' }}>
+          🗣️ Defesa Oral (3-5 minutos) — obrigatória
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.55)', marginBottom: 10 }}>
+          Nenhuma recuperação deve ser validada só com base no trabalho escrito. Faz estas perguntas ao aluno para confirmar que compreende o que escreveu.
+        </div>
+        {(r.perguntasDefesaOral || []).map((p, i) => (
+          <div key={i} style={{ fontSize: 12, padding: '6px 10px', background: '#fff', borderRadius: 6, marginBottom: 4 }}>
+            {i + 1}. {p.pergunta}
+          </div>
+        ))}
+        <textarea value={defesaOralNotas} onChange={e => setDefesaOralNotas(e.target.value)}
+          placeholder="Notas sobre as respostas do aluno na defesa oral..."
+          style={{ width: '100%', minHeight: 60, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 12, marginTop: 8, marginBottom: 8 }} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          <input type="checkbox" checked={defesaOralRealizada} onChange={e => setDefesaOralRealizada(e.target.checked)} />
+          Confirmo que realizei a defesa oral com o aluno
+        </label>
+      </div>
+
+      {r.atitudesIds.length > 0 && (
+        <div style={{ marginTop: 14, marginBottom: 14, padding: 14, background: 'var(--cream-dark)', borderRadius: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: 'rgba(26,23,20,0.7)' }}>
+            🪞 Atitudes Transversais — pendentes de observação futura
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
+            Não bloqueiam esta recuperação. Serão observadas em qualquer aula futura (desta ou de outra UC) e registadas no perfil do aluno através do Banco de Evidências.
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {r.atitudesIds.map(aId => (
+              <span key={aId} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 12, background: '#fff', border: '1px solid var(--border)', color: 'rgba(26,23,20,0.6)' }}>
+                {getNomeComp(aId)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Comentário (opcional)</div>
+        <textarea value={comentario} onChange={e => setComentario(e.target.value)}
+          style={{ width: '100%', minHeight: 70, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 13 }} />
+      </div>
+
+      <button onClick={concluir} disabled={!todasAvaliadas || !defesaOralRealizada}
+        style={{ width: '100%', marginTop: 16, padding: 14, borderRadius: 10, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: (todasAvaliadas && defesaOralRealizada) ? 1 : 0.4 }}>
+        {!todasAvaliadas ? `Falta avaliar ${todasComp.filter(c => !niveis[c]).length} competência(s)`
+          : !defesaOralRealizada ? '🗣️ Confirma a defesa oral primeiro'
+          : '✓ Concluir Avaliação'}
+      </button>
+    </div>
+  );
+}
+
+export default GestaoRecuperacoes;
