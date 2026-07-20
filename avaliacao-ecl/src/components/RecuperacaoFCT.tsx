@@ -83,6 +83,18 @@ export function CriarRecuperacaoFCT({
     return () => window.removeEventListener('ecl:abrirFCT', abrirComTemplate as EventListener);
   }, []);
 
+  // Ao montar: se viemos de "Duplicar para outro aluno" (a vista de detalhe
+  // desmonta este componente, por isso o evento acima nunca chegaria),
+  // a flag no localStorage manda abrir o modal automaticamente.
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem('ecl_abrir_fct_auto') === '1') {
+        localStorage.removeItem('ecl_abrir_fct_auto');
+        setAberto(true);
+      }
+    } catch {}
+  }, []);
+
   // Ao abrir, verificar se há template guardado e pré-preencher
   React.useEffect(() => {
     if (!aberto) return;
