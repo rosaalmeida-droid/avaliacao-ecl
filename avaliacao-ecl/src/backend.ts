@@ -2511,7 +2511,9 @@ export async function gerarPDFRecuperacaoFCTViaScript(dados: {
     // chegavam sempre vazios).
     const res = await fetch(RECUPERACAO_FCT_PDF_URL, {
       method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(dados),
+      redirect: 'follow',
     });
     const json = await res.json();
     return json;
