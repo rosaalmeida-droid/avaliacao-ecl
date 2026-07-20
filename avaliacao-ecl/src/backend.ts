@@ -26,7 +26,7 @@ const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
 // Deployment do script RecuperacaoFCT_PDF_ECL.gs — a Rosa preenche isto
 // depois de instalar o script (ver instruções no topo do ficheiro .gs).
-const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbyS-yJU8VjmXiXE7kZUE5pUfppFECAUY7pC0WCy35FtIbR2XMSjER5TphyCcxunT0hc/exec';
+const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbxWgbuC3U6LN3O6R9LFxU9DecUaub5YDwz2wD2E76bJI0sP_1pWYg1CsSRhp1PFM3I/exec';
 
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
