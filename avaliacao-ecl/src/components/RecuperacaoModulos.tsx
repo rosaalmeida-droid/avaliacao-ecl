@@ -3,7 +3,7 @@ import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { ModalFullscreen } from './ModalFullscreen';
 import { RecuperacaoFCTAluno } from './RecuperacaoFCT';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
-import { gerarPDFRecuperacaoFCTViaScript } from '../backend';
+import { gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript } from '../backend';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import {
@@ -279,6 +279,45 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                 background: 'transparent', color: '#6d28d9', fontWeight: 700, cursor: 'pointer' }}>
                 📄 Gerar folha de recuperação (PDF)
               </button>
+              {/* Botão Gerar Pauta FCT — só aparece quando há evidências avaliadas */}
+              {(r.fct?.evidencias || []).length > 0 && (
+                <button onClick={async () => {
+                  const alunoDaRecuperacao = getAlunos().find(a => a.id === r.alunoId);
+                  const nomeAluno = r.fct?.nomeAlunoManual || alunoDaRecuperacao?.nome || `Aluno ${alunoDaRecuperacao?.numero || ''}`;
+                  const evs = (r.fct?.competenciasAEvidenciar || []).map((c, i) => ({
+                    nome: c.split('(')[0].trim(),
+                    peso: (() => {
+                      const imps = r.fct?.importancias || [];
+                      const soma = imps.reduce((a: number, b: number) => a + (b || 2), 0) || 1;
+                      return Math.round(((imps[i] || 2) / soma) * 100) / 100;
+                    })(),
+                  }));
+                  const resultado = await gerarPautaFCTViaScript({
+                    turma: r.fct?.turmaAlunoManual || r.turmaId,
+                    disciplina: 'SCP — Serviços de Cozinha-Pastelaria',
+                    formador: 'Rosa Almeida',
+                    ucId: r.ucId, uc: `${r.ucId} — ${r.ucNome}`,
+                    dataInicio: r.fct?.dataInicio || '',
+                    dataTermo: r.fct?.dataTermo || '',
+                    evidencias: evs,
+                    alunos: [{
+                      numero: alunoDaRecuperacao?.numero || 0,
+                      nome: nomeAluno,
+                      numEvidencias: (r.fct?.evidencias || []).length,
+                      notasProdutos: (r.fct?.evidencias || []).map(() => 0),
+                      cm: 4, cl: 4, co: 4, cr: 4, notaFinal: 0,
+                    }],
+                  });
+                  if (resultado.ok && resultado.pdfUrl) {
+                    window.open(resultado.pdfUrl, '_blank');
+                  } else {
+                    alert('Não foi possível gerar a pauta: ' + (resultado.mensagem || 'erro desconhecido'));
+                  }
+                }} style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 10, border: '1px solid #15803d',
+                  background: 'transparent', color: '#15803d', fontWeight: 700, cursor: 'pointer' }}>
+                  📊 Gerar Pauta de Avaliação FCT
+                </button>
+              )}
             </>
           ) : trancada ? (
             <div style={{ fontSize: 13, color: 'var(--danger)', background: 'var(--danger-pale)', borderRadius: 10, padding: 14 }}>
