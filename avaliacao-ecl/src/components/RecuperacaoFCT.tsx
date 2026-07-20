@@ -22,7 +22,14 @@ const TODOS_OS_MODULOS = CRONOGRAMA_2026_2027.map(m => ({ id: m.id, nome: m.nome
 // evidenciar, e se exige horas mínimas de formação ou só evidências.
 // ═══════════════════════════════════════════════════════════════
 
-export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; onCriada: () => void }) {
+export function CriarRecuperacaoFCT({
+  turmaId, onCriada, templateRecuperacao
+}: {
+  turmaId: string;
+  onCriada: () => void;
+  /** Se fornecido, pré-preenche o formulário com os dados desta recuperação (duplicar/reutilizar) */
+  templateRecuperacao?: import('../types').RecuperacaoModulo;
+}) {
   const [aberto, setAberto] = useState(false);
   // Aluno desta turma (dropdown) OU aluno externo/antigo (nome escrito à mão,
   // para quem já terminou o curso e está a recuperar um módulo em falta).
@@ -62,6 +69,65 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
   // "Criar recuperação via FCT" (ex: clique sem querer fora do modal, ou
   // ao voltar de uma aba da IA), o que já foi preenchido não se perde.
   const CHAVE_RASCUNHO = `ecl_rascunho_fct_${turmaId}`;
+
+  // Responder ao evento "Duplicar para outro aluno" vindo da GestaoRecuperacoes
+  React.useEffect(() => {
+    function abrirComTemplate(e: CustomEvent) {
+      const template = e.detail?.template;
+      if (template) {
+        try { localStorage.setItem('ecl_template_fct', JSON.stringify(template)); } catch {}
+      }
+      setAberto(true);
+    }
+    window.addEventListener('ecl:abrirFCT', abrirComTemplate as EventListener);
+    return () => window.removeEventListener('ecl:abrirFCT', abrirComTemplate as EventListener);
+  }, []);
+
+  // Ao abrir, verificar se há template guardado e pré-preencher
+  React.useEffect(() => {
+    if (!aberto) return;
+    try {
+      const templateStr = localStorage.getItem('ecl_template_fct');
+      if (templateStr) {
+        const tmpl = JSON.parse(templateStr);
+        localStorage.removeItem('ecl_template_fct');
+        if (tmpl?.viaFCT && tmpl?.fct) {
+          if (tmpl.fct.localFCT) setLocalFCT(tmpl.fct.localFCT);
+          if (tmpl.fct.supervisorFCT) setSupervisorFCT(tmpl.fct.supervisorFCT);
+          if (tmpl.fct.dataInicio) setDataInicio(tmpl.fct.dataInicio);
+          if (tmpl.fct.dataTermo) setDataTermo(tmpl.fct.dataTermo);
+          if (tmpl.fct.exigirHoras !== undefined) setExigirHoras(tmpl.fct.exigirHoras);
+          if (tmpl.fct.horasMinimasExigidas) setHorasMinimas(tmpl.fct.horasMinimasExigidas);
+          if (tmpl.fct.possivelOral !== undefined) setPossivelOral(tmpl.fct.possivelOral);
+          if (tmpl.fct.guiaoTexto) setGuiaoTexto(tmpl.fct.guiaoTexto);
+          if (tmpl.ucId) setUcId(tmpl.ucId);
+          if (tmpl.fct.competenciasAEvidenciar?.length) {
+            setCompetenciasSel(new Set(tmpl.fct.competenciasAEvidenciar));
+          }
+        }
+      }
+    } catch {}
+  }, [aberto]);
+
+  // Se há template, pré-preencher ao abrir o modal
+  useEffect(() => {
+    if (!aberto || !templateRecuperacao) return;
+    const r = templateRecuperacao;
+    if (r.viaFCT && r.fct) {
+      setExigirHoras(r.fct.exigirHoras || false);
+      setHorasMinimas(r.fct.horasMinimasExigidas || 10);
+      setLocalFCT(r.fct.localFCT || '');
+      setSupervisorFCT(r.fct.supervisorFCT || '');
+      setDataInicio(r.fct.dataInicio || '');
+      setDataTermo(r.fct.dataTermo || '');
+      setPossivelOral(r.fct.possivelOral || false);
+      setGuiaoTexto(r.fct.guiaoTexto || '');
+      if (r.ucId) setUcId(r.ucId);
+      if (r.fct.competenciasAEvidenciar?.length) {
+        setCompetenciasSel(new Set(r.fct.competenciasAEvidenciar));
+      }
+    }
+  }, [aberto, templateRecuperacao]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -121,11 +187,25 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
     // por isso, se não houver \n suficientes, tenta separar pelo padrão
     // "Termo técnico (explicação)" que este prompt sempre produz: cada
     // competência fecha com ")" antes da próxima começar com maiúscula.
-    let itens = competenciaManual.split('\n').map(l => l.trim()).filter(Boolean);
-    if (itens.length <= 1) {
-      const texto = competenciaManual.trim();
+    // Normalizar o texto antes de dividir:
+    // 1. Remover numeração "1. ", "2. " etc. do início de cada linha
+    // 2. Juntar linhas que começam com "(" à linha anterior (são continuações)
+    // 3. Juntar linhas que começam com "::" à linha anterior (são perguntas do guião)
+    const linhasRaw = competenciaManual.split('\n').map(l => l.trim()).filter(Boolean);
+    const linhasUnidas: string[] = [];
+    for (const linha of linhasRaw) {
+      const semNumero = linha.replace(/^\d+\.\s+/, ''); // remove "1. ", "2. " etc.
+      // Linha de continuação: começa com "(" ou "::" → junta à anterior
+      if ((semNumero.startsWith('(') || semNumero.startsWith('::')) && linhasUnidas.length > 0) {
+        linhasUnidas[linhasUnidas.length - 1] += '\n' + semNumero;
+      } else {
+        linhasUnidas.push(semNumero);
+      }
+    }
+    let itens = linhasUnidas.filter(Boolean);
+    if (itens.length <= 1 && itens.length > 0) {
+      const texto = itens[0] || competenciaManual.trim();
       const partes = texto.split(/\)\s+(?=[A-ZÀ-Ú])/).map((p, i, arr) => {
-        // Repõe o ")" que o split apanhou, excepto na última parte se já o tiver
         return i < arr.length - 1 && !p.trim().endsWith(')') ? p.trim() + ')' : p.trim();
       }).filter(Boolean);
       if (partes.length > 1) itens = partes;
@@ -203,6 +283,15 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
       nova.fct.turmaAlunoManual = turmaExterno.trim() || undefined;
     }
     addOrUpdateRecuperacao(nova);
+    // Guardar dados FCT por aluno para pre-fill na próxima recuperação
+    const chaveAluno = tipoAluno === 'turma' && alunoId
+      ? `ecl_fct_dados_${alunoId}`
+      : nomeExterno.trim() ? `ecl_fct_dados_externo_${nomeExterno.trim().toLowerCase().replace(/\s+/g,'_')}` : null;
+    if (chaveAluno && (localFCT || supervisorFCT || dataInicio || dataTermo)) {
+      try {
+        localStorage.setItem(chaveAluno, JSON.stringify({ localFCT, supervisorFCT, dataInicio, dataTermo, exigirHoras, horasMinimas }));
+      } catch {}
+    }
     limparRascunho();
     setAberto(false);
     setAlunoId(''); setNomeExterno(''); setTurmaExterno(''); setUcId(''); setCompetenciasSel(new Set());
@@ -237,7 +326,24 @@ export function CriarRecuperacaoFCT({ turmaId, onCriada }: { turmaId: string; on
               }}>Aluno externo / antigo</button>
             </div>
             {tipoAluno === 'turma' ? (
-              <select value={alunoId} onChange={e => setAlunoId(e.target.value)}
+              <select value={alunoId} onChange={e => {
+                  const id = e.target.value;
+                  setAlunoId(id);
+                  if (id) {
+                    try {
+                      const ultimo = localStorage.getItem(`ecl_fct_dados_${id}`);
+                      if (ultimo) {
+                        const d = JSON.parse(ultimo);
+                        if (d.localFCT) setLocalFCT(d.localFCT);
+                        if (d.supervisorFCT) setSupervisorFCT(d.supervisorFCT);
+                        if (d.dataInicio) setDataInicio(d.dataInicio);
+                        if (d.dataTermo) setDataTermo(d.dataTermo);
+                        if (d.exigirHoras !== undefined) setExigirHoras(d.exigirHoras);
+                        if (d.horasMinimas) setHorasMinimas(d.horasMinimas);
+                      }
+                    } catch {}
+                  }
+                }}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd' }}>
                 <option value="">Seleccionar...</option>
                 {alunos.map(a => <option key={a.id} value={a.id}>{a.numero} — {a.nome}</option>)}
