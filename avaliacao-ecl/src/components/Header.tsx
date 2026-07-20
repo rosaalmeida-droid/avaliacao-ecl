@@ -1,26 +1,34 @@
 import React, { useState } from 'react';
 import { PainelContextual, ContextoPainel } from './PainelContextual';
 
-// Calcula progresso real do ano letivo 2026-2027
-// Datas fixas do cronograma ECL: 17 set 2026 → 1 jun 2027
+// Calcula o ano letivo actual com base na data de hoje.
+// O ano letivo começa em Setembro — antes de Setembro mostra X-1/X, depois X/X+1.
+// As datas de início/fim actualizam-se automaticamente a cada ano.
 function calcularAnoLetivo(): { anoLetivo: string; semestre: string; percentagem: number } {
   const hoje = new Date();
-  const inicio = new Date('2026-09-17');
-  const fim    = new Date('2027-06-01');
-  const total  = fim.getTime() - inicio.getTime();
+  const ano  = hoje.getFullYear();
+  const mes  = hoje.getMonth(); // 0=jan … 11=dez
+
+  // Antes de Setembro → ano letivo anterior; Setembro em diante → novo ano letivo
+  const anoInicio  = mes >= 8 ? ano       : ano - 1;
+  const anoFim     = anoInicio + 1;
+  const anoLetivo  = `${anoInicio}/${String(anoFim).slice(-2)}`;
+
+  // Progresso: 17 Set → 1 Jun
+  const inicio    = new Date(`${anoInicio}-09-17`);
+  const fim       = new Date(`${anoFim}-06-01`);
+  const total     = fim.getTime() - inicio.getTime();
   const decorrido = Math.max(0, Math.min(hoje.getTime() - inicio.getTime(), total));
-  const pct = Math.round((decorrido / total) * 100);
-  const mes = hoje.getMonth(); // 0=jan
-  // Trimestres pedagógicos reais ECL
-  // 1º Trimestre: set(8)-dez(11) | 2º Trimestre: jan(0)-mar(2) | 3º Trimestre: abr(3)-jun(5)
-  // Fora do ano lectivo: jul(6)-ago(7)
+  const pct       = Math.round((decorrido / total) * 100);
+
   let periodo: string;
   if (mes >= 8 && mes <= 11)      periodo = '1º Trimestre em curso';
   else if (mes >= 0 && mes <= 2)  periodo = '2º Trimestre em curso';
   else if (mes >= 3 && mes <= 5)  periodo = '3º Trimestre em curso';
   else                             periodo = 'Férias de Verão';
+
   return {
-    anoLetivo: '2026/27',
+    anoLetivo,
     semestre: periodo,
     percentagem: pct < 0 ? 0 : pct > 100 ? 100 : pct,
   };
