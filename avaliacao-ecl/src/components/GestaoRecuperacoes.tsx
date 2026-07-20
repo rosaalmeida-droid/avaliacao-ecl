@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript } from '../backend';
+import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
@@ -262,11 +262,16 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
           <button onClick={() => {
             // Guardar esta recuperação como template no localStorage
             // para o CriarRecuperacaoFCT a pré-preencher
-            try { localStorage.setItem('ecl_template_fct', JSON.stringify(r)); } catch {}
-            // Abrir o modal de criar recuperação FCT — o utilizador só precisa
-            // de mudar o nome do aluno; tudo o resto fica igual
-            const evt = new CustomEvent('ecl:abrirFCT', { detail: { template: r } });
-            window.dispatchEvent(evt);
+            try {
+              localStorage.setItem('ecl_template_fct', JSON.stringify(r));
+              // Flag para o modal abrir sozinho ao voltar à lista — nesta
+              // vista de detalhe o CriarRecuperacaoFCT não está montado,
+              // por isso disparar o evento aqui não chega a lado nenhum.
+              localStorage.setItem('ecl_abrir_fct_auto', '1');
+            } catch {}
+            // Voltar à lista — ao montar, o CriarRecuperacaoFCT vê a flag
+            // e abre o modal já pré-preenchido; só falta mudar o aluno.
+            onVoltar();
           }} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #6d28d9', background: 'var(--purple-pale)', color: '#6d28d9', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
             📋 Duplicar para outro aluno
           </button>
@@ -309,6 +314,48 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
         }} style={{ width: '100%', marginTop: 16, padding: 12, borderRadius: 10, border: '1px solid #6d28d9',
           background: 'transparent', color: '#6d28d9', fontWeight: 700, cursor: 'pointer' }}>
           📄 Gerar folha de recuperação (PDF)
+        </button>
+
+        {/* Pauta de Avaliação FCT — na vista do professor aparece sempre
+            (mesmo sem evidências, para poder preparar a pauta à frente) */}
+        <button onClick={async () => {
+          const alunoDaRecuperacao = getAlunos().find(a => a.id === r.alunoId);
+          const evs = (r.fct?.competenciasAEvidenciar || []).map((c, i) => ({
+            nome: c.split('(')[0].trim(),
+            peso: (() => {
+              const imps = r.fct?.importancias || [];
+              const soma = imps.reduce((a: number, b: number) => a + (b || 2), 0) || 1;
+              return Math.round(((imps[i] || 2) / soma) * 100) / 100;
+            })(),
+          }));
+          const resultado = await gerarPautaFCTViaScript({
+            turma: r.fct?.turmaAlunoManual || r.turmaId,
+            disciplina: 'SCP — Serviços de Cozinha-Pastelaria',
+            formador: nomeProfessor || 'Rosa Almeida',
+            ucId: r.ucId, uc: `${r.ucId} — ${r.ucNome}`,
+            dataInicio: r.fct?.dataInicio || '',
+            dataTermo: r.fct?.dataTermo || '',
+            evidencias: evs,
+            alunos: [{
+              numero: alunoDaRecuperacao?.numero || 0,
+              nome: nomeParaMostrar,
+              numEvidencias: (r.fct?.evidencias || []).length,
+              notasProdutos: (r.fct?.evidencias || []).map(() => 0),
+              cm: 4, cl: 4, co: 4, cr: 4, notaFinal: 0,
+            }],
+          });
+          if (resultado.ok && resultado.pdfUrl) {
+            const janelaP = window.open(resultado.pdfUrl, '_blank');
+            if (!janelaP) {
+              alert('Pauta gerada, mas o browser bloqueou a abertura automática. Link: ' + resultado.pdfUrl);
+              try { navigator.clipboard.writeText(resultado.pdfUrl); } catch {}
+            }
+          } else {
+            alert('Não foi possível gerar a pauta: ' + (resultado.mensagem || 'erro desconhecido'));
+          }
+        }} style={{ width: '100%', marginTop: 8, padding: 12, borderRadius: 10, border: '1px solid #15803d',
+          background: 'transparent', color: '#15803d', fontWeight: 700, cursor: 'pointer' }}>
+          📊 Gerar Pauta de Avaliação FCT
         </button>
 
         <button onClick={() => {
