@@ -14,6 +14,7 @@ import { DicionarioComp } from './DicionarioComp';
 import { coresDaTurma } from '../cores';
 import { EventosWizard } from './EventosWizard';
 import { ManualCoordenador } from './ManualCoordenador';
+import { GestaoAlunosExternos } from './AlunosExternos';
 
 export function CoordenadoraView() {
   const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual'>('avisos');
@@ -29,6 +30,7 @@ export function CoordenadoraView() {
     { id:'atividades',  emoji:'🎯', label:'Eventos',     cor:'#e67e22' },
     { id:'config',      emoji:'⚙️', label:'Config',      cor:'#8e44ad' },
     { id:'manual',      emoji:'📋', label:'Manual',      cor:'#b5651d' },
+    { id:'externos',    emoji:'🌍', label:'Externos',    cor:'#0f766e' },
   ] as const;
 
   return (
@@ -66,6 +68,7 @@ export function CoordenadoraView() {
       {tab === 'planos' && <BibliotecaPlanosTab />}
       {tab === 'cronograma' && <CronogramaTab />}
       {tab === 'manual' && <ManualCoordenador turmaId={getTurmas()[0]?.id || '1º ACP'} />}
+      {tab === 'externos' && <GestaoAlunosExternos />}
       {tab === 'ranking' && <RankingTab />}
       {tab === 'atividades' && (
         <div>
