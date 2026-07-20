@@ -26,6 +26,7 @@ const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKf
 const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
 // Deployment do script RecuperacaoFCT_PDF_ECL.gs — a Rosa preenche isto
 // depois de instalar o script (ver instruções no topo do ficheiro .gs).
+const PAUTA_FCT_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbwz_L-z2nmhUUambttWLf1TV8_aOk68zJ6tpR8vZiD7kz4dL9reUZa8hvdnfmMaAzp-uA/exec';
 const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxWgbuC3U6LN3O6R9LFxU9DecUaub5YDwz2wD2E76bJI0sP_1pWYg1CsSRhp1PFM3I/exec';
 
 
@@ -2519,6 +2520,33 @@ export async function gerarPDFRecuperacaoFCTViaScript(dados: {
     return json;
   } catch (err) {
     return { ok: false, mensagem: 'Erro de ligação ao script de PDF.' };
+  }
+}
+
+
+// ── Pauta de Avaliação FCT ──────────────────────────────────
+export async function gerarPautaFCTViaScript(dados: {
+  turma: string; disciplina: string; formador: string;
+  ucId: string; uc: string; dataInicio: string; dataTermo: string;
+  evidencias: { nome: string; peso: number }[];
+  alunos: {
+    numero: number; nome: string; numEvidencias: number;
+    notasProdutos: number[]; cm: number; cl: number; co: number; cr: number;
+    notaFinal: number;
+  }[];
+}): Promise<{ ok: boolean; pdfUrl?: string; mensagem?: string }> {
+  if (!PAUTA_FCT_URL) return { ok: false, mensagem: 'URL da pauta não configurado.' };
+  try {
+    const res = await fetch(PAUTA_FCT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      redirect: 'follow',
+      body: JSON.stringify(dados),
+    });
+    const json = await res.json();
+    return json;
+  } catch (err) {
+    return { ok: false, mensagem: 'Erro de ligação ao script da pauta.' };
   }
 }
 
