@@ -17,7 +17,7 @@ import { ManualCoordenador } from './ManualCoordenador';
 import { GestaoAlunosExternos } from './AlunosExternos';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos'>('avisos');
 
   const TABS_COORD = [
     { id:'avisos',      emoji:'🔔', label:'Avisos',      cor:'#e63946' },
