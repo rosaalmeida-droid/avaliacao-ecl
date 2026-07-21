@@ -183,7 +183,7 @@ export async function exportarGuiaoDocx(entrada: EntradaParaExportar): Promise<v
   const capa: (Paragraph | Table)[] = [
     ...(logoBuffer ? [new Paragraph({
       spacing: { before: 0, after: 200 },
-      children: [new ImageRun({ data: logoBuffer, transformation: { width: 82, height: 35 }, type: 'png' })],
+      children: [new ImageRun({ data: logoBuffer, transformation: { width: 82, height: 35 } })],
     })] : []),
 
     new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
@@ -205,7 +205,7 @@ export async function exportarGuiaoDocx(entrada: EntradaParaExportar): Promise<v
       tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
       spacing: { before: 0, after: 40 },
       children: [
-        ...(logoBuffer ? [new ImageRun({ data: logoBuffer, transformation: { width: 60, height: 26 }, type: 'png' })] : []),
+        ...(logoBuffer ? [new ImageRun({ data: logoBuffer, transformation: { width: 60, height: 26 } })] : []),
         new TextRun({ text: '\t', font: FONTE }),
         rTeal(moduloNome + '   ' + anoLetivo, false, 18),
       ],
