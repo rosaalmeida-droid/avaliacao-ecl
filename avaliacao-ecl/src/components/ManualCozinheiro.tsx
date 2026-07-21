@@ -7,7 +7,6 @@ import {
 import {
   getEntradasManual, addEntradaManual, deleteEntradaManual, pesquisarManual,
 } from '../backend';
-import { GuiaProducao } from './GuiaProducao';
 import { exportarGuiaoDocx } from './exportGuiao';
 import { CRONOGRAMA_2026_2027, ANO_LETIVO, ModuloCronograma } from '../cronograma';
 
@@ -177,6 +176,146 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
   return data.texto || '';
 }
 
+// Exportar para Google Doc via modelo oficial ECL
+async function exportarParaDrive(modulo: ModuloCronograma, anoLetivo: string, textoGuia: string): Promise<string> {
+  const payload = {
+    moduloId:        modulo.id,
+    moduloNome:      modulo.nome,
+    titulo:          modulo.nome.split(' ').slice(-3).join(' '), // titulo curto para capa
+    disciplina:      modulo.disciplina,
+    horasPrevistas:  modulo.horasPrevistas,
+    turmaAno:        modulo.turmaAno,
+    anoLetivo:       anoLetivo,
+    textoGuia:       textoGuia,
+  };
+  const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify(payload) });
+  if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
+  const data = await resp.json();
+  if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
+  return data.url || '';
+}
+
+// ── Renderizador simples de markdown para manuais ─────────────
+// Não usa o GuiaProducao (que é para fichas de produção).
+// Renderiza: títulos H1/H2/H3, tabelas, listas, caixas de destaque, parágrafos.
+function RenderizadorManual({ texto }: { texto: string }) {
+  if (!texto) return null;
+  const linhas = texto.split('\n');
+  const elementos: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < linhas.length) {
+    const l = linhas[i];
+
+    // H1
+    if (l.startsWith('# ') && !l.startsWith('## ')) {
+      elementos.push(<h2 key={key++} style={{ fontSize: 18, fontWeight: 800, color: '#00796B',
+        borderBottom: '2px solid #00796B', paddingBottom: 6, marginTop: 24, marginBottom: 10 }}>
+        {l.slice(2).trim()}
+      </h2>);
+      i++; continue;
+    }
+    // H2
+    if (l.startsWith('## ') && !l.startsWith('### ')) {
+      elementos.push(<h3 key={key++} style={{ fontSize: 15, fontWeight: 700, color: '#00796B',
+        marginTop: 18, marginBottom: 6 }}>
+        {l.slice(3).trim()}
+      </h3>);
+      i++; continue;
+    }
+    // H3
+    if (l.startsWith('### ')) {
+      elementos.push(<h4 key={key++} style={{ fontSize: 13, fontWeight: 700, color: '#2E2A26',
+        marginTop: 12, marginBottom: 4 }}>
+        {l.slice(4).trim()}
+      </h4>);
+      i++; continue;
+    }
+
+    // Caixa de destaque (emoji no início)
+    const mCaixa = l.match(/^(🎯|💡|✏️|⚠️|🌡️|👨‍🍳|📌|🔬)\s+(.+)$/);
+    if (mCaixa) {
+      const corBorda = mCaixa[1] === '⚠️' || mCaixa[1] === '🌡️' ? '#c0392b' :
+                       mCaixa[1] === '✏️' ? '#4E7A25' : '#00796B';
+      const conteudo: string[] = [];
+      i++;
+      while (i < linhas.length && linhas[i].trim() !== '' && !linhas[i].startsWith('#')) {
+        conteudo.push(linhas[i].trim()); i++;
+      }
+      elementos.push(<div key={key++} style={{ borderLeft: '4px solid ' + corBorda,
+        background: '#f0faf8', borderRadius: '0 8px 8px 0', padding: '10px 14px',
+        marginBottom: 10 }}>
+        <div style={{ fontWeight: 700, color: corBorda, fontSize: 12, marginBottom: 4 }}>
+          {mCaixa[1]} {mCaixa[2]}
+        </div>
+        {conteudo.map((c, ci) => <div key={ci} style={{ fontSize: 12, color: '#2E2A26',
+          lineHeight: 1.5 }}>{c.replace(/^[•\-]\s*/, '')}</div>)}
+      </div>);
+      continue;
+    }
+
+    // Tabela markdown
+    if (l.startsWith('|') && l.endsWith('|')) {
+      const headers = l.split('|').slice(1, -1).map(c => c.trim());
+      i++;
+      if (i < linhas.length && /^\|[-| ]+\|$/.test(linhas[i])) i++;
+      const rows: string[][] = [];
+      while (i < linhas.length && linhas[i].startsWith('|')) {
+        rows.push(linhas[i].split('|').slice(1, -1).map(c => c.trim()));
+        i++;
+      }
+      elementos.push(<div key={key++} style={{ overflowX: 'auto', marginBottom: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr>{headers.map((h, hi) => <th key={hi} style={{ background: '#00796B',
+              color: '#fff', padding: '6px 10px', textAlign: 'left', fontWeight: 700 }}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, ri) => <tr key={ri} style={{ background: ri % 2 === 0 ? '#e0f2f1' : '#fff' }}>
+              {r.map((c, ci) => <td key={ci} style={{ padding: '5px 10px', borderBottom: '1px solid #b2dfdb' }}>{c}</td>)}
+            </tr>)}
+          </tbody>
+        </table>
+      </div>);
+      continue;
+    }
+
+    // Lista
+    if (/^[•\-]\s+/.test(l)) {
+      const itens: string[] = [];
+      while (i < linhas.length && /^[•\-]\s+/.test(linhas[i])) {
+        itens.push(linhas[i].replace(/^[•\-]\s+/, '')); i++;
+      }
+      elementos.push(<ul key={key++} style={{ paddingLeft: 20, marginBottom: 8 }}>
+        {itens.map((it, ii) => <li key={ii} style={{ fontSize: 13, color: '#2E2A26',
+          lineHeight: 1.6, marginBottom: 2 }}>{it}</li>)}
+      </ul>);
+      continue;
+    }
+
+    // Separador
+    if (/^[-=]{3,}$/.test(l.trim())) {
+      elementos.push(<hr key={key++} style={{ border: 'none', borderTop: '1px solid #b2dfdb',
+        margin: '12px 0' }} />);
+      i++; continue;
+    }
+
+    // Parágrafo
+    if (l.trim()) {
+      elementos.push(<p key={key++} style={{ fontSize: 13, color: '#2E2A26', lineHeight: 1.7,
+        marginBottom: 6, textAlign: 'justify' }}>
+        {l.replace(/\*\*(.+?)\*\*/g, '**$1**').trim()}
+      </p>);
+    }
+    i++;
+  }
+
+  return <div style={{ padding: '4px 0' }}>{elementos}</div>;
+}
+
+
 // ── Card de entrada ────────────────────────────────────────────
 function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
   entrada: EntradaManual; onAbrir: () => void;
@@ -247,7 +386,19 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   onCancelar: () => void; nomeProfessor: string;
 }) {
   // Seleção de UC/UFCD
-  const ANOS = ['2026-2027'];
+  // Anos letivos disponíveis — 3 anteriores + actual + 2 seguintes
+  const ANOS = (() => {
+    const hoje = new Date();
+    const ano  = hoje.getFullYear();
+    const mes  = hoje.getMonth() + 1;
+    const anoInicio = mes >= 9 ? ano : ano - 1;
+    const anos = [];
+    for (let i = -3; i <= 2; i++) {
+      const a = anoInicio + i;
+      anos.push(a + '-' + (a + 1));
+    }
+    return anos;
+  })();
   const [anoLetivo, setAnoLetivo] = useState(ANO_LETIVO);
   const [turmaSel, setTurmaSel] = useState<1 | 2 | 3 | null>(null);
   const [moduloSel, setModuloSel] = useState<ModuloCronograma | null>(null);
@@ -661,6 +812,23 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
         {modoProf && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             <button onClick={() => exportarGuiaoDocx(entradaAtiva)} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Exportar .docx</button>
+            <button onClick={async () => {
+              try {
+                const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify({
+                  moduloId: entradaAtiva.palavrasChave[0] || '',
+                  moduloNome: entradaAtiva.titulo,
+                  titulo: entradaAtiva.titulo,
+                  disciplina: entradaAtiva.categoria,
+                  horasPrevistas: '',
+                  turmaAno: 1,
+                  anoLetivo: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1),
+                  textoGuia: entradaAtiva.textoGuia,
+                }) });
+                const data = await resp.json();
+                if (data.ok) window.open(data.url, '_blank');
+                else alert('Erro: ' + data.erro);
+              } catch(e) { alert('Erro: ' + (e instanceof Error ? e.message : String(e))); }
+            }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(0,121,107,0.3)', background: '#e0f2f1', color: '#00796b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📄 Guardar no Drive (modelo ECL)</button>
             <button onClick={() => setModo('editar')} style={{ padding: '8px 16px',
               borderRadius: 9, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
               color: 'rgba(26,23,20,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -673,7 +841,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
             </button>
           </div>
         )}
-        <GuiaProducao textoGuia={entradaAtiva.textoGuia} nomePrato={entradaAtiva.titulo} />
+        <RenderizadorManual texto={entradaAtiva.textoGuia} />
         {confirmarApagar && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,23,20,0.7)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
