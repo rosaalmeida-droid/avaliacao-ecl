@@ -195,16 +195,9 @@ function buildEl(blocos: Bloco[]): (Paragraph | Table)[] {
 export async function exportarGuiaoDocx(entrada: EntradaParaExportar): Promise<void> {
   const dataFmt = new Date(entrada.criadoEm).toLocaleDateString('pt-PT');
 
-  const capa: Paragraph[] = [
-    para([txt('ESCOLA DE COMÉRCIO DE LISBOA', { size: 26, bold: true, color: CINZA })],
-      { align: AlignmentType.CENTER, before: 400, after: 40 }),
-    para([txt('Curso Profissional de Técnico de Cozinha-Pastelaria', { size: 22, italics: true, color: CINZA })],
-      { align: AlignmentType.CENTER, after: 40 }),
-    para([txt(`${entrada.categoria}  ·  Nível: ${entrada.nivel}`, { size: 20, color: CINZA })],
-      { align: AlignmentType.CENTER, after: 40 }),
-    para([txt(dataFmt, { size: 20, color: CINZA })],
-      { align: AlignmentType.CENTER, after: 600 }),
-  ];
+  // Sem capa própria — a IA gera a capa na Parte 1 do manual
+  // e o modelo ECL tem a sua capa visual
+  const capa: Paragraph[] = [];
 
   const corpo = buildEl(parsear(entrada.textoGuia));
 
