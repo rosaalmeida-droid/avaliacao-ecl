@@ -109,7 +109,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
     alunos.filter(a => alunosSel.has(a.id)).forEach((a, idx) => {
       const proposta = calcularNotaPropostaAluno(a.id, planosIds);
       novasNotas[a.id] = {
-        alunoId: a.id, nome: a.nome, numero: idx + 1,
+        alunoId: a.id, nome: a.nome || '', numero: idx + 1,
         ...proposta, ajustada: false,
       };
     });
