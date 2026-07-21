@@ -156,24 +156,139 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
 // Geração via Apps Script — manual completo em 5 partes
 const GS_URL = 'https://script.google.com/macros/s/AKfycbzBxobzVzxVfoAKC7wiqmKRiKru8z_FM1g7O6sTvRUE9q2QpD3DsTRfkrAFnouA41a1LA/exec';
 
-async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
-  const payload = {
-    acao: 'gerarGuiaoIA',
-    prompt: {
-      moduloNome:      modulo.nome,
-      moduloId:        modulo.id,
-      disciplina:      modulo.disciplina,
-      horasPrevistas:  modulo.horasPrevistas,
-      turmaAno:        modulo.turmaAno,
-      anoLetivo:       anoLetivo,
-      referencial:     modulo.tipo === 'UC' ? '811RA144' : '811183',
+// ── Chamada directa à API Claude (chave em VITE_ANTHROPIC_API_KEY no Vercel) ──
+async function chamarClaudeDirecto(prompt: string): Promise<string> {
+  const chave = (import.meta as any).env?.VITE_ANTHROPIC_API_KEY as string;
+  if (!chave) throw new Error('VITE_ANTHROPIC_API_KEY nao configurada nas Environment Variables do Vercel.');
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type':      'application/json',
+      'x-api-key':         chave,
+      'anthropic-version': '2023-06-01',
     },
-  };
-  const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify(payload) });
-  if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8000,
+      messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!resp.ok) throw new Error('API Claude erro ' + resp.status);
   const data = await resp.json();
-  if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
-  return data.texto || '';
+  return (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('');
+}
+
+async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
+  const ucIdRef = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
+  const ref = ucIdRef ? getReferencialUC(ucIdRef) : null;
+
+  const todasFichas = getFichasProducao();
+  const fichasUC = todasFichas.filter((f: any) =>
+    (f.ucsAssociadas || []).includes(modulo.id) ||
+    (ucIdRef ? (f.ucsAssociadas || []).includes(ucIdRef) : false)
+  );
+  const fichasApp = fichasUC.slice(0, 14).map((f: any) => ({
+    nomePrato: f.nomePrato, numPorcoes: f.numPorcoes || '4',
+    tempoPrep: f.tempoPrep || '', tempoConf: f.tempoConf || '',
+    ingredientes: (f.ingredientes || []).map((i: any) => ({ produto: i.produto || '', quantidade: i.quantidade || '', unidade: i.unidade || '' })),
+    preparacao:   (f.preparacao   || []).map((p: any) => ({ descricao: p.descricao || '', haccp: p.haccp || '' })),
+    empratamento: f.empratamento || '', alergenicos: f.alergenicos || [],
+  }));
+
+  const ref_ = modulo.tipo === 'UC' ? '811RA144' : '811183';
+  const turmaNum = modulo.turmaAno;
+  const turma = turmaNum === 1 ? '1. Ano' : turmaNum === 2 ? '2. Ano' : '3. Ano';
+  const anos  = turmaNum === 1 ? '2026-2029' : turmaNum === 2 ? '2025-2028' : '2024-2027';
+
+  const cabecalho = ['ESCOLA DE COMERCIO DE LISBOA',
+    'Curso Profissional de Tecnico/a de Cozinha e Restauracao',
+    turma + ' | ' + anos, 'Referencial ' + ref_, modulo.disciplina,
+    modulo.id + ' - ' + modulo.nome,
+    'Carga Horaria: ' + modulo.horasPrevistas + ' horas', 'Ano Lectivo ' + anoLetivo,
+  ].join('\n');
+
+  const realizacoes   = (ref?.realizacoes           || []).join('\n- ');
+  const criterios     = (ref?.criteriosDesempenho   || []).join('\n- ');
+  const conhecimentos = (ref?.conhecimentos         || []).join('\n- ');
+
+  const BIB = 'ANQEP 811RA144 | AHRESP/DGS Codigo Boas Praticas | Gomes et al. 2015 APN/DGS | Reg.CE 852/2004 | Maincent-Morel | McGee | Le Cordon Bleu | Modesto M.L. | Turismo de Portugal';
+  const HACCP = 'HACCP: refrigeracao 0-4C; congelacao -18C; confeccao min.65C; regra 2h; Anisakis -20C/24h.';
+
+  const ctx = 'MANUAL DO ALUNO — ' + modulo.nome + '\nRef ' + ref_ + ' | ECL'
+    + '\nREALIZACOES:\n- ' + (realizacoes || 'ver ref')
+    + '\nCRITERIOS:\n- ' + (criterios || 'ver ref')
+    + '\nCONHECIMENTOS:\n- ' + (conhecimentos || 'ver ref')
+    + '\n' + HACCP + '\nBIBLIOGRAFIA: ' + BIB
+    + '\nNORMA: min 50 pag; portugues europeu pre-Acordo; tabelas 4 colunas; fontes reais; NAO usar Parte X de 5.';
+
+  const nomeLower = modulo.nome.toLowerCase();
+  let temaEspec = 'Caps 9-11: especializacao profunda desta UC com tabelas e referencias reais.';
+  if (nomeLower.includes('tradicional portuguesa') || nomeLower.includes('tradicional port')) {
+    temaEspec = 'CRITICO — desenvolve CADA REGIAO com min 2 paginas:\n'
+      + 'Cap 9 Norte (Minho, Tras-os-Montes, Douro): caldo verde, rojoes, alheira, lamprea, vinho verde, azeite DOP\n'
+      + 'Cap 10 Centro+Lisboa (Beiras, Estremadura, Ribatejo): leitao Bairrada, chanfana, bacalhau Bras, iscas, queijo Serra Estrela DOP\n'
+      + 'Cap 11 Sul+Ilhas (Alentejo, Algarve, Acores, Madeira): acorda, migas, cataplana, xerem, espetada, cozido Furnas\n'
+      + 'Cada regiao: tabela 4 col (Prato|Ingredientes|Tecnica|Historia) + paragrafo historico + DOP/IGP + exercicio. Nao resumir.';
+  } else if (nomeLower.includes('internacional')) {
+    temaEspec = 'Caps 9-11: 6 cozinhas internacionais (francesa, italiana, asiatica, espanhola, americana, mediterranica) com tabela e chefs reais cada.';
+  } else if (nomeLower.includes('peixes') || nomeLower.includes('mariscos')) {
+    temaEspec = 'Caps 9-11: perfis de especies + sazonalidade + cozinha regional do peixe por regiao.';
+  } else if (nomeLower.includes('carnes') || nomeLower.includes('aves')) {
+    temaEspec = 'Caps 9-11: classificacao cortes + aves e caca + enchidos DOP + temperaturas seguranca.';
+  } else if (nomeLower.includes('pastelaria') || nomeLower.includes('docaria')) {
+    temaEspec = 'Caps 9-11: pastelaria regional + docaria conventual + pastelaria internacional + mestres referencia.';
+  }
+
+  const fichasTexto = fichasApp.length >= 5
+    ? '# CAPITULO 14 — FICHAS TECNICAS DE RECEITA\n\nFichas de aula para ' + modulo.id + ':\n\n'
+      + fichasApp.map((f: any, i: number) => {
+          const ings = (f.ingredientes || []).map((ing: any) => '- ' + ing.quantidade + ' ' + ing.unidade + ' ' + ing.produto).join('\n');
+          const prep = (f.preparacao || []).map((p: any, pi: number) => (pi+1) + '. ' + p.descricao + (p.haccp ? ' [HACCP: ' + p.haccp + ']' : '')).join('\n');
+          return '## RECEITA ' + (i+1) + ' — ' + f.nomePrato.toUpperCase()
+            + '\nDoses: ' + f.numPorcoes + ' | Prep: ' + f.tempoPrep + ' | Conf: ' + f.tempoConf
+            + '\n### Ingredientes\n' + ings + '\n### Preparacao\n' + prep
+            + (f.empratamento ? '\nEmpratamento: ' + f.empratamento : '')
+            + (f.alergenicos?.length ? '\nAlergénios: ' + f.alergenicos.join(', ') : '');
+        }).join('\n\n---\n\n')
+    : null;
+
+  const prompts = [
+    ctx + '\n\nPARTE 1 — gera 15 paginas densas:\n'
+      + '- Enquadramento no Referencial (tabela: codigo, designacao, componente, ano, nivel, horas, pre-requisitos)\n'
+      + '- Objectivos de aprendizagem (8 objectivos detalhados baseados nas realizacoes)\n'
+      + '- Cap 1: Introducao especifica (historia, importancia profissional, contexto nacional)\n'
+      + '- Cap 2: Tecnologia das materias-primas (classificacao, criterios de qualidade especificos)\n'
+      + '- Cap 3: Aprovisionamento, conservacao e HACCP com os limites reais\n'
+      + '- Cap 4: Pre-preparacao (operacoes, rendimento, aproveitamento, equipamento)\n'
+      + '- Em cada cap: 2 tabelas 4 colunas + 1 caixa + 2 exercicios\n'
+      + '\nCABECALHO:\n' + cabecalho,
+
+    ctx + '\n\nPARTE 2 — gera 15 paginas densas (continuacao ' + modulo.nome + '):\n'
+      + '- Cap 5: Metodos de confeccao — cada metodo com desc tecnica, temperaturas, tempos, tabela, 2 exemplos\n'
+      + '- Cap 6: Molhos e guarniciones — proporcoes, passo a passo, variantes, erros comuns\n'
+      + '- Cap 7: Empratamento e analise sensorial — principios, harmonizacao vinhos, grelha sensorial\n'
+      + '- Cap 8: Sustentabilidade — sazonalidade mes a mes, DOP/IGP, desperdicio zero\n'
+      + '- ' + temaEspec + '\n'
+      + '- Em cada cap: 2 tabelas 4 colunas + 1 caixa + 1 exercicio',
+
+    ctx + '\n\nPARTE 3 — gera 8 paginas (continuacao ' + modulo.nome + '):\n'
+      + '- Cap 12: 3 Fichas de Trabalho com tabelas para preenchimento\n'
+      + '  Ficha 1: avaliacao materia-prima; Ficha 2: calculo rendimento e custo; Ficha 3: comparacao metodos\n'
+      + '- Cap 13: Desenvolvimento de Projeto — 7 etapas, criterios com %, exemplo resolvido completo',
+
+    fichasTexto
+      ? fichasTexto
+      : ctx + '\n\nPARTE 4 — gera 10 paginas (continuacao ' + modulo.nome + '):\n'
+          + '- Cap 14: 8 a 14 fichas tecnicas — cada uma com nome, doses (4), tempos, metodo, ingredientes exactos, preparacao numerada, HACCP, nota chef',
+
+    ctx + '\n\nPARTE 5 — gera 8 paginas (ultima parte ' + modulo.nome + '):\n'
+      + '- Cap 15: Questionario Revisao Global (4 grupos, 14-16 questoes com linhas de resposta)\n'
+      + '- Glossario: 15 termos com definicao tecnica\n'
+      + '- Bibliografia: fontes reais usadas\n'
+      + '- Sintese Final: 10 pontos-chave\n'
+      + '- Anexo A: ficha tecnica em branco; Anexo B: folha-resumo HACCP destacavel\n'
+      + '- Indice Final: tabela capitulos com paginas estimadas',
+  ];
+
+  const resultados = await Promise.all(prompts.map(p => chamarClaudeDirecto(p)));
+  return resultados.join('\n\n');
 }
 
 // Exportar para Google Doc via modelo oficial ECL
@@ -478,19 +593,14 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   async function gerarManual() {
     if (!moduloSel) { setErro('Selecciona um modulo do cronograma primeiro.'); return; }
     setGerandoIA(true);
-    setFaseIA('Parte 1/5 - Introducao e HACCP...');
+    setFaseIA('A gerar as 5 partes em paralelo…');
     setErro('');
-    // Actualizar fase visualmente enquanto o GS processa (~60-90s total)
-    const fases = [
-      'Parte 2/5 - Metodos de confeccao e especializacao...',
-      'Parte 3/5 - Fichas de trabalho e projeto...',
-      'Parte 4/5 - Receitas...',
-      'Parte 5/5 - Glossario, questionario e anexos...',
-    ];
-    let fi = 0;
+    // As 5 partes são geradas em simultâneo — mostrar contador
+    let segundos = 0;
     const intervalo = setInterval(() => {
-      if (fi < fases.length) { setFaseIA(fases[fi]); fi++; }
-    }, 18000);
+      segundos += 5;
+      setFaseIA('A gerar em paralelo… ' + segundos + 's');
+    }, 5000);
     try {
       const resultado = await gerarManualCompleto(moduloSel, anoLetivo);
       clearInterval(intervalo);
