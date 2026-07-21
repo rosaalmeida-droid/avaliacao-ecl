@@ -1,226 +1,254 @@
-// exportGuiao.ts — exporta uma entrada do Manual do Cozinheiro como .docx
-// Requer: npm install docx (já incluído no package.json actualizado)
+// exportGuiao.ts — Exporta manual do cozinheiro como .docx com cabeçalho/rodapé ECL
+// Usa a biblioteca docx (já em package.json: "docx": "^8.5.0")
 
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType,
-  VerticalAlign, Header, Footer, PageNumber,
+  Header, Footer, ImageRun, PageNumber, NumberFormat,
+  TabStopType, TabStopPosition, PageBreak,
 } from 'docx';
 
+// ── Tipos ─────────────────────────────────────────────────────
 export interface EntradaParaExportar {
-  titulo: string;
-  categoria: string;
-  nivel: string;
-  textoGuia: string;
-  criadoPor: string;
-  criadoEm: string;
+  titulo:       string;
+  categoria:    string;
+  nivel:        string;
+  textoGuia:    string;
+  moduloId?:    string;
+  moduloNome?:  string;
+  anoLetivo?:   string;
+  disciplina?:  string;
+  turmaAno?:    number;
+  horas?:       string | number;
 }
 
-// ── Paleta ────────────────────────────────────────────────────
-const COBRE  = '8A561F';
-const SALVIA = '5F7350';
-const CARVAO = '2E2A26';
-const CINZA  = '6B655E';
-const CREME  = 'F5F0E6';
-const FONT   = 'Arial Narrow';
+// ── Cores ECL ─────────────────────────────────────────────────
+const COR_TEAL  = '0f8c93';
+const COR_TEXTO = '1A1714';
+const COR_TAB   = '00796B';
+const COR_ZEBRA = 'E0F2F1';
+const FONTE     = 'Arial Narrow';
+const F_CORPO   = 24;  // 12pt
+const F_H2      = 26;  // 13pt
+const F_H1      = 28;  // 14pt
+
+// ── Logótipo ECL em base64 (PNG 280×119) ──────────────────────
+// Carregado via fetch do ficheiro público na app
+async function carregarLogo(): Promise<ArrayBuffer | null> {
+  try {
+    const r = await fetch('/ecl_logo.png');
+    if (r.ok) return r.arrayBuffer();
+  } catch (_) {}
+  return null;
+}
 
 // ── Helpers ───────────────────────────────────────────────────
-function allBorders(cor: string) {
-  const b = { style: BorderStyle.SINGLE, size: 2, color: cor };
-  return { top: b, bottom: b, left: b, right: b, insideHorizontal: b, insideVertical: b };
+function rTeal(text: string, bold = false, sz = 20) {
+  return new TextRun({ text, font: FONTE, color: COR_TEAL, bold, size: sz });
+}
+function rTexto(text: string, bold = false, sz = F_CORPO) {
+  return new TextRun({ text, font: FONTE, color: COR_TEXTO, bold, size: sz });
+}
+function borderTeal() {
+  return { style: BorderStyle.SINGLE, size: 6, color: COR_TEAL, space: 4 };
 }
 
-function txt(text: string, opts: { size?: number; bold?: boolean; italics?: boolean; color?: string } = {}) {
-  return new TextRun({ text, font: FONT, size: opts.size ?? 22, bold: !!opts.bold,
-    italics: !!opts.italics, color: opts.color ?? CARVAO });
-}
-
-function para(children: TextRun[], opts: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; before?: number; after?: number; line?: number; indent?: number } = {}) {
-  return new Paragraph({
-    alignment: opts.align ?? AlignmentType.JUSTIFIED,
-    spacing: { line: opts.line ?? 360, before: opts.before ?? 0, after: opts.after ?? 120 },
-    indent: opts.indent ? { left: opts.indent } : undefined,
-    children,
-  });
-}
-
-// ── Parser markdown → blocos ──────────────────────────────────
-type Bloco =
-  | { tipo: 'h1'; texto: string }
-  | { tipo: 'h2'; texto: string }
-  | { tipo: 'h3'; texto: string }
-  | { tipo: 'caixa'; emoji: string; label: string; linhas: string[] }
-  | { tipo: 'tabela'; headers: string[]; rows: string[][] }
-  | { tipo: 'lista'; itens: string[] }
-  | { tipo: 'paragrafo'; texto: string };
-
-function parsear(md: string): Bloco[] {
-  const linhas = md.split('\n');
-  const blocos: Bloco[] = [];
+// ── Parser markdown → elementos docx ─────────────────────────
+function parseMd(texto: string): (Paragraph | Table)[] {
+  const linhas = texto.split('\n');
+  const els: (Paragraph | Table)[] = [];
   let i = 0;
+
   while (i < linhas.length) {
     const l = linhas[i].trimEnd();
-    if (l.startsWith('## '))  { blocos.push({ tipo: 'h2', texto: l.slice(3).trim() }); i++; continue; }
-    if (l.startsWith('### ')) { blocos.push({ tipo: 'h3', texto: l.slice(4).trim() }); i++; continue; }
-    if (l.startsWith('# '))   { blocos.push({ tipo: 'h1', texto: l.slice(2).trim() }); i++; continue; }
 
-    const mCaixa = l.match(/^(🎯|💡|✏️)\s+\*?\*?([^*\n]+)\*?\*?$/);
-    if (mCaixa) {
-      const ls: string[] = []; i++;
-      while (i < linhas.length && linhas[i].trim() !== '') {
-        ls.push(linhas[i].trim().replace(/^[•\-]\s*/, '')); i++;
-      }
-      blocos.push({ tipo: 'caixa', emoji: mCaixa[1], label: mCaixa[2].trim(), linhas: ls });
-      continue;
+    // H1
+    if (l.startsWith('# ') && !l.startsWith('## ')) {
+      els.push(new Paragraph({
+        pageBreakBefore: true,
+        heading: HeadingLevel.HEADING_1,
+        border: { bottom: borderTeal() },
+        spacing: { before: 280, after: 160, line: 360 },
+        children: [new TextRun({ text: l.slice(2).trim(), font: FONTE, color: COR_TEAL, bold: true, size: F_H1 })],
+      }));
+      i++; continue;
     }
 
+    // H2
+    if (l.startsWith('## ') && !l.startsWith('### ')) {
+      els.push(new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 240, after: 120, line: 360 },
+        children: [new TextRun({ text: l.slice(3).trim(), font: FONTE, color: COR_TEAL, bold: true, size: F_H2 })],
+      }));
+      i++; continue;
+    }
+
+    // H3
+    if (l.startsWith('### ')) {
+      els.push(new Paragraph({
+        spacing: { before: 160, after: 80, line: 360 },
+        children: [new TextRun({ text: l.slice(4).trim(), font: FONTE, color: COR_TEXTO, bold: true, size: F_CORPO })],
+      }));
+      i++; continue;
+    }
+
+    // Tabela markdown
     if (l.startsWith('|') && l.endsWith('|')) {
-      const headers = l.split('|').slice(1, -1).map(c => c.trim()); i++;
+      const headers = l.split('|').slice(1,-1).map(c => c.trim());
+      i++;
       if (i < linhas.length && /^\|[-| ]+\|$/.test(linhas[i])) i++;
       const rows: string[][] = [];
       while (i < linhas.length && linhas[i].startsWith('|')) {
-        rows.push(linhas[i].split('|').slice(1, -1).map(c => c.trim())); i++;
+        rows.push(linhas[i].split('|').slice(1,-1).map(c => c.trim()));
+        i++;
       }
-      if (headers.length) blocos.push({ tipo: 'tabela', headers, rows });
+      if (headers.length && rows.length) {
+        const colW = Math.floor(9000 / headers.length);
+        els.push(new Table({
+          width: { size: 9000, type: WidthType.DXA },
+          rows: [
+            new TableRow({ children: headers.map(h => new TableCell({
+              width: { size: colW, type: WidthType.DXA },
+              shading: { type: ShadingType.CLEAR, color: COR_TAB, fill: COR_TAB },
+              children: [new Paragraph({ spacing: { before: 40, after: 40 }, children: [
+                new TextRun({ text: h.replace(/\*\*/g,''), font: FONTE, color: 'FFFFFF', bold: true, size: F_CORPO }),
+              ]})]
+            }))}),
+            ...rows.map((r, ri) => new TableRow({ children: r.map(c => new TableCell({
+              width: { size: colW, type: WidthType.DXA },
+              shading: ri%2===0 ? { type: ShadingType.CLEAR, color: COR_ZEBRA, fill: COR_ZEBRA } : undefined,
+              children: [new Paragraph({ spacing: { before: 40, after: 40 }, children: [
+                new TextRun({ text: c.replace(/\*\*/g,''), font: FONTE, color: COR_TEXTO, size: F_CORPO }),
+              ]})]
+            })) })),
+          ],
+        }));
+        els.push(new Paragraph({ children: [], spacing: { after: 120 } }));
+      }
       continue;
     }
 
+    // Lista bullet
     if (/^[•\-]\s+/.test(l)) {
-      const itens: string[] = [];
-      while (i < linhas.length && /^[•\-]\s+/.test(linhas[i])) {
-        itens.push(linhas[i].replace(/^[•\-]\s+/, '').trim()); i++;
-      }
-      blocos.push({ tipo: 'lista', itens }); continue;
+      els.push(new Paragraph({
+        bullet: { level: 0 },
+        spacing: { after: 40, line: 360 },
+        children: [rTexto(l.replace(/^[•\-]\s+/,'').replace(/\*\*/g,''))],
+      }));
+      i++; continue;
     }
 
-    if (l.trim() && !/^[-=]{3,}$/.test(l)) {
-      blocos.push({ tipo: 'paragrafo', texto: l.replace(/\*\*/g, '').trim() });
+    // Lista numerada
+    if (/^\d+\.\s+/.test(l)) {
+      els.push(new Paragraph({
+        numbering: { reference: 'numbered', level: 0 },
+        spacing: { after: 40, line: 360 },
+        children: [rTexto(l.replace(/^\d+\.\s+/,'').replace(/\*\*/g,''))],
+      }));
+      i++; continue;
+    }
+
+    // Separador
+    if (/^[-=]{3,}$/.test(l.trim())) {
+      els.push(new Paragraph({ children: [], border: { bottom: borderTeal() }, spacing: { after: 120 } }));
+      i++; continue;
+    }
+
+    // Parágrafo normal
+    if (l.trim()) {
+      els.push(new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { after: 80, line: 360 },
+        children: [rTexto(l.replace(/\*\*/g,'').trim())],
+      }));
     }
     i++;
   }
-  return blocos;
+  return els;
 }
 
-// ── Blocos → elementos docx ───────────────────────────────────
-function buildEl(blocos: Bloco[]): (Paragraph | Table)[] {
-  const el: (Paragraph | Table)[] = [];
-
-  for (const b of blocos) {
-    if (b.tipo === 'h1') {
-      el.push(new Paragraph({
-        heading: HeadingLevel.HEADING_1, pageBreakBefore: true,
-        spacing: { before: 200, after: 160 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: COBRE, space: 6 } },
-        children: [txt(b.texto, { size: 32, bold: true, color: COBRE })],
-      }));
-    } else if (b.tipo === 'h2') {
-      el.push(new Paragraph({
-        heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 100 },
-        children: [txt(b.texto, { size: 27, bold: true, color: SALVIA })],
-      }));
-    } else if (b.tipo === 'h3') {
-      el.push(new Paragraph({
-        heading: HeadingLevel.HEADING_3, spacing: { before: 140, after: 80 },
-        children: [txt(b.texto, { size: 24, bold: true, color: CARVAO })],
-      }));
-    } else if (b.tipo === 'paragrafo') {
-      el.push(para([txt(b.texto)]));
-    } else if (b.tipo === 'lista') {
-      b.itens.forEach(it => el.push(para(
-        [txt('•  ', { color: COBRE }), txt(it)],
-        { line: 300, after: 50, indent: 240 }
-      )));
-    } else if (b.tipo === 'caixa') {
-      const CORES: Record<string, [string, string]> = {
-        '🎯': ['FFF3D6', '5A3E00'],
-        '💡': [CREME,    COBRE   ],
-        '✏️': ['E8F5D6', '4E7A25'],
-      };
-      const [fill, edge] = CORES[b.emoji] ?? [CREME, COBRE];
-      el.push(new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE }, columnWidths: [9360],
-        borders: {
-          top:    { style: BorderStyle.SINGLE, size: 4,  color: edge },
-          bottom: { style: BorderStyle.SINGLE, size: 4,  color: edge },
-          left:   { style: BorderStyle.SINGLE, size: 20, color: edge },
-          right:  { style: BorderStyle.SINGLE, size: 4,  color: edge },
-          insideHorizontal: { style: BorderStyle.NONE },
-          insideVertical:   { style: BorderStyle.NONE },
-        },
-        rows: [new TableRow({ children: [new TableCell({
-          width: { size: 9360, type: WidthType.DXA },
-          shading: { type: ShadingType.CLEAR, fill },
-          margins: { top: 100, bottom: 100, left: 140, right: 140 },
-          children: [
-            para([txt(`${b.emoji}  ${b.label}`, { size: 22, bold: true, color: edge })], { after: 60 }),
-            ...b.linhas.map(l => para([txt(l, { size: 21 })], { line: 300, after: 40 })),
-          ],
-        })] })],
-      }));
-      el.push(para([txt('')]));
-    } else if (b.tipo === 'tabela') {
-      const nc    = b.headers.length;
-      const total = 9360;
-      const cw    = Array(nc).fill(Math.floor(total / nc));
-      el.push(new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE }, columnWidths: cw,
-        borders: allBorders('D8CFBE'),
-        rows: [
-          new TableRow({ tableHeader: true, children: b.headers.map((h, i) =>
-            new TableCell({
-              width: { size: cw[i], type: WidthType.DXA },
-              shading: { type: ShadingType.CLEAR, fill: COBRE },
-              margins: { top: 60, bottom: 60, left: 90, right: 90 },
-              verticalAlign: VerticalAlign.CENTER,
-              children: [para([txt(h, { size: 21, bold: true, color: 'FFFFFF' })], { after: 0, line: 240 })],
-            })
-          )}),
-          ...b.rows.map((r, ri) => new TableRow({ children: r.map((c, i) =>
-            new TableCell({
-              width: { size: cw[i] ?? Math.floor(total / r.length), type: WidthType.DXA },
-              shading: { type: ShadingType.CLEAR, fill: ri % 2 ? CREME : 'FFFFFF' },
-              margins: { top: 50, bottom: 50, left: 90, right: 90 },
-              children: [para([txt(c, { size: 20 })], { after: 0, line: 240 })],
-            })
-          )})),
-        ],
-      }));
-      el.push(para([txt('')]));
-    }
-  }
-  return el;
-}
-
-// ── Exportar ──────────────────────────────────────────────────
+// ── Exportar .docx ────────────────────────────────────────────
 export async function exportarGuiaoDocx(entrada: EntradaParaExportar): Promise<void> {
-  const dataFmt = new Date(entrada.criadoEm).toLocaleDateString('pt-PT');
+  const moduloId   = entrada.moduloId   || '';
+  const moduloNome = entrada.moduloNome || entrada.titulo;
+  const anoLetivo  = entrada.anoLetivo  || new Date().getFullYear() + '-' + (new Date().getFullYear()+1);
+  const disciplina = entrada.disciplina || 'Serviços de Cozinha-Pastelaria';
+  const turmaAno   = entrada.turmaAno   || 3;
+  const sigla      = disciplina.toLowerCase().includes('restaurante') ? 'SRB' : 'SCP';
 
-  // Sem capa própria — a IA gera a capa na Parte 1 do manual
-  // e o modelo ECL tem a sua capa visual
-  const capa: Paragraph[] = [];
+  const logoBuffer = await carregarLogo();
 
-  const corpo = buildEl(parsear(entrada.textoGuia));
+  // ── Capa ────────────────────────────────────────────────────
+  const capa: (Paragraph | Table)[] = [
+    ...(logoBuffer ? [new Paragraph({
+      spacing: { before: 0, after: 200 },
+      children: [new ImageRun({ data: logoBuffer, transformation: { width: 82, height: 35 }, type: 'png' })],
+    })] : []),
 
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+      rTeal('Curso Profissional de Técnico de Cozinha-Pastelaria', true, 22),
+    ]}),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 60 }, children: [
+      rTeal(sigla + ' - ' + moduloId + ' - ' + moduloNome + '    ' + anoLetivo, false, 22),
+    ]}),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400, after: 0 }, children: [
+      new TextRun({ text: moduloNome, font: FONTE, color: COR_TEAL, bold: true, size: 56 }),
+    ]}),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+
+  // ── Cabeçalho e rodapé ──────────────────────────────────────
+  const cabecalhoChildren: (Paragraph | Table)[] = [
+    new Paragraph({
+      border: { bottom: borderTeal() },
+      tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+      spacing: { before: 0, after: 40 },
+      children: [
+        ...(logoBuffer ? [new ImageRun({ data: logoBuffer, transformation: { width: 60, height: 26 }, type: 'png' })] : []),
+        new TextRun({ text: '\t', font: FONTE }),
+        rTeal(moduloNome + '   ' + anoLetivo, false, 18),
+      ],
+    }),
+  ];
+
+  const rodapeChildren: (Paragraph | Table)[] = [
+    new Paragraph({
+      border: { top: borderTeal() },
+      tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+      spacing: { before: 40, after: 0 },
+      children: [
+        rTeal('Escola de Comércio de Lisboa   ·   Manual do Cozinheiro', false, 18),
+        new TextRun({ text: '\t', font: FONTE }),
+        new TextRun({ children: ['Pág. ', PageNumber.CURRENT], font: FONTE, color: COR_TEAL, bold: true, size: 18 }),
+      ],
+    }),
+  ];
+
+  // ── Conteúdo ─────────────────────────────────────────────────
+  const conteudo = entrada.textoGuia ? parseMd(entrada.textoGuia) : [
+    new Paragraph({ children: [rTexto('Conteúdo a gerar.')], spacing: { after: 80 } }),
+  ];
+
+  // ── Documento ─────────────────────────────────────────────────
   const doc = new Document({
-    creator: 'Avaliação ECL — Escola de Comércio de Lisboa',
-    title: entrada.titulo,
-    styles: { default: { document: { run: { font: FONT, size: 22, color: CARVAO } } } },
+    numbering: {
+      config: [{
+        reference: 'numbered',
+        levels: [{ level: 0, format: NumberFormat.DECIMAL, text: '%1.', alignment: AlignmentType.LEFT,
+          style: { paragraph: { indent: { left: 720, hanging: 360 } } } }],
+      }],
+    },
     sections: [{
-      properties: { page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } },
-      headers: { default: new Header({ children: [new Paragraph({
-        alignment: AlignmentType.RIGHT, spacing: { after: 0 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: COBRE, space: 4 } },
-        children: [txt(entrada.titulo, { size: 18, color: CINZA })],
-      })] }) },
-      footers: { default: new Footer({ children: [new Paragraph({
-        alignment: AlignmentType.CENTER, spacing: { before: 0 },
-        border: { top: { style: BorderStyle.SINGLE, size: 4, color: COBRE, space: 4 } },
-        children: [
-          txt('Escola de Comércio de Lisboa  ·  Manual do Cozinheiro  ·  Pág. ', { size: 16, color: CINZA }),
-          new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 16, color: CINZA }),
-        ],
-      })] }) },
-      children: [...capa, ...corpo],
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: 1417, bottom: 1417, left: 1701, right: 1701, header: 708, footer: 708 },
+        },
+      },
+      headers: { default: new Header({ children: cabecalhoChildren }) },
+      footers: { default: new Footer({ children: rodapeChildren }) },
+      children: [...capa, ...conteudo],
     }],
   });
 
@@ -228,29 +256,7 @@ export async function exportarGuiaoDocx(entrada: EntradaParaExportar): Promise<v
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `Guiao_${entrada.titulo.replace(/[^a-zA-Z0-9À-ÿ ]/g, '').replace(/\s+/g, '_').slice(0, 60)}.docx`;
+  a.download = (moduloId ? moduloId + '_' : '') + moduloNome.slice(0, 50).replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_') + '.docx';
   a.click();
   URL.revokeObjectURL(url);
-}
-
-// ── Alternativa: enviar para Apps Script (Google Doc no Drive) ─
-export const GUIAO_GS_URL = 'https://script.google.com/macros/s/AKfycbzBxobzVzxVfoAKC7wiqmKRiKru8z_FM1g7O6sTvRUE9q2QpD3DsTRfkrAFnouA41a1LA/exec'; // preencher com a URL do Web App após deploy
-
-export async function exportarGuiaoViaScript(
-  entrada: EntradaParaExportar & {
-    anoLetivo: string;
-    moduloId: string;
-    disciplina: string;
-    horasPrevistas: number;
-    turmaAno: number;
-  }
-): Promise<string> {
-  if (!GUIAO_GS_URL) throw new Error('GUIAO_GS_URL não está definido em exportGuiao.ts');
-  const resp = await fetch(GUIAO_GS_URL, {
-    method: 'POST',
-    body: JSON.stringify(entrada),
-  });
-  const data = await resp.json();
-  if (!data.ok) throw new Error(data.erro || 'Erro no Apps Script');
-  return data.url as string; // URL do Google Doc gerado
 }
