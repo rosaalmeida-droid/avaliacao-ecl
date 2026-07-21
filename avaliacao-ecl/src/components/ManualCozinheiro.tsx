@@ -177,25 +177,61 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     turmaSel ? CRONOGRAMA_2026_2027.filter(m => m.turmaAno === turmaSel) : [],
     [turmaSel]);
 
+  // Mapa UC/UFCD → CategoriaManual (baseado no referencial real 811RA144 e 811183)
+  const CATEGORIA_POR_UC: Partial<Record<string, CategoriaManual>> = {
+    'UC03576': 'Métodos de Confeção',
+    'UC01999': 'Métodos de Confeção',
+    'UC03577': 'Métodos de Confeção',
+    'UC02002': 'Métodos de Confeção',
+    'UC02003': 'Métodos de Confeção',
+    'UC02004': 'Métodos de Confeção',
+    'UC02005': 'Pastelaria e Doçaria',
+    'UC03578': 'Outro',
+    'UC00596': 'Outro',
+    'UC03579': 'Conservação e Armazenamento',
+    'UC03580': 'Outro',
+    'UC03581': 'Métodos de Confeção',
+    'UC03582': 'Métodos de Confeção',
+    'UC00039': 'Segurança Alimentar',
+    'UC03584': 'Segurança Alimentar',
+    'UC03585': 'Conservação e Armazenamento',
+    'UC03586': 'Pastelaria e Doçaria',
+    'UC03588': 'Métodos de Confeção',
+    'UC03589': 'Outro',
+    'UC03590': 'Métodos de Confeção',
+    'UC03591': 'Métodos de Confeção',
+    'UC03592': 'Pastelaria e Doçaria',
+    'UC03593': 'Pastelaria e Doçaria',
+    'UC03595': 'Métodos de Confeção',
+    'UC03596': 'Métodos de Confeção',
+    'UC00031': 'Outro', 'UC00032': 'Outro', 'UC00034': 'Outro',
+    'UC00035': 'Outro', 'UC00038': 'Outro', 'UC00054': 'Outro',
+    'UC00056': 'Outro', 'UC00068': 'Outro', 'UC00069': 'Outro',
+    'UC00077': 'Outro', 'UC00595': 'Outro',
+    'UFCD 12': 'Métodos de Confeção',
+    'UFCD 14': 'Métodos de Confeção',
+    'UFCD 15': 'Métodos de Confeção',
+    'UFCD 16': 'Métodos de Confeção',
+    'UFCD 17': 'Métodos de Confeção',
+    'UFCD 18': 'Métodos de Confeção',
+    'UFCD 19': 'Métodos de Confeção',
+    'UFCD 20': 'Pastelaria e Doçaria',
+    'UFCD 21.1': 'Pastelaria e Doçaria',
+    'UFCD 21.2': 'Pastelaria e Doçaria',
+    'UFCD 22.1': 'Pastelaria e Doçaria',
+    'UFCD 22.2': 'Pastelaria e Doçaria',
+    'UFCD 23': 'Pastelaria e Doçaria',
+    'UFCD 01': 'Outro', 'UFCD 04': 'Outro', 'UFCD 07': 'Outro',
+    'UFCD 08': 'Outro', 'UFCD 09': 'Outro', 'UFCD 24': 'Outro',
+    'UFCD 52': 'Outro', 'UFCD 53.1': 'Outro', 'UFCD 57': 'Outro',
+  };
+
   function selecionarModulo(m: ModuloCronograma) {
     setModuloSel(m);
     setTitulo(m.nome);
-    // Inferir categoria
-    const nome = m.nome.toLowerCase();
-    if (nome.includes('higiene') || nome.includes('haccp') || nome.includes('segurança alimentar'))
-      setCategoria('Higiene e Preparação');
-    else if (nome.includes('pastelaria') || nome.includes('doçaria') || nome.includes('massas'))
-      setCategoria('Pastelaria e Doçaria');
-    else if (nome.includes('peixes') || nome.includes('mariscos'))
-      setCategoria('Peixes e Mariscos');
-    else if (nome.includes('carnes') || nome.includes('aves') || nome.includes('caça'))
-      setCategoria('Carnes e Aves');
-    else if (nome.includes('tradicional') || nome.includes('internacional'))
-      setCategoria('Cozinha Tradicional');
-    // Inferir nível pelo ano
+    setCategoria((CATEGORIA_POR_UC[m.id] ?? 'Outro') as CategoriaManual);
     setNivel(m.turmaAno === 1 ? 'Base' : m.turmaAno === 2 ? 'Intermédio' : 'Avançado');
-    // Palavras-chave do nome
-    setPalavras(m.nome.split(' ').filter(w => w.length > 4).slice(0, 5).join(', '));
+    setPalavras(m.nome.split(' ').filter((w: string) => w.length > 4).slice(0, 5).join(', '));
   }
 
   async function gerarGuiaoIA() {
