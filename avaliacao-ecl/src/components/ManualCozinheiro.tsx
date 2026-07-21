@@ -8,7 +8,9 @@ import {
   getEntradasManual, addEntradaManual, deleteEntradaManual, pesquisarManual,
 } from '../backend';
 import { exportarGuiaoDocx } from './exportGuiao';
-import { CRONOGRAMA_2026_2027, ANO_LETIVO, ModuloCronograma } from '../cronograma';
+import { CRONOGRAMA_2026_2027, ANO_LETIVO, ModuloCronograma, EQUIVALENCIAS_UFCD_UC } from '../cronograma';
+import { getReferencialUC } from '../referencial811RA144';
+import { getFichasProducao } from '../backend';
 
 const COR_PRIMARIA  = '#1a1714';
 const COR_DOURADO   = '#b5651d';
