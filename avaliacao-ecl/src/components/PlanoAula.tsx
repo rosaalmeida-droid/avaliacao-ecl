@@ -602,6 +602,13 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           </div>
         );
       })}
+      {mostrarModalPauta && (
+        <ModalPauta
+          turmaId={turmaId}
+          nomeProfessor={nomeProfessor || 'Professor'}
+          onFechar={() => setMostrarModalPauta(false)}
+        />
+      )}
     </div>
   );
 }
@@ -961,13 +968,6 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
             </div>
           )}
         </div>
-      )}
-      {mostrarModalPauta && (
-        <ModalPauta
-          turmaId={turmaId}
-          nomeProfessor={nomeProfessor || 'Professor'}
-          onFechar={() => setMostrarModalPauta(false)}
-        />
       )}
     </div>
   );
