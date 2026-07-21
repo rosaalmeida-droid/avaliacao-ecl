@@ -309,7 +309,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo || 'Plano de aula'}</div>
                       {p.ucId && <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>{p.ucId}{p.numeroPlan ? ' · Plano ' + p.numeroPlan : ''}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
-                      <div className="muted" style={{ fontSize: 12 }}>{horaI && horaF ? `${horaI}-${horaF}` : ''} {p.turmaId ? '· ' + p.turmaId : ''}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>{p.data ? fmtDataCurta(p.data) + ' · ' : ''}{horaI && horaF ? `${horaI}-${horaF}` : ''} {p.turmaId ? '· ' + p.turmaId : ''}</div>
                     </div>
                     <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
                       background: p.estado === 'publicado' ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
@@ -438,6 +438,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
 
   const [refreshKey, setRefreshKey] = useState(0);
   const [modoSelecaoPlanos, setModoSelecaoPlanos] = useState(false);
+  const [mostrarModalPauta, setMostrarModalPauta] = useState(false);
   const [planosSelecionadosIds, setPlanosSelecionadosIds] = useState<Set<string>>(new Set());
   const planos = getPlanosAulaPorTurma(turmaId);
 
@@ -506,6 +507,12 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
       <div style={{ background: 'var(--copper)', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <h2 className="display" style={{ margin:0, color: 'white' }}>Planos de Aula</h2>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setMostrarModalPauta(true)}
+            style={{ padding: '8px 14px', borderRadius: 9, border: 'none',
+              background: 'rgba(255,255,255,0.2)', color: 'white',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            📊 Gerar Pauta
+          </button>
           {vista === 'lista' && (
             <button className="btn btn-ghost" onClick={() => { setModoSelecaoPlanos(!modoSelecaoPlanos); setPlanosSelecionadosIds(new Set()); }}
               style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>
@@ -579,7 +586,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                   </div>
                 )}
                 <div className="muted" style={{ fontSize:13 }}>
-                  {horaI && horaF ? horaI+'-'+horaF+' ' : ''}{p.turmaId}{(p.fichasIds?.length||0) > 0 ? ' - '+p.fichasIds.length+' ficha'+(p.fichasIds.length!==1?'s':'') : ''}
+                  {p.data ? fmtDataCurta(p.data) + ' · ' : ''}{horaI && horaF ? horaI+'-'+horaF+' ' : ''}{p.turmaId}{(p.fichasIds?.length||0) > 0 ? ' - '+p.fichasIds.length+' ficha'+(p.fichasIds.length!==1?'s':'') : ''}
                 </div>
               </div>
               <span style={{ fontSize:13, padding:'3px 10px', borderRadius:20, fontWeight:700, flexShrink:0,
@@ -952,6 +959,13 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
             </div>
           )}
         </div>
+      )}
+      {mostrarModalPauta && (
+        <ModalPauta
+          turmaId={turmaId}
+          nomeProfessor={nomeProfessor || 'Professor'}
+          onFechar={() => setMostrarModalPauta(false)}
+        />
       )}
     </div>
   );
