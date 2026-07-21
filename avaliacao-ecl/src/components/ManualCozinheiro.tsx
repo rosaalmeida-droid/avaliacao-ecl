@@ -842,28 +842,6 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           </div>
         )}
         <RenderizadorManual texto={entradaAtiva.textoGuia} />
-        {confirmarApagar && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,23,20,0.7)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
-            <div style={{ background: '#fff', borderRadius: 20, padding: '24px', maxWidth: 340, width: '100%' }}>
-              <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 12 }}>🗑️</div>
-              <div style={{ fontWeight: 700, fontSize: 16, textAlign: 'center', marginBottom: 8 }}>
-                Apagar esta entrada?
-              </div>
-              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', textAlign: 'center', marginBottom: 20 }}>
-                "{entradaAtiva.titulo}" vai ser removida do Manual do Cozinheiro.
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => apagar(confirmarApagar)} style={{ flex: 1, padding: '12px',
-                  borderRadius: 10, border: 'none', background: '#c0392b',
-                  color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Apagar</button>
-                <button onClick={() => setConfirmarApagar(null)} style={{ flex: 1, padding: '12px',
-                  borderRadius: 10, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
-                  color: 'rgba(26,23,20,0.6)', fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -1000,6 +978,29 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
               ))}
             </div>
           ))}
+        </div>
+      )}
+      {/* Modal de confirmação de apagar — global, funciona na lista e no detalhe */}
+      {confirmarApagar && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,23,20,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '24px', maxWidth: 340, width: '100%' }}>
+            <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 12 }}>🗑️</div>
+            <div style={{ fontWeight: 700, fontSize: 16, textAlign: 'center', marginBottom: 8 }}>
+              Apagar esta entrada?
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', textAlign: 'center', marginBottom: 20 }}>
+              {entradas.find(e => e.id === confirmarApagar)?.titulo || 'Esta entrada'} vai ser removida.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => apagar(confirmarApagar)} style={{ flex: 1, padding: '12px',
+                borderRadius: 10, border: 'none', background: '#c0392b',
+                color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Apagar</button>
+              <button onClick={() => setConfirmarApagar(null)} style={{ flex: 1, padding: '12px',
+                borderRadius: 10, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+                color: 'rgba(26,23,20,0.6)', fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
