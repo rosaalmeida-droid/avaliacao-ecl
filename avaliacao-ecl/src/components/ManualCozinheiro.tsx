@@ -158,24 +158,18 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
 // Geração via Apps Script — manual completo em 5 partes
 const GS_URL = 'https://script.google.com/macros/s/AKfycbzBxobzVzxVfoAKC7wiqmKRiKru8z_FM1g7O6sTvRUE9q2QpD3DsTRfkrAFnouA41a1LA/exec';
 
-// ── Chamada directa à API Claude (chave em VITE_ANTHROPIC_API_KEY no Vercel) ──
-async function chamarClaudeDirecto(prompt: string): Promise<string> {
-  const chave = (import.meta as any).env?.VITE_ANTHROPIC_API_KEY as string;
-  if (!chave) throw new Error('VITE_ANTHROPIC_API_KEY nao configurada nas Environment Variables do Vercel.');
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+// ── Chamada via Apps Script (proxy seguro — evita CORS) ──────
+async function chamarClaudeViaGS(prompt: string): Promise<string> {
+  const resp = await fetch(GS_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type':      'application/json',
-      'x-api-key':         chave,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8000,
-      messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ acao: 'gerarParte', prompt }),
   });
-  if (!resp.ok) throw new Error('API Claude erro ' + resp.status);
+  if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
   const data = await resp.json();
-  return (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('');
+  if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
+  return data.texto || '';
 }
+
 
 async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
   const ucIdRef = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
@@ -289,7 +283,7 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
       + '- Indice Final: tabela capitulos com paginas estimadas',
   ];
 
-  const resultados = await Promise.all(prompts.map(p => chamarClaudeDirecto(p)));
+  const resultados = await Promise.all(prompts.map(p => chamarClaudeViaGS(p)));
   return resultados.join('\n\n');
 }
 
