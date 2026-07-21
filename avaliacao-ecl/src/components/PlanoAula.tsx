@@ -10,10 +10,12 @@ import {
   getPlanosArquivados,
   getFichasProducao,
   getAlunos, publicarNoClassroom } from '../backend';
+import { fmtDataCurta, fmtData } from '../datas';
 import { modulosDaTurma } from '../cronograma';
 import { PlanoAula as TPlanoAula } from '../types';
 import { Card } from './ui';
 import ProfessorView from './ProfessorView';
+import { ModalPauta } from './ModalPauta';
 
 const TIPOS_ATIVIDADE = [
   'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
