@@ -9,7 +9,6 @@ import {
 } from '../backend';
 import { GuiaProducao } from './GuiaProducao';
 import { exportarGuiaoDocx } from './exportGuiao';
-import { SeletorIA } from './SeletorIA';
 import { CRONOGRAMA_2026_2027, ANO_LETIVO, ModuloCronograma } from '../cronograma';
 
 const COR_PRIMARIA  = '#1a1714';
@@ -23,60 +22,160 @@ function gerarId(): string {
 }
 
 // ── Prompt do guião de módulo (formato M16) ────────────────────
-function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string): string {
+// ── Prompts do manual de 50 páginas (5 partes) ───────────────
+// Norma ECL: mínimo 50 páginas, 2-3 fichas de trabalho, 5-10 receitas,
+// desenvolvimento de projeto, glossário, questionário, fontes reais, índice.
+
+function buildCabecalho(modulo: ModuloCronograma, anoLetivo: string): string {
   const turmaLabel  = modulo.turmaAno === 1 ? '1. Ano' : modulo.turmaAno === 2 ? '2. Ano' : '3. Ano';
-  const tipoLabel   = modulo.tipo === 'UC' ? 'UC' : 'UFCD';
   const anosLetivos = modulo.turmaAno === 1 ? '2026-2029' : modulo.turmaAno === 2 ? '2025-2028' : '2024-2027';
   const ref         = modulo.tipo === 'UC' ? '811RA144' : '811183';
-  const modId       = tipoLabel + ' ' + modulo.id.replace('UFCD ', '');
-
+  const tipoLabel   = modulo.tipo === 'UC' ? 'UC' : 'UFCD';
   return [
-    'Constroi um guiao de modulo completo para a Escola de Comercio de Lisboa,',
-    'curso Profissional de Tecnico de Cozinha-Pastelaria (referencial ' + ref + ').',
-    '',
-    'CABECALHO DO DOCUMENTO (incluir exactamente assim):',
     'ESCOLA DE COMERCIO DE LISBOA',
     'Curso Profissional de Tecnico de Cozinha-Pastelaria',
     turmaLabel + ' | ' + anosLetivos,
     'Referencial ' + ref,
     modulo.disciplina,
-    modId + ' - ' + modulo.nome,
+    tipoLabel + ' ' + modulo.id.replace('UFCD ', '') + ' - ' + modulo.nome,
     'Carga Horaria: ' + String(modulo.horasPrevistas) + ' horas',
     'Ano Lectivo ' + anoLetivo,
-    '',
-    'ESTRUTURA OBRIGATORIA (seccoes numeradas 1 a 8):',
-    '',
-    '## 1. Apresentacao do Modulo',
-    'Dois paragrafos de enquadramento historico e profissional do tema.',
-    'Inclui caixa obrigatoria com os Objectivos do Modulo (5 objectivos separados por bullet).',
-    '',
-    '## 2. Fundamentos e Identidade do tema',
-    'Introducao + subseccoes (2.1, 2.2...) com tabela de referencia',
-    'e lista de autores/obras/tecnicas.',
-    '',
-    '## 3 a 6. Capitulos tematicos',
-    'Organiza pela logica do modulo (por regiao, tecnica, produto, familia culinaria...).',
-    'Cada capitulo: 1 paragrafo de contexto + TABELA de 4 colunas + caixa de nota + exercicio.',
-    '',
-    '## 7. Aplicacao contemporanea / profissional',
-    'TABELA com chefs portugueses, abordagens actuais, restaurantes ou tecnicas modernas do tema.',
-    '',
-    '## 8. Sintese e Avaliacao',
-    'Tres blocos obrigatorios:',
-    '- Conceitos-chave (lista com bullet)',
-    '- Proposta de Avaliacao: prova pratica (60%) / trabalho de pesquisa (25%) / teste escrito (15%)',
-    '- Recursos e Referencias (livros, sites, documentarios REAIS)',
-    '',
-    'REGRAS DE ESTILO:',
-    '- Portugues europeu, grafia pre-Acordo Ortografico (Objectivos, actual, directo)',
-    '- Tom maduro e culturalmente informado',
-    '- Tabelas SEMPRE de 4 colunas',
-    '- Autores, chefs, produtos DOP/IGP e referencias REAIS - nunca inventados',
-    '- Fontes reais: Maria de Lourdes Modesto, Olleboma, AHRESP, DGS, Turismo de Portugal, Le Cordon Bleu',
   ].join('\n');
 }
 
-// Geração via SeletorIA (abre IA externa com o prompt)
+function buildContextoManual(modulo: ModuloCronograma, anoLetivo: string): string {
+  const ref = modulo.tipo === 'UC' ? '811RA144' : '811183';
+  return [
+    'Vais construir um MANUAL DO ALUNO completo para a ' + modulo.nome + '.',
+    'Curso: Tecnico de Cozinha-Pastelaria | Referencial ' + ref + ' | Escola de Comercio de Lisboa.',
+    'Ano letivo: ' + anoLetivo + ' | ' + modulo.disciplina + '.',
+    '',
+    'NORMA OBRIGATORIA DO MANUAL (cumprir rigorosamente):',
+    '- Minimo 50 paginas',
+    '- 2 a 3 fichas de trabalho completas (com tabelas para preenchimento)',
+    '- 5 a 10 fichas tecnicas de receita (com ingredientes, quantidades para 4 doses, preparacao passo a passo)',
+    '- 1 desenvolvimento de projeto (com etapas, criterios de avaliacao, exemplo resolvido)',
+    '- Glossario com 12 a 15 termos tecnicos',
+    '- Questionario de revisao global (15 questoes por grupos tematicos)',
+    '- Bibliografia com fontes REAIS (ANQEP, AHRESP/DGS, Gomes et al. 2015, Maincent-Morel, McGee, Le Cordon Bleu)',
+    '- Esquemas/diagramas tecnicos ORIGINAIS (sem fotografias de terceiros)',
+    '- Capa + Indice com paginas reais + cabecalho e rodape com numero de pagina',
+    '- Limites HACCP reais: refrigeracao 0-4 C, congelacao -18 C, confecao 65 C, regra 2h',
+    '',
+    'ESTILO:',
+    '- Portugues europeu, grafia pre-Acordo (Objectivos, actual, confeccao)',
+    '- Texto justificado, tom tecnico-pedagogico',
+    '- Caixas de destaque: DICA DO CHEF, CIENCIA NA COZINHA, HACCP, ERROS FREQUENTES, SABIAS QUE, NOTA',
+    '- Tabelas com cabecalho colorido e linhas alternadas',
+    '- Fontes reais sempre que relevante',
+  ].join('\n');
+}
+
+function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: number = 1): string {
+  const cabecalho  = buildCabecalho(modulo, anoLetivo);
+  const contexto   = buildContextoManual(modulo, anoLetivo);
+
+  const partes: Record<number, string[]> = {
+    1: [
+      contexto,
+      '',
+      'PARTE 1 DE 5 - Gera APENAS esta parte e para:',
+      '- Capa (com dados do cabecalho abaixo)',
+      '- Enquadramento no Referencial (tabela: codigo, designacao, componente, ano, nivel, pre-requisitos)',
+      '- Objectivos de aprendizagem (8 objectivos em lista)',
+      '- Indice provisorio (deixa os numeros de pagina como "..." - serao preenchidos no fim)',
+      '- Capitulo 1: Introducao (importancia da UC, valor nutricional/tecnico, historia, enquadramento)',
+      '- Capitulo 2: Tecnologia da materia-prima (classificacao, criterios de qualidade/frescura)',
+      '- Capitulo 3: Aprovisionamento, conservacao e HACCP (cadeia de frio, riscos, higiene, alergenos)',
+      '- Capitulo 4: Pre-preparacao (operacoes, rendimento, aproveitamento, equipamento)',
+      '',
+      'CABECALHO DO DOCUMENTO:',
+      cabecalho,
+      '',
+      'Escreve "===FIM PARTE 1===" na ultima linha.',
+    ],
+    2: [
+      contexto,
+      '',
+      'PARTE 2 DE 5 - Continua o manual. Gera APENAS:',
+      '- Capitulo 5: Metodos de confeccao (calor humido/seco, pontos de cozedura, temperaturas)',
+      '- Capitulo 6: Molhos e guarniciones (molhos-base passo a passo, marinadas, derivados)',
+      '- Capitulo 7: Empratamento e analise sensorial (principios, grelha sensorial, harmonizacao)',
+      '- Capitulo 8: Sustentabilidade (escolha responsavel, sazonalidade, aproveitamento integral)',
+      '- Capitulos 9 a 11: Especializacao da UC (perfis, tradicao, cozinha regional, tabela referencia rapida)',
+      '',
+      'Mantem o mesmo estilo e formato da Parte 1.',
+      'Escreve "===FIM PARTE 2===" na ultima linha.',
+    ],
+    3: [
+      contexto,
+      '',
+      'PARTE 3 DE 5 - Continua o manual. Gera APENAS:',
+      '- Capitulo 12: Fichas de Trabalho (3 fichas completas com tabelas para preenchimento)',
+      '  Ficha 1: avaliacao/analise de materia-prima ou tecnica',
+      '  Ficha 2: calculo de rendimento e custo',
+      '  Ficha 3: comparacao de metodos ou analise sensorial',
+      '- Capitulo 13: Desenvolvimento de Projeto',
+      '  Tema ligado a UC, etapas detalhadas, criterios de avaliacao com percentagens, exemplo resolvido',
+      '',
+      'Mantem o mesmo estilo e formato.',
+      'Escreve "===FIM PARTE 3===" na ultima linha.',
+    ],
+    4: [
+      contexto,
+      '',
+      'PARTE 4 DE 5 - Continua o manual. Gera APENAS:',
+      '- Capitulo 14: Fichas Tecnicas de Receita (minimo 8 receitas, maximo 14)',
+      '  Cada ficha: nome, doses (4), tempo, metodo, lista de ingredientes com quantidades,',
+      '  preparacao passo a passo numerado, nota tecnica do chef',
+      '  As receitas devem cobrir diferentes metodos de confeccao da UC',
+      '',
+      'Mantem o mesmo estilo e formato.',
+      'Escreve "===FIM PARTE 4===" na ultima linha.',
+    ],
+    5: [
+      contexto,
+      '',
+      'PARTE 5 DE 5 - Ultima parte. Gera:',
+      '- Capitulo 15: Questionario de Revisao Global',
+      '  4 grupos tematicos, total de 14 a 16 questoes, linhas de resposta',
+      '- Glossario (12 a 15 termos com definicao clara)',
+      '- Bibliografia e Fontes (reais: ANQEP, AHRESP/DGS, Gomes et al. 2015, Maincent-Morel, McGee, Le Cordon Bleu, Turismo de Portugal)',
+      '- Sintese Final (7 a 10 pontos-chave da UC)',
+      '- Anexo A: Modelo de ficha tecnica em branco',
+      '- Anexo B: Folha-resumo de temperaturas e regras HACCP (destacavel)',
+      '',
+      'No fim de tudo, escreve uma linha com o INDICE FINAL actualizado com os numeros de pagina reais.',
+      'Escreve "===FIM MANUAL===" na ultima linha.',
+    ],
+  };
+
+  const linhas = partes[parte] || partes[1];
+  return linhas.join('\n');
+}
+
+// Geração via Apps Script — manual completo em 5 partes
+const GS_URL = 'https://script.google.com/macros/s/AKfycbzBxobzVzxVfoAKC7wiqmKRiKru8z_FM1g7O6sTvRUE9q2QpD3DsTRfkrAFnouA41a1LA/exec';
+
+async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
+  const payload = {
+    acao: 'gerarGuiaoIA',
+    prompt: {
+      moduloNome:      modulo.nome,
+      moduloId:        modulo.id,
+      disciplina:      modulo.disciplina,
+      horasPrevistas:  modulo.horasPrevistas,
+      turmaAno:        modulo.turmaAno,
+      anoLetivo:       anoLetivo,
+      referencial:     modulo.tipo === 'UC' ? '811RA144' : '811183',
+    },
+  };
+  const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify(payload) });
+  if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
+  const data = await resp.json();
+  if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
+  return data.texto || '';
+}
 
 // ── Card de entrada ────────────────────────────────────────────
 function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
@@ -160,7 +259,8 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   const [palavras, setPalavras]   = useState(entrada?.palavrasChave.join(', ') || '');
   const [texto, setTexto]         = useState(entrada?.textoGuia || '');
   const [erro, setErro]           = useState('');
-  const [promptGerado, setPromptGerado] = useState('');
+  const [gerandoIA, setGerandoIA] = useState(false);
+  const [faseIA, setFaseIA]       = useState('');
 
   // Módulos filtrados por turma
   const modulosDaTurma = useMemo(() =>
@@ -224,11 +324,35 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     setPalavras(m.nome.split(' ').filter((w: string) => w.length > 4).slice(0, 5).join(', '));
   }
 
-  function prepararPrompt() {
-    if (!moduloSel) { setErro('Selecciona um módulo do cronograma primeiro.'); return; }
+  async function gerarManual() {
+    if (!moduloSel) { setErro('Selecciona um modulo do cronograma primeiro.'); return; }
+    setGerandoIA(true);
+    setFaseIA('Parte 1/5 - Introducao e HACCP...');
     setErro('');
-    const prompt = buildPromptGuiao(moduloSel, anoLetivo);
-    setPromptGerado(prompt);
+    // Actualizar fase visualmente enquanto o GS processa (~60-90s total)
+    const fases = [
+      'Parte 2/5 - Metodos de confeccao e especializacao...',
+      'Parte 3/5 - Fichas de trabalho e projeto...',
+      'Parte 4/5 - Receitas...',
+      'Parte 5/5 - Glossario, questionario e anexos...',
+    ];
+    let fi = 0;
+    const intervalo = setInterval(() => {
+      if (fi < fases.length) { setFaseIA(fases[fi]); fi++; }
+    }, 18000);
+    try {
+      const resultado = await gerarManualCompleto(moduloSel, anoLetivo);
+      clearInterval(intervalo);
+      setTexto(t => t ? t + '\n\n' + resultado : resultado);
+      setFaseIA('');
+    } catch (e: unknown) {
+      clearInterval(intervalo);
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+      setErro('Erro ao gerar o manual: ' + msg);
+      setFaseIA('');
+    } finally {
+      setGerandoIA(false);
+    }
   }
 
   function guardar() {
@@ -337,31 +461,21 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
               </div>
             )}
 
-            {/* Botão preparar prompt + SeletorIA */}
-            {!promptGerado ? (
-              <button
-                onClick={prepararPrompt}
-                disabled={!moduloSel}
-                style={{
-                  width: '100%', padding: '12px', borderRadius: 10, border: 'none',
-                  background: !moduloSel ? 'rgba(109,40,217,0.3)' : COR_IA,
-                  color: '#fff', fontSize: 14, fontWeight: 700,
-                  cursor: !moduloSel ? 'not-allowed' : 'pointer',
-                }}>
-                ✨ Preparar prompt do guião
-              </button>
-            ) : (
-              <div style={{ background: '#fff', borderRadius: 10, padding: '12px',
-                border: `1px solid ${COR_IA}30` }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: COR_IA, marginBottom: 8 }}>
-                  Escolhe onde gerar o guião — depois cola o resultado no campo "Conteúdo" abaixo:
-                </div>
-                <SeletorIA prompt={promptGerado} corPrincipal={COR_IA} />
-                <button onClick={() => setPromptGerado('')}
-                  style={{ marginTop: 6, fontSize: 11, color: 'rgba(26,23,20,0.4)',
-                    background: 'none', border: 'none', cursor: 'pointer' }}>
-                  ← Mudar de módulo
-                </button>
+            {/* Botao unico — gera o manual completo (5 partes em cadeia no Apps Script) */}
+            <button
+              onClick={gerarManual}
+              disabled={!moduloSel || gerandoIA}
+              style={{
+                width: '100%', padding: '13px', borderRadius: 10, border: 'none',
+                background: !moduloSel || gerandoIA ? 'rgba(109,40,217,0.3)' : COR_IA,
+                color: '#fff', fontSize: 14, fontWeight: 700,
+                cursor: !moduloSel || gerandoIA ? 'not-allowed' : 'pointer',
+              }}>
+              {gerandoIA ? ('⏳ ' + faseIA) : '✨ Gerar manual completo (50 pag.)'}
+            </button>
+            {gerandoIA && (
+              <div style={{ fontSize: 11, color: COR_IA, textAlign: 'center', marginTop: 4 }}>
+                O manual e gerado em 5 partes — pode demorar 60 a 90 segundos.
               </div>
             )}
           </div>
