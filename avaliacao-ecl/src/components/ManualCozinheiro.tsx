@@ -846,3 +846,6 @@ export default function ManualCozinheiro({ modoProf, nomeProfessor }: { modoProf
     </div>
   );
 }
+
+// ── Exportação Nomeada para compatibilidade ─────────────────────
+export { ManualCozinheiro };
