@@ -159,10 +159,10 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
 const GS_URL = 'https://script.google.com/macros/s/AKfycbzBxobzVzxVfoAKC7wiqmKRiKru8z_FM1g7O6sTvRUE9q2QpD3DsTRfkrAFnouA41a1LA/exec';
 
 // ── Chamada via Apps Script (proxy seguro — evita CORS) ──────
-async function chamarClaudeViaGS(prompt: string): Promise<string> {
+async function chamarManualViaGS(prompts: string[]): Promise<string> {
   const resp = await fetch(GS_URL, {
     method: 'POST',
-    body: JSON.stringify({ acao: 'gerarParte', prompt }),
+    body: JSON.stringify({ acao: 'gerarManualCompleto', prompts }),
   });
   if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
   const data = await resp.json();
@@ -637,8 +637,7 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
     ].join('\n'),
   ];
 
-  const resultados = await Promise.all(prompts.map(p => chamarClaudeViaGS(p)));
-  return resultados.join('\n\n');
+  return await chamarManualViaGS(prompts);
 }
 
 // Exportar para Google Doc via modelo oficial ECL
