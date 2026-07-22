@@ -170,6 +170,7 @@ async function chamarManualViaGS(prompts: string[]): Promise<string> {
   return data.texto || '';
 }
 
+
 // ── Construir os 5 prompts do manual ─────────────────────────
 function construirPrompts(modulo: ModuloCronograma, anoLetivo: string): string[] {
   const ref_     = modulo.tipo === 'UC' ? '811RA144' : '811183';
@@ -182,7 +183,7 @@ function construirPrompts(modulo: ModuloCronograma, anoLetivo: string): string[]
   const conhecimentosP = (ref?.conhecimentos         || []).map((r: string) => '- ' + r).join('\n');
   const anoLetivoFixo  = '2026-2027';
 
-  const papel = [
+const papel = [
     'Actua como um autor senior de manuais tecnicos para Escolas de Hotelaria,',
     'especialista em gastronomia portuguesa, tecnologia alimentar, HACCP, pedagogia profissional e escrita academica.',
     '',
@@ -286,6 +287,8 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
   return await chamarManualViaGS(prompts);
 }
 
+
+
 // Exportar para Google Doc via modelo oficial ECL
 async function exportarParaDrive(modulo: ModuloCronograma, anoLetivo: string, textoGuia: string): Promise<string> {
   const payload = {
@@ -306,6 +309,8 @@ async function exportarParaDrive(modulo: ModuloCronograma, anoLetivo: string, te
 }
 
 // ── Renderizador simples de markdown para manuais ─────────────
+// Não usa o GuiaProducao (que é para fichas de produção).
+// Renderiza: títulos H1/H2/H3, tabelas, listas, caixas de destaque, parágrafos.
 function RenderizadorManual({ texto }: { texto: string }) {
   if (!texto) return null;
   const linhas = texto.split('\n');
@@ -414,7 +419,7 @@ function RenderizadorManual({ texto }: { texto: string }) {
     if (l.trim()) {
       elementos.push(<p key={key++} style={{ fontSize: 13, color: '#2E2A26', lineHeight: 1.7,
         marginBottom: 6, textAlign: 'justify' }}>
-        {l.replace(/\*\*(.+?)\*\*/g, '$1').trim()}
+        {l.replace(/\*\*(.+?)\*\*/g, '**$1**').trim()}
       </p>);
     }
     i++;
@@ -422,6 +427,7 @@ function RenderizadorManual({ texto }: { texto: string }) {
 
   return <div style={{ padding: '4px 0' }}>{elementos}</div>;
 }
+
 
 // ── Card de entrada ────────────────────────────────────────────
 function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
@@ -492,6 +498,8 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   entrada?: EntradaManual; onGuardar: (e: EntradaManual) => void;
   onCancelar: () => void; nomeProfessor: string;
 }) {
+  // Seleção de UC/UFCD
+  // Anos letivos disponíveis — 3 anteriores + actual + 2 seguintes
   const ANOS = (() => {
     const hoje = new Date();
     const ano  = hoje.getFullYear();
@@ -515,11 +523,19 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   const [palavras, setPalavras]   = useState(entrada?.palavrasChave.join(', ') || '');
   const [texto, setTexto]         = useState(entrada?.textoGuia || '');
   const [erro, setErro]           = useState('');
+  const [gerandoIA, setGerandoIA] = useState(false);
+  const [faseIA, setFaseIA]       = useState('');
+  // Estados das 5 partes do manual
+  const [partes, setPartes]       = useState<{texto: string; estado: 'vazio'|'gerando'|'pronto'|'erro'}[]>(
+    Array(5).fill(null).map(() => ({ texto: '', estado: 'vazio' as const }))
+  );
 
+  // Módulos filtrados por turma
   const modulosDaTurma = useMemo(() =>
     turmaSel ? CRONOGRAMA_2026_2027.filter(m => m.turmaAno === turmaSel) : [],
     [turmaSel]);
 
+  // Mapa UC/UFCD → CategoriaManual (baseado no referencial real 811RA144 e 811183)
   const CATEGORIA_POR_UC: Partial<Record<string, CategoriaManual>> = {
     'UC03576': 'Métodos de Confeção',
     'UC01999': 'Métodos de Confeção',
@@ -576,25 +592,84 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     setPalavras(m.nome.split(' ').filter((w: string) => w.length > 4).slice(0, 5).join(', '));
   }
 
+  // Gerar uma parte individual
+  async function gerarParteManual(numParte: number) {
+    if (!moduloSel) { setErro('Selecciona um modulo primeiro.'); return; }
+    setPartes(prev => prev.map((p, i) => i === numParte ? { ...p, estado: 'gerando' as const } : p));
+    setErro('');
+    try {
+      const todosPrompts = construirPrompts(moduloSel, anoLetivo);
+      const prompt = todosPrompts[numParte];
+      const resp = await fetch(GS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ acao: 'gerarParte', prompt }),
+      });
+      if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
+      const texto = data.texto || '';
+      setPartes(prev => prev.map((p, i) => i === numParte ? { texto, estado: 'pronto' as const } : p));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+      setPartes(prev => prev.map((p, i) => i === numParte ? { ...p, estado: 'erro' as const } : p));
+      setErro('Erro na Parte ' + (numParte+1) + ': ' + msg);
+    }
+  }
+
+  // Juntar todas as partes e guardar
+  function juntarEGuardar() {
+    const todas = partes.map(p => p.texto).filter(t => t.trim());
+    if (todas.length === 0) { setErro('Nenhuma parte gerada ainda.'); return; }
+    const textoFinal = todas.join('\n\n');
+    setTexto(textoFinal);
+    setErro('');
+  }
+
+  async function gerarManual() {
+    if (!moduloSel) { setErro('Selecciona um modulo do cronograma primeiro.'); return; }
+    setGerandoIA(true);
+    setFaseIA('A gerar as 5 partes em paralelo…');
+    setErro('');
+    // As 5 partes são geradas em simultâneo — mostrar contador
+    let segundos = 0;
+    const intervalo = setInterval(() => {
+      segundos += 5;
+      setFaseIA('A gerar em paralelo… ' + segundos + 's');
+    }, 5000);
+    try {
+      const resultado = await gerarManualCompleto(moduloSel, anoLetivo);
+      clearInterval(intervalo);
+      setTexto(t => t ? t + '\n\n' + resultado : resultado);
+      setFaseIA('');
+    } catch (e: unknown) {
+      clearInterval(intervalo);
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+      setErro('Erro ao gerar o manual: ' + msg);
+      setFaseIA('');
+    } finally {
+      setGerandoIA(false);
+    }
+  }
+
   function guardar() {
     if (!titulo.trim()) { setErro('O título é obrigatório.'); return; }
     if (!texto.trim()) { setErro('O conteúdo é obrigatório.'); return; }
     const agora = new Date().toISOString();
     onGuardar({
       id: entrada?.id || gerarId(),
-      titulo: titulo.trim(),
-      categoria,
-      nivel,
+      titulo: titulo.trim(), categoria, nivel,
       palavrasChave: palavras.split(',').map((p: string) => p.trim()).filter(Boolean),
       textoGuia: texto.trim(),
+      // criadoPor: nomeProfessor, // campo nao existe no tipo
       criadoEm: entrada?.criadoEm || agora,
-      criadoPor: nomeProfessor || "admin",
-      atualizadoEm: agora,
     });
   }
 
+  const turmaLabel = (t: 1|2|3) => t === 1 ? '1º CP (UCs)' : t === 2 ? '2º CP (UFCDs)' : '3º CP (UFCDs)';
+
   return (
     <div>
+      {/* Cabeçalho */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
         <button onClick={onCancelar} style={{ background: 'rgba(26,23,20,0.06)',
           border: 'none', borderRadius: 8, padding: '7px 14px',
@@ -606,6 +681,8 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+        {/* ── SECÇÃO: Gerar a partir do cronograma ── */}
         {!entrada && (
           <div style={{ background: COR_IA_P, borderRadius: 14,
             border: `1.5px solid ${COR_IA}30`, padding: '16px' }}>
@@ -613,239 +690,494 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
               ✨ Gerar guião de módulo com IA
             </div>
 
+            {/* Ano letivo */}
             <div style={{ marginBottom: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                 display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Ano Lectivo
               </label>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 6 }}>
                 {ANOS.map(a => (
                   <button key={a} onClick={() => setAnoLetivo(a)} style={{
                     padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
                     fontWeight: 700, border: `2px solid ${anoLetivo === a ? COR_IA : 'rgba(26,23,20,0.15)'}`,
                     background: anoLetivo === a ? COR_IA : '#fff',
-                    color: anoLetivo === a ? '#fff' : COR_PRIMARIA,
-                  }}>
-                    {a}
-                  </button>
+                    color: anoLetivo === a ? '#fff' : 'rgba(26,23,20,0.5)',
+                  }}>{a}</button>
                 ))}
               </div>
             </div>
 
+            {/* Turma */}
             <div style={{ marginBottom: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                 display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Selecione o Módulo / Turma
+                Turma
               </label>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                {[1, 2, 3].map((t) => (
-                  <button key={t} onClick={() => { setTurmaSel(t as 1|2|3); setModuloSel(null); }} style={{
-                    padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    background: turmaSel === t ? COR_IA : '#fff',
-                    color: turmaSel === t ? '#fff' : COR_PRIMARIA,
-                    border: '1px solid rgba(26,23,20,0.15)'
-                  }}>
-                    {t}º Ano
-                  </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {([1, 2, 3] as const).map(t => (
+                  <button key={t} onClick={() => { setTurmaSel(t); setModuloSel(null); }} style={{
+                    flex: 1, padding: '8px 4px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+                    fontWeight: 700, border: `2px solid ${turmaSel === t ? COR_IA : 'rgba(26,23,20,0.1)'}`,
+                    background: turmaSel === t ? COR_IA_P : '#fff',
+                    color: turmaSel === t ? COR_IA : 'rgba(26,23,20,0.5)',
+                  }}>{turmaLabel(t)}</button>
                 ))}
               </div>
-
-              {turmaSel && (
-                <select 
-                  onChange={(e) => {
-                    const m = modulosDaTurma.find(mod => mod.id === e.target.value);
-                    if (m) selecionarModulo(m);
-                  }}
-                  value={moduloSel?.id || ''}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13 }}
-                >
-                  <option value="">-- Selecione uma UC/UFCD --</option>
-                  {modulosDaTurma.map(m => (
-                    <option key={m.id} value={m.id}>{m.id} - {m.nome}</option>
-                  ))}
-                </select>
-              )}
             </div>
+
+            {/* Lista de módulos */}
+            {turmaSel && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+                  display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  UC / UFCD
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4,
+                  maxHeight: 220, overflowY: 'auto', borderRadius: 10,
+                  border: '1px solid rgba(26,23,20,0.1)', background: '#fff', padding: 6 }}>
+                  {modulosDaTurma.map(m => (
+                    <button key={m.id} onClick={() => selecionarModulo(m)} style={{
+                      textAlign: 'left', padding: '8px 10px', borderRadius: 8,
+                      border: `1.5px solid ${moduloSel?.id === m.id ? COR_IA : 'transparent'}`,
+                      background: moduloSel?.id === m.id ? COR_IA_P : 'transparent',
+                      cursor: 'pointer', fontSize: 12, color: COR_PRIMARIA,
+                    }}>
+                      <span style={{ fontWeight: 700, color: COR_IA, marginRight: 6 }}>
+                        {m.tipo} {m.id.replace('UFCD ', '')}
+                      </span>
+                      {m.nome}
+                      <span style={{ color: 'rgba(26,23,20,0.35)', marginLeft: 6, fontSize: 11 }}>
+                        · {m.horasPrevistas}h · {m.disciplina}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sistema de 5 partes independentes */}
+            {!moduloSel && (
+              <div style={{ fontSize: 12, color: 'rgba(109,40,217,0.4)', textAlign: 'center', padding: 8 }}>
+                Selecciona um modulo acima para activar os botoes.
+              </div>
+            )}
+            {moduloSel && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[
+                  'Parte 1 — Enquadramento, Objectivos e Contexto Historico',
+                  'Parte 2 — Materias-Primas, HACCP e Metodos de Confeção',
+                  'Parte 3 — Fichas de Trabalho e Desenvolvimento de Projecto',
+                  'Parte 4 — Fichas Tecnicas de Receita (10 receitas)',
+                  'Parte 5 — Questionario, Glossario, Bibliografia e Anexos',
+                ].map((label, idx) => {
+                  const parte = partes[idx];
+                  const estado = parte?.estado || 'vazio';
+                  const corBotao = estado === 'pronto' ? '#4E7A25' : estado === 'erro' ? '#c0392b' : estado === 'gerando' ? 'rgba(109,40,217,0.4)' : COR_IA;
+                  const icone = estado === 'pronto' ? '✅' : estado === 'erro' ? '❌' : estado === 'gerando' ? '⏳' : '✨';
+                  return (
+                    <button key={idx}
+                      onClick={() => gerarParteManual(idx)}
+                      disabled={estado === 'gerando'}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 10,
+                        border: 'none', background: corBotao, color: '#fff',
+                        fontSize: 13, fontWeight: 700, textAlign: 'left',
+                        cursor: estado === 'gerando' ? 'not-allowed' : 'pointer' }}>
+                      {icone} {label}
+                      {estado === 'pronto' && <span style={{ fontSize: 11, opacity: 0.8, marginLeft: 8 }}>(gerada)</span>}
+                    </button>
+                  );
+                })}
+
+                {/* Botão juntar */}
+                {partes.some(p => p.estado === 'pronto') && (
+                  <button
+                    onClick={juntarEGuardar}
+                    style={{ width: '100%', padding: '12px', borderRadius: 10, border: 'none',
+                      background: '#1A1714', color: '#fff', fontSize: 14, fontWeight: 700,
+                      cursor: 'pointer', marginTop: 4 }}>
+                    📄 Juntar partes e criar documento
+                    <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 8 }}>
+                      ({partes.filter(p => p.estado === 'pronto').length}/5 prontas)
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
+        {/* Título */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>Título</label>
-          <input 
-            type="text" 
-            value={titulo} 
-            onChange={e => setTitulo(e.target.value)}
-            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13 }}
-          />
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+            display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Título
+          </label>
+          <input value={titulo} onChange={e => setTitulo(e.target.value)}
+            placeholder="ex: Planeamento e confeção de carnes, aves e caça"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 10,
+              border: '1.5px solid rgba(26,23,20,0.15)', fontSize: 14,
+              fontFamily: 'var(--font-sans)' }} />
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>Categoria</label>
-            <select 
-              value={categoria} 
-              onChange={e => setCategoria(e.target.value as CategoriaManual)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13 }}
-            >
-              {CATEGORIAS_MANUAL.map(c => <option key={c} value={c}>{c}</option>)}
+        {/* Categoria e Nível */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+              display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Categoria
+            </label>
+            <select value={categoria} onChange={e => setCategoria(e.target.value as CategoriaManual)}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10,
+                border: '1.5px solid rgba(26,23,20,0.15)', fontSize: 13,
+                background: '#fff', fontFamily: 'var(--font-sans)' }}>
+              {CATEGORIAS_MANUAL.map(c => (
+                <option key={c} value={c}>{ICONES_CATEGORIA[c]} {c}</option>
+              ))}
             </select>
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>Nível</label>
-            <select 
-              value={nivel} 
-              onChange={e => setNivel(e.target.value as NivelManual)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13 }}
-            >
-              <option value="Base">Base</option>
-              <option value="Intermédio">Intermédio</option>
-              <option value="Avançado">Avançado</option>
-            </select>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+              display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Nível
+            </label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['Base', 'Intermédio', 'Avançado'] as NivelManual[]).map(n => {
+                const c = CORES_NIVEL[n];
+                return (
+                  <button key={n} onClick={() => setNivel(n)} style={{
+                    flex: 1, padding: '10px 4px', borderRadius: 8, cursor: 'pointer',
+                    border: `2px solid ${nivel === n ? (c as any).cor : 'rgba(26,23,20,0.1)'}`,
+                    background: nivel === n ? (c as any).bg : '#fff',
+                    color: nivel === n ? (c as any).cor : 'rgba(26,23,20,0.5)',
+                    fontSize: 11, fontWeight: 700,
+                  }}>{n}</button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
+        {/* Palavras-chave */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>Palavras-Chave (separadas por vírgula)</label>
-          <input 
-            type="text" 
-            value={palavras} 
-            onChange={e => setPalavras(e.target.value)}
-            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13 }}
-          />
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+            display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Palavras-chave (separadas por vírgula)
+          </label>
+          <input value={palavras} onChange={e => setPalavras(e.target.value)}
+            placeholder="ex: carnes, aves, marinadas, confeção, técnicas"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 10,
+              border: '1.5px solid rgba(26,23,20,0.15)', fontSize: 13,
+              fontFamily: 'var(--font-sans)' }} />
         </div>
 
+        {/* Texto */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 700, display: 'block', marginBottom: 4 }}>Conteúdo do Guia / Manual</label>
-          <textarea 
-            rows={12} 
-            value={texto} 
-            onChange={e => setTexto(e.target.value)}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13, fontFamily: 'monospace' }}
-          />
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+            display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Conteúdo {texto ? '✓' : '— gerado pela IA ou colado manualmente'}
+          </label>
+          <textarea value={texto} onChange={e => setTexto(e.target.value)}
+            rows={texto ? 14 : 6}
+            placeholder={'Clica em "✨ Gerar guião com IA" acima, ou cola o texto manualmente.'}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 10,
+              border: `1.5px solid ${texto ? 'rgba(109,40,217,0.4)' : 'rgba(26,23,20,0.15)'}`,
+              fontSize: 12, fontFamily: 'var(--font-mono)', resize: 'vertical', lineHeight: 1.5 }} />
         </div>
 
-        {erro && <div style={{ color: '#c0392b', fontSize: 13, fontWeight: 600 }}>{erro}</div>}
+        {erro && (
+          <div style={{ padding: '10px 14px', background: '#fdf0ef',
+            borderRadius: 8, color: '#c0392b', fontSize: 13, fontWeight: 600 }}>
+            ⚠️ {erro}
+          </div>
+        )}
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
-          <button onClick={onCancelar} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', background: '#fff', cursor: 'pointer' }}>
-            Cancelar
-          </button>
-          <button onClick={guardar} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: COR_DOURADO, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-            Guardar
-          </button>
-        </div>
+        <button onClick={guardar} style={{
+          width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+          background: COR_PRIMARIA, color: '#faf7f2', fontSize: 15,
+          fontWeight: 700, cursor: 'pointer',
+        }}>
+          ✓ Guardar no Manual do Cozinheiro
+        </button>
       </div>
     </div>
   );
 }
 
-// ── Componente Principal ───────────────────────────────────────
-export default function ManualCozinheiro({ modoProf, nomeProfessor }: { modoProf: boolean; nomeProfessor: string }) {
-  const [entradas, setEntradas] = useState<EntradaManual[]>(getEntradasManual());
-  const [pesquisa, setPesquisa] = useState('');
-  const [categoriaFiltro, setCategoriaFiltro] = useState<string>('Todas');
-  const [entradaAtiva, setEntradaAtiva] = useState<EntradaManual | null>(null);
-  const [editando, setEditando] = useState(false);
-  const [novaEntrada, setNovaEntrada] = useState(false);
+// ═══════════════════════════════════════════════════════════════
+// COMPONENTE PRINCIPAL
+// ═══════════════════════════════════════════════════════════════
+export function ManualCozinheiro({ modoProf, nomeProfessor }: {
+  modoProf: boolean; nomeProfessor?: string;
+}) {
+  const [pesquisa, setPesquisa]           = useState('');
+  const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaManual | 'Todas'>('Todas');
+  const [nivelFiltro, setNivelFiltro]     = useState<NivelManual | 'Todos'>('Todos');
+  const [entradas, setEntradas]           = useState<EntradaManual[]>(() => getEntradasManual());
+  const [modo, setModo]                   = useState<'lista' | 'ver' | 'criar' | 'editar'>('lista');
+  const [entradaAtiva, setEntradaAtiva]   = useState<EntradaManual | null>(null);
+  const [confirmarApagar, setConfirmarApagar] = useState<string | null>(null);
 
-  const entradasFiltradas = useMemo(() => {
-    let res = pesquisarManual(pesquisa);
-    if (categoriaFiltro !== 'Todas') {
-      res = res.filter(e => e.categoria === categoriaFiltro);
-    }
-    return res;
-  }, [pesquisa, categoriaFiltro, entradas]);
+  function recarregar() { setEntradas(getEntradasManual()); }
 
-  function handleGuardar(e: EntradaManual) {
-    addEntradaManual(e);
-    setEntradas(getEntradasManual());
-    setEditando(false);
-    setNovaEntrada(false);
-    setEntradaAtiva(e);
+  const resultados = useMemo(() => {
+    let r = pesquisa ? pesquisarManual(pesquisa) : getEntradasManual();
+    if (categoriaFiltro !== 'Todas') r = r.filter(e => e.categoria === categoriaFiltro);
+    if (nivelFiltro !== 'Todos') r = r.filter(e => e.nivel === nivelFiltro);
+    return r.sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
+  }, [pesquisa, categoriaFiltro, nivelFiltro, entradas]);
+
+  const porCategoria = useMemo(() => {
+    const grupos: Record<string, EntradaManual[]> = {};
+    resultados.forEach(e => {
+      if (!grupos[e.categoria]) grupos[e.categoria] = [];
+      grupos[e.categoria].push(e);
+    });
+    return grupos;
+  }, [resultados]);
+
+  function guardarEntrada(e: EntradaManual) {
+    addEntradaManual(e); recarregar(); setModo('ver'); setEntradaAtiva(e);
+  }
+  function apagar(id: string) {
+    deleteEntradaManual(id); recarregar();
+    setConfirmarApagar(null); setModo('lista'); setEntradaAtiva(null);
   }
 
-  function handleApagar(id: string) {
-    if (confirm('Tem a certeza que deseja apagar esta entrada?')) {
-      deleteEntradaManual(id);
-      setEntradas(getEntradasManual());
-      if (entradaAtiva?.id === id) setEntradaAtiva(null);
-    }
-  }
-
-  return (
-    <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
-      {novaEntrada || editando ? (
-        <FormularioManual 
-          entrada={editando ? entradaAtiva || undefined : undefined} 
-          onGuardar={handleGuardar} 
-          onCancelar={() => { setEditando(false); setNovaEntrada(false); }} 
-          nomeProfessor={nomeProfessor} 
-        />
-      ) : entradaAtiva ? (
-        <div>
-          <button onClick={() => setEntradaAtiva(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: COR_DOURADO, fontWeight: 700, marginBottom: 14 }}>
-            ← Voltar à lista
+  // ── Vista de uma entrada ────────────────────────────────────
+  if (modo === 'ver' && entradaAtiva) {
+    const nivel = CORES_NIVEL[entradaAtiva.nivel];
+    return (
+      <div>
+        <div style={{ background: COR_PRIMARIA, borderRadius: 16, padding: '16px 18px', marginBottom: 16 }}>
+          <button onClick={() => { setModo('lista'); setEntradaAtiva(null); }}
+            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8,
+              padding: '6px 14px', color: 'rgba(247,241,230,0.7)', fontSize: 12,
+              cursor: 'pointer', marginBottom: 12 }}>
+            ← Manual do Cozinheiro
           </button>
-          <div style={{ background: '#fff', padding: 24, borderRadius: 14, border: '1px solid rgba(26,23,20,0.1)' }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: COR_PRIMARIA, marginBottom: 8 }}>{entradaAtiva.titulo}</h1>
-            <RenderizadorManual texto={entradaAtiva.textoGuia} />
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 100,
+              background: 'rgba(255,255,255,0.12)', color: 'rgba(247,241,230,0.8)', fontWeight: 600 }}>
+              {ICONES_CATEGORIA[entradaAtiva.categoria]} {entradaAtiva.categoria}
+            </span>
+            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 100,
+              background: (nivel as any).bg, color: (nivel as any).cor, fontWeight: 700 }}>
+              {entradaAtiva.nivel}
+            </span>
           </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20,
+            fontWeight: 700, color: '#faf7f2', lineHeight: 1.2 }}>
+            {entradaAtiva.titulo}
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
+            {fmtData(entradaAtiva.criadoEm)}
+          </div>
+          {entradaAtiva.palavrasChave.length > 0 && (
+            <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {entradaAtiva.palavrasChave.map((p: string, i: number) => (
+                <span key={i} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+                  background: 'rgba(255,255,255,0.08)', color: 'rgba(247,241,230,0.6)' }}>
+                  #{p}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {modoProf && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <button onClick={() => exportarGuiaoDocx(entradaAtiva)} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Exportar .docx</button>
+            <button onClick={async () => {
+              try {
+                const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify({
+                  moduloId: entradaAtiva.palavrasChave[0] || '',
+                  moduloNome: entradaAtiva.titulo,
+                  titulo: entradaAtiva.titulo,
+                  disciplina: entradaAtiva.categoria,
+                  horasPrevistas: '',
+                  turmaAno: 1,
+                  anoLetivo: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1),
+                  textoGuia: entradaAtiva.textoGuia,
+                }) });
+                const data = await resp.json();
+                if (data.ok) window.open(data.url, '_blank');
+                else alert('Erro: ' + data.erro);
+              } catch(e) { alert('Erro: ' + (e instanceof Error ? e.message : String(e))); }
+            }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(0,121,107,0.3)', background: '#e0f2f1', color: '#00796b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📄 Guardar no Drive (modelo ECL)</button>
+            <button onClick={() => setModo('editar')} style={{ padding: '8px 16px',
+              borderRadius: 9, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+              color: 'rgba(26,23,20,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              ✏️ Editar
+            </button>
+            <button onClick={() => setConfirmarApagar(entradaAtiva.id)} style={{ padding: '8px 16px',
+              borderRadius: 9, border: '1px solid rgba(192,57,43,0.3)', background: '#fdf0ef',
+              color: '#c0392b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              🗑️ Apagar
+            </button>
+          </div>
+        )}
+        <RenderizadorManual texto={entradaAtiva.textoGuia} />
+      </div>
+    );
+  }
+
+  if ((modo === 'criar' || modo === 'editar') && modoProf) {
+    return (
+      <FormularioManual
+        entrada={modo === 'editar' ? entradaAtiva || undefined : undefined}
+        onGuardar={guardarEntrada}
+        onCancelar={() => setModo(entradaAtiva ? 'ver' : 'lista')}
+        nomeProfessor={nomeProfessor || 'Professor'}
+      />
+    );
+  }
+
+  // ── Lista principal ─────────────────────────────────────────
+  return (
+    <div>
+      <div style={{ background: COR_PRIMARIA, borderRadius: 16, padding: '20px 18px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22,
+              fontWeight: 700, color: '#faf7f2' }}>📖 Manual do Cozinheiro</div>
+            <div style={{ fontSize: 12, color: 'rgba(247,241,230,0.45)', marginTop: 3 }}>
+              {entradas.length} {entradas.length === 1 ? 'entrada' : 'entradas'} · Escola de Comércio de Lisboa
+            </div>
+          </div>
+          {modoProf && (
+            <button onClick={() => { setEntradaAtiva(null); setModo('criar'); }}
+              style={{ padding: '10px 16px', borderRadius: 10, border: 'none',
+                background: COR_DOURADO, color: '#fff', fontSize: 13,
+                fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+              + Nova entrada
+            </button>
+          )}
+        </div>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%',
+            transform: 'translateY(-50%)', fontSize: 16, color: 'rgba(247,241,230,0.4)' }}>🔍</span>
+          <input value={pesquisa} onChange={e => setPesquisa(e.target.value)}
+            placeholder="Pesquisar no manual…"
+            style={{ width: '100%', padding: '11px 12px 11px 38px', borderRadius: 10,
+              border: 'none', fontSize: 14, background: 'rgba(255,255,255,0.1)',
+              color: '#faf7f2', fontFamily: 'var(--font-sans)' }} />
+          {pesquisa && (
+            <button onClick={() => setPesquisa('')}
+              style={{ position: 'absolute', right: 10, top: '50%',
+                transform: 'translateY(-50%)', background: 'none', border: 'none',
+                color: 'rgba(247,241,230,0.5)', cursor: 'pointer', fontSize: 16 }}>✕</button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+        <button onClick={() => setCategoriaFiltro('Todas')} style={{
+          padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+          border: `1.5px solid ${categoriaFiltro === 'Todas' ? COR_PRIMARIA : 'rgba(26,23,20,0.1)'}`,
+          background: categoriaFiltro === 'Todas' ? COR_PRIMARIA : '#fff',
+          color: categoriaFiltro === 'Todas' ? '#fff' : 'rgba(26,23,20,0.5)', cursor: 'pointer',
+        }}>Todas</button>
+        {CATEGORIAS_MANUAL.filter((c: CategoriaManual) => entradas.some(e => e.categoria === c)).map((c: CategoriaManual) => (
+          <button key={c} onClick={() => setCategoriaFiltro(c === categoriaFiltro ? 'Todas' : c)} style={{
+            padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+            border: `1.5px solid ${categoriaFiltro === c ? COR_DOURADO : 'rgba(26,23,20,0.1)'}`,
+            background: categoriaFiltro === c ? COR_DOURADO_P : '#fff',
+            color: categoriaFiltro === c ? COR_DOURADO : 'rgba(26,23,20,0.5)', cursor: 'pointer',
+          }}>{ICONES_CATEGORIA[c]} {c}</button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+        {(['Todos', 'Base', 'Intermédio', 'Avançado'] as const).map(n => {
+          const ativo = nivelFiltro === n;
+          const c = n !== 'Todos' ? CORES_NIVEL[n] : null;
+          return (
+            <button key={n} onClick={() => setNivelFiltro(n)} style={{
+              padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+              border: `1.5px solid ${ativo ? ((c as any)?.cor || COR_PRIMARIA) : 'rgba(26,23,20,0.1)'}`,
+              background: ativo ? ((c as any)?.bg || COR_PRIMARIA) : '#fff',
+              color: ativo ? ((c as any)?.cor || '#fff') : 'rgba(26,23,20,0.4)', cursor: 'pointer',
+            }}>{n}</button>
+          );
+        })}
+      </div>
+
+      {resultados.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>{entradas.length === 0 ? '📖' : '🔍'}</div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
+            {entradas.length === 0 ? 'O Manual ainda está vazio' : 'Nenhum resultado encontrado'}
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', maxWidth: 280, margin: '0 auto' }}>
+            {entradas.length === 0
+              ? modoProf ? 'Cria a primeira entrada — escolhe um módulo do cronograma e gera com IA.' : 'O professor ainda não criou entradas.'
+              : 'Tenta pesquisar com outras palavras.'}
+          </div>
+          {modoProf && entradas.length === 0 && (
+            <button onClick={() => { setEntradaAtiva(null); setModo('criar'); }}
+              style={{ marginTop: 20, padding: '12px 24px', borderRadius: 12, border: 'none',
+                background: COR_PRIMARIA, color: '#faf7f2', fontSize: 14,
+                fontWeight: 700, cursor: 'pointer' }}>+ Criar primeira entrada</button>
+          )}
+        </div>
+      ) : pesquisa ? (
+        <div>
+          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)', marginBottom: 10, fontWeight: 600 }}>
+            {resultados.length} resultado{resultados.length !== 1 ? 's' : ''} para "{pesquisa}"
+          </div>
+          {resultados.map(e => (
+            <CardManual key={e.id} entrada={e} modoProf={modoProf}
+              onAbrir={() => { setEntradaAtiva(e); setModo('ver'); }}
+              onEditar={() => { setEntradaAtiva(e); setModo('editar'); }}
+              onApagar={() => setConfirmarApagar(e.id)} />
+          ))}
         </div>
       ) : (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: COR_PRIMARIA }}>Manual do Cozinheiro</h1>
-              <p style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)' }}>Repositório de guiões e módulos técnicos</p>
-            </div>
-            {modoProf && (
-              <button onClick={() => setNovaEntrada(true)} style={{ background: COR_DOURADO, color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>
-                + Nova Entrada
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-            <input 
-              type="text" 
-              placeholder="Pesquisar manual..." 
-              value={pesquisa} 
-              onChange={e => setPesquisa(e.target.value)}
-              style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13 }}
-            />
-            <select 
-              value={categoriaFiltro} 
-              onChange={e => setCategoriaFiltro(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13 }}
-            >
-              <option value="Todas">Todas as categorias</option>
-              {CATEGORIAS_MANUAL.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <div>
-            {entradasFiltradas.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 40, color: 'rgba(26,23,20,0.4)', fontSize: 14 }}>
-                Nenhuma entrada encontrada.
+          {Object.entries(porCategoria).map(([cat, items]: [string, EntradaManual[]]) => (
+            <div key={cat} style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 20 }}>{ICONES_CATEGORIA[cat as CategoriaManual]}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+                  textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cat}</span>
+                <span style={{ fontSize: 12, color: 'rgba(26,23,20,0.3)',
+                  background: 'rgba(26,23,20,0.05)', borderRadius: 100, padding: '1px 8px' }}>
+                  {items.length}
+                </span>
               </div>
-            ) : (
-              entradasFiltradas.map(e => (
-                <CardManual 
-                  key={e.id} 
-                  entrada={e} 
-                  modoProf={modoProf}
-                  onAbrir={() => setEntradaAtiva(e)} 
-                  onEditar={() => { setEntradaAtiva(e); setEditando(true); }}
-                  onApagar={() => handleApagar(e.id)}
-                />
-              ))
-            )}
+              {items.map(e => (
+                <CardManual key={e.id} entrada={e} modoProf={modoProf}
+                  onAbrir={() => { setEntradaAtiva(e); setModo('ver'); }}
+                  onEditar={() => { setEntradaAtiva(e); setModo('editar'); }}
+                  onApagar={() => setConfirmarApagar(e.id)} />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+      {/* Modal de confirmação de apagar — global, funciona na lista e no detalhe */}
+      {confirmarApagar && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,23,20,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '24px', maxWidth: 340, width: '100%' }}>
+            <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 12 }}>🗑️</div>
+            <div style={{ fontWeight: 700, fontSize: 16, textAlign: 'center', marginBottom: 8 }}>
+              Apagar esta entrada?
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', textAlign: 'center', marginBottom: 20 }}>
+              {entradas.find(e => e.id === confirmarApagar)?.titulo || 'Esta entrada'} vai ser removida.
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => apagar(confirmarApagar)} style={{ flex: 1, padding: '12px',
+                borderRadius: 10, border: 'none', background: '#c0392b',
+                color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Apagar</button>
+              <button onClick={() => setConfirmarApagar(null)} style={{ flex: 1, padding: '12px',
+                borderRadius: 10, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+                color: 'rgba(26,23,20,0.6)', fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
-
-// ── Exportação Nomeada para compatibilidade ─────────────────────
-export { ManualCozinheiro };
