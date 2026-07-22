@@ -245,14 +245,11 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
         }).join('\n\n---\n\n')
     : null;
 
-  // ── PROMPT MESTRE — Manual profissional 50+ páginas ─────────
-  // Baseado no Prompt Mestre validado pela coordenadora ECL
-  // Ano lectivo sempre fixo em 2026-2027
-
+  // ── PROMPT MESTRE — Manual profissional 50+ paginas ─────────
   const anoLetivoFixo = '2026-2027';
   const ref_     = modulo.tipo === 'UC' ? '811RA144' : '811183';
   const turmaNum = modulo.turmaAno || 1;
-  const turma    = turmaNum === 1 ? '1.º Ano' : turmaNum === 2 ? '2.º Ano' : '3.º Ano';
+  const turma    = turmaNum === 1 ? '1. Ano' : turmaNum === 2 ? '2. Ano' : '3. Ano';
 
   const ucIdRef = modulo.tipo === 'UC'
     ? modulo.id
@@ -263,99 +260,86 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
   const criterios     = (refDados?.criteriosDesempenho   || []).map((r: string) => '- ' + r).join('\n');
   const conhecimentos = (refDados?.conhecimentos         || []).map((r: string) => '- ' + r).join('\n');
 
-  const PAPEL = \`Actua como um autor sénior de manuais técnicos para Escolas de Hotelaria, especialista em gastronomia portuguesa, tecnologia alimentar, HACCP, pedagogia profissional e escrita académica.
+  const papel = [
+    'Actua como um autor senior de manuais tecnicos para Escolas de Hotelaria,',
+    'especialista em gastronomia portuguesa, tecnologia alimentar, HACCP, pedagogia profissional e escrita academica.',
+    '',
+    'Escreve um verdadeiro livro tecnico equivalente aos manuais das Escolas de Hotelaria e Turismo de Portugal.',
+    'Portugues europeu, grafia pre-Acordo (Objectivos, confeccao, actual, tecnico, pratico, recepcao).',
+    'Nivel universitario. Nunca escolar. Nunca Wikipedia.',
+    '',
+    'REGRAS OBRIGATORIAS:',
+    '- Nunca resumir. Sempre desenvolver. Sempre explicar. Sempre justificar.',
+    '- Cada capitulo como um capitulo de livro — varios paragrafos por subtitulo.',
+    '- Sempre explicar o "porque" e nao apenas o "como".',
+    '- Minimo 2 tabelas de 4 colunas por capitulo.',
+    '- Caixas tecnicas: [DICA DO CHEF] [CIENCIA NA COZINHA] [HACCP] [ERROS FREQUENTES] [SABIA QUE]',
+    '- Cada capitulo termina com exercicios praticos e questoes de revisao.',
+    '- Fontes reais: ANQEP, AHRESP/DGS, Reg. CE 852/2004, Maincent-Morel, McGee, Le Cordon Bleu, Modesto M.L.',
+    '- HACCP: refrigeracao 0-4C; congelacao -18C; confeccao min. 65C; regra 2h; Anisakis -20C/24h.',
+    '- Estilo: Harold McGee + Maria de Lourdes Modesto + Manual das Escolas de Hotelaria.',
+    '- Nunca producao curta. Cada capitulo 6 a 10 paginas.',
+    '',
+    'MANUAL A PRODUZIR:',
+    modulo.id + ' — ' + modulo.nome,
+    'Referencial ' + ref_ + ' | Curso Profissional Tecnico/a de Cozinha e Restauracao',
+    turma + ' | ' + modulo.horasPrevistas + ' horas | ECL | Ano Lectivo ' + anoLetivoFixo,
+    '',
+    'COMPETENCIAS OFICIAIS (Referencial ANQEP):',
+    'Realizacoes:',
+    realizacoes || 'ver referencial',
+    '',
+    'Criterios de desempenho:',
+    criterios || 'ver referencial',
+    '',
+    'Conhecimentos:',
+    conhecimentos || 'ver referencial',
+  ].join('\n');
 
-O objectivo é produzir um verdadeiro livro técnico, equivalente aos manuais das Escolas de Hotelaria e Turismo de Portugal.
-
-Escreve sempre em português europeu, grafia pré-Acordo Ortográfico (Objectivos, confecção, actual, técnico, prático, recepção).
-
-O público-alvo são alunos do Curso Profissional de Técnico/a de Cozinha e Restauração (Nível 4 QNQ), mas o nível técnico deve aproximar-se de um manual universitário.
-
-REGRAS OBRIGATÓRIAS:
-- Nunca resumir. Sempre desenvolver. Sempre explicar. Sempre justificar.
-- Cada capítulo como um capítulo de livro — vários parágrafos por subtítulo.
-- Sempre explicar o "porquê" e não apenas o "como".
-- Mínimo 2 tabelas de 4 colunas por capítulo.
-- Distribuir caixas técnicas: [DICA DO CHEF] [CIÊNCIA NA COZINHA] [HACCP] [ERROS FREQUENTES] [SABIA QUE]
-- Cada capítulo termina com exercícios práticos e questões de revisão.
-- Fontes reais: ANQEP, AHRESP/DGS, Reg. CE 852/2004, Maincent-Morel, McGee, Le Cordon Bleu, Modesto M.L.
-- HACCP integrado: refrigeração 0-4°C; congelação -18°C; confecção mín. 65°C; regra 2h; Anisakis -20°C/24h.
-- Estilo: Harold McGee + Maria de Lourdes Modesto + Manual das Escolas de Hotelaria.
-- Nunca escrever como Wikipedia. Nunca produzir capítulos curtos.
-
-MANUAL A PRODUZIR:
-\${modulo.id} — \${modulo.nome}
-Referencial \${ref_} | Curso Profissional Técnico/a de Cozinha e Restauração
-\${turma} | \${modulo.horasPrevistas} horas | ECL | Ano Lectivo \${anoLetivoFixo}
-
-COMPETÊNCIAS OFICIAIS (Referencial ANQEP):
-Realizações:
-\${realizacoes || 'ver referencial'}
-
-Critérios de desempenho:
-\${criterios || 'ver referencial'}
-
-Conhecimentos:
-\${conhecimentos || 'ver referencial'}\`;
-
-  const ESTRUTURA_GERAL = \`ESTRUTURA DO MANUAL (seguir rigorosamente esta ordem):
-
-PARTE I — Enquadramento e Fundamentos
-- Nota de apresentação
-- Enquadramento no referencial (tabela completa)
-- 8 objectivos de aprendizagem detalhados
-- Índice geral
-- Capítulo 1: Contexto histórico, cultural e profissional (mín. 8 páginas)
-- Capítulo 2: Tecnologia das matérias-primas — classificação, qualidade, frescura (mín. 8 páginas)
-
-PARTE II — Aprovisionamento, Conservação e Técnicas
-- Capítulo 3: Aprovisionamento, recepção e HACCP (mín. 8 páginas)
-- Capítulo 4: Pré-preparação e mise en place (mín. 6 páginas)
-- Capítulo 5: Métodos de confecção — cada método com ciência, técnica, exemplos portugueses (mín. 10 páginas)
-- Capítulo 6: Molhos, fundos e guarnições (mín. 6 páginas)
-- Capítulo 7: Empratamento e análise sensorial (mín. 4 páginas)
-
-PARTE III — Instrumentos de Trabalho
-- 3 Fichas de trabalho completas com tabelas para preenchimento
-- Desenvolvimento de projecto (7 etapas, critérios com %, exemplo resolvido)
-
-PARTE IV — Fichas Técnicas de Receita
-- Mínimo 10 fichas técnicas completas (cabeçalho, ingredientes, HACCP, preparação, nota do chef, variante regional)
-
-PARTE V — Avaliação e Referências
-- Questionário de revisão global (4 grupos, 16 questões)
-- Glossário (15 termos técnicos)
-- Síntese final (10 pontos-chave)
-- Bibliografia completa
-- Anexo A: ficha técnica em branco
-- Anexo B: folha-resumo HACCP destacável
-- Índice final com páginas\`;
+  const estrutura = [
+    'ESTRUTURA DO MANUAL (seguir rigorosamente):',
+    '',
+    'PARTE I — Enquadramento e Fundamentos',
+    '- Nota de apresentacao, enquadramento no referencial (tabela), 8 objectivos detalhados, indice geral',
+    '- Capitulo 1: Contexto historico, cultural e profissional (min. 8 paginas)',
+    '- Capitulo 2: Tecnologia das materias-primas — classificacao, qualidade, frescura (min. 8 paginas)',
+    '',
+    'PARTE II — Aprovisionamento, Conservacao e Tecnicas',
+    '- Capitulo 3: Aprovisionamento, recepcao e HACCP (min. 8 paginas)',
+    '- Capitulo 4: Pre-preparacao e mise en place (min. 6 paginas)',
+    '- Capitulo 5: Metodos de confeccao — ciencia, tecnica, exemplos portugueses (min. 10 paginas)',
+    '- Capitulo 6: Molhos, fundos e guarnicoes (min. 6 paginas)',
+    '- Capitulo 7: Empratamento e analise sensorial (min. 4 paginas)',
+    '',
+    'PARTE III — Instrumentos de Trabalho',
+    '- 3 Fichas de trabalho com tabelas para preenchimento',
+    '- Desenvolvimento de projecto (7 etapas, criterios com %, exemplo resolvido)',
+    '',
+    'PARTE IV — Fichas Tecnicas de Receita',
+    '- 10 fichas tecnicas completas: cabecalho, ingredientes (quant. bruta/liquida), preparacao, HACCP, nota do chef, variante regional',
+    '',
+    'PARTE V — Avaliacao e Referencias',
+    '- Questionario 16 questoes, glossario 15 termos, sintese 10 pontos, bibliografia, Anexo A e B, indice final',
+  ].join('\n');
 
   const prompts = [
-    // ── PARTE 1 de 3 ────────────────────────────────────────
-    PAPEL + '\n\n' + ESTRUTURA_GERAL + \`\n\n
-INSTRUÇÃO PARA ESTA RESPOSTA:
-Escreve agora a PARTE I e PARTE II do manual (Capítulos 1 a 7).
-Cada capítulo deve ter entre 6 e 10 páginas de conteúdo denso.
-Começa pela nota de apresentação e vai até ao fim do Capítulo 7.
-No final escreve apenas: === FIM PARTE 1 ===\`,
+    papel + '\n\n' + estrutura + '\n\n'
+      + 'INSTRUCAO: Escreve agora a PARTE I e PARTE II do manual (Capitulos 1 a 7).'
+      + ' Cada capitulo 6 a 10 paginas de conteudo denso.'
+      + ' Comeca pela nota de apresentacao e vai ate ao fim do Capitulo 7.'
+      + ' No final escreve apenas: === FIM PARTE 1 ===',
 
-    // ── PARTE 2 de 3 ────────────────────────────────────────
-    PAPEL + \`\n\nContinua o manual \${modulo.id} — \${modulo.nome}.\n\n\` + ESTRUTURA_GERAL + \`\n\n
-INSTRUÇÃO PARA ESTA RESPOSTA:
-Escreve agora a PARTE III do manual (3 fichas de trabalho + desenvolvimento de projecto).
-Cada ficha de trabalho deve ter tabelas completas para preenchimento pelo aluno.
-O projecto deve ter 7 etapas detalhadas com critérios de avaliação percentuais e exemplo resolvido.
-No final escreve apenas: === FIM PARTE 2 ===\`,
+    papel + '\n\n' + estrutura + '\n\n'
+      + 'Continua o manual ' + modulo.id + ' — ' + modulo.nome + '.'
+      + ' INSTRUCAO: Escreve agora a PARTE III (3 fichas de trabalho + projecto).'
+      + ' Fichas com tabelas completas para preenchimento.'
+      + ' Projecto: 7 etapas, criterios com %, exemplo resolvido.'
+      + ' No final escreve apenas: === FIM PARTE 2 ===',
 
-    // ── PARTE 3 de 3 ────────────────────────────────────────
-    PAPEL + \`\n\nContinua o manual \${modulo.id} — \${modulo.nome}.\n\n\` + ESTRUTURA_GERAL + \`\n\n
-INSTRUÇÃO PARA ESTA RESPOSTA:
-Escreve agora a PARTE IV e PARTE V do manual.
-PARTE IV: 10 fichas técnicas completas de receitas desta UC/UFCD.
-Cada ficha: cabeçalho, tabela ingredientes (quant. bruta/líquida), preparação numerada, tabela HACCP, nota do chef, erros frequentes, variante regional, sugestão empratamento.
-PARTE V: questionário 16 questões, glossário 15 termos, síntese 10 pontos, bibliografia, Anexo A (ficha em branco), Anexo B (resumo HACCP destacável), índice final.
-No final escreve apenas: === FIM MANUAL ===\`,
+    papel + '\n\n' + estrutura + '\n\n'
+      + 'Continua o manual ' + modulo.id + ' — ' + modulo.nome + '.'
+      + ' INSTRUCAO: Escreve agora a PARTE IV (10 fichas tecnicas) e PARTE V (questionario, glossario, sintese, bibliografia, anexos, indice final).'
+      + ' No final escreve apenas: === FIM MANUAL ===',
   ];
 
   return await chamarManualViaGS(prompts);
