@@ -656,6 +656,8 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     if (!texto.trim()) { setErro('O conteúdo é obrigatório.'); return; }
     const agora = new Date().toISOString();
     onGuardar({
+      criadoPor: "admin",
+  atualizadoEm: "2026-07-22T14:00:00Z"
       id: entrada?.id || gerarId(),
       titulo: titulo.trim(), categoria, nivel,
       palavrasChave: palavras.split(',').map((p: string) => p.trim()).filter(Boolean),
