@@ -255,7 +255,7 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
   const conhecimentosStr = (ref?.conhecimentos         || []).map((r: string, i: number) => '- ' + r).join('\n');
 
   // Detecção de tema para instrução específica
-  const nomeLower = modulo.nome.toLowerCase();
+  // nomeLower já declarado acima
   const ePeixes    = nomeLower.includes('peixe') || nomeLower.includes('marisco');
   const eCarnes    = nomeLower.includes('carne') || nomeLower.includes('ave') || nomeLower.includes('caca');
   const ePastelaria= nomeLower.includes('pastelaria') || nomeLower.includes('cremes') || nomeLower.includes('massas');
