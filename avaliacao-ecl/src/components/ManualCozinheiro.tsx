@@ -245,42 +245,396 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
         }).join('\n\n---\n\n')
     : null;
 
+  // ── Sistema de instrução profunda ────────────────────────────
+  // Cada competência do referencial é desenvolvida em profundidade
+  // O ano letivo é sempre 2026-2027 independentemente do que for passado
+  const anoLetivoFixo = '2026-2027';
+
+  const realizacoesStr   = (ref?.realizacoes           || []).map((r: string, i: number) => (i+1) + '. ' + r).join('\n');
+  const criteriosStr     = (ref?.criteriosDesempenho   || []).map((r: string, i: number) => '- ' + r).join('\n');
+  const conhecimentosStr = (ref?.conhecimentos         || []).map((r: string, i: number) => '- ' + r).join('\n');
+
+  // Detecção de tema para instrução específica
+  const nomeLower = modulo.nome.toLowerCase();
+  const ePeixes    = nomeLower.includes('peixe') || nomeLower.includes('marisco');
+  const eCarnes    = nomeLower.includes('carne') || nomeLower.includes('ave') || nomeLower.includes('caca');
+  const ePastelaria= nomeLower.includes('pastelaria') || nomeLower.includes('cremes') || nomeLower.includes('massas');
+  const eCozPortuguesa = nomeLower.includes('tradicional portuguesa') || nomeLower.includes('cozinha portuguesa');
+  const eCozInternacional = nomeLower.includes('internacional');
+
+  // Bloco de conhecimento específico por tema
+  let blocoTema = '';
+  if (ePeixes) {
+    blocoTema = [
+      'CONHECIMENTO ESPECIALIZADO OBRIGATORIO PARA ESTA UC:',
+      '',
+      'CLASSIFICACAO E BIOLOGIA DO PESCADO:',
+      '- Peixes osseos redondos (forma cilindrica, olhos laterais): robalo, dourada, salmao, atum, sardinha, carapau, pargo, linguado nao — explica caracteristicas anatomicas, habitats, epocas de pesca',
+      '- Peixes osseos achatados (forma laminar, olhos no dorso): linguado, pregado, solha, rodovalho — explica a metamorfose larvar e porque os olhos migram para o mesmo lado',
+      '- Peixes cartilaginosos (esqueleto de cartilagem, sem ossos): cao, raia, tubarao — caracteristicas culinarias distintas, textura, sabor, metodos de preparacao',
+      '- Peixes de agua doce: truta, enguia, lampreia (este ultimo migratorio e protegido) — particularidades de conservacao e confeção',
+      '- Cefalopodes: polvo, lula, choco, sibila — anatomia (saco de tinta, tentaculos, osso de choco), tecnicas de limpeza especificas, mudancas de textura na confeção',
+      '- Crustaceos: camarao, lagostim, lagosta, sapateira, caranguejo — anatomia, como retirar a carne, tecnicas de cozedura',
+      '- Bivalves e outros moluscos: amêijoa, mexilhao, ostra, vieira, percebes — como verificar frescura (devem estar fechados), como purgar, como abrir',
+      '',
+      'CRITERIOS DE FRESCURA E QUALIDADE:',
+      '- Peixe fresco: olhos salientes e transparentes (turvo = velho), guelras vermelho-vivas (castanho = deteriorado), escamas aderentes e brilhantes, carne firme e elastica ao toque, cheiro a mar e algas (nunca a amoniaco)',
+      '- Tabela de inspecao organoletica completa com pontuacao: cada caracteristica tem criterios precisos de avaliacao de 1 a 5',
+      '- Classificacao comercial: categorias Extra, A, B — o que distingue cada uma',
+      '- Rotulagem obrigatoria: nome da especie, zona FAO de captura, metodo de producao (pescado/aquacultura), data de embalamento',
+      '',
+      'ANISAKIS E SEGURANCA ALIMENTAR:',
+      '- O que e o Anisakis simplex: parasita nematode presente em peixe cru, causa anisakiase no ser humano',
+      '- Especies de risco: sardinha, cavala, arenque, salmao selvagem, bacalhau fresco, robalo — lista completa',
+      '- Eliminacao: congelacao a -20C durante minimo 24h (Reg CE 853/2004) OU confeção a temperatura interna superior a 60C',
+      '- Estabelecimentos que servem peixe cru (sushi, carpaccio, gravlax) tem obrigacao legal de congelar previamente',
+      '',
+      'TAMANHOS MINIMOS DE CAPTURA (DGRM/UE):',
+      '- Tabela completa: robalo 36cm, dourada 20cm, linguado 24cm, sardinha 11cm, atum rabilho 115cm, lagosta 22cm total — explica porque estes limites existem e o que acontece se forem infringidos',
+      '',
+      'SAZONALIDADE DO PESCADO PORTUGUES:',
+      '- Tabela mes a mes: que especies estao em epoca, quais estao fora de epoca, veducoes de pesca',
+      '- Sardinha: defeso de junho a setembro — porque e importante respeitar',
+      '- Espada preta: pesca na Madeira, particularidades',
+      '',
+      'TECNICAS DE PREPARACAO DETALHADAS:',
+      '- Esviscerar peixe redondo: incisao ventral, remover visceras, lavar; diferente do peixe achatado',
+      '- Filetar peixe redondo: tecnica passo a passo, angulo da faca, aproveitamento de espinhas para caldo',
+      '- Filetar peixe achatado: 4 filetes por peixe — tecnica especifica diferente do peixe redondo',
+      '- Escalar: quando e porque se usa (quando vai assar inteiro)',
+      '- Calcular rendimento: tabela com IR% por especie (ex: sardinha 55%, robalo 45%, linguado 35%)',
+      '- Limpar polvo: remover bico, olhos, saco de tinta; bater para amaciar (metodo tradicional vs freezer)',
+      '- Limpar lula: separar manto de tentaculos, remover pena transparente, abrir o manto',
+      '- Purgar bivalves: agua salgada 30g/l, 2h no frigorifico, renovar agua',
+    ].join('\n');
+  } else if (eCarnes) {
+    blocoTema = [
+      'CONHECIMENTO ESPECIALIZADO OBRIGATORIO PARA ESTA UC:',
+      '',
+      'ANATOMIA E CLASSIFICACAO DE CARNES:',
+      '- Bovino: diagrama completo de cortes (cachaço, entrecosto, vazia, lombo, alcatra, ponta de alcatra, chambao, acém, coxao mole/duro, pojadouro) — para cada corte: localizacao anatomica, nivel de colagénio, metodo de confeção ideal, tempo e temperatura',
+      '- Suino: lombinho, costeleta, entrecosto, pernil, cachaço, barriga — caracteristicas de cada corte, temperatura interna de seguranca (72C minimo para eliminar Trichinella)',
+      '- Ovino/Caprino: cordeiro vs borrego vs carneiro — diferenca de idade e sabor; cortes especificos, especialidades regionais portuguesas',
+      '- Aves: frango, peru, pato, ganso, codorniz, pombo — caracteristicas da carne (branca vs escura), temperaturas internas de seguranca (82C para aves, Salmonella e Campylobacter)',
+      '- Caca: lebre, coelho, perdiz, faisao, veado, javali — particularidades (maridagem longa, sabor intenso, marinadas com zimbro e vinho tinto)',
+      '- Classificacao comercial: categorias de qualidade, raças DOP (Bísaro, Barrosao, Alentejano)',
+      '',
+      'CRITERIOS DE QUALIDADE E FRESCURA:',
+      '- Carne bovina fresca: cor vermelho vivo (nao castanho-acinzentado), textura firme e elastica, gordura de cor creme/amarela conforme raca, odor ligeiro e caracteristico',
+      '- Maturacao a seco vs humida: o que acontece ao nivel do colagénio e das enzimas, quantos dias, temperaturas',
+      '- Rigor mortis: quando acontece, quanto dura, porque a carne se torna tenra depois',
+      '',
+      'TECNICAS DE PREPARACAO:',
+      '- Desossar uma perna de borrego: passo a passo detalhado',
+      '- Frango: como partir em 8 pecas, como preparar suprema, como retirar o lombo',
+      '- Lardear e mechar: tecnicas de introducao de gordura em carnes magras (ex: javali, lebre)',
+      '- Marinar: funcao tecnica (abrandamento do colagénio, penetracao de sabores), proporcoes, tempos por tipo de carne',
+      '- Calcular rendimento: tabela com IR% (ex: frango inteiro 65%, lombo de vaca 85%, perna de borrego com osso 55%)',
+    ].join('\n');
+  } else if (ePastelaria) {
+    blocoTema = [
+      'CONHECIMENTO ESPECIALIZADO OBRIGATORIO PARA ESTA UC:',
+      '',
+      'CIENCIA DOS INGREDIENTES DE PASTELARIA:',
+      '- Farinha: tipos (T55, T65, T80, integral), gluten e sua formacao, porque e importante o tipo certo para cada massa',
+      '- Ovos: funcoes tecnicas (emulsionante, coagulante, espumante, colorante), diferenca entre usar gema/clara/ovo inteiro, pasteurizacao',
+      '- Acucar: tipos (refinado, brun, em po, invertido, isomalt, glucose), pontos de calda (veio, bola mole, bola dura, caramelo), como se formam cristais e como evitar',
+      '- Gorduras: manteiga (84% gordura, emulsao agua em gordura), margarina, natas (30% vs 35% gordura), funcao em cada massa',
+      '- Fermento: biologico vs quimico vs fisico (ar batido) — mecanismo de cada um, quando usar cada tipo',
+      '',
+      'MASSAS BASE — TECNICA COMPLETA:',
+      '- Massa folhada: 27 camadas de gordura, tecnica de laminagem, quantas voltas, porque sobe, temperatura critica da manteiga (deve estar a 18C), erros comuns e causas',
+      '- Massa quebrada doce e salgada: metodo por areia vs metodo por creme, diferenca de textura, porque nao trabalhar em excesso',
+      '- Massa choux: porque incha (vapor de agua), proporcao agua:gordura:farinha:ovos, ponto da massa, erros (nao incha, enruga)',
+      '- Massa levedada: brioche, croissant — desenvolvimento do gluten, fases de fermentacao, temperatura ideal',
+      '- Biscuit, genoise, dacquoise: diferenca entre os tres, tecnicas de incorporacao das claras',
+      '',
+      'CREMES E MOLHOS DE PASTELARIA:',
+      '- Creme pasteleiro: proporcao base, temperatura de cozedura (85C para gelatinizar amido sem coalhar ovo), arrefecimento rapido obrigatorio, variantes (mousseline, diplomatico, chiboust)',
+      '- Creme chantilly: natas a 4C, teor de gordura minimo 35%, ponto certo vs excesso (manteiga)',
+      '- Ganache: proporcoes chocolate/natas por tipo de cobertura, emulsificacao',
+      '- Caramelo seco vs humido: tecnicas, como trabalhar sem cristalizar',
+    ].join('\n');
+  } else if (eCozPortuguesa) {
+    blocoTema = [
+      'CONHECIMENTO ESPECIALIZADO OBRIGATORIO PARA ESTA UC:',
+      '',
+      'HISTORIA E CONTEXTO CULTURAL:',
+      '- Influencias arabes (sec VIII-XV): amendoa, arroz, alucar, canela, acafrao — quais pratos de hoje vem desta heranca',
+      '- Descobrimentos (sec XV-XVI): tomate, batata, milho, feijao, malagueta do Brasil; especiarias do Oriente (pimenta, cravinho, noz moscada, gengibre) — como mudaram a cozinha europeia e portuguesa',
+      '- Doçaria conventual: porque os conventos foram os grandes centros culinarios (clarificacao de vinho com claras, sobra de gemas), lista de doces e o convento/mosteiro de origem de cada um',
+      '- O bacalhau: historia das pescarias no Grand Banks desde sec XVI, processo de salga e secagem, porque se tornou o "fiel amigo", consumo atual de 7kg per capita/ano',
+      '',
+      'REGIOES GASTRONOMICAS — DESENVOLVER CADA UMA EM PROFUNDIDADE:',
+      '',
+      'MINHO E DOURO LITORAL:',
+      '- Produtos identitarios: milho (broa, papas), feijao verde, caldo verde, fumeiros (chouriço, linguiça, morcela, alheira de Mirandela DOP), vinho verde, leitao',
+      '- Pratos emblematicos: caldo verde (historia, porque e o prato nacional informal), rojoes a minhota (como se fazem), bacalhau com broa (tecnica da crosta), papas de sarrabulho (o que e o sarrabulho)',
+      '- Tecnicas predominantes: cozedura lenta em panela de ferro, fumagem artesanal, aproveitamento total do porco',
+      '',
+      'TRAS-OS-MONTES E ALTO DOURO:',
+      '- Produtos: amendoa, castanha, fumeiros transmontanos (presunto de Barroso IGP, alheira de Mirandela DOP), azeite DOP Tras-os-Montes, posta mirandesa (raça Mirandesa DOP)',
+      '- Pratos: posta mirandesa (o que a torna especial — marmoreado da raça, grelhar a alta temperatura), sopa transmontana, trutas do Douro, perdiz e lebre da charneca',
+      '- Contexto: regiao de interior frio — cozinha robusta e energetica, uso extensivo da gordura de porco e do azeite',
+      '',
+      'BEIRAS (BEIRA ALTA, BEIRA BAIXA, BEIRA LITORAL):',
+      '- Produtos: queijo da Serra da Estrela DOP (unico queijo de pasta mole e untuosa feito com cardo), leitao da Bairrada (raça bísaro, assado em forno de lenha), chanfana (cabra velha ou borrego em barro com vinho tinto)',
+      '- Pratos: leitao da Bairrada (tecnica — salmoura, forno a 200C, pele estaladiça), chanfana de cabra (origem, porque usa cabra velha, barro negro, vinho da regiao), enguias (Aveiro), percebes (litoral)',
+      '- Particularidade: zona de transicao entre norte robusto e sul mais suave — maior diversidade de produtos',
+      '',
+      'ESTREMADURA E RIBATEJO:',
+      '- Produtos: frutas de Obidos e Sintra, atum de Setúbal, arroz do Ribatejo, vinho de Bucelas e Colares',
+      '- Pratos: caldeirada a fragateira, bacalhau a Bras (origem em Lisboa, tabernas do seculo XIX), iscas com elas (figado de vitela com batatas), cozido a portuguesa (o mais completo — lista de todos os componentes tradicionais)',
+      '- Contexto de Lisboa: cidade cosmopolita que absorveu influencias de todo o imperio — diversidade unica',
+      '',
+      'ALENTEJO:',
+      '- Produtos: porco alentejano (raça iberica, montanhas de azinha e sobreiro, DOP), azeite alentejano DOP, ques de evora, ervilhas, cilantro e coentros (herbas dominantes)',
+      '- Pratos: acorda alentejana (pao, alho, coentros, azeite, ovo pochado — origem na pobreza, agora considerada alta gastronomia), migas alentejanas (pao de véspera, encharcado em caldo, com carne de porco), ensopado de borrego, sopa de cacao (com coentros — obrigatorio)',
+      '- Contexto: regiao quente e seca, tradicao de pastoricio e suinicultura extensiva, cozinha de pastores e lavradores',
+      '',
+      'ALGARVE:',
+      '- Produtos: amendoa (DOP Algarve), figo (doçaria de figo e amendoa), percebes, lagostas, atum (Sagres e Vila Real de Santo Antonio, industria conserveira historica)',
+      '- Pratos: cataplana (o utensilio e a tecnica — como funciona, pratos iconicos: amêijoas com presunto, marisco), caldeirada algarvia, xerem (canjica de milho com conquilhas), doces de amendoa (historia arabe)',
+      '- Contexto: influencia arabe mais forte no sul — amendoa, figo, citrinos; proximidade ao Mar de Alborao = marisco e atum',
+      '',
+      'AÇORES E MADEIRA:',
+      '- Acores: cozido das Furnas (cozido pelo calor geotermico vulcanico, Ilha de S. Miguel — unico no mundo), alcatra terceirense (boi, vinho da Terceira, especiarias, pote de barro), ananás dos Açores DOP, queijo de S. Jorge DOP',
+      '- Madeira: espada com banana (peixe-espada preto — especie profunda, capturado a mais de 1000m, servido com banana por contraste de sabores), espetada madeirense (carne no pau de louro), bolo do caco, ponche madeirense',
+      '',
+      'TECNICAS TRANSVERSAIS DA COZINHA PORTUGUESA:',
+      '- O refogado: base de quase tudo — cebola + alho + azeite + tomate; proporcoes classicas, erros comuns',
+      '- Caldeiradas: tecnica de cozedura em camadas sem mexer, a diferenca entre caldeirada de peixe, de polvo e de enguia',
+      '- Migas: aproveitamento do pao seco — tecnica de molha do pao, ponto correto',
+      '- Bacalhau: os 7 metodos de confeção mais importantes — cozido, assado, a Bras, a Gomes de Sá, a Zé do Pipo, com natas, lagareiro — diferencas tecnicas de cada um',
+    ].join('\n');
+  } else if (eCozInternacional) {
+    blocoTema = [
+      'CONHECIMENTO ESPECIALIZADO OBRIGATORIO:',
+      'Desenvolve 6 cozinhas internacionais com a mesma profundidade da cozinha portuguesa:',
+      '- Francesa: molhos-mae (bechamel, veloute, espanhol, holandes, tomate), brigade de cozinha de Escoffier, haute cuisine vs brasserie vs bistro',
+      '- Italiana: massas frescas vs secas, risotto (tecnica do mantecatura), pizza napolitana (farinha 00, fermentacao longa, forno a 450C), diferença entre regioes (norte vs sul)',
+      '- Asiatica: tecnicas de wok (fogo alto, movimento constante), sushi (preparacao do arroz, temperatura do peixe), dim sum, curry (bases de especiarias por regiao)',
+      '- Espanhola: paella valenciana (tecnica do socarrat), jamon iberico (criacao do porco, processo de cura, categorias), tapas vs raciones, molecular (Ferran Adria)',
+      '- Norte-americana e ibero-americana: BBQ (defumacao, tipos de madeira, temperaturas baixas e lentas), ceviche peruano (desnaturacao proteica pelo acido citrico sem calor), mole mexicano (30+ ingredientes)',
+      '- Mediterranica: azeite, ervas aromaticas (oregaos, tomilho, rosmaninho, salva), leguminosas, peixe, dieta mediterrânica e evidencia cientifica',
+    ].join('\n');
+  } else {
+    blocoTema = 'Desenvolve o tema desta UC com a mesma profundidade de um manual profissional especializado — cada conceito explicado do ponto de vista tecnico, cientifico e cultural.';
+  }
+
+  const INSTRUCOES_GERAIS = [
+    'INSTRUCOES GERAIS DE QUALIDADE (aplicar em todas as partes):',
+    '',
+    '1. PROFUNDIDADE PROFISSIONAL: Cada topico deve ser desenvolvido como um profissional que ensina a outro profissional.',
+    '   Nao basta dizer "o peixe deve ser fresco" — tens de dizer COMO avaliar a frescura, QUAIS os criterios especificos, O QUE acontece quando deteriora.',
+    '   Nao basta dizer "assar a 180C" — tens de explicar POR QUE essa temperatura, O QUE acontece fisico-quimicamente, COMO saber quando esta pronto.',
+    '',
+    '2. TABELAS: Usa tabelas de 4 colunas como elemento dominante. Cada capitulo deve ter pelo menos 2 tabelas.',
+    '   Exemplos: tabela de especies com caracteristicas; tabela de metodos com parametros; tabela de cortes com aplicacoes.',
+    '',
+    '3. FICHAS TECNICAS: Minimo 6 fichas tecnicas completas com: nome, doses (4), tempo prep, tempo confeção, metodo,',
+    '   ingredientes com quantidades brutas e liquidas, preparacao passo a passo numerado, pontos criticos HACCP, nota do chef.',
+    '',
+    '4. FICHAS DE TRABALHO: 3 fichas de trabalho com tabelas para preenchimento pelo aluno:',
+    '   Ficha 1: avaliacao de materia-prima (criterios de qualidade por produto)',
+    '   Ficha 2: calculo de rendimento e custo (formula IR = peso liquido / peso bruto × 100)',
+    '   Ficha 3: comparacao de metodos de confeção ou analise sensorial',
+    '',
+    '5. EXERCICIOS PRATICOS: No minimo 2 exercicios por capitulo — situacoes reais de brigada, calculos, tomadas de decisao.',
+    '',
+    '6. CAIXAS DE DESTAQUE: Usa caixas de destaque com etiqueta:',
+    '   [DICA DO CHEF] para conselhos profissionais',
+    '   [CIENCIA NA COZINHA] para explicacoes cientificas',
+    '   [HACCP] para pontos criticos de controlo',
+    '   [ERROS FREQUENTES] para erros comuns e como evitar',
+    '   [SABIA QUE] para curiosidades historicas/culturais',
+    '',
+    '7. HACCP INTEGRADO: Os limites reais devem aparecer sempre que relevante:',
+    '   refrigeracao 0-4C; congelacao -18C; confeção minima 65C no centro termico; regra 2h (zona perigo 5-65C);',
+    '   Anisakis: -20C/24h para peixe cru; tabuleiros por cor: azul=pescado, vermelho=carnes, verde=vegetais, branco=prontos.',
+    '',
+    '8. FONTES REAIS: Cita sempre fontes reais — ANQEP, AHRESP/DGS, Reg CE 852/2004 e 853/2004, Reg UE 1169/2011,',
+    '   Maincent-Morel, McGee On Food and Cooking, Le Cordon Bleu, Maria de Lourdes Modesto, Turismo de Portugal.',
+    '',
+    '9. PORTUGUES EUROPEU pre-Acordo: Objectivos, actual, confeccao, tecnico, confeção, practico.',
+    '',
+    '10. ANO LECTIVO: Usar sempre 2026-2027.',
+  ].join('\n');
+
+  const cabStr = cabecalho;
+  const refStr = realizacoesStr;
+  const critStr = criteriosStr;
+  const conhStr = conhecimentosStr;
+  const temaStr = blocoTema;
+  const instrStr = INSTRUCOES_GERAIS;
+
   const prompts = [
-    ctx + '\n\nPARTE 1 — gera 15 paginas densas:\n'
-      + '- Enquadramento no Referencial (tabela: codigo, designacao, componente, ano, nivel, horas, pre-requisitos)\n'
-      + '- Objectivos de aprendizagem (8 objectivos detalhados baseados nas realizacoes)\n'
-      + '- Cap 1: Introducao especifica (historia, importancia profissional, contexto nacional)\n'
-      + '- Cap 2: Tecnologia das materias-primas (classificacao, criterios de qualidade especificos)\n'
-      + '- Cap 3: Aprovisionamento, conservacao e HACCP com os limites reais\n'
-      + '- Cap 4: Pre-preparacao (operacoes, rendimento, aproveitamento, equipamento)\n'
-      + '- Em cada cap: 2 tabelas 4 colunas + 1 caixa + 2 exercicios\n'
-      + '\nCABECALHO:\n' + cabecalho,
+    // ── PARTE 1 ─────────────────────────────────────────────
+    [
+      'Vais escrever a PARTE 1 de 5 de um MANUAL DE FORMACAO PROFISSIONAL (minimo 15 paginas densas).',
+      'UC: ' + modulo.nome,
+      'Referencial: ' + ref_,
+      'Ano lectivo: 2026-2027',
+      '',
+      'COMPETENCIAS DESTA UC (do referencial oficial ANQEP):',
+      'Realizacoes: ' + refStr,
+      'Criterios de desempenho: ' + critStr,
+      'Conhecimentos/aptidoes: ' + conhStr,
+      '',
+      temaStr,
+      '',
+      instrStr,
+      '',
+      'CONTEUDO DA PARTE 1:',
+      '- Pagina de rosto com todos os dados da UC (cabecalho abaixo)',
+      '- Nota de apresentacao do manual (contexto profissional, para que serve, como usar)',
+      '- Enquadramento no referencial: tabela completa (codigo, designacao, componente, ano, nivel QNQ, horas, pre-requisitos, bloco)',
+      '- Objectivos de aprendizagem: desenvolve cada realizacao como objectivo detalhado (nao lista — escreve o que o aluno vai ser capaz de fazer, com precisao tecnica)',
+      '- Indice geral do manual (com todos os capitulos e seccoes)',
+      '- Capitulo 1: Contexto profissional e cultural — historia, importancia no sector, contexto nacional/internacional, perfil do profissional que domina esta UC',
+      '- Capitulo 2: Tecnologia das materias-primas — DESENVOLVE COM TODA A PROFUNDIDADE DO BLOCO DE TEMA ACIMA',
+      '   Cada tipo de produto: classificacao completa, caracteristicas, criterios de qualidade, tabela de avaliacao, o que muda na cozinha',
+      '- Exercicios praticos em cada capitulo',
+      '- Caixas de destaque em cada capitulo',
+      '',
+      'CABECALHO DO DOCUMENTO:',
+      cabStr,
+    ].join('\n'),
 
-    ctx + '\n\nPARTE 2 — gera 15 paginas densas (continuacao ' + modulo.nome + '):\n'
-      + '- Cap 5: Metodos de confeccao — cada metodo com desc tecnica, temperaturas, tempos, tabela, 2 exemplos\n'
-      + '- Cap 6: Molhos e guarniciones — proporcoes, passo a passo, variantes, erros comuns\n'
-      + '- Cap 7: Empratamento e analise sensorial — principios, harmonizacao vinhos, grelha sensorial\n'
-      + '- Cap 8: Sustentabilidade — sazonalidade mes a mes, DOP/IGP, desperdicio zero\n'
-      + '- ' + temaEspec + '\n'
-      + '- Em cada cap: 2 tabelas 4 colunas + 1 caixa + 1 exercicio',
+    // ── PARTE 2 ─────────────────────────────────────────────
+    [
+      'Vais escrever a PARTE 2 de 5 de um MANUAL DE FORMACAO PROFISSIONAL (minimo 15 paginas densas).',
+      'UC: ' + modulo.nome + ' | Ano lectivo: 2026-2027',
+      '',
+      temaStr,
+      '',
+      instrStr,
+      '',
+      'CONTEUDO DA PARTE 2 (continuacao — nao repetir o que foi dito na Parte 1):',
+      '- Capitulo 3: Aprovisionamento, recepcao e conservacao',
+      '   Fluxo completo: encomenda -> recepcao -> armazenagem -> utilizacao',
+      '   Recepcao: o que verificar em cada categoria de produto, documentacao obrigatoria, temperaturas maximas de recepcao',
+      '   Armazenagem: principio FEFO, separacao por categorias, temperaturas por zona (congelados/refrigerados/secos)',
+      '   HACCP: cadeia de frio completa com temperaturas, perigos por etapa, medidas correctivas',
+      '   Rastreabilidade: o que e, documentacao necessaria, porque e obrigatoria (Reg CE 178/2002)',
+      '   Alergenios: os 14 alergenios de declaracao obrigatoria (Reg UE 1169/2011), como gerir contaminacao cruzada',
+      '- Capitulo 4: Pre-preparacao e mise en place',
+      '   Organizacao do posto de trabalho segundo as brigadas',
+      '   Operacoes de pre-preparacao especificas DESTA UC (com tecnica detalhada para cada uma)',
+      '   Calculo de rendimentos: formula IR, tabela de IR por produto especifico desta UC, exercicio de calculo',
+      '   Calculo de custo por dose: formula, exemplo resolvido completo',
+      '   Equipamentos e utensilios: tabela com nome, funcao, como usar, como limpar',
+      '- Capitulo 5: Metodos de confeção especificos desta UC',
+      '   Para CADA metodo relevante: descricao tecnica, o que acontece fisico-quimicamente, temperaturas, tempos,',
+      '   pontos de cozedura, como verificar, tabela comparativa, pelo menos 2 exemplos de pratos reais',
+      '   Reaccao de Maillard: quando ocorre, a que temperatura, porque e importante, como controlar',
+      '- Exercicios praticos em cada capitulo',
+      '- Caixas de destaque',
+    ].join('\n'),
 
-    ctx + '\n\nPARTE 3 — gera 8 paginas (continuacao ' + modulo.nome + '):\n'
-      + '- Cap 12: 3 Fichas de Trabalho com tabelas para preenchimento\n'
-      + '  Ficha 1: avaliacao materia-prima; Ficha 2: calculo rendimento e custo; Ficha 3: comparacao metodos\n'
-      + '- Cap 13: Desenvolvimento de Projeto — 7 etapas, criterios com %, exemplo resolvido completo',
+    // ── PARTE 3 ─────────────────────────────────────────────
+    [
+      'Vais escrever a PARTE 3 de 5 de um MANUAL DE FORMACAO PROFISSIONAL (minimo 10 paginas densas).',
+      'UC: ' + modulo.nome + ' | Ano lectivo: 2026-2027',
+      '',
+      instrStr,
+      '',
+      'CONTEUDO DA PARTE 3:',
+      '- Capitulo 6: Molhos, fundos e guarniciones especificos desta UC',
+      '   Para cada molho/fundo: historia/origem, ingredientes com proporcoes exactas para 4 doses,',
+      '   preparacao passo a passo, erros comuns e como corrigir, variantes e aplicacoes',
+      '- Capitulo 7: Empratamento e analise sensorial',
+      '   5 principios fundamentais do empratamento profissional (com exemplos)',
+      '   Temperatura de servico por categoria de prato (tabela)',
+      '   Grelha de analise sensorial preenchivel: aspecto, aroma, sabor, textura, temperatura',
+      '   Harmonizacao com vinhos portugueses (pelo menos 5 exemplos especificos)',
+      '- Capitulo 8: Sustentabilidade, sazonalidade e economia circular',
+      '   Tabela de sazonalidade mes a mes (especifica para os produtos desta UC)',
+      '   Aproveitamento integral: o que fazer com cada tipo de apara (lista especifica)',
+      '   Calculo de desperdicio: formula, exemplo, metas de reducao',
+      '   Produtos DOP/IGP relevantes para esta UC: lista com origem, caracteristicas, onde comprar',
+      '- FICHA DE TRABALHO N.1: Avaliacao de materias-primas',
+      '   (tabela completa para preenchimento pelo aluno, criterios especificos desta UC)',
+      '- FICHA DE TRABALHO N.2: Calculo de rendimento e custo',
+      '   (com formula, espaco de calculo, exercicio guiado)',
+      '- FICHA DE TRABALHO N.3: Comparacao de metodos ou analise sensorial',
+      '   (tabela comparativa para preenchimento, espaco de reflexao)',
+    ].join('\n'),
 
+    // ── PARTE 4 ─────────────────────────────────────────────
     fichasTexto
-      ? fichasTexto
-      : ctx + '\n\nPARTE 4 — gera 10 paginas (continuacao ' + modulo.nome + '):\n'
-          + '- Cap 14: 8 a 14 fichas tecnicas — cada uma com nome, doses (4), tempos, metodo, ingredientes exactos, preparacao numerada, HACCP, nota chef',
+      ? '# CAPITULO 14 — FICHAS TECNICAS DE RECEITA\n\nFichas elaboradas em aula para ' + modulo.id + ':\n\n' + fichasTexto
+      : [
+          'Vais escrever a PARTE 4 de 5 de um MANUAL DE FORMACAO PROFISSIONAL (minimo 12 paginas densas).',
+          'UC: ' + modulo.nome + ' | Ano lectivo: 2026-2027',
+          '',
+          instrStr,
+          '',
+          'CONTEUDO DA PARTE 4 — FICHAS TECNICAS DE RECEITA:',
+          'Elabora 10 fichas tecnicas completas, representativas desta UC.',
+          'As receitas devem cobrir diferentes metodos de confeção e diferentes produtos desta UC.',
+          'Para receitas da cozinha portuguesa: inclui contexto historico/regional de cada receita.',
+          '',
+          'FORMATO OBRIGATORIO PARA CADA FICHA:',
+          '| DESIGNACAO | [nome] | CATEGORIA | [categoria] |',
+          '| N. DE DOSES | 4 | CUSTO APROX. | [valor] |',
+          '| TEMPO PREP | [x] min | TEMPO CONFEÇÃO | [x] min |',
+          '| METODO | [metodo] | DIFICULDADE | [nivel] |',
+          '',
+          'INGREDIENTES (tabela com 4 colunas):',
+          '| Ingrediente | Quant. Bruta | Quant. Liquida | Observacoes |',
+          '',
+          'PREPARACAO: lista numerada passo a passo, incluindo temperaturas e tempos precisos',
+          '',
+          'PONTOS CRITICOS HACCP (tabela):',
+          '| Etapa | Perigo | Limite Critico | Medida Correctiva |',
+          '',
+          'NOTA DO CHEF: conselho tecnico, variante regional, erro mais comum a evitar',
+          '',
+          'As 10 fichas devem incluir:',
+          '- Pelo menos 2 sopas ou entradas',
+          '- Pelo menos 4 pratos principais com tecnicas diferentes',
+          '- Pelo menos 2 guarniciones ou acompanhamentos',
+          '- Pelo menos 2 sobremesas ou doces (se relevante para a UC)',
+          '- Mistura de preparacoes classicas e contemporaneas',
+        ].join('\n'),
 
-    ctx + '\n\nPARTE 5 — gera 8 paginas (ultima parte ' + modulo.nome + '):\n'
-      + '- Cap 15: Questionario Revisao Global (4 grupos, 14-16 questoes com linhas de resposta)\n'
-      + '- Glossario: 15 termos com definicao tecnica\n'
-      + '- Bibliografia: fontes reais usadas\n'
-      + '- Sintese Final: 10 pontos-chave\n'
-      + '- Anexo A: ficha tecnica em branco; Anexo B: folha-resumo HACCP destacavel\n'
-      + '- Indice Final: tabela capitulos com paginas estimadas',
+    // ── PARTE 5 ─────────────────────────────────────────────
+    [
+      'Vais escrever a PARTE 5 de 5 de um MANUAL DE FORMACAO PROFISSIONAL (minimo 10 paginas densas).',
+      'UC: ' + modulo.nome + ' | Ano lectivo: 2026-2027',
+      '',
+      instrStr,
+      '',
+      'CONTEUDO DA PARTE 5:',
+      '- DESENVOLVIMENTO DE PROJECTO (Capitulo 13):',
+      '   Titulo do projecto ligado a esta UC',
+      '   7 etapas detalhadas com o que fazer em cada uma',
+      '   Tabela de criterios de avaliacao com ponderacoes percentuais',
+      '   Exemplo resolvido completo de um projecto (com documentos reais)',
+      '',
+      '- QUESTIONARIO DE REVISAO GLOBAL (Capitulo 15):',
+      '   4 grupos tematicos com 4 questoes cada (total 16)',
+      '   Grupo 1: Higiene e seguranca alimentar',
+      '   Grupo 2: Tecnicas especificas desta UC',
+      '   Grupo 3: Planeamento e organizacao',
+      '   Grupo 4: Sustentabilidade e qualidade',
+      '   Cada questao com linhas de resposta; mistura de escolha multipla e desenvolvimento',
+      '',
+      '- GLOSSARIO TECNICO (15 termos):',
+      '   Termos tecnicos especificos desta UC — definicao precisa e aplicacao pratica',
+      '',
+      '- SINTESE FINAL:',
+      '   10 pontos-chave desta UC em lista clara',
+      '   O que o aluno deve saber fazer no fim desta formacao',
+      '',
+      '- BIBLIOGRAFIA E FONTES:',
+      '   Lista completa de fontes reais usadas neste manual',
+      '',
+      '- ANEXO A: Modelo de ficha tecnica em branco (para usar nas aulas)',
+      '- ANEXO B: Folha-resumo de temperaturas HACCP e sazonalidade (destacavel)',
+      '- INDICE FINAL: tabela com todos os capitulos e paginas estimadas',
+    ].join('\n'),
   ];
 
   const resultados = await Promise.all(prompts.map(p => chamarClaudeViaGS(p)));
