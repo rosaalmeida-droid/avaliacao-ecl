@@ -655,14 +655,35 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     if (!titulo.trim()) { setErro('O título é obrigatório.'); return; }
     if (!texto.trim()) { setErro('O conteúdo é obrigatório.'); return; }
     const agora = new Date().toISOString();
-    onGuardar({
-      id: entrada?.id || gerarId(),
-      titulo: titulo.trim(), categoria, nivel,
-      palavrasChave: palavras.split(',').map((p: string) => p.trim()).filter(Boolean),
-      textoGuia: texto.trim(),
-      // criadoPor: nomeProfessor, // campo nao existe no tipo
-      criadoEm: entrada?.criadoEm || agora,
-    });
+    function guardar() {
+  if (!titulo.trim()) {
+    setErro('O título é obrigatório.');
+    return;
+  }
+
+  if (!texto.trim()) {
+    setErro('O conteúdo é obrigatório.');
+    return;
+  }
+
+  const agora = new Date().toISOString();
+
+  onGuardar({
+    id: entrada?.id || gerarId(),
+    titulo: titulo.trim(),
+    categoria,
+    nivel,
+    palavrasChave: palavras
+      .split(',')
+      .map((p: string) => p.trim())
+      .filter(Boolean),
+    textoGuia: texto.trim(),
+
+    criadoEm: entrada?.criadoEm || agora,
+    atualizadoEm: agora,
+    criadoPor: nomeProfessor || 'Professor',
+  });
+}
   }
 
   const turmaLabel = (t: 1|2|3) => t === 1 ? '1º CP (UCs)' : t === 2 ? '2º CP (UFCDs)' : '3º CP (UFCDs)';
