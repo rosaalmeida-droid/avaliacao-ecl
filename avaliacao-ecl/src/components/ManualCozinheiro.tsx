@@ -171,88 +171,19 @@ async function chamarManualViaGS(prompts: string[]): Promise<string> {
 }
 
 
-async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
-  const ucIdRef = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
-  const ref = ucIdRef ? getReferencialUC(ucIdRef) : null;
+// ── Construir os 5 prompts do manual ─────────────────────────
+function construirPrompts(modulo: ModuloCronograma, anoLetivo: string): string[] {
+  const ref_     = modulo.tipo === 'UC' ? '811RA144' : '811183';
+  const turmaNum = modulo.turmaAno || 1;
+  const turma    = turmaNum === 1 ? '1. Ano' : turmaNum === 2 ? '2. Ano' : '3. Ano';
+  const ucIdRef  = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
+  const ref      = ucIdRef ? getReferencialUC(ucIdRef) : null;
+  const realizacoesP   = (ref?.realizacoes           || []).map((r: string, i: number) => (i+1) + '. ' + r).join('\n');
+  const criteriosP     = (ref?.criteriosDesempenho   || []).map((r: string) => '- ' + r).join('\n');
+  const conhecimentosP = (ref?.conhecimentos         || []).map((r: string) => '- ' + r).join('\n');
+  const anoLetivoFixo  = '2026-2027';
 
-  const todasFichas = getFichasProducao();
-  const fichasUC = todasFichas.filter((f: any) =>
-    (f.ucsAssociadas || []).includes(modulo.id) ||
-    (ucIdRef ? (f.ucsAssociadas || []).includes(ucIdRef) : false)
-  );
-  const fichasApp = fichasUC.slice(0, 14).map((f: any) => ({
-    nomePrato: f.nomePrato, numPorcoes: f.numPorcoes || '4',
-    tempoPrep: f.tempoPrep || '', tempoConf: f.tempoConf || '',
-    ingredientes: (f.ingredientes || []).map((i: any) => ({ produto: i.produto || '', quantidade: i.quantidade || '', unidade: i.unidade || '' })),
-    preparacao:   (f.preparacao   || []).map((p: any) => ({ descricao: p.descricao || '', haccp: p.haccp || '' })),
-    empratamento: f.empratamento || '', alergenicos: f.alergenicos || [],
-  }));
-
-  const ref_ = modulo.tipo === 'UC' ? '811RA144' : '811183';
-  const turmaNum = modulo.turmaAno;
-  const turma = turmaNum === 1 ? '1. Ano' : turmaNum === 2 ? '2. Ano' : '3. Ano';
-  const anos  = turmaNum === 1 ? '2026-2029' : turmaNum === 2 ? '2025-2028' : '2024-2027';
-
-  const cabecalho = ['ESCOLA DE COMERCIO DE LISBOA',
-    'Curso Profissional de Tecnico/a de Cozinha e Restauracao',
-    turma + ' | ' + anos, 'Referencial ' + ref_, modulo.disciplina,
-    modulo.id + ' - ' + modulo.nome,
-    'Carga Horaria: ' + modulo.horasPrevistas + ' horas', 'Ano Lectivo ' + anoLetivo,
-  ].join('\n');
-
-  const realizacoes   = (ref?.realizacoes           || []).join('\n- ');
-  const criterios     = (ref?.criteriosDesempenho   || []).join('\n- ');
-  const conhecimentos = (ref?.conhecimentos         || []).join('\n- ');
-
-  const BIB = 'ANQEP 811RA144 | AHRESP/DGS Codigo Boas Praticas | Gomes et al. 2015 APN/DGS | Reg.CE 852/2004 | Maincent-Morel | McGee | Le Cordon Bleu | Modesto M.L. | Turismo de Portugal';
-  const HACCP = 'HACCP: refrigeracao 0-4C; congelacao -18C; confeccao min.65C; regra 2h; Anisakis -20C/24h.';
-
-  const ctx = 'MANUAL DO ALUNO — ' + modulo.nome + '\nRef ' + ref_ + ' | ECL'
-    + '\nREALIZACOES:\n- ' + (realizacoes || 'ver ref')
-    + '\nCRITERIOS:\n- ' + (criterios || 'ver ref')
-    + '\nCONHECIMENTOS:\n- ' + (conhecimentos || 'ver ref')
-    + '\n' + HACCP + '\nBIBLIOGRAFIA: ' + BIB
-    + '\nNORMA: min 50 pag; portugues europeu pre-Acordo; tabelas 4 colunas; fontes reais; NAO usar Parte X de 5.';
-
-  const nomeLower = modulo.nome.toLowerCase();
-  let temaEspec = 'Caps 9-11: especializacao profunda desta UC com tabelas e referencias reais.';
-  if (nomeLower.includes('tradicional portuguesa') || nomeLower.includes('tradicional port')) {
-    temaEspec = 'CRITICO — desenvolve CADA REGIAO com min 2 paginas:\n'
-      + 'Cap 9 Norte (Minho, Tras-os-Montes, Douro): caldo verde, rojoes, alheira, lamprea, vinho verde, azeite DOP\n'
-      + 'Cap 10 Centro+Lisboa (Beiras, Estremadura, Ribatejo): leitao Bairrada, chanfana, bacalhau Bras, iscas, queijo Serra Estrela DOP\n'
-      + 'Cap 11 Sul+Ilhas (Alentejo, Algarve, Acores, Madeira): acorda, migas, cataplana, xerem, espetada, cozido Furnas\n'
-      + 'Cada regiao: tabela 4 col (Prato|Ingredientes|Tecnica|Historia) + paragrafo historico + DOP/IGP + exercicio. Nao resumir.';
-  } else if (nomeLower.includes('internacional')) {
-    temaEspec = 'Caps 9-11: 6 cozinhas internacionais (francesa, italiana, asiatica, espanhola, americana, mediterranica) com tabela e chefs reais cada.';
-  } else if (nomeLower.includes('peixes') || nomeLower.includes('mariscos')) {
-    temaEspec = 'Caps 9-11: perfis de especies + sazonalidade + cozinha regional do peixe por regiao.';
-  } else if (nomeLower.includes('carnes') || nomeLower.includes('aves')) {
-    temaEspec = 'Caps 9-11: classificacao cortes + aves e caca + enchidos DOP + temperaturas seguranca.';
-  } else if (nomeLower.includes('pastelaria') || nomeLower.includes('docaria')) {
-    temaEspec = 'Caps 9-11: pastelaria regional + docaria conventual + pastelaria internacional + mestres referencia.';
-  }
-
-  const fichasTexto = fichasApp.length >= 5
-    ? '# CAPITULO 14 — FICHAS TECNICAS DE RECEITA\n\nFichas de aula para ' + modulo.id + ':\n\n'
-      + fichasApp.map((f: any, i: number) => {
-          const ings = (f.ingredientes || []).map((ing: any) => '- ' + ing.quantidade + ' ' + ing.unidade + ' ' + ing.produto).join('\n');
-          const prep = (f.preparacao || []).map((p: any, pi: number) => (pi+1) + '. ' + p.descricao + (p.haccp ? ' [HACCP: ' + p.haccp + ']' : '')).join('\n');
-          return '## RECEITA ' + (i+1) + ' — ' + f.nomePrato.toUpperCase()
-            + '\nDoses: ' + f.numPorcoes + ' | Prep: ' + f.tempoPrep + ' | Conf: ' + f.tempoConf
-            + '\n### Ingredientes\n' + ings + '\n### Preparacao\n' + prep
-            + (f.empratamento ? '\nEmpratamento: ' + f.empratamento : '')
-            + (f.alergenicos?.length ? '\nAlergénios: ' + f.alergenicos.join(', ') : '');
-        }).join('\n\n---\n\n')
-    : null;
-
-  // ── PROMPT MESTRE — Manual profissional 50+ paginas ─────────
-  // Variáveis já declaradas acima — reutilizar
-  const anoLetivoFixo = '2026-2027';
-  const realizacoesP  = (ref?.realizacoes           || []).map((r: string, i: number) => (i+1) + '. ' + r).join('\n');
-  const criteriosP    = (ref?.criteriosDesempenho   || []).map((r: string) => '- ' + r).join('\n');
-  const conhecimentosP= (ref?.conhecimentos         || []).map((r: string) => '- ' + r).join('\n');
-
-  const papel = [
+const papel = [
     'Actua como um autor senior de manuais tecnicos para Escolas de Hotelaria,',
     'especialista em gastronomia portuguesa, tecnologia alimentar, HACCP, pedagogia profissional e escrita academica.',
     '',
@@ -334,8 +265,29 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
       + ' No final escreve apenas: === FIM MANUAL ===',
   ];
 
+  return prompts;
+}
+
+async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
+  const todasFichas = getFichasProducao();
+  const ucIdRef = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
+  const fichasUC = todasFichas.filter((f: any) =>
+    (f.ucsAssociadas || []).includes(modulo.id) ||
+    (ucIdRef ? (f.ucsAssociadas || []).includes(ucIdRef) : false)
+  );
+  const fichasApp = fichasUC.slice(0, 14).map((f: any) => ({
+    nomePrato: f.nomePrato, numPorcoes: f.numPorcoes || '4',
+    tempoPrep: f.tempoPrep || '', tempoConf: f.tempoConf || '',
+    ingredientes: (f.ingredientes || []).map((i: any) => ({ produto: i.produto || '', quantidade: i.quantidade || '', unidade: i.unidade || '' })),
+    preparacao:   (f.preparacao   || []).map((p: any) => ({ descricao: p.descricao || '', haccp: p.haccp || '' })),
+    empratamento: f.empratamento || '', alergenicos: f.alergenicos || [],
+  }));
+
+  const prompts = construirPrompts(modulo, anoLetivo);
   return await chamarManualViaGS(prompts);
 }
+
+
 
 // Exportar para Google Doc via modelo oficial ECL
 async function exportarParaDrive(modulo: ModuloCronograma, anoLetivo: string, textoGuia: string): Promise<string> {
@@ -506,7 +458,7 @@ function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
               {entrada.categoria}
             </span>
             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
-              background: nivel.bg, color: nivel.cor, fontWeight: 600 }}>
+              background: (nivel as any).bg, color: (nivel as any).cor, fontWeight: 600 }}>
               {entrada.nivel}
             </span>
           </div>
@@ -573,6 +525,10 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   const [erro, setErro]           = useState('');
   const [gerandoIA, setGerandoIA] = useState(false);
   const [faseIA, setFaseIA]       = useState('');
+  // Estados das 5 partes do manual
+  const [partes, setPartes]       = useState<{texto: string; estado: 'vazio'|'gerando'|'pronto'|'erro'}[]>(
+    Array(5).fill(null).map(() => ({ texto: '', estado: 'vazio' as const }))
+  );
 
   // Módulos filtrados por turma
   const modulosDaTurma = useMemo(() =>
@@ -636,6 +592,39 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     setPalavras(m.nome.split(' ').filter((w: string) => w.length > 4).slice(0, 5).join(', '));
   }
 
+  // Gerar uma parte individual
+  async function gerarParteManual(numParte: number) {
+    if (!moduloSel) { setErro('Selecciona um modulo primeiro.'); return; }
+    setPartes(prev => prev.map((p, i) => i === numParte ? { ...p, estado: 'gerando' as const } : p));
+    setErro('');
+    try {
+      const todosPrompts = construirPrompts(moduloSel, anoLetivo);
+      const prompt = todosPrompts[numParte];
+      const resp = await fetch(GS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ acao: 'gerarParte', prompt }),
+      });
+      if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
+      const texto = data.texto || '';
+      setPartes(prev => prev.map((p, i) => i === numParte ? { texto, estado: 'pronto' as const } : p));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+      setPartes(prev => prev.map((p, i) => i === numParte ? { ...p, estado: 'erro' as const } : p));
+      setErro('Erro na Parte ' + (numParte+1) + ': ' + msg);
+    }
+  }
+
+  // Juntar todas as partes e guardar
+  function juntarEGuardar() {
+    const todas = partes.map(p => p.texto).filter(t => t.trim());
+    if (todas.length === 0) { setErro('Nenhuma parte gerada ainda.'); return; }
+    const textoFinal = todas.join('\n\n');
+    setTexto(textoFinal);
+    setErro('');
+  }
+
   async function gerarManual() {
     if (!moduloSel) { setErro('Selecciona um modulo do cronograma primeiro.'); return; }
     setGerandoIA(true);
@@ -671,9 +660,8 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
       titulo: titulo.trim(), categoria, nivel,
       palavrasChave: palavras.split(',').map((p: string) => p.trim()).filter(Boolean),
       textoGuia: texto.trim(),
-      criadoPor: nomeProfessor,
+      // criadoPor: nomeProfessor, // campo nao existe no tipo
       criadoEm: entrada?.criadoEm || agora,
-      atualizadoEm: agora,
     });
   }
 
@@ -768,21 +756,52 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
               </div>
             )}
 
-            {/* Botao unico — gera o manual completo (5 partes em cadeia no Apps Script) */}
-            <button
-              onClick={gerarManual}
-              disabled={!moduloSel || gerandoIA}
-              style={{
-                width: '100%', padding: '13px', borderRadius: 10, border: 'none',
-                background: !moduloSel || gerandoIA ? 'rgba(109,40,217,0.3)' : COR_IA,
-                color: '#fff', fontSize: 14, fontWeight: 700,
-                cursor: !moduloSel || gerandoIA ? 'not-allowed' : 'pointer',
-              }}>
-              {gerandoIA ? ('⏳ ' + faseIA) : '✨ Gerar manual completo (50 pag.)'}
-            </button>
-            {gerandoIA && (
-              <div style={{ fontSize: 11, color: COR_IA, textAlign: 'center', marginTop: 4 }}>
-                O manual e gerado em 5 partes — pode demorar 60 a 90 segundos.
+            {/* Sistema de 5 partes independentes */}
+            {!moduloSel && (
+              <div style={{ fontSize: 12, color: 'rgba(109,40,217,0.4)', textAlign: 'center', padding: 8 }}>
+                Selecciona um modulo acima para activar os botoes.
+              </div>
+            )}
+            {moduloSel && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[
+                  'Parte 1 — Enquadramento, Objectivos e Contexto Historico',
+                  'Parte 2 — Materias-Primas, HACCP e Metodos de Confeção',
+                  'Parte 3 — Fichas de Trabalho e Desenvolvimento de Projecto',
+                  'Parte 4 — Fichas Tecnicas de Receita (10 receitas)',
+                  'Parte 5 — Questionario, Glossario, Bibliografia e Anexos',
+                ].map((label, idx) => {
+                  const parte = partes[idx];
+                  const estado = parte?.estado || 'vazio';
+                  const corBotao = estado === 'pronto' ? '#4E7A25' : estado === 'erro' ? '#c0392b' : estado === 'gerando' ? 'rgba(109,40,217,0.4)' : COR_IA;
+                  const icone = estado === 'pronto' ? '✅' : estado === 'erro' ? '❌' : estado === 'gerando' ? '⏳' : '✨';
+                  return (
+                    <button key={idx}
+                      onClick={() => gerarParteManual(idx)}
+                      disabled={estado === 'gerando'}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 10,
+                        border: 'none', background: corBotao, color: '#fff',
+                        fontSize: 13, fontWeight: 700, textAlign: 'left',
+                        cursor: estado === 'gerando' ? 'not-allowed' : 'pointer' }}>
+                      {icone} {label}
+                      {estado === 'pronto' && <span style={{ fontSize: 11, opacity: 0.8, marginLeft: 8 }}>(gerada)</span>}
+                    </button>
+                  );
+                })}
+
+                {/* Botão juntar */}
+                {partes.some(p => p.estado === 'pronto') && (
+                  <button
+                    onClick={juntarEGuardar}
+                    style={{ width: '100%', padding: '12px', borderRadius: 10, border: 'none',
+                      background: '#1A1714', color: '#fff', fontSize: 14, fontWeight: 700,
+                      cursor: 'pointer', marginTop: 4 }}>
+                    📄 Juntar partes e criar documento
+                    <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 8 }}>
+                      ({partes.filter(p => p.estado === 'pronto').length}/5 prontas)
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -828,9 +847,9 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
                 return (
                   <button key={n} onClick={() => setNivel(n)} style={{
                     flex: 1, padding: '10px 4px', borderRadius: 8, cursor: 'pointer',
-                    border: `2px solid ${nivel === n ? c.cor : 'rgba(26,23,20,0.1)'}`,
-                    background: nivel === n ? c.bg : '#fff',
-                    color: nivel === n ? c.cor : 'rgba(26,23,20,0.5)',
+                    border: `2px solid ${nivel === n ? (c as any).cor : 'rgba(26,23,20,0.1)'}`,
+                    background: nivel === n ? (c as any).bg : '#fff',
+                    color: nivel === n ? (c as any).cor : 'rgba(26,23,20,0.5)',
                     fontSize: 11, fontWeight: 700,
                   }}>{n}</button>
                 );
@@ -943,7 +962,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
               {ICONES_CATEGORIA[entradaAtiva.categoria]} {entradaAtiva.categoria}
             </span>
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 100,
-              background: nivel.bg, color: nivel.cor, fontWeight: 700 }}>
+              background: (nivel as any).bg, color: (nivel as any).cor, fontWeight: 700 }}>
               {entradaAtiva.nivel}
             </span>
           </div>
@@ -952,7 +971,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
             {entradaAtiva.titulo}
           </div>
           <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
-            {entradaAtiva.criadoPor} · {fmtData(entradaAtiva.criadoEm)}
+            {fmtData(entradaAtiva.criadoEm)}
           </div>
           {entradaAtiva.palavrasChave.length > 0 && (
             <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1075,9 +1094,9 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           return (
             <button key={n} onClick={() => setNivelFiltro(n)} style={{
               padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600,
-              border: `1.5px solid ${ativo ? (c?.cor || COR_PRIMARIA) : 'rgba(26,23,20,0.1)'}`,
-              background: ativo ? (c?.bg || COR_PRIMARIA) : '#fff',
-              color: ativo ? (c?.cor || '#fff') : 'rgba(26,23,20,0.4)', cursor: 'pointer',
+              border: `1.5px solid ${ativo ? ((c as any)?.cor || COR_PRIMARIA) : 'rgba(26,23,20,0.1)'}`,
+              background: ativo ? ((c as any)?.bg || COR_PRIMARIA) : '#fff',
+              color: ativo ? ((c as any)?.cor || '#fff') : 'rgba(26,23,20,0.4)', cursor: 'pointer',
             }}>{n}</button>
           );
         })}
