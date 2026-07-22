@@ -246,19 +246,11 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
     : null;
 
   // ── PROMPT MESTRE — Manual profissional 50+ paginas ─────────
+  // Variáveis já declaradas acima — reutilizar
   const anoLetivoFixo = '2026-2027';
-  const ref_     = modulo.tipo === 'UC' ? '811RA144' : '811183';
-  const turmaNum = modulo.turmaAno || 1;
-  const turma    = turmaNum === 1 ? '1. Ano' : turmaNum === 2 ? '2. Ano' : '3. Ano';
-
-  const ucIdRef = modulo.tipo === 'UC'
-    ? modulo.id
-    : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
-  const refDados = ucIdRef ? getReferencialUC(ucIdRef) : null;
-
-  const realizacoes   = (refDados?.realizacoes           || []).map((r: string, i: number) => (i+1) + '. ' + r).join('\n');
-  const criterios     = (refDados?.criteriosDesempenho   || []).map((r: string) => '- ' + r).join('\n');
-  const conhecimentos = (refDados?.conhecimentos         || []).map((r: string) => '- ' + r).join('\n');
+  const realizacoesP  = (ref?.realizacoes           || []).map((r: string, i: number) => (i+1) + '. ' + r).join('\n');
+  const criteriosP    = (ref?.criteriosDesempenho   || []).map((r: string) => '- ' + r).join('\n');
+  const conhecimentosP= (ref?.conhecimentos         || []).map((r: string) => '- ' + r).join('\n');
 
   const papel = [
     'Actua como um autor senior de manuais tecnicos para Escolas de Hotelaria,',
@@ -287,13 +279,13 @@ async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string):
     '',
     'COMPETENCIAS OFICIAIS (Referencial ANQEP):',
     'Realizacoes:',
-    realizacoes || 'ver referencial',
+    realizacoesP || 'ver referencial',
     '',
     'Criterios de desempenho:',
-    criterios || 'ver referencial',
+    criteriosP || 'ver referencial',
     '',
     'Conhecimentos:',
-    conhecimentos || 'ver referencial',
+    conhecimentosP || 'ver referencial',
   ].join('\n');
 
   const estrutura = [
