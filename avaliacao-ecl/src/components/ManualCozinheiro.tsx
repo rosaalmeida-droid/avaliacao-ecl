@@ -175,32 +175,208 @@ async function chamarManualViaGS(prompts: string[]): Promise<string> {
 
 // ── Construir os 5 prompts do manual ─────────────────────────
 // Missões de cada parte do manual (compactas — dentro do limite do Groq)
-const MISSOES_PARTES = [
-  'Comeca a escrever AGORA. Primeira palavra do manual. Sem introducao. Sem plano. Sem lista de paginas. Texto corrido directamente.'
-  + ' Conteudo desta parte: nota de apresentacao do manual (2 paragrafos), enquadramento no referencial (tabela de 4 colunas: campo/descricao/referencia/observacoes), 8 objectivos de aprendizagem detalhados (cada um com 1 paragrafo explicativo), indice geral, Capitulo 1 completo (contexto historico e cultural — origem arabe, descobrimentos, doçaria conventual, bacalhau, regionalismos, chefs actuais — minimo 6 paginas de texto denso com tabelas), Capitulo 2 completo (tecnologia das materias-primas — classificacao, criterios de qualidade, frescura, tabelas de avaliacao — minimo 6 paginas).'
-  + ' Em cada capitulo: minimo 2 tabelas de 4 colunas, 1 caixa HACCP, 1 caixa DICA DO CHEF, 2 exercicios praticos.',
+// Conhecimento específico por tema — injectado nos prompts
+function blocoConhecimento(moduloNome: string): string {
+  const n = moduloNome.toLowerCase();
 
-  'Continua o manual. Sem repeticoes do que ja foi escrito. Texto corrido directamente.'
-  + ' Conteudo desta parte: Capitulo 3 completo (aprovisionamento e HACCP — fluxo recepcao/armazenagem/utilizacao, temperaturas 0-4C/congelacao -18C/confeccao 65C/regra 2h/Anisakis -20C/24h, rastreabilidade, alergenos — minimo 6 paginas), Capitulo 4 completo (pre-preparacao e mise en place, calculos de rendimento com formula IR=peso liquido/peso bruto x 100, tabela de IR por produto — minimo 5 paginas), Capitulo 5 completo (metodos de confeccao — para cada metodo: ciencia, temperatura, tempo, exemplos portugueses, reaccao de Maillard — minimo 8 paginas).'
-  + ' Tabelas, caixas HACCP e exercicios em cada capitulo.',
+  if (n.includes('cozinha tradicional portuguesa') || n.includes('iguarias da cozinha')) {
+    return [
+      'CONHECIMENTO TECNICO ESPECIFICO — COZINHA TRADICIONAL PORTUGUESA:',
+      '',
+      'HISTORIA E CONTEXTO CULTURAL (obrigatorio desenvolver em profundidade):',
+      '- Influencias arabes (sec VIII-XV): amendoa, arroz, acucar, canela, acafrao, citrinos — quais pratos actuais derivam desta heranca',
+      '- Descobrimentos (sec XV-XVI): tomate, batata, milho, feijao, malagueta, piri-piri, especiarias orientais — como transformaram a cozinha portuguesa e europeia',
+      '- Docaria conventual: clarificacao do vinho com claras deixava sobra de gemas — conventos criaram pastelaria de gema; lista de doces e o convento de origem de cada um (Pasteis de Belem - Jeronimos, Toucinho-do-ceu - Amarante, Barriga de Freira - Braga)',
+      '- O bacalhau: pescarias no Grand Banks desde sec XVI, processo de salga e secagem, 7kg per capita/ano em Portugal, mais de 365 receitas documentadas',
+      '- Maria de Lourdes Modesto (1982): Cozinha Tradicional Portuguesa — a primeira codificacao cientifica do receituario',
+      '',
+      'REGIOES GASTRONOMICAS (desenvolver CADA regiao exaustivamente com min. 1 pagina):',
+      '',
+      'MINHO E DOURO LITORAL:',
+      '- Produtos identitarios: milho (broa, papas, caldo verde), feijao verde, fumeiros (alheira de Mirandela DOP - base de vitela/porco/gordura, chourico, morcela, salpicao)',
+      '- Pratos: caldo verde (historia — prato nacional informal, couve galega cortada em juliana fina max 2mm, chourico de rodelas finas, azeite cru no final), rojoes a minhota (pedacos de porco fritos na propria gordura, com cumin e louro), bacalhau com broa (crosta de broa ralada + azeite + alho, forno 180C), papas de sarrabulho (sangue de porco, carnes diversas)',
+      '- Vinho verde IGP, azeite DOP Tras-os-Montes',
+      '',
+      'TRAS-OS-MONTES E ALTO DOURO:',
+      '- Produtos: posta mirandesa (raca Mirandesa DOP — grelhar a alta temperatura, nunca bem passada), presunto de Barroso IGP, alheira de Mirandela DOP, amendoa, castanha',
+      '- Pratos: posta mirandesa (especificidade — marmoreado unico da raca, grelhar a 250C, servir a 60C interior), sopa transmontana, trutas do Douro, caca (perdiz, lebre, javali)',
+      '',
+      'BEIRAS:',
+      '- Produtos: leitao da Bairrada (raca bisaro, peso ideal 5-7kg), chanfana (cabra velha ou borrego em barro negro), queijo da Serra da Estrela DOP (unico queijo de pasta mole untuosa feito com cardo — Cynara cardunculus)',
+      '- Tecnica leitao: salmoura com alho+sal+pimenta+banha, forno de lenha 200-220C, pele estaladiça obtida por escaldao inicial, 3h de cozedura',
+      '- Tecnica chanfana: cabra velha marinada em vinho tinto 24h, barro negro pre-aquecido, cozedura lenta 160C por 4-6h',
+      '',
+      'LISBOA E ESTREMADURA:',
+      '- Pratos: bacalhau a Bras (origem nas tabernas do sec XIX — bacalhau desfiado, batata palha, ovos mexidos, azeitonas, salsa), iscas com elas (figado de vitela marinado em vinho branco/alho/louro 24h, frigideira quente), cozido a portuguesa (carnes: vitela/frango/chourico/morcela/farinheira; legumes: cenoura/nabo/couve/feijao; acompanha arroz e caldo)',
+      '- Pasteis de Belem: criados em 1837 pelos Jeronimos, receita secreta, crosta folhada + creme de gema + canela',
+      '',
+      'ALENTEJO:',
+      '- Produtos: porco alentejano (raca iberica, montado de azinha e sobreiro, bolota), azeite DOP Alentejo, queijo de Evora DOP, coentros (erva dominante)',
+      '- Pratos: acorda alentejana (pao de vespera + alho picado + coentros frescos + azeite + ovo pochado — origem na pobreza pastoril, temperatura critica: agua a 90C para o ovo), migas alentejanas (pao de vespera encharcado em caldo de carne, absorver sem desfazer), ensopado de borrego com pao, sopa de cacao com coentros',
+      '- Tecnica acorda: o segredo esta no pao — deve ser de miolo denso, de vespera, molhado com agua quente mas nao fervente para nao cozer o ovo',
+      '',
+      'ALGARVE:',
+      '- Produtos: amendoa (DOP Algarve), figo seco, percebes, lagosta, atum (Sagres, historia das conservas)',
+      '- Pratos: cataplana (utensilio de cobre estanhado em forma de amejoa, cozedura a vapor pressurizado — amejoas com presunto: tecnica de abrir as amejoas por calor, nunca antes), caldeirada algarvia (camadas sem mexer), xerem (canjica de milho com conquilhas — origem na cultura de milho algarvia)',
+      '- Docaria: morgado de figo e amendoa, Dom Rodrigo (gema + fio de ovos enrolados em papel colorido)',
+      '',
+      'ACORES E MADEIRA:',
+      '- Acores: cozido das Furnas (unico no mundo — panela enterrada junto a fumarolas vulcanicas da Ilha de Sao Miguel, cozedura 6-8h pela caldeira natural a 100C), alcatra terceirense (boi em vinho da Terceira + especiarias + barro', '  poroso), ananas dos Acores DOP (estufa de vidro, 18 meses de crescimento), queijo de Sao Jorge DOP',
+      '- Madeira: peixe-espada preto (capturado a mais de 1000m de profundidade — unico peixe com 2 dentes exteriores, sem escamas, textura suave; servido com banana pelo contraste acido/doce), espetada madeirense (carne de vaca no pau de louro verde — o louro aromatiza de dentro para fora), bolo do caco (batata-doce na massa, grelhado em lousa)',
+      '',
+      'APTIDOES E ATITUDES A DESENVOLVER (segundo o referencial):',
+      '- Elaborar fichas tecnicas completas com capitacoes reais (pesos brutos e liquidos, custo por dose, rendimento)',
+      '- Preparar mise en place organizada: verificacao de materias-primas, preparacoes previas, organizacao do posto',
+      '- Executar confeccoes com rigor tecnico: temperaturas, tempos, texturas, apresentacao',
+      '- Empratar com criterios esteticos: proporcao, ponto focal, contraste de cores e texturas, temperatura de servico',
+      '- Cumprir HACCP em cada etapa: recepcao 0-4C, armazenagem FEFO, confeccao min 65C, regra 2h, rastreabilidade',
+      '- Reducao do desperdicio: aproveitamento de aparas, caldos de cascas, zero desperdicio na brigada',
+      '- Trabalho em brigada: comunicacao, divisao de tarefas, respeito pela hierarquia (chef/sous-chef/commis)',
+    ].join('\n');
+  }
 
-  'Continua o manual. Sem repeticoes. Texto corrido directamente.'
-  + ' Conteudo desta parte: Capitulo 6 completo (molhos e guarnicoes — proporcoes exactas para 4 doses, passo a passo, erros comuns — minimo 5 paginas), Capitulo 7 completo (empratamento e analise sensorial, principios, harmonizacao vinhos — minimo 4 paginas).'
-  + ' Depois: 3 fichas de trabalho COMPLETAS com todas as tabelas para preenchimento pelo aluno (Ficha 1: avaliacao materias-primas com tabela de criterios e temperatura; Ficha 2: calculo rendimento e custo com formula e espaco de calculo; Ficha 3: comparacao de metodos com grelha de analise sensorial).',
+  if (n.includes('peixes') || n.includes('mariscos')) {
+    return [
+      'CONHECIMENTO TECNICO ESPECIFICO — PEIXES E MARISCOS:',
+      '- Classificacao: osseos redondos (robalo, dourada, sardinha, atum), osseos achatados (linguado, pregado, solha), cartilaginosos (cao, raia)',
+      '- Cefalopodes: polvo (bater ou congelar para amaciar), lula (remover pena), choco',
+      '- Crustaceos: camarao, lagostim, lagosta, sapateira — como extrair a carne, cozedura em agua a ferver',
+      '- Bivalves: ameijoa, mexilhao, ostra, vieira — purgar 2h em agua salgada 30g/L, nunca comer fechados apos cozedura',
+      '- Frescura: olhos salientes e transparentes, guelras vermelho-vivas, carne firme e elastica, cheiro a mar',
+      '- Anisakis: -20C/24h ou confeccao a mais de 60C no interior',
+      '- Tamanhos minimos: robalo 36cm, dourada 20cm, sardinha 11cm, linguado 24cm',
+      '- Tecnicas de preparacao: esviscerar, escalar, filetar redondo (2 filetes), filetar achatado (4 filetes)',
+      '- Rendimentos: sardinha 55%, robalo 45%, linguado 35%, polvo 70% apos cozedura',
+    ].join('\n');
+  }
 
-  'Continua o manual. Sem repeticoes. Escreve directamente as fichas tecnicas.'
-  + ' Conteudo: 10 fichas tecnicas de receita completas e especificas desta UC/UFCD.'
-  + ' Formato obrigatorio de cada ficha: (1) cabecalho com nome/doses/tempos/metodo/custo, (2) tabela ingredientes com colunas Ingrediente/Quant.Bruta/Quant.Liquida/Observacoes, (3) preparacao numerada passo a passo com temperaturas precisas, (4) tabela HACCP com colunas Etapa/Perigo/Limite Critico/Medida Correctiva, (5) nota do chef com conselho tecnico, (6) variante regional.',
+  if (n.includes('carnes') || n.includes('aves') || n.includes('caca')) {
+    return [
+      'CONHECIMENTO TECNICO ESPECIFICO — CARNES, AVES E CACA:',
+      '- Bovino: cortes por zona anatomica (cachaço, entrecosto, lombo, vazia, alcatra, chambao), nivel de colagenio por corte',
+      '- Suino: lombinho, costeleta, pernil, barriga, cachaço — temperatura interna min 72C (Trichinella)',
+      '- Aves: frango (carne branca/escura), pato, peru, codorniz — min 82C interior (Salmonella, Campylobacter)',
+      '- Caca: marinadas com zimbro e vinho tinto, maridagem minima 24-48h para amaciar fibras',
+      '- Classificacao DOP: Bisaro, Barrosao, Alentejano (porco iberico)',
+      '- Maturacao: a seco (14-28 dias, 2-4C, 75% humidade), humida (vacio 7-14 dias)',
+    ].join('\n');
+  }
 
-  'Continua o manual. Sem repeticoes. Escreve directamente.'
-  + ' Conteudo: desenvolvimento de projecto (titulo ligado a UC, 7 etapas detalhadas, tabela de criterios de avaliacao com ponderacoes em %, exemplo resolvido completo).'
-  + ' Questionario de revisao global (4 grupos tematicos de 4 questoes cada, total 16 questoes, linhas de resposta, mistura de escolha multipla e desenvolvimento).'
-  + ' Glossario tecnico (15 termos especificos desta UC com definicao precisa e aplicacao pratica).'
-  + ' Sintese final (10 pontos-chave em lista).'
-  + ' Bibliografia completa com fontes reais (ANQEP, AHRESP/DGS, Reg.CE 852/2004, Maincent-Morel, McGee, Le Cordon Bleu, Modesto M.L.).'
-  + ' Anexo A: ficha tecnica em branco para preenchimento. Anexo B: folha-resumo HACCP destacavel com temperaturas e tabuleiros por cor.'
-  + ' Indice final com todos os capitulos e paginas estimadas.',
-];
+  if (n.includes('pastelaria') || n.includes('docaria') || n.includes('cremes') || n.includes('massas')) {
+    return [
+      'CONHECIMENTO TECNICO ESPECIFICO — PASTELARIA E DOCARIA:',
+      '- Farinha: T55 (todo-o-uso), T65 (paes rusticos), T80 (integral) — gluten e sua formacao por hidratacao + trabalho mecanico',
+      '- Ovos: funcoes (emulsionante-gema, espumante-clara, coagulante-calor, colorante-carotenoides)',
+      '- Acucar: pontos de calda (veia 103C, bola mole 115C, bola dura 120C, caramelo 165-180C)',
+      '- Massas base: folhada (27 camadas, manteiga a 18C, laminagem 6 voltas), quebrada (metodo areia), choux (vapor de agua faz expandir), levedada (brioche, croissant)',
+      '- Creme pasteleiro: 85C para gelatinizar amido sem coalhar ovo, arrefecer rapidamente a menos de 10C',
+      '- Docaria conventual: toucinho-do-ceu, pasteis de Belem, barriga de freira, Dom Rodrigo, morgado de figos',
+    ].join('\n');
+  }
+
+  return 'Desenvolve o tema desta UC com profundidade tecnica e cientifica, incluindo historia, tecnicas, materias-primas, HACCP e exemplos praticos reais.';
+}
+
+function construirMissoesPartes(modulo: ModuloCronograma): string[] {
+  const conhecimento = blocoConhecimento(modulo.nome);
+  const nome = modulo.id + ' — ' + modulo.nome;
+
+  return [
+    // PARTE 1
+    'Escreve DIRECTAMENTE o inicio do manual ' + nome + '. Primeira palavra e o inicio do texto real.'
+    + '\n\n' + conhecimento + '\n\n'
+    + 'CONTEUDO DESTA PARTE (escrever tudo, sem omitir):\n'
+    + '1. Nota de apresentacao do manual (2 paragrafos: o que e, para que serve, como usar)\n'
+    + '2. Enquadramento no referencial: tabela de 4 colunas (Campo / Descricao / Referencia / Observacoes) com todos os dados da UC\n'
+    + '3. 8 objectivos de aprendizagem detalhados — cada um com 1 paragrafo explicativo do que o aluno vai saber fazer\n'
+    + '4. Indice geral do manual\n'
+    + '5. CAPITULO 1 COMPLETO: Historia e contexto cultural desta UC — desenvolver exaustivamente tudo o que esta descrito no bloco de CONHECIMENTO TECNICO acima para a historia e contexto. Minimo 6 paginas.\n'
+    + '6. CAPITULO 2 COMPLETO: Tecnologia das materias-primas desta UC — classificacao, criterios de qualidade, frescura, tabelas de avaliacao. Minimo 6 paginas.\n'
+    + 'Em cada capitulo: minimo 2 tabelas de 4 colunas, caixas [DICA DO CHEF] [HACCP] [CIENCIA NA COZINHA] [SABIA QUE], 2 exercicios praticos.',
+
+    // PARTE 2
+    'Continua o manual ' + nome + '. Nao repitas o que ja foi escrito. Escreve directamente.'
+    + '\n\n' + conhecimento + '\n\n'
+    + 'CONTEUDO DESTA PARTE:\n'
+    + '1. CAPITULO 3 COMPLETO: Aprovisionamento, recepcao e HACCP\n'
+    + '   - Fluxo completo: encomenda->recepcao->armazenagem->preparacao->confeccao->servico\n'
+    + '   - Recepcao: temperaturas maximas (refrigerados max 4C, congelados max -15C), documentacao, rastreabilidade (Reg CE 178/2002)\n'
+    + '   - Armazenagem: principio FEFO, separacao por categorias, temperaturas por zona\n'
+    + '   - HACCP: pontos criticos desta UC, limites criticos reais (refrigeracao 0-4C, congelacao -18C, confeccao 65C, regra 2h, Anisakis -20C/24h)\n'
+    + '   - 14 alergenos obrigatorios (Reg UE 1169/2011): lista e gestao de contaminacao cruzada\n'
+    + '   - Tabuleiros por cor: azul=pescado, vermelho=carnes, verde=vegetais, branco=prontos a comer, amarelo=aves\n'
+    + '   Minimo 6 paginas. Tabelas, caixas [HACCP] [ERROS FREQUENTES].\n'
+    + '2. CAPITULO 4 COMPLETO: Pre-preparacao e mise en place\n'
+    + '   - Organizacao do posto segundo brigada (chef/sous-chef/commis/estagiario)\n'
+    + '   - Operacoes especificas desta UC: lista detalhada com tecnica de cada uma\n'
+    + '   - Calculo de rendimento: formula IR=peso liquido/peso bruto x 100; tabela de IR por produto desta UC\n'
+    + '   - Calculo de custo por dose: formula completa com exemplo resolvido\n'
+    + '   - Equipamentos e utensilios: tabela com nome/funcao/manutencao/HACCP\n'
+    + '   Minimo 5 paginas.\n'
+    + '3. CAPITULO 5 COMPLETO: Metodos de confeccao\n'
+    + '   - Para CADA metodo relevante desta UC: descricao tecnica, ciencia (o que acontece nos proteinas/amido/gorduras), temperatura, tempo, como verificar o ponto, exemplos de pratos portugueses\n'
+    + '   - Reaccao de Maillard: o que e, a que temperatura (>140C), como controlar, porque e importante\n'
+    + '   - Tabela comparativa de metodos: metodo/temperatura/tempo/resultado/exemplos\n'
+    + '   Minimo 8 paginas. Caixas [CIENCIA NA COZINHA] [DICA DO CHEF] em cada metodo.',
+
+    // PARTE 3
+    'Continua o manual ' + nome + '. Nao repitas. Escreve directamente.'
+    + '\n\n' + conhecimento + '\n\n'
+    + 'CONTEUDO DESTA PARTE:\n'
+    + '1. CAPITULO 6 COMPLETO: Molhos, fundos e guarnicoes\n'
+    + '   - Para cada molho/fundo especifico desta UC: historia, proporcoes exactas para 4 doses, passo a passo numerado, erros comuns e correccoes, variantes e derivados\n'
+    + '   - Tabela de molhos: nome/base/proporcoes/aplicacoes/conservacao\n'
+    + '   Minimo 5 paginas.\n'
+    + '2. CAPITULO 7 COMPLETO: Empratamento e analise sensorial\n'
+    + '   - 5 principios: proporcao, ponto focal, contraste de cores e texturas, altura, limpeza\n'
+    + '   - Temperaturas de servico por categoria (tabela)\n'
+    + '   - Grelha de analise sensorial preenchivel: aspecto/aroma/sabor/textura/temperatura/pontuacao\n'
+    + '   - Harmonizacao com vinhos portugueses: 5 exemplos especificos com esta UC\n'
+    + '   Minimo 4 paginas.\n'
+    + '3. FICHA DE TRABALHO N.1 COMPLETA: Avaliacao e registo de materias-primas\n'
+    + '   (tabela com colunas: produto/criterio/valor aceitavel/valor observado/conforme S/N/accao correctiva)\n'
+    + '4. FICHA DE TRABALHO N.2 COMPLETA: Calculo de rendimento e custo\n'
+    + '   (espaco de calculo, formula IR, tabela para preencher, exercicio guiado com valores em branco)\n'
+    + '5. FICHA DE TRABALHO N.3 COMPLETA: Comparacao de metodos e analise sensorial\n'
+    + '   (tabela comparativa de 4 metodos x 5 criterios para preenchimento)',
+
+    // PARTE 4
+    'Continua o manual ' + nome + '. Nao repitas. Escreve directamente as fichas tecnicas.'
+    + '\n\n' + conhecimento + '\n\n'
+    + 'CONTEUDO: 10 fichas tecnicas de receita COMPLETAS e ESPECIFICAS desta UC.\n'
+    + 'As receitas devem ser emblematicas desta UC, com contexto cultural/regional.\n'
+    + 'FORMATO OBRIGATORIO DE CADA FICHA:\n'
+    + '| DESIGNACAO | [nome] | CATEGORIA | [categoria] |\n'
+    + '| DOSES | 4 | CUSTO APROX. | [valor] |\n'
+    + '| TEMPO PREP | [x] min | TEMPO CONFECCAO | [x] min |\n'
+    + '| METODO | [metodo] | DIFICULDADE | [nivel] |\n'
+    + '| ORIGEM/REGIAO | [regiao] | VARIANTE REGIONAL | [variante] |\n'
+    + 'INGREDIENTES: tabela 4 colunas (Ingrediente / Quant.Bruta / Quant.Liquida / Observacoes)\n'
+    + 'PREPARACAO: passo a passo numerado com temperaturas e tempos precisos em cada passo\n'
+    + 'HACCP: tabela 4 colunas (Etapa / Perigo / Limite Critico / Medida Correctiva)\n'
+    + 'NOTA DO CHEF: conselho tecnico, o erro mais comum, como distinguir o resultado certo\n'
+    + 'CONTEXTO CULTURAL: de onde vem, historia, porque e importante na gastronomia portuguesa',
+
+    // PARTE 5
+    'Continua o manual ' + nome + '. Nao repitas. Escreve directamente.'
+    + '\n\nCONTEUDO DESTA PARTE:\n'
+    + '1. DESENVOLVIMENTO DE PROJECTO:\n'
+    + '   Titulo: projecto ligado a esta UC\n'
+    + '   7 etapas com descricao detalhada de cada uma\n'
+    + '   Tabela de criterios de avaliacao com ponderacoes em % (total 100%)\n'
+    + '   Exemplo resolvido COMPLETO de um projecto (com documentos, calculos, fotos descritas)\n'
+    + '2. QUESTIONARIO DE REVISAO GLOBAL:\n'
+    + '   4 grupos tematicos (Higiene e HACCP / Tecnicas desta UC / Planificacao / Cultura Gastronomica)\n'
+    + '   4 questoes por grupo = 16 questoes total\n'
+    + '   Linhas de resposta. Mistura: escolha multipla, verdadeiro/falso, desenvolvimento\n'
+    + '3. GLOSSARIO TECNICO: 15 termos especificos desta UC com definicao precisa e aplicacao pratica\n'
+    + '4. SINTESE FINAL: 10 pontos-chave desta UC em lista numerada\n'
+    + '5. BIBLIOGRAFIA: ANQEP 811183, AHRESP/DGS Codigo Boas Praticas, Reg.CE 852/2004 e 853/2004, Reg.UE 1169/2011, Modesto M.L. (1982), Maincent-Morel, McGee On Food and Cooking, Le Cordon Bleu, Turismo de Portugal\n'
+    + '6. ANEXO A: modelo de ficha tecnica em branco para preenchimento em aula\n'
+    + '7. ANEXO B: folha-resumo HACCP destacavel (temperaturas, tabuleiros por cor, regra 2h, Anisakis)\n'
+    + '8. INDICE FINAL: tabela com todos os capitulos/seccoes e paginas estimadas',
+  ];
+}
 
 function construirPrompts(modulo: ModuloCronograma, anoLetivo: string): string[] {
   const ref_     = modulo.tipo === 'UC' ? '811RA144' : '811183';
@@ -224,7 +400,8 @@ function construirPrompts(modulo: ModuloCronograma, anoLetivo: string): string[]
     missaoCapitulo: '',
   };
 
-  return MISSOES_PARTES.map((missao, i) =>
+  const missoes = construirMissoesPartes(modulo);
+  return missoes.map((missao, i) =>
     construirMasterPrompt({ ...ctx, capituloAtual: i + 1, missaoCapitulo: missao })
   );
 }
