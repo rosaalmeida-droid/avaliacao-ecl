@@ -766,13 +766,28 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     ));
   }
 
-  // Juntar todas as partes e guardar
+  // Juntar todas as partes e guardar automaticamente
   function juntarEGuardar() {
     const todas = partes.map(p => p.texto).filter(t => t.trim());
     if (todas.length === 0) { setErro('Nenhuma parte gerada ainda.'); return; }
     const textoFinal = todas.join('\n\n');
     setTexto(textoFinal);
     setErro('');
+    // Guardar automaticamente para que o botão Exportar funcione
+    if (!titulo.trim()) {
+      setErro('Define um título antes de juntar.');
+      return;
+    }
+    const agora = new Date().toISOString();
+    onGuardar({
+      id: entrada?.id || gerarId(),
+      titulo: titulo.trim(), categoria, nivel,
+      palavrasChave: palavras.split(',').map((p: string) => p.trim()).filter(Boolean),
+      textoGuia: textoFinal,
+      criadoPor: nomeProfessor || '',
+      criadoEm: entrada?.criadoEm || agora,
+      atualizadoEm: agora,
+    });
   }
 
   async function gerarManual() {
@@ -1187,7 +1202,21 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
         </div>
         {modoProf && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <button onClick={() => exportarGuiaoDocx(entradaAtiva)} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Exportar .docx</button>
+            <button onClick={async () => {
+                try {
+                  await exportarGuiaoDocx({
+                    ...entradaAtiva,
+                    moduloId: entradaAtiva.palavrasChave[0] || '',
+                    moduloNome: entradaAtiva.titulo,
+                    anoLetivo: '2026-2027',
+                    disciplina: entradaAtiva.categoria || '',
+                    turmaAno: 1,
+                    horas: '',
+                  });
+                } catch(e: unknown) {
+                  alert('Erro ao exportar: ' + (e instanceof Error ? e.message : String(e)));
+                }
+              }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Exportar .docx</button>
             <button onClick={async () => {
               try {
                 const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify({
