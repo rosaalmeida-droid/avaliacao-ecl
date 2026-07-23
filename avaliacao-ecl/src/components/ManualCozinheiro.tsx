@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { fmtData } from '../datas';
 import {
   EntradaManual, CategoriaManual, NivelManual,
@@ -533,18 +533,32 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     setPalavras(m.nome.split(' ').filter((w: string) => w.length > 4).slice(0, 5).join(', '));
   }
 
+  // Ultima parte gerada (para calcular pausa entre partes)
+  const ultimaGeracaoRef = React.useRef<number>(0);
+
   // Gerar uma parte individual
   async function gerarParteManual(numParte: number) {
     if (!moduloSel) { setErro('Selecciona um modulo primeiro.'); return; }
     setPartes(prev => prev.map((p, i) => i === numParte ? { ...p, estado: 'gerando' as const } : p));
     setErro('');
     try {
+      // Pausa de 35s entre partes para respeitar rate limit do Groq (12000 TPM/min)
+      const agora = Date.now();
+      const decorrido = agora - ultimaGeracaoRef.current;
+      if (ultimaGeracaoRef.current > 0 && decorrido < 35000) {
+        const espera = 35000 - decorrido;
+        setFaseIA('A aguardar ' + Math.ceil(espera/1000) + 's para respeitar o limite do Groq...');
+        await new Promise(r => setTimeout(r, espera));
+        setFaseIA('');
+      }
+
       const todosPrompts = construirPrompts(moduloSel, anoLetivo);
       const prompt = todosPrompts[numParte];
       const resp = await fetch(GS_URL, {
         method: 'POST',
         body: JSON.stringify({ acao: 'gerarParte', prompt }),
       });
+      ultimaGeracaoRef.current = Date.now();
       if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
       const data = await resp.json();
       if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
