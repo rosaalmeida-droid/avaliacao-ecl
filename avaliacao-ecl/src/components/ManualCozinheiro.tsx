@@ -1204,12 +1204,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             <button onClick={async () => {
                 try {
-                  await exportarGuiaoDocx({
-                    titulo:    entradaAtiva.titulo,
-                    categoria: entradaAtiva.categoria,
-                    nivel:     entradaAtiva.nivel,
-                    textoGuia: entradaAtiva.textoGuia,
-                  });
+                  await exportarGuiaoDocx(entradaAtiva as any);
                 } catch(e: unknown) {
                   alert('Erro ao exportar: ' + (e instanceof Error ? e.message : String(e)));
                 }
