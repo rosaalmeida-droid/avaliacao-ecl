@@ -22,6 +22,12 @@ export interface EntradaParaExportar {
   disciplina?: string;
   turmaAno?:   number;
   horas?:      string | number;
+  // campos opcionais para compatibilidade com EntradaManual
+  criadoPor?:  string;
+  criadoEm?:   string;
+  atualizadoEm?: string;
+  palavrasChave?: string[];
+  tipoPlanAula?: string;
 }
 
 // ── Constantes ECL ────────────────────────────────────────────
