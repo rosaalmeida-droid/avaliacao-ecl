@@ -11,6 +11,7 @@ import { exportarGuiaoDocx } from './exportGuiao';
 import { CRONOGRAMA_2026_2027, ANO_LETIVO, ModuloCronograma, EQUIVALENCIAS_UFCD_UC } from '../cronograma';
 import { getReferencialUC } from '../referencial811RA144';
 import { construirMasterPrompt, PromptContext } from '../masterPrompt';
+import { abrirIA } from '../abrirIA';
 import { getFichasProducao } from '../backend';
 
 const COR_PRIMARIA  = '#1a1714';
@@ -175,11 +176,30 @@ async function chamarManualViaGS(prompts: string[]): Promise<string> {
 // ── Construir os 5 prompts do manual ─────────────────────────
 // Missões de cada parte do manual (compactas — dentro do limite do Groq)
 const MISSOES_PARTES = [
-  'PARTE 1 de 5 — Escreve: nota de apresentacao, enquadramento no referencial (tabela completa), 8 objectivos de aprendizagem detalhados, indice geral, Capitulo 1 (contexto historico e cultural, min. 6 paginas), Capitulo 2 (tecnologia das materias-primas, classificacao e criterios de qualidade, min. 6 paginas). Cada capitulo com tabelas, caixas tecnicas e exercicios.',
-  'PARTE 2 de 5 — Escreve: Capitulo 3 (aprovisionamento, recepcao e HACCP com todos os limites, min. 6 paginas), Capitulo 4 (pre-preparacao e mise en place, calculos de rendimento, min. 5 paginas), Capitulo 5 (metodos de confeccao — ciencia, tecnica, exemplos portugueses, min. 8 paginas). Tabelas, caixas HACCP e exercicios em cada capitulo.',
-  'PARTE 3 de 5 — Escreve: Capitulo 6 (molhos, fundos e guarnicoes com proporcoes exactas, min. 5 paginas), Capitulo 7 (empratamento e analise sensorial, min. 4 paginas), 3 fichas de trabalho completas com tabelas para preenchimento pelo aluno (avaliacao de materias-primas, calculo de rendimento, comparacao de metodos).',
-  'PARTE 4 de 5 — Escreve: 10 fichas tecnicas de receita completas especificas desta UC/UFCD. Cada ficha: cabecalho, tabela ingredientes (quant. bruta/liquida/observacoes), preparacao numerada com temperaturas, tabela HACCP (etapa/perigo/limite/medida), nota do chef, variante regional.',
-  'PARTE 5 de 5 — Escreve: desenvolvimento de projecto (7 etapas, criterios com %, exemplo resolvido), questionario de revisao global (4 grupos, 16 questoes com linhas de resposta), glossario tecnico (15 termos com definicao precisa), sintese final (10 pontos-chave), bibliografia completa (fontes reais), Anexo A (ficha tecnica em branco), Anexo B (folha-resumo HACCP destacavel), indice final com paginas estimadas.',
+  'Comeca a escrever AGORA. Primeira palavra do manual. Sem introducao. Sem plano. Sem lista de paginas. Texto corrido directamente.'
+  + ' Conteudo desta parte: nota de apresentacao do manual (2 paragrafos), enquadramento no referencial (tabela de 4 colunas: campo/descricao/referencia/observacoes), 8 objectivos de aprendizagem detalhados (cada um com 1 paragrafo explicativo), indice geral, Capitulo 1 completo (contexto historico e cultural — origem arabe, descobrimentos, doçaria conventual, bacalhau, regionalismos, chefs actuais — minimo 6 paginas de texto denso com tabelas), Capitulo 2 completo (tecnologia das materias-primas — classificacao, criterios de qualidade, frescura, tabelas de avaliacao — minimo 6 paginas).'
+  + ' Em cada capitulo: minimo 2 tabelas de 4 colunas, 1 caixa HACCP, 1 caixa DICA DO CHEF, 2 exercicios praticos.',
+
+  'Continua o manual. Sem repeticoes do que ja foi escrito. Texto corrido directamente.'
+  + ' Conteudo desta parte: Capitulo 3 completo (aprovisionamento e HACCP — fluxo recepcao/armazenagem/utilizacao, temperaturas 0-4C/congelacao -18C/confeccao 65C/regra 2h/Anisakis -20C/24h, rastreabilidade, alergenos — minimo 6 paginas), Capitulo 4 completo (pre-preparacao e mise en place, calculos de rendimento com formula IR=peso liquido/peso bruto x 100, tabela de IR por produto — minimo 5 paginas), Capitulo 5 completo (metodos de confeccao — para cada metodo: ciencia, temperatura, tempo, exemplos portugueses, reaccao de Maillard — minimo 8 paginas).'
+  + ' Tabelas, caixas HACCP e exercicios em cada capitulo.',
+
+  'Continua o manual. Sem repeticoes. Texto corrido directamente.'
+  + ' Conteudo desta parte: Capitulo 6 completo (molhos e guarnicoes — proporcoes exactas para 4 doses, passo a passo, erros comuns — minimo 5 paginas), Capitulo 7 completo (empratamento e analise sensorial, principios, harmonizacao vinhos — minimo 4 paginas).'
+  + ' Depois: 3 fichas de trabalho COMPLETAS com todas as tabelas para preenchimento pelo aluno (Ficha 1: avaliacao materias-primas com tabela de criterios e temperatura; Ficha 2: calculo rendimento e custo com formula e espaco de calculo; Ficha 3: comparacao de metodos com grelha de analise sensorial).',
+
+  'Continua o manual. Sem repeticoes. Escreve directamente as fichas tecnicas.'
+  + ' Conteudo: 10 fichas tecnicas de receita completas e especificas desta UC/UFCD.'
+  + ' Formato obrigatorio de cada ficha: (1) cabecalho com nome/doses/tempos/metodo/custo, (2) tabela ingredientes com colunas Ingrediente/Quant.Bruta/Quant.Liquida/Observacoes, (3) preparacao numerada passo a passo com temperaturas precisas, (4) tabela HACCP com colunas Etapa/Perigo/Limite Critico/Medida Correctiva, (5) nota do chef com conselho tecnico, (6) variante regional.',
+
+  'Continua o manual. Sem repeticoes. Escreve directamente.'
+  + ' Conteudo: desenvolvimento de projecto (titulo ligado a UC, 7 etapas detalhadas, tabela de criterios de avaliacao com ponderacoes em %, exemplo resolvido completo).'
+  + ' Questionario de revisao global (4 grupos tematicos de 4 questoes cada, total 16 questoes, linhas de resposta, mistura de escolha multipla e desenvolvimento).'
+  + ' Glossario tecnico (15 termos especificos desta UC com definicao precisa e aplicacao pratica).'
+  + ' Sintese final (10 pontos-chave em lista).'
+  + ' Bibliografia completa com fontes reais (ANQEP, AHRESP/DGS, Reg.CE 852/2004, Maincent-Morel, McGee, Le Cordon Bleu, Modesto M.L.).'
+  + ' Anexo A: ficha tecnica em branco para preenchimento. Anexo B: folha-resumo HACCP destacavel com temperaturas e tabuleiros por cor.'
+  + ' Indice final com todos os capitulos e paginas estimadas.',
 ];
 
 function construirPrompts(modulo: ModuloCronograma, anoLetivo: string): string[] {
@@ -533,42 +553,19 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     setPalavras(m.nome.split(' ').filter((w: string) => w.length > 4).slice(0, 5).join(', '));
   }
 
-  // Ultima parte gerada (para calcular pausa entre partes)
-  const ultimaGeracaoRef = React.useRef<number>(0);
-
-  // Gerar uma parte individual
-  async function gerarParteManual(numParte: number) {
+  // Abrir IA externa com o prompt da parte
+  async function abrirPromptIA(numParte: number, destino: 'claude' | 'chatgpt' | 'gemini' = 'claude') {
     if (!moduloSel) { setErro('Selecciona um modulo primeiro.'); return; }
-    setPartes(prev => prev.map((p, i) => i === numParte ? { ...p, estado: 'gerando' as const } : p));
-    setErro('');
-    try {
-      // Pausa de 35s entre partes para respeitar rate limit do Groq (12000 TPM/min)
-      const agora = Date.now();
-      const decorrido = agora - ultimaGeracaoRef.current;
-      if (ultimaGeracaoRef.current > 0 && decorrido < 35000) {
-        const espera = 35000 - decorrido;
-        setFaseIA('A aguardar ' + Math.ceil(espera/1000) + 's para respeitar o limite do Groq...');
-        await new Promise(r => setTimeout(r, espera));
-        setFaseIA('');
-      }
+    const todosPrompts = construirPrompts(moduloSel, anoLetivo);
+    const prompt = todosPrompts[numParte];
+    await abrirIA(destino, prompt);
+  }
 
-      const todosPrompts = construirPrompts(moduloSel, anoLetivo);
-      const prompt = todosPrompts[numParte];
-      const resp = await fetch(GS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ acao: 'gerarParte', prompt }),
-      });
-      ultimaGeracaoRef.current = Date.now();
-      if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
-      const data = await resp.json();
-      if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
-      const texto = data.texto || '';
-      setPartes(prev => prev.map((p, i) => i === numParte ? { texto, estado: 'pronto' as const } : p));
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
-      setPartes(prev => prev.map((p, i) => i === numParte ? { ...p, estado: 'erro' as const } : p));
-      setErro('Erro na Parte ' + (numParte+1) + ': ' + msg);
-    }
+  // Colar resultado de uma parte
+  function colarResultadoParte(numParte: number, texto: string) {
+    setPartes(prev => prev.map((p, i) =>
+      i === numParte ? { texto, estado: texto.trim() ? 'pronto' as const : 'vazio' as const } : p
+    ));
   }
 
   // Juntar todas as partes e guardar
@@ -732,49 +729,79 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
               </div>
             )}
 
-            {/* Sistema de 5 partes independentes */}
+            {/* Sistema de 5 partes — abre IA externa com o prompt */}
             {!moduloSel && (
               <div style={{ fontSize: 12, color: 'rgba(109,40,217,0.4)', textAlign: 'center', padding: 8 }}>
                 Selecciona um modulo acima para activar os botoes.
               </div>
             )}
             {moduloSel && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', padding: '6px 0' }}>
+                  Carrega em cada parte → o Claude abre com o prompt → copia o resultado → cola abaixo
+                </div>
                 {[
-                  'Parte 1 — Enquadramento, Objectivos e Contexto Historico',
-                  'Parte 2 — Materias-Primas, HACCP e Metodos de Confeção',
-                  'Parte 3 — Fichas de Trabalho e Desenvolvimento de Projecto',
-                  'Parte 4 — Fichas Tecnicas de Receita (10 receitas)',
-                  'Parte 5 — Questionario, Glossario, Bibliografia e Anexos',
+                  'Parte 1 — Enquadramento, Objectivos e Contexto',
+                  'Parte 2 — Materias-Primas, HACCP e Metodos',
+                  'Parte 3 — Molhos, Empratamento e Fichas de Trabalho',
+                  'Parte 4 — Fichas Tecnicas de Receita',
+                  'Parte 5 — Questionario, Glossario e Anexos',
                 ].map((label, idx) => {
                   const parte = partes[idx];
-                  const estado = parte?.estado || 'vazio';
-                  const corBotao = estado === 'pronto' ? '#4E7A25' : estado === 'erro' ? '#c0392b' : estado === 'gerando' ? 'rgba(109,40,217,0.4)' : COR_IA;
-                  const icone = estado === 'pronto' ? '✅' : estado === 'erro' ? '❌' : estado === 'gerando' ? '⏳' : '✨';
+                  const temTexto = parte?.texto?.trim();
                   return (
-                    <button key={idx}
-                      onClick={() => gerarParteManual(idx)}
-                      disabled={estado === 'gerando'}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: 10,
-                        border: 'none', background: corBotao, color: '#fff',
-                        fontSize: 13, fontWeight: 700, textAlign: 'left',
-                        cursor: estado === 'gerando' ? 'not-allowed' : 'pointer' }}>
-                      {icone} {label}
-                      {estado === 'pronto' && <span style={{ fontSize: 11, opacity: 0.8, marginLeft: 8 }}>(gerada)</span>}
-                    </button>
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button onClick={() => abrirPromptIA(idx, 'claude')}
+                          style={{ flex: 1, padding: '9px 12px', borderRadius: 9, border: 'none',
+                            background: temTexto ? '#4E7A25' : COR_IA,
+                            color: '#fff', fontSize: 12, fontWeight: 700,
+                            textAlign: 'left', cursor: 'pointer' }}>
+                          {temTexto ? '✅' : '✨'} {label}
+                        </button>
+                        <button onClick={() => abrirPromptIA(idx, 'chatgpt')}
+                          title="Abrir no ChatGPT"
+                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #10a37f',
+                            background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#10a37f' }}>
+                          GPT
+                        </button>
+                        <button onClick={() => abrirPromptIA(idx, 'gemini')}
+                          title="Abrir no Gemini"
+                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #4285f4',
+                            background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#4285f4' }}>
+                          ✦
+                        </button>
+                        {temTexto && (
+                          <button onClick={() => colarResultadoParte(idx, '')}
+                            style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
+                              background: '#fff', fontSize: 11, cursor: 'pointer', color: 'rgba(26,23,20,0.5)' }}>
+                            🗑
+                          </button>
+                        )}
+                      </div>
+                      <textarea
+                        placeholder={'Cola aqui o resultado da ' + label + '...'}
+                        value={parte?.texto || ''}
+                        onChange={e => colarResultadoParte(idx, e.target.value)}
+                        style={{ width: '100%', minHeight: temTexto ? 80 : 40, padding: '8px 10px',
+                          borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
+                          fontSize: 11, fontFamily: 'monospace', resize: 'vertical',
+                          background: temTexto ? '#f0faf5' : '#fff',
+                          boxSizing: 'border-box' }} />
+                    </div>
                   );
                 })}
 
                 {/* Botão juntar */}
-                {partes.some(p => p.estado === 'pronto') && (
+                {partes.some(p => p.texto?.trim()) && (
                   <button
                     onClick={juntarEGuardar}
                     style={{ width: '100%', padding: '12px', borderRadius: 10, border: 'none',
                       background: '#1A1714', color: '#fff', fontSize: 14, fontWeight: 700,
                       cursor: 'pointer', marginTop: 4 }}>
-                    📄 Juntar partes e criar documento
+                    📄 Juntar e criar documento
                     <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 8 }}>
-                      ({partes.filter(p => p.estado === 'pronto').length}/5 prontas)
+                      ({partes.filter(p => p.texto?.trim()).length}/5 prontas)
                     </span>
                   </button>
                 )}
