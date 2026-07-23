@@ -10,6 +10,7 @@ import {
 import { exportarGuiaoDocx } from './exportGuiao';
 import { CRONOGRAMA_2026_2027, ANO_LETIVO, ModuloCronograma, EQUIVALENCIAS_UFCD_UC } from '../cronograma';
 import { getReferencialUC } from '../referencial811RA144';
+import { construirMasterPrompt, PromptContext } from '../masterPrompt';
 import { getFichasProducao } from '../backend';
 
 const COR_PRIMARIA  = '#1a1714';
@@ -172,100 +173,40 @@ async function chamarManualViaGS(prompts: string[]): Promise<string> {
 
 
 // ── Construir os 5 prompts do manual ─────────────────────────
+// Missões de cada parte do manual (compactas — dentro do limite do Groq)
+const MISSOES_PARTES = [
+  'PARTE 1 de 5 — Escreve: nota de apresentacao, enquadramento no referencial (tabela completa), 8 objectivos de aprendizagem detalhados, indice geral, Capitulo 1 (contexto historico e cultural, min. 6 paginas), Capitulo 2 (tecnologia das materias-primas, classificacao e criterios de qualidade, min. 6 paginas). Cada capitulo com tabelas, caixas tecnicas e exercicios.',
+  'PARTE 2 de 5 — Escreve: Capitulo 3 (aprovisionamento, recepcao e HACCP com todos os limites, min. 6 paginas), Capitulo 4 (pre-preparacao e mise en place, calculos de rendimento, min. 5 paginas), Capitulo 5 (metodos de confeccao — ciencia, tecnica, exemplos portugueses, min. 8 paginas). Tabelas, caixas HACCP e exercicios em cada capitulo.',
+  'PARTE 3 de 5 — Escreve: Capitulo 6 (molhos, fundos e guarnicoes com proporcoes exactas, min. 5 paginas), Capitulo 7 (empratamento e analise sensorial, min. 4 paginas), 3 fichas de trabalho completas com tabelas para preenchimento pelo aluno (avaliacao de materias-primas, calculo de rendimento, comparacao de metodos).',
+  'PARTE 4 de 5 — Escreve: 10 fichas tecnicas de receita completas especificas desta UC/UFCD. Cada ficha: cabecalho, tabela ingredientes (quant. bruta/liquida/observacoes), preparacao numerada com temperaturas, tabela HACCP (etapa/perigo/limite/medida), nota do chef, variante regional.',
+  'PARTE 5 de 5 — Escreve: desenvolvimento de projecto (7 etapas, criterios com %, exemplo resolvido), questionario de revisao global (4 grupos, 16 questoes com linhas de resposta), glossario tecnico (15 termos com definicao precisa), sintese final (10 pontos-chave), bibliografia completa (fontes reais), Anexo A (ficha tecnica em branco), Anexo B (folha-resumo HACCP destacavel), indice final com paginas estimadas.',
+];
+
 function construirPrompts(modulo: ModuloCronograma, anoLetivo: string): string[] {
   const ref_     = modulo.tipo === 'UC' ? '811RA144' : '811183';
   const turmaNum = modulo.turmaAno || 1;
-  const turma    = turmaNum === 1 ? '1. Ano' : turmaNum === 2 ? '2. Ano' : '3. Ano';
   const ucIdRef  = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
   const ref      = ucIdRef ? getReferencialUC(ucIdRef) : null;
-  const realizacoesP   = (ref?.realizacoes           || []).map((r: string, i: number) => (i+1) + '. ' + r).join('\n');
-  const criteriosP     = (ref?.criteriosDesempenho   || []).map((r: string) => '- ' + r).join('\n');
-  const conhecimentosP = (ref?.conhecimentos         || []).map((r: string) => '- ' + r).join('\n');
-  const anoLetivoFixo  = '2026-2027';
+  const anoLetivoFixo = '2026-2027';
 
-const papel = [
-    'Actua como um autor senior de manuais tecnicos para Escolas de Hotelaria,',
-    'especialista em gastronomia portuguesa, tecnologia alimentar, HACCP, pedagogia profissional e escrita academica.',
-    '',
-    'Escreve um verdadeiro livro tecnico equivalente aos manuais das Escolas de Hotelaria e Turismo de Portugal.',
-    'Portugues europeu, grafia pre-Acordo (Objectivos, confeccao, actual, tecnico, pratico, recepcao).',
-    'Nivel universitario. Nunca escolar. Nunca Wikipedia.',
-    '',
-    'REGRAS OBRIGATORIAS:',
-    '- Nunca resumir. Sempre desenvolver. Sempre explicar. Sempre justificar.',
-    '- Cada capitulo como um capitulo de livro — varios paragrafos por subtitulo.',
-    '- Sempre explicar o "porque" e nao apenas o "como".',
-    '- Minimo 2 tabelas de 4 colunas por capitulo.',
-    '- Caixas tecnicas: [DICA DO CHEF] [CIENCIA NA COZINHA] [HACCP] [ERROS FREQUENTES] [SABIA QUE]',
-    '- Cada capitulo termina com exercicios praticos e questoes de revisao.',
-    '- Fontes reais: ANQEP, AHRESP/DGS, Reg. CE 852/2004, Maincent-Morel, McGee, Le Cordon Bleu, Modesto M.L.',
-    '- HACCP: refrigeracao 0-4C; congelacao -18C; confeccao min. 65C; regra 2h; Anisakis -20C/24h.',
-    '- Estilo: Harold McGee + Maria de Lourdes Modesto + Manual das Escolas de Hotelaria.',
-    '- Nunca producao curta. Cada capitulo 6 a 10 paginas.',
-    '',
-    'MANUAL A PRODUZIR:',
-    modulo.id + ' — ' + modulo.nome,
-    'Referencial ' + ref_ + ' | Curso Profissional Tecnico/a de Cozinha e Restauracao',
-    turma + ' | ' + modulo.horasPrevistas + ' horas | ECL | Ano Lectivo ' + anoLetivoFixo,
-    '',
-    'COMPETENCIAS OFICIAIS (Referencial ANQEP):',
-    'Realizacoes:',
-    realizacoesP || 'ver referencial',
-    '',
-    'Criterios de desempenho:',
-    criteriosP || 'ver referencial',
-    '',
-    'Conhecimentos:',
-    conhecimentosP || 'ver referencial',
-  ].join('\n');
+  // Usar o motor editorial (masterPrompt.ts) — prompt compacto por parte
+  const ctx: PromptContext = {
+    curso: 'Curso Profissional de Tecnico/a de Cozinha e Restauracao',
+    disciplina: modulo.disciplina,
+    ufcd: modulo.id + ' — ' + modulo.nome,
+    tituloManual: modulo.nome,
+    competencias: ref?.realizacoes || [],
+    conhecimentos: ref?.conhecimentos || [],
+    aptidoes: ref?.criteriosDesempenho || [],
+    objetivos: ref?.realizacoes || [],
+    totalCapitulos: 5,
+    capituloAtual: 1,
+    missaoCapitulo: '',
+  };
 
-  const estrutura = [
-    'ESTRUTURA DO MANUAL (seguir rigorosamente):',
-    '',
-    'PARTE I — Enquadramento e Fundamentos',
-    '- Nota de apresentacao, enquadramento no referencial (tabela), 8 objectivos detalhados, indice geral',
-    '- Capitulo 1: Contexto historico, cultural e profissional (min. 8 paginas)',
-    '- Capitulo 2: Tecnologia das materias-primas — classificacao, qualidade, frescura (min. 8 paginas)',
-    '',
-    'PARTE II — Aprovisionamento, Conservacao e Tecnicas',
-    '- Capitulo 3: Aprovisionamento, recepcao e HACCP (min. 8 paginas)',
-    '- Capitulo 4: Pre-preparacao e mise en place (min. 6 paginas)',
-    '- Capitulo 5: Metodos de confeccao — ciencia, tecnica, exemplos portugueses (min. 10 paginas)',
-    '- Capitulo 6: Molhos, fundos e guarnicoes (min. 6 paginas)',
-    '- Capitulo 7: Empratamento e analise sensorial (min. 4 paginas)',
-    '',
-    'PARTE III — Instrumentos de Trabalho',
-    '- 3 Fichas de trabalho com tabelas para preenchimento',
-    '- Desenvolvimento de projecto (7 etapas, criterios com %, exemplo resolvido)',
-    '',
-    'PARTE IV — Fichas Tecnicas de Receita',
-    '- 10 fichas tecnicas completas: cabecalho, ingredientes (quant. bruta/liquida), preparacao, HACCP, nota do chef, variante regional',
-    '',
-    'PARTE V — Avaliacao e Referencias',
-    '- Questionario 16 questoes, glossario 15 termos, sintese 10 pontos, bibliografia, Anexo A e B, indice final',
-  ].join('\n');
-
-  const prompts = [
-    papel + '\n\n' + estrutura + '\n\n'
-      + 'INSTRUCAO: Escreve agora a PARTE I e PARTE II do manual (Capitulos 1 a 7).'
-      + ' Cada capitulo 6 a 10 paginas de conteudo denso.'
-      + ' Comeca pela nota de apresentacao e vai ate ao fim do Capitulo 7.'
-      + ' No final escreve apenas: === FIM PARTE 1 ===',
-
-    papel + '\n\n' + estrutura + '\n\n'
-      + 'Continua o manual ' + modulo.id + ' — ' + modulo.nome + '.'
-      + ' INSTRUCAO: Escreve agora a PARTE III (3 fichas de trabalho + projecto).'
-      + ' Fichas com tabelas completas para preenchimento.'
-      + ' Projecto: 7 etapas, criterios com %, exemplo resolvido.'
-      + ' No final escreve apenas: === FIM PARTE 2 ===',
-
-    papel + '\n\n' + estrutura + '\n\n'
-      + 'Continua o manual ' + modulo.id + ' — ' + modulo.nome + '.'
-      + ' INSTRUCAO: Escreve agora a PARTE IV (10 fichas tecnicas) e PARTE V (questionario, glossario, sintese, bibliografia, anexos, indice final).'
-      + ' No final escreve apenas: === FIM MANUAL ===',
-  ];
-
-  return prompts;
+  return MISSOES_PARTES.map((missao, i) =>
+    construirMasterPrompt({ ...ctx, capituloAtual: i + 1, missaoCapitulo: missao })
+  );
 }
 
 async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
