@@ -100,6 +100,8 @@ interface KnowledgeRule {
 
 }
 
+const KNOWLEDGE_RULES: KnowledgeRule[] = [];
+
 /**
  * ============================================================================
  * BASE DE CONHECIMENTO
