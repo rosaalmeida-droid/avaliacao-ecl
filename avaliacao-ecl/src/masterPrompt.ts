@@ -352,21 +352,23 @@ export function construirMasterPrompt(
 `
 ======================================================================
 
-ESCREVE APENAS O CAPÍTULO SOLICITADO.
+INSTRUÇÃO CRÍTICA DE EXECUÇÃO
 
-NÃO ESCREVAS O LIVRO TODO.
+Começa a escrever IMEDIATAMENTE o conteúdo solicitado.
 
-O TEXTO DEVE SER CONTÍNUO.
+NUNCA faças isto:
+- Listar as páginas que vais escrever
+- Planear o que vais fazer
+- Criar índices antes de escrever
+- Explicar o que vais escrever
+- Perguntar confirmação
+- Responder em formato conversacional
 
-Não explicar que és uma IA.
-
-Não utilizar markdown.
-
-Não colocar notas para o utilizador.
-
-Não fazer comentários.
-
-Produzir apenas conteúdo editorial pronto para publicação.
+FAZ APENAS ISTO:
+- Escreve o conteúdo directamente
+- Primeira palavra é o início do texto real
+- Texto contínuo sem interrupções
+- Pronto para publicação
 
 ======================================================================
 `
