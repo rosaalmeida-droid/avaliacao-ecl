@@ -437,6 +437,107 @@ function construirPromptUnico(modulo: ModuloCronograma, anoLetivo: string): stri
 }
 
 
+// ── Prompt opcional — fichas técnicas ────────────────────────
+function construirPromptFichasTecnicas(modulo: ModuloCronograma): string {
+  return [
+    'Escreve 10 FICHAS TÉCNICAS DE RECEITA completas e específicas para:',
+    modulo.id + ' — ' + modulo.nome,
+    '',
+    'FORMATO OBRIGATÓRIO DE CADA FICHA:',
+    '',
+    '## FICHA TÉCNICA N.º [X] — [Nome da Receita]',
+    '**Origem/Região:** [onde nasceu este prato e porquê]',
+    '',
+    '| Campo | Informação |',
+    '|---|---|',
+    '| Doses | 4 |',
+    '| Tempo de preparação | [x] min |',
+    '| Tempo de confecção | [x] min |',
+    '| Método culinário | [método] |',
+    '| Custo aproximado | [€] |',
+    '| Dificuldade | [Fácil/Médio/Difícil] |',
+    '',
+    '**INGREDIENTES:**',
+    '| Ingrediente | Quant. Bruta | Quant. Líquida | Observações |',
+    '|---|---|---|---|',
+    '',
+    '**PREPARAÇÃO** (passo a passo com temperaturas):',
+    '1. ...',
+    '',
+    '**PONTO CRÍTICO HACCP:**',
+    '| Etapa | Perigo | Limite Crítico | Medida Correctiva |',
+    '|---|---|---|---|',
+    '',
+    '**NOTA DO CHEF:** [conselho técnico e erro mais comum a evitar]',
+    '',
+    'As 10 fichas devem ser as mais representativas desta UC/UFCD.',
+    'Para cozinha portuguesa: 1 sopa, 2 pratos de peixe, 2 pratos de carne, 2 pratos regionais, 1 guarnição, 2 sobremesas.',
+    'Português europeu pré-Acordo.',
+  ].join('\n');
+}
+
+// ── Prompt opcional — fichas de trabalho ─────────────────────
+function construirPromptFichasTrabalho(modulo: ModuloCronograma): string {
+  return [
+    'Cria 3 FICHAS DE TRABALHO completas para alunos do curso profissional:',
+    modulo.id + ' — ' + modulo.nome,
+    '',
+    '---',
+    '## FICHA DE TRABALHO N.º 1 — Avaliação de Matérias-Primas',
+    '',
+    'Nome: ___________________________ Data: _______ Turma: _____',
+    '',
+    'Preenche a tabela de avaliação organoléptica para os produtos desta UC:',
+    '| Produto | Aspecto | Cheiro | Textura | Cor | Temperatura | Conforme? |',
+    '|---|---|---|---|---|---|---|',
+    '[cria 8 linhas em branco específicas para esta UC]',
+    '',
+    'Questões:',
+    '1. Quais os critérios mais importantes para avaliar a frescura de [produto específico]?',
+    '   Resposta: _______________________________________________',
+    '2. A que temperatura deve estar [produto] na recepção? ___°C',
+    '3. O que fazes se um produto não cumprir os critérios? _______',
+    '',
+    '---',
+    '## FICHA DE TRABALHO N.º 2 — Cálculo de Rendimento e Custo',
+    '',
+    'Nome: ___________________________ Data: _______ Turma: _____',
+    '',
+    'Fórmula: IR = (Peso Líquido ÷ Peso Bruto) × 100',
+    '',
+    'Exercício 1: Calcula o índice de rendimento e custo por dose:',
+    '| Ingrediente | Peso Bruto | Preço/kg | Peso Líquido | IR% | Custo por dose |',
+    '|---|---|---|---|---|---|',
+    '[cria 6 linhas com ingredientes específicos desta UC, deixa as colunas em branco]',
+    '',
+    'Custo total por dose: ______ €',
+    'Food cost (objectivo máximo 30%): ______ %',
+    '',
+    '---',
+    '## FICHA DE TRABALHO N.º 3 — Análise Sensorial e Empratamento',
+    '',
+    'Nome: ___________________________ Data: _______ Turma: _____',
+    '',
+    'Prato avaliado: _________________________',
+    '',
+    '| Critério | 1 (Mau) | 2 (Suficiente) | 3 (Bom) | 4 (Muito Bom) | 5 (Excelente) |',
+    '|---|---|---|---|---|---|',
+    '| Aspecto visual | | | | | |',
+    '| Cor e apresentação | | | | | |',
+    '| Aroma | | | | | |',
+    '| Sabor | | | | | |',
+    '| Textura | | | | | |',
+    '| Temperatura de serviço | | | | | |',
+    '| Empratamento | | | | | |',
+    '',
+    'Pontuação total: ______ / 35',
+    'Observações e sugestões de melhoria: ___________________________',
+    '',
+    'Português europeu pré-Acordo.',
+  ].join('\n');
+}
+
+
 function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
   entrada: EntradaManual; onAbrir: () => void;
   onEditar?: () => void; onApagar?: () => void; modoProf: boolean;
@@ -758,6 +859,29 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
                       background: '#4285f4', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                     ✦ Gemini
                   </button>
+                </div>
+                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
+                  Opcionais — cola o resultado no campo Conteúdo e junta ao manual:
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['claude', 'chatgpt', 'gemini'] as const).map(ia => (
+                    <button key={'ft-' + ia}
+                      onClick={() => abrirIA(ia, construirPromptFichasTecnicas(moduloSel))}
+                      style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
+                        background: '#fff', color: 'rgba(26,23,20,0.6)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                      📋 Fichas Técnicas {ia === 'claude' ? '(Claude)' : ia === 'chatgpt' ? '(GPT)' : '(Gemini)'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['claude', 'chatgpt', 'gemini'] as const).map(ia => (
+                    <button key={'fw-' + ia}
+                      onClick={() => abrirIA(ia, construirPromptFichasTrabalho(moduloSel))}
+                      style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
+                        background: '#fff', color: 'rgba(26,23,20,0.6)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                      📝 Fichas Trabalho {ia === 'claude' ? '(Claude)' : ia === 'chatgpt' ? '(GPT)' : '(Gemini)'}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
