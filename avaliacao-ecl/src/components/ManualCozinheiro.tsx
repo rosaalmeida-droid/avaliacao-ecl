@@ -158,7 +158,7 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
 }
 
 // Geração via Apps Script — manual completo em 5 partes
-const GS_URL = 'https://script.google.com/macros/s/AKfycbzBxobzVzxVfoAKC7wiqmKRiKru8z_FM1g7O6sTvRUE9q2QpD3DsTRfkrAFnouA41a1LA/exec';
+const GS_URL = '/api/gerarManual'; // proxy Vercel — evita redirect 302 do Apps Script
 
 // ── Chamada via Apps Script (proxy seguro — evita CORS) ──────
 async function chamarManualViaGS(prompts: string[]): Promise<string> {
@@ -770,14 +770,10 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   function juntarEGuardar() {
     const todas = partes.map(p => p.texto).filter(t => t.trim());
     if (todas.length === 0) { setErro('Nenhuma parte gerada ainda.'); return; }
+    if (!titulo.trim()) { setErro('Define um título antes de juntar.'); return; }
     const textoFinal = todas.join('\n\n');
     setTexto(textoFinal);
     setErro('');
-    // Guardar automaticamente para que o botão Exportar funcione
-    if (!titulo.trim()) {
-      setErro('Define um título antes de juntar.');
-      return;
-    }
     const agora = new Date().toISOString();
     onGuardar({
       id: entrada?.id || gerarId(),
@@ -1007,16 +1003,18 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
 
                 {/* Botão juntar */}
                 {partes.some(p => p.texto?.trim()) && (
-                  <button
-                    onClick={juntarEGuardar}
-                    style={{ width: '100%', padding: '12px', borderRadius: 10, border: 'none',
-                      background: '#1A1714', color: '#fff', fontSize: 14, fontWeight: 700,
-                      cursor: 'pointer', marginTop: 4 }}>
-                    📄 Juntar e criar documento
-                    <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 8 }}>
-                      ({partes.filter(p => p.texto?.trim()).length}/5 prontas)
-                    </span>
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button
+                      onClick={juntarEGuardar}
+                      style={{ width: '100%', padding: '12px', borderRadius: 10, border: 'none',
+                        background: '#1A1714', color: '#fff', fontSize: 14, fontWeight: 700,
+                        cursor: 'pointer' }}>
+                      📄 Juntar e criar documento
+                      <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 8 }}>
+                        ({partes.filter(p => p.texto?.trim()).length}/5 prontas)
+                      </span>
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -1202,15 +1200,28 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
         </div>
         {modoProf && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <button onClick={() => {
+                try {
+                  // Exportar como .txt enquanto o .docx está em desenvolvimento
+                  const blob = new Blob([entradaAtiva.textoGuia], { type: 'text/plain;charset=utf-8' });
+                  const url  = URL.createObjectURL(blob);
+                  const a    = document.createElement('a');
+                  a.href     = url;
+                  a.download = entradaAtiva.titulo.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_') + '.txt';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch(e: unknown) {
+                  alert('Erro: ' + (e instanceof Error ? e.message : String(e)));
+                }
+              }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Guardar texto (.txt)</button>
             <button onClick={async () => {
                 try {
                   await exportarGuiaoDocx(entradaAtiva as any);
                 } catch(e: unknown) {
-                  alert('Erro ao exportar: ' + (e instanceof Error ? e.message : String(e)));
+                  alert('Erro .docx: ' + (e instanceof Error ? e.message : String(e)));
                 }
-              }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Exportar .docx</button>
+              }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(0,121,107,0.3)', background: '#e0f2f1', color: '#00796b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📄 Exportar .docx</button>
             <button onClick={async () => {
-              try {
                 const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify({
                   moduloId: entradaAtiva.palavrasChave[0] || '',
                   moduloNome: entradaAtiva.titulo,
@@ -1218,14 +1229,15 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
                   disciplina: entradaAtiva.categoria,
                   horasPrevistas: '',
                   turmaAno: 1,
-                  anoLetivo: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1),
+                  anoLetivo: '2026-2027',
                   textoGuia: entradaAtiva.textoGuia,
                 }) });
                 const data = await resp.json();
                 if (data.ok) window.open(data.url, '_blank');
                 else alert('Erro: ' + data.erro);
-              } catch(e) { alert('Erro: ' + (e instanceof Error ? e.message : String(e))); }
-            }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(0,121,107,0.3)', background: '#e0f2f1', color: '#00796b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📄 Guardar no Drive (modelo ECL)</button>
+              }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(0,121,107,0.3)', background: '#e0f2f1', color: '#00796b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              📄 Guardar no Drive (modelo ECL)
+            </button>
             <button onClick={() => setModo('editar')} style={{ padding: '8px 16px',
               borderRadius: 9, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
               color: 'rgba(26,23,20,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
