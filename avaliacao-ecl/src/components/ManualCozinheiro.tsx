@@ -1205,13 +1205,10 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
             <button onClick={async () => {
                 try {
                   await exportarGuiaoDocx({
-                    ...entradaAtiva,
-                    moduloId: entradaAtiva.palavrasChave[0] || '',
-                    moduloNome: entradaAtiva.titulo,
-                    anoLetivo: '2026-2027',
-                    disciplina: entradaAtiva.categoria || '',
-                    turmaAno: 1,
-                    horas: '',
+                    titulo:    entradaAtiva.titulo,
+                    categoria: entradaAtiva.categoria,
+                    nivel:     entradaAtiva.nivel,
+                    textoGuia: entradaAtiva.textoGuia,
                   });
                 } catch(e: unknown) {
                   alert('Erro ao exportar: ' + (e instanceof Error ? e.message : String(e)));
