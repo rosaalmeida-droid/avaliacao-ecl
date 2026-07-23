@@ -7,7 +7,7 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, AlignmentType, BorderStyle, WidthType, ShadingType,
-  Header, Footer, ImageRun, PageNumber, NumberFormat,
+  Header, Footer, ImageRun, PageNumber,
   TabStopType, TabStopPosition, PageBreak, UnderlineType,
 } from 'docx';
 
@@ -338,7 +338,7 @@ export async function exportarGuiaoDocx(entrada: EntradaParaExportar): Promise<v
         reference: 'numbered',
         levels: [{
           level: 0,
-          format: NumberFormat.DECIMAL,
+          format: 'decimal' as any,
           text: '%1.',
           alignment: AlignmentType.LEFT,
           style: { paragraph: { indent: { left: 720, hanging: 360 } } },
