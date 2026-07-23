@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { fmtData } from '../datas';
 import {
   EntradaManual, CategoriaManual, NivelManual,
@@ -8,11 +8,11 @@ import {
   getEntradasManual, addEntradaManual, deleteEntradaManual, pesquisarManual,
 } from '../backend';
 import { exportarGuiaoDocx } from './exportGuiao';
-import { CRONOGRAMA_2026_2027, ANO_LETIVO, ModuloCronograma, EQUIVALENCIAS_UFCD_UC } from '../cronograma';
-import { getReferencialUC } from '../referencial811RA144';
-import { construirMasterPrompt, PromptContext } from '../masterPrompt';
 import { abrirIA } from '../abrirIA';
+import { EQUIVALENCIAS_UFCD_UC } from '../cronograma';
+import { getReferencialUC } from '../referencial811RA144';
 import { getFichasProducao } from '../backend';
+import { CRONOGRAMA_2026_2027, ANO_LETIVO, ModuloCronograma } from '../cronograma';
 
 const COR_PRIMARIA  = '#1a1714';
 const COR_DOURADO   = '#b5651d';
@@ -158,295 +158,27 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
 }
 
 // Geração via Apps Script — manual completo em 5 partes
-const GS_URL = '/api/gerarManual'; // proxy Vercel — evita redirect 302 do Apps Script
+const GS_URL = '/api/gerarManual'; // proxy Vercel
 
-// ── Chamada via Apps Script (proxy seguro — evita CORS) ──────
-async function chamarManualViaGS(prompts: string[]): Promise<string> {
-  const resp = await fetch(GS_URL, {
-    method: 'POST',
-    body: JSON.stringify({ acao: 'gerarManualCompleto', prompts }),
-  });
+async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
+  const payload = {
+    acao: 'gerarGuiaoIA',
+    prompt: {
+      moduloNome:      modulo.nome,
+      moduloId:        modulo.id,
+      disciplina:      modulo.disciplina,
+      horasPrevistas:  modulo.horasPrevistas,
+      turmaAno:        modulo.turmaAno,
+      anoLetivo:       anoLetivo,
+      referencial:     modulo.tipo === 'UC' ? '811RA144' : '811183',
+    },
+  };
+  const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify(payload) });
   if (!resp.ok) throw new Error('Erro no servidor: ' + resp.status);
   const data = await resp.json();
   if (!data.ok) throw new Error(data.erro || 'Erro desconhecido');
   return data.texto || '';
 }
-
-
-// ── Construir os 5 prompts do manual ─────────────────────────
-// Missões de cada parte do manual (compactas — dentro do limite do Groq)
-// Conhecimento específico por tema — injectado nos prompts
-function blocoConhecimento(moduloNome: string): string {
-  const n = moduloNome.toLowerCase();
-
-  if (n.includes('cozinha tradicional portuguesa') || n.includes('iguarias da cozinha')) {
-    return [
-      'FILOSOFIA EDITORIAL OBRIGATORIA PARA ESTE MANUAL:',
-      'Nao estamos a fazer uma lista de receitas. Estamos a fazer etnografia gastronomica.',
-      'Para cada prato, para cada regiao, para cada ingrediente: explicar O QUE ESTA POR TRAS.',
-      '- Quais as condicoes de vida, geograficas, climaticas e economicas que criaram este prato?',
-      '- Qual a memoria colectiva associada? O que representa para as pessoas daquela regiao?',
-      '- Que abundancia ou escassez de recursos locais explica os ingredientes escolhidos?',
-      '- Como a geografia (montanha, litoral, planicie, rio) moldou os habitos alimentares?',
-      '- Como as condicoes de pobreza ou riqueza historica de cada regiao se reflectem na cozinha?',
-      '- Que transformacoes sociais, migratorias ou economicas afectaram estas tradicoes?',
-      'Exemplo: o caldo verde nao e so couve + batata. E a pobreza do Minho, o milho como cultura',
-      'de subsistencia, a couve que cresce em qualquer quintal durante o inverno rigoroso,',
-      'o chourico como unico luxo proteico do trabalhador rural, a memoria das avos,',
-      'o vapor do domingo de manha, a partilha antes da missa. ISSO e o que o aluno tem de aprender.',
-      '',
-      'HISTORIA E CONTEXTO CULTURAL:',
-      '- Influencias arabes (sec VIII-XV): amendoa, arroz, acucar, canela, acafrao — o Al-Andalus nao foi so conquista militar, foi transformacao cultural profunda; os mouros trouxeram a agricultura de regadio, as hortas sistematicas, a destilacao; sem eles nao existia a docaria conventual portuguesa',
-      '- Descobrimentos (sec XV-XVI): tomate, batata, milho, feijao, malagueta vieram da America; especiarias orientais; Portugal foi o primeiro globalizador alimentar — a cozinha portuguesa de hoje e um arquivo vivo das rotas maritimas',
-      '- Docaria conventual: os conventos clarificavam vinho com claras de ovos (por isso sobravam gemas); a Igreja tinha acucar e amendoa de Moura; as freiras inventaram pastelaria de gema como forma de sustentar o convento — cada doce tem uma historia de sobrevivencia economica por tras',
-      '- O bacalhau: os pescadores portugueses iam ao Grand Banks desde sec XVI; a salga e secagem permitia conservar por meses sem refrigeracao; o bacalhau era comida dos pobres (barato, disponivel, nutritivo) que se tornou identidade nacional; hoje 7kg per capita/ano — o unico povo do mundo que come mais bacalhau que peixe fresco',
-      '- Maria de Lourdes Modesto (1982): a primeira a sistematizar o receituario disperso pelas aldeas; antes dela era conhecimento oral que morria com as avos; o livro foi um acto de arqueologia cultural',
-      '',
-      'REGIOES GASTRONOMICAS — ETNOGRAFIA E TECNICA (cada regiao: contexto humano + tecnica):',
-      '',
-      'MINHO E DOURO LITORAL:',
-      'CONTEXTO HUMANO E GEOGRAFICO: regiao de montanha e vales verdes com chuva abundante — a humidade permitia o cultivo do milho (introduzido no sec XVI pelos Descobrimentos) e da couve galega; era uma regiao de minifundio, familias camponesas com pequenas courelas; a pobreza obrigou ao aproveitamento TOTAL do porco (matanca do porco era evento social anual — nada se desperdicava); o rio Minho e o Lima forneciam peixe de rio (lamprea, truta, savel); os emigrantes que foram para o Brasil e regressaram trouxeram habitos e algum dinheiro mas a cozinha ficou enraizada na memoria da escassez.',
-      'CALDO VERDE: a couve galega crescia no quintal de toda a gente, resistia ao inverno do Minho; a batata vinha da America via Descobrimentos e substituiu o pao como sustento; o chourico era o unico luxo — uma rodela por tigela, simbolo de prosperidade relativa; hoje e prato de festa mas nasceu da necessidade. Tecnica: couve cortada em juliana fina (max 2mm) para cozedura rapida (3 min) que preserva a cor verde; triturar as batatas cria textura aveludada sem natas.',
-      'FUMEIROS DO MINHO: a matanca do porco em novembro era o maior evento do calendario rural — toda a aldeia participava; a fumagem com lenha de carvalho ou castanheiro conservava as carnes durante o inverno; a alheira nasceu no sec XV entre judeus que fugiam da Inquisicao (nao podiam comer porco mas precisavam de parecer que comiam fumeiros — inventaram a alheira com vitela, galinha e gordura vegetal).',
-      '- ROJOES: os residuos de gordura de porco apos a fritura eram o petroleo da cozinha minhota; os pedacos de carne (rojoes) fritos na propria gordura com cumin e louro eram a refeicao dos dias de matanca.',
-      '',
-      'TRAS-OS-MONTES E ALTO DOURO:',
-      'CONTEXTO HUMANO E GEOGRAFICO: regiao de interior isolada, invernos rigorosos, terra pobre e seca no planalto mirandesa; foi sempre uma das regioes mais pobres de Portugal — o isolamento geografico (antes das estradas) criou uma cozinha de autossuficiencia absoluta; o gado bovino raca Mirandesa era animal de trabalho antes de ser animal de consumo (por isso a carne e de qualidade excepcional — musculos trabalhados, gordura infiltrada); a castanha substituiu o pao durante seculos nesta regiao; a caca (perdiz, lebre, javali) complementava a alimentacao de uma populacao que vivia do que a terra dava.',
-      'POSTA MIRANDESA: a raca Mirandesa e autoctone desta regiao ha milenios — animal de trabalho que passava a vida a andar nos campos pedregosos; por isso a carne tem marmoreado excepcional (gordura infiltrada nos musculos trabalhados); a posta grossa (3-4 cm) reflecte a abundancia rara — quando se comia carne, comia-se de verdade; grelhar a alta temperatura (250C) cria crosta de Maillard que sela os sucos; servir a 60-65C no interior (mal passada) e obrigatorio — esta carne nao se come bem passada.',
-      'ALHEIRA DE MIRANDELA DOP: inventada pelos cripto-judeus do seculo XV para enganar a Inquisicao (os cristaos novos tinham de ser vistos a comer fumeiros de porco, mas a sua lei religiosa proibia); misturavam vitela, galinha, pao e gorduras vegetais; com o tempo toda a populacao adoptou a receita e hoje e o fumeiro mais famoso de Portugal.',
-      '',
-      'BEIRAS:',
-      'CONTEXTO HUMANO E GEOGRAFICO: as Beiras sao tres regioes distintas — Beira Alta (montanha da Serra da Estrela, pastoricio), Beira Baixa (terra quente de planicie, olivais), Beira Litoral (a Bairrada fertil, vinhos, leitoes); o pastoricio ovinoide e caprino na Serra da Estrela criou o queijo mais famoso de Portugal e a tradicao das cabras velhas que se matavam no fim da vida produtiva; a Bairrada e regiao de criadores de porco bisaro desde sempre.',
-      'LEITAO DA BAIRRADA: a raca bisaro e autoctone da regiao; o leitao de 5-7kg representa o momento de abate optimo (antes de a carne perder ternura); a pele estaladiça e o sinal de perfeicao — obtida por escaldao inicial com agua a ferver, depois secagem completa, depois forno de lenha a 200-220C; a gordura subcutanea derrete para dentro e a pele fica como cristal; e um prato de celebracao — batismo, casamento, primeira comunhao; a Bairrada era rica por causa do vinho Baga (acido, tanico, que corta a gordura do leitao — por isso se bebem juntos).',
-      'CHANFANA: a cabra velha nao servia para comer grelhada (carne dura, fibrosa); a solucao foi a cozedura lenta de 4-6h em vinho tinto (o acido do vinho hidrolisa o colagenio das fibras envelhecidas); o barro negro de Vila Nova de Poiares e poroso e distribui o calor de forma uniforme sem pontos quentes; a cabra mais velha tem sabor mais intenso — o que numa grelha seria defeito, num estufado lento e virtude.',
-      'QUEIJO DA ESTRELA DOP: o cardo (Cynara cardunculus, parente da alcachofra) tem enzimas proteoliticas que coagulam o leite de forma diferente do coalho animal — a coagulacao e mais lenta e a pasta fica untuosa e cremosa (nao elastica); o pastoricio na Serra da Estrela era a unica actividade economica possivel em terra de montanha fria; as ovelhas bordaleiras comiam ervas aromaticas da serra que aromatizam naturalmente o leite.',
-      '',
-      'LISBOA E ESTREMADURA:',
-      'CONTEXTO HUMANO E GEOGRAFICO: Lisboa foi sempre cidade cosmopolita — porto de chegada de produtos de todo o Imperio; as tabernas do Bairro Alto e Alfama eram o equivalente dos restaurantes modernos para as classes trabalhadoras; a cidade atraiu emigrantes de todas as regioes que trouxeram as suas tradicoes e as misturaram; o Tejo fornecia peixe fresco; as classes populares desenvolveram uma cozinha criativa com o que sobrava — aproveitamento de visceras, pao de vespera, batata barata.',
-      'BACALHAU A BRAS: nasceu nas tabernas de Lisboa no sec XIX; o bacalhau salgado era comida de pobres (barato, sempre disponivel); a batata palha (fina e frita) era mais barata que as batatas cozidas; os ovos mexidos esticavam a refeicao para mais pessoas; as azeitonas e a salsa eram ingredientes gratuitos ou baratos; e um prato de gente sem dinheiro que ficou eterno porque e delicioso e reconfortante.',
-      'ISCAS COM ELAS: o figado era a parte mais barata e nutritiva do animal — as visceras iam para os pobres enquanto os ricos ficavam com os lombos; a marinada de 24h em vinho branco, alho e louro transformava o sabor forte das visceras; as batatas (elas) eram o sustento da refeicao; hoje e prato nostalgico de Lisboa, comida de taberna.',
-      'COZIDO A PORTUGUESA: o cozido e uma refeicao de domingo, de familias numerosas — a panela enchia-se com o que havia: uma peca de vitela, um frango, enchidos variados, todos os legumes do quintal; o caldo de cozer as carnes tornava-se a sopa do dia seguinte; o arroz absorvia o caldo das carnes; e a sintese da abundancia familiar de domingo depois de uma semana de escassez.',
-      '',
-      'ALENTEJO:',
-      'CONTEXTO HUMANO E GEOGRAFICO: planicie imensa, veroes brutais de 40C, terra de latifundio — os trabalhadores agricolas (ceifeiros, pegureiros) percorriam longas distancias a pe carregando o que podiam comer frio ou requentar no campo; o pao de trigo (abundante no celeiro de Portugal) era o sustento diario; os coentros cresciam espontaneamente em todo o Alentejo; o azeite era producao propria; o ovo era o que o pastor tinha sempre; nao havia refrigeracao nem meios de transporte dos alimentos — a cozinha alentejana e a cozinha da sobrevivencia num clima extremo.',
-      'ACORDA ALENTEJANA: e literalmente a refeicao do pastor que saiu de casa de manha cedo e levava o pao de vespera (endurecido), alho, coentros e um fio de azeite; no campo aquecia agua, esfarelava o pao duro, acrescentava o alho picado cru, os coentros frescos, o azeite, e punha o ovo a cozer na agua quente; e uma refeicao de 5 ingredientes baratos que hoje custa 15 euros num restaurante de Lisboa porque a memoria do sabor e poderosa.',
-      'MIGAS ALENTEJANAS: o pao de vespera era precioso — nao se desperdicava; encharcado em caldo de carne (ou agua com azeite) e trabalhado ate absorver tudo sem desfazer; servia como acompanhamento de carne de porco; e o mesmo principio das sopas medievais de toda a Europa — o pao era o sustento, a carne era o condimento.',
-      'PORCO ALENTEJANO: os montados de sobro e azinho (sobreiro e azinheira) cobrem o Alentejo com bolota — em outubro/novembro soltam toneladas de bolota que o porco iberico come livremente; a gordura da bolota e monoinsaturada (como o azeite) e infiltra-se nos musculos dando sabor unico; e o sistema agro-florestal mais sustentavel da Europa, com centenas de anos de historia.',
-      '',
-      'ALGARVE:',
-      'CONTEXTO HUMANO E GEOGRAFICO: o Algarve foi reino independente durante seculos, com forte heranca arabe (Al-Gharb significa "o ocidente" em arabe); os mouros plantaram amendoeiras, figueiras e citrinos que transformaram a paisagem; a costa era a mais rica em peixe e marisco de Portugal (correntes atlanticas frias + Mediterraneo); as comunidades piscatoras de Vila Real de Santo Antonio e Portimao foram as primeiras a industrializar a conserva de atum (sec XIX); o Algarve era pobre no interior (serrania) mas rico no litoral.',
-      'CATAPLANA: o utensilio de cobre estanhado em forma de amejoa (bivalve) foi inventado pelos mouros e e unico no mundo; o fecho hermetico cria uma camera de pressao que cozinha a vapor sem perdas de sumo; as amejoas com presunto combinam o iodo do mar com o fumado da terra — o contraste e a assinatura da cozinha algarvia; as amejoas nunca se abrem antes de entrar na cataplana — abrem pelo calor (60-65C) e o suco que largam e a base do molho.',
-      'XEREM: o milho chegou ao Algarve pelos Descobrimentos mas adaptou-se extraordinariamente; o xerem (canjica de milho grosso) com conquilhas (bivalves pequenos dos estuarios algarvios) e a prova de que a pobreza inventiva cria pratos magistrais; os pescadores tinham conquilhas em abundancia e milho guardado; a combinacao criou um prato humilde que hoje e considerado alta gastronomia.',
-      'DOCARIA ARABE: o morgado de figo e amendoa e o Dom Rodrigo sao heranca directa da cultura arabe — amendoa, figo, mel, especiarias; os mouros cultivaram estes ingredientes no Algarve e a docaria sobreviveu 800 anos apos a reconquista.',
-      '',
-      'ACORES E MADEIRA:',
-      'CONTEXTO HUMANO E GEOGRAFICO ACORES: ilhas vulcanicas no meio do Atlantico, colonizadas no sec XV por portugueses, flamengos e outros europeus; o isolamento durante seculos criou culturas proprias; a actividade vulcanica e visivel e perigosa mas os acorianos aprenderam a coexistir e ate a usar o calor da terra para cozinhar; a pecuaria leiteira e o sustento principal (pastos verdes o ano inteiro); o mar fornecia peixe em abundancia.',
-      'COZIDO DAS FURNAS: em Sao Miguel existem caldeiras naturais de vapor vulcanico a 100C constante; os acorianos perceberam que podiam enterrar a panela ali de manha e encontrar a refeicao pronta ao fim da tarde; e provavelmente a tecnica de cozedura mais antiga do mundo ainda em uso activo; o cozido leva carnes, enchidos e legumes locais; e experiencia unica no mundo — comer uma refeicao cozida pelo vulcao.',
-      'CONTEXTO HUMANO E GEOGRAFICO MADEIRA: ilha montanhosa no Atlantico, colonizada no sec XV; a levada (sistema de irrigacao em canais pela montanha) tornou possivel o cultivo em terracas inerveis; a cana-de-acucar foi a primeira riqueza (antes do Brasil); os escravos africanos trazidos para o trabalho dos canavieiros deixaram marcas na cultura; o peixe-espada preto habita profundezas de 1000-1200m ao largo da costa sul da Madeira.',
-      'PEIXE-ESPADA PRETO COM BANANA: o peixe-espada preto (Aphanopus carbo) e capturado a grande profundidade com anzol especial e linha de 1km; a textura branca e suave (sem espinhas, sem escamas) torna-o acessivel; a banana da Madeira e pequena, doce e acida (variedade Maca) — o contraste com o iodo do peixe e o sal cria equilibrio perfeito; nao e uma combinacao arbitraria — e seculo de experiencia empirica de uma populacao que tinha estes dois ingredientes abundantes.',
-      '',
-      'APTIDOES E ATITUDES A DESENVOLVER (segundo o referencial):',
-      '- Elaborar fichas tecnicas completas com capitacoes reais (pesos brutos e liquidos, custo por dose, rendimento)',
-      '- Preparar mise en place organizada: verificacao de materias-primas, preparacoes previas, organizacao do posto',
-      '- Executar confeccoes com rigor tecnico: temperaturas, tempos, texturas, apresentacao',
-      '- Empratar com criterios esteticos: proporcao, ponto focal, contraste de cores e texturas, temperatura de servico',
-      '- Cumprir HACCP em cada etapa: recepcao 0-4C, armazenagem FEFO, confeccao min 65C, regra 2h, rastreabilidade',
-      '- Reducao do desperdicio: aproveitamento de aparas, caldos de cascas, zero desperdicio na brigada',
-      '- Trabalho em brigada: comunicacao, divisao de tarefas, respeito pela hierarquia (chef/sous-chef/commis)',
-    ].join('\n');
-  }
-
-  if (n.includes('peixes') || n.includes('mariscos')) {
-    return [
-      'CONHECIMENTO TECNICO ESPECIFICO — PEIXES E MARISCOS:',
-      '- Classificacao: osseos redondos (robalo, dourada, sardinha, atum), osseos achatados (linguado, pregado, solha), cartilaginosos (cao, raia)',
-      '- Cefalopodes: polvo (bater ou congelar para amaciar), lula (remover pena), choco',
-      '- Crustaceos: camarao, lagostim, lagosta, sapateira — como extrair a carne, cozedura em agua a ferver',
-      '- Bivalves: ameijoa, mexilhao, ostra, vieira — purgar 2h em agua salgada 30g/L, nunca comer fechados apos cozedura',
-      '- Frescura: olhos salientes e transparentes, guelras vermelho-vivas, carne firme e elastica, cheiro a mar',
-      '- Anisakis: -20C/24h ou confeccao a mais de 60C no interior',
-      '- Tamanhos minimos: robalo 36cm, dourada 20cm, sardinha 11cm, linguado 24cm',
-      '- Tecnicas de preparacao: esviscerar, escalar, filetar redondo (2 filetes), filetar achatado (4 filetes)',
-      '- Rendimentos: sardinha 55%, robalo 45%, linguado 35%, polvo 70% apos cozedura',
-    ].join('\n');
-  }
-
-  if (n.includes('carnes') || n.includes('aves') || n.includes('caca')) {
-    return [
-      'CONHECIMENTO TECNICO ESPECIFICO — CARNES, AVES E CACA:',
-      '- Bovino: cortes por zona anatomica (cachaço, entrecosto, lombo, vazia, alcatra, chambao), nivel de colagenio por corte',
-      '- Suino: lombinho, costeleta, pernil, barriga, cachaço — temperatura interna min 72C (Trichinella)',
-      '- Aves: frango (carne branca/escura), pato, peru, codorniz — min 82C interior (Salmonella, Campylobacter)',
-      '- Caca: marinadas com zimbro e vinho tinto, maridagem minima 24-48h para amaciar fibras',
-      '- Classificacao DOP: Bisaro, Barrosao, Alentejano (porco iberico)',
-      '- Maturacao: a seco (14-28 dias, 2-4C, 75% humidade), humida (vacio 7-14 dias)',
-    ].join('\n');
-  }
-
-  if (n.includes('pastelaria') || n.includes('docaria') || n.includes('cremes') || n.includes('massas')) {
-    return [
-      'CONHECIMENTO TECNICO ESPECIFICO — PASTELARIA E DOCARIA:',
-      '- Farinha: T55 (todo-o-uso), T65 (paes rusticos), T80 (integral) — gluten e sua formacao por hidratacao + trabalho mecanico',
-      '- Ovos: funcoes (emulsionante-gema, espumante-clara, coagulante-calor, colorante-carotenoides)',
-      '- Acucar: pontos de calda (veia 103C, bola mole 115C, bola dura 120C, caramelo 165-180C)',
-      '- Massas base: folhada (27 camadas, manteiga a 18C, laminagem 6 voltas), quebrada (metodo areia), choux (vapor de agua faz expandir), levedada (brioche, croissant)',
-      '- Creme pasteleiro: 85C para gelatinizar amido sem coalhar ovo, arrefecer rapidamente a menos de 10C',
-      '- Docaria conventual: toucinho-do-ceu, pasteis de Belem, barriga de freira, Dom Rodrigo, morgado de figos',
-    ].join('\n');
-  }
-
-  return 'Desenvolve o tema desta UC com profundidade tecnica e cientifica, incluindo historia, tecnicas, materias-primas, HACCP e exemplos praticos reais.';
-}
-
-function construirMissoesPartes(modulo: ModuloCronograma): string[] {
-  const conhecimento = blocoConhecimento(modulo.nome);
-  const nome = modulo.id + ' — ' + modulo.nome;
-
-  return [
-    // PARTE 1
-    'Escreve DIRECTAMENTE o inicio do manual ' + nome + '. Primeira palavra e o inicio do texto real.'
-    + '\n\n' + conhecimento + '\n\n'
-    + 'CONTEUDO DESTA PARTE (escrever tudo, sem omitir):\n'
-    + '1. Nota de apresentacao do manual (2 paragrafos: o que e, para que serve, como usar)\n'
-    + '2. Enquadramento no referencial: tabela de 4 colunas (Campo / Descricao / Referencia / Observacoes) com todos os dados da UC\n'
-    + '3. 8 objectivos de aprendizagem detalhados — cada um com 1 paragrafo explicativo do que o aluno vai saber fazer\n'
-    + '4. Indice geral do manual\n'
-    + '5. CAPITULO 1 COMPLETO: Historia e contexto cultural desta UC — desenvolver exaustivamente tudo o que esta descrito no bloco de CONHECIMENTO TECNICO acima para a historia e contexto. Minimo 6 paginas.\n'
-    + '6. CAPITULO 2 COMPLETO: Tecnologia das materias-primas desta UC — classificacao, criterios de qualidade, frescura, tabelas de avaliacao. Minimo 6 paginas.\n'
-    + 'Em cada capitulo: minimo 2 tabelas de 4 colunas, caixas [DICA DO CHEF] [HACCP] [CIENCIA NA COZINHA] [SABIA QUE], 2 exercicios praticos.',
-
-    // PARTE 2
-    'Continua o manual ' + nome + '. Nao repitas o que ja foi escrito. Escreve directamente.'
-    + '\n\n' + conhecimento + '\n\n'
-    + 'CONTEUDO DESTA PARTE:\n'
-    + '1. CAPITULO 3 COMPLETO: Aprovisionamento, recepcao e HACCP\n'
-    + '   - Fluxo completo: encomenda->recepcao->armazenagem->preparacao->confeccao->servico\n'
-    + '   - Recepcao: temperaturas maximas (refrigerados max 4C, congelados max -15C), documentacao, rastreabilidade (Reg CE 178/2002)\n'
-    + '   - Armazenagem: principio FEFO, separacao por categorias, temperaturas por zona\n'
-    + '   - HACCP: pontos criticos desta UC, limites criticos reais (refrigeracao 0-4C, congelacao -18C, confeccao 65C, regra 2h, Anisakis -20C/24h)\n'
-    + '   - 14 alergenos obrigatorios (Reg UE 1169/2011): lista e gestao de contaminacao cruzada\n'
-    + '   - Tabuleiros por cor: azul=pescado, vermelho=carnes, verde=vegetais, branco=prontos a comer, amarelo=aves\n'
-    + '   Minimo 6 paginas. Tabelas, caixas [HACCP] [ERROS FREQUENTES].\n'
-    + '2. CAPITULO 4 COMPLETO: Pre-preparacao e mise en place\n'
-    + '   - Organizacao do posto segundo brigada (chef/sous-chef/commis/estagiario)\n'
-    + '   - Operacoes especificas desta UC: lista detalhada com tecnica de cada uma\n'
-    + '   - Calculo de rendimento: formula IR=peso liquido/peso bruto x 100; tabela de IR por produto desta UC\n'
-    + '   - Calculo de custo por dose: formula completa com exemplo resolvido\n'
-    + '   - Equipamentos e utensilios: tabela com nome/funcao/manutencao/HACCP\n'
-    + '   Minimo 5 paginas.\n'
-    + '3. CAPITULO 5 COMPLETO: Metodos de confeccao\n'
-    + '   - Para CADA metodo relevante desta UC: descricao tecnica, ciencia (o que acontece nos proteinas/amido/gorduras), temperatura, tempo, como verificar o ponto, exemplos de pratos portugueses\n'
-    + '   - Reaccao de Maillard: o que e, a que temperatura (>140C), como controlar, porque e importante\n'
-    + '   - Tabela comparativa de metodos: metodo/temperatura/tempo/resultado/exemplos\n'
-    + '   Minimo 8 paginas. Caixas [CIENCIA NA COZINHA] [DICA DO CHEF] em cada metodo.',
-
-    // PARTE 3
-    'Continua o manual ' + nome + '. Nao repitas. Escreve directamente.'
-    + '\n\n' + conhecimento + '\n\n'
-    + 'CONTEUDO DESTA PARTE:\n'
-    + '1. CAPITULO 6 COMPLETO: Molhos, fundos e guarnicoes\n'
-    + '   - Para cada molho/fundo especifico desta UC: historia, proporcoes exactas para 4 doses, passo a passo numerado, erros comuns e correccoes, variantes e derivados\n'
-    + '   - Tabela de molhos: nome/base/proporcoes/aplicacoes/conservacao\n'
-    + '   Minimo 5 paginas.\n'
-    + '2. CAPITULO 7 COMPLETO: Empratamento e analise sensorial\n'
-    + '   - 5 principios: proporcao, ponto focal, contraste de cores e texturas, altura, limpeza\n'
-    + '   - Temperaturas de servico por categoria (tabela)\n'
-    + '   - Grelha de analise sensorial preenchivel: aspecto/aroma/sabor/textura/temperatura/pontuacao\n'
-    + '   - Harmonizacao com vinhos portugueses: 5 exemplos especificos com esta UC\n'
-    + '   Minimo 4 paginas.\n'
-    + '3. FICHA DE TRABALHO N.1 COMPLETA: Avaliacao e registo de materias-primas\n'
-    + '   (tabela com colunas: produto/criterio/valor aceitavel/valor observado/conforme S/N/accao correctiva)\n'
-    + '4. FICHA DE TRABALHO N.2 COMPLETA: Calculo de rendimento e custo\n'
-    + '   (espaco de calculo, formula IR, tabela para preencher, exercicio guiado com valores em branco)\n'
-    + '5. FICHA DE TRABALHO N.3 COMPLETA: Comparacao de metodos e analise sensorial\n'
-    + '   (tabela comparativa de 4 metodos x 5 criterios para preenchimento)',
-
-    // PARTE 4
-    'Continua o manual ' + nome + '. Nao repitas. Escreve directamente as fichas tecnicas.'
-    + '\n\n' + conhecimento + '\n\n'
-    + 'CONTEUDO: 10 fichas tecnicas de receita COMPLETAS e ESPECIFICAS desta UC.\n'
-    + 'As receitas devem ser emblematicas desta UC, com contexto cultural/regional.\n'
-    + 'FORMATO OBRIGATORIO DE CADA FICHA:\n'
-    + '| DESIGNACAO | [nome] | CATEGORIA | [categoria] |\n'
-    + '| DOSES | 4 | CUSTO APROX. | [valor] |\n'
-    + '| TEMPO PREP | [x] min | TEMPO CONFECCAO | [x] min |\n'
-    + '| METODO | [metodo] | DIFICULDADE | [nivel] |\n'
-    + '| ORIGEM/REGIAO | [regiao] | VARIANTE REGIONAL | [variante] |\n'
-    + 'INGREDIENTES: tabela 4 colunas (Ingrediente / Quant.Bruta / Quant.Liquida / Observacoes)\n'
-    + 'PREPARACAO: passo a passo numerado com temperaturas e tempos precisos em cada passo\n'
-    + 'HACCP: tabela 4 colunas (Etapa / Perigo / Limite Critico / Medida Correctiva)\n'
-    + 'NOTA DO CHEF: conselho tecnico, o erro mais comum, como distinguir o resultado certo\n'
-    + 'CONTEXTO CULTURAL: de onde vem, historia, porque e importante na gastronomia portuguesa',
-
-    // PARTE 5
-    'Continua o manual ' + nome + '. Nao repitas. Escreve directamente.'
-    + '\n\nCONTEUDO DESTA PARTE:\n'
-    + '1. DESENVOLVIMENTO DE PROJECTO:\n'
-    + '   Titulo: projecto ligado a esta UC\n'
-    + '   7 etapas com descricao detalhada de cada uma\n'
-    + '   Tabela de criterios de avaliacao com ponderacoes em % (total 100%)\n'
-    + '   Exemplo resolvido COMPLETO de um projecto (com documentos, calculos, fotos descritas)\n'
-    + '2. QUESTIONARIO DE REVISAO GLOBAL:\n'
-    + '   4 grupos tematicos (Higiene e HACCP / Tecnicas desta UC / Planificacao / Cultura Gastronomica)\n'
-    + '   4 questoes por grupo = 16 questoes total\n'
-    + '   Linhas de resposta. Mistura: escolha multipla, verdadeiro/falso, desenvolvimento\n'
-    + '3. GLOSSARIO TECNICO: 15 termos especificos desta UC com definicao precisa e aplicacao pratica\n'
-    + '4. SINTESE FINAL: 10 pontos-chave desta UC em lista numerada\n'
-    + '5. BIBLIOGRAFIA: ANQEP 811183, AHRESP/DGS Codigo Boas Praticas, Reg.CE 852/2004 e 853/2004, Reg.UE 1169/2011, Modesto M.L. (1982), Maincent-Morel, McGee On Food and Cooking, Le Cordon Bleu, Turismo de Portugal\n'
-    + '6. ANEXO A: modelo de ficha tecnica em branco para preenchimento em aula\n'
-    + '7. ANEXO B: folha-resumo HACCP destacavel (temperaturas, tabuleiros por cor, regra 2h, Anisakis)\n'
-    + '8. INDICE FINAL: tabela com todos os capitulos/seccoes e paginas estimadas',
-  ];
-}
-
-function construirPrompts(modulo: ModuloCronograma, anoLetivo: string): string[] {
-  const ref_     = modulo.tipo === 'UC' ? '811RA144' : '811183';
-  const turmaNum = modulo.turmaAno || 1;
-  const ucIdRef  = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
-  const ref      = ucIdRef ? getReferencialUC(ucIdRef) : null;
-  const anoLetivoFixo = '2026-2027';
-
-  // Usar o motor editorial (masterPrompt.ts) — prompt compacto por parte
-  const ctx: PromptContext = {
-    curso: 'Curso Profissional de Tecnico/a de Cozinha e Restauracao',
-    disciplina: modulo.disciplina,
-    ufcd: modulo.id + ' — ' + modulo.nome,
-    tituloManual: modulo.nome,
-    competencias: ref?.realizacoes || [],
-    conhecimentos: ref?.conhecimentos || [],
-    aptidoes: ref?.criteriosDesempenho || [],
-    objetivos: ref?.realizacoes || [],
-    totalCapitulos: 5,
-    capituloAtual: 1,
-    missaoCapitulo: '',
-  };
-
-  const missoes = construirMissoesPartes(modulo);
-  return missoes.map((missao, i) =>
-    construirMasterPrompt({ ...ctx, capituloAtual: i + 1, missaoCapitulo: missao })
-  );
-}
-
-async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
-  const todasFichas = getFichasProducao();
-  const ucIdRef = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
-  const fichasUC = todasFichas.filter((f: any) =>
-    (f.ucsAssociadas || []).includes(modulo.id) ||
-    (ucIdRef ? (f.ucsAssociadas || []).includes(ucIdRef) : false)
-  );
-  const fichasApp = fichasUC.slice(0, 14).map((f: any) => ({
-    nomePrato: f.nomePrato, numPorcoes: f.numPorcoes || '4',
-    tempoPrep: f.tempoPrep || '', tempoConf: f.tempoConf || '',
-    ingredientes: (f.ingredientes || []).map((i: any) => ({ produto: i.produto || '', quantidade: i.quantidade || '', unidade: i.unidade || '' })),
-    preparacao:   (f.preparacao   || []).map((p: any) => ({ descricao: p.descricao || '', haccp: p.haccp || '' })),
-    empratamento: f.empratamento || '', alergenicos: f.alergenicos || [],
-  }));
-
-  const prompts = construirPrompts(modulo, anoLetivo);
-  return await chamarManualViaGS(prompts);
-}
-
-
 
 // Exportar para Google Doc via modelo oficial ECL
 async function exportarParaDrive(modulo: ModuloCronograma, anoLetivo: string, textoGuia: string): Promise<string> {
@@ -588,7 +320,163 @@ function RenderizadorManual({ texto }: { texto: string }) {
 }
 
 
-// ── Card de entrada ────────────────────────────────────────────
+// ── Conhecimento específico por tema ──────────────────────────
+function blocoConhecimento(moduloNome: string): string {
+  const n = moduloNome.toLowerCase();
+  if (n.includes('cozinha tradicional portuguesa') || n.includes('iguarias')) {
+    return [
+      'FILOSOFIA EDITORIAL: Não listes receitas. Faz etnografia gastronómica.',
+      'Para cada região, prato e ingrediente: explica O QUE ESTÁ POR TRÁS.',
+      '- Condições de vida, geografia e clima que criaram este prato',
+      '- Memória colectiva e o que representa para as pessoas',
+      '- Abundância ou escassez de recursos que explica os ingredientes',
+      '- Como a pobreza ou riqueza histórica se reflecte na cozinha',
+      '',
+      'REGIÕES (desenvolve cada uma com mínimo 2 páginas de texto denso):',
+      'MINHO: milho/couve/chouriço = pobreza rural; caldo verde = sustento do trabalhador; alheira = cripto-judaísmo do séc XV',
+      'TRÁS-OS-MONTES: isolamento secular; posta mirandesa = gado de trabalho com marmoreado único; alheira de Mirandela DOP',
+      'BEIRAS: leitão da Bairrada (raça bísaro, forno de lenha, pele estaladiça); chanfana (cabra velha + barro negro + vinho tinto 4-6h); queijo Serra Estrela DOP (cardo coagulante)',
+      'LISBOA: tabernas séc XIX; bacalhau à Brás = comida de pobres com restos; iscas = vísceras baratas; cozido = refeição de domingo familiar',
+      'ALENTEJO: calor extremo, pastor com recursos mínimos; açorda = pão velho + alho + coentros + ovo = sobrevivência; porco ibérico + montado de azinha',
+      'ALGARVE: herança árabe (amêndoa, figo); cataplana (cobre estanhado, câmara de vapor); xerem com conquilhas = milho + mar',
+      'AÇORES: cozido das Furnas (vulcão = forno natural); alcatra terceirense; ananás DOP',
+      'MADEIRA: peixe-espada preto (1000m profundidade) com banana (contraste iodo/doce); espetada em pau de louro',
+    ].join('\n');
+  }
+  if (n.includes('peixes') || n.includes('mariscos')) {
+    return 'Classifica: osseos redondos, achatados, cartilaginosos, cefalopodes, crustaceos, bivalves. Frescura: olhos, guelras, cheiro. Anisakis: -20C/24h. Tamanhos mínimos legais. Técnicas de preparação por espécie. Sazonalidade mês a mês.';
+  }
+  if (n.includes('carnes') || n.includes('aves')) {
+    return 'Cortes bovinos/suínos/ovinos com diagrama. Temperatura interna mínima por espécie. DOP: Bísaro, Barrosão, Alentejano. Maturação a seco vs húmida. Aves: Salmonella/Campylobacter min 82°C.';
+  }
+  if (n.includes('pastelaria') || n.includes('docaria')) {
+    return 'Ciência: glúten, pontos de calda (veia 103°C, bola mole 115°C, caramelo 165°C). Massas: folhada (27 camadas), quebrada, choux, levedada. Creme pasteleiro: 85°C. Doçaria conventual: origens, conventos, receitas emblemáticas.';
+  }
+  return 'Desenvolve o tema com profundidade técnica, científica e cultural. Explica sempre o porquê de cada técnica.';
+}
+
+// ── Prompt único — manual completo, conteúdo exaustivo ───────
+function construirPromptUnico(modulo: ModuloCronograma, anoLetivo: string): string {
+  const ref_    = modulo.tipo === 'UC' ? '811RA144' : '811183';
+  const ucIdRef = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
+  const ref     = ucIdRef ? getReferencialUC(ucIdRef) : null;
+  const realizacoes   = (ref?.realizacoes || []).map((r: string, i: number) => (i+1) + '. ' + r).join('\n');
+  const criterios     = (ref?.criteriosDesempenho || []).map((r: string) => '- ' + r).join('\n');
+  const conhecimentos = (ref?.conhecimentos || []).map((r: string) => '- ' + r).join('\n');
+  const tema = blocoConhecimento(modulo.nome);
+
+  return [
+    '========================================================',
+    'MANUAL DO ALUNO — ' + modulo.id + ' — ' + modulo.nome,
+    'Referencial ' + ref_ + ' | ECL | Ano Lectivo 2026-2027',
+    '========================================================',
+    '',
+    'INSTRUÇÃO CRÍTICA DE EXECUÇÃO:',
+    'Escreve o manual completo de seguida, sem parar.',
+    'NÃO faças índice no início. NÃO expliques o que vais fazer.',
+    'NÃO uses frases como "vou agora escrever". Começa DIRECTAMENTE com o texto.',
+    'Se chegares ao limite de resposta, pára numa frase completa — o professor pede-te para continuares.',
+    '',
+    'COMPETÊNCIAS OFICIAIS (referencial ANQEP — desenvolve cada uma exaustivamente):',
+    'Realizações:',
+    realizacoes || 'elaborar fichas técnicas; preparar mise en place; confeccionar pratos; empratar; aplicar HACCP',
+    '',
+    'Critérios de desempenho:',
+    criterios || 'verificar qualidade; preservar propriedades; cumprir higiene e segurança',
+    '',
+    'Conhecimentos e aptidões:',
+    conhecimentos || 'normas de segurança; técnicas de confecção; organização da brigada',
+    '',
+    '========================================================',
+    'CONHECIMENTO TÉCNICO ESPECÍFICO DESTA UC:',
+    '========================================================',
+    tema,
+    '',
+    '========================================================',
+    'ESTRUTURA OBRIGATÓRIA DO MANUAL (50+ páginas):',
+    '========================================================',
+    '',
+    '## NOTA DE APRESENTAÇÃO (1 página)',
+    'Para que serve este manual, como usar, o que o aluno vai aprender.',
+    '',
+    '## ENQUADRAMENTO NO REFERENCIAL (1 página)',
+    'Tabela: código | designação | componente | ano | nível QNQ | horas | pré-requisitos',
+    '',
+    '## OBJECTIVOS DE APRENDIZAGEM (1 página)',
+    '8 objectivos detalhados — para cada um, 1 parágrafo explicando o que o aluno vai ser capaz de fazer.',
+    '',
+    '## CAPÍTULO 1 — HISTÓRIA, CULTURA E CONTEXTO (mínimo 8 páginas)',
+    'Desenvolvido com PROFUNDIDADE MÁXIMA usando o conhecimento específico acima.',
+    'Para cozinha portuguesa: cada região com mínimo 1 página de texto — contexto humano, geográfico,',
+    'económico, cultural e gastronómico. Não listes receitas — explica O QUE ESTÁ POR TRÁS de cada prato.',
+    'Inclui: tabela por região (Região | Produto identitário | Prato emblemático | Técnica | História),',
+    'caixas [SABIA QUE] com curiosidades, e 2 exercícios de reflexão cultural.',
+    '',
+    '## CAPÍTULO 2 — TECNOLOGIA DAS MATÉRIAS-PRIMAS (mínimo 6 páginas)',
+    'Classificação completa, critérios de qualidade (tabela), frescura, avaliação organoléptica.',
+    'Caixas [HACCP] com limites reais. Exercícios de identificação e avaliação.',
+    '',
+    '## CAPÍTULO 3 — APROVISIONAMENTO E HACCP (mínimo 5 páginas)',
+    'Fluxo completo (tabela: etapa | acção | temperatura | documentação).',
+    'Limites: refrigeração 0-4°C; congelação -18°C; confecção 65°C; regra 2h; Anisakis -20°C/24h.',
+    '14 alergénios obrigatórios (Reg. UE 1169/2011). Rastreabilidade (Reg. CE 178/2002).',
+    'Tabuleiros por cor. Caixas [HACCP] e [ERROS FREQUENTES].',
+    '',
+    '## CAPÍTULO 4 — PRÉ-PREPARAÇÃO E MISE EN PLACE (mínimo 4 páginas)',
+    'Organização da brigada. Operações específicas desta UC.',
+    'Fórmula IR = peso líquido / peso bruto × 100. Tabela de IR por produto. Custo por dose.',
+    '',
+    '## CAPÍTULO 5 — MÉTODOS DE CONFECÇÃO (mínimo 6 páginas)',
+    'Para cada método relevante desta UC: descrição técnica, ciência (Maillard, colagénio, etc.),',
+    'temperatura, tempo, como verificar o ponto, exemplos portugueses reais.',
+    'Tabela comparativa: método | temperatura | tempo | resultado | exemplos.',
+    '',
+    '## CAPÍTULO 6 — MOLHOS, FUNDOS E GUARNIÇÕES (mínimo 4 páginas)',
+    'Para cada molho/fundo: proporções exactas para 4 doses, passo a passo, erros comuns.',
+    '',
+    '## CAPÍTULO 7 — EMPRATAMENTO E ANÁLISE SENSORIAL (mínimo 3 páginas)',
+    '5 princípios, grelha sensorial preenchível, harmonização com vinhos portugueses.',
+    '',
+    '## FICHAS DE TRABALHO (3 fichas completas)',
+    'Ficha 1: avaliação de matérias-primas (tabela com critérios específicos)',
+    'Ficha 2: cálculo de rendimento e custo (com espaço de cálculo)',
+    'Ficha 3: comparação de métodos ou análise sensorial',
+    '',
+    '## FICHAS TÉCNICAS DE RECEITA (10 fichas)',
+    'Cada ficha: nome | doses 4 | tempo | método | custo',
+    'Tabela ingredientes: ingrediente | quant. bruta | quant. líquida | observações',
+    'Preparação numerada com temperaturas. Tabela HACCP. Nota do chef. Contexto cultural/regional.',
+    '',
+    '## QUESTIONÁRIO DE REVISÃO (4 grupos × 4 questões = 16)',
+    'Grupos: Higiene e HACCP | Técnicas | Planeamento | Cultura Gastronómica',
+    'Mistura: escolha múltipla, verdadeiro/falso, desenvolvimento. Com linhas de resposta.',
+    '',
+    '## GLOSSÁRIO TÉCNICO (15 termos específicos desta UC)',
+    '',
+    '## SÍNTESE FINAL (10 pontos-chave)',
+    '',
+    '## BIBLIOGRAFIA',
+    'Fontes reais: ANQEP 811RA144/811183, AHRESP/DGS, Reg.CE 852/2004 e 853/2004,',
+    'Reg.UE 1169/2011, Modesto M.L. (1982), Maincent-Morel, McGee On Food and Cooking,',
+    'Le Cordon Bleu, Turismo de Portugal.',
+    '',
+    '## ANEXO A — Ficha técnica em branco',
+    '## ANEXO B — Folha-resumo HACCP destacável',
+    '## ÍNDICE FINAL com páginas',
+    '',
+    '========================================================',
+    'REGRAS DE ESTILO:',
+    '========================================================',
+    '- Português europeu pré-Acordo (Objectivos, confecção, actual, técnico, prático)',
+    '- Mínimo 2 tabelas de 4 colunas por capítulo',
+    '- Caixas: [DICA DO CHEF] [CIÊNCIA NA COZINHA] [HACCP] [ERROS FREQUENTES] [SABIA QUE]',
+    '- Fontes reais sempre — nunca inventar',
+    '- Tom profissional e culturalmente informado',
+    '- COMEÇA JÁ. Primeira palavra é o início do texto real.',
+  ].join('\n');
+}
+
+
 function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
   entrada: EntradaManual; onAbrir: () => void;
   onEditar?: () => void; onApagar?: () => void; modoProf: boolean;
@@ -617,7 +505,7 @@ function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
               {entrada.categoria}
             </span>
             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
-              background: (nivel as any).bg, color: (nivel as any).cor, fontWeight: 600 }}>
+              background: nivel.bg, color: nivel.cor, fontWeight: 600 }}>
               {entrada.nivel}
             </span>
           </div>
@@ -684,10 +572,6 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   const [erro, setErro]           = useState('');
   const [gerandoIA, setGerandoIA] = useState(false);
   const [faseIA, setFaseIA]       = useState('');
-  // Estados das 5 partes do manual
-  const [partes, setPartes]       = useState<{texto: string; estado: 'vazio'|'gerando'|'pronto'|'erro'}[]>(
-    Array(5).fill(null).map(() => ({ texto: '', estado: 'vazio' as const }))
-  );
 
   // Módulos filtrados por turma
   const modulosDaTurma = useMemo(() =>
@@ -751,52 +635,22 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     setPalavras(m.nome.split(' ').filter((w: string) => w.length > 4).slice(0, 5).join(', '));
   }
 
-  // Abrir IA externa com o prompt da parte
-  async function abrirPromptIA(numParte: number, destino: 'claude' | 'chatgpt' | 'gemini' = 'claude') {
-    if (!moduloSel) { setErro('Selecciona um modulo primeiro.'); return; }
-    const todosPrompts = construirPrompts(moduloSel, anoLetivo);
-    const prompt = todosPrompts[numParte];
-    await abrirIA(destino, prompt);
-  }
-
-  // Colar resultado de uma parte
-  function colarResultadoParte(numParte: number, texto: string) {
-    setPartes(prev => prev.map((p, i) =>
-      i === numParte ? { texto, estado: texto.trim() ? 'pronto' as const : 'vazio' as const } : p
-    ));
-  }
-
-  // Juntar todas as partes e guardar automaticamente
-  function juntarEGuardar() {
-    const todas = partes.map(p => p.texto).filter(t => t.trim());
-    if (todas.length === 0) { setErro('Nenhuma parte gerada ainda.'); return; }
-    if (!titulo.trim()) { setErro('Define um título antes de juntar.'); return; }
-    const textoFinal = todas.join('\n\n');
-    setTexto(textoFinal);
-    setErro('');
-    const agora = new Date().toISOString();
-    onGuardar({
-      id: entrada?.id || gerarId(),
-      titulo: titulo.trim(), categoria, nivel,
-      palavrasChave: palavras.split(',').map((p: string) => p.trim()).filter(Boolean),
-      textoGuia: textoFinal,
-      criadoPor: nomeProfessor || '',
-      criadoEm: entrada?.criadoEm || agora,
-      atualizadoEm: agora,
-    });
-  }
-
   async function gerarManual() {
     if (!moduloSel) { setErro('Selecciona um modulo do cronograma primeiro.'); return; }
     setGerandoIA(true);
-    setFaseIA('A gerar as 5 partes em paralelo…');
+    setFaseIA('Parte 1/5 - Introducao e HACCP...');
     setErro('');
-    // As 5 partes são geradas em simultâneo — mostrar contador
-    let segundos = 0;
+    // Actualizar fase visualmente enquanto o GS processa (~60-90s total)
+    const fases = [
+      'Parte 2/5 - Metodos de confeccao e especializacao...',
+      'Parte 3/5 - Fichas de trabalho e projeto...',
+      'Parte 4/5 - Receitas...',
+      'Parte 5/5 - Glossario, questionario e anexos...',
+    ];
+    let fi = 0;
     const intervalo = setInterval(() => {
-      segundos += 5;
-      setFaseIA('A gerar em paralelo… ' + segundos + 's');
-    }, 5000);
+      if (fi < fases.length) { setFaseIA(fases[fi]); fi++; }
+    }, 18000);
     try {
       const resultado = await gerarManualCompleto(moduloSel, anoLetivo);
       clearInterval(intervalo);
@@ -816,35 +670,15 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
     if (!titulo.trim()) { setErro('O título é obrigatório.'); return; }
     if (!texto.trim()) { setErro('O conteúdo é obrigatório.'); return; }
     const agora = new Date().toISOString();
-    function guardar() {
-  if (!titulo.trim()) {
-    setErro('O título é obrigatório.');
-    return;
-  }
-
-  if (!texto.trim()) {
-    setErro('O conteúdo é obrigatório.');
-    return;
-  }
-
-  const agora = new Date().toISOString();
-
-  onGuardar({
-    id: entrada?.id || gerarId(),
-    titulo: titulo.trim(),
-    categoria,
-    nivel,
-    palavrasChave: palavras
-      .split(',')
-      .map((p: string) => p.trim())
-      .filter(Boolean),
-    textoGuia: texto.trim(),
-
-    criadoEm: entrada?.criadoEm || agora,
-    atualizadoEm: agora,
-    criadoPor: nomeProfessor || 'Professor',
-  });
-}
+    onGuardar({
+      id: entrada?.id || gerarId(),
+      titulo: titulo.trim(), categoria, nivel,
+      palavrasChave: palavras.split(',').map((p: string) => p.trim()).filter(Boolean),
+      textoGuia: texto.trim(),
+      criadoPor: nomeProfessor,
+      criadoEm: entrada?.criadoEm || agora,
+      atualizadoEm: agora,
+    });
   }
 
   const turmaLabel = (t: 1|2|3) => t === 1 ? '1º CP (UCs)' : t === 2 ? '2º CP (UFCDs)' : '3º CP (UFCDs)';
@@ -938,84 +772,33 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
               </div>
             )}
 
-            {/* Sistema de 5 partes — abre IA externa com o prompt */}
-            {!moduloSel && (
+            {/* Gerar manual — abre IA à escolha do professor */}
+            {!moduloSel ? (
               <div style={{ fontSize: 12, color: 'rgba(109,40,217,0.4)', textAlign: 'center', padding: 8 }}>
-                Selecciona um modulo acima para activar os botoes.
+                Selecciona um módulo acima para activar.
               </div>
-            )}
-            {moduloSel && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', padding: '6px 0' }}>
-                  Carrega em cada parte → o Claude abre com o prompt → copia o resultado → cola abaixo
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', lineHeight: 1.5 }}>
+                  Escolhe a IA → gera o manual → copia o resultado → cola no campo Conteúdo abaixo → Guardar.
                 </div>
-                {[
-                  'Parte 1 — Enquadramento, Objectivos e Contexto',
-                  'Parte 2 — Materias-Primas, HACCP e Metodos',
-                  'Parte 3 — Molhos, Empratamento e Fichas de Trabalho',
-                  'Parte 4 — Fichas Tecnicas de Receita',
-                  'Parte 5 — Questionario, Glossario e Anexos',
-                ].map((label, idx) => {
-                  const parte = partes[idx];
-                  const temTexto = parte?.texto?.trim();
-                  return (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <button onClick={() => abrirPromptIA(idx, 'claude')}
-                          style={{ flex: 1, padding: '9px 12px', borderRadius: 9, border: 'none',
-                            background: temTexto ? '#4E7A25' : COR_IA,
-                            color: '#fff', fontSize: 12, fontWeight: 700,
-                            textAlign: 'left', cursor: 'pointer' }}>
-                          {temTexto ? '✅' : '✨'} {label}
-                        </button>
-                        <button onClick={() => abrirPromptIA(idx, 'chatgpt')}
-                          title="Abrir no ChatGPT"
-                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #10a37f',
-                            background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#10a37f' }}>
-                          GPT
-                        </button>
-                        <button onClick={() => abrirPromptIA(idx, 'gemini')}
-                          title="Abrir no Gemini"
-                          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #4285f4',
-                            background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#4285f4' }}>
-                          ✦
-                        </button>
-                        {temTexto && (
-                          <button onClick={() => colarResultadoParte(idx, '')}
-                            style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
-                              background: '#fff', fontSize: 11, cursor: 'pointer', color: 'rgba(26,23,20,0.5)' }}>
-                            🗑
-                          </button>
-                        )}
-                      </div>
-                      <textarea
-                        placeholder={'Cola aqui o resultado da ' + label + '...'}
-                        value={parte?.texto || ''}
-                        onChange={e => colarResultadoParte(idx, e.target.value)}
-                        style={{ width: '100%', minHeight: temTexto ? 80 : 40, padding: '8px 10px',
-                          borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
-                          fontSize: 11, fontFamily: 'monospace', resize: 'vertical',
-                          background: temTexto ? '#f0faf5' : '#fff',
-                          boxSizing: 'border-box' }} />
-                    </div>
-                  );
-                })}
-
-                {/* Botão juntar */}
-                {partes.some(p => p.texto?.trim()) && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <button
-                      onClick={juntarEGuardar}
-                      style={{ width: '100%', padding: '12px', borderRadius: 10, border: 'none',
-                        background: '#1A1714', color: '#fff', fontSize: 14, fontWeight: 700,
-                        cursor: 'pointer' }}>
-                      📄 Juntar e criar documento
-                      <span style={{ fontSize: 11, opacity: 0.7, marginLeft: 8 }}>
-                        ({partes.filter(p => p.texto?.trim()).length}/5 prontas)
-                      </span>
-                    </button>
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => abrirIA('claude', construirPromptUnico(moduloSel, anoLetivo))}
+                    style={{ flex: 1, padding: '10px 4px', borderRadius: 9, border: 'none',
+                      background: COR_IA, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                    ✨ Claude
+                  </button>
+                  <button onClick={() => abrirIA('chatgpt', construirPromptUnico(moduloSel, anoLetivo))}
+                    style={{ flex: 1, padding: '10px 4px', borderRadius: 9, border: 'none',
+                      background: '#10a37f', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                    💬 ChatGPT
+                  </button>
+                  <button onClick={() => abrirIA('gemini', construirPromptUnico(moduloSel, anoLetivo))}
+                    style={{ flex: 1, padding: '10px 4px', borderRadius: 9, border: 'none',
+                      background: '#4285f4', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                    ✦ Gemini
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1061,9 +844,9 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
                 return (
                   <button key={n} onClick={() => setNivel(n)} style={{
                     flex: 1, padding: '10px 4px', borderRadius: 8, cursor: 'pointer',
-                    border: `2px solid ${nivel === n ? (c as any).cor : 'rgba(26,23,20,0.1)'}`,
-                    background: nivel === n ? (c as any).bg : '#fff',
-                    color: nivel === n ? (c as any).cor : 'rgba(26,23,20,0.5)',
+                    border: `2px solid ${nivel === n ? c.cor : 'rgba(26,23,20,0.1)'}`,
+                    background: nivel === n ? c.bg : '#fff',
+                    color: nivel === n ? c.cor : 'rgba(26,23,20,0.5)',
                     fontSize: 11, fontWeight: 700,
                   }}>{n}</button>
                 );
@@ -1176,7 +959,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
               {ICONES_CATEGORIA[entradaAtiva.categoria]} {entradaAtiva.categoria}
             </span>
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 100,
-              background: (nivel as any).bg, color: (nivel as any).cor, fontWeight: 700 }}>
+              background: nivel.bg, color: nivel.cor, fontWeight: 700 }}>
               {entradaAtiva.nivel}
             </span>
           </div>
@@ -1185,7 +968,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
             {entradaAtiva.titulo}
           </div>
           <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
-            {fmtData(entradaAtiva.criadoEm)}
+            {entradaAtiva.criadoPor} · {fmtData(entradaAtiva.criadoEm)}
           </div>
           {entradaAtiva.palavrasChave.length > 0 && (
             <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1200,44 +983,40 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
         </div>
         {modoProf && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            <button onClick={() => {
-                try {
-                  // Exportar como .txt enquanto o .docx está em desenvolvimento
-                  const blob = new Blob([entradaAtiva.textoGuia], { type: 'text/plain;charset=utf-8' });
-                  const url  = URL.createObjectURL(blob);
-                  const a    = document.createElement('a');
-                  a.href     = url;
-                  a.download = entradaAtiva.titulo.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_') + '.txt';
-                  a.click();
-                  URL.revokeObjectURL(url);
-                } catch(e: unknown) {
-                  alert('Erro: ' + (e instanceof Error ? e.message : String(e)));
-                }
-              }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Guardar texto (.txt)</button>
+            <button onClick={() => exportarGuiaoDocx(entradaAtiva)} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(109,40,217,0.3)', background: '#ede9fe', color: '#6d28d9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>⬇️ Exportar .docx</button>
             <button onClick={async () => {
-                try {
-                  await exportarGuiaoDocx(entradaAtiva as any);
-                } catch(e: unknown) {
-                  alert('Erro .docx: ' + (e instanceof Error ? e.message : String(e)));
-                }
-              }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(0,121,107,0.3)', background: '#e0f2f1', color: '#00796b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📄 Exportar .docx</button>
-            <button onClick={async () => {
+              try {
+                // Extrair dados da UC a partir das palavras-chave e título
+                const palavras = entradaAtiva.palavrasChave || [];
+                const modId = palavras.find((p: string) => p.startsWith('UC') || p.startsWith('UFCD')) || '';
+                const titulosCurtos: Record<string, string> = {
+                  'cozinha tradicional': 'Cozinha Tradicional Portuguesa',
+                  'peixes': 'Peixes e Mariscos',
+                  'carnes': 'Carnes, Aves e Caça',
+                  'pastelaria': 'Pastelaria e Doçaria',
+                  'molhos': 'Molhos e Fundos',
+                };
+                const nomeLower = entradaAtiva.titulo.toLowerCase();
+                const tituloCurto = Object.entries(titulosCurtos).find(([k]) => nomeLower.includes(k))?.[1]
+                  || entradaAtiva.titulo.split(' ').slice(0, 3).join(' ');
+                const sigla = entradaAtiva.categoria?.includes('estaurant') ? 'SRB' : 'SCP';
+
                 const resp = await fetch(GS_URL, { method: 'POST', body: JSON.stringify({
-                  moduloId: entradaAtiva.palavrasChave[0] || '',
+                  moduloId: modId || entradaAtiva.palavrasChave[0] || '',
                   moduloNome: entradaAtiva.titulo,
-                  titulo: entradaAtiva.titulo,
-                  disciplina: entradaAtiva.categoria,
-                  horasPrevistas: '',
-                  turmaAno: 1,
+                  titulo: tituloCurto,
+                  disciplina: entradaAtiva.categoria || 'Serviços de Cozinha/Pastelaria',
+                  horasPrevistas: '50',
+                  turmaAno: 3,
                   anoLetivo: '2026-2027',
+                  disciplinaSigla: sigla,
                   textoGuia: entradaAtiva.textoGuia,
                 }) });
                 const data = await resp.json();
                 if (data.ok) window.open(data.url, '_blank');
                 else alert('Erro: ' + data.erro);
-              }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(0,121,107,0.3)', background: '#e0f2f1', color: '#00796b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              📄 Guardar no Drive (modelo ECL)
-            </button>
+              } catch(e) { alert('Erro: ' + (e instanceof Error ? e.message : String(e))); }
+            }} style={{ padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(0,121,107,0.3)', background: '#e0f2f1', color: '#00796b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>📄 Guardar no Drive (modelo ECL)</button>
             <button onClick={() => setModo('editar')} style={{ padding: '8px 16px',
               borderRadius: 9, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
               color: 'rgba(26,23,20,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -1251,6 +1030,28 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           </div>
         )}
         <RenderizadorManual texto={entradaAtiva.textoGuia} />
+        {confirmarApagar && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,23,20,0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
+            <div style={{ background: '#fff', borderRadius: 20, padding: '24px', maxWidth: 340, width: '100%' }}>
+              <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 12 }}>🗑️</div>
+              <div style={{ fontWeight: 700, fontSize: 16, textAlign: 'center', marginBottom: 8 }}>
+                Apagar esta entrada?
+              </div>
+              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', textAlign: 'center', marginBottom: 20 }}>
+                "{entradaAtiva.titulo}" vai ser removida do Manual do Cozinheiro.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => apagar(confirmarApagar)} style={{ flex: 1, padding: '12px',
+                  borderRadius: 10, border: 'none', background: '#c0392b',
+                  color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Apagar</button>
+                <button onClick={() => setConfirmarApagar(null)} style={{ flex: 1, padding: '12px',
+                  borderRadius: 10, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+                  color: 'rgba(26,23,20,0.6)', fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1328,9 +1129,9 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           return (
             <button key={n} onClick={() => setNivelFiltro(n)} style={{
               padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600,
-              border: `1.5px solid ${ativo ? ((c as any)?.cor || COR_PRIMARIA) : 'rgba(26,23,20,0.1)'}`,
-              background: ativo ? ((c as any)?.bg || COR_PRIMARIA) : '#fff',
-              color: ativo ? ((c as any)?.cor || '#fff') : 'rgba(26,23,20,0.4)', cursor: 'pointer',
+              border: `1.5px solid ${ativo ? (c?.cor || COR_PRIMARIA) : 'rgba(26,23,20,0.1)'}`,
+              background: ativo ? (c?.bg || COR_PRIMARIA) : '#fff',
+              color: ativo ? (c?.cor || '#fff') : 'rgba(26,23,20,0.4)', cursor: 'pointer',
             }}>{n}</button>
           );
         })}
@@ -1387,29 +1188,6 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
               ))}
             </div>
           ))}
-        </div>
-      )}
-      {/* Modal de confirmação de apagar — global, funciona na lista e no detalhe */}
-      {confirmarApagar && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,23,20,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
-          <div style={{ background: '#fff', borderRadius: 20, padding: '24px', maxWidth: 340, width: '100%' }}>
-            <div style={{ fontSize: 32, textAlign: 'center', marginBottom: 12 }}>🗑️</div>
-            <div style={{ fontWeight: 700, fontSize: 16, textAlign: 'center', marginBottom: 8 }}>
-              Apagar esta entrada?
-            </div>
-            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', textAlign: 'center', marginBottom: 20 }}>
-              {entradas.find(e => e.id === confirmarApagar)?.titulo || 'Esta entrada'} vai ser removida.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => apagar(confirmarApagar)} style={{ flex: 1, padding: '12px',
-                borderRadius: 10, border: 'none', background: '#c0392b',
-                color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Apagar</button>
-              <button onClick={() => setConfirmarApagar(null)} style={{ flex: 1, padding: '12px',
-                borderRadius: 10, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
-                color: 'rgba(26,23,20,0.6)', fontSize: 14, cursor: 'pointer' }}>Cancelar</button>
-            </div>
-          </div>
         </div>
       )}
     </div>
