@@ -158,7 +158,7 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
 }
 
 // Geração via Apps Script — manual completo em 5 partes
-const GS_URL = '/api/gerarManual'; // proxy Vercel
+const GS_URL = '/api/gerarManual';
 
 async function gerarManualCompleto(modulo: ModuloCronograma, anoLetivo: string): Promise<string> {
   const payload = {
@@ -320,235 +320,158 @@ function RenderizadorManual({ texto }: { texto: string }) {
 }
 
 
-// ── Conhecimento específico por tema ──────────────────────────
+// ── Card de entrada ────────────────────────────────────────────
+// ── blocoConhecimento — conteúdo específico por tema ──────────
 function blocoConhecimento(moduloNome: string): string {
   const n = moduloNome.toLowerCase();
   if (n.includes('cozinha tradicional portuguesa') || n.includes('iguarias')) {
     return [
-      'FOCO DESTA UC — desenvolve com profundidade etnográfica (não só receitas):',
-      'Para cada região: contexto humano, geográfico, económico e cultural que criou os pratos.',
-      'O que está por trás de cada prato — condições de vida, memória colectiva, recursos locais.',
-      '',
+      'FOCO: ethnografia gastronómica — O QUE ESTÁ POR TRÁS de cada prato.',
       'MINHO: pobreza rural, milho/couve/chouriço; caldo verde = sustento do trabalhador; alheira = cripto-judaísmo séc.XV',
-      'TRÁS-OS-MONTES: isolamento secular; posta mirandesa (raça DOP, grelha 250°C); alheira de Mirandela DOP',
+      'TRÁS-OS-MONTES: isolamento; posta mirandesa (raça DOP, grelha 250°C); alheira de Mirandela DOP',
       'BEIRAS: leitão da Bairrada (raça bísaro, forno lenha, pele estaladiça); chanfana (cabra velha + barro negro + vinho 4-6h); queijo Serra Estrela DOP (cardo coagulante)',
       'LISBOA: tabernas séc.XIX; bacalhau à Brás = restos criativos; iscas = vísceras baratas; cozido = refeição de domingo',
-      'ALENTEJO: pastor com recursos mínimos; açorda = pão velho + alho + coentros + ovo; porco ibérico do montado de azinha',
+      'ALENTEJO: açorda = pão velho + alho + coentros + ovo; porco ibérico do montado de azinha',
       'ALGARVE: herança árabe (amêndoa, figo); cataplana (câmara de vapor em cobre); xerem com conquilhas',
-      'AÇORES: cozido das Furnas (vulcão = forno); alcatra terceirense; ananás DOP',
+      'AÇORES: cozido das Furnas (vulcão = forno); alcatra terceirense',
       'MADEIRA: peixe-espada preto (1000m profundidade) com banana; espetada em pau de louro',
-      '',
-      'TÉCNICAS DESTA UC: refogado base, caldeiradas, bacalhau (7 métodos), cozido, assados regionais',
-      'HIGIENE: temperaturas HACCP específicas, alergénios, rastreabilidade, redução do desperdício',
     ].join('\n');
   }
-
   if (n.includes('peixes') || n.includes('mariscos')) {
-    return 'Classifica: osseos redondos, achatados, cartilaginosos, cefalopodes, crustaceos, bivalves. Frescura: olhos, guelras, cheiro. Anisakis: -20C/24h. Tamanhos mínimos legais. Técnicas de preparação por espécie. Sazonalidade mês a mês.';
+    return 'Classificação: osseos redondos, achatados, cartilaginosos, cefalopodes, crustáceos, bivalves. Frescura: olhos, guelras, cheiro. Anisakis: -20°C/24h. Tamanhos mínimos legais. Técnicas de preparação por espécie.';
   }
-  if (n.includes('carnes') || n.includes('aves')) {
-    return 'Cortes bovinos/suínos/ovinos com diagrama. Temperatura interna mínima por espécie. DOP: Bísaro, Barrosão, Alentejano. Maturação a seco vs húmida. Aves: Salmonella/Campylobacter min 82°C.';
+  if (n.includes('carnes') || n.includes('aves') || n.includes('caça')) {
+    return 'Cortes bovinos/suínos/ovinos. Temperatura interna mínima. DOP: Bísaro, Barrosão, Alentejano. Maturação a seco vs húmida. Aves: min 82°C interior.';
   }
   if (n.includes('pastelaria') || n.includes('doc') || n.includes('doç')) {
     return [
-      'CONHECIMENTO ESPECÍFICO — PASTELARIA E DOÇARIA TRADICIONAL PORTUGUESA:',
-      '',
-      'DOÇARIA CONVENTUAL (desenvolve com máxima profundidade):',
-      'Referências obrigatórias: Virgílio Nogueiro Gomes ("A Cozinha Afro-Atlântica"), Maria de Lourdes Modesto ("Cozinha Tradicional Portuguesa"), José Quitério ("Livro de Bem Comer").',
-      'A génese: claras para engomar hábitos e clarificar vinhos → sobra de gemas → laboratórios conventuais de doçaria.',
-      'O açúcar: cana-de-açúcar da Madeira (séc.XV) e Brasil (séc.XVI) + amêndoa árabe = doçaria conventual única na Europa.',
-      '',
-      'DOCES E CONVENTOS DE ORIGEM (desenvolve cada um com história completa):',
-      'Pastéis de Belém — Mosteiro dos Jerónimos, Lisboa (1837, receita secreta dos monges)',
-      'Toucinho-do-Céu — Convento de Santa Clara, Guimarães (gema + amêndoa + açúcar)',
-      'Barriga de Freira — Convento de Braga (pão-de-ló enriquecido com gemas)',
-      'Papos-de-Anjo — Convento de Odivelas (gemas batidas em calda)',
-      'Ovos Moles — Convento de Jesus, Aveiro (gemas + açúcar, hóstias como embalagem)',
-      'Dom Rodrigo — Algarve, influência árabe (fios de ovos + amêndoa)',
-      'Queijadas de Sintra — Sintra (queijo fresco + gemas, receita medieval)',
-      'Trouxas das Caldas — Caldas da Rainha (claras batidas em calda)',
-      'Jesuítas — Porto (massa folhada + creme de gemas + fondant)',
-      'Bolo de Mel — Madeira (melaço de cana + especiarias, conserva 1 ano)',
-      '',
-      'CIÊNCIA DOS INGREDIENTES:',
-      'Açúcar: pontos de calda — pérola 100°C, fio fraco 103°C, fio forte 107°C, bola mole 115°C, bola dura 121°C, rebuçado 135°C, caramelo claro 160°C, caramelo escuro 180°C.',
-      'Ovos: gema (emulsionante — lecitina); clara (espumante — ovoalbumina coagula a 62°C); funções na doçaria.',
-      'Farinha: proteínas (glutenina + gliadina) formam glúten por hidratação + trabalho mecânico; T55 vs T65 vs Manitoba.',
-      'Amêndoa: influência árabe; composição (50% gordura, 20% proteína); usos em massas, cremes e coberturas.',
-      'Gorduras: manteiga (84% mg, emulsão, aroma); margarina; banha (doçaria conventual do interior).',
-      '',
-      'MASSAS BASE (desenvolve cada uma com ciência e técnica):',
-      'Massa folhada: 27 camadas de gordura, laminagem (6 voltas simples ou 4 duplas), manteiga a 16-18°C.',
-      'Massa quebrada doce/salgada: método areia vs método creme; glúten mínimo = textura quebradiça.',
-      'Massa choux: vapor de água como fermento; proporção base 1:1:1:2 (água:gordura:farinha:ovos).',
-      'Massa brioche: glúten desenvolvido + manteiga em pomada; fermentação dupla.',
-      'Biscuit joconde, genoise, dacquoise: diferenças técnicas e aplicações.',
-      '',
-      'CREMES E RECHEIOS:',
-      'Creme pasteleiro: gelatinização do amido (85°C); arrefecimento rápido obrigatório (<10°C em 2h).',
-      'Creme de manteiga: mousselina, alemão, italiano, suíço.',
-      'Ganache: emulsificação chocolate/natas; proporções por consistência.',
-      'Fios de ovos: técnica árabe-portuguesa; calda de ponto de fio + gemas peneiradas.',
+      'FOCO: doçaria conventual portuguesa — Virgílio Nogueiro Gomes, Maria de Lourdes Modesto, José Quitério.',
+      'GÉNESE: claras para engomar hábitos → sobra de gemas + açúcar do Brasil/Madeira = laboratórios conventuais.',
+      'DOCES E CONVENTOS: Pastéis de Belém (Jerónimos,1837), Toucinho-do-Céu (Santa Clara,Guimarães), Ovos Moles (Jesus,Aveiro), Dom Rodrigo (Algarve,árabe), Queijadas de Sintra (medieval), Trouxas das Caldas, Bolo de Mel (Madeira).',
+      'AÇÚCAR: pontos — fio fraco 103°C, fio forte 107°C, bola mole 115°C, bola dura 121°C, caramelo 160-180°C.',
+      'MASSAS: folhada (27 camadas, manteiga 16-18°C), quebrada (glúten mínimo), choux (vapor), brioche (fermentação dupla).',
+      'CREMES: pasteleiro (85°C, arrefecer <10°C em 2h), fios de ovos (técnica árabe-portuguesa), ganache (emulsificação).',
     ].join('\n');
   }
   return 'Desenvolve o tema com profundidade técnica, científica e cultural. Explica sempre o porquê de cada técnica.';
 }
 
-// ── Prompt único — focado nos conhecimentos reais da UC ──────
+// ── Prompt Mestre — validado pela coordenadora ECL ─────────────
 function construirPromptUnico(modulo: ModuloCronograma, anoLetivo: string): string {
   const ref_    = modulo.tipo === 'UC' ? '811RA144' : '811183';
   const ucIdRef = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
   const ref     = ucIdRef ? getReferencialUC(ucIdRef) : null;
-
-  // Competências reais do referencial — é isto que difere de UC para UC
   const realizacoes   = (ref?.realizacoes || []).map((r: string) => '- ' + r).join('\n');
   const criterios     = (ref?.criteriosDesempenho || []).map((r: string) => '- ' + r).join('\n');
   const conhecimentos = (ref?.conhecimentos || []).map((r: string) => '- ' + r).join('\n');
-
-  // Conhecimento específico do tema
   const tema = blocoConhecimento(modulo.nome);
 
   return [
-    '# MANUAL DO ALUNO — ' + modulo.id + ' — ' + modulo.nome.toUpperCase(),
-    'Escola de Comércio de Lisboa | Referencial ' + ref_ + ' | Ano Lectivo 2026-2027',
+    '# MANUAL DO ALUNO — PROMPT EDITORIAL (VERSÃO MESTRE)',
     '',
-    'INSTRUÇÃO CRÍTICA:',
-    'Escreve DIRECTAMENTE o conteúdo. Sem introdução, sem "vou escrever", sem índice no início.',
-    'Mínimo 30 páginas. Cada tema com texto denso e contínuo — nunca listas de 3 linhas.',
+    '# PAPEL',
+    'És autor de manuais técnicos para o ensino profissional da restauração em Portugal.',
+    'Não és um assistente de IA. Não és um compilador de informação.',
+    'És o autor de uma colecção editorial — cada manual complementa os restantes.',
+    'Nunca repetes conteúdos já desenvolvidos noutros volumes.',
+    'Escreves como um autor de livros técnicos com qualidade editorial real.',
+    '',
+    '────────────────────────────────────────',
+    '# UFCD A DESENVOLVER',
+    modulo.id + ' — ' + modulo.nome,
+    'Referencial ' + ref_ + ' | ECL | Ano Lectivo 2026-2027',
+    '',
+    'Realizações:', realizacoes || '- ver referencial',
+    'Critérios:', criterios || '- ver referencial',
+    'Conhecimentos específicos:', conhecimentos || '- ver referencial',
+    '', tema, '',
+    '────────────────────────────────────────',
+    '# OBJECTIVO',
+    'Produzir um MANUAL DO ALUNO dedicado exclusivamente à UFCD fornecida.',
+    'O manual deve desenvolver em profundidade o verdadeiro objecto de estudo desta unidade.',
+    'Não escrevas um manual da disciplina. Escreve um manual desta UFCD.',
+    '',
+    '────────────────────────────────────────',
+    '# PRINCÍPIO EDITORIAL FUNDAMENTAL',
+    'Assume que todos os conhecimentos gerais já foram desenvolvidos em manuais anteriores.',
+    'Por esse motivo: não ensines conteúdos introdutórios; não repitas conhecimentos transversais.',
+    '',
+    '────────────────────────────────────────',
+    '# REGRA DA EXCLUSIVIDADE',
+    '"Este conhecimento é exclusivo desta UFCD?"',
+    'Se NÃO: resume ao mínimo.',
+    'Se SIM: desenvolve até esgotar completamente o tema.',
+    '',
+    '────────────────────────────────────────',
+    '# CONTEÚDOS TRANSVERSAIS — NÃO DESENVOLVER (têm manuais próprios):',
+    'HACCP, higiene, segurança, mise en place, organização do posto, brigadas,',
+    'conservação geral, armazenamento, fichas técnicas, gestão do desperdício.',
+    'Só os refere quando absolutamente necessários — apenas na sua aplicação prática.',
+    '',
+    '────────────────────────────────────────',
+    '# ÂMBITO TEMÁTICO',
+    'Se a UFCD abordar Pastelaria Tradicional — escreve sobre a tradição pasteleira portuguesa.',
+    'Se abordar Doçaria Conventual — escreve sobre história, evolução, património, técnicas e especialidades.',
+    'Se abordar Cozinha Regional — escreve sobre a identidade gastronómica dessa cozinha.',
+    'O foco é sempre o elemento diferenciador da UFCD.',
+    '',
+    '────────────────────────────────────────',
+    '# CIÊNCIA',
+    'A ciência surge integrada nas técnicas — nunca em capítulos isolados de ingredientes.',
+    'Não explicar o ovo. Explicar o comportamento da gema nos fios de ovos.',
+    'Não explicar o açúcar. Explicar os pontos de açúcar desta doçaria.',
+    '',
+    '────────────────────────────────────────',
+    '# REGRA DA PROFUNDIDADE',
+    'Cada conteúdo específico: definição, origem, evolução, contexto histórico,',
+    'importância gastronómica/cultural, fundamentos técnicos, ciência aplicada,',
+    'processos tradicionais, variantes, aplicações, diferenças regionais, erros frequentes.',
+    'Um conceito central pode ocupar dezenas de páginas. Nunca distribuas uniformemente.',
+    '',
+    '────────────────────────────────────────',
+    '# TABELAS E CAIXAS',
+    'Tabelas de 4 colunas quando facilitam aprendizagem.',
+    'Caixas: [DICA DO CHEF] [CIÊNCIA NA COZINHA] [SABIA QUE] [ERROS FREQUENTES]',
+    '',
+    '────────────────────────────────────────',
+    '# ESTILO',
+    'Livro técnico. Nunca expliques o que vais fazer.',
+    'Nunca: "Neste capítulo..." "Vamos estudar..." "Iremos abordar..."',
+    'Começa imediatamente pelo conteúdo.',
     'Português europeu pré-Acordo (confecção, objectivo, actual, técnico).',
-    'O aluno deve aprender factos concretos — nunca frases genéricas.',
     '',
-    '# CONHECIMENTOS DESTA UC QUE TENS DE DESENVOLVER EXAUSTIVAMENTE:',
+    '────────────────────────────────────────',
+    '# CONTINUIDADE',
+    'Se atingires o limite: interrompe no final de um parágrafo. Nunca cries conclusões.',
+    'Na resposta seguinte continua exactamente na frase seguinte. Nunca reinicies.',
     '',
-    'O QUE O ALUNO DEVE SABER FAZER:',
-    realizacoes || '- ver referencial',
+    '────────────────────────────────────────',
+    '# FINAL DO MANUAL (só depois de todos os conteúdos específicos)',
+    '- receitas emblemáticas directamente relacionadas com esta UFCD;',
+    '- questões de revisão; glossário técnico; índice final.',
+    'As receitas nunca substituem o desenvolvimento teórico.',
     '',
-    'CRITÉRIOS DE DESEMPENHO:',
-    criterios || '- ver referencial',
-    '',
-    'CONHECIMENTOS ESPECÍFICOS DESTA UC:',
-    conhecimentos || '- ver referencial',
-    '',
-    tema,
-    '',
-    '# COMO DESENVOLVER:',
-    '',
-    'Para cada conhecimento acima:',
-    '- Explica em profundidade — o que é, de onde vem, como funciona, porque importa',
-    '- Contextualiza historicamente e culturalmente',
-    '- Explica a ciência por trás (reacções químicas, temperaturas, transformações)',
-    '- Dá exemplos concretos reais desta UC',
-    '- Inclui tabelas de 4 colunas quando compara produtos, técnicas ou temperaturas',
-    '- Caixas [DICA DO CHEF] [CIÊNCIA NA COZINHA] [HACCP] [SABIA QUE] [ERROS FREQUENTES]',
-    '- HACCP integrado: temperaturas reais, pontos críticos específicos desta UC',
-    '',
-    'NO FIM (não no início):',
-    '- 4 receitas emblemáticas desta UC com contexto cultural + ficha técnica',
-    '- 8 questões de revisão',
-    '- Glossário 10 termos',
-    '- Índice',
+    '────────────────────────────────────────',
+    '# REGRA FUNDAMENTAL',
+    '"Este texto ajuda o aluno a dominar os conhecimentos exclusivos desta UFCD?"',
+    'Se NÃO: não o escrevas. Se SIM: desenvolve até esgotar o tema.',
+    'O objectivo é produzir a obra mais completa possível sobre esta UFCD.',
   ].join('\n');
 }
 
-
-// ── Prompt opcional — fichas técnicas ────────────────────────
+// ── Prompts opcionais ─────────────────────────────────────────
 function construirPromptFichasTecnicas(modulo: ModuloCronograma): string {
-  return [
-    'Escreve 10 FICHAS TÉCNICAS DE RECEITA completas e específicas para:',
-    modulo.id + ' — ' + modulo.nome,
-    '',
-    'FORMATO OBRIGATÓRIO DE CADA FICHA:',
-    '',
-    '## FICHA TÉCNICA N.º [X] — [Nome da Receita]',
-    '**Origem/Região:** [onde nasceu este prato e porquê]',
-    '',
-    '| Campo | Informação |',
-    '|---|---|',
-    '| Doses | 4 |',
-    '| Tempo de preparação | [x] min |',
-    '| Tempo de confecção | [x] min |',
-    '| Método culinário | [método] |',
-    '| Custo aproximado | [€] |',
-    '| Dificuldade | [Fácil/Médio/Difícil] |',
-    '',
-    '**INGREDIENTES:**',
-    '| Ingrediente | Quant. Bruta | Quant. Líquida | Observações |',
-    '|---|---|---|---|',
-    '',
-    '**PREPARAÇÃO** (passo a passo com temperaturas):',
-    '1. ...',
-    '',
-    '**PONTO CRÍTICO HACCP:**',
-    '| Etapa | Perigo | Limite Crítico | Medida Correctiva |',
-    '|---|---|---|---|',
-    '',
-    '**NOTA DO CHEF:** [conselho técnico e erro mais comum a evitar]',
-    '',
-    'As 10 fichas devem ser as mais representativas desta UC/UFCD.',
-    'Para cozinha portuguesa: 1 sopa, 2 pratos de peixe, 2 pratos de carne, 2 pratos regionais, 1 guarnição, 2 sobremesas.',
-    'Português europeu pré-Acordo.',
-  ].join('\n');
+  return '10 fichas técnicas de receita completas para ' + modulo.id + ' — ' + modulo.nome + '.\n'
+    + 'Cada ficha: cabeçalho (nome, doses 4, tempos, método, custo, origem/região), '
+    + 'tabela ingredientes (quant. bruta/líquida/observações), preparação numerada com temperaturas, '
+    + 'tabela HACCP (etapa/perigo/limite/medida), nota do chef, contexto cultural.';
 }
 
-// ── Prompt opcional — fichas de trabalho ─────────────────────
 function construirPromptFichasTrabalho(modulo: ModuloCronograma): string {
-  return [
-    'Cria 3 FICHAS DE TRABALHO completas para alunos do curso profissional:',
-    modulo.id + ' — ' + modulo.nome,
-    '',
-    '---',
-    '## FICHA DE TRABALHO N.º 1 — Avaliação de Matérias-Primas',
-    '',
-    'Nome: ___________________________ Data: _______ Turma: _____',
-    '',
-    'Preenche a tabela de avaliação organoléptica para os produtos desta UC:',
-    '| Produto | Aspecto | Cheiro | Textura | Cor | Temperatura | Conforme? |',
-    '|---|---|---|---|---|---|---|',
-    '[cria 8 linhas em branco específicas para esta UC]',
-    '',
-    'Questões:',
-    '1. Quais os critérios mais importantes para avaliar a frescura de [produto específico]?',
-    '   Resposta: _______________________________________________',
-    '2. A que temperatura deve estar [produto] na recepção? ___°C',
-    '3. O que fazes se um produto não cumprir os critérios? _______',
-    '',
-    '---',
-    '## FICHA DE TRABALHO N.º 2 — Cálculo de Rendimento e Custo',
-    '',
-    'Nome: ___________________________ Data: _______ Turma: _____',
-    '',
-    'Fórmula: IR = (Peso Líquido ÷ Peso Bruto) × 100',
-    '',
-    'Exercício 1: Calcula o índice de rendimento e custo por dose:',
-    '| Ingrediente | Peso Bruto | Preço/kg | Peso Líquido | IR% | Custo por dose |',
-    '|---|---|---|---|---|---|',
-    '[cria 6 linhas com ingredientes específicos desta UC, deixa as colunas em branco]',
-    '',
-    'Custo total por dose: ______ €',
-    'Food cost (objectivo máximo 30%): ______ %',
-    '',
-    '---',
-    '## FICHA DE TRABALHO N.º 3 — Análise Sensorial e Empratamento',
-    '',
-    'Nome: ___________________________ Data: _______ Turma: _____',
-    '',
-    'Prato avaliado: _________________________',
-    '',
-    '| Critério | 1 (Mau) | 2 (Suficiente) | 3 (Bom) | 4 (Muito Bom) | 5 (Excelente) |',
-    '|---|---|---|---|---|---|',
-    '| Aspecto visual | | | | | |',
-    '| Cor e apresentação | | | | | |',
-    '| Aroma | | | | | |',
-    '| Sabor | | | | | |',
-    '| Textura | | | | | |',
-    '| Temperatura de serviço | | | | | |',
-    '| Empratamento | | | | | |',
-    '',
-    'Pontuação total: ______ / 35',
-    'Observações e sugestões de melhoria: ___________________________',
-    '',
-    'Português europeu pré-Acordo.',
-  ].join('\n');
+  return '3 fichas de trabalho para alunos de ' + modulo.id + ' — ' + modulo.nome + '.\n'
+    + 'Ficha 1: avaliação organoléptica de matérias-primas (tabela com critérios específicos desta UC).\n'
+    + 'Ficha 2: cálculo de rendimento (IR = peso líquido/peso bruto × 100) e custo por dose.\n'
+    + 'Ficha 3: comparação de técnicas ou análise sensorial (grelha para preenchimento).';
 }
 
 
@@ -847,15 +770,15 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
               </div>
             )}
 
-            {/* Gerar manual — abre IA à escolha do professor */}
+            {/* Gerar manual — 3 IAs à escolha */}
             {!moduloSel ? (
               <div style={{ fontSize: 12, color: 'rgba(109,40,217,0.4)', textAlign: 'center', padding: 8 }}>
-                Selecciona um módulo acima para activar.
+                Selecciona um módulo para activar.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', lineHeight: 1.5 }}>
-                  Escolhe a IA → gera o manual → copia o resultado → cola no campo Conteúdo abaixo → Guardar.
+                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>
+                  Escolhe a IA → gera → copia → cola no campo Conteúdo abaixo → Guardar.
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => abrirIA('claude', construirPromptUnico(moduloSel, anoLetivo))}
@@ -874,26 +797,24 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
                     ✦ Gemini
                   </button>
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
-                  Opcionais — cola o resultado no campo Conteúdo e junta ao manual:
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.35)' }}>Opcionais:</div>
+                <div style={{ display: 'flex', gap: 4 }}>
                   {(['claude', 'chatgpt', 'gemini'] as const).map(ia => (
-                    <button key={'ft-' + ia}
-                      onClick={() => abrirIA(ia, construirPromptFichasTecnicas(moduloSel))}
-                      style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
-                        background: '#fff', color: 'rgba(26,23,20,0.6)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                      📋 Fichas Técnicas {ia === 'claude' ? '(Claude)' : ia === 'chatgpt' ? '(GPT)' : '(Gemini)'}
+                    <button key={'ft-' + ia} onClick={() => abrirIA(ia, construirPromptFichasTecnicas(moduloSel))}
+                      style={{ flex: 1, padding: '6px 2px', borderRadius: 8,
+                        border: '1px solid rgba(26,23,20,0.12)', background: '#fff',
+                        color: 'rgba(26,23,20,0.5)', fontSize: 10, cursor: 'pointer' }}>
+                      📋 {ia === 'claude' ? 'Claude' : ia === 'chatgpt' ? 'GPT' : 'Gemini'}
                     </button>
                   ))}
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 4 }}>
                   {(['claude', 'chatgpt', 'gemini'] as const).map(ia => (
-                    <button key={'fw-' + ia}
-                      onClick={() => abrirIA(ia, construirPromptFichasTrabalho(moduloSel))}
-                      style={{ flex: 1, padding: '7px 4px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
-                        background: '#fff', color: 'rgba(26,23,20,0.6)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                      📝 Fichas Trabalho {ia === 'claude' ? '(Claude)' : ia === 'chatgpt' ? '(GPT)' : '(Gemini)'}
+                    <button key={'fw-' + ia} onClick={() => abrirIA(ia, construirPromptFichasTrabalho(moduloSel))}
+                      style={{ flex: 1, padding: '6px 2px', borderRadius: 8,
+                        border: '1px solid rgba(26,23,20,0.12)', background: '#fff',
+                        color: 'rgba(26,23,20,0.5)', fontSize: 10, cursor: 'pointer' }}>
+                      📝 {ia === 'claude' ? 'Claude' : ia === 'chatgpt' ? 'GPT' : 'Gemini'}
                     </button>
                   ))}
                 </div>
@@ -1036,11 +957,8 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
   }
   function apagar(id: string | null) {
     if (!id) return;
-    deleteEntradaManual(id);
-    recarregar();
-    setConfirmarApagar(null);
-    setModo('lista');
-    setEntradaAtiva(null);
+    deleteEntradaManual(id); recarregar();
+    setConfirmarApagar(null); setModo('lista'); setEntradaAtiva(null);
   }
 
   // ── Vista de uma entrada ────────────────────────────────────
@@ -1125,7 +1043,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
                 Apagar esta entrada?
               </div>
               <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', textAlign: 'center', marginBottom: 20 }}>
-                "{entradaAtiva.titulo}" vai ser removida do Manual do Cozinheiro.
+                {entradas.find((e: EntradaManual) => e.id === confirmarApagar)?.titulo || (entradaAtiva?.titulo || 'Esta entrada')} vai ser removida.
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => apagar(confirmarApagar)} style={{ flex: 1, padding: '12px',
