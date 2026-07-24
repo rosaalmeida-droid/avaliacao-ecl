@@ -349,50 +349,104 @@ function blocoConhecimento(moduloNome: string): string {
   if (n.includes('carnes') || n.includes('aves')) {
     return 'Cortes bovinos/suínos/ovinos com diagrama. Temperatura interna mínima por espécie. DOP: Bísaro, Barrosão, Alentejano. Maturação a seco vs húmida. Aves: Salmonella/Campylobacter min 82°C.';
   }
-  if (n.includes('pastelaria') || n.includes('docaria')) {
-    return 'Ciência: glúten, pontos de calda (veia 103°C, bola mole 115°C, caramelo 165°C). Massas: folhada (27 camadas), quebrada, choux, levedada. Creme pasteleiro: 85°C. Doçaria conventual: origens, conventos, receitas emblemáticas.';
+  if (n.includes('pastelaria') || n.includes('doc') || n.includes('doç')) {
+    return [
+      'CONHECIMENTO ESPECÍFICO — PASTELARIA E DOÇARIA TRADICIONAL PORTUGUESA:',
+      '',
+      'DOÇARIA CONVENTUAL (desenvolve com máxima profundidade):',
+      'Referências obrigatórias: Virgílio Nogueiro Gomes ("A Cozinha Afro-Atlântica"), Maria de Lourdes Modesto ("Cozinha Tradicional Portuguesa"), José Quitério ("Livro de Bem Comer").',
+      'A génese: claras para engomar hábitos e clarificar vinhos → sobra de gemas → laboratórios conventuais de doçaria.',
+      'O açúcar: cana-de-açúcar da Madeira (séc.XV) e Brasil (séc.XVI) + amêndoa árabe = doçaria conventual única na Europa.',
+      '',
+      'DOCES E CONVENTOS DE ORIGEM (desenvolve cada um com história completa):',
+      'Pastéis de Belém — Mosteiro dos Jerónimos, Lisboa (1837, receita secreta dos monges)',
+      'Toucinho-do-Céu — Convento de Santa Clara, Guimarães (gema + amêndoa + açúcar)',
+      'Barriga de Freira — Convento de Braga (pão-de-ló enriquecido com gemas)',
+      'Papos-de-Anjo — Convento de Odivelas (gemas batidas em calda)',
+      'Ovos Moles — Convento de Jesus, Aveiro (gemas + açúcar, hóstias como embalagem)',
+      'Dom Rodrigo — Algarve, influência árabe (fios de ovos + amêndoa)',
+      'Queijadas de Sintra — Sintra (queijo fresco + gemas, receita medieval)',
+      'Trouxas das Caldas — Caldas da Rainha (claras batidas em calda)',
+      'Jesuítas — Porto (massa folhada + creme de gemas + fondant)',
+      'Bolo de Mel — Madeira (melaço de cana + especiarias, conserva 1 ano)',
+      '',
+      'CIÊNCIA DOS INGREDIENTES:',
+      'Açúcar: pontos de calda — pérola 100°C, fio fraco 103°C, fio forte 107°C, bola mole 115°C, bola dura 121°C, rebuçado 135°C, caramelo claro 160°C, caramelo escuro 180°C.',
+      'Ovos: gema (emulsionante — lecitina); clara (espumante — ovoalbumina coagula a 62°C); funções na doçaria.',
+      'Farinha: proteínas (glutenina + gliadina) formam glúten por hidratação + trabalho mecânico; T55 vs T65 vs Manitoba.',
+      'Amêndoa: influência árabe; composição (50% gordura, 20% proteína); usos em massas, cremes e coberturas.',
+      'Gorduras: manteiga (84% mg, emulsão, aroma); margarina; banha (doçaria conventual do interior).',
+      '',
+      'MASSAS BASE (desenvolve cada uma com ciência e técnica):',
+      'Massa folhada: 27 camadas de gordura, laminagem (6 voltas simples ou 4 duplas), manteiga a 16-18°C.',
+      'Massa quebrada doce/salgada: método areia vs método creme; glúten mínimo = textura quebradiça.',
+      'Massa choux: vapor de água como fermento; proporção base 1:1:1:2 (água:gordura:farinha:ovos).',
+      'Massa brioche: glúten desenvolvido + manteiga em pomada; fermentação dupla.',
+      'Biscuit joconde, genoise, dacquoise: diferenças técnicas e aplicações.',
+      '',
+      'CREMES E RECHEIOS:',
+      'Creme pasteleiro: gelatinização do amido (85°C); arrefecimento rápido obrigatório (<10°C em 2h).',
+      'Creme de manteiga: mousselina, alemão, italiano, suíço.',
+      'Ganache: emulsificação chocolate/natas; proporções por consistência.',
+      'Fios de ovos: técnica árabe-portuguesa; calda de ponto de fio + gemas peneiradas.',
+    ].join('\n');
   }
   return 'Desenvolve o tema com profundidade técnica, científica e cultural. Explica sempre o porquê de cada técnica.';
 }
 
-// ── Prompt único — curto + conteúdos da UC injectados ────────
+// ── Prompt único — focado nos conhecimentos reais da UC ──────
 function construirPromptUnico(modulo: ModuloCronograma, anoLetivo: string): string {
   const ref_    = modulo.tipo === 'UC' ? '811RA144' : '811183';
   const ucIdRef = modulo.tipo === 'UC' ? modulo.id : (EQUIVALENCIAS_UFCD_UC[modulo.id]?.[0] || null);
   const ref     = ucIdRef ? getReferencialUC(ucIdRef) : null;
 
-  // Competências reais do referencial
-  const realizacoes   = (ref?.realizacoes || []).map((r: string, i: number) => (i+1) + '. ' + r).join('\n');
+  // Competências reais do referencial — é isto que difere de UC para UC
+  const realizacoes   = (ref?.realizacoes || []).map((r: string) => '- ' + r).join('\n');
   const criterios     = (ref?.criteriosDesempenho || []).map((r: string) => '- ' + r).join('\n');
   const conhecimentos = (ref?.conhecimentos || []).map((r: string) => '- ' + r).join('\n');
 
-  // Conhecimento técnico específico do tema (compacto)
+  // Conhecimento específico do tema
   const tema = blocoConhecimento(modulo.nome);
 
   return [
-    'Escreve um MANUAL DO ALUNO completo (30 páginas) para:',
-    modulo.id + ' — ' + modulo.nome,
-    'ECL | Referencial ' + ref_ + ' | 2026-2027',
+    '# MANUAL DO ALUNO — ' + modulo.id + ' — ' + modulo.nome.toUpperCase(),
+    'Escola de Comércio de Lisboa | Referencial ' + ref_ + ' | Ano Lectivo 2026-2027',
     '',
-    'INSTRUÇÃO: Começa DIRECTAMENTE com o texto. Sem planos. Sem índice no início.',
-    'Português europeu pré-Acordo. Mínimo 4 páginas por capítulo.',
+    'INSTRUÇÃO CRÍTICA:',
+    'Escreve DIRECTAMENTE o conteúdo. Sem introdução, sem "vou escrever", sem índice no início.',
+    'Mínimo 30 páginas. Cada tema com texto denso e contínuo — nunca listas de 3 linhas.',
+    'Português europeu pré-Acordo (confecção, objectivo, actual, técnico).',
+    'O aluno deve aprender factos concretos — nunca frases genéricas.',
     '',
-    'COMPETÊNCIAS DO REFERENCIAL (desenvolve cada uma):',
-    realizacoes,
-    criterios,
-    conhecimentos,
+    '# CONHECIMENTOS DESTA UC QUE TENS DE DESENVOLVER EXAUSTIVAMENTE:',
+    '',
+    'O QUE O ALUNO DEVE SABER FAZER:',
+    realizacoes || '- ver referencial',
+    '',
+    'CRITÉRIOS DE DESEMPENHO:',
+    criterios || '- ver referencial',
+    '',
+    'CONHECIMENTOS ESPECÍFICOS DESTA UC:',
+    conhecimentos || '- ver referencial',
     '',
     tema,
     '',
-    'ESTRUTURA:',
-    '1. Nota de apresentação (1 pág.)',
-    '2. Capítulo 1 — Contexto histórico e cultural (6 pág. mínimo — desenvolve cada região/tema com profundidade etnográfica)',
-    '3. Capítulo 2 — Tecnologia das matérias-primas (4 pág.)',
-    '4. Capítulo 3 — Técnicas de preparação e confecção (5 pág.)',
-    '5. Capítulo 4 — Higiene, HACCP e sustentabilidade (3 pág.)',
-    '6. 4 receitas com ficha técnica completa',
-    '7. Síntese: 10 pontos-chave + 8 questões de revisão + glossário 10 termos',
-    '8. Índice no fim',
+    '# COMO DESENVOLVER:',
+    '',
+    'Para cada conhecimento acima:',
+    '- Explica em profundidade — o que é, de onde vem, como funciona, porque importa',
+    '- Contextualiza historicamente e culturalmente',
+    '- Explica a ciência por trás (reacções químicas, temperaturas, transformações)',
+    '- Dá exemplos concretos reais desta UC',
+    '- Inclui tabelas de 4 colunas quando compara produtos, técnicas ou temperaturas',
+    '- Caixas [DICA DO CHEF] [CIÊNCIA NA COZINHA] [HACCP] [SABIA QUE] [ERROS FREQUENTES]',
+    '- HACCP integrado: temperaturas reais, pontos críticos específicos desta UC',
+    '',
+    'NO FIM (não no início):',
+    '- 4 receitas emblemáticas desta UC com contexto cultural + ficha técnica',
+    '- 8 questões de revisão',
+    '- Glossário 10 termos',
+    '- Índice',
   ].join('\n');
 }
 
