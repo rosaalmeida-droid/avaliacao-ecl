@@ -68,3 +68,12 @@ export function fmtDataRelativa(iso: string): string {
 /** Alias de compatibilidade para código existente */
 export function formatarData(iso: string): string { return fmtData(iso); }
 export function formatarDataHora(iso: string): string { return fmtDataHora(iso); }
+
+/** Trimestre letivo automático pela data.
+ *  1.º período: set-dez · 2.º: jan-mar · 3.º: abr-jul (ago = férias → 3.º) */
+export function trimestreAtual(d: Date = new Date()): 1 | 2 | 3 {
+  const mes = d.getMonth() + 1; // 1-12
+  if (mes >= 9 && mes <= 12) return 1;
+  if (mes >= 1 && mes <= 3)  return 2;
+  return 3; // abr-ago
+}
