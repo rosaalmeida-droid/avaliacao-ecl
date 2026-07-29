@@ -48,12 +48,17 @@ export async function loadLibrary(): Promise<Library> {
       fetchJSON<any[]>('uc_ufcd_map.json'),
       fetchJSON<any>('uc_ufcd_lookup.json'),
       fetchJSON<any>('index.json'),
+      // --- biblioteca do modelo novo (não rebenta se ainda não estiverem na pasta) ---
+      fetchJSON<any[]>('uc_competencias.json').catch(() => []),
+      fetchJSON<any>('UC03577_modelo_completo.json').catch(() => null),
+      fetchJSON<any>('Micros_por_Tecnica_COMPLETO.json').catch(() => null),
     ]);
     const [
       tecnicas, subtecnicas, perfis, criterios,
       conhecimentos, aptidoes, aparelhos, produtos,
       preparacoes_mlm, preparacoes_int, preparacoes_base,
-      atitudes, uc_base, uc_ufcd_map, lookup, index
+      atitudes, uc_base, uc_ufcd_map, lookup, index,
+      uc_competencias, uc03577_modelo, micros_tecnica
     ] = results;
 
     _library = {
@@ -66,6 +71,11 @@ export async function loadLibrary(): Promise<Library> {
       version: (index as any).version,
       gerado_em: (index as any).gerado_em,
     } as Library;
+
+    // biblioteca do modelo novo (anexada sem mexer no tipo Library)
+    (_library as any).uc_competencias = uc_competencias;
+    (_library as any).uc03577_modelo = uc03577_modelo;
+    (_library as any).micros_tecnica = micros_tecnica;
 
     console.log(`[Library] ✅ V${_library.version} carregada — ${(perfis as any[]).length} perfis, ${(criterios as any[]).length} critérios`);
     return _library;
