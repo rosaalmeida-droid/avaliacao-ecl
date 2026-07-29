@@ -1,6 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
+
+// Âncora: nº da UC no referencial 811RA144 + data com dia da semana
+const NUM_UC_AL: Record<string, number> = {
+  UC03576:1, UC01999:2, UC03577:3, UC02002:4, UC02003:5, UC02004:6, UC02005:7,
+  UC03578:8, UC00596:9, UC03579:10, UC03580:11, UC03581:12, UC03582:13, UC00039:14,
+  UC00056:15, UC00034:16, UC00054:17, UC03583:18, UC00038:19, UC03584:20, UC00031:21,
+  UC00032:22, UC00035:23, UC00595:24, UC00069:25, UC00068:26,
+};
+function ucAncora(ucId?: string, ucNome?: string): string {
+  if (!ucId) return ucNome || '';
+  return (NUM_UC_AL[ucId] ? NUM_UC_AL[ucId] + ' · ' : '') + ucId + (ucNome ? ' — ' + ucNome : '');
+}
 import { Aluno, PlanoAula, FichaProducao, INICIATIVA_FRASES, calcularNotaPlano, PESOS_AULA } from '../types';
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
@@ -297,12 +309,12 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
           </div>
         </div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:T.charcoal,
+          <div style={{ fontSize:12, fontWeight:600, color:'rgba(26,23,20,0.55)',
             overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {plano.titulo}
+            {plano.numeroPlan ? 'Plano de Aula ' + plano.numeroPlan : (plano.titulo || 'Plano de aula')}
           </div>
-          {plano.ucNome && (
-            <div style={{ fontSize:11, color:T.copper, marginTop:2 }}>{plano.ucNome}</div>
+          {(plano.ucId || plano.ucNome) && (
+            <div style={{ fontSize:12.5, color:T.copper, fontWeight:700, marginTop:2 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
           )}
         </div>
         <ChipEstado texto="Passada" cor="rgba(26,23,20,0.4)" bg="rgba(26,23,20,0.06)" />
@@ -336,14 +348,15 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
           </div>
         )}
         <div style={{ fontSize:18, fontWeight:800, color:'#fff', lineHeight:1.3,
-          marginBottom:6 }}>
-          {plano.titulo}
+          marginBottom:2 }}>
+          {plano.numeroPlan ? 'Plano de Aula ' + plano.numeroPlan : (plano.titulo || 'Plano de aula')}
         </div>
+        {(plano.ucId || plano.ucNome) && (
+          <div style={{ fontSize:13, fontWeight:700, color:'#fff', opacity:0.95, marginBottom:6 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
+        )}
         {plano.horaInicio && (
           <div style={{ fontSize:12, color:'rgba(255,255,255,0.7)' }}>
             🕗 {plano.horaInicio}–{plano.horaFim}
-            {plano.ucId && <span style={{ marginLeft:8, background:'rgba(255,255,255,0.2)',
-              padding:'1px 8px', borderRadius:100, fontSize:11 }}>{plano.ucId}</span>}
           </div>
         )}
       </div>
@@ -2428,12 +2441,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         </div>
       )}
 
-      {/* Atitude */}
+      {/* Atitude — AUTOPROPOSTA do aluno: só atitudes de maturidade (as que ele reconhece em si) */}
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-          letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:12 }}>💡 A tua atitude — escolhe uma</div>
+          letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>💡 Propõe-te a uma atitude</div>
+        <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:12 }}>
+          Escolhe uma atitude que reconheces em ti hoje. Fica como proposta tua — o professor valida.</div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-          {ATITUDES.filter(a=>!compRemovidas.includes(a.id)).slice(0,12).map(a => (
+          {ATITUDES.filter(a=>['ATI-005','ATI-006','ATI-007','ATI-012','ATI-019','ATI-020','ATI-021'].includes(a.id) && !compRemovidas.includes(a.id)).map(a => (
             <button key={a.id} onClick={() => setAtitudeEscolhida(a.id===atitudeEscolhida?null:a.id)} style={{
               padding:'12px', borderRadius:12, fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left',
               border:`1.5px solid ${atitudeEscolhida===a.id?'#7d4f8c':T.border}`,
