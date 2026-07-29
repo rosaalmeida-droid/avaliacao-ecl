@@ -379,7 +379,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, marginTop: 10, color: 'rgba(26,23,20,0.5)' }}>
               Avaliação do professor
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, marginBottom: notaFinal ? 8 : 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 4, marginBottom: notaFinal ? 8 : 0 }}>
               {NIVEIS_PROF.map(n => (
                 <button key={n.v} onClick={() => setNotasProf(p => ({ ...p, [auto.competenciaId]: n.v }))} style={{
                   padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${notaProf === n.v ? n.txt : 'var(--border)'}`,
