@@ -21,7 +21,7 @@ import {
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
-  sincronizarDoSheets, calcularPontosRegularidade, getSelecoes,
+  sincronizarDoSheets, calcularPontosRegularidade, getSelecoes, rotuloPlano,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -311,7 +311,7 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontSize:12, fontWeight:600, color:'rgba(26,23,20,0.55)',
             overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {plano.numeroPlan ? 'Plano de Aula ' + plano.numeroPlan : (plano.titulo || 'Plano de aula')}
+            {plano.numeroPlan ? rotuloPlano(plano) : (plano.titulo || 'Plano de aula')}
           </div>
           {(plano.ucId || plano.ucNome) && (
             <div style={{ fontSize:12.5, color:T.copper, fontWeight:700, marginTop:2 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
@@ -349,7 +349,7 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
         )}
         <div style={{ fontSize:18, fontWeight:800, color:'#fff', lineHeight:1.3,
           marginBottom:2 }}>
-          {plano.numeroPlan ? 'Plano de Aula ' + plano.numeroPlan : (plano.titulo || 'Plano de aula')}
+          {plano.numeroPlan ? rotuloPlano(plano) : (plano.titulo || 'Plano de aula')}
         </div>
         {(plano.ucId || plano.ucNome) && (
           <div style={{ fontSize:13, fontWeight:700, color:'#fff', opacity:0.95, marginBottom:6 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
