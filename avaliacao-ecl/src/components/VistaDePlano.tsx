@@ -3,7 +3,8 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao, getHistoricoAvaliacoes, getSelecoes, getValidacoes,
-  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom, rotuloPlano } from '../backend';
+  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom } from '../backend';
+import { rotuloPlano } from '../rotuloPlano';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC, encontrarAparelho, encontrarSubtecnica,
