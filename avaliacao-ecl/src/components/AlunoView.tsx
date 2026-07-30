@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
+import { rotuloPlano } from '../rotuloPlano';
 
 // Âncora: nº da UC no referencial 811RA144 + data com dia da semana
 const NUM_UC_AL: Record<string, number> = {
@@ -21,7 +22,7 @@ import {
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
-  sincronizarDoSheets, calcularPontosRegularidade, getSelecoes, rotuloPlano,
+  sincronizarDoSheets, calcularPontosRegularidade, getSelecoes,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
