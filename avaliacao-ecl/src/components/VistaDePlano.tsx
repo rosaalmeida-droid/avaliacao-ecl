@@ -3,7 +3,7 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao, getHistoricoAvaliacoes, getSelecoes, getValidacoes,
-  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom } from '../backend';
+  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom, rotuloPlano } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC, encontrarAparelho, encontrarSubtecnica,
@@ -160,7 +160,7 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>
-            {plano.numeroPlan ? `Plano ${plano.numeroPlan} · ` : ''}{diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {String(plano.turmaId ?? '')}
+            {rotuloPlano(plano)} · {diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {String(plano.turmaId ?? '')}
           </div>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 6 }}>
             {String(plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`)}
