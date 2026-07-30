@@ -9,7 +9,7 @@ import {
   gerarCodigoPlano,
   getPlanosArquivados,
   getFichasProducao,
-  getAlunos, publicarNoClassroom } from '../backend';
+  getAlunos, publicarNoClassroom, rotuloPlano } from '../backend';
 import { fmtDataCurta, fmtData } from '../datas';
 import { modulosDaTurma } from '../cronograma';
 
@@ -328,7 +328,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                       <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{horaI || '--:--'}</div>
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{p.numeroPlan ? 'Plano de Aula ' + p.numeroPlan : 'Plano de aula'}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
+                      <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
                       <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
                       {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                     </div>
@@ -509,7 +509,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
             <div key={p.id} className="option-card" style={{ marginBottom: 8, opacity: 0.75 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{p.numeroPlan ? 'Plano de Aula ' + p.numeroPlan : 'Plano de aula'}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
+                  <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
                   <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
                   {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                 </div>
@@ -602,7 +602,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                 <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{p.titulo || 'Plano de aula'}</div>
                 {p.ucId && (
                   <div style={{ fontSize:12, color:'var(--copper)', fontWeight:600, marginBottom:2, lineHeight:1.4 }}>
-                    {p.ucId}{p.numeroPlan ? ` · Plano ${p.numeroPlan}` : ''}
+                    {p.ucId} · {rotuloPlano(p)}
                     {p.ucNome && <div style={{ fontSize:12, color:'var(--copper)', fontWeight:500, opacity:0.85 }}>{p.ucNome}</div>}
                   </div>
                 )}
@@ -805,7 +805,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
     <div>
       <div style={{background:'var(--charcoal)',borderRadius:14,padding:'18px',marginBottom:12}}>
         <button onClick={onVoltar} className="btn" style={{fontSize:13,padding:'5px 10px',background:'rgba(247,241,230,0.6)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.6)',marginBottom:10}}>← Planos</button>
-        <div className="display" style={{fontSize:16,color:'var(--cream)'}}>{plano.numeroPlan ? 'Plano de Aula ' + plano.numeroPlan : (plano.titulo || 'Plano de aula')}{plano.turmaId ? ' · ' + plano.turmaId : ''}</div>
+        <div className="display" style={{fontSize:16,color:'var(--cream)'}}>{rotuloPlano(plano)}{plano.turmaId ? ' · ' + plano.turmaId : ''}</div>
         <div style={{fontSize:12,color:'rgba(247,241,230,0.5)',marginTop:2}}>{dataComDia(plano.data)}{plano.horaInicio ? ` · ${plano.horaInicio}–${plano.horaFim}` : ''}</div>
         {plano.ucId && (
           <div style={{marginTop:8,padding:'7px 11px',background:'rgba(181,101,29,0.3)',borderRadius:8,display:'inline-block'}}>
