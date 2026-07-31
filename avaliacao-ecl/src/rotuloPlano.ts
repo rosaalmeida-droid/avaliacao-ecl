@@ -7,7 +7,7 @@ import type { PlanoAula } from './types';
 export function rotuloPlano(plano: PlanoAula): string {
   if (!plano) return 'Plano de aula';
   const daUC = getPlanosAula()
-    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && !p.arquivado)
+    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.estado !== 'arquivado')
     .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || (a.numeroPlan || 0) - (b.numeroPlan || 0));
   const idx = daUC.findIndex(p => p.id === plano.id);
   const n = idx >= 0 ? idx + 1 : (plano.numeroPlan || 1);
