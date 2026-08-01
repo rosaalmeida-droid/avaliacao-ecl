@@ -445,7 +445,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const textoFichas = fichasDoPlano.map(f =>
     [f.nomePrato, ...(f.ingredientes || []).map((i: any) => i.produto)].join(' ')
   ).join(' ').toLowerCase();
-  const compTecnicas = usarFallback ? microsDaUC
+  const compTecnicas = (usarFallback && temFichas) ? microsDaUC
     .filter(m => {
       if (IDS_DUPLICAM_OBRIGATORIAS.has(m.id) || IDS_JA_USADOS.has(m.id)) return false;
       if (textoFichas.length > 10) {
@@ -783,10 +783,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--sage)', marginBottom:8 }}>🔒 Obrigatórias — sempre presentes</div>
           {compObrigatorias.map(c => (
-            <div key={c.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background:'var(--sage-pale)', marginBottom:6, border:'1px solid rgba(90,122,78,0.2)' }}>
-              <span>✓</span>
-              <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{c.nome}</div>
-              <span style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>SEMPRE</span>
+            <div key={c.id} style={{ padding:'8px 12px', borderRadius:8, background:'var(--sage-pale)', marginBottom:6, border:'1px solid rgba(90,122,78,0.2)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span>✓</span>
+                <div style={{ flex:1, fontSize:13, fontWeight:600 }}>{c.nome}</div>
+                <span style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>SEMPRE</span>
+              </div>
+              {Array.isArray((c as any).criterios) && (c as any).criterios.length > 0 && (
+                <ul style={{ margin:'6px 0 0 28px', padding:0 }}>
+                  {(c as any).criterios.map((cr:any, i:number) => (
+                    <li key={i} style={{ fontSize:12, color:'rgba(26,23,20,0.65)', marginBottom:2 }}>{cr.criterio}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
         </div>
@@ -860,6 +869,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         )}
 
         {/* ── Fallback sistema antigo (sem SUB/APP) ── */}
+        {usarFallback && !temFichas && (
+          <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:10, background:'var(--cream-dark)', border:'1px dashed rgba(26,23,20,0.2)' }}>
+            <div style={{ fontSize:13, fontWeight:600, color:'rgba(26,23,20,0.7)', marginBottom:2 }}>Ainda não há ficha técnica</div>
+            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)' }}>As competências específicas do prato (técnicas, aparelhos e micros) aparecem aqui depois de criares a ficha técnica desta aula.</div>
+          </div>
+        )}
         {compTecnicas.length > 0 && (
           <div style={{ marginBottom:14 }}>
             <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas — UC {plano.ucId}</div>
@@ -1153,10 +1168,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>🔒 Obrigatórias — sempre presentes</div>
             {compObrigatorias.map(c => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'var(--sage-pale)', marginBottom: 6, border: '1px solid rgba(90,122,78,0.2)' }}>
-                <span style={{ fontSize: 14 }}>✓</span>
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{c.nome}</div>
-                <span style={{ fontSize:13, color: 'var(--sage)', fontWeight: 600 }}>SEMPRE</span>
+              <div key={c.id} style={{ padding:'8px 12px', borderRadius:8, background:'var(--sage-pale)', marginBottom:6, border:'1px solid rgba(90,122,78,0.2)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontSize: 14 }}>✓</span>
+                  <div style={{ flex:1, fontSize:13, fontWeight:600 }}>{c.nome}</div>
+                  <span style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>SEMPRE</span>
+                </div>
+                {Array.isArray((c as any).criterios) && (c as any).criterios.length > 0 && (
+                  <ul style={{ margin:'6px 0 0 28px', padding:0 }}>
+                    {(c as any).criterios.map((cr:any, i:number) => (
+                      <li key={i} style={{ fontSize:12, color:'rgba(26,23,20,0.65)', marginBottom:2 }}>{cr.criterio}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ))}
           </div>
