@@ -4,7 +4,7 @@ import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao, getHistoricoAvaliacoes, getSelecoes, getValidacoes,
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom } from '../backend';
-import { rotuloPlano } from '../rotuloPlano';
+import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC, encontrarAparelho, encontrarSubtecnica,
@@ -175,6 +175,11 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
           ) : (
             <div style={{ background: 'rgba(179,65,58,0.3)', borderRadius: 8, padding: '5px 10px', marginTop: 4, display: 'inline-block' }}>
               <span style={{ fontSize:13, color: 'var(--danger-light)', fontWeight: 600 }}>⚠️ UC não definida</span>
+            </div>
+          )}
+          {avisoFimUC(plano) && (
+            <div style={{ marginTop: 10, padding: '9px 13px', borderRadius: 8, background: 'rgba(247,241,230,0.14)', border: '1px solid rgba(247,241,230,0.3)', fontSize: 13, color: 'var(--cream)', fontWeight: 600, maxWidth: 520 }}>
+              {avisoFimUC(plano)}
             </div>
           )}
         </div>
