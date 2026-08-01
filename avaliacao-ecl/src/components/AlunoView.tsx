@@ -1,78 +1,436 @@
-import React from 'react';
-import { getPlanosAulaPorTurma, getSelecoes, getValidacoes } from '../backend';
+import React, { useState, useRef, useEffect } from 'react';
+import { ModalFullscreen } from './ModalFullscreen';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { rotuloPlano } from '../rotuloPlano';
 
-// Data "20-07 · quarta" curta
-function dataCurta(iso?: string): string {
-  if (!iso) return '';
-  const d = /^\d{4}-\d{2}-\d{2}/.test(iso) ? new Date(iso.slice(0, 10) + 'T12:00:00') : new Date(iso);
-  if (isNaN(d.getTime())) return '';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}-${mm} · ${d.toLocaleDateString('pt-PT', { weekday: 'short' })}`;
+// Âncora: nº da UC no referencial 811RA144 + data com dia da semana
+const NUM_UC_AL: Record<string, number> = {
+  UC03576:1, UC01999:2, UC03577:3, UC02002:4, UC02003:5, UC02004:6, UC02005:7,
+  UC03578:8, UC00596:9, UC03579:10, UC03580:11, UC03581:12, UC03582:13, UC00039:14,
+  UC00056:15, UC00034:16, UC00054:17, UC03583:18, UC00038:19, UC03584:20, UC00031:21,
+  UC00032:22, UC00035:23, UC00595:24, UC00069:25, UC00068:26,
+};
+function ucAncora(ucId?: string, ucNome?: string): string {
+  if (!ucId) return ucNome || '';
+  return (NUM_UC_AL[ucId] ? NUM_UC_AL[ucId] + ' · ' : '') + ucId + (ucNome ? ' — ' + ucNome : '');
 }
+import { Aluno, PlanoAula, FichaProducao, INICIATIVA_FRASES, calcularNotaPlano, PESOS_AULA } from '../types';
+import {
+  getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
+  getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
+  addOrUpdateSelecao, getHistoricoAlunoMicro, addRegistoAvaliacao, addRegistoPresenca,
+  getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
+  registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
+  sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
+  sincronizarDoSheets, calcularPontosRegularidade, getSelecoes, getValidacoes,
+} from '../backend';
+import {
+  MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
+  microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
+  encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos,
+  nomeCompetencia, encontrarConhecimento, dicaRecuperacaoAtitude, nivelComplexidadeAtitude, getAtitudeDetalhada,
+} from '../compatECL';
+import { getLibrary } from '../libraryService';
+import { getFrasesParaCompetencia } from '../frases_subtecnicas';
+import { GuiaProducao } from './GuiaProducao';
+import { gerarPDFGuiao } from './GerarPDFGuiao';
+import { CriteriosComp } from './CriteriosComp';
+import { ManualCozinheiro } from './ManualCozinheiro';
+import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
+import { PerfilProfissionalAluno } from './PerfilProfissional';
+import { DicionarioComp } from './DicionarioComp';
+import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
-type Estado = 'por_avaliar' | 'aguarda' | 'validado';
-
-const ESTILO: Record<Estado, { dot: string; fundo: string; texto: string; etiqueta: string }> = {
-  por_avaliar: { dot: '#c8cdd4', fundo: '#f4f2ee', texto: 'rgba(26,23,20,0.5)', etiqueta: 'Por autoavaliar' },
-  aguarda:     { dot: '#b0692b', fundo: 'rgba(181,101,29,0.10)', texto: '#8a4f1e', etiqueta: 'Aguarda validação do professor' },
-  validado:    { dot: '#5a7a4e', fundo: 'rgba(90,122,78,0.12)', texto: '#4e6a25', etiqueta: 'Validado' },
+// ─────────────────────────────────────────────────────────────
+// TOKENS — tudo derivado das CSS vars do projeto
+// ─────────────────────────────────────────────────────────────
+const T = {
+  cream:   '#faf7f2',
+  charcoal:'#1a1714',
+  copper:  '#b5651d',
+  copperP: '#fdf0e6',
+  sage:    '#5a7a4e',
+  sageP:   '#eef4eb',
+  danger:  '#c0392b',
+  dangerP: '#fdf0ef',
+  info:    '#2563eb',
+  infoP:   '#eff6ff',
+  border:  'rgba(26,23,20,0.10)',
 };
 
-export function PercursoUC({ aluno, ucId }: { aluno: { id: string; turmaId: string }; ucId: string }) {
-  if (!ucId) return null;
+const FARD_ITEMS = [
+  { id:'touca',    label:'Touca',              emoji:'👒' },
+  { id:'avental',  label:'Avental limpo',       emoji:'🧥' },
+  { id:'sapatos',  label:'Sapatos de segurança',emoji:'👟' },
+  { id:'farda',    label:'Farda completa',      emoji:'👔' },
+  { id:'unhas',    label:'Sem unhas postiças',  emoji:'✋' },
+  { id:'fones',    label:'Sem fones/adornos',   emoji:'🎧' },
+  { id:'maos',     label:'Mãos limpas',         emoji:'🫧' },
+  { id:'cabelo',   label:'Cabelo preso',         emoji:'💇' },
+];
 
-  const planos = getPlanosAulaPorTurma(aluno.turmaId)
-    .filter(p => p.ucId === ucId && p.estado !== 'arquivado')
-    .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')));
+// ─────────────────────────────────────────────────────────────
+// UTILITÁRIOS
+// ─────────────────────────────────────────────────────────────
+function getHist(key: string): number { try { return parseInt(localStorage.getItem(key)||'0'); } catch { return 0; } }
+function incHist(key: string) { try { localStorage.setItem(key, String(getHist(key)+1)); } catch {} }
 
-  if (planos.length === 0) return null;
+function parseDataSegura(iso: string): Date | null {
+  if (!iso) return null;
+  // Ignorar datas inválidas do Google Sheets (1899, 1970, etc.)
+  if (iso.startsWith('1899') || iso.startsWith('1900') || iso.startsWith('1970')) return null;
+  // Formato YYYY-MM-DD
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  const ano = parseInt(match[1]);
+  if (ano < 2020 || ano > 2099) return null;
+  return new Date(iso.slice(0,10) + 'T12:00:00');
+}
 
-  const selecoes = getSelecoes().filter(s => s.alunoId === aluno.id);
-  const validacoes = getValidacoes().filter(v => v.alunoId === aluno.id);
+// formatarData → importado de ../datas
 
-  const linhas = planos.map(p => {
-    const sel = selecoes.find(s => s.planoAulaId === p.id);
-    const val = sel ? validacoes.find(v => (v as any).selecaoId === sel.id) : undefined;
-    let estado: Estado = 'por_avaliar';
-    if (val) estado = 'validado';
-    else if (sel) estado = 'aguarda';
-    const nota20 = val ? ((val as any).notaMedia20 ?? null) : null;
-    return { p, estado, nota20 };
+function isHoje(iso: string): boolean {
+  if (!parseDataSegura(iso)) return false;
+  return iso.slice(0,10) === new Date().toISOString().slice(0,10);
+}
+
+function isFuturo(iso: string): boolean {
+  return iso > new Date().toISOString().slice(0,10);
+}
+
+function diasParaData(iso: string): number {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const alvo = new Date(iso + 'T00:00:00'); alvo.setHours(0,0,0,0);
+  return Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
+}
+
+// ─────────────────────────────────────────────────────────────
+// HOOK — scroll suave para elemento
+// ─────────────────────────────────────────────────────────────
+function useScrollTo() {
+  const ref = useRef<HTMLDivElement>(null);
+  const scrollTo = () => ref.current?.scrollIntoView({ behavior:'smooth', block:'start' });
+  return { ref, scrollTo };
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Botão grande acessível
+// ─────────────────────────────────────────────────────────────
+function BotaoGrande({ onClick, cor, corTexto, emoji, label, sublabel, disabled, outline }: {
+  onClick: () => void; cor: string; corTexto?: string; emoji: string;
+  label: string; sublabel?: string; disabled?: boolean; outline?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width:'100%', display:'flex', alignItems:'center', gap:16,
+        padding:'18px 20px', borderRadius:16, cursor: disabled ? 'not-allowed' : 'pointer',
+        border: outline ? `2.5px solid ${cor}` : 'none',
+        background: disabled ? 'rgba(26,23,20,0.05)' : outline ? '#fff' : cor,
+        color: disabled ? 'rgba(26,23,20,0.3)' : outline ? cor : (corTexto || '#fff'),
+        opacity: disabled ? 0.5 : 1,
+        boxShadow: disabled ? 'none' : `0 4px 16px ${cor}30`,
+        transition:'all 0.15s', textAlign:'left',
+      }}
+    >
+      <span style={{ fontSize:36, lineHeight:1, flexShrink:0 }}>{emoji}</span>
+      <div>
+        <div style={{ fontSize:17, fontWeight:700, lineHeight:1.2 }}>{label}</div>
+        {sublabel && <div style={{ fontSize:13, opacity:0.75, marginTop:2 }}>{sublabel}</div>}
+      </div>
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Chip de estado
+// ─────────────────────────────────────────────────────────────
+function ChipEstado({ texto, cor, bg }: { texto:string; cor:string; bg:string }) {
+  return (
+    <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:100,
+      background:bg, color:cor, fontSize:12, fontWeight:700, letterSpacing:'0.02em' }}>
+      {texto}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Card de aviso
+// ─────────────────────────────────────────────────────────────
+function CardAviso({ emoji, titulo, corpo, cor, bg }: {
+  emoji:string; titulo:string; corpo:string; cor:string; bg:string;
+}) {
+  return (
+    <div style={{ display:'flex', gap:14, padding:'14px 16px', borderRadius:14,
+      background:bg, border:`1.5px solid ${cor}40`, marginBottom:10 }}>
+      <span style={{ fontSize:28, flexShrink:0, marginTop:2 }}>{emoji}</span>
+      <div>
+        <div style={{ fontWeight:700, fontSize:14, color:cor }}>{titulo}</div>
+        <div style={{ fontSize:13, color:T.charcoal, opacity:0.75, marginTop:2 }}>{corpo}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Calendário do aluno
+// ─────────────────────────────────────────────────────────────
+function CalendarioAluno({ planos, onAbrirPlano }: {
+  planos: PlanoAula[];
+  onAbrirPlano: (p: PlanoAula) => void;
+}) {
+  const hoje = new Date();
+  const [mes, setMes] = useState(hoje.getMonth());
+  const [ano, setAno] = useState(hoje.getFullYear());
+
+  const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                 'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const diasNoMes = new Date(ano, mes+1, 0).getDate();
+
+  const planosPorData: Record<string, PlanoAula[]> = {};
+  planos.forEach(p => {
+    if (!planosPorData[p.data]) planosPorData[p.data] = [];
+    planosPorData[p.data].push(p);
   });
 
-  const validados = linhas.filter(l => l.estado === 'validado').length;
+  function mesAnterior() {
+    if (mes === 0) { setMes(11); setAno(a => a-1); }
+    else setMes(m => m-1);
+  }
+  function proximoMes() {
+    if (mes === 11) { setMes(0); setAno(a => a+1); }
+    else setMes(m => m+1);
+  }
+
+  const celulas: (number|null)[] = Array(primeiroDia).fill(null);
+  for (let d=1; d<=diasNoMes; d++) celulas.push(d);
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--copper)' }}>
-          O meu percurso nesta UC
+    <div style={{ background:'#fff', borderRadius:20, border:`1px solid ${T.border}`,
+      boxShadow:'0 2px 12px rgba(26,23,20,0.06)', overflow:'hidden' }}>
+      {/* Cabeçalho do mês */}
+      <div style={{ background:T.charcoal, padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <button onClick={mesAnterior} style={{ background:'rgba(255,255,255,0.15)', border:'none',
+          borderRadius:10, width:36, height:36, fontSize:18, color:'#fff', cursor:'pointer' }}>‹</button>
+        <div style={{ fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, color:'#fff' }}>
+          {MESES[mes]} {ano}
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>{validados} de {planos.length} validados</div>
+        <button onClick={proximoMes} style={{ background:'rgba(255,255,255,0.15)', border:'none',
+          borderRadius:10, width:36, height:36, fontSize:18, color:'#fff', cursor:'pointer' }}>›</button>
       </div>
 
-      <div style={{ position: 'relative' }}>
-        {linhas.map(({ p, estado, nota20 }, i) => {
-          const st = ESTILO[estado];
+      {/* Dias da semana */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)',
+        background:'rgba(26,23,20,0.04)', borderBottom:`1px solid ${T.border}` }}>
+        {DIAS_SEMANA.map(d => (
+          <div key={d} style={{ textAlign:'center', padding:'8px 0', fontSize:11,
+            fontWeight:700, color:'rgba(26,23,20,0.4)', letterSpacing:'0.05em' }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Grelha de dias */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:2, padding:8 }}>
+        {celulas.map((dia, i) => {
+          if (!dia) return <div key={`v${i}`} />;
+          const isoDate = `${ano}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+          const temAula = !!planosPorData[isoDate];
+          const eHoje = isHoje(isoDate);
+          const aulas = planosPorData[isoDate] || [];
+
           return (
-            <div key={p.id} style={{ display: 'flex', gap: 12, position: 'relative' }}>
-              {/* trilho + ponto */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ width: 14, height: 14, borderRadius: '50%', background: st.dot, marginTop: 14, flexShrink: 0, zIndex: 1 }} />
-                {i < linhas.length - 1 && <div style={{ width: 2, flex: 1, background: '#e5e1d8' }} />}
+            <div key={dia}
+              onClick={() => aulas.length && onAbrirPlano(aulas[0])}
+              style={{
+                position:'relative', aspectRatio:'1', display:'flex', flexDirection:'column',
+                alignItems:'center', justifyContent:'center', borderRadius:12,
+                cursor: temAula ? 'pointer' : 'default',
+                background: eHoje ? T.copper : temAula ? T.sageP : 'transparent',
+                border: eHoje ? `2px solid ${T.copper}` : temAula ? `1.5px solid ${T.sage}40` : 'none',
+                transition:'all 0.15s',
+              }}>
+              <span style={{ fontSize:15, fontWeight: eHoje||temAula ? 700 : 400,
+                color: eHoje ? '#fff' : temAula ? T.sage : 'rgba(26,23,20,0.5)' }}>
+                {dia}
+              </span>
+              {temAula && (
+                <span style={{ width:6, height:6, borderRadius:'50%', marginTop:2,
+                  background: eHoje ? 'rgba(255,255,255,0.8)' : T.sage }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legenda */}
+      <div style={{ display:'flex', gap:16, padding:'10px 16px 14px', borderTop:`1px solid ${T.border}` }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'rgba(26,23,20,0.5)' }}>
+          <span style={{ width:10, height:10, borderRadius:'50%', background:T.copper, display:'inline-block' }}/>
+          Hoje
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'rgba(26,23,20,0.5)' }}>
+          <span style={{ width:10, height:10, borderRadius:'50%', background:T.sage, display:'inline-block' }}/>
+          Aula
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPONENTE — Card de aula na lista
+// ─────────────────────────────────────────────────────────────
+function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void }) {
+  const hoje = isHoje(plano.data);
+  const futuro = isFuturo(plano.data);
+  const dias = diasParaData(plano.data);
+  const d = parseDataSegura(plano.data) || new Date();
+
+  // Card de aula passada — compacto
+  if (!hoje && !futuro) {
+    return (
+      <div onClick={onAbrir} style={{
+        display:'flex', alignItems:'center', gap:12, padding:'12px 14px',
+        borderRadius:14, background:'#fff',
+        border:'1px solid rgba(26,23,20,0.08)',
+        cursor:'pointer', marginBottom:8,
+      }}>
+        <div style={{ background:'rgba(26,23,20,0.06)', borderRadius:10,
+          padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:44 }}>
+          <div style={{ fontSize:18, fontWeight:700, color:T.charcoal, lineHeight:1 }}>
+            {d.getDate().toString().padStart(2,'0')}
+          </div>
+          <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
+            color:'rgba(26,23,20,0.4)', marginTop:1 }}>
+            {d.toLocaleDateString('pt-PT',{month:'short'})}
+          </div>
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontSize:12, fontWeight:600, color:'rgba(26,23,20,0.55)',
+            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {plano.numeroPlan ? rotuloPlano(plano) : (plano.titulo || 'Plano de aula')}
+          </div>
+          {(plano.ucId || plano.ucNome) && (
+            <div style={{ fontSize:12.5, color:T.copper, fontWeight:700, marginTop:2 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
+          )}
+        </div>
+        <ChipEstado texto="Passada" cor="rgba(26,23,20,0.4)" bg="rgba(26,23,20,0.06)" />
+        <span style={{ fontSize:18, color:'rgba(26,23,20,0.2)', flexShrink:0 }}>›</span>
+      </div>
+    );
+  }
+
+  // Card de aula de hoje ou futura — grande e colorido
+  const corFundo = hoje ? T.copper : '#2563eb';
+  const diasLabel = dias === 1 ? 'AMANHÃ' : dias <= 7 ? `em ${dias} dias` : '';
+
+  return (
+    <div onClick={onAbrir} style={{
+      borderRadius:20, overflow:'hidden', cursor:'pointer', marginBottom:12,
+      boxShadow: hoje ? '0 8px 24px rgba(181,101,29,0.35)' : '0 4px 16px rgba(37,99,235,0.2)',
+    }}>
+      {/* Faixa colorida */}
+      <div style={{ background:`linear-gradient(135deg, ${corFundo}, ${corFundo}dd)`,
+        padding:'16px 18px' }}>
+        {hoje && (
+          <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.65)',
+            textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:4 }}>
+            🔥 Aula de hoje
+          </div>
+        )}
+        {!hoje && diasLabel && (
+          <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.65)',
+            textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
+            📅 {diasLabel}
+          </div>
+        )}
+        <div style={{ fontSize:18, fontWeight:800, color:'#fff', lineHeight:1.3,
+          marginBottom:2 }}>
+          {plano.numeroPlan ? rotuloPlano(plano) : (plano.titulo || 'Plano de aula')}
+        </div>
+        {(plano.ucId || plano.ucNome) && (
+          <div style={{ fontSize:13, fontWeight:700, color:'#fff', opacity:0.95, marginBottom:6 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
+        )}
+        {plano.horaInicio && (
+          <div style={{ fontSize:12, color:'rgba(255,255,255,0.7)' }}>
+            🕗 {plano.horaInicio}–{plano.horaFim}
+          </div>
+        )}
+      </div>
+      {/* Botão entrar */}
+      <div style={{ background: hoje ? '#8b4513' : '#1d4ed8',
+        padding:'13px 18px', display:'flex', alignItems:'center',
+        justifyContent:'center', gap:8 }}>
+        <span style={{ fontSize:16, fontWeight:800, color:'#fff', letterSpacing:'0.02em' }}>
+          {hoje ? '🚀 Entrar na aula' : '📋 Ver plano'}
+        </span>
+        <span style={{ fontSize:20, color:'rgba(255,255,255,0.7)' }}>→</span>
+      </div>
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+// VISTA PRINCIPAL DO ALUNO
+// ═════════════════════════════════════════════════════════════
+// ── Percurso do aluno ao longo da UC (embutido, sem ficheiro externo) ──
+function dataCurtaPU(iso) {
+  if (!iso) return '';
+  const d = /^\d{4}-\d{2}-\d{2}/.test(iso) ? new Date(iso.slice(0,10)+'T12:00:00') : new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return dd+'-'+mm+' · '+d.toLocaleDateString('pt-PT',{weekday:'short'});
+}
+const EST_PU = {
+  por_avaliar: { dot:'#c8cdd4', fundo:'#f4f2ee', texto:'rgba(26,23,20,0.5)', etiqueta:'Por autoavaliar' },
+  aguarda:     { dot:'#b0692b', fundo:'rgba(181,101,29,0.10)', texto:'#8a4f1e', etiqueta:'Aguarda validação do professor' },
+  validado:    { dot:'#5a7a4e', fundo:'rgba(90,122,78,0.12)', texto:'#4e6a25', etiqueta:'Validado' },
+};
+function PercursoUC({ aluno, ucId }) {
+  if (!ucId) return null;
+  const planos = getPlanosAulaPorTurma(aluno.turmaId)
+    .filter(p => p.ucId === ucId && p.estado !== 'arquivado')
+    .sort((a,b) => String(a.data||'').localeCompare(String(b.data||'')));
+  if (planos.length === 0) return null;
+  const selecoes = getSelecoes().filter(s => s.alunoId === aluno.id);
+  const validacoes = getValidacoes().filter(v => v.alunoId === aluno.id);
+  const linhas = planos.map(p => {
+    const sel = selecoes.find(s => s.planoAulaId === p.id);
+    const val = sel ? validacoes.find(v => v.selecaoId === sel.id) : undefined;
+    const estado = val ? 'validado' : (sel ? 'aguarda' : 'por_avaliar');
+    const nota20 = val ? (val.notaMedia20 != null ? val.notaMedia20 : null) : null;
+    return { p, estado, nota20 };
+  });
+  const validados = linhas.filter(l => l.estado === 'validado').length;
+  return (
+    <div style={{ marginBottom:20 }}>
+      <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:10 }}>
+        <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--copper)' }}>O meu percurso nesta UC</div>
+        <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)' }}>{validados} de {planos.length} validados</div>
+      </div>
+      <div>
+        {linhas.map(({ p, estado, nota20 }, i) => {
+          const st = EST_PU[estado];
+          return (
+            <div key={p.id} style={{ display:'flex', gap:12 }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                <div style={{ width:14, height:14, borderRadius:'50%', background:st.dot, marginTop:14, flexShrink:0 }} />
+                {i < linhas.length-1 && <div style={{ width:2, flex:1, background:'#e5e1d8' }} />}
               </div>
-              {/* cartão do plano */}
-              <div style={{ flex: 1, background: st.fundo, borderRadius: 10, padding: '10px 13px', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: 'var(--charcoal)' }}>{rotuloPlano(p)}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>{dataCurta(p.data)}</div>
+              <div style={{ flex:1, background:st.fundo, borderRadius:10, padding:'10px 13px', marginBottom:8 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <div style={{ flex:1, fontSize:13.5, fontWeight:700, color:'var(--charcoal)' }}>{rotuloPlano(p)}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)' }}>{dataCurtaPU(p.data)}</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: st.texto }}>{st.etiqueta}</span>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
+                  <span style={{ fontSize:12, fontWeight:600, color:st.texto }}>{st.etiqueta}</span>
                   {estado === 'validado' && nota20 != null && (
-                    <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 800, color: '#4e6a25' }}>{nota20}/20</span>
+                    <span style={{ marginLeft:'auto', fontSize:13, fontWeight:800, color:'#4e6a25' }}>{nota20}/20</span>
                   )}
                 </div>
               </div>
@@ -80,6 +438,2170 @@ export function PercursoUC({ aluno, ucId }: { aluno: { id: string; turmaId: stri
           );
         })}
       </div>
+    </div>
+  );
+}
+
+export function AlunoView({ aluno }: { aluno: Aluno }) {
+  const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
+  const [aba, setAba] = useState<'hoje' | 'calendario' | 'perfil'>('hoje');
+  const [planos, setPlanos] = useState<PlanoAula[]>(() =>
+    getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
+  );
+
+  useEffect(() => {
+    sincronizarDoSheets(aluno.turmaId).then(() => {
+      setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
+    }).catch(() => {});
+  }, [aluno.turmaId]);
+
+  const historicoAluno = getHistoricoAluno(aluno.id);
+  const planoHoje = planos.find(p => isHoje(p.data));
+  const proximasAulas = planos.filter(p => isFuturo(p.data)).sort((a,b) => a.data.localeCompare(b.data)).slice(0, 5);
+  const aulasPassadas = planos.filter(p => !isFuturo(p.data) && !isHoje(p.data)).sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
+
+  // Avisos para o aluno
+  const avisos: { emoji:string; titulo:string; corpo:string; cor:string; bg:string }[] = [];
+  if (planoHoje) {
+    avisos.push({ emoji:'🔔', titulo:'Tens aula hoje!',
+      corpo:`${planoHoje.titulo} · ${planoHoje.horaInicio}–${planoHoje.horaFim}`,
+      cor:T.copper, bg:T.copperP });
+  }
+  const atrasos = getHist(`ecl_atrasos_${aluno.id}`);
+  if (atrasos >= 3) {
+    avisos.push({ emoji:'⏰', titulo:`${atrasos} atrasos registados`,
+      corpo:'Tenta chegar a horas — isso conta na tua avaliação de atitudes.',
+      cor:T.danger, bg:T.dangerP });
+  }
+  if (proximasAulas[0]) {
+    const dias = diasParaData(proximasAulas[0].data);
+    if (dias === 1) {
+      avisos.push({ emoji:'📅', titulo:'Aula amanhã!',
+        corpo:`${proximasAulas[0].titulo} · ${proximasAulas[0].horaInicio}`,
+        cor:T.info, bg:T.infoP });
+    }
+  }
+  if (historicoAluno.length === 0 && !planoHoje) {
+    avisos.push({ emoji:'✨', titulo:'Bem-vindo/a à Avaliação ECL!',
+      corpo:'Ainda não tens avaliações. Quando o professor publicar uma aula, aparece aqui.',
+      cor:T.sage, bg:T.sageP });
+  }
+
+  return (
+    <div style={{ minHeight:'100vh', background:T.cream }}>
+
+      {/* Plano de aula aberto — mostra-se num modal quase-fullscreen por
+          cima do ecrã do aluno, em vez de o substituir por completo. */}
+      {planoAtivo && (
+        <ModalFullscreen
+          titulo={planoAtivo.titulo || 'Plano de Aula'}
+          subtitulo={aluno.turmaId}
+          onFechar={() => setPlanoAtivo(null)}
+        >
+          {(() => {
+            const sel = getSelecoes().find(s => s.alunoId === aluno.id && s.planoAulaId === planoAtivo.id);
+            const val = sel ? getValidacoes().find(v => (v as any).selecaoId === sel.id) : undefined;
+            const nota20 = val ? ((val as any).notaMedia20 ?? null) : null;
+            if (nota20 == null) return null;
+            const cor = nota20 >= 16 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
+            return (
+              <div style={{ margin:'16px 16px 0', padding:'14px 18px', borderRadius:14, background:cor+'14', border:'1.5px solid '+cor+'44', display:'flex', alignItems:'center', gap:14 }}>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.5)' }}>Nota desta aula</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)' }}>Validada pelo professor</div>
+                </div>
+                <div style={{ marginLeft:'auto', fontFamily:'var(--font-display)', fontSize:34, fontWeight:900, color:cor, lineHeight:1 }}>
+                  {nota20}<span style={{ fontSize:18 }}>/20</span>
+                </div>
+              </div>
+            );
+          })()}
+          <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)} />
+        </ModalFullscreen>
+      )}
+
+      {/* ── CABEÇALHO ─────────────────────────────────────── */}
+      <div style={{ background:'#6d28d9', padding:'20px 20px 0' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+            <div>
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)', fontWeight:600,
+                textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
+                Avaliação ECL · {aluno.turmaId}
+              </div>
+              <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+                color:'#faf7f2', lineHeight:1.1 }}>
+                Olá, {aluno.nome?.split(' ')[0] || `Aluno ${aluno.numero}`}! 👋
+              </div>
+              <div style={{ fontSize:13, color:'rgba(247,241,230,0.45)', marginTop:4 }}>
+                {aluno.ano}º ano · Nº {aluno.numero}
+              </div>
+              {(() => {
+                const pr = calcularPontosRegularidade(aluno.id);
+                if (pr.nivel === 'sem_nivel') return null;
+                const EMOJI: Record<string,string> = { bronze:'🥉', prata:'🥈', ouro:'🥇' };
+                const LABEL: Record<string,string> = { bronze:'Bronze', prata:'Prata', ouro:'Ouro' };
+                return (
+                  <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:8,
+                    padding:'4px 10px', borderRadius:99, background:'rgba(247,241,230,0.12)' }}>
+                    <span style={{ fontSize:15 }}>{EMOJI[pr.nivel]}</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'rgba(247,241,230,0.85)' }}>
+                      Regularidade {LABEL[pr.nivel]} · {pr.pontos} pts
+                    </span>
+                  </div>
+                );
+              })()}
+              {aluno.nivelMedidas && aluno.nivelMedidas > 1 && (
+                <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6,
+                  padding:'4px 12px', borderRadius:100,
+                  background: aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.25)' : 'rgba(181,101,29,0.25)',
+                  border: `1px solid ${aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.5)' : 'rgba(181,101,29,0.5)'}` }}>
+                  <span style={{ fontSize:14 }}>{aluno.nivelMedidas === 3 ? '🔴' : '🟡'}</span>
+                  <span style={{ fontSize:12, fontWeight:700,
+                    color: aluno.nivelMedidas === 3 ? '#ff9a9a' : '#ffd0a0' }}>
+                    {aluno.nivelMedidas === 3 ? 'Medidas Adicionais (Nível 3)' : 'Medidas Seletivas (Nível 2)'}
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Resumo rápido */}
+            <div style={{ display:'flex', gap:10 }}>
+              <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
+                padding:'10px 16px', textAlign:'center' }}>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+                  color:'#faf7f2', lineHeight:1 }}>{historicoAluno.length}</div>
+                <div style={{ fontSize:11, color:'rgba(247,241,230,0.45)', marginTop:3 }}>avaliações</div>
+              </div>
+              <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
+                padding:'10px 16px', textAlign:'center' }}>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+                  color:'#faf7f2', lineHeight:1 }}>{planos.length}</div>
+                <div style={{ fontSize:11, color:'rgba(247,241,230,0.45)', marginTop:3 }}>aulas</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs coloridas */}
+          <div style={{ display:'flex', gap:6, paddingBottom:14 }}>
+            {([
+              { id:'hoje',      emoji:'🏠', label:'Início',      cor:'#f4a900' },
+              { id:'calendario',emoji:'📅', label:'Calendário',  cor:'#2ec4b6' },
+              { id:'perfil',    emoji:'🪪', label:'O meu perfil',cor:'#1d6fa4' },
+            ] as const).map(tab => (
+              <button key={tab.id} onClick={() => setAba(tab.id)} style={{
+                flex:1, padding:'9px 4px', border:'none', cursor:'pointer',
+                fontSize:12, fontWeight:800, borderRadius:10,
+                background: aba === tab.id ? tab.cor : 'rgba(255,255,255,0.15)',
+                color: aba === tab.id ? '#fff' : 'rgba(255,255,255,0.55)',
+                transition:'all 0.15s',
+              }}>
+                {tab.emoji} {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── CONTEÚDO ──────────────────────────────────────── */}
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 20px 48px' }}>
+
+        {/* ── ABA INÍCIO ── */}
+        {aba === 'hoje' && (
+          <div style={{ display:'grid', gap:24,
+            gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '1fr 1fr' : '1fr' }}>
+
+            {/* Coluna esquerda — avisos + aula de hoje */}
+            <div>
+              {/* Avisos */}
+              {avisos.length > 0 && (
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                    📢 Avisos
+                  </div>
+                  {avisos.map((a,i) => <CardAviso key={i} {...a} />)}
+                </div>
+              )}
+
+              {/* Aula de hoje — botão grande */}
+              {planoHoje ? (
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                    🍳 Aula de hoje
+                  </div>
+                  <div style={{ background:T.copper, borderRadius:20, padding:'20px',
+                    boxShadow:`0 8px 32px ${T.copper}40` }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)',
+                      textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
+                      {planoHoje.horaInicio}–{planoHoje.horaFim}
+                      {planoHoje.ucNome && (
+                        <div style={{ fontSize:10, marginTop:2, opacity:0.8,
+                          whiteSpace:'normal', lineHeight:1.3 }}>
+                          {planoHoje.ucNome}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
+                      color:'#fff', marginBottom:16 }}>{planoHoje.titulo}</div>
+                    <button onClick={() => setPlanoAtivo(planoHoje)} style={{
+                      width:'100%', padding:'14px', borderRadius:12, border:'none',
+                      background:'rgba(255,255,255,0.2)', color:'#fff', fontSize:16,
+                      fontWeight:700, cursor:'pointer', backdropFilter:'blur(4px)',
+                    }}>
+                      Entrar na aula →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ borderRadius:20, overflow:'hidden', marginBottom:20,
+                  border:'2px dashed rgba(26,23,20,0.12)' }}>
+                  <div style={{ padding:'24px 20px', textAlign:'center',
+                    background:'rgba(26,23,20,0.03)' }}>
+                    <div style={{ fontSize:48, marginBottom:8 }}>😴</div>
+                    <div style={{ fontWeight:800, fontSize:17, color:'rgba(26,23,20,0.6)' }}>
+                      Sem aula hoje
+                    </div>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)', marginTop:4 }}>
+                      {proximasAulas[0]
+                        ? `Próxima aula: ${fmtData(proximasAulas[0].data)}`
+                        : 'Sem aulas agendadas próximas.'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ações rápidas */}
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                  letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:2 }}>
+                  ⚡ Ações rápidas
+                </div>
+                <button onClick={() => setAba('calendario')} style={{
+                  display:'flex', alignItems:'center', gap:14, padding:'16px 18px',
+                  borderRadius:16, border:'2px solid #2563eb',
+                  background:'#eff6ff', cursor:'pointer', textAlign:'left',
+                }}>
+                  <div style={{ width:44, height:44, borderRadius:12, background:'#2563eb',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    fontSize:22, flexShrink:0 }}>📅</div>
+                  <div>
+                    <div style={{ fontSize:15, fontWeight:800, color:'#1d4ed8' }}>Ver calendário</div>
+                    <div style={{ fontSize:12, color:'#3b82f6', marginTop:1 }}>Todas as tuas aulas</div>
+                  </div>
+                  <span style={{ fontSize:22, color:'#2563eb', marginLeft:'auto' }}>→</span>
+                </button>
+                <button onClick={() => setAba('perfil')} style={{
+                  display:'flex', alignItems:'center', gap:14, padding:'16px 18px',
+                  borderRadius:16, border:'2px solid #15803d',
+                  background:'#f0fdf4', cursor:'pointer', textAlign:'left',
+                }}>
+                  <div style={{ width:44, height:44, borderRadius:12, background:'#15803d',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    fontSize:22, flexShrink:0 }}>📊</div>
+                  <div>
+                    <div style={{ fontSize:15, fontWeight:800, color:'#15803d' }}>O meu progresso</div>
+                    <div style={{ fontSize:12, color:'#16a34a', marginTop:1 }}>Competências e avaliações</div>
+                  </div>
+                  <span style={{ fontSize:22, color:'#15803d', marginLeft:'auto' }}>→</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Coluna direita — próximas aulas + passadas */}
+            <div>
+              {proximasAulas.length > 0 && (
+                <div style={{ marginBottom:24 }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                    🗓️ Próximas aulas
+                  </div>
+                  {proximasAulas.map(p => (
+                    <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
+                  ))}
+                </div>
+              )}
+
+              {aulasPassadas.length > 0 && (
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                    📚 Aulas anteriores
+                  </div>
+                  {aulasPassadas.map(p => (
+                    <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
+                  ))}
+                </div>
+              )}
+
+              {proximasAulas.length === 0 && aulasPassadas.length === 0 && (
+                <div style={{ background:'#fff', borderRadius:16, padding:'32px 20px',
+                  textAlign:'center', border:`1px solid ${T.border}` }}>
+                  <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
+                  <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>Sem aulas ainda</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>
+                    O professor ainda não publicou aulas para a tua turma.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── ABA CALENDÁRIO ── */}
+        {aba === 'calendario' && (
+          <div style={{ display:'grid', gap:24,
+            gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '380px 1fr' : '1fr' }}>
+            <div>
+              <CalendarioAluno planos={planos} onAbrirPlano={p => setPlanoAtivo(p)} />
+            </div>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:14 }}>
+                📋 Todas as aulas
+              </div>
+              {planos.length === 0 ? (
+                <div style={{ background:'#fff', borderRadius:16, padding:'32px 20px',
+                  textAlign:'center', border:`1px solid ${T.border}` }}>
+                  <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
+                  <div style={{ fontWeight:600 }}>Sem aulas publicadas</div>
+                </div>
+              ) : (
+                [...planos].sort((a,b) => b.data.localeCompare(a.data)).map(p => (
+                  <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── ABA PERFIL ── */}
+        {aba === 'perfil' && (
+          <div>
+            <PerfilProfissionalAluno aluno={aluno} />
+            <div style={{ marginTop:24 }}>
+              <RecuperacaoModulosAluno aluno={aluno} />
+            </div>
+            <div style={{ marginTop:24 }}>
+              <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                📊 O meu historial de avaliações
+              </div>
+              <AvaliacaoPorUC turmaId={aluno.turmaId} alunoId={aluno.id} />
+            </div>
+            <div style={{ marginTop:24 }}>
+              <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+                📖 Dicionário de Cozinha
+              </div>
+              <DicionarioComp perfil="professor" turmaId={aluno.turmaId} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════
+// VISTA DE UM PLANO — acordeão com os 4 passos
+// ═════════════════════════════════════════════════════════════
+function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
+  plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
+}) {
+  const [secAberta, setSecAberta] = React.useState<string>('orientacao');
+  // Estados persistentes — sobrevivem a saídas e reentradas do aluno no plano
+  const _key = (s: string) => `ecl_passo_${plano.id}_${aluno.id}_${s}`;
+  const _load = (s: string) => { try { return !!localStorage.getItem(_key(s)); } catch { return false; } };
+  const _save = (s: string) => { try { localStorage.setItem(_key(s), '1'); } catch {} };
+
+  const [orientacaoConcluida, setOrientacaoConcluida] = React.useState(() => _load('orientacao'));
+  const [entradaConcluida, setEntradaConcluida] = React.useState(() => {
+    // Verificar também nas presenças guardadas
+    const presencas = getPresencas();
+    const jaEntrou = presencas.some(p => p.alunoId === aluno.id && p.planoAulaId === plano.id);
+    return _load('entrada') || jaEntrou;
+  });
+  const [fichaConcluida, setFichaConcluida] = React.useState(() => _load('ficha'));
+  const [guiaoConcluido, setGuiaoConcluido] = React.useState(() => _load('guia'));
+  const [avaliacaoConcluida, setAvaliacaoConcluida] = React.useState(() => {
+    try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
+  });
+
+  const fichas = getFichasPorPlano(plano.id);
+  const requisicao = getRequisicaoPorPlano(plano.id);
+
+  const PASSOS = [
+    { id:'orientacao', emoji:'🚀', label:'Orientação',            cor:T.copper },
+    { id:'entrada',    emoji:'🪪', label:'Entrada e Higiene',     cor:'#b5651d' },
+    { id:'ficha',      emoji:'📄', label:'Ficha de Produção',     cor:'#2563eb' },
+    ...(fichas.some((f:any) => f.textoGuia) ? [{ id:'guia', emoji:'📖', label:'Guião', cor:'#15803d' }] : []),
+    { id:'requisicao', emoji:'🛒', label:'Requisição',            cor:'#7c3aed' },
+    { id:'avaliacao',  emoji:'🎯', label:'Autoavaliação',         cor:T.sage },
+  ];
+
+  const estadoPasso = (id: string): 'concluido'|'ativo'|'pendente' => {
+    if (id==='orientacao' && orientacaoConcluida) return 'concluido';
+    if (id==='entrada' && entradaConcluida) return 'concluido';
+    if (id==='ficha' && fichaConcluida) return 'concluido';
+    if (id==='guia' && guiaoConcluido) return 'concluido';
+    if (id==='requisicao' && requisicao) return 'concluido';
+    if (id==='avaliacao' && avaliacaoConcluida) return 'concluido';
+    if (id===secAberta) return 'ativo';
+    return 'pendente';
+  };
+
+  const totalPassos = PASSOS.length;
+  const passosConcluidos = PASSOS.filter(p => estadoPasso(p.id) === 'concluido').length;
+  const pctProgresso = Math.round(passosConcluidos / totalPassos * 100);
+  const passoActivo = PASSOS.find(p => p.id === secAberta);
+
+  return (
+    <div style={{ height:'100vh', background:'#f0f4f8', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+
+      {/* TOPO */}
+      <div style={{ background:'linear-gradient(135deg,#1a1714,#2d2520)',
+        padding:'10px 14px', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <button onClick={onVoltar} style={{ background:'rgba(255,255,255,0.1)',
+            border:'none', borderRadius:9, padding:'7px 12px',
+            color:'rgba(247,241,230,0.8)', fontSize:13, cursor:'pointer',
+            fontWeight:700, flexShrink:0 }}>←</button>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:14, fontWeight:800, color:'#faf7f2',
+              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              {plano.titulo}
+            </div>
+            <div style={{ fontSize:10, color:'rgba(247,241,230,0.4)', marginTop:1 }}>
+              {fmtData(plano.data)}{plano.horaInicio && ` · ${plano.horaInicio}–${plano.horaFim}`}
+            </div>
+          </div>
+          <div style={{ background: pctProgresso===100 ? '#22c55e' : 'rgba(255,255,255,0.12)',
+            borderRadius:100, padding:'5px 11px', flexShrink:0 }}>
+            <div style={{ fontSize:13, fontWeight:800, color:'#fff' }}>
+              {pctProgresso===100 ? '🎉' : `${passosConcluidos}/${totalPassos}`}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CORPO: sidebar + conteúdo + contexto */}
+      <div style={{ flex:1, display:'flex', overflow:'hidden', minHeight:0 }}>
+
+        {/* SIDEBAR */}
+        <div style={{ width:96, background:'#1a1714', display:'flex',
+          flexDirection:'column', flexShrink:0 }}>
+          <div style={{ padding:'8px 5px 5px', borderBottom:'1px solid rgba(255,255,255,0.06)',
+            textAlign:'center' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'rgba(247,241,230,0.75)',
+              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', padding:'0 2px' }}>
+              {aluno.nome || `Nº ${aluno.numero}`}
+            </div>
+            <div style={{ fontSize:9, color:'rgba(247,241,230,0.3)', marginTop:1 }}>
+              {aluno.turmaId}
+            </div>
+          </div>
+
+          <div style={{ flex:1, padding:'6px 4px', display:'flex',
+            flexDirection:'column', gap:1, overflowY:'auto' }}>
+            {PASSOS.map((p, idx) => {
+              const est = estadoPasso(p.id);
+              const ativo = secAberta === p.id;
+              return (
+                <React.Fragment key={p.id}>
+                  <button onClick={() => setSecAberta(p.id)} style={{
+                    width:'100%', padding:'7px 4px', borderRadius:9, border:'none',
+                    cursor:'pointer', textAlign:'center', transition:'all 0.2s',
+                    background: ativo ? 'rgba(255,255,255,0.14)'
+                      : est==='concluido' ? 'rgba(34,197,94,0.15)' : 'transparent',
+                    position:'relative',
+                  }}>
+                    {ativo && <div style={{ position:'absolute', left:0, top:'20%',
+                      height:'60%', width:3, background:p.cor,
+                      borderRadius:'0 3px 3px 0' }} />}
+                    <div style={{ fontSize:19, lineHeight:1 }}>
+                      {est==='concluido' ? '✅' : p.emoji}
+                    </div>
+                    <div style={{ fontSize:8, fontWeight:700, marginTop:3, lineHeight:1.3,
+                      color: ativo ? '#fff' : est==='concluido' ? '#4ade80' : 'rgba(247,241,230,0.4)' }}>
+                      {p.label}
+                    </div>
+                  </button>
+                  {idx < PASSOS.length-1 && (
+                    <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'0 5px' }} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          <button onClick={() => abrirKitchenFlow(undefined, {
+              turma:aluno.turmaId, numero:aluno.numero,
+              pin:aluno.pin, tipo:'aluno',
+              ucId:plano.ucId, ucNome:plano.ucNome,
+              pratos:fichas.map((f:any) => f.nomePrato).filter(Boolean),
+              planoHoraInicio:plano.horaInicio,
+              planoHoraFim:plano.horaFim, planoData:plano.data,
+            })} style={{ margin:'5px', padding:'6px 4px', borderRadius:7,
+            border:'1px solid rgba(14,116,144,0.5)',
+            background:'rgba(14,116,144,0.15)', color:'#67e8f9',
+            fontSize:8, fontWeight:700, cursor:'pointer', textAlign:'center' }}>
+            🔗 KitchenFlow
+          </button>
+
+          <div style={{ padding:'7px 5px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ height:3, background:'rgba(255,255,255,0.1)',
+              borderRadius:2, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${pctProgresso}%`,
+                background:'linear-gradient(90deg,#b5651d,#22c55e)',
+                borderRadius:2, transition:'width 0.4s' }} />
+            </div>
+            <div style={{ fontSize:10, fontWeight:800, color:'#fff',
+              textAlign:'center', marginTop:3 }}>
+              {passosConcluidos}/{totalPassos}
+            </div>
+          </div>
+        </div>
+
+        {/* ÁREA CENTRAL */}
+        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, overflow:'hidden' }}>
+
+          {/* Banner do passo */}
+          {passoActivo && (
+            <div style={{ background:`linear-gradient(135deg,${passoActivo.cor},${passoActivo.cor}cc)`,
+              padding:'10px 14px', flexShrink:0 }}>
+              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.08em', color:'rgba(255,255,255,0.6)', marginBottom:2 }}>
+                Passo {PASSOS.indexOf(passoActivo)+1} de {totalPassos}
+              </div>
+              <div style={{ fontSize:16, fontWeight:900, color:'#fff', lineHeight:1.2 }}>
+                {passoActivo.emoji} {passoActivo.label}
+              </div>
+            </div>
+          )}
+
+          {/* Conteúdo */}
+          <div style={{ flex:1, overflowY:'auto', padding:'14px 14px 80px' }}>
+            {secAberta==='orientacao' && (
+              <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno}
+                onContinuar={() => { setOrientacaoConcluida(true); _save('orientacao'); setSecAberta('entrada'); }} />
+            )}
+            {secAberta==='entrada' && (
+              <SecaoEntrada aluno={aluno} plano={plano}
+                onConcluido={() => { setEntradaConcluida(true); _save('entrada'); setSecAberta('ficha'); }} />
+            )}
+            {secAberta==='ficha' && (
+              <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
+                onConcluido={() => { setFichaConcluida(true); _save('ficha');
+                  setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : 'requisicao'); }} />
+            )}
+            {secAberta==='guia' && (
+              <SecaoGuiao fichas={fichas} plano={plano}
+                onConcluido={() => { setGuiaoConcluido(true); _save('guia'); setSecAberta('requisicao'); }} />
+            )}
+            {secAberta==='requisicao' && (
+              <SecaoRequisicao requisicao={requisicao}
+                onConcluido={() => setSecAberta('avaliacao')} />
+            )}
+            {secAberta==='avaliacao' && (
+              <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno}
+                onConcluido={() => setAvaliacaoConcluida(true)} />
+            )}
+          </div>
+        </div>
+
+        {/* PAINEL DE CONTEXTO */}
+        <div style={{ width:115, background:'#fff',
+          borderLeft:'0.5px solid rgba(26,23,20,0.08)',
+          padding:'10px 8px', overflowY:'auto',
+          display:'flex', flexDirection:'column', gap:10, flexShrink:0 }}>
+
+          <div>
+            <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
+              letterSpacing:'0.08em', color:'rgba(26,23,20,0.3)', marginBottom:4 }}>
+              Aula
+            </div>
+            {plano.horaInicio && (
+              <div style={{ fontSize:10, padding:'3px 6px', background:'#eff6ff',
+                color:'#1d4ed8', borderRadius:5, marginBottom:3, fontWeight:500 }}>
+                🕗 {plano.horaInicio}–{plano.horaFim}
+              </div>
+            )}
+            {plano.ucId && (
+              <div style={{ fontSize:9, padding:'3px 6px', background:'#fff7ed',
+                color:'#b5651d', borderRadius:5, fontWeight:700 }}>
+                {plano.ucId}
+              </div>
+            )}
+          </div>
+
+          {fichas.length > 0 && (
+            <div>
+              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
+                letterSpacing:'0.08em', color:'rgba(26,23,20,0.3)', marginBottom:4 }}>
+                Produzes
+              </div>
+              {fichas.map((f:any, i:number) => (
+                <div key={i} style={{ fontSize:10, padding:'3px 6px', background:'#f8fafc',
+                  color:'rgba(26,23,20,0.7)', borderRadius:5, marginBottom:3,
+                  fontWeight:500, lineHeight:1.3 }}>
+                  🍽️ {f.nomePrato}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
+              letterSpacing:'0.08em', color:'rgba(26,23,20,0.3)', marginBottom:4 }}>
+              Estado
+            </div>
+            {PASSOS.map(p => {
+              const est = estadoPasso(p.id);
+              return (
+                <div key={p.id} style={{ fontSize:9, padding:'3px 6px',
+                  background: est==='concluido' ? '#f0fdf4' : '#fef2f2',
+                  color: est==='concluido' ? '#15803d' : '#dc2626',
+                  borderRadius:5, marginBottom:2, fontWeight:600 }}>
+                  {est==='concluido' ? '✓' : '✗'} {p.label.split(' ')[0]}
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
+  plano: PlanoAula; fichas: FichaProducao[]; aluno: Aluno; onContinuar: () => void;
+}) {
+  // Extrair alertas HACCP das fichas
+  const alertasHACCP: string[] = [];
+  fichas.forEach(f => {
+    (f.preparacao || []).forEach((p: any) => {
+      if (p.haccp?.trim()) alertasHACCP.push(p.haccp.trim());
+    });
+  });
+
+  // Alergénios de todas as fichas
+  const alergenios = Array.from(new Set(
+    fichas.flatMap(f => Array.isArray(f.alergenicos) ? f.alergenicos : [])
+  )).filter(Boolean);
+
+  return (
+    <div style={{ fontFamily: 'var(--font-sans)' }}>
+
+      {/* Cabeçalho da aula — bloco roxo */}
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:10 }}>
+        <div style={{ width:64, background:'rgba(109,40,217,0.8)', display:'flex',
+          alignItems:'center', justifyContent:'center', fontSize:32, flexShrink:0 }}>📋</div>
+        <div style={{ flex:1, background:'#6d28d9', padding:'14px 14px' }}>
+          <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+            textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3 }}>Plano de hoje</div>
+          <div style={{ fontSize:16, fontWeight:800, color:'#fff', lineHeight:1.25 }}>{plano.titulo}</div>
+          {plano.ucId && <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginTop:3 }}>
+            {plano.ucId}
+            {plano.ucNome && <div style={{ fontSize:11, marginTop:1, opacity:0.75, whiteSpace:'normal', lineHeight:1.3 }}>{plano.ucNome}</div>}
+            {plano.horaInicio && <div style={{ fontSize:11, marginTop:1, opacity:0.75 }}>{plano.horaInicio}–{plano.horaFim}</div>}
+          </div>}
+        </div>
+      </div>
+
+      {/* Aviso de alteração pelo professor após publicação */}
+      {(plano as any).ultimaAlteracao && (
+        <div style={{
+          margin: '8px 0', padding: '12px 14px', borderRadius: 12,
+          background: '#FFF3D6', border: '1.5px solid #FBC02D',
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+        }}>
+          <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#5A3E00', marginBottom: 2 }}>
+              O professor atualizou este plano
+            </div>
+            <div style={{ fontSize: 12, color: '#7A5500' }}>
+              {(plano as any).ultimaAlteracao.descricao} ·{' '}
+              {new Date((plano as any).ultimaAlteracao.em).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(90,62,0,0.6)', marginTop: 4 }}>
+              Verifica as fichas, guia e requisição antes de começar.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* O que vamos produzir — bloco amarelo */}
+      {fichas.length > 0 && fichas.map((f, i) => (
+        <div key={i} style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#c47f00', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🍽️</div>
+          <div style={{ flex:1, background:'#f4a900', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Produção {i+1}</div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>{f.nomePrato}</div>
+            {(f.numPorcoes || f.tempoPrep) && <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:2 }}>
+              {f.numPorcoes && `${f.numPorcoes} doses`}{f.tempoPrep && ` · ${f.tempoPrep}`}
+            </div>}
+          </div>
+        </div>
+      ))}
+
+      {/* Alertas HACCP — bloco coral */}
+      {alertasHACCP.length > 0 && (
+        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#b5291e', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>⚠️</div>
+          <div style={{ flex:1, background:'#e63946', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>
+              Pontos críticos — lê antes de começar!
+            </div>
+            {alertasHACCP.slice(0,3).map((a,i) => (
+              <div key={i} style={{ fontSize:12, color:'#fff', marginBottom:3 }}>▸ {a}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Alergénios — bloco âmbar */}
+      {alergenios.length > 0 && (
+        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#c47f00', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🏷️</div>
+          <div style={{ flex:1, background:'#f4a900', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Alergénios presentes</div>
+            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+              {alergenios.map((a,i) => (
+                <span key={i} style={{ padding:'2px 8px', borderRadius:100,
+                  background:'rgba(255,255,255,0.25)', fontSize:11, fontWeight:800, color:'#fff' }}>{a}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* KitchenFlow — bloco turquesa */}
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:10,
+        cursor:'pointer' }} onClick={() => abrirKitchenFlow(undefined, {
+          turma:aluno.turmaId, numero:aluno.numero, pin:aluno.pin, tipo:'aluno',
+          ucId:plano.ucId, ucNome:plano.ucNome,
+          pratos:fichas.map((f:any) => f.nomePrato).filter(Boolean),
+          planoHoraInicio:plano.horaInicio, planoHoraFim:plano.horaFim, planoData:plano.data,
+        })}>
+        <div style={{ width:64, background:'#1a9e94', display:'flex',
+          alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🏭</div>
+        <div style={{ flex:1, background:'#2ec4b6', padding:'12px 14px' }}>
+          <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
+            textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>KitchenFlow ECL</div>
+          <div style={{ fontSize:14, fontWeight:800, color:'#fff' }}>Abrir registos iniciais →</div>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.65)', marginTop:2 }}>Higiene pessoal registada automaticamente</div>
+        </div>
+      </div>
+
+      {/* Botão continuar — bloco roxo grande */}
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', cursor:'pointer' }}
+        onClick={onContinuar}>
+        <div style={{ width:64, background:'#5b21b6', display:'flex',
+          alignItems:'center', justifyContent:'center', fontSize:32, flexShrink:0 }}>🚀</div>
+        <div style={{ flex:1, background:'#6d28d9', padding:'16px 14px',
+          display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Ação principal</div>
+            <div style={{ fontSize:18, fontWeight:800, color:'#fff' }}>Vamos começar!</div>
+          </div>
+          <span style={{ fontSize:30, color:'rgba(255,255,255,0.5)' }}>›</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SecaoEntrada({ aluno, plano, onConcluido }: {
+  aluno: Aluno; plano: PlanoAula; onConcluido: () => void;
+}) {
+  const [pontVal, setPontVal] = useState<'sim'|'atras'|null>(null);
+  const [fardState, setFardState] = useState<Record<string, boolean|null>>(
+    Object.fromEntries(FARD_ITEMS.map(f => [f.id, null]))
+  );
+  const fardCompleto = Object.values(fardState).every(v => v !== null);
+  const fardTudoOk = Object.values(fardState).every(v => v === true);
+  const fardItensEmFalta = FARD_ITEMS.filter(f => fardState[f.id] === false).map(f => f.label);
+  const entradaOk = pontVal !== null && fardCompleto;
+
+  function calcularMinutosAtraso(): number {
+    const now = new Date();
+    const [h,m] = plano.horaInicio.split(':').map(Number);
+    return Math.max(1, (now.getHours()*60+now.getMinutes())-(h*60+m));
+  }
+
+  function setPont(v: 'sim'|'atras') {
+    setPontVal(v);
+  }
+
+  function toggleFard(id: string) {
+    setFardState(prev => {
+      const cur = prev[id];
+      return { ...prev, [id]: cur===null ? true : cur===true ? false : null };
+    });
+  }
+
+  async function confirmar() {
+    if (pontVal==='atras') incHist(`ecl_atrasos_${aluno.id}`);
+    const fardamentoOk = Object.values(fardState).every(v => v===true);
+    const atrasoMins = pontVal==='atras' ? calcularMinutosAtraso() : 0;
+    addRegistoPresenca({
+      alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id,
+      presente: true, atrasado: pontVal==='atras',
+      atrasadoMins: atrasoMins, fardamentoOk,
+      observacao: fardItensEmFalta.length > 0 ? `Farda incompleta: ${fardItensEmFalta.join(', ')}` : '',
+    });
+    // Pontualidade e Fardamento são competências INDEPENDENTES — uma não substitui
+    // nem mascara a outra. Cada uma gera a sua própria nota, ambas pesam na categoria OBR.
+
+    // OBR_03 — Pontualidade — depende SÓ da hora de chegada, nunca da farda.
+    let notaPontualidade = 5;
+    if (pontVal === 'atras') notaPontualidade = atrasoMins >= 10 ? 2 : 3;
+    addRegistoAvaliacao({
+      id: `${plano.id}_${aluno.id}_pont_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
+      planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'OBR_03',
+      nota: notaPontualidade, data: new Date().toISOString(), validadoPor: 'aluno',
+    });
+
+    // OBR_01 — Higiene pessoal (inclui fardamento) — depende SÓ do estado da farda,
+    // nunca da pontualidade. Fardamento completo (8/8 itens) = 5; cada item em falta desce 1.
+    const itensEmFalta = fardItensEmFalta.length;
+    const notaFardamento = Math.max(1, 5 - itensEmFalta);
+    addRegistoAvaliacao({
+      id: `${plano.id}_${aluno.id}_farda_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
+      planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'OBR_01',
+      nota: notaFardamento, data: new Date().toISOString(), validadoPor: 'aluno',
+    });
+    // Enviar automaticamente para o KitchenFlow — o aluno não precisa de fazer nada
+    const nomeAluno = aluno.nome || `Aluno ${aluno.numero}`;
+    registarHigieneKitchenFlow(aluno.turmaId, aluno.id, nomeAluno, fardamentoOk)
+      .catch(() => {}); // falha silenciosa
+    onConcluido();
+  }
+
+  return (
+    <div>
+      {/* Pontualidade — blocos coloridos */}
+      <div style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#5b21b6', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>⏰</div>
+          <div style={{ flex:1, background:'#6d28d9', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Passo 1</div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Chegaste a horas?</div>
+          </div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {(['sim','atras'] as const).map(v => (
+            <button key={v} onClick={() => setPont(v)} style={{
+              display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+              padding:'18px 12px', borderRadius:14, fontSize:14, fontWeight:800, cursor:'pointer',
+              border:'none',
+              background: pontVal===v ? (v==='sim'?'#2ec4b6':'#e63946') : 'rgba(26,23,20,0.07)',
+              color: pontVal===v ? '#fff' : 'rgba(26,23,20,0.5)',
+              transition:'all 0.15s',
+            }}>
+              <span style={{ fontSize:36 }}>{v==='sim'?'✅':'⏳'}</span>
+              {v==='sim' ? 'Sim, a horas' : 'Não, atrasado/a'}
+            </button>
+          ))}
+        </div>
+        {pontVal==='atras' && (
+          <div style={{ marginTop:8, display:'flex', borderRadius:12, overflow:'hidden' }}>
+            <div style={{ width:48, background:'#b5291e', display:'flex',
+              alignItems:'center', justifyContent:'center', fontSize:22 }}>⚠️</div>
+            <div style={{ flex:1, background:'#e63946', padding:'10px 12px' }}>
+              <div style={{ fontSize:13, fontWeight:800, color:'#fff' }}>Atraso registado automaticamente</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', marginTop:2 }}>
+                Aula começou às {plano.horaInicio}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Fardamento — blocos coloridos */}
+      <div style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ width:64, background:'#1a9e94', display:'flex',
+            alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>👔</div>
+          <div style={{ flex:1, background:'#2ec4b6', padding:'12px 14px' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Passo 2</div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Fardamento e higiene</div>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.65)', marginTop:1 }}>Toca em cada item para confirmar</div>
+          </div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {FARD_ITEMS.map(item => {
+            const v = fardState[item.id];
+            return (
+              <button key={item.id} onClick={() => toggleFard(item.id)} style={{
+                display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+                padding:'14px 10px', borderRadius:12, cursor:'pointer',
+                fontSize:13, fontWeight:800, border:'none',
+                background: v===true ? '#2ec4b6' : v===false ? '#e63946' : 'rgba(26,23,20,0.07)',
+                color: v!==null ? '#fff' : 'rgba(26,23,20,0.5)',
+                transition:'all 0.15s',
+              }}>
+                <span style={{ fontSize:28 }}>{item.emoji}</span>
+                <span style={{ textAlign:'center', lineHeight:1.2, fontSize:12 }}>{item.label}</span>
+                <span style={{ fontSize:20, fontWeight:900 }}>
+                  {v===true ? '✓' : v===false ? '✗' : '?'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Aviso farda incompleta — visível ao aluno, registado para o professor */}
+      {fardItensEmFalta.length > 0 && fardCompleto && (
+        <div style={{ margin:'0 0 10px', padding:'10px 14px', borderRadius:10,
+          background:'rgba(230,57,70,0.08)', border:'1px solid rgba(230,57,70,0.3)',
+          fontSize:13, color:'#e63946' }}>
+          ⚠️ Farda incompleta: <strong>{fardItensEmFalta.join(', ')}</strong>
+          <div style={{ fontSize:11, marginTop:4, color:'rgba(26,23,20,0.5)' }}>
+            O professor vai ser alertado. Corrige antes de iniciares a produção.
+          </div>
+        </div>
+      )}
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden',
+        cursor: entradaOk ? 'pointer' : 'not-allowed', opacity: entradaOk ? 1 : 0.45 }}
+        onClick={entradaOk ? confirmar : undefined}>
+        <div style={{ width:64, background: entradaOk ? '#c47f00' : 'rgba(26,23,20,0.15)',
+          display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>
+          {entradaOk ? '✅' : '⏳'}
+        </div>
+        <div style={{ flex:1, background: entradaOk ? '#f4a900' : 'rgba(26,23,20,0.1)',
+          padding:'14px 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ fontSize:15, fontWeight:800, color: entradaOk ? '#fff' : 'rgba(26,23,20,0.4)' }}>
+            {entradaOk ? 'Confirmar e continuar' : 'Preenche todos os campos primeiro'}
+          </div>
+          <span style={{ fontSize:28, color: entradaOk ? 'rgba(255,255,255,0.6)' : 'rgba(26,23,20,0.2)' }}>›</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// PAINEL KITCHENFLOW — registos obrigatórios da ficha
+// ─────────────────────────────────────────────────────────────
+function PainelKitchenFlow({ fichas, aluno, plano }: {
+  fichas: any[]; aluno: any; plano: any;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [regTemp, setRegTemp] = useState<{prato:string;tipo:'quente'|'frio';temp:string}|null>(null);
+  const [regNC, setRegNC] = useState<{zona:string;desc:string;acao:string}|null>(null);
+  const [enviado, setEnviado] = useState<string[]>([]);
+  const nomeAluno = aluno.nome || `Aluno ${aluno.numero}`;
+
+  // Extrair registos obrigatórios do campo kitchenflow das fichas
+  const registosTexto = fichas.map(f => f.kitchenflow || '').filter(Boolean).join('\n');
+  const temTemperatura = /temperatura.*servi|temperatura de servi/i.test(registosTexto);
+  const temOleos = /controlo.*óleo|controlo de óleo/i.test(registosTexto);
+  const temConservacao = /conserva[cç]/i.test(registosTexto);
+  const temTestemunho = /amostra.*testemunho/i.test(registosTexto);
+
+  const registos = [
+    { id:'higiene', emoji:'🧼', label:'Higiene Pessoal', desc:'Registado automaticamente na entrada', auto:true },
+    ...(temTemperatura ? [{ id:'temp', emoji:'🌡️', label:'Temperatura de Serviço', desc:'Registar temperatura do prato antes de servir', auto:false }] : []),
+    ...(temOleos ? [{ id:'oleos', emoji:'🛢️', label:'Controlo de Óleos', desc:'Registar controlo de óleos de fritura', auto:false }] : []),
+    ...(temConservacao ? [{ id:'conservacao', emoji:'📦', label:'Conservação de Produtos', desc:'Registar produtos que sobram', auto:false }] : []),
+    { id:'nc', emoji:'⚠️', label:'Não Conformidades', desc:'Registar qualquer problema detetado', auto:false },
+    ...(temTestemunho ? [{ id:'testemunho', emoji:'🧪', label:'Amostra Testemunho', desc:'Recolher amostra se houver serviço a clientes', auto:false }] : []),
+  ];
+
+  async function enviarTemperatura() {
+    if (!regTemp || !regTemp.prato || !regTemp.temp) return;
+    await registarTemperaturaKitchenFlow(
+      aluno.turmaId, aluno.id, nomeAluno,
+      regTemp.prato, regTemp.tipo, Number(regTemp.temp)
+    );
+    setEnviado(p => [...p, 'temp']);
+    setRegTemp(null);
+  }
+
+  async function enviarNC() {
+    if (!regNC || !regNC.desc) return;
+    await registarNaoConformidadeKitchenFlow(
+      aluno.turmaId, aluno.id, nomeAluno,
+      regNC.zona || 'Cozinha', regNC.desc, regNC.acao || 'A definir'
+    );
+    setEnviado(p => [...p, 'nc']);
+    setRegNC(null);
+  }
+
+  return (
+    <div style={{ marginBottom:16, borderRadius:14, overflow:'hidden',
+      border:`1.5px solid #0e7490`, background:'#f0f9ff' }}>
+      <button onClick={() => setAberto(a => !a)} style={{
+        width:'100%', display:'flex', alignItems:'center', gap:12,
+        padding:'12px 16px', background:'#0e7490', border:'none', cursor:'pointer',
+      }}>
+        <span style={{ fontSize:20 }}>🏭</span>
+        <div style={{ flex:1, textAlign:'left' }}>
+          <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>KitchenFlow ECL</div>
+          <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)' }}>
+            {registos.filter(r => enviado.includes(r.id) || r.auto).length}/{registos.length} registos concluídos
+          </div>
+        </div>
+        <span style={{ fontSize:18, color:'rgba(255,255,255,0.7)',
+          transform:aberto?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+      </button>
+
+      {aberto && (
+        <div style={{ padding:'12px 14px' }}>
+          {registos.map(reg => {
+            const feito = enviado.includes(reg.id) || reg.auto;
+            return (
+              <div key={reg.id} style={{ marginBottom:8, padding:'10px 12px',
+                borderRadius:10, background:feito?'#d1fae5':'#fff',
+                border:`1px solid ${feito?'#6ee7b7':'rgba(14,116,144,0.2)'}` }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontSize:20 }}>{feito ? '✅' : reg.emoji}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:700,
+                      color:feito?'#065f46':'#0e7490' }}>{reg.label}</div>
+                    <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:1 }}>
+                      {feito ? 'Registado ✓' : reg.desc}
+                    </div>
+                  </div>
+                  {!feito && !reg.auto && reg.id !== 'temp' && reg.id !== 'nc' && (
+                    <button onClick={() => abrirKitchenFlow(reg.id)} style={{
+                      padding:'6px 12px', borderRadius:8, border:'none',
+                      background:'#0e7490', color:'#fff', fontSize:12,
+                      fontWeight:700, cursor:'pointer', flexShrink:0,
+                    }}>
+                      Registar →
+                    </button>
+                  )}
+                  {!feito && reg.id === 'nc' && !regNC && (
+                    <button onClick={() => setRegNC({zona:'Cozinha',desc:'',acao:''})} style={{
+                      padding:'6px 12px', borderRadius:8, border:'none',
+                      background:'#dc2626', color:'#fff', fontSize:12,
+                      fontWeight:700, cursor:'pointer', flexShrink:0,
+                    }}>
+                      Registar →
+                    </button>
+                  )}
+                  {!feito && reg.id === 'temp' && !regTemp && (
+                    <button onClick={() => setRegTemp({prato:fichas[0]?.nomePrato||'',tipo:'quente',temp:''})} style={{
+                      padding:'6px 12px', borderRadius:8, border:'none',
+                      background:'#0e7490', color:'#fff', fontSize:12,
+                      fontWeight:700, cursor:'pointer', flexShrink:0,
+                    }}>
+                      Registar →
+                    </button>
+                  )}
+                </div>
+
+                {/* Formulário Temperatura */}
+                {reg.id === 'temp' && regTemp && (
+                  <div style={{ marginTop:10, padding:'10px', background:'#e0f2fe',
+                    borderRadius:8, display:'flex', flexDirection:'column', gap:8 }}>
+                    <div style={{ display:'flex', gap:6 }}>
+                      {(['quente','frio'] as const).map(t => (
+                        <button key={t} onClick={() => setRegTemp(p => p?{...p,tipo:t}:null)} style={{
+                          flex:1, padding:'6px', borderRadius:6, cursor:'pointer',
+                          border:`2px solid ${regTemp.tipo===t?'#0e7490':'rgba(14,116,144,0.3)'}`,
+                          background:regTemp.tipo===t?'#0e7490':'#fff',
+                          color:regTemp.tipo===t?'#fff':'#0e7490', fontSize:12, fontWeight:700,
+                        }}>{t==='quente'?'🔥 Quente':'❄️ Frio'}</button>
+                      ))}
+                    </div>
+                    <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                      <input type="number" value={regTemp.temp}
+                        onChange={e => setRegTemp(p => p?{...p,temp:e.target.value}:null)}
+                        placeholder="°C" style={{ flex:1, padding:'8px', borderRadius:6,
+                          border:'1px solid rgba(14,116,144,0.3)', fontSize:15, textAlign:'center' }} />
+                      <span style={{ fontSize:12, color:'#0e7490', fontWeight:600 }}>
+                        {regTemp.tipo==='quente'?'mín. 63°C':'máx. 4°C'}
+                      </span>
+                    </div>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button onClick={enviarTemperatura} style={{ flex:1, padding:'8px',
+                        borderRadius:8, border:'none', background:'#0e7490', color:'#fff',
+                        fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                        ✓ Confirmar
+                      </button>
+                      <button onClick={() => setRegTemp(null)} style={{ padding:'8px 12px',
+                        borderRadius:8, border:'1px solid rgba(14,116,144,0.3)',
+                        background:'#fff', color:'#0e7490', fontSize:13, cursor:'pointer' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Formulário Não Conformidade */}
+                {reg.id === 'nc' && regNC && (
+                  <div style={{ marginTop:10, padding:'10px', background:'#fef2f2',
+                    borderRadius:8, display:'flex', flexDirection:'column', gap:8 }}>
+                    <input value={regNC.zona} onChange={e => setRegNC(p => p?{...p,zona:e.target.value}:null)}
+                      placeholder="Zona (ex: Cozinha fria)" style={{ padding:'8px', borderRadius:6,
+                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13 }} />
+                    <textarea value={regNC.desc} onChange={e => setRegNC(p => p?{...p,desc:e.target.value}:null)}
+                      placeholder="Descreve o problema..." rows={2} style={{ padding:'8px', borderRadius:6,
+                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13, resize:'none' }} />
+                    <input value={regNC.acao} onChange={e => setRegNC(p => p?{...p,acao:e.target.value}:null)}
+                      placeholder="Ação corretiva tomada" style={{ padding:'8px', borderRadius:6,
+                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13 }} />
+                    <div style={{ display:'flex', gap:6 }}>
+                      <button onClick={enviarNC} style={{ flex:1, padding:'8px',
+                        borderRadius:8, border:'none', background:'#dc2626', color:'#fff',
+                        fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                        ✓ Registar NC
+                      </button>
+                      <button onClick={() => setRegNC(null)} style={{ padding:'8px 12px',
+                        borderRadius:8, border:'1px solid rgba(220,38,38,0.3)',
+                        background:'#fff', color:'#dc2626', fontSize:13, cursor:'pointer' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(14,116,144,0.08)',
+            borderRadius:8, fontSize:12, color:'#0e7490', display:'flex', alignItems:'center', gap:8 }}>
+            <span>🔗</span>
+            <span>Abrir KitchenFlow ECL completo:</span>
+            <button onClick={() => abrirKitchenFlow()} style={{ padding:'4px 10px',
+              borderRadius:6, border:'none', background:'#0e7490', color:'#fff',
+              fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              Abrir →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO 2 — Fichas de Produção (mantida da versão anterior)
+// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO GUIÃO — Guião de Apoio à Produção para o aluno
+// ─────────────────────────────────────────────────────────────
+function SecaoGuiao({ fichas, plano, onConcluido }: {
+  fichas: FichaProducao[]; plano: PlanoAula; onConcluido: () => void;
+}) {
+  const fichasComGuiao = fichas.filter((f: any) => f.textoGuia);
+  const [fichaActiva, setFichaActiva] = useState(fichasComGuiao[0]?.id || '');
+
+  if (fichasComGuiao.length === 0) {
+    return (
+      <div>
+        <div style={{ textAlign:'center', padding:'32px 20px',
+          color:'rgba(26,23,20,0.4)', fontSize:14 }}>
+          <div style={{ fontSize:32, marginBottom:8 }}>📖</div>
+          O professor ainda não criou o guião para esta aula.
+        </div>
+        <button onClick={onConcluido} style={{ width:'100%', padding:'14px',
+          borderRadius:12, border:'none', background:'#1a6b5a', color:'#fff',
+          fontSize:15, fontWeight:700, cursor:'pointer', marginTop:6 }}>
+          Continuar →
+        </button>
+      </div>
+    );
+  }
+
+  const fichaGuiao = fichasComGuiao.find((f: any) => f.id === fichaActiva) || fichasComGuiao[0];
+
+  return (
+    <div>
+      {/* Selector de ficha se houver mais do que uma com guião */}
+      {fichasComGuiao.length > 1 && (
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:14 }}>
+          {fichasComGuiao.map((f: any) => (
+            <button key={f.id} onClick={() => setFichaActiva(f.id)} style={{
+              padding:'6px 14px', borderRadius:100, border:'none', cursor:'pointer',
+              fontSize:12, fontWeight:700,
+              background: fichaActiva === f.id ? '#1a6b5a' : 'rgba(26,106,90,0.08)',
+              color: fichaActiva === f.id ? '#fff' : '#1a6b5a',
+            }}>{f.nomePrato}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Botão PDF no topo */}
+      <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
+        <button
+          onClick={() => {
+            const guia = (fichaGuiao as any).guiaParsed || { secoes: [], equilibrioSensorial: [] };
+            gerarPDFGuiao({
+              nomePrato: fichaGuiao.nomePrato || '',
+              ucId: plano.ucId,
+              ucNome: plano.ucNome,
+              guia,
+              textoOriginal: (fichaGuiao as any).textoGuia || '',
+            });
+          }}
+          style={{ padding:'8px 16px', borderRadius:10, border:'none',
+            background:'#b5651d', color:'#fff', fontSize:13,
+            fontWeight:700, cursor:'pointer', display:'flex',
+            alignItems:'center', gap:6 }}>
+          ⬇ PDF do Guião
+        </button>
+      </div>
+
+      {/* Guião completo — todas as secções com scroll */}
+      <GuiaProducao
+        textoGuia={(fichaGuiao as any).textoGuia}
+        nomePrato={fichaGuiao.nomePrato || ''}
+        ucId={plano.ucId}
+        ucNome={plano.ucNome}
+      />
+
+      <button onClick={onConcluido} style={{ width:'100%', padding:'18px',
+        borderRadius:16, border:'none',
+        background:'linear-gradient(135deg, #1a6b5a, #0f4a3d)',
+        color:'#fff', fontSize:17, fontWeight:800, cursor:'pointer',
+        marginTop:16, boxShadow:'0 6px 20px rgba(26,107,90,0.4)',
+        display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
+        <span style={{ fontSize:22 }}>📖</span>
+        Li o guião — Continuar
+        <span style={{ fontSize:20 }}>→</span>
+      </button>
+    </div>
+  );
+}
+
+function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
+  fichas: FichaProducao[]; plano: PlanoAula; aluno: Aluno; onConcluido: () => void;
+}) {
+  const [fichaAberta, setFichaAberta] = useState<string|null>(fichas[0]?.id||null);
+  const [checklist, setChecklist] = useState<Record<string,{ing:Set<number>;passo:Set<number>}>>(() => {
+    const init: Record<string,{ing:Set<number>;passo:Set<number>}> = {};
+    fichas.forEach(f => {
+      const ex = getChecklistAlunoFicha(plano.id, f.id, aluno.id);
+      init[f.id] = {
+        ing: new Set((ex?.ingredientesConfirmados||[]).map(Number)),
+        passo: new Set((ex?.passosConcluidos||[]).map(Number)),
+      };
+    });
+    return init;
+  });
+
+  function guardar(fichaId: string, novoIng?: Set<number>, novoPasso?: Set<number>) {
+    setChecklist(prev => {
+      const cur = prev[fichaId]||{ing:new Set<number>(),passo:new Set<number>()};
+      const next = { ing: novoIng||cur.ing, passo: novoPasso||cur.passo };
+      addOrUpdateChecklistAluno({
+        id:`chk_${plano.id}_${fichaId}_${aluno.id}`, planoAulaId:plano.id, fichaId,
+        alunoId:aluno.id, pontualidade:'a_horas', fardamento:true, itensFardamento:[],
+        ingredientesConfirmados:Array.from(next.ing).map(String),
+        passosConcluidos:Array.from(next.passo).map(String),
+        haccpConfirmado:[], haccpRegistado:false, atualizadoEm:new Date().toISOString(),
+      });
+      return {...prev,[fichaId]:next};
+    });
+  }
+
+  if (fichas.length===0) {
+    return (
+      <div>
+        <div style={{ textAlign:'center', padding:'20px', color:'rgba(26,23,20,0.5)', fontSize:14 }}>
+          📄 Não há fichas de produção para esta aula.
+        </div>
+        <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12,
+          border:'none', background:T.sage, color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer' }}>
+          Continuar →
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Painel KitchenFlow — registos obrigatórios desta produção */}
+      <PainelKitchenFlow fichas={fichas} aluno={aluno} plano={plano} />
+
+      {fichas.map(f => (
+        <div key={f.id} style={{ marginBottom:12 }}>
+          <button onClick={() => setFichaAberta(fichaAberta===f.id?null:f.id)} style={{
+            width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+            borderRadius:12, border:`1.5px solid ${fichaAberta===f.id?'#2980b9':T.border}`,
+            background: fichaAberta===f.id ? '#e8f4fd' : '#fff', cursor:'pointer', textAlign:'left',
+          }}>
+            <span style={{ fontSize:22 }}>📄</span>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:700, fontSize:15 }}>{f.nomePrato}</div>
+              <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.numPorcoes} doses</div>
+            </div>
+            <span style={{ fontSize:18, color:'#2980b9' }}>{fichaAberta===f.id?'▲':'▼'}</span>
+          </button>
+
+          {fichaAberta===f.id && (
+            <div style={{ padding:'14px', background:'#fdfcfb', borderRadius:'0 0 12px 12px',
+              border:'1px solid #2980b920', borderTop:'none' }}>
+              {(f as any).htmlCompleto && (
+                <button style={{ width:'100%', padding:'10px', borderRadius:10, border:`1px solid ${T.border}`,
+                  background:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', marginBottom:12 }}
+                  onClick={() => {
+                    const win=window.open('','_blank');
+                    if(win){win.document.write((f as any).htmlCompleto);win.document.close();}
+                  }}>
+                  🖨️ Ver / Imprimir Ficha Completa
+                </button>
+              )}
+
+              {f.ingredientes?.length>0 && (
+                <div style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.05em', color:'#2980b9', marginBottom:8 }}>Ingredientes</div>
+                  {f.ingredientes.map((ing,i) => {
+                    const marcado = checklist[f.id]?.ing.has(i)||false;
+                    return (
+                      <label key={i} style={{ display:'flex', alignItems:'center', gap:10,
+                        padding:'10px 12px', borderRadius:10, border:`1px solid ${T.border}`,
+                        marginBottom:5, background:marcado?T.sageP:'#fff', cursor:'pointer' }}>
+                        <input type="checkbox" checked={marcado} style={{ accentColor:T.sage, width:18, height:18 }}
+                          onChange={() => {
+                            const cur = checklist[f.id]?.ing||new Set<number>();
+                            const n = new Set<number>(cur);
+                            n.has(i)?n.delete(i):n.add(i);
+                            guardar(f.id,n);
+                          }} />
+                        <span style={{ fontSize:14, textDecoration:marcado?'line-through':'none' }}>
+                          <strong>{ing.qt} {ing.un}</strong> {ing.produto}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              {f.preparacao?.length>0 && (
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.05em', color:'#2980b9', marginBottom:8 }}>Preparação</div>
+                  {f.preparacao.map((p,i) => {
+                    const marcado = checklist[f.id]?.passo.has(i)||false;
+                    return (
+                      <label key={i} style={{ display:'flex', alignItems:'flex-start', gap:10,
+                        padding:'10px 12px', borderRadius:10, border:`1px solid ${T.border}`,
+                        marginBottom:5, background:marcado?T.sageP:'#fff', cursor:'pointer' }}>
+                        <input type="checkbox" checked={marcado} style={{ accentColor:T.sage, width:18, height:18, marginTop:2, flexShrink:0 }}
+                          onChange={() => {
+                            const cur = checklist[f.id]?.passo||new Set<number>();
+                            const n = new Set<number>(cur);
+                            n.has(i)?n.delete(i):n.add(i);
+                            guardar(f.id,undefined,n);
+                          }} />
+                        <div style={{ fontSize:14, textDecoration:marcado?'line-through':'none', lineHeight:1.4 }}>
+                          <strong>{p.num}.</strong> {p.descricao}
+                          {p.temperatura&&<span style={{ color:'#2980b9', marginLeft:6, fontSize:12 }}>🌡 {p.temperatura}</span>}
+                          {p.haccp&&<div style={{ color:T.danger, fontSize:12, marginTop:2 }}>⚠️ {p.haccp}</div>}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              {(f as any).textoGuia && (
+                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${T.border}` }}>
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.05em', color:T.sage, marginBottom:8 }}>📚 Guia de Apoio</div>
+                  <GuiaProducao textoGuia={(f as any).textoGuia} nomePrato={f.nomePrato||''} />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+      <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12,
+        border:'none', background:'#2980b9', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer', marginTop:6 }}>
+        Concluí a ficha → Continuar
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO 3 — Requisição
+// ─────────────────────────────────────────────────────────────
+function SecaoRequisicao({ requisicao, onConcluido }: { requisicao: any; onConcluido: () => void }) {
+  if (!requisicao) {
+    return (
+      <div>
+        <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:14, padding:'14px', background:'var(--cream-dark)', borderRadius:10 }}>
+          🛒 Nenhuma requisição criada para esta aula ainda.
+        </div>
+        <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background:'#7d4f8c', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer', marginTop:6 }}>
+          Continuar →
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:14 }}>
+        🛒 Ingredientes a requisitar para esta aula.
+      </div>
+      <div style={{ overflowX:'auto', marginBottom:16 }}>
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:14 }}>
+          <thead>
+            <tr style={{ background:'#7d4f8c', color:'#fff' }}>
+              <th style={{ padding:'10px 12px', textAlign:'left', borderRadius:'8px 0 0 0' }}>Produto</th>
+              <th style={{ padding:'10px 8px', textAlign:'right' }}>Quantidade</th>
+              <th style={{ padding:'10px 8px', textAlign:'left', borderRadius:'0 8px 0 0' }}>Un.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(requisicao.linhas||[]).map((l: any, i: number) => (
+              <tr key={l.id||i} style={{ background:i%2===0?'#fff':T.cream, borderBottom:`1px solid ${T.border}` }}>
+                <td style={{ padding:'10px 12px' }}>{l.produto}</td>
+                <td style={{ padding:'10px 8px', textAlign:'right', fontWeight:700 }}>{l.quantidadeTotal}</td>
+                <td style={{ padding:'10px 8px', color:'rgba(26,23,20,0.5)' }}>{l.unidade}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', cursor:'pointer', marginTop:10 }}
+        onClick={onConcluido}>
+        <div style={{ width:64, background:'#5b21b6', display:'flex',
+          alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>🎯</div>
+        <div style={{ flex:1, background:'#6d28d9', padding:'14px',
+          display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Continuar para a Avaliação</div>
+          <span style={{ fontSize:28, color:'rgba(255,255,255,0.5)' }}>›</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// SECÇÃO 4 — Autoavaliação (mantida da versão anterior)
+// ─────────────────────────────────────────────────────────────
+function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
+  plano: PlanoAula; aluno: Aluno; fichas: FichaProducao[]; onConcluido: () => void;
+}) {
+  const ucId = plano.ucId||'';
+  const compRemovidas: string[] = (plano as any).compRemovidas||[];
+
+  // Evidências do KitchenFlow — carregadas automaticamente
+  const [evidenciasKF, setEvidenciasKF] = useState<EvidenciaKitchenFlow[]>([]);
+  const [kfCarregado, setKfCarregado] = useState(false);
+
+  useEffect(() => {
+    // Ir buscar registos KitchenFlow do aluno nesta data
+    const data = plano.data ? String(plano.data).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const registosObrig = fichas.flatMap(f => extrairRegistosObrigatorios(f as any));
+    const tiposUnicos = Array.from(new Set(registosObrig));
+
+    sincronizarEvidenciasKitchenFlow(aluno.turmaId, aluno.id, data, tiposUnicos)
+      .then(ev => { setEvidenciasKF(ev); setKfCarregado(true); })
+      .catch(() => setKfCarregado(true));
+  }, [plano.id]);
+
+  // Verificar se uma competência tem evidência no KitchenFlow
+  function temEvidenciaKF(compId: string): boolean {
+    return evidenciasKF.some(e => e.competenciaId === compId);
+  }
+
+  // ── Iniciativa (aulas teóricas) ──────────────────────────────
+  function SecaoIniciativa() {
+    if (tipoPlanAula !== 'teorico') return null;
+    return (
+      <div style={{ marginTop:16, padding:'14px 16px', borderRadius:12,
+        background:'rgba(181,101,29,0.05)', border:'1px solid rgba(181,101,29,0.2)' }}>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>💡 Iniciativa</div>
+        <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginBottom:12 }}>
+          Como avalias a tua iniciativa hoje na cozinha?
+        </div>
+        {INICIATIVA_FRASES.map(f => (
+          <button key={f.nivel} onClick={() => setNivelIniciativa(f.nivel)}
+            style={{ width:'100%', textAlign:'left', padding:'10px 12px', marginBottom:6,
+              borderRadius:10, cursor:'pointer', fontSize:13,
+              border:`2px solid ${nivelIniciativa===f.nivel ? '#b5651d' : 'rgba(26,23,20,0.08)'}`,
+              background: nivelIniciativa===f.nivel ? 'rgba(181,101,29,0.08)' : '#fff',
+              fontWeight: nivelIniciativa===f.nivel ? 700 : 400 }}>
+            <span style={{ display:'inline-block', width:20, height:20, borderRadius:'50%',
+              background: nivelIniciativa===f.nivel ? '#b5651d' : 'rgba(26,23,20,0.1)',
+              color: nivelIniciativa===f.nivel ? '#fff' : 'rgba(26,23,20,0.4)',
+              fontSize:11, fontWeight:800, textAlign:'center', lineHeight:'20px',
+              marginRight:8, flexShrink:0 }}>{f.nivel}</span>
+            {f.texto}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  // Badge KF — mostra ao aluno que os seus registos do KitchenFlow foram verificados
+  const BadgeKF = () => {
+    if (!kfCarregado) return null;
+    const nEvidencias = evidenciasKF.length;
+    if (nEvidencias === 0) return null;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+        borderRadius: 10, background: 'rgba(3,105,161,0.08)', border: '1px solid rgba(3,105,161,0.2)',
+        marginBottom: 10 }}>
+        <span style={{ fontSize: 16 }}>🍳</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
+            {nEvidencias} registo{nEvidencias !== 1 ? 's' : ''} do KitchenFlow verificado{nEvidencias !== 1 ? 's' : ''}
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginTop: 1 }}>
+            As competências marcadas com 🍳 têm evidência no KitchenFlow
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Competências desta aula — usa SUB-xxx e APP-xxx da ficha ─
+  function _nivelPermitido(nivel: number): boolean {
+    if (!aluno.nivelMedidas || aluno.nivelMedidas === 1) return true;
+    if (aluno.nivelMedidas === 2) return nivel <= 2;
+    if (aluno.nivelMedidas === 3) return nivel === 1;
+    return true;
+  }
+
+  // SUB-xxx: subtécnicas da biblioteca
+  const subIdsRaw = fichas.flatMap((f: any) => (f.tecnicasSugeridas || []).filter((id: string) => id.startsWith('SUB-')));
+  const subIdsFiltrados = [...new Set(subIdsRaw)].filter((id: string) => !compRemovidas.includes(id));
+
+  // APP-xxx: aparelhos filtrados pelo nível de medidas
+  const appIdsRaw = fichas.flatMap((f: any) => ((f as any).aparelhosDetectados || []).filter((id: string) => id.startsWith('APP-')));
+  const appIdsFiltrados = [...new Set(appIdsRaw)].filter((id: string) => {
+    if (compRemovidas.includes(id)) return false;
+    const app = encontrarAparelho(id);
+    return app ? _nivelPermitido(app.nivel) : true;
+  });
+
+  // Subtécnicas como objectos para display
+  const subsSug = subIdsFiltrados.slice(0, 6).map((id: string) => {
+    const sub = encontrarSubtecnica(id);
+    const hist = getHistoricoAlunoMicro(aluno.id, id);
+    const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+    const emReg = estaEmRegressao(avs);
+    const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliada' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidada';
+    return { id, nome: sub?.nome || id, motivo };
+  });
+
+  // Aparelhos como objectos para display
+  const aparelhosSug = appIdsFiltrados.slice(0, 4).map((id: string) => {
+    const app = encontrarAparelho(id);
+    const hist = getHistoricoAlunoMicro(aluno.id, id);
+    const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+    const emReg = estaEmRegressao(avs);
+    const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca preparado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
+    return { id, nome: app?.nome || id, nivel: app?.nivel || 1, categoria: app?.categoria || '', motivo };
+  });
+
+  // Fallback — se não há SUB/APP da ficha, usar sistema antigo
+  const usarFallback = subsSug.length === 0 && aparelhosSug.length === 0;
+  const familia1 = fichas.length > 0 ? (fichas[0] as any).familia1 : undefined;
+  const familia2 = fichas.length > 0 ? (fichas[0] as any).familia2 : undefined;
+  const etiquetas = fichas.flatMap((f: any) => f.etiquetas || []);
+  const microsDaUCEsp = usarFallback ? ((familia1 || familia2)
+    ? microsPorFamilia(familia1, familia2, etiquetas, ucId)
+    : ucId ? microsPorUC(ucId) : []) : [];
+  const microsEstr = MICROCOMPETENCIAS.filter(m => m.prioridade==='A');
+  const microsDaUC = microsDaUCEsp.length>=3
+    ? microsDaUCEsp
+    : [...microsDaUCEsp,...microsEstr.filter(m=>!microsDaUCEsp.find(x=>x.id===m.id))].slice(0,8);
+  const microsSug = usarFallback ? microsDaUC
+    .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
+    .map(m => {
+      const hist = getHistoricoAlunoMicro(aluno.id, m.id);
+      const avs = hist.map(h=>({nota:h.nota,data:h.data}));
+      const emReg = estaEmRegressao(avs);
+      const motivo = emReg?'⚠️ Em regressão':avs.length===0?'★ Nunca avaliada':!jaTeveSucesso(avs)?'↑ Em desenvolvimento':'✓ Consolidada';
+      return {...m, motivo};
+    }) : [];
+
+  // ── Conhecimentos — visíveis em planos teóricos ou mistos ──
+  const tipoPlanAula = (plano as any).tipoPlanAula || (subIdsFiltrados.length === 0 && appIdsFiltrados.length === 0 ? 'teorico' : 'pratico');
+  const knwIds = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('KNW-'));
+  // Em plano teórico: mostrar KNW das compAdicionadas (professor acrescenta via VistaDePlano)
+  const conhecimentosSug = (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto') ? knwIds
+    .filter((id: string) => !compRemovidas.includes(id))
+    .slice(0, 6)
+    .map((id: string) => {
+      const knw = encontrarConhecimento(id);
+      const hist = getHistoricoAlunoMicro(aluno.id, id);
+      const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+      const emReg = estaEmRegressao(avs);
+      const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
+      return { id, nome: knw?.nome || id, definicao: knw?.definicao || '', motivo };
+    }) : [];
+
+  const [nivelHigiene, setNivelHigiene] = useState<string|null>(null);
+  const [nivelHaccp, setNivelHaccp] = useState<string|null>(null);
+  const [notasMicro, setNotasMicro] = useState<Record<string,string|null>>({});
+  const [microAberta, setMicroAberta] = useState<string|null>(null);
+  const [atitudeEscolhida, setAtitudeEscolhida] = useState<string|null>(null);
+  const [nivelIniciativa, setNivelIniciativa] = useState<number>(0); // 0 = não avaliado
+  const [modalConfirmar, setModalConfirmar] = useState(false);
+  const [submetido, setSubmetido] = useState(() => {
+    try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
+  });
+
+  const OPCOES = [
+    { v:'nf',  nota:1, label:'Ainda não fiz',                           cor:'#c8cfd6', corTxt:'#4a5568' },
+    { v:'tp',  nota:2, label:'Tentei mas ainda preciso de mais prática', cor:'#96a4b0', corTxt:'#2d3748' },
+    { v:'ca',  nota:3, label:'Consegui com ajuda',                       cor:'#647a8a', corTxt:'#ffffff' },
+    { v:'fs',  nota:4, label:'Faço sozinho/a',                           cor:'#3d5a6e', corTxt:'#ffffff' },
+    { v:'mbr', nota:5, label:'Faço com muito bom resultado',             cor:'#1e3a4a', corTxt:'#ffffff' },
+  ];
+
+  const prontoParaSubmeter = nivelHigiene!==null && nivelHaccp!==null;
+
+  function submeterDefinitivo() {
+    const agora = new Date().toISOString();
+    // Converter nível da autoavaliação para nota 1-5
+    const paraNota = (v:string|null): number => {
+      if (v==='mbr' || v==='autonomia' || v==='superei') return 5;
+      if (v==='fs'  || v==='sozinho'   || v==='atingi')  return 4;
+      if (v==='ca'  || v==='ajuda'     || v==='desenvolvimento') return 3;
+      if (v==='tp')  return 2;
+      if (v==='nf'  || v==='nao'       || v==='nao_atingi') return 1;
+      return 0;
+    };
+    // Converter nota 1-5 para /20 (×4)
+    const para20 = (n: number): number => Math.min(20, Math.round(n * 4));
+    // Guardar OBR com escala 1-4
+    if (nivelHigiene) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hig_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_01',nota:paraNota(nivelHigiene),data:agora,validadoPor:'aluno'});
+    // OBR_02 depende de evidência REAL no KitchenFlow — se o aluno não
+    // registou lá (mesmo tendo feito a técnica correctamente), a competência
+    // de registo fica a 1 (mínimo), independentemente do que auto-declarou
+    // aqui. A técnica em si (SUB) nunca é afectada por isto — só o registo.
+    if (nivelHaccp) {
+      const notaAutoDeclarada = paraNota(nivelHaccp);
+      const notaFinalHaccp = temEvidenciaKF('OBR_02') ? notaAutoDeclarada : 1;
+      addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hac_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_02',nota:notaFinalHaccp,data:agora,validadoPor:'aluno'});
+    }
+    // Guardar todas as competências com escala 1-4
+    Object.entries(notasMicro).forEach(([mId,v])=>{if(v)addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${mId}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:mId,nota:paraNota(v as string),data:agora,validadoPor:'aluno'});});
+    // Guardar atitude escolhida
+    if (atitudeEscolhida) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeEscolhida}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeEscolhida,nota:3,data:agora,validadoPor:'aluno'});
+    // Guardar SelecaoAluno com autoavaliacoes preenchidas para o professor validar
+    const todasAutoavaliacoes = [
+      ...(nivelHigiene?[{competenciaId:'OBR_01',nivel:nivelHigiene as string,nota:paraNota(nivelHigiene)}]:[]),
+      ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,nota:paraNota(nivelHaccp)}]:[]),
+      ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
+      ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:3}]:[]),
+      ...(tipoPlanAula==='teorico'&&nivelIniciativa>0?[{competenciaId:'INI-001',nivel:`ini_${nivelIniciativa}`,nota:nivelIniciativa}]:[]),
+    ];
+    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:atitudeEscolhida?[atitudeEscolhida]:[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,criadaEm:agora});
+    try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
+    setSubmetido(true); setModalConfirmar(false); onConcluido();
+  }
+
+  if (submetido) {
+    // Buscar o que o aluno submeteu para mostrar feedback
+    const historicoSubmissao: any[] = [];
+    const selecaoSubmetida = (() => {
+      try {
+        const sels = JSON.parse(localStorage.getItem('ecl_selecoes') || '[]');
+        return sels.find((s: any) => s.planoAulaId === plano.id && s.alunoId === aluno.id);
+      } catch { return null; }
+    })();
+    const autoavsSubmetidas: any[] = selecaoSubmetida?.autoavaliacoes || [];
+    const dataSubmissao = (() => {
+      try { return localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`) || ''; } catch { return ''; }
+    })();
+    const isPassada = new Date(plano.data) < new Date(new Date().toDateString());
+    
+    return (
+      <div style={{ padding:'16px' }}>
+        <div style={{ background:T.sageP, borderRadius:14, padding:'16px', textAlign:'center', marginBottom:16, border:`1px solid rgba(90,122,78,0.2)` }}>
+          <div style={{ fontSize:40, marginBottom:8 }}>✅</div>
+          <div style={{ fontSize:16, fontWeight:700, color:T.sage }}>Autoavaliação enviada!</div>
+          {dataSubmissao && (
+            <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)', marginTop:4 }}>
+              {fmtDataHora(dataSubmissao)}
+            </div>
+          )}
+          <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:6 }}>O professor vai confirmar o teu registo.</div>
+        </div>
+
+        {/* Mostrar o que foi submetido */}
+        {autoavsSubmetidas.length > 0 && (
+          <div style={{ marginBottom:16 }}>
+            <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+              O que submeteste
+            </div>
+            {autoavsSubmetidas.map((av: any, i: number) => {
+              const nivel = av.nivel || '';
+              const emoji = nivel==='autonomia'||nivel==='superei'?'🌟':nivel==='sozinho'||nivel==='atingi'?'✅':nivel==='ajuda'||nivel==='desenvolvimento'?'🤝':'📖';
+              const label = nivel==='autonomia'?'Faço com muito bom resultado':nivel==='sozinho'||nivel==='atingi'?'Faço sozinho/a':nivel==='ajuda'||nivel==='desenvolvimento'?'Consegui com ajuda':'Não consegui';
+              const nomeComp = av.competenciaId?.startsWith('OBR_01')?'Higiene pessoal':av.competenciaId?.startsWith('OBR_02')?'Higiene e segurança alimentar':av.competenciaId || '';
+              return (
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background:'#fff', border:`1px solid ${T.border}`, marginBottom:6 }}>
+                  <span style={{ fontSize:18, flexShrink:0 }}>{emoji}</span>
+                  <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{nomeComp}</div>
+                  <span style={{ fontSize:12, fontWeight:600, color:'rgba(26,23,20,0.5)' }}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Bloquear re-submissão para aulas passadas */}
+        {(() => {
+          // Ver se o professor já validou
+          const vals = (() => { try { return JSON.parse(localStorage.getItem('ecl_validacoes') || '[]'); } catch { return []; } })();
+          const val = vals.find((v: any) => v.planoAulaId === plano.id && v.alunoId === aluno.id);
+          if (val && val.notaMedia) {
+            // Calcular nota com pesos por categoria
+            const notasComCat = (val.notas || []).map((n: any) => {
+              const cat = n.competenciaId?.startsWith('OBR_') ? 'OBR'
+                : n.competenciaId?.startsWith('SUB-') || n.competenciaId?.startsWith('APP-') ? 'SUB'
+                : n.competenciaId?.startsWith('KNW-') ? 'KNW'
+                : n.competenciaId?.startsWith('INI-') ? 'INI'
+                : 'ATI';
+              return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.nota };
+            });
+            const tipoPlano = (plano as any).tipoPlanAula || 'pratico';
+            const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlano);
+            const notaFinal = val.notaMedia;
+            const cor = nota20 >= 16 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
+            const label = nota20 >= 16 ? 'Muito Bom' : nota20 >= 14 ? 'Bom' : nota20 >= 10 ? 'Suficiente' : 'Insuficiente';
+
+            // Comparação com a autoavaliação — não conta para a nota, mas ajuda o
+            // aluno a perceber se se avalia acima ou abaixo do que o professor observa.
+            const selecaoOriginal = getSelecoes().find(s => s.id === (val as any).selecaoId);
+            const comparacoes = (selecaoOriginal?.autoavaliacoes || []).map((auto: any) => {
+              const notaProfDaCompetencia = (val.notas || []).find((n: any) => n.competenciaId === auto.competenciaId)?.nota;
+              const notaAlunoProposta = auto.nota || (
+                auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
+                auto.nivel === 'fs'  || auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 4 :
+                auto.nivel === 'ca'  || auto.nivel === 'ajuda'     || auto.nivel === 'desenvolvimento' ? 3 :
+                auto.nivel === 'tp' ? 2 : 1
+              );
+              return { competenciaId: auto.competenciaId, alunoDisse: notaAlunoProposta, professorValidou: notaProfDaCompetencia };
+            }).filter(c => c.professorValidou != null);
+            const diferencaMedia = comparacoes.length
+              ? comparacoes.reduce((s, c) => s + (c.alunoDisse - (c.professorValidou as number)), 0) / comparacoes.length
+              : 0;
+
+            return (
+              <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(90,122,78,0.06)', border:'1.5px solid rgba(90,122,78,0.2)' }}>
+                <div style={{ fontSize:12, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', marginBottom:8 }}>
+                  ✅ Professor confirmou
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{notaFinal.toFixed(1)}</span>
+                  <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/4</span>
+                  <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)', marginLeft:4 }}>→</span>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:28, fontWeight:900, color:cor, marginLeft:4 }}>{nota20}</span>
+                  <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/20</span>
+                  <span style={{ marginLeft:'auto', fontSize:14, fontWeight:700, color:cor }}>{label}</span>
+                </div>
+                {detalhes && (
+                  <div style={{ marginTop:10, fontSize:11, color:'rgba(26,23,20,0.45)',
+                    padding:'6px 10px', borderRadius:8, background:'rgba(26,23,20,0.03)',
+                    fontFamily:'monospace' }}>
+                    {detalhes}
+                  </div>
+                )}
+                {comparacoes.length > 0 && (
+                  <details style={{ marginTop:8 }}>
+                    <summary style={{ fontSize:10, color:'rgba(26,23,20,0.35)', cursor:'pointer', userSelect:'none' }}>
+                      A tua autoavaliação
+                    </summary>
+                    <div style={{ marginTop:6, paddingTop:6 }}>
+                      {comparacoes.map(c => (
+                        <div key={c.competenciaId} style={{ display:'flex', justifyContent:'space-between', fontSize:11, padding:'2px 0', color:'rgba(26,23,20,0.4)' }}>
+                          <span>{c.competenciaId}</span>
+                          <span>Tu: {c.alunoDisse} · Professor: {c.professorValidou}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            );
+          }
+          return isPassada ? (
+            <div style={{ padding:'12px 14px', borderRadius:10, background:'rgba(26,23,20,0.04)', border:`1px solid ${T.border}`, textAlign:'center' }}>
+              <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)' }}>Esta aula já foi encerrada. Não é possível alterar a avaliação.</div>
+            </div>
+          ) : (
+            <div style={{ padding:'12px 14px', borderRadius:10, background:'rgba(26,23,20,0.04)', border:`1px solid ${T.border}`, textAlign:'center' }}>
+              <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)' }}>Aguarda a confirmação do professor.</div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* ── Aviso de recuperação ── */}
+      {(() => {
+        const idsAtitudes = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('ATI-'));
+        const atitudesEmRecup = idsAtitudes.filter((id: string) => {
+          const hist = getHistoricoAlunoMicro(aluno.id, id);
+          if (!hist.length) return false;
+          return hist[hist.length - 1].nota < 3;
+        });
+        if (!atitudesEmRecup.length) return null;
+        return (
+          <div style={{ margin:'0 0 16px', padding:'12px 14px', borderRadius:10,
+            background:'rgba(192,57,43,0.06)', border:'2px solid rgba(192,57,43,0.3)' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#c0392b', marginBottom:8 }}>
+              🔁 Tens competências em recuperação nesta aula
+            </div>
+            {atitudesEmRecup.map((id: string) => {
+              const a = getAtitudeDetalhada(id);
+              const dica = dicaRecuperacaoAtitude(id, 1);
+              const nivel = nivelComplexidadeAtitude(id, 1);
+              return (
+                <div key={id} style={{ marginBottom:8, padding:'8px 10px', borderRadius:8,
+                  background:'rgba(192,57,43,0.04)', border:'1px solid rgba(192,57,43,0.15)' }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'#c0392b' }}>🔁 {a?.nome ?? id}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
+                    <strong>Tens de mostrar que melhoraste.</strong> {dica}
+                  </div>
+                  {nivel && (
+                    <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginTop:4, fontStyle:'italic' }}>
+                      {nivel ? `Nível esperado: ${nivel}` : ''}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {/* Obrigatórias */}
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+          letterSpacing:'0.06em', color:T.sage, marginBottom:12 }}>🔒 Sempre avaliadas</div>
+        {[
+          { id:'hig', label:'Higiene pessoal', val:nivelHigiene, set:setNivelHigiene },
+          { id:'hac', label:'Higiene e Segurança Alimentar', val:nivelHaccp, set:setNivelHaccp },
+        ].map(obr => (
+          <div key={obr.id} style={{ marginBottom:12, padding:'14px', borderRadius:14,
+            background:T.sageP, border:`1px solid ${T.sage}30` }}>
+            <div style={{ fontWeight:700, fontSize:14, marginBottom:10 }}>{obr.label}</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+              {OPCOES.map(op => (
+                <button key={op.v} onClick={() => obr.set(op.v)} style={{
+                  padding:'12px 6px', borderRadius:10, border:`2px solid ${obr.val===op.v?op.cor:T.border}`,
+                  background:obr.val===op.v?op.cor:'#fff', color:obr.val===op.v?op.cor:'rgba(26,23,20,0.5)',
+                  fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                }}>
+                  <span style={{ fontSize:24 }}>{op.nota}</span>
+                  {op.label}
+                </button>
+              ))}
+            </div>
+            {obr.id === 'hac' && obr.val && !temEvidenciaKF('OBR_02') && (
+              <div style={{ marginTop:10, padding:'8px 10px', borderRadius:8, fontSize:11,
+                background:'rgba(181,101,29,0.1)', color:'#8a4a15' }}>
+                ⚠️ Não encontrámos registo teu no KitchenFlow para esta aula — mesmo que
+                tenhas feito tudo bem, esta competência fica ao mínimo até haver registo.
+                Regista no KitchenFlow para esta nota reflectir o que fizeste.
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Subtécnicas (SUB-xxx) */}
+      {subsSug.length>0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:T.copper, marginBottom:12 }}>🔬 Técnicas desta aula</div>
+          {subsSug.map(m => (
+            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
+              border:`1.5px solid ${microAberta===m.id?T.copper:T.border}` }}>
+              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+                background:microAberta===m.id?T.copperP:'#fff', border:'none', cursor:'pointer', textAlign:'left',
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
+                </div>
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+              </button>
+              {microAberta===m.id && (
+                <div style={{ padding:'12px 16px', borderTop:`2px solid ${T.copper}`, background:'#fdfcfb' }}>
+                  <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
+                  {notasMicro[m.id] && (() => {
+                    const frases = getFrasesParaCompetencia(m.id, m.nome);
+                    const idx = ['nao','ajuda','sozinho','autonomia'].indexOf(notasMicro[m.id] as string);
+                    return idx >= 0 ? (
+                      <div style={{ margin:'10px 0', padding:'10px 12px', borderRadius:8,
+                        background:'rgba(181,101,29,0.06)', fontSize:12, color:'rgba(26,23,20,0.7)', fontStyle:'italic' }}>
+                        "{frases[idx]}"
+                      </div>
+                    ) : null;
+                  })()}
+                  <div style={{ marginTop:12 }} />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                    {OPCOES.map(op => (
+                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
+                        padding:'10px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
+                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        fontSize:11, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                      }}>
+                        <span style={{ fontSize:20 }}>{op.nota}</span>{op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Aparelhos (APP-xxx) — preparações base, filtradas pelo nível de medidas */}
+      {aparelhosSug.length>0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:'#5B67EA', marginBottom:12 }}>🧪 Preparações base desta aula</div>
+          {aluno.nivelMedidas === 3 && (
+            <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
+              background:'rgba(181,101,29,0.06)', borderRadius:8 }}>
+              ℹ️ Só são apresentadas preparações de Nível 1 (adequadas ao teu plano de estudos)
+            </div>
+          )}
+          {aluno.nivelMedidas === 2 && (
+            <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
+              background:'rgba(181,101,29,0.06)', borderRadius:8 }}>
+              ℹ️ São apresentadas preparações de Nível 1 e 2 (adequadas ao teu plano de estudos)
+            </div>
+          )}
+          {aparelhosSug.map(m => (
+            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
+              border:`1.5px solid ${microAberta===m.id?'#5B67EA':T.border}` }}>
+              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+                background:microAberta===m.id?'rgba(91,103,234,0.06)':'#fff', border:'none', cursor:'pointer', textAlign:'left',
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
+                    <span style={{ fontSize:10, fontWeight:700, padding:'2px 6px', borderRadius:100,
+                      background: m.nivel===1?'rgba(90,122,78,0.15)':m.nivel===2?'rgba(181,101,29,0.15)':'rgba(192,57,43,0.15)',
+                      color: m.nivel===1?'#5a7a4e':m.nivel===2?'#b5651d':'#c0392b' }}>N{m.nivel}</span>
+                  </div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.categoria} · {m.motivo}</div>
+                </div>
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                <span style={{ fontSize:18, color:'#5B67EA', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+              </button>
+              {microAberta===m.id && (
+                <div style={{ padding:'12px 16px', borderTop:'2px solid #5B67EA', background:'#fdfcfb' }}>
+                  <CriteriosComp compId={m.id} cor='#5B67EA' abertaInicial={true} />
+                  <div style={{ marginTop:12 }} />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                    {OPCOES.map(op => (
+                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
+                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
+                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                      }}>
+                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Conhecimentos (KNW-xxx) — plano teórico ou misto */}
+      {conhecimentosSug.length>0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:'#0369a1', marginBottom:12 }}>📚 Conhecimentos desta aula</div>
+          {conhecimentosSug.map(m => (
+            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
+              border:`1.5px solid ${microAberta===m.id?'#0369a1':T.border}` }}>
+              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+                background:microAberta===m.id?'rgba(3,105,161,0.06)':'#fff', border:'none', cursor:'pointer', textAlign:'left',
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
+                </div>
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                <span style={{ fontSize:18, color:'#0369a1', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+              </button>
+              {microAberta===m.id && (
+                <div style={{ padding:'12px 16px', borderTop:'2px solid #0369a1', background:'#fdfcfb' }}>
+                  {m.definicao && (
+                    <div style={{ fontSize:12, color:'rgba(26,23,20,0.6)', marginBottom:12, padding:'8px', background:'rgba(3,105,161,0.05)', borderRadius:8 }}>
+                      {m.definicao}
+                    </div>
+                  )}
+                  <div style={{ marginTop:12 }} />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                    {OPCOES.map(op => (
+                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
+                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
+                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                      }}>
+                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Fallback — sistema antigo quando não há SUB/APP */}
+      {microsSug.length>0 && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:T.copper, marginBottom:12 }}>🔬 Técnicas desta aula</div>
+          {microsSug.map(m => (
+            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
+              border:`1.5px solid ${microAberta===m.id?T.copper:T.border}` }}>
+              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
+                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
+                background:microAberta===m.id?T.copperP:'#fff', border:'none', cursor:'pointer', textAlign:'left',
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
+                </div>
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
+              </button>
+              {microAberta===m.id && (
+                <div style={{ padding:'12px 16px', borderTop:`2px solid ${T.copper}`, background:'#fdfcfb' }}>
+                  <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
+                  <div style={{ marginTop:12 }} />
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                    {OPCOES.map(op => (
+                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
+                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
+                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
+                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                      }}>
+                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Percurso do aluno ao longo da UC — estado (validado/aguarda/por avaliar) plano a plano */}
+      <PercursoUC aluno={aluno} ucId={ucId} />
+
+      {/* Atitude — AUTOPROPOSTA do aluno: só atitudes de maturidade (as que ele reconhece em si) */}
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+          letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>💡 Propõe-te a uma atitude</div>
+        <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:12 }}>
+          Escolhe uma atitude que reconheces em ti hoje. Fica como proposta tua — o professor valida.</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {(() => {
+            const MATURIDADE = ['ATI-005','ATI-006','ATI-007','ATI-012','ATI-019','ATI-020','ATI-021'];
+            let opcoes = ATITUDES.filter(a => MATURIDADE.includes(a.id) && !compRemovidas.includes(a.id));
+            if (opcoes.length === 0) opcoes = ATITUDES.filter(a => !compRemovidas.includes(a.id)).slice(0, 8);
+            return opcoes.map(a => (
+            <button key={a.id} onClick={() => setAtitudeEscolhida(a.id===atitudeEscolhida?null:a.id)} style={{
+              padding:'12px', borderRadius:12, fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left',
+              border:`1.5px solid ${atitudeEscolhida===a.id?'#7d4f8c':T.border}`,
+              background:atitudeEscolhida===a.id?'rgba(125,79,140,0.08)':'#fff',
+              color:atitudeEscolhida===a.id?'#7d4f8c':'rgba(26,23,20,0.7)',
+            }}>
+              {atitudeEscolhida===a.id?'✓ ':''}{a.nome}
+            </button>
+            )); })()}
+        </div>
+      </div>
+
+      {!prontoParaSubmeter && (
+        <div style={{ padding:'12px 14px', background:T.copperP, borderRadius:10,
+          fontSize:13, color:T.copper, marginBottom:12 }}>
+          ⚠️ Preenche pelo menos as duas competências obrigatórias para poderes submeter.
+        </div>
+      )}
+
+      <button onClick={() => setModalConfirmar(true)} disabled={!prontoParaSubmeter} style={{
+        width:'100%', padding:'16px', borderRadius:14, border:'none', fontSize:16, fontWeight:700,
+        background:prontoParaSubmeter?T.sage:'rgba(26,23,20,0.08)',
+        color:prontoParaSubmeter?'#fff':'rgba(26,23,20,0.3)',
+        cursor:prontoParaSubmeter?'pointer':'not-allowed',
+        boxShadow:prontoParaSubmeter?`0 4px 16px ${T.sage}40`:'none', transition:'all 0.2s',
+      }}>
+        ✓ Submeter autoavaliação
+      </button>
+
+      {/* Modal confirmação */}
+      {modalConfirmar && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.7)',
+          display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
+          <div style={{ background:'#fff', borderRadius:24, padding:'28px 24px', maxWidth:380, width:'100%' }}>
+            <div style={{ textAlign:'center', marginBottom:16 }}>
+              <div style={{ fontSize:48, marginBottom:8 }}>🎯</div>
+              <div style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:700, marginBottom:6 }}>
+                Confirmas o teu registo?
+              </div>
+              <div style={{ fontSize:14, color:'rgba(26,23,20,0.55)' }}>
+                Depois de submeter não podes alterar.
+              </div>
+            </div>
+            <div style={{ background:T.cream, borderRadius:12, padding:'12px 16px', marginBottom:20, fontSize:14 }}>
+              <div>🔒 Higiene: {nivelHigiene==='sozinho'?'💪 Sozinho/a':nivelHigiene==='ajuda'?'🤝 Consegui com ajuda':'📖 A aprender'}</div>
+              <div style={{ marginTop:4 }}>🔒 HACCP: {nivelHaccp==='sozinho'?'💪 Sozinho/a':nivelHaccp==='ajuda'?'🤝 Consegui com ajuda':'📖 A aprender'}</div>
+              {atitudeEscolhida && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeEscolhida)?.nome}</div>}
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <button onClick={submeterDefinitivo} style={{ padding:'15px', borderRadius:14, border:'none',
+                background:T.sage, color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
+                ✓ Sim, confirmo!
+              </button>
+              <button onClick={() => setModalConfirmar(false)} style={{ padding:'12px', borderRadius:12,
+                border:`1px solid ${T.border}`, background:'#fff', color:'rgba(26,23,20,0.6)',
+                fontSize:14, fontWeight:600, cursor:'pointer' }}>
+                Voltar e rever
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
