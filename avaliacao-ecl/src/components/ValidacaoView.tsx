@@ -71,6 +71,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   if (ativa) {
     const plano = planos.find(p => p.id === ativa.planoAulaId);
     const fichas = getFichasProducao().filter(f => plano?.fichasIds?.includes(f.id));
+    const valExistente = validacoes.find(v => v.selecaoId === ativa.id) || null;
     return (
       <ValidarSelecao
         selecao={ativa}
@@ -78,6 +79,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         ucId={plano?.ucId || ''}
         fichasNomes={fichas.map(f => f.nomePrato)}
         tipoPlanAula={(plano as any)?.tipoPlanAula || 'pratico'}
+        validacaoExistente={valExistente}
         onVoltar={() => setAtiva(null)}
       />
     );
@@ -89,18 +91,19 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         Validações pendentes
       </div>
 
-      {pendentes.length === 0 && (
+      {selecoes.length === 0 && (
         <Card>
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-            <div className="muted">Não há autoavaliações pendentes de validação.</div>
+            <div className="muted">Ainda não há autoavaliações de alunos para este plano.</div>
           </div>
         </Card>
       )}
 
-      {pendentes.map(s => {
+      {selecoes.map(s => {
         const plano = planos.find(p => p.id === s.planoAulaId);
         const nMicros = s.autoavaliacoes?.length || 0;
+        const jaValidada = validacoes.some(v => v.selecaoId === s.id);
         return (
           <div key={s.id} className="option-card" onClick={() => setAtiva(s)}
             style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -110,10 +113,16 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
               </div>
               <div className="muted" style={{ fontSize: 12 }}>
                 {plano?.ucId ? `${plano.ucId} · ` : ''}
-                {nMicros} competência{nMicros !== 1 ? 's' : ''} a validar
+                {jaValidada
+                  ? '✓ Validado — tocar para alterar'
+                  : `${nMicros} competência${nMicros !== 1 ? 's' : ''} a validar`}
               </div>
             </div>
-            <span style={{ fontSize: 20, color: 'var(--copper)' }}>›</span>
+            <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+              background: jaValidada ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.15)',
+              color: jaValidada ? 'var(--sage)' : 'var(--copper)' }}>
+              {jaValidada ? 'Validado' : 'Pendente'}
+            </span>
           </div>
         );
       })}
@@ -122,12 +131,13 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────
-function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula, onVoltar }: {
+function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula, validacaoExistente, onVoltar }: {
   selecao: SelecaoAluno;
   planoTitulo: string;
   ucId: string;
   fichasNomes: string[];
   tipoPlanAula?: 'pratico' | 'misto' | 'teorico';
+  validacaoExistente?: any;
   onVoltar: () => void;
 }) {
   // Pré-preencher com a proposta do aluno — o professor só precisa de clicar
@@ -142,7 +152,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         auto.nivel === 'ca'  || auto.nivel === 'ajuda'     || auto.nivel === 'desenvolvimento' ? 3 :
         auto.nivel === 'tp' ? 2 : 1
       );
-      inicial[auto.competenciaId] = notaAlunoProposta;
+      const jaVal = validacaoExistente?.notas?.find((n: any) => n.competenciaId === auto.competenciaId);
+      inicial[auto.competenciaId] = jaVal ? jaVal.nota : notaAlunoProposta;
     });
     return inicial;
   });
@@ -224,7 +235,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
 
     // Guardar validação
     const validacao: Validacao = {
-      id: `val_${selecao.id}_${Date.now()}`,
+      id: `val_${selecao.id}`,
       selecaoId: selecao.id,
       comandaId: selecao.planoAulaId || '',
       alunoId: selecao.alunoId,
