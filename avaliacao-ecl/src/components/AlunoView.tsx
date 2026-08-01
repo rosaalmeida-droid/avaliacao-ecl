@@ -378,7 +378,7 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
 // VISTA PRINCIPAL DO ALUNO
 // ═════════════════════════════════════════════════════════════
 // ── Percurso do aluno ao longo da UC (embutido, sem ficheiro externo) ──
-function dataCurtaPU(iso) {
+function dataCurtaPU(iso?: string) {
   if (!iso) return '';
   const d = /^\d{4}-\d{2}-\d{2}/.test(iso) ? new Date(iso.slice(0,10)+'T12:00:00') : new Date(iso);
   if (isNaN(d.getTime())) return '';
@@ -386,12 +386,12 @@ function dataCurtaPU(iso) {
   const mm = String(d.getMonth()+1).padStart(2,'0');
   return dd+'-'+mm+' · '+d.toLocaleDateString('pt-PT',{weekday:'short'});
 }
-const EST_PU = {
+const EST_PU: Record<string, { dot:string; fundo:string; texto:string; etiqueta:string }> = {
   por_avaliar: { dot:'#c8cdd4', fundo:'#f4f2ee', texto:'rgba(26,23,20,0.5)', etiqueta:'Por autoavaliar' },
   aguarda:     { dot:'#b0692b', fundo:'rgba(181,101,29,0.10)', texto:'#8a4f1e', etiqueta:'Aguarda validação do professor' },
   validado:    { dot:'#5a7a4e', fundo:'rgba(90,122,78,0.12)', texto:'#4e6a25', etiqueta:'Validado' },
 };
-function PercursoUC({ aluno, ucId }) {
+function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucId: string }) {
   if (!ucId) return null;
   const planos = getPlanosAulaPorTurma(aluno.turmaId)
     .filter(p => p.ucId === ucId && p.estado !== 'arquivado')
@@ -401,9 +401,9 @@ function PercursoUC({ aluno, ucId }) {
   const validacoes = getValidacoes().filter(v => v.alunoId === aluno.id);
   const linhas = planos.map(p => {
     const sel = selecoes.find(s => s.planoAulaId === p.id);
-    const val = sel ? validacoes.find(v => v.selecaoId === sel.id) : undefined;
+    const val = sel ? validacoes.find(v => (v as any).selecaoId === sel.id) : undefined;
     const estado = val ? 'validado' : (sel ? 'aguarda' : 'por_avaliar');
-    const nota20 = val ? (val.notaMedia20 != null ? val.notaMedia20 : null) : null;
+    const nota20 = val ? ((val as any).notaMedia20 != null ? (val as any).notaMedia20 : null) : null;
     return { p, estado, nota20 };
   });
   const validados = linhas.filter(l => l.estado === 'validado').length;
