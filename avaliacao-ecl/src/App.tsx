@@ -4,6 +4,7 @@ import { loadLibrary } from './libraryService';
 import { Perfil, Aluno, PlanoAula as TPlanoAula } from './types';
 import { Login } from './components/Login';
 import { ManualCozinheiro } from './components/ManualCozinheiro';
+import { ManuaisAluno } from './components/ManuaisAluno';
 import { Header, LayoutProfessor, VistaProf } from './components/Header';
 import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
@@ -312,6 +313,7 @@ function AppInterno() {
             {vistaGlobal === 'ajuda' && <AjudaProfessor />}
             {vistaGlobal === 'validacao' && <ValidacaoView turmaId={turmaId} />}
             {vistaGlobal === 'manual' && <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />}
+            {vistaGlobal === 'manuais_aluno' && <ManuaisAluno nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'biblioteca' && (
               <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
