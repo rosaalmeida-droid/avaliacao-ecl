@@ -89,11 +89,12 @@ function ucNumber(code: string): number {
 // ── sequência de tópicos a partir do referencial oficial ────────────────────
 function buildTopics(uc: UCItem): { topic: string; isIntro: boolean; isWs: boolean }[] {
   const t: { topic: string; isIntro: boolean; isWs: boolean }[] = [];
-  t.push({ topic: `Introdução: o que é a UC "${uc.ref.nome}", para que serve e o que o aluno vai aprender`, isIntro: true, isWs: false });
-  uc.ref.conhecimentos.forEach((c) => t.push({ topic: `Conhecimento: ${c}`, isIntro: false, isWs: false }));
-  uc.ref.realizacoes.forEach((r) => t.push({ topic: `Na prática (realização): ${r}`, isIntro: false, isWs: false }));
+  t.push({ topic: `Introdução: apresentar a UC "${uc.ref.nome}", para que serve e o que o aluno vai aprender`, isIntro: true, isWs: false });
+  // Um capítulo por conhecimento, pela ORDEM EXATA do referencial (evita dispersão/repetição).
+  // As realizações (aptidões) e as atitudes são aplicadas DENTRO de cada capítulo, não em páginas soltas.
+  uc.ref.conhecimentos.forEach((c, i) => t.push({ topic: `Capítulo ${i + 1}: ${c}`, isIntro: false, isWs: false }));
   t.push({ topic: 'Síntese e critérios de desempenho: como saber se o trabalho está bem feito', isIntro: false, isWs: false });
-  t.push({ topic: 'Folha de trabalho 1: exercício prático sobre os conteúdos da UC', isIntro: false, isWs: true });
+  t.push({ topic: 'Folha de trabalho 1: exercício prático de aplicação dos conteúdos da UC', isIntro: false, isWs: true });
   t.push({ topic: 'Folha de trabalho 2: exercício de revisão e autoavaliação', isIntro: false, isWs: true });
   return t;
 }
@@ -102,45 +103,59 @@ function buildTopics(uc: UCItem): { topic: string; isIntro: boolean; isWs: boole
 function buildPagePrompt(uc: UCItem, topic: string, covered: string[], tight: boolean, isIntro: boolean, isWs: boolean): string {
   const productLine =
     uc.kind === 'produto'
-      ? 'PRODUTO: se a página trata um alimento, diz SEMPRE quais as variedades pelo nome (portuguesas e internacionais), como se reconhecem, limpam e cortam, e 2-3 receitas concretas. Nunca "vários tipos".'
+      ? 'PRODUTO: se o capítulo trata um alimento, diz SEMPRE quais as variedades pelo nome (portuguesas e internacionais), como se reconhecem, limpam e cortam, e receitas concretas onde se aplicam. Nunca "vários tipos".'
       : `Esta UC é de ${uc.kind}, não de produto — não cries listas de variedades de alimentos nem de receitas; foca-te no ${uc.kind} concreto.`;
-  const brevity = tight
-    ? 'LIMITE RÍGIDO: no máximo 2 parágrafos curtos e SÓ UM de: uma tabela (até 3 linhas) OU um callout. Resposta muito curta.'
-    : 'LIMITE RÍGIDO: no máximo 3 parágrafos curtos (2-3 frases). No máximo UMA tabela (até 4 linhas). No máximo UM callout. Se usares procedureSteps, no máximo 4 passos. Bullets até 5. Escolhe só 2-3 campos. Resposta curta.';
   const wsField = isWs ? ', "worksheetSections"?: [{ "title": string, "instructions"?: string, "prompts": [{ "prompt": string, "lines": number }] }]' : '';
   const dlgField = uc.kind === 'serviço' ? ', "dialogueBlocks"?: [{ "title": string, "instructions"?: string, "items": [{ "client": string, "response": string, "objective"?: string }] }]' : '';
+  const indice = uc.ref.conhecimentos.map((c, i) => `${i + 1}. ${c}`).join('\n');
 
   return `Produz APENAS um objeto JSON válido (sem markdown, sem crases, sem texto antes ou depois).
 
-És um professor de cozinha e restauração com 20 anos de experiência, a escrever para alunos do secundário com dificuldades de aprendizagem, muitos que nunca entraram numa cozinha. Escreve UMA página de manual sobre o tópico indicado.
+És um professor de cozinha e restauração com 20 anos de experiência, a escrever um MANUAL DO ALUNO para alunos do secundário com dificuldades de aprendizagem, muitos que nunca entraram numa cozinha. Escreve UM capítulo (uma página bem desenvolvida) sobre o tema indicado.
 
 UC: ${uc.code} — ${uc.ref.nome} (tipo: ${uc.kind})
 
-FUNDAMENTO OFICIAL DESTA UC (referencial 811RA144 — cobre isto de forma natural, sem citar):
-Realizações: ${uc.ref.realizacoes.join(' | ')}
-Conhecimentos: ${uc.ref.conhecimentos.join(' | ')}
-Critérios de desempenho: ${uc.ref.criteriosDesempenho.join(' | ')}
+ÍNDICE DA UC (os conhecimentos do referencial, POR ORDEM — cada um é um capítulo do manual):
+${indice}
 
-TÓPICO DESTA PÁGINA (trata só isto):
+REALIZAÇÕES DA UC (o que o aluno tem de saber FAZER — usa-as para mostrar a APTIDÃO em ação):
+${uc.ref.realizacoes.join(' | ')}
+
+CRITÉRIOS DE DESEMPENHO (o padrão de "bem feito"):
+${uc.ref.criteriosDesempenho.join(' | ')}
+
+CAPÍTULO A ESCREVER AGORA (trata SÓ isto):
 ${topic}
 
-TÍTULOS JÁ ESCRITOS (não repetir estes temas):
+JÁ ESCRITO (não repetir, não voltar a estes temas de nenhum ângulo):
 ${covered.length ? covered.map((c) => '- ' + c).join('\n') : '(nenhum)'}
 
-ESTILO OBRIGATÓRIO:
-- Uma ideia, explicada com clareza. Frases curtas. Cada termo técnico explicado à primeira vez.
-- CONCRETO: nomes, graus (°C), minutos, pratos e utensílios pelo nome. Proibido "existem vários tipos", "deve ter cuidado", "é importante".
-- ${productLine}
-- Liga o conteúdo ao que o aluno vai mesmo fazer na cozinha/sala, com situações reais de estabelecimentos portugueses.
-- Quando fizer sentido: 1-2 frases de origem histórica e 1-2 frases da ciência simples (Maillard, osmose, coagulação — sem fórmulas).
-- Usa tabela quando a informação é comparativa. Callout só quando acrescenta.
-- Português europeu. Sem meta-referências ("neste manual", "como vimos").
-- ${brevity}
-${isIntro ? '- Esta é a PÁGINA DE INTRODUÇÃO: apresenta a UC, para que serve e o que o aluno vai aprender. Título = "Introdução".' : ''}
-${isWs ? '- Esta é uma FOLHA DE TRABALHO: usa worksheetSections com perguntas simples e diretas e espaço de resposta (lines).' : ''}
+REGRA DE SEQUÊNCIA (evita dispersão e repetição):
+- Escreve apenas o capítulo acima. NÃO adiantes conteúdos dos capítulos seguintes do índice; NÃO repitas os anteriores.
+- Se um assunto pertence a outro capítulo do índice, deixa-o para lá (no máximo uma frase de ligação, sem o desenvolver aqui).
 
-Devolve este objeto (só os campos que fizerem sentido):
-{ "title": string, "subtitle"?: string, "paragraphs"?: string[], "calloutBoxes"?: [{ "type": "nota"|"aviso"|"dica"|"definicao", "content": string }], "bullets"?: string[], "tables"?: [{ "title": string, "columns": string[], "rows": string[][] }], "procedureSteps"?: { "title": string, "intro"?: string, "steps": [{ "label": string, "detail": string, "warning"?: string }] }${dlgField}, "consolidationBlock"?: { "title": string, "keyPoints": string[], "selfCheck"?: string[] }${wsField} }`;
+DESENVOLVE O CAPÍTULO NOS TRÊS EIXOS, integrados no texto (não como rótulos soltos):
+1. CONHECIMENTO — explica o tema a fundo: o que é, porque existe/serve, como funciona. Vários parágrafos desenvolvidos.
+2. APTIDÃO (aplicação) — mostra como esse saber vira técnica/gesto na cozinha ou na sala: o passo a passo do que o aluno faz, ligado às realizações da UC, com situações reais de estabelecimentos portugueses.
+3. ATITUDES — refere as atitudes profissionais a demonstrar neste trabalho (higiene e HACCP, segurança/SST, organização e mise en place, responsabilidade, autonomia, trabalho em equipa, rigor, sustentabilidade) — só as que fazem sentido aqui, ligadas ao gesto concreto.
+
+ESTILO:
+- Linguagem simples e clara, mas desenvolvida. Cada termo técnico é explicado à primeira vez que aparece.
+- CONCRETO: nomes, graus (°C), minutos, pratos e utensílios pelo nome. Proibido "existem vários tipos", "deve ter cuidado" ou "é importante" sem dizer o quê.
+- ${productLine}
+- Quando fizer sentido, dá o contexto histórico curto (origem da técnica/produto) e a ciência simples (Maillard, osmose, coagulação, gelatinização — sem fórmulas).
+- Português europeu. Sem meta-referências ("neste manual", "como vimos").
+
+DESENVOLVIMENTO (capítulos ricos):
+- Usa vários parágrafos e organiza em subsecções (subsections) quando o tema tem partes.
+- Inclui PELO MENOS UMA tabela de referência quando a informação é comparativa ou de listagem, e PELO MENOS UM exemplo real concreto.
+- Usa procedureSteps para as sequências de "como fazer" e callouts para definições, avisos e dicas.
+${isIntro ? '- Esta é a INTRODUÇÃO: apresenta a UC, para que serve, o que o aluno vai aprender e como o manual está organizado (segue o índice). Título = "Introdução".' : ''}
+${isWs ? '- Esta é uma FOLHA DE TRABALHO: usa worksheetSections com perguntas claras, incluindo de aplicação prática, e espaço de resposta (lines).' : ''}
+${tight ? '- Mantém o capítulo desenvolvido, mas um pouco mais compacto (a resposta anterior ficou demasiado longa para caber).' : ''}
+
+Devolve este objeto (usa os campos que enriquecem o capítulo):
+{ "title": string, "subtitle"?: string, "paragraphs"?: string[], "subsections"?: [{ "title": string, "paragraphs"?: string[], "bullets"?: string[] }], "calloutBoxes"?: [{ "type": "nota"|"aviso"|"dica"|"definicao", "content": string }], "bullets"?: string[], "tables"?: [{ "title": string, "columns": string[], "rows": string[][] }], "procedureSteps"?: { "title": string, "intro"?: string, "steps": [{ "label": string, "detail": string, "warning"?: string }] }${dlgField}, "consolidationBlock"?: { "title": string, "keyPoints": string[], "selfCheck"?: string[] }${wsField} }`;
 }
 
 // ── render do corpo de uma página (ecrã + Word + PDF) ────────────────────────
