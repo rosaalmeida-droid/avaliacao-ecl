@@ -52,7 +52,7 @@ const ACCENT       = '#00B8A9';
 const WHITE        = '#ffffff';
 
 // ── Tipo de vistas ─────────────────────────────────────────────
-export type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'orcamentos' | 'historial' | 'ajuda';
+export type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda';
 
 // ── Ícones SVG inline ─────────────────────────────────────────
 const Icons = {
@@ -91,6 +91,7 @@ const NAV: NavItem[] = [
   { id: 'mapa_competencias',   label: 'Mapa de Competências', icon: Icons.mapa,      secao: 'Avaliação' },
   { id: 'gestao_recuperacoes', label: 'Recuperações',         icon: Icons.recuper,   secao: 'Avaliação' },
   { id: 'manual',              label: 'Manual do Cozinheiro', icon: Icons.manual,    secao: 'Recursos' },
+  { id: 'manuais_aluno',       label: 'Manuais do Aluno',     icon: Icons.manual,    secao: 'Recursos' },
   { id: 'copia_seguranca',     label: 'Cópia de Segurança',   icon: Icons.backup,    secao: 'Recursos' },
 ];
 
