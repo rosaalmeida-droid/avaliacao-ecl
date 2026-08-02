@@ -56,8 +56,8 @@ const schoolLogoDataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent
 // ── helpers ─────────────────────────────────────────────────────────────────
 function escapeHtml(value: string) {
   return String(value ?? '')
-    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function capitalizeWord(w: string) { return w.length === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }
 function formatManualUnitTitle(title: string) {
