@@ -113,7 +113,7 @@ function buildMasterPrompt(uc: UCItem): string {
 ======== REFERENCIAL DESTA UC (fundamenta-te aqui) ========
 Realizações: ${uc.ref.realizacoes.join(' | ')}
 Conhecimentos: ${uc.ref.conhecimentos.join(' | ')}
-Critérios de desempenho: ${uc.ref.criteriosDesempenho.join(' | ')}
+${uc.ref.aptidoes && uc.ref.aptidoes.length ? 'Aptidões (o que deve saber FAZER): ' + uc.ref.aptidoes.join(' | ') + '\n' : ''}${uc.ref.atitudes && uc.ref.atitudes.length ? 'Atitudes a demonstrar: ' + uc.ref.atitudes.join(' | ') + '\n' : ''}Critérios de desempenho: ${uc.ref.criteriosDesempenho.join(' | ')}
 
 ======== FORMATO (para eu colar na minha app) ========
 Responde SEMPRE em JSON puro, sem markdown e sem crases. Cada capítulo é UM objeto com este esquema (usa só os campos úteis):
