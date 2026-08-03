@@ -19,6 +19,7 @@ const ROXO = '#7C3AED';
 const ANO_LETIVO = '2026-2027';
 const SCHOOL_LABEL = 'Curso Profissional de Técnico de Cozinha e Restauração';
 const FOOTER = { date: 'Data: 01 / 09 / 2016', reference: 'ECL.GPC.015.2', revision: 'Revisão: 02 / 07 / 2021' };
+const FONTES = 'Le Cordon Bleu (técnica); Maria de Lurdes Modesto, "Cozinha Tradicional Portuguesa" (receitas tradicionais); José Avillez, "Combinações Improváveis" (inovação); Ferran Adrià / elBulli (inovação internacional); Manual de Cozinha da Escola de Hotelaria (Turismo de Portugal)';
 
 const EXCLUIR = ['UC03578', 'UC03579']; // Inglês, Francês
 const SERVICE_UCS = ['UC03580', 'UC03581', 'UC03582', 'UC03583', 'UC00595'];
@@ -86,131 +87,44 @@ function ucNumber(code: string): number {
   return m ? Number(m[1]) : 0;
 }
 
-// ── sequência de tópicos a partir do referencial oficial ────────────────────
-function buildTopics(uc: UCItem): { topic: string; isIntro: boolean; isWs: boolean }[] {
-  const t: { topic: string; isIntro: boolean; isWs: boolean }[] = [];
-  t.push({ topic: `Introdução: apresentar a UC "${uc.ref.nome}", para que serve e o que o aluno vai aprender`, isIntro: true, isWs: false });
-  // Um capítulo por conhecimento, pela ORDEM EXATA do referencial (evita dispersão/repetição).
-  // As realizações (aptidões) e as atitudes são aplicadas DENTRO de cada capítulo, não em páginas soltas.
-  uc.ref.conhecimentos.forEach((c, i) => t.push({ topic: `Capítulo ${i + 1}: ${c}`, isIntro: false, isWs: false }));
-  t.push({ topic: 'Síntese e critérios de desempenho: como saber se o trabalho está bem feito', isIntro: false, isWs: false });
-  t.push({ topic: 'Folha de trabalho 1: exercício prático de aplicação dos conteúdos da UC', isIntro: false, isWs: true });
-  t.push({ topic: 'Folha de trabalho 2: exercício de revisão e autoavaliação', isIntro: false, isWs: true });
-  return t;
+// ── sequência pedagógica por tipo de UC ─────────────────────────────────────
+function sequenciaPorTipo(kind: string): string {
+  if (kind === 'produto')
+    return 'Para esta UC de produto/confeção segue: (1) MATÉRIAS-PRIMAS — divide-as por FAMÍLIAS/grupos, fala um pouco de cada grupo e dos CASOS ESPECIAIS; (2) TÉCNICAS DE CONFEÇÃO — de forma exaustiva; (3) CONSERVAÇÃO dos produtos; (4) VERIFICAÇÃO DA FRESCURA e da qualidade; (5) HIGIENE no trabalho.';
+  if (kind === 'serviço')
+    return 'Para esta UC de serviço segue: (1) o espaço e a preparação (mise en place); (2) a sequência do serviço passo a passo; (3) o atendimento e a comunicação com o cliente; (4) os produtos/bebidas envolvidos; (5) higiene e segurança.';
+  return 'Para esta UC de processo segue: (1) a organização e o planeamento; (2) os documentos (fichas técnicas, requisições, cronogramas); (3) a mise en place; (4) a coordenação e o controlo; (5) higiene e HACCP.';
 }
 
-// ── prompt de uma página (grounded no referencial) ──────────────────────────
-function buildPagePrompt(uc: UCItem, topic: string, covered: string[], tight: boolean, isIntro: boolean, isWs: boolean): string {
-  const productLine =
-    uc.kind === 'produto'
-      ? 'PRODUTO: se o capítulo trata um alimento, diz SEMPRE quais as variedades pelo nome (portuguesas e internacionais), como se reconhecem, limpam e cortam, e receitas concretas onde se aplicam. Nunca "vários tipos".'
-      : `Esta UC é de ${uc.kind}, não de produto — não cries listas de variedades de alimentos nem de receitas; foca-te no ${uc.kind} concreto.`;
-  const wsField = isWs ? ', "worksheetSections"?: [{ "title": string, "instructions"?: string, "prompts": [{ "prompt": string, "lines": number }] }]' : '';
-  const dlgField = uc.kind === 'serviço' ? ', "dialogueBlocks"?: [{ "title": string, "instructions"?: string, "items": [{ "client": string, "response": string, "objective"?: string }] }]' : '';
-  const indice = uc.ref.conhecimentos.map((c, i) => `${i + 1}. ${c}`).join('\n');
+// ── PROMPT-MESTRE de um manual (a app gera, a Rosa cola numa IA externa) ─────
+function buildMasterPrompt(uc: UCItem): string {
+  return `Vais ajudar-me a construir um MANUAL DO ALUNO para a unidade ${uc.code} — ${uc.ref.nome} (Curso Profissional de Técnico de Cozinha e Restauração). É para alunos do secundário com dificuldades de aprendizagem, muitos que nunca entraram numa cozinha.
 
-  return `Produz APENAS um objeto JSON válido (sem markdown, sem crases, sem texto antes ou depois).
+======== REGRAS DE CONSTRUÇÃO ========
+1. ÂMBITO — antes de tudo, pergunta: "O QUE É QUE O ALUNO PRODUZ EM AULA com esta UC?". A resposta define o sentido de TODOS os termos. Exemplo real: numa UC de "acepipes, sopas, entradas, ovos e massas", o aluno produz ACEPIPES, logo "massas" são as massas de base dos acepipes (folhada, quebrada, tenra, choux salgada, rissol, empada) e NÃO massas alimentícias italianas.
+2. SEQUÊNCIA. ${sequenciaPorTipo(uc.kind)} As NORMAS DE SEGURANÇA (SST) aplicam-se AO LONGO do trabalho, não como capítulo isolado.
+3. TRÊS EIXOS em cada capítulo, integrados no texto: CONHECIMENTO (o quê, porquê, como funciona) + APTIDÃO (como se faz na prática, passo a passo, ligado às realizações da UC, com situações reais portuguesas) + ATITUDES profissionais a demonstrar (higiene/HACCP, SST, organização, responsabilidade, rigor).
+4. REFLETE A PRÁTICA da aula — nada de teoria solta. Linguagem simples, cada termo técnico explicado à primeira vez, muito CONCRETO (nomes, °C, minutos, pratos e utensílios pelo nome). Dá contexto histórico curto e a ciência simples (Maillard, osmose, coagulação — sem fórmulas) quando ajudar.
+5. FONTES a referenciar quando útil: ${FONTES}. Ensina também o aluno a PROCURAR INFORMAÇÃO nestas obras.
+6. CADA UC TRATA SÓ O QUE É SEU. Temas que são o foco de OUTRA UC (HACCP → UC03584; nutrição → UC00596) entram apenas como enquadramento/referência geral, não desenvolvidos.
+7. FICHAS DE TRABALHO em papel, INTERATIVAS: exercícios variados e ativos — ligar colunas, ordenar passos, completar tabelas e espaços, verdadeiro/falso, e um CENÁRIO REAL — misturando aplicação prática (na cozinha/sala) com consolidação da teoria, a terminar com autoavaliação.
+8. Português europeu, sem meta-referências ("neste manual", "como vimos").
 
-És um professor de cozinha e restauração com 20 anos de experiência, a escrever um MANUAL DO ALUNO para alunos do secundário com dificuldades de aprendizagem, muitos que nunca entraram numa cozinha. Escreve UM capítulo (uma página bem desenvolvida) sobre o tema indicado.
+======== REFERENCIAL DESTA UC (fundamenta-te aqui) ========
+Realizações: ${uc.ref.realizacoes.join(' | ')}
+Conhecimentos: ${uc.ref.conhecimentos.join(' | ')}
+Critérios de desempenho: ${uc.ref.criteriosDesempenho.join(' | ')}
 
-UC: ${uc.code} — ${uc.ref.nome} (tipo: ${uc.kind})
+======== FORMATO (para eu colar na minha app) ========
+Responde SEMPRE em JSON puro, sem markdown e sem crases. Cada capítulo é UM objeto com este esquema (usa só os campos úteis):
+{ "title": "…", "subtitle"?: "…", "paragraphs"?: ["…"], "subsections"?: [{ "title":"…", "paragraphs"?:["…"], "bullets"?:["…"] }], "calloutBoxes"?: [{ "type":"nota|aviso|dica|definicao", "content":"…" }], "bullets"?: ["…"], "tables"?: [{ "title":"…", "columns":["…"], "rows":[["…","…"]] }], "procedureSteps"?: { "title":"…", "intro"?:"…", "steps":[{ "label":"…", "detail":"…", "warning"?:"…" }] }, "consolidationBlock"?: { "title":"…", "keyPoints":["…"], "selfCheck"?:["…"] }, "worksheetSections"?: [{ "title":"…", "instructions"?:"…", "prompts":[{ "prompt":"…", "lines": 3 }] }] }
 
-ÍNDICE DA UC (os conhecimentos do referencial, POR ORDEM — cada um é um capítulo do manual):
-${indice}
+======== COMO VAMOS TRABALHAR (por partes, para nunca cortar) ========
+PASSO 1 — devolve APENAS o ÍNDICE: um array JSON de 8 a 14 títulos de capítulo, por ordem pedagógica (do básico ao avançado), com o ÂMBITO certo, incluindo um capítulo final "Onde procurar informação". Depois PÁRA e espera que eu reveja e corrija.
+PASSO 2 — quando eu disser "capítulo N" (ou "próximo"), escreve SÓ esse capítulo, DESENVOLVIDO a fundo, como UM objeto JSON no esquema acima. Se ficar muito longo, escreve a primeira parte e termina com "continua": true; eu digo "continua" e tu segues o MESMO capítulo, sem repetir o título.
+PASSO 3 — no fim, gera a SÍNTESE (com os critérios de desempenho) e as FOLHAS DE TRABALHO interativas, cada uma como um objeto JSON.
 
-REALIZAÇÕES DA UC (o que o aluno tem de saber FAZER — usa-as para mostrar a APTIDÃO em ação):
-${uc.ref.realizacoes.join(' | ')}
-
-CRITÉRIOS DE DESEMPENHO (o padrão de "bem feito"):
-${uc.ref.criteriosDesempenho.join(' | ')}
-
-CAPÍTULO A ESCREVER AGORA (trata SÓ isto):
-${topic}
-
-JÁ ESCRITO (não repetir, não voltar a estes temas de nenhum ângulo):
-${covered.length ? covered.map((c) => '- ' + c).join('\n') : '(nenhum)'}
-
-REGRA DE SEQUÊNCIA (evita dispersão e repetição):
-- Escreve apenas o capítulo acima. NÃO adiantes conteúdos dos capítulos seguintes do índice; NÃO repitas os anteriores.
-- Se um assunto pertence a outro capítulo do índice, deixa-o para lá (no máximo uma frase de ligação, sem o desenvolver aqui).
-
-DESENVOLVE O CAPÍTULO NOS TRÊS EIXOS, integrados no texto (não como rótulos soltos):
-1. CONHECIMENTO — explica o tema a fundo: o que é, porque existe/serve, como funciona. Vários parágrafos desenvolvidos.
-2. APTIDÃO (aplicação) — mostra como esse saber vira técnica/gesto na cozinha ou na sala: o passo a passo do que o aluno faz, ligado às realizações da UC, com situações reais de estabelecimentos portugueses.
-3. ATITUDES — refere as atitudes profissionais a demonstrar neste trabalho (higiene e HACCP, segurança/SST, organização e mise en place, responsabilidade, autonomia, trabalho em equipa, rigor, sustentabilidade) — só as que fazem sentido aqui, ligadas ao gesto concreto.
-
-ESTILO:
-- Linguagem simples e clara, mas desenvolvida. Cada termo técnico é explicado à primeira vez que aparece.
-- CONCRETO: nomes, graus (°C), minutos, pratos e utensílios pelo nome. Proibido "existem vários tipos", "deve ter cuidado" ou "é importante" sem dizer o quê.
-- ${productLine}
-- Quando fizer sentido, dá o contexto histórico curto (origem da técnica/produto) e a ciência simples (Maillard, osmose, coagulação, gelatinização — sem fórmulas).
-- Português europeu. Sem meta-referências ("neste manual", "como vimos").
-
-DESENVOLVIMENTO (capítulos ricos):
-- Usa vários parágrafos e organiza em subsecções (subsections) quando o tema tem partes.
-- Inclui PELO MENOS UMA tabela de referência quando a informação é comparativa ou de listagem, e PELO MENOS UM exemplo real concreto.
-- Usa procedureSteps para as sequências de "como fazer" e callouts para definições, avisos e dicas.
-${isIntro ? '- Esta é a INTRODUÇÃO: apresenta a UC, para que serve, o que o aluno vai aprender e como o manual está organizado (segue o índice). Título = "Introdução".' : ''}
-${isWs ? '- Esta é uma FOLHA DE TRABALHO: usa worksheetSections com perguntas claras, incluindo de aplicação prática, e espaço de resposta (lines).' : ''}
-${tight ? '- Mantém o capítulo desenvolvido, mas um pouco mais compacto (a resposta anterior ficou demasiado longa para caber).' : ''}
-
-Devolve este objeto (usa os campos que enriquecem o capítulo):
-{ "title": string, "subtitle"?: string, "paragraphs"?: string[], "subsections"?: [{ "title": string, "paragraphs"?: string[], "bullets"?: string[] }], "calloutBoxes"?: [{ "type": "nota"|"aviso"|"dica"|"definicao", "content": string }], "bullets"?: string[], "tables"?: [{ "title": string, "columns": string[], "rows": string[][] }], "procedureSteps"?: { "title": string, "intro"?: string, "steps": [{ "label": string, "detail": string, "warning"?: string }] }${dlgField}, "consolidationBlock"?: { "title": string, "keyPoints": string[], "selfCheck"?: string[] }${wsField} }`;
-}
-
-// ── render do corpo de uma página (ecrã + Word + PDF) ────────────────────────
-function renderPageBody(page: PaginaManual): string {
-  let h = '';
-  if (page.subtitle) h += `<h3 style="color:${BRAND};font-size:13pt;font-weight:700;margin:0.1cm 0 0.16cm;">${esc(page.subtitle)}</h3>`;
-  (page.paragraphs || []).forEach((p) => (h += `<p style="margin:0 0 0.22cm;text-align:justify;">${esc(p)}</p>`));
-  (page.calloutBoxes || []).forEach((c) => {
-    const map: Record<string, { bg: string; tag: string }> = {
-      definicao: { bg: SOFT, tag: 'DEFINIÇÃO' }, aviso: { bg: '#fdecea', tag: 'ATENÇÃO' },
-      dica: { bg: '#eef9ec', tag: 'DICA' }, nota: { bg: LIGHT, tag: 'NOTA' },
-    };
-    const m = map[c.type] || map.nota;
-    h += `<table style="width:100%;border-collapse:collapse;margin:0.14cm 0;"><tr><td style="background:${m.bg};border-left:3pt solid ${BRAND};padding:0.14cm 0.2cm;font-size:11pt;"><b style="color:${BRAND};font-size:9pt;">${m.tag}</b><br/>${esc(c.content)}</td></tr></table>`;
-  });
-  if (page.bullets && page.bullets.length) h += `<ul style="margin:0.06cm 0 0.28cm;padding-left:1.1rem;">${page.bullets.map((b) => `<li style="margin:0 0 0.12cm;">${esc(b)}</li>`).join('')}</ul>`;
-  (page.subsections || []).forEach((s) => {
-    h += `<h4 style="color:${BRAND};font-size:11.5pt;font-weight:700;margin:0.2cm 0 0.1cm;">${esc(s.title)}</h4>`;
-    (s.paragraphs || []).forEach((p) => (h += `<p style="margin:0 0 0.18cm;text-align:justify;">${esc(p)}</p>`));
-    if (s.bullets && s.bullets.length) h += `<ul style="margin:0.04cm 0 0.22cm;padding-left:1.1rem;">${s.bullets.map((b) => `<li style="margin:0 0 0.1cm;">${esc(b)}</li>`).join('')}</ul>`;
-  });
-  if (page.procedureSteps && page.procedureSteps.steps) {
-    const ps = page.procedureSteps;
-    h += `<div style="margin:0.16cm 0 0.28cm;"><b style="color:${BRAND};">${esc(ps.title)}</b>`;
-    if (ps.intro) h += `<p style="margin:0.06cm 0 0.12cm;">${esc(ps.intro)}</p>`;
-    h += `<ol style="margin:0.06cm 0 0;padding-left:1.2rem;">${ps.steps.map((st) => `<li style="margin:0 0 0.14cm;"><b>${esc(st.label)}:</b> ${esc(st.detail)}${st.warning ? `<br/><span style="color:#b3261e;font-size:10pt;">⚠ ${esc(st.warning)}</span>` : ''}</li>`).join('')}</ol></div>`;
-  }
-  (page.tables || []).forEach((t) => {
-    if (t.title) h += `<p style="margin:0.14cm 0 0.06cm;font-weight:700;color:${BRAND};font-size:11pt;">${esc(t.title)}</p>`;
-    h += `<table style="width:100%;border-collapse:collapse;margin:0 0 0.28cm;"><tr>${(t.columns || []).map((c) => `<th style="border:1px solid #000;background:${LIGHT};font-weight:700;padding:0.1cm 0.14cm;font-size:10.5pt;text-align:left;">${esc(c)}</th>`).join('')}</tr>`;
-    (t.rows || []).forEach((row) => (h += `<tr>${row.map((cell) => `<td style="border:1px solid #000;padding:0.1cm 0.14cm;font-size:10.5pt;vertical-align:top;">${esc(cell)}</td>`).join('')}</tr>`));
-    h += `</table>`;
-  });
-  (page.dialogueBlocks || []).forEach((d) => {
-    h += `<div style="margin:0.14cm 0 0.28cm;"><b style="color:${BRAND};">${esc(d.title)}</b>`;
-    if (d.instructions) h += `<p style="margin:0.06cm 0 0.12cm;">${esc(d.instructions)}</p>`;
-    (d.items || []).forEach((it) => (h += `<table style="width:100%;border-collapse:collapse;margin:0 0 0.12cm;"><tr><td style="background:#fafafa;border-left:3pt solid #ccc;padding:0.1cm 0.16cm;font-size:10.5pt;"><b>Cliente:</b> ${esc(it.client)}<br/><b style="color:${BRAND};">Colaborador:</b> ${esc(it.response)}${it.objective ? `<br/><i style="font-size:9.5pt;color:#666;">Objetivo: ${esc(it.objective)}</i>` : ''}</td></tr></table>`));
-    h += `</div>`;
-  });
-  if (page.consolidationBlock) {
-    const cb = page.consolidationBlock;
-    h += `<table style="width:100%;border-collapse:collapse;margin:0.18cm 0;"><tr><td style="background:${SOFT};border:1pt solid ${LINE};padding:0.16cm 0.2cm;"><b style="color:${BRAND};">${esc(cb.title || 'Consolidação')}</b><ul style="margin:0.08cm 0 0;padding-left:1.1rem;">${(cb.keyPoints || []).map((k) => `<li style="margin:0 0 0.08cm;">${esc(k)}</li>`).join('')}</ul>`;
-    if (cb.selfCheck && cb.selfCheck.length) h += `<p style="margin:0.12cm 0 0.04cm;font-weight:700;">Verifica se sabes:</p><ul style="margin:0;padding-left:1.1rem;">${cb.selfCheck.map((s) => `<li style="margin:0 0 0.08cm;">${esc(s)}</li>`).join('')}</ul>`;
-    h += `</td></tr></table>`;
-  }
-  (page.worksheetSections || []).forEach((w) => {
-    h += `<div style="margin:0.16cm 0 0.28cm;"><b style="color:${BRAND};">${esc(w.title)}</b>`;
-    if (w.instructions) h += `<p style="margin:0.06cm 0 0.12cm;">${esc(w.instructions)}</p>`;
-    (w.prompts || []).forEach((p) => {
-      h += `<p style="margin:0.1cm 0 0.04cm;">${esc(p.prompt)}</p>`;
-      for (let i = 0; i < (p.lines || 2); i++) h += `<div style="border-bottom:1px solid #999;height:0.55cm;"></div>`;
-    });
-    h += `</div>`;
-  });
-  return h;
+Começa agora pelo PASSO 1: devolve só o índice (array JSON de títulos), e nada mais.`;
 }
 
 // ── export PDF (A4 + auto-print) ────────────────────────────────────────────
@@ -291,14 +205,10 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   const [lista, setLista] = useState(listSaved());
   const [selCode, setSelCode] = useState(UCS[0]?.code || '');
   const [doc, setDoc] = useState<DocumentoManual | null>(null);
-  const [gerando, setGerando] = useState(false);
-  const [prog, setProg] = useState({ done: 0, total: 0 });
+  const [colarTxt, setColarTxt] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
-  const [pararFlag, setPararFlag] = useState(false);
-  const [colarAberto, setColarAberto] = useState(false);
-  const [colarTxt, setColarTxt] = useState('');
-  let parar = false;
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => { setLista(listSaved()); }, [modo]);
 
@@ -306,91 +216,58 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     return { unitCode: uc.code, unitNumber: ucNumber(uc.code), fullTitle: uc.ref.nome, schoolLabel: SCHOOL_LABEL, academicYear: ANO_LETIVO, footerDate: FOOTER.date, footerReference: FOOTER.reference, footerRevision: FOOTER.revision, pages: [] };
   }
 
-  async function gerar() {
-    const uc = UCS.find((u) => u.code === selCode);
-    if (!uc) return;
-    parar = false; setPararFlag(false); setGerando(true); setSaved(false); setLogs([]); setModo('gerar');
-    const tasks = buildTopics(uc);
-    setProg({ done: 0, total: tasks.length });
-    const d = novoDoc(uc); const covered: string[] = [];
-    for (let i = 0; i < tasks.length; i++) {
-      if (parar) { setLogs((l) => [...l, '⏹ Parado.']); break; }
-      const task = tasks[i]; let ok = false; let motivo = '';
-      for (let att = 0; att < 2 && !ok; att++) {
-        try {
-          const prompt = buildPagePrompt(uc, task.topic, covered, att === 1, task.isIntro, task.isWs);
-          const res = await fetch('/api/gerarPaginaManual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
-          const data = await res.json();
-          if (!data.ok) { motivo = data.motivo || 'erro'; if (motivo === 'limite_atingido' || motivo === 'sem_chave') { att = 99; } throw new Error(data.mensagem || motivo); }
-          const page: PaginaManual = data.pagina;
-          page.pageNumber = i === 0 ? 1 : d.pages.length + 1;
-          if (task.isIntro && !page.title) page.title = 'Introdução';
-          d.pages.push(page);
-          covered.push(page.title + (page.subtitle ? ' / ' + page.subtitle : ''));
-          setDoc({ ...d }); setLogs((l) => [...l, `✓ Pág. ${page.pageNumber}: ${page.title}`]); ok = true;
-        } catch (e: any) { if (att >= 1 || motivo === 'limite_atingido' || motivo === 'sem_chave') setLogs((l) => [...l, `✗ ${task.topic.slice(0, 50)}… (${e.message})`]); }
-      }
-      setProg({ done: i + 1, total: tasks.length });
-      if (motivo === 'limite_atingido' || motivo === 'sem_chave') {
-        setLogs((l) => [...l, motivo === 'sem_chave' ? '— Falta configurar GEMINI_API_KEY na Vercel. Podes gerar noutra IA e colar o JSON (botão abaixo).' : '— Limite grátis da Gemini atingido. Tenta mais tarde, ou gera noutra IA e cola o JSON.']);
-        break;
-      }
-    }
-    setGerando(false);
-    if (d.pages.length > 0) { setDoc({ ...d }); setLogs((l) => [...l, `— ${d.pages.length} páginas. Podes guardar.`]); }
+  function copiarMestre() {
+    const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
+    const txt = buildMasterPrompt(uc);
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); }).catch(() => {});
+    else { setColarTxt(txt); }
+  }
+
+  function adicionar() {
+    const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
+    let parsed: any;
+    try { parsed = tryParse(colarTxt); } catch (e: any) { setLogs((l) => [...l, '✗ JSON inválido: ' + e.message]); return; }
+    let arr: any[] = Array.isArray(parsed) ? parsed : (parsed.pages || parsed.paginas || [parsed]);
+    // ignorar um índice (array de strings) colado por engano
+    if (arr.length && typeof arr[0] === 'string') { setLogs((l) => [...l, 'ℹ Isto parece o ÍNDICE (lista de títulos). Cola antes um CAPÍTULO (objeto JSON com "title" e conteúdo).']); return; }
+    arr = arr.filter((p) => p && typeof p === 'object' && (p.title || p.paragraphs || p.worksheetSections || p.subsections));
+    if (!arr.length) { setLogs((l) => [...l, '✗ Não encontrei capítulos no que colaste.']); return; }
+    const d = doc && doc.unitCode === uc.code ? { ...doc, pages: [...doc.pages] } : novoDoc(uc);
+    arr.forEach((p) => d.pages.push(p as PaginaManual));
+    d.pages.forEach((p, idx) => (p.pageNumber = idx === 0 ? 1 : idx + 1));
+    setDoc(d); setColarTxt(''); setSaved(false);
+    setLogs((l) => [...l, `✓ Juntei ${arr.length} — o manual tem agora ${d.pages.length} página(s).`]);
   }
 
   function guardar() {
     if (!doc || doc.pages.length === 0) return;
-    try { localStorage.setItem(KEY(doc.unitCode), JSON.stringify(doc)); setSaved(true); setLista(listSaved()); setLogs((l) => [...l, '💾 Guardado.']); }
+    try { localStorage.setItem(KEY(doc.unitCode), JSON.stringify(doc)); setSaved(true); setLista(listSaved()); setLogs((l) => [...l, '💾 Guardado em Manuais Guardados.']); }
     catch (e: any) { setLogs((l) => [...l, '✗ Falha ao guardar: ' + e.message]); }
   }
   function abrir(code: string) { try { const d = JSON.parse(localStorage.getItem(KEY(code)) || '') as DocumentoManual; setDoc(d); setSaved(true); setModo('ver'); } catch { /* */ } }
   function apagar(code: string) { localStorage.removeItem(KEY(code)); setLista(listSaved()); }
 
-  function copiarPromptUC() {
-    const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
-    const tasks = buildTopics(uc);
-    const p = `Vais escrever um MANUAL DO ALUNO completo para a UC ${uc.code} — ${uc.ref.nome}.\n\n` +
-      buildPagePrompt(uc, '(ver lista de tópicos abaixo)', [], false, false, false).split('TÓPICO DESTA PÁGINA')[0] +
-      `\nESCREVE UMA PÁGINA POR CADA TÓPICO, POR ORDEM:\n${tasks.map((t, i) => `${i + 1}. ${t.topic}`).join('\n')}\n\n` +
-      `Devolve um ARRAY JSON de páginas, cada uma no formato { "title", "paragraphs"?, "calloutBoxes"?, "bullets"?, "tables"?, "procedureSteps"?, "consolidationBlock"?, "worksheetSections"? }. Depois cola o array aqui na app em "Colar páginas (JSON)".`;
-    navigator.clipboard?.writeText(p).catch(() => {});
-    setLogs((l) => [...l, '📋 Prompt do manual completo copiado — cola numa IA externa (Gemini/ChatGPT/Claude).']);
-  }
-
-  function importarColado() {
-    const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
-    try {
-      const parsed = tryParse(colarTxt);
-      const arr: PaginaManual[] = Array.isArray(parsed) ? parsed : (parsed.pages || parsed.paginas || [parsed]);
-      const d = doc && doc.unitCode === uc.code ? { ...doc } : novoDoc(uc);
-      arr.forEach((p) => { p.pageNumber = d.pages.length + (d.pages.length === 0 ? 1 : 1); if (d.pages.length === 0) p.pageNumber = 1; d.pages.push(p); });
-      d.pages.forEach((p, idx) => (p.pageNumber = idx === 0 ? 1 : idx + 1));
-      setDoc(d); setColarAberto(false); setColarTxt(''); setModo('ver'); setSaved(false);
-    } catch (e: any) { alert('JSON inválido: ' + e.message); }
-  }
-
-  const btn = (bg: string, color = '#fff'): React.CSSProperties => ({ padding: '8px 14px', borderRadius: 8, border: 'none', background: bg, color, fontWeight: 600, fontSize: 13, cursor: 'pointer' });
+  const btn = (bg: string, color = '#fff'): React.CSSProperties => ({ padding: '9px 15px', borderRadius: 8, border: 'none', background: bg, color, fontWeight: 600, fontSize: 13, cursor: 'pointer' });
   const ghost: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' };
   const uc = UCS.find((u) => u.code === selCode);
+  const passo: React.CSSProperties = { display: 'flex', gap: 8, alignItems: 'baseline', margin: '0 0 6px' };
+  const num: React.CSSProperties = { flex: '0 0 auto', width: 20, height: 20, borderRadius: 10, background: ROXO, color: '#fff', fontSize: 12, fontWeight: 700, textAlign: 'center', lineHeight: '20px' };
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '8px 4px', fontFamily: "'Inter', system-ui, sans-serif", color: '#1f2937' }}>
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         {(['lista', 'gerar'] as const).map((m) => (
           <button key={m} onClick={() => setModo(m)} style={{ ...ghost, background: modo === m ? '#f3f0fd' : '#fff', color: modo === m ? ROXO : '#6b7280', borderColor: modo === m ? ROXO : '#e5e7eb' }}>
-            {m === 'lista' ? 'Manuais Guardados' : 'Gerar Manual'}
+            {m === 'lista' ? 'Manuais Guardados' : 'Criar Manual'}
           </button>
         ))}
         {doc && <button onClick={() => setModo('ver')} style={{ ...ghost, background: modo === 'ver' ? '#f3f0fd' : '#fff', color: modo === 'ver' ? ROXO : '#6b7280', borderColor: modo === 'ver' ? ROXO : '#e5e7eb' }}>Ver / Exportar</button>}
       </div>
 
-      {/* LISTA */}
       {modo === 'lista' && (
         <div>
-          <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>Os manuais ficam guardados neste navegador (localStorage). Para um ficheiro que possas enviar ou imprimir, abre um manual e usa Exportar Word ou PDF.</p>
-          {lista.length === 0 ? <p style={{ color: '#6b7280' }}>Ainda não há manuais. Vai a <b>Gerar Manual</b>.</p> : (
+          <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>Os manuais ficam guardados neste navegador. Para um ficheiro que possas enviar ou imprimir, abre um manual e usa Exportar Word ou PDF.</p>
+          {lista.length === 0 ? <p style={{ color: '#6b7280' }}>Ainda não há manuais. Vai a <b>Criar Manual</b>.</p> : (
             <div style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
               {lista.map((m) => (
                 <div key={m.code} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid #f1f1f1' }}>
@@ -407,48 +284,44 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
         </div>
       )}
 
-      {/* GERAR */}
       {modo === 'gerar' && (
         <div>
           <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 16, marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Unidade de competência</label>
-            <select value={selCode} onChange={(e) => setSelCode(e.target.value)} disabled={gerando} style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, marginBottom: 8 }}>
+            <select value={selCode} onChange={(e) => setSelCode(e.target.value)} style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, marginBottom: 12 }}>
               {UCS.map((u) => <option key={u.code} value={u.code}>{u.code} — {u.ref.nome}</option>)}
             </select>
-            {uc && <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 10px' }}>{buildTopics(uc).length} páginas · tipo: {uc.kind} · gera pela Gemini (deixa a aba aberta).</p>}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {!gerando ? <button style={btn(ROXO)} onClick={gerar}>Iniciar geração</button> : <button style={btn('#dc2626')} onClick={() => { parar = true; setPararFlag(true); }}>Parar</button>}
+
+            <div style={{ background: '#f8f7ff', border: '1px solid #ece9fd', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+              <div style={passo}><span style={num}>1</span><span style={{ fontSize: 13 }}><b>Copia o prompt-mestre</b> e cola-o na tua IA (Gemini, ChatGPT ou Claude). Ela devolve primeiro o <b>índice</b> — revê e corrige o âmbito.</span></div>
+              <div style={passo}><span style={num}>2</span><span style={{ fontSize: 13 }}>Pede os capítulos <b>um a um</b> ("capítulo 1", "próximo", "continua"). A IA responde em JSON.</span></div>
+              <div style={passo}><span style={num}>3</span><span style={{ fontSize: 13 }}>Cola cada capítulo (JSON) no campo abaixo e clica <b>Juntar ao manual</b>. No fim, exporta em Word/PDF.</span></div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button style={btn(ROXO)} onClick={copiarMestre}>{copiado ? 'Copiado ✓' : 'Copiar prompt-mestre'}</button>
               {doc && doc.pages.length > 0 && <>
-                <button style={ghost} disabled={gerando} onClick={() => setModo('ver')}>Ver ({doc.pages.length})</button>
-                <button style={btn(ROXO)} disabled={gerando} onClick={guardar}>Guardar {doc.pages.length} páginas</button>
+                <button style={ghost} onClick={() => setModo('ver')}>Ver ({doc.pages.length})</button>
+                <button style={btn(ROXO)} onClick={guardar}>Guardar</button>
               </>}
-              <button style={ghost} disabled={gerando} onClick={copiarPromptUC}>Copiar prompt (IA externa)</button>
-              <button style={ghost} disabled={gerando} onClick={() => setColarAberto(!colarAberto)}>Colar páginas (JSON)</button>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Colar capítulo (JSON) devolvido pela IA</label>
+              <textarea value={colarTxt} onChange={(e) => setColarTxt(e.target.value)} placeholder='Cola aqui um capítulo, por exemplo: { "title": "…", "paragraphs": ["…"] }' style={{ width: '100%', height: 140, borderRadius: 8, border: '1px solid #d1d5db', padding: 10, fontSize: 12, fontFamily: 'monospace' }} />
+              <button style={btn(ROXO)} onClick={adicionar}>Juntar ao manual</button>
             </div>
             {saved && <p style={{ fontSize: 12, color: '#0a7d2c', marginTop: 8 }}>✓ Guardado em Manuais Guardados.</p>}
-            {colarAberto && (
-              <div style={{ marginTop: 10 }}>
-                <textarea value={colarTxt} onChange={(e) => setColarTxt(e.target.value)} placeholder="Cola aqui o array JSON de páginas gerado noutra IA…" style={{ width: '100%', height: 120, borderRadius: 8, border: '1px solid #d1d5db', padding: 8, fontSize: 12, fontFamily: 'monospace' }} />
-                <button style={btn(ROXO)} onClick={importarColado}>Adicionar páginas</button>
-              </div>
-            )}
           </div>
-          {prog.total > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ height: 8, borderRadius: 6, background: '#eee', overflow: 'hidden' }}><div style={{ height: '100%', width: `${(prog.done / prog.total) * 100}%`, background: ROXO, transition: 'width .2s' }} /></div>
-              <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{prog.done} de {prog.total}{pararFlag ? ' · a parar…' : ''}</p>
-            </div>
-          )}
-          {logs.length > 0 && <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, maxHeight: 280, overflow: 'auto', fontSize: 12, fontFamily: 'monospace' }}>{logs.map((l, i) => <div key={i} style={{ color: l.startsWith('✗') ? '#dc2626' : l.startsWith('—') ? '#b45309' : '#374151', padding: '1px 0' }}>{l}</div>)}</div>}
+
+          {logs.length > 0 && <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, maxHeight: 240, overflow: 'auto', fontSize: 12, fontFamily: 'monospace' }}>{logs.map((l, i) => <div key={i} style={{ color: l.startsWith('✗') ? '#dc2626' : l.startsWith('ℹ') ? '#b45309' : '#374151', padding: '1px 0' }}>{l}</div>)}</div>}
         </div>
       )}
 
-      {/* VER */}
       {modo === 'ver' && doc && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
             <h2 style={{ flex: 1, fontSize: 18, fontWeight: 700, margin: 0 }}>{doc.unitCode} — {doc.fullTitle}</h2>
-            <button style={ghost} onClick={() => window.print()}>Imprimir</button>
             <button style={ghost} onClick={() => exportManualPdf(doc as any)}>Exportar PDF</button>
             <button style={ghost} onClick={() => downloadManualDoc(doc as any)}>Exportar Word</button>
             <button style={btn(ROXO)} onClick={guardar}>{saved ? 'Guardar (atualizar)' : 'Guardar'}</button>
