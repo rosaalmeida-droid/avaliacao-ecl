@@ -17,7 +17,8 @@ declare const process: { env: Record<string, string | undefined> };
 
 export const config = { runtime: 'edge' };
 
-const MAX_TOKENS = 8192;
+const MAX_TOKENS = 8192;         // Gemini (TPM alto)
+const MAX_TOKENS_COMPAT = 4096;  // Groq/OpenAI (TPM mais baixo no grátis)
 
 // ── reparação de JSON (fecha o que vier cortado) ────────────────────────────
 function reparaJson(texto: string): any {
@@ -45,7 +46,7 @@ function reparaJson(texto: string): any {
   return JSON.parse(t);
 }
 
-type Resultado = { texto?: string; limite?: boolean; erro?: string };
+type Resultado = { texto?: string; limite?: boolean; auth?: boolean; erro?: string; detalhe?: string };
 
 // ── Gemini (Google) ─────────────────────────────────────────────────────────
 async function chamarGemini(prompt: string): Promise<Resultado> {
@@ -57,8 +58,13 @@ async function chamarGemini(prompt: string): Promise<Resultado> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: MAX_TOKENS, responseMimeType: 'application/json' } }),
     });
-    if (resp.status === 429) return { limite: true };
-    if (!resp.ok) return { erro: `gemini ${resp.status}` };
+    if (!resp.ok) {
+      const corpo = await resp.text().catch(() => '');
+      const det = corpo.replace(/\s+/g, ' ').slice(0, 160);
+      if (resp.status === 429) return { limite: true, detalhe: det };
+      if (resp.status === 401 || resp.status === 403) return { auth: true, erro: `gemini ${resp.status}`, detalhe: det };
+      return { erro: `gemini ${resp.status}`, detalhe: det };
+    }
     const d = await resp.json();
     return { texto: d?.candidates?.[0]?.content?.parts?.[0]?.text || '' };
   } catch (e: any) { return { erro: 'gemini rede' }; }
@@ -70,10 +76,15 @@ async function chamarOpenAICompat(url: string, key: string, model: string, promp
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.4, max_tokens: MAX_TOKENS, response_format: { type: 'json_object' } }),
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], temperature: 0.4, max_tokens: MAX_TOKENS_COMPAT, response_format: { type: 'json_object' } }),
     });
-    if (resp.status === 429) return { limite: true };
-    if (!resp.ok) return { erro: `${model} ${resp.status}` };
+    if (!resp.ok) {
+      const corpo = await resp.text().catch(() => '');
+      const det = corpo.replace(/\s+/g, ' ').slice(0, 160);
+      if (resp.status === 429) return { limite: true, detalhe: det };
+      if (resp.status === 401 || resp.status === 403) return { auth: true, erro: `${model} ${resp.status}`, detalhe: det };
+      return { erro: `${model} ${resp.status}`, detalhe: det };
+    }
     const d = await resp.json();
     return { texto: d?.choices?.[0]?.message?.content || '' };
   } catch (e: any) { return { erro: `${model} rede` }; }
@@ -95,9 +106,10 @@ export default async function handler(req: Request): Promise<Response> {
 
   const env = process.env;
   const provedores: { nome: string; run: () => Promise<Resultado> }[] = [];
+  // Ordem: Groq (grátis, limite alto) primeiro; Gemini e OpenAI como reserva.
+  if (env.GROQ_API_KEY) provedores.push({ nome: 'groq', run: () => chamarOpenAICompat('https://api.groq.com/openai/v1/chat/completions', env.GROQ_API_KEY as string, env.GROQ_MODEL || 'llama-3.3-70b-versatile', prompt) });
   if (env.GEMINI_API_KEY) provedores.push({ nome: 'gemini', run: () => chamarGemini(prompt) });
-  if (env.GROQ_API_KEY) provedores.push({ nome: 'groq', run: () => chamarOpenAICompat('https://api.groq.com/openai/v1/chat/completions', env.GROQ_API_KEY, env.GROQ_MODEL || 'llama-3.3-70b-versatile', prompt) });
-  if (env.OPENAI_API_KEY) provedores.push({ nome: 'openai', run: () => chamarOpenAICompat('https://api.openai.com/v1/chat/completions', env.OPENAI_API_KEY, env.OPENAI_MODEL || 'gpt-4o-mini', prompt) });
+  if (env.OPENAI_API_KEY) provedores.push({ nome: 'openai', run: () => chamarOpenAICompat('https://api.openai.com/v1/chat/completions', env.OPENAI_API_KEY as string, env.OPENAI_MODEL || 'gpt-4o-mini', prompt) });
 
   if (!provedores.length) return new Response(JSON.stringify({ ok: false, motivo: 'sem_chave', mensagem: 'Configura GEMINI_API_KEY (ou GROQ_API_KEY / OPENAI_API_KEY) na Vercel.' }), { status: 200, headers });
 
@@ -111,8 +123,9 @@ export default async function handler(req: Request): Promise<Response> {
         return new Response(JSON.stringify({ ok: true, pagina, fornecedor: p.nome }), { status: 200, headers });
       } catch { ultimoMotivo = 'json_invalido'; notas.push(`${p.nome}: json inválido`); continue; }
     }
-    if (r.limite) { ultimoMotivo = 'limite_atingido'; notas.push(`${p.nome}: limite`); continue; }
-    ultimoMotivo = 'erro_api'; notas.push(`${p.nome}: ${r.erro || 'erro'}`); continue;
+    if (r.auth) { ultimoMotivo = 'chave_invalida'; notas.push(`${p.nome}: chave inválida${r.detalhe ? ' — ' + r.detalhe : ''}`); continue; }
+    if (r.limite) { ultimoMotivo = 'limite_atingido'; notas.push(`${p.nome}: limite${r.detalhe ? ' — ' + r.detalhe : ''}`); continue; }
+    ultimoMotivo = 'erro_api'; notas.push(`${p.nome}: ${r.erro || 'erro'}${r.detalhe ? ' — ' + r.detalhe : ''}`); continue;
   }
 
   return new Response(JSON.stringify({ ok: false, motivo: ultimoMotivo, mensagem: 'Todos os fornecedores falharam: ' + notas.join('; ') }), { status: 200, headers });
