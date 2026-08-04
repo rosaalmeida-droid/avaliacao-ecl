@@ -74,15 +74,15 @@ function renderSubsections(subsections?: ManualSubsection[]) {
 }
 function renderTables(tables?: ManualTable[]) {
   if (!tables || !tables.length) return '';
-  return tables.map((table) => `<div class="manual-table-wrap">${table.title ? `<h3>${escapeHtml(table.title)}</h3>` : ''}<table class="manual-table" role="presentation"><thead><tr>${table.columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${table.rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('');
+  return tables.map((table) => `<div class="manual-table-wrap">${table.title ? `<h3>${escapeHtml(table.title)}</h3>` : ''}<table class="manual-table" role="presentation"><thead><tr>${(table.columns || []).map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${(table.rows || []).map((row) => `<tr>${(row || []).map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('');
 }
 function renderDialogueBlocks(dialogueBlocks?: ManualDialogueBlock[]) {
   if (!dialogueBlocks || !dialogueBlocks.length) return '';
-  return dialogueBlocks.map((block) => `<div class="dialogue-block"><h3>${escapeHtml(block.title)}</h3>${block.instructions ? `<p class="dialogue-instructions">${escapeHtml(block.instructions)}</p>` : ''}${block.items.map((item) => `<table class="dialogue-table" role="presentation"><tr><th>Cliente diz</th><td>${escapeHtml(item.client)}</td></tr><tr><th>Responder</th><td>${escapeHtml(item.response)}</td></tr>${item.objective ? `<tr><th>Objetivo</th><td>${escapeHtml(item.objective)}</td></tr>` : ''}</table>`).join('')}</div>`).join('');
+  return dialogueBlocks.map((block) => `<div class="dialogue-block"><h3>${escapeHtml(block.title)}</h3>${block.instructions ? `<p class="dialogue-instructions">${escapeHtml(block.instructions)}</p>` : ''}${(block.items || []).map((item) => `<table class="dialogue-table" role="presentation"><tr><th>Cliente diz</th><td>${escapeHtml(item.client)}</td></tr><tr><th>Responder</th><td>${escapeHtml(item.response)}</td></tr>${item.objective ? `<tr><th>Objetivo</th><td>${escapeHtml(item.objective)}</td></tr>` : ''}</table>`).join('')}</div>`).join('');
 }
 function renderWorksheetSections(worksheetSections?: ManualWorksheetSection[]) {
   if (!worksheetSections || !worksheetSections.length) return '';
-  return worksheetSections.map((section) => `<div class="worksheet-section"><h3>${escapeHtml(section.title)}</h3>${section.instructions ? `<p class="worksheet-instructions">${escapeHtml(section.instructions)}</p>` : ''}${section.prompts.map((prompt) => `<div class="worksheet-prompt"><p>${escapeHtml(prompt.prompt)}</p>${Array.from({ length: prompt.lines }, () => '<div class="answer-line"></div>').join('')}</div>`).join('')}</div>`).join('');
+  return worksheetSections.map((section) => `<div class="worksheet-section"><h3>${escapeHtml(section.title)}</h3>${section.instructions ? `<p class="worksheet-instructions">${escapeHtml(section.instructions)}</p>` : ''}${(section.prompts || []).map((prompt) => `<div class="worksheet-prompt"><p>${escapeHtml(prompt.prompt)}</p>${Array.from({ length: Math.max(1, prompt.lines || 2) }, () => '<div class="answer-line"></div>').join('')}</div>`).join('')}</div>`).join('');
 }
 function renderCallouts(callouts?: ManualCallout[]) {
   if (!callouts || !callouts.length) return '';
