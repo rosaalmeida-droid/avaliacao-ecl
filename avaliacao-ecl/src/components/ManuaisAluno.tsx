@@ -215,6 +215,24 @@ TRABALHO: PASSO 1 devolve só o ÍNDICE (array JSON de 8-14 títulos, âmbito ce
 Começa pelo PASSO 1: devolve só o índice.`;
 }
 
+function buildPlanoPrompt(uc: UCItem, titulos: string[], pedido: string): string {
+  const lista = titulos.map((t, i) => `${i + 1}. ${t}`).join('\n');
+  return `Produz APENAS um objeto JSON (sem markdown, sem crases).
+
+Tens um MANUAL DO ALUNO da UC ${uc.code} — ${uc.ref.nome}, com estes capítulos por ordem:
+${lista}
+
+O professor quer ACRESCENTAR ao manual: "${pedido}".
+
+Decide, do ponto de vista PEDAGÓGICO e do ÂMBITO da UC (o que o aluno produz):
+- Se o assunto já pertence a um capítulo existente, EXPANDE esse capítulo.
+- Se é matéria nova que merece capítulo próprio, cria um NOVO capítulo e diz em que POSIÇÃO entra (a seguir a que capítulo), pela ordem pedagógica. As folhas de trabalho e a síntese ficam sempre no fim.
+- Se o acréscimo não fizer sentido nesta UC, di-lo.
+
+Devolve: { "accao": "novo" | "expandir" | "nao_faz_sentido", "aposNumero": number, "alvoNumero": number, "titulo": string, "justificacao": string }
+(aposNumero = número do capítulo DEPOIS do qual entra o novo; alvoNumero = número do capítulo a expandir; titulo = título do novo capítulo.)`;
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string }) {
   const [modo, setModo] = useState<'lista' | 'gerar' | 'ver'>('lista');
@@ -231,6 +249,9 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   const [colarAberto, setColarAberto] = useState(false);
   const [colarTxt, setColarTxt] = useState('');
   const [copiado, setCopiado] = useState(false);
+  const [pedidoAdd, setPedidoAdd] = useState('');
+  const [plano, setPlano] = useState<any>(null);
+  const [aPlanear, setAPlanear] = useState(false);
   const pararRef = useRef(false);
 
   useEffect(() => { setLista(listSaved()); }, [modo]);
@@ -348,6 +369,56 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   function abrir(code: string) { try { const d = JSON.parse(localStorage.getItem(KEY(code)) || '') as DocumentoManual; setDoc(d); setSaved(true); setModo('ver'); } catch { /* */ } }
   function apagar(code: string) { localStorage.removeItem(KEY(code)); setLista(listSaved()); }
 
+  function conteudoFim(d: DocumentoManual): number {
+    let fim = d.pages.length;
+    for (let i = 1; i < d.pages.length; i++) {
+      if (/^(folha de trabalho|s[íi]ntese)/i.test(d.pages[i].title || '')) { fim = i; break; }
+    }
+    return fim;
+  }
+  async function planear() {
+    const uc = UCS.find((u) => u.code === selCode); if (!uc || !doc || !pedidoAdd.trim()) return;
+    setAPlanear(true); setPlano(null); setLogs(['A planear onde encaixar…']);
+    const r = await chamarIA(buildPlanoPrompt(uc, doc.pages.map((p) => p.title), pedidoAdd.trim()));
+    setAPlanear(false);
+    if (r.ok && r.data && typeof r.data === 'object' && r.data.accao) { setPlano(r.data); setLogs((l) => [...l, '✓ Plano pronto — confirma abaixo.']); }
+    else setLogs((l) => [...l, `✗ Não consegui planear (${r.mensagem || r.motivo || 'erro'}).`]);
+  }
+  async function confirmarAcrescento() {
+    const uc = UCS.find((u) => u.code === selCode); if (!uc || !doc || !plano) return;
+    if (plano.accao === 'nao_faz_sentido') { setLogs((l) => [...l, 'ℹ Não encaixa: ' + (plano.justificacao || '')]); setPlano(null); return; }
+    pararRef.current = false; setGerando(true); setLogs((l) => [...l, '— A gerar o acréscimo…']);
+    const d: DocumentoManual = { ...doc, pages: [...doc.pages] };
+    const titulos = d.pages.map((p) => p.title);
+    if (plano.accao === 'expandir') {
+      const alvo = Math.max(1, Math.min(d.pages.length, Number(plano.alvoNumero) || 1)) - 1;
+      const base: any = { ...d.pages[alvo] };
+      const r = await chamarIA(buildChapterPrompt(uc, base.title, titulos, titulos, 'capitulo', `Expandir "${base.title}" com: ${pedidoAdd}`, 2));
+      if (r.ok && r.data) { fundir(base, r.data); d.pages[alvo] = base; setLogs((l) => [...l, `✓ Expandido: ${base.title}`]); }
+      else setLogs((l) => [...l, `✗ Falhou (${r.mensagem || r.motivo}).`]);
+    } else {
+      const titulo = plano.titulo || pedidoAdd;
+      let pagina: any = { pageNumber: 0, title: titulo }; let prev = ''; let continua = true; let parte = 1;
+      while (continua && parte <= MAX_PAGINAS_CAP && !pararRef.current) {
+        const r = await chamarIA(buildChapterPrompt(uc, titulo, [...titulos, titulo], titulos, 'capitulo', prev, parte));
+        if (!r.ok) { setLogs((l) => [...l, `✗ Falhou (${r.mensagem || r.motivo}).`]); break; }
+        fundir(pagina, r.data || {});
+        prev = (pagina.paragraphs || []).slice(-1).join(' ').slice(0, 240);
+        continua = (r.data && r.data.continua === true) && parte < MAX_PAGINAS_CAP; parte++;
+      }
+      if (pagina.paragraphs?.length || pagina.subsections?.length || pagina.tables?.length) {
+        const fim = conteudoFim(d);
+        let ins = Number(plano.aposNumero); if (!Number.isFinite(ins)) ins = fim;
+        if (ins < 1) ins = 1; if (ins > fim) ins = fim;
+        d.pages.splice(ins, 0, pagina);
+        setLogs((l) => [...l, `✓ Novo capítulo inserido: ${titulo}`]);
+      }
+    }
+    d.pages.forEach((p, i) => (p.pageNumber = i === 0 ? 1 : i + 1));
+    setDoc(d); setPlano(null); setPedidoAdd(''); setSaved(false); setGerando(false);
+    setLogs((l) => [...l, `— Manual tem agora ${d.pages.length} páginas. Guarda para manter.`]);
+  }
+
   const btn = (bg: string, color = '#fff'): React.CSSProperties => ({ padding: '9px 15px', borderRadius: 8, border: 'none', background: bg, color, fontWeight: 600, fontSize: 13, cursor: 'pointer' });
   const ghost: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' };
   const uc = UCS.find((u) => u.code === selCode);
@@ -446,6 +517,29 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
             <button style={btn(ROXO)} onClick={guardar}>{saved ? 'Guardar (atualizar)' : 'Guardar'}</button>
           </div>
           <p style={{ fontSize: 12, color: saved ? '#0a7d2c' : '#6b7280', marginBottom: 14 }}>{saved ? '✓ Em Manuais Guardados. Exporta em Word/PDF para um ficheiro.' : 'Ainda não guardado. Clica Guardar, ou exporta em Word/PDF.'}</p>
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <label style={{ fontSize: 13, fontWeight: 600 }}>Completar este manual</label>
+            <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 8px' }}>Escreve o que falta. A IA decide se cria um capítulo novo (e onde entra, pela ordem certa) ou se expande um existente.</p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input value={pedidoAdd} onChange={(e) => setPedidoAdd(e.target.value)} placeholder="ex.: falta falar dos molhos base" disabled={gerando || aPlanear} style={{ flex: 1, minWidth: 220, padding: '8px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13 }} />
+              <button style={btn(ROXO)} disabled={gerando || aPlanear || !pedidoAdd.trim()} onClick={planear}>{aPlanear ? 'A planear…' : 'Planear inserção'}</button>
+            </div>
+            {plano && (
+              <div style={{ marginTop: 10, background: '#f8f7ff', border: '1px solid #ece9fd', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 13 }}>
+                  {plano.accao === 'novo' && <span>➕ Novo capítulo <b>“{plano.titulo}”</b>, a seguir ao capítulo {plano.aposNumero}.</span>}
+                  {plano.accao === 'expandir' && <span>✎ Expandir o capítulo {plano.alvoNumero} <b>“{doc.pages[Math.max(0, (Number(plano.alvoNumero) || 1) - 1)]?.title}”</b>.</span>}
+                  {plano.accao === 'nao_faz_sentido' && <span>⚠ A IA acha que não encaixa nesta UC.</span>}
+                </div>
+                {plano.justificacao && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{plano.justificacao}</div>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  {plano.accao !== 'nao_faz_sentido' && <button style={btn(ROXO)} disabled={gerando} onClick={confirmarAcrescento}>Confirmar e gerar</button>}
+                  <button style={ghost} disabled={gerando} onClick={() => setPlano(null)}>Cancelar</button>
+                </div>
+              </div>
+            )}
+            {logs.length > 0 && <div style={{ marginTop: 8, fontSize: 12, fontFamily: 'monospace', maxHeight: 120, overflow: 'auto' }}>{logs.slice(-6).map((l, i) => <div key={i} style={{ color: l.startsWith('✗') ? '#dc2626' : (l.startsWith('—') || l.startsWith('ℹ')) ? '#b45309' : '#374151' }}>{l}</div>)}</div>}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {doc.pages.map((page, idx) => {
               const isCover = idx === 0;
