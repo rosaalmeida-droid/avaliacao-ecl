@@ -48,7 +48,7 @@ export default async function handler(req: Request): Promise<Response> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4, responseMimeType: 'application/json' },
+          generationConfig: { temperature: 0.4, maxOutputTokens: 2400, responseMimeType: 'application/json' },
         }),
       }
     );
