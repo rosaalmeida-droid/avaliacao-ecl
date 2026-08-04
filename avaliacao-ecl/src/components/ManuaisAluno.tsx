@@ -21,6 +21,10 @@ const SCHOOL_LABEL = 'Curso Profissional de Técnico de Cozinha e Restauração'
 const FOOTER = { date: 'Data: 01 / 09 / 2016', reference: 'ECL.GPC.015.2', revision: 'Revisão: 02 / 07 / 2021' };
 const FONTES = 'Le Cordon Bleu (técnica); Maria de Lurdes Modesto, "Cozinha Tradicional Portuguesa" (receitas tradicionais); José Avillez, "Combinações Improváveis" (inovação); Ferran Adrià / elBulli (inovação internacional); Manual de Cozinha da Escola de Hotelaria (Turismo de Portugal)';
 const MAX_PAGINAS_CAP = 4; // segurança: máximo de páginas por capítulo
+const THROTTLE_MS = 6500;    // espaçar pedidos (~9/min; o limite grátis ronda 10/min)
+const ESPERA_429_MS = 35000; // esperar o minuto limpar quando bate no limite
+const MAX_ESPERAS = 5;
+const esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const EXCLUIR = ['UC03578', 'UC03579'];
 const SERVICE_UCS = ['UC03580', 'UC03581', 'UC03582', 'UC03583', 'UC00595'];
@@ -309,22 +313,36 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     setProg({ done: 0, total: tarefas.length });
     const d = novoDoc(uc); const covered: string[] = [];
     let parouPorLimite = false;
+    let primeiroPedido = true;
+    // faz um pedido respeitando o ritmo; se bater no limite/minuto, espera e repete sozinha
+    async function pedirComRitmo(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string }> {
+      if (!primeiroPedido) await esperar(THROTTLE_MS);
+      primeiroPedido = false;
+      let esperas = 0;
+      while (!pararRef.current) {
+        const r = await chamarIA(prompt);
+        if (r.ok) return r;
+        if (r.motivo === 'limite_atingido' && esperas < MAX_ESPERAS) {
+          esperas++;
+          setLogs((l) => [...l, `⏳ Limite por minuto — a aguardar ${Math.round(ESPERA_429_MS / 1000)}s (${esperas}/${MAX_ESPERAS})…`]);
+          await esperar(ESPERA_429_MS);
+          continue;
+        }
+        return r;
+      }
+      return { ok: false, motivo: 'parado' };
+    }
     for (let i = 0; i < tarefas.length && !pararRef.current; i++) {
       const t = tarefas[i];
       let pagina: any = null; let prev = ''; let continua = true; let parte = 1; let motivo = '';
       while (continua && parte <= MAX_PAGINAS_CAP && !pararRef.current) {
-        let ok = false;
-        for (let att = 0; att < 2 && !ok; att++) {
-          const r = await chamarIA(buildChapterPrompt(uc, t.titulo, caps, covered, t.tipo, prev, parte));
-          if (!r.ok) { motivo = r.motivo || 'erro'; if (motivo === 'limite_atingido' || motivo === 'sem_chave') att = 9; continue; }
-          const part = r.data || {};
-          if (!pagina) pagina = { pageNumber: 0, title: t.tipo === 'capitulo' ? t.titulo : (part.title || t.titulo) };
-          fundir(pagina, part);
-          prev = (pagina.paragraphs || []).slice(-1).join(' ').slice(0, 240) + ' | ' + (pagina.subsections || []).map((s: any) => s.title).join('; ');
-          continua = t.tipo === 'capitulo' && part.continua === true && parte < MAX_PAGINAS_CAP;
-          ok = true;
-        }
-        if (!ok) { setLogs((l) => [...l, `✗ ${t.titulo.slice(0, 42)}… (${motivo})`]); break; }
+        const r = await pedirComRitmo(buildChapterPrompt(uc, t.titulo, caps, covered, t.tipo, prev, parte));
+        if (!r.ok) { motivo = r.motivo || 'erro'; if (motivo !== 'parado') setLogs((l) => [...l, `✗ ${t.titulo.slice(0, 42)}… (${r.mensagem || motivo})`]); break; }
+        const part = r.data || {};
+        if (!pagina) pagina = { pageNumber: 0, title: t.tipo === 'capitulo' ? t.titulo : (part.title || t.titulo) };
+        fundir(pagina, part);
+        prev = (pagina.paragraphs || []).slice(-1).join(' ').slice(0, 240) + ' | ' + (pagina.subsections || []).map((s: any) => s.title).join('; ');
+        continua = t.tipo === 'capitulo' && part.continua === true && parte < MAX_PAGINAS_CAP;
         parte++;
       }
       if (pagina && (pagina.paragraphs?.length || pagina.subsections?.length || pagina.worksheetSections?.length || pagina.tables?.length)) {
@@ -333,7 +351,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
         setLogs((l) => [...l, `✓ ${pagina.title}${parte > 2 ? ` (${parte - 1} págs)` : ''}`]);
       }
       setProg({ done: i + 1, total: tarefas.length });
-      if (motivo === 'limite_atingido' || motivo === 'sem_chave') { parouPorLimite = true; setLogs((l) => [...l, motivo === 'sem_chave' ? '— Falta a GEMINI_API_KEY na Vercel.' : '— Limite grátis da Gemini atingido. Tenta mais tarde, ou usa o modo manual (copiar prompt-mestre).']); break; }
+      if (motivo === 'limite_atingido' || motivo === 'sem_chave') { parouPorLimite = true; setLogs((l) => [...l, motivo === 'sem_chave' ? '— Falta a GEMINI_API_KEY na Vercel.' : '— Limite ainda ativo depois de esperar — provavelmente o limite diário. Continua mais tarde (o que já foi gerado é guardável) ou usa o modo manual.']); break; }
     }
     setGerando(false);
     if (d.pages.length > 0) { setDoc({ ...d }); setLogs((l) => [...l, `— ${d.pages.length} páginas.${parouPorLimite ? '' : ' Podes guardar/exportar.'}`]); }
