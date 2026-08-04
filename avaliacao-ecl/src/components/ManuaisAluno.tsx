@@ -364,7 +364,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   function guardar() {
     if (!doc || doc.pages.length === 0) return;
     try { localStorage.setItem(KEY(doc.unitCode), JSON.stringify(doc)); setSaved(true); setLista(listSaved()); setLogs((l) => [...l, '💾 Guardado em Manuais Guardados.']); }
-    catch (e: any) { setLogs((l) => [...l, '✗ Falha ao guardar: ' + e.message]); }
+    catch (e: any) { setLogs((l) => [...l, '✗ Falha ao guardar: ' + e.message]); alert('Não consegui guardar: ' + (e?.message || e)); }
   }
   function abrir(code: string) { try { const d = JSON.parse(localStorage.getItem(KEY(code)) || '') as DocumentoManual; setDoc(d); setSaved(true); setModo('ver'); } catch { /* */ } }
   function apagar(code: string) { localStorage.removeItem(KEY(code)); setLista(listSaved()); }
@@ -512,8 +512,8 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
             <h2 style={{ flex: 1, fontSize: 18, fontWeight: 700, margin: 0 }}>{doc.unitCode} — {doc.fullTitle}</h2>
-            <button style={ghost} onClick={() => exportManualPdf(doc as any)}>Exportar PDF</button>
-            <button style={ghost} onClick={() => downloadManualDoc(doc as any)}>Exportar Word</button>
+            <button style={ghost} onClick={() => { try { exportManualPdf(doc as any); } catch (e: any) { alert('Erro ao exportar PDF: ' + (e?.message || e)); } }}>Exportar PDF</button>
+            <button style={ghost} onClick={() => { try { downloadManualDoc(doc as any); } catch (e: any) { alert('Erro ao exportar Word: ' + (e?.message || e)); } }}>Exportar Word</button>
             <button style={btn(ROXO)} onClick={guardar}>{saved ? 'Guardar (atualizar)' : 'Guardar'}</button>
           </div>
           <p style={{ fontSize: 12, color: saved ? '#0a7d2c' : '#6b7280', marginBottom: 14 }}>{saved ? '✓ Em Manuais Guardados. Exporta em Word/PDF para um ficheiro.' : 'Ainda não guardado. Clica Guardar, ou exporta em Word/PDF.'}</p>
