@@ -18,7 +18,7 @@ declare const process: { env: Record<string, string | undefined> };
 export const config = { runtime: 'edge' };
 
 const MAX_TOKENS = 8192;         // Gemini (TPM alto)
-const MAX_TOKENS_COMPAT = 4096;  // Groq/OpenAI (TPM mais baixo no grátis)
+const MAX_TOKENS_COMPAT = 3000;  // Groq/OpenAI (TPM mais baixo no grátis)
 
 // ── reparação de JSON (fecha o que vier cortado) ────────────────────────────
 function reparaJson(texto: string): any {
@@ -107,7 +107,7 @@ export default async function handler(req: Request): Promise<Response> {
   const env = process.env;
   const provedores: { nome: string; run: () => Promise<Resultado> }[] = [];
   // Ordem: Groq (grátis, limite alto) primeiro; Gemini e OpenAI como reserva.
-  if (env.GROQ_API_KEY) provedores.push({ nome: 'groq', run: () => chamarOpenAICompat('https://api.groq.com/openai/v1/chat/completions', env.GROQ_API_KEY as string, env.GROQ_MODEL || 'llama-3.3-70b-versatile', prompt) });
+  if (env.GROQ_API_KEY) provedores.push({ nome: 'groq', run: () => chamarOpenAICompat('https://api.groq.com/openai/v1/chat/completions', env.GROQ_API_KEY as string, env.GROQ_MODEL || 'llama-3.1-8b-instant', prompt) });
   if (env.GEMINI_API_KEY) provedores.push({ nome: 'gemini', run: () => chamarGemini(prompt) });
   if (env.OPENAI_API_KEY) provedores.push({ nome: 'openai', run: () => chamarOpenAICompat('https://api.openai.com/v1/chat/completions', env.OPENAI_API_KEY as string, env.OPENAI_MODEL || 'gpt-4o-mini', prompt) });
 
