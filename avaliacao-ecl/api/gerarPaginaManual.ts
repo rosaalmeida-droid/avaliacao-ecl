@@ -10,6 +10,42 @@
 
 export const config = { runtime: 'edge' };
 
+// Repara JSON da IA: tira crases, isola o 1.º objeto/array, remove vírgulas
+// finais e FECHA strings/parênteses cortados (quando a resposta vem truncada).
+// Lança se mesmo assim não der — apanhado por quem chama.
+function reparaJson(texto: string): any {
+  let s = String(texto || '').replace(/```json/gi, '').replace(/```/g, '').trim();
+  const fO = s.indexOf('{');
+  const fA = s.indexOf('[');
+  const start = fA >= 0 && (fO < 0 || fA < fO) ? fA : fO;
+  if (start > 0) s = s.slice(start);
+  const semVirg = s.replace(/,(\s*[}\]])/g, '$1');
+  for (const cand of [s, semVirg]) {
+    try { return JSON.parse(cand); } catch { /* tenta reparar */ }
+  }
+  // fechar o que ficou aberto (truncagem)
+  let t = semVirg;
+  let inStr = false;
+  let escp = false;
+  const stack: string[] = [];
+  for (const c of t) {
+    if (inStr) {
+      if (escp) escp = false;
+      else if (c === '\\') escp = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') stack.push('}');
+    else if (c === '[') stack.push(']');
+    else if (c === '}' || c === ']') stack.pop();
+  }
+  if (inStr) t += '"';
+  t = t.replace(/,\s*$/, '').replace(/:\s*$/, ': null');
+  while (stack.length) t += stack.pop();
+  return JSON.parse(t);
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const headers = {
     'Content-Type': 'application/json',
@@ -48,7 +84,7 @@ export default async function handler(req: Request): Promise<Response> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 2400, responseMimeType: 'application/json' },
+          generationConfig: { temperature: 0.4, maxOutputTokens: 8192, responseMimeType: 'application/json' },
         }),
       }
     );
@@ -66,18 +102,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     let pagina: any;
     try {
-      pagina = JSON.parse(texto);
+      pagina = reparaJson(texto);
     } catch {
-      // recuperação simples de JSON cortado
-      let s = texto.replace(/```json/g, '').replace(/```/g, '').trim();
-      const i = s.indexOf('{');
-      const j = s.lastIndexOf('}');
-      if (i >= 0 && j > i) s = s.slice(i, j + 1);
-      try {
-        pagina = JSON.parse(s);
-      } catch {
-        return new Response(JSON.stringify({ ok: false, motivo: 'json_invalido', mensagem: 'A IA não devolveu JSON válido.', textoOriginal: texto.slice(0, 500) }), { status: 200, headers });
-      }
+      return new Response(JSON.stringify({ ok: false, motivo: 'json_invalido', mensagem: 'A IA não devolveu JSON válido.', textoOriginal: texto.slice(0, 300) }), { status: 200, headers });
     }
 
     return new Response(JSON.stringify({ ok: true, pagina }), { status: 200, headers });
