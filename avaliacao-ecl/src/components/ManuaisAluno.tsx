@@ -20,6 +20,7 @@ const ANO_LETIVO = '2026-2027';
 const SCHOOL_LABEL = 'Curso Profissional de Técnico de Cozinha e Restauração';
 const FOOTER = { date: 'Data: 01 / 09 / 2016', reference: 'ECL.GPC.015.2', revision: 'Revisão: 02 / 07 / 2021' };
 const FONTES = 'Le Cordon Bleu (técnica); Maria de Lurdes Modesto, "Cozinha Tradicional Portuguesa" (receitas tradicionais); José Avillez, "Combinações Improváveis" (inovação); Ferran Adrià / elBulli (inovação internacional); Manual de Cozinha da Escola de Hotelaria (Turismo de Portugal)';
+const PT_PT = 'Escreve em PORTUGUÊS DE PORTUGAL (europeu), NUNCA em português do Brasil. Trata o aluno por "tu" (não "você"). Usa vocabulário e ortografia de Portugal — ex.: pequeno-almoço (não "café da manhã"), frigorífico (não "geladeira"), casa de banho, fogão, autocarro, telemóvel, ecrã, gelado, sumo, talho, empregado de mesa. Evita termos e construções brasileiras.';
 const MAX_PAGINAS_CAP = 4; // segurança: máximo de páginas por capítulo
 const THROTTLE_MS = 6500;    // espaçar pedidos (~9/min; o limite grátis ronda 10/min)
 const ESPERA_429_MS = 35000; // esperar o minuto limpar quando bate no limite
@@ -47,6 +48,7 @@ interface DocumentoManual {
   unitCode: string; unitNumber: number; fullTitle: string; schoolLabel: string;
   academicYear: string; footerDate: string; footerReference: string; footerRevision: string;
   pages: PaginaManual[];
+  indice?: string[];
 }
 
 interface UCItem { code: string; ref: ReferencialUC; kind: 'produto' | 'serviço' | 'processo' }
@@ -167,6 +169,8 @@ ${sequenciaPorTipo(uc.kind)}
 Fundamenta-te no referencial (expande para o conteúdo REAL de cozinha, não fiques nas frases genéricas):
 ${refBlock(uc)}
 
+LÍNGUA (OBRIGATÓRIO): ${PT_PT}
+
 REGRAS: 8 a 14 capítulos, por ordem pedagógica, sem repetição, com o âmbito certo; títulos concretos (nada de "Conhecimento:" nem verbos administrativos); inclui um capítulo final "Onde procurar informação" (fontes: ${FONTES}); não desenvolvas temas que são foco de outra UC (HACCP=UC03584; nutrição=UC00596).
 
 Formato: ["Título 1","Título 2", ...]`;
@@ -186,6 +190,8 @@ function buildChapterPrompt(uc: UCItem, titulo: string, indice: string[], covere
 
 És um professor de cozinha e restauração com 20 anos de experiência, a escrever um MANUAL DO ALUNO para alunos do secundário com dificuldades. ${tipo === 'capitulo' ? `Escreve o capítulo "${titulo}"` : 'Escreve esta secção'} da UC ${uc.code} — ${uc.ref.nome}.
 
+LÍNGUA (OBRIGATÓRIO): ${PT_PT}
+
 ÂMBITO: parte sempre de "o que produz o aluno nesta UC?" e interpreta os termos à volta disso (ex.: "massas" dos acepipes, não esparguete).
 
 ÍNDICE COMPLETO (para não repetir nem adiantar):
@@ -199,7 +205,7 @@ ${covered.length ? covered.slice(-20).map((c) => '- ' + c).join('\n') : '(nada a
 
 ${especifico}
 
-ESTILO: linguagem simples mas DESENVOLVIDA; cada termo técnico explicado à primeira vez; CONCRETO (nomes, °C, minutos, pratos e utensílios pelo nome); reflete a PRÁTICA; contexto histórico curto e ciência simples quando ajudar; remete para as fontes quando útil (${FONTES}); cada UC trata só o que é seu; usa subsections/tables/procedureSteps/callouts; português europeu, sem meta-referências.
+ESTILO: linguagem simples mas DESENVOLVIDA; cada termo técnico explicado à primeira vez; CONCRETO (nomes, °C, minutos, pratos e utensílios pelo nome); reflete a PRÁTICA; contexto histórico curto e ciência simples quando ajudar; remete para as fontes quando útil (${FONTES}); cada UC trata só o que é seu; usa subsections/tables/procedureSteps/callouts; ${PT_PT} Sem meta-referências.
 
 Devolve este objeto (só os campos úteis):
 { "title": string, "subtitle"?: string, "paragraphs"?: string[], "subsections"?: [{ "title": string, "paragraphs"?: string[], "bullets"?: string[] }], "calloutBoxes"?: [{ "type": "nota"|"aviso"|"dica"|"definicao", "content": string }], "bullets"?: string[], "tables"?: [{ "title": string, "columns": string[], "rows": string[][] }], "procedureSteps"?: { "title": string, "intro"?: string, "steps": [{ "label": string, "detail": string, "warning"?: string }] }${dlg}, "consolidationBlock"?: { "title": string, "keyPoints": string[], "selfCheck"?: string[] }, "worksheetSections"?: [{ "title": string, "instructions"?: string, "prompts": [{ "prompt": string, "lines": number }] }], "continua"?: boolean }`;
@@ -207,7 +213,7 @@ Devolve este objeto (só os campos úteis):
 function buildMasterPrompt(uc: UCItem): string {
   return `Vais ajudar-me a construir um MANUAL DO ALUNO para ${uc.code} — ${uc.ref.nome}. Alunos do secundário com dificuldades.
 
-REGRAS: (1) ÂMBITO — pergunta "o que produz o aluno nesta UC?" e interpreta os termos à volta disso (ex.: "massas" dos acepipes, não esparguete). (2) ${sequenciaPorTipo(uc.kind)} (3) Cada capítulo nos três eixos: conhecimento + aptidão (prática) + atitudes. (4) Reflete a prática, concreto, linguagem simples. (5) Fontes: ${FONTES}. (6) Cada UC só trata o que é seu. (7) Fichas de trabalho em papel, interativas. (8) Português europeu.
+REGRAS: (1) ÂMBITO — pergunta "o que produz o aluno nesta UC?" e interpreta os termos à volta disso (ex.: "massas" dos acepipes, não esparguete). (2) ${sequenciaPorTipo(uc.kind)} (3) Cada capítulo nos três eixos: conhecimento + aptidão (prática) + atitudes. (4) Reflete a prática, concreto, linguagem simples. (5) Fontes: ${FONTES}. (6) Cada UC só trata o que é seu. (7) Fichas de trabalho em papel, interativas. (8) ${PT_PT}
 
 Referencial:
 ${refBlock(uc)}
@@ -264,7 +270,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     return { unitCode: uc.code, unitNumber: ucNumber(uc.code), fullTitle: uc.ref.nome, schoolLabel: SCHOOL_LABEL, academicYear: ANO_LETIVO, footerDate: FOOTER.date, footerReference: FOOTER.reference, footerRevision: FOOTER.revision, pages: [] };
   }
 
-  async function chamarIA(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string }> {
+  async function chamarIA(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string; fornecedor?: string }> {
     try {
       const res = await fetch('/api/gerarPaginaManual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
       const txt = await res.text();
@@ -273,7 +279,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       if (!json.ok) return { ok: false, motivo: json.motivo, mensagem: json.mensagem };
       let data = json.pagina !== undefined ? json.pagina : json;
       if (typeof data === 'string') { try { data = tryParse(data); } catch { /* */ } }
-      return { ok: true, data };
+      return { ok: true, data, fornecedor: json.fornecedor };
     } catch (e: any) { return { ok: false, motivo: 'rede', mensagem: String(e?.message || e) }; }
   }
 
@@ -285,7 +291,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     let titulos: string[] = [];
     if (r.ok && Array.isArray(r.data)) titulos = r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim());
     if (!titulos.length) { titulos = uc.ref.conhecimentos.slice(); setLogs((l) => [...l, `— Não consegui desenhar o índice (${r.mensagem || r.motivo || 'erro'}). Usei os conhecimentos como base — revê e edita.`]); }
-    else setLogs((l) => [...l, `✓ Índice com ${titulos.length} capítulos. Revê e corrige o âmbito antes de gerar.`]);
+    else setLogs((l) => [...l, `✓ Índice com ${titulos.length} capítulos${r.fornecedor ? ` (via ${r.fornecedor})` : ''}. Revê e corrige o âmbito antes de gerar.`]);
     setIndiceTxt(titulos.join('\n')); setFaseIndice(true);
   }
 
@@ -298,7 +304,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     if (part.subtitle && !dest.subtitle) dest.subtitle = part.subtitle;
   }
 
-  async function gerarCapitulos() {
+  async function gerarCapitulos(continuar = false) {
     const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
     const caps = indiceTxt.split('\n').map((s) => s.trim()).filter(Boolean);
     if (!caps.length) return;
@@ -310,12 +316,20 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       { titulo: 'Folha de trabalho 1', tipo: 'ficha' },
       { titulo: 'Folha de trabalho 2', tipo: 'ficha' },
     ];
+    const jaExiste = continuar && !!doc && doc.unitCode === uc.code && doc.pages.length > 0;
+    const d: DocumentoManual = jaExiste ? { ...(doc as DocumentoManual), pages: [...(doc as DocumentoManual).pages] } : novoDoc(uc);
+    d.indice = caps;
+    const norm = (x: string) => (x || '').toLowerCase().replace(/[^a-zà-ú0-9]+/g, ' ').trim();
+    const temIntro = d.pages.some((p) => /introdu/i.test(p.title));
+    const temSintese = d.pages.some((p) => /s[íi]ntese|crit[ée]rios/i.test(p.title));
+    let nFichas = d.pages.filter((p) => /folha de trabalho|ficha/i.test(p.title)).length;
+    const capsFeitos = new Set(d.pages.map((p) => norm(p.title)));
+    const covered: string[] = d.pages.map((p) => p.title);
     setProg({ done: 0, total: tarefas.length });
-    const d = novoDoc(uc); const covered: string[] = [];
     let parouPorLimite = false;
     let primeiroPedido = true;
     // faz um pedido respeitando o ritmo; se bater no limite/minuto, espera e repete sozinha
-    async function pedirComRitmo(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string }> {
+    async function pedirComRitmo(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string; fornecedor?: string }> {
       if (!primeiroPedido) await esperar(THROTTLE_MS);
       primeiroPedido = false;
       let esperas = 0;
@@ -334,9 +348,14 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     }
     for (let i = 0; i < tarefas.length && !pararRef.current; i++) {
       const t = tarefas[i];
-      let pagina: any = null; let prev = ''; let continua = true; let parte = 1; let motivo = '';
+      if (jaExiste) {
+        const feito = (t.tipo === 'intro' && temIntro) || (t.tipo === 'sintese' && temSintese) || (t.tipo === 'ficha' && nFichas > 0) || (t.tipo === 'capitulo' && capsFeitos.has(norm(t.titulo)));
+        if (feito) { if (t.tipo === 'ficha') nFichas--; setProg({ done: i + 1, total: tarefas.length }); continue; }
+      }
+      let pagina: any = null; let prev = ''; let continua = true; let parte = 1; let motivo = ''; let fornecedorUsado = '';
       while (continua && parte <= MAX_PAGINAS_CAP && !pararRef.current) {
         const r = await pedirComRitmo(buildChapterPrompt(uc, t.titulo, caps, covered, t.tipo, prev, parte));
+        if (r.fornecedor) fornecedorUsado = r.fornecedor;
         if (!r.ok) { motivo = r.motivo || 'erro'; if (motivo !== 'parado') setLogs((l) => [...l, `✗ ${t.titulo.slice(0, 42)}… (${r.mensagem || motivo})`]); break; }
         const part = r.data || {};
         if (!pagina) pagina = { pageNumber: 0, title: t.tipo === 'capitulo' ? t.titulo : (part.title || t.titulo) };
@@ -348,11 +367,14 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       if (pagina && (pagina.paragraphs?.length || pagina.subsections?.length || pagina.worksheetSections?.length || pagina.tables?.length)) {
         pagina.pageNumber = d.pages.length === 0 ? 1 : d.pages.length + 1;
         d.pages.push(pagina); covered.push(pagina.title + (pagina.subtitle ? ' / ' + pagina.subtitle : '')); setDoc({ ...d });
-        setLogs((l) => [...l, `✓ ${pagina.title}${parte > 2 ? ` (${parte - 1} págs)` : ''}`]);
+        setLogs((l) => [...l, `✓ ${pagina.title}${parte > 2 ? ` (${parte - 1} págs)` : ''}${fornecedorUsado ? ` — via ${fornecedorUsado}` : ''}`]);
       }
       setProg({ done: i + 1, total: tarefas.length });
       if (motivo === 'limite_atingido' || motivo === 'sem_chave') { parouPorLimite = true; setLogs((l) => [...l, motivo === 'sem_chave' ? '— Falta a GEMINI_API_KEY na Vercel.' : '— Limite ainda ativo depois de esperar — provavelmente o limite diário. Continua mais tarde (o que já foi gerado é guardável) ou usa o modo manual.']); break; }
     }
+    const ordemKey = (p: PaginaManual) => { if (/introdu/i.test(p.title)) return 0; if (/s[íi]ntese|crit[ée]rios/i.test(p.title)) return 9000; if (/folha de trabalho|ficha/i.test(p.title)) return 9500; const idx = caps.findIndex((c) => norm(c) === norm(p.title)); return idx >= 0 ? 100 + idx : 500; };
+    d.pages.sort((a, b) => ordemKey(a) - ordemKey(b));
+    d.pages.forEach((p, idx) => (p.pageNumber = idx === 0 ? 1 : idx + 1));
     setGerando(false);
     if (d.pages.length > 0) { setDoc({ ...d }); setLogs((l) => [...l, `— ${d.pages.length} páginas.${parouPorLimite ? '' : ' Podes guardar/exportar.'}`]); }
   }
@@ -384,7 +406,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     try { localStorage.setItem(KEY(doc.unitCode), JSON.stringify(doc)); setSaved(true); setLista(listSaved()); setLogs((l) => [...l, '💾 Guardado em Manuais Guardados.']); }
     catch (e: any) { setLogs((l) => [...l, '✗ Falha ao guardar: ' + e.message]); alert('Não consegui guardar: ' + (e?.message || e)); }
   }
-  function abrir(code: string) { try { const d = JSON.parse(localStorage.getItem(KEY(code)) || '') as DocumentoManual; setDoc(d); setSaved(true); setModo('ver'); } catch { /* */ } }
+  function abrir(code: string) { try { const d = JSON.parse(localStorage.getItem(KEY(code)) || '') as DocumentoManual; setDoc(d); setSelCode(d.unitCode); setIndiceTxt((d.indice || []).join('\n')); setSaved(true); setModo('ver'); } catch { /* */ } }
   function apagar(code: string) { localStorage.removeItem(KEY(code)); setLista(listSaved()); }
 
   function conteudoFim(d: DocumentoManual): number {
@@ -440,6 +462,9 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   const btn = (bg: string, color = '#fff'): React.CSSProperties => ({ padding: '9px 15px', borderRadius: 8, border: 'none', background: bg, color, fontWeight: 600, fontSize: 13, cursor: 'pointer' });
   const ghost: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' };
   const uc = UCS.find((u) => u.code === selCode);
+  const capsAtual = indiceTxt.split('\n').map((x) => x.trim()).filter(Boolean);
+  const totalPrevisto = capsAtual.length ? capsAtual.length + 4 : 0;
+  const faltam = doc && doc.unitCode === selCode ? Math.max(0, totalPrevisto - doc.pages.length) : 0;
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '8px 4px', fontFamily: "'Inter', system-ui, sans-serif", color: '#1f2937' }}>
@@ -487,7 +512,8 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
               ) : (
                 <button style={btn(ROXO)} disabled={aFazerIndice} onClick={gerarIndice}>{aFazerIndice ? 'A desenhar índice…' : (faseIndice ? '↻ Refazer índice' : '1. Desenhar índice')}</button>
               )}
-              {faseIndice && !gerando && <button style={btn(ROXO)} onClick={gerarCapitulos}>2. Gerar manual ▶</button>}
+              {faseIndice && !gerando && <button style={btn(ROXO)} onClick={() => gerarCapitulos(false)}>2. Gerar manual ▶</button>}
+              {!gerando && !!doc && doc.unitCode === selCode && doc.pages.length > 0 && faltam > 0 && <button style={btn(ROXO)} onClick={() => gerarCapitulos(true)}>Continuar (faltam {faltam})</button>}
               {doc && doc.pages.length > 0 && !gerando && <>
                 <button style={ghost} onClick={() => setModo('ver')}>Ver ({doc.pages.length})</button>
                 <button style={btn(ROXO)} onClick={guardar}>Guardar</button>
