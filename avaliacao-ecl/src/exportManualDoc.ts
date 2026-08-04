@@ -246,9 +246,30 @@ export function downloadManualDoc(doc: ManualDocument) {
 }
 
 export function exportManualPdf(doc: ManualDocument) {
-  const blob = new Blob([buildPdfHtml(doc)], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, '_blank');
-  if (win) setTimeout(() => URL.revokeObjectURL(url), 8000);
-  else URL.revokeObjectURL(url);
+  // imprime a partir de um iframe escondido (não depende de pop-up).
+  // O HTML/formato é o mesmo do buildPdfHtml; só o disparo da impressão muda.
+  const html = buildPdfHtml(doc).replace(/<script>[\s\S]*?<\/script>/, '');
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  document.body.appendChild(iframe);
+  const idoc = iframe.contentWindow && iframe.contentWindow.document;
+  if (!idoc) {
+    document.body.removeChild(iframe);
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+    return;
+  }
+  idoc.open();
+  idoc.write(html);
+  idoc.close();
+  setTimeout(() => {
+    try { iframe.contentWindow && iframe.contentWindow.focus(); iframe.contentWindow && iframe.contentWindow.print(); } catch (e) { /* */ }
+    setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) { /* */ } }, 120000);
+  }, 700);
 }
