@@ -1,16 +1,16 @@
 // src/components/ManuaisAluno.tsx
-// Gerador de Manuais do Aluno por UC — escrito como um professor de cozinha
-// explica antes da aula prática, para alunos com dificuldades. Usa o
-// referencial oficial já na app como fundamento, gera página a página pela
-// função /api/gerarPaginaManual (Gemini, grátis) e, se falhar, permite gerar
-// numa IA externa e colar o JSON. Guarda em localStorage, exporta Word e PDF.
+// Gerador de Manuais do Aluno por UC. A app desenha o ÍNDICE (a Rosa revê),
+// depois gera os capítulos AUTOMATICAMENTE, um a um, pela função Gemini
+// (/api/gerarPaginaManual) — que devolve sempre JSON válido. Capítulos longos
+// continuam ("continua") na mesma página lógica. Se a Gemini falhar/esgotar,
+// há o modo manual (copiar prompt-mestre + colar JSON). Guarda em localStorage,
+// exporta Word e PDF no formato ECL.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { REFERENCIAL_811RA144, ReferencialUC } from '../referencial811RA144';
 import { downloadManualDoc, exportManualPdf } from '../exportManualDoc';
 
-// ── cores do documento (formato ECL) e do UI (roxo da app) ──────────────────
-const BRAND = '#1aa1af'; // teal do manual ECL (igual ao export aprovado)
+const BRAND = '#1aa1af';
 const LIGHT = '#d9f2f4';
 const LINE = '#b3e0e4';
 const SOFT = '#f0fbfc';
@@ -20,114 +20,65 @@ const ANO_LETIVO = '2026-2027';
 const SCHOOL_LABEL = 'Curso Profissional de Técnico de Cozinha e Restauração';
 const FOOTER = { date: 'Data: 01 / 09 / 2016', reference: 'ECL.GPC.015.2', revision: 'Revisão: 02 / 07 / 2021' };
 const FONTES = 'Le Cordon Bleu (técnica); Maria de Lurdes Modesto, "Cozinha Tradicional Portuguesa" (receitas tradicionais); José Avillez, "Combinações Improváveis" (inovação); Ferran Adrià / elBulli (inovação internacional); Manual de Cozinha da Escola de Hotelaria (Turismo de Portugal)';
+const MAX_PAGINAS_CAP = 4; // segurança: máximo de páginas por capítulo
 
-const EXCLUIR = ['UC03578', 'UC03579']; // Inglês, Francês
+const EXCLUIR = ['UC03578', 'UC03579'];
 const SERVICE_UCS = ['UC03580', 'UC03581', 'UC03582', 'UC03583', 'UC00595'];
 const PRODUCT_UCS = ['UC01999', 'UC02002', 'UC02003', 'UC02004', 'UC02005', 'UC03577', 'UC03585', 'UC03586'];
 
-// ── tipos de página (mesmo esquema do render/export) ────────────────────────
 interface Callout { type: 'nota' | 'aviso' | 'dica' | 'definicao'; content: string }
 interface Tabela { title?: string; columns: string[]; rows: string[][] }
 interface Passos { title: string; intro?: string; steps: { label: string; detail: string; warning?: string }[] }
 interface Dialogo { title: string; instructions?: string; items: { client: string; response: string; objective?: string }[] }
 interface Consolidacao { title?: string; keyPoints: string[]; selfCheck?: string[] }
 interface Ficha { title: string; instructions?: string; prompts: { prompt: string; lines: number }[] }
+interface Subseccao { title: string; paragraphs?: string[]; bullets?: string[] }
 interface PaginaManual {
-  pageNumber: number;
-  title: string;
-  subtitle?: string;
-  paragraphs?: string[];
-  calloutBoxes?: Callout[];
-  bullets?: string[];
-  subsections?: { title: string; paragraphs?: string[]; bullets?: string[] }[];
-  procedureSteps?: Passos;
-  tables?: Tabela[];
-  dialogueBlocks?: Dialogo[];
-  consolidationBlock?: Consolidacao;
-  worksheetSections?: Ficha[];
+  pageNumber: number; title: string; subtitle?: string;
+  paragraphs?: string[]; calloutBoxes?: Callout[]; bullets?: string[];
+  subsections?: Subseccao[]; procedureSteps?: Passos; tables?: Tabela[];
+  dialogueBlocks?: Dialogo[]; consolidationBlock?: Consolidacao; worksheetSections?: Ficha[];
 }
 interface DocumentoManual {
-  unitCode: string;
-  unitNumber: number;
-  fullTitle: string;
-  schoolLabel: string;
-  academicYear: string;
-  footerDate: string;
-  footerReference: string;
-  footerRevision: string;
+  unitCode: string; unitNumber: number; fullTitle: string; schoolLabel: string;
+  academicYear: string; footerDate: string; footerReference: string; footerRevision: string;
   pages: PaginaManual[];
 }
 
-// ── UCs disponíveis (do referencial) ────────────────────────────────────────
 interface UCItem { code: string; ref: ReferencialUC; kind: 'produto' | 'serviço' | 'processo' }
 const UCS: UCItem[] = Object.entries(REFERENCIAL_811RA144)
   .filter(([code, r]) => !EXCLUIR.includes(code) && r.bloco !== 'fct')
   .sort((a, b) => a[1].ordemECL - b[1].ordemECL)
-  .map(([code, ref]) => ({
-    code,
-    ref,
-    kind: SERVICE_UCS.includes(code) ? 'serviço' : PRODUCT_UCS.includes(code) ? 'produto' : 'processo',
-  }));
+  .map(([code, ref]) => ({ code, ref, kind: SERVICE_UCS.includes(code) ? 'serviço' : PRODUCT_UCS.includes(code) ? 'produto' : 'processo' }));
 
 // ── utilitários ─────────────────────────────────────────────────────────────
 function esc(s: any): string {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-function splitCourseLines(label: string): [string, string] {
-  const w = label.split(' ');
-  const mid = Math.ceil(w.length / 2);
-  return [w.slice(0, mid).join(' '), w.slice(mid).join(' ')];
-}
-function fileNameFor(doc: DocumentoManual, ext: string): string {
-  const safe = doc.fullTitle.replace(/[^\w\sÀ-ÿ-]/g, '').replace(/\s+/g, '_');
-  return `${doc.unitNumber}_Guiao_${safe}_SCP_CR.${ext}`;
-}
-function ucNumber(code: string): number {
-  const m = code.match(/(\d+)/);
-  return m ? Number(m[1]) : 0;
-}
+function ucNumber(code: string): number { const m = code.match(/(\d+)/); return m ? Number(m[1]) : 0; }
 
-// ── sequência pedagógica por tipo de UC ─────────────────────────────────────
-function sequenciaPorTipo(kind: string): string {
-  if (kind === 'produto')
-    return 'Para esta UC de produto/confeção segue: (1) MATÉRIAS-PRIMAS — divide-as por FAMÍLIAS/grupos, fala um pouco de cada grupo e dos CASOS ESPECIAIS; (2) TÉCNICAS DE CONFEÇÃO — de forma exaustiva; (3) CONSERVAÇÃO dos produtos; (4) VERIFICAÇÃO DA FRESCURA e da qualidade; (5) HIGIENE no trabalho.';
-  if (kind === 'serviço')
-    return 'Para esta UC de serviço segue: (1) o espaço e a preparação (mise en place); (2) a sequência do serviço passo a passo; (3) o atendimento e a comunicação com o cliente; (4) os produtos/bebidas envolvidos; (5) higiene e segurança.';
-  return 'Para esta UC de processo segue: (1) a organização e o planeamento; (2) os documentos (fichas técnicas, requisições, cronogramas); (3) a mise en place; (4) a coordenação e o controlo; (5) higiene e HACCP.';
-}
-
-// ── PROMPT-MESTRE de um manual (a app gera, a Rosa cola numa IA externa) ─────
-function buildMasterPrompt(uc: UCItem): string {
-  return `Vais ajudar-me a construir um MANUAL DO ALUNO para a unidade ${uc.code} — ${uc.ref.nome} (Curso Profissional de Técnico de Cozinha e Restauração). É para alunos do secundário com dificuldades de aprendizagem, muitos que nunca entraram numa cozinha.
-
-======== REGRAS DE CONSTRUÇÃO ========
-1. ÂMBITO — antes de tudo, pergunta: "O QUE É QUE O ALUNO PRODUZ EM AULA com esta UC?". A resposta define o sentido de TODOS os termos. Exemplo real: numa UC de "acepipes, sopas, entradas, ovos e massas", o aluno produz ACEPIPES, logo "massas" são as massas de base dos acepipes (folhada, quebrada, tenra, choux salgada, rissol, empada) e NÃO massas alimentícias italianas.
-2. SEQUÊNCIA. ${sequenciaPorTipo(uc.kind)} As NORMAS DE SEGURANÇA (SST) aplicam-se AO LONGO do trabalho, não como capítulo isolado.
-3. TRÊS EIXOS em cada capítulo, integrados no texto: CONHECIMENTO (o quê, porquê, como funciona) + APTIDÃO (como se faz na prática, passo a passo, ligado às realizações da UC, com situações reais portuguesas) + ATITUDES profissionais a demonstrar (higiene/HACCP, SST, organização, responsabilidade, rigor).
-4. REFLETE A PRÁTICA da aula — nada de teoria solta. Linguagem simples, cada termo técnico explicado à primeira vez, muito CONCRETO (nomes, °C, minutos, pratos e utensílios pelo nome). Dá contexto histórico curto e a ciência simples (Maillard, osmose, coagulação — sem fórmulas) quando ajudar.
-5. FONTES a referenciar quando útil: ${FONTES}. Ensina também o aluno a PROCURAR INFORMAÇÃO nestas obras.
-6. CADA UC TRATA SÓ O QUE É SEU. Temas que são o foco de OUTRA UC (HACCP → UC03584; nutrição → UC00596) entram apenas como enquadramento/referência geral, não desenvolvidos.
-7. FICHAS DE TRABALHO em papel, INTERATIVAS: exercícios variados e ativos — ligar colunas, ordenar passos, completar tabelas e espaços, verdadeiro/falso, e um CENÁRIO REAL — misturando aplicação prática (na cozinha/sala) com consolidação da teoria, a terminar com autoavaliação.
-8. Português europeu, sem meta-referências ("neste manual", "como vimos").
-
-======== REFERENCIAL DESTA UC (fundamenta-te aqui) ========
-Realizações: ${uc.ref.realizacoes.join(' | ')}
-Conhecimentos: ${uc.ref.conhecimentos.join(' | ')}
-${uc.ref.aptidoes && uc.ref.aptidoes.length ? 'Aptidões (o que deve saber FAZER): ' + uc.ref.aptidoes.join(' | ') + '\n' : ''}${uc.ref.atitudes && uc.ref.atitudes.length ? 'Atitudes a demonstrar: ' + uc.ref.atitudes.join(' | ') + '\n' : ''}Critérios de desempenho: ${uc.ref.criteriosDesempenho.join(' | ')}
-
-======== FORMATO (para eu colar na minha app) ========
-Responde SEMPRE em JSON puro, sem markdown e sem crases. Cada capítulo é UM objeto com este esquema (usa só os campos úteis):
-{ "title": "…", "subtitle"?: "…", "paragraphs"?: ["…"], "subsections"?: [{ "title":"…", "paragraphs"?:["…"], "bullets"?:["…"] }], "calloutBoxes"?: [{ "type":"nota|aviso|dica|definicao", "content":"…" }], "bullets"?: ["…"], "tables"?: [{ "title":"…", "columns":["…"], "rows":[["…","…"]] }], "procedureSteps"?: { "title":"…", "intro"?:"…", "steps":[{ "label":"…", "detail":"…", "warning"?:"…" }] }, "consolidationBlock"?: { "title":"…", "keyPoints":["…"], "selfCheck"?:["…"] }, "worksheetSections"?: [{ "title":"…", "instructions"?:"…", "prompts":[{ "prompt":"…", "lines": 3 }] }] }
-
-======== COMO VAMOS TRABALHAR (por partes, para nunca cortar) ========
-PASSO 1 — devolve APENAS o ÍNDICE: um array JSON de 8 a 14 títulos de capítulo, por ordem pedagógica (do básico ao avançado), com o ÂMBITO certo, incluindo um capítulo final "Onde procurar informação". Depois PÁRA e espera que eu reveja e corrija.
-PASSO 2 — quando eu disser "capítulo N" (ou "próximo"), escreve SÓ esse capítulo, DESENVOLVIDO a fundo, como UM objeto JSON no esquema acima. Se ficar muito longo, escreve a primeira parte e termina com "continua": true; eu digo "continua" e tu segues o MESMO capítulo, sem repetir o título.
-PASSO 3 — no fim, gera a SÍNTESE (com os critérios de desempenho) e as FOLHAS DE TRABALHO interativas, cada uma como um objeto JSON.
-
-Começa agora pelo PASSO 1: devolve só o índice (array JSON de títulos), e nada mais.`;
+// parse tolerante: tira crases/lixo, vírgulas finais e repara JSON cortado
+function tryParse(raw: string): any {
+  let s = String(raw || '').replace(/```json/gi, '').replace(/```/g, '').trim();
+  const fO = s.indexOf('{'); const fA = s.indexOf('[');
+  const start = fA >= 0 && (fO < 0 || fA < fO) ? fA : fO;
+  if (start > 0) s = s.slice(start);
+  const noTrailing = s.replace(/,(\s*[}\]])/g, '$1');
+  for (const cand of [s, noTrailing]) { try { return JSON.parse(cand); } catch { /* */ } }
+  // reparar truncagem: fechar string/parênteses abertos
+  let t = noTrailing;
+  let inStr = false, escp = false; const stack: string[] = [];
+  for (const c of t) {
+    if (inStr) { if (escp) escp = false; else if (c === '\\') escp = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') inStr = true; else if (c === '{') stack.push('}'); else if (c === '[') stack.push(']'); else if (c === '}' || c === ']') stack.pop();
+  }
+  if (inStr) t += '"';
+  t = t.replace(/,\s*$/, '');
+  while (stack.length) t += stack.pop();
+  return JSON.parse(t);
 }
 
-// ── render do corpo de uma página (pré-visualização no ecrã) ───────────────
+// ── render do corpo de uma página (pré-visualização no ecrã) ────────────────
 function renderPageBody(page: PaginaManual): string {
   let h = '';
   if (page.subtitle) h += `<h3 style="color:${BRAND};font-size:13pt;font-weight:700;margin:0.1cm 0 0.16cm;">${esc(page.subtitle)}</h3>`;
@@ -177,53 +128,6 @@ function renderPageBody(page: PaginaManual): string {
   return h;
 }
 
-// ── export PDF (A4 + auto-print) ────────────────────────────────────────────
-function buildPdfHtml(doc: DocumentoManual): string {
-  const [l1, l2] = splitCourseLines(doc.schoolLabel);
-  const cover = doc.pages[0];
-  const content = doc.pages.slice(1);
-  const pageStyle = "width:210mm;min-height:283mm;box-sizing:border-box;padding:1.6cm 1.9cm 1.4cm;page-break-after:always;display:flex;flex-direction:column;font-family:'Arial Narrow',Arial,sans-serif;font-size:12pt;line-height:17pt;color:#000;background:#fff;";
-  const head = (isCover: boolean) => `<table style="width:100%;border-collapse:collapse;margin-bottom:0.1cm;"><tr><td style="vertical-align:top;"><div style="font-weight:700;color:${BRAND};font-size:12pt;">Escola de Comércio de Lisboa</div></td><td style="vertical-align:top;text-align:right;color:${BRAND};"><div style="font-weight:700;font-size:12pt;line-height:1.1;">${esc(l1)}</div><div style="font-weight:700;font-size:12pt;line-height:1.1;">${esc(l2)}</div><div style="font-size:11pt;">${esc(doc.academicYear)}</div>${isCover ? `<div style="font-weight:700;font-size:12pt;">${esc(doc.unitCode)}</div>` : ''}</td></tr></table>${!isCover ? `<table style="width:100%;border-collapse:collapse;border-bottom:1pt solid ${LINE};margin-bottom:0.14cm;"><tr><td style="font-size:9pt;font-weight:700;color:${BRAND};padding:0.04cm 0;">${esc(doc.unitCode)}</td><td style="font-size:9pt;color:${BRAND};text-align:right;padding:0.04cm 0;">${esc(doc.fullTitle)}</td></tr></table>` : ''}`;
-  const foot = (n?: number) => `<div style="margin-top:auto;padding-top:0.2cm;border-top:1pt solid ${LINE};"><table style="width:100%;border-collapse:collapse;color:${BRAND};font-size:7pt;"><tr><td style="text-align:left;">${esc(doc.footerDate)}<br/>${esc(doc.footerRevision)}</td><td style="text-align:center;font-weight:700;font-size:9pt;">${n != null ? n : ''}</td><td style="text-align:right;">${esc(doc.footerReference)}</td></tr></table></div>`;
-  let pages = '';
-  if (cover) pages += `<div style="${pageStyle}">${head(true)}<div style="text-align:right;color:${BRAND};margin:0.2cm 0;"><div style="font-weight:700;font-size:32pt;line-height:1.05;">${esc(doc.unitNumber)} - ${esc(doc.fullTitle)}</div></div><h2 style="color:${BRAND};font-size:14pt;font-weight:700;margin:0 0 0.18cm;">INTRODUÇÃO</h2><div style="flex:1;">${renderPageBody(cover)}</div>${foot(1)}</div>`;
-  if (content.length) {
-    const entries = content.map((p) => `<div style="display:flex;align-items:flex-end;gap:0.2cm;margin-bottom:0.14cm;"><div style="font-size:11pt;">${esc(p.title)}</div><div style="flex:1;border-bottom:1pt dotted #aaa;margin-bottom:0.14cm;"></div><div style="font-size:11pt;font-weight:700;color:${BRAND};">${p.pageNumber}</div></div>`).join('');
-    pages += `<div style="${pageStyle}">${head(false)}<h2 style="color:${BRAND};font-size:14pt;font-weight:700;margin:0 0 0.3cm;">ÍNDICE</h2><div style="flex:1;">${entries}</div>${foot()}</div>`;
-  }
-  content.forEach((p) => (pages += `<div style="${pageStyle}">${head(false)}<h2 style="color:${BRAND};font-size:14pt;font-weight:700;text-transform:uppercase;margin:0 0 0.18cm;">${esc(p.title)}</h2><div style="flex:1;">${renderPageBody(p)}</div>${foot(p.pageNumber)}</div>`));
-  return `<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"/><title>${esc(doc.fullTitle)}</title><style>@page{size:A4 portrait;margin:0}*{box-sizing:border-box}body{margin:0;background:#eee}</style><script>window.addEventListener('load',function(){setTimeout(function(){window.print()},600)})<\/script></head><body>${pages}</body></html>`;
-}
-
-// ── export Word (cabeçalho/rodapé nativos) ──────────────────────────────────
-function buildWordHtml(doc: DocumentoManual): string {
-  const [l1, l2] = splitCourseLines(doc.schoolLabel);
-  const cover = doc.pages[0];
-  const content = doc.pages.slice(1);
-  const header = `<div style="mso-element:header" id="h1"><table style="width:100%;border-collapse:collapse;"><tr><td style="vertical-align:top;"><div style="font-weight:700;color:${BRAND};font-size:12pt;">Escola de Comércio de Lisboa</div></td><td style="vertical-align:top;text-align:right;color:${BRAND};"><div style="font-weight:700;font-size:12pt;">${esc(l1)}</div><div style="font-weight:700;font-size:12pt;">${esc(l2)}</div><div style="font-size:11pt;">${esc(doc.academicYear)}</div><div style="font-weight:700;font-size:11pt;">${esc(doc.unitCode)}</div></td></tr></table><div style="border-bottom:1pt solid ${LINE};margin-bottom:0.1cm;"></div></div>`;
-  const footer = `<div style="mso-element:footer" id="f1"><div style="border-top:1pt solid ${LINE};margin-top:0.1cm;"></div><table style="width:100%;border-collapse:collapse;color:${BRAND};font-size:7pt;margin-top:0.1cm;"><tr><td style="text-align:left;">${esc(doc.footerDate)}<br/>${esc(doc.footerRevision)}</td><td style="text-align:center;font-weight:700;font-size:9pt;"><span style="mso-field-code:&quot; PAGE &quot;">1</span></td><td style="text-align:right;">${esc(doc.footerReference)}</td></tr></table></div>`;
-  const brk = '<p style="page-break-before:always;mso-break-type:page-break;margin:0;"></p>';
-  let body = '';
-  if (cover) body += `<div style="text-align:right;color:${BRAND};margin-bottom:0.3cm;"><div style="font-weight:700;font-size:32pt;">${esc(doc.unitNumber)} - ${esc(doc.fullTitle)}</div></div><h2 style="color:${BRAND};font-size:14pt;font-weight:700;margin:0 0 0.18cm;">Introdução</h2>${renderPageBody(cover)}`;
-  if (content.length) {
-    body += brk + `<h2 style="color:${BRAND};font-size:14pt;font-weight:700;margin:0 0 0.3cm;">ÍNDICE</h2>`;
-    body += content.map((p) => `<table style="width:100%;border-collapse:collapse;"><tr><td style="border:none;font-size:11pt;padding:0.08cm 0;width:75%;">${esc(p.title)}</td><td style="border:none;border-bottom:1pt dotted #999;"></td><td style="border:none;font-size:11pt;font-weight:700;color:${BRAND};text-align:right;">${p.pageNumber}</td></tr></table>`).join('');
-  }
-  content.forEach((p) => (body += brk + `<h2 style="color:${BRAND};font-size:14pt;font-weight:700;text-transform:uppercase;margin:0 0 0.18cm;">${esc(p.title)}</h2>${renderPageBody(p)}`));
-  const css = `@page{size:21cm 29.7cm;margin:1.8cm 1.9cm 1.4cm;mso-header:h1;mso-footer:f1;mso-header-margin:1.2cm;mso-footer-margin:1cm}body{font-family:'Arial Narrow',Arial,sans-serif;font-size:12pt;line-height:17pt;color:#000}p{margin:0 0 0.22cm;text-align:justify}h2,h3,h4{color:${BRAND}}table{border-collapse:collapse}`;
-  return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'><head><meta charset="utf-8"/><title>${esc(doc.fullTitle)}</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--><style>${css}</style></head><body>${header}${footer}${body}</body></html>`;
-}
-
-function downloadBlob(html: string, filename: string, mime: string) {
-  const blob = new Blob([html], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
-}
-
-// ── localStorage ────────────────────────────────────────────────────────────
 const KEY = (code: string) => `ecl_manual_aluno_${code}`;
 function listSaved(): { code: string; title: string; pages: number }[] {
   const out: { code: string; title: string; pages: number }[] = [];
@@ -236,17 +140,79 @@ function listSaved(): { code: string; title: string; pages: number }[] {
   return out.sort((a, b) => a.code.localeCompare(b.code));
 }
 
-// ── parse tolerante (JSON cortado) ──────────────────────────────────────────
-function tryParse(clean: string): any {
-  try { return JSON.parse(clean); } catch { /* */ }
-  let s = clean.replace(/```json/g, '').replace(/```/g, '').trim();
-  const i = s.indexOf('{'); const j = s.lastIndexOf('}');
-  if (i >= 0) s = s.slice(i, j > i ? j + 1 : undefined);
-  try { return JSON.parse(s); } catch { /* */ }
-  const stack: string[] = []; let inStr = false, e = false;
-  for (const c of s) { if (inStr) { if (e) e = false; else if (c === '\\') e = true; else if (c === '"') inStr = false; continue; } if (c === '"') inStr = true; else if (c === '{') stack.push('}'); else if (c === '[') stack.push(']'); else if (c === '}' || c === ']') stack.pop(); }
-  s = s.replace(/[\s,]*$/, ''); while (stack.length) s += stack.pop();
-  return JSON.parse(s);
+// ── prompts ─────────────────────────────────────────────────────────────────
+function sequenciaPorTipo(kind: string): string {
+  if (kind === 'produto') return 'Para esta UC de produto/confeção segue: (1) MATÉRIAS-PRIMAS por FAMÍLIAS/grupos, com um pouco de cada grupo e os CASOS ESPECIAIS; (2) TÉCNICAS DE CONFEÇÃO de forma exaustiva; (3) CONSERVAÇÃO; (4) VERIFICAÇÃO DA FRESCURA e qualidade; (5) HIGIENE. As normas de SEGURANÇA (SST) aplicam-se AO LONGO do trabalho, não em capítulo isolado.';
+  if (kind === 'serviço') return 'Para esta UC de serviço segue: (1) o espaço e a mise en place; (2) a sequência do serviço; (3) o atendimento e a comunicação; (4) os produtos/bebidas; (5) higiene e segurança.';
+  return 'Para esta UC de processo segue: (1) organização e planeamento; (2) documentos (fichas técnicas, requisições, cronogramas); (3) mise en place; (4) coordenação e controlo; (5) higiene e HACCP.';
+}
+function refBlock(uc: UCItem): string {
+  const apt = uc.ref.aptidoes && uc.ref.aptidoes.length ? `Aptidões (o que deve saber FAZER): ${uc.ref.aptidoes.join(' | ')}\n` : '';
+  const ati = uc.ref.atitudes && uc.ref.atitudes.length ? `Atitudes a demonstrar: ${uc.ref.atitudes.join(' | ')}\n` : '';
+  return `Realizações: ${uc.ref.realizacoes.join(' | ')}\nConhecimentos: ${uc.ref.conhecimentos.join(' | ')}\n${apt}${ati}Critérios: ${uc.ref.criteriosDesempenho.join(' | ')}`;
+}
+function buildOutlinePrompt(uc: UCItem): string {
+  return `Produz APENAS um array JSON de strings (sem markdown, sem crases). Cada string é o título de um capítulo.
+
+És um professor de cozinha e restauração com 20 anos de experiência. Desenha o ÍNDICE de um MANUAL DO ALUNO para a UC ${uc.code} — ${uc.ref.nome} (tipo: ${uc.kind}), para alunos do secundário com dificuldades.
+
+PENSA PRIMEIRO (âmbito): "O QUE É QUE O ALUNO PRODUZ EM AULA com esta UC?". A resposta define o sentido de TODOS os termos. Ex.: em "acepipes… e massas", o aluno produz ACEPIPES, logo "massas" são as massas dos acepipes (folhada, quebrada, tenra, choux salgada, rissol, empada), NÃO massas italianas.
+
+${sequenciaPorTipo(uc.kind)}
+
+Fundamenta-te no referencial (expande para o conteúdo REAL de cozinha, não fiques nas frases genéricas):
+${refBlock(uc)}
+
+REGRAS: 8 a 14 capítulos, por ordem pedagógica, sem repetição, com o âmbito certo; títulos concretos (nada de "Conhecimento:" nem verbos administrativos); inclui um capítulo final "Onde procurar informação" (fontes: ${FONTES}); não desenvolvas temas que são foco de outra UC (HACCP=UC03584; nutrição=UC00596).
+
+Formato: ["Título 1","Título 2", ...]`;
+}
+function buildChapterPrompt(uc: UCItem, titulo: string, indice: string[], covered: string[], tipo: 'intro' | 'capitulo' | 'sintese' | 'ficha', prevResumo: string, parte: number): string {
+  const dlg = uc.kind === 'serviço' ? ', "dialogueBlocks"?: [{ "title": string, "instructions"?: string, "items": [{ "client": string, "response": string, "objective"?: string }] }]' : '';
+  const idx = indice.map((c, i) => `${i + 1}. ${c}`).join('\n');
+  let especifico = '';
+  if (tipo === 'intro') especifico = '- INTRODUÇÃO: começa por dizer O QUE O ALUNO VAI PRODUZIR nesta UC, apresenta a UC, para que serve e como o manual está organizado. Título = "Introdução". Não uses "continua".';
+  else if (tipo === 'sintese') especifico = '- SÍNTESE: resume os pontos-chave e apresenta os critérios de desempenho. Usa consolidationBlock. Não uses "continua".';
+  else if (tipo === 'ficha') especifico = '- FOLHA DE TRABALHO INTERATIVA (papel): exercícios VARIADOS e ATIVOS — ligar colunas (tabela de 2 colunas), ordenar passos, completar tabelas/espaços, verdadeiro/falso, e um CENÁRIO REAL. Mistura aplicação prática e consolidação da teoria; termina com autoavaliação. Usa worksheetSections, tables e bullets. Não uses "continua".';
+  else especifico = parte === 1
+    ? '- Desenvolve o capítulo A FUNDO nos três eixos integrados: CONHECIMENTO (o quê, porquê, como funciona) + APTIDÃO (como se faz na prática, passo a passo, ligado às realizações) + ATITUDES a demonstrar. Se ainda houver muito a dizer e a resposta ficaria demasiado longa, escreve a primeira parte e devolve "continua": true.'
+    : `- CONTINUAÇÃO (parte ${parte}) do mesmo capítulo. Já foi escrito: ${prevResumo}. NÃO repitas o título nem o que já foi dito; acrescenta o que FALTA. Se ainda faltar, "continua": true; se ficou completo, "continua": false.`;
+
+  return `Produz APENAS um objeto JSON válido (sem markdown, sem crases).
+
+És um professor de cozinha e restauração com 20 anos de experiência, a escrever um MANUAL DO ALUNO para alunos do secundário com dificuldades. ${tipo === 'capitulo' ? `Escreve o capítulo "${titulo}"` : 'Escreve esta secção'} da UC ${uc.code} — ${uc.ref.nome}.
+
+ÂMBITO: parte sempre de "o que produz o aluno nesta UC?" e interpreta os termos à volta disso (ex.: "massas" dos acepipes, não esparguete).
+
+ÍNDICE COMPLETO (para não repetir nem adiantar):
+${idx}
+
+Referencial:
+${refBlock(uc)}
+
+JÁ ESCRITO (não repetir):
+${covered.length ? covered.slice(-20).map((c) => '- ' + c).join('\n') : '(nada ainda)'}
+
+${especifico}
+
+ESTILO: linguagem simples mas DESENVOLVIDA; cada termo técnico explicado à primeira vez; CONCRETO (nomes, °C, minutos, pratos e utensílios pelo nome); reflete a PRÁTICA; contexto histórico curto e ciência simples quando ajudar; remete para as fontes quando útil (${FONTES}); cada UC trata só o que é seu; usa subsections/tables/procedureSteps/callouts; português europeu, sem meta-referências.
+
+Devolve este objeto (só os campos úteis):
+{ "title": string, "subtitle"?: string, "paragraphs"?: string[], "subsections"?: [{ "title": string, "paragraphs"?: string[], "bullets"?: string[] }], "calloutBoxes"?: [{ "type": "nota"|"aviso"|"dica"|"definicao", "content": string }], "bullets"?: string[], "tables"?: [{ "title": string, "columns": string[], "rows": string[][] }], "procedureSteps"?: { "title": string, "intro"?: string, "steps": [{ "label": string, "detail": string, "warning"?: string }] }${dlg}, "consolidationBlock"?: { "title": string, "keyPoints": string[], "selfCheck"?: string[] }, "worksheetSections"?: [{ "title": string, "instructions"?: string, "prompts": [{ "prompt": string, "lines": number }] }], "continua"?: boolean }`;
+}
+function buildMasterPrompt(uc: UCItem): string {
+  return `Vais ajudar-me a construir um MANUAL DO ALUNO para ${uc.code} — ${uc.ref.nome}. Alunos do secundário com dificuldades.
+
+REGRAS: (1) ÂMBITO — pergunta "o que produz o aluno nesta UC?" e interpreta os termos à volta disso (ex.: "massas" dos acepipes, não esparguete). (2) ${sequenciaPorTipo(uc.kind)} (3) Cada capítulo nos três eixos: conhecimento + aptidão (prática) + atitudes. (4) Reflete a prática, concreto, linguagem simples. (5) Fontes: ${FONTES}. (6) Cada UC só trata o que é seu. (7) Fichas de trabalho em papel, interativas. (8) Português europeu.
+
+Referencial:
+${refBlock(uc)}
+
+FORMATO: responde em JSON puro (sem crases). Cada capítulo = um objeto { "title", "paragraphs"?, "subsections"?, "calloutBoxes"?, "bullets"?, "tables"?, "procedureSteps"?, "consolidationBlock"?, "worksheetSections"? }.
+
+TRABALHO: PASSO 1 devolve só o ÍNDICE (array JSON de 8-14 títulos, âmbito certo) e pára. PASSO 2 quando eu disser "capítulo N"/"próximo" escreve só esse capítulo (JSON); se longo, "continua": true e eu digo "continua". PASSO 3 no fim, síntese + fichas interativas.
+
+Começa pelo PASSO 1: devolve só o índice.`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -255,10 +221,17 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   const [lista, setLista] = useState(listSaved());
   const [selCode, setSelCode] = useState(UCS[0]?.code || '');
   const [doc, setDoc] = useState<DocumentoManual | null>(null);
-  const [colarTxt, setColarTxt] = useState('');
+  const [gerando, setGerando] = useState(false);
+  const [aFazerIndice, setAFazerIndice] = useState(false);
+  const [faseIndice, setFaseIndice] = useState(false);
+  const [indiceTxt, setIndiceTxt] = useState('');
+  const [prog, setProg] = useState({ done: 0, total: 0 });
   const [logs, setLogs] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
+  const [colarAberto, setColarAberto] = useState(false);
+  const [colarTxt, setColarTxt] = useState('');
   const [copiado, setCopiado] = useState(false);
+  const pararRef = useRef(false);
 
   useEffect(() => { setLista(listSaved()); }, [modo]);
 
@@ -266,11 +239,90 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     return { unitCode: uc.code, unitNumber: ucNumber(uc.code), fullTitle: uc.ref.nome, schoolLabel: SCHOOL_LABEL, academicYear: ANO_LETIVO, footerDate: FOOTER.date, footerReference: FOOTER.reference, footerRevision: FOOTER.revision, pages: [] };
   }
 
+  async function chamarIA(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string }> {
+    try {
+      const res = await fetch('/api/gerarPaginaManual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+      const txt = await res.text();
+      let json: any;
+      try { json = JSON.parse(txt); } catch { return { ok: false, motivo: res.ok ? 'json_invalido' : 'erro_servidor', mensagem: (txt || '').slice(0, 140) }; }
+      if (!json.ok) return { ok: false, motivo: json.motivo, mensagem: json.mensagem };
+      let data = json.pagina !== undefined ? json.pagina : json;
+      if (typeof data === 'string') { try { data = tryParse(data); } catch { /* */ } }
+      return { ok: true, data };
+    } catch (e: any) { return { ok: false, motivo: 'rede', mensagem: String(e?.message || e) }; }
+  }
+
+  async function gerarIndice() {
+    const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
+    setAFazerIndice(true); setSaved(false); setFaseIndice(false); setLogs(['A desenhar o índice…']); setModo('gerar');
+    const r = await chamarIA(buildOutlinePrompt(uc));
+    setAFazerIndice(false);
+    let titulos: string[] = [];
+    if (r.ok && Array.isArray(r.data)) titulos = r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim());
+    if (!titulos.length) { titulos = uc.ref.conhecimentos.slice(); setLogs((l) => [...l, `— Não consegui desenhar o índice (${r.mensagem || r.motivo || 'erro'}). Usei os conhecimentos como base — revê e edita.`]); }
+    else setLogs((l) => [...l, `✓ Índice com ${titulos.length} capítulos. Revê e corrige o âmbito antes de gerar.`]);
+    setIndiceTxt(titulos.join('\n')); setFaseIndice(true);
+  }
+
+  function fundir(dest: any, part: any) {
+    (['paragraphs', 'bullets', 'subsections', 'tables', 'calloutBoxes', 'dialogueBlocks', 'worksheetSections'] as const).forEach((k) => {
+      if (Array.isArray(part[k])) dest[k] = [...(dest[k] || []), ...part[k]];
+    });
+    if (part.procedureSteps && !dest.procedureSteps) dest.procedureSteps = part.procedureSteps;
+    if (part.consolidationBlock && !dest.consolidationBlock) dest.consolidationBlock = part.consolidationBlock;
+    if (part.subtitle && !dest.subtitle) dest.subtitle = part.subtitle;
+  }
+
+  async function gerarCapitulos() {
+    const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
+    const caps = indiceTxt.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (!caps.length) return;
+    pararRef.current = false; setGerando(true); setSaved(false); setFaseIndice(false); setLogs([]);
+    const tarefas: { titulo: string; tipo: 'intro' | 'capitulo' | 'sintese' | 'ficha' }[] = [
+      { titulo: 'Introdução', tipo: 'intro' },
+      ...caps.map((c) => ({ titulo: c, tipo: 'capitulo' as const })),
+      { titulo: 'Síntese e critérios de desempenho', tipo: 'sintese' },
+      { titulo: 'Folha de trabalho 1', tipo: 'ficha' },
+      { titulo: 'Folha de trabalho 2', tipo: 'ficha' },
+    ];
+    setProg({ done: 0, total: tarefas.length });
+    const d = novoDoc(uc); const covered: string[] = [];
+    let parouPorLimite = false;
+    for (let i = 0; i < tarefas.length && !pararRef.current; i++) {
+      const t = tarefas[i];
+      let pagina: any = null; let prev = ''; let continua = true; let parte = 1; let motivo = '';
+      while (continua && parte <= MAX_PAGINAS_CAP && !pararRef.current) {
+        let ok = false;
+        for (let att = 0; att < 2 && !ok; att++) {
+          const r = await chamarIA(buildChapterPrompt(uc, t.titulo, caps, covered, t.tipo, prev, parte));
+          if (!r.ok) { motivo = r.motivo || 'erro'; if (motivo === 'limite_atingido' || motivo === 'sem_chave') att = 9; continue; }
+          const part = r.data || {};
+          if (!pagina) pagina = { pageNumber: 0, title: t.tipo === 'capitulo' ? t.titulo : (part.title || t.titulo) };
+          fundir(pagina, part);
+          prev = (pagina.paragraphs || []).slice(-1).join(' ').slice(0, 240) + ' | ' + (pagina.subsections || []).map((s: any) => s.title).join('; ');
+          continua = t.tipo === 'capitulo' && part.continua === true && parte < MAX_PAGINAS_CAP;
+          ok = true;
+        }
+        if (!ok) { setLogs((l) => [...l, `✗ ${t.titulo.slice(0, 42)}… (${motivo})`]); break; }
+        parte++;
+      }
+      if (pagina && (pagina.paragraphs?.length || pagina.subsections?.length || pagina.worksheetSections?.length || pagina.tables?.length)) {
+        pagina.pageNumber = d.pages.length === 0 ? 1 : d.pages.length + 1;
+        d.pages.push(pagina); covered.push(pagina.title + (pagina.subtitle ? ' / ' + pagina.subtitle : '')); setDoc({ ...d });
+        setLogs((l) => [...l, `✓ ${pagina.title}${parte > 2 ? ` (${parte - 1} págs)` : ''}`]);
+      }
+      setProg({ done: i + 1, total: tarefas.length });
+      if (motivo === 'limite_atingido' || motivo === 'sem_chave') { parouPorLimite = true; setLogs((l) => [...l, motivo === 'sem_chave' ? '— Falta a GEMINI_API_KEY na Vercel.' : '— Limite grátis da Gemini atingido. Tenta mais tarde, ou usa o modo manual (copiar prompt-mestre).']); break; }
+    }
+    setGerando(false);
+    if (d.pages.length > 0) { setDoc({ ...d }); setLogs((l) => [...l, `— ${d.pages.length} páginas.${parouPorLimite ? '' : ' Podes guardar/exportar.'}`]); }
+  }
+
   function copiarMestre() {
     const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
     const txt = buildMasterPrompt(uc);
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); }).catch(() => {});
-    else { setColarTxt(txt); }
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); }).catch(() => setColarTxt(txt));
+    else setColarTxt(txt);
   }
 
   function adicionar() {
@@ -278,8 +330,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     let parsed: any;
     try { parsed = tryParse(colarTxt); } catch (e: any) { setLogs((l) => [...l, '✗ JSON inválido: ' + e.message]); return; }
     let arr: any[] = Array.isArray(parsed) ? parsed : (parsed.pages || parsed.paginas || [parsed]);
-    // ignorar um índice (array de strings) colado por engano
-    if (arr.length && typeof arr[0] === 'string') { setLogs((l) => [...l, 'ℹ Isto parece o ÍNDICE (lista de títulos). Cola antes um CAPÍTULO (objeto JSON com "title" e conteúdo).']); return; }
+    if (arr.length && typeof arr[0] === 'string') { setLogs((l) => [...l, 'ℹ Isto parece o ÍNDICE (lista de títulos), não um capítulo. Cola o índice no campo de cima e usa "Gerar manual".']); return; }
     arr = arr.filter((p) => p && typeof p === 'object' && (p.title || p.paragraphs || p.worksheetSections || p.subsections));
     if (!arr.length) { setLogs((l) => [...l, '✗ Não encontrei capítulos no que colaste.']); return; }
     const d = doc && doc.unitCode === uc.code ? { ...doc, pages: [...doc.pages] } : novoDoc(uc);
@@ -300,8 +351,6 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   const btn = (bg: string, color = '#fff'): React.CSSProperties => ({ padding: '9px 15px', borderRadius: 8, border: 'none', background: bg, color, fontWeight: 600, fontSize: 13, cursor: 'pointer' });
   const ghost: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' };
   const uc = UCS.find((u) => u.code === selCode);
-  const passo: React.CSSProperties = { display: 'flex', gap: 8, alignItems: 'baseline', margin: '0 0 6px' };
-  const num: React.CSSProperties = { flex: '0 0 auto', width: 20, height: 20, borderRadius: 10, background: ROXO, color: '#fff', fontSize: 12, fontWeight: 700, textAlign: 'center', lineHeight: '20px' };
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '8px 4px', fontFamily: "'Inter', system-ui, sans-serif", color: '#1f2937' }}>
@@ -316,7 +365,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
 
       {modo === 'lista' && (
         <div>
-          <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>Os manuais ficam guardados neste navegador. Para um ficheiro que possas enviar ou imprimir, abre um manual e usa Exportar Word ou PDF.</p>
+          <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>Os manuais ficam guardados neste navegador. Para um ficheiro, abre um manual e usa Exportar Word ou PDF.</p>
           {lista.length === 0 ? <p style={{ color: '#6b7280' }}>Ainda não há manuais. Vai a <b>Criar Manual</b>.</p> : (
             <div style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
               {lista.map((m) => (
@@ -338,33 +387,53 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
         <div>
           <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 16, marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Unidade de competência</label>
-            <select value={selCode} onChange={(e) => setSelCode(e.target.value)} style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, marginBottom: 12 }}>
+            <select value={selCode} onChange={(e) => setSelCode(e.target.value)} disabled={gerando || aFazerIndice} style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, marginBottom: 10 }}>
               {UCS.map((u) => <option key={u.code} value={u.code}>{u.code} — {u.ref.nome}</option>)}
             </select>
-
-            <div style={{ background: '#f8f7ff', border: '1px solid #ece9fd', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-              <div style={passo}><span style={num}>1</span><span style={{ fontSize: 13 }}><b>Copia o prompt-mestre</b> e cola-o na tua IA (Gemini, ChatGPT ou Claude). Ela devolve primeiro o <b>índice</b> — revê e corrige o âmbito.</span></div>
-              <div style={passo}><span style={num}>2</span><span style={{ fontSize: 13 }}>Pede os capítulos <b>um a um</b> ("capítulo 1", "próximo", "continua"). A IA responde em JSON.</span></div>
-              <div style={passo}><span style={num}>3</span><span style={{ fontSize: 13 }}>Cola cada capítulo (JSON) no campo abaixo e clica <b>Juntar ao manual</b>. No fim, exporta em Word/PDF.</span></div>
-            </div>
+            {uc && <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 12px' }}>Tipo: {uc.kind}. A app desenha o índice, tu revês, e depois gera os capítulos sozinha (Gemini — deixa a aba aberta).</p>}
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <button style={btn(ROXO)} onClick={copiarMestre}>{copiado ? 'Copiado ✓' : 'Copiar prompt-mestre'}</button>
-              {doc && doc.pages.length > 0 && <>
+              {gerando ? (
+                <button style={btn('#dc2626')} onClick={() => (pararRef.current = true)}>Parar</button>
+              ) : (
+                <button style={btn(ROXO)} disabled={aFazerIndice} onClick={gerarIndice}>{aFazerIndice ? 'A desenhar índice…' : (faseIndice ? '↻ Refazer índice' : '1. Desenhar índice')}</button>
+              )}
+              {faseIndice && !gerando && <button style={btn(ROXO)} onClick={gerarCapitulos}>2. Gerar manual ▶</button>}
+              {doc && doc.pages.length > 0 && !gerando && <>
                 <button style={ghost} onClick={() => setModo('ver')}>Ver ({doc.pages.length})</button>
                 <button style={btn(ROXO)} onClick={guardar}>Guardar</button>
               </>}
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Colar capítulo (JSON) devolvido pela IA</label>
-              <textarea value={colarTxt} onChange={(e) => setColarTxt(e.target.value)} placeholder='Cola aqui um capítulo, por exemplo: { "title": "…", "paragraphs": ["…"] }' style={{ width: '100%', height: 140, borderRadius: 8, border: '1px solid #d1d5db', padding: 10, fontSize: 12, fontFamily: 'monospace' }} />
-              <button style={btn(ROXO)} onClick={adicionar}>Juntar ao manual</button>
-            </div>
+            {faseIndice && (
+              <div style={{ marginTop: 12 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Índice — revê e corrige o âmbito (um capítulo por linha)</label>
+                <textarea value={indiceTxt} onChange={(e) => setIndiceTxt(e.target.value)} disabled={gerando} style={{ width: '100%', height: 190, borderRadius: 8, border: '1px solid #d1d5db', padding: 10, fontSize: 13, lineHeight: 1.5 }} />
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Corrige o que estiver errado (ex.: “massas” = massas dos acepipes, não italianas). Depois clica “2. Gerar manual”.</p>
+              </div>
+            )}
+
+            {prog.total > 0 && gerando && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ height: 8, borderRadius: 6, background: '#eee', overflow: 'hidden' }}><div style={{ height: '100%', width: `${(prog.done / prog.total) * 100}%`, background: ROXO, transition: 'width .2s' }} /></div>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{prog.done} de {prog.total}</p>
+              </div>
+            )}
             {saved && <p style={{ fontSize: 12, color: '#0a7d2c', marginTop: 8 }}>✓ Guardado em Manuais Guardados.</p>}
+
+            <div style={{ marginTop: 12, borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
+              <button style={{ ...ghost, fontSize: 12 }} onClick={() => setColarAberto(!colarAberto)}>{colarAberto ? '▾' : '▸'} Modo manual (IA externa) — se a Gemini esgotar</button>
+              {colarAberto && (
+                <div style={{ marginTop: 8 }}>
+                  <button style={{ ...ghost, marginBottom: 8 }} onClick={copiarMestre}>{copiado ? 'Copiado ✓' : 'Copiar prompt-mestre'}</button>
+                  <textarea value={colarTxt} onChange={(e) => setColarTxt(e.target.value)} placeholder='Cola aqui um capítulo (JSON) devolvido pela IA externa' style={{ width: '100%', height: 110, borderRadius: 8, border: '1px solid #d1d5db', padding: 8, fontSize: 12, fontFamily: 'monospace' }} />
+                  <button style={btn(ROXO)} onClick={adicionar}>Juntar ao manual</button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {logs.length > 0 && <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, maxHeight: 240, overflow: 'auto', fontSize: 12, fontFamily: 'monospace' }}>{logs.map((l, i) => <div key={i} style={{ color: l.startsWith('✗') ? '#dc2626' : l.startsWith('ℹ') ? '#b45309' : '#374151', padding: '1px 0' }}>{l}</div>)}</div>}
+          {logs.length > 0 && <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, maxHeight: 240, overflow: 'auto', fontSize: 12, fontFamily: 'monospace' }}>{logs.map((l, i) => <div key={i} style={{ color: l.startsWith('✗') ? '#dc2626' : (l.startsWith('—') || l.startsWith('ℹ')) ? '#b45309' : '#374151', padding: '1px 0' }}>{l}</div>)}</div>}
         </div>
       )}
 
