@@ -237,6 +237,8 @@ ${lista}
 O professor quer ACRESCENTAR ao manual: "${pedido}".
 
 Decide, do ponto de vista PEDAGÓGICO e do ÂMBITO da UC (o que o aluno produz):
+- Desenvolver texto corrido, evitando esquemas quando não são necessãrios.
+- Deves desenvolver o capitulo exaustivamente.
 - Tornar o aluno um excelente profissional, dar-lhe a informação para saber exactamente o que fazer em cada capitulo.
 - O manual cria autonomia ao aluno na tomada de decisões sobre cada capitulo.
 - Se o assunto já pertence a um capítulo existente, EXPANDE esse capítulo.
