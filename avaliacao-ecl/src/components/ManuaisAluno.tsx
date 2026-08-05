@@ -9,6 +9,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { REFERENCIAL_811RA144, ReferencialUC } from '../referencial811RA144';
 import { downloadManualDoc, exportManualPdf } from '../exportManualDoc';
+import { getFichasProducao } from '../backend';
+import { encontrarSubtecnica, encontrarAparelho } from '../compatECL';
 
 const BRAND = '#1aa1af';
 const LIGHT = '#d9f2f4';
@@ -157,7 +159,33 @@ function refBlock(uc: UCItem): string {
   const ati = uc.ref.atitudes && uc.ref.atitudes.length ? `Atitudes a demonstrar: ${uc.ref.atitudes.join(' | ')}\n` : '';
   return `Realizações: ${uc.ref.realizacoes.join(' | ')}\nConhecimentos: ${uc.ref.conhecimentos.join(' | ')}\n${apt}${ati}Critérios: ${uc.ref.criteriosDesempenho.join(' | ')}`;
 }
-function buildOutlinePrompt(uc: UCItem): string {
+interface Comp { subs: string[]; apps: string[]; subDefs: string[]; appDefs: string[] }
+// Reúne as subtécnicas e aparelhos REAIS trabalhados nos planos/fichas desta UC,
+// com as definições da biblioteca. Se não houver dados, devolve vazio (recuo).
+function competenciasDaUC(ucId: string): Comp {
+  const subs: string[] = []; const apps: string[] = []; const subDefs: string[] = []; const appDefs: string[] = [];
+  try {
+    const fichas: any[] = (getFichasProducao() as any[]).filter((f) => f && f.ucId === ucId);
+    const sIds = new Set<string>(); const aIds = new Set<string>();
+    fichas.forEach((f) => { (f.tecnicasDetectadas || []).forEach((id: string) => sIds.add(id)); (f.aparelhosDetectados || []).forEach((id: string) => aIds.add(id)); });
+    sIds.forEach((id) => { const s: any = encontrarSubtecnica(id); if (s && s.nome) { subs.push(s.nome); const d = s.definicao || s.resultado_esperado; if (d) subDefs.push(`${s.nome}: ${d}`); } });
+    aIds.forEach((id) => { const a: any = encontrarAparelho(id); if (a && a.nome) { apps.push(a.nome); if (a.definicao) appDefs.push(`${a.nome}${a.categoria ? ' (' + a.categoria + ')' : ''}: ${a.definicao}`); } });
+  } catch { /* sem biblioteca/planos — recuo silencioso */ }
+  return { subs, apps, subDefs, appDefs };
+}
+function blocoCompetencias(c: Comp): string {
+  if (!c.subs.length && !c.apps.length) return '';
+  let t = '\n\nCOMPETÊNCIAS REAIS DESTA UC (retiradas dos planos de aula — trata-as, com estes nomes exatos):';
+  if (c.subs.length) t += `\n- Subtécnicas: ${c.subs.slice(0, 60).join(', ')}`;
+  if (c.apps.length) t += `\n- Aparelhos (preparações de base — massas, cremes, molhos, fundos): ${c.apps.slice(0, 40).join(', ')}`;
+  return t;
+}
+function blocoDefs(c: Comp): string {
+  const defs = [...c.subDefs, ...c.appDefs].slice(0, 25);
+  return defs.length ? `\n\nDEFINIÇÕES DE REFERÊNCIA (usa-as para desenvolver com rigor, sem as copiar tal e qual):\n- ${defs.join('\n- ')}` : '';
+}
+
+function buildOutlinePrompt(uc: UCItem, comp: Comp): string {
   return `Produz APENAS um array JSON de strings (sem markdown, sem crases). Cada string é o título de um capítulo.
 
 És um professor de cozinha e restauração com 20 anos de experiência. Desenha o ÍNDICE de um MANUAL DO ALUNO para a UC ${uc.code} — ${uc.ref.nome} (tipo: ${uc.kind}), para alunos do secundário com dificuldades.
@@ -167,15 +195,22 @@ PENSA PRIMEIRO (âmbito): "O QUE É QUE O ALUNO PRODUZ EM AULA com esta UC?". A 
 ${sequenciaPorTipo(uc.kind)}
 
 Fundamenta-te no referencial (expande para o conteúdo REAL de cozinha, não fiques nas frases genéricas):
-${refBlock(uc)}
+${refBlock(uc)}${blocoCompetencias(comp)}
 
 LÍNGUA (OBRIGATÓRIO): ${PT_PT}
 
-REGRAS: 8 a 14 capítulos, por ordem pedagógica, sem repetição, com o âmbito certo; títulos concretos (nada de "Conhecimento:" nem verbos administrativos); inclui um capítulo final "Onde procurar informação" (fontes: ${FONTES}); não desenvolvas temas que são foco de outra UC (HACCP=UC03584; nutrição=UC00596).
+REGRAS:
+- 8 a 14 capítulos, por ordem pedagógica, do básico ao avançado, sem sobreposição.
+- Organiza os capítulos à volta das COMPETÊNCIAS PRÁTICAS (realizações e aptidões) e das subtécnicas/aparelhos reais acima. A teoria (conhecimentos) desenvolve-se A PARTIR da prática.
+- Para CADA capítulo, além do título, escreve 4 a 8 PONTOS A TRABALHAR, detalhados e concretos (o que se explica e se faz nesse capítulo). Nível esperado (exemplo do capítulo das facas): constituição da faca (partes); tipos de facas e para que serve cada uma; como pegar (pega em pinça); pousar/lançar na tábua e postura; segurança na utilização; cuidados no transporte e ao passar a faca; afiação e conservação.
+- Um aparelho (massa, creme, molho, fundo) merece pontos próprios: o que é, para que serve, ingredientes-base, técnica passo a passo, erros a evitar.
+- Inclui um capítulo final "Onde procurar informação" (fontes: ${FONTES}).
+- Não desenvolvas temas que são foco de outra UC (HACCP=UC03584; nutrição=UC00596); no máximo, uma referência.
 
-Formato: ["Título 1","Título 2", ...]`;
+FORMATO: um array JSON de strings; cada string é "Título — ponto; ponto; ponto; …" (o título, um travessão " — ", e os pontos separados por ponto e vírgula).
+Exemplo: ["As facas — constituição da faca; tipos de facas; pega em pinça; segurança; transporte; afiação", "..."]`;
 }
-function buildChapterPrompt(uc: UCItem, titulo: string, indice: string[], covered: string[], tipo: 'intro' | 'capitulo' | 'sintese' | 'ficha', prevResumo: string, parte: number): string {
+function buildChapterPrompt(uc: UCItem, titulo: string, pontos: string[], indice: string[], covered: string[], tipo: 'intro' | 'capitulo' | 'sintese' | 'ficha', comp: Comp, prevResumo: string, parte: number): string {
   const dlg = uc.kind === 'serviço' ? ', "dialogueBlocks"?: [{ "title": string, "instructions"?: string, "items": [{ "client": string, "response": string, "objective"?: string }] }]' : '';
   const idx = indice.map((c, i) => `${i + 1}. ${c}`).join('\n');
   let especifico = '';
@@ -201,6 +236,7 @@ ${idx}
 
 Referencial:
 ${refBlock(uc)}
+${pontos.length ? `\nPONTOS A COBRIR NESTE CAPÍTULO (obrigatório — desenvolve TODOS a fundo, e NÃO invadas o que é de outros capítulos):\n- ${pontos.join('\n- ')}\n` : ''}${blocoDefs(comp)}
 
 JÁ ESCRITO — capítulos que JÁ EXISTEM neste manual. NÃO repitas a matéria deles: se precisares de tocar num tema já dado, faz só uma referência curta ("como viste no capítulo X…"), não voltes a explicá-lo. Cada capítulo traz informação NOVA.
 ${covered.length ? covered.slice(-25).map((c) => '- ' + c).join('\n') : '(nada ainda — este é o primeiro)'}
@@ -237,16 +273,48 @@ ${lista}
 O professor quer ACRESCENTAR ao manual: "${pedido}".
 
 Decide, do ponto de vista PEDAGÓGICO e do ÂMBITO da UC (o que o aluno produz):
-- Desenvolver texto corrido, evitando esquemas quando não são necessãrios.
-- Deves desenvolver o capitulo exaustivamente.
-- Tornar o aluno um excelente profissional, dar-lhe a informação para saber exactamente o que fazer em cada capitulo.
-- O manual cria autonomia ao aluno na tomada de decisões sobre cada capitulo.
 - Se o assunto já pertence a um capítulo existente, EXPANDE esse capítulo.
 - Se é matéria nova que merece capítulo próprio, cria um NOVO capítulo e diz em que POSIÇÃO entra (a seguir a que capítulo), pela ordem pedagógica. As folhas de trabalho e a síntese ficam sempre no fim.
 - Se o acréscimo não fizer sentido nesta UC, di-lo.
 
 Devolve: { "accao": "novo" | "expandir" | "nao_faz_sentido", "aposNumero": number, "alvoNumero": number, "titulo": string, "justificacao": string }
 (aposNumero = número do capítulo DEPOIS do qual entra o novo; alvoNumero = número do capítulo a expandir; titulo = título do novo capítulo.)`;
+}
+
+function buildRevisaoPrompt(uc: UCItem, page: any, comp: Comp): string {
+  return `Produz APENAS um objeto JSON válido (sem markdown, sem crases). És um revisor pedagógico exigente.
+
+Vais MELHORAR este capítulo de um MANUAL DO ALUNO (UC ${uc.code} — ${uc.ref.nome}), para alunos que NÃO SABEM PRATICAMENTE NADA de cozinha.
+
+MELHORA assim:
+- DESENVOLVE o que estiver curto ou superficial: acrescenta detalhe prático, passo a passo, exemplos concretos (°C, minutos, nomes de pratos e utensílios).
+- Explica DO ZERO cada termo técnico; tira qualquer pressuposto de conhecimento.
+- CORTA repetições e frases vazias ("é importante", "existem vários tipos").
+- Garante PORTUGUÊS DE PORTUGAL: ${PT_PT}
+- MANTÉM o mesmo assunto e a mesma estrutura; NÃO mudes o título nem o âmbito.
+${blocoDefs(comp)}
+
+CAPÍTULO ATUAL (em JSON):
+${JSON.stringify(page).slice(0, 12000)}
+
+Devolve o MESMO capítulo, melhorado, no MESMO formato JSON (title, subtitle?, paragraphs?, subsections?, calloutBoxes?, bullets?, tables?, procedureSteps?, consolidationBlock?, worksheetSections?). Não uses "continua".`;
+}
+
+function buildCoberturaPrompt(uc: UCItem, resumo: string): string {
+  const apt = (uc.ref.aptidoes && uc.ref.aptidoes.length) ? uc.ref.aptidoes.join(' | ') : '(não listadas)';
+  return `Produz APENAS um objeto JSON (sem markdown, sem crases). Verifica a COBERTURA de um manual do aluno.
+
+UC ${uc.code} — ${uc.ref.nome}. O manual devia cobrir estas competências:
+Realizações: ${uc.ref.realizacoes.join(' | ')}
+Aptidões: ${apt}
+Conhecimentos: ${uc.ref.conhecimentos.join(' | ')}
+
+O manual tem estes capítulos:
+${resumo}
+
+Compara e diz o que FALTA. Devolve: { "em_falta": [string], "sugestao": string }
+- em_falta = competências/temas do referencial que o manual NÃO cobre (frases curtas e concretas; se estiver tudo coberto, lista vazia).
+- sugestao = uma frase com o que valeria a pena acrescentar.`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -268,6 +336,8 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   const [pedidoAdd, setPedidoAdd] = useState('');
   const [plano, setPlano] = useState<any>(null);
   const [aPlanear, setAPlanear] = useState(false);
+  const [aVerificar, setAVerificar] = useState(false);
+  const [cobertura, setCobertura] = useState<any>(null);
   const pararRef = useRef(false);
 
   useEffect(() => { setLista(listSaved()); }, [modo]);
@@ -276,9 +346,9 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     return { unitCode: uc.code, unitNumber: ucNumber(uc.code), fullTitle: uc.ref.nome, schoolLabel: SCHOOL_LABEL, academicYear: ANO_LETIVO, footerDate: FOOTER.date, footerReference: FOOTER.reference, footerRevision: FOOTER.revision, pages: [] };
   }
 
-  async function chamarIA(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string; fornecedor?: string; avisos?: string[] }> {
+  async function chamarIA(prompt: string, preferir?: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string; fornecedor?: string; avisos?: string[] }> {
     try {
-      const res = await fetch('/api/gerarPaginaManual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+      const res = await fetch('/api/gerarPaginaManual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, preferir }) });
       const txt = await res.text();
       let json: any;
       try { json = JSON.parse(txt); } catch { return { ok: false, motivo: res.ok ? 'json_invalido' : 'erro_servidor', mensagem: (txt || '').slice(0, 140) }; }
@@ -292,7 +362,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   async function gerarIndice() {
     const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
     setAFazerIndice(true); setSaved(false); setFaseIndice(false); setLogs(['A desenhar o índice…']); setModo('gerar');
-    const r = await chamarIA(buildOutlinePrompt(uc));
+    const r = await chamarIA(buildOutlinePrompt(uc, competenciasDaUC(uc.code)));
     setAFazerIndice(false);
     let titulos: string[] = [];
     if (r.ok && Array.isArray(r.data)) titulos = r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim());
@@ -313,19 +383,23 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
 
   async function gerarCapitulos(continuar = false) {
     const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
-    const caps = indiceTxt.split('\n').map((s) => s.trim()).filter(Boolean);
-    if (!caps.length) return;
+    const linhas = indiceTxt.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (!linhas.length) return;
+    const parseLinha = (l: string) => { const i = l.indexOf('—'); return { titulo: (i >= 0 ? l.slice(0, i) : l).trim(), pontos: i >= 0 ? l.slice(i + 1).split(';').map((x) => x.trim()).filter(Boolean) : [] }; };
+    const capsInfo = linhas.map(parseLinha);
+    const caps = capsInfo.map((c) => c.titulo);
+    const comp = competenciasDaUC(uc.code);
     pararRef.current = false; setGerando(true); setSaved(false); setFaseIndice(false); setLogs([]);
-    const tarefas: { titulo: string; tipo: 'intro' | 'capitulo' | 'sintese' | 'ficha' }[] = [
-      { titulo: 'Introdução', tipo: 'intro' },
-      ...caps.map((c) => ({ titulo: c, tipo: 'capitulo' as const })),
-      { titulo: 'Síntese e critérios de desempenho', tipo: 'sintese' },
-      { titulo: 'Folha de trabalho 1', tipo: 'ficha' },
-      { titulo: 'Folha de trabalho 2', tipo: 'ficha' },
+    const tarefas: { titulo: string; tipo: 'intro' | 'capitulo' | 'sintese' | 'ficha'; pontos: string[] }[] = [
+      { titulo: 'Introdução', tipo: 'intro', pontos: [] },
+      ...capsInfo.map((c) => ({ titulo: c.titulo, tipo: 'capitulo' as const, pontos: c.pontos })),
+      { titulo: 'Síntese e critérios de desempenho', tipo: 'sintese', pontos: [] },
+      { titulo: 'Folha de trabalho 1', tipo: 'ficha', pontos: [] },
+      { titulo: 'Folha de trabalho 2', tipo: 'ficha', pontos: [] },
     ];
     const jaExiste = continuar && !!doc && doc.unitCode === uc.code && doc.pages.length > 0;
     const d: DocumentoManual = jaExiste ? { ...(doc as DocumentoManual), pages: [...(doc as DocumentoManual).pages] } : novoDoc(uc);
-    d.indice = caps;
+    d.indice = linhas;
     const norm = (x: string) => (x || '').toLowerCase().replace(/[^a-zà-ú0-9]+/g, ' ').trim();
     const temIntro = d.pages.some((p) => /introdu/i.test(p.title));
     const temSintese = d.pages.some((p) => /s[íi]ntese|crit[ée]rios/i.test(p.title));
@@ -361,7 +435,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       }
       let pagina: any = null; let prev = ''; let continua = true; let parte = 1; let motivo = ''; let fornecedorUsado = '';
       while (continua && parte <= MAX_PAGINAS_CAP && !pararRef.current) {
-        const r = await pedirComRitmo(buildChapterPrompt(uc, t.titulo, caps, covered, t.tipo, prev, parte));
+        const r = await pedirComRitmo(buildChapterPrompt(uc, t.titulo, t.pontos, caps, covered, t.tipo, comp, prev, parte));
         if (r.fornecedor) fornecedorUsado = r.fornecedor;
         if (!r.ok) { motivo = r.motivo || 'erro'; if (motivo !== 'parado') setLogs((l) => [...l, `✗ ${t.titulo.slice(0, 42)}… (${r.mensagem || motivo})`]); break; }
         const part = r.data || {};
@@ -435,19 +509,20 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     const uc = UCS.find((u) => u.code === selCode); if (!uc || !doc || !plano) return;
     if (plano.accao === 'nao_faz_sentido') { setLogs((l) => [...l, 'ℹ Não encaixa: ' + (plano.justificacao || '')]); setPlano(null); return; }
     pararRef.current = false; setGerando(true); setLogs((l) => [...l, '— A gerar o acréscimo…']);
+    const comp = competenciasDaUC(uc.code);
     const d: DocumentoManual = { ...doc, pages: [...doc.pages] };
     const titulos = d.pages.map((p) => p.title);
     if (plano.accao === 'expandir') {
       const alvo = Math.max(1, Math.min(d.pages.length, Number(plano.alvoNumero) || 1)) - 1;
       const base: any = { ...d.pages[alvo] };
-      const r = await chamarIA(buildChapterPrompt(uc, base.title, titulos, titulos, 'capitulo', `Expandir "${base.title}" com: ${pedidoAdd}`, 2));
+      const r = await chamarIA(buildChapterPrompt(uc, base.title, [], titulos, titulos, 'capitulo', comp, `Expandir "${base.title}" com: ${pedidoAdd}`, 2));
       if (r.ok && r.data) { fundir(base, r.data); d.pages[alvo] = base; setLogs((l) => [...l, `✓ Expandido: ${base.title}`]); }
       else setLogs((l) => [...l, `✗ Falhou (${r.mensagem || r.motivo}).`]);
     } else {
       const titulo = plano.titulo || pedidoAdd;
       let pagina: any = { pageNumber: 0, title: titulo }; let prev = ''; let continua = true; let parte = 1;
       while (continua && parte <= MAX_PAGINAS_CAP && !pararRef.current) {
-        const r = await chamarIA(buildChapterPrompt(uc, titulo, [...titulos, titulo], titulos, 'capitulo', prev, parte));
+        const r = await chamarIA(buildChapterPrompt(uc, titulo, [], [...titulos, titulo], titulos, 'capitulo', comp, prev, parte));
         if (!r.ok) { setLogs((l) => [...l, `✗ Falhou (${r.mensagem || r.motivo}).`]); break; }
         fundir(pagina, r.data || {});
         prev = (pagina.paragraphs || []).slice(-1).join(' ').slice(0, 240);
@@ -464,6 +539,43 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     d.pages.forEach((p, i) => (p.pageNumber = i === 0 ? 1 : i + 1));
     setDoc(d); setPlano(null); setPedidoAdd(''); setSaved(false); setGerando(false);
     setLogs((l) => [...l, `— Manual tem agora ${d.pages.length} páginas. Guarda para manter.`]);
+  }
+
+  async function reverManual() {
+    if (!doc || doc.pages.length === 0) return;
+    const uc = UCS.find((u) => u.code === doc.unitCode); if (!uc) return;
+    const comp = competenciasDaUC(uc.code);
+    pararRef.current = false; setGerando(true); setSaved(false); setLogs(['— A rever e melhorar capítulo a capítulo…']);
+    const d: DocumentoManual = { ...doc, pages: [...doc.pages] };
+    setProg({ done: 0, total: d.pages.length });
+    let primeiro = true;
+    for (let i = 0; i < d.pages.length && !pararRef.current; i++) {
+      if (!primeiro) await esperar(THROTTLE_MS);
+      primeiro = false;
+      const orig = d.pages[i];
+      const r = await chamarIA(buildRevisaoPrompt(uc, orig, comp), 'openai');
+      if (r.ok && r.data && typeof r.data === 'object' && (r.data.paragraphs || r.data.subsections || r.data.worksheetSections || r.data.tables)) {
+        const melhor: any = r.data; melhor.title = orig.title; melhor.pageNumber = orig.pageNumber;
+        d.pages[i] = melhor; setDoc({ ...d });
+        setLogs((l) => [...l, `✓ Revisto: ${orig.title}${r.fornecedor ? ` — via ${r.fornecedor}` : ''}`]);
+      } else {
+        setLogs((l) => [...l, `✗ ${orig.title.slice(0, 40)}… (${r.mensagem || r.motivo || 'sem melhoria'})`]);
+      }
+      setProg({ done: i + 1, total: d.pages.length });
+    }
+    setGerando(false); setSaved(false); setDoc({ ...d });
+    setLogs((l) => [...l, '— Revisão terminada. Guarda para manter.']);
+  }
+
+  async function verificarCobertura() {
+    if (!doc || doc.pages.length === 0) return;
+    const uc = UCS.find((u) => u.code === doc.unitCode); if (!uc) return;
+    setAVerificar(true); setCobertura(null); setLogs(['— A verificar cobertura vs referencial…']);
+    const resumo = doc.pages.map((p) => '- ' + p.title + (p.subtitle ? ': ' + p.subtitle : '')).join('\n');
+    const r = await chamarIA(buildCoberturaPrompt(uc, resumo), 'gemini');
+    setAVerificar(false);
+    if (r.ok && r.data && Array.isArray(r.data.em_falta)) { setCobertura(r.data); setLogs((l) => [...l, `✓ Cobertura verificada — ${r.data.em_falta.length} em falta.`]); }
+    else setLogs((l) => [...l, `✗ Não consegui verificar (${r.mensagem || r.motivo || 'erro'}).`]);
   }
 
   const btn = (bg: string, color = '#fff'): React.CSSProperties => ({ padding: '9px 15px', borderRadius: 8, border: 'none', background: bg, color, fontWeight: 600, fontSize: 13, cursor: 'pointer' });
@@ -529,9 +641,9 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
 
             {faseIndice && (
               <div style={{ marginTop: 12 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Índice — revê e corrige o âmbito (um capítulo por linha)</label>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Índice — revê e edita (uma linha por capítulo: Título — ponto; ponto; ponto)</label>
                 <textarea value={indiceTxt} onChange={(e) => setIndiceTxt(e.target.value)} disabled={gerando} style={{ width: '100%', height: 190, borderRadius: 8, border: '1px solid #d1d5db', padding: 10, fontSize: 13, lineHeight: 1.5 }} />
-                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Corrige o que estiver errado (ex.: “massas” = massas dos acepipes, não italianas). Depois clica “2. Gerar manual”.</p>
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Cada linha é um capítulo: título, um travessão “—”, e os pontos a trabalhar separados por “;”. Acrescenta ou tira pontos — a IA fica obrigada a cobri-los. Corrige aqui o âmbito. Depois clica “2. Gerar manual”.</p>
               </div>
             )}
 
@@ -565,6 +677,8 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
             <h2 style={{ flex: 1, fontSize: 18, fontWeight: 700, margin: 0 }}>{doc.unitCode} — {doc.fullTitle}</h2>
             <button style={ghost} onClick={() => { try { exportManualPdf(doc as any); } catch (e: any) { alert('Erro ao exportar PDF: ' + (e?.message || e)); } }}>Exportar PDF</button>
             <button style={ghost} onClick={() => { try { downloadManualDoc(doc as any); } catch (e: any) { alert('Erro ao exportar Word: ' + (e?.message || e)); } }}>Exportar Word</button>
+            <button style={ghost} disabled={gerando || aVerificar} onClick={reverManual}>{gerando ? 'A rever…' : '✨ Rever (melhorar)'}</button>
+            <button style={ghost} disabled={gerando || aVerificar} onClick={verificarCobertura}>{aVerificar ? 'A verificar…' : 'Verificar cobertura'}</button>
             <button style={btn(ROXO)} onClick={guardar}>{saved ? 'Guardar (atualizar)' : 'Guardar'}</button>
           </div>
           <p style={{ fontSize: 12, color: saved ? '#0a7d2c' : '#6b7280', marginBottom: 14 }}>{saved ? '✓ Em Manuais Guardados. Exporta em Word/PDF para um ficheiro.' : 'Ainda não guardado. Clica Guardar, ou exporta em Word/PDF.'}</p>
@@ -591,6 +705,19 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
             )}
             {logs.length > 0 && <div style={{ marginTop: 8, fontSize: 12, fontFamily: 'monospace', maxHeight: 120, overflow: 'auto' }}>{logs.slice(-6).map((l, i) => <div key={i} style={{ color: l.startsWith('✗') ? '#dc2626' : (l.startsWith('—') || l.startsWith('ℹ')) ? '#b45309' : '#374151' }}>{l}</div>)}</div>}
           </div>
+          {cobertura && (
+            <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+              <b style={{ color: ROXO }}>Cobertura do referencial</b>
+              {cobertura.em_falta && cobertura.em_falta.length ? (
+                <>
+                  <p style={{ fontSize: 13, margin: '6px 0 4px' }}>Ainda por cobrir:</p>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>{cobertura.em_falta.map((x: string, i: number) => <li key={i} style={{ marginBottom: 3 }}>{x}</li>)}</ul>
+                  {cobertura.sugestao && <p style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>💡 {cobertura.sugestao}</p>}
+                  <p style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>Podes usar “Completar este manual” acima para acrescentar o que falta.</p>
+                </>
+              ) : <p style={{ fontSize: 13, color: '#0a7d2c', marginTop: 6 }}>✓ O manual cobre as competências do referencial.</p>}
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {doc.pages.map((page, idx) => {
               const isCover = idx === 0;
