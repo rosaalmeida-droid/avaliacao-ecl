@@ -9,9 +9,11 @@
 //   GEMINI_API_KEY   — Google AI Studio (grátis)          [principal]
 //   GROQ_API_KEY     — console.groq.com (grátis, sem cartão) [fallback grátis]
 //   OPENAI_API_KEY   — platform.openai.com (PAGO)          [fallback pago]
+//   OPENROUTER_API_KEY — openrouter.ai (grátis com modelos :free) [fallback grátis]
 // Opcionais (para mudar o modelo sem mexer no código):
 //   GROQ_MODEL   (default llama-3.3-70b-versatile)
 //   OPENAI_MODEL (default gpt-4o-mini)
+//   OPENROUTER_MODEL (default meta-llama/llama-3.3-70b-instruct:free)
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -100,6 +102,7 @@ export default async function handler(req: any, res: any) {
   let body: any = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   const prompt = (body && body.prompt) || '';
+  const preferir = (body && body.preferir) || ''; // ex.: 'openrouter' para a revisão ir a outro motor
   if (!prompt) { res.status(400).json({ ok: false, motivo: 'corpo', mensagem: 'Falta o prompt.' }); return; }
 
   const env = process.env;
@@ -108,8 +111,11 @@ export default async function handler(req: any, res: any) {
   if (env.OPENAI_API_KEY) provedores.push({ nome: 'openai', run: () => chamarOpenAICompat('https://api.openai.com/v1/chat/completions', env.OPENAI_API_KEY as string, env.OPENAI_MODEL || 'gpt-4o-mini', prompt) });
   if (env.GEMINI_API_KEY) provedores.push({ nome: 'gemini', run: () => chamarGemini(prompt) });
   if (env.GROQ_API_KEY) provedores.push({ nome: 'groq', run: () => chamarOpenAICompat('https://api.groq.com/openai/v1/chat/completions', env.GROQ_API_KEY as string, env.GROQ_MODEL || 'llama-3.1-8b-instant', prompt) });
+  if (env.OPENROUTER_API_KEY) provedores.push({ nome: 'openrouter', run: () => chamarOpenAICompat('https://openrouter.ai/api/v1/chat/completions', env.OPENROUTER_API_KEY as string, env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free', prompt) });
 
-  if (!provedores.length) { res.status(200).json({ ok: false, motivo: 'sem_chave', mensagem: 'Configura OPENAI_API_KEY (ou GEMINI_API_KEY / GROQ_API_KEY) na Vercel.' }); return; }
+  if (preferir) { const i = provedores.findIndex((p) => p.nome === preferir); if (i > 0) provedores.unshift(provedores.splice(i, 1)[0]); }
+
+  if (!provedores.length) { res.status(200).json({ ok: false, motivo: 'sem_chave', mensagem: 'Configura OPENAI_API_KEY (ou GEMINI_API_KEY / GROQ_API_KEY / OPENROUTER_API_KEY) na Vercel.' }); return; }
 
   let ultimoMotivo = 'limite_atingido';
   const notas: string[] = [];
