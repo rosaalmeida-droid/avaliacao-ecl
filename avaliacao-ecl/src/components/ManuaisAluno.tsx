@@ -194,14 +194,16 @@ LÍNGUA (OBRIGATÓRIO): ${PT_PT}
 
 ÂMBITO: parte sempre de "o que produz o aluno nesta UC?" e interpreta os termos à volta disso (ex.: "massas" dos acepipes, não esparguete).
 
+PÚBLICO (MUITO IMPORTANTE): o aluno NÃO SABE PRATICAMENTE NADA de cozinha — pode nunca ter entrado numa. Escreve DO ZERO: explica cada conceito e cada termo técnico como se fosse a primeira vez que ele ouve aquilo, com palavras simples e exemplos do dia a dia. NUNCA assumas conhecimentos prévios nem uses "como sabes", "obviamente" ou "basta". Se aparece uma palavra técnica, explica-a ali mesmo.
+
 ÍNDICE COMPLETO (para não repetir nem adiantar):
 ${idx}
 
 Referencial:
 ${refBlock(uc)}
 
-JÁ ESCRITO (não repetir):
-${covered.length ? covered.slice(-20).map((c) => '- ' + c).join('\n') : '(nada ainda)'}
+JÁ ESCRITO — capítulos que JÁ EXISTEM neste manual. NÃO repitas a matéria deles: se precisares de tocar num tema já dado, faz só uma referência curta ("como viste no capítulo X…"), não voltes a explicá-lo. Cada capítulo traz informação NOVA.
+${covered.length ? covered.slice(-25).map((c) => '- ' + c).join('\n') : '(nada ainda — este é o primeiro)'}
 
 ${especifico}
 
@@ -270,7 +272,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     return { unitCode: uc.code, unitNumber: ucNumber(uc.code), fullTitle: uc.ref.nome, schoolLabel: SCHOOL_LABEL, academicYear: ANO_LETIVO, footerDate: FOOTER.date, footerReference: FOOTER.reference, footerRevision: FOOTER.revision, pages: [] };
   }
 
-  async function chamarIA(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string; fornecedor?: string }> {
+  async function chamarIA(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string; fornecedor?: string; avisos?: string[] }> {
     try {
       const res = await fetch('/api/gerarPaginaManual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
       const txt = await res.text();
@@ -279,7 +281,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       if (!json.ok) return { ok: false, motivo: json.motivo, mensagem: json.mensagem };
       let data = json.pagina !== undefined ? json.pagina : json;
       if (typeof data === 'string') { try { data = tryParse(data); } catch { /* */ } }
-      return { ok: true, data, fornecedor: json.fornecedor };
+      return { ok: true, data, fornecedor: json.fornecedor, avisos: json.avisos };
     } catch (e: any) { return { ok: false, motivo: 'rede', mensagem: String(e?.message || e) }; }
   }
 
@@ -292,6 +294,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     if (r.ok && Array.isArray(r.data)) titulos = r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim());
     if (!titulos.length) { titulos = uc.ref.conhecimentos.slice(); setLogs((l) => [...l, `— Não consegui desenhar o índice (${r.mensagem || r.motivo || 'erro'}). Usei os conhecimentos como base — revê e edita.`]); }
     else setLogs((l) => [...l, `✓ Índice com ${titulos.length} capítulos${r.fornecedor ? ` (via ${r.fornecedor})` : ''}. Revê e corrige o âmbito antes de gerar.`]);
+    if (r.avisos && r.avisos.length) setLogs((l) => [...l, `⚠ Fallback: ${r.avisos!.join('; ')}`]);
     setIndiceTxt(titulos.join('\n')); setFaseIndice(true);
   }
 
