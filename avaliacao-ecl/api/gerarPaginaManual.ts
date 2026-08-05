@@ -1,4 +1,4 @@
-// api/gerarPaginaManual.ts  (função serverless — runtime edge)
+// api/gerarPaginaManual.ts  (função serverless — runtime Node, até 60s)
 // Gera UMA página/capítulo do manual do aluno, em JSON.
 // MULTI-FORNECEDOR: tenta, por ordem, os fornecedores para os quais existir
 // chave nas variáveis de ambiente — Gemini → Groq (grátis) → OpenAI (pago).
@@ -15,7 +15,7 @@
 
 declare const process: { env: Record<string, string | undefined> };
 
-export const config = { runtime: 'edge' };
+export const config = { maxDuration: 60 }; // runtime Node (default) — permite até 60s no plano Hobby
 
 const MAX_TOKENS = 8192;         // Gemini (TPM alto)
 const MAX_TOKENS_COMPAT = 4096;  // Groq/OpenAI (TPM mais baixo no grátis)
@@ -90,19 +90,17 @@ async function chamarOpenAICompat(url: string, key: string, model: string, promp
   } catch (e: any) { return { erro: `${model} rede` }; }
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
-  if (req.method !== 'POST') return new Response(JSON.stringify({ ok: false, motivo: 'metodo', mensagem: 'Método não permitido' }), { status: 405, headers });
+export default async function handler(req: any, res: any) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  if (req.method !== 'POST') { res.status(405).json({ ok: false, motivo: 'metodo', mensagem: 'Método não permitido' }); return; }
 
-  let prompt = '';
-  try { const corpo = await req.json(); prompt = (corpo && corpo.prompt) || ''; } catch { /* */ }
-  if (!prompt) return new Response(JSON.stringify({ ok: false, motivo: 'corpo', mensagem: 'Falta o prompt.' }), { status: 400, headers });
+  let body: any = req.body;
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+  const prompt = (body && body.prompt) || '';
+  if (!prompt) { res.status(400).json({ ok: false, motivo: 'corpo', mensagem: 'Falta o prompt.' }); return; }
 
   const env = process.env;
   const provedores: { nome: string; run: () => Promise<Resultado> }[] = [];
@@ -111,7 +109,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (env.GEMINI_API_KEY) provedores.push({ nome: 'gemini', run: () => chamarGemini(prompt) });
   if (env.GROQ_API_KEY) provedores.push({ nome: 'groq', run: () => chamarOpenAICompat('https://api.groq.com/openai/v1/chat/completions', env.GROQ_API_KEY as string, env.GROQ_MODEL || 'llama-3.1-8b-instant', prompt) });
 
-  if (!provedores.length) return new Response(JSON.stringify({ ok: false, motivo: 'sem_chave', mensagem: 'Configura GEMINI_API_KEY (ou GROQ_API_KEY / OPENAI_API_KEY) na Vercel.' }), { status: 200, headers });
+  if (!provedores.length) { res.status(200).json({ ok: false, motivo: 'sem_chave', mensagem: 'Configura OPENAI_API_KEY (ou GEMINI_API_KEY / GROQ_API_KEY) na Vercel.' }); return; }
 
   let ultimoMotivo = 'limite_atingido';
   const notas: string[] = [];
@@ -120,7 +118,8 @@ export default async function handler(req: Request): Promise<Response> {
     if (r.texto) {
       try {
         const pagina = reparaJson(r.texto);
-        return new Response(JSON.stringify({ ok: true, pagina, fornecedor: p.nome }), { status: 200, headers });
+        res.status(200).json({ ok: true, pagina, fornecedor: p.nome, avisos: notas });
+        return;
       } catch { ultimoMotivo = 'json_invalido'; notas.push(`${p.nome}: json inválido`); continue; }
     }
     if (r.auth) { ultimoMotivo = 'chave_invalida'; notas.push(`${p.nome}: chave inválida${r.detalhe ? ' — ' + r.detalhe : ''}`); continue; }
@@ -128,5 +127,5 @@ export default async function handler(req: Request): Promise<Response> {
     ultimoMotivo = 'erro_api'; notas.push(`${p.nome}: ${r.erro || 'erro'}${r.detalhe ? ' — ' + r.detalhe : ''}`); continue;
   }
 
-  return new Response(JSON.stringify({ ok: false, motivo: ultimoMotivo, mensagem: 'Todos os fornecedores falharam: ' + notas.join('; ') }), { status: 200, headers });
+  res.status(200).json({ ok: false, motivo: ultimoMotivo, mensagem: 'Todos os fornecedores falharam: ' + notas.join('; ') });
 }
