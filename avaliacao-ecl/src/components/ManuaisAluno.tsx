@@ -237,6 +237,8 @@ ${lista}
 O professor quer ACRESCENTAR ao manual: "${pedido}".
 
 Decide, do ponto de vista PEDAGÓGICO e do ÂMBITO da UC (o que o aluno produz):
+- Tornar o aluno um excelente profissional, dar-lhe a informação para saber exactamente o que fazer em cada capitulo.
+- O manual cria autonomia ao aluno na tomada de decisões sobre cada capitulo.
 - Se o assunto já pertence a um capítulo existente, EXPANDE esse capítulo.
 - Se é matéria nova que merece capítulo próprio, cria um NOVO capítulo e diz em que POSIÇÃO entra (a seguir a que capítulo), pela ordem pedagógica. As folhas de trabalho e a síntese ficam sempre no fim.
 - Se o acréscimo não fizer sentido nesta UC, di-lo.
