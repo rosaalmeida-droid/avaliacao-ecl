@@ -382,17 +382,15 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     const contaPontos = (t: string) => { const m = t.match(/[—–:-]/); if (!m) return 0; const idx = t.indexOf(m[0]); return t.slice(idx + 1).split(/;|·|\n/).filter((x) => x.trim().length > 1).length; };
     for (let tentativa = 0; tentativa < 3; tentativa++) {
       const r = await chamarIA(buildOutlinePrompt(uc, competenciasDaUC(uc.code)));
-      if (!r.ok) return null; // limite/erro real — a fila salta e tenta mais tarde
+      if (!r.ok) { setLogs((l) => [...l, `— A IA não respondeu: ${r.mensagem || r.motivo || 'erro'}`]); return null; } // mostra o motivo real (ex.: sem saldo, chave errada, limite)
       const titulos: string[] = Array.isArray(r.data) ? r.data.filter((x: any) => typeof x === 'string' && x.trim().length > 3).map((x: string) => x.trim()) : [];
       // PORTA DE QUALIDADE: só rejeita índices TRUNCADOS (poucos capítulos = falta de tokens).
-      // Um índice com capítulos suficientes é aceite; os pontos são um bónus, não um bloqueio.
       if (titulos.length >= 5) {
         const comPontos = titulos.filter((t) => contaPontos(t) >= 2).length;
-        if (comPontos >= 2 || tentativa >= 1) return titulos; // 1ª vez pede alguns pontos; a partir da 2ª aceita à mesma
+        if (comPontos >= 2 || tentativa >= 1) { if (r.fornecedor) setLogs((l) => [...l, `— Índice via ${r.fornecedor}.`]); return titulos; }
       }
-      // índice curto/truncado → tenta de novo (pode ter sido truncagem pontual)
     }
-    return null; // ficou truncado várias vezes → não construir sobre base fraca; retomar mais tarde
+    return null;
   }
 
   async function gerarIndice() {
@@ -769,7 +767,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
             <select value={selCode} onChange={(e) => setSelCode(e.target.value)} disabled={gerando || aFazerIndice} style={{ width: '100%', padding: '9px 10px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, marginBottom: 10 }}>
               {UCS.map((u) => <option key={u.code} value={u.code}>{u.code} — {u.ref.nome}</option>)}
             </select>
-            {uc && <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 12px' }}>Tipo: {uc.kind}. A app desenha o índice, tu revês, e depois gera os capítulos sozinha (Gemini — deixa a aba aberta).</p>}
+            {uc && <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 12px' }}>Tipo: {uc.kind}. A app desenha o índice, tu revês, e depois gera os capítulos sozinha (deixa a aba aberta).</p>}
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               {gerando ? (
@@ -802,7 +800,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
             {saved && <p style={{ fontSize: 12, color: '#0a7d2c', marginTop: 8 }}>✓ Guardado em Manuais Guardados.</p>}
 
             <div style={{ marginTop: 12, borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
-              <button style={{ ...ghost, fontSize: 12 }} onClick={() => setColarAberto(!colarAberto)}>{colarAberto ? '▾' : '▸'} Modo manual (IA externa) — se a Gemini esgotar</button>
+              <button style={{ ...ghost, fontSize: 12 }} onClick={() => setColarAberto(!colarAberto)}>{colarAberto ? '▾' : '▸'} Modo manual (IA externa) — se a IA esgotar</button>
               {colarAberto && (
                 <div style={{ marginTop: 8 }}>
                   <button style={{ ...ghost, marginBottom: 8 }} onClick={copiarMestre}>{copiado ? 'Copiado ✓' : 'Copiar prompt-mestre'}</button>
