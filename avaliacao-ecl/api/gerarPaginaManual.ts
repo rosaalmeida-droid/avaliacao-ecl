@@ -107,11 +107,10 @@ export default async function handler(req: any, res: any) {
 
   const env = process.env;
   const provedores: { nome: string; run: () => Promise<Resultado> }[] = [];
-  // Ordem: OpenAI (melhor texto) primeiro; Gemini a seguir; Groq como última rede.
+  // Só motores de QUALIDADE: OpenAI (gpt-4o-mini) à frente, Gemini como reserva.
+  // (Groq e OpenRouter removidos por darem texto fraco nos manuais.)
   if (env.OPENAI_API_KEY) provedores.push({ nome: 'openai', run: () => chamarOpenAICompat('https://api.openai.com/v1/chat/completions', env.OPENAI_API_KEY as string, env.OPENAI_MODEL || 'gpt-4o-mini', prompt) });
   if (env.GEMINI_API_KEY) provedores.push({ nome: 'gemini', run: () => chamarGemini(prompt) });
-  if (env.GROQ_API_KEY) provedores.push({ nome: 'groq', run: () => chamarOpenAICompat('https://api.groq.com/openai/v1/chat/completions', env.GROQ_API_KEY as string, env.GROQ_MODEL || 'llama-3.1-8b-instant', prompt) });
-  if (env.OPENROUTER_API_KEY) provedores.push({ nome: 'openrouter', run: () => chamarOpenAICompat('https://openrouter.ai/api/v1/chat/completions', env.OPENROUTER_API_KEY as string, env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free', prompt) });
 
   if (preferir) { const i = provedores.findIndex((p) => p.nome === preferir); if (i > 0) provedores.unshift(provedores.splice(i, 1)[0]); }
 
