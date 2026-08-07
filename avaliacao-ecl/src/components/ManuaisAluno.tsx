@@ -495,6 +495,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     const base = opts && 'base' in opts ? opts.base : doc;
     const jaExiste = continuar && !!base && base.unitCode === uc.code && base.pages.length > 0;
     const d: DocumentoManual = jaExiste ? { ...(base as DocumentoManual), pages: [...(base as DocumentoManual).pages] } : novoDoc(uc);
+    if (jaExiste) d.pages = d.pages.filter((p: any) => p.incompleto !== true); // ao continuar, remove os "por acabar" para os regerar (mantém os bons)
     d.indice = linhas;
     d.geradorV = GERADOR_V;
     const norm = (x: string) => (x || '').toLowerCase().replace(/[^a-zà-ú0-9]+/g, ' ').trim();
@@ -799,27 +800,6 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
               </div>
             )}
             {saved && <p style={{ fontSize: 12, color: '#0a7d2c', marginTop: 8 }}>✓ Guardado em Manuais Guardados.</p>}
-
-            <div style={{ marginTop: 12, borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Modo automático — fila de manuais (um a um, do início ao fim)</label>
-              <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 6px' }}>Escolhe as UCs (Ctrl/Cmd para várias). A app gera cada manual completo, grava a cada capítulo, e passa ao seguinte. Manuais antigos/fracos são refeitos do zero; os que ficaram por acabar são retomados; os já completos (versão nova) são saltados. Deixa a aba aberta.</p>
-              <select multiple value={filaSel} onChange={(e) => setFilaSel(Array.from(e.target.selectedOptions).map((o) => o.value))} disabled={filaAtiva || gerando} style={{ width: '100%', height: 140, borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, padding: 6 }}>
-                {UCS.map((u) => <option key={u.code} value={u.code}>{u.code} — {u.ref.nome}</option>)}
-              </select>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', marginTop: 8 }}>
-                <input type="checkbox" checked={filaRefazer} onChange={(e) => setFilaRefazer(e.target.checked)} disabled={filaAtiva} />
-                Refazer do zero mesmo os manuais já completos (senão, salta os que já estão bem feitos)
-              </label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {filaAtiva ? (
-                  <button style={btn('#dc2626')} onClick={() => (pararRef.current = true)}>Parar fila</button>
-                ) : (
-                  <button style={btn(ROXO)} disabled={!filaSel.length || gerando} onClick={() => correrFila(filaSel)}>▶ Gerar fila ({filaSel.length})</button>
-                )}
-                <button style={{ ...ghost, fontSize: 12 }} disabled={filaAtiva} onClick={() => setFilaSel(UCS.map((u) => u.code))}>Selecionar todas</button>
-                <button style={{ ...ghost, fontSize: 12 }} disabled={filaAtiva} onClick={() => setFilaSel([])}>Limpar</button>
-              </div>
-            </div>
 
             <div style={{ marginTop: 12, borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
               <button style={{ ...ghost, fontSize: 12 }} onClick={() => setColarAberto(!colarAberto)}>{colarAberto ? '▾' : '▸'} Modo manual (IA externa) — se a Gemini esgotar</button>
