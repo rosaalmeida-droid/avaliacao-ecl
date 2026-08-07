@@ -378,19 +378,21 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   }
 
   async function gerarIndiceCore(uc: UCItem): Promise<string[] | null> {
-    const temPontos = (t: string) => { const j = t.indexOf('—'); return j >= 0 && t.slice(j + 1).split(';').filter((x) => x.trim()).length >= 2; };
-    for (let tentativa = 0; tentativa < 2; tentativa++) {
+    // aceita vários separadores de pontos (— – - :) e conta os pontos
+    const contaPontos = (t: string) => { const m = t.match(/[—–:-]/); if (!m) return 0; const idx = t.indexOf(m[0]); return t.slice(idx + 1).split(/;|·|\n/).filter((x) => x.trim().length > 1).length; };
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
       const r = await chamarIA(buildOutlinePrompt(uc, competenciasDaUC(uc.code)));
-      if (!r.ok) return null; // limite/erro — não dá para prosseguir agora (a fila salta e tenta mais tarde)
-      const titulos: string[] = Array.isArray(r.data) ? r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim()) : [];
-      const comPontos = titulos.filter(temPontos).length;
-      // PORTA DE QUALIDADE: não construir um manual sobre um índice fraco/truncado.
-      // Exige capítulos suficientes E que a maioria tenha pontos a trabalhar.
-      const bom = titulos.length >= 5 && comPontos >= Math.max(3, Math.ceil(titulos.length * 0.6));
-      if (bom) return titulos;
-      // índice fraco → tenta uma segunda vez (pode ter sido truncagem pontual)
+      if (!r.ok) return null; // limite/erro real — a fila salta e tenta mais tarde
+      const titulos: string[] = Array.isArray(r.data) ? r.data.filter((x: any) => typeof x === 'string' && x.trim().length > 3).map((x: string) => x.trim()) : [];
+      // PORTA DE QUALIDADE: só rejeita índices TRUNCADOS (poucos capítulos = falta de tokens).
+      // Um índice com capítulos suficientes é aceite; os pontos são um bónus, não um bloqueio.
+      if (titulos.length >= 5) {
+        const comPontos = titulos.filter((t) => contaPontos(t) >= 2).length;
+        if (comPontos >= 2 || tentativa >= 1) return titulos; // 1ª vez pede alguns pontos; a partir da 2ª aceita à mesma
+      }
+      // índice curto/truncado → tenta de novo (pode ter sido truncagem pontual)
     }
-    return null; // índice ficou fraco/incompleto — melhor não gerar sobre base má; retomar mais tarde
+    return null; // ficou truncado várias vezes → não construir sobre base fraca; retomar mais tarde
   }
 
   async function gerarIndice() {
