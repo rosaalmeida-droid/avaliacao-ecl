@@ -378,12 +378,19 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   }
 
   async function gerarIndiceCore(uc: UCItem): Promise<string[] | null> {
-    const r = await chamarIA(buildOutlinePrompt(uc, competenciasDaUC(uc.code)));
-    let titulos: string[] = [];
-    if (r.ok && Array.isArray(r.data)) titulos = r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim());
-    if (titulos.length) return titulos;
-    if (r.ok) return uc.ref.conhecimentos.slice(); // sem índice mas sem limite → usa conhecimentos como base
-    return null; // falhou (limite/erro) — não dá para prosseguir agora
+    const temPontos = (t: string) => { const j = t.indexOf('—'); return j >= 0 && t.slice(j + 1).split(';').filter((x) => x.trim()).length >= 2; };
+    for (let tentativa = 0; tentativa < 2; tentativa++) {
+      const r = await chamarIA(buildOutlinePrompt(uc, competenciasDaUC(uc.code)));
+      if (!r.ok) return null; // limite/erro — não dá para prosseguir agora (a fila salta e tenta mais tarde)
+      const titulos: string[] = Array.isArray(r.data) ? r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim()) : [];
+      const comPontos = titulos.filter(temPontos).length;
+      // PORTA DE QUALIDADE: não construir um manual sobre um índice fraco/truncado.
+      // Exige capítulos suficientes E que a maioria tenha pontos a trabalhar.
+      const bom = titulos.length >= 5 && comPontos >= Math.max(3, Math.ceil(titulos.length * 0.6));
+      if (bom) return titulos;
+      // índice fraco → tenta uma segunda vez (pode ter sido truncagem pontual)
+    }
+    return null; // índice ficou fraco/incompleto — melhor não gerar sobre base má; retomar mais tarde
   }
 
   async function gerarIndice() {
@@ -391,7 +398,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     setAFazerIndice(true); setSaved(false); setFaseIndice(false); setLogs(['A desenhar o índice…']); setModo('gerar');
     const titulos = await gerarIndiceCore(uc);
     setAFazerIndice(false);
-    if (!titulos || !titulos.length) { setLogs((l) => [...l, '— Não consegui desenhar o índice (limite ou erro). Tenta de novo mais tarde.']); return; }
+    if (!titulos || !titulos.length) { setLogs((l) => [...l, '— O índice não ficou com qualidade suficiente (limite ou geração fraca). Não gerei sobre uma base fraca — carrega “Desenhar índice” outra vez.']); return; }
     setLogs((l) => [...l, `✓ Índice com ${titulos.length} capítulos. Revê e corrige o âmbito antes de gerar.`]);
     setIndiceTxt(titulos.join('\n')); setFaseIndice(true);
   }
@@ -421,7 +428,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       if (!linhas) {
         setLogs((l) => [...l, '  · a desenhar o índice…']);
         linhas = await gerarIndiceCore(uc);
-        if (!linhas) { setLogs((l) => [...l, '  ✗ índice indisponível agora (limite?) — salto e sigo para a próxima.']); continue; }
+        if (!linhas) { setLogs((l) => [...l, '  ✗ índice não ficou bom (limite ou geração fraca) — NÃO construí sobre base fraca; salto e tento noutra corrida.']); continue; }
       } else { setLogs((l) => [...l, '  · retomo o índice já guardado.']); }
       setIndiceTxt(linhas.join('\n'));
       setDoc(baseUsar);
@@ -633,29 +640,51 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       titulosIndice.push(tit);
       pontosPorTitulo[tit.toLowerCase()] = j >= 0 ? l.slice(j + 1).split(';').map((x) => x.trim()).filter(Boolean) : [];
     });
+    const persistir = (dd: DocumentoManual) => { try { localStorage.setItem(KEY(uc.code), JSON.stringify(dd)); } catch { /* */ } };
+    let pararPorLimite = false;
+    async function pedirRev(prompt: string) {
+      let esperas = 0;
+      while (!pararRef.current) {
+        const r = await chamarIA(prompt, 'openai');
+        if (r.ok) return r;
+        if (r.motivo === 'limite_atingido' && esperas < MAX_ESPERAS) {
+          esperas++;
+          setLogs((l) => [...l, `⏳ Limite — a aguardar ${Math.round(ESPERA_429_MS / 1000)}s (${esperas}/${MAX_ESPERAS})…`]);
+          await esperarParavel(ESPERA_429_MS);
+          continue;
+        }
+        return r;
+      }
+      return { ok: false, motivo: 'parado' } as any;
+    }
     setProg({ done: 0, total: d.pages.length });
     let primeiro = true;
     for (let i = 0; i < d.pages.length && !pararRef.current; i++) {
-      if (!primeiro) await esperarParavel(THROTTLE_MS);
-      primeiro = false;
       const orig = d.pages[i];
       const porAcabar = (orig as any).incompleto === true;
+      if (!porAcabar && (orig as any).revisto === true) { setProg({ done: i + 1, total: d.pages.length }); continue; } // já revisto — salta (retoma sem repetir)
+      if (!primeiro) await esperarParavel(THROTTLE_MS);
+      primeiro = false;
       const outros = d.pages.filter((_, k) => k !== i).map((p) => p.title);
       const prompt = porAcabar
         ? buildChapterPrompt(uc, orig.title, pontosPorTitulo[orig.title.toLowerCase()] || [], titulosIndice.length ? titulosIndice : d.pages.map((p) => p.title), outros, 'capitulo', comp, '', 1)
         : buildRevisaoPrompt(uc, orig, comp);
-      const r = await chamarIA(prompt, 'openai');
+      const r = await pedirRev(prompt);
       if (r.ok && r.data && typeof r.data === 'object' && (r.data.paragraphs || r.data.subsections || r.data.worksheetSections || r.data.tables) && substanciaPagina(r.data) >= 400) {
-        const melhor: any = r.data; melhor.title = orig.title; melhor.pageNumber = orig.pageNumber; delete melhor.incompleto; delete melhor.continua;
-        d.pages[i] = melhor; setDoc({ ...d });
+        const melhor: any = r.data; melhor.title = orig.title; melhor.pageNumber = orig.pageNumber; delete melhor.incompleto; delete melhor.continua; melhor.revisto = true;
+        d.pages[i] = melhor; setDoc({ ...d }); persistir(d);
         setLogs((l) => [...l, `✓ ${porAcabar ? 'Completado' : 'Revisto'}: ${orig.title}${r.fornecedor ? ` — via ${r.fornecedor}` : ''}`]);
+      } else if (r.motivo === 'limite_atingido' || r.motivo === 'parado') {
+        pararPorLimite = true;
+        setLogs((l) => [...l, '⚠ Sem tokens de momento — revisão PAUSADA. O que já foi revisto ficou guardado; carrega “Rever” outra vez mais tarde para continuar.']);
+        break;
       } else {
-        setLogs((l) => [...l, `✗ ${orig.title.slice(0, 40)}… (${r.mensagem || r.motivo || 'sem melhoria'})`]);
+        setLogs((l) => [...l, `✗ ${orig.title.slice(0, 40)}… (${r.mensagem || r.motivo || 'sem melhoria'}) — mantive o original.`]);
       }
       setProg({ done: i + 1, total: d.pages.length });
     }
-    setGerando(false); setSaved(false); setDoc({ ...d });
-    setLogs((l) => [...l, '— Revisão terminada. Guarda para manter.']);
+    setGerando(false); setSaved(false); setDoc({ ...d }); persistir(d); setLista(listSaved());
+    setLogs((l) => [...l, pararPorLimite ? '— Revisão pausada no limite. Guardado. Volta a carregar “Rever” para continuar de onde ficou.' : '— Revisão terminada. Guarda para manter.']);
   }
 
   async function verificarCobertura() {
