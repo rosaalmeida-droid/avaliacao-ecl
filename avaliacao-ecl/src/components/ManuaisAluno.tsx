@@ -23,7 +23,8 @@ const SCHOOL_LABEL = 'Curso Profissional de Técnico de Cozinha e Restauração'
 const FOOTER = { date: 'Data: 01 / 09 / 2016', reference: 'ECL.GPC.015.2', revision: 'Revisão: 02 / 07 / 2021' };
 const FONTES = 'Le Cordon Bleu (técnica); Maria de Lurdes Modesto, "Cozinha Tradicional Portuguesa" (receitas tradicionais); José Avillez, "Combinações Improváveis" (inovação); Ferran Adrià / elBulli (inovação internacional); Manual de Cozinha da Escola de Hotelaria (Turismo de Portugal)';
 const PT_PT = 'Escreve em PORTUGUÊS DE PORTUGAL (europeu), NUNCA em português do Brasil. Trata o aluno por "tu" (não "você"). Usa vocabulário e ortografia de Portugal — ex.: pequeno-almoço (não "café da manhã"), frigorífico (não "geladeira"), casa de banho, fogão, autocarro, telemóvel, ecrã, gelado, sumo, talho, empregado de mesa. Evita termos e construções brasileiras.';
-const MAX_PAGINAS_CAP = 4; // segurança: máximo de páginas por capítulo
+const MAX_PAGINAS_CAP = 4;
+const GERADOR_V = 2; // versão do gerador; manuais com versão inferior são refeitos do zero pela fila // segurança: máximo de páginas por capítulo
 const THROTTLE_MS = 6500;    // espaçar pedidos (~9/min; o limite grátis ronda 10/min)
 const ESPERA_429_MS = 35000; // esperar o minuto limpar quando bate no limite
 const MAX_ESPERAS = 5;
@@ -51,6 +52,7 @@ interface DocumentoManual {
   academicYear: string; footerDate: string; footerReference: string; footerRevision: string;
   pages: PaginaManual[];
   indice?: string[];
+  geradorV?: number;
 }
 
 interface UCItem { code: string; ref: ReferencialUC; kind: 'produto' | 'serviço' | 'processo' }
@@ -352,7 +354,9 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   const [cobertura, setCobertura] = useState<any>(null);
   const [filaAtiva, setFilaAtiva] = useState(false);
   const [filaSel, setFilaSel] = useState<string[]>([]);
+  const [filaRefazer, setFilaRefazer] = useState(false);
   const pararRef = useRef(false);
+  const esperarParavel = async (ms: number) => { let resto = ms; while (resto > 0 && !pararRef.current) { await esperar(Math.min(250, resto)); resto -= 250; } };
 
   useEffect(() => { setLista(listSaved()); }, [modo]);
 
@@ -404,18 +408,27 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       setLogs((l) => [...l, `▶ [${k + 1}/${codigos.length}] ${code} — ${uc.ref.nome}`]);
       let existente: DocumentoManual | null = null;
       try { const raw = localStorage.getItem(KEY(code)); if (raw) existente = JSON.parse(raw); } catch { /* */ }
-      let linhas: string[] | null = existente && existente.indice && existente.indice.length ? existente.indice : null;
+      const vExist = existente ? (existente.geradorV || 0) : 0;
+      const temPorAcabar = existente ? existente.pages.some((p: any) => p.incompleto === true) : false;
+      const completoNovo = !!existente && vExist >= GERADOR_V && existente.pages.length > 0 && !temPorAcabar;
+      // decidir o que fazer com o que já existe
+      if (completoNovo && !filaRefazer) { setLogs((l) => [...l, '  ✓ já está completo (versão nova) — salto.']); continue; }
+      const antigo = !existente || vExist < GERADOR_V; // feito com gerador antigo/fraco → refazer do zero
+      const refazer = filaRefazer || antigo;
+      if (refazer && existente) setLogs((l) => [...l, '  ↻ manual antigo/fraco — refaço do zero (índice novo).']);
+      const baseUsar: DocumentoManual | null = refazer ? null : existente;
+      let linhas: string[] | null = (!refazer && existente && existente.indice && existente.indice.length) ? existente.indice : null;
       if (!linhas) {
         setLogs((l) => [...l, '  · a desenhar o índice…']);
         linhas = await gerarIndiceCore(uc);
         if (!linhas) { setLogs((l) => [...l, '  ✗ índice indisponível agora (limite?) — salto e sigo para a próxima.']); continue; }
       } else { setLogs((l) => [...l, '  · retomo o índice já guardado.']); }
       setIndiceTxt(linhas.join('\n'));
-      if (existente) setDoc(existente);
-      const res = await gerarCapitulos(!!existente, { linhas, base: existente, silencioso: true });
+      setDoc(baseUsar);
+      const res = await gerarCapitulos(!refazer && !!baseUsar, { linhas, base: baseUsar, silencioso: true });
       if (res.doc) { try { localStorage.setItem(KEY(code), JSON.stringify(res.doc)); } catch { /* */ } setLista(listSaved()); }
       setLogs((l) => [...l, res.completo ? `  ✓ ${code} COMPLETO (${res.doc?.pages.length || 0} págs) e guardado.` : `  ⚠ ${code} ficou com capítulos por acabar (guardado). Retomo se voltares a correr a fila.`]);
-      if (!pararRef.current) await esperar(1500);
+      if (!pararRef.current) await esperarParavel(1500);
     }
     setFilaAtiva(false); setGerando(false);
     setLogs((l) => [...l, pararRef.current ? '— Fila parada. Tudo o que foi gerado ficou guardado.' : '— Fila terminada. Vê os manuais em “Manuais Guardados”.']);
@@ -451,6 +464,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     const jaExiste = continuar && !!base && base.unitCode === uc.code && base.pages.length > 0;
     const d: DocumentoManual = jaExiste ? { ...(base as DocumentoManual), pages: [...(base as DocumentoManual).pages] } : novoDoc(uc);
     d.indice = linhas;
+    d.geradorV = GERADOR_V;
     const norm = (x: string) => (x || '').toLowerCase().replace(/[^a-zà-ú0-9]+/g, ' ').trim();
     const temIntro = d.pages.some((p) => /introdu/i.test(p.title));
     const temSintese = d.pages.some((p) => /s[íi]ntese|crit[ée]rios/i.test(p.title));
@@ -462,7 +476,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     let primeiroPedido = true;
     // faz um pedido respeitando o ritmo; se bater no limite/minuto, espera e repete sozinha
     async function pedirComRitmo(prompt: string): Promise<{ ok: boolean; data?: any; motivo?: string; mensagem?: string; fornecedor?: string }> {
-      if (!primeiroPedido) await esperar(THROTTLE_MS);
+      if (!primeiroPedido) await esperarParavel(THROTTLE_MS);
       primeiroPedido = false;
       let esperas = 0;
       while (!pararRef.current) {
@@ -471,7 +485,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
         if (r.motivo === 'limite_atingido' && esperas < MAX_ESPERAS) {
           esperas++;
           setLogs((l) => [...l, `⏳ Limite por minuto — a aguardar ${Math.round(ESPERA_429_MS / 1000)}s (${esperas}/${MAX_ESPERAS})…`]);
-          await esperar(ESPERA_429_MS);
+          await esperarParavel(ESPERA_429_MS);
           continue;
         }
         return r;
@@ -622,7 +636,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     setProg({ done: 0, total: d.pages.length });
     let primeiro = true;
     for (let i = 0; i < d.pages.length && !pararRef.current; i++) {
-      if (!primeiro) await esperar(THROTTLE_MS);
+      if (!primeiro) await esperarParavel(THROTTLE_MS);
       primeiro = false;
       const orig = d.pages[i];
       const porAcabar = (orig as any).incompleto === true;
@@ -734,10 +748,14 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
 
             <div style={{ marginTop: 12, borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Modo automático — fila de manuais (um a um, do início ao fim)</label>
-              <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 6px' }}>Escolhe as UCs (Ctrl/Cmd para várias). A app gera cada manual completo, grava a cada capítulo, e passa ao seguinte. Retoma o que ficou por acabar. Deixa a aba aberta.</p>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 6px' }}>Escolhe as UCs (Ctrl/Cmd para várias). A app gera cada manual completo, grava a cada capítulo, e passa ao seguinte. Manuais antigos/fracos são refeitos do zero; os que ficaram por acabar são retomados; os já completos (versão nova) são saltados. Deixa a aba aberta.</p>
               <select multiple value={filaSel} onChange={(e) => setFilaSel(Array.from(e.target.selectedOptions).map((o) => o.value))} disabled={filaAtiva || gerando} style={{ width: '100%', height: 140, borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, padding: 6 }}>
                 {UCS.map((u) => <option key={u.code} value={u.code}>{u.code} — {u.ref.nome}</option>)}
               </select>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', marginTop: 8 }}>
+                <input type="checkbox" checked={filaRefazer} onChange={(e) => setFilaRefazer(e.target.checked)} disabled={filaAtiva} />
+                Refazer do zero mesmo os manuais já completos (senão, salta os que já estão bem feitos)
+              </label>
               <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {filaAtiva ? (
                   <button style={btn('#dc2626')} onClick={() => (pararRef.current = true)}>Parar fila</button>
