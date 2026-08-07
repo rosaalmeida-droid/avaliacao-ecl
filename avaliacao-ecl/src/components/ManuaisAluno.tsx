@@ -157,7 +157,7 @@ function sequenciaPorTipo(kind: string): string {
 function refBlock(uc: UCItem): string {
   const apt = uc.ref.aptidoes && uc.ref.aptidoes.length ? `Aptidões (o que deve saber FAZER): ${uc.ref.aptidoes.join(' | ')}\n` : '';
   const ati = uc.ref.atitudes && uc.ref.atitudes.length ? `Atitudes a demonstrar: ${uc.ref.atitudes.join(' | ')}\n` : '';
-  return `Realizações: ${uc.ref.realizacoes.join(' | ')}\nConhecimentos: ${uc.ref.conhecimentos.join(' | ')}\n${apt}${ati}Critérios: ${uc.ref.criteriosDesempenho.join(' | ')}`;
+  return `Conhecimentos (o ESQUELETO — a desenvolver A FUNDO): ${uc.ref.conhecimentos.join(' | ')}\nRealizações: ${uc.ref.realizacoes.join(' | ')}\n${apt}${ati}Critérios: ${uc.ref.criteriosDesempenho.join(' | ')}`;
 }
 interface Comp { subs: string[]; apps: string[]; subDefs: string[]; appDefs: string[] }
 // Reúne as subtécnicas e aparelhos REAIS trabalhados nos planos/fichas desta UC,
@@ -185,6 +185,15 @@ function blocoDefs(c: Comp): string {
   return defs.length ? `\n\nDEFINIÇÕES DE REFERÊNCIA (usa-as para desenvolver com rigor, sem as copiar tal e qual):\n- ${defs.join('\n- ')}` : '';
 }
 
+function substanciaPagina(p: any): number {
+  let n = 0;
+  (p?.paragraphs || []).forEach((x: string) => (n += (x || '').length));
+  (p?.subsections || []).forEach((s: any) => { (s?.paragraphs || []).forEach((x: string) => (n += (x || '').length)); (s?.bullets || []).forEach((x: string) => (n += (x || '').length)); });
+  (p?.bullets || []).forEach((x: string) => (n += (x || '').length));
+  (p?.tables || []).forEach((t: any) => (t?.rows || []).forEach((r: any) => (r || []).forEach((c: string) => (n += (c || '').length))));
+  return n;
+}
+
 function buildOutlinePrompt(uc: UCItem, comp: Comp): string {
   return `Produz APENAS um array JSON de strings (sem markdown, sem crases). Cada string é o título de um capítulo.
 
@@ -194,16 +203,17 @@ PENSA PRIMEIRO (âmbito): "O QUE É QUE O ALUNO PRODUZ EM AULA com esta UC?". A 
 
 ${sequenciaPorTipo(uc.kind)}
 
-Fundamenta-te no referencial (expande para o conteúdo REAL de cozinha, não fiques nas frases genéricas):
+O ESQUELETO do manual vem dos CONHECIMENTOS do referencial — desenvolve-os A FUNDO (expande para o conteúdo REAL de cozinha, não fiques nas frases genéricas):
 ${refBlock(uc)}${blocoCompetencias(comp)}
 
 LÍNGUA (OBRIGATÓRIO): ${PT_PT}
 
 REGRAS:
-- 8 a 14 capítulos, por ordem pedagógica, do básico ao avançado, sem sobreposição.
-- Organiza os capítulos à volta das COMPETÊNCIAS PRÁTICAS (realizações e aptidões) e das subtécnicas/aparelhos reais acima. A teoria (conhecimentos) desenvolve-se A PARTIR da prática.
-- Para CADA capítulo, além do título, escreve 4 a 8 PONTOS A TRABALHAR, detalhados e concretos (o que se explica e se faz nesse capítulo). Nível esperado (exemplo do capítulo das facas): constituição da faca (partes); tipos de facas e para que serve cada uma; como pegar (pega em pinça); pousar/lançar na tábua e postura; segurança na utilização; cuidados no transporte e ao passar a faca; afiação e conservação.
-- Um aparelho (massa, creme, molho, fundo) merece pontos próprios: o que é, para que serve, ingredientes-base, técnica passo a passo, erros a evitar.
+- O ÍNDICE assenta nos CONHECIMENTOS do referencial. Cada capítulo DESENVOLVE A FUNDO um conhecimento ou um grupo de conhecimentos afins — e o índice, no conjunto, tem de COBRIR TODOS os conhecimentos listados, nenhum de fora.
+- Usa TANTOS capítulos quantos forem precisos para tratar todos os conhecimentos com profundidade (agrupa os da mesma família num capítulo; não deixes conhecimentos por cobrir). Ordena do básico ao avançado, sem sobreposição.
+- Para CADA capítulo escreve 5 a 10 PONTOS A TRABALHAR que APROFUNDAM o(s) conhecimento(s): o que é; porquê/para que serve; como se faz (passo a passo); variedades/tipos; exemplos concretos; erros comuns. Nível esperado (exemplo do capítulo das facas): constituição da faca (partes); tipos de facas e para que serve cada uma; pega em pinça; pousar/lançar na tábua e postura; segurança na utilização; cuidados no transporte e ao passar a faca; afiação e conservação.
+- ANCORA a teoria na PRÁTICA: liga cada conhecimento às realizações/aptidões e às subtécnicas/aparelhos reais acima — a teoria explica o que o aluno faz na aula. Um aparelho (massa, creme, molho, fundo) merece pontos próprios: o que é, para que serve, ingredientes-base, técnica passo a passo, erros a evitar.
+- Os TEMAS TRANSVERSAIS (trabalhados em quase todas as UCs — higiene e segurança alimentar, segurança e saúde no trabalho, sustentabilidade e desperdício, comunicação, trabalho em equipa) vão nos ÚLTIMOS capítulos, mais CURTOS, tratados de forma a ENQUADRAR esta UC em concreto (aplicados ao que se faz nela), NÃO exaustivamente. O corpo central do manual são os conhecimentos ESPECÍFICOS da UC.
 - Inclui um capítulo final "Onde procurar informação" (fontes: ${FONTES}).
 - Não desenvolvas temas que são foco de outra UC (HACCP=UC03584; nutrição=UC00596); no máximo, uma referência.
 
@@ -245,8 +255,10 @@ ${especifico}
 
 ESTILO: linguagem simples mas DESENVOLVIDA; cada termo técnico explicado à primeira vez; CONCRETO (nomes, °C, minutos, pratos e utensílios pelo nome); reflete a PRÁTICA; contexto histórico curto e ciência simples quando ajudar; remete para as fontes quando útil (${FONTES}); cada UC trata só o que é seu; usa subsections/tables/procedureSteps/callouts; ${PT_PT} Sem meta-referências.
 
+NUNCA entregues um capítulo superficial ou de uma só frase — desenvolve SEMPRE a fundo (vários parágrafos e/ou subsecções, com pormenor prático). Se a matéria for mesmo insuficiente para desenvolver este capítulo com qualidade, devolve { "incompleto": true } em vez de um texto vazio ou de uma frase — fica por acabar e completa-se mais tarde.
+
 Devolve este objeto (só os campos úteis):
-{ "title": string, "subtitle"?: string, "paragraphs"?: string[], "subsections"?: [{ "title": string, "paragraphs"?: string[], "bullets"?: string[] }], "calloutBoxes"?: [{ "type": "nota"|"aviso"|"dica"|"definicao", "content": string }], "bullets"?: string[], "tables"?: [{ "title": string, "columns": string[], "rows": string[][] }], "procedureSteps"?: { "title": string, "intro"?: string, "steps": [{ "label": string, "detail": string, "warning"?: string }] }${dlg}, "consolidationBlock"?: { "title": string, "keyPoints": string[], "selfCheck"?: string[] }, "worksheetSections"?: [{ "title": string, "instructions"?: string, "prompts": [{ "prompt": string, "lines": number }] }], "continua"?: boolean }`;
+{ "title": string, "subtitle"?: string, "paragraphs"?: string[], "subsections"?: [{ "title": string, "paragraphs"?: string[], "bullets"?: string[] }], "calloutBoxes"?: [{ "type": "nota"|"aviso"|"dica"|"definicao", "content": string }], "bullets"?: string[], "tables"?: [{ "title": string, "columns": string[], "rows": string[][] }], "procedureSteps"?: { "title": string, "intro"?: string, "steps": [{ "label": string, "detail": string, "warning"?: string }] }${dlg}, "consolidationBlock"?: { "title": string, "keyPoints": string[], "selfCheck"?: string[] }, "worksheetSections"?: [{ "title": string, "instructions"?: string, "prompts": [{ "prompt": string, "lines": number }] }], "incompleto"?: boolean, "continua"?: boolean }`;
 }
 function buildMasterPrompt(uc: UCItem): string {
   return `Vais ajudar-me a construir um MANUAL DO ALUNO para ${uc.code} — ${uc.ref.nome}. Alunos do secundário com dificuldades.
@@ -433,19 +445,29 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
         const feito = (t.tipo === 'intro' && temIntro) || (t.tipo === 'sintese' && temSintese) || (t.tipo === 'ficha' && nFichas > 0) || (t.tipo === 'capitulo' && capsFeitos.has(norm(t.titulo)));
         if (feito) { if (t.tipo === 'ficha') nFichas--; setProg({ done: i + 1, total: tarefas.length }); continue; }
       }
-      let pagina: any = null; let prev = ''; let continua = true; let parte = 1; let motivo = ''; let fornecedorUsado = '';
+      let pagina: any = null; let prev = ''; let continua = true; let parte = 1; let motivo = ''; let fornecedorUsado = ''; let incompletoFlag = false;
       while (continua && parte <= MAX_PAGINAS_CAP && !pararRef.current) {
         const r = await pedirComRitmo(buildChapterPrompt(uc, t.titulo, t.pontos, caps, covered, t.tipo, comp, prev, parte));
         if (r.fornecedor) fornecedorUsado = r.fornecedor;
         if (!r.ok) { motivo = r.motivo || 'erro'; if (motivo !== 'parado') setLogs((l) => [...l, `✗ ${t.titulo.slice(0, 42)}… (${r.mensagem || motivo})`]); break; }
         const part = r.data || {};
+        if (part.incompleto === true) incompletoFlag = true;
         if (!pagina) pagina = { pageNumber: 0, title: t.tipo === 'capitulo' ? t.titulo : (part.title || t.titulo) };
         fundir(pagina, part);
         prev = (pagina.paragraphs || []).slice(-1).join(' ').slice(0, 240) + ' | ' + (pagina.subsections || []).map((s: any) => s.title).join('; ');
         continua = t.tipo === 'capitulo' && part.continua === true && parte < MAX_PAGINAS_CAP;
         parte++;
       }
-      if (pagina && (pagina.paragraphs?.length || pagina.subsections?.length || pagina.worksheetSections?.length || pagina.tables?.length)) {
+      const temAlgum = pagina && (pagina.paragraphs?.length || pagina.subsections?.length || pagina.worksheetSections?.length || pagina.tables?.length);
+      const fraco = pagina && t.tipo === 'capitulo' && (incompletoFlag || substanciaPagina(pagina) < 400);
+      if (pagina && fraco) {
+        pagina.subtitle = '⚠ Por acabar — volta a gerar ou usa “✨ Rever (melhorar)” para completar';
+        pagina.incompleto = true;
+        if (!temAlgum) pagina.paragraphs = ['Este capítulo ficou por desenvolver (a IA não conseguiu, de momento, produzir texto com profundidade). Usa “✨ Rever (melhorar)” ou gera de novo mais tarde para o completar — não ficou superficial de propósito.'];
+        pagina.pageNumber = d.pages.length === 0 ? 1 : d.pages.length + 1;
+        d.pages.push(pagina); covered.push(pagina.title); setDoc({ ...d });
+        setLogs((l) => [...l, `⚠ ${pagina.title} ficou POR ACABAR — completa mais tarde (não foi entregue superficial).`]);
+      } else if (temAlgum) {
         pagina.pageNumber = d.pages.length === 0 ? 1 : d.pages.length + 1;
         d.pages.push(pagina); covered.push(pagina.title + (pagina.subtitle ? ' / ' + pagina.subtitle : '')); setDoc({ ...d });
         setLogs((l) => [...l, `✓ ${pagina.title}${parte > 2 ? ` (${parte - 1} págs)` : ''}${fornecedorUsado ? ` — via ${fornecedorUsado}` : ''}`]);
@@ -547,17 +569,30 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     const comp = competenciasDaUC(uc.code);
     pararRef.current = false; setGerando(true); setSaved(false); setLogs(['— A rever e melhorar capítulo a capítulo…']);
     const d: DocumentoManual = { ...doc, pages: [...doc.pages] };
+    // pontos por título, a partir do índice guardado (para reescrever capítulos por acabar)
+    const pontosPorTitulo: Record<string, string[]> = {};
+    const titulosIndice: string[] = [];
+    (d.indice || indiceTxt.split('\n')).map((l) => (l || '').trim()).filter(Boolean).forEach((l) => {
+      const j = l.indexOf('—'); const tit = (j >= 0 ? l.slice(0, j) : l).trim();
+      titulosIndice.push(tit);
+      pontosPorTitulo[tit.toLowerCase()] = j >= 0 ? l.slice(j + 1).split(';').map((x) => x.trim()).filter(Boolean) : [];
+    });
     setProg({ done: 0, total: d.pages.length });
     let primeiro = true;
     for (let i = 0; i < d.pages.length && !pararRef.current; i++) {
       if (!primeiro) await esperar(THROTTLE_MS);
       primeiro = false;
       const orig = d.pages[i];
-      const r = await chamarIA(buildRevisaoPrompt(uc, orig, comp), 'openai');
-      if (r.ok && r.data && typeof r.data === 'object' && (r.data.paragraphs || r.data.subsections || r.data.worksheetSections || r.data.tables)) {
-        const melhor: any = r.data; melhor.title = orig.title; melhor.pageNumber = orig.pageNumber;
+      const porAcabar = (orig as any).incompleto === true;
+      const outros = d.pages.filter((_, k) => k !== i).map((p) => p.title);
+      const prompt = porAcabar
+        ? buildChapterPrompt(uc, orig.title, pontosPorTitulo[orig.title.toLowerCase()] || [], titulosIndice.length ? titulosIndice : d.pages.map((p) => p.title), outros, 'capitulo', comp, '', 1)
+        : buildRevisaoPrompt(uc, orig, comp);
+      const r = await chamarIA(prompt, 'openai');
+      if (r.ok && r.data && typeof r.data === 'object' && (r.data.paragraphs || r.data.subsections || r.data.worksheetSections || r.data.tables) && substanciaPagina(r.data) >= 400) {
+        const melhor: any = r.data; melhor.title = orig.title; melhor.pageNumber = orig.pageNumber; delete melhor.incompleto; delete melhor.continua;
         d.pages[i] = melhor; setDoc({ ...d });
-        setLogs((l) => [...l, `✓ Revisto: ${orig.title}${r.fornecedor ? ` — via ${r.fornecedor}` : ''}`]);
+        setLogs((l) => [...l, `✓ ${porAcabar ? 'Completado' : 'Revisto'}: ${orig.title}${r.fornecedor ? ` — via ${r.fornecedor}` : ''}`]);
       } else {
         setLogs((l) => [...l, `✗ ${orig.title.slice(0, 40)}… (${r.mensagem || r.motivo || 'sem melhoria'})`]);
       }
