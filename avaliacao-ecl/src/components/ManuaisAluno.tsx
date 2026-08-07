@@ -350,6 +350,8 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   const [aPlanear, setAPlanear] = useState(false);
   const [aVerificar, setAVerificar] = useState(false);
   const [cobertura, setCobertura] = useState<any>(null);
+  const [filaAtiva, setFilaAtiva] = useState(false);
+  const [filaSel, setFilaSel] = useState<string[]>([]);
   const pararRef = useRef(false);
 
   useEffect(() => { setLista(listSaved()); }, [modo]);
@@ -371,17 +373,52 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     } catch (e: any) { return { ok: false, motivo: 'rede', mensagem: String(e?.message || e) }; }
   }
 
+  async function gerarIndiceCore(uc: UCItem): Promise<string[] | null> {
+    const r = await chamarIA(buildOutlinePrompt(uc, competenciasDaUC(uc.code)));
+    let titulos: string[] = [];
+    if (r.ok && Array.isArray(r.data)) titulos = r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim());
+    if (titulos.length) return titulos;
+    if (r.ok) return uc.ref.conhecimentos.slice(); // sem índice mas sem limite → usa conhecimentos como base
+    return null; // falhou (limite/erro) — não dá para prosseguir agora
+  }
+
   async function gerarIndice() {
     const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
     setAFazerIndice(true); setSaved(false); setFaseIndice(false); setLogs(['A desenhar o índice…']); setModo('gerar');
-    const r = await chamarIA(buildOutlinePrompt(uc, competenciasDaUC(uc.code)));
+    const titulos = await gerarIndiceCore(uc);
     setAFazerIndice(false);
-    let titulos: string[] = [];
-    if (r.ok && Array.isArray(r.data)) titulos = r.data.filter((x: any) => typeof x === 'string' && x.trim()).map((x: string) => x.trim());
-    if (!titulos.length) { titulos = uc.ref.conhecimentos.slice(); setLogs((l) => [...l, `— Não consegui desenhar o índice (${r.mensagem || r.motivo || 'erro'}). Usei os conhecimentos como base — revê e edita.`]); }
-    else setLogs((l) => [...l, `✓ Índice com ${titulos.length} capítulos${r.fornecedor ? ` (via ${r.fornecedor})` : ''}. Revê e corrige o âmbito antes de gerar.`]);
-    if (r.avisos && r.avisos.length) setLogs((l) => [...l, `⚠ Fallback: ${r.avisos!.join('; ')}`]);
+    if (!titulos || !titulos.length) { setLogs((l) => [...l, '— Não consegui desenhar o índice (limite ou erro). Tenta de novo mais tarde.']); return; }
+    setLogs((l) => [...l, `✓ Índice com ${titulos.length} capítulos. Revê e corrige o âmbito antes de gerar.`]);
     setIndiceTxt(titulos.join('\n')); setFaseIndice(true);
+  }
+
+  // ── FILA AUTOMÁTICA: manual a manual, do início ao fim, gravando a cada capítulo ──
+  async function correrFila(codigos: string[]) {
+    if (!codigos.length) return;
+    pararRef.current = false; setFilaAtiva(true); setGerando(true); setModo('gerar');
+    setLogs([`— Fila automática: ${codigos.length} UC(s). Faço uma a uma, do início ao fim, e gravo a cada capítulo. Deixa a aba aberta.`]);
+    for (let k = 0; k < codigos.length && !pararRef.current; k++) {
+      const code = codigos[k];
+      const uc = UCS.find((u) => u.code === code); if (!uc) continue;
+      setSelCode(code);
+      setLogs((l) => [...l, `▶ [${k + 1}/${codigos.length}] ${code} — ${uc.ref.nome}`]);
+      let existente: DocumentoManual | null = null;
+      try { const raw = localStorage.getItem(KEY(code)); if (raw) existente = JSON.parse(raw); } catch { /* */ }
+      let linhas: string[] | null = existente && existente.indice && existente.indice.length ? existente.indice : null;
+      if (!linhas) {
+        setLogs((l) => [...l, '  · a desenhar o índice…']);
+        linhas = await gerarIndiceCore(uc);
+        if (!linhas) { setLogs((l) => [...l, '  ✗ índice indisponível agora (limite?) — salto e sigo para a próxima.']); continue; }
+      } else { setLogs((l) => [...l, '  · retomo o índice já guardado.']); }
+      setIndiceTxt(linhas.join('\n'));
+      if (existente) setDoc(existente);
+      const res = await gerarCapitulos(!!existente, { linhas, base: existente, silencioso: true });
+      if (res.doc) { try { localStorage.setItem(KEY(code), JSON.stringify(res.doc)); } catch { /* */ } setLista(listSaved()); }
+      setLogs((l) => [...l, res.completo ? `  ✓ ${code} COMPLETO (${res.doc?.pages.length || 0} págs) e guardado.` : `  ⚠ ${code} ficou com capítulos por acabar (guardado). Retomo se voltares a correr a fila.`]);
+      if (!pararRef.current) await esperar(1500);
+    }
+    setFilaAtiva(false); setGerando(false);
+    setLogs((l) => [...l, pararRef.current ? '— Fila parada. Tudo o que foi gerado ficou guardado.' : '— Fila terminada. Vê os manuais em “Manuais Guardados”.']);
   }
 
   function fundir(dest: any, part: any) {
@@ -393,15 +430,16 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     if (part.subtitle && !dest.subtitle) dest.subtitle = part.subtitle;
   }
 
-  async function gerarCapitulos(continuar = false) {
-    const uc = UCS.find((u) => u.code === selCode); if (!uc) return;
-    const linhas = indiceTxt.split('\n').map((s) => s.trim()).filter(Boolean);
-    if (!linhas.length) return;
+  async function gerarCapitulos(continuar = false, opts?: { linhas?: string[]; base?: DocumentoManual | null; silencioso?: boolean }): Promise<{ doc: DocumentoManual | null; completo: boolean }> {
+    const uc = UCS.find((u) => u.code === selCode); if (!uc) return { doc: null, completo: false };
+    const linhas = ((opts?.linhas && opts.linhas.length) ? opts.linhas : indiceTxt.split('\n')).map((s) => s.trim()).filter(Boolean);
+    if (!linhas.length) return { doc: null, completo: false };
     const parseLinha = (l: string) => { const i = l.indexOf('—'); return { titulo: (i >= 0 ? l.slice(0, i) : l).trim(), pontos: i >= 0 ? l.slice(i + 1).split(';').map((x) => x.trim()).filter(Boolean) : [] }; };
     const capsInfo = linhas.map(parseLinha);
     const caps = capsInfo.map((c) => c.titulo);
     const comp = competenciasDaUC(uc.code);
-    pararRef.current = false; setGerando(true); setSaved(false); setFaseIndice(false); setLogs([]);
+    if (!opts?.silencioso) { pararRef.current = false; setGerando(true); setSaved(false); setFaseIndice(false); setLogs([]); }
+    const persistir = (dd: DocumentoManual) => { try { localStorage.setItem(KEY(uc.code), JSON.stringify(dd)); } catch { /* */ } };
     const tarefas: { titulo: string; tipo: 'intro' | 'capitulo' | 'sintese' | 'ficha'; pontos: string[] }[] = [
       { titulo: 'Introdução', tipo: 'intro', pontos: [] },
       ...capsInfo.map((c) => ({ titulo: c.titulo, tipo: 'capitulo' as const, pontos: c.pontos })),
@@ -409,8 +447,9 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
       { titulo: 'Folha de trabalho 1', tipo: 'ficha', pontos: [] },
       { titulo: 'Folha de trabalho 2', tipo: 'ficha', pontos: [] },
     ];
-    const jaExiste = continuar && !!doc && doc.unitCode === uc.code && doc.pages.length > 0;
-    const d: DocumentoManual = jaExiste ? { ...(doc as DocumentoManual), pages: [...(doc as DocumentoManual).pages] } : novoDoc(uc);
+    const base = opts && 'base' in opts ? opts.base : doc;
+    const jaExiste = continuar && !!base && base.unitCode === uc.code && base.pages.length > 0;
+    const d: DocumentoManual = jaExiste ? { ...(base as DocumentoManual), pages: [...(base as DocumentoManual).pages] } : novoDoc(uc);
     d.indice = linhas;
     const norm = (x: string) => (x || '').toLowerCase().replace(/[^a-zà-ú0-9]+/g, ' ').trim();
     const temIntro = d.pages.some((p) => /introdu/i.test(p.title));
@@ -465,11 +504,11 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
         pagina.incompleto = true;
         if (!temAlgum) pagina.paragraphs = ['Este capítulo ficou por desenvolver (a IA não conseguiu, de momento, produzir texto com profundidade). Usa “✨ Rever (melhorar)” ou gera de novo mais tarde para o completar — não ficou superficial de propósito.'];
         pagina.pageNumber = d.pages.length === 0 ? 1 : d.pages.length + 1;
-        d.pages.push(pagina); covered.push(pagina.title); setDoc({ ...d });
+        d.pages.push(pagina); covered.push(pagina.title); setDoc({ ...d }); persistir(d);
         setLogs((l) => [...l, `⚠ ${pagina.title} ficou POR ACABAR — completa mais tarde (não foi entregue superficial).`]);
       } else if (temAlgum) {
         pagina.pageNumber = d.pages.length === 0 ? 1 : d.pages.length + 1;
-        d.pages.push(pagina); covered.push(pagina.title + (pagina.subtitle ? ' / ' + pagina.subtitle : '')); setDoc({ ...d });
+        d.pages.push(pagina); covered.push(pagina.title + (pagina.subtitle ? ' / ' + pagina.subtitle : '')); setDoc({ ...d }); persistir(d);
         setLogs((l) => [...l, `✓ ${pagina.title}${parte > 2 ? ` (${parte - 1} págs)` : ''}${fornecedorUsado ? ` — via ${fornecedorUsado}` : ''}`]);
       }
       setProg({ done: i + 1, total: tarefas.length });
@@ -478,8 +517,11 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     const ordemKey = (p: PaginaManual) => { if (/introdu/i.test(p.title)) return 0; if (/s[íi]ntese|crit[ée]rios/i.test(p.title)) return 9000; if (/folha de trabalho|ficha/i.test(p.title)) return 9500; const idx = caps.findIndex((c) => norm(c) === norm(p.title)); return idx >= 0 ? 100 + idx : 500; };
     d.pages.sort((a, b) => ordemKey(a) - ordemKey(b));
     d.pages.forEach((p, idx) => (p.pageNumber = idx === 0 ? 1 : idx + 1));
-    setGerando(false);
-    if (d.pages.length > 0) { setDoc({ ...d }); setLogs((l) => [...l, `— ${d.pages.length} páginas.${parouPorLimite ? '' : ' Podes guardar/exportar.'}`]); }
+    const temPorAcabar = d.pages.some((p: any) => p.incompleto === true);
+    const completo = !parouPorLimite && !temPorAcabar && d.pages.length > 0;
+    if (!opts?.silencioso) setGerando(false);
+    if (d.pages.length > 0) { setDoc({ ...d }); persistir(d); setLista(listSaved()); if (!opts?.silencioso) setLogs((l) => [...l, `— ${d.pages.length} páginas.${parouPorLimite ? '' : ' Podes guardar/exportar.'}`]); }
+    return { doc: d, completo };
   }
 
   function copiarMestre() {
@@ -689,6 +731,23 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
               </div>
             )}
             {saved && <p style={{ fontSize: 12, color: '#0a7d2c', marginTop: 8 }}>✓ Guardado em Manuais Guardados.</p>}
+
+            <div style={{ marginTop: 12, borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Modo automático — fila de manuais (um a um, do início ao fim)</label>
+              <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 6px' }}>Escolhe as UCs (Ctrl/Cmd para várias). A app gera cada manual completo, grava a cada capítulo, e passa ao seguinte. Retoma o que ficou por acabar. Deixa a aba aberta.</p>
+              <select multiple value={filaSel} onChange={(e) => setFilaSel(Array.from(e.target.selectedOptions).map((o) => o.value))} disabled={filaAtiva || gerando} style={{ width: '100%', height: 140, borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, padding: 6 }}>
+                {UCS.map((u) => <option key={u.code} value={u.code}>{u.code} — {u.ref.nome}</option>)}
+              </select>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {filaAtiva ? (
+                  <button style={btn('#dc2626')} onClick={() => (pararRef.current = true)}>Parar fila</button>
+                ) : (
+                  <button style={btn(ROXO)} disabled={!filaSel.length || gerando} onClick={() => correrFila(filaSel)}>▶ Gerar fila ({filaSel.length})</button>
+                )}
+                <button style={{ ...ghost, fontSize: 12 }} disabled={filaAtiva} onClick={() => setFilaSel(UCS.map((u) => u.code))}>Selecionar todas</button>
+                <button style={{ ...ghost, fontSize: 12 }} disabled={filaAtiva} onClick={() => setFilaSel([])}>Limpar</button>
+              </div>
+            </div>
 
             <div style={{ marginTop: 12, borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
               <button style={{ ...ghost, fontSize: 12 }} onClick={() => setColarAberto(!colarAberto)}>{colarAberto ? '▾' : '▸'} Modo manual (IA externa) — se a Gemini esgotar</button>
