@@ -1,19 +1,11 @@
 // api/gerarPaginaManual.ts  (função serverless — runtime Node, até 60s)
 // Gera UMA página/capítulo do manual do aluno, em JSON.
-// MULTI-FORNECEDOR: tenta, por ordem, os fornecedores para os quais existir
-// chave nas variáveis de ambiente — Gemini → Groq (grátis) → OpenAI (pago).
-// Se um esgotar o limite (429) ou falhar, salta automaticamente para o
-// seguinte. Devolve SEMPRE JSON. A app envia { prompt }.
+// Motores: OpenAI (gpt-4o-mini, PRINCIPAL) e Gemini (reserva). Devolve SEMPRE JSON.
 //
 // Variáveis de ambiente (na Vercel):
-//   GEMINI_API_KEY   — Google AI Studio (grátis)          [principal]
-//   GROQ_API_KEY     — console.groq.com (grátis, sem cartão) [fallback grátis]
-//   OPENAI_API_KEY   — platform.openai.com (PAGO)          [fallback pago]
-//   OPENROUTER_API_KEY — openrouter.ai (grátis com modelos :free) [fallback grátis]
-// Opcionais (para mudar o modelo sem mexer no código):
-//   GROQ_MODEL   (default llama-3.3-70b-versatile)
-//   OPENAI_MODEL (default gpt-4o-mini)
-//   OPENROUTER_MODEL (default meta-llama/llama-3.3-70b-instruct:free)
+//   OPENAI_API_KEY   — platform.openai.com (com faturação ativa) [PRINCIPAL]
+//   GEMINI_API_KEY   — Google AI Studio (grátis)                 [reserva]
+// Opcional: OPENAI_MODEL (default gpt-4o-mini)
 
 declare const process: { env: Record<string, string | undefined> };
 
