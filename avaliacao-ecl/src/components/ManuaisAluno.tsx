@@ -409,38 +409,61 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
   async function correrFila(codigos: string[]) {
     if (!codigos.length) return;
     pararRef.current = false; setFilaAtiva(true); setGerando(true); setModo('gerar');
-    setLogs([`— Fila automática: ${codigos.length} UC(s). Faço uma a uma, do início ao fim, e gravo a cada capítulo. Deixa a aba aberta.`]);
-    for (let k = 0; k < codigos.length && !pararRef.current; k++) {
-      const code = codigos[k];
-      const uc = UCS.find((u) => u.code === code); if (!uc) continue;
-      setSelCode(code);
-      setLogs((l) => [...l, `▶ [${k + 1}/${codigos.length}] ${code} — ${uc.ref.nome}`]);
-      let existente: DocumentoManual | null = null;
-      try { const raw = localStorage.getItem(KEY(code)); if (raw) existente = JSON.parse(raw); } catch { /* */ }
-      const vExist = existente ? (existente.geradorV || 0) : 0;
-      const temPorAcabar = existente ? existente.pages.some((p: any) => p.incompleto === true) : false;
-      const completoNovo = !!existente && vExist >= GERADOR_V && existente.pages.length > 0 && !temPorAcabar;
-      // decidir o que fazer com o que já existe
-      if (completoNovo && !filaRefazer) { setLogs((l) => [...l, '  ✓ já está completo (versão nova) — salto.']); continue; }
-      const antigo = !existente || vExist < GERADOR_V; // feito com gerador antigo/fraco → refazer do zero
-      const refazer = filaRefazer || antigo;
-      if (refazer && existente) setLogs((l) => [...l, '  ↻ manual antigo/fraco — refaço do zero (índice novo).']);
-      const baseUsar: DocumentoManual | null = refazer ? null : existente;
-      let linhas: string[] | null = (!refazer && existente && existente.indice && existente.indice.length) ? existente.indice : null;
-      if (!linhas) {
-        setLogs((l) => [...l, '  · a desenhar o índice…']);
-        linhas = await gerarIndiceCore(uc);
-        if (!linhas) { setLogs((l) => [...l, '  ✗ índice não ficou bom (limite ou geração fraca) — NÃO construí sobre base fraca; salto e tento noutra corrida.']); continue; }
-      } else { setLogs((l) => [...l, '  · retomo o índice já guardado.']); }
-      setIndiceTxt(linhas.join('\n'));
-      setDoc(baseUsar);
-      const res = await gerarCapitulos(!refazer && !!baseUsar, { linhas, base: baseUsar, silencioso: true });
-      if (res.doc) { try { localStorage.setItem(KEY(code), JSON.stringify(res.doc)); } catch { /* */ } setLista(listSaved()); }
-      setLogs((l) => [...l, res.completo ? `  ✓ ${code} COMPLETO (${res.doc?.pages.length || 0} págs) e guardado.` : `  ⚠ ${code} ficou com capítulos por acabar (guardado). Retomo se voltares a correr a fila.`]);
-      if (!pararRef.current) await esperarParavel(1500);
+    setLogs([`— Fila automática: ${codigos.length} UC(s). Repito em ciclo até todas ficarem completas (ou até parares). Deixa a aba aberta.`]);
+    const estaCompleta = (code: string): boolean => {
+      try { const raw = localStorage.getItem(KEY(code)); if (!raw) return false; const d = JSON.parse(raw); return (d.geradorV || 0) >= GERADOR_V && d.pages.length > 0 && !d.pages.some((p: any) => p.incompleto === true); } catch { return false; }
+    };
+    const ESPERA_PASSAGEM = 180000; // 3 min entre passagens quando nada avançou (provável limite)
+    const MAX_PASSAGENS = 60;
+    let passagem = 0;
+    while (!pararRef.current && passagem < MAX_PASSAGENS) {
+      passagem++;
+      const pendentes = codigos.filter((c) => (filaRefazer && passagem === 1) ? true : !estaCompleta(c));
+      if (!pendentes.length) { setLogs((l) => [...l, '— Todas as UC estão completas. Fila terminada. ✓']); break; }
+      setLogs((l) => [...l, `▷ Passagem ${passagem} — ${pendentes.length} UC(s) por completar.`]);
+      let progresso = 0;
+      for (let k = 0; k < pendentes.length && !pararRef.current; k++) {
+        const code = pendentes[k];
+        const uc = UCS.find((u) => u.code === code); if (!uc) continue;
+        setSelCode(code);
+        setLogs((l) => [...l, `▶ [${k + 1}/${pendentes.length}] ${code} — ${uc.ref.nome}`]);
+        let existente: DocumentoManual | null = null;
+        try { const raw = localStorage.getItem(KEY(code)); if (raw) existente = JSON.parse(raw); } catch { /* */ }
+        const vExist = existente ? (existente.geradorV || 0) : 0;
+        const temPorAcabar = existente ? existente.pages.some((p: any) => p.incompleto === true) : false;
+        const antigo = !existente || vExist < GERADOR_V; // gerador antigo/fraco → refazer do zero
+        const refazerAgora = (filaRefazer && passagem === 1) || antigo; // filaRefazer só força na 1ª passagem; depois retoma
+        if (refazerAgora && existente) setLogs((l) => [...l, '  ↻ manual antigo/fraco — refaço do zero (índice novo).']);
+        else if (temPorAcabar) setLogs((l) => [...l, '  · retomo os capítulos que faltam.']);
+        const baseUsar: DocumentoManual | null = refazerAgora ? null : existente;
+        let linhas: string[] | null = (!refazerAgora && existente && existente.indice && existente.indice.length) ? existente.indice : null;
+        if (!linhas) {
+          setLogs((l) => [...l, '  · a desenhar o índice…']);
+          linhas = await gerarIndiceCore(uc);
+          if (!linhas) { setLogs((l) => [...l, '  ✗ índice indisponível (limite ou fraco) — deixo para a próxima passagem.']); continue; }
+        }
+        setIndiceTxt(linhas.join('\n'));
+        setDoc(baseUsar);
+        const res = await gerarCapitulos(!refazerAgora && !!baseUsar, { linhas, base: baseUsar, silencioso: true });
+        if (res.doc) { try { localStorage.setItem(KEY(code), JSON.stringify(res.doc)); } catch { /* */ } setLista(listSaved()); }
+        if (res.completo) { progresso++; setLogs((l) => [...l, `  ✓ ${code} COMPLETO (${res.doc?.pages.length || 0} págs) e guardado.`]); }
+        else setLogs((l) => [...l, `  ⚠ ${code} ainda por completar (guardado) — volto a ele na próxima passagem.`]);
+        if (!pararRef.current) await esperarParavel(1500);
+      }
+      if (pararRef.current) break;
+      const restam = codigos.filter((c) => !estaCompleta(c));
+      if (!restam.length) { setLogs((l) => [...l, '— Todas as UC estão completas. Fila terminada. ✓']); break; }
+      if (progresso === 0) {
+        setLogs((l) => [...l, `— Nada avançou nesta passagem (provável limite diário). Aguardo ${Math.round(ESPERA_PASSAGEM / 60000)} min e repito. Faltam ${restam.length}. (Podes parar; fica tudo guardado.)`]);
+        await esperarParavel(ESPERA_PASSAGEM);
+      } else {
+        setLogs((l) => [...l, `— Passagem ${passagem}: +${progresso} completa(s). Ainda faltam ${restam.length}. Continuo.`]);
+        await esperarParavel(3000);
+      }
     }
     setFilaAtiva(false); setGerando(false);
-    setLogs((l) => [...l, pararRef.current ? '— Fila parada. Tudo o que foi gerado ficou guardado.' : '— Fila terminada. Vê os manuais em “Manuais Guardados”.']);
+    const restamFim = codigos.filter((c) => !estaCompleta(c));
+    setLogs((l) => [...l, pararRef.current ? `— Fila parada. Faltam ${restamFim.length}. Tudo o que foi gerado ficou guardado; relança a fila para continuar.` : (restamFim.length ? `— Parei após ${passagem} passagens. Ainda faltam ${restamFim.length} (limite persistente?). Relança quando tiveres tokens.` : '— Fila terminada: todas as UC completas. ✓')]);
   }
 
   function fundir(dest: any, part: any) {
