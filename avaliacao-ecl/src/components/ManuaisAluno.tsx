@@ -219,8 +219,8 @@ REGRAS:
 - Inclui um capítulo final "Onde procurar informação" (fontes: ${FONTES}).
 - Não desenvolvas temas que são foco de outra UC (HACCP=UC03584; nutrição=UC00596); no máximo, uma referência.
 
-FORMATO: um array JSON de strings; cada string é "Título — ponto; ponto; ponto; …" (o título, um travessão " — ", e os pontos separados por ponto e vírgula).
-Exemplo: ["As facas — constituição da faca; tipos de facas; pega em pinça; segurança; transporte; afiação", "..."]`;
+FORMATO: devolve um OBJETO JSON com a forma { "capitulos": [ ... ] }, em que cada item da lista é a string "Título — ponto; ponto; ponto; …" (o título, um travessão " — ", e os pontos separados por ponto e vírgula).
+Exemplo: { "capitulos": ["As facas — constituição da faca; tipos de facas; pega em pinça; segurança; transporte; afiação", "..."] }`;
 }
 function buildChapterPrompt(uc: UCItem, titulo: string, pontos: string[], indice: string[], covered: string[], tipo: 'intro' | 'capitulo' | 'sintese' | 'ficha', comp: Comp, prevResumo: string, parte: number): string {
   const dlg = uc.kind === 'serviço' ? ', "dialogueBlocks"?: [{ "title": string, "instructions"?: string, "items": [{ "client": string, "response": string, "objective"?: string }] }]' : '';
@@ -383,7 +383,12 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     for (let tentativa = 0; tentativa < 3; tentativa++) {
       const r = await chamarIA(buildOutlinePrompt(uc, competenciasDaUC(uc.code)));
       if (!r.ok) { setLogs((l) => [...l, `— A IA não respondeu: ${r.mensagem || r.motivo || 'erro'}`]); return null; } // mostra o motivo real (ex.: sem saldo, chave errada, limite)
-      const titulos: string[] = Array.isArray(r.data) ? r.data.filter((x: any) => typeof x === 'string' && x.trim().length > 3).map((x: string) => x.trim()) : [];
+      // a resposta pode vir como lista solta OU dentro de um objeto { capitulos: [...] } (modo JSON do ChatGPT)
+      let bruto: any = r.data;
+      if (bruto && !Array.isArray(bruto) && typeof bruto === 'object') {
+        bruto = bruto.capitulos || bruto.indice || bruto.titulos || bruto.chapters || Object.values(bruto).find((v) => Array.isArray(v));
+      }
+      const titulos: string[] = Array.isArray(bruto) ? bruto.filter((x: any) => typeof x === 'string' && x.trim().length > 3).map((x: string) => x.trim()) : [];
       // PORTA DE QUALIDADE: só rejeita índices TRUNCADOS (poucos capítulos = falta de tokens).
       if (titulos.length >= 5) {
         const comPontos = titulos.filter((t) => contaPontos(t) >= 2).length;
