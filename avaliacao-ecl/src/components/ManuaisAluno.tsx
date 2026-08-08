@@ -21,7 +21,7 @@ const ROXO = '#7C3AED';
 const ANO_LETIVO = '2026-2027';
 const SCHOOL_LABEL = 'Curso Profissional de Técnico de Cozinha e Restauração';
 const FOOTER = { date: 'Data: 01 / 09 / 2016', reference: 'ECL.GPC.015.2', revision: 'Revisão: 02 / 07 / 2021' };
-const FONTES = 'Le Cordon Bleu (técnica); Maria de Lurdes Modesto, "Cozinha Tradicional Portuguesa" (receitas tradicionais); José Avillez, "Combinações Improváveis" (inovação); Ferran Adrià / elBulli (inovação internacional); Manual de Cozinha da Escola de Hotelaria (Turismo de Portugal)';
+const FONTES = 'Wayne Gisslen, "Professional Cooking" (Wiley) e "Professional Baking" (Wiley) — referência técnica; Le Cordon Bleu (técnica); Maria de Lurdes Modesto, "Cozinha Tradicional Portuguesa"; José Avillez, "Combinações Improváveis"; Ferran Adrià / elBulli; Manual de Cozinha da Escola de Hotelaria (Turismo de Portugal)';
 const PT_PT = 'Escreve em PORTUGUÊS DE PORTUGAL (europeu), NUNCA em português do Brasil. Trata o aluno por "tu" (não "você"). Usa vocabulário e ortografia de Portugal — ex.: pequeno-almoço (não "café da manhã"), frigorífico (não "geladeira"), casa de banho, fogão, autocarro, telemóvel, ecrã, gelado, sumo, talho, empregado de mesa. Evita termos e construções brasileiras.';
 const MAX_PAGINAS_CAP = 4;
 const GERADOR_V = 2; // versão do gerador; manuais com versão inferior são refeitos do zero pela fila // segurança: máximo de páginas por capítulo
@@ -213,9 +213,11 @@ LÍNGUA (OBRIGATÓRIO): ${PT_PT}
 REGRAS:
 - O ÍNDICE assenta nos CONHECIMENTOS do referencial. Cada capítulo DESENVOLVE A FUNDO um conhecimento ou um grupo de conhecimentos afins — e o índice, no conjunto, tem de COBRIR TODOS os conhecimentos listados, nenhum de fora.
 - Usa TANTOS capítulos quantos forem precisos para tratar todos os conhecimentos com profundidade (agrupa os da mesma família num capítulo; não deixes conhecimentos por cobrir). Ordena do básico ao avançado, sem sobreposição.
-- Para CADA capítulo escreve 5 a 10 PONTOS A TRABALHAR que APROFUNDAM o(s) conhecimento(s): o que é; porquê/para que serve; como se faz (passo a passo); variedades/tipos; exemplos concretos; erros comuns. Nível esperado (exemplo do capítulo das facas): constituição da faca (partes); tipos de facas e para que serve cada uma; pega em pinça; pousar/lançar na tábua e postura; segurança na utilização; cuidados no transporte e ao passar a faca; afiação e conservação.
+- Para CADA capítulo escreve 6 a 12 PONTOS A TRABALHAR que APROFUNDAM o(s) conhecimento(s). Os pontos têm de ser TÉCNICOS e ESPECÍFICOS — NOMEIA sempre as variedades, tipos, técnicas e produtos concretos; nunca escrevas categorias vazias. PROIBIDO um ponto como "tipos de farinha" ou "técnicas de confeção": escreve "farinhas T45, T55, T65, T80, T110, T150 e farinha flor — cinzas, força e uso de cada uma" e "cozer, escalfar, estufar, brasear — temperaturas, tempos e quando usar cada método".
+- Nível esperado (exemplo do capítulo das facas): constituição da faca (lâmina, gume, talão, espiga, cabo); tipos de facas (chef, legumes, desossar, filetar, pão) e uso de cada uma; pega em pinça; pousar/lançar na tábua e postura; segurança na utilização; cuidados no transporte e ao passar a faca; afiação (chaira, pedra) e conservação. É ESTE o grau de detalhe exigido em TODOS os capítulos.
+- ESGOTA os temas próprios desta UC: se um conhecimento tem várias famílias (ex.: farinhas, molhos-mãe, métodos de confeção, cortes), DIVIDE-O em vários capítulos em vez de o despachar num só. Prefere MAIS capítulos específicos a capítulos generalistas.
 - ANCORA a teoria na PRÁTICA: liga cada conhecimento às realizações/aptidões e às subtécnicas/aparelhos reais acima — a teoria explica o que o aluno faz na aula. Um aparelho (massa, creme, molho, fundo) merece pontos próprios: o que é, para que serve, ingredientes-base, técnica passo a passo, erros a evitar.
-- Os TEMAS TRANSVERSAIS (trabalhados em quase todas as UCs — higiene e segurança alimentar, segurança e saúde no trabalho, sustentabilidade e desperdício, comunicação, trabalho em equipa) vão nos ÚLTIMOS capítulos, mais CURTOS, tratados de forma a ENQUADRAR esta UC em concreto (aplicados ao que se faz nela), NÃO exaustivamente. O corpo central do manual são os conhecimentos ESPECÍFICOS da UC.
+- PROPORÇÃO (regra dura): pelo menos 80% dos capítulos são conteúdo TÉCNICO ESPECÍFICO desta UC. Os TEMAS TRANSVERSAIS (higiene e segurança alimentar, segurança e saúde no trabalho, sustentabilidade e desperdício, comunicação, trabalho em equipa) ocupam NO MÁXIMO 2 capítulos, no FIM, curtos, e SÓ na parte que se aplica a esta UC em concreto (ex.: numa UC de panificação, a higiene trata do manuseamento de massas e fermentos, não do HACCP todo). NÃO gastes capítulos nem páginas a desenvolvê-los em geral — isso é o foco de outras UC.
 - Inclui um capítulo final "Onde procurar informação" (fontes: ${FONTES}).
 - Não desenvolvas temas que são foco de outra UC (HACCP=UC03584; nutrição=UC00596); no máximo, uma referência.
 
@@ -254,6 +256,17 @@ JÁ ESCRITO — capítulos que JÁ EXISTEM neste manual. NÃO repitas a matéria
 ${covered.length ? covered.slice(-25).map((c) => '- ' + c).join('\n') : '(nada ainda — este é o primeiro)'}
 
 ${especifico}
+
+GABARITO DE PROFUNDIDADE (obrigatório — é a bitola dos manuais profissionais de referência, ex.: Gisslen, "Professional Cooking"/"Professional Baking"). Ao tratar QUALQUER matéria-prima, técnica ou aparelho, percorre SEMPRE:
+1. Função — que papel desempenha no produto final (não "é importante": DIZ o que faz).
+2. Ciência simples — o que acontece fisicamente/quimicamente (ex.: o glúten forma-se quando a glutenina e a gliadina da farinha são hidratadas e trabalhadas; a coagulação das proteínas do ovo; a gelatinização do amido).
+3. CLASSIFICAÇÃO COM NOMES PRÓPRIOS — nomeia SEMPRE as variedades/tipos concretos, nunca a categoria vazia. Escrever "há vários tipos de farinha" é PROIBIDO; escreve "farinha T45, T55, T65, T80, T110, T150 e farinha flor", com o que distingue cada uma (no caso das farinhas: teor de cinzas e de proteína/força).
+4. DADOS CONCRETOS — números reais: temperaturas (°C), tempos, percentagens, rácios, capitações. Usa tabelas para comparar tipos.
+5. USO PROFISSIONAL — para que serve cada tipo/variedade, com exemplos de produtos concretos (ex.: T55 para pão de trigo corrente; T45 para pastelaria fina e massas folhadas; T65 para pão rústico e fermentação longa; farinha flor para massas delicadas).
+6. Execução passo a passo, quando aplicável.
+7. Erros comuns e como evitá-los; critérios de qualidade do resultado.
+8. Conservação/manuseamento, quando aplicável.
+PROIBIDO: frases genéricas sem conteúdo técnico ("é essencial", "existem vários tipos", "deve ter-se cuidado") sem imediatamente nomear, quantificar e exemplificar. Se nomeias uma família, listas os seus membros. Se afirmas uma regra, dás o número.
 
 ESTILO: linguagem simples mas DESENVOLVIDA; cada termo técnico explicado à primeira vez; CONCRETO (nomes, °C, minutos, pratos e utensílios pelo nome); reflete a PRÁTICA; contexto histórico curto e ciência simples quando ajudar; remete para as fontes quando útil (${FONTES}); cada UC trata só o que é seu; usa subsections/tables/procedureSteps/callouts; ${PT_PT} Sem meta-referências.
 
