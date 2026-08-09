@@ -12,7 +12,7 @@ declare const process: { env: Record<string, string | undefined> };
 export const config = { maxDuration: 60 }; // runtime Node (default) — permite até 60s no plano Hobby
 
 const MAX_TOKENS = 8192;         // Gemini (TPM alto)
-const MAX_TOKENS_COMPAT = 4096;  // Groq/OpenAI (TPM mais baixo no grátis)
+const MAX_TOKENS_COMPAT = 16000; // OpenAI gpt-4o-mini aguenta 16384 — evita capítulos cortados a meio
 
 // ── reparação de JSON (fecha o que vier cortado) ────────────────────────────
 function reparaJson(texto: string): any {
