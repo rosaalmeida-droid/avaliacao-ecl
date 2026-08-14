@@ -4,7 +4,8 @@
 // nativos mso; PDF: técnica thead/tfoot). O rodapé fica SEMPRE no fundo da
 // página, seja qual for o tamanho do texto, e o conteúdo longo pagina sozinho.
 // As margens estão "coladas" ao layout (não dependem das definições de
-// impressão do browser). Word = download .doc; PDF = abrir + imprimir.
+// impressão do browser). Word = download .doc; PDF = impressão via iframe
+// (sem popup bloqueado). Preview = HTML renderizado idêntico ao PDF.
 
 const brandBlue = '#1aa1af';
 const courseTrackLabel = 'Serviços de Cozinha e Pastelaria';
@@ -25,14 +26,19 @@ export interface ManualPage {
   paragraphs?: string[]; bullets?: string[]; subsections?: ManualSubsection[];
   tables?: ManualTable[]; dialogueBlocks?: ManualDialogueBlock[];
   worksheetSections?: ManualWorksheetSection[];
-  calloutBoxes?: ManualCallout[]; procedureSteps?: ManualProcedureSteps; consolidationBlock?: ManualConsolidation;
+  calloutBoxes?: ManualCallout[]; procedureSteps?: ManualProcedureSteps;
+  consolidationBlock?: ManualConsolidation;
+  incompleto?: boolean;
 }
 export interface ManualDocument {
   unitCode: string; unitNumber: number; fullTitle: string; schoolLabel: string;
   academicYear: string; footerDate: string; footerReference: string; footerRevision: string;
   pages: ManualPage[];
+  indice?: string; // linhas do índice editável
+  geradorV?: number;
 }
 
+// ── Logo ECL SVG ─────────────────────────────────────────────────────────────
 const schoolLogoSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 680">
   <g fill="${brandBlue}">
@@ -48,6 +54,7 @@ const schoolLogoSvg = `
 </svg>`.trim();
 const schoolLogoDataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(schoolLogoSvg)}`;
 
+// ── Escape / utils ────────────────────────────────────────────────────────────
 function escapeHtml(value: string) {
   return String(value ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -60,6 +67,7 @@ function formatManualUnitTitle(title: string) {
   ).join(' ');
 }
 
+// ── Render helpers ────────────────────────────────────────────────────────────
 function renderParagraphs(paragraphs?: string[]) {
   if (!paragraphs || !paragraphs.length) return '';
   return paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join('');
@@ -74,7 +82,11 @@ function renderSubsections(subsections?: ManualSubsection[]) {
 }
 function renderTables(tables?: ManualTable[]) {
   if (!tables || !tables.length) return '';
-  return tables.map((table) => `<div class="manual-table-wrap">${table.title ? `<h3>${escapeHtml(table.title)}</h3>` : ''}<table class="manual-table" role="presentation"><thead><tr>${(table.columns || []).map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${(table.rows || []).map((row) => `<tr>${(row || []).map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('');
+  return tables.map((tbl) => {
+    const cols = tbl.columns || [];
+    const rows = tbl.rows || [];
+    return `<div class="manual-table-wrap">${tbl.title ? `<h3>${escapeHtml(tbl.title)}</h3>` : ''}<table class="manual-table" role="presentation"><thead><tr>${cols.map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${(row || []).map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }).join('');
 }
 function renderDialogueBlocks(dialogueBlocks?: ManualDialogueBlock[]) {
   if (!dialogueBlocks || !dialogueBlocks.length) return '';
@@ -82,7 +94,7 @@ function renderDialogueBlocks(dialogueBlocks?: ManualDialogueBlock[]) {
 }
 function renderWorksheetSections(worksheetSections?: ManualWorksheetSection[]) {
   if (!worksheetSections || !worksheetSections.length) return '';
-  return worksheetSections.map((section) => `<div class="worksheet-section"><h3>${escapeHtml(section.title)}</h3>${section.instructions ? `<p class="worksheet-instructions">${escapeHtml(section.instructions)}</p>` : ''}${(section.prompts || []).map((prompt) => `<div class="worksheet-prompt"><p>${escapeHtml(prompt.prompt)}</p>${Array.from({ length: Math.max(1, prompt.lines || 2) }, () => '<div class="answer-line"></div>').join('')}</div>`).join('')}</div>`).join('');
+  return worksheetSections.map((section) => `<div class="worksheet-section"><h3>${escapeHtml(section.title)}</h3>${section.instructions ? `<p class="worksheet-instructions">${escapeHtml(section.instructions)}</p>` : ''}${(section.prompts || []).map((prompt) => `<div class="worksheet-prompt"><p>${escapeHtml(prompt.prompt)}</p>${Array.from({ length: Math.max(1, prompt.lines || 1) }, () => '<div class="answer-line"></div>').join('')}</div>`).join('')}</div>`).join('');
 }
 function renderCallouts(callouts?: ManualCallout[]) {
   if (!callouts || !callouts.length) return '';
@@ -97,10 +109,11 @@ function renderConsolidation(cb?: ManualConsolidation) {
   if (!cb) return '';
   return `<div class="consolidation"><h3>${escapeHtml(cb.title || 'Consolidação')}</h3>${renderBullets(cb.keyPoints)}${cb.selfCheck && cb.selfCheck.length ? `<p><strong>Verifica se sabes:</strong></p>${renderBullets(cb.selfCheck)}` : ''}</div>`;
 }
-function renderCorePageBody(page: ManualPage) {
+export function renderCorePageBody(page: ManualPage) {
   return `${renderParagraphs(page.paragraphs)}${renderCallouts(page.calloutBoxes)}${renderBullets(page.bullets)}${renderSubsections(page.subsections)}${renderProcedure(page.procedureSteps)}${renderTables(page.tables)}${renderDialogueBlocks(page.dialogueBlocks)}${renderConsolidation(page.consolidationBlock)}${renderWorksheetSections(page.worksheetSections)}`;
 }
 
+// ── Cabeçalho e rodapé ECL (idênticos para Word e PDF) ───────────────────────
 function runningHeaderInner(doc: ManualDocument) {
   return `<table class="hdr" role="presentation"><tr>
       <td class="hlogo"><img src="${schoolLogoDataUri}" alt="Escola de Comércio de Lisboa" /></td>
@@ -116,6 +129,7 @@ function runningFooterInner(doc: ManualDocument) {
       <td class="fright">${escapeHtml(doc.footerReference)}</td></tr></table>`;
 }
 
+// ── Blocos de conteúdo ────────────────────────────────────────────────────────
 function coverBlock(doc: ManualDocument, cover?: ManualPage) {
   const title = formatManualUnitTitle(doc.fullTitle);
   return `<div class="cover">
@@ -129,9 +143,10 @@ function indexBlock(content: ManualPage[]) {
   return `<div class="chapter"><h2 class="page-title">Índice</h2><ol class="toc">${content.map((p) => `<li>${escapeHtml(p.title)}</li>`).join('')}</ol></div>`;
 }
 function chaptersBlocks(content: ManualPage[]) {
-  return content.map((p) => `<div class="chapter"><h2 class="page-title">${escapeHtml(p.title)}</h2>${p.subtitle ? `<h3 class="page-subtitle">${escapeHtml(p.subtitle)}</h3>` : ''}${renderCorePageBody(p)}</div>`).join('');
+  return content.map((p) => `<div class="chapter"><h2 class="page-title">${escapeHtml(p.title)}</h2>${p.subtitle ? `<h3 class="page-subtitle">${escapeHtml(p.subtitle)}</h3>` : ''}${p.incompleto ? `<div class="callout" style="border-color:#e65100;background:#fff3e0"><span class="callout-tag" style="color:#e65100">POR ACABAR</span><span>Este capítulo ainda não foi gerado ou ficou incompleto.</span></div>` : ''}${renderCorePageBody(p)}</div>`).join('');
 }
 
+// ── CSS comum ─────────────────────────────────────────────────────────────────
 const CONTENT_CSS = `
   .course-name, .course-track, .hcode, .cover-title, .page-title, .page-subtitle, h3 { color: ${brandBlue}; }
   .course-name { font-size: 13pt; font-weight: 700; line-height: 1.08; text-align: right; }
@@ -167,12 +182,7 @@ const CONTENT_CSS = `
   .chapter { page-break-before: always; }
 `;
 
-function normalizeFileNamePart(value: string) { return value.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim(); }
-function buildManualFileName(doc: ManualDocument, ext: string) {
-  return `${String(doc.unitNumber).trim()}_Guião_${normalizeFileNamePart(doc.fullTitle)}_SCP_CR.${ext}`;
-}
-
-// ── WORD (.doc) — cabeçalho/rodapé NATIVOS (mso) ────────────────────────────
+// ── Word (.doc) — cabeçalho/rodapé NATIVOS (mso) ─────────────────────────────
 export function buildManualHtml(doc: ManualDocument): string {
   const cover = doc.pages[0];
   const content = doc.pages.slice(1);
@@ -190,39 +200,29 @@ export function buildManualHtml(doc: ManualDocument): string {
   </body></html>`;
 }
 
-// ── PDF — thead/tfoot repetem; rodapé sempre no fundo; margens "coladas" ─────
+// ── PDF — thead/tfoot repetem; rodapé sempre no fundo; margens "coladas" ──────
 export function buildPdfHtml(doc: ManualDocument): string {
   const cover = doc.pages[0];
   const content = doc.pages.slice(1);
-  // alturas reservadas para o cabeçalho/rodapé fixos (espaço em cada página)
-  const HEADER_H = '4.2cm';
-  const FOOTER_H = '2.4cm';
   const css = `
     @page { size: A4; margin: 0; }
     html, body { margin: 0; padding: 0; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { font-family: 'Arial Narrow', Arial, sans-serif; font-size: 12pt; line-height: 18pt; color: #000; background: #fff; }
-    /* Cabeçalho e rodapé FIXOS — o Chrome/Edge repetem-nos em todas as páginas,
-       pinados ao topo e ao fundo, seja qual for o tamanho do texto. */
-    .pfx-header { position: fixed; top: 0; left: 0; right: 0; padding: ${M_TOP} ${M_SIDE} 0.1cm; background: #fff; }
-    .pfx-footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 0.1cm ${M_SIDE} ${M_BOTTOM}; background: #fff; }
-    /* Espaçadores que repetem por página (thead/tfoot) para reservar o espaço
-       do cabeçalho/rodapé fixos, evitando sobreposição. */
     table.sheet { width: 100%; border-collapse: collapse; }
     td.zone { padding-left: ${M_SIDE}; padding-right: ${M_SIDE}; }
-    thead .sp { height: ${HEADER_H}; } tfoot .sp { height: ${FOOTER_H}; }
-    tbody td.zone { padding-top: 0.1cm; padding-bottom: 0.1cm; }
+    thead td.zone { padding-top: ${M_TOP}; padding-bottom: 0.15cm; }
+    tfoot td.zone { padding-top: 0.15cm; padding-bottom: ${M_BOTTOM}; }
+    tbody td.zone { padding-top: 0.2cm; padding-bottom: 0.2cm; }
     ${CONTENT_CSS}
     .cover { page-break-before: avoid; }
   `;
   return `<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8" /><title>${escapeHtml(doc.fullTitle)}</title><style>${css}</style>
     <script>window.addEventListener('load',function(){setTimeout(function(){window.print()},450)})<\/script></head>
     <body>
-      <div class="pfx-header">${runningHeaderInner(doc)}</div>
-      <div class="pfx-footer">${runningFooterInner(doc)}</div>
       <table class="sheet">
-        <thead><tr><td class="zone"><div class="sp"></div></td></tr></thead>
-        <tfoot><tr><td class="zone"><div class="sp"></div></td></tr></tfoot>
+        <thead><tr><td class="zone">${runningHeaderInner(doc)}</td></tr></thead>
+        <tfoot><tr><td class="zone">${runningFooterInner(doc)}</td></tr></tfoot>
         <tbody><tr><td class="zone">
           ${coverBlock(doc, cover)}
           ${indexBlock(content)}
@@ -232,44 +232,120 @@ export function buildPdfHtml(doc: ManualDocument): string {
     </body></html>`;
 }
 
+// ── Preview HTML — renderização idêntica ao PDF mas sem auto-print ─────────────
+export function buildPreviewHtml(doc: ManualDocument): string {
+  const cover = doc.pages[0];
+  const content = doc.pages.slice(1);
+  const css = `
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; background: #e5e7eb; font-family: 'Arial Narrow', Arial, sans-serif; }
+    .page-wrap { background: #fff; width: 21cm; min-height: 29.7cm; margin: 0 auto 24px; padding: ${M_TOP} ${M_SIDE} ${M_BOTTOM} ${M_SIDE}; box-shadow: 0 2px 12px rgba(0,0,0,.18); position: relative; display: flex; flex-direction: column; }
+    .page-header { margin-bottom: 0.3cm; }
+    .page-footer { margin-top: auto; padding-top: 0.3cm; }
+    .page-body { flex: 1; }
+    ${CONTENT_CSS}
+    .chapter { page-break-before: unset; margin-top: 0.5cm; }
+    @media (max-width: 800px) { .page-wrap { width: 100%; padding: 1cm 0.8cm; } }
+  `;
+
+  function wrapPage(header: string, body: string, footer: string) {
+    return `<div class="page-wrap"><div class="page-header">${header}</div><div class="page-body">${body}</div><div class="page-footer">${footer}</div></div>`;
+  }
+
+  const hdr = runningHeaderInner(doc);
+  const ftr = runningFooterInner(doc);
+
+  const coverHtml = coverBlock(doc, cover);
+  const idxHtml = indexBlock(content);
+  const chaps = content.map((p) =>
+    `<div class="chapter"><h2 class="page-title">${escapeHtml(p.title)}</h2>${p.subtitle ? `<h3 class="page-subtitle">${escapeHtml(p.subtitle)}</h3>` : ''}${p.incompleto ? `<div class="callout" style="border-color:#e65100;background:#fff3e0"><span class="callout-tag" style="color:#e65100">POR ACABAR</span><span>Este capítulo ainda não foi gerado.</span></div>` : ''}${renderCorePageBody(p)}</div>`
+  );
+
+  // capa + índice numa página, cada 2 capítulos noutra (heurística de agrupamento)
+  const pages: string[] = [];
+  pages.push(coverHtml + (idxHtml || ''));
+  for (let i = 0; i < chaps.length; i += 2) {
+    pages.push(chaps.slice(i, i + 2).join(''));
+  }
+
+  const wrapped = pages.map((b) => wrapPage(hdr, b, ftr)).join('');
+  return `<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><style>${css}</style></head><body>${wrapped}</body></html>`;
+}
+
+// ── Reorganizar — renumerar e ordenar páginas pelo índice ─────────────────────
+export function reorganizarManual(doc: ManualDocument): ManualDocument {
+  if (!doc.indice) return doc;
+  const linhas = doc.indice.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+
+  // extrair títulos do índice (antes de " — ")
+  const titulos = linhas.map((l) => {
+    const partes = l.split(' — ');
+    return partes[0].replace(/^\d+\.\s*/, '').trim();
+  });
+
+  if (titulos.length === 0) return doc;
+
+  const cover = doc.pages[0]; // capa/introdução fica sempre em [0]
+  const body = doc.pages.slice(1);
+
+  // mapear cada título do índice à página existente (por título normalizado)
+  function norm(s: string) { return s.toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+  const reordenado: ManualPage[] = titulos.map((titulo, idx) => {
+    const found = body.find((p) => norm(p.title) === norm(titulo));
+    if (found) return { ...found, pageNumber: idx + 2 };
+    // capítulo mencionado no índice mas ainda não gerado
+    return { pageNumber: idx + 2, title: titulo, incompleto: true, paragraphs: [] };
+  });
+
+  // capítulos gerados mas não no índice ficam no fim
+  const usados = new Set(reordenado.map((p) => norm(p.title)));
+  const extra = body
+    .filter((p) => !usados.has(norm(p.title)))
+    .map((p, i) => ({ ...p, pageNumber: reordenado.length + i + 2 }));
+
+  return { ...doc, pages: [cover, ...reordenado, ...extra] };
+}
+
+// ── Download / print ──────────────────────────────────────────────────────────
+function normalizeFileNamePart(value: string) { return value.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+function buildManualFileName(doc: ManualDocument, ext: string) {
+  return `${String(doc.unitNumber).trim()}_Guião_${normalizeFileNamePart(doc.fullTitle)}_SCP_CR.${ext}`;
+}
+
 export function downloadManualDoc(doc: ManualDocument) {
-  const html = buildManualHtml(doc);
-  const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = buildManualFileName(doc, 'doc');
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  try {
+    const html = buildManualHtml(doc);
+    const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = buildManualFileName(doc, 'doc');
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (err) {
+    alert('Erro ao gerar Word: ' + String(err));
+  }
 }
 
 export function exportManualPdf(doc: ManualDocument) {
-  // imprime a partir de um iframe escondido (não depende de pop-up).
-  // O HTML/formato é o mesmo do buildPdfHtml; só o disparo da impressão muda.
-  const html = buildPdfHtml(doc).replace(/<script>[\s\S]*?<\/script>/, '');
-  const iframe = document.createElement('iframe');
-  iframe.setAttribute('aria-hidden', 'true');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  document.body.appendChild(iframe);
-  const idoc = iframe.contentWindow && iframe.contentWindow.document;
-  if (!idoc) {
-    document.body.removeChild(iframe);
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
-    return;
+  try {
+    const html = buildPdfHtml(doc);
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    // usar iframe escondido em vez de window.open (evita bloqueio de popup)
+    let iframe = document.getElementById('__ecl_pdf_iframe') as HTMLIFrameElement | null;
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = '__ecl_pdf_iframe';
+      iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;opacity:0;pointer-events:none;';
+      document.body.append(iframe);
+    }
+    iframe.src = url;
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (err) {
+    alert('Erro ao gerar PDF: ' + String(err));
   }
-  idoc.open();
-  idoc.write(html);
-  idoc.close();
-  setTimeout(() => {
-    try { iframe.contentWindow && iframe.contentWindow.focus(); iframe.contentWindow && iframe.contentWindow.print(); } catch (e) { /* */ }
-    setTimeout(() => { try { document.body.removeChild(iframe); } catch (e) { /* */ } }, 120000);
-  }, 700);
 }
