@@ -5,6 +5,8 @@
 // Colocar em: src/avaliacaoModelo.ts
 // ============================================================
 
+import { PESOS_AULA } from './types';
+
 export type Nivel = 1 | 2 | 3 | 4 | 5;
 export type TipoPlano = 'pratico' | 'teorico' | 'misto';
 
@@ -41,12 +43,16 @@ export function notaAparelho(av: AvAparelho): number {
 export const aplicarPiso = (agora: number, piso?: number): number =>
   piso != null ? Math.max(agora, piso) : agora;
 
-// Pesos por tipo de plano
-export const PESOS: Record<TipoPlano, { OBR: number; SUBAPP: number; KNW: number; ATI: number }> = {
-  pratico: { OBR: .20, SUBAPP: .40, KNW: .30, ATI: .10 },
-  teorico: { OBR: 0,   SUBAPP: 0,   KNW: .90, ATI: .10 },
-  misto:   { OBR: .20, SUBAPP: .20, KNW: .50, ATI: .10 },
-};
+// Pesos por tipo de plano — fonte única em types.ts (PESOS_AULA).
+// Aqui a categoria chama-se SUBAPP porque aparelhos e subtécnicas
+// partilham o mesmo peso: são graus de detalhe da mesma coisa prática.
+export const PESOS: Record<TipoPlano, { OBR: number; SUBAPP: number; KNW: number; ATI: number }> =
+  Object.fromEntries(
+    (Object.keys(PESOS_AULA) as TipoPlano[]).map(t => [
+      t,
+      { OBR: PESOS_AULA[t].OBR, SUBAPP: PESOS_AULA[t].SUB, KNW: PESOS_AULA[t].KNW, ATI: PESOS_AULA[t].ATI },
+    ])
+  ) as Record<TipoPlano, { OBR: number; SUBAPP: number; KNW: number; ATI: number }>;
 
 export function notaPlano(cats: { OBR: number; SUBAPP: number; KNW: number; ATI: number }, tipo: TipoPlano): number {
   const w = PESOS[tipo];
