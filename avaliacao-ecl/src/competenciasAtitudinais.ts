@@ -1,5 +1,6 @@
 // ============================================================
 // 22 Competências Atitudinais — Referencial 811RA144
+// IDs alinhados com compatECL.ts / atitudes.json (ATI-001..ATI-022)
 // Com dicionário completo para professor e aluno
 // ============================================================
 
@@ -26,7 +27,7 @@ export interface CompAtitudinal {
 // ── 6 PERMANENTES ─────────────────────────────────────────────
 const PERMANENTES: CompAtitudinal[] = [
   {
-    id: 'A01', nome: 'Responsabilidade pelas suas ações', tipo: 'permanente',
+    id: 'ATI-001', nome: 'Responsabilidade pelas suas ações', tipo: 'permanente',
     definicao: 'Assume as consequências das suas ações e decisões, sem culpar os outros.',
     observar: ['Reconhece os seus erros sem ser confrontado', 'Cumpre tarefas sem precisar de lembretes', 'Chega a horas e mantém o posto organizado'],
     nao_observar: ['Culpa colegas ou condições externas', 'Abandona tarefas a meio', 'Precisa de supervisão constante'],
@@ -37,7 +38,7 @@ const PERMANENTES: CompAtitudinal[] = [
     pergunta_aluno: 'Assumiste as tuas responsabilidades hoje?',
   },
   {
-    id: 'A11', nome: 'Sentido de organização', tipo: 'permanente',
+    id: 'ATI-011', nome: 'Sentido de organização', tipo: 'permanente',
     definicao: 'Planeia e organiza o trabalho de forma eficiente, gerindo bem o tempo e o espaço.',
     observar: ['Mise en place preparada antes de começar a confeção', 'Ingredientes e utensílios organizados e acessíveis', 'Gere bem o tempo durante a produção'],
     nao_observar: ['Posto desarrumado durante e após a aula', 'Procura utensílios durante a confeção', 'Perde tempo ou atrasa a produção'],
@@ -48,7 +49,7 @@ const PERMANENTES: CompAtitudinal[] = [
     pergunta_aluno: 'Organizaste bem o teu espaço e tempo de trabalho?',
   },
   {
-    id: 'A13', nome: 'Disponibilidade para aprender', tipo: 'permanente',
+    id: 'ATI-013', nome: 'Disponibilidade para aprender', tipo: 'permanente',
     definicao: 'Mostra abertura para adquirir novos conhecimentos e aceita correções com atitude positiva.',
     observar: ['Faz perguntas quando tem dúvidas', 'Aceita correções sem resistência', 'Experimenta técnicas novas com vontade'],
     nao_observar: ['Recusa feedback ou fica na defensiva', 'Repete os mesmos erros sem mudar', 'Desinteressa-se quando a tarefa é difícil'],
@@ -59,7 +60,7 @@ const PERMANENTES: CompAtitudinal[] = [
     pergunta_aluno: 'Estiveste aberto/a a aprender e a receber feedback hoje?',
   },
   {
-    id: 'A14', nome: 'Respeito pelas regras e normas definidas', tipo: 'permanente',
+    id: 'ATI-015', nome: 'Respeito pelas regras e normas definidas', tipo: 'permanente',
     definicao: 'Cumpre as regras da cozinha e da escola sem necessitar de lembretes constantes.',
     observar: ['Respeita as normas de higiene e segurança', 'Cumpre as regras sem ser lembrado', 'Aceita as decisões da hierarquia'],
     nao_observar: ['Ignora regras estabelecidas', 'Contorna normas quando não é observado', 'Questiona sistematicamente a autoridade'],
@@ -70,7 +71,7 @@ const PERMANENTES: CompAtitudinal[] = [
     pergunta_aluno: 'Respeitaste as regras e normas da cozinha hoje?',
   },
   {
-    id: 'A16', nome: 'Respeito pelas normas de higiene e segurança alimentar', tipo: 'permanente',
+    id: 'ATI-016', nome: 'Respeito pelas normas de higiene e segurança alimentar', tipo: 'permanente',
     definicao: 'Cumpre todos os procedimentos de higiene pessoal e segurança alimentar durante a produção.',
     observar: ['Lava as mãos nos momentos certos', 'Usa farda completa e limpa', 'Separa alimentos crus de confecionados', 'Respeita temperaturas de conservação'],
     nao_observar: ['Toca no rosto ou cabelo sem lavar as mãos', 'Usa utensílios mistos para cru e cozinhado', 'Ignora regras de temperatura e conservação'],
@@ -81,7 +82,7 @@ const PERMANENTES: CompAtitudinal[] = [
     pergunta_aluno: 'Cumpriste as normas de higiene e segurança alimentar hoje?',
   },
   {
-    id: 'A17', nome: 'Respeito pelas normas de segurança e saúde no trabalho', tipo: 'permanente',
+    id: 'ATI-017', nome: 'Respeito pelas normas de segurança e saúde no trabalho', tipo: 'permanente',
     definicao: 'Trabalha de forma segura, protegendo-se a si e aos colegas de riscos físicos na cozinha.',
     observar: ['Usa sapatos de segurança e farda adequada', 'Manuseia facas e equipamentos com cuidado', 'Avisa quando há perigos (piso molhado, equipamento quente)'],
     nao_observar: ['Corre ou tem comportamentos de risco na cozinha', 'Usa equipamentos sem formação ou autorização', 'Ignora perigos que coloca a si ou aos colegas'],
@@ -96,7 +97,7 @@ const PERMANENTES: CompAtitudinal[] = [
 // ── CONTEXTO INDIVIDUAL ───────────────────────────────────────
 const INDIVIDUAL: CompAtitudinal[] = [
   {
-    id: 'A02', nome: 'Autonomia', tipo: 'individual',
+    id: 'ATI-002', nome: 'Autonomia', tipo: 'individual',
     definicao: 'Realiza as suas tarefas de forma independente, tomando decisões dentro do seu âmbito.',
     observar: ['Resolve problemas sem depender constantemente do professor', 'Toma decisões dentro do seu âmbito', 'Avança nas tarefas sem precisar de aprovação constante'],
     nao_observar: ['Paralisa quando o professor não está por perto', 'Pergunta sobre cada detalhe mesmo quando sabe a resposta', 'Não avança sem aprovação'],
@@ -107,7 +108,7 @@ const INDIVIDUAL: CompAtitudinal[] = [
     pergunta_aluno: 'Trabalhaste de forma autónoma hoje?',
   },
   {
-    id: 'A04', nome: 'Iniciativa', tipo: 'individual',
+    id: 'ATI-004', nome: 'Iniciativa', tipo: 'individual',
     definicao: 'Age proativamente, antecipando necessidades e agindo sem ser pedido.',
     observar: ['Age antes de ser pedido', 'Antecipa necessidades da produção', 'Propõe soluções em vez de esperar'],
     nao_observar: ['Espera sempre que lhe digam o que fazer', 'Fica inativo quando termina a sua tarefa', 'Só age quando o problema já é óbvio'],
@@ -118,7 +119,7 @@ const INDIVIDUAL: CompAtitudinal[] = [
     pergunta_aluno: 'Tiveste iniciativa hoje sem esperar que te pedissem?',
   },
   {
-    id: 'A10', nome: 'Empenho e persistência', tipo: 'individual',
+    id: 'ATI-010', nome: 'Empenho e persistência', tipo: 'individual',
     definicao: 'Mantém o esforço e a dedicação mesmo quando a tarefa é difícil ou os resultados demoram.',
     observar: ['Mantém o esforço mesmo quando a tarefa é difícil', 'Não desiste ao primeiro obstáculo', 'Tenta melhorar quando erra'],
     nao_observar: ['Desiste facilmente quando a técnica não resulta', 'Entrega trabalho abaixo do seu potencial', 'Perde motivação rapidamente'],
@@ -129,7 +130,7 @@ const INDIVIDUAL: CompAtitudinal[] = [
     pergunta_aluno: 'Estiveste empenhado/a e persististe quando foi difícil?',
   },
   {
-    id: 'A05', nome: 'Autocontrolo', tipo: 'individual',
+    id: 'ATI-005', nome: 'Autocontrolo', tipo: 'individual',
     definicao: 'Gere as suas emoções e reações em situações de pressão ou stress na cozinha.',
     observar: ['Mantém a calma em situações de pressão', 'Gere bem a frustração quando algo não corre bem', 'Não afeta os colegas com o seu estado emocional'],
     nao_observar: ['Reage de forma exagerada quando algo corre mal', 'Perde a calma e afeta o ambiente da equipa', 'Bloqueia em situações de pressão'],
@@ -144,7 +145,7 @@ const INDIVIDUAL: CompAtitudinal[] = [
 // ── CONTEXTO EQUIPA ───────────────────────────────────────────
 const EQUIPA: CompAtitudinal[] = [
   {
-    id: 'A09', nome: 'Cooperação com a equipa', tipo: 'equipa',
+    id: 'ATI-009', nome: 'Cooperação com a equipa', tipo: 'equipa',
     definicao: 'Trabalha de forma colaborativa, partilhando tarefas e ajudando os colegas.',
     observar: ['Oferece ajuda proativamente', 'Partilha informação útil com a equipa', 'Aceita tarefas menos agradáveis sem reclamar'],
     nao_observar: ['Faz só o que lhe foi atribuído e ignora o resto', 'Retém informação que seria útil à equipa', 'Cria conflito ou tensão no grupo'],
@@ -155,7 +156,7 @@ const EQUIPA: CompAtitudinal[] = [
     pergunta_aluno: 'Cooperaste bem com a tua equipa hoje?',
   },
   {
-    id: 'A08', nome: 'Escuta ativa', tipo: 'equipa',
+    id: 'ATI-008', nome: 'Escuta ativa', tipo: 'equipa',
     definicao: 'Ouve atentamente e compreende o que lhe é comunicado, sem necessitar de repetições.',
     observar: ['Ouve sem interromper', 'Segue as instruções na primeira vez', 'Confirma que percebeu antes de agir'],
     nao_observar: ['Precisa que repitam as instruções constantemente', 'Faz tarefas diferentes das que foram pedidas', 'Interrompe ou não deixa os outros terminar'],
@@ -166,7 +167,7 @@ const EQUIPA: CompAtitudinal[] = [
     pergunta_aluno: 'Ouviste atentamente e seguiste as instruções na primeira vez?',
   },
   {
-    id: 'A07', nome: 'Empatia', tipo: 'equipa',
+    id: 'ATI-007', nome: 'Empatia', tipo: 'equipa',
     definicao: 'Compreende e considera os sentimentos e necessidades dos colegas e clientes.',
     observar: ['Percebe quando um colega está com dificuldades e oferece apoio', 'Adapta a comunicação ao interlocutor', 'Considera o impacto das suas ações nos outros'],
     nao_observar: ['Ignora as dificuldades dos colegas', 'Comunica de forma inapropriada para o contexto', 'Age sem considerar o impacto nos outros'],
@@ -177,7 +178,7 @@ const EQUIPA: CompAtitudinal[] = [
     pergunta_aluno: 'Mostraste empatia pelos teus colegas e clientes hoje?',
   },
   {
-    id: 'A06', nome: 'Assertividade', tipo: 'equipa',
+    id: 'ATI-006', nome: 'Assertividade', tipo: 'equipa',
     definicao: 'Comunica de forma clara, direta e respeitosa — defende a sua opinião sem agredir.',
     observar: ['Faz perguntas quando não percebe', 'Diz o que pensa de forma calma e respeitosa', 'Aceita a opinião do professor sem drama'],
     nao_observar: ['Fica em silêncio quando tem dúvidas', 'Discute ou interrompe de forma agressiva', 'Não defende a sua posição quando tem razão'],
@@ -188,7 +189,7 @@ const EQUIPA: CompAtitudinal[] = [
     pergunta_aluno: 'Comunicaste de forma assertiva hoje?',
   },
   {
-    id: 'A18', nome: 'Respeito pela sensibilidade e bem-estar dos outros', tipo: 'equipa',
+    id: 'ATI-018', nome: 'Respeito pela sensibilidade e bem-estar dos outros', tipo: 'equipa',
     definicao: 'Trata todos com respeito e dignidade, contribuindo para um ambiente de trabalho saudável.',
     observar: ['Fala de forma respeitosa com todos', 'Não cria mal-estar ou tensão desnecessária', 'Contribui para um ambiente positivo'],
     nao_observar: ['Faz comentários desrespeitosos ou humilhantes', 'Cria tensão ou conflitos desnecessários', 'Ignora ou menospreza os colegas'],
@@ -199,7 +200,7 @@ const EQUIPA: CompAtitudinal[] = [
     pergunta_aluno: 'Respeitaste o bem-estar dos teus colegas hoje?',
   },
   {
-    id: 'A12', nome: 'Flexibilidade e adaptabilidade', tipo: 'equipa',
+    id: 'ATI-012', nome: 'Flexibilidade e adaptabilidade', tipo: 'equipa',
     definicao: 'Adapta-se a mudanças de tarefas, situações imprevistas ou novos contextos com atitude positiva.',
     observar: ['Adapta-se a mudanças sem resistência', 'Mantém a eficácia em situações imprevistas', 'Abraça novas formas de fazer'],
     nao_observar: ['Resiste a mudanças de tarefa ou método', 'Desorganiza-se com situações imprevistas', 'Recusa experimentar novas abordagens'],
@@ -245,7 +246,7 @@ const COORDENACAO: CompAtitudinal[] = [
 // ── 4 COMPETÊNCIAS ADICIONAIS ─────────────────────────────────
 const ADICIONAIS: CompAtitudinal[] = [
   {
-    id: 'A19', nome: 'Autoconfiança', tipo: 'adicional',
+    id: 'ATI-019', nome: 'Autoconfiança', tipo: 'adicional',
     definicao: 'Acredita nas suas capacidades e age com segurança nas suas escolhas profissionais.',
     observar: ['Age com segurança nas suas decisões', 'Apresenta o seu trabalho sem hesitação', 'Defende as suas escolhas com fundamento'],
     nao_observar: ['Constantemente duvida de si mesmo', 'Precisa de validação constante', 'Recusa assumir responsabilidades por insegurança'],
@@ -256,7 +257,7 @@ const ADICIONAIS: CompAtitudinal[] = [
     pergunta_aluno: 'Atuaste com autoconfiança nas tuas decisões hoje?',
   },
   {
-    id: 'A20', nome: 'Postura profissional', tipo: 'adicional',
+    id: 'ATI-020', nome: 'Postura profissional', tipo: 'adicional',
     definicao: 'Mantém uma postura e comportamento adequados ao contexto profissional de restauração.',
     observar: ['Mantém postura correta e profissional', 'Comportamento adequado ao contexto', 'Representa bem a escola e a profissão'],
     nao_observar: ['Comportamento inadequado para o contexto', 'Linguagem ou atitudes não profissionais', 'Não distingue contexto escolar de lazer'],
@@ -267,7 +268,7 @@ const ADICIONAIS: CompAtitudinal[] = [
     pergunta_aluno: 'Mantiveste uma postura profissional adequada hoje?',
   },
   {
-    id: 'A21', nome: 'Sentido crítico', tipo: 'adicional',
+    id: 'ATI-021', nome: 'Sentido crítico', tipo: 'adicional',
     definicao: 'Analisa situações e resultados de forma objetiva, propondo melhorias fundamentadas.',
     observar: ['Questiona quando algo não faz sentido', 'Propõe melhorias com fundamento', 'Avalia o próprio trabalho de forma objetiva'],
     nao_observar: ['Aceita tudo sem questionar', 'Critica sem propor alternativas', 'Não consegue avaliar o seu próprio trabalho'],
@@ -278,7 +279,7 @@ const ADICIONAIS: CompAtitudinal[] = [
     pergunta_aluno: 'Usaste o teu sentido crítico de forma construtiva hoje?',
   },
   {
-    id: 'A22', nome: 'Respeito pelas diferenças individuais', tipo: 'adicional',
+    id: 'ATI-022', nome: 'Respeito pelas diferenças individuais', tipo: 'adicional',
     definicao: 'Trata todos com igualdade e respeito, independentemente das suas características ou capacidades.',
     observar: ['Trata todos os colegas com a mesma consideração', 'Adapta a comunicação às necessidades de cada um', 'Não faz distinções por características pessoais'],
     nao_observar: ['Trata diferente por características pessoais', 'Exclui ou menospreza colegas', 'Faz comentários inadequados sobre diferenças'],
@@ -289,7 +290,7 @@ const ADICIONAIS: CompAtitudinal[] = [
     pergunta_aluno: 'Respeitaste as diferenças individuais dos teus colegas hoje?',
   },
   {
-    id: 'A03', nome: 'Cuidado com a apresentação pessoal', tipo: 'adicional',
+    id: 'ATI-003', nome: 'Cuidado com a apresentação pessoal', tipo: 'adicional',
     definicao: 'Mantém uma apresentação pessoal cuidada e adequada ao contexto profissional de cozinha.',
     observar: ['Farda completa e limpa', 'Higiene pessoal cuidada', 'Ausência de adornos proibidos'],
     nao_observar: ['Farda incompleta ou suja', 'Adornos proibidos (fones, unhas postiças, joias)', 'Higiene pessoal descurada'],
@@ -298,6 +299,17 @@ const ADICIONAIS: CompAtitudinal[] = [
     sim_curto: 'Farda completa · Higiene cuidada',
     nao_curto: 'Farda incompleta · Adornos proibidos',
     pergunta_aluno: 'Cuidaste da tua apresentação pessoal hoje?',
+  },
+  {
+    id: 'ATI-014', nome: 'Respeito pelos princípios da sustentabilidade', tipo: 'adicional',
+    definicao: 'Aproveita as matérias-primas ao máximo, reduz o desperdício alimentar e usa os recursos da cozinha (água, energia, embalagens) de forma consciente.',
+    observar: ['Aproveita aparas e sobras em fundos, caldos ou outras preparações', 'Ajusta as quantidades ao que é realmente necessário', 'Fecha torneiras e desliga equipamentos que não estão em uso', 'Separa resíduos de acordo com as regras da cozinha'],
+    nao_observar: ['Deita fora partes aproveitáveis do produto', 'Prepara muito acima do necessário sem justificação', 'Deixa água a correr ou equipamentos ligados sem uso', 'Mistura resíduos que deviam ser separados'],
+    exemplos_pos: ['Guarda as aparas de legumes para fundo em vez de as deitar fora', 'Usa as carcaças da limpeza do frango para caldo', 'Calcula a quantidade certa a partir da ficha técnica e não prepara a mais', 'Desliga a placa assim que termina a redução'],
+    exemplos_neg: ['Deita fora os talos dos brócolos que dariam creme', 'Descasca a batata com faca a tirar meio centímetro de polpa', 'Deixa a água a correr enquanto lava os legumes um a um', 'Deita óleo usado no lava-loiça'],
+    sim_curto: 'Aproveita produto · Reduz desperdício',
+    nao_curto: 'Deita fora aproveitável · Gasta a mais',
+    pergunta_aluno: 'Aproveitaste bem os produtos e evitaste desperdício hoje?',
   },
 ];
 
