@@ -1,0 +1,135 @@
+// ============================================================
+// Geração do enunciado de um trabalho de conhecimento com apoio de IA.
+//
+// O professor escolhe o tipo de trabalho, a UC e o tema; a app monta o
+// prompt e abre-o no Claude/ChatGPT/Gemini através de abrirIA().
+// O enunciado que vier de lá é colado no trabalho e fica editável —
+// a IA propõe, o professor decide.
+// ============================================================
+
+import {
+  TipoTrabalho,
+  LABEL_TRABALHO,
+  MODALIDADE_TRABALHO,
+  TrabalhoConhecimento,
+} from './types';
+
+export interface ContextoTrabalho {
+  tipo: TipoTrabalho;
+  tema: string;
+  ucId?: string;
+  ucNome?: string;
+  ano: 1 | 2 | 3;
+  modo: 'individual' | 'grupo' | 'turma';
+  /** Conhecimentos da UC que o trabalho deve cobrir (nomes, não IDs). */
+  conhecimentos?: string[];
+  /** Atitudes a observar durante o trabalho (nomes, não IDs). */
+  atitudes?: string[];
+  /** Duração prevista, em aulas ou dias. */
+  duracao?: string;
+}
+
+const EXIGENCIA_POR_ANO: Record<1 | 2 | 3, string> = {
+  1: 'Primeiro ano. Linguagem simples e instruções passo a passo. Pede sobretudo identificação e descrição. Evita pedir análise crítica.',
+  2: 'Segundo ano. Pede aplicação e comparação, não apenas descrição. O aluno já deve justificar escolhas.',
+  3: 'Terceiro ano. Pede análise, decisão fundamentada e sentido crítico. O aluno deve avaliar alternativas e defender a sua opção.',
+};
+
+const INSTRUCAO_POR_TIPO: Record<TipoTrabalho, string> = {
+  investigacao:
+    'Trabalho escrito de investigação. Estrutura com introdução, desenvolvimento e conclusão. Indica que fontes são aceitáveis e exige referências.',
+  relatorio:
+    'Relatório escrito sobre algo que o aluno viveu (visita, evento, serviço, prova). Descrição do que observou mais reflexão sobre o que aprendeu.',
+  apresentacao:
+    'Apresentação oral à turma. Indica a duração, se há suporte visual, e o que se espera na forma de comunicar, não só no conteúdo.',
+  defesa:
+    'Defesa oral perante o professor sobre trabalho já realizado. Prepara perguntas que obriguem o aluno a justificar decisões técnicas que tomou.',
+};
+
+export function construirPromptTrabalho(ctx: ContextoTrabalho): string {
+  const modalidade = MODALIDADE_TRABALHO[ctx.tipo];
+  const linhas: string[] = [];
+
+  linhas.push(
+    'És professor de cozinha num curso profissional de nível 4 em Portugal.',
+    'Escreve o enunciado de um trabalho para dar aos alunos.',
+    '',
+    '## Contexto',
+    `Tipo de trabalho: ${LABEL_TRABALHO[ctx.tipo]} (${modalidade})`,
+    `Tema: ${ctx.tema}`,
+  );
+
+  if (ctx.ucNome) linhas.push(`Unidade de competência: ${ctx.ucId ?? ''} ${ctx.ucNome}`.trim());
+  linhas.push(`Ano: ${ctx.ano}º`);
+  linhas.push(
+    `Modo: ${ctx.modo === 'individual' ? 'individual' : ctx.modo === 'grupo' ? 'em grupo' : 'turma inteira'}`
+  );
+  if (ctx.duracao) linhas.push(`Duração: ${ctx.duracao}`);
+
+  if (ctx.conhecimentos?.length) {
+    linhas.push('', '## Conhecimentos a cobrir');
+    ctx.conhecimentos.forEach(c => linhas.push(`- ${c}`));
+  }
+
+  if (ctx.atitudes?.length) {
+    linhas.push(
+      '',
+      '## Atitudes observadas durante o trabalho',
+      'Não são para avaliar no texto entregue — são observadas pelo professor',
+      'enquanto o trabalho decorre. Tem-nas em conta ao desenhar a tarefa.'
+    );
+    ctx.atitudes.forEach(a => linhas.push(`- ${a}`));
+  }
+
+  linhas.push(
+    '',
+    '## Nível de exigência',
+    EXIGENCIA_POR_ANO[ctx.ano],
+    '',
+    '## Formato do trabalho',
+    INSTRUCAO_POR_TIPO[ctx.tipo],
+    '',
+    '## O que devolver',
+    'Escreve o enunciado em português de Portugal, dirigido ao aluno, com:',
+    '1. Título',
+    '2. O que se pede, em linguagem clara e direta',
+    '3. Passos concretos a seguir',
+    '4. Critérios de avaliação, em linguagem que o aluno perceba',
+    '5. O que entregar e em que formato',
+    '',
+    'Regras: frases curtas; nada de jargão académico; se usares um termo',
+    'técnico de cozinha, explica-o entre parênteses na primeira vez.',
+    'Alguns alunos têm dificuldades de aprendizagem — o enunciado tem de',
+    'ser legível por todos sem baixar a exigência do trabalho.',
+    'Devolve só o enunciado, sem comentários teus antes ou depois.'
+  );
+
+  return linhas.join('\n');
+}
+
+/** Trabalho vazio, pronto a preencher no formulário do plano de aula. */
+export function novoTrabalho(tipo: TipoTrabalho): TrabalhoConhecimento {
+  return {
+    id: `trab_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    tipo,
+    titulo: '',
+    enunciado: '',
+    modo: 'individual',
+    conhecimentosIds: [],
+    atitudesIds: [],
+    criadoEm: new Date().toISOString(),
+  };
+}
+
+/** Reparte os trabalhos de um plano entre conhecimento escrito e oral. */
+export function repartirPorModalidade(trabalhos: TrabalhoConhecimento[]): {
+  escrito: TrabalhoConhecimento[];
+  oral: TrabalhoConhecimento[];
+} {
+  const escrito: TrabalhoConhecimento[] = [];
+  const oral: TrabalhoConhecimento[] = [];
+  for (const t of trabalhos) {
+    (MODALIDADE_TRABALHO[t.tipo] === 'escrito' ? escrito : oral).push(t);
+  }
+  return { escrito, oral };
+}
