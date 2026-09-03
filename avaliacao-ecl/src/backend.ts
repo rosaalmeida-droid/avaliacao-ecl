@@ -3025,7 +3025,11 @@ export function eliminarTecnicaCustom(id: string): void {
 // CLASSROOM — publicação automática
 // ═══════════════════════════════════════════════════════════════
 
-export type TipoPublicacaoClassroom = 'plano' | 'ficha' | 'guiao' | 'competencias' | 'requisicao' | 'evento';
+// 'trabalho'  → enunciado do trabalho de conhecimento, para os alunos
+// 'relatorio' → avaliação devolvida ao aluno depois de o professor validar
+export type TipoPublicacaoClassroom =
+  | 'plano' | 'ficha' | 'guiao' | 'competencias' | 'requisicao' | 'evento'
+  | 'trabalho' | 'relatorio';
 
 export async function publicarNoClassroom(
   tipo: TipoPublicacaoClassroom,
