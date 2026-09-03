@@ -42,7 +42,7 @@ function calcularNotaFinal(notaProf: number, notaAluno: number): number {
   return notaProf;
 }
 
-// Conversão 1-4 → 0-20 (×5)
+// Conversão 1-5 → 0-20 (×4)
 function para20(n: number): number { return n > 0 ? Math.min(20, Math.round(n * 4)) : 0; }
 
 function labelNotaFinal(nota: number): string {
