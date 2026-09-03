@@ -319,12 +319,97 @@ export interface FichaProducao {
   htmlCompleto?: string;
   criadoEm: string;
   atualizadoEm: string;
-  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
+  /** Define os pesos de avaliação. Decisão explícita do professor —
+   *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
+   *  impedia um plano teórico com trabalhos e sem ficha. */
+  tipoPlanAula?: TipoPlanAula;
 }
 
 // --------------------------------------------------------
 // Planos de Aula
 // --------------------------------------------------------
+// ── Trabalhos de conhecimento ─────────────────────────────────
+// Um plano de aula não tem de assentar numa ficha técnica. Numa aula
+// teórica o trabalho pode ser de investigação, uma apresentação, uma
+// defesa oral ou um relatório — e é aí que os conhecimentos e as
+// atitudes são avaliados.
+export type TipoPlanAula = 'pratico' | 'teorico' | 'misto';
+
+export type TipoTrabalho =
+  | 'investigacao'   // pesquisa e desenvolvimento → escrito
+  | 'relatorio'      // relatório de visita, prova, evento → escrito
+  | 'apresentacao'   // apresentação à turma → oral
+  | 'defesa';        // defesa do trabalho perante o professor → oral
+
+/** Cada tipo de trabalho já traz consigo se conta como conhecimento
+ *  escrito ou oral. Assim a repartição 50:50 dos conhecimentos sai
+ *  do próprio trabalho, sem ser preciso marcar o conhecimentos.json. */
+export const MODALIDADE_TRABALHO: Record<TipoTrabalho, 'escrito' | 'oral'> = {
+  investigacao: 'escrito',
+  relatorio:    'escrito',
+  apresentacao: 'oral',
+  defesa:       'oral',
+};
+
+export const LABEL_TRABALHO: Record<TipoTrabalho, string> = {
+  investigacao: 'Investigação e desenvolvimento',
+  relatorio:    'Relatório',
+  apresentacao: 'Apresentação oral',
+  defesa:       'Defesa do trabalho',
+};
+
+export interface TrabalhoConhecimento {
+  id: string;
+  tipo: TipoTrabalho;
+  titulo: string;
+  /** Enunciado dado ao aluno. Pode ser escrito pelo professor ou
+   *  gerado com apoio de IA a partir de promptIA. */
+  enunciado: string;
+  /** Prompt usado para gerar o enunciado — guardado para o professor
+   *  poder reaproveitar ou afinar depois. */
+  promptIA?: string;
+  /** Como é feito: sozinho, em grupo, ou pela turma toda. */
+  modo: 'individual' | 'grupo' | 'turma';
+  /** Alunos a quem foi atribuído. Vazio = toda a turma. */
+  alunosIds?: string[];
+  /** Conhecimentos (KNW-) avaliados por este trabalho. */
+  conhecimentosIds: string[];
+  /** Atitudes (ATI-) avaliadas por este trabalho. Um trabalho de grupo
+   *  avalia cooperação e escuta tanto como uma produção de cozinha. */
+  atitudesIds: string[];
+  dataEntrega?: string;
+  criadoEm: string;
+}
+
+/** O que o aluno entrega num trabalho de conhecimento. */
+export interface SubmissaoTrabalho {
+  id: string;
+  trabalhoId: string;
+  planoAulaId: string;
+  alunoId: string;
+  turmaId: string;
+  /** Código anónimo usado na correção assistida (ex.: "A07").
+   *  A IA vê só isto; a correspondência ao nome faz-se localmente. */
+  codigo: string;
+  texto: string;
+  anexoUrl?: string;
+  submetidoEm: string;
+  /** Proposta devolvida pela correção assistida. Nunca é a nota final:
+   *  o professor abre, vê a proposta preenchida, ajusta e valida —
+   *  o mesmo padrão da autoavaliação do aluno. */
+  propostaIA?: {
+    nota: number;              // 1-5
+    comentario: string;
+    pontosFortes: string[];
+    aMelhorar: string[];
+    geradaEm: string;
+  };
+  /** Nota do professor. Só esta conta. */
+  notaProfessor?: number;
+  comentarioProfessor?: string;
+  validadoEm?: string;
+}
+
 export interface PlanoAula {
   id: string;
   turmaId: string;
@@ -335,6 +420,9 @@ export interface PlanoAula {
   titulo: string;
   observacoes: string;
   fichasIds: string[];
+  /** Trabalhos de conhecimento — para planos teóricos ou mistos.
+   *  Um plano de aula não precisa de ter ficha técnica. */
+  trabalhos?: TrabalhoConhecimento[];
   estado: 'rascunho' | 'fichas_pendentes' | 'requisicao_pendente' | 'publicado' | 'realizada' | 'arquivado';
   requisicaoId?: string;
   ucId?: string;
@@ -356,7 +444,10 @@ export interface PlanoAula {
   };
   criadoEm: string;
   atualizadoEm: string;
-  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
+  /** Define os pesos de avaliação. Decisão explícita do professor —
+   *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
+   *  impedia um plano teórico com trabalhos e sem ficha. */
+  tipoPlanAula?: TipoPlanAula;
 }
 
 export interface Evidencia {
@@ -420,7 +511,10 @@ export interface RecuperacaoModulo {
   dataValidacao?: string;
   criadoEm: string;
   atualizadoEm: string;
-  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
+  /** Define os pesos de avaliação. Decisão explícita do professor —
+   *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
+   *  impedia um plano teórico com trabalhos e sem ficha. */
+  tipoPlanAula?: TipoPlanAula;
 
   // ── Recuperação via FCT — tipo adicional, coexiste com os anteriores ──
   // O aluno recupera um módulo evidenciando trabalho real feito durante a
@@ -598,7 +692,10 @@ export interface MateriaPrimaCustom {
   aliases: string[];
   criadoEm: string;
   atualizadoEm: string;
-  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
+  /** Define os pesos de avaliação. Decisão explícita do professor —
+   *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
+   *  impedia um plano teórico com trabalhos e sem ficha. */
+  tipoPlanAula?: TipoPlanAula;
 }
 
 export type CategoriaManual =
@@ -624,7 +721,10 @@ export interface EntradaManual {
   criadoPor: string;
   criadoEm: string;
   atualizadoEm: string;
-  tipoPlanAula?: 'pratico' | 'misto' | 'teorico'; // define pesos de avaliação
+  /** Define os pesos de avaliação. Decisão explícita do professor —
+   *  o AlunoView adivinhava-o pela ausência de ficha técnica, o que
+   *  impedia um plano teórico com trabalhos e sem ficha. */
+  tipoPlanAula?: TipoPlanAula;
 }
 
 export const CATEGORIAS_MANUAL: CategoriaManual[] = [
@@ -677,11 +777,72 @@ export interface DadosGuia {
 }
 
 // ── Pesos por tipo de aula ────────────────────────────────────
+// Decisão pedagógica (set/2026). Referência: sistema dual alemão —
+// KochAusbV 2022 §16 reparte o exame em 60% prático / 40% teórico.
+// Aqui prático = OBR + SUB = 60%; os restantes 40% dividem-se entre
+// conhecimentos (20%) e atitudes (20%), porque num curso profissional
+// a postura vale tanto como a teoria.
+//
+// KNW subdivide-se em escrito e oral (10% + 10%), à imagem dos dois
+// blocos alemães "schriftliche Arbeiten" / "sonstige Leistungen" (50:50).
+// A subdivisão só entra em vigor quando os conhecimentos passarem a
+// estar marcados como escrito ou oral — até lá KNW conta como um todo.
+//
+// INI saiu daqui: a participação em eventos e concursos passou a bónus
+// aditivo (ver BONUS_PARTICIPACAO). Não confundir com INI-001, que é
+// a iniciativa dentro da aula teórica e continua a existir.
 export const PESOS_AULA = {
-  pratico: { OBR: 0.20, SUB: 0.50, KNW: 0.20, ATI: 0.10, INI: 0.00 },
-  misto:   { OBR: 0.20, SUB: 0.50, KNW: 0.20, ATI: 0.10, INI: 0.00 },
-  teorico: { OBR: 0.20, SUB: 0.00, KNW: 0.65, ATI: 0.10, INI: 0.05 },
+  pratico: { OBR: 0.20, SUB: 0.40, KNW: 0.20, ATI: 0.20, INI: 0.00 },
+  misto:   { OBR: 0.20, SUB: 0.40, KNW: 0.20, ATI: 0.20, INI: 0.00 },
+  teorico: { OBR: 0.15, SUB: 0.00, KNW: 0.65, ATI: 0.20, INI: 0.00 },
 } as const;
+
+// Repartição interna dos conhecimentos, quando estiverem marcados.
+export const PESOS_KNW = { escrito: 0.5, oral: 0.5 } as const;
+
+// ── Bónus de participação — eventos e concursos ───────────────
+// Não é uma componente ponderada: é um acréscimo à nota final.
+// Assim quem participa SOBE, em vez de quem não participa descer por
+// razões que muitas vezes não dependem dele (trabalha, mora longe,
+// toma conta de irmãos).
+export const BONUS_PARTICIPACAO = {
+  porAtividade: 0.75,
+  maxAtividades: 3,          // até +2,25 valores
+  notaBaseMinima: 8,         // abaixo de 8 o bónus não conta
+  tetoSemParticipacao: 17,   // sem participar, o máximo é 17
+} as const;
+
+/**
+ * Aplica o bónus de participação à nota base de uma UC.
+ * @param notaBase      nota 0-20 calculada pelas competências
+ * @param nParticipacoes atividades/concursos concluídos pelo aluno
+ */
+export function aplicarBonusParticipacao(
+  notaBase: number,
+  nParticipacoes: number
+): { notaFinal: number; bonus: number; limitadaPorTeto: boolean } {
+  const B = BONUS_PARTICIPACAO;
+  const n = Math.max(0, Math.min(nParticipacoes, B.maxAtividades));
+
+  if (n === 0) {
+    const limitada = notaBase > B.tetoSemParticipacao;
+    return {
+      notaFinal: limitada ? B.tetoSemParticipacao : notaBase,
+      bonus: 0,
+      limitadaPorTeto: limitada,
+    };
+  }
+
+  const bonus = notaBase >= B.notaBaseMinima ? n * B.porAtividade : 0;
+  return {
+    // 2 casas: a nota da UC agrega vários planos e arredondar cedo
+    // acumula erro. O arredondamento para 1 casa faz-se na apresentação.
+    notaFinal: Math.min(20, Math.round((notaBase + bonus) * 100) / 100),
+    bonus,
+    limitadaPorTeto: false,
+  };
+}
+
 
 // ── Iniciativa — autoavaliação do aluno em aulas teóricas ─────
 export const INICIATIVA_FRASES = [
