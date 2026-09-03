@@ -1,0 +1,111 @@
+// ============================================================
+// Perguntas ao aluno com a matéria-prima incluída.
+//
+// Hoje o aluno lê "Selaste?" — genérico, sem contexto. Devia ler
+// "Selaste a carne?". A mesma técnica aplicada a produtos diferentes
+// tem pontos de controlo diferentes, e a pergunta tem de o dizer.
+//
+// Duas fontes, por ordem de preferência:
+//  1. Micros_por_Tecnica_COMPLETO.json — perguntas específicas por
+//     produto, para as 17 técnicas-mãe que já têm micros escritos.
+//     Ex.: assar ave → "Chegou a ≥75°C ao centro?"
+//  2. Frase genérica com o nome do produto colado, para as restantes
+//     87 técnicas. Ex.: "Selaste a carne?"
+//
+// Assim o buraco dos micros por preencher deixa de ser impeditivo.
+// ============================================================
+
+export interface MicrosPorTecnica {
+  tecnica: string;
+  fr?: string;
+  gesto?: string;
+  micros: Record<string, string[]>;   // produto → perguntas
+}
+
+/** Normaliza para comparar: sem acentos, minúsculas, sem plural simples. */
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/s$/, '')
+    .trim();
+}
+
+/**
+ * Encontra o grupo de produto mais próximo do que está na ficha.
+ * Os grupos nos micros são largos ("Carne", "Ave", "Pão/massa/brioche"),
+ * a ficha traz o produto concreto ("lombo de porco", "coxa de frango").
+ */
+export function grupoDoProduto(
+  produto: string,
+  grupos: string[]
+): string | undefined {
+  const p = norm(produto);
+
+  for (const g of grupos) {
+    for (const parte of g.split('/')) {
+      const n = norm(parte);
+      if (p === n || p.includes(n) || n.includes(p)) return g;
+    }
+  }
+
+  // Famílias conhecidas — o produto da ficha raramente diz "carne".
+  const familias: Record<string, string[]> = {
+    carne: ['vaca', 'vitela', 'porco', 'borrego', 'cabrito', 'lombo', 'bife', 'entrecosto', 'costeleta', 'novilho'],
+    ave: ['frango', 'galinha', 'peru', 'pato', 'codorniz', 'coxa', 'peito'],
+    peixe: ['bacalhau', 'robalo', 'dourada', 'salmao', 'pescada', 'atum', 'sardinha', 'linguado', 'polvo', 'lula'],
+  };
+  for (const [fam, termos] of Object.entries(familias)) {
+    if (termos.some(t => p.includes(t))) {
+      const g = grupos.find(x => norm(x) === fam || norm(x).includes(fam));
+      if (g) return g;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Perguntas a fazer ao aluno para uma técnica sobre um produto.
+ * Se houver micros para aquele produto, usa-os; senão devolve null e
+ * quem chamou usa a frase genérica.
+ */
+export function perguntasEspecificas(
+  nomeTecnica: string,
+  produto: string,
+  biblioteca: MicrosPorTecnica[]
+): { grupo: string; perguntas: string[] } | null {
+  const t = biblioteca.find(x => norm(x.tecnica) === norm(nomeTecnica));
+  if (!t) return null;
+
+  const grupo = grupoDoProduto(produto, Object.keys(t.micros));
+  if (!grupo) return null;
+
+  return { grupo, perguntas: t.micros[grupo] ?? [] };
+}
+
+/**
+ * Compõe a pergunta genérica com o produto.
+ *   ("Selar", "lombo de porco")      → "Selaste: lombo de porco?"
+ *   ("Cortar em juliana", "cenoura") → "Cortaste em juliana: cenoura?"
+ *
+ * Sem artigo de propósito. O produtos.json não guarda o género, e
+ * adivinhá-lo pela terminação falha em couve, leite, alface, sal e
+ * dezenas de outros. Um "o couve" no ecrã do aluno é pior do que os
+ * dois pontos. Quando os produtos tiverem género marcado, isto passa
+ * a "Selaste o lombo de porco?" sem mexer em mais nada.
+ */
+export function perguntaComProduto(nomeSubtecnica: string, produto?: string): string {
+  const base = nomeSubtecnica.trim();
+  if (!produto) return `${base}?`;
+  return `${base}: ${produto.trim()}?`;
+}
+
+/**
+ * Etiqueta curta para mostrar ao lado da competência, para o aluno saber
+ * sempre sobre que produto está a responder.
+ *   ("Juliana", "cenoura") → "Juliana · cenoura"
+ */
+export function etiquetaComProduto(nome: string, produto?: string): string {
+  return produto ? `${nome} · ${produto}` : nome;
+}
