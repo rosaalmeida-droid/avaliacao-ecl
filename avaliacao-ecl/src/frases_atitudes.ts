@@ -1,9 +1,21 @@
 // ============================================================
-// Frases de autoavaliação — o aluno escolhe a frase que melhor
-// descreve o que aconteceu. As notas associadas (5/10/15/18)
-// são internas e nunca mostradas ao aluno.
+// Frases de autoavaliação das atitudes.
+// O aluno escolhe a frase que melhor o descreve NESTE MOMENTO.
+// As notas associadas (5/10/15/20) são internas, nunca mostradas.
 //
-// Ordem das frases: [não atingi, em desenvolvimento, atingi, superei]
+// Ordem: [ainda não, a desenvolver, já consigo, já domino]
+//
+// Princípios de redacção:
+//  1. PRESENTE — descreve onde o aluno está, não o que fez num dia.
+//  2. "AINDA" no nível 1 — é um ponto de partida, não um defeito.
+//  3. SEM AGRAVANTES — nada de "mesmo as mais simples", "culpei
+//     os outros", "foi-me chamada a atenção". Um aluno não escolhe
+//     uma frase que o humilha, e perde-se a honestidade da
+//     autoavaliação, que é a base de todo o sistema.
+//  4. O nível 4 inclui apoiar colegas — é o que distingue quem
+//     domina de quem já consegue.
+//
+// IDs alinhados com compatECL.ts e atitudes.json (ATI-001..ATI-022).
 // ============================================================
 
 export interface FrasesCompetencia {
@@ -11,174 +23,223 @@ export interface FrasesCompetencia {
   frases: [string, string, string, string];
 }
 
-// ------------------------------------------------------------------
-// ATITUDES (A01-A18)
-// ------------------------------------------------------------------
+/** Notas internas por posição na escala. Nunca mostradas ao aluno. */
+export const NOTAS_FRASES: [number, number, number, number] = [5, 10, 15, 20];
+
 export const FRASES_ATITUDES: FrasesCompetencia[] = [
+  // ── 1º ANO ────────────────────────────────────────────────
   {
-    competenciaId: 'A01', // Responsabilidade pelas suas ações
+    competenciaId: 'ATI-001', // Responsabilidade pelas suas ações
     frases: [
-      'Tive dificuldade em assumir as consequências do que fiz e por vezes culpei outros ou as circunstâncias.',
-      'Reconheci alguns erros meus, mas noutras situações evitei assumi-los.',
-      'Assumi os meus erros e corrigi-os sem culpar os outros.',
-      'Assumi total responsabilidade pelo meu trabalho, corrigi erros rapidamente e ajudei colegas a fazer o mesmo.',
+      'Ainda tenho dificuldade em assumir quando alguma coisa corre mal.',
+      'Estou a aprender a assumir os meus erros, mas nem sempre consigo.',
+      'Assumo o que corre mal e procuro corrigir.',
+      'Assumo sempre o meu trabalho, corrijo depressa e ajudo colegas a fazer o mesmo.',
     ],
   },
   {
-    competenciaId: 'A02', // Autonomia
+    competenciaId: 'ATI-003', // Cuidado com a apresentação pessoal
     frases: [
-      'Precisei que me dissessem o que fazer em quase todas as tarefas, mesmo as mais simples.',
-      'Consegui fazer algumas tarefas sozinho/a, mas precisei de ajuda frequente para decidir os próximos passos.',
-      'Organizei e executei as minhas tarefas sem precisar de indicações constantes.',
-      'Trabalhei de forma totalmente independente e ainda ajudei colegas a organizarem-se.',
+      'Ainda me esqueço de partes do uniforme ou da higiene pessoal.',
+      'Estou a criar o hábito, mas às vezes falta-me um detalhe.',
+      'Venho sempre com o uniforme completo e a higiene em ordem.',
+      'Tenho uma apresentação impecável e lembro os colegas quando lhes falta algo.',
     ],
   },
   {
-    competenciaId: 'A03', // Apresentação pessoal
+    competenciaId: 'ATI-005', // Autocontrolo
     frases: [
-      'Não respeitei o uniforme/higiene pessoal (ex: unhas, cabelo, farda) e foi-me chamada a atenção mais do que uma vez.',
-      'Tive o uniforme e a higiene pessoal corretos na maior parte do tempo, mas faltou algum detalhe.',
-      'Mantive sempre o uniforme completo e a higiene pessoal adequada durante toda a aula.',
-      'Mantive uma apresentação impecável e ainda alertei colegas para corrigirem a deles.',
+      'Ainda perco a calma quando há pressão ou correria.',
+      'Estou a aprender a gerir a pressão, mas custa-me em alguns momentos.',
+      'Mantenho a calma e continuo a trabalhar mesmo sob pressão.',
+      'Giro bem a pressão e ajudo a manter o ambiente calmo à minha volta.',
     ],
   },
   {
-    competenciaId: 'A04', // Iniciativa
+    competenciaId: 'ATI-011', // Sentido de organização
     frases: [
-      'Fiquei à espera que me dissessem o que fazer, mesmo quando havia tarefas óbvias para avançar.',
-      'Tomei iniciativa em algumas situações, mas só quando foi muito evidente o que fazer.',
-      'Avancei com tarefas sem que me fosse pedido, antecipando o que era preciso fazer.',
-      'Identifiquei o que faltava fazer e tomei a iniciativa de resolver, incluindo ajudar noutras partidas da cozinha.',
+      'Ainda tenho o meu espaço e os materiais desarrumados.',
+      'Estou a organizar-me melhor, mas preciso de arrumar várias vezes.',
+      'Mantenho o meu espaço e os materiais organizados do princípio ao fim.',
+      'Mantenho tudo organizado e ajudo a organizar o espaço da equipa.',
     ],
   },
   {
-    competenciaId: 'A05', // Autocontrolo
+    competenciaId: 'ATI-013', // Disponibilidade para aprender
     frases: [
-      'Em momentos de stress ou pressão, perdi a calma e isso afetou o meu trabalho ou o ambiente.',
-      'Senti-me sob pressão em alguns momentos e por vezes reagi de forma menos calma do que gostaria.',
-      'Mesmo sob pressão, mantive a calma e continuei a trabalhar de forma controlada.',
-      'Geri muito bem a pressão e ainda ajudei a manter o ambiente calmo à minha volta.',
+      'Ainda me custa aceitar correções e experimentar coisas novas.',
+      'Aceito o que me dizem, mas tenho dificuldade em pôr em prática.',
+      'Estou aberto/a a aprender e aplico o que me corrigem.',
+      'Procuro aprender mais, peço opinião e aplico logo o que me dizem.',
     ],
   },
   {
-    competenciaId: 'A06', // Assertividade
+    competenciaId: 'ATI-015', // Respeito pelas regras e normas definidas
     frases: [
-      'Não consegui expressar a minha opinião quando era importante, ou fi-lo de forma agressiva.',
-      'Tentei dizer o que pensava, mas por vezes fui demasiado calado/a ou demasiado direto/a sem cuidado.',
-      'Consegui expressar a minha opinião de forma clara e respeitosa, mesmo quando discordava de alguém.',
-      'Expressei sempre a minha opinião com clareza e respeito, e ajudei a equipa a chegar a acordo.',
+      'Ainda me escapam regras da cozinha e do funcionamento da aula.',
+      'Cumpro a maior parte das regras, mas às vezes esqueço-me de algumas.',
+      'Cumpro as regras da cozinha e da aula sem precisar que me lembrem.',
+      'Cumpro sempre as regras e ajudo os colegas a lembrarem-se delas.',
     ],
   },
   {
-    competenciaId: 'A07', // Empatia
+    competenciaId: 'ATI-016', // Higiene e segurança alimentar
     frases: [
-      'Não me preocupei muito com o que os colegas estavam a sentir ou a precisar.',
-      'Por vezes percebi o que os colegas precisavam, mas nem sempre ajustei o meu comportamento a isso.',
-      'Percebi e tive em conta as dificuldades ou necessidades dos colegas durante o trabalho.',
-      'Estive muito atento/a aos colegas, percebi quando precisavam de ajuda e antecipei-me a dar apoio.',
+      'Ainda me esqueço de passos de higiene e segurança alimentar.',
+      'Cumpro na maior parte das vezes, mas falha-me algum procedimento.',
+      'Cumpro as normas de higiene e segurança alimentar em todo o trabalho.',
+      'Cumpro sempre e chamo à atenção quando vejo um risco na cozinha.',
     ],
   },
   {
-    competenciaId: 'A08', // Escuta ativa
+    competenciaId: 'ATI-017', // Segurança e saúde no trabalho
     frases: [
-      'Tive dificuldade em ouvir os outros até ao fim, interrompi ou não prestei atenção ao que diziam.',
-      'Ouvi os colegas na maior parte das vezes, mas por vezes distraí-me ou não confirmei se entendi bem.',
-      'Ouvi com atenção o que os colegas e o professor disseram e confirmei que entendi corretamente.',
-      'Ouvi com atenção, fiz perguntas para esclarecer e ajudei a garantir que todos se entendiam.',
+      'Ainda me esqueço das regras de segurança com equipamentos e utensílios.',
+      'Tenho cuidado quase sempre, mas há situações em que me distraio.',
+      'Trabalho em segurança e uso os equipamentos como deve ser.',
+      'Trabalho sempre em segurança e alerto quando vejo alguém em risco.',
+    ],
+  },
+
+  // ── 2º ANO ────────────────────────────────────────────────
+  {
+    competenciaId: 'ATI-002', // Autonomia
+    frases: [
+      'Ainda preciso que me digam o que fazer na maior parte das tarefas.',
+      'Estou a desenvolver a minha autonomia: faço algumas coisas sozinho/a, noutras preciso de ajuda.',
+      'Já consigo organizar e fazer o meu trabalho sem indicações constantes.',
+      'Já trabalho com bastante autonomia e ainda ajudo colegas a organizarem-se.',
     ],
   },
   {
-    competenciaId: 'A09', // Cooperação com a equipa
+    competenciaId: 'ATI-007', // Empatia
     frases: [
-      'Tive dificuldade em trabalhar com os colegas, surgiram conflitos que não consegui gerir bem.',
-      'Trabalhei com a equipa, mas só consegui comunicar e colaborar bem em algumas situações.',
-      'Consegui trabalhar bem com o grupo na maioria das situações, partilhando tarefas e opiniões com calma.',
-      'Cooperei ativamente em todas as situações, ajudando a equipa a resolver dificuldades e a incluir todos os colegas.',
+      'Ainda não reparo muito no que os colegas estão a sentir ou a precisar.',
+      'Às vezes percebo, mas não sei bem o que fazer com isso.',
+      'Percebo as dificuldades dos colegas e tenho isso em conta no trabalho.',
+      'Estou atento/a aos colegas e antecipo-me a dar apoio quando é preciso.',
     ],
   },
   {
-    competenciaId: 'A10', // Empenho e persistência
+    competenciaId: 'ATI-008', // Escuta ativa
     frases: [
-      'Desisti ou perdi o interesse quando surgiram dificuldades.',
-      'Continuei a tentar na maioria das vezes, mas houve momentos em que desisti antes de resolver o problema.',
-      'Mesmo com dificuldades, persisti até resolver o problema ou terminar a tarefa.',
-      'Persisti até ao fim em todas as dificuldades e ainda incentivei colegas a não desistirem.',
+      'Ainda me custa ouvir até ao fim sem interromper ou distrair-me.',
+      'Ouço na maior parte das vezes, mas nem sempre confirmo se percebi bem.',
+      'Ouço com atenção e confirmo que percebi o que me disseram.',
+      'Ouço com atenção, pergunto para esclarecer e ajudo a que todos se entendam.',
     ],
   },
   {
-    competenciaId: 'A11', // Sentido de organização
+    competenciaId: 'ATI-009', // Cooperação com a equipa
     frases: [
-      'O meu espaço de trabalho e os meus materiais estiveram desorganizados durante a maior parte do tempo.',
-      'Mantive alguma organização, mas precisei de reorganizar o espaço ou os materiais várias vezes.',
-      'Mantive o meu espaço de trabalho e os materiais organizados durante toda a atividade.',
-      'Mantive tudo organizado e ainda ajudei a organizar o espaço e os materiais da equipa.',
+      'Ainda me custa trabalhar em conjunto e resolver desentendimentos.',
+      'Trabalho com a equipa, mas comunico e colaboro melhor nuns dias do que noutros.',
+      'Trabalho bem com o grupo, partilho tarefas e ouço as opiniões dos outros.',
+      'Coopero em todas as situações e ajudo a equipa a resolver dificuldades e a incluir todos.',
     ],
   },
   {
-    competenciaId: 'A12', // Flexibilidade e adaptabilidade
+    competenciaId: 'ATI-010', // Empenho e persistência
     frases: [
-      'Tive muita dificuldade em lidar com mudanças de planos ou imprevistos durante a aula.',
-      'Consegui adaptar-me a algumas mudanças, mas outras deixaram-me bastante desconfortável ou perdido/a.',
-      'Adaptei-me bem a mudanças de planos ou imprevistos sem perder o ritmo de trabalho.',
-      'Adaptei-me rapidamente a qualquer mudança e ajudei os colegas a fazerem o mesmo.',
+      'Ainda desisto quando aparece uma dificuldade.',
+      'Continuo a tentar quase sempre, mas às vezes paro antes de resolver.',
+      'Mesmo com dificuldades, insisto até terminar ou resolver.',
+      'Insisto até ao fim e ainda animo os colegas a não desistirem.',
     ],
   },
   {
-    competenciaId: 'A13', // Sustentabilidade
+    competenciaId: 'ATI-012', // Flexibilidade e adaptabilidade
     frases: [
-      'Não me preocupei com o desperdício de alimentos ou recursos durante o trabalho.',
-      'Tive alguma atenção ao desperdício, mas nem sempre aproveitei bem os ingredientes ou recursos.',
-      'Tive cuidado em aproveitar bem os ingredientes e reduzir o desperdício durante a confeção.',
-      'Geri os ingredientes de forma a aproveitar ao máximo, sugerindo formas de reduzir o desperdício à equipa.',
+      'Ainda me custa quando os planos mudam a meio.',
+      'Adapto-me a algumas mudanças, mas outras deixam-me perdido/a.',
+      'Adapto-me a mudanças e imprevistos sem perder o ritmo.',
+      'Adapto-me depressa a qualquer mudança e ajudo os colegas a fazerem o mesmo.',
     ],
   },
   {
-    competenciaId: 'A14', // Sentido criativo
+    competenciaId: 'ATI-018', // Sensibilidade e bem-estar dos outros
     frases: [
-      'Não propus nem experimentei nada diferente do que me foi indicado.',
-      'Pensei em algumas ideias diferentes, mas não cheguei a experimentá-las.',
-      'Propus e experimentei pelo menos uma ideia própria na confeção ou apresentação do prato.',
-      'Propus várias ideias originais e consegui aplicá-las com bons resultados no prato final.',
+      'Ainda não penso muito no efeito que o que digo tem nos outros.',
+      'Tenho algum cuidado, mas às vezes digo coisas sem pensar.',
+      'Tenho cuidado com o que digo e como digo, para não magoar ninguém.',
+      'Cuido do bem-estar do grupo e intervenho quando vejo alguém em baixo.',
     ],
   },
   {
-    competenciaId: 'A15', // Disponibilidade para aprender
+    competenciaId: 'ATI-022', // Respeito pelas diferenças individuais
     frases: [
-      'Mostrei pouco interesse em aprender coisas novas ou em receber feedback.',
-      'Aceitei algum feedback, mas tive dificuldade em pôr em prática as sugestões recebidas.',
-      'Mostrei-me aberto/a a aprender e tentei aplicar o feedback que recebi.',
-      'Procurei ativamente aprender mais, pedi feedback e aplicou-o de imediato a melhorar o meu trabalho.',
+      'Ainda tenho dificuldade em lidar com quem é diferente de mim.',
+      'Respeito as diferenças, mas às vezes sinto-me desconfortável.',
+      'Respeito as diferenças de cada colega e trabalho bem com toda a gente.',
+      'Valorizo as diferenças do grupo e ajudo a que todos se sintam incluídos.',
+    ],
+  },
+
+  // ── 3º ANO ────────────────────────────────────────────────
+  {
+    competenciaId: 'ATI-004', // Iniciativa
+    frases: [
+      'Ainda espero que me digam o que fazer a seguir.',
+      'Estou a desenvolver a minha iniciativa: avanço quando é muito evidente o que falta.',
+      'Já avanço com o que é preciso sem esperar que me peçam.',
+      'Antecipo o que falta fazer, resolvo e ainda preparo trabalho para os colegas avançarem.',
     ],
   },
   {
-    competenciaId: 'A16', // Resiliência / Determinação
+    competenciaId: 'ATI-006', // Assertividade
     frases: [
-      'Quando algo correu mal (ex: um prato falhou), desanimei e tive dificuldade em recomeçar.',
-      'Quando algo correu mal, fiquei algo desanimado/a mas consegui continuar com algum apoio.',
-      'Quando algo correu mal, mantive a motivação e tentei outra abordagem para resolver.',
-      'Quando algo correu mal, mantive-me motivado/a, encontrei rapidamente uma solução e ajudei colegas a fazer o mesmo.',
+      'Ainda me custa dizer o que penso, ou digo-o de forma pouco cuidada.',
+      'Estou a aprender a dizer o que penso, mas ainda me falta equilíbrio.',
+      'Digo o que penso com clareza e respeito, mesmo quando discordo.',
+      'Exponho a minha opinião com clareza e respeito e ajudo a equipa a chegar a acordo.',
     ],
   },
   {
-    competenciaId: 'A17', // Proatividade
+    competenciaId: 'ATI-014', // Sustentabilidade
     frases: [
-      'Esperei sempre por instruções, mesmo quando havia tarefas seguintes evidentes a fazer.',
-      'Por vezes avancei para a tarefa seguinte sem ser preciso pedir, mas não foi consistente.',
-      'Avancei para as tarefas seguintes sem esperar por indicação, de forma consistente.',
-      'Antecipei sempre as tarefas seguintes e ainda preparei o trabalho para os colegas avançarem.',
+      'Ainda não penso no desperdício quando trabalho.',
+      'Tenho alguma atenção ao desperdício, mas nem sempre aproveito bem.',
+      'Aproveito bem os ingredientes e reduzo o desperdício na confeção.',
+      'Aproveito ao máximo e sugiro à equipa formas de reduzir o desperdício.',
     ],
   },
   {
-    competenciaId: 'A18', // Autenticidade e autoconfiança na comunicação
+    competenciaId: 'ATI-019', // Autoconfiança
     frases: [
-      'Tive muita dificuldade em comunicar com confiança, evitei falar ou explicar o que estava a fazer.',
-      'Comuniquei com alguma confiança, mas senti-me inseguro/a em situações mais expostas (ex: apresentar o prato).',
-      'Comuniquei com confiança e clareza sobre o meu trabalho, mesmo em situações mais expostas.',
-      'Comuniquei com confiança, clareza e naturalidade, transmitindo bem a mensagem em qualquer situação.',
+      'Ainda me falta confiança para mostrar ou explicar o meu trabalho.',
+      'Estou a ganhar confiança, mas sinto-me inseguro/a quando estou mais exposto/a.',
+      'Apresento e explico o meu trabalho com confiança.',
+      'Falo do meu trabalho com confiança e naturalidade em qualquer situação.',
+    ],
+  },
+  {
+    competenciaId: 'ATI-020', // Postura profissional
+    frases: [
+      'Ainda estou a perceber como se está numa cozinha profissional.',
+      'Tenho postura profissional na maior parte do tempo, mas descuido-me nalguns momentos.',
+      'Mantenho postura profissional durante todo o serviço.',
+      'Tenho postura profissional constante e sou uma referência para os colegas.',
+    ],
+  },
+  {
+    competenciaId: 'ATI-021', // Sentido crítico
+    frases: [
+      'Ainda não avalio o meu trabalho: espero que me digam se está bem ou mal.',
+      'Estou a aprender a analisar o meu trabalho, mas custa-me perceber o que falhou.',
+      'Analiso o meu trabalho, percebo o que correu mal e proponho como melhorar.',
+      'Analiso o meu trabalho e o do grupo com espírito construtivo e proponho melhorias.',
     ],
   },
 ];
 
-export function getFrases(lista: FrasesCompetencia[], competenciaId: string): FrasesCompetencia | undefined {
+export function getFrases(
+  lista: FrasesCompetencia[],
+  competenciaId: string
+): FrasesCompetencia | undefined {
   return lista.find(f => f.competenciaId === competenciaId);
+}
+
+/** Nota interna (5/10/15/20) a partir da posição escolhida (0-3). */
+export function notaDaFrase(posicao: number): number {
+  return NOTAS_FRASES[posicao] ?? 0;
 }
