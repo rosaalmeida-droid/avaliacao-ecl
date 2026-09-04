@@ -23,6 +23,7 @@ import {
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
   sincronizarDoSheets, calcularPontosRegularidade, getSelecoes, getValidacoes,
+  addAviso,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -38,6 +39,10 @@ import { CriteriosComp } from './CriteriosComp';
 import { ManualCozinheiro } from './ManualCozinheiro';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
+import { PainelAluno, DestinoAluno } from './PainelAluno';
+import { ManuaisAluno } from './ManuaisAluno';
+import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
+import { estadoDoNivel } from '../motorAvaliacao';
 import { DicionarioComp } from './DicionarioComp';
 import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
@@ -445,6 +450,7 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
 export function AlunoView({ aluno }: { aluno: Aluno }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
   const [aba, setAba] = useState<'hoje' | 'calendario' | 'perfil'>('hoje');
+  const [destino, setDestino] = useState<DestinoAluno | null>(null);
   const [planos, setPlanos] = useState<PlanoAula[]>(() =>
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
@@ -486,6 +492,67 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
       corpo:'Ainda não tens avaliações. Quando o professor publicar uma aula, aparece aqui.',
       cor:T.sage, bg:T.sageP });
   }
+
+  // ── Dados do painel inicial ──────────────────────────────────
+  const planosOrdenados = [...planos].sort((a,b) => a.data.localeCompare(b.data));
+  const numeroPlanoHoje = planoHoje
+    ? planosOrdenados.findIndex(p => p.id === planoHoje.id) + 1
+    : undefined;
+
+  const ucDoPlano = planoHoje ? (planoHoje as any).ucId as string | undefined : undefined;
+  const ucAtual = ucDoPlano ?? (planosOrdenados.length
+    ? (planosOrdenados[planosOrdenados.length - 1] as any).ucId as string | undefined
+    : undefined);
+
+  const fichasDoPlanoHoje = planoHoje ? getFichasPorPlano(planoHoje.id) : [];
+  const distribuicoes = planoHoje ? getDistribuicoesPorPlano(planoHoje.id) : [];
+  const fichasAtribuidas = distribuicoes.filter(d =>
+    Array.isArray((d as any).alunosIds) && (d as any).alunosIds.includes(aluno.id)
+  ).length || fichasDoPlanoHoje.length;
+
+  // Competências desta UC com o nível já consolidado pelo aluno
+  const competenciasDaUC = ucAtual
+    ? microsPorUC(ucAtual).map((m: any) => {
+        const h = getHistoricoAlunoMicro(aluno.id, m.id);
+        const nivel = Array.isArray(h) && h.length
+          ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
+          : null;
+        return { id: m.id, nome: m.nome ?? nomeCompetencia(m.id), nivel };
+      })
+    : [];
+
+  const porAvaliar = competenciasDaUC.filter(c => estadoDoNivel(c.nivel) === 'por_avaliar').length;
+  const competenciasFracas = competenciasDaUC.filter(c => estadoDoNivel(c.nivel) === 'desenvolvimento').length;
+
+  // Nota progressiva: média das aulas já validadas nesta UC
+  const validacoesAluno = getSelecoes()
+    .filter(s => s.alunoId === aluno.id)
+    .map(s => {
+      const v = getValidacoes().find(x => (x as any).selecaoId === s.id);
+      const plano = planos.find(p => p.id === s.planoAulaId);
+      return { plano, nota20: v ? ((v as any).notaMedia20 ?? null) : null, validada: !!v };
+    })
+    .filter(x => x.plano);
+
+  const notasValidas = validacoesAluno.map(v => v.nota20).filter((n): n is number => n != null);
+  const notaProgressiva = notasValidas.length
+    ? Math.round((notasValidas.reduce((s, n) => s + n, 0) / notasValidas.length) * 10) / 10
+    : null;
+
+  // Módulos com nota negativa = por recuperar
+  const recuperacoesPendentes = validacoesAluno
+    .filter(v => v.validada && v.nota20 != null && v.nota20 < 10).length;
+
+  const historialUC = validacoesAluno
+    .sort((a, b) => (b.plano!.data).localeCompare(a.plano!.data))
+    .map(v => ({
+      planoId: v.plano!.id,
+      titulo: v.plano!.titulo || 'Aula',
+      data: fmtDataCurta(v.plano!.data),
+      numeroAula: planosOrdenados.findIndex(p => p.id === v.plano!.id) + 1,
+      nota20: v.nota20,
+      validada: v.validada,
+    }));
 
   return (
     <div style={{ minHeight:'100vh', background:T.cream }}>
@@ -606,149 +673,92 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
       <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 20px 48px' }}>
 
         {/* ── ABA INÍCIO ── */}
-        {aba === 'hoje' && (
-          <div style={{ display:'grid', gap:24,
-            gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '1fr 1fr' : '1fr' }}>
+        {/* ── ECRÃ INICIAL: grelha de cartões ── */}
+        {aba === 'hoje' && !destino && (
+          <PainelAluno
+            nomeAluno={aluno.nome || `Aluno ${aluno.numero}`}
+            turmaId={aluno.turmaId}
+            ucId={ucAtual}
+            planoHoje={planoHoje}
+            numeroPlano={numeroPlanoHoje}
+            totalPlanos={planosOrdenados.length}
+            fichasAtribuidas={fichasAtribuidas}
+            autoavaliacoesPorFazer={porAvaliar}
+            notaProgressiva={notaProgressiva}
+            competenciasFracas={competenciasFracas}
+            recuperacoesPendentes={recuperacoesPendentes}
+            onAbrir={(d) => {
+              if (d === 'entrar' || d === 'fichas' || d === 'guiao' || d === 'requisicao') {
+                // Só se entra numa aula que exista. Sem plano de aula não há
+                // onde registar nada — o professor tem de o criar primeiro.
+                if (planoHoje) setPlanoAtivo(planoHoje);
+                return;
+              }
+              if (d === 'avisar_professor') {
+                addAviso({
+                  tipo: 'outro',
+                  titulo: 'Aula sem plano criado',
+                  descricao: `${aluno.nome || `Aluno nº ${aluno.numero}`} (${aluno.turmaId}) `
+                    + `quis entrar na aula de hoje e não há plano de aula criado.`,
+                  contexto: { tabDestino: 'planos' },
+                } as any);
+                alert('O professor foi avisado de que não há plano de aula para hoje.');
+                return;
+              }
+              if (d === 'kitchenflow') {
+                abrirKitchenFlow(undefined, {
+                  turma: aluno.turmaId, numero: aluno.numero,
+                  pin: aluno.pin, tipo: 'aluno',
+                  ucId: ucAtual,
+                  planoData: planoHoje?.data,
+                  planoHoraInicio: planoHoje?.horaInicio,
+                  planoHoraFim: planoHoje?.horaFim,
+                } as any);
+                return;
+              }
+              if (d === 'calendario') { setAba('calendario'); return; }
+              setDestino(d);
+            }}
+          />
+        )}
 
-            {/* Coluna esquerda — avisos + aula de hoje */}
-            <div>
-              {/* Avisos */}
-              {avisos.length > 0 && (
-                <div style={{ marginBottom:20 }}>
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
-                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
-                    📢 Avisos
-                  </div>
-                  {avisos.map((a,i) => <CardAviso key={i} {...a} />)}
-                </div>
-              )}
+        {/* ── Ecrãs do percurso ── */}
+        {aba === 'hoje' && destino && (
+          <div>
+            <button
+              onClick={() => setDestino(null)}
+              style={{ background:'transparent', border:'none', cursor:'pointer',
+                fontSize:15, color:T.copper, fontWeight:700, padding:'6px 0 12px',
+                fontFamily:'inherit' }}
+            >
+              ‹ Voltar
+            </button>
 
-              {/* Aula de hoje — botão grande */}
-              {planoHoje ? (
-                <div style={{ marginBottom:20 }}>
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
-                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
-                    🍳 Aula de hoje
-                  </div>
-                  <div style={{ background:T.copper, borderRadius:20, padding:'20px',
-                    boxShadow:`0 8px 32px ${T.copper}40` }}>
-                    <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)',
-                      textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
-                      {planoHoje.horaInicio}–{planoHoje.horaFim}
-                      {planoHoje.ucNome && (
-                        <div style={{ fontSize:10, marginTop:2, opacity:0.8,
-                          whiteSpace:'normal', lineHeight:1.3 }}>
-                          {planoHoje.ucNome}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
-                      color:'#fff', marginBottom:16 }}>{planoHoje.titulo}</div>
-                    <button onClick={() => setPlanoAtivo(planoHoje)} style={{
-                      width:'100%', padding:'14px', borderRadius:12, border:'none',
-                      background:'rgba(255,255,255,0.2)', color:'#fff', fontSize:16,
-                      fontWeight:700, cursor:'pointer', backdropFilter:'blur(4px)',
-                    }}>
-                      Entrar na aula →
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ borderRadius:20, overflow:'hidden', marginBottom:20,
-                  border:'2px dashed rgba(26,23,20,0.12)' }}>
-                  <div style={{ padding:'24px 20px', textAlign:'center',
-                    background:'rgba(26,23,20,0.03)' }}>
-                    <div style={{ fontSize:48, marginBottom:8 }}>😴</div>
-                    <div style={{ fontWeight:800, fontSize:17, color:'rgba(26,23,20,0.6)' }}>
-                      Sem aula hoje
-                    </div>
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)', marginTop:4 }}>
-                      {proximasAulas[0]
-                        ? `Próxima aula: ${fmtData(proximasAulas[0].data)}`
-                        : 'Sem aulas agendadas próximas.'}
-                    </div>
-                  </div>
-                </div>
-              )}
+            {destino === 'avaliar' && (
+              <EcraAvaliarMe
+                ucId={ucAtual}
+                competencias={competenciasDaUC}
+                onAvaliar={() => { if (planoHoje) { setDestino(null); setPlanoAtivo(planoHoje); } }}
+              />
+            )}
 
-              {/* Ações rápidas */}
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
-                  letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:2 }}>
-                  ⚡ Ações rápidas
-                </div>
-                <button onClick={() => setAba('calendario')} style={{
-                  display:'flex', alignItems:'center', gap:14, padding:'16px 18px',
-                  borderRadius:16, border:'2px solid #2563eb',
-                  background:'#eff6ff', cursor:'pointer', textAlign:'left',
-                }}>
-                  <div style={{ width:44, height:44, borderRadius:12, background:'#2563eb',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontSize:22, flexShrink:0 }}>📅</div>
-                  <div>
-                    <div style={{ fontSize:15, fontWeight:800, color:'#1d4ed8' }}>Ver calendário</div>
-                    <div style={{ fontSize:12, color:'#3b82f6', marginTop:1 }}>Todas as tuas aulas</div>
-                  </div>
-                  <span style={{ fontSize:22, color:'#2563eb', marginLeft:'auto' }}>→</span>
-                </button>
-                <button onClick={() => setAba('perfil')} style={{
-                  display:'flex', alignItems:'center', gap:14, padding:'16px 18px',
-                  borderRadius:16, border:'2px solid #15803d',
-                  background:'#f0fdf4', cursor:'pointer', textAlign:'left',
-                }}>
-                  <div style={{ width:44, height:44, borderRadius:12, background:'#15803d',
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    fontSize:22, flexShrink:0 }}>📊</div>
-                  <div>
-                    <div style={{ fontSize:15, fontWeight:800, color:'#15803d' }}>O meu progresso</div>
-                    <div style={{ fontSize:12, color:'#16a34a', marginTop:1 }}>Competências e avaliações</div>
-                  </div>
-                  <span style={{ fontSize:22, color:'#15803d', marginLeft:'auto' }}>→</span>
-                </button>
-              </div>
-            </div>
+            {destino === 'nota' && (
+              <EcraNotaProgressiva
+                ucId={ucAtual}
+                nota={notaProgressiva}
+                totalAulas={planosOrdenados.length}
+                historial={historialUC}
+              />
+            )}
 
-            {/* Coluna direita — próximas aulas + passadas */}
-            <div>
-              {proximasAulas.length > 0 && (
-                <div style={{ marginBottom:24 }}>
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
-                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
-                    🗓️ Próximas aulas
-                  </div>
-                  {proximasAulas.map(p => (
-                    <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
-                  ))}
-                </div>
-              )}
+            {destino === 'perfil' && <PerfilProfissionalAluno aluno={aluno} />}
 
-              {aulasPassadas.length > 0 && (
-                <div>
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
-                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
-                    📚 Aulas anteriores
-                  </div>
-                  {aulasPassadas.map(p => (
-                    <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
-                  ))}
-                </div>
-              )}
+            {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
 
-              {proximasAulas.length === 0 && aulasPassadas.length === 0 && (
-                <div style={{ background:'#fff', borderRadius:16, padding:'32px 20px',
-                  textAlign:'center', border:`1px solid ${T.border}` }}>
-                  <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
-                  <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>Sem aulas ainda</div>
-                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>
-                    O professor ainda não publicou aulas para a tua turma.
-                  </div>
-                </div>
-              )}
-            </div>
+            {destino === 'manual' && <ManuaisAluno />}
           </div>
         )}
 
-        {/* ── ABA CALENDÁRIO ── */}
         {aba === 'calendario' && (
           <div style={{ display:'grid', gap:24,
             gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '380px 1fr' : '1fr' }}>
@@ -868,11 +878,17 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             color:'rgba(247,241,230,0.8)', fontSize:13, cursor:'pointer',
             fontWeight:700, flexShrink:0 }}>←</button>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:14, fontWeight:800, color:'#faf7f2',
+            {plano.ucId && (
+              <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.55)', marginBottom:2,
+                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {plano.ucId}{plano.ucNome ? ` · ${plano.ucNome}` : ''}
+              </div>
+            )}
+            <div style={{ fontSize:17, fontWeight:800, color:'#faf7f2', lineHeight:1.25,
               overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
               {plano.titulo}
             </div>
-            <div style={{ fontSize:10, color:'rgba(247,241,230,0.4)', marginTop:1 }}>
+            <div style={{ fontSize:13, color:'rgba(247,241,230,0.5)', marginTop:2 }}>
               {fmtData(plano.data)}{plano.horaInicio && ` · ${plano.horaInicio}–${plano.horaFim}`}
             </div>
           </div>
@@ -885,56 +901,62 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
         </div>
       </div>
 
-      {/* CORPO: sidebar + conteúdo + contexto */}
-      <div style={{ flex:1, display:'flex', overflow:'hidden', minHeight:0 }}>
+      {/* CORPO — uma coluna só. A estrutura de três colunas (sidebar de
+          96px + conteúdo + contexto de 115px, com letra a 8px) era
+          ilegível em tablet. Os passos passam para uma fita horizontal. */}
+      <div style={{ flex:1, overflowY:'auto', background:T.cream, minHeight:0 }}>
 
-        {/* SIDEBAR */}
-        <div style={{ width:96, background:'#1a1714', display:'flex',
-          flexDirection:'column', flexShrink:0 }}>
-          <div style={{ padding:'8px 5px 5px', borderBottom:'1px solid rgba(255,255,255,0.06)',
-            textAlign:'center' }}>
-            <div style={{ fontSize:10, fontWeight:700, color:'rgba(247,241,230,0.75)',
-              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', padding:'0 2px' }}>
-              {aluno.nome || `Nº ${aluno.numero}`}
-            </div>
-            <div style={{ fontSize:9, color:'rgba(247,241,230,0.3)', marginTop:1 }}>
-              {aluno.turmaId}
-            </div>
-          </div>
-
-          <div style={{ flex:1, padding:'6px 4px', display:'flex',
-            flexDirection:'column', gap:1, overflowY:'auto' }}>
+        {/* Fita de passos */}
+        <div style={{ background:'#fff', borderBottom:`1px solid ${T.border}`,
+          padding:'10px 8px', position:'sticky', top:0, zIndex:5 }}>
+          <div style={{ display:'flex', gap:6, overflowX:'auto', paddingBottom:2 }}>
             {PASSOS.map((p, idx) => {
               const est = estadoPasso(p.id);
               const ativo = secAberta === p.id;
               return (
-                <React.Fragment key={p.id}>
-                  <button onClick={() => setSecAberta(p.id)} style={{
-                    width:'100%', padding:'7px 4px', borderRadius:9, border:'none',
-                    cursor:'pointer', textAlign:'center', transition:'all 0.2s',
-                    background: ativo ? 'rgba(255,255,255,0.14)'
-                      : est==='concluido' ? 'rgba(34,197,94,0.15)' : 'transparent',
-                    position:'relative',
-                  }}>
-                    {ativo && <div style={{ position:'absolute', left:0, top:'20%',
-                      height:'60%', width:3, background:p.cor,
-                      borderRadius:'0 3px 3px 0' }} />}
-                    <div style={{ fontSize:19, lineHeight:1 }}>
-                      {est==='concluido' ? '✅' : p.emoji}
-                    </div>
-                    <div style={{ fontSize:8, fontWeight:700, marginTop:3, lineHeight:1.3,
-                      color: ativo ? '#fff' : est==='concluido' ? '#4ade80' : 'rgba(247,241,230,0.4)' }}>
-                      {p.label}
-                    </div>
-                  </button>
-                  {idx < PASSOS.length-1 && (
-                    <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'0 5px' }} />
-                  )}
-                </React.Fragment>
+                <button key={p.id} onClick={() => setSecAberta(p.id)} style={{
+                  flexShrink:0, padding:'8px 12px', borderRadius:10, cursor:'pointer',
+                  border: ativo ? `2px solid ${p.cor}` : `1px solid ${T.border}`,
+                  background: ativo ? p.cor+'18' : est==='concluido' ? T.sageP : '#fff',
+                  display:'flex', alignItems:'center', gap:6, fontFamily:'inherit',
+                }}>
+                  <span style={{ fontSize:16, lineHeight:1 }}>
+                    {est==='concluido' && !ativo ? '✅' : p.emoji}
+                  </span>
+                  <span style={{ fontSize:13, fontWeight:700, whiteSpace:'nowrap',
+                    color: ativo ? p.cor : est==='concluido' ? T.sage : 'rgba(26,23,20,0.5)' }}>
+                    {p.label}
+                  </span>
+                </button>
               );
             })}
           </div>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:9 }}>
+            <div style={{ flex:1, height:5, background:'rgba(26,23,20,0.08)',
+              borderRadius:3, overflow:'hidden' }}>
+              <div style={{ height:'100%', width:`${pctProgresso}%`, background:T.sage,
+                borderRadius:3, transition:'width 0.4s' }} />
+            </div>
+            <div style={{ fontSize:12.5, fontWeight:700, color:'rgba(26,23,20,0.55)',
+              whiteSpace:'nowrap' }}>
+              {passosConcluidos} de {totalPassos} passos
+            </div>
+          </div>
+        </div>
 
+        {/* Banner do passo */}
+        {passoActivo && (
+          <div style={{ background: passoActivo.cor, padding:'13px 16px' }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.75)' }}>
+              Passo {PASSOS.indexOf(passoActivo)+1} de {totalPassos}
+            </div>
+            <div style={{ fontSize:19, fontWeight:700, color:'#fff', marginTop:2 }}>
+              {passoActivo.label}
+            </div>
+          </div>
+        )}
+
+        <div style={{ padding:'16px 14px 90px', maxWidth:720, margin:'0 auto' }}>
           <button onClick={() => abrirKitchenFlow(undefined, {
               turma:aluno.turmaId, numero:aluno.numero,
               pin:aluno.pin, tipo:'aluno',
@@ -942,46 +964,13 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               pratos:fichas.map((f:any) => f.nomePrato).filter(Boolean),
               planoHoraInicio:plano.horaInicio,
               planoHoraFim:plano.horaFim, planoData:plano.data,
-            })} style={{ margin:'5px', padding:'6px 4px', borderRadius:7,
-            border:'1px solid rgba(14,116,144,0.5)',
-            background:'rgba(14,116,144,0.15)', color:'#67e8f9',
-            fontSize:8, fontWeight:700, cursor:'pointer', textAlign:'center' }}>
-            🔗 KitchenFlow
+            })} style={{ width:'100%', padding:'11px', borderRadius:11, marginBottom:16,
+            border:'1px solid rgba(14,116,144,0.4)', background:'rgba(14,116,144,0.08)',
+            color:'#0e7490', fontSize:14, fontWeight:700, cursor:'pointer',
+            fontFamily:'inherit' }}>
+            🔗 Abrir KitchenFlow
           </button>
 
-          <div style={{ padding:'7px 5px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ height:3, background:'rgba(255,255,255,0.1)',
-              borderRadius:2, overflow:'hidden' }}>
-              <div style={{ height:'100%', width:`${pctProgresso}%`,
-                background:'linear-gradient(90deg,#b5651d,#22c55e)',
-                borderRadius:2, transition:'width 0.4s' }} />
-            </div>
-            <div style={{ fontSize:10, fontWeight:800, color:'#fff',
-              textAlign:'center', marginTop:3 }}>
-              {passosConcluidos}/{totalPassos}
-            </div>
-          </div>
-        </div>
-
-        {/* ÁREA CENTRAL */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, overflow:'hidden' }}>
-
-          {/* Banner do passo */}
-          {passoActivo && (
-            <div style={{ background:`linear-gradient(135deg,${passoActivo.cor},${passoActivo.cor}cc)`,
-              padding:'10px 14px', flexShrink:0 }}>
-              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
-                letterSpacing:'0.08em', color:'rgba(255,255,255,0.6)', marginBottom:2 }}>
-                Passo {PASSOS.indexOf(passoActivo)+1} de {totalPassos}
-              </div>
-              <div style={{ fontSize:16, fontWeight:900, color:'#fff', lineHeight:1.2 }}>
-                {passoActivo.emoji} {passoActivo.label}
-              </div>
-            </div>
-          )}
-
-          {/* Conteúdo */}
-          <div style={{ flex:1, overflowY:'auto', padding:'14px 14px 80px' }}>
             {secAberta==='orientacao' && (
               <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno}
                 onContinuar={() => { setOrientacaoConcluida(true); _save('orientacao'); setSecAberta('entrada'); }} />
@@ -1007,68 +996,6 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
             )}
-          </div>
-        </div>
-
-        {/* PAINEL DE CONTEXTO */}
-        <div style={{ width:115, background:'#fff',
-          borderLeft:'0.5px solid rgba(26,23,20,0.08)',
-          padding:'10px 8px', overflowY:'auto',
-          display:'flex', flexDirection:'column', gap:10, flexShrink:0 }}>
-
-          <div>
-            <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
-              letterSpacing:'0.08em', color:'rgba(26,23,20,0.3)', marginBottom:4 }}>
-              Aula
-            </div>
-            {plano.horaInicio && (
-              <div style={{ fontSize:10, padding:'3px 6px', background:'#eff6ff',
-                color:'#1d4ed8', borderRadius:5, marginBottom:3, fontWeight:500 }}>
-                🕗 {plano.horaInicio}–{plano.horaFim}
-              </div>
-            )}
-            {plano.ucId && (
-              <div style={{ fontSize:9, padding:'3px 6px', background:'#fff7ed',
-                color:'#b5651d', borderRadius:5, fontWeight:700 }}>
-                {plano.ucId}
-              </div>
-            )}
-          </div>
-
-          {fichas.length > 0 && (
-            <div>
-              <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
-                letterSpacing:'0.08em', color:'rgba(26,23,20,0.3)', marginBottom:4 }}>
-                Produzes
-              </div>
-              {fichas.map((f:any, i:number) => (
-                <div key={i} style={{ fontSize:10, padding:'3px 6px', background:'#f8fafc',
-                  color:'rgba(26,23,20,0.7)', borderRadius:5, marginBottom:3,
-                  fontWeight:500, lineHeight:1.3 }}>
-                  🍽️ {f.nomePrato}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div>
-            <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase',
-              letterSpacing:'0.08em', color:'rgba(26,23,20,0.3)', marginBottom:4 }}>
-              Estado
-            </div>
-            {PASSOS.map(p => {
-              const est = estadoPasso(p.id);
-              return (
-                <div key={p.id} style={{ fontSize:9, padding:'3px 6px',
-                  background: est==='concluido' ? '#f0fdf4' : '#fef2f2',
-                  color: est==='concluido' ? '#15803d' : '#dc2626',
-                  borderRadius:5, marginBottom:2, fontWeight:600 }}>
-                  {est==='concluido' ? '✓' : '✗'} {p.label.split(' ')[0]}
-                </div>
-              );
-            })}
-          </div>
-
         </div>
       </div>
     </div>
@@ -1224,181 +1151,224 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
 function SecaoEntrada({ aluno, plano, onConcluido }: {
   aluno: Aluno; plano: PlanoAula; onConcluido: () => void;
 }) {
-  const [pontVal, setPontVal] = useState<'sim'|'atras'|null>(null);
+  // O atraso é calculado, não perguntado: a app sabe as horas.
+  // O aluno cumpridor confirma tudo num toque; só quem tem alguma coisa
+  // em falta é que abre a lista item a item.
+  const [detalhe, setDetalhe] = useState(false);
   const [fardState, setFardState] = useState<Record<string, boolean|null>>(
     Object.fromEntries(FARD_ITEMS.map(f => [f.id, null]))
   );
-  const fardCompleto = Object.values(fardState).every(v => v !== null);
-  const fardTudoOk = Object.values(fardState).every(v => v === true);
-  const fardItensEmFalta = FARD_ITEMS.filter(f => fardState[f.id] === false).map(f => f.label);
-  const entradaOk = pontVal !== null && fardCompleto;
 
-  function calcularMinutosAtraso(): number {
+  const minutosAtraso = (() => {
+    if (!plano.horaInicio) return 0;
     const now = new Date();
-    const [h,m] = plano.horaInicio.split(':').map(Number);
-    return Math.max(1, (now.getHours()*60+now.getMinutes())-(h*60+m));
-  }
+    const [h, m] = plano.horaInicio.split(':').map(Number);
+    if (isNaN(h)) return 0;
+    return Math.max(0, (now.getHours()*60 + now.getMinutes()) - (h*60 + m));
+  })();
+  const TOLERANCIA = 5;
+  const atrasado = minutosAtraso > TOLERANCIA;
 
-  function setPont(v: 'sim'|'atras') {
-    setPontVal(v);
-  }
+  const fardItensEmFalta = FARD_ITEMS.filter(f => fardState[f.id] === false).map(f => f.label);
+  const fardCompleto = Object.values(fardState).every(v => v !== null);
 
   function toggleFard(id: string) {
     setFardState(prev => {
       const cur = prev[id];
-      return { ...prev, [id]: cur===null ? true : cur===true ? false : null };
+      return { ...prev, [id]: cur === null ? false : cur === false ? true : null };
     });
   }
 
-  async function confirmar() {
-    if (pontVal==='atras') incHist(`ecl_atrasos_${aluno.id}`);
-    const fardamentoOk = Object.values(fardState).every(v => v===true);
-    const atrasoMins = pontVal==='atras' ? calcularMinutosAtraso() : 0;
+  async function gravar(itensEmFalta: string[], assumiu: boolean) {
+    if (atrasado) incHist(`ecl_atrasos_${aluno.id}`);
+    const fardamentoOk = itensEmFalta.length === 0;
+
     addRegistoPresenca({
       alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id,
-      presente: true, atrasado: pontVal==='atras',
-      atrasadoMins: atrasoMins, fardamentoOk,
-      observacao: fardItensEmFalta.length > 0 ? `Farda incompleta: ${fardItensEmFalta.join(', ')}` : '',
+      presente: true, atrasado, atrasadoMins: minutosAtraso, fardamentoOk,
+      observacao: itensEmFalta.length
+        ? `Assumiu à entrada — em falta: ${itensEmFalta.join(', ')}`
+        : '',
     });
-    // Pontualidade e Fardamento são competências INDEPENDENTES — uma não substitui
-    // nem mascara a outra. Cada uma gera a sua própria nota, ambas pesam na categoria OBR.
 
-    // OBR_03 — Pontualidade — depende SÓ da hora de chegada, nunca da farda.
-    let notaPontualidade = 5;
-    if (pontVal === 'atras') notaPontualidade = atrasoMins >= 10 ? 2 : 3;
+    // Pontualidade e fardamento são independentes: uma não mascara a outra.
+    // OBR_03 — pontualidade, só depende da hora.
+    const notaPontualidade = !atrasado ? 5 : minutosAtraso >= 20 ? 2 : 3;
     addRegistoAvaliacao({
       id: `${plano.id}_${aluno.id}_pont_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
       planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'OBR_03',
       nota: notaPontualidade, data: new Date().toISOString(), validadoPor: 'aluno',
     });
 
-    // OBR_01 — Higiene pessoal (inclui fardamento) — depende SÓ do estado da farda,
-    // nunca da pontualidade. Fardamento completo (8/8 itens) = 5; cada item em falta desce 1.
-    const itensEmFalta = fardItensEmFalta.length;
-    const notaFardamento = Math.max(1, 5 - itensEmFalta);
+    // OBR_01 — higiene pessoal, só depende da farda.
     addRegistoAvaliacao({
       id: `${plano.id}_${aluno.id}_farda_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
       planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'OBR_01',
-      nota: notaFardamento, data: new Date().toISOString(), validadoPor: 'aluno',
+      nota: Math.max(1, 5 - itensEmFalta.length), data: new Date().toISOString(), validadoPor: 'aluno',
     });
-    // Enviar automaticamente para o KitchenFlow — o aluno não precisa de fazer nada
-    const nomeAluno = aluno.nome || `Aluno ${aluno.numero}`;
-    registarHigieneKitchenFlow(aluno.turmaId, aluno.id, nomeAluno, fardamentoOk)
-      .catch(() => {}); // falha silenciosa
+
+    // ATI-001 — responsabilidade. Assumir uma falha é a atitude que se pede:
+    // quem assume não desce abaixo de 3. Quem diz que está tudo e é corrigido
+    // pelo professor fica em 1, mas isso é o professor que o regista.
+    if (assumiu) {
+      addRegistoAvaliacao({
+        id: `${plano.id}_${aluno.id}_resp_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
+        planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'ATI-001',
+        nota: 4, data: new Date().toISOString(), validadoPor: 'aluno',
+      });
+    }
+
+    registarHigieneKitchenFlow(
+      aluno.turmaId, aluno.id, aluno.nome || `Aluno ${aluno.numero}`, fardamentoOk
+    ).catch(() => {});
     onConcluido();
   }
 
+  const RESUMO = [
+    'Farda completa, cabelo preso, sem adornos, unhas curtas',
+    'Mãos lavadas',
+    'Calçado de segurança',
+  ];
+
   return (
     <div>
-      {/* Pontualidade — blocos coloridos */}
-      <div style={{ marginBottom:16 }}>
-        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
-          <div style={{ width:64, background:'#5b21b6', display:'flex',
-            alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>⏰</div>
-          <div style={{ flex:1, background:'#6d28d9', padding:'12px 14px' }}>
-            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
-              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Passo 1</div>
-            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Chegaste a horas?</div>
+      {/* Hora de entrada — calculada, não perguntada */}
+      <div style={{
+        background: atrasado ? T.copperP : T.sageP,
+        border: `1px solid ${atrasado ? T.copper : 'rgba(90,122,78,0.3)'}`,
+        borderRadius: 14, padding: '14px 16px', marginBottom: 14,
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <span style={{ fontSize: 26, lineHeight: 1 }}>{atrasado ? '⏰' : '✅'}</span>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: atrasado ? T.copper : T.sage }}>
+            {atrasado ? `Chegaste ${minutosAtraso} min atrasado/a` : 'Chegaste a horas'}
           </div>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-          {(['sim','atras'] as const).map(v => (
-            <button key={v} onClick={() => setPont(v)} style={{
-              display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-              padding:'18px 12px', borderRadius:14, fontSize:14, fontWeight:800, cursor:'pointer',
-              border:'none',
-              background: pontVal===v ? (v==='sim'?'#2ec4b6':'#e63946') : 'rgba(26,23,20,0.07)',
-              color: pontVal===v ? '#fff' : 'rgba(26,23,20,0.5)',
-              transition:'all 0.15s',
-            }}>
-              <span style={{ fontSize:36 }}>{v==='sim'?'✅':'⏳'}</span>
-              {v==='sim' ? 'Sim, a horas' : 'Não, atrasado/a'}
-            </button>
-          ))}
-        </div>
-        {pontVal==='atras' && (
-          <div style={{ marginTop:8, display:'flex', borderRadius:12, overflow:'hidden' }}>
-            <div style={{ width:48, background:'#b5291e', display:'flex',
-              alignItems:'center', justifyContent:'center', fontSize:22 }}>⚠️</div>
-            <div style={{ flex:1, background:'#e63946', padding:'10px 12px' }}>
-              <div style={{ fontSize:13, fontWeight:800, color:'#fff' }}>Atraso registado automaticamente</div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', marginTop:2 }}>
-                Aula começou às {plano.horaInicio}
-              </div>
+          {plano.horaInicio && (
+            <div style={{ fontSize: 13.5, color: atrasado ? T.copper : T.sage, marginTop: 2 }}>
+              a aula começou às {plano.horaInicio}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Fardamento — blocos coloridos */}
-      <div style={{ marginBottom:16 }}>
-        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
-          <div style={{ width:64, background:'#1a9e94', display:'flex',
-            alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>👔</div>
-          <div style={{ flex:1, background:'#2ec4b6', padding:'12px 14px' }}>
-            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
-              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Passo 2</div>
-            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Fardamento e higiene</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.65)', marginTop:1 }}>Toca em cada item para confirmar</div>
+      {!detalhe ? (
+        <>
+          <div style={{
+            background: '#fff', border: `1px solid ${T.border}`,
+            borderRadius: 14, padding: 16, marginBottom: 12,
+          }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: T.charcoal, marginBottom: 8 }}>
+              Está tudo em ordem?
+            </div>
+            <div style={{ fontSize: 14.5, color: 'rgba(26,23,20,0.6)', lineHeight: 1.8, marginBottom: 16 }}>
+              {RESUMO.map((r, i) => <div key={i}>{r}</div>)}
+            </div>
+            <button
+              onClick={() => gravar([], false)}
+              style={{
+                width: '100%', background: T.sage, color: '#fff', border: 'none',
+                borderRadius: 12, padding: 16, fontSize: 17, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              ✓ Sim, está tudo
+            </button>
           </div>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-          {FARD_ITEMS.map(item => {
-            const v = fardState[item.id];
+
+          <div style={{
+            background: T.copperP, border: `1px solid ${T.copper}`,
+            borderRadius: 14, padding: 16,
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.copper, marginBottom: 7 }}>
+              Falta-me alguma coisa
+            </div>
+            <div style={{ fontSize: 14, color: T.copper, lineHeight: 1.65, marginBottom: 14 }}>
+              Assumir os próprios erros é uma das atitudes que estás a desenvolver
+              nesta unidade — responsabilidade pelas tuas ações. Quando dizes o que
+              falta, é essa competência que estás a mostrar.
+            </div>
+            <button
+              onClick={() => setDetalhe(true)}
+              style={{
+                width: '100%', background: 'transparent', border: `1.5px solid ${T.copper}`,
+                color: T.copper, borderRadius: 12, padding: 14, fontSize: 15.5,
+                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Dizer o que falta
+            </button>
+          </div>
+        </>
+      ) : (
+        <div style={{
+          background: '#fff', border: `1px solid ${T.border}`,
+          borderRadius: 14, padding: 16,
+        }}>
+          <div style={{ fontSize: 16.5, fontWeight: 700, color: T.charcoal, marginBottom: 4 }}>
+            O que te falta?
+          </div>
+          <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.55)', marginBottom: 14 }}>
+            Toca no que não tens. O resto fica como está.
+          </div>
+
+          {FARD_ITEMS.map(f => {
+            const emFalta = fardState[f.id] === false;
             return (
-              <button key={item.id} onClick={() => toggleFard(item.id)} style={{
-                display:'flex', flexDirection:'column', alignItems:'center', gap:6,
-                padding:'14px 10px', borderRadius:12, cursor:'pointer',
-                fontSize:13, fontWeight:800, border:'none',
-                background: v===true ? '#2ec4b6' : v===false ? '#e63946' : 'rgba(26,23,20,0.07)',
-                color: v!==null ? '#fff' : 'rgba(26,23,20,0.5)',
-                transition:'all 0.15s',
-              }}>
-                <span style={{ fontSize:28 }}>{item.emoji}</span>
-                <span style={{ textAlign:'center', lineHeight:1.2, fontSize:12 }}>{item.label}</span>
-                <span style={{ fontSize:20, fontWeight:900 }}>
-                  {v===true ? '✓' : v===false ? '✗' : '?'}
+              <button
+                key={f.id}
+                onClick={() => toggleFard(f.id)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 11,
+                  padding: '13px 14px', marginBottom: 7, borderRadius: 11,
+                  border: `1.5px solid ${emFalta ? T.copper : T.border}`,
+                  background: emFalta ? T.copperP : '#fff',
+                  cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 20, lineHeight: 1 }}>{f.emoji}</span>
+                <span style={{
+                  flex: 1, fontSize: 15,
+                  fontWeight: emFalta ? 700 : 500,
+                  color: emFalta ? T.copper : T.charcoal,
+                }}>
+                  {f.label}
                 </span>
+                {emFalta && <span style={{ fontSize: 13.5, fontWeight: 700, color: T.copper }}>falta</span>}
               </button>
             );
           })}
-        </div>
-      </div>
 
-      {/* Aviso farda incompleta — visível ao aluno, registado para o professor */}
-      {fardItensEmFalta.length > 0 && fardCompleto && (
-        <div style={{ margin:'0 0 10px', padding:'10px 14px', borderRadius:10,
-          background:'rgba(230,57,70,0.08)', border:'1px solid rgba(230,57,70,0.3)',
-          fontSize:13, color:'#e63946' }}>
-          ⚠️ Farda incompleta: <strong>{fardItensEmFalta.join(', ')}</strong>
-          <div style={{ fontSize:11, marginTop:4, color:'rgba(26,23,20,0.5)' }}>
-            O professor vai ser alertado. Corrige antes de iniciares a produção.
-          </div>
+          <button
+            onClick={() => gravar(fardItensEmFalta, true)}
+            style={{
+              width: '100%', marginTop: 10,
+              background: T.copper, color: '#fff', border: 'none',
+              borderRadius: 12, padding: 16, fontSize: 16.5, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            {fardItensEmFalta.length === 0
+              ? 'Confirmar — não me falta nada'
+              : `Confirmar ${fardItensEmFalta.length} ${fardItensEmFalta.length === 1 ? 'item em falta' : 'itens em falta'}`}
+          </button>
+
+          <button
+            onClick={() => setDetalhe(false)}
+            style={{
+              width: '100%', marginTop: 8, background: 'transparent', border: 'none',
+              color: 'rgba(26,23,20,0.5)', fontSize: 14, cursor: 'pointer',
+              padding: 10, fontFamily: 'inherit',
+            }}
+          >
+            Voltar atrás
+          </button>
         </div>
       )}
-      <div style={{ display:'flex', borderRadius:14, overflow:'hidden',
-        cursor: entradaOk ? 'pointer' : 'not-allowed', opacity: entradaOk ? 1 : 0.45 }}
-        onClick={entradaOk ? confirmar : undefined}>
-        <div style={{ width:64, background: entradaOk ? '#c47f00' : 'rgba(26,23,20,0.15)',
-          display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>
-          {entradaOk ? '✅' : '⏳'}
-        </div>
-        <div style={{ flex:1, background: entradaOk ? '#f4a900' : 'rgba(26,23,20,0.1)',
-          padding:'14px 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ fontSize:15, fontWeight:800, color: entradaOk ? '#fff' : 'rgba(26,23,20,0.4)' }}>
-            {entradaOk ? 'Confirmar e continuar' : 'Preenche todos os campos primeiro'}
-          </div>
-          <span style={{ fontSize:28, color: entradaOk ? 'rgba(255,255,255,0.6)' : 'rgba(26,23,20,0.2)' }}>›</span>
-        </div>
-      </div>
     </div>
   );
 }
 
-
-// ─────────────────────────────────────────────────────────────
-// PAINEL KITCHENFLOW — registos obrigatórios da ficha
-// ─────────────────────────────────────────────────────────────
 function PainelKitchenFlow({ fichas, aluno, plano }: {
   fichas: any[]; aluno: any; plano: any;
 }) {
