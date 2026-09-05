@@ -52,7 +52,8 @@ const ACCENT       = '#00B8A9';
 const WHITE        = '#ffffff';
 
 // ── Tipo de vistas ─────────────────────────────────────────────
-export type VistaProf = 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda';
+// 'inicio' é o painel de blocos — o ecrã de entrada do professor.
+export type VistaProf = 'inicio' | 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda';
 
 // ── Ícones SVG inline ─────────────────────────────────────────
 const Icons = {
