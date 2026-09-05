@@ -1,3 +1,4 @@
+import { fmtDataHora } from '../datas';
 import React, { useState, useRef } from 'react';
 import { descarregarCopiaSeguranca, restaurarCopiaSeguranca, exportarTudo, CopiaSeguranca } from '../backend';
 
@@ -106,7 +107,7 @@ export function CopiaSegurancaView() {
         {ficheiroEscolhido && (
           <div style={{ background: '#fff', borderRadius: 8, padding: 12, marginBottom: 10 }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-              Ficheiro lido — criado em {new Date(ficheiroEscolhido.criadoEm).toLocaleString('pt-PT')}
+              Ficheiro lido — criado em {fmtDataHora(ficheiroEscolhido.criadoEm)}
             </div>
             <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
               {ficheiroEscolhido.planos?.length || 0} planos · {ficheiroEscolhido.fichas?.length || 0} fichas · {ficheiroEscolhido.requisicoes?.length || 0} requisições · {ficheiroEscolhido.alunos?.length || 0} alunos
