@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   getPlanosAulaPorTurma,
   addOrUpdatePlanoAula,
@@ -11,7 +11,7 @@ import {
   getFichasProducao,
   getAlunos, publicarNoClassroom } from '../backend';
 import { fmtDataCurta, fmtData } from '../datas';
-import { modulosDaTurma } from '../cronograma';
+import { modulosDaTurma, modulosAtivos } from '../cronograma';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Data no formato "20-07-2026 · quarta-feira"
@@ -648,7 +648,35 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     tipoPlanAula: 'pratico' as 'pratico' | 'teorico' | 'misto',
   });
 
-  function setD(k: string, v: string) { setDados(p => ({ ...p, [k]: v })); onAlteracao?.(); }
+  // Estado do "trocar de unidade": por omissão a unidade vem do
+  // cronograma e não é editável.
+  const [trocarUC, setTrocarUC] = useState(false);
+
+  function setD(k: string, v: string) {
+    setDados(p => {
+      const novo: any = { ...p, [k]: v };
+      // Ao mudar a data, a unidade acompanha o cronograma — a não ser
+      // que o professor tenha escolhido trocar à mão.
+      if (k === 'data' && !trocarUC) {
+        const ativos = modulosAtivos(turmaId, v);
+        const doCrono = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+        novo.ucId = doCrono?.id ?? '';
+      }
+      return novo;
+    });
+    onAlteracao?.();
+  }
+
+  // Preencher a unidade na abertura do formulário.
+  useEffect(() => {
+    if (trocarUC || !dados.data) return;
+    const ativos = modulosAtivos(turmaId, dados.data);
+    const doCrono = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+    if (doCrono && dados.ucId !== doCrono.id) {
+      setDados(p => ({ ...p, ucId: doCrono.id }));
+    }
+    if (!doCrono && dados.ucId) setDados(p => ({ ...p, ucId: '' }));
+  }, [dados.data, turmaId, trocarUC]);
 
   function guardar() {
     const now = new Date().toISOString();
@@ -713,21 +741,88 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             {modulosDaTurma(turmaId).some(m => m.tipo === 'UFCD') ? 'UFCD' : 'Unidade de Competência'} <span style={{ color: 'var(--danger)' }}>*</span>
           </label>
           {(() => {
-            // Módulos do cronograma para esta turma — UC ou UFCD conforme o referencial
+            // A unidade não é escolha livre: sai do cronograma, pela data
+            // da aula. O professor não tem de saber de cor o que está a
+            // decorrer, e não pode enganar-se.
             const modulos = modulosDaTurma(turmaId);
             const isUFCD = modulos.some(m => m.tipo === 'UFCD');
-            const label = isUFCD ? 'UFCD' : 'UC';
-            const selNome = modulos.find(m => m.id === dados.ucId)?.nome || UCS_COZINHA.find(u => u.id === dados.ucId)?.nome || '';
+            const label = isUFCD ? 'UFCD' : 'unidade';
+
+            const ativos = dados.data ? modulosAtivos(turmaId, dados.data) : [];
+            // Com duas em curso — uma a acabar e outra a começar — fica a
+            // que acaba primeiro: é a que tem menos aulas pela frente.
+            const doCronograma = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+
+            const selNome = modulos.find(m => m.id === dados.ucId)?.nome
+              || UCS_COZINHA.find(u => u.id === dados.ucId)?.nome || '';
+            const foraDoCronograma = !!dados.ucId && doCronograma && dados.ucId !== doCronograma.id;
+
+            if (!dados.data) {
+              return (
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--surface-2, #f6f4f1)',
+                  fontSize: 13.5, color: 'rgba(26,23,20,0.6)' }}>
+                  Escolhe primeiro a data. A {label} vem do cronograma.
+                </div>
+              );
+            }
+
+            if (!doCronograma) {
+              return (
+                <div style={{ padding: '13px 15px', borderRadius: 10,
+                  background: 'var(--danger-pale, #fdf0ef)', border: '1px solid var(--danger)',
+                  fontSize: 13.5, color: 'var(--danger)', lineHeight: 1.55 }}>
+                  <b>Não há {label} no cronograma para {dados.data}.</b><br />
+                  Ou é período de interrupção, ou a {label} ainda não foi lançada no
+                  cronograma. Corrige a data, ou acrescenta a {label} ao cronograma antes
+                  de criar a aula.
+                </div>
+              );
+            }
+
             return (<>
-              <select className="input" value={dados.ucId} onChange={e => setD('ucId', e.target.value)} style={{ border: !dados.ucId ? '2px solid var(--danger)' : undefined, fontSize: 14 }}>
-                <option value="">— Selecciona a {label} desta aula —</option>
-                {modulos.length > 0
-                  ? modulos.map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome}</option>)
-                  : UCS_COZINHA.map(u => <option key={u.id} value={u.id}>{u.id} — {u.nome}</option>)
-                }
-              </select>
-              {!dados.ucId && <div style={{ fontSize: 13, color: 'var(--danger)', marginTop: 4 }}>Obrigatório — define as competências da aula</div>}
-              {dados.ucId && <div style={{ fontSize: 13, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>✓ {selNome}</div>}
+              {!trocarUC ? (
+                <div style={{ padding: '13px 15px', borderRadius: 10,
+                  background: 'var(--copper-pale, #fdf0e6)', border: '1px solid var(--copper)' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
+                    textTransform: 'uppercase', color: 'var(--copper)' }}>
+                    {doCronograma.id}
+                  </div>
+                  <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--charcoal, #1a1714)',
+                    marginTop: 3, lineHeight: 1.3 }}>
+                    {doCronograma.nome}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--copper)', marginTop: 5 }}>
+                    do cronograma · {doCronograma.dataInicio} a {doCronograma.dataFim}
+                    {ativos.length > 1 && ' · há outra em curso'}
+                  </div>
+                  <button type="button" onClick={() => setTrocarUC(true)}
+                    style={{ marginTop: 9, background: 'transparent', border: 'none', padding: 0,
+                      fontSize: 13, color: 'var(--copper)', fontWeight: 700, cursor: 'pointer',
+                      textDecoration: 'underline', fontFamily: 'inherit' }}>
+                    Trocar de {label}
+                  </button>
+                </div>
+              ) : (<>
+                <select className="input" value={dados.ucId}
+                  onChange={e => setD('ucId', e.target.value)} style={{ fontSize: 14 }}>
+                  <option value="">— Selecciona a {label} desta aula —</option>
+                  {(modulos.length > 0 ? modulos : UCS_COZINHA).map((m: any) =>
+                    <option key={m.id} value={m.id}>{m.id} — {m.nome}</option>)}
+                </select>
+                {selNome && <div style={{ fontSize: 13, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>✓ {selNome}</div>}
+                {foraDoCronograma && (
+                  <div style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 6, lineHeight: 1.5 }}>
+                    Estás a sair do cronograma: para {dados.data} está prevista a {doCronograma.id}.
+                  </div>
+                )}
+                <button type="button"
+                  onClick={() => { setTrocarUC(false); setD('ucId', doCronograma.id); }}
+                  style={{ marginTop: 8, background: 'transparent', border: 'none', padding: 0,
+                    fontSize: 13, color: 'var(--copper)', fontWeight: 700, cursor: 'pointer',
+                    textDecoration: 'underline', fontFamily: 'inherit' }}>
+                  Voltar à {label} do cronograma
+                </button>
+              </>)}
             </>);
           })()}
         </div>
