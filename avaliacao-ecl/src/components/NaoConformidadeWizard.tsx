@@ -1,3 +1,4 @@
+import { fmtDataHora } from '../datas';
 import React, { useState } from 'react';
 
 type Perfil = 'professor' | 'coordenadora' | 'auxiliar' | 'aluno';
@@ -256,7 +257,7 @@ export function ListaNaoConformidades({ turmaId, perfil }: { turmaId: string; pe
               </div>
               {nc.descricao && <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>{nc.descricao}</div>}
               <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>
-                Registado por {nc.registadoPor} · {new Date(nc.criadaEm).toLocaleString('pt-PT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                Registado por {nc.registadoPor} · {fmtDataHora(nc.criadaEm)}
               </div>
               {perfil !== 'aluno' && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
