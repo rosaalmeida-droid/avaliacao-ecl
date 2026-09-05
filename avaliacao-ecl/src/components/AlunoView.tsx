@@ -31,6 +31,7 @@ import {
   encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos,
   nomeCompetencia, encontrarConhecimento, dicaRecuperacaoAtitude, nivelComplexidadeAtitude, getAtitudeDetalhada,
 } from '../compatECL';
+import { definicaoDaTecnica } from '../definicoesTecnicas';
 import { getLibrary } from '../libraryService';
 import { getFrasesParaCompetencia } from '../frases_subtecnicas';
 import { GuiaProducao } from './GuiaProducao';
@@ -517,6 +518,8 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   // perfis técnicos ("fundo limpo, aromático e sem amargor"), que são
   // o resultado de uma prática e não uma competência. Esses aparecem
   // mais abaixo, quando o aluno se avalia numa ficha concreta.
+  const ucNomeOficial = ucAtual ? getReferencialUC(ucAtual)?.nome : undefined;
+
   const competenciasDaUC = (() => {
     const ref = ucAtual ? getReferencialUC(ucAtual) : undefined;
     if (!ref?.realizacoes?.length) return [];
@@ -553,6 +556,11 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   const atitudesDaUC = ATITUDES
     .filter(at => opcoesDeEscolhaDoAluno(aluno.ano ?? 1).includes(at.id))
     .map(at => ({ id: at.id, nome: at.nome, nivel: nivelDe(at.id) }));
+
+  // Aulas marcadas a partir de hoje — o aluno tem de as ver sem
+  // depender do calendário.
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const aulasFuturas = planosOrdenados.filter(p => p.data >= hojeISO && p.id !== planoHoje?.id);
 
   const tudoAvaliavel = [...competenciasDaUC, ...conhecimentosDaUC, ...atitudesDaUC];
   const porAvaliar = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel) === 'por_avaliar').length;
@@ -720,6 +728,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             turmaId={aluno.turmaId}
             numeroAluno={aluno.numero}
             ucId={ucAtual}
+            ucNome={ucNomeOficial}
             planoHoje={planoHoje}
             numeroPlano={numeroPlanoHoje}
             totalPlanos={planosOrdenados.length}
@@ -728,6 +737,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             notaProgressiva={notaProgressiva}
             competenciasFracas={competenciasFracas}
             recuperacoesPendentes={recuperacoesPendentes}
+            proximasAulas={aulasFuturas.length}
             onAbrir={(d) => {
               if (d === 'entrar' || d === 'fichas' || d === 'guiao' || d === 'requisicao') {
                 // Só se entra numa aula que exista. Sem plano de aula não há
@@ -757,7 +767,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 } as any);
                 return;
               }
-              if (d === 'calendario') { setAba('calendario'); return; }
+              if (d === 'calendario' || d === 'proximas') { setAba('calendario'); return; }
               setDestino(d);
             }}
           />
@@ -780,6 +790,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             {destino === 'avaliar' && (
               <EcraAvaliarMe
                 ucId={ucAtual}
+                ucNome={ucNomeOficial}
                 temAulaHoje={!!planoHoje}
                 bloco={blocoAvaliar}
                 onMudarBloco={setBlocoAvaliar}
@@ -793,13 +804,22 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             {destino === 'nota' && (
               <EcraNotaProgressiva
                 ucId={ucAtual}
+                ucNome={ucNomeOficial}
                 nota={notaProgressiva}
                 totalAulas={planosOrdenados.length}
                 historial={historialUC}
               />
             )}
 
-            {destino === 'perfil' && <PerfilProfissionalAluno aluno={aluno} />}
+            {destino === 'perfil' && (
+              <div style={{ padding:14, maxWidth:620, margin:'0 auto' }}>
+                <CabecalhoEcra ucId={ucAtual} ucNome={ucNomeOficial} titulo="O meu perfil profissional" onVoltar={() => setDestino(null)} />
+                <div style={{ background:'#fff', borderRadius:16, padding:16,
+                  boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <PerfilProfissionalAluno aluno={aluno} semTitulo />
+                </div>
+              </div>
+            )}
 
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
 
@@ -1951,14 +1971,52 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     return app ? _nivelPermitido(app.nivel) : true;
   });
 
+  // O aluno nunca vê códigos. "SUB-COR-030-001" não lhe diz nada, e
+  // "Rodelas" sozinho também não — rodelas de quê? A pergunta tem de
+  // trazer a técnica-mãe e a matéria-prima:
+  //    Cortar · Rodelas · cenoura
+  const produtosDaFicha: string[] = [...new Set(
+    fichas.flatMap((f: any) => (f.ingredientes || [])
+      .map((i: any) => i?.nome || i?.designacao || '')
+      .filter(Boolean))
+  )] as string[];
+
+  /** Produto da ficha mais provável para uma subtécnica, pelo nome. */
+  function produtoPara(nomeSub: string): string | undefined {
+    const n = nomeSub.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return produtosDaFicha.find(p => {
+      const pn = p.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return n.includes(pn.split(' ')[0]) || pn.includes(n.split(' ')[0]);
+    });
+  }
+
   // Subtécnicas como objectos para display
   const subsSug = subIdsFiltrados.slice(0, 6).map((id: string) => {
     const sub = encontrarSubtecnica(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
     const avs = hist.map(h => ({nota: h.nota, data: h.data}));
     const emReg = estaEmRegressao(avs);
-    const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliada' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidada';
-    return { id, nome: sub?.nome || id, motivo };
+    const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliada' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidada';
+
+    // Técnica-mãe: SUB-COR-030-001 → TEC-COR-030
+    const mm = id.match(/^SUB-([A-Z]+)-(\d+)/);
+    const tecMae = mm ? encontrarSubtecnica(`TEC-${mm[1]}-${mm[2]}`) : null;
+    const nomeSub = sub?.nome || '';
+    const produto = nomeSub ? produtoPara(nomeSub) : undefined;
+
+    return {
+      id,
+      // Nunca o código: se não houver nome, é melhor "Técnica" do que "SUB-COR-030-001".
+      nome: nomeSub || tecMae?.nome || 'Técnica',
+      // Onde esta técnica se encaixa e sobre o quê.
+      contexto: [tecMae?.nome, produto].filter(Boolean).join(' · '),
+      // A definição escrita à mão ganha à dos dados, que é circular
+      // em 63% dos casos ("Variante profissional de cozer: Cozer...").
+      descricao: definicaoDaTecnica(tecMae?.nome || '')?.definicao
+        || (sub as any)?.definicao || '',
+      resultadoEsperado: definicaoDaTecnica(tecMae?.nome || '')?.resultado || '',
+      motivo: estado,
+    };
   });
 
   // Aparelhos como objectos para display
@@ -1967,8 +2025,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     const hist = getHistoricoAlunoMicro(aluno.id, id);
     const avs = hist.map(h => ({nota: h.nota, data: h.data}));
     const emReg = estaEmRegressao(avs);
-    const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca preparado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
-    return { id, nome: app?.nome || id, nivel: app?.nivel || 1, categoria: app?.categoria || '', motivo };
+    const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca preparado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
+    return {
+      id,
+      nome: app?.nome || 'Preparação',
+      contexto: (app as any)?.categoria || '',
+      descricao: definicaoDaTecnica(app?.nome || '')?.definicao || (app as any)?.definicao || '',
+      nivel: app?.nivel || 1,
+      categoria: app?.categoria || '',
+      motivo: estado,
+    };
   });
 
   // Fallback — se não há SUB/APP da ficha, usar sistema antigo
@@ -2307,8 +2373,19 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 background:microAberta===m.id?T.copperP:'#fff', border:'none', cursor:'pointer', textAlign:'left',
               }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
+                  {(m as any).contexto && (
+                    <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.05em',
+                      textTransform:'uppercase', color:T.copper, marginBottom:2 }}>
+                      {(m as any).contexto}
+                    </div>
+                  )}
+                  <div style={{ fontWeight:700, fontSize:15.5 }}>{m.nome}</div>
+                  {(m as any).descricao && (
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginTop:3, lineHeight:1.45 }}>
+                      {(m as any).descricao}
+                    </div>
+                  )}
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
                 {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
@@ -2418,8 +2495,19 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 background:microAberta===m.id?'rgba(3,105,161,0.06)':'#fff', border:'none', cursor:'pointer', textAlign:'left',
               }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
+                  {(m as any).contexto && (
+                    <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.05em',
+                      textTransform:'uppercase', color:T.copper, marginBottom:2 }}>
+                      {(m as any).contexto}
+                    </div>
+                  )}
+                  <div style={{ fontWeight:700, fontSize:15.5 }}>{m.nome}</div>
+                  {(m as any).descricao && (
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginTop:3, lineHeight:1.45 }}>
+                      {(m as any).descricao}
+                    </div>
+                  )}
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
                 {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:'#0369a1', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
@@ -2464,8 +2552,19 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 background:microAberta===m.id?T.copperP:'#fff', border:'none', cursor:'pointer', textAlign:'left',
               }}>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.motivo}</div>
+                  {(m as any).contexto && (
+                    <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.05em',
+                      textTransform:'uppercase', color:T.copper, marginBottom:2 }}>
+                      {(m as any).contexto}
+                    </div>
+                  )}
+                  <div style={{ fontWeight:700, fontSize:15.5 }}>{m.nome}</div>
+                  {(m as any).descricao && (
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginTop:3, lineHeight:1.45 }}>
+                      {(m as any).descricao}
+                    </div>
+                  )}
+                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
                 {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
