@@ -1,44 +1,166 @@
 // ============================================================
-// Painel inicial do aluno — grelha de cartões.
+// Painel inicial do aluno.
 //
-// Substitui as três abas (hoje / calendário / perfil) por uma grelha
-// onde cada destino é um cartão grande com ícone e uma palavra.
+// Identidade: cartões violeta cheios sobre fundo cinzento claro, com
+// ícones desenhados a branco. Cada destino é um bloco de cor com um
+// ícone e uma palavra.
 //
-// Três blocos:
-//   1. A aula de hoje ..... entrar, fichas, guião, requisição
-//   2. O meu percurso ..... avaliar-me, nota progressiva, forte/fraco
-//   3. Consulta ........... manual, calendário
-//   + Recuperações, em barra, só quando existem
+// O violeta foi escolhido em vez do vermelho porque o vermelho lê-se
+// como erro, e a maior parte do que está aqui são coisas boas.
 //
-// Só "Entrar na aula" é um cartão cheio. Tudo o resto é branco, para
-// não haver dúvida sobre qual é o primeiro passo.
+// Os valores — cores, tamanhos, espaçamentos — são os da maquete
+// aprovada. Não aproximar: se a maquete diz ícone a 40px e altura
+// mínima 126px, é isso que fica.
 // ============================================================
 
 import React from 'react';
 import { PlanoAula } from '../types';
 
-const T = {
-  cream:    '#faf7f2',
-  charcoal: '#1a1714',
-  copper:   '#b5651d',
-  copperP:  '#fdf0e6',
-  sage:     '#5a7a4e',
-  sageP:    '#eef4eb',
-  danger:   '#c0392b',
-  dangerP:  '#fdf0ef',
-  info:     '#2563eb',
-  infoP:    '#eff6ff',
-  border:   'rgba(26,23,20,0.10)',
+const C = {
+  fundo:        '#F3F2F5',
+  branco:       '#FFFFFF',
+  violeta:      '#6B3FA0',
+  violetaSuave: '#F0EBF7',
+  violetaClaro: '#DCCFF0',
+  tinta:        '#1A1A1A',
+  texto:        '#555555',
+  suave:        '#777777',
+  verde:        '#3E7A31',
+  verdeSuave:   '#E8F3E5',
+  sombra:       '0 1px 3px rgba(0,0,0,0.06)',
 };
 
 export type DestinoAluno =
   | 'entrar' | 'fichas' | 'guiao' | 'requisicao'
   | 'avaliar' | 'nota' | 'perfil'
-  | 'manual' | 'calendario' | 'recuperacoes' | 'kitchenflow' | 'avisar_professor';
+  | 'manual' | 'calendario' | 'recuperacoes' | 'kitchenflow'
+  | 'avisar_professor';
+
+// ── Ícones ────────────────────────────────────────────────────
+// Desenhados, não emojis: um emoji muda de forma conforme o aparelho
+// e não tem o peso de traço do resto da interface.
+
+const svg = (d: React.ReactNode, t = 40) => (
+  <svg width={t} height={t} viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+    {d}
+  </svg>
+);
+
+export const Icones = {
+  entrar: (t?: number) => svg(<>
+    <path d="M13 3h6a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-6" />
+    <path d="M3 12h11m0 0-3.5-3.5M14 12l-3.5 3.5" />
+  </>, t),
+  panela: (t?: number) => svg(
+    <path d="M3 11h18M5 11V8.5a7 7 0 0 1 14 0V11M4 11v2a8 8 0 0 0 16 0v-2M2 21h20" />, t),
+  documento: (t?: number) => svg(<>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6M9 13h6M9 17h4" />
+  </>, t),
+  requisicao: (t?: number) => svg(<>
+    <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z" />
+    <path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2" />
+    <path d="M9 12l1.8 1.8L15 10" />
+  </>, t),
+  visto: (t?: number) => svg(<>
+    <path d="M9 11l3 3L22 4" />
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+  </>, t),
+  alvo: (t?: number) => svg(<>
+    <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" />
+    <circle cx="12" cy="12" r="1" fill="currentColor" />
+  </>, t),
+  livro: (t?: number) => svg(<>
+    <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z" />
+    <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v4H6.5A2.5 2.5 0 0 1 4 19.5z" />
+  </>, t),
+  calendario: (t?: number) => svg(<>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+  </>, t),
+  repetir: (t?: number) => svg(<>
+    <path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M21 3v5h-5" />
+    <path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 21v-5h5" />
+  </>, t),
+  registos: (t?: number) => svg(<>
+    <path d="M4 6h16M4 12h16M4 18h10" /><circle cx="19" cy="18" r="3" />
+  </>, t),
+  semPlano: (t?: number) => svg(<>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="M3 7l9 6 9-6M8 19l8-12" />
+  </>, t),
+  pessoa: (t = 26) => (
+    <svg width={t} height={t} viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" />
+    </svg>
+  ),
+  relogio: (t?: number) => svg(<>
+    <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+  </>, t),
+};
+
+// ── Ícones do fardamento ──────────────────────────────────────
+
+const svgP = (d: React.ReactNode, t = 26) => (
+  <svg width={t} height={t} viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    {d}
+  </svg>
+);
+
+export const IconesFarda: Record<string, () => React.ReactNode> = {
+  farda:   () => svgP(<path d="M4 8l4-4h8l4 4-3 2v10H7V10z" />),
+  touca:   () => svgP(<><path d="M5 12a7 7 0 0 1 14 0" /><path d="M4 12h16v2H4z" /><path d="M6 14v5h12v-5" /></>),
+  sapatos: () => svgP(<><path d="M4 17h16l-1-4H5z" /><path d="M6 13V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5" /></>),
+  avental: () => svgP(<><path d="M7 21v-6a5 5 0 0 1 10 0v6" /><path d="M9 11V6a3 3 0 0 1 6 0v5" /></>),
+  cabelo:  () => svgP(<><path d="M12 3a6 6 0 0 0-6 6v3l-1 4h14l-1-4V9a6 6 0 0 0-6-6z" /><path d="M9 20h6" /></>),
+  maos:    () => svgP(<><path d="M7 14a5 5 0 0 1 10 0v3H7z" /><path d="M9 10V7a3 3 0 0 1 6 0v3" /><path d="M5 20h14" /></>),
+  fones:   () => svgP(<><path d="M4 14v-2a8 8 0 0 1 16 0v2" /><rect x="2" y="14" width="5" height="6" rx="2" /><rect x="17" y="14" width="5" height="6" rx="2" /></>),
+  adornos: () => svgP(<><circle cx="12" cy="12" r="9" /><path d="M12 3v18M5 8h14" /></>),
+  unhas:   () => svgP(<><circle cx="12" cy="12" r="9" /><path d="M8 8l8 8M16 8l-8 8" /></>),
+};
+
+// ── Cartão da grelha ──────────────────────────────────────────
+
+function Cartao({ icone, label, sub, valor, onClick }: {
+  icone?: React.ReactNode; label: string; sub?: string;
+  /** Substitui o ícone por um número grande — usado na nota. */
+  valor?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: C.violeta, border: 'none', borderRadius: 14,
+        padding: '24px 12px', minHeight: 126, width: '100%',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        gap: valor ? 8 : 13,
+        cursor: 'pointer', fontFamily: 'inherit', color: '#fff',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      {valor
+        ? <span style={{ fontSize: 32, fontWeight: 600, lineHeight: 1 }}>{valor}</span>
+        : icone}
+      <span style={{ fontSize: 16, fontWeight: 500, textAlign: 'center', lineHeight: 1.25 }}>
+        {label}
+      </span>
+      {sub && <span style={{ fontSize: 13, color: C.violetaClaro, textAlign: 'center' }}>{sub}</span>}
+    </button>
+  );
+}
+
+const painelBranco: React.CSSProperties = {
+  background: C.branco, borderRadius: 16, boxShadow: C.sombra,
+};
 
 interface Props {
   nomeAluno: string;
   turmaId: string;
+  numeroAluno?: number;
   ucId?: string;
   ucNome?: string;
   planoHoje?: PlanoAula | null;
@@ -52,259 +174,127 @@ interface Props {
   onAbrir: (destino: DestinoAluno) => void;
 }
 
-function Cartao({
-  icone, label, sub, onClick, cheio, alerta,
-}: {
-  icone: string; label: string; sub?: string;
-  onClick: () => void; cheio?: boolean; alerta?: boolean;
-}) {
-  const fundo = cheio ? T.copper : alerta ? T.copperP : '#fff';
-  const corTexto = cheio ? '#fff' : alerta ? T.copper : T.charcoal;
-  const corSub = cheio ? 'rgba(255,255,255,0.85)' : alerta ? T.copper : 'rgba(26,23,20,0.55)';
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: fundo,
-        border: cheio ? 'none' : `1px solid ${alerta ? T.copper : T.border}`,
-        borderRadius: 14,
-        padding: '18px 12px',
-        minHeight: 104,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 8,
-        cursor: 'pointer', width: '100%',
-        fontFamily: 'inherit',
-        transition: 'transform 0.12s ease',
-      }}
-      onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
-      onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-      onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-    >
-      <span style={{ fontSize: 30, lineHeight: 1 }}>{icone}</span>
-      <span style={{ fontSize: 15, fontWeight: 700, color: corTexto, textAlign: 'center' }}>
-        {label}
-      </span>
-      {sub && (
-        <span style={{ fontSize: 12.5, color: corSub, textAlign: 'center' }}>{sub}</span>
-      )}
-    </button>
-  );
-}
-
-const grelha2: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: 12,
-};
-
-const tituloBloco: React.CSSProperties = {
-  fontSize: 12,
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  color: 'rgba(26,23,20,0.45)',
-  marginBottom: 10,
-  paddingLeft: 2,
-};
-
 export function PainelAluno({
-  nomeAluno, turmaId, ucId, ucNome,
+  nomeAluno, turmaId, numeroAluno, ucId, ucNome,
   planoHoje, numeroPlano, totalPlanos,
   fichasAtribuidas = 0,
   autoavaliacoesPorFazer = 0,
   notaProgressiva = null,
-  competenciasFracas = 0,
   recuperacoesPendentes = 0,
   onAbrir,
 }: Props) {
-  const iniciais = nomeAluno
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(p => p[0]?.toUpperCase() ?? '')
-    .join('');
-
   return (
-    <div style={{ padding: '16px 14px 32px', maxWidth: 640, margin: '0 auto' }}>
+    <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
+      <div style={{ maxWidth: 620, margin: '0 auto' }}>
 
-      {/* ── Cabeçalho: quem sou ── */}
-      <div style={{
-        background: '#fff', border: `1px solid ${T.border}`, borderRadius: 14,
-        padding: '14px 16px', marginBottom: 14,
-        display: 'flex', alignItems: 'center', gap: 14,
-      }}>
+        {/* Quem sou */}
         <div style={{
-          width: 48, height: 48, borderRadius: '50%', background: T.copperP,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 17, fontWeight: 700, color: T.copper, flexShrink: 0,
-        }}>{iniciais || '·'}</div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 19, fontWeight: 700, color: T.charcoal, lineHeight: 1.25 }}>
-            {nomeAluno}
-          </div>
-          <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.55)' }}>{turmaId}</div>
-        </div>
-      </div>
-
-      {/* ── Onde estou: sempre visível ── */}
-      <div style={{
-        background: T.copperP, borderRadius: 14,
-        padding: '14px 16px', marginBottom: 16,
-      }}>
-        <div style={{
-          fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
-          letterSpacing: '0.06em', color: T.copper, marginBottom: 4,
-        }}>
-          {planoHoje ? 'A trabalhar agora' : 'Unidade em curso'}
-        </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: T.charcoal, lineHeight: 1.3 }}>
-          {ucId ? `${ucId}${ucNome ? ` · ${ucNome}` : ''}` : 'Sem UC atribuída'}
-        </div>
-        <div style={{ fontSize: 14, color: T.copper, marginTop: 5 }}>
-          {planoHoje
-            ? `${numeroPlano && totalPlanos ? `Plano ${numeroPlano} de ${totalPlanos} · ` : ''}hoje, ${planoHoje.horaInicio}`
-            : 'Não tens aula hoje'}
-        </div>
-      </div>
-
-      {/* ── 1. A aula ── */}
-      <div style={{ marginBottom: 18 }}>
-        <div style={tituloBloco}>A aula</div>
-        <div style={grelha2}>
-          {planoHoje ? (
-            <Cartao
-              icone="🚪" label="Entrar na aula" cheio
-              onClick={() => onAbrir('entrar')}
-            />
-          ) : (
-            <Cartao
-              icone="📭" label="Sem plano de aula"
-              sub="avisar o professor" alerta
-              onClick={() => onAbrir('avisar_professor')}
-            />
-          )}
-          <Cartao
-            icone="🍳" label="As minhas fichas"
-            sub={fichasAtribuidas
-              ? `${fichasAtribuidas} ficha${fichasAtribuidas > 1 ? 's' : ''} atribuída${fichasAtribuidas > 1 ? 's' : ''}`
-              : 'sem fichas atribuídas'}
-            onClick={() => onAbrir('fichas')}
-          />
-          <Cartao icone="📄" label="Guião" onClick={() => onAbrir('guiao')} />
-          <Cartao icone="📋" label="Requisição" onClick={() => onAbrir('requisicao')} />
-        </div>
-      </div>
-
-      {/* ── 2. O meu percurso ── */}
-      <div style={{
-        background: T.sageP, border: `1px solid rgba(90,122,78,0.25)`,
-        borderRadius: 14, padding: 12, marginBottom: 18,
-      }}>
-        <div style={{ ...tituloBloco, color: T.sage }}>O meu percurso</div>
-        <div style={grelha2}>
-          <Cartao
-            icone="✅" label="Avaliar-me"
-            sub={autoavaliacoesPorFazer
-              ? `${autoavaliacoesPorFazer} competência${autoavaliacoesPorFazer > 1 ? 's' : ''} por avaliar`
-              : 'tudo avaliado'}
-            onClick={() => onAbrir('avaliar')}
-          />
-          <button
-            onClick={() => onAbrir('nota')}
-            style={{
-              background: '#fff', border: `1px solid ${T.border}`, borderRadius: 14,
-              padding: '18px 12px', minHeight: 104, width: '100%',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 5,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <span style={{ fontSize: 30, fontWeight: 700, color: T.sage, lineHeight: 1 }}>
-              {notaProgressiva != null ? notaProgressiva.toFixed(1).replace('.', ',') : '—'}
-            </span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: T.charcoal }}>Nota progressiva</span>
-            <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>
-              {notaProgressiva != null ? 'em 20, se acabasse hoje' : 'ainda sem avaliações'}
-            </span>
-          </button>
-        </div>
-        <button
-          onClick={() => onAbrir('perfil')}
-          style={{
-            background: '#fff', border: `1px solid ${T.border}`, borderRadius: 14,
-            padding: '15px 14px', marginTop: 12, width: '100%',
-            display: 'flex', alignItems: 'center', gap: 13,
-            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-          }}
-        >
-          <span style={{ fontSize: 28, lineHeight: 1 }}>🎯</span>
-          <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: T.charcoal }}>
-              O meu perfil profissional
-            </span>
-            <span style={{ display: 'block', fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>
-              {competenciasFracas
-                ? `pontos fortes e ${competenciasFracas} competência${competenciasFracas > 1 ? 's' : ''} a desenvolver`
-                : 'pontos fortes e áreas a desenvolver'}
-            </span>
-          </span>
-        </button>
-      </div>
-
-      {/* ── 3. Consulta ── */}
-      <div style={{ marginBottom: 18 }}>
-        <div style={tituloBloco}>Consulta</div>
-        <div style={grelha2}>
-          <Cartao icone="📘" label="Manual da UC" onClick={() => onAbrir('manual')} />
-          <Cartao icone="📅" label="Calendário" onClick={() => onAbrir('calendario')} />
-        </div>
-      </div>
-
-      {/* ── KitchenFlow: sempre disponível ── */}
-      <button
-        onClick={() => onAbrir('kitchenflow')}
-        style={{
-          background: 'rgba(14,116,144,0.08)', border: '1px solid rgba(14,116,144,0.35)',
-          borderRadius: 14, padding: '15px 14px', width: '100%', marginBottom: 12,
+          ...painelBranco, padding: '14px 16px', marginBottom: 14,
           display: 'flex', alignItems: 'center', gap: 13,
-          cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-        }}
-      >
-        <span style={{ fontSize: 28, lineHeight: 1 }}>🔗</span>
-        <span style={{ flex: 1 }}>
-          <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: '#0e7490' }}>
-            KitchenFlow
-          </span>
-          <span style={{ display: 'block', fontSize: 12.5, color: '#0e7490' }}>
-            fazer os meus registos de higiene e temperaturas
-          </span>
-        </span>
-      </button>
+        }}>
+          <div style={{
+            width: 46, height: 46, borderRadius: '50%', background: C.violetaSuave,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#9B87C4', flexShrink: 0,
+          }}>
+            {Icones.pessoa(26)}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.tinta, lineHeight: 1.2 }}>
+              {nomeAluno}
+            </div>
+            <div style={{ fontSize: 15, color: C.texto }}>
+              {turmaId}
+              {numeroAluno ? <> · nº <b style={{ color: C.tinta }}>{numeroAluno}</b></> : null}
+            </div>
+          </div>
+        </div>
 
-      {/* ── Recuperações: só quando há ── */}
-      {recuperacoesPendentes > 0 && (
-        <button
-          onClick={() => onAbrir('recuperacoes')}
-          style={{
-            background: T.copperP, border: `1px solid ${T.copper}`, borderRadius: 14,
-            padding: '15px 14px', width: '100%',
-            display: 'flex', alignItems: 'center', gap: 13,
-            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-          }}
-        >
-          <span style={{ fontSize: 28, lineHeight: 1 }}>🔁</span>
-          <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', fontSize: 15, fontWeight: 700, color: T.copper }}>
-              Recuperações
-            </span>
-            <span style={{ display: 'block', fontSize: 12.5, color: T.copper }}>
-              {recuperacoesPendentes} módulo{recuperacoesPendentes > 1 ? 's' : ''} por recuperar
-            </span>
-          </span>
-        </button>
-      )}
+        {/* Onde estou — sempre visível */}
+        <div style={{ ...painelBranco, padding: '13px 16px', marginBottom: 14 }}>
+          <div style={{ fontSize: 13.5, color: C.suave }}>
+            {ucId ? `${ucId}${ucNome ? ` · ${ucNome}` : ''}` : 'Sem unidade atribuída'}
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: C.tinta, marginTop: 2 }}>
+            {planoHoje
+              ? `${numeroPlano && totalPlanos ? `Aula ${numeroPlano} de ${totalPlanos} · ` : ''}hoje às ${planoHoje.horaInicio}`
+              : 'Não tens aula hoje'}
+          </div>
+        </div>
 
+        {/* Grelha */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 12 }}>
+
+          {planoHoje ? (
+            <Cartao icone={Icones.entrar()} label="Entrar na aula" onClick={() => onAbrir('entrar')} />
+          ) : (
+            <Cartao icone={Icones.semPlano()} label="Sem plano de aula"
+                    sub="avisar o professor" onClick={() => onAbrir('avisar_professor')} />
+          )}
+
+          <Cartao icone={Icones.panela()} label="As minhas fichas"
+                  sub={fichasAtribuidas ? `${fichasAtribuidas} ficha${fichasAtribuidas > 1 ? 's' : ''}` : undefined}
+                  onClick={() => onAbrir('fichas')} />
+
+          <Cartao icone={Icones.documento()} label="Guião" onClick={() => onAbrir('guiao')} />
+          <Cartao icone={Icones.requisicao()} label="Requisição" onClick={() => onAbrir('requisicao')} />
+
+          <Cartao icone={Icones.visto()} label="Avaliar-me"
+                  sub={autoavaliacoesPorFazer ? `${autoavaliacoesPorFazer} por avaliar` : undefined}
+                  onClick={() => onAbrir('avaliar')} />
+
+          <Cartao valor={notaProgressiva != null ? notaProgressiva.toFixed(1).replace('.', ',') : '—'}
+                  label="Nota progressiva" onClick={() => onAbrir('nota')} />
+
+          <Cartao icone={Icones.alvo()} label="O meu perfil" onClick={() => onAbrir('perfil')} />
+          <Cartao icone={Icones.livro()} label="Manual da UC" onClick={() => onAbrir('manual')} />
+          <Cartao icone={Icones.registos()} label="KitchenFlow" onClick={() => onAbrir('kitchenflow')} />
+          <Cartao icone={Icones.calendario()} label="Calendário" onClick={() => onAbrir('calendario')} />
+
+          {recuperacoesPendentes > 0 && (
+            <Cartao icone={Icones.repetir()} label="Recuperações"
+                    sub={`${recuperacoesPendentes} módulo${recuperacoesPendentes > 1 ? 's' : ''}`}
+                    onClick={() => onAbrir('recuperacoes')} />
+          )}
+
+        </div>
+      </div>
     </div>
   );
 }
+
+/** Cabeçalho violeta dos ecrãs internos. A seta volta atrás. */
+export function CabecalhoEcra({ ucId, ucNome, titulo, subtitulo, onVoltar }: {
+  ucId?: string; ucNome?: string; titulo: string; subtitulo?: string;
+  onVoltar?: () => void;
+}) {
+  return (
+    <div style={{ background: C.violeta, borderRadius: 16, padding: 18, marginBottom: 14 }}>
+      <button
+        onClick={onVoltar} disabled={!onVoltar}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, background: 'transparent',
+          border: 'none', padding: 0, cursor: onVoltar ? 'pointer' : 'default',
+          fontFamily: 'inherit',
+        }}
+      >
+        {onVoltar && (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
+               strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        )}
+        <span style={{ fontSize: 13.5, color: C.violetaClaro }}>
+          {ucId ? `${ucId}${ucNome ? ` · ${ucNome}` : ''}` : ''}
+        </span>
+      </button>
+      <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', marginTop: 8, lineHeight: 1.2 }}>
+        {titulo}
+      </div>
+      {subtitulo && <div style={{ fontSize: 15, color: C.violetaClaro, marginTop: 3 }}>{subtitulo}</div>}
+    </div>
+  );
+}
+
+export const CORES = C;
+export const PAINEL_BRANCO = painelBranco;
