@@ -32,17 +32,23 @@ function GrupoCompetencias({ titulo, icone, itens }: { titulo: string; icone: st
   );
 }
 
-export function PerfilProfissionalAluno({ aluno }: { aluno: Aluno }) {
+export function PerfilProfissionalAluno({ aluno, semTitulo }: {
+  aluno: Aluno;
+  /** O ecrã já traz cabeçalho violeta próprio — não repetir o título. */
+  semTitulo?: boolean;
+}) {
   const perfil = getPerfilProfissionalAluno(aluno.id);
   const totalCompetencias = perfil.tecnicas.length + perfil.responsabilidades.length + perfil.atitudes.length;
 
   return (
     <div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
-        O Meu Perfil Profissional
-      </div>
-      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 16 }}>
-        Resumo do teu desenvolvimento técnico, profissional e comportamental ao longo do curso.
+      {!semTitulo && (
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+          O Meu Perfil Profissional
+        </div>
+      )}
+      <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.6)', marginBottom: 16, lineHeight: 1.55 }}>
+        O que já sabes fazer e o que ainda estás a treinar. Muda ao longo do curso.
       </div>
 
       {totalCompetencias === 0 && (
