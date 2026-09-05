@@ -33,7 +33,7 @@ const C = {
 export type DestinoAluno =
   | 'entrar' | 'fichas' | 'guiao' | 'requisicao'
   | 'avaliar' | 'nota' | 'perfil'
-  | 'manual' | 'calendario' | 'recuperacoes' | 'kitchenflow'
+  | 'manual' | 'calendario' | 'recuperacoes' | 'kitchenflow' | 'proximas'
   | 'avisar_professor';
 
 // ── Ícones ────────────────────────────────────────────────────
@@ -89,6 +89,11 @@ export const Icones = {
   semPlano: (t?: number) => svg(<>
     <rect x="3" y="5" width="18" height="14" rx="2" />
     <path d="M3 7l9 6 9-6M8 19l8-12" />
+  </>, t),
+  proximas: (t?: number) => svg(<>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+    <path d="M11 14l2.5 2L11 18" />
   </>, t),
   pessoa: (t = 26) => (
     <svg width={t} height={t} viewBox="0 0 24 24" fill="currentColor">
@@ -171,6 +176,7 @@ interface Props {
   notaProgressiva?: number | null;
   competenciasFracas?: number;
   recuperacoesPendentes?: number;
+  proximasAulas?: number;
   onAbrir: (destino: DestinoAluno) => void;
 }
 
@@ -181,6 +187,7 @@ export function PainelAluno({
   autoavaliacoesPorFazer = 0,
   notaProgressiva = null,
   recuperacoesPendentes = 0,
+  proximasAulas = 0,
   onAbrir,
 }: Props) {
   return (
@@ -210,12 +217,27 @@ export function PainelAluno({
           </div>
         </div>
 
-        {/* Onde estou — sempre visível */}
-        <div style={{ ...painelBranco, padding: '13px 16px', marginBottom: 14 }}>
-          <div style={{ fontSize: 13.5, color: C.suave }}>
-            {ucId ? `${ucId}${ucNome ? ` · ${ucNome}` : ''}` : 'Sem unidade atribuída'}
+        {/* Onde estou — a unidade é o contexto de tudo o resto, e por isso
+            leva cor própria. O nome vai completo: "molhos e fundos" não é
+            o nome da unidade, é uma abreviatura que só a professora entende. */}
+        <div style={{
+          background: C.violetaSuave, borderRadius: 16,
+          padding: '15px 17px', marginBottom: 14,
+          borderLeft: `5px solid ${C.violeta}`,
+        }}>
+          <div style={{
+            fontSize: 12, fontWeight: 700, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: C.violeta,
+          }}>
+            {ucId || 'Sem unidade'}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: C.tinta, marginTop: 2 }}>
+          <div style={{
+            fontSize: 18, fontWeight: 700, color: C.tinta,
+            marginTop: 4, lineHeight: 1.3,
+          }}>
+            {ucNome || 'Sem unidade atribuída'}
+          </div>
+          <div style={{ fontSize: 15, color: C.texto, marginTop: 7 }}>
             {planoHoje
               ? `${numeroPlano && totalPlanos ? `Aula ${numeroPlano} de ${totalPlanos} · ` : ''}hoje às ${planoHoje.horaInicio}`
               : 'Não tens aula hoje'}
@@ -228,9 +250,17 @@ export function PainelAluno({
           {planoHoje ? (
             <Cartao icone={Icones.entrar()} label="Entrar na aula" onClick={() => onAbrir('entrar')} />
           ) : (
-            <Cartao icone={Icones.semPlano()} label="Sem plano de aula"
+            <Cartao icone={Icones.semPlano()} label="Sem aula hoje"
                     sub="avisar o professor" onClick={() => onAbrir('avisar_professor')} />
           )}
+
+          {/* As próximas aulas ao lado: sem aula hoje, o aluno não fica sem
+              nada para ver. Antes só lá chegava pelo calendário. */}
+          <Cartao icone={Icones.proximas()} label="Próximas aulas"
+                  sub={proximasAulas > 0
+                    ? `${proximasAulas} marcada${proximasAulas > 1 ? 's' : ''}`
+                    : 'nenhuma marcada'}
+                  onClick={() => onAbrir('proximas')} />
 
           <Cartao icone={Icones.panela()} label="As minhas fichas"
                   sub={fichasAtribuidas ? `${fichasAtribuidas} ficha${fichasAtribuidas > 1 ? 's' : ''}` : undefined}
@@ -251,11 +281,14 @@ export function PainelAluno({
           <Cartao icone={Icones.registos()} label="KitchenFlow" onClick={() => onAbrir('kitchenflow')} />
           <Cartao icone={Icones.calendario()} label="Calendário" onClick={() => onAbrir('calendario')} />
 
-          {recuperacoesPendentes > 0 && (
-            <Cartao icone={Icones.repetir()} label="Recuperações"
-                    sub={`${recuperacoesPendentes} módulo${recuperacoesPendentes > 1 ? 's' : ''}`}
-                    onClick={() => onAbrir('recuperacoes')} />
-          )}
+          {/* Sempre visível: o ecrã mostra o percurso de TODOS os módulos —
+              concluídos, por concluir, em recuperação e recuperados —, não
+              só o que está em dívida. */}
+          <Cartao icone={Icones.repetir()} label="Recuperações"
+                  sub={recuperacoesPendentes > 0
+                    ? `${recuperacoesPendentes} por recuperar`
+                    : 'o meu percurso'}
+                  onClick={() => onAbrir('recuperacoes')} />
 
         </div>
       </div>
