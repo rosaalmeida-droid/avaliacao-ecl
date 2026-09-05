@@ -1773,43 +1773,84 @@ function palavras(txt: string): string[] {
     .map(raiz);
 }
 
-/** Corta sufixos para "conservação", "conservar" e "conservados" darem
- *  a mesma raiz. Sem isto o sistema vê três palavras diferentes onde
- *  há uma só ideia — foi o que fez "conservação de fundos" cair na
- *  realização das confeções em vez da conservação. */
+/** Corta sufixos para "conservação", "conservar" e "conservados" darem a
+ *  mesma raiz. Sem isto o sistema vê três palavras onde há uma ideia. */
 function raiz(p: string): string {
-  let r = p
-    .replace(/(coes|cao)$/, 'c')        // conservação/conservações → conservac
-    .replace(/(mentos|mento)$/, 'm')     // acondicionamento → acondicionam
-    .replace(/(adas|ados|ada|ado)$/, '') // preparados → prepar
-    .replace(/(ando|endo|indo)$/, '')
-    .replace(/(ar|er|ir)$/, '')          // conservar → conserv
-    .replace(/(oes|aes|ais|eis|is|as|os|es|s)$/, '');
-  return r.length >= 4 ? r.slice(0, 8) : p.slice(0, 8);
+  let r = p;
+
+  // 1. Plural primeiro, e só o "s". Tirar "os" de "fundos" dava "fund",
+  //    enquanto "fundo" ficava "fundo" — e nunca batiam certo. Foi o que
+  //    fez o sistema não ligar "caldo/fundo" no arroz de pato.
+  if (r.length > 4) {
+    r = r.replace(/oes$/, 'ao').replace(/aes$/, 'ao')
+         .replace(/eis$/, 'el').replace(/ais$/, 'al')
+         .replace(/ns$/, 'm').replace(/s$/, '');
+  }
+
+  // 2. Depois os sufixos que mudam a classe da palavra.
+  r = r.replace(/cao$/, 'c')          // conservação → conservac
+       .replace(/mento$/, 'm')        // acondicionamento → acondicionam
+       .replace(/(ada|ado)$/, '')     // preparado → prepar
+       .replace(/(ando|endo|indo)$/, '')
+       .replace(/(ar|er|ir)$/, '');   // conservar → conserv
+
+  // 3. Truncar para a mesma medida: "fundo" e "fund" ficam iguais.
+  return (r.length >= 4 ? r : p).slice(0, 5);
 }
 
-/** Palavras que identificam uma realização, com peso a dobrar.
+// ── Vocabulário de cozinha ────────────────────────────────────
+// Um caldo É um fundo. Um jus É um molho. Quem escreve a ficha usa a
+// palavra da cozinha; o referencial usa a palavra oficial. Sem isto o
+// sistema procura "fundo" numa ficha que diz "caldo" três vezes e não
+// encontra nada — foi o que aconteceu com o arroz de pato.
+const SINONIMOS: string[][] = [
+  ['fundo', 'caldo', 'consomme', 'bouillon', 'fumet', 'cozedura'],
+  ['molho', 'sauce', 'coulis', 'napage', 'veloute', 'bechamel'],
+  ['refogar', 'refogado', 'suar', 'alourar'],
+  ['ligar', 'ligacao', 'roux', 'espessar', 'engrossar'],
+  ['emulsionar', 'emulsao', 'maionese', 'holandes'],
+  ['mise', 'place', 'aprontar'],
+  ['conservar', 'acondicionar', 'guardar', 'armazenar', 'vacuo', 'refrigerar', 'congelar'],
+  ['cortar', 'corte', 'juliana', 'brunesa', 'mirepoix', 'macedonia', 'chiffonade'],
+  ['coar', 'chinois', 'estamenha', 'filtrar'],
+  ['escumar', 'clarificar', 'desengordurar'],
+  ['reduzir', 'reducao', 'apurar', 'concentrar'],
+  ['gratinar', 'tostar'],
+  ['assar', 'forno', 'rotir'],
+  ['cozer', 'cozedura', 'ferver', 'escalfar'],
+  ['temperar', 'tempero', 'retificar', 'sazonar'],
+  ['ficha', 'custo', 'rendimento', 'gramagem'],
+];
+
+/** Expande raízes com os sinónimos: "caldo" passa a valer por "fundo". */
+function expandirSinonimos(rs: Set<string>): Set<string> {
+  const saida = new Set(rs);
+  for (const grupo of SINONIMOS) {
+    const rg = grupo.flatMap(g => g.split(/\s+/).map(raiz));
+    if (rg.some(r => rs.has(r))) rg.forEach(r => saida.add(r));
+  }
+  return saida;
+}
+
+/** Palavras que identificam a AÇÃO de uma realização, com peso a dobrar.
  *  Uma ficha de conservação e uma de confeção partilham "fundo" — o que
- *  as distingue é o verbo da ação, não o produto. */
+ *  as distingue é o verbo, não o produto. */
 const CHAVES: Record<string, string[]> = {
-  elaborar:     ['ficha', 'custo', 'rendiment', 'calcul', 'planific', 'document'],
-  mise:         ['mise', 'place', 'prepar previa', 'cort', 'pes', 'organiz'],
+  elaborar:     ['ficha', 'custo', 'rendiment', 'calcul', 'planific'],
+  mise:         ['mise', 'place', 'cort', 'pes', 'organiz'],
   confecionar:  ['confec', 'cozinh', 'cozer', 'assar', 'refog', 'saltear', 'reduz',
-                 'ligar', 'roux', 'escum', 'coar', 'emulsion'],
-  acondicionar: ['acondicion', 'conserv', 'arrefec', 'etiquet', 'vacuo', 'refrigera',
-                 'congel', 'armazen', 'validad', 'rotul'],
+                 'ligar', 'roux', 'escum', 'coar', 'emulsion', 'gratin'],
+  acondicionar: ['acondicion', 'conserv', 'arrefec', 'etiquet', 'vacuo',
+                 'congel', 'armazen', 'rotul'],
 };
 
-/** Palavras-chave presentes numa realização. */
 function chavesDa(texto: string): string[] {
-  const ps = palavras(texto);
-  const encontradas: string[] = [];
+  const ps = [...expandirSinonimos(new Set(palavras(texto)))];
+  const out: string[] = [];
   for (const grupo of Object.values(CHAVES)) {
-    for (const k of grupo) {
-      if (ps.some(p => p.startsWith(k.slice(0, 6)))) encontradas.push(k);
-    }
+    for (const k of grupo) if (ps.some(p => p.startsWith(k.slice(0, 6)))) out.push(k);
   }
-  return encontradas;
+  return out;
 }
 
 /** Realizações que se trabalham fora da bancada. */
@@ -1850,28 +1891,20 @@ export function sugerirRealizacao(
   realizacoes: string[],
   ucId = ''
 ): SugestaoTriagem[] {
-  const daFonte = new Set([
-    ...palavras(fonte.nome),
-    ...palavras(fonte.familia1 ?? ''),
-    ...palavras(fonte.familia2 ?? ''),
-    ...(fonte.tecnicasSugeridas ?? []).flatMap(palavras),
-    ...palavras((fonte.texto ?? '').slice(0, 600)),
-  ]);
+  const textoTodo = [
+    fonte.nome, fonte.familia1 ?? '', fonte.familia2 ?? '',
+    ...(fonte.tecnicasSugeridas ?? []), (fonte.texto ?? '').slice(0, 900),
+  ].join(' ');
+  const daFonte = expandirSinonimos(new Set(palavras(textoTodo)));
+  const chavesFonte = chavesDa(textoTodo);
 
   const sugestoes = realizacoes.map((r, i) => {
     const daReal = palavras(r);
     const comuns = daReal.filter(p => daFonte.has(p));
     let pontos = comuns.length * 10;
 
-    // Palavras-chave da ação valem a dobrar: o que distingue conservar
-    // de confecionar não é o produto, é o verbo.
-    const chavesReal = chavesDa(r);
-    const textoFonte = [
-      fonte.nome, fonte.familia1 ?? '', fonte.familia2 ?? '',
-      ...(fonte.tecnicasSugeridas ?? []), (fonte.texto ?? '').slice(0, 600),
-    ].join(' ');
-    const chavesFonte = chavesDa(textoFonte);
-    const chavesComuns = chavesReal.filter(k => chavesFonte.includes(k));
+    // A ação vale a dobrar do produto.
+    const chavesComuns = chavesDa(r).filter(k => chavesFonte.includes(k));
     pontos += chavesComuns.length * 20;
 
     // Uma ficha técnica não trabalha uma realização teórica, e vice-versa.
@@ -1889,25 +1922,11 @@ export function sugerirRealizacao(
       realizacao: r.replace(/\.$/, ''),
       pontuacao: pontos,
       porque: [...new Set([...chavesComuns, ...comuns])],
-      confianca: 'baixa' as SugestaoTriagem['confianca'],
+      confianca: (pontos >= 30 ? 'alta' : pontos >= 12 ? 'media' : 'baixa') as SugestaoTriagem['confianca'],
     };
   });
 
-  const ord = sugestoes.sort((a, b) => b.pontuacao - a.pontuacao);
-
-  // A confiança não pode vir só da pontuação absoluta: uma ficha de
-  // fundos só partilha a palavra "fundo" com a realização certa, e isso
-  // basta. O que conta é a distância para a segunda hipótese — se a
-  // primeira está claramente à frente, a proposta é boa.
-  const [p, s] = [ord[0]?.pontuacao ?? 0, ord[1]?.pontuacao ?? 0];
-  if (ord[0]) {
-    const margem = p - s;
-    ord[0].confianca = p <= 0 ? 'baixa'
-                     : (p >= 30 || margem >= 15) ? 'alta'
-                     : (p >= 10 || margem >= 8) ? 'media'
-                     : 'baixa';
-  }
-  return ord;
+  return sugestoes.sort((a, b) => b.pontuacao - a.pontuacao);
 }
 
 /** Texto para o professor confirmar a proposta. */
@@ -1917,4 +1936,121 @@ export function textoSugestao(s: SugestaoTriagem): string {
   }
   const p = s.porque.slice(0, 3).join(', ');
   return `Proponho "${s.realizacao}"${p ? ` — por causa de: ${p}` : ''}. Confirmas?`;
+}
+
+// ============================================================
+// Competências trazidas pela ficha técnica
+// ============================================================
+// Uma ficha pode não pertencer a nenhuma realização da UC — um arroz
+// de pato numa unidade de molhos e fundos, por causa de um evento.
+// Isso NÃO quer dizer que não haja nada a avaliar: a ficha traz as
+// suas próprias técnicas, e essas são competências transversais.
+//
+// O sistema vai buscá-las à ficha e cruza com a biblioteca, para o
+// professor escolher de uma lista em vez de escrever à mão.
+
+export interface TecnicaBiblioteca {
+  id: string;
+  nome: string;
+  tecnica_id?: string;
+}
+
+export interface CompetenciaDaFicha {
+  id: string;
+  nome: string;
+  /** 'referencial' = pertence à UC; 'transversal' = veio só da ficha. */
+  origem: 'referencial' | 'transversal';
+  /** De onde saiu: técnica sugerida, passo de preparação, família. */
+  fonte: string;
+}
+
+/**
+ * Extrai as competências avaliáveis de uma ficha técnica, cruzando o
+ * que ela diz com a biblioteca de técnicas e subtécnicas.
+ *
+ * @param ficha        nome, família, técnicas sugeridas e preparação
+ * @param biblioteca   técnicas e subtécnicas disponíveis
+ * @param dentroDaUC   ids que pertencem ao referencial da UC
+ */
+export function competenciasDaFicha(
+  ficha: FonteTriagem & { preparacao?: string[] },
+  biblioteca: TecnicaBiblioteca[],
+  dentroDaUC: string[] = []
+): CompetenciaDaFicha[] {
+  const encontradas = new Map<string, CompetenciaDaFicha>();
+  const naUC = new Set(dentroDaUC);
+
+  const registar = (t: TecnicaBiblioteca, fonte: string) => {
+    if (encontradas.has(t.id)) return;
+    encontradas.set(t.id, {
+      id: t.id,
+      nome: t.nome,
+      origem: naUC.has(t.id) ? 'referencial' : 'transversal',
+      fonte,
+    });
+  };
+
+  // 1. Técnicas que a ficha declara — a fonte mais fiável.
+  for (const decl of ficha.tecnicasSugeridas ?? []) {
+    const alvo = raizes(decl);
+    for (const t of biblioteca) {
+      if (partilhaRaiz(alvo, raizes(t.nome))) registar(t, `técnica da ficha: ${decl}`);
+    }
+  }
+
+  // 2. Passos da preparação — "levar ao forno a gratinar" traz "gratinar".
+  const passos = [...(ficha.preparacao ?? []), ficha.texto ?? ''].join(' ');
+  if (passos.trim()) {
+    const alvo = raizes(passos);
+    for (const t of biblioteca) {
+      const rt = raizes(t.nome);
+      // Exige que TODAS as raízes da técnica apareçam no texto, senão
+      // "cozer" apanhava meia biblioteca.
+      if (rt.length && rt.every(r => alvo.includes(r))) {
+        registar(t, 'passo da preparação');
+      }
+    }
+  }
+
+  // 3. Nome do prato e famílias.
+  for (const campo of [ficha.nome, ficha.familia1 ?? '', ficha.familia2 ?? '']) {
+    if (!campo.trim()) continue;
+    const alvo = raizes(campo);
+    for (const t of biblioteca) {
+      const rt = raizes(t.nome);
+      if (rt.length && rt.every(r => alvo.includes(r))) registar(t, `nome ou família: ${campo}`);
+    }
+  }
+
+  return [...encontradas.values()].sort((a, b) =>
+    a.origem === b.origem ? a.nome.localeCompare(b.nome) : a.origem === 'referencial' ? -1 : 1
+  );
+}
+
+function raizes(txt: string): string[] {
+  return [...expandirSinonimos(new Set(palavras(txt)))];
+}
+
+function partilhaRaiz(a: string[], b: string[]): boolean {
+  return a.some(x => b.includes(x));
+}
+
+/** Resumo para o professor confirmar. */
+export function resumoCompetenciasDaFicha(comps: CompetenciaDaFicha[]): string {
+  const noRef = comps.filter(c => c.origem === 'referencial').length;
+  const trans = comps.filter(c => c.origem === 'transversal').length;
+
+  if (comps.length === 0) {
+    return 'Não encontrei técnicas nesta ficha. Escolhe as competências à mão.';
+  }
+  if (trans === 0) {
+    return `Encontrei ${noRef} competência${noRef > 1 ? 's' : ''} desta unidade nesta ficha.`;
+  }
+  if (noRef === 0) {
+    return `Esta ficha não pertence a nenhuma realização da unidade, mas traz `
+         + `${trans} ${trans === 1 ? 'competência transversal que pode' : 'competências transversais que podem'} `
+         + `ser ${trans === 1 ? 'avaliada' : 'avaliadas'} na mesma.`;
+  }
+  return `Encontrei ${noRef} ${noRef === 1 ? 'competência' : 'competências'} da unidade e `
+       + `${trans} ${trans === 1 ? 'transversal' : 'transversais'}.`;
 }
