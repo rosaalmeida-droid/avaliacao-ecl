@@ -1598,6 +1598,46 @@ export function updateComanda(c: Comanda): void {
 export function getSelecoes(): SelecaoAluno[] { return load<SelecaoAluno>(KEYS.selecoes); }
 export function getValidacoes(): Validacao[] { return load<Validacao>(KEYS.validacoes); }
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
+
+/** Inscreve ou retira o aluno de uma atividade. Inscrever não é
+ *  participar: só conta para o bónus depois de o aluno confirmar que foi. */
+export function inscreverEmAtividade(atividadeId: string, alunoId: string, inscrever: boolean): void {
+  const all = getAtividades().map(a => {
+    if (a.id !== atividadeId) return a;
+    const atuais = a.inscritosIds ?? [];
+    return {
+      ...a,
+      inscritosIds: inscrever
+        ? [...new Set([...atuais, alunoId])]
+        : atuais.filter(id => id !== alunoId),
+    };
+  });
+  save(KEYS.atividades, all);
+}
+
+/** O aluno diz se foi e como correu. É aqui que entra em participantesIds
+ *  — e só a partir daqui é que conta para a nota. */
+export function registarBalancoAtividade(
+  atividadeId: string, alunoId: string, participou: boolean, resultado?: string
+): void {
+  const all = getAtividades().map(a => {
+    if (a.id !== atividadeId) return a;
+    const balancos = (a.balancos ?? []).filter(b => b.alunoId !== alunoId);
+    const participantes = participou
+      ? [...new Set([...a.participantesIds, alunoId])]
+      : a.participantesIds.filter(id => id !== alunoId);
+    return {
+      ...a,
+      participantesIds: participantes,
+      balancos: [...balancos, {
+        alunoId, participou,
+        resultado: resultado as any,
+        em: new Date().toISOString(),
+      }],
+    };
+  });
+  save(KEYS.atividades, all);
+}
 export function getPlanosAulaFn(): PlanoAula[] { return getPlanosAula(); }
 
 export function addOrUpdateSelecao(s: SelecaoAluno): void {
