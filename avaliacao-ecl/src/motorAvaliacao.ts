@@ -1625,3 +1625,296 @@ export function exigeFarda(plano: { tipoPlanAula?: string; exigeFarda?: boolean 
   if (plano.exigeFarda != null) return plano.exigeFarda;
   return plano.tipoPlanAula !== 'teorico';
 }
+
+// ============================================================
+// O que o aluno vê no "Avaliar-me"
+// ============================================================
+// REGRA:
+//   Sem ficha técnica nem trabalho no plano → aparece o referencial
+//   inteiro da UC: realizações, conhecimentos e atitudes. É o que a
+//   aplicação assume estar a ser trabalhado.
+//
+//   Com ficha técnica ou trabalho → triagem, pelas regras já definidas:
+//   competências da ficha, atitude do trimestre, recuperação, escolha
+//   do aluno.
+//
+// NÃO se mostram os resultados esperados dos perfis técnicos
+// ("Fundo limpo, aromático e sem amargor"). Isso é o resultado de uma
+// prática, não uma competência. As subtécnicas e os critérios são a
+// árvore que se abre ao avaliar uma competência concreta — não a lista
+// que o aluno vê à entrada.
+
+export type BlocoCompetencia = 'realizacoes' | 'conhecimentos' | 'atitudes';
+
+export const LABEL_BLOCO: Record<BlocoCompetencia, string> = {
+  realizacoes:   'O que vou saber fazer',
+  conhecimentos: 'O que vou saber',
+  atitudes:      'Como me vou comportar',
+};
+
+export const SUBSTANTIVO_BLOCO: Record<BlocoCompetencia, string> = {
+  realizacoes:   'competência',
+  conhecimentos: 'conhecimento',
+  atitudes:      'atitude',
+};
+
+export interface ItemAvaliavel {
+  id: string;
+  nome: string;
+  bloco: BlocoCompetencia;
+  nivel?: number | null;
+  /** true quando entrou por uma ficha técnica ou trabalho deste plano. */
+  doPlano?: boolean;
+}
+
+export interface ConteudoUC {
+  realizacoes: ItemAvaliavel[];
+  conhecimentos: ItemAvaliavel[];
+  atitudes: ItemAvaliavel[];
+  /** false = referencial inteiro; true = triado pela ficha/trabalho. */
+  triado: boolean;
+}
+
+interface RefUC {
+  nome?: string;
+  realizacoes?: string[];
+  conhecimentos?: string[];
+  criteriosDesempenho?: string[];
+  atitudes?: string[];
+}
+
+/**
+ * Monta o que o aluno vê. Sem ficha nem trabalho, devolve o referencial
+ * completo; com eles, devolve só o que foi selecionado.
+ *
+ * @param ref           referencial da UC (getReferencialUC)
+ * @param niveis        níveis já consolidados, por id
+ * @param idsDaFicha    competências trazidas pela ficha/trabalho, se houver
+ * @param atitudesAno   atitudes disponíveis para o ano do aluno
+ */
+export function conteudoParaAvaliar(
+  ref: RefUC | undefined,
+  niveis: Map<string, number>,
+  idsDaFicha: string[] | null,
+  atitudesAno: { id: string; nome: string }[]
+): ConteudoUC {
+  const triado = Array.isArray(idsDaFicha) && idsDaFicha.length > 0;
+
+  const mk = (
+    textos: string[], bloco: BlocoCompetencia, prefixo: string
+  ): ItemAvaliavel[] =>
+    textos.map((t, i) => {
+      const id = `${prefixo}-${String(i + 1).padStart(2, '0')}`;
+      return { id, nome: t, bloco, nivel: niveis.get(id) ?? null };
+    });
+
+  const realizacoes = mk(ref?.realizacoes ?? [], 'realizacoes', 'REA');
+  // Os conhecimentos do referencial são a lista `conhecimentos`; quando
+  // não existe, os critérios de desempenho fazem esse papel.
+  const conhecimentos = mk(
+    (ref?.conhecimentos?.length ? ref.conhecimentos : ref?.criteriosDesempenho) ?? [],
+    'conhecimentos', 'CON'
+  );
+
+  const atitudes: ItemAvaliavel[] = atitudesAno.map(a => ({
+    id: a.id, nome: a.nome, bloco: 'atitudes', nivel: niveis.get(a.id) ?? null,
+  }));
+
+  if (!triado) return { realizacoes, conhecimentos, atitudes, triado: false };
+
+  const dentro = new Set(idsDaFicha!);
+  const marcar = (its: ItemAvaliavel[]) =>
+    its.filter(i => dentro.has(i.id)).map(i => ({ ...i, doPlano: true }));
+
+  return {
+    realizacoes: marcar(realizacoes),
+    conhecimentos: marcar(conhecimentos),
+    atitudes: marcar(atitudes),
+    triado: true,
+  };
+}
+
+/** Contagem por estado, para os cartões do ecrã. */
+export function contarPorEstado(itens: ItemAvaliavel[]): Record<EstadoComp, number> {
+  const c: Record<EstadoComp, number> = {
+    por_avaliar: 0, desenvolvimento: 0, consolidado: 0, avancado: 0,
+  };
+  for (const i of itens) c[estadoDoNivel(i.nivel)]++;
+  return c;
+}
+
+// ============================================================
+// Triagem automática: ficha/trabalho → realização do referencial
+// ============================================================
+// Numa UC com 5 realizações e 3 fichas, o sistema tem de saber qual
+// ficha pertence a qual realização — senão o aluno vê todas debaixo de
+// todas, que é o oposto do que queremos.
+//
+// A app propõe, o professor confirma. Não é o professor a preencher
+// um campo por ficha: é a aplicação a fazer o trabalho e ele a validar.
+//
+// Repara no caso "Elaborar fichas técnicas": é uma realização que se
+// trabalha numa aula teórica, com um trabalho escrito, não numa
+// produção. A triagem tem de apanhar isso.
+
+const PARAR = new Set([
+  'de','da','do','das','dos','e','a','o','as','os','em','para','com','por',
+  'um','uma','uns','umas','no','na','nos','nas','ao','aos','à','às','seus',
+  'suas','que','se','sua','seu',
+]);
+
+function palavras(txt: string): string[] {
+  return txt
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(p => p.length > 3 && !PARAR.has(p))
+    .map(raiz);
+}
+
+/** Corta sufixos para "conservação", "conservar" e "conservados" darem
+ *  a mesma raiz. Sem isto o sistema vê três palavras diferentes onde
+ *  há uma só ideia — foi o que fez "conservação de fundos" cair na
+ *  realização das confeções em vez da conservação. */
+function raiz(p: string): string {
+  let r = p
+    .replace(/(coes|cao)$/, 'c')        // conservação/conservações → conservac
+    .replace(/(mentos|mento)$/, 'm')     // acondicionamento → acondicionam
+    .replace(/(adas|ados|ada|ado)$/, '') // preparados → prepar
+    .replace(/(ando|endo|indo)$/, '')
+    .replace(/(ar|er|ir)$/, '')          // conservar → conserv
+    .replace(/(oes|aes|ais|eis|is|as|os|es|s)$/, '');
+  return r.length >= 4 ? r.slice(0, 8) : p.slice(0, 8);
+}
+
+/** Palavras que identificam uma realização, com peso a dobrar.
+ *  Uma ficha de conservação e uma de confeção partilham "fundo" — o que
+ *  as distingue é o verbo da ação, não o produto. */
+const CHAVES: Record<string, string[]> = {
+  elaborar:     ['ficha', 'custo', 'rendiment', 'calcul', 'planific', 'document'],
+  mise:         ['mise', 'place', 'prepar previa', 'cort', 'pes', 'organiz'],
+  confecionar:  ['confec', 'cozinh', 'cozer', 'assar', 'refog', 'saltear', 'reduz',
+                 'ligar', 'roux', 'escum', 'coar', 'emulsion'],
+  acondicionar: ['acondicion', 'conserv', 'arrefec', 'etiquet', 'vacuo', 'refrigera',
+                 'congel', 'armazen', 'validad', 'rotul'],
+};
+
+/** Palavras-chave presentes numa realização. */
+function chavesDa(texto: string): string[] {
+  const ps = palavras(texto);
+  const encontradas: string[] = [];
+  for (const grupo of Object.values(CHAVES)) {
+    for (const k of grupo) {
+      if (ps.some(p => p.startsWith(k.slice(0, 6)))) encontradas.push(k);
+    }
+  }
+  return encontradas;
+}
+
+/** Realizações que se trabalham fora da bancada. */
+const REALIZACAO_TEORICA = ['ficha tecnica', 'fichas tecnicas', 'planificar', 'calcular', 'custo'];
+
+export function realizacaoEhTeorica(texto: string): boolean {
+  const t = texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return REALIZACAO_TEORICA.some(k => t.includes(k));
+}
+
+export interface SugestaoTriagem {
+  realizacaoId: string;
+  realizacao: string;
+  pontuacao: number;
+  /** Palavras que fizeram a ligação — para o professor perceber porquê. */
+  porque: string[];
+  confianca: 'alta' | 'media' | 'baixa';
+}
+
+export interface FonteTriagem {
+  /** Nome do prato, ou título do trabalho. */
+  nome: string;
+  familia1?: string;
+  familia2?: string;
+  tecnicasSugeridas?: string[];
+  /** Passos de preparação ou enunciado. */
+  texto?: string;
+  /** true quando é trabalho de conhecimento, não ficha técnica. */
+  ehTrabalho?: boolean;
+}
+
+/**
+ * Sugere a que realização do referencial pertence uma ficha ou trabalho.
+ * Devolve por ordem de pontuação — a primeira é a proposta.
+ */
+export function sugerirRealizacao(
+  fonte: FonteTriagem,
+  realizacoes: string[],
+  ucId = ''
+): SugestaoTriagem[] {
+  const daFonte = new Set([
+    ...palavras(fonte.nome),
+    ...palavras(fonte.familia1 ?? ''),
+    ...palavras(fonte.familia2 ?? ''),
+    ...(fonte.tecnicasSugeridas ?? []).flatMap(palavras),
+    ...palavras((fonte.texto ?? '').slice(0, 600)),
+  ]);
+
+  const sugestoes = realizacoes.map((r, i) => {
+    const daReal = palavras(r);
+    const comuns = daReal.filter(p => daFonte.has(p));
+    let pontos = comuns.length * 10;
+
+    // Palavras-chave da ação valem a dobrar: o que distingue conservar
+    // de confecionar não é o produto, é o verbo.
+    const chavesReal = chavesDa(r);
+    const textoFonte = [
+      fonte.nome, fonte.familia1 ?? '', fonte.familia2 ?? '',
+      ...(fonte.tecnicasSugeridas ?? []), (fonte.texto ?? '').slice(0, 600),
+    ].join(' ');
+    const chavesFonte = chavesDa(textoFonte);
+    const chavesComuns = chavesReal.filter(k => chavesFonte.includes(k));
+    pontos += chavesComuns.length * 20;
+
+    // Uma ficha técnica não trabalha uma realização teórica, e vice-versa.
+    const teorica = realizacaoEhTeorica(r);
+    if (teorica && !fonte.ehTrabalho) pontos -= 25;
+    if (teorica && fonte.ehTrabalho) pontos += 20;
+    if (!teorica && fonte.ehTrabalho) pontos -= 10;
+
+    // O nome do prato pesa mais do que o texto solto.
+    const noNome = palavras(fonte.nome).filter(p => daReal.includes(p));
+    pontos += noNome.length * 8;
+
+    return {
+      realizacaoId: `${ucId}_R${i + 1}`,
+      realizacao: r.replace(/\.$/, ''),
+      pontuacao: pontos,
+      porque: [...new Set([...chavesComuns, ...comuns])],
+      confianca: 'baixa' as SugestaoTriagem['confianca'],
+    };
+  });
+
+  const ord = sugestoes.sort((a, b) => b.pontuacao - a.pontuacao);
+
+  // A confiança não pode vir só da pontuação absoluta: uma ficha de
+  // fundos só partilha a palavra "fundo" com a realização certa, e isso
+  // basta. O que conta é a distância para a segunda hipótese — se a
+  // primeira está claramente à frente, a proposta é boa.
+  const [p, s] = [ord[0]?.pontuacao ?? 0, ord[1]?.pontuacao ?? 0];
+  if (ord[0]) {
+    const margem = p - s;
+    ord[0].confianca = p <= 0 ? 'baixa'
+                     : (p >= 30 || margem >= 15) ? 'alta'
+                     : (p >= 10 || margem >= 8) ? 'media'
+                     : 'baixa';
+  }
+  return ord;
+}
+
+/** Texto para o professor confirmar a proposta. */
+export function textoSugestao(s: SugestaoTriagem): string {
+  if (s.confianca === 'baixa') {
+    return 'Não consegui perceber a que realização isto pertence. Escolhe tu.';
+  }
+  const p = s.porque.slice(0, 3).join(', ');
+  return `Proponho "${s.realizacao}"${p ? ` — por causa de: ${p}` : ''}. Confirmas?`;
+}
