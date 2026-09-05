@@ -420,6 +420,11 @@ export interface PlanoAula {
   titulo: string;
   observacoes: string;
   fichasIds: string[];
+  /** Nem toda a aula prática exige farda: prova de produtos, visita,
+   *  aula teórico-prática na sala. O professor marca aqui e as
+   *  penalizações de fardamento não se aplicam.
+   *  Por omissão, exige farda em tudo o que não seja teórico. */
+  exigeFarda?: boolean;
   /** Trabalhos de conhecimento — para planos teóricos ou mistos.
    *  Um plano de aula não precisa de ter ficha técnica. */
   trabalhos?: TrabalhoConhecimento[];
