@@ -206,8 +206,35 @@ export interface Atividade {
   tipo: TipoAtividade;
   titulo: string;
   data: string;
+  /** Quem efetivamente participou — é isto que conta para o bónus. */
   participantesIds: string[];
   criadaEm: string;
+
+  // ── Inscrição ────────────────────────────────────────────────
+  // A estrutura existia mas não havia onde o aluno se inscrevesse: as
+  // atividades eram lançadas e alguém metia os participantes à mão.
+  /** Descrição para o aluno decidir se quer ir. */
+  descricao?: string;
+  local?: string;
+  horaInicio?: string;
+  horaFim?: string;
+  /** Depois desta data já não se aceitam inscrições. */
+  inscricoesAte?: string;
+  /** Limite de participantes. Sem valor, não há limite. */
+  vagas?: number;
+  /** Quem se inscreveu. Inscrever não é participar: só conta para o
+   *  bónus depois de o aluno confirmar que foi. */
+  inscritosIds?: string[];
+  /** Balanço do aluno no fim, para o professor saber como correu. */
+  balancos?: {
+    alunoId: string;
+    participou: boolean;
+    resultado?: 'ganhei' | 'participei' | 'nao_correu_bem';
+    comentario?: string;
+    em: string;
+  }[];
+  /** true quando o professor fecha a atividade. */
+  fechada?: boolean;
 }
 
 export interface IngredienteFicha {
