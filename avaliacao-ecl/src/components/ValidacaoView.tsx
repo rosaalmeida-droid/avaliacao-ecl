@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos } from '../backend';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
@@ -10,12 +10,16 @@ import { CriteriosComp } from './CriteriosComp';
 
 // Escala 1-4 alinhada com a autoavaliação do aluno
 // Escala 1-5 — cores de ardósia progressivas (neutras, sem verde/vermelho)
+// Cinco níveis, do mais alto ao mais baixo. O `curto` é o que cabe no
+// botão; o `label` é a frase inteira, para o professor confirmar o que
+// está a dar. Antes só havia a frase longa, espremida em 20% da
+// largura do ecrã — não se lia nem parecia um botão.
 const NIVEIS_PROF = [
-  { v: 5, label: 'Faço com muito bom resultado',             cor: '#1e3a4a22', txt: '#1e3a4a' },
-  { v: 4, label: 'Faço sozinho/a',                           cor: '#3d5a6e22', txt: '#3d5a6e' },
-  { v: 3, label: 'Consegui com ajuda',                       cor: '#647a8a22', txt: '#647a8a' },
-  { v: 2, label: 'Tentei mas ainda preciso de mais prática', cor: '#96a4b022', txt: '#96a4b0' },
-  { v: 1, label: 'Ainda não fiz',                            cor: '#c8cfd622', txt: '#4a5568' },
+  { v: 5, curto: 'Muito bom', label: 'Faço com muito bom resultado',             txt: '#1e3a4a' },
+  { v: 4, curto: 'Sozinho',   label: 'Faço sozinho/a',                           txt: '#3d5a6e' },
+  { v: 3, curto: 'Com ajuda', label: 'Consegui com ajuda',                       txt: '#647a8a' },
+  { v: 2, curto: 'A treinar', label: 'Tentei mas ainda preciso de mais prática', txt: '#96a4b0' },
+  { v: 1, curto: 'Não fez',   label: 'Ainda não fiz',                            txt: '#7B2233' },
 ];
 
 // Label do nível do aluno (vem da autoavaliação)
@@ -57,6 +61,13 @@ function corNotaFinal(nota: number): string {
   if (nota >= 3) return 'var(--sage)';
   if (nota >= 2) return 'var(--copper)';
   return 'var(--danger)';
+}
+
+/** O professor precisa do nome, não do identificador interno. */
+function nomeDoAluno(alunoId: string): string {
+  const a = getAlunos().find(x => x.id === alunoId);
+  if (!a) return 'Aluno';
+  return a.nome || `Aluno nº ${a.numero}`;
 }
 
 export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?: string }) {
@@ -109,7 +120,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
             style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 14 }}>
-                Aluno {s.alunoId.split('-').pop()} — {plano?.titulo || s.planoAulaId}
+                {nomeDoAluno(s.alunoId)} — {plano?.titulo || s.planoAulaId}
               </div>
               <div className="muted" style={{ fontSize: 12 }}>
                 {plano?.ucId ? `${plano.ucId} · ` : ''}
@@ -273,9 +284,13 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     (validacao as any).tipoPlanAulaUsado = tipoPlanAula || 'pratico';
     addOrUpdateValidacao(validacao as any);
 
-    // Registar no histórico de avaliações
-    notasFinais.forEach(n => {
-      addRegistoAvaliacao({
+    // Substituir — não acrescentar. Se o professor corrigir uma validação
+    // já feita, os registos antigos têm de sair, senão o aluno passa a ver
+    // duas notas para a mesma competência.
+    substituirRegistosDoProfessor(
+      selecao.alunoId,
+      selecao.planoAulaId || '',
+      notasFinais.map(n => ({
         id: `registo_${selecao.alunoId}_${n.competenciaId}_${Date.now()}`,
         alunoId: selecao.alunoId,
         turmaId: selecao.turmaId,
@@ -285,34 +300,43 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         microcompetenciaId: n.competenciaId,
         nota: n.notaFinal,
         data: agora,
-        validadoPor: 'professor',
-      });
-    });
-
+        validadoPor: 'professor' as const,
+      }))
+    );
     setGuardado(true);
   }
 
-  if (guardado) {
-    return (
-      <Card>
-        <div style={{ textAlign: 'center', padding: 20 }}>
-          <div style={{ fontSize: 40, marginBottom: 10 }}>✓</div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--sage)', marginBottom: 6 }}>Validação guardada!</div>
-          <div className="muted" style={{ marginBottom: 16 }}>As notas foram registadas no histórico do aluno.</div>
-          <Button onClick={onVoltar}>← Voltar</Button>
-        </div>
-      </Card>
-    );
-  }
+  // Depois de guardar não se fecha o ecrã: o professor pode querer
+  // corrigir logo a seguir. Fica só um aviso por cima do formulário.
+  
 
   return (
     <div>
       <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={onVoltar}>← Voltar</button>
 
+      {guardado && (
+        <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',
+          borderRadius: 12, padding: '12px 14px', marginBottom: 14,
+          display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20, color: 'var(--sage)' }}>✓</span>
+          <div style={{ flex: 1, fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
+            Validação guardada. Podes continuar a alterar — basta guardar outra vez.
+          </div>
+        </div>
+      )}
+
+      {validacaoExistente && !guardado && (
+        <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',
+          borderRadius: 12, padding: '12px 14px', marginBottom: 14,
+          fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
+          Já validaste esta autoavaliação. As notas abaixo são as que gravaste — altera e guarda de novo.
+        </div>
+      )}
+
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '14px 16px', marginBottom: 16, color: 'var(--cream)' }}>
         <div style={{ fontWeight: 700, fontSize: 15 }}>{planoTitulo}</div>
         <div style={{ fontSize: 12, opacity: 0.6, marginTop: 3 }}>
-          {ucId && `${ucId} · `}Aluno {selecao.alunoId.split('-').pop()}
+          {ucId && `${ucId} · `}{nomeDoAluno(selecao.alunoId)}
           {fichasNomes.length > 0 && ` · ${fichasNomes.join(', ')}`}
         </div>
       </div>
@@ -387,22 +411,56 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             <CriteriosComp compId={auto.competenciaId} cor="var(--sage)" />
 
             {/* Avaliação do professor (1-4) */}
-            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, marginTop: 10, color: 'rgba(26,23,20,0.5)' }}>
-              Avaliação do professor
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, marginTop: 12, color: 'rgba(26,23,20,0.5)' }}>
+              A tua avaliação
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 4, marginBottom: notaFinal ? 8 : 0 }}>
-              {NIVEIS_PROF.map(n => (
-                <button key={n.v} onClick={() => setNotasProf(p => ({ ...p, [auto.competenciaId]: n.v }))} style={{
-                  padding: '8px 4px', borderRadius: 8, border: `1.5px solid ${notaProf === n.v ? n.txt : 'var(--border)'}`,
-                  background: notaProf === n.v ? n.cor : '#fff',
-                  color: notaProf === n.v ? n.txt : 'rgba(26,23,20,0.5)',
-                  fontSize:13, fontWeight: 600, cursor: 'pointer', textAlign: 'center',
-                }}>
-                  <div style={{ fontSize: 16, marginBottom: 2 }}>{n.v}</div>
-                  {n.label}
-                </button>
-              ))}
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)', marginBottom: 8 }}>
+              Vem preenchido com o que o aluno se deu. Toca para alterar.
             </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 6, marginBottom: 8 }}>
+              {NIVEIS_PROF.map(n => {
+                const escolhido = notaProf === n.v;
+                const foiDoAluno = notaAluno14 === n.v;
+                return (
+                  <button key={n.v}
+                    onClick={() => setNotasProf(p => ({ ...p, [auto.competenciaId]: n.v }))}
+                    style={{
+                      padding: '13px 4px 10px', borderRadius: 10,
+                      border: `2px solid ${escolhido ? n.txt : 'var(--border)'}`,
+                      background: escolhido ? n.txt : '#fff',
+                      color: escolhido ? '#fff' : 'rgba(26,23,20,0.55)',
+                      cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit',
+                      position: 'relative',
+                    }}>
+                    <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{n.v}</div>
+                    <div style={{ fontSize: 11.5, marginTop: 5, fontWeight: escolhido ? 700 : 400 }}>
+                      {n.curto}
+                    </div>
+                    {/* Onde o aluno se pôs — para o professor ver de relance
+                        se está a confirmar ou a discordar. */}
+                    {foiDoAluno && (
+                      <div style={{
+                        position: 'absolute', top: 4, right: 5, width: 7, height: 7,
+                        borderRadius: '50%', background: escolhido ? '#fff' : 'var(--copper)',
+                      }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* A frase inteira do que está escolhido. */}
+            {notaProf && (
+              <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.7)', marginBottom: notaFinal ? 8 : 0,
+                fontStyle: 'italic' }}>
+                "{NIVEIS_PROF.find(n => n.v === notaProf)?.label}"
+                {notaProf !== notaAluno14 && (
+                  <span style={{ color: 'var(--copper)', fontWeight: 700, fontStyle: 'normal' }}>
+                    {' '}· alteraste o que o aluno tinha posto
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Nota final calculada */}
             {notaFinal !== null && (
