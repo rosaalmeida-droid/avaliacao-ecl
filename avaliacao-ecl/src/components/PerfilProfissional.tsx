@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import { getPerfilProfissionalAluno, ItemPerfil } from '../backend';
@@ -32,6 +32,9 @@ function GrupoCompetencias({ titulo, icone, itens }: { titulo: string; icone: st
   );
 }
 
+import { escreverPerfil } from '../motorAvaliacao';
+import { MICROCOMPETENCIAS } from '../compatECL';
+
 export function PerfilProfissionalAluno({ aluno, semTitulo }: {
   aluno: Aluno;
   /** O ecrã já traz cabeçalho violeta próprio — não repetir o título. */
@@ -39,6 +42,16 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
 }) {
   const perfil = getPerfilProfissionalAluno(aluno.id);
   const totalCompetencias = perfil.tecnicas.length + perfil.responsabilidades.length + perfil.atitudes.length;
+  const [verDetalhe, setVerDetalhe] = useState(false);
+
+  // Categoria de cada competência, para agrupar por família de trabalho.
+  const texto = escreverPerfil(
+    [...perfil.tecnicas, ...perfil.responsabilidades, ...perfil.atitudes].map(c => ({
+      nome: c.nome,
+      categoria: MICROCOMPETENCIAS.find(m => m.id === c.competenciaId)?.categoria,
+      nivel: c.nivel,
+    }))
+  );
 
   return (
     <div>
@@ -57,23 +70,56 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
         </div>
       )}
 
-      {perfil.pontosFortes.length > 0 && (
-        <div style={{ background: 'var(--sage-pale)', borderRadius: 12, padding: 14, marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--sage)', marginBottom: 6 }}>💪 Pontos Fortes</div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)' }}>{perfil.pontosFortes.join(' · ')}</div>
+      {/* Texto, não lista. Uma enumeração de subtécnicas — "cozer massa
+          al dente · gratinar" — parece um índice e não diz nada ao aluno
+          sobre onde está. O perfil fala-lhe por famílias de trabalho. */}
+      {texto.temDados ? (
+        <>
+          <div style={{ background: 'var(--sage-pale)', borderRadius: 14, padding: 16, marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>
+              O que já dominas
+            </div>
+            <div style={{ fontSize: 15, color: 'rgba(26,23,20,0.85)', lineHeight: 1.65 }}>
+              {texto.fortes}
+            </div>
+          </div>
+
+          {texto.aDesenvolver && (
+            <div style={{ background: 'var(--copper-pale)', borderRadius: 14, padding: 16, marginBottom: 18 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--copper)', marginBottom: 8 }}>
+                O que falta trabalhar
+              </div>
+              <div style={{ fontSize: 15, color: 'rgba(26,23,20,0.85)', lineHeight: 1.65 }}>
+                {texto.aDesenvolver}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ background: 'var(--sage-pale)', borderRadius: 14, padding: 16, marginBottom: 18,
+          fontSize: 15, color: 'rgba(26,23,20,0.75)', lineHeight: 1.6 }}>
+          {texto.fortes}
         </div>
       )}
 
-      {perfil.areasADesenvolver.length > 0 && (
-        <div style={{ background: 'var(--copper-pale)', borderRadius: 12, padding: 14, marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 6 }}>🎯 Áreas a Desenvolver</div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)' }}>{perfil.areasADesenvolver.join(' · ')}</div>
+      {/* O detalhe fica fechado: só abre quem quiser ver competência a
+          competência. Aberto por omissão, era um muro de texto. */}
+      <button
+        onClick={() => setVerDetalhe((v: boolean) => !v)}
+        style={{ width: '100%', background: 'transparent', border: '1px solid var(--border)',
+          borderRadius: 12, padding: '13px', fontSize: 14.5, fontWeight: 700,
+          color: 'rgba(26,23,20,0.65)', cursor: 'pointer', fontFamily: 'inherit' }}
+      >
+        {verDetalhe ? 'Esconder o detalhe' : `Ver as ${totalCompetencias} competências uma a uma`}
+      </button>
+
+      {verDetalhe && (
+        <div style={{ marginTop: 14 }}>
+          <GrupoCompetencias titulo="Competências Técnicas" icone="🔪" itens={perfil.tecnicas} />
+          <GrupoCompetencias titulo="Responsabilidades" icone="⚠️" itens={perfil.responsabilidades} />
+          <GrupoCompetencias titulo="Atitudes e Competências Transversais" icone="🪞" itens={perfil.atitudes} />
         </div>
       )}
-
-      <GrupoCompetencias titulo="Competências Técnicas" icone="🔪" itens={perfil.tecnicas} />
-      <GrupoCompetencias titulo="Responsabilidades" icone="⚠️" itens={perfil.responsabilidades} />
-      <GrupoCompetencias titulo="Atitudes e Competências Transversais" icone="🪞" itens={perfil.atitudes} />
     </div>
   );
 }
