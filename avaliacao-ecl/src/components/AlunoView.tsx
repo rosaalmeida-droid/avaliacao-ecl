@@ -23,7 +23,7 @@ import {
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
   sincronizarDoSheets, calcularPontosRegularidade, getSelecoes, getValidacoes,
-  addAviso,
+  addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -32,6 +32,7 @@ import {
   nomeCompetencia, encontrarConhecimento, dicaRecuperacaoAtitude, nivelComplexidadeAtitude, getAtitudeDetalhada,
 } from '../compatECL';
 import { definicaoDaTecnica } from '../definicoesTecnicas';
+import { definicaoDaSubtecnica } from '../definicoesSubtecnicas';
 import { getLibrary } from '../libraryService';
 import { getFrasesParaCompetencia } from '../frases_subtecnicas';
 import { GuiaProducao } from './GuiaProducao';
@@ -44,6 +45,7 @@ import { getReferencialUC } from '../referencial811RA144';
 import { PainelAluno, DestinoAluno, CabecalhoEcra, IconesFarda, CORES } from './PainelAluno';
 import { ManuaisAluno } from './ManuaisAluno';
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
+import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
 import { FRASES_ATITUDES, NOTAS_FRASES } from '../frases_atitudes';
 import { DicionarioComp } from './DicionarioComp';
@@ -185,13 +187,17 @@ function CardAviso({ emoji, titulo, corpo, cor, bg }: {
 // ─────────────────────────────────────────────────────────────
 // COMPONENTE — Calendário do aluno
 // ─────────────────────────────────────────────────────────────
-function CalendarioAluno({ planos, onAbrirPlano }: {
+function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
   planos: PlanoAula[];
   onAbrirPlano: (p: PlanoAula) => void;
+  /** A lista ao lado tem de acompanhar o mês que está a ser visto. */
+  onMudarMes?: (mes: number, ano: number) => void;
 }) {
   const hoje = new Date();
   const [mes, setMes] = useState(hoje.getMonth());
   const [ano, setAno] = useState(hoje.getFullYear());
+
+  useEffect(() => { onMudarMes?.(mes, ano); }, [mes, ano]);
 
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -454,6 +460,8 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
   const [aba, setAba] = useState<'hoje' | 'calendario' | 'perfil'>('hoje');
   const [destino, setDestino] = useState<DestinoAluno | null>(null);
+  const [mesVisivel, setMesVisivel] = useState(new Date().getMonth());
+  const [anoVisivel, setAnoVisivel] = useState(new Date().getFullYear());
   const [planos, setPlanos] = useState<PlanoAula[]>(() =>
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
@@ -561,6 +569,15 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   // depender do calendário.
   const hojeISO = new Date().toISOString().slice(0, 10);
   const aulasFuturas = planosOrdenados.filter(p => p.data >= hojeISO && p.id !== planoHoje?.id);
+
+  const [refreshAtiv, setRefreshAtiv] = useState(0);
+  const atividades = React.useMemo(
+    () => getAtividades().filter(x => x.turmaId === aluno.turmaId),
+    [aluno.turmaId, refreshAtiv]
+  );
+  const atividadesAbertas = atividades.filter(
+    x => !x.fechada && x.data >= new Date().toISOString().slice(0, 10)
+  ).length;
 
   const tudoAvaliavel = [...competenciasDaUC, ...conhecimentosDaUC, ...atitudesDaUC];
   const porAvaliar = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel) === 'por_avaliar').length;
@@ -738,6 +755,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             competenciasFracas={competenciasFracas}
             recuperacoesPendentes={recuperacoesPendentes}
             proximasAulas={aulasFuturas.length}
+            atividadesAbertas={atividadesAbertas}
             onAbrir={(d) => {
               if (d === 'entrar' || d === 'fichas' || d === 'guiao' || d === 'requisicao') {
                 // Só se entra numa aula que exista. Sem plano de aula não há
@@ -802,12 +820,34 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             )}
 
             {destino === 'nota' && (
-              <EcraNotaProgressiva
+              <EcraMinhaNota
                 ucId={ucAtual}
                 ucNome={ucNomeOficial}
                 nota={notaProgressiva}
-                totalAulas={planosOrdenados.length}
-                historial={historialUC}
+                aulas={historialUC
+                  .filter(h => h.nota20 != null)
+                  .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
+                  .map(h => ({
+                    numero: h.numeroAula ?? 0,
+                    titulo: h.titulo,
+                    data: h.data,
+                    nota20: h.nota20 as number,
+                  }))}
+                competenciasPorAvaliar={porAvaliar}
+                notaPossivel={notaProgressiva != null ? Math.min(20, notaProgressiva + 2) : null}
+              />
+            )}
+
+            {destino === 'atividades' && (
+              <EcraAtividades
+                atividades={atividades}
+                alunoId={aluno.id}
+                onInscrever={(id) => { inscreverEmAtividade(id, aluno.id, true); setRefreshAtiv(n => n + 1); }}
+                onCancelar={(id) => { inscreverEmAtividade(id, aluno.id, false); setRefreshAtiv(n => n + 1); }}
+                onBalanco={(id, participou, resultado) => {
+                  registarBalancoAtividade(id, aluno.id, participou, resultado);
+                  setRefreshAtiv(n => n + 1);
+                }}
               />
             )}
 
@@ -831,24 +871,57 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
           <div style={{ display:'grid', gap:24,
             gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '380px 1fr' : '1fr' }}>
             <div>
-              <CalendarioAluno planos={planos} onAbrirPlano={p => setPlanoAtivo(p)} />
+              <CalendarioAluno planos={planos} onAbrirPlano={p => setPlanoAtivo(p)}
+                onMudarMes={(m, y) => { setMesVisivel(m); setAnoVisivel(y); }} />
             </div>
             <div>
-              <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
-                letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:14 }}>
-                📋 Todas as aulas
-              </div>
-              {planos.length === 0 ? (
-                <div style={{ background:'#fff', borderRadius:16, padding:'32px 20px',
-                  textAlign:'center', border:`1px solid ${T.border}` }}>
-                  <div style={{ fontSize:48, marginBottom:12 }}>📭</div>
-                  <div style={{ fontWeight:600 }}>Sem aulas publicadas</div>
-                </div>
-              ) : (
-                [...planos].sort((a,b) => b.data.localeCompare(a.data)).map(p => (
-                  <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
-                ))
-              )}
+              {(() => {
+                // Só as aulas do mês que está aberto no calendário. Antes
+                // aparecia o ano inteiro, e a de hoje perdia-se no meio.
+                const doMes = planos.filter(p => {
+                  const d = new Date(p.data + 'T00:00:00');
+                  return d.getMonth() === mesVisivel && d.getFullYear() === anoVisivel;
+                });
+                const hojeISO = new Date().toISOString().slice(0, 10);
+                const deHoje = doMes.filter(p => p.data === hojeISO);
+                const outras = doMes
+                  .filter(p => p.data !== hojeISO)
+                  .sort((a, b) => a.data.localeCompare(b.data));
+                const nomeMes = new Date(anoVisivel, mesVisivel, 1)
+                  .toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+
+                return (<>
+                  {deHoje.length > 0 && (
+                    <>
+                      <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                        letterSpacing:'0.06em', color:'#6B3FA0', marginBottom:10 }}>
+                        Hoje
+                      </div>
+                      {deHoje.map(p => (
+                        <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
+                      ))}
+                      <div style={{ height: 18 }} />
+                    </>
+                  )}
+
+                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                    letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:12 }}>
+                    {nomeMes}
+                  </div>
+
+                  {outras.length === 0 && deHoje.length === 0 ? (
+                    <div style={{ background:'#fff', borderRadius:16, padding:'28px 20px',
+                      textAlign:'center', border:`1px solid ${T.border}`,
+                      color:'rgba(26,23,20,0.5)', fontSize:14.5 }}>
+                      Sem aulas em {nomeMes}.
+                    </div>
+                  ) : (
+                    outras.map(p => (
+                      <CardAula key={p.id} plano={p} onAbrir={() => setPlanoAtivo(p)} />
+                    ))
+                  )}
+                </>);
+              })()}
             </div>
           </div>
         )}
@@ -909,13 +982,17 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   const fichas = getFichasPorPlano(plano.id);
   const requisicao = getRequisicaoPorPlano(plano.id);
 
+  // Os passos falam com o aluno: "Entrei na aula", não "Entrada e Higiene".
+  // O `agora` é o que ele lê em grande quando o passo está ativo.
+  const V = '#6B3FA0';
   const PASSOS = [
-    { id:'orientacao', emoji:'🚀', label:'Orientação',            cor:T.copper },
-    { id:'entrada',    emoji:'🪪', label:'Entrada e Higiene',     cor:'#b5651d' },
-    { id:'ficha',      emoji:'📄', label:'Ficha de Produção',     cor:'#2563eb' },
-    ...(fichas.some((f:any) => f.textoGuia) ? [{ id:'guia', emoji:'📖', label:'Guião', cor:'#15803d' }] : []),
-    { id:'requisicao', emoji:'🛒', label:'Requisição',            cor:'#7c3aed' },
-    { id:'avaliacao',  emoji:'🎯', label:'Autoavaliação',         cor:T.sage },
+    { id:'orientacao', label:'Vi o que vamos fazer',   agora:'Ver a aula',    cor:V },
+    { id:'entrada',    label:'Entrei na aula',          agora:'Entrar',        cor:V },
+    { id:'ficha',      label:'Produzi',                 agora:'Produzir',      cor:V },
+    ...(fichas.some((f:any) => f.textoGuia)
+      ? [{ id:'guia', label:'Consultei o guião', agora:'Ver o guião', cor:V }] : []),
+    { id:'requisicao', label:'Fiz a requisição',        agora:'Requisitar',    cor:V },
+    { id:'avaliacao',  label:'Avaliei-me',              agora:'Avaliar-me',    cor:V },
   ];
 
   const estadoPasso = (id: string): 'concluido'|'ativo'|'pendente' => {
@@ -969,62 +1046,76 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
         </div>
       </div>
 
-      {/* CORPO — uma coluna só. A estrutura de três colunas (sidebar de
-          96px + conteúdo + contexto de 115px, com letra a 8px) era
-          ilegível em tablet. Os passos passam para uma fita horizontal. */}
-      <div style={{ flex:1, overflowY:'auto', background:T.cream, minHeight:0 }}>
+      {/* CORPO — um passo de cada vez.
+          A fita horizontal de separadores obrigava o aluno a perceber um
+          mapa antes de fazer o que quer que fosse. Passa a haver uma
+          frase que lhe diz o que fazer agora, um botão principal só, e a
+          lista dos passos em baixo para saber onde está. */}
+      <div style={{ flex:1, overflowY:'auto', background:'#F3F2F5', minHeight:0 }}>
+        <div style={{ padding:14, maxWidth:640, margin:'0 auto' }}>
 
-        {/* Fita de passos */}
-        <div style={{ background:'#fff', borderBottom:`1px solid ${T.border}`,
-          padding:'10px 8px', position:'sticky', top:0, zIndex:5 }}>
-          <div style={{ display:'flex', gap:6, overflowX:'auto', paddingBottom:2 }}>
-            {PASSOS.map((p, idx) => {
-              const est = estadoPasso(p.id);
-              const ativo = secAberta === p.id;
-              return (
-                <button key={p.id} onClick={() => setSecAberta(p.id)} style={{
-                  flexShrink:0, padding:'8px 12px', borderRadius:10, cursor:'pointer',
-                  border: ativo ? `2px solid ${p.cor}` : `1px solid ${T.border}`,
-                  background: ativo ? p.cor+'18' : est==='concluido' ? T.sageP : '#fff',
-                  display:'flex', alignItems:'center', gap:6, fontFamily:'inherit',
-                }}>
-                  <span style={{ fontSize:16, lineHeight:1 }}>
-                    {est==='concluido' && !ativo ? '✅' : p.emoji}
-                  </span>
-                  <span style={{ fontSize:13, fontWeight:700, whiteSpace:'nowrap',
-                    color: ativo ? p.cor : est==='concluido' ? T.sage : 'rgba(26,23,20,0.5)' }}>
-                    {p.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:9 }}>
-            <div style={{ flex:1, height:5, background:'rgba(26,23,20,0.08)',
-              borderRadius:3, overflow:'hidden' }}>
-              <div style={{ height:'100%', width:`${pctProgresso}%`, background:T.sage,
-                borderRadius:3, transition:'width 0.4s' }} />
+          {/* Barra de progresso: vê-se em meio segundo quantos faltam. */}
+          <div style={{ background:'#6B3FA0', borderRadius:16, padding:'15px 17px', marginBottom:14 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', gap:12 }}>
+              <div style={{ fontSize:13, color:'#DCCFF0', overflow:'hidden',
+                textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {plano.ucId}{plano.ucNome ? ` · ${plano.ucNome}` : ''}
+              </div>
+              <div style={{ fontSize:13, color:'#DCCFF0', flexShrink:0 }}>
+                {new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}
+              </div>
             </div>
-            <div style={{ fontSize:12.5, fontWeight:700, color:'rgba(26,23,20,0.55)',
-              whiteSpace:'nowrap' }}>
-              {passosConcluidos} de {totalPassos} passos
+            <div style={{ fontSize:20, fontWeight:700, color:'#fff', marginTop:5, lineHeight:1.25 }}>
+              {plano.titulo}
+            </div>
+            <div style={{ display:'flex', gap:5, marginTop:14 }}>
+              {PASSOS.map(p => {
+                const est = estadoPasso(p.id);
+                return <div key={p.id} style={{ flex:1, height:6, borderRadius:3,
+                  background: est==='concluido' ? '#fff'
+                            : secAberta===p.id ? '#B98FD9' : 'rgba(255,255,255,0.25)' }} />;
+              })}
+            </div>
+            <div style={{ fontSize:13, color:'#DCCFF0', marginTop:8 }}>
+              Passo {PASSOS.findIndex(p => p.id === secAberta) + 1} de {totalPassos}
             </div>
           </div>
-        </div>
 
-        {/* Banner do passo */}
-        {passoActivo && (
-          <div style={{ background: passoActivo.cor, padding:'13px 16px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.75)' }}>
-              Passo {PASSOS.indexOf(passoActivo)+1} de {totalPassos}
-            </div>
-            <div style={{ fontSize:19, fontWeight:700, color:'#fff', marginTop:2 }}>
-              {passoActivo.label}
-            </div>
-          </div>
-        )}
+          {/* O que fazer agora — uma frase, não um separador. */}
+          {passoActivo && (
+            <div style={{ background:'#fff', borderRadius:16, padding:'18px 17px',
+              marginBottom:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                <div style={{ width:52, height:52, borderRadius:14, background:'#F0EBF7',
+                  display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                  fontSize:26, color:'#6B3FA0', fontWeight:700 }}>
+                  {PASSOS.findIndex(p => p.id === secAberta) + 1}
+                </div>
+                <div>
+                  <div style={{ fontSize:13, color:'#777' }}>Agora vais</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:'#1A1A1A', lineHeight:1.2 }}>
+                    {(passoActivo as any).agora || passoActivo.label}
+                  </div>
+                </div>
+              </div>
 
-        <div style={{ padding:'16px 14px 90px', maxWidth:720, margin:'0 auto' }}>
+              {/* A ficha do aluno fica sempre à vista: não tem de se
+                  lembrar do que lhe calhou. */}
+              {fichas.length > 0 && (secAberta==='ficha' || secAberta==='guia') && (
+                <div style={{ background:'#FAF9FB', borderRadius:12, padding:14, marginTop:15 }}>
+                  <div style={{ fontSize:13, color:'#777', marginBottom:5 }}>
+                    {fichas.length === 1 ? 'A tua ficha' : 'As tuas fichas'}
+                  </div>
+                  {fichas.map((f:any) => (
+                    <div key={f.id} style={{ fontSize:17, fontWeight:600, color:'#1A1A1A' }}>
+                      {f.nomePrato}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <button onClick={() => abrirKitchenFlow(undefined, {
               turma:aluno.turmaId, numero:aluno.numero,
               pin:aluno.pin, tipo:'aluno',
@@ -1064,6 +1155,50 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
             )}
+
+          {/* Onde estou no percurso. Verbos na primeira pessoa, e só se
+              volta atrás — não se salta para a frente. */}
+          <div style={{ background:'#fff', borderRadius:16, padding:'15px 17px', marginTop:18,
+            boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+            <div style={{ fontSize:12.5, fontWeight:600, letterSpacing:'0.05em',
+              textTransform:'uppercase', color:'#999', marginBottom:12 }}>
+              Os passos da aula
+            </div>
+            {PASSOS.map(p => {
+              const est = estadoPasso(p.id);
+              const ativo = secAberta === p.id;
+              const podeIr = est === 'concluido' || ativo;
+              return (
+                <button key={p.id}
+                  onClick={() => podeIr && setSecAberta(p.id)}
+                  disabled={!podeIr}
+                  style={{ display:'flex', alignItems:'center', gap:11, width:'100%',
+                    padding: ativo ? '9px 0' : '7px 0', background:'transparent', border:'none',
+                    textAlign:'left', fontFamily:'inherit',
+                    cursor: podeIr && !ativo ? 'pointer' : 'default' }}>
+                  {est === 'concluido' && !ativo ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3E7A31"
+                      strokeWidth={2.5} strokeLinecap="round" style={{ flexShrink:0 }}>
+                      <path d="M20 6L9 17l-5-5"/></svg>
+                  ) : ativo ? (
+                    <span style={{ width:20, height:20, borderRadius:'50%', background:'#6B3FA0',
+                      display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <span style={{ width:7, height:7, borderRadius:'50%', background:'#fff' }} />
+                    </span>
+                  ) : (
+                    <span style={{ width:20, height:20, borderRadius:'50%',
+                      border:'2px solid #DDD', flexShrink:0 }} />
+                  )}
+                  <span style={{ flex:1,
+                    fontSize: ativo ? 16.5 : 15,
+                    fontWeight: ativo ? 700 : 400,
+                    color: ativo ? '#6B3FA0' : est==='concluido' ? '#777' : '#AAA' }}>
+                    {p.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -2010,11 +2145,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       nome: nomeSub || tecMae?.nome || 'Técnica',
       // Onde esta técnica se encaixa e sobre o quê.
       contexto: [tecMae?.nome, produto].filter(Boolean).join(' · '),
-      // A definição escrita à mão ganha à dos dados, que é circular
-      // em 63% dos casos ("Variante profissional de cozer: Cozer...").
-      descricao: definicaoDaTecnica(tecMae?.nome || '')?.definicao
+      // Por ordem: a definição da subtécnica, depois a da técnica-mãe,
+      // e só em último a dos dados — que é circular em 63% dos casos
+      // ("Variante profissional de cozer: Cozer massa al dente").
+      descricao: definicaoDaSubtecnica(id)?.definicao
+        || definicaoDaTecnica(tecMae?.nome || '')?.definicao
         || (sub as any)?.definicao || '',
-      resultadoEsperado: definicaoDaTecnica(tecMae?.nome || '')?.resultado || '',
+      resultadoEsperado: definicaoDaSubtecnica(id)?.resultado
+        || definicaoDaTecnica(tecMae?.nome || '')?.resultado || '',
       motivo: estado,
     };
   });
