@@ -2054,3 +2054,114 @@ export function resumoCompetenciasDaFicha(comps: CompetenciaDaFicha[]): string {
   return `Encontrei ${noRef} ${noRef === 1 ? 'competência' : 'competências'} da unidade e `
        + `${trans} ${trans === 1 ? 'transversal' : 'transversais'}.`;
 }
+
+// ============================================================
+// Perfil profissional — texto, não lista
+// ============================================================
+// Uma lista de subtécnicas não diz nada ao aluno: "cozer massa al dente"
+// e "gratinar" lado a lado parecem um índice, não um retrato. E são
+// demasiado miúdas para servirem de ponto forte — um ponto forte é uma
+// família de trabalho, não um gesto isolado.
+//
+// O perfil passa a ser escrito em frases, agrupado pela família da
+// técnica, e com tom de quem está a falar com o aluno.
+
+export interface PerfilTexto {
+  fortes: string;
+  aDesenvolver: string;
+  temDados: boolean;
+}
+
+const NOME_FAMILIA: Record<string, string> = {
+  'Preparação de matérias-primas': 'preparar matérias-primas',
+  'Cortes e redução': 'cortes',
+  'Calor húmido': 'cozeduras em líquido e vapor',
+  'Calor seco': 'assados e grelhados',
+  'Gordura e calor misto': 'frituras e refogados',
+  'Fundos, molhos e texturas': 'fundos e molhos',
+  'Pastelaria e panificação': 'pastelaria e panificação',
+  'Finalização, conservação e serviço': 'finalização e serviço',
+  'Planeamento e controlo': 'organização do trabalho',
+};
+
+/** Junta uma lista em português: "a, b e c". */
+function enumerar(itens: string[]): string {
+  if (itens.length === 0) return '';
+  if (itens.length === 1) return itens[0];
+  return itens.slice(0, -1).join(', ') + ' e ' + itens[itens.length - 1];
+}
+
+/**
+ * Escreve o perfil em texto, a partir das competências avaliadas.
+ * @param comps competências com categoria e nível
+ */
+export function escreverPerfil(
+  comps: { nome: string; categoria?: string; nivel?: number | null }[],
+  ucNome?: string
+): PerfilTexto {
+  const avaliadas = comps.filter(c => c.nivel != null && c.nivel > 0);
+
+  if (avaliadas.length < 3) {
+    return {
+      fortes: 'Ainda não há avaliações suficientes para traçar o teu perfil. '
+            + 'À medida que fores trabalhando, aparece aqui o que já dominas.',
+      aDesenvolver: '',
+      temDados: false,
+    };
+  }
+
+  // Agrupar por família e ver onde o aluno está bem e onde está fraco.
+  const porFamilia = new Map<string, number[]>();
+  for (const c of avaliadas) {
+    const f = NOME_FAMILIA[c.categoria ?? ''] ?? 'trabalho de cozinha';
+    if (!porFamilia.has(f)) porFamilia.set(f, []);
+    porFamilia.get(f)!.push(c.nivel!);
+  }
+
+  const medias = [...porFamilia.entries()].map(([familia, ns]) => ({
+    familia,
+    media: ns.reduce((a, b) => a + b, 0) / ns.length,
+    quantas: ns.length,
+  }));
+
+  const bem = medias.filter(m => m.media >= 3.5).sort((a, b) => b.media - a.media);
+  const mal = medias.filter(m => m.media < 2.5).sort((a, b) => a.media - b.media);
+
+  const dominadas = avaliadas.filter(c => (c.nivel ?? 0) >= 4).length;
+  const total = avaliadas.length;
+
+  // ── Pontos fortes ──
+  let fortes: string;
+  if (bem.length > 0) {
+    fortes = `Já dominas ${dominadas} de ${total} competências avaliadas`
+           + `${ucNome ? ` em ${ucNome.toLowerCase()}` : ''}. `
+           + `Estás particularmente à vontade em ${enumerar(bem.slice(0, 3).map(m => m.familia))}`;
+    fortes += bem[0].media >= 4.5
+      ? ', onde o teu trabalho está ao nível do que se espera de um profissional.'
+      : ', onde já trabalhas com autonomia.';
+  } else if (dominadas > 0) {
+    fortes = `Já dominas ${dominadas} de ${total} competências avaliadas. `
+           + 'Ainda não há uma área onde te destaques claramente, mas o percurso está a começar.';
+  } else {
+    fortes = `Foste avaliado em ${total} competências e estás em desenvolvimento em todas. `
+           + 'É normal no início — o que conta é a evolução, não o ponto de partida.';
+  }
+
+  // ── Áreas a desenvolver ──
+  let aDesenvolver: string;
+  const fracas = avaliadas.filter(c => (c.nivel ?? 0) <= 2).length;
+  if (mal.length > 0) {
+    aDesenvolver = `Precisas de mais prática em ${enumerar(mal.slice(0, 3).map(m => m.familia))}. `
+                 + `São ${fracas} competência${fracas === 1 ? '' : 's'} onde ainda precisas de apoio `
+                 + 'ou de repetir o trabalho. Fala com o professor sobre onde podes treinar.';
+  } else if (fracas > 0) {
+    aDesenvolver = `Tens ${fracas} competência${fracas === 1 ? '' : 's'} por consolidar, `
+                 + 'espalhadas por várias áreas. Nenhuma delas é um problema de fundo — '
+                 + 'é repetir e ganhar segurança.';
+  } else {
+    aDesenvolver = 'Não há nenhuma área em atraso neste momento. Continua a trabalhar '
+                 + 'as competências que ainda não foram avaliadas.';
+  }
+
+  return { fortes, aDesenvolver, temDados: true };
+}
