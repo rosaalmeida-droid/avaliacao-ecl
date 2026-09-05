@@ -34,7 +34,7 @@ export type DestinoAluno =
   | 'entrar' | 'fichas' | 'guiao' | 'requisicao'
   | 'avaliar' | 'nota' | 'perfil'
   | 'manual' | 'calendario' | 'recuperacoes' | 'kitchenflow' | 'proximas'
-  | 'avisar_professor';
+  | 'avisar_professor' | 'atividades';
 
 // ── Ícones ────────────────────────────────────────────────────
 // Desenhados, não emojis: um emoji muda de forma conforme o aparelho
@@ -100,6 +100,9 @@ export const Icones = {
       <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" />
     </svg>
   ),
+  atividades: (t?: number) => svg(<>
+    <path d="M12 2l2.6 6.6L21 9.2l-4.8 4.3 1.4 6.5L12 16.8 6.4 20l1.4-6.5L3 9.2l6.4-.6z" />
+  </>, t),
   relogio: (t?: number) => svg(<>
     <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
   </>, t),
@@ -177,6 +180,7 @@ interface Props {
   competenciasFracas?: number;
   recuperacoesPendentes?: number;
   proximasAulas?: number;
+  atividadesAbertas?: number;
   onAbrir: (destino: DestinoAluno) => void;
 }
 
@@ -188,8 +192,16 @@ export function PainelAluno({
   notaProgressiva = null,
   recuperacoesPendentes = 0,
   proximasAulas = 0,
+  atividadesAbertas = 0,
   onAbrir,
 }: Props) {
+  // Relógio ao minuto — não faz sentido mostrar segundos numa aula.
+  const [agora, setAgora] = React.useState(new Date());
+  React.useEffect(() => {
+    const t = setInterval(() => setAgora(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
     <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
@@ -206,13 +218,23 @@ export function PainelAluno({
           }}>
             {Icones.pessoa(26)}
           </div>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: C.tinta, lineHeight: 1.2 }}>
               {nomeAluno}
             </div>
             <div style={{ fontSize: 15, color: C.texto }}>
               {turmaId}
               {numeroAluno ? <> · nº <b style={{ color: C.tinta }}>{numeroAluno}</b></> : null}
+            </div>
+          </div>
+          {/* Data e hora sempre à vista. O aluno tem de saber em que dia
+              está sem sair do ecrã — sobretudo quando o horário conta. */}
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: C.violeta, lineHeight: 1 }}>
+              {agora.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div style={{ fontSize: 12.5, color: C.suave, marginTop: 3 }}>
+              {agora.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', month: 'short' })}
             </div>
           </div>
         </div>
@@ -280,6 +302,13 @@ export function PainelAluno({
           <Cartao icone={Icones.livro()} label="Manual da UC" onClick={() => onAbrir('manual')} />
           <Cartao icone={Icones.registos()} label="KitchenFlow" onClick={() => onAbrir('kitchenflow')} />
           <Cartao icone={Icones.calendario()} label="Calendário" onClick={() => onAbrir('calendario')} />
+
+          {/* Participar sobe a nota — o aluno tem de o ver, não de o descobrir. */}
+          <Cartao icone={Icones.atividades()} label="Atividades"
+                  sub={atividadesAbertas > 0
+                    ? `${atividadesAbertas} aberta${atividadesAbertas > 1 ? 's' : ''}`
+                    : 'concursos e eventos'}
+                  onClick={() => onAbrir('atividades')} />
 
           {/* Sempre visível: o ecrã mostra o percurso de TODOS os módulos —
               concluídos, por concluir, em recuperação e recuperados —, não
