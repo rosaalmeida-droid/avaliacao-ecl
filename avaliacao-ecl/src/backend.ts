@@ -1738,6 +1738,28 @@ export function getHistoricoAlunoMicro(alunoId: string, microId: string): Regist
     .sort((a, b) => a.data.localeCompare(b.data));
 }
 
+/**
+ * Substitui os registos do professor para um aluno num plano.
+ *
+ * Sem isto, cada vez que o professor corrigia uma validação ficavam os
+ * registos antigos ao lado dos novos — e o aluno via as duas notas da
+ * mesma competência. A autoavaliação do aluno (validadoPor: 'aluno')
+ * fica intacta: é a proposta dele e faz parte do percurso.
+ */
+export function substituirRegistosDoProfessor(
+  alunoId: string, planoAulaId: string, novos: RegistoAvaliacao[]
+): void {
+  // Limpar os anteriores deste professor para este aluno neste plano.
+  const semAntigos = getHistoricoAvaliacoes().filter(r => !(
+    r.alunoId === alunoId &&
+    r.planoAulaId === planoAulaId &&
+    r.validadoPor === 'professor'
+  ));
+  save(KEY_HIST, semAntigos);
+  // E gravar os novos pelo caminho normal, que trata do envio ao Sheets.
+  novos.forEach(addRegistoAvaliacao);
+}
+
 export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
   const all = getHistoricoAvaliacoes();
   all.push(r);
@@ -2333,8 +2355,12 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
 
   // Pontos fortes: nível 3-4. Áreas a desenvolver: nível 0-1.
   const todos = [...tecnicas, ...responsabilidades, ...atitudes];
-  const pontosFortes = todos.filter(i => i.nivel >= 3).map(i => i.nome);
-  const areasADesenvolver = todos.filter(i => i.nivel <= 1).map(i => i.nome);
+  // Só entram no perfil as competências com verbo de ação. Um resultado
+  // esperado ("produtos com cor viva") não serve como ponto forte: o aluno
+  // não consegue reconhecer-se nele nem sabe o que treinar.
+  const comVerbo = todos.filter(i => !!nomeComVerbo(i.nome, i.competenciaId));
+  const pontosFortes = comVerbo.filter(i => i.nivel >= 3).map(i => i.nome);
+  const areasADesenvolver = comVerbo.filter(i => i.nivel <= 1).map(i => i.nome);
 
   return { alunoId, tecnicas, responsabilidades, atitudes, pontosFortes, areasADesenvolver };
 }
@@ -2555,12 +2581,43 @@ function getNomeCompetenciaGenerica(id: string): string {
     const o = OBRIGATORIAS.find(x => x.id === id);
     return o?.nome || id;
   }
-  if (id.startsWith('ATT_')) {
+  if (id.startsWith('ATT_') || id.startsWith('ATI-')) {
     const a = ATITUDES.find(x => x.id === id);
     return a?.nome || id;
   }
   const m = encontrarMicro(id);
-  return m?.nome || id;
+  if (!m) return id;
+
+  // O `nome` de um perfil técnico é o RESULTADO ESPERADO — "produtos com
+  // cor viva", "forma definida, exterior dourado e interior macio". Fora
+  // do contexto da técnica e da matéria-prima isso não diz nada ao aluno.
+  // Uma competência tem de ter verbo e objeto: "cozer arroz solto".
+  // Quando o nome não tem verbo, procura-se a técnica-mãe.
+  return nomeComVerbo(m.nome, id) || m.nome;
+}
+
+/** Um nome sem verbo de ação não é uma competência — é um resultado. */
+const VERBOS_TECNICA = [
+  'prepar','confec','cozer','cozinh','assar','grelh','fritar','saltear','refog',
+  'reduz','ligar','emulsion','bater','montar','amass','levedar','laminar','cortar',
+  'picar','descasc','limpar','filet','desoss','marinar','temper','escalf','branque',
+  'brasear','estufar','gratin','flamb','caramel','clarific','coar','escum','glacear',
+  'napar','panar','recheia','selar','tornear','triturar','peneir','pesar','porcion',
+  'acondicion','conserv','arrefec','congel','regener','etiquet','empratar','decorar',
+  'elaborar','calcular','planific','higieniz','desinfet','rececion','armazen',
+];
+
+function nomeComVerbo(nome: string, id: string): string | null {
+  const n = nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (VERBOS_TECNICA.some(v => n.startsWith(v) || n.includes(' ' + v))) return nome;
+
+  // Sem verbo: tentar a técnica-mãe pelo id (SUB-COR-030-001 → TEC-COR-030).
+  const m = id.match(/^SUB-([A-Z]+)-(\d+)/);
+  if (m) {
+    const tec = encontrarMicro(`TEC-${m[1]}-${m[2]}`);
+    if (tec?.nome) return tec.nome;
+  }
+  return null;
 }
 
 
