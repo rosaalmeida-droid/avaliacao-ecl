@@ -40,18 +40,28 @@ export function fmtHora(iso: string): string {
   return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
 }
 
-/** 15 jul */
+/** 15 jul 2026 — o ano é preciso: uma UC atravessa dois anos civis
+ *  e "15 jul" não diz se foi este ano letivo ou o anterior. */
 export function fmtDataCurta(iso: string): string {
   const d = parseSafe(iso);
   if (!d) return '—';
-  return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** segunda-feira, 15 de julho */
+/** segunda-feira, 15 de julho de 2026 */
 export function fmtDataLonga(iso: string): string {
   const d = parseSafe(iso);
   if (!d) return '—';
-  return d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+  return d.toLocaleDateString('pt-PT', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+}
+
+/** 15 de julho de 2026 — sem dia da semana */
+export function fmtDataExtenso(iso: string): string {
+  const d = parseSafe(iso);
+  if (!d) return '—';
+  return d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 /** Hoje / Ontem / DD/MM/AAAA */
