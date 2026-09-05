@@ -6,6 +6,8 @@ import { Login } from './components/Login';
 import { ManualCozinheiro } from './components/ManualCozinheiro';
 import { ManuaisAluno } from './components/ManuaisAluno';
 import { Header, LayoutProfessor, VistaProf } from './components/Header';
+import { PainelProfessor } from './components/PainelProfessor';
+import { modulosAtivos } from './cronograma';
 import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
 import { ValidacaoView } from './components/ValidacaoView';
@@ -59,12 +61,18 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
 import { FichaRegistoUC } from './components/FichaRegistoUC';
 
 // Wrapper que combina Historial + Momentos + Ficha de Registo
-function HistorialView({ turmaId }: { turmaId: string }) {
-  const [tab, setTab] = React.useState<'historial' | 'momentos' | 'ficha'>('historial');
+function HistorialView({ turmaId, onIrPara }: {
+  turmaId: string;
+  onIrPara?: (vista: VistaProf, planoId?: string) => void;
+}) {
+  // "Por unidade" é o primeiro separador: é assim que o professor
+  // pensa no percurso, e é onde vê o que ficou por avaliar.
+  const [tab, setTab] = React.useState<'porUC' | 'historial' | 'momentos' | 'ficha'>('porUC');
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         {([
+          { id: 'porUC',     label: '📚 Por unidade' },
           { id: 'historial', label: '📊 Historial' },
           { id: 'momentos',  label: '📐 Momentos' },
           { id: 'ficha',     label: '📋 Ficha de Registo' },
@@ -78,6 +86,13 @@ function HistorialView({ turmaId }: { turmaId: string }) {
           </button>
         ))}
       </div>
+      {tab === 'porUC' && (
+        <HistorialPorUC
+          turmaId={turmaId}
+          onAbrirPlano={(planoId) => onIrPara?.('planos', planoId)}
+          onValidar={(planoId) => onIrPara?.('validacao', planoId)}
+        />
+      )}
       {tab === 'historial' && <AvaliacaoPorUC turmaId={turmaId} />}
       {tab === 'momentos'  && <MomentosAvaliacao turmaId={turmaId} />}
       {tab === 'ficha'     && <FichaRegistoUC turmaId={turmaId} />}
@@ -91,7 +106,9 @@ import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventosWizard } from './components/EventosWizard';
 import { CronogramaTab } from './components/CronogramaTab';
-import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais } from './backend';
+import { HistorialPorUC } from './components/HistorialPorUC';
+import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
+  getPlanosAulaPorTurma, getSelecoes, getValidacoes } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -120,7 +137,8 @@ function AppInterno() {
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
-  const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('planos');
+  // 'inicio' é o painel de blocos; os outros valores são os destinos.
+  const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('inicio');
   const [planoIdAlvo, setPlanoIdAlvo] = useState<string | null>(null);
   const [temAlteracoes, setTemAlteracoes] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<(() => void) | null>(null);
@@ -288,6 +306,31 @@ function AppInterno() {
           </ModalFullscreen>
         )}
         <>
+          {vistaGlobal === 'inicio' && (() => {
+            // A unidade em curso sai do cronograma, pela data de hoje —
+            // o professor não tem de a procurar.
+            const hojeISO = new Date().toISOString().slice(0, 10);
+            const ativos = modulosAtivos(turmaId, hojeISO);
+            const emCurso = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+            const planos = getPlanosAulaPorTurma(turmaId);
+            return (
+              <PainelProfessor
+                nomeProfessor={nomeProfessor}
+                turmaId={turmaId}
+                ucId={emCurso?.id}
+                ucNome={emCurso?.nome}
+                aulasHoje={planos.filter((p: any) => p.data === hojeISO).length}
+                proximasAulas={planos.filter((p: any) => p.data > hojeISO).length}
+                porValidar={(() => {
+                  // Autoavaliações submetidas que ainda não têm validação.
+                  const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
+                  return getSelecoes().filter((s: any) =>
+                    s.turmaId === turmaId && !vals.has(s.id)).length;
+                })()}
+                onAbrir={(v) => setVistaGlobal(v)}
+              />
+            );
+          })()}
           {vistaGlobal === 'planos' && (
             <PlanoAula key={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
               onAlteracao={registarAlteracao}
@@ -309,7 +352,10 @@ function AppInterno() {
               <OrcamentosView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
             )}
-            {vistaGlobal === 'historial' && <HistorialView turmaId={turmaId} />}
+            {vistaGlobal === 'historial' && (
+              <HistorialView turmaId={turmaId}
+                onIrPara={(v, planoId) => { if (planoId) setPlanoIdAlvo(planoId); setVistaGlobal(v); }} />
+            )}
             {vistaGlobal === 'ajuda' && <AjudaProfessor />}
             {vistaGlobal === 'validacao' && <ValidacaoView turmaId={turmaId} />}
             {vistaGlobal === 'manual' && <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />}
