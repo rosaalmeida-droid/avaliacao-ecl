@@ -39,10 +39,12 @@ import { CriteriosComp } from './CriteriosComp';
 import { ManualCozinheiro } from './ManualCozinheiro';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
-import { PainelAluno, DestinoAluno } from './PainelAluno';
+import { getReferencialUC } from '../referencial811RA144';
+import { PainelAluno, DestinoAluno, CabecalhoEcra, IconesFarda, CORES } from './PainelAluno';
 import { ManuaisAluno } from './ManuaisAluno';
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
-import { estadoDoNivel } from '../motorAvaliacao';
+import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
+import { FRASES_ATITUDES, NOTAS_FRASES } from '../frases_atitudes';
 import { DicionarioComp } from './DicionarioComp';
 import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
@@ -510,19 +512,57 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
     Array.isArray((d as any).alunosIds) && (d as any).alunosIds.includes(aluno.id)
   ).length || fichasDoPlanoHoje.length;
 
-  // Competências desta UC com o nível já consolidado pelo aluno
-  const competenciasDaUC = ucAtual
-    ? microsPorUC(ucAtual).map((m: any) => {
-        const h = getHistoricoAlunoMicro(aluno.id, m.id);
-        const nivel = Array.isArray(h) && h.length
-          ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
-          : null;
-        return { id: m.id, nome: m.nome ?? nomeCompetencia(m.id), nivel };
-      })
-    : [];
+  // Competências da UC, tiradas do REFERENCIAL — as realizações que o
+  // curso define para esta unidade. Não os resultados esperados dos
+  // perfis técnicos ("fundo limpo, aromático e sem amargor"), que são
+  // o resultado de uma prática e não uma competência. Esses aparecem
+  // mais abaixo, quando o aluno se avalia numa ficha concreta.
+  const competenciasDaUC = (() => {
+    const ref = ucAtual ? getReferencialUC(ucAtual) : undefined;
+    if (!ref?.realizacoes?.length) return [];
+    return ref.realizacoes.map((r, i) => {
+      const id = `${ucAtual}_R${i + 1}`;
+      const h = getHistoricoAlunoMicro(aluno.id, id);
+      const nivel = Array.isArray(h) && h.length
+        ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
+        : null;
+      return { id, nome: r.replace(/\.$/, ''), nivel };
+    });
+  })();
 
-  const porAvaliar = competenciasDaUC.filter(c => estadoDoNivel(c.nivel) === 'por_avaliar').length;
-  const competenciasFracas = competenciasDaUC.filter(c => estadoDoNivel(c.nivel) === 'desenvolvimento').length;
+  // Conhecimentos e atitudes vêm do mesmo referencial. Sem ficha técnica
+  // nem trabalho no plano, aparece tudo — é o que a aplicação assume
+  // estar a ser trabalhado. Com ficha, entra a triagem.
+  const nivelDe = (id: string) => {
+    const h = getHistoricoAlunoMicro(aluno.id, id);
+    return Array.isArray(h) && h.length
+      ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
+      : null;
+  };
+
+  const conhecimentosDaUC = (() => {
+    const ref = ucAtual ? getReferencialUC(ucAtual) : undefined;
+    const lista = ref?.conhecimentos?.length ? ref.conhecimentos : ref?.criteriosDesempenho;
+    if (!lista?.length) return [];
+    return lista.map((c, i) => {
+      const id = `${ucAtual}_C${i + 1}`;
+      return { id, nome: c.replace(/\.$/, ''), nivel: nivelDe(id) };
+    });
+  })();
+
+  const atitudesDaUC = ATITUDES
+    .filter(at => opcoesDeEscolhaDoAluno(aluno.ano ?? 1).includes(at.id))
+    .map(at => ({ id: at.id, nome: at.nome, nivel: nivelDe(at.id) }));
+
+  const tudoAvaliavel = [...competenciasDaUC, ...conhecimentosDaUC, ...atitudesDaUC];
+  const porAvaliar = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel) === 'por_avaliar').length;
+  const competenciasFracas = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel) === 'desenvolvimento').length;
+
+  // Que bloco o aluno está a ver no "Avaliar-me"
+  const [blocoAvaliar, setBlocoAvaliar] = useState<'realizacoes'|'conhecimentos'|'atitudes'>('realizacoes');
+  const listaDoBloco = blocoAvaliar === 'realizacoes' ? competenciasDaUC
+                     : blocoAvaliar === 'conhecimentos' ? conhecimentosDaUC
+                     : atitudesDaUC;
 
   // Nota progressiva: média das aulas já validadas nesta UC
   const validacoesAluno = getSelecoes()
@@ -678,6 +718,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
           <PainelAluno
             nomeAluno={aluno.nome || `Aluno ${aluno.numero}`}
             turmaId={aluno.turmaId}
+            numeroAluno={aluno.numero}
             ucId={ucAtual}
             planoHoje={planoHoje}
             numeroPlano={numeroPlanoHoje}
@@ -724,20 +765,27 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 
         {/* ── Ecrãs do percurso ── */}
         {aba === 'hoje' && destino && (
-          <div>
+          <div style={{ background:'#F3F2F5', minHeight:'100%' }}>
             <button
               onClick={() => setDestino(null)}
               style={{ background:'transparent', border:'none', cursor:'pointer',
-                fontSize:15, color:T.copper, fontWeight:700, padding:'6px 0 12px',
-                fontFamily:'inherit' }}
+                fontSize:15, color:'#6B3FA0', fontWeight:700, padding:'12px 16px 4px',
+                fontFamily:'inherit', display:'flex', alignItems:'center', gap:7 }}
             >
-              ‹ Voltar
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   strokeWidth={2.4} strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+              Voltar
             </button>
 
             {destino === 'avaliar' && (
               <EcraAvaliarMe
                 ucId={ucAtual}
-                competencias={competenciasDaUC}
+                temAulaHoje={!!planoHoje}
+                bloco={blocoAvaliar}
+                onMudarBloco={setBlocoAvaliar}
+                substantivo={blocoAvaliar === 'conhecimentos' ? 'conhecimento'
+                           : blocoAvaliar === 'atitudes' ? 'atitude' : 'competência'}
+                competencias={listaDoBloco}
                 onAvaliar={() => { if (planoHoje) { setDestino(null); setPlanoAtivo(planoHoje); } }}
               />
             )}
@@ -1148,17 +1196,33 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
   );
 }
 
+const ITENS_FARDA = [
+  { id: 'farda',   label: 'Farda' },
+  { id: 'avental', label: 'Avental' },
+  { id: 'sapatos', label: 'Sapatos' },
+  { id: 'touca',   label: 'Touca' },
+  { id: 'cabelo',  label: 'Cabelo preso' },
+  { id: 'maos',    label: 'Mãos lavadas' },
+  { id: 'fones',   label: 'Sem fones' },
+  { id: 'adornos', label: 'Sem adornos' },
+  { id: 'unhas',   label: 'Unhas curtas' },
+];
+
+/** Itens que impedem de entrar na cozinha. Farda, avental e sapatos
+ *  estão ao mesmo nível: sem qualquer um deles não há produção. */
+const IMPEDEM = ['farda', 'avental', 'sapatos'];
+
 function SecaoEntrada({ aluno, plano, onConcluido }: {
   aluno: Aluno; plano: PlanoAula; onConcluido: () => void;
 }) {
-  // O atraso é calculado, não perguntado: a app sabe as horas.
-  // O aluno cumpridor confirma tudo num toque; só quem tem alguma coisa
-  // em falta é que abre a lista item a item.
-  const [detalhe, setDetalhe] = useState(false);
-  const [fardState, setFardState] = useState<Record<string, boolean|null>>(
-    Object.fromEntries(FARD_ITEMS.map(f => [f.id, null]))
+  // Os quadrados começam todos marcados: o aluno cumpridor confirma num
+  // toque, e quem tem alguma coisa em falta desmarca só esse. Ao
+  // contrário, obrigava toda a gente a nove toques.
+  const [ok, setOk] = useState<Record<string, boolean>>(
+    Object.fromEntries(ITENS_FARDA.map(i => [i.id, true]))
   );
 
+  // O atraso é calculado, não perguntado — a app sabe as horas.
   const minutosAtraso = (() => {
     if (!plano.horaInicio) return 0;
     const now = new Date();
@@ -1169,54 +1233,34 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   const TOLERANCIA = 5;
   const atrasado = minutosAtraso > TOLERANCIA;
 
-  const fardItensEmFalta = FARD_ITEMS.filter(f => fardState[f.id] === false).map(f => f.label);
-  const fardCompleto = Object.values(fardState).every(v => v !== null);
+  const emFalta = ITENS_FARDA.filter(i => !ok[i.id]);
+  const impedido = emFalta.some(i => IMPEDEM.includes(i.id));
 
-  function toggleFard(id: string) {
-    setFardState(prev => {
-      const cur = prev[id];
-      return { ...prev, [id]: cur === null ? false : cur === false ? true : null };
-    });
-  }
-
-  async function gravar(itensEmFalta: string[], assumiu: boolean) {
+  async function gravar() {
     if (atrasado) incHist(`ecl_atrasos_${aluno.id}`);
-    const fardamentoOk = itensEmFalta.length === 0;
+    const nomes = emFalta.map(i => i.label);
+    const fardamentoOk = nomes.length === 0;
 
     addRegistoPresenca({
       alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id,
       presente: true, atrasado, atrasadoMins: minutosAtraso, fardamentoOk,
-      observacao: itensEmFalta.length
-        ? `Assumiu à entrada — em falta: ${itensEmFalta.join(', ')}`
-        : '',
+      observacao: nomes.length ? `Assumiu à entrada — em falta: ${nomes.join(', ')}` : '',
     });
 
-    // Pontualidade e fardamento são independentes: uma não mascara a outra.
-    // OBR_03 — pontualidade, só depende da hora.
-    const notaPontualidade = !atrasado ? 5 : minutosAtraso >= 20 ? 2 : 3;
-    addRegistoAvaliacao({
-      id: `${plano.id}_${aluno.id}_pont_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
-      planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'OBR_03',
-      nota: notaPontualidade, data: new Date().toISOString(), validadoPor: 'aluno',
+    const agora = new Date().toISOString();
+    const reg = (suf: string, comp: string, nota: number) => addRegistoAvaliacao({
+      id: `${plano.id}_${aluno.id}_${suf}_${Date.now()}`, alunoId: aluno.id,
+      turmaId: aluno.turmaId, planoAulaId: plano.id, fichaId: '',
+      ucId: plano.ucId || '', microcompetenciaId: comp, nota,
+      data: agora, validadoPor: 'aluno',
     });
 
-    // OBR_01 — higiene pessoal, só depende da farda.
-    addRegistoAvaliacao({
-      id: `${plano.id}_${aluno.id}_farda_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
-      planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'OBR_01',
-      nota: Math.max(1, 5 - itensEmFalta.length), data: new Date().toISOString(), validadoPor: 'aluno',
-    });
-
-    // ATI-001 — responsabilidade. Assumir uma falha é a atitude que se pede:
-    // quem assume não desce abaixo de 3. Quem diz que está tudo e é corrigido
-    // pelo professor fica em 1, mas isso é o professor que o regista.
-    if (assumiu) {
-      addRegistoAvaliacao({
-        id: `${plano.id}_${aluno.id}_resp_${Date.now()}`, alunoId: aluno.id, turmaId: aluno.turmaId,
-        planoAulaId: plano.id, fichaId: '', ucId: plano.ucId || '', microcompetenciaId: 'ATI-001',
-        nota: 4, data: new Date().toISOString(), validadoPor: 'aluno',
-      });
-    }
+    // Pontualidade e apresentação são independentes: uma não mascara a outra.
+    reg('pont', 'OBR_03', !atrasado ? 5 : minutosAtraso >= 20 ? 2 : 3);
+    // Apresentação: impeditivo vai ao mínimo; o resto desce por item.
+    reg('farda', 'OBR_01', impedido ? 1 : Math.max(1, 5 - nomes.length));
+    // Assumir a falha é a ATI-001 — é a atitude que se pede.
+    if (nomes.length) reg('resp', 'ATI-001', 3);
 
     registarHigieneKitchenFlow(
       aluno.turmaId, aluno.id, aluno.nome || `Aluno ${aluno.numero}`, fardamentoOk
@@ -1224,147 +1268,94 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
     onConcluido();
   }
 
-  const RESUMO = [
-    'Farda completa, cabelo preso, sem adornos, unhas curtas',
-    'Mãos lavadas',
-    'Calçado de segurança',
-  ];
+  const V = '#6B3FA0', VS = '#F0EBF7';
 
   return (
     <div>
-      {/* Hora de entrada — calculada, não perguntada */}
+      {/* Hora de entrada — calculada */}
       <div style={{
-        background: atrasado ? T.copperP : T.sageP,
-        border: `1px solid ${atrasado ? T.copper : 'rgba(90,122,78,0.3)'}`,
-        borderRadius: 14, padding: '14px 16px', marginBottom: 14,
-        display: 'flex', alignItems: 'center', gap: 12,
+        background:'#fff', borderRadius:16, padding:16, marginBottom:12,
+        display:'flex', alignItems:'center', gap:13,
+        boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
       }}>
-        <span style={{ fontSize: 26, lineHeight: 1 }}>{atrasado ? '⏰' : '✅'}</span>
+        <div style={{
+          width:44, height:44, borderRadius:'50%', flexShrink:0,
+          background: atrasado ? '#FDF0E8' : '#E8F3E5',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          color: atrasado ? '#B5651D' : '#3E7A31',
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: atrasado ? T.copper : T.sage }}>
+          <div style={{ fontSize:17, fontWeight:700, color:'#1A1A1A' }}>
             {atrasado ? `Chegaste ${minutosAtraso} min atrasado/a` : 'Chegaste a horas'}
           </div>
           {plano.horaInicio && (
-            <div style={{ fontSize: 13.5, color: atrasado ? T.copper : T.sage, marginTop: 2 }}>
+            <div style={{ fontSize:14, color:'#666', marginTop:1 }}>
               a aula começou às {plano.horaInicio}
             </div>
           )}
         </div>
       </div>
 
-      {!detalhe ? (
-        <>
-          <div style={{
-            background: '#fff', border: `1px solid ${T.border}`,
-            borderRadius: 14, padding: 16, marginBottom: 12,
-          }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: T.charcoal, marginBottom: 8 }}>
-              Está tudo em ordem?
-            </div>
-            <div style={{ fontSize: 14.5, color: 'rgba(26,23,20,0.6)', lineHeight: 1.8, marginBottom: 16 }}>
-              {RESUMO.map((r, i) => <div key={i}>{r}</div>)}
-            </div>
-            <button
-              onClick={() => gravar([], false)}
-              style={{
-                width: '100%', background: T.sage, color: '#fff', border: 'none',
-                borderRadius: 12, padding: 16, fontSize: 17, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              ✓ Sim, está tudo
-            </button>
-          </div>
+      {/* Confirmação do fardamento */}
+      <div style={{
+        background:'#fff', borderRadius:16, padding:18,
+        boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{ fontSize:19, fontWeight:700, color:'#1A1A1A' }}>Confirma o que tens</div>
+        <div style={{ fontSize:14, color:'#777', marginTop:4, marginBottom:15 }}>
+          Toca no que te falta para desmarcar. O que ficar marcado conta como feito.
+        </div>
 
-          <div style={{
-            background: T.copperP, border: `1px solid ${T.copper}`,
-            borderRadius: 14, padding: 16,
-          }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: T.copper, marginBottom: 7 }}>
-              Falta-me alguma coisa
-            </div>
-            <div style={{ fontSize: 14, color: T.copper, lineHeight: 1.65, marginBottom: 14 }}>
-              Assumir os próprios erros é uma das atitudes que estás a desenvolver
-              nesta unidade — responsabilidade pelas tuas ações. Quando dizes o que
-              falta, é essa competência que estás a mostrar.
-            </div>
-            <button
-              onClick={() => setDetalhe(true)}
-              style={{
-                width: '100%', background: 'transparent', border: `1.5px solid ${T.copper}`,
-                color: T.copper, borderRadius: 12, padding: 14, fontSize: 15.5,
-                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              Dizer o que falta
-            </button>
-          </div>
-        </>
-      ) : (
-        <div style={{
-          background: '#fff', border: `1px solid ${T.border}`,
-          borderRadius: 14, padding: 16,
-        }}>
-          <div style={{ fontSize: 16.5, fontWeight: 700, color: T.charcoal, marginBottom: 4 }}>
-            O que te falta?
-          </div>
-          <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.55)', marginBottom: 14 }}>
-            Toca no que não tens. O resto fica como está.
-          </div>
-
-          {FARD_ITEMS.map(f => {
-            const emFalta = fardState[f.id] === false;
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:9, marginBottom:16 }}>
+          {ITENS_FARDA.map(it => {
+            const marcado = ok[it.id];
             return (
-              <button
-                key={f.id}
-                onClick={() => toggleFard(f.id)}
+              <button key={it.id}
+                onClick={() => setOk(p => ({ ...p, [it.id]: !p[it.id] }))}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 11,
-                  padding: '13px 14px', marginBottom: 7, borderRadius: 11,
-                  border: `1.5px solid ${emFalta ? T.copper : T.border}`,
-                  background: emFalta ? T.copperP : '#fff',
-                  cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                }}
-              >
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{f.emoji}</span>
-                <span style={{
-                  flex: 1, fontSize: 15,
-                  fontWeight: emFalta ? 700 : 500,
-                  color: emFalta ? T.copper : T.charcoal,
+                  background: marcado ? VS : '#fff',
+                  border: `2px solid ${marcado ? V : '#DDD'}`,
+                  borderRadius:12, padding:'14px 6px', textAlign:'center',
+                  cursor:'pointer', fontFamily:'inherit',
+                  color: marcado ? V : '#BBB',
+                  WebkitTapHighlightColor:'transparent',
                 }}>
-                  {f.label}
-                </span>
-                {emFalta && <span style={{ fontSize: 13.5, fontWeight: 700, color: T.copper }}>falta</span>}
+                {IconesFarda[it.id]?.()}
+                <div style={{ fontSize:13.5, fontWeight:600, marginTop:6,
+                  color: marcado ? V : '#999' }}>{it.label}</div>
               </button>
             );
           })}
-
-          <button
-            onClick={() => gravar(fardItensEmFalta, true)}
-            style={{
-              width: '100%', marginTop: 10,
-              background: T.copper, color: '#fff', border: 'none',
-              borderRadius: 12, padding: 16, fontSize: 16.5, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            {fardItensEmFalta.length === 0
-              ? 'Confirmar — não me falta nada'
-              : `Confirmar ${fardItensEmFalta.length} ${fardItensEmFalta.length === 1 ? 'item em falta' : 'itens em falta'}`}
-          </button>
-
-          <button
-            onClick={() => setDetalhe(false)}
-            style={{
-              width: '100%', marginTop: 8, background: 'transparent', border: 'none',
-              color: 'rgba(26,23,20,0.5)', fontSize: 14, cursor: 'pointer',
-              padding: 10, fontFamily: 'inherit',
-            }}
-          >
-            Voltar atrás
-          </button>
         </div>
-      )}
+
+        {emFalta.length > 0 && (
+          <div style={{
+            background: impedido ? '#FDF0E8' : '#FFF8E8',
+            border:`1px solid ${impedido ? '#B5651D' : '#D9A441'}`,
+            borderRadius:12, padding:14, marginBottom:14,
+            fontSize:14.5, lineHeight:1.6, color: impedido ? '#B5651D' : '#8A6516',
+          }}>
+            {impedido
+              ? <>Sem {emFalta.filter(i=>IMPEDEM.includes(i.id)).map(i=>i.label.toLowerCase()).join(', ')} não
+                  podes entrar na cozinha. Hoje não há nota nas técnicas — não é zero, é que não
+                  houve como avaliar. Fala com o professor sobre um trabalho a partir da ficha de hoje.</>
+              : <>Assumir os próprios erros é uma das atitudes que estás a desenvolver — responsabilidade
+                  pelas tuas ações. Ao dizeres o que falta, é essa competência que estás a mostrar.</>}
+          </div>
+        )}
+
+        <button onClick={gravar} style={{
+          width:'100%', background:V, color:'#fff', border:'none', borderRadius:12,
+          padding:17, fontSize:18, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+        }}>
+          {emFalta.length === 0
+            ? 'Confirmar — está tudo'
+            : `Confirmar — falta-me ${emFalta.length}`}
+        </button>
+      </div>
     </div>
   );
 }
@@ -2023,6 +2014,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [notasMicro, setNotasMicro] = useState<Record<string,string|null>>({});
   const [microAberta, setMicroAberta] = useState<string|null>(null);
   const [atitudeEscolhida, setAtitudeEscolhida] = useState<string|null>(null);
+  // Posição da frase escolhida (0-3). A nota sai daqui, não de um valor fixo.
+  const [nivelAtitudeFrase, setNivelAtitudeFrase] = useState<number|null>(null);
   const [nivelIniciativa, setNivelIniciativa] = useState<number>(0); // 0 = não avaliado
   const [modalConfirmar, setModalConfirmar] = useState(false);
   const [submetido, setSubmetido] = useState(() => {
@@ -2066,13 +2059,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     // Guardar todas as competências com escala 1-4
     Object.entries(notasMicro).forEach(([mId,v])=>{if(v)addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${mId}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:mId,nota:paraNota(v as string),data:agora,validadoPor:'aluno'});});
     // Guardar atitude escolhida
-    if (atitudeEscolhida) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeEscolhida}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeEscolhida,nota:3,data:agora,validadoPor:'aluno'});
+    // A nota da atitude vem da frase que o aluno escolheu, não de um valor
+    // fixo: NOTAS_FRASES é 5/10/15/20 em escala /20, aqui converte-se para 1-5.
+    const notaDaAtitude = nivelAtitudeFrase != null
+      ? Math.round(NOTAS_FRASES[nivelAtitudeFrase] / 4)
+      : 3;
+    if (atitudeEscolhida) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeEscolhida}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeEscolhida,nota:notaDaAtitude,data:agora,validadoPor:'aluno'});
     // Guardar SelecaoAluno com autoavaliacoes preenchidas para o professor validar
     const todasAutoavaliacoes = [
       ...(nivelHigiene?[{competenciaId:'OBR_01',nivel:nivelHigiene as string,nota:paraNota(nivelHigiene)}]:[]),
       ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,nota:paraNota(nivelHaccp)}]:[]),
       ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
-      ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:3}]:[]),
+      ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude}]:[]),
       ...(tipoPlanAula==='teorico'&&nivelIniciativa>0?[{competenciaId:'INI-001',nivel:`ini_${nivelIniciativa}`,nota:nivelIniciativa}]:[]),
     ];
     addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:atitudeEscolhida?[atitudeEscolhida]:[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,criadaEm:agora});
@@ -2504,21 +2502,68 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>💡 Propõe-te a uma atitude</div>
         <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:12 }}>
           Escolhe uma atitude que reconheces em ti hoje. Fica como proposta tua — o professor valida.</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+        <div>
           {(() => {
-            const MATURIDADE = ['ATI-005','ATI-006','ATI-007','ATI-012','ATI-019','ATI-020','ATI-021'];
-            let opcoes = ATITUDES.filter(a => MATURIDADE.includes(a.id) && !compRemovidas.includes(a.id));
-            if (opcoes.length === 0) opcoes = ATITUDES.filter(a => !compRemovidas.includes(a.id)).slice(0, 8);
-            return opcoes.map(a => (
-            <button key={a.id} onClick={() => setAtitudeEscolhida(a.id===atitudeEscolhida?null:a.id)} style={{
-              padding:'12px', borderRadius:12, fontSize:13, fontWeight:600, cursor:'pointer', textAlign:'left',
-              border:`1.5px solid ${atitudeEscolhida===a.id?'#7d4f8c':T.border}`,
-              background:atitudeEscolhida===a.id?'rgba(125,79,140,0.08)':'#fff',
-              color:atitudeEscolhida===a.id?'#7d4f8c':'rgba(26,23,20,0.7)',
-            }}>
-              {atitudeEscolhida===a.id?'✓ ':''}{a.nome}
-            </button>
-            )); })()}
+            // Progressão por ano: 1ºACP 8 atitudes, 2ºACP 16, 3ºACP 22.
+            // Inclui as do ano seguinte — um aluno pode querer propor-se a
+            // uma atitude mais avançada do que o seu ano exige.
+            // Substitui a lista fixa de 7 que era igual para toda a gente.
+            const permitidas = opcoesDeEscolhaDoAluno(aluno.ano ?? 1);
+            const opcoes = ATITUDES.filter(
+              a => permitidas.includes(a.id) && !compRemovidas.includes(a.id)
+            );
+            if (opcoes.length === 0) return null;
+
+            return opcoes.map(a => {
+              const escolhida = atitudeEscolhida === a.id;
+              const frases = FRASES_ATITUDES.find(f => f.competenciaId === a.id)?.frases;
+              return (
+                <div key={a.id} style={{ marginBottom:8 }}>
+                  <button
+                    onClick={() => { setAtitudeEscolhida(escolhida ? null : a.id); setNivelAtitudeFrase(null); }}
+                    style={{
+                      width:'100%', padding:'13px 14px', borderRadius:12, fontSize:14.5,
+                      fontWeight:700, cursor:'pointer', textAlign:'left', fontFamily:'inherit',
+                      border:`1.5px solid ${escolhida ? '#7d4f8c' : T.border}`,
+                      background: escolhida ? 'rgba(125,79,140,0.08)' : '#fff',
+                      color: escolhida ? '#7d4f8c' : 'rgba(26,23,20,0.75)',
+                    }}>
+                    {escolhida ? '✓ ' : ''}{a.nome}
+                  </button>
+
+                  {/* Frases: só aparecem depois de escolher a atitude. O aluno
+                      lê descrições de si próprio, não números — se visse as
+                      notas escolhia a que quer, não a que o descreve. */}
+                  {escolhida && frases && (
+                    <div style={{ marginTop:7, paddingLeft:10 }}>
+                      <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:7 }}>
+                        Qual destas te descreve melhor?
+                      </div>
+                      {frases.map((fr, i) => {
+                        const sel = nivelAtitudeFrase === i;
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setNivelAtitudeFrase(sel ? null : i)}
+                            style={{
+                              width:'100%', display:'block', textAlign:'left',
+                              padding:'12px 13px', marginBottom:6, borderRadius:11,
+                              fontSize:14, lineHeight:1.5, cursor:'pointer', fontFamily:'inherit',
+                              border:`1.5px solid ${sel ? '#7d4f8c' : T.border}`,
+                              background: sel ? 'rgba(125,79,140,0.08)' : '#fff',
+                              color: sel ? '#7d4f8c' : 'rgba(26,23,20,0.75)',
+                              fontWeight: sel ? 700 : 400,
+                            }}>
+                            {fr}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
 
