@@ -107,6 +107,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventosWizard } from './components/EventosWizard';
 import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
+import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
 import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   getPlanosAulaPorTurma, getSelecoes, getValidacoes } from './backend';
 
