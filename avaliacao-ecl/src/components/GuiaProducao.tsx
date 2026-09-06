@@ -67,10 +67,23 @@ function parseGuia(texto: string, nomePrato: string): DadosGuia {
   texto = limparLatex(texto);
   const secoes: SecaoGuia[] = [];
 
+  // Títulos que marcam o início de uma secção. Servem de travão: sem
+  // isto, uma secção sem número à frente engolia a seguinte e o guião
+  // mostrava a mesma secção duas vezes — a 14 apanhava a 15, e a 15
+  // aparecia outra vez por si.
+  const TITULOS = 'ENQUADRAMENTO|COMPET[ÊE]NCIAS|MICROCOMPET[ÊE]NCIAS|HACCP|PCC'
+    + '|RENDIMENTOS|CAPACITA[ÇC][ÃA]O|EQUIL[ÍI]BRIO|SUGEST[ÕO]ES|SUSTENTABILIDADE'
+    + '|FOOD COST|T[ÉE]CNICAS|CONHECIMENTOS|QUEST[ÕO]ES|CASO|AUTOAVALIA[ÇC][ÃA]O|CULTURA';
+
   SECOES_CONFIG.forEach(cfg => {
     // Padrões de cabeçalho: "# 1.", "## 1.", "1.", "SECÇÃO 1"
+    // O fim é o número seguinte OU qualquer título de secção conhecido.
     const regex = new RegExp(
-      `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:ENQUADRAMENTO|COMPETÊNCIAS|MICROCOMPETÊNCIAS|HACCP|RENDIMENTOS|CAPACITAÇÃO|EQUILÍBRIO|SUGESTÕES|SUSTENTABILIDADE|FOOD COST|TÉCNICAS|CONHECIMENTOS|QUESTÕES|CASO|AUTOAVALIAÇÃO|CULTURA)[^\\n]*\\n([\\s\\S]*?)(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*|$)`,
+      `(?:#{1,3}\\s*)?${cfg.num}\\.?\\s*(?:${TITULOS})[^\\n]*\\n`
+      + `([\\s\\S]*?)`
+      + `(?=(?:#{1,3}\\s*)?(?:${cfg.num + 1})\\.?\\s*(?:${TITULOS})`
+      + `|(?:\\n#{1,3}\\s*)(?:${TITULOS})`
+      + `|$)`,
       'i'
     );
     const m = texto.match(regex);
