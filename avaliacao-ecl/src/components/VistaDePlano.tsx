@@ -3,7 +3,8 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao, getHistoricoAvaliacoes, getSelecoes, getValidacoes,
-  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom } from '../backend';
+  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
+  presencasPorDecidir, decidirFalta, LABEL_DECISAO } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -104,6 +105,8 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
       <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 12, cursor: 'pointer', marginBottom: 12 }}>
         ← Todos os planos
       </button>
+
+
       {modulo && setModulo && (
         <>
         {/* Botões de acção rápida — só quando o plano não está publicado */}
@@ -581,6 +584,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     const ultimaFicha = ordenadas[ordenadas.length - 1];
     const nomePrato = ultimaFicha?.nomePrato || '';
     return (
+
       <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
         <div style={{ background:'#fff', borderRadius:20, padding:28, maxWidth:360, width:'100%', textAlign:'center' }}>
           <div style={{ fontSize:36, marginBottom:12 }}>📚</div>
@@ -1039,6 +1043,111 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // ── INÍCIO ───────────────────────────────────────────────────
   return (
     <div>
+      {/* Abertura da aula. É daqui que contam os dez minutos de
+          tolerância — não da hora prevista no plano. Enquanto não
+          abrir, os alunos consultam mas não gravam nada. */}
+      {plano.estado === 'publicado' && (() => {
+        const sessao = getSessaoAula(plano.id);
+        const t = estadoTolerancia(plano.id);
+
+        if (!sessao?.abertaEm) {
+          return (
+            <div style={{ background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
+              borderRadius:14, padding:16, marginBottom:14 }}>
+              <div style={{ fontSize:16, fontWeight:700, color:'var(--charcoal, #1a1714)' }}>
+                A aula ainda não está aberta
+              </div>
+              <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', marginTop:5, lineHeight:1.55 }}>
+                Os alunos podem consultar o plano, as fichas e o guião, mas não
+                conseguem marcar presença nem registar nada. Ao abrires, começam
+                os dez minutos de tolerância.
+              </div>
+              <button onClick={() => {
+                  abrirSessaoAula(plano.id, turmaId, nomeProfessor || 'professor');
+                  onPlanoActualizado?.(plano);
+                }}
+                style={{ marginTop:12, width:'100%', padding:16, borderRadius:12, border:'none',
+                  background:'var(--copper)', color:'#fff', fontSize:17, fontWeight:700,
+                  cursor:'pointer', fontFamily:'inherit' }}>
+                Abrir a aula agora
+              </button>
+            </div>
+          );
+        }
+
+        const porDecidir = presencasPorDecidir(plano.id);
+        const alunos = getAlunos();
+        const nomeDe = (id: string) => {
+          const al = alunos.find(x => x.id === id);
+          return al?.nome || `Aluno nº ${al?.numero ?? '?'}`;
+        };
+
+        return (
+          <div style={{ marginBottom:14 }}>
+            <div style={{ background:'var(--sage-pale, #eef4eb)', border:'1px solid var(--sage)',
+              borderRadius:14, padding:'14px 16px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ width:10, height:10, borderRadius:'50%', background:'var(--sage)' }} />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:15.5, fontWeight:700, color:'var(--sage)' }}>
+                    Aula aberta às {new Date(sessao.abertaEm).toLocaleTimeString('pt-PT',
+                      { hour:'2-digit', minute:'2-digit' })}
+                  </div>
+                  <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', marginTop:2 }}>
+                    {t.foraDeTempo
+                      ? 'A tolerância terminou.'
+                      : `Faltam ${t.minutosRestantes} min de tolerância.`}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* A aplicação regista a hora, não decide a falta. Quem entrou
+                fora da janela fica aqui à espera da decisão do professor. */}
+            {porDecidir.length > 0 && (
+              <div style={{ background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
+                borderRadius:14, padding:16, marginTop:10 }}>
+                <div style={{ fontSize:15.5, fontWeight:700, color:'var(--copper)' }}>
+                  {porDecidir.length} {porDecidir.length === 1 ? 'aluno entrou' : 'alunos entraram'} fora do tempo
+                </div>
+                <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:4,
+                  marginBottom:12, lineHeight:1.5 }}>
+                  A aplicação registou a hora. A falta é decisão tua.
+                </div>
+                {porDecidir.map(p => (
+                  <div key={p.alunoId} style={{ background:'#fff', borderRadius:12,
+                    padding:'12px 14px', marginBottom:8 }}>
+                    <div style={{ fontSize:15, fontWeight:700, color:'var(--charcoal, #1a1714)' }}>
+                      {nomeDe(p.alunoId)}
+                    </div>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:2,
+                      marginBottom:10 }}>
+                      Entrou {p.atrasadoMins} min depois da abertura
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
+                      {(['sem_falta','falta_atraso','falta_presenca'] as const).map(d => (
+                        <button key={d}
+                          onClick={() => {
+                            decidirFalta(p.alunoId, plano.id, d, nomeProfessor || 'professor');
+                            onPlanoActualizado?.(plano);
+                          }}
+                          style={{ padding:'10px 4px', borderRadius:9, cursor:'pointer',
+                            border:'1px solid var(--border, rgba(26,23,20,0.15))',
+                            background:'#fff', fontSize:12.5, fontWeight:700,
+                            color: d === 'sem_falta' ? 'var(--sage)'
+                                 : d === 'falta_atraso' ? 'var(--copper)' : 'var(--danger, #c0392b)',
+                            fontFamily:'inherit' }}>
+                          {LABEL_DECISAO[d]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
       <CabecalhoPlano plano={plano} onVoltar={onVoltar} modulo={modulo} setModulo={setModulo} />
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10, flexWrap: 'wrap' }}>
