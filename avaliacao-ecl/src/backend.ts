@@ -10,7 +10,7 @@ import {
   Turma, Aluno, PlanoAula, FichaProducao,
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
-} from './types';
+, SessaoAula, TOLERANCIA_PADRAO_MIN } from './types';
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
@@ -3164,113 +3164,210 @@ export async function publicarNoClassroom(
 }
 
 // ============================================================
-// Arranque do ano letivo
+// Sessão de aula — abertura pelo professor
 // ============================================================
-// Tudo o que foi feito antes do arranque foi simulação: fichas,
-// guiões, planos, requisições, autoavaliações e presenças. A aplicação
-// nunca chegou a ser usada por alunos.
-//
-// A limpeza existente só apagava o que tinha prefixo "seed_", e o que
-// foi feito à mão a testar não tem esse prefixo — é indistinguível de
-// dados reais. Esta apaga por data: tudo o que é anterior ao arranque.
-//
-// NÃO APAGA: alunos, turmas, manuais, cronograma, referencial nem
-// biblioteca de técnicas. Só o trabalho de aula.
+// Nota honesta sobre segurança: a especificação pede que o servidor
+// recuse escritas antes da sessão abrir. Esta aplicação não tem
+// servidor — é localStorage com sincronização para o Sheets. O bloqueio
+// aqui é de aplicação, não de servidor: resolve o uso normal de uma
+// turma, mas quem abrir a consola do browser consegue contorná-lo.
+// Para garantia a sério seria preciso um backend a validar.
 
-export interface PreviewArranque {
-  planos: number;
-  fichas: number;
-  requisicoes: number;
-  avaliacoes: number;
-  presencas: number;
-  selecoes: number;
-  validacoes: number;
-  atividades: number;
-  /** O que fica intacto. */
-  alunosMantidos: number;
-  turmasMantidas: number;
+const KEY_SESSOES = 'ecl_sessoes_aula';
+
+export function getSessoesAula(): SessaoAula[] {
+  return load<SessaoAula>(KEY_SESSOES as any);
 }
 
-/** Mostra o que a limpeza vai apagar, antes de apagar. */
-export function previewArranqueAno(dataArranque: string): PreviewArranque {
-  const antes = (d?: string) => !d || d.slice(0, 10) < dataArranque;
+export function getSessaoAula(planoAulaId: string): SessaoAula | undefined {
+  return getSessoesAula().find(s => s.planoAulaId === planoAulaId);
+}
+
+/** O professor abre a aula. É daqui que contam os dez minutos. */
+export function abrirSessaoAula(
+  planoAulaId: string, turmaId: string, professor: string,
+  toleranciaMin = TOLERANCIA_PADRAO_MIN
+): SessaoAula {
+  const existente = getSessaoAula(planoAulaId);
+  // Idempotente: abrir duas vezes não reinicia a contagem.
+  if (existente?.abertaEm) return existente;
+
+  const nova: SessaoAula = {
+    planoAulaId, turmaId,
+    abertaEm: new Date().toISOString(),
+    abertaPor: professor,
+    toleranciaMin,
+  };
+  save(KEY_SESSOES as any, [...getSessoesAula().filter(s => s.planoAulaId !== planoAulaId), nova]);
+  return nova;
+}
+
+export function fecharSessaoAula(planoAulaId: string, professor: string): void {
+  const all = getSessoesAula().map(s =>
+    s.planoAulaId === planoAulaId
+      ? { ...s, fechadaEm: new Date().toISOString(), fechadaPor: professor }
+      : s
+  );
+  save(KEY_SESSOES as any, all);
+}
+
+export interface EstadoTolerancia {
+  aberta: boolean;
+  abertaEm?: string;
+  limiteEm?: string;
+  minutosRestantes: number;
+  /** true depois de passado o limite — quem entrar agora fica atrasado. */
+  foraDeTempo: boolean;
+}
+
+/** Estado da janela de tolerância, num dado momento. */
+export function estadoTolerancia(planoAulaId: string, agora = new Date()): EstadoTolerancia {
+  const s = getSessaoAula(planoAulaId);
+  if (!s?.abertaEm) {
+    return { aberta: false, minutosRestantes: 0, foraDeTempo: false };
+  }
+  const abertura = new Date(s.abertaEm);
+  const limite = new Date(abertura.getTime() + s.toleranciaMin * 60000);
+  const restam = Math.max(0, Math.ceil((limite.getTime() - agora.getTime()) / 60000));
+
   return {
-    planos:      getPlanosAula().filter(p => antes(p.data)).length,
-    fichas:      getFichasProducao().length,
-    requisicoes: getRequisicoes().length,
-    avaliacoes:  getHistoricoAvaliacoes().filter(r => antes(r.data)).length,
-    presencas:   getPresencas().filter(p => antes(p.data)).length,
-    selecoes:    getSelecoes().length,
-    validacoes:  getValidacoes().length,
-    atividades:  getAtividades().filter(a => antes(a.data)).length,
-    alunosMantidos: getAlunos().length,
-    turmasMantidas: getTurmas().length,
+    aberta: true,
+    abertaEm: s.abertaEm,
+    limiteEm: limite.toISOString(),
+    minutosRestantes: restam,
+    // No instante exato do limite já conta como atraso.
+    foraDeTempo: agora.getTime() >= limite.getTime(),
   };
 }
 
-/**
- * Apaga o trabalho de aula anterior ao arranque do ano.
- * @param dataArranque  'AAAA-MM-DD' — tudo antes desta data sai
- * @param confirmacao   tem de ser exatamente 'APAGAR' — evita cliques enganados
- */
-export function limparParaArranqueAno(
-  dataArranque: string, confirmacao: string
-): { ok: boolean; erro?: string; apagado?: PreviewArranque } {
-  if (confirmacao !== 'APAGAR') {
-    return { ok: false, erro: 'Confirmação inválida. Escrever APAGAR em maiúsculas.' };
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataArranque)) {
-    return { ok: false, erro: 'Data inválida. Formato AAAA-MM-DD.' };
-  }
-
-  const apagado = previewArranqueAno(dataArranque);
-  const antes = (d?: string) => !d || d.slice(0, 10) < dataArranque;
-
-  // Cópia de segurança antes de mexer — se algo correr mal, dá para voltar.
-  try {
-    const backup = {
-      em: new Date().toISOString(),
-      motivo: `arranque do ano letivo em ${dataArranque}`,
-      planos: getPlanosAula(),
-      fichas: getFichasProducao(),
-      requisicoes: getRequisicoes(),
-      historico: getHistoricoAvaliacoes(),
-      presencas: getPresencas(),
-      selecoes: getSelecoes(),
-      validacoes: getValidacoes(),
-      atividades: getAtividades(),
-    };
-    localStorage.setItem('ecl_backup_pre_arranque', JSON.stringify(backup));
-  } catch { /* se não couber, segue — o essencial é a limpeza */ }
-
-  save(KEYS.planos,      getPlanosAula().filter(p => !antes(p.data)));
-  save(KEYS.fichas,      []);   // as fichas não têm data — saem todas
-  save(KEYS.requisicoes, []);
-  save(KEY_HIST,         getHistoricoAvaliacoes().filter(r => !antes(r.data)));
-  save(KEYS.presencas,   getPresencas().filter(p => !antes(p.data)));
-  save(KEYS.selecoes,    []);
-  save(KEYS.validacoes,  []);
-  save(KEYS.atividades,  getAtividades().filter(a => !antes(a.data)));
-
-  return { ok: true, apagado };
+/** O aluno pode gravar registos nesta aula? */
+export function podeRegistar(planoAulaId: string): boolean {
+  return !!getSessaoAula(planoAulaId)?.abertaEm;
 }
 
-/** Repõe o que foi apagado, se ainda houver cópia. */
-export function reporArranqueAno(): { ok: boolean; erro?: string } {
-  try {
-    const raw = localStorage.getItem('ecl_backup_pre_arranque');
-    if (!raw) return { ok: false, erro: 'Não há cópia de segurança.' };
-    const b = JSON.parse(raw);
-    save(KEYS.planos, b.planos ?? []);
-    save(KEYS.fichas, b.fichas ?? []);
-    save(KEYS.requisicoes, b.requisicoes ?? []);
-    save(KEY_HIST, b.historico ?? []);
-    save(KEYS.presencas, b.presencas ?? []);
-    save(KEYS.selecoes, b.selecoes ?? []);
-    save(KEYS.validacoes, b.validacoes ?? []);
-    save(KEYS.atividades, b.atividades ?? []);
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, erro: String(e) };
+/**
+ * Marca presença. A aplicação NÃO decide o tipo de falta — regista os
+ * factos e sinaliza quando a entrada foi fora do tempo. A decisão é do
+ * professor, que escolhe entre sem falta, falta de atraso ou falta de
+ * presença.
+ *
+ * Isto protege o aluno de duas coisas: de uma falha de sincronização
+ * lhe dar uma falta que não merece, e de o professor não poder corrigir
+ * um caso com justificação.
+ *
+ * Um registo só por aluno e plano.
+ */
+export function marcarPresenca(
+  alunoId: string, planoAulaId: string, turmaId: string, ucId?: string
+): { foraDeTempo: boolean; minutosAposAbertura: number; jaExistia: boolean } | null {
+  const t = estadoTolerancia(planoAulaId);
+  if (!t.aberta) return null;
+
+  const jaTem = getPresencas().find(p => p.alunoId === alunoId && p.planoAulaId === planoAulaId);
+  if (jaTem) {
+    return {
+      foraDeTempo: jaTem.atrasado,
+      minutosAposAbertura: jaTem.atrasadoMins,
+      jaExistia: true,
+    };
   }
+
+  const agora = new Date();
+  const abertura = new Date(t.abertaEm!);
+  const minutos = Math.max(0, Math.round((agora.getTime() - abertura.getTime()) / 60000));
+
+  addRegistoPresenca({
+    alunoId, turmaId, planoAulaId,
+    presente: true,
+    // `atrasado` aqui significa "entrou fora da janela", não "tem falta".
+    // A falta é o campo decisaoProfessor, e só o professor a define.
+    atrasado: t.foraDeTempo,
+    atrasadoMins: minutos,
+    observacao: t.foraDeTempo ? 'Entrou fora da janela — por decidir' : '',
+  });
+
+  return { foraDeTempo: t.foraDeTempo, minutosAposAbertura: minutos, jaExistia: false };
+}
+
+export type DecisaoFalta = 'sem_falta' | 'falta_atraso' | 'falta_presenca';
+
+export const LABEL_DECISAO: Record<DecisaoFalta, string> = {
+  sem_falta:      'Sem falta',
+  falta_atraso:   'Falta de atraso',
+  falta_presenca: 'Falta de presença',
+};
+
+/** Entradas fora da janela que o professor ainda não decidiu. */
+export function presencasPorDecidir(planoAulaId: string): RegistoPresenca[] {
+  return getPresencas().filter(p =>
+    p.planoAulaId === planoAulaId &&
+    p.atrasado &&
+    !(p as any).decisaoProfessor
+  );
+}
+
+/** O professor decide o tipo de falta. Pode voltar atrás quando quiser. */
+export function decidirFalta(
+  alunoId: string, planoAulaId: string, decisao: DecisaoFalta, professor: string, nota?: string
+): void {
+  const all = getPresencas().map(p => {
+    if (p.alunoId !== alunoId || p.planoAulaId !== planoAulaId) return p;
+    return {
+      ...p,
+      decisaoProfessor: decisao,
+      decididoPor: professor,
+      decididoEm: new Date().toISOString(),
+      observacao: nota ?? p.observacao,
+      // Falta de presença anula a presença; as outras mantêm-na.
+      presente: decisao !== 'falta_presenca',
+    } as RegistoPresenca;
+  });
+  save(KEYS.presencas, all);
+}
+
+// ── Líder do KitchenFlow ──────────────────────────────────────
+// Num grupo, os registos são feitos uma vez. O professor escolhe quem
+// os faz naquela aula; os outros consultam e veem que já está feito.
+// Assim não há registos repetidos nem trabalho duplicado.
+
+const KEY_LIDERES = 'ecl_lideres_kf';
+
+export interface LiderKitchenFlow {
+  planoAulaId: string;
+  /** Vazio quando é um líder para a turma toda. */
+  grupoId?: string;
+  alunoId: string;
+  definidoPor: string;
+  definidoEm: string;
+}
+
+export function getLideresKF(planoAulaId: string): LiderKitchenFlow[] {
+  return load<LiderKitchenFlow>(KEY_LIDERES as any)
+    .filter(l => l.planoAulaId === planoAulaId);
+}
+
+/** Define ou troca o líder. Trocar não apaga os registos já feitos. */
+export function definirLiderKF(
+  planoAulaId: string, alunoId: string, professor: string, grupoId?: string
+): void {
+  const todos = load<LiderKitchenFlow>(KEY_LIDERES as any)
+    .filter(l => !(l.planoAulaId === planoAulaId && (l.grupoId ?? '') === (grupoId ?? '')));
+  save(KEY_LIDERES as any, [...todos, {
+    planoAulaId, grupoId, alunoId,
+    definidoPor: professor,
+    definidoEm: new Date().toISOString(),
+  }]);
+}
+
+/** Este aluno é quem faz os registos do KitchenFlow nesta aula? */
+export function ehLiderKF(alunoId: string, planoAulaId: string, grupoId?: string): boolean {
+  const lideres = getLideresKF(planoAulaId);
+  if (lideres.length === 0) return true;   // sem líder definido, cada um faz o seu
+  return lideres.some(l => l.alunoId === alunoId && (l.grupoId ?? '') === (grupoId ?? ''));
+}
+
+/** Quem é o líder, para mostrar aos colegas quem fez os registos. */
+export function liderKFdoGrupo(planoAulaId: string, grupoId?: string): string | undefined {
+  return getLideresKF(planoAulaId)
+    .find(l => (l.grupoId ?? '') === (grupoId ?? ''))?.alunoId;
 }
