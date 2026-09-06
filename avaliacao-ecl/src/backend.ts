@@ -3162,3 +3162,115 @@ export async function publicarNoClassroom(
     return { ok: false, erro: String(e) };
   }
 }
+
+// ============================================================
+// Arranque do ano letivo
+// ============================================================
+// Tudo o que foi feito antes do arranque foi simulação: fichas,
+// guiões, planos, requisições, autoavaliações e presenças. A aplicação
+// nunca chegou a ser usada por alunos.
+//
+// A limpeza existente só apagava o que tinha prefixo "seed_", e o que
+// foi feito à mão a testar não tem esse prefixo — é indistinguível de
+// dados reais. Esta apaga por data: tudo o que é anterior ao arranque.
+//
+// NÃO APAGA: alunos, turmas, manuais, cronograma, referencial nem
+// biblioteca de técnicas. Só o trabalho de aula.
+
+export interface PreviewArranque {
+  planos: number;
+  fichas: number;
+  requisicoes: number;
+  avaliacoes: number;
+  presencas: number;
+  selecoes: number;
+  validacoes: number;
+  atividades: number;
+  /** O que fica intacto. */
+  alunosMantidos: number;
+  turmasMantidas: number;
+}
+
+/** Mostra o que a limpeza vai apagar, antes de apagar. */
+export function previewArranqueAno(dataArranque: string): PreviewArranque {
+  const antes = (d?: string) => !d || d.slice(0, 10) < dataArranque;
+  return {
+    planos:      getPlanosAula().filter(p => antes(p.data)).length,
+    fichas:      getFichasProducao().length,
+    requisicoes: getRequisicoes().length,
+    avaliacoes:  getHistoricoAvaliacoes().filter(r => antes(r.data)).length,
+    presencas:   getPresencas().filter(p => antes(p.data)).length,
+    selecoes:    getSelecoes().length,
+    validacoes:  getValidacoes().length,
+    atividades:  getAtividades().filter(a => antes(a.data)).length,
+    alunosMantidos: getAlunos().length,
+    turmasMantidas: getTurmas().length,
+  };
+}
+
+/**
+ * Apaga o trabalho de aula anterior ao arranque do ano.
+ * @param dataArranque  'AAAA-MM-DD' — tudo antes desta data sai
+ * @param confirmacao   tem de ser exatamente 'APAGAR' — evita cliques enganados
+ */
+export function limparParaArranqueAno(
+  dataArranque: string, confirmacao: string
+): { ok: boolean; erro?: string; apagado?: PreviewArranque } {
+  if (confirmacao !== 'APAGAR') {
+    return { ok: false, erro: 'Confirmação inválida. Escrever APAGAR em maiúsculas.' };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataArranque)) {
+    return { ok: false, erro: 'Data inválida. Formato AAAA-MM-DD.' };
+  }
+
+  const apagado = previewArranqueAno(dataArranque);
+  const antes = (d?: string) => !d || d.slice(0, 10) < dataArranque;
+
+  // Cópia de segurança antes de mexer — se algo correr mal, dá para voltar.
+  try {
+    const backup = {
+      em: new Date().toISOString(),
+      motivo: `arranque do ano letivo em ${dataArranque}`,
+      planos: getPlanosAula(),
+      fichas: getFichasProducao(),
+      requisicoes: getRequisicoes(),
+      historico: getHistoricoAvaliacoes(),
+      presencas: getPresencas(),
+      selecoes: getSelecoes(),
+      validacoes: getValidacoes(),
+      atividades: getAtividades(),
+    };
+    localStorage.setItem('ecl_backup_pre_arranque', JSON.stringify(backup));
+  } catch { /* se não couber, segue — o essencial é a limpeza */ }
+
+  save(KEYS.planos,      getPlanosAula().filter(p => !antes(p.data)));
+  save(KEYS.fichas,      []);   // as fichas não têm data — saem todas
+  save(KEYS.requisicoes, []);
+  save(KEY_HIST,         getHistoricoAvaliacoes().filter(r => !antes(r.data)));
+  save(KEYS.presencas,   getPresencas().filter(p => !antes(p.data)));
+  save(KEYS.selecoes,    []);
+  save(KEYS.validacoes,  []);
+  save(KEYS.atividades,  getAtividades().filter(a => !antes(a.data)));
+
+  return { ok: true, apagado };
+}
+
+/** Repõe o que foi apagado, se ainda houver cópia. */
+export function reporArranqueAno(): { ok: boolean; erro?: string } {
+  try {
+    const raw = localStorage.getItem('ecl_backup_pre_arranque');
+    if (!raw) return { ok: false, erro: 'Não há cópia de segurança.' };
+    const b = JSON.parse(raw);
+    save(KEYS.planos, b.planos ?? []);
+    save(KEYS.fichas, b.fichas ?? []);
+    save(KEYS.requisicoes, b.requisicoes ?? []);
+    save(KEY_HIST, b.historico ?? []);
+    save(KEYS.presencas, b.presencas ?? []);
+    save(KEYS.selecoes, b.selecoes ?? []);
+    save(KEYS.validacoes, b.validacoes ?? []);
+    save(KEYS.atividades, b.atividades ?? []);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, erro: String(e) };
+  }
+}
