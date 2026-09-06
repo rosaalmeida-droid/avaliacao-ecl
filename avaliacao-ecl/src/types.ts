@@ -923,3 +923,70 @@ export function calcularNotaPlano(
 
   return { nota20, porCategoria, detalhes };
 }
+
+// ============================================================
+// Sessão de aula — controlada pelo professor
+// ============================================================
+// Até agora o aluno entrava quando queria e a tolerância contava da
+// hora do plano. Numa aula que começa às 9h mas em que o professor só
+// abre a cozinha às 9h20, isso dava a turma inteira em atraso.
+//
+// Passa a haver uma sessão: o professor abre, e é a partir daí que
+// contam os dez minutos. Antes disso o plano é consultável, mas não
+// se grava nada.
+
+export type EstadoAula =
+  | 'preview'              // plano consultável, registos bloqueados
+  | 'open_grace'           // professor abriu; janela de tolerância a correr
+  | 'entered'              // presença criada
+  | 'uniform_checked'      // farda confirmada
+  | 'kitchen_initial_done' // registos iniciais concluídos
+  | 'production_started'   // ficha aberta
+  | 'production_done'      // checklist da ficha concluída
+  | 'kitchen_final_done'   // registos finais concluídos
+  | 'self_assessed'        // autoavaliação submetida
+  | 'closed';              // aula fechada
+
+export interface SessaoAula {
+  planoAulaId: string;
+  turmaId: string;
+  /** Quando o professor abriu. É daqui que contam os dez minutos. */
+  abertaEm?: string;
+  abertaPor?: string;
+  /** Minutos de tolerância. Configurável, mas por omissão dez. */
+  toleranciaMin: number;
+  fechadaEm?: string;
+  fechadaPor?: string;
+}
+
+export const TOLERANCIA_PADRAO_MIN = 10;
+
+/** Itens da farda. Começam todos por marcar: confirmar tem de ser um
+ *  ato do aluno, não o estado por omissão. */
+export interface VerificacaoFarda {
+  alunoId: string;
+  planoAulaId: string;
+  itens: { id: string; label: string; tem: boolean }[];
+  verificadaEm: string;
+  completa: boolean;
+}
+
+export type FaseKitchenFlow = 'inicial' | 'final';
+
+export interface RegistoKitchenFlowFase {
+  alunoId: string;
+  planoAulaId: string;
+  fase: FaseKitchenFlow;
+  campos: { id: string; label: string; obrigatorio: boolean; feito: boolean; valor?: string }[];
+  concluidoEm?: string;
+}
+
+/** Progresso da checklist da ficha. Guardado a cada passo: abrir o
+ *  guião não pode perder o que já foi marcado. */
+export interface ProgressoFicha {
+  alunoId: string;
+  planoAulaId: string;
+  fichaId: string;
+  passos: { id: string; feito: boolean; em?: string }[];
+  concluidoEm?: string;
+}
