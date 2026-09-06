@@ -1208,7 +1208,14 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
 function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
   plano: PlanoAula; fichas: FichaProducao[]; aluno: Aluno; onContinuar: () => void;
 }) {
-  // Extrair alertas HACCP das fichas
+  // Uma aula tem cinco a sete horas e muitas vezes já há um evento à
+  // espera. O aluno tem de saber em segundos o que vai fazer — por isso
+  // aqui só ficam as fichas e o botão de começar.
+  //
+  // Alergénios, alertas HACCP e KitchenFlow são importantes mas não são
+  // o primeiro passo: passam para um painel que abre do cabeçalho.
+  const [infoAberta, setInfoAberta] = useState(false);
+
   const alertasHACCP: string[] = [];
   fichas.forEach(f => {
     (f.preparacao || []).forEach((p: any) => {
@@ -1216,137 +1223,166 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
     });
   });
 
-  // Alergénios de todas as fichas
   const alergenios = Array.from(new Set(
     fichas.flatMap(f => Array.isArray(f.alergenicos) ? f.alergenicos : [])
   )).filter(Boolean);
 
+  const temInfo = alergenios.length > 0 || alertasHACCP.length > 0;
+  const V = '#6B3FA0';
+
   return (
-    <div style={{ fontFamily: 'var(--font-sans)' }}>
-
-      {/* Cabeçalho da aula — bloco roxo */}
-      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:10 }}>
-        <div style={{ width:64, background:'rgba(109,40,217,0.8)', display:'flex',
-          alignItems:'center', justifyContent:'center', fontSize:32, flexShrink:0 }}>📋</div>
-        <div style={{ flex:1, background:'#6d28d9', padding:'14px 14px' }}>
-          <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
-            textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:3 }}>Plano de hoje</div>
-          <div style={{ fontSize:16, fontWeight:800, color:'#fff', lineHeight:1.25 }}>{plano.titulo}</div>
-          {plano.ucId && <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginTop:3 }}>
-            {plano.ucId}
-            {plano.ucNome && <div style={{ fontSize:11, marginTop:1, opacity:0.75, whiteSpace:'normal', lineHeight:1.3 }}>{plano.ucNome}</div>}
-            {plano.horaInicio && <div style={{ fontSize:11, marginTop:1, opacity:0.75 }}>{plano.horaInicio}–{plano.horaFim}</div>}
-          </div>}
-        </div>
-      </div>
-
-      {/* Aviso de alteração pelo professor após publicação */}
-      {(plano as any).ultimaAlteracao && (
-        <div style={{
-          margin: '8px 0', padding: '12px 14px', borderRadius: 12,
-          background: '#FFF3D6', border: '1.5px solid #FBC02D',
-          display: 'flex', alignItems: 'flex-start', gap: 10,
+    <div>
+      {/* Barra de informação — fora do caminho, mas sempre à mão. */}
+      {temInfo && (
+        <button onClick={() => setInfoAberta(true)} style={{
+          width:'100%', display:'flex', alignItems:'center', gap:11,
+          background:'#fff', border:'none', borderRadius:14, padding:'13px 15px',
+          marginBottom:12, cursor:'pointer', fontFamily:'inherit', textAlign:'left',
+          boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
         }}>
-          <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 13, color: '#5A3E00', marginBottom: 2 }}>
-              O professor atualizou este plano
-            </div>
-            <div style={{ fontSize: 12, color: '#7A5500' }}>
-              {(plano as any).ultimaAlteracao.descricao} ·{' '}
-              {new Date((plano as any).ultimaAlteracao.em).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-            <div style={{ fontSize: 11, color: 'rgba(90,62,0,0.6)', marginTop: 4 }}>
-              Verifica as fichas, guia e requisição antes de começar.
-            </div>
-          </div>
-        </div>
+          <span style={{ width:34, height:34, borderRadius:10, background:'#FDF0E8',
+            display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B5651D"
+              strokeWidth={2.2} strokeLinecap="round">
+              <path d="M12 9v4M12 17h.01" />
+              <path d="M10.3 3.9L2.4 17a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+            </svg>
+          </span>
+          <span style={{ flex:1 }}>
+            <span style={{ display:'block', fontSize:14.5, fontWeight:700, color:'#1A1A1A' }}>
+              A ter em atenção nesta aula
+            </span>
+            <span style={{ display:'block', fontSize:13, color:'rgba(26,23,20,0.55)' }}>
+              {[
+                alergenios.length ? `${alergenios.length} alergénio${alergenios.length > 1 ? 's' : ''}` : '',
+                alertasHACCP.length ? `${alertasHACCP.length} ponto${alertasHACCP.length > 1 ? 's' : ''} crítico${alertasHACCP.length > 1 ? 's' : ''}` : '',
+              ].filter(Boolean).join(' · ')}
+            </span>
+          </span>
+          <span style={{ fontSize:20, color:'rgba(26,23,20,0.3)' }}>›</span>
+        </button>
       )}
 
-      {/* O que vamos produzir — bloco amarelo */}
-      {fichas.length > 0 && fichas.map((f, i) => (
-        <div key={i} style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
-          <div style={{ width:64, background:'#c47f00', display:'flex',
-            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🍽️</div>
-          <div style={{ flex:1, background:'#f4a900', padding:'12px 14px' }}>
-            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
-              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Produção {i+1}</div>
-            <div style={{ fontSize:15, fontWeight:800, color:'#fff' }}>{f.nomePrato}</div>
-            {(f.numPorcoes || f.tempoPrep) && <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:2 }}>
-              {f.numPorcoes && `${f.numPorcoes} doses`}{f.tempoPrep && ` · ${f.tempoPrep}`}
-            </div>}
-          </div>
+      {/* O que vais fazer — é isto que interessa. */}
+      <div style={{ background:'#fff', borderRadius:16, padding:18, marginBottom:12,
+        boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>
+          {fichas.length === 0 ? 'Sem fichas atribuídas'
+            : fichas.length === 1 ? 'Hoje vais fazer' : `Hoje vais fazer ${fichas.length} fichas`}
         </div>
-      ))}
-
-      {/* Alertas HACCP — bloco coral */}
-      {alertasHACCP.length > 0 && (
-        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
-          <div style={{ width:64, background:'#b5291e', display:'flex',
-            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>⚠️</div>
-          <div style={{ flex:1, background:'#e63946', padding:'12px 14px' }}>
-            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
-              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>
-              Pontos críticos — lê antes de começar!
+        {fichas.length === 0 ? (
+          <div style={{ fontSize:15.5, color:'rgba(26,23,20,0.6)', marginTop:8, lineHeight:1.55 }}>
+            O professor ainda não te atribuiu nenhuma ficha para esta aula.
+            Pergunta-lhe o que vais trabalhar.
+          </div>
+        ) : (
+          fichas.map((f:any, n:number) => (
+            <div key={f.id} style={{ marginTop: n === 0 ? 8 : 14 }}>
+              <div style={{ fontSize:21, fontWeight:700, color:'#1A1A1A', lineHeight:1.25 }}>
+                {f.nomePrato}
+              </div>
+              {f.numPorcoes && (
+                <div style={{ fontSize:14, color:'rgba(26,23,20,0.55)', marginTop:3 }}>
+                  {f.numPorcoes} doses
+                  {f.tempoPrep ? ` · ${f.tempoPrep} de preparação` : ''}
+                </div>
+              )}
             </div>
-            {alertasHACCP.slice(0,3).map((a,i) => (
-              <div key={i} style={{ fontSize:12, color:'#fff', marginBottom:3 }}>▸ {a}</div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Alergénios — bloco âmbar */}
-      {alergenios.length > 0 && (
-        <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:8 }}>
-          <div style={{ width:64, background:'#c47f00', display:'flex',
-            alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🏷️</div>
-          <div style={{ flex:1, background:'#f4a900', padding:'12px 14px' }}>
-            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
-              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>Alergénios presentes</div>
-            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-              {alergenios.map((a,i) => (
-                <span key={i} style={{ padding:'2px 8px', borderRadius:100,
-                  background:'rgba(255,255,255,0.25)', fontSize:11, fontWeight:800, color:'#fff' }}>{a}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* KitchenFlow — bloco turquesa */}
-      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', marginBottom:10,
-        cursor:'pointer' }} onClick={() => abrirKitchenFlow(undefined, {
-          turma:aluno.turmaId, numero:aluno.numero, pin:aluno.pin, tipo:'aluno',
-          ucId:plano.ucId, ucNome:plano.ucNome,
-          pratos:fichas.map((f:any) => f.nomePrato).filter(Boolean),
-          planoHoraInicio:plano.horaInicio, planoHoraFim:plano.horaFim, planoData:plano.data,
-        })}>
-        <div style={{ width:64, background:'#1a9e94', display:'flex',
-          alignItems:'center', justifyContent:'center', fontSize:30, flexShrink:0 }}>🏭</div>
-        <div style={{ flex:1, background:'#2ec4b6', padding:'12px 14px' }}>
-          <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.65)',
-            textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>KitchenFlow ECL</div>
-          <div style={{ fontSize:14, fontWeight:800, color:'#fff' }}>Abrir registos iniciais →</div>
-          <div style={{ fontSize:11, color:'rgba(255,255,255,0.65)', marginTop:2 }}>Higiene pessoal registada automaticamente</div>
-        </div>
+          ))
+        )}
       </div>
 
-      {/* Botão continuar — bloco roxo grande */}
-      <div style={{ display:'flex', borderRadius:14, overflow:'hidden', cursor:'pointer' }}
-        onClick={onContinuar}>
-        <div style={{ width:64, background:'#5b21b6', display:'flex',
-          alignItems:'center', justifyContent:'center', fontSize:32, flexShrink:0 }}>🚀</div>
-        <div style={{ flex:1, background:'#6d28d9', padding:'16px 14px',
-          display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div>
-            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.6)',
-              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:2 }}>Ação principal</div>
-            <div style={{ fontSize:18, fontWeight:800, color:'#fff' }}>Vamos começar!</div>
+      {/* Começar. Um botão, grande, sem nada a competir com ele. */}
+      <button onClick={onContinuar} style={{
+        width:'100%', background:V, border:'none', borderRadius:16,
+        padding:'20px 18px', cursor:'pointer', fontFamily:'inherit',
+        display:'flex', alignItems:'center', justifyContent:'space-between', gap:12,
+      }}>
+        <span style={{ fontSize:20, fontWeight:700, color:'#fff' }}>Vamos começar</span>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff"
+          strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </button>
+
+      {/* Painel de informação — abre por cima, não ocupa o ecrã. */}
+      {infoAberta && (
+        <div onClick={() => setInfoAberta(false)} style={{
+          position:'fixed', inset:0, background:'rgba(26,23,20,0.55)', zIndex:9998,
+          display:'flex', alignItems:'flex-end', justifyContent:'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background:'#F3F2F5', borderRadius:'20px 20px 0 0', width:'100%', maxWidth:620,
+            maxHeight:'80vh', overflowY:'auto', padding:'8px 16px 28px',
+          }}>
+            <div style={{ width:40, height:4, borderRadius:2, background:'#D8D3E0',
+              margin:'8px auto 18px' }} />
+
+            {alergenios.length > 0 && (
+              <div style={{ background:'#fff', borderRadius:16, padding:16, marginBottom:12 }}>
+                <div style={{ fontSize:16, fontWeight:700, color:'#1A1A1A', marginBottom:10 }}>
+                  Alergénios nesta aula
+                </div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+                  {alergenios.map((al:any, k:number) => (
+                    <span key={k} style={{ padding:'7px 13px', borderRadius:100,
+                      background:'#FDF0E8', color:'#B5651D', fontSize:14, fontWeight:600 }}>
+                      {al}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {alertasHACCP.length > 0 && (
+              <div style={{ background:'#fff', borderRadius:16, padding:16, marginBottom:12 }}>
+                <div style={{ fontSize:16, fontWeight:700, color:'#1A1A1A', marginBottom:10 }}>
+                  Pontos críticos
+                </div>
+                {alertasHACCP.map((h, k) => (
+                  <div key={k} style={{ fontSize:14.5, color:'rgba(26,23,20,0.75)',
+                    padding:'8px 0', borderBottom: k < alertasHACCP.length-1 ? '1px solid #EEE' : 'none',
+                    lineHeight:1.5 }}>
+                    {h}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => abrirKitchenFlow(undefined, {
+                turma:aluno.turmaId, numero:aluno.numero, pin:aluno.pin, tipo:'aluno',
+                ucId:plano.ucId, planoData:plano.data,
+                planoHoraInicio:plano.horaInicio, planoHoraFim:plano.horaFim,
+              } as any)}
+              style={{ width:'100%', background:'#fff', border:'none', borderRadius:16,
+                padding:16, cursor:'pointer', fontFamily:'inherit', textAlign:'left',
+                display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+              <span style={{ width:38, height:38, borderRadius:11, background:'rgba(14,116,144,0.1)',
+                display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#0e7490"
+                  strokeWidth={2} strokeLinecap="round">
+                  <path d="M4 6h16M4 12h16M4 18h10" /><circle cx="19" cy="18" r="3" />
+                </svg>
+              </span>
+              <span style={{ flex:1 }}>
+                <span style={{ display:'block', fontSize:15.5, fontWeight:700, color:'#1A1A1A' }}>
+                  Abrir o KitchenFlow
+                </span>
+                <span style={{ display:'block', fontSize:13, color:'rgba(26,23,20,0.55)' }}>
+                  registos de higiene e temperaturas
+                </span>
+              </span>
+            </button>
+
+            <button onClick={() => setInfoAberta(false)} style={{
+              width:'100%', background:'transparent', border:'none', padding:14,
+              fontSize:15, color:'rgba(26,23,20,0.5)', cursor:'pointer', fontFamily:'inherit',
+            }}>
+              Fechar
+            </button>
           </div>
-          <span style={{ fontSize:30, color:'rgba(255,255,255,0.5)' }}>›</span>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1932,19 +1968,16 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                 </div>
               )}
 
-              {(f as any).textoGuia && (
-                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${T.border}` }}>
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
-                    letterSpacing:'0.05em', color:T.sage, marginBottom:8 }}>📚 Guia de Apoio</div>
-                  <GuiaProducao textoGuia={(f as any).textoGuia} nomePrato={f.nomePrato||''} />
-                </div>
-              )}
+              {/* O guião NÃO aparece aqui. Tem passo próprio, e mostrá-lo
+                  dentro da ficha punha o aluno a ler o mesmo texto duas
+                  vezes — e a ficha ficava um documento interminável. */}
             </div>
           )}
         </div>
       ))}
-      <button onClick={onConcluido} style={{ width:'100%', padding:'14px', borderRadius:12,
-        border:'none', background:'#2980b9', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer', marginTop:6 }}>
+      <button onClick={onConcluido} style={{ width:'100%', padding:'16px', borderRadius:14,
+        border:'none', background:'#6B3FA0', color:'#fff', fontSize:17, fontWeight:600,
+        cursor:'pointer', marginTop:10, fontFamily:'inherit' }}>
         Concluí a ficha → Continuar
       </button>
     </div>
