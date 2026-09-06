@@ -24,6 +24,7 @@ import {
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
   sincronizarDoSheets, calcularPontosRegularidade, getSelecoes, getValidacoes,
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
+  getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
@@ -1406,38 +1407,44 @@ const IMPEDEM = ['farda', 'avental', 'sapatos'];
 function SecaoEntrada({ aluno, plano, onConcluido }: {
   aluno: Aluno; plano: PlanoAula; onConcluido: () => void;
 }) {
-  // Os quadrados começam todos marcados: o aluno cumpridor confirma num
-  // toque, e quem tem alguma coisa em falta desmarca só esse. Ao
-  // contrário, obrigava toda a gente a nove toques.
+  // A aula só abre quando o professor autoriza. Até lá o aluno consulta
+  // mas não grava nada — e os dez minutos de tolerância contam da
+  // abertura, não da hora prevista no plano.
+  const [, forcarRender] = useState(0);
+  const [entrada, setEntrada] = useState<
+    { foraDeTempo: boolean; minutosAposAbertura: number; jaExistia: boolean } | null
+  >(null);
+  // A farda em dois tempos: primeiro a pergunta, e só quem tem algo em
+  // falta é que abre a lista dos nove itens.
+  const [fardaModo, setFardaModo] = useState<'perguntar' | 'detalhe'>('perguntar');
+  // Vazios: confirmar a farda tem de ser um ato do aluno. Quem diz que
+  // está tudo completo marca-os todos de uma vez, mas é uma escolha
+  // sua — não o estado por omissão.
   const [ok, setOk] = useState<Record<string, boolean>>(
-    Object.fromEntries(ITENS_FARDA.map(i => [i.id, true]))
+    Object.fromEntries(ITENS_FARDA.map(i => [i.id, false]))
   );
 
-  // O atraso é calculado, não perguntado — a app sabe as horas.
-  const minutosAtraso = (() => {
-    if (!plano.horaInicio) return 0;
-    const now = new Date();
-    const [h, m] = plano.horaInicio.split(':').map(Number);
-    if (isNaN(h)) return 0;
-    return Math.max(0, (now.getHours()*60 + now.getMinutes()) - (h*60 + m));
-  })();
-  const TOLERANCIA = 5;
-  const atrasado = minutosAtraso > TOLERANCIA;
+  const t = estadoTolerancia(plano.id);
+  const sessao = getSessaoAula(plano.id);
 
+  // Relógio para a contagem decrescente.
+  useEffect(() => {
+    if (!t.aberta || entrada) return;
+    const id = setInterval(() => forcarRender(n => n + 1), 15000);
+    return () => clearInterval(id);
+  }, [t.aberta, entrada]);
+
+  const V = '#6B3FA0', VS = '#F0EBF7';
   const emFalta = ITENS_FARDA.filter(i => !ok[i.id]);
   const impedido = emFalta.some(i => IMPEDEM.includes(i.id));
 
-  async function gravar() {
-    if (atrasado) incHist(`ecl_atrasos_${aluno.id}`);
+  function entrar() {
+    const r = marcarPresenca(aluno.id, plano.id, aluno.turmaId, plano.ucId);
+    if (r) setEntrada(r);
+  }
+
+  async function gravarFarda() {
     const nomes = emFalta.map(i => i.label);
-    const fardamentoOk = nomes.length === 0;
-
-    addRegistoPresenca({
-      alunoId: aluno.id, turmaId: aluno.turmaId, planoAulaId: plano.id,
-      presente: true, atrasado, atrasadoMins: minutosAtraso, fardamentoOk,
-      observacao: nomes.length ? `Assumiu à entrada — em falta: ${nomes.join(', ')}` : '',
-    });
-
     const agora = new Date().toISOString();
     const reg = (suf: string, comp: string, nota: number) => addRegistoAvaliacao({
       id: `${plano.id}_${aluno.id}_${suf}_${Date.now()}`, alunoId: aluno.id,
@@ -1445,62 +1452,136 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       ucId: plano.ucId || '', microcompetenciaId: comp, nota,
       data: agora, validadoPor: 'aluno',
     });
-
-    // Pontualidade e apresentação são independentes: uma não mascara a outra.
-    reg('pont', 'OBR_03', !atrasado ? 5 : minutosAtraso >= 20 ? 2 : 3);
-    // Apresentação: impeditivo vai ao mínimo; o resto desce por item.
     reg('farda', 'OBR_01', impedido ? 1 : Math.max(1, 5 - nomes.length));
-    // Assumir a falha é a ATI-001 — é a atitude que se pede.
     if (nomes.length) reg('resp', 'ATI-001', 3);
 
     registarHigieneKitchenFlow(
-      aluno.turmaId, aluno.id, aluno.nome || `Aluno ${aluno.numero}`, fardamentoOk
+      aluno.turmaId, aluno.id, aluno.nome || `Aluno ${aluno.numero}`, nomes.length === 0
     ).catch(() => {});
     onConcluido();
   }
 
-  const V = '#6B3FA0', VS = '#F0EBF7';
-
-  return (
-    <div>
-      {/* Hora de entrada — calculada */}
-      <div style={{
-        background:'#fff', borderRadius:16, padding:16, marginBottom:12,
-        display:'flex', alignItems:'center', gap:13,
-        boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
-      }}>
-        <div style={{
-          width:44, height:44, borderRadius:'50%', flexShrink:0,
-          background: atrasado ? '#FDF0E8' : '#E8F3E5',
-          display:'flex', alignItems:'center', justifyContent:'center',
-          color: atrasado ? '#B5651D' : '#3E7A31',
-        }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+  // ── Antes de o professor abrir ──
+  if (!t.aberta) {
+    return (
+      <div style={{ background:'#fff', borderRadius:16, padding:20,
+        boxShadow:'0 1px 3px rgba(0,0,0,0.06)', textAlign:'center' }}>
+        <div style={{ width:56, height:56, borderRadius:'50%', background:VS, margin:'0 auto 14px',
+          display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={V}
+            strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         </div>
-        <div>
-          <div style={{ fontSize:17, fontWeight:700, color:'#1A1A1A' }}>
-            {atrasado ? `Chegaste ${minutosAtraso} min atrasado/a` : 'Chegaste a horas'}
+        <div style={{ fontSize:19, fontWeight:700, color:'#1A1A1A' }}>
+          Espera pelo professor
+        </div>
+        <div style={{ fontSize:15, color:'rgba(26,23,20,0.6)', marginTop:8, lineHeight:1.6 }}>
+          A entrada na aula ainda não foi aberta. Podes consultar o plano, a
+          tua ficha e o guião enquanto esperas.
+        </div>
+      </div>
+    );
+  }
+
+  // ── Aberta, mas ainda não entrou ──
+  if (!entrada) {
+    return (
+      <div>
+        <div style={{
+          background: t.foraDeTempo ? '#FDF0E8' : '#E8F3E5',
+          border: `1px solid ${t.foraDeTempo ? '#B5651D' : '#3E7A31'}`,
+          borderRadius:16, padding:18, marginBottom:12,
+        }}>
+          <div style={{ fontSize:17, fontWeight:700, color: t.foraDeTempo ? '#B5651D' : '#3E7A31' }}>
+            {t.foraDeTempo ? 'A tolerância terminou' : 'Entrada aberta'}
           </div>
-          {plano.horaInicio && (
-            <div style={{ fontSize:14, color:'#666', marginTop:1 }}>
-              a aula começou às {plano.horaInicio}
+          {!t.foraDeTempo && (
+            <div style={{ fontSize:38, fontWeight:700, color:'#3E7A31', marginTop:8, lineHeight:1 }}>
+              {t.minutosRestantes} <span style={{ fontSize:16, fontWeight:400 }}>min</span>
             </div>
           )}
+          <div style={{ fontSize:14, color: t.foraDeTempo ? '#8A4E15' : 'rgba(26,23,20,0.65)',
+            marginTop:8, lineHeight:1.55 }}>
+            {t.foraDeTempo
+              ? 'Se entrares agora fica registada falta de atraso. Entra na mesma — a presença conta.'
+              : `O professor abriu às ${new Date(sessao!.abertaEm!).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}. Entra antes de acabar o tempo.`}
+          </div>
+        </div>
+
+        <button onClick={entrar} style={{
+          width:'100%', background:V, color:'#fff', border:'none', borderRadius:14,
+          padding:18, fontSize:18, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+        }}>
+          Entrar na aula
+        </button>
+      </div>
+    );
+  }
+
+  // ── Entrou: confirmar a farda ──
+  return (
+    <div>
+      <div style={{ background:'#fff', borderRadius:16, padding:'14px 16px', marginBottom:12,
+        boxShadow:'0 1px 3px rgba(0,0,0,0.06)', display:'flex', alignItems:'center', gap:12 }}>
+        <span style={{ width:38, height:38, borderRadius:'50%', flexShrink:0,
+          background: entrada.foraDeTempo ? '#FDF0E8' : '#E8F3E5',
+          display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke={entrada.foraDeTempo ? '#B5651D' : '#3E7A31'}
+            strokeWidth={2.5} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </span>
+        <div>
+          <div style={{ fontSize:15.5, fontWeight:700, color:'#1A1A1A' }}>
+            Presença registada
+          </div>
+          {/* A aplicação não decide a falta: regista a hora e sinaliza.
+              Quem decide é o professor. */}
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', lineHeight:1.5 }}>
+            {entrada.foraDeTempo
+              ? `Entraste ${entrada.minutosAposAbertura} min depois da abertura. O professor vai decidir se conta como falta.`
+              : 'A horas'}
+          </div>
         </div>
       </div>
 
-      {/* Confirmação do fardamento */}
-      <div style={{
-        background:'#fff', borderRadius:16, padding:18,
-        boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
-      }}>
-        <div style={{ fontSize:19, fontWeight:700, color:'#1A1A1A' }}>Confirma o que tens</div>
+      <div style={{ background:'#fff', borderRadius:16, padding:18,
+        boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div style={{ fontSize:19, fontWeight:700, color:'#1A1A1A' }}>A tua farda</div>
+
+        {fardaModo === 'perguntar' ? (
+          <>
+            <div style={{ fontSize:14.5, color:'#777', marginTop:5, marginBottom:16,
+              lineHeight:1.55 }}>
+              Casaco e calças, avental, sapatos de segurança, touca, cabelo
+              preso, sem adornos, unhas curtas, mãos lavadas.
+            </div>
+            <button
+              onClick={() => {
+                setOk(Object.fromEntries(ITENS_FARDA.map(i => [i.id, true])));
+                setFardaModo('detalhe');
+              }}
+              style={{ width:'100%', background:V, color:'#fff', border:'none',
+                borderRadius:12, padding:17, fontSize:17.5, fontWeight:600,
+                cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
+              A minha farda está completa
+            </button>
+            <button
+              onClick={() => setFardaModo('detalhe')}
+              style={{ width:'100%', background:'transparent', border:`2px solid ${V}`,
+                color:V, borderRadius:12, padding:15, fontSize:16, fontWeight:600,
+                cursor:'pointer', fontFamily:'inherit' }}>
+              Tenho algo em falta
+            </button>
+          </>
+        ) : (
+        <>
         <div style={{ fontSize:14, color:'#777', marginTop:4, marginBottom:15 }}>
-          Toca no que te falta para desmarcar. O que ficar marcado conta como feito.
+          {emFalta.length === 0
+            ? 'Confirmaste tudo. Se afinal te falta alguma coisa, toca para desmarcar.'
+            : 'Toca no que tens contigo.'}
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:9, marginBottom:16 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:9,
+          marginBottom:16 }}>
           {ITENS_FARDA.map(it => {
             const marcado = ok[it.id];
             return (
@@ -1531,14 +1612,15 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           }}>
             {impedido
               ? <>Sem {emFalta.filter(i=>IMPEDEM.includes(i.id)).map(i=>i.label.toLowerCase()).join(', ')} não
-                  podes entrar na cozinha. Hoje não há nota nas técnicas — não é zero, é que não
-                  houve como avaliar. Fala com o professor sobre um trabalho a partir da ficha de hoje.</>
-              : <>Assumir os próprios erros é uma das atitudes que estás a desenvolver — responsabilidade
-                  pelas tuas ações. Ao dizeres o que falta, é essa competência que estás a mostrar.</>}
+                  podes entrar na cozinha. Hoje não há nota nas técnicas — não é zero, é que
+                  não houve como avaliar. Fala com o professor.</>
+              : <>Assumir os próprios erros é uma das atitudes que estás a desenvolver —
+                  responsabilidade pelas tuas ações. Ao dizeres o que falta, é essa
+                  competência que estás a mostrar.</>}
           </div>
         )}
 
-        <button onClick={gravar} style={{
+        <button onClick={gravarFarda} style={{
           width:'100%', background:V, color:'#fff', border:'none', borderRadius:12,
           padding:17, fontSize:18, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
         }}>
@@ -1546,6 +1628,8 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
             ? 'Confirmar — está tudo'
             : `Confirmar — falta-me ${emFalta.length}`}
         </button>
+        </>
+        )}
       </div>
     </div>
   );
