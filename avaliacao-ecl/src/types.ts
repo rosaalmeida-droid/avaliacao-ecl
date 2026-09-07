@@ -994,3 +994,44 @@ export interface ProgressoFicha {
   passos: { id: string; feito: boolean; em?: string }[];
   concluidoEm?: string;
 }
+
+// ============================================================
+// KitchenFlow por fase + checklist da ficha — dentro do fluxo da aula
+// ============================================================
+// Especificação: o KitchenFlow inicial e final fazem parte da sequência
+// da aula, não podem ficar escondidos num atalho geral. E a checklist
+// da ficha guarda cada passo imediatamente — abrir o guião não pode
+// perder o que já foi marcado.
+
+export interface CampoKF {
+  id: string;
+  label: string;
+  obrigatorio: boolean;
+  feito: boolean;
+  valor?: string;
+}
+
+export function camposKFIniciais(): CampoKF[] {
+  return [
+    { id: 'higienizacao', label: 'Higienização da bancada', obrigatorio: true, feito: false },
+    { id: 'equipamento',  label: 'Equipamento e utensílios', obrigatorio: true, feito: false },
+    { id: 'temperaturas', label: 'Temperaturas iniciais',    obrigatorio: true, feito: false },
+    { id: 'observacoes',  label: 'Observações',              obrigatorio: false, feito: false },
+  ];
+}
+
+export function camposKFFinais(): CampoKF[] {
+  return [
+    { id: 'temp_final',   label: 'Temperatura final',       obrigatorio: true, feito: false },
+    { id: 'higiene_final',label: 'Higienização final',      obrigatorio: true, feito: false },
+    { id: 'desperdicios', label: 'Desperdícios e sobras',   obrigatorio: true, feito: false },
+    { id: 'obs_producao', label: 'Observação da produção',  obrigatorio: false, feito: false },
+  ];
+}
+
+export interface PassoChecklistFicha {
+  id: string;
+  label: string;
+  feito: boolean;
+  em?: string;
+}
