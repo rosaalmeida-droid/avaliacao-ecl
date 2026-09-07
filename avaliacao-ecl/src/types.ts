@@ -840,7 +840,11 @@ export const PESOS_KNW = { escrito: 0.5, oral: 0.5 } as const;
 export const BONUS_PARTICIPACAO = {
   porAtividade: 0.75,
   maxAtividades: 3,          // até +2,25 valores
-  notaBaseMinima: 8,         // abaixo de 8 o bónus não conta
+  // Mínimo 10: não se leva a concurso quem tem negativa. Um aluno com
+  // dificuldades pode e deve concorrer — mas tem de estar acima do
+  // mínimo, senão o concurso serve para tapar o que falta em vez de
+  // premiar o que já se conquistou.
+  notaBaseMinima: 10,
   tetoSemParticipacao: 17,   // sem participar, o máximo é 17
 } as const;
 
