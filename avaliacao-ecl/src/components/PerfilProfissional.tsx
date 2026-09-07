@@ -33,6 +33,7 @@ function GrupoCompetencias({ titulo, icone, itens }: { titulo: string; icone: st
 }
 
 import { escreverPerfil } from '../motorAvaliacao';
+import { assiduidadeNaUC, leituraAssiduidade } from '../backend';
 import { MICROCOMPETENCIAS } from '../compatECL';
 
 export function PerfilProfissionalAluno({ aluno, semTitulo }: {
@@ -43,6 +44,12 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
   const perfil = getPerfilProfissionalAluno(aluno.id);
   const totalCompetencias = perfil.tecnicas.length + perfil.responsabilidades.length + perfil.atitudes.length;
   const [verDetalhe, setVerDetalhe] = useState(false);
+
+  // A assiduidade faz parte do perfil: faltar é um comportamento, e
+  // atinge a responsabilidade e o respeito pelas regras. O aluno tem de
+  // ver isso para saber o que melhorar.
+  const assid = assiduidadeNaUC(aluno.id, aluno.turmaId);
+  const leitura = leituraAssiduidade(assid);
 
   // Categoria de cada competência, para agrupar por família de trabalho.
   const texto = escreverPerfil(
@@ -83,6 +90,41 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
               {texto.fortes}
             </div>
           </div>
+
+          {/* Assiduidade — antes das competências, porque é a base de
+              tudo o resto. Sem estar presente não há nada a demonstrar. */}
+          {assid.aulasPrevistas > 0 && (
+            <div style={{
+              background: leitura.grave ? 'var(--danger-pale, #fdf0ef)'
+                        : leitura.atitudesAfetadas.length ? 'var(--copper-pale, #fdf0e6)'
+                        : 'var(--sage-pale, #eef4eb)',
+              border: `1px solid ${leitura.grave ? 'var(--danger)'
+                        : leitura.atitudesAfetadas.length ? 'var(--copper)' : 'var(--sage)'}`,
+              borderRadius: 14, padding: 16, marginBottom: 12,
+            }}>
+              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:8 }}>
+                <span style={{ fontSize:30, fontWeight:700, lineHeight:1,
+                  color: leitura.grave ? 'var(--danger)'
+                       : leitura.atitudesAfetadas.length ? 'var(--copper)' : 'var(--sage)' }}>
+                  {assid.percentagemPresenca}%
+                </span>
+                <span style={{ fontSize:14.5, fontWeight:700, color:'rgba(26,23,20,0.7)' }}>
+                  de presenças · {assid.presencas} de {assid.aulasPrevistas} aulas
+                </span>
+              </div>
+              <div style={{ fontSize:15, color:'rgba(26,23,20,0.8)', lineHeight:1.6 }}>
+                {leitura.texto}
+              </div>
+              {leitura.atitudesAfetadas.length > 0 && (
+                <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', marginTop:9,
+                  paddingTop:9, borderTop:'1px solid rgba(26,23,20,0.1)', lineHeight:1.5 }}>
+                  Isto pesa na <b>responsabilidade pelas tuas ações</b> e no
+                  <b> respeito pelas regras</b> — duas atitudes que estás a ser
+                  avaliado.
+                </div>
+              )}
+            </div>
+          )}
 
           {texto.aDesenvolver && (
             <div style={{ background: 'var(--copper-pale)', borderRadius: 14, padding: 16, marginBottom: 18 }}>
