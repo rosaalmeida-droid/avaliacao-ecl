@@ -3371,3 +3371,209 @@ export function liderKFdoGrupo(planoAulaId: string, grupoId?: string): string | 
   return getLideresKF(planoAulaId)
     .find(l => (l.grupoId ?? '') === (grupoId ?? ''))?.alunoId;
 }
+
+// ============================================================
+// Arranque do ano letivo
+// ============================================================
+// Tudo o que foi feito antes do arranque foi simulação: fichas,
+// guiões, planos, requisições, autoavaliações e presenças. A aplicação
+// nunca chegou a ser usada por alunos.
+//
+// A limpeza existente só apagava o que tinha prefixo "seed_", e o que
+// foi feito à mão a testar não tem esse prefixo — é indistinguível de
+// dados reais. Esta apaga por data: tudo o que é anterior ao arranque.
+//
+// NÃO APAGA: alunos, turmas, manuais, cronograma, referencial nem
+// biblioteca de técnicas. Só o trabalho de aula.
+
+export interface PreviewArranque {
+  planos: number;
+  fichas: number;
+  requisicoes: number;
+  avaliacoes: number;
+  presencas: number;
+  selecoes: number;
+  validacoes: number;
+  atividades: number;
+  /** O que fica intacto. */
+  alunosMantidos: number;
+  turmasMantidas: number;
+}
+
+/** Mostra o que a limpeza vai apagar, antes de apagar. */
+export function previewArranqueAno(dataArranque: string): PreviewArranque {
+  const antes = (d?: string) => !d || d.slice(0, 10) < dataArranque;
+  return {
+    planos:      getPlanosAula().filter(p => antes(p.data)).length,
+    fichas:      getFichasProducao().length,
+    requisicoes: getRequisicoes().length,
+    avaliacoes:  getHistoricoAvaliacoes().filter(r => antes(r.data)).length,
+    presencas:   getPresencas().filter(p => antes(p.data)).length,
+    selecoes:    getSelecoes().length,
+    validacoes:  getValidacoes().length,
+    atividades:  getAtividades().filter(a => antes(a.data)).length,
+    alunosMantidos: getAlunos().length,
+    turmasMantidas: getTurmas().length,
+  };
+}
+
+/**
+ * Apaga o trabalho de aula anterior ao arranque do ano.
+ * @param dataArranque  'AAAA-MM-DD' — tudo antes desta data sai
+ * @param confirmacao   tem de ser exatamente 'APAGAR' — evita cliques enganados
+ */
+export function limparParaArranqueAno(
+  dataArranque: string, confirmacao: string
+): { ok: boolean; erro?: string; apagado?: PreviewArranque } {
+  if (confirmacao !== 'APAGAR') {
+    return { ok: false, erro: 'Confirmação inválida. Escrever APAGAR em maiúsculas.' };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataArranque)) {
+    return { ok: false, erro: 'Data inválida. Formato AAAA-MM-DD.' };
+  }
+
+  const apagado = previewArranqueAno(dataArranque);
+  const antes = (d?: string) => !d || d.slice(0, 10) < dataArranque;
+
+  // Cópia de segurança antes de mexer — se algo correr mal, dá para voltar.
+  try {
+    const backup = {
+      em: new Date().toISOString(),
+      motivo: `arranque do ano letivo em ${dataArranque}`,
+      planos: getPlanosAula(),
+      fichas: getFichasProducao(),
+      requisicoes: getRequisicoes(),
+      historico: getHistoricoAvaliacoes(),
+      presencas: getPresencas(),
+      selecoes: getSelecoes(),
+      validacoes: getValidacoes(),
+      atividades: getAtividades(),
+    };
+    localStorage.setItem('ecl_backup_pre_arranque', JSON.stringify(backup));
+  } catch { /* se não couber, segue — o essencial é a limpeza */ }
+
+  save(KEYS.planos,      getPlanosAula().filter(p => !antes(p.data)));
+  save(KEYS.fichas,      []);   // as fichas não têm data — saem todas
+  save(KEYS.requisicoes, []);
+  save(KEY_HIST,         getHistoricoAvaliacoes().filter(r => !antes(r.data)));
+  save(KEYS.presencas,   getPresencas().filter(p => !antes(p.data)));
+  save(KEYS.selecoes,    []);
+  save(KEYS.validacoes,  []);
+  save(KEYS.atividades,  getAtividades().filter(a => !antes(a.data)));
+
+  return { ok: true, apagado };
+}
+
+/** Repõe o que foi apagado, se ainda houver cópia. */
+export function reporArranqueAno(): { ok: boolean; erro?: string } {
+  try {
+    const raw = localStorage.getItem('ecl_backup_pre_arranque');
+    if (!raw) return { ok: false, erro: 'Não há cópia de segurança.' };
+    const b = JSON.parse(raw);
+    save(KEYS.planos, b.planos ?? []);
+    save(KEYS.fichas, b.fichas ?? []);
+    save(KEYS.requisicoes, b.requisicoes ?? []);
+    save(KEY_HIST, b.historico ?? []);
+    save(KEYS.presencas, b.presencas ?? []);
+    save(KEYS.selecoes, b.selecoes ?? []);
+    save(KEYS.validacoes, b.validacoes ?? []);
+    save(KEYS.atividades, b.atividades ?? []);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, erro: String(e) };
+  }
+}
+
+// ============================================================
+// Assiduidade no perfil
+// ============================================================
+// Faltar não é só perder a nota da aula: é um comportamento, e há
+// atitudes que isso atinge — responsabilidade e respeito pelas regras.
+//
+// O perfil tem de mostrar isso ao aluno, para ele perceber o que tem
+// de melhorar, e ao professor, para ter o registo à frente quando
+// avalia as atitudes.
+
+export interface Assiduidade {
+  aulasPrevistas: number;
+  presencas: number;
+  faltas: number;
+  faltasComDecisao: number;
+  atrasos: number;
+  percentagemPresenca: number;
+  /** Aulas em que esteve mas não se autoavaliou. */
+  semAutoavaliacao: number;
+}
+
+export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string): Assiduidade {
+  const planos = getPlanosAulaPorTurma(turmaId)
+    .filter(p => !ucId || (p as any).ucId === ucId)
+    .filter(p => p.estado === 'publicado' || p.estado === 'realizada');
+
+  const presencas = getPresencas().filter(p => p.alunoId === alunoId);
+  const selecoes = getSelecoes().filter(s => s.alunoId === alunoId);
+
+  let comPresenca = 0, atrasos = 0, semAuto = 0, comDecisao = 0;
+  for (const plano of planos) {
+    const pres = presencas.find(p => p.planoAulaId === plano.id);
+    if (pres?.presente) {
+      comPresenca++;
+      if (pres.atrasado) atrasos++;
+      if (!selecoes.some(s => s.planoAulaId === plano.id)) semAuto++;
+    }
+    if ((pres as any)?.decisaoProfessor) comDecisao++;
+  }
+
+  const faltas = planos.length - comPresenca;
+  return {
+    aulasPrevistas: planos.length,
+    presencas: comPresenca,
+    faltas,
+    faltasComDecisao: comDecisao,
+    atrasos,
+    percentagemPresenca: planos.length ? Math.round((comPresenca / planos.length) * 100) : 100,
+    semAutoavaliacao: semAuto,
+  };
+}
+
+/** O que a assiduidade diz sobre as atitudes — para o perfil do aluno
+ *  e para o professor ter à frente quando avalia. */
+export function leituraAssiduidade(a: Assiduidade): {
+  texto: string;
+  atitudesAfetadas: string[];
+  grave: boolean;
+} {
+  if (a.aulasPrevistas === 0) {
+    return { texto: 'Ainda não houve aulas nesta unidade.', atitudesAfetadas: [], grave: false };
+  }
+  if (a.faltas === 0 && a.atrasos === 0) {
+    return {
+      texto: `Estiveste presente nas ${a.presencas} aulas, sempre a horas. `
+           + 'A assiduidade é uma das coisas que mais conta num profissional de cozinha.',
+      atitudesAfetadas: [], grave: false,
+    };
+  }
+
+  const partes: string[] = [];
+  const atitudes: string[] = [];
+
+  if (a.faltas > 0) {
+    partes.push(`Faltaste a ${a.faltas} de ${a.aulasPrevistas} aulas`);
+    // Uma aula sem produção não gera nota: é zero na aula inteira.
+    partes.push(`— essas aulas contam zero, porque não houve trabalho para avaliar`);
+    atitudes.push('ATI-001', 'ATI-015');
+  }
+  if (a.atrasos > 0) {
+    partes.push(`${partes.length ? ' e chegaste' : 'Chegaste'} atrasado ${a.atrasos} ${a.atrasos === 1 ? 'vez' : 'vezes'}`);
+    if (!atitudes.includes('ATI-001')) atitudes.push('ATI-001');
+  }
+  if (a.semAutoavaliacao > 0) {
+    partes.push(`. Em ${a.semAutoavaliacao} ${a.semAutoavaliacao === 1 ? 'aula' : 'aulas'} estiveste mas não te avaliaste — perdeste a hipótese de dizer como te correu`);
+  }
+
+  return {
+    texto: partes.join('') + '.',
+    atitudesAfetadas: atitudes,
+    grave: a.percentagemPresenca < 75,
+  };
+}
