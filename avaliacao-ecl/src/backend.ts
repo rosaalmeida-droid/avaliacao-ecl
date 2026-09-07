@@ -10,7 +10,7 @@ import {
   Turma, Aluno, PlanoAula, FichaProducao,
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
-, SessaoAula, TOLERANCIA_PADRAO_MIN } from './types';
+, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha } from './types';
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
@@ -3576,4 +3576,86 @@ export function leituraAssiduidade(a: Assiduidade): {
     atitudesAfetadas: atitudes,
     grave: a.percentagemPresenca < 75,
   };
+}
+
+// ============================================================
+// KitchenFlow por fase (inicial/final) e checklist da ficha
+// ============================================================
+// Guardados por aluno e plano, campo a campo — não um booleano geral.
+// Isto é o que a especificação chama SheetProgress e KitchenFlowRecord.
+
+const KEY_KF_FASE = 'ecl_kf_fases';
+const KEY_CHECKLIST = 'ecl_checklist_ficha';
+
+export interface RegistoKFFase {
+  alunoId: string;
+  planoAulaId: string;
+  fase: 'inicial' | 'final';
+  campos: CampoKF[];
+  concluidoEm?: string;
+}
+
+export function getRegistoKFFase(
+  alunoId: string, planoAulaId: string, fase: 'inicial' | 'final'
+): RegistoKFFase | undefined {
+  return load<RegistoKFFase>(KEY_KF_FASE as any)
+    .find(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId && r.fase === fase);
+}
+
+/** Guarda o registo. Cada chamada persiste logo — não há botão de
+ *  "concluir" que decida por si: o estado sai dos campos obrigatórios. */
+export function guardarKFFase(r: RegistoKFFase): void {
+  const outros = load<RegistoKFFase>(KEY_KF_FASE as any)
+    .filter(x => !(x.alunoId === r.alunoId && x.planoAulaId === r.planoAulaId && x.fase === r.fase));
+  const obrigatoriosFeitos = r.campos.filter(c => c.obrigatorio).every(c => c.feito);
+  save(KEY_KF_FASE as any, [...outros, {
+    ...r,
+    concluidoEm: obrigatoriosFeitos ? (r.concluidoEm ?? new Date().toISOString()) : undefined,
+  }]);
+}
+
+export function kfFaseCompleta(alunoId: string, planoAulaId: string, fase: 'inicial' | 'final'): boolean {
+  const r = getRegistoKFFase(alunoId, planoAulaId, fase);
+  return !!r?.concluidoEm;
+}
+
+/** Checklist da ficha técnica. Guarda cada passo assim que é marcado. */
+export interface RegistoChecklistFicha {
+  alunoId: string;
+  planoAulaId: string;
+  fichaId: string;
+  passos: PassoChecklistFicha[];
+}
+
+export function getChecklistFicha(
+  alunoId: string, planoAulaId: string, fichaId: string
+): RegistoChecklistFicha | undefined {
+  return load<RegistoChecklistFicha>(KEY_CHECKLIST as any)
+    .find(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId && r.fichaId === fichaId);
+}
+
+/** Guarda um passo isolado — não a checklist toda. Abrir o guião a meio
+ *  e voltar não pode perder o que já estava marcado. */
+export function marcarPassoChecklist(
+  alunoId: string, planoAulaId: string, fichaId: string,
+  passoId: string, feito: boolean
+): void {
+  const todos = load<RegistoChecklistFicha>(KEY_CHECKLIST as any);
+  const atual = todos.find(r =>
+    r.alunoId === alunoId && r.planoAulaId === planoAulaId && r.fichaId === fichaId
+  );
+  const passos = atual?.passos ?? [];
+  const idx = passos.findIndex(p => p.id === passoId);
+  const novoPasso: PassoChecklistFicha = {
+    id: passoId, label: passos[idx]?.label ?? passoId, feito,
+    em: feito ? new Date().toISOString() : undefined,
+  };
+  const novosPassos = idx >= 0
+    ? passos.map((p, i) => i === idx ? novoPasso : p)
+    : [...passos, novoPasso];
+
+  const outros = todos.filter(r => !(
+    r.alunoId === alunoId && r.planoAulaId === planoAulaId && r.fichaId === fichaId
+  ));
+  save(KEY_CHECKLIST as any, [...outros, { alunoId, planoAulaId, fichaId, passos: novosPassos }]);
 }
