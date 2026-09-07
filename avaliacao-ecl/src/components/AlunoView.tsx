@@ -43,7 +43,12 @@ import { ManualCozinheiro } from './ManualCozinheiro';
 import { RecuperacaoModulosAluno } from './RecuperacaoModulos';
 import { PerfilProfissionalAluno } from './PerfilProfissional';
 import { getReferencialUC } from '../referencial811RA144';
-import { PainelAluno, DestinoAluno, CabecalhoEcra, IconesFarda, CORES } from './PainelAluno';
+import {
+  InicioAluno, NavegacaoAluno, CabecalhoAluno, CabecalhoEcra,
+  IconesFarda, CORES, type DestinoAluno, type SeparadorAluno, type AvisoAluno,
+} from './InicioAluno';
+import { PassoKitchenFlowFase } from './PassosKitchenFlow';
+import { kfFaseCompleta, getHistoricoAvaliacoes } from '../backend';
 import { ManuaisAluno } from './ManuaisAluno';
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
@@ -459,7 +464,9 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
 
 export function AlunoView({ aluno }: { aluno: Aluno }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
-  const [aba, setAba] = useState<'hoje' | 'calendario' | 'perfil'>('hoje');
+  // Cinco separadores, como a especificação: Início, Aula, Percurso,
+  // Recursos, Perfil. A navegação é a mesma dentro e fora da aula.
+  const [aba, setAba] = useState<SeparadorAluno>('inicio');
   const [destino, setDestino] = useState<DestinoAluno | null>(null);
   const [mesVisivel, setMesVisivel] = useState(new Date().getMonth());
   const [anoVisivel, setAnoVisivel] = useState(new Date().getFullYear());
@@ -609,6 +616,76 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   const recuperacoesPendentes = validacoesAluno
     .filter(v => v.validada && v.nota20 != null && v.nota20 < 10).length;
 
+  // Avisos calculados a partir do estado real — presenças, registos,
+  // prazos e inscrições. Nunca texto guardado à mão.
+  const avisosCalculados: AvisoAluno[] = (() => {
+    const av: AvisoAluno[] = [];
+    const hojeISO = new Date().toISOString().slice(0, 10);
+
+    if (planoHoje) {
+      const sessao = getSessaoAula(planoHoje.id);
+      const entrou = getPresencas().some(
+        p => p.alunoId === aluno.id && p.planoAulaId === planoHoje.id
+      );
+      if (sessao?.abertaEm && !entrou) {
+        const t = estadoTolerancia(planoHoje.id);
+        av.push({
+          id: 'entrada',
+          titulo: t.foraDeTempo ? 'Ainda não entraste na aula' : 'Entrada aberta',
+          detalhe: t.foraDeTempo
+            ? 'Entra na mesma — o professor decide sobre a falta.'
+            : `Faltam ${t.minutosRestantes} min de tolerância.`,
+          destino: 'entrar',
+          urgente: t.foraDeTempo,
+        });
+      }
+    }
+
+    // Aulas passadas em que esteve e não se autoavaliou.
+    const semAuto = planosOrdenados.filter(p =>
+      p.data < hojeISO &&
+      getPresencas().some(x => x.alunoId === aluno.id && x.planoAulaId === p.id) &&
+      !getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === p.id)
+    );
+    if (semAuto.length > 0) {
+      av.push({
+        id: 'autoavaliacao',
+        titulo: 'Autoavaliação por fazer',
+        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} sem a tua avaliação.`,
+        destino: 'avaliar',
+        urgente: true,
+      });
+    }
+
+    if (recuperacoesPendentes > 0) {
+      av.push({
+        id: 'recuperacoes',
+        titulo: 'Tens módulos por recuperar',
+        detalhe: `${recuperacoesPendentes} módulo${recuperacoesPendentes > 1 ? 's' : ''} abaixo de 10.`,
+        destino: 'recuperacoes',
+        urgente: true,
+      });
+    }
+
+    // Atividades já passadas onde se inscreveu e ainda não disse como correu.
+    const porFechar = atividades.filter(x =>
+      x.data < hojeISO &&
+      (x.inscritosIds ?? []).includes(aluno.id) &&
+      !(x.balancos ?? []).some(b => b.alunoId === aluno.id)
+    );
+    if (porFechar.length > 0) {
+      av.push({
+        id: 'atividades',
+        titulo: 'Diz como correu a atividade',
+        detalhe: `${porFechar.length} por confirmar. Só conta depois de dizeres que foste.`,
+        destino: 'atividades',
+      });
+    }
+
+    return av;
+  })();
+
+
   const historialUC = validacoesAluno
     .sort((a, b) => (b.plano!.data).localeCompare(a.plano!.data))
     .map(v => ({
@@ -714,24 +791,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             </div>
           </div>
 
-          {/* Tabs coloridas */}
-          <div style={{ display:'flex', gap:6, paddingBottom:14 }}>
-            {([
-              { id:'hoje',      emoji:'🏠', label:'Início',      cor:'#f4a900' },
-              { id:'calendario',emoji:'📅', label:'Calendário',  cor:'#2ec4b6' },
-              { id:'perfil',    emoji:'🪪', label:'O meu perfil',cor:'#1d6fa4' },
-            ] as const).map(tab => (
-              <button key={tab.id} onClick={() => setAba(tab.id)} style={{
-                flex:1, padding:'9px 4px', border:'none', cursor:'pointer',
-                fontSize:12, fontWeight:800, borderRadius:10,
-                background: aba === tab.id ? tab.cor : 'rgba(255,255,255,0.15)',
-                color: aba === tab.id ? '#fff' : 'rgba(255,255,255,0.55)',
-                transition:'all 0.15s',
-              }}>
-                {tab.emoji} {tab.label}
-              </button>
-            ))}
-          </div>
+
         </div>
       </div>
 
@@ -739,28 +799,24 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
       <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 20px 48px' }}>
 
         {/* ── ABA INÍCIO ── */}
-        {/* ── ECRÃ INICIAL: grelha de cartões ── */}
-        {aba === 'hoje' && !destino && (
-          <PainelAluno
+        {/* ── INÍCIO: a aula de hoje como ação principal ── */}
+        {aba === 'inicio' && !destino && (
+          <InicioAluno
             nomeAluno={aluno.nome || `Aluno ${aluno.numero}`}
             turmaId={aluno.turmaId}
-            numeroAluno={aluno.numero}
             ucId={ucAtual}
             ucNome={ucNomeOficial}
             planoHoje={planoHoje}
             numeroPlano={numeroPlanoHoje}
-            totalPlanos={planosOrdenados.length}
-            fichasAtribuidas={fichasAtribuidas}
-            autoavaliacoesPorFazer={porAvaliar}
-            notaProgressiva={notaProgressiva}
-            competenciasFracas={competenciasFracas}
-            recuperacoesPendentes={recuperacoesPendentes}
+            sessaoAberta={!!planoHoje && !!getSessaoAula(planoHoje.id)?.abertaEm}
+            jaEntrou={!!planoHoje && getPresencas().some(
+              p => p.alunoId === aluno.id && p.planoAulaId === planoHoje.id
+            )}
             proximasAulas={aulasFuturas.length}
-            atividadesAbertas={atividadesAbertas}
-            onAbrir={(d) => {
-              if (d === 'entrar' || d === 'fichas' || d === 'guiao' || d === 'requisicao') {
-                // Só se entra numa aula que exista. Sem plano de aula não há
-                // onde registar nada — o professor tem de o criar primeiro.
+            avisos={avisosCalculados}
+            onAbrir={(d: DestinoAluno) => {
+              if (d === 'entrar' || d === 'consultar_plano' || d === 'fichas'
+                  || d === 'guiao' || d === 'requisicao') {
                 if (planoHoje) setPlanoAtivo(planoHoje);
                 return;
               }
@@ -778,22 +834,21 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
               if (d === 'kitchenflow') {
                 abrirKitchenFlow(undefined, {
                   turma: aluno.turmaId, numero: aluno.numero,
-                  pin: aluno.pin, tipo: 'aluno',
-                  ucId: ucAtual,
+                  pin: aluno.pin, tipo: 'aluno', ucId: ucAtual,
                   planoData: planoHoje?.data,
                   planoHoraInicio: planoHoje?.horaInicio,
                   planoHoraFim: planoHoje?.horaFim,
                 } as any);
                 return;
               }
-              if (d === 'calendario' || d === 'proximas') { setAba('calendario'); return; }
+              if (d === 'calendario' || d === 'proximas') { setAba('aula'); return; }
               setDestino(d);
             }}
           />
         )}
 
         {/* ── Ecrãs do percurso ── */}
-        {aba === 'hoje' && destino && (
+        {aba === 'inicio' && destino && (
           <div style={{ background:'#F3F2F5', minHeight:'100%' }}>
             <button
               onClick={() => setDestino(null)}
@@ -868,7 +923,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
           </div>
         )}
 
-        {aba === 'calendario' && (
+        {aba === 'aula' && (
           <div style={{ display:'grid', gap:24,
             gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '380px 1fr' : '1fr' }}>
             <div>
@@ -928,6 +983,84 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
         )}
 
         {/* ── ABA PERFIL ── */}
+        {aba === 'percurso' && !destino && (
+          <div style={{ background:'#F3F2F5', minHeight:'100%', padding:14 }}>
+            <div style={{ maxWidth:620, margin:'0 auto' }}>
+              <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.09em',
+                textTransform:'uppercase', color:'#777', marginBottom:9 }}>
+                A tua evolução
+              </div>
+              {([
+                ['nota', 'Avaliação progressiva', notaProgressiva != null
+                  ? `${notaProgressiva.toFixed(1).replace('.', ',')} valores` : 'ainda sem nota'],
+                ['avaliar', 'Avaliar-me', porAvaliar > 0
+                  ? `${porAvaliar} por avaliar` : 'tudo avaliado'],
+                ['recuperacoes', 'Recuperações', recuperacoesPendentes > 0
+                  ? `${recuperacoesPendentes} por recuperar` : 'nada em atraso'],
+                ['atividades', 'Atividades e concursos', atividadesAbertas > 0
+                  ? `${atividadesAbertas} aberta${atividadesAbertas > 1 ? 's' : ''}` : 'oportunidades'],
+              ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
+                <button key={d} onClick={() => setDestino(d)} style={{
+                  width:'100%', background:'#fff', border:'none', borderRadius:14,
+                  padding:'15px 16px', marginBottom:9, textAlign:'left', minHeight:44,
+                  cursor:'pointer', fontFamily:'inherit', boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
+                  display:'flex', alignItems:'center', gap:12,
+                }}>
+                  <span style={{ flex:1 }}>
+                    <span style={{ display:'block', fontSize:16, fontWeight:700, color:'#1A1A1A' }}>{t}</span>
+                    <span style={{ display:'block', fontSize:13.5, color:'#777' }}>{sub}</span>
+                  </span>
+                  <span style={{ color:'#777', fontSize:20 }}>›</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(aba === 'percurso' || aba === 'recursos') && destino && (
+          <div style={{ background:'#F3F2F5', minHeight:'100%' }}>
+            <button onClick={() => setDestino(null)} style={{ background:'transparent',
+              border:'none', cursor:'pointer', fontSize:15, color:'#6B3FA0', fontWeight:700,
+              padding:'12px 16px 4px', fontFamily:'inherit', display:'flex',
+              alignItems:'center', gap:7 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth={2.4} strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+              Voltar
+            </button>
+            {destino === 'avaliar' && (
+              <EcraAvaliarMe ucId={ucAtual} ucNome={ucNomeOficial} temAulaHoje={!!planoHoje}
+                bloco={blocoAvaliar} onMudarBloco={setBlocoAvaliar}
+                substantivo={blocoAvaliar === 'conhecimentos' ? 'conhecimento'
+                           : blocoAvaliar === 'atitudes' ? 'atitude' : 'competência'}
+                competencias={listaDoBloco} />
+            )}
+            {destino === 'nota' && (
+              <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
+                aulas={historialUC.filter(h => h.nota20 != null)
+                  .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
+                  .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo,
+                    data: h.data, nota20: h.nota20 as number }))}
+                competenciasPorAvaliar={porAvaliar}
+                notaPossivel={notaProgressiva != null ? Math.min(20, notaProgressiva + 2) : null} />
+            )}
+            {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
+            {destino === 'manual' && <ManuaisAluno />}
+            {destino === 'atividades' && (
+              <EcraAtividades atividades={atividades} alunoId={aluno.id}
+                onInscrever={(id) => { inscreverEmAtividade(id, aluno.id, true); setRefreshAtiv(n => n + 1); }}
+                onCancelar={(id) => { inscreverEmAtividade(id, aluno.id, false); setRefreshAtiv(n => n + 1); }}
+                onBalanco={(id, p, r) => { registarBalancoAtividade(id, aluno.id, p, r); setRefreshAtiv(n => n + 1); }} />
+            )}
+            {(destino === 'fichas' || destino === 'guiao' || destino === 'kitchenflow') && (
+              <div style={{ padding:20, textAlign:'center', color:'#777', fontSize:15 }}>
+                {planoHoje
+                  ? 'Abre pela aula de hoje.'
+                  : 'Sem aula hoje — estes materiais ficam disponíveis quando houver aula.'}
+              </div>
+            )}
+          </div>
+        )}
+
         {aba === 'perfil' && (
           <div>
             <PerfilProfissionalAluno aluno={aluno} />
@@ -950,7 +1083,41 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             </div>
           </div>
         )}
+
+        {/* Recursos: manual, fichas e guiões */}
+        {aba === 'recursos' && (
+          <div style={{ background:'#F3F2F5', minHeight:'100%', padding:14 }}>
+            <div style={{ maxWidth:620, margin:'0 auto' }}>
+              <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.09em',
+                textTransform:'uppercase', color:'#777', marginBottom:9 }}>
+                Recursos
+              </div>
+              {([
+                ['manual', 'Manual da unidade', 'em leitura'],
+                ['fichas', 'As minhas fichas', 'da aula de hoje'],
+                ['guiao', 'Guiões de produção', 'apoio às fichas'],
+                ['kitchenflow', 'KitchenFlow', 'registos de higiene'],
+              ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
+                <button key={d} onClick={() => setDestino(d)} style={{
+                  width:'100%', background:'#fff', border:'none', borderRadius:14,
+                  padding:'15px 16px', marginBottom:9, textAlign:'left', minHeight:44,
+                  cursor:'pointer', fontFamily:'inherit', boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
+                  display:'flex', alignItems:'center', gap:12,
+                }}>
+                  <span style={{ flex:1 }}>
+                    <span style={{ display:'block', fontSize:16, fontWeight:700, color:'#1A1A1A' }}>{t}</span>
+                    <span style={{ display:'block', fontSize:13.5, color:'#777' }}>{sub}</span>
+                  </span>
+                  <span style={{ color:'#777', fontSize:20 }}>›</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Navegação permanente — igual dentro e fora da aula. */}
+      <NavegacaoAluno ativo={aba} onNavegar={(s) => { setAba(s); setDestino(null); }} />
     </div>
   );
 }
@@ -974,6 +1141,12 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     const jaEntrou = presencas.some(p => p.alunoId === aluno.id && p.planoAulaId === plano.id);
     return _load('entrada') || jaEntrou;
   });
+  const [kfInicialConcluido, setKfInicialConcluido] = React.useState(
+    () => _load('kf_inicial') || kfFaseCompleta(aluno.id, plano.id, 'inicial')
+  );
+  const [kfFinalConcluido, setKfFinalConcluido] = React.useState(
+    () => _load('kf_final') || kfFaseCompleta(aluno.id, plano.id, 'final')
+  );
   const [fichaConcluida, setFichaConcluida] = React.useState(() => _load('ficha'));
   const [guiaoConcluido, setGuiaoConcluido] = React.useState(() => _load('guia'));
   const [avaliacaoConcluida, setAvaliacaoConcluida] = React.useState(() => {
@@ -986,22 +1159,29 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   // Os passos falam com o aluno: "Entrei na aula", não "Entrada e Higiene".
   // O `agora` é o que ele lê em grande quando o passo está ativo.
   const V = '#6B3FA0';
+  // Sequência da especificação: entrada, farda, KF inicial, produção,
+  // KF final, autoavaliação. O KitchenFlow deixou de ser um atalho geral
+  // — são dois pontos de controlo dentro do fluxo da aula.
   const PASSOS = [
-    { id:'orientacao', label:'Vi o que vamos fazer',   agora:'Ver a aula',    cor:V },
-    { id:'entrada',    label:'Entrei na aula',          agora:'Entrar',        cor:V },
-    { id:'ficha',      label:'Produzi',                 agora:'Produzir',      cor:V },
+    { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
+    { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
+    { id:'kf_inicial', label:'Registos iniciais',          agora:'Antes de produzir',cor:V },
+    { id:'ficha',      label:'Produzi',                    agora:'Produzir',         cor:V },
     ...(fichas.some((f:any) => f.textoGuia)
       ? [{ id:'guia', label:'Consultei o guião', agora:'Ver o guião', cor:V }] : []),
-    { id:'requisicao', label:'Fiz a requisição',        agora:'Requisitar',    cor:V },
-    { id:'avaliacao',  label:'Avaliei-me',              agora:'Avaliar-me',    cor:V },
+    { id:'requisicao', label:'Fiz a requisição',           agora:'Requisitar',       cor:V },
+    { id:'kf_final',   label:'Registos finais',            agora:'Antes de fechar',  cor:V },
+    { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ];
 
   const estadoPasso = (id: string): 'concluido'|'ativo'|'pendente' => {
     if (id==='orientacao' && orientacaoConcluida) return 'concluido';
     if (id==='entrada' && entradaConcluida) return 'concluido';
+    if (id==='kf_inicial' && kfInicialConcluido) return 'concluido';
     if (id==='ficha' && fichaConcluida) return 'concluido';
     if (id==='guia' && guiaoConcluido) return 'concluido';
     if (id==='requisicao' && requisicao) return 'concluido';
+    if (id==='kf_final' && kfFinalConcluido) return 'concluido';
     if (id==='avaliacao' && avaliacaoConcluida) return 'concluido';
     if (id===secAberta) return 'ativo';
     return 'pendente';
@@ -1117,27 +1297,17 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             </div>
           )}
 
-          <button onClick={() => abrirKitchenFlow(undefined, {
-              turma:aluno.turmaId, numero:aluno.numero,
-              pin:aluno.pin, tipo:'aluno',
-              ucId:plano.ucId, ucNome:plano.ucNome,
-              pratos:fichas.map((f:any) => f.nomePrato).filter(Boolean),
-              planoHoraInicio:plano.horaInicio,
-              planoHoraFim:plano.horaFim, planoData:plano.data,
-            })} style={{ width:'100%', padding:'11px', borderRadius:11, marginBottom:16,
-            border:'1px solid rgba(14,116,144,0.4)', background:'rgba(14,116,144,0.08)',
-            color:'#0e7490', fontSize:14, fontWeight:700, cursor:'pointer',
-            fontFamily:'inherit' }}>
-            🔗 Abrir KitchenFlow
-          </button>
-
             {secAberta==='orientacao' && (
               <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno}
                 onContinuar={() => { setOrientacaoConcluida(true); _save('orientacao'); setSecAberta('entrada'); }} />
             )}
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
-                onConcluido={() => { setEntradaConcluida(true); _save('entrada'); setSecAberta('ficha'); }} />
+                onConcluido={() => { setEntradaConcluida(true); _save('entrada'); setSecAberta('kf_inicial'); }} />
+            )}
+            {secAberta==='kf_inicial' && (
+              <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="inicial"
+                onConcluido={() => { setKfInicialConcluido(true); _save('kf_inicial'); setSecAberta('ficha'); }} />
             )}
             {secAberta==='ficha' && (
               <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
@@ -1150,7 +1320,11 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             )}
             {secAberta==='requisicao' && (
               <SecaoRequisicao requisicao={requisicao}
-                onConcluido={() => setSecAberta('avaliacao')} />
+                onConcluido={() => setSecAberta('kf_final')} />
+            )}
+            {secAberta==='kf_final' && (
+              <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="final"
+                onConcluido={() => { setKfFinalConcluido(true); _save('kf_final'); setSecAberta('avaliacao'); }} />
             )}
             {secAberta==='avaliacao' && (
               <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno}
@@ -2532,6 +2706,32 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           ) : (
             <div style={{ padding:'12px 14px', borderRadius:10, background:'rgba(26,23,20,0.04)', border:`1px solid ${T.border}`, textAlign:'center' }}>
               <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)' }}>Aguarda a confirmação do professor.</div>
+            </div>
+          );
+        })()}
+
+        {/* Nota progressiva da UC — a especificação pede que o aluno
+            termine sabendo como esta aula contribui para a unidade,
+            não só a nota isolada. */}
+        {(() => {
+          const historico = getHistoricoAvaliacoes().filter((r: any) =>
+            r.alunoId === aluno.id && r.ucId === plano.ucId && r.validadoPor === 'professor'
+          );
+          if (!historico.length) return null;
+          const media = historico.reduce((s: number, r: any) => s + r.nota, 0) / historico.length;
+          const nota20 = Math.round(media * 4 * 10) / 10;
+          return (
+            <div style={{ background:'#6B3FA0', borderRadius:14, padding:16, marginTop:12 }}>
+              <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.06em',
+                textTransform:'uppercase', color:'#DCCFF0', marginBottom:6 }}>
+                Progressão na UC
+              </div>
+              <div style={{ display:'flex', alignItems:'baseline', gap:7 }}>
+                <span style={{ fontSize:28, fontWeight:700, color:'#fff' }}>
+                  {nota20.toFixed(1).replace('.', ',')}
+                </span>
+                <span style={{ fontSize:13.5, color:'#DCCFF0' }}>valores</span>
+              </div>
             </div>
           );
         })()}
