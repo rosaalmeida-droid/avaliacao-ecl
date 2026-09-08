@@ -814,6 +814,10 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             )}
             proximasAulas={aulasFuturas.length}
             avisos={avisosCalculados}
+            fichasAtribuidas={fichasAtribuidas}
+            notaProgressiva={notaProgressiva}
+            recuperacoesPendentes={recuperacoesPendentes}
+            atividadesAbertas={atividadesAbertas}
             onAbrir={(d: DestinoAluno) => {
               if (d === 'entrar' || d === 'consultar_plano' || d === 'fichas'
                   || d === 'guiao' || d === 'requisicao') {
