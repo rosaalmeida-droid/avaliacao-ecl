@@ -3,6 +3,7 @@ import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getReq
 import { PlanoAula, FichaProducao } from '../types';
 import { loadEventos } from './EventosWizard';
 import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
+import { converterUnidadeParaPeso } from '../pesosMedios';
 import {
   processarIngrediente,
   obterRendimento,
@@ -88,9 +89,33 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
         .replace(/\s*\d+\s*x\s*\d+[gkGK]*/g, '') // remover 2x200g
         .trim();
       const { mp, confianca } = encontrarMateriaPrimaComConfianca(nomeLimpo, custom);
-      // Ingredientes vendidos por unidade (ovos, etc.) têm precoKg = 0 — usar
-      // precoUnitario nesse caso. Ingredientes vendidos a peso/volume usam precoKg.
-      const precoMP = mp ? (proc.und === 'un' ? mp.precoUnitario : mp.precoKg) : 0;
+
+      // Preço por unidade: só é real quando difere do preço por quilo.
+      // Em 88 dos 247 produtos da base, o precoUnitario foi copiado do
+      // precoKg por não haver preço por unidade — e a app cobrava o
+      // preço do quilo por cada unidade. Um lombo de salmão dava 11,99€.
+      //
+      // Quando isso acontece, converte-se a unidade em peso pela tabela
+      // de pesos médios e usa-se o preço por quilo. Uma cebola passa a
+      // 130g × preço/kg, não o preço de um quilo de cebolas.
+      let precoMP = 0;
+      if (mp) {
+        if (proc.und !== 'un') {
+          precoMP = mp.precoKg;
+        } else {
+          const temPrecoUnitarioReal =
+            mp.precoUnitario > 0 && mp.precoUnitario !== mp.precoKg;
+          if (temPrecoUnitarioReal) {
+            precoMP = mp.precoUnitario;
+          } else {
+            // Converter 1 unidade em kg e aplicar o preço por quilo.
+            const emPeso = converterUnidadeParaPeso(1, 'un', nomeLimpo);
+            precoMP = emPeso
+              ? Math.round(emPeso.qt * mp.precoKg * 100) / 100
+              : mp.precoUnitario;   // sem peso médio conhecido, fica como estava
+          }
+        }
+      }
       const precoUnitario = (precoMP && precoMP > 0) ? precoMP.toFixed(2).replace('.', ',') : '';
 
       // Gerar aviso no Centro de Avisos quando a correspondência não é segura
