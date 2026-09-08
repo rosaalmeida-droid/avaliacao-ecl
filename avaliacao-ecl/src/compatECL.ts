@@ -799,6 +799,13 @@ export function nivelComplexidadeAtitude(id: string, ano: 1|2|3): string {
 }
 
 // ── Calcular nota final de plano (1-4) ───────────────────────
+/**
+ * OBSOLETA — não usar. Faz média simples, sem os pesos por categoria.
+ * A função boa é a `calcularNotaPlano` do types.ts, que aplica
+ * OBR 20% / SUB 40% / KNW 20% / ATI 20%.
+ *
+ * Fica aqui só para não partir código antigo. Ninguém a importa.
+ */
 export function calcularNotaPlano(notas: {
   obr: number[];
   sub: number[];
