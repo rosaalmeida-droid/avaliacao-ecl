@@ -325,10 +325,6 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   // ══════════════════════════════════════════════════════════
   // CALDOS E FUNDOS
   // ══════════════════════════════════════════════════════════
-  { id:'cd001', nome:'Caldo de galinha (cubo Knorr)', categoria:'Caldos', unidadeCompra:'un', unidadeReceita:'un', fatorConversao:1, precoKg:0.00, precoUnitario:0.15, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['caldo galinha','caldo knorr','chicken stock cube','cubo caldo','caldo ave'] },
-  { id:'cd002', nome:'Caldo de carne (cubo)', categoria:'Caldos', unidadeCompra:'un', unidadeReceita:'un', fatorConversao:1, precoKg:0.00, precoUnitario:0.15, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['caldo carne','beef stock cube','caldo vaca'] },
-  { id:'cd003', nome:'Caldo de peixe (cubo)', categoria:'Caldos', unidadeCompra:'un', unidadeReceita:'un', fatorConversao:1, precoKg:0.00, precoUnitario:0.15, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['caldo peixe','fish stock cube','fumet'] },
-  { id:'cd004', nome:'Caldo de legumes (cubo)', categoria:'Caldos', unidadeCompra:'un', unidadeReceita:'un', fatorConversao:1, precoKg:0.00, precoUnitario:0.15, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['caldo legumes','vegetable stock cube','caldo vegetal'] },
   { id:'cd005', nome:'Vinho branco culinária', categoria:'Caldos', unidadeCompra:'un', unidadeReceita:'ml', fatorConversao:750, precoKg:3.32, precoUnitario:2.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['vinho branco','white wine','vinho culinária','vinho para cozinhar'] },
   { id:'cd006', nome:'Vinho tinto culinária', categoria:'Caldos', unidadeCompra:'un', unidadeReceita:'ml', fatorConversao:750, precoKg:3.32, precoUnitario:2.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['vinho tinto','red wine','vinho tinto culinária'] },
   { id:'cd007', nome:'Vinho do porto', categoria:'Caldos', unidadeCompra:'un', unidadeReceita:'ml', fatorConversao:750, precoKg:6.65, precoUnitario:4.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['porto','vinho do porto','port wine'] },
@@ -497,4 +493,68 @@ export function encontrarMateriaPrimaComConfianca(
 // ── Lazy getter — evita TDZ em bundles Rollup/Vite ──────────
 export function getMateriaPrimasBase(): MateriaPrimaBase[] {
   return MATERIAS_PRIMAS_BASE;
+}
+
+// ============================================================
+// Validade dos preços
+// ============================================================
+// Os preços são recolhidos à mão no mercado e não se atualizam
+// sozinhos. Ao fim de um mês já não são de confiança para calcular
+// custos de produção, e a aplicação tem de o dizer — senão a
+// requisição sai com valores de há meses e ninguém repara.
+
+/** Ao fim de quantos meses os preços deixam de ser de confiança. */
+export const MESES_VALIDADE_PRECOS = 1;
+
+export interface EstadoPrecos {
+  /** Mês mais antigo encontrado na base, em 'AAAA-MM'. */
+  maisAntigo: string;
+  /** Mês mais recente. */
+  maisRecente: string;
+  mesesDesdeAtualizacao: number;
+  desatualizados: boolean;
+  /** Quantos produtos têm preço com mais de um mês. */
+  produtosDesatualizados: number;
+  total: number;
+  mensagem: string;
+}
+
+function mesesEntre(de: string, ate: Date): number {
+  const [a, m] = de.split('-').map(Number);
+  if (!a || !m) return 0;
+  return (ate.getFullYear() - a) * 12 + (ate.getMonth() + 1 - m);
+}
+
+export function estadoDosPrecos(agora = new Date()): EstadoPrecos {
+  const datas = MATERIAS_PRIMAS_BASE
+    .map(mp => mp.atualizadoEm)
+    .filter(Boolean)
+    .sort();
+
+  const maisAntigo = datas[0] ?? '';
+  const maisRecente = datas[datas.length - 1] ?? '';
+  const meses = maisRecente ? mesesEntre(maisRecente, agora) : 0;
+
+  const desatualizados = MATERIAS_PRIMAS_BASE.filter(
+    mp => mp.atualizadoEm && mesesEntre(mp.atualizadoEm, agora) > MESES_VALIDADE_PRECOS
+  ).length;
+
+  const nomeMes = (iso: string) => {
+    const [a, m] = iso.split('-').map(Number);
+    return new Date(a, m - 1, 1).toLocaleDateString('pt-PT',
+      { month: 'long', year: 'numeric' });
+  };
+
+  return {
+    maisAntigo, maisRecente,
+    mesesDesdeAtualizacao: meses,
+    desatualizados: meses > MESES_VALIDADE_PRECOS,
+    produtosDesatualizados: desatualizados,
+    total: MATERIAS_PRIMAS_BASE.length,
+    mensagem: meses <= MESES_VALIDADE_PRECOS
+      ? `Preços atualizados em ${nomeMes(maisRecente)}.`
+      : `Os preços são de ${nomeMes(maisRecente)} — já passaram ${meses} meses. `
+        + `${desatualizados} de ${MATERIAS_PRIMAS_BASE.length} produtos precisam de ser `
+        + `revistos no mercado, senão as requisições saem com custos errados.`,
+  };
 }
