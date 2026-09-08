@@ -14,6 +14,7 @@ import {
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
+import { estadoDosPrecos } from './materiasPrimasBase';
 
 // ── URLs dos Apps Scripts ────────────────────────────────────
 // Histórico de avaliações dos alunos (já configurado e a funcionar)
@@ -270,7 +271,18 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
           if (eliminadas.has(f.id)) continue; // já foi eliminada de propósito — não trazer de volta
           const idx = merged.findIndex((x: FichaProducao) => x.id === f.id);
           if (idx < 0) {
-            merged.push({ ...f, ingredientes: [], preparacao: [], htmlCompleto: f.htmlCompleto || '', textoGuia: f.textoGuia || '', planoAulaId: f.planoAulaId || undefined });
+            // A ficha vem completa do Sheets — `addOrUpdateFichaProducao`
+            // envia o objeto inteiro. Forçar ingredientes e preparação a
+            // vazio era o que fazia "abrir a ficha e ter desaparecido
+            // metade da informação" ao mudar de aparelho.
+            merged.push({
+              ...f,
+              ingredientes: Array.isArray(f.ingredientes) ? f.ingredientes : [],
+              preparacao: Array.isArray(f.preparacao) ? f.preparacao : [],
+              htmlCompleto: f.htmlCompleto || '',
+              textoGuia: f.textoGuia || '',
+              planoAulaId: f.planoAulaId || undefined,
+            });
           } else {
             // Completar campos que possam faltar localmente mas existem no Sheets
             // — crítico para textoGuia (Guia de Apoio) e planoAulaId (ligação à
@@ -279,6 +291,16 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             if (f.htmlCompleto && !atualizado.htmlCompleto) atualizado.htmlCompleto = f.htmlCompleto;
             if (f.textoGuia && !atualizado.textoGuia) atualizado.textoGuia = f.textoGuia;
             if (f.planoAulaId && !atualizado.planoAulaId) atualizado.planoAulaId = f.planoAulaId;
+            // Se a cópia local ficou sem ingredientes ou preparação — por
+            // causa do bug antigo — recupera-os do Sheets.
+            if (Array.isArray(f.ingredientes) && f.ingredientes.length
+                && !(atualizado.ingredientes?.length)) {
+              atualizado.ingredientes = f.ingredientes;
+            }
+            if (Array.isArray(f.preparacao) && f.preparacao.length
+                && !(atualizado.preparacao?.length)) {
+              atualizado.preparacao = f.preparacao;
+            }
             merged[idx] = atualizado;
           }
         }
@@ -1664,16 +1686,27 @@ export function addOrUpdateValidacao(v: Validacao): void {
   const idx = all.findIndex(x => x.id === v.id);
   if (idx >= 0) all[idx] = v; else all.push(v);
   save(KEYS.validacoes, all);
-  // Calcular nota média para o Sheet
+  // A nota que vai para o Sheets tem de ser a MESMA que o professor viu.
+  // Antes fazia média simples de todas as notas, ignorando os pesos —
+  // num aluno com muitas técnicas fracas e o resto bom, isso dava 9,09
+  // no Sheets contra 14,00 no ecrã. Quase cinco valores de diferença.
+  //
+  // O ValidacaoView já calcula a ponderada e guarda-a em notaMedia20.
+  // Usa-se essa; a média simples só serve de recurso se faltar.
+  const notaPonderada = (v as any).notaMedia20;
   const notaMediaVal = v.notas.length
     ? v.notas.reduce((s, n) => s + n.nota, 0) / v.notas.length : 0;
+  const nota20Final = typeof notaPonderada === 'number'
+    ? Math.round(notaPonderada * 10) / 10
+    : Math.min(20, Math.round(notaMediaVal * 4));
+
   const aluno_val = getAlunos().find(a => a.id === v.alunoId);
   enviar(SHEETS_HISTORICO_URL, 'validacao', {
     ...(v as unknown as Record<string, unknown>),
     nomeAluno: aluno_val?.nome || ('Aluno ' + (aluno_val?.numero || 0)),
     turma: v.turmaId,
-    nota_media_1_5: Math.round(notaMediaVal * 10) / 10,
-    nota_media_0_20: Math.min(20, Math.round(notaMediaVal * 4)),
+    nota_media_1_5: Math.round((nota20Final / 4) * 10) / 10,
+    nota_media_0_20: nota20Final,
   });
 }
 
@@ -2840,6 +2873,23 @@ export function getAvisosPendentes(): Aviso[] {
 // mesmo o painel central de gestão do dia a dia, como pedido.
 function calcularAvisosOperacionais(): Aviso[] {
   const avisos: Aviso[] = [];
+
+  // Preços desatualizados. São recolhidos à mão no mercado e não se
+  // atualizam sozinhos — ao fim de um mês as requisições passam a sair
+  // com custos errados e ninguém repara.
+  const precos = estadoDosPrecos();
+  if (precos.desatualizados) {
+    avisos.push({
+      id: `op_precos_${precos.maisRecente}`,
+      tipo: 'outro',
+      titulo: `Preços por atualizar há ${precos.mesesDesdeAtualizacao} ${precos.mesesDesdeAtualizacao === 1 ? 'mês' : 'meses'}`,
+      descricao: precos.mensagem,
+      contexto: { tabDestino: 'requisicao' },
+      resolvido: false,
+      criadoEm: new Date().toISOString(),
+    } as Aviso);
+  }
+
   const planos = getPlanosAula().filter(p => p.estado !== 'arquivado');
   const fichas = getFichasProducao();
   const requisicoes = getRequisicoes();
