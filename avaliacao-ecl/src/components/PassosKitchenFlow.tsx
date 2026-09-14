@@ -24,10 +24,15 @@ const icoCheck = () => (
 // ── KitchenFlow por fase ──────────────────────────────────────
 
 export function PassoKitchenFlowFase({
-  alunoId, planoAulaId, fase, onConcluido,
+  alunoId, planoAulaId, fase, onConcluido, onAbrirKitchenFlow,
+  ehLider = true, nomeLider,
 }: {
   alunoId: string; planoAulaId: string; fase: 'inicial' | 'final';
   onConcluido: () => void;
+  onAbrirKitchenFlow?: () => void;
+  /** Quando o professor designou um líder, só ele regista. */
+  ehLider?: boolean;
+  nomeLider?: string;
 }) {
   const [campos, setCampos] = useState<CampoKF[]>(() => {
     const existente = getRegistoKFFase(alunoId, planoAulaId, fase);
@@ -43,6 +48,66 @@ export function PassoKitchenFlowFase({
   const obrigatorios = campos.filter(c => c.obrigatorio);
   const faltam = obrigatorios.filter(c => !c.feito).length;
   const pronto = faltam === 0;
+
+  // Quem não é líder consulta e segue. Fazer os registos duas vezes não
+  // acrescenta nada, e obrigar cada um a fazê-los duplica o trabalho.
+  if (!ehLider) {
+    return (
+      <div style={{ background: '#fff', borderRadius: 16, padding: 20,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#1A1A1A' }}>
+          {fase === 'inicial' ? 'Registos iniciais' : 'Registos finais'}
+        </div>
+        <div style={{ fontSize: 15, color: '#555', marginTop: 8, lineHeight: 1.6 }}>
+          Nesta aula é {nomeLider || 'outro colega'} que faz os registos do
+          KitchenFlow pelo grupo. Podes consultá-los, mas não precisas de os
+          repetir.
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          {campos.map(c => (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 11,
+              padding: '11px 0', borderBottom: '1px solid #EEE' }}>
+              <span style={{
+                width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+                background: c.feito ? '#3E7A31' : '#EEE', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {c.feito && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth={3} strokeLinecap="round">
+                    <path d="M20 6L9 17l-5-5" /></svg>
+                )}
+              </span>
+              <span style={{ flex: 1, fontSize: 14.5,
+                color: c.feito ? '#777' : '#AAA' }}>
+                {c.label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {onAbrirKitchenFlow && (
+          <button onClick={onAbrirKitchenFlow} style={{
+            width: '100%', marginTop: 14, background: 'rgba(14,116,144,0.08)',
+            border: '1px solid rgba(14,116,144,0.35)', borderRadius: 12,
+            padding: 13, fontSize: 14.5, fontWeight: 700, color: '#0e7490',
+            cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
+          }}>
+            Ver no KitchenFlow
+          </button>
+        )}
+
+        <button onClick={onConcluido} style={{
+          width: '100%', marginTop: 10, minHeight: 52, borderRadius: 12,
+          border: 'none', background: V, color: '#fff', fontSize: 17,
+          fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          Continuar
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: '#fff', borderRadius: 16, padding: 18,
@@ -76,12 +141,36 @@ export function PassoKitchenFlowFase({
             <span style={{ display: 'block', fontSize: 15.5, fontWeight: 600, color: '#1A1A1A' }}>
               {c.label}
             </span>
-            <span style={{ display: 'block', fontSize: 13, color: c.obrigatorio ? '#777' : '#AAA' }}>
-              {c.feito ? 'Concluído' : c.obrigatorio ? 'Por registar' : 'Opcional'}
+            {/* O que é para registar. Sem isto, "temperatura final" não
+                dizia de quê nem quando. */}
+            {c.ajuda && (
+              <span style={{ display: 'block', fontSize: 13.5, color: '#777',
+                marginTop: 2, lineHeight: 1.45 }}>
+                {c.ajuda}
+              </span>
+            )}
+            <span style={{ display: 'block', fontSize: 12.5, marginTop: 3,
+              color: c.feito ? '#3E7A31' : c.obrigatorio ? '#B5651D' : '#AAA',
+              fontWeight: c.feito ? 700 : 400 }}>
+              {c.feito ? 'Registado' : c.obrigatorio ? 'Por registar' : 'Só se for o caso'}
             </span>
           </span>
         </button>
       ))}
+
+      {/* Um botão para o KitchenFlow, onde os registos são mesmo feitos.
+          A checklist aqui serve para o aluno não se esquecer de nenhum;
+          os valores entram no KitchenFlow. */}
+      {onAbrirKitchenFlow && (
+        <button onClick={onAbrirKitchenFlow} style={{
+          width: '100%', marginTop: 14, background: 'rgba(14,116,144,0.08)',
+          border: '1px solid rgba(14,116,144,0.35)', borderRadius: 12,
+          padding: 14, fontSize: 15, fontWeight: 700, color: '#0e7490',
+          cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
+        }}>
+          Abrir o KitchenFlow para registar
+        </button>
+      )}
 
       {!pronto && (
         <div style={{ background: '#FDF0E8', border: '1px solid #B5651D', borderRadius: 12,
