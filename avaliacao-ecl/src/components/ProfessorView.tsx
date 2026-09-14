@@ -2661,7 +2661,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
   );
 }
 
-export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia, nomePratoInicial }: {
+export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia, nomePratoInicial, fichaParaEditar }: {
   turmaId: string;
   nomeProfessor?: string;
   onAlteracao?: () => void;
@@ -2669,12 +2669,16 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   planoId?: string;
   modoGuia?: boolean;
   nomePratoInicial?: string;
+  /** Abre logo esta ficha em edição, em vez da biblioteca. */
+  fichaParaEditar?: string | null;
 }) {
-  const [vista, setVista] = useState<'biblioteca' | 'criar' | 'editar'>('biblioteca');
+  const [vista, setVista] = useState<'biblioteca' | 'criar' | 'editar'>(
+    fichaParaEditar ? 'editar' : 'biblioteca'
+  );
   // ID da ficha original quando em modo 'editar' — sem isto, guardar uma
   // edição criava sempre uma ficha NOVA em vez de atualizar a existente
   // (causa real de fichas duplicadas: "Bacalhau", "Bacalhau 2", "Bacalhau 3"...)
-  const [fichaEmEdicaoId, setFichaEmEdicaoId] = useState<string | null>(null);
+  const [fichaEmEdicaoId, setFichaEmEdicaoId] = useState<string | null>(fichaParaEditar ?? null);
   const [textoReceita, setTextoReceita] = useState('');
   const [linkReceita, setLinkReceita] = useState('');
   const [ficha, setFicha] = useState<FichaTecnica>({ ...FICHA_VAZIA, elaboradoPor: nomeProfessor || FICHA_VAZIA.elaboradoPor });
