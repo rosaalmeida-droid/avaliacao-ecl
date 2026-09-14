@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ModalFullscreen } from './ModalFullscreen';
-import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
+import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Âncora: nº da UC no referencial 811RA144 + data com dia da semana
@@ -25,12 +25,14 @@ import {
   sincronizarDoSheets, calcularPontosRegularidade, getSelecoes, getValidacoes,
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
+  ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
 } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
   encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos,
-  nomeCompetencia, encontrarConhecimento, dicaRecuperacaoAtitude, nivelComplexidadeAtitude, getAtitudeDetalhada,
+  nomeCompetencia, encontrarConhecimento, dicaRecuperacaoAtitude,
+  nivelComplexidadeAtitude, getAtitudeDetalhada, atitudesDoTrimestre,
 } from '../compatECL';
 import { definicaoDaTecnica } from '../definicoesTecnicas';
 import { definicaoDaSubtecnica } from '../definicoesSubtecnicas';
@@ -305,6 +307,10 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
 // COMPONENTE — Card de aula na lista
 // ─────────────────────────────────────────────────────────────
 function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void }) {
+  // Data por extenso. Sem isto o aluno abre um plano futuro pelo
+  // calendário e sabe as horas mas não o dia.
+  const dataLonga = new Date(plano.data + 'T00:00:00').toLocaleDateString('pt-PT',
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const hoje = isHoje(plano.data);
   const futuro = isFuturo(plano.data);
   const dias = diasParaData(plano.data);
@@ -375,6 +381,9 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
         {(plano.ucId || plano.ucNome) && (
           <div style={{ fontSize:13, fontWeight:700, color:'#fff', opacity:0.95, marginBottom:6 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
         )}
+        <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.85)', marginBottom:3 }}>
+          {dataLonga}
+        </div>
         {plano.horaInicio && (
           <div style={{ fontSize:12, color:'rgba(255,255,255,0.7)' }}>
             🕗 {plano.horaInicio}–{plano.horaFim}
@@ -1311,6 +1320,20 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             )}
             {secAberta==='kf_inicial' && (
               <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="inicial"
+                ehLider={ehLiderKF(aluno.id, plano.id)}
+                nomeLider={(() => {
+                  const id = liderKFdoGrupo(plano.id);
+                  if (!id || id === aluno.id) return undefined;
+                  const l = getAlunos().find(x => x.id === id);
+                  return l?.nome || (l ? `o colega nº ${l.numero}` : undefined);
+                })()}
+                onAbrirKitchenFlow={() => abrirKitchenFlow(undefined, {
+                  turma: aluno.turmaId, numero: aluno.numero, pin: aluno.pin,
+                  tipo: 'aluno', ucId: plano.ucId, ucNome: plano.ucNome,
+                  pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
+                  planoData: plano.data, planoHoraInicio: plano.horaInicio,
+                  planoHoraFim: plano.horaFim,
+                } as any)}
                 onConcluido={() => { setKfInicialConcluido(true); _save('kf_inicial'); setSecAberta('ficha'); }} />
             )}
             {secAberta==='ficha' && (
@@ -1328,6 +1351,20 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             )}
             {secAberta==='kf_final' && (
               <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="final"
+                ehLider={ehLiderKF(aluno.id, plano.id)}
+                nomeLider={(() => {
+                  const id = liderKFdoGrupo(plano.id);
+                  if (!id || id === aluno.id) return undefined;
+                  const l = getAlunos().find(x => x.id === id);
+                  return l?.nome || (l ? `o colega nº ${l.numero}` : undefined);
+                })()}
+                onAbrirKitchenFlow={() => abrirKitchenFlow(undefined, {
+                  turma: aluno.turmaId, numero: aluno.numero, pin: aluno.pin,
+                  tipo: 'aluno', ucId: plano.ucId, ucNome: plano.ucNome,
+                  pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
+                  planoData: plano.data, planoHoraInicio: plano.horaInicio,
+                  planoHoraFim: plano.horaFim,
+                } as any)}
                 onConcluido={() => { setKfFinalConcluido(true); _save('kf_final'); setSecAberta('avaliacao'); }} />
             )}
             {secAberta==='avaliacao' && (
@@ -1611,6 +1648,26 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
     const id = setInterval(() => forcarRender(n => n + 1), 15000);
     return () => clearInterval(id);
   }, [t.aberta, entrada]);
+
+  // Enquanto espera, pergunta ao Sheets se a aula já abriu. O professor
+  // abre no computador dele e isto é o que faz a notícia chegar ao
+  // tablet do aluno. Meio minuto de atraso, no pior caso — aceitável
+  // para uma tolerância de dez minutos.
+  //
+  // Só corre neste ecrã e pára assim que a aula abre: não faz sentido
+  // estar a consultar o Sheets durante as sete horas de aula.
+  useEffect(() => {
+    if (t.aberta) return;
+    let vivo = true;
+    const perguntar = () => {
+      sincronizarSessoes(aluno.turmaId)
+        .then(() => { if (vivo) forcarRender(n => n + 1); })
+        .catch(() => {});
+    };
+    perguntar();
+    const id = setInterval(perguntar, 30000);
+    return () => { vivo = false; clearInterval(id); };
+  }, [t.aberta, aluno.turmaId]);
 
   const V = '#6B3FA0', VS = '#F0EBF7';
   const emFalta = ITENS_FARDA.filter(i => !ok[i.id]);
@@ -2439,7 +2496,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       // Nunca o código: se não houver nome, é melhor "Técnica" do que "SUB-COR-030-001".
       nome: nomeSub || tecMae?.nome || 'Técnica',
       // Onde esta técnica se encaixa e sobre o quê.
-      contexto: [tecMae?.nome, produto].filter(Boolean).join(' · '),
+      // Se não houver técnica-mãe identificada, diz-se pelo menos que é
+      // uma técnica — "Rodelas" solto não diz ao aluno o que avaliar.
+      contexto: [tecMae?.nome || 'Técnica', produto].filter(Boolean).join(' · '),
       // Por ordem: a definição da subtécnica, depois a da técnica-mãe,
       // e só em último a dos dados — que é circular em 63% dos casos
       // ("Variante profissional de cozer: Cozer massa al dente").
@@ -2462,7 +2521,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     return {
       id,
       nome: app?.nome || 'Preparação',
-      contexto: (app as any)?.categoria || '',
+      contexto: ['Preparação base', (app as any)?.categoria].filter(Boolean).join(' · '),
       descricao: definicaoDaTecnica(app?.nome || '')?.definicao || (app as any)?.definicao || '',
       nivel: app?.nivel || 1,
       categoria: app?.categoria || '',
@@ -2513,6 +2572,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [notasMicro, setNotasMicro] = useState<Record<string,string|null>>({});
   const [microAberta, setMicroAberta] = useState<string|null>(null);
   const [atitudeEscolhida, setAtitudeEscolhida] = useState<string|null>(null);
+  const [verTodasAtitudes, setVerTodasAtitudes] = useState(false);
+  /** Quantas atitudes se mostram antes de o aluno pedir a lista toda. */
+  const MAX_ATITUDES_MOSTRADAS = 3;
   // Posição da frase escolhida (0-3). A nota sai daqui, não de um valor fixo.
   const [nivelAtitudeFrase, setNivelAtitudeFrase] = useState<number|null>(null);
   const [nivelIniciativa, setNivelIniciativa] = useState<number>(0); // 0 = não avaliado
@@ -2529,7 +2591,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     { v:'mbr', nota:5, label:'Faço com muito bom resultado',             cor:'#1e3a4a', corTxt:'#ffffff' },
   ];
 
-  const prontoParaSubmeter = nivelHigiene!==null && nivelHaccp!==null;
+  // Só o HACCP: a higiene pessoal vem da entrada na aula.
+  const prontoParaSubmeter = nivelHaccp !== null;
 
   function submeterDefinitivo() {
     const agora = new Date().toISOString();
@@ -2545,7 +2608,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     // Converter nota 1-5 para /20 (×4)
     const para20 = (n: number): number => Math.min(20, Math.round(n * 4));
     // Guardar OBR com escala 1-4
-    if (nivelHigiene) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hig_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_01',nota:paraNota(nivelHigiene),data:agora,validadoPor:'aluno'});
+    // A higiene pessoal (OBR_01) NÃO se grava aqui. Já foi avaliada à
+    // entrada da aula, com os nove itens da farda à frente — que é o
+    // momento em que se verifica de facto. Gravar outra vez criava dois
+    // registos da mesma competência e o aluno respondia duas vezes.
     // OBR_02 depende de evidência REAL no KitchenFlow — se o aluno não
     // registou lá (mesmo tendo feito a técnica correctamente), a competência
     // de registo fica a 1 (mínimo), independentemente do que auto-declarou
@@ -2566,7 +2632,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     if (atitudeEscolhida) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeEscolhida}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeEscolhida,nota:notaDaAtitude,data:agora,validadoPor:'aluno'});
     // Guardar SelecaoAluno com autoavaliacoes preenchidas para o professor validar
     const todasAutoavaliacoes = [
-      ...(nivelHigiene?[{competenciaId:'OBR_01',nivel:nivelHigiene as string,nota:paraNota(nivelHigiene)}]:[]),
+      // OBR_01 fica de fora: vem da verificação da farda à entrada.
       ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,nota:paraNota(nivelHaccp)}]:[]),
       ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
       ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude}]:[]),
@@ -2787,8 +2853,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
           letterSpacing:'0.06em', color:T.sage, marginBottom:12 }}>🔒 Sempre avaliadas</div>
+        {/* A higiene pessoal não se pergunta aqui: foi verificada à
+            entrada, com os itens da farda à frente. Perguntar outra vez
+            era pedir ao aluno para responder duas vezes ao mesmo. */}
         {[
-          { id:'hig', label:'Higiene pessoal', val:nivelHigiene, set:setNivelHigiene },
           { id:'hac', label:'Higiene e Segurança Alimentar', val:nivelHaccp, set:setNivelHaccp },
         ].map(obr => (
           <div key={obr.id} style={{ marginBottom:12, padding:'14px', borderRadius:14,
@@ -3066,9 +3134,25 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             // Inclui as do ano seguinte — um aluno pode querer propor-se a
             // uma atitude mais avançada do que o seu ano exige.
             // Substitui a lista fixa de 7 que era igual para toda a gente.
+            // Máximo três à frente, como definimos: a do trimestre, a que
+            // está em recuperação e uma proposta do aluno. Mostrar as 16
+            // ou 22 do ano numa lista era um muro — o aluno não escolhe,
+            // desiste. Quem quiser propor outra tem o link em baixo.
             const permitidas = opcoesDeEscolhaDoAluno(aluno.ano ?? 1);
-            const opcoes = ATITUDES.filter(
-              a => permitidas.includes(a.id) && !compRemovidas.includes(a.id)
+            const doPlano = (plano.compAdicionadas || [])
+              .filter((id: string) => id.startsWith('ATI-'));
+            const doTrimestre = atitudesDoTrimestre(
+              (aluno.ano ?? 1) as 1|2|3,
+              trimestreAtual(new Date(plano.data + 'T00:00:00'))
+            ).map((x: any) => x.id);
+
+            const sugeridas = [...new Set([...doPlano, ...doTrimestre])]
+              .filter(id => permitidas.includes(id) && !compRemovidas.includes(id))
+              .slice(0, MAX_ATITUDES_MOSTRADAS);
+
+            const opcoes = ATITUDES.filter(a =>
+              (verTodasAtitudes ? permitidas.includes(a.id) : sugeridas.includes(a.id))
+              && !compRemovidas.includes(a.id)
             );
             if (opcoes.length === 0) return null;
 
@@ -3122,6 +3206,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               );
             });
           })()}
+
+          {/* Quem quiser propor outra vai buscá-la — mas não é o que
+              aparece à frente. */}
+          {!verTodasAtitudes && (
+            <button onClick={() => setVerTodasAtitudes(true)} style={{
+              width:'100%', marginTop:8, background:'transparent', border:'none',
+              padding:12, fontSize:14, color:'#6B3FA0', fontWeight:700,
+              cursor:'pointer', fontFamily:'inherit', textDecoration:'underline',
+            }}>
+              Quero propor outra atitude
+            </button>
+          )}
         </div>
       </div>
 
