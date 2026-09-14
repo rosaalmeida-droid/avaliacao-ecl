@@ -4,7 +4,8 @@ import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao, getHistoricoAvaliacoes, getSelecoes, getValidacoes,
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
-  presencasPorDecidir, decidirFalta, LABEL_DECISAO } from '../backend';
+  presencasPorDecidir, decidirFalta, LABEL_DECISAO,
+  definirLiderKF, liderKFdoGrupo } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -1214,6 +1215,55 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                           </div>
                         )}
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Líder do KitchenFlow ──────────────────────────────
+              Num grupo, os registos fazem-se uma vez. Sem alguém
+              designado, ou ninguém faz ou fazem todos o mesmo. O
+              professor escolhe, e pode trocar se o líder faltar. */}
+          {(() => {
+            const alunosT = getAlunos().filter(a => a.turmaId === plano.turmaId && a.ativo !== false);
+            if (alunosT.length === 0) return null;
+            const liderId = liderKFdoGrupo(plano.id);
+            const lider = alunosT.find(a => a.id === liderId);
+
+            return (
+              <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px',
+                border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+                  textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                  Líder do KitchenFlow
+                </div>
+                <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10,
+                  lineHeight: 1.5 }}>
+                  {lider
+                    ? `${lider.nome || 'Aluno nº ' + lider.numero} faz os registos desta aula. Os colegas consultam.`
+                    : 'Sem líder definido — cada aluno faz os seus registos.'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {alunosT.map(a => {
+                    const eh = a.id === liderId;
+                    return (
+                      <button key={a.id}
+                        onClick={() => {
+                          definirLiderKF(plano.id, eh ? '' : a.id, nomeProfessor || 'professor');
+                          onPlanoActualizado?.(plano);
+                        }}
+                        style={{
+                          padding: '8px 12px', borderRadius: 10, fontSize: 12.5,
+                          fontWeight: eh ? 700 : 600, cursor: 'pointer',
+                          border: `1.5px solid ${eh ? '#0e7490' : 'rgba(26,23,20,0.12)'}`,
+                          background: eh ? 'rgba(14,116,144,0.1)' : '#fff',
+                          color: eh ? '#0e7490' : 'rgba(26,23,20,0.6)',
+                          fontFamily: 'inherit',
+                        }}>
+                        {eh ? '★ ' : ''}{a.nome || `nº ${a.numero}`}
+                      </button>
                     );
                   })}
                 </div>
