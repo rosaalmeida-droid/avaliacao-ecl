@@ -70,7 +70,7 @@ function EventoAssociador({ plano, turmaId, onPlanoActualizado }: {
             {eventos.map((e: any) => <option key={e.id} value={e.id}>{e.nome}</option>)}
           </select>
           <button onClick={() => {
-            const p = { ...plano, eventoId: eventoSel || undefined, atualizadoEm: new Date().toISOString() };
+            const p = { ...(getPlanosAula().find(x => x.id === plano.id) || plano), eventoId: eventoSel || undefined, atualizadoEm: new Date().toISOString() };
             addOrUpdatePlanoAula(p as any);
             onPlanoActualizado(p as any);
             alert(eventoSel ? '✅ Associado ao evento!' : '✅ Associação removida.');
@@ -127,10 +127,23 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
                 {btn.label}
               </button>
             ))}
-            {plano.estado !== 'publicado' && (plano.fichasIds?.length || 0) > 0 && (
+            {/* Publicar é o que faz o plano aparecer ao aluno. Antes o
+                botão só existia com ficha associada — uma aula marcada
+                sem ficha nunca chegava a ser publicada, e o aluno não a
+                via nas próximas aulas sem perceber porquê.
+                Agora publica-se sempre; se faltar ficha, avisa. */}
+            {plano.estado !== 'publicado' && (
               <button onClick={() => {
-                const p = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
+                const semFicha = (plano.fichasIds?.length || 0) === 0;
+                if (semFicha && !confirm(
+                  'Este plano ainda não tem ficha técnica.\n\n'
+                  + 'Publicar assim mesmo? O aluno passa a ver a aula no '
+                  + 'calendário e nas próximas aulas, e podes associar a '
+                  + 'ficha mais tarde.'
+                )) return;
+                const p = { ...(getPlanosAula().find(x => x.id === plano.id) || plano), estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
                 addOrUpdatePlanoAula(p);
+                // o componente-pai relê do armazenamento
               }}
                 style={{ marginLeft: 'auto', padding: '8px 14px', borderRadius: 10, border: 'none',
                   background: 'var(--sage)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
@@ -258,9 +271,11 @@ function ModalProximoPasso({ titulo, opcoes, onEscolha }: {
   );
 }
 
-function ModalRequisicao({ plano, fichas, onSim, onNao }: {
+function ModalRequisicao({ plano, fichas, onSim, onNao, onNovaFicha }: {
   plano: PlanoAula; fichas: FichaProducao[];
   onSim: (fichasIds: string[]) => void; onNao: () => void;
+  /** Leva o professor a criar outra ficha antes de fechar a requisição. */
+  onNovaFicha?: () => void;
 }) {
   const [sel, setSel] = React.useState<string[]>(fichas.map(f => f.id));
   function toggle(id: string) { setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]); }
@@ -270,9 +285,34 @@ function ModalRequisicao({ plano, fichas, onSim, onNao }: {
         <div style={{ fontSize:32, textAlign:'center', marginBottom:8 }}>🛒</div>
         <div style={{ fontWeight:700, fontSize:17, textAlign:'center', marginBottom:6 }}>Guia guardado!</div>
         <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', textAlign:'center', marginBottom:20 }}>Queres criar agora a Requisição de ingredientes?</div>
+        {/* Sem fichas no plano não há nada para requisitar. O botão ficava
+            cinzento e não havia como perceber porquê. */}
+        {fichas.length === 0 && (
+          <div style={{ background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
+            borderRadius:12, padding:16, marginBottom:16, fontSize:14.5,
+            color:'var(--copper)', lineHeight:1.6 }}>
+            <b>Este plano ainda não tem fichas técnicas.</b><br />
+            A requisição é feita a partir dos ingredientes das fichas — sem
+            elas não há o que requisitar. Associa primeiro uma ficha ao plano.
+          </div>
+        )}
+
+        {fichas.length === 0 && (
+          <div style={{ padding:'14px 16px', borderRadius:12, marginBottom:16,
+            background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
+            fontSize:14, color:'var(--copper)', lineHeight:1.55 }}>
+            Este plano ainda não tem nenhuma ficha técnica associada. A
+            requisição sai das fichas — sem elas não há ingredientes a pedir.
+            Cria a ficha primeiro e volta aqui.
+          </div>
+        )}
         {fichas.length > 0 && (
           <div style={{ marginBottom:16 }}>
             <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Fichas a incluir na requisição:</div>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:10, lineHeight:1.5 }}>
+              Escolhe as que entram nesta requisição. Se faltar alguma,
+              podes criá-la antes e voltar aqui.
+            </div>
             {fichas.map(f => (
               <div key={f.id} onClick={() => toggle(f.id)}
                 style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:`1.5px solid ${sel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, background: sel.includes(f.id) ? 'var(--copper-pale)' : '#fff', cursor:'pointer', marginBottom:6 }}>
@@ -288,13 +328,22 @@ function ModalRequisicao({ plano, fichas, onSim, onNao }: {
           </div>
         )}
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          <button onClick={() => onSim(sel)} disabled={sel.length === 0}
-            style={{ padding:'14px', borderRadius:12, border:'none', background: sel.length > 0 ? 'var(--copper)' : 'var(--border)', color:'white', fontWeight:700, fontSize:15, cursor: sel.length > 0 ? 'pointer' : 'not-allowed' }}>
-            ✓ Sim — criar Requisição {sel.length > 0 ? `(${sel.length} ficha${sel.length > 1 ? 's' : ''})` : ''}
-          </button>
+          {/* Só aparece quando há fichas. Um botão permanentemente
+              desativado não diz nada a quem está à espera de o usar. */}
+          {fichas.length > 0 && (
+            <button onClick={() => onSim(sel)} disabled={sel.length === 0}
+              style={{ padding:'14px', borderRadius:12, border:'none',
+                background: sel.length > 0 ? 'var(--copper)' : 'var(--border)',
+                color:'white', fontWeight:700, fontSize:15,
+                cursor: sel.length > 0 ? 'pointer' : 'not-allowed' }}>
+              {sel.length > 0
+                ? `✓ Sim — criar Requisição (${sel.length} ficha${sel.length > 1 ? 's' : ''})`
+                : 'Escolhe pelo menos uma ficha'}
+            </button>
+          )}
           <button onClick={onNao}
             style={{ padding:'12px', borderRadius:12, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
-            Não — voltar ao plano
+            {fichas.length === 0 ? 'Voltar ao plano' : 'Não — voltar ao plano'}
           </button>
         </div>
       </div>
@@ -370,6 +419,8 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
 export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoActualizado, onAlteracao, onGuardado }: Props) {
   const [modulo, setModulo] = useState<Modulo>('inicio');
   const [incluirSubApp, setIncluirSubApp] = useState(true);
+  /** Ficha que está a ser editada; null = criar nova. */
+  const [fichaEmEdicao, setFichaEmEdicao] = useState<string | null>(null);
   const [modalProximo, setModalProximo] = useState<string | null>(null);
   const [fichasParaRequisicao, setFichasParaRequisicao] = React.useState<string[]>([]);
   const [tabInicio, setTabInicio] = useState<'orientacao' | 'resumo' | 'competencias'>('orientacao');
@@ -492,7 +543,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     setCompRemovidas(removidas);
     setCompAdicionadas(adicionadas);
     registarAlteracaoPublicado('competencias', 'Competências da aula atualizadas pelo professor');
-    const p = { ...plano, compRemovidas: removidas, compAdicionadas: adicionadas, atualizadoEm: new Date().toISOString() } as any;
+    const p = { ...planoFresco(), compRemovidas: removidas, compAdicionadas: adicionadas, atualizadoEm: new Date().toISOString() } as any;
     addOrUpdatePlanoAula(p);
     onPlanoActualizado(p);
   }
@@ -510,16 +561,32 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   function publicar() {
-    const p = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString(), ultimaAlteracao: undefined };
+    const p = { ...planoFresco(), estado: 'publicado' as const, atualizadoEm: new Date().toISOString(), ultimaAlteracao: undefined };
     addOrUpdatePlanoAula(p);
     onPlanoActualizado(p);
   }
 
   /** Regista uma alteração num plano já publicado e propaga ao AlunoView */
+  /**
+   * O plano tal como está GUARDADO, não a cópia que a vista tem em
+   * memória. Entre abrir o ecrã e gravar, pode ter-se associado uma
+   * ficha ou um guião — e gravar a cópia antiga apagava isso.
+   */
+  function planoFresco() {
+    return getPlanosAula().find(p => p.id === plano.id) || plano;
+  }
+
   function registarAlteracaoPublicado(tipo: 'ficha' | 'guia' | 'requisicao' | 'competencias' | 'geral', descricao: string) {
     if (plano.estado !== 'publicado') return;
+    // Ler o plano do armazenamento, não usar o que está na memória.
+    //
+    // O `plano` desta vista foi carregado quando o ecrã abriu. Se entretanto
+    // se criou uma ficha, ela foi associada ao plano no armazenamento — mas
+    // a cópia em memória não a tem. Gravar essa cópia por cima APAGAVA a
+    // associação, e a ficha desaparecia do plano.
+    const atual = getPlanosAula().find(p => p.id === plano.id) || plano;
     const p = {
-      ...plano,
+      ...atual,
       atualizadoEm: new Date().toISOString(),
       ultimaAlteracao: { tipo, descricao, em: new Date().toISOString() },
     };
@@ -573,9 +640,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   function aposGuardarFicha() {
     registarAlteracaoPublicado('ficha', 'Ficha técnica atualizada pelo professor');
+    // Reler no fim: é aqui que a associação da ficha chega à vista.
     const planoAtualizado = getPlanosAula().find(p => p.id === plano.id);
     if (planoAtualizado) onPlanoActualizado(planoAtualizado);
     onGuardado?.();
+    setFichaEmEdicao(null);
     setModalProximo('apos_ficha');
   }
 
@@ -615,7 +684,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ background: 'var(--copper-pale)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>
           📄 A criar Ficha de Produção para este plano — será associada automaticamente
         </div>
-        <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id} onAlteracao={onAlteracao} onGuardado={aposGuardarFicha} />
+        <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id}
+          fichaParaEditar={fichaEmEdicao}
+          onAlteracao={onAlteracao} onGuardado={aposGuardarFicha} />
         {modalProximo === 'apos_ficha' && (
           <ModalProximoPasso
             titulo="Ficha guardada! Qual é o próximo passo?"
@@ -651,9 +722,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id} modoGuia={true} nomePratoInicial={nomePratoGuia} onAlteracao={onAlteracao}
           onGuardado={() => { registarAlteracaoPublicado('guia', 'Guia de produção atualizado pelo professor'); onGuardado?.(); setModalProximo('apos_guia'); }} />
         {modalProximo === 'apos_guia' && (
-          <ModalRequisicao plano={plano} fichas={fichasActuais}
+          /* As fichas são lidas AGORA, não quando o ecrã abriu. Se o
+             professor acabou de criar uma, ela tem de estar na lista —
+             e antes não estava, porque `fichasActuais` era calculado
+             uma única vez e ficava com a lista antiga. */
+          <ModalRequisicao plano={plano}
+            fichas={getFichasProducao().filter(f =>
+              (plano.fichasIds || []).includes(f.id) || f.planoAulaId === plano.id
+            )}
             onSim={(ids) => { setFichasParaRequisicao(ids); setModalProximo(null); setModulo('requisicao'); }}
             onNao={() => { setModalProximo(null); setModulo('inicio'); }}
+            onNovaFicha={() => { setModalProximo(null); setModulo('ficha'); }}
           />
         )}
       </div>
@@ -1044,6 +1123,37 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // ── INÍCIO ───────────────────────────────────────────────────
   return (
     <div>
+      {/* Enquanto não publicar, o aluno não vê a aula em lado nenhum —
+          nem no calendário, nem nas próximas aulas. Isto tem de estar à
+          frente, senão o professor marca a aula e ninguém a vê. */}
+      {plano.estado !== 'publicado' && (
+        <div style={{ background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
+          borderRadius:14, padding:16, marginBottom:14 }}>
+          <div style={{ fontSize:16, fontWeight:700, color:'var(--charcoal, #1a1714)' }}>
+            Os alunos ainda não veem esta aula
+          </div>
+          <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', marginTop:5, lineHeight:1.55 }}>
+            O plano está em rascunho. Enquanto não o publicares, não aparece
+            no calendário nem nas próximas aulas do aluno.
+            {(plano.fichasIds?.length || 0) === 0 && (
+              <> Ainda não tem ficha técnica — podes publicar na mesma e
+              associar a ficha depois.</>
+            )}
+          </div>
+          <button onClick={() => {
+              const p = { ...planoFresco(), estado: 'publicado' as const,
+                atualizadoEm: new Date().toISOString() };
+              addOrUpdatePlanoAula(p);
+              onPlanoActualizado(p);
+            }}
+            style={{ marginTop:12, width:'100%', padding:15, borderRadius:12, border:'none',
+              background:'var(--sage)', color:'#fff', fontSize:16, fontWeight:700,
+              cursor:'pointer', fontFamily:'inherit' }}>
+            Publicar a aula
+          </button>
+        </div>
+      )}
+
       {/* Abertura da aula. É daqui que contam os dez minutos de
           tolerância — não da hora prevista no plano. Enquanto não
           abrir, os alunos consultam mas não gravam nada. */}
@@ -1181,15 +1291,77 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           {fichasDoPlano.length > 0 && (
             <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>🍽️ Produção desta aula</div>
+              {/* Cada ficha pode ser editada ou tirada do plano. Antes,
+                  uma vez associada ficava lá para sempre — e um plano com
+                  a ficha errada não tinha como se corrigir. */}
               {fichasDoPlano.map((f: any, i: number) => (
-                <div key={i} style={{ padding: '8px 10px', borderRadius: 8, marginBottom: 6, background: 'rgba(181,101,29,0.05)', border: '1px solid rgba(181,101,29,0.15)' }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{f.nomePrato}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
-                    {f.numPorcoes && `${f.numPorcoes} doses`}
-                    {f.alergenicos?.length > 0 && ` · ⚠️ ${Array.isArray(f.alergenicos) ? f.alergenicos.join(', ') : f.alergenicos}`}
+                <div key={i} style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 7,
+                  background: 'rgba(181,101,29,0.05)', border: '1px solid rgba(181,101,29,0.15)',
+                  display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13.5 }}>{f.nomePrato}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>
+                      {f.numPorcoes && `${f.numPorcoes} doses`}
+                      {f.textoGuia ? ' · com guião' : ' · sem guião'}
+                      {f.alergenicos?.length > 0 && ` · ⚠️ ${Array.isArray(f.alergenicos) ? f.alergenicos.join(', ') : f.alergenicos}`}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                    <button
+                      onClick={() => { setFichaEmEdicao(f.id); setModulo('ficha'); }}
+                      title="Editar esta ficha"
+                      style={{ padding: '6px 10px', borderRadius: 8, fontSize: 11.5,
+                        fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+                        color: 'rgba(26,23,20,0.7)' }}>
+                      Editar
+                    </button>
+                    {f.textoGuia && (
+                      <button
+                        onClick={() => {
+                          if (!confirm(`Apagar o guião de "${f.nomePrato}"?\n\nA ficha técnica fica intacta — só o guião é apagado.`)) return;
+                          addOrUpdateFichaProducao({ ...f, textoGuia: '' });
+                          registarAlteracaoPublicado('guia', `Guião de ${f.nomePrato} apagado`);
+                          onPlanoActualizado({ ...plano });
+                        }}
+                        title="Apagar só o guião"
+                        style={{ padding: '6px 10px', borderRadius: 8, fontSize: 11.5,
+                          fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                          border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+                          color: 'rgba(26,23,20,0.55)' }}>
+                        Apagar guião
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (!confirm(`Tirar "${f.nomePrato}" deste plano?\n\nA ficha continua na biblioteca — só deixa de estar associada a esta aula.`)) return;
+                        const p = {
+                          ...plano,
+                          fichasIds: (plano.fichasIds || []).filter((id: string) => id !== f.id),
+                          atualizadoEm: new Date().toISOString(),
+                        };
+                        addOrUpdatePlanoAula(p);
+                        registarAlteracaoPublicado('ficha', `${f.nomePrato} retirada do plano`);
+                        onPlanoActualizado(p);
+                      }}
+                      title="Tirar do plano"
+                      style={{ padding: '6px 10px', borderRadius: 8, fontSize: 11.5,
+                        fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                        border: '1px solid var(--danger, #c0392b)', background: '#fff',
+                        color: 'var(--danger, #c0392b)' }}>
+                      Tirar
+                    </button>
                   </div>
                 </div>
               ))}
+
+              <button onClick={() => { setFichaEmEdicao(null); setModulo('ficha'); }}
+                style={{ width: '100%', marginTop: 4, padding: '11px', borderRadius: 10,
+                  border: '1.5px dashed rgba(181,101,29,0.4)', background: 'transparent',
+                  color: 'var(--copper)', fontSize: 13.5, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit' }}>
+                + Acrescentar outra ficha
+              </button>
             </div>
           )}
 
