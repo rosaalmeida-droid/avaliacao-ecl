@@ -1006,26 +1006,51 @@ export interface ProgressoFicha {
 export interface CampoKF {
   id: string;
   label: string;
+  /** O que o aluno lê por baixo do nome, a explicar o que é. */
+  ajuda?: string;
+  /** Registo correspondente no KitchenFlow, para abrir o campo certo. */
+  registoKF?: string;
   obrigatorio: boolean;
   feito: boolean;
   valor?: string;
 }
 
+// Cada campo diz exatamente o que é para registar e para onde vai no
+// KitchenFlow. "Temperatura final" não dizia nada — de quê? do quê?
+// O `ajuda` é o que o aluno lê por baixo do nome; o `registoKF` é o
+// registo correspondente no KitchenFlow.
+
 export function camposKFIniciais(): CampoKF[] {
   return [
-    { id: 'higienizacao', label: 'Higienização da bancada', obrigatorio: true, feito: false },
-    { id: 'equipamento',  label: 'Equipamento e utensílios', obrigatorio: true, feito: false },
-    { id: 'temperaturas', label: 'Temperaturas iniciais',    obrigatorio: true, feito: false },
-    { id: 'observacoes',  label: 'Observações',              obrigatorio: false, feito: false },
+    { id: 'higienizacao', label: 'Bancada e equipamento higienizados',
+      ajuda: 'Antes de tocar em qualquer produto.',
+      registoKF: 'Limpeza Equipamentos', obrigatorio: true, feito: false },
+    { id: 'temp_frio', label: 'Temperatura das câmaras de frio',
+      ajuda: 'Frigorífico e congelador, no início do serviço.',
+      registoKF: 'Temperatura Frio', obrigatorio: true, feito: false },
+    { id: 'rececao', label: 'Receção de matérias-primas',
+      ajuda: 'Só se receberes produto hoje: estado, temperatura e validade.',
+      registoKF: 'Receção Mercadorias', obrigatorio: false, feito: false },
+    { id: 'observacoes', label: 'Alguma coisa a assinalar?',
+      ajuda: 'Produto em mau estado, equipamento avariado, o que for.',
+      registoKF: 'Não Conformidades', obrigatorio: false, feito: false },
   ];
 }
 
 export function camposKFFinais(): CampoKF[] {
   return [
-    { id: 'temp_final',   label: 'Temperatura final',       obrigatorio: true, feito: false },
-    { id: 'higiene_final',label: 'Higienização final',      obrigatorio: true, feito: false },
-    { id: 'desperdicios', label: 'Desperdícios e sobras',   obrigatorio: true, feito: false },
-    { id: 'obs_producao', label: 'Observação da produção',  obrigatorio: false, feito: false },
+    { id: 'temp_confecao', label: 'Temperatura de confeção do teu prato',
+      ajuda: 'A temperatura ao centro que mediste durante a produção.',
+      registoKF: 'Temperatura Confeção', obrigatorio: true, feito: false },
+    { id: 'conservacao', label: 'Conservação do que sobrou',
+      ajuda: 'Arrefecimento, acondicionamento e etiqueta do produto guardado.',
+      registoKF: 'Conservação', obrigatorio: true, feito: false },
+    { id: 'higiene_final', label: 'Bancada e equipamento limpos',
+      ajuda: 'No fim do serviço, antes de sair.',
+      registoKF: 'Limpeza Equipamentos', obrigatorio: true, feito: false },
+    { id: 'obs_producao', label: 'Correu alguma coisa mal?',
+      ajuda: 'Desperdício acima do normal, produto queimado, o que aconteceu.',
+      registoKF: 'Não Conformidades', obrigatorio: false, feito: false },
   ];
 }
 
