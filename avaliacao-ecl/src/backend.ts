@@ -222,6 +222,12 @@ export async function buscarFichasSimilares(nome: string): Promise<Array<{id: st
 // Chamada na inicialização da app — carrega dados do Sheets se houver URL
 export async function sincronizarDoSheets(turmaId: string): Promise<void> {
   try {
+    // Sessões e líderes primeiro: são o que o aluno precisa para saber
+    // se pode entrar na aula. Falham em silêncio se o script ainda não
+    // souber responder a estes tipos.
+    await sincronizarSessoes(turmaId).catch(() => {});
+    await sincronizarLideresKF(turmaId).catch(() => {});
+
     // Carregar planos do Sheets de Planos
     if (SHEETS_PLANOS_URL) {
       const jsonPlanos = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
@@ -2394,6 +2400,14 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   const porCompetencia = new Map<string, { nivel: 0 | 1 | 2 | 3 | 4 | 5; origem: ItemPerfil['origem']; data: string }>();
 
   porAula.forEach((info, chave) => {
+    // A autoavaliação alimenta, mas não valida: uma competência só entra
+    // no perfil depois de o professor a confirmar. Sem isto, o aluno
+    // aparecia com técnicas que ele próprio se deu e que nunca foram
+    // vistas — e o perfil deixava de significar nada.
+    const validada = info.validadoPor === 'professor'
+      || info.validadoPor === 'recuperacao';
+    if (!validada) return;
+
     const competenciaId = chave.split('__')[1];
     const nivel = notaParaNivel(info.nota);
     const actual = porCompetencia.get(competenciaId);
@@ -3233,7 +3247,13 @@ export function getSessaoAula(planoAulaId: string): SessaoAula | undefined {
   return getSessoesAula().find(s => s.planoAulaId === planoAulaId);
 }
 
-/** O professor abre a aula. É daqui que contam os dez minutos. */
+/**
+ * O professor abre a aula. É daqui que contam os dez minutos.
+ *
+ * Escreve para o Sheets além do aparelho: o professor abre no computador
+ * dele e o aluno lê no tablet. Sem isto a abertura ficava só num sítio e
+ * o aluno esperava para sempre.
+ */
 export function abrirSessaoAula(
   planoAulaId: string, turmaId: string, professor: string,
   toleranciaMin = TOLERANCIA_PADRAO_MIN
@@ -3249,16 +3269,51 @@ export function abrirSessaoAula(
     toleranciaMin,
   };
   save(KEY_SESSOES as any, [...getSessoesAula().filter(s => s.planoAulaId !== planoAulaId), nova]);
+
+  enviar(SHEETS_HISTORICO_URL, 'sessao', {
+    planoAulaId, turmaId,
+    abertaEm: nova.abertaEm,
+    abertaPor: professor,
+    toleranciaMin,
+  });
   return nova;
 }
 
+/**
+ * Lê as sessões do Sheets e junta-as ao que está no aparelho.
+ * O aluno chama isto ao abrir o plano, e vai repetindo enquanto espera.
+ */
+export async function sincronizarSessoes(turmaId: string): Promise<void> {
+  const json = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId });
+  if (!json?.sessoes?.length) return;
+
+  const locais = getSessoesAula();
+  const porId = new Map(locais.map(s => [s.planoAulaId, s]));
+
+  for (const r of json.sessoes) {
+    const existente = porId.get(r.planoAulaId);
+    // A abertura mais antiga ganha: é a que iniciou a contagem.
+    if (!existente?.abertaEm || (r.abertaEm && r.abertaEm < existente.abertaEm)) {
+      porId.set(r.planoAulaId, {
+        planoAulaId: r.planoAulaId,
+        turmaId: r.turmaId || turmaId,
+        abertaEm: r.abertaEm,
+        abertaPor: r.abertaPor,
+        toleranciaMin: Number(r.toleranciaMin) || TOLERANCIA_PADRAO_MIN,
+        fechadaEm: r.fechadaEm || existente?.fechadaEm,
+      });
+    }
+  }
+  save(KEY_SESSOES as any, [...porId.values()]);
+}
+
 export function fecharSessaoAula(planoAulaId: string, professor: string): void {
+  const fechadaEm = new Date().toISOString();
   const all = getSessoesAula().map(s =>
-    s.planoAulaId === planoAulaId
-      ? { ...s, fechadaEm: new Date().toISOString(), fechadaPor: professor }
-      : s
+    s.planoAulaId === planoAulaId ? { ...s, fechadaEm, fechadaPor: professor } : s
   );
   save(KEY_SESSOES as any, all);
+  enviar(SHEETS_HISTORICO_URL, 'fechar_sessao', { planoAulaId, fechadaEm, fechadaPor: professor });
 }
 
 export interface EstadoTolerancia {
@@ -3402,11 +3457,39 @@ export function definirLiderKF(
 ): void {
   const todos = load<LiderKitchenFlow>(KEY_LIDERES as any)
     .filter(l => !(l.planoAulaId === planoAulaId && (l.grupoId ?? '') === (grupoId ?? '')));
+  const definidoEm = new Date().toISOString();
   save(KEY_LIDERES as any, [...todos, {
-    planoAulaId, grupoId, alunoId,
-    definidoPor: professor,
-    definidoEm: new Date().toISOString(),
+    planoAulaId, grupoId, alunoId, definidoPor: professor, definidoEm,
   }]);
+  // O aluno tem de saber que foi escolhido — e os colegas, que não são.
+  enviar(SHEETS_HISTORICO_URL, 'lider_kf', {
+    planoAulaId, grupoId: grupoId || '', alunoId, definidoPor: professor, definidoEm,
+  });
+}
+
+/** Lê os líderes do Sheets. Chamado na sincronização geral. */
+export async function sincronizarLideresKF(turmaId: string): Promise<void> {
+  const json = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_lideres_kf', turmaId });
+  if (!json?.lideres?.length) return;
+
+  const locais = load<LiderKitchenFlow>(KEY_LIDERES as any);
+  const chave = (l: any) => `${l.planoAulaId}__${l.grupoId ?? ''}`;
+  const porChave = new Map(locais.map(l => [chave(l), l]));
+
+  for (const r of json.lideres) {
+    const atual = porChave.get(chave(r));
+    // Fica o mais recente: o professor pode ter trocado de líder.
+    if (!atual || (r.definidoEm && r.definidoEm > atual.definidoEm)) {
+      porChave.set(chave(r), {
+        planoAulaId: r.planoAulaId,
+        grupoId: r.grupoId || undefined,
+        alunoId: r.alunoId,
+        definidoPor: r.definidoPor,
+        definidoEm: r.definidoEm,
+      });
+    }
+  }
+  save(KEY_LIDERES as any, [...porChave.values()].filter(l => l.alunoId));
 }
 
 /** Este aluno é quem faz os registos do KitchenFlow nesta aula? */
@@ -3556,9 +3639,15 @@ export interface Assiduidade {
 }
 
 export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string): Assiduidade {
+  // Só contam as aulas que JÁ ACONTECERAM. Um plano publicado para daqui
+  // a três semanas também está "publicado" — contá-lo dava faltas por
+  // aulas que ainda não houve. Um aluno na primeira aula aparecia com
+  // quatro faltas.
+  const hoje = new Date().toISOString().slice(0, 10);
   const planos = getPlanosAulaPorTurma(turmaId)
     .filter(p => !ucId || (p as any).ucId === ucId)
-    .filter(p => p.estado === 'publicado' || p.estado === 'realizada');
+    .filter(p => p.estado === 'publicado' || p.estado === 'realizada')
+    .filter(p => p.data <= hoje);
 
   const presencas = getPresencas().filter(p => p.alunoId === alunoId);
   const selecoes = getSelecoes().filter(s => s.alunoId === alunoId);
