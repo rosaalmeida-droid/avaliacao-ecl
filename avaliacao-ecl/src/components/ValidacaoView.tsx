@@ -105,8 +105,15 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
       {selecoes.length === 0 && (
         <Card>
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-            <div className="muted">Ainda não há autoavaliações de alunos para este plano.</div>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
+            <div style={{ fontWeight: 700, fontSize: 15.5, marginBottom: 6 }}>
+              Ainda não há nada para validar
+            </div>
+            <div className="muted" style={{ lineHeight: 1.6 }}>
+              A validação só aparece depois de os alunos submeterem a
+              autoavaliação. Se a aula já acabou e não aparece ninguém,
+              confirma que abriste a aula e que eles chegaram ao último passo.
+            </div>
           </div>
         </Card>
       )}
@@ -170,6 +177,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   });
   const [comentario, setComentario] = useState('');
   const [guardado, setGuardado] = useState(false);
+  const [aConfirmar, setAConfirmar] = useState(false);
 
   // Obter competências da autoavaliação
   const autoavaliacoes = selecao.autoavaliacoes || [];
@@ -521,7 +529,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             style={{ minHeight: 80 }}
           />
         </Field>
-        <button className="btn btn-primary" onClick={guardar}
+        <button className="btn btn-primary" onClick={() => setAConfirmar(true)}
           disabled={autoavaliacoes.some(a => !notasProf[a.competenciaId])}
           style={{ width:'100%', background: 'var(--sage)', marginTop: 8, padding: '14px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', opacity: autoavaliacoes.some(a => !notasProf[a.competenciaId]) ? 0.4 : 1 }}>
           ✓ Validar e guardar avaliação
@@ -532,6 +540,82 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           </div>
         )}
       </Card>
+
+      {/* Confirmação antes de gravar. A nota vai para o aluno — o
+          professor tem de ver o que está a entregar, e onde discordou
+          da proposta dele. */}
+      {aConfirmar && (() => {
+        const alterou = autoavaliacoes.filter(auto => {
+          const nAluno = (auto as any).nota || 0;
+          return notasProf[auto.competenciaId] !== nAluno;
+        });
+        return (
+          <div onClick={() => setAConfirmar(false)} style={{
+            position:'fixed', inset:0, background:'rgba(26,23,20,0.6)', zIndex:9999,
+            display:'flex', alignItems:'center', justifyContent:'center', padding:20,
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background:'#fff', borderRadius:18, padding:22, maxWidth:460, width:'100%',
+              maxHeight:'80vh', overflowY:'auto',
+            }}>
+              <div style={{ fontSize:19, fontWeight:700, color:'var(--charcoal, #1a1714)' }}>
+                Confirmas esta avaliação?
+              </div>
+              <div style={{ fontSize:14.5, color:'rgba(26,23,20,0.6)', marginTop:6,
+                lineHeight:1.55 }}>
+                É esta a nota que {nomeDoAluno(selecao.alunoId)} vai receber.
+              </div>
+
+              <div style={{ background:'rgba(90,122,78,0.08)', border:'1px solid var(--sage)',
+                borderRadius:12, padding:16, marginTop:16, textAlign:'center' }}>
+                <div style={{ fontSize:34, fontWeight:800, color:'var(--sage)' }}>
+                  {previsaoNota.nota20}<span style={{ fontSize:16, opacity:0.6 }}>/20</span>
+                </div>
+                <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:4 }}>
+                  {autoavaliacoes.length} competência{autoavaliacoes.length === 1 ? '' : 's'} avaliada{autoavaliacoes.length === 1 ? '' : 's'}
+                </div>
+              </div>
+
+              {alterou.length > 0 && (
+                <div style={{ background:'var(--copper-pale, #fdf0e6)',
+                  border:'1px solid var(--copper)', borderRadius:12,
+                  padding:14, marginTop:12 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:'var(--copper)',
+                    marginBottom:6 }}>
+                    Alteraste {alterou.length} de {autoavaliacoes.length}
+                  </div>
+                  <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', lineHeight:1.6 }}>
+                    Nas restantes concordaste com o que o aluno se deu.
+                  </div>
+                </div>
+              )}
+
+              {comentario.trim() && (
+                <div style={{ background:'rgba(26,23,20,0.04)', borderRadius:12,
+                  padding:14, marginTop:12, fontSize:14, color:'rgba(26,23,20,0.75)',
+                  lineHeight:1.55 }}>
+                  <b>Vais escrever ao aluno:</b><br />{comentario}
+                </div>
+              )}
+
+              <button onClick={() => { setAConfirmar(false); guardar(); }} style={{
+                width:'100%', marginTop:18, padding:16, borderRadius:12, border:'none',
+                background:'var(--sage)', color:'#fff', fontSize:16.5, fontWeight:700,
+                cursor:'pointer', fontFamily:'inherit',
+              }}>
+                Confirmar e entregar ao aluno
+              </button>
+              <button onClick={() => setAConfirmar(false)} style={{
+                width:'100%', marginTop:8, padding:13, background:'transparent',
+                border:'none', fontSize:15, color:'rgba(26,23,20,0.5)',
+                cursor:'pointer', fontFamily:'inherit',
+              }}>
+                Voltar e rever
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
