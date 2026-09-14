@@ -235,7 +235,14 @@ export function InicioAluno({
         {planoHoje ? (
           <>
             <div style={{ background: C.violeta, borderRadius: 18, padding: 18, marginBottom: 11 }}>
+              {/* A data por extenso. O aluno tem de saber sempre a que dia
+                  pertence o plano que está a ver — sobretudo quando abre um
+                  plano futuro pelo calendário. */}
               <div style={{ fontSize: 13.5, color: C.violetaClaro }}>
+                {new Date(planoHoje.data + 'T00:00:00').toLocaleDateString('pt-PT',
+                  { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </div>
+              <div style={{ fontSize: 13.5, color: C.violetaClaro, marginTop: 2 }}>
                 {planoHoje.horaInicio}–{planoHoje.horaFim}{ucId ? ` · ${ucId}` : ''}
               </div>
               <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginTop: 5, lineHeight: 1.25 }}>
