@@ -307,9 +307,31 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const [precosPreReq, setPrecosPreReq] = useState<Record<string, string>>({});
 
   const todasFichas = [...getFichasProducao()].sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
-  // Só mostrar fichas do plano seleccionado — nunca todas as fichas do sistema
-  const fichasDisp = planoSel ? todasFichas.filter(f => (planoSel.fichasIds || []).includes(f.id)) : [];
-  const fichasExtra: FichaProducao[] = []; // desactivado — só fichas do plano
+
+  // Duas origens: as fichas deste plano, e a biblioteca inteira.
+  //
+  // A biblioteca estava desativada — "só fichas do plano". Isso deixava
+  // os orçamentos sem nada para trabalhar (não têm plano) e impedia
+  // juntar a uma requisição uma ficha já feita noutra aula.
+  const [origemFichas, setOrigemFichas] = useState<'plano' | 'biblioteca'>(
+    planoSel && (planoSel.fichasIds || []).length > 0 ? 'plano' : 'biblioteca'
+  );
+  const [buscaFicha, setBuscaFicha] = useState('');
+
+  const fichasDoPlano = planoSel
+    ? todasFichas.filter(f => (planoSel.fichasIds || []).includes(f.id))
+    : [];
+
+  const fichasDisp = origemFichas === 'plano'
+    ? fichasDoPlano
+    : todasFichas.filter(f => {
+        if (!buscaFicha.trim()) return true;
+        const q = buscaFicha.toLowerCase();
+        return (f.nomePrato || '').toLowerCase().includes(q)
+            || (f.classificacao || '').toLowerCase().includes(q);
+      });
+
+  const fichasExtra: FichaProducao[] = [];
   const fichasSelecionadas = todasFichas.filter(f => fichasSel.includes(f.id));
 
   const paxBaseTotal = fichasSelecionadas.reduce((s, f) => s + (parseFloat(f.numPorcoes) || 1), 0) || 1;
@@ -717,15 +739,64 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         </div>
 
         {/* 2. Fichas e doses */}
-        {planoSel && (
-          <div id="req-fichas" style={S.card}>
+        <div id="req-fichas" style={S.card}>
             <label style={S.lbl}>2. Fichas de producao e doses</label>
             <div style={{ ...S.muted, marginBottom: 10 }}>Seleciona as fichas e define as doses pretendidas para cada uma.</div>
+
+            {/* Duas origens. Sem isto, uma requisição só podia usar as
+                fichas do plano — e os orçamentos, que não têm plano,
+                ficavam sem nada para trabalhar. */}
+            <div style={{ display: 'flex', gap: 7, marginBottom: 12 }}>
+              {([
+                ['plano', planoSel ? `Deste plano (${fichasDoPlano.length})` : 'Deste plano'],
+                ['biblioteca', `Biblioteca (${todasFichas.length})`],
+              ] as ['plano' | 'biblioteca', string][]).map(([id, lbl]) => (
+                <button key={id} onClick={() => setOrigemFichas(id)}
+                  disabled={id === 'plano' && !planoSel}
+                  style={{
+                    flex: 1, padding: '10px 8px', borderRadius: 10, fontSize: 13,
+                    fontWeight: origemFichas === id ? 700 : 500, cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    border: `1.5px solid ${origemFichas === id ? 'var(--copper)' : 'var(--border)'}`,
+                    background: origemFichas === id ? 'var(--copper-pale)' : '#fff',
+                    color: origemFichas === id ? 'var(--copper)' : 'rgba(26,23,20,0.55)',
+                    opacity: id === 'plano' && !planoSel ? 0.4 : 1,
+                  }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+
+            {origemFichas === 'biblioteca' && (
+              <input
+                value={buscaFicha}
+                onChange={e => setBuscaFicha(e.target.value)}
+                placeholder="Procurar ficha pelo nome..."
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 10,
+                  border: '1px solid var(--border)', fontSize: 14, marginBottom: 10,
+                  fontFamily: 'inherit' }} />
+            )}
+
             {fichasDisp.length === 0 ? (
-              <div style={{ padding: '12px', color: 'rgba(26,23,20,0.5)', fontSize: 13, textAlign: 'center' }}>
-                Este plano não tem fichas de produção associadas. Adiciona fichas no Plano de Aula.
+              <div style={{ padding: '14px', color: 'rgba(26,23,20,0.5)', fontSize: 13.5,
+                textAlign: 'center', lineHeight: 1.55 }}>
+                {origemFichas === 'plano'
+                  ? 'Este plano não tem fichas associadas. Podes ir buscá-las à biblioteca no separador ao lado.'
+                  : buscaFicha.trim()
+                    ? `Nenhuma ficha com "${buscaFicha}".`
+                    : 'Ainda não há fichas na biblioteca. Cria a primeira nas Fichas Técnicas.'}
               </div>
             ) : null}
+
+            {/* As que já estão escolhidas, para não se perderem ao trocar
+                de separador ou ao procurar. */}
+            {fichasSel.length > 0 && (
+              <div style={{ background: 'var(--copper-pale)', borderRadius: 10,
+                padding: '10px 12px', marginBottom: 10, fontSize: 13,
+                color: 'var(--copper)', fontWeight: 600 }}>
+                {fichasSel.length} ficha{fichasSel.length > 1 ? 's' : ''} nesta requisição
+              </div>
+            )}
             {fichasDisp.map(f => (
               <div key={f.id} style={{ border: `1.5px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px', marginBottom: 6, background: fichasSel.includes(f.id) ? 'var(--copper-pale)' : '#fff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -813,11 +884,11 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 )}
               </div>
             ))}
-          </div>
-        )}
+        </div>
 
-        {/* Ajuste de doses — aparece sempre que há fichas selecionadas, mesmo com só 1 */}
-        {planoSel && fichasSel.length > 0 && (
+        {/* Ajuste de doses — aparece sempre que há fichas selecionadas.
+            Já não exige plano: uma requisição de orçamento não tem plano. */}
+        {fichasSel.length > 0 && (
           <div style={S.card}>
             <label style={S.lbl}>Nº de doses por ficha</label>
             {fichasSelecionadas.map(f => (
@@ -850,7 +921,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         )}
 
         {/* 3. Dados adicionais */}
-        {planoSel && fichasSel.length > 0 && (
+        {fichasSel.length > 0 && (
           <div style={S.card}>
             <label style={S.lbl}>3. Dados adicionais</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
@@ -879,7 +950,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           </div>
         )}
 
-        {planoSel && fichasSel.length > 0 && (
+        {/* Sem exigir plano: um orçamento é uma requisição sem aula. */}
+        {fichasSel.length > 0 && (
           <button style={{ ...S.btnP, width: '100%' }} onClick={gerarLinhas}>
             Gerar requisicao — {fichasSel.length} ficha{fichasSel.length > 1 ? 's' : ''} · {paxEncTotal} doses →
           </button>
