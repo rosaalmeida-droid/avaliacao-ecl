@@ -417,7 +417,9 @@ function EditorMomento({ momento, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   const cfg = MOMENTOS_CONFIG[momento.tipo];
-  const [aberto, setAberto] = useState(false);
+  // Aberto por omissão: o número de pessoas é a primeira coisa a
+  // definir num evento, e estando fechado parecia que nem se perguntava.
+  const [aberto, setAberto] = useState(true);
 
   const isRefeicao = momento.tipo === 'almoco' || momento.tipo === 'jantar';
   const isCoffee = momento.tipo === 'coffee_break_manha' || momento.tipo === 'coffee_break_tarde';
@@ -436,7 +438,13 @@ function EditorMomento({ momento, onChange, onRemove }: {
         <span style={{ fontSize: 22 }}>{cfg.emoji}</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 800, fontSize: 14, color: COR.preto }}>{cfg.label}</div>
-          <div style={{ fontSize: 12, color: COR.cinza }}>{momento.numPessoas} pessoas · {momento.tipoServico || '—'}</div>
+          <div style={{ fontSize: 12.5, color: COR.cinza }}>
+            <b style={{ color: momento.numPessoas === 20 ? '#B5651D' : 'inherit' }}>
+              {momento.numPessoas} pessoas
+            </b>
+            {momento.numPessoas === 20 && ' (por confirmar)'}
+            {' · '}{momento.tipoServico || 'serviço por definir'}
+          </div>
         </div>
         <button onClick={e => { e.stopPropagation(); onRemove(); }} style={{ ...btn('#fee2e2', '#991b1b'), padding: '6px 12px', fontSize: 12 }}>✕</button>
         <span style={{ color: COR.cinza, fontSize: 16 }}>{aberto ? '▲' : '▼'}</span>
