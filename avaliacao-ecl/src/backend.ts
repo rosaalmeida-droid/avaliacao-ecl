@@ -3798,3 +3798,77 @@ export function marcarPassoChecklist(
   ));
   save(KEY_CHECKLIST as any, [...outros, { alunoId, planoAulaId, fichaId, passos: novosPassos }]);
 }
+
+// ============================================================
+// Recuperar fichas que perderam o conteúdo
+// ============================================================
+// Durante um período, a leitura do Sheets forçava ingredientes e
+// preparação a vazio quando a ficha chegava pela primeira vez a um
+// aparelho. O professor abria uma ficha antiga e encontrava só o nome.
+//
+// A leitura já está corrigida, mas as fichas que ficaram vazias
+// continuam vazias. Isto procura-as e diz o que se pode fazer.
+
+export interface FichaIncompleta {
+  id: string;
+  nomePrato: string;
+  temIngredientes: boolean;
+  temPreparacao: boolean;
+  planoAulaId?: string;
+}
+
+/** Fichas sem ingredientes ou sem preparação. */
+export function fichasIncompletas(): FichaIncompleta[] {
+  return getFichasProducao()
+    .filter(f => !f.ingredientes?.length || !f.preparacao?.length)
+    .map(f => ({
+      id: f.id,
+      nomePrato: f.nomePrato || '(sem nome)',
+      temIngredientes: !!f.ingredientes?.length,
+      temPreparacao: !!f.preparacao?.length,
+      planoAulaId: f.planoAulaId,
+    }));
+}
+
+/**
+ * Tenta recuperar do Sheets as fichas que ficaram vazias.
+ *
+ * Só funciona se o Sheets ainda tiver a versão completa. Se a ficha
+ * vazia já foi gravada por cima, não há nada a recuperar aqui — mas
+ * pode haver noutro aparelho onde a ficha nunca tenha sido aberta.
+ */
+export async function recuperarFichasDoSheets(): Promise<{
+  tentadas: number; recuperadas: number; nomes: string[];
+}> {
+  const incompletas = fichasIncompletas();
+  if (incompletas.length === 0) return { tentadas: 0, recuperadas: 0, nomes: [] };
+
+  const json = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
+  const doSheets: any[] = json?.dados || json?.fichas || [];
+  if (!doSheets.length) return { tentadas: incompletas.length, recuperadas: 0, nomes: [] };
+
+  const locais = getFichasProducao();
+  const nomes: string[] = [];
+
+  const atualizadas = locais.map(f => {
+    const remota = doSheets.find((r: any) => r.id === f.id);
+    if (!remota) return f;
+
+    const ganhaIngredientes = !f.ingredientes?.length
+      && Array.isArray(remota.ingredientes) && remota.ingredientes.length > 0;
+    const ganhaPreparacao = !f.preparacao?.length
+      && Array.isArray(remota.preparacao) && remota.preparacao.length > 0;
+
+    if (!ganhaIngredientes && !ganhaPreparacao) return f;
+
+    nomes.push(f.nomePrato || f.id);
+    return {
+      ...f,
+      ingredientes: ganhaIngredientes ? remota.ingredientes : f.ingredientes,
+      preparacao: ganhaPreparacao ? remota.preparacao : f.preparacao,
+    };
+  });
+
+  save(KEYS.fichas, atualizadas);
+  return { tentadas: incompletas.length, recuperadas: nomes.length, nomes };
+}
