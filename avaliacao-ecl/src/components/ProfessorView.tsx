@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom , recuperarFichasDoSheets } from '../backend';
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
@@ -2661,7 +2661,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
   );
 }
 
-export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia, nomePratoInicial, fichaParaEditar }: {
+export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia, nomePratoInicial, fichaParaEditar, abrirBiblioteca }: {
   turmaId: string;
   nomeProfessor?: string;
   onAlteracao?: () => void;
@@ -2671,6 +2671,8 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   nomePratoInicial?: string;
   /** Abre logo esta ficha em edição, em vez da biblioteca. */
   fichaParaEditar?: string | null;
+  /** Abre na biblioteca completa — todas as fichas, não só as do plano. */
+  abrirBiblioteca?: boolean;
 }) {
   const [vista, setVista] = useState<'biblioteca' | 'criar' | 'editar'>(
     fichaParaEditar ? 'editar' : 'biblioteca'
@@ -2684,7 +2686,9 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   const [ficha, setFicha] = useState<FichaTecnica>({ ...FICHA_VAZIA, elaboradoPor: nomeProfessor || FICHA_VAZIA.elaboradoPor });
   const [passo, setPasso] = useState<'link' | 'ficha'>('link');
   const [fichasGuardadas, setFichasGuardadas] = useState(() => getFichasProducao());
-  const [mostrarBibliotecaCompleta, setMostrarBibliotecaCompleta] = useState(false);
+  // Quando o professor vem do plano com "Ir buscar uma ficha", abre
+  // logo na biblioteca completa em vez das fichas deste plano.
+  const [mostrarBibliotecaCompleta, setMostrarBibliotecaCompleta] = useState(!!abrirBiblioteca);
   // Modo de seleção múltipla — eliminar várias fichas de uma vez (ponto 9
   // do documento de 21/06/2026, "isto é extremamente moroso" item a item).
   const [modoSelecao, setModoSelecao] = useState(false);
@@ -2922,6 +2926,15 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       : fichasGuardadas;
     const fichasParaMostrar = mostrarBibliotecaCompleta ? fichasGuardadas : fichasDoPlano;
 
+    // Fichas que perderam o conteúdo. Acontecia na leitura do Sheets,
+    // que forçava ingredientes e preparação a vazio na primeira vez que
+    // a ficha chegava a um aparelho. A leitura já está corrigida, mas o
+    // que ficou vazio continua vazio — e o professor abria a ficha e só
+    // via o nome.
+    const incompletas = fichasParaMostrar.filter(
+      (f: any) => !f.ingredientes?.length || !f.preparacao?.length
+    );
+
     return (
       <div style={{ background: 'var(--sage-pale)', borderRadius: 16, padding: 16 }}>
         <div style={{ background: 'var(--sage)', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
@@ -2958,6 +2971,48 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         {ucId && (
           <div style={{ padding:'8px 14px', background:'var(--copper-pale)', borderRadius:10, marginBottom:12, fontSize:12, color:'var(--copper)', border:'1px solid rgba(181,101,29,0.2)' }}>
             <strong>UC activa:</strong> {ucId} — {ucNome}
+          </div>
+        )}
+
+        {/* Fichas que perderam o conteúdo — e como as recuperar. */}
+        {incompletas.length > 0 && (
+          <div style={{ background:'var(--copper-pale)', border:'1px solid var(--copper)',
+            borderRadius:12, padding:14, marginBottom:12 }}>
+            <div style={{ fontSize:14.5, fontWeight:700, color:'var(--copper)' }}>
+              {incompletas.length} ficha{incompletas.length > 1 ? 's' : ''} sem conteúdo
+            </div>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginTop:4,
+              lineHeight:1.55 }}>
+              {incompletas.slice(0, 4).map((f: any) => f.nomePrato).join(' · ')}
+              {incompletas.length > 4 && ` e mais ${incompletas.length - 4}`}
+              <br />
+              Ficaram sem ingredientes ou sem preparação por causa de um erro
+              na sincronização, já corrigido. Posso tentar ir buscá-las ao
+              Google Sheets.
+            </div>
+            <button
+              onClick={async () => {
+                const r = await recuperarFichasDoSheets();
+                if (r.recuperadas > 0) {
+                  alert(
+                    `Recuperadas ${r.recuperadas} de ${r.tentadas} fichas:\n\n` +
+                    r.nomes.join('\n')
+                  );
+                  recarregar();
+                } else {
+                  alert(
+                    'Não foi possível recuperar nenhuma.\n\n' +
+                    'O Google Sheets também já tem a versão vazia. Se tiveres ' +
+                    'estas fichas noutro aparelho onde ainda estejam completas, ' +
+                    'abre-as aí e guarda — isso volta a enviá-las.'
+                  );
+                }
+              }}
+              style={{ marginTop:11, padding:'10px 16px', borderRadius:10, border:'none',
+                background:'var(--copper)', color:'#fff', fontSize:14, fontWeight:700,
+                cursor:'pointer', fontFamily:'inherit' }}>
+              Tentar recuperar do Sheets
+            </button>
           </div>
         )}
 
@@ -3027,8 +3082,14 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               fichaNum: f.fichaNum || '', alergenicos: f.alergenicos,
               tempoPrep: f.tempoPrep||'', tempoConf: f.tempoConf||'',
               numPorcoes: f.numPorcoes||'',
-              ingredientes: f.ingredientes && f.ingredientes.length > 0 ? f.ingredientes as any : FICHA_VAZIA.ingredientes,
-              preparacao: f.preparacao && f.preparacao.length > 0 ? f.preparacao as any : FICHA_VAZIA.preparacao,
+              // Se a ficha vier sem ingredientes, mantém-se vazia — mas o
+              // professor é avisado. Antes era substituída em silêncio por
+              // uma ficha em branco, e as quantidades originais
+              // desapareciam sem ninguém perceber porquê.
+              ingredientes: (f.ingredientes && f.ingredientes.length > 0)
+                ? f.ingredientes as any : FICHA_VAZIA.ingredientes,
+              preparacao: (f.preparacao && f.preparacao.length > 0)
+                ? f.preparacao as any : FICHA_VAZIA.preparacao,
               empratamento: f.empratamento||'', elaboradoPor: f.elaboradoPor||nomeProfessor||'',
               data: f.data||'', equipamento: f.equipamento||'',
               conservacao: f.conservacao||'', regeneracao: f.regeneracao||'',
@@ -3039,6 +3100,18 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               tecnicasDetectadas: (f as any).tecnicasDetectadas || [],
               aparelhosDetectados: (f as any).aparelhosDetectados || [],
             }));
+            // Avisar quando a ficha chega incompleta. Acontece nas que
+            // foram sincronizadas antes de o bug da leitura ser corrigido.
+            if (!f.ingredientes?.length || !f.preparacao?.length) {
+              alert(
+                `A ficha "${f.nomePrato}" veio sem ` +
+                (!f.ingredientes?.length && !f.preparacao?.length ? 'ingredientes nem preparação'
+                 : !f.ingredientes?.length ? 'ingredientes' : 'preparação') +
+                '.\n\nIsto acontece em fichas guardadas antes de uma correção recente. ' +
+                'Se tiveres a ficha noutro aparelho onde ainda esteja completa, ' +
+                'abre-a aí primeiro para voltar a sincronizar.'
+              );
+            }
             setVista('editar');
             setPasso('ficha');
             setFichaEmEdicaoId(f.id);
@@ -3062,8 +3135,24 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               )}
               {mostrarBibliotecaCompleta && <span style={{ fontSize: 18, color: 'var(--sage)' }}>+</span>}
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{f.nomePrato}</div>
-                <div className="muted">{f.classificacao} · {f.numPorcoes} porções · {f.data}</div>
+                <div style={{ fontWeight: 600, fontSize: 15, display:'flex',
+                  alignItems:'center', gap:7, flexWrap:'wrap' }}>
+                  {f.nomePrato}
+                  {/* Marcar as que estão vazias, para o professor saber antes
+                      de abrir e não pensar que a ficha está perdida. */}
+                  {(!f.ingredientes?.length || !f.preparacao?.length) && (
+                    <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px',
+                      borderRadius:20, background:'var(--copper-pale)',
+                      color:'var(--copper)', border:'1px solid var(--copper)' }}>
+                      {!f.ingredientes?.length && !f.preparacao?.length
+                        ? 'sem conteúdo'
+                        : !f.ingredientes?.length ? 'sem ingredientes' : 'sem preparação'}
+                    </span>
+                  )}
+                </div>
+                <div className="muted">
+                  {f.classificacao} · {f.ingredientes?.length || 0} ingredientes · {f.numPorcoes} porções
+                </div>
                 {(f.ucsAssociadas || []).length > 0 && <div style={{ fontSize:13, color:'var(--copper)' }}>{(f.ucsAssociadas || [])[0]}</div>}
                 <EtiquetaLigacaoPlano planoAulaId={f.planoAulaId} />
               </div>
