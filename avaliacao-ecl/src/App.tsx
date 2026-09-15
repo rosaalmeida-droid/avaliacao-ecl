@@ -30,8 +30,12 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
       <div style={{ background: '#fff7ed', borderRadius: 14, padding: '14px 16px',
         marginBottom: 14, border: '1.5px solid #fcd34d' }}>
         <div style={{ fontWeight: 700, fontSize: 15, color: '#92400e', marginBottom: 4 }}>💰 Orçamentos</div>
-        <div style={{ fontSize: 13, color: '#78350f' }}>
-          Fichas e requisições <strong>sem ligação a plano de aula</strong> — para calcular custos e preparar produções.
+        <div style={{ fontSize: 13.5, color: '#78350f', lineHeight: 1.55 }}>
+          Para calcular custos sem estar preso a uma aula: um evento, um
+          almoço pedagógico, uma encomenda.
+          <br />
+          Nas requisições, escolhe <strong>Biblioteca</strong> para usar
+          fichas técnicas que já tenhas feito.
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
