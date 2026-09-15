@@ -421,6 +421,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [incluirSubApp, setIncluirSubApp] = useState(true);
   /** Ficha que está a ser editada; null = criar nova. */
   const [fichaEmEdicao, setFichaEmEdicao] = useState<string | null>(null);
+  /** true quando vem do plano com "Ir buscar uma ficha". */
+  const [irParaBiblioteca, setIrParaBiblioteca] = useState(false);
   const [modalProximo, setModalProximo] = useState<string | null>(null);
   const [fichasParaRequisicao, setFichasParaRequisicao] = React.useState<string[]>([]);
   const [tabInicio, setTabInicio] = useState<'orientacao' | 'resumo' | 'competencias'>('orientacao');
@@ -645,6 +647,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     if (planoAtualizado) onPlanoActualizado(planoAtualizado);
     onGuardado?.();
     setFichaEmEdicao(null);
+    setIrParaBiblioteca(false);
     setModalProximo('apos_ficha');
   }
 
@@ -686,6 +689,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
         <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id}
           fichaParaEditar={fichaEmEdicao}
+          abrirBiblioteca={irParaBiblioteca}
           onAlteracao={onAlteracao} onGuardado={aposGuardarFicha} />
         {modalProximo === 'apos_ficha' && (
           <ModalProximoPasso
@@ -1619,6 +1623,231 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
       {/* TAB RESUMO */}
       {tabInicio === 'resumo' && (<>
+
+        {/* ═══ O QUE ESTE PLANO TEM ═══════════════════════════
+            Duas colunas: à esquerda o que já está, à direita o que se
+            pode juntar. Nada é obrigatório — mas o professor tem de
+            perceber o que ganha e o que perde em cada escolha. */}
+        {(() => {
+          const B = '#7B2233', BS = '#F6ECEE';
+          const temFicha = fichasDoPlano.length > 0;
+          const temGuiao = fichasDoPlano.some((f: any) => f.textoGuia);
+          const temReq = !!getRequisicaoPorPlano(plano.id);
+          const pratico = (plano as any).tipoPlanAula !== 'teorico';
+
+          const linha = (
+            feito: boolean, titulo: string, detalhe: string,
+            accao?: { texto: string; ao: () => void }
+          ) => (
+            <div style={{ display:'flex', alignItems:'flex-start', gap:11,
+              padding:'12px 0', borderBottom:'1px solid rgba(26,23,20,0.07)' }}>
+              <span style={{ width:22, height:22, borderRadius:7, flexShrink:0, marginTop:1,
+                background: feito ? 'var(--sage)' : 'transparent',
+                border: feito ? 'none' : '2px dashed rgba(26,23,20,0.2)',
+                display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {feito && (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff"
+                    strokeWidth={3.2} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                )}
+              </span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:14.5, fontWeight:700,
+                  color: feito ? 'var(--charcoal, #1a1714)' : 'rgba(26,23,20,0.55)' }}>
+                  {titulo}
+                </div>
+                <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:2,
+                  lineHeight:1.5 }}>{detalhe}</div>
+              </div>
+              {accao && (
+                <button onClick={accao.ao} style={{
+                  flexShrink:0, padding:'7px 12px', borderRadius:9, fontSize:12.5,
+                  fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+                  border:`1px solid ${feito ? 'rgba(26,23,20,0.15)' : B}`,
+                  background:'#fff', color: feito ? 'rgba(26,23,20,0.6)' : B,
+                }}>{accao.texto}</button>
+              )}
+            </div>
+          );
+
+          return (
+            <div style={{ display:'grid', gap:14, marginBottom:18,
+              gridTemplateColumns:'repeat(auto-fit, minmax(290px, 1fr))' }}>
+
+              {/* ── Coluna 1: o que está no plano ── */}
+              <div style={{ background:'#fff', borderRadius:14, padding:16,
+                border:'1px solid rgba(26,23,20,0.08)' }}>
+                <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.07em',
+                  textTransform:'uppercase', color:B, marginBottom:10 }}>
+                  O que este plano tem
+                </div>
+
+                {linha(temFicha,
+                  temFicha ? `${fichasDoPlano.length} ficha${fichasDoPlano.length > 1 ? 's' : ''} técnica${fichasDoPlano.length > 1 ? 's' : ''}` : 'Sem ficha técnica',
+                  temFicha
+                    ? fichasDoPlano.map((f: any) => f.nomePrato).join(' · ')
+                    : 'As competências técnicas vêm das fichas. Sem ficha, tens de as escolher à mão.',
+                  { texto: temFicha ? 'Ver' : 'Criar', ao: () => setModulo('ficha') })}
+
+                {linha(temGuiao,
+                  temGuiao ? 'Guião de produção' : 'Sem guião',
+                  temGuiao
+                    ? 'O aluno tem o passo a passo e as explicações.'
+                    : 'Opcional. Sem ele, o aluno segue só a ficha.',
+                  { texto: temGuiao ? 'Ver' : 'Juntar', ao: () => setModulo('guia') })}
+
+                {linha(temReq,
+                  temReq ? 'Requisição feita' : 'Sem requisição',
+                  temReq
+                    ? 'Os ingredientes estão pedidos.'
+                    : 'Opcional. Serve para pedir o que é preciso e saber o custo.',
+                  { texto: temReq ? 'Ver' : 'Fazer', ao: () => setModulo('requisicao') })}
+
+                <div style={{ marginTop:14, paddingTop:12,
+                  borderTop:'1px solid rgba(26,23,20,0.07)' }}>
+                  <div style={{ fontSize:12.5, fontWeight:700, color:'rgba(26,23,20,0.5)',
+                    marginBottom:8 }}>
+                    O que vai ser avaliado
+                  </div>
+                  <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', lineHeight:1.7 }}>
+                    <div>
+                      <b>{compAtitudes.length}</b> atitudes
+                      <span style={{ color:'rgba(26,23,20,0.45)' }}> — sempre, em qualquer aula</span>
+                    </div>
+                    {pratico && (
+                      <div>
+                        <b>{compObrigatorias.length}</b> obrigatórias
+                        <span style={{ color:'rgba(26,23,20,0.45)' }}> — sempre, em aula prática</span>
+                      </div>
+                    )}
+                    <div>
+                      <b>{compTecnicas.length + compSubtecnicas.length}</b> técnicas
+                      <span style={{ color:'rgba(26,23,20,0.45)' }}>
+                        {temFicha ? ' — das fichas' : ' — escolhidas por ti'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Coluna 2: o que se pode juntar ── */}
+              <div style={{ background:BS, borderRadius:14, padding:16,
+                border:`1px solid ${B}22` }}>
+                <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.07em',
+                  textTransform:'uppercase', color:B, marginBottom:10 }}>
+                  O que podes juntar
+                </div>
+
+                {!temFicha && (
+                  <div style={{ background:'#fff', borderRadius:11, padding:13, marginBottom:9 }}>
+                    <div style={{ fontSize:14.5, fontWeight:700 }}>Ficha técnica</div>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
+                      lineHeight:1.5, marginBottom:10 }}>
+                      Traz as técnicas, os ingredientes e os alergénios. É o que
+                      faz as competências aparecerem sozinhas.
+                    </div>
+                    <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
+                      <button onClick={() => { setFichaEmEdicao(null); setModulo('ficha'); }}
+                        style={{ flex:1, minWidth:110, padding:'10px', borderRadius:9,
+                          border:'none', background:B, color:'#fff', fontSize:13,
+                          fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                        Criar nova
+                      </button>
+                      <button onClick={() => { setFichaEmEdicao(null); setIrParaBiblioteca(true); setModulo('ficha'); }}
+                        style={{ flex:1, minWidth:110, padding:'10px', borderRadius:9,
+                          border:`1.5px solid ${B}`, background:'#fff', color:B,
+                          fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                        Ir buscar uma
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {temFicha && (
+                  <div style={{ background:'#fff', borderRadius:11, padding:13, marginBottom:9 }}>
+                    <div style={{ fontSize:14.5, fontWeight:700 }}>Outra ficha</div>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
+                      lineHeight:1.5, marginBottom:10 }}>
+                      Uma aula pode ter várias produções.
+                    </div>
+                    <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
+                      <button onClick={() => { setFichaEmEdicao(null); setModulo('ficha'); }}
+                        style={{ flex:1, minWidth:110, padding:'10px', borderRadius:9,
+                          border:'none', background:B, color:'#fff', fontSize:13,
+                          fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                        Criar nova
+                      </button>
+                      <button onClick={() => { setFichaEmEdicao(null); setIrParaBiblioteca(true); setModulo('ficha'); }}
+                        style={{ flex:1, minWidth:110, padding:'10px', borderRadius:9,
+                          border:`1.5px solid ${B}`, background:'#fff', color:B,
+                          fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                        Ir buscar uma
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {!temGuiao && temFicha && (
+                  <div style={{ background:'#fff', borderRadius:11, padding:13, marginBottom:9 }}>
+                    <div style={{ fontSize:14.5, fontWeight:700 }}>Guião</div>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
+                      lineHeight:1.5, marginBottom:10 }}>
+                      Explica o porquê de cada passo. Ajuda quem tem mais
+                      dificuldade a seguir a produção sozinho.
+                    </div>
+                    <button onClick={() => setModulo('guia')}
+                      style={{ width:'100%', padding:'10px', borderRadius:9,
+                        border:`1.5px solid ${B}`, background:'#fff', color:B,
+                        fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                      Escrever guião
+                    </button>
+                  </div>
+                )}
+
+                {!temReq && temFicha && (
+                  <div style={{ background:'#fff', borderRadius:11, padding:13, marginBottom:9 }}>
+                    <div style={{ fontSize:14.5, fontWeight:700 }}>Requisição</div>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
+                      lineHeight:1.5, marginBottom:10 }}>
+                      Sai dos ingredientes das fichas. Dá o custo da aula e a
+                      lista para o economato.
+                    </div>
+                    <button onClick={() => setModulo('requisicao')}
+                      style={{ width:'100%', padding:'10px', borderRadius:9,
+                        border:`1.5px solid ${B}`, background:'#fff', color:B,
+                        fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                      Fazer requisição
+                    </button>
+                  </div>
+                )}
+
+                {!temFicha && (
+                  <div style={{ background:'#fff', borderRadius:11, padding:13 }}>
+                    <div style={{ fontSize:14.5, fontWeight:700 }}>Escolher competências à mão</div>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
+                      lineHeight:1.5, marginBottom:10 }}>
+                      Se não vais usar ficha, define tu o que vai ser avaliado.
+                      As atitudes e as obrigatórias já estão garantidas.
+                    </div>
+                    <button onClick={() => setTabInicio('competencias')}
+                      style={{ width:'100%', padding:'10px', borderRadius:9,
+                        border:`1.5px solid ${B}`, background:'#fff', color:B,
+                        fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                      Escolher competências
+                    </button>
+                  </div>
+                )}
+
+                {temFicha && temGuiao && temReq && (
+                  <div style={{ background:'rgba(90,122,78,0.1)', borderRadius:11, padding:14,
+                    fontSize:13.5, color:'var(--sage)', lineHeight:1.55, fontWeight:600 }}>
+                    Está tudo. Falta só publicar para os alunos verem a aula.
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {fichasDoPlano.length > 0 && (
           <div style={{ marginBottom: 14, padding: '10px 14px', background: 'var(--cream-dark)', borderRadius: 12, border: '1px solid var(--border)' }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 8 }}>Fichas de Produção — {fichasDoPlano.length}</div>
