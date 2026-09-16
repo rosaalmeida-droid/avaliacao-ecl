@@ -8,6 +8,7 @@ import { ManuaisAluno } from './components/ManuaisAluno';
 import { Header, LayoutProfessor, VistaProf } from './components/Header';
 import { PainelProfessor } from './components/PainelProfessor';
 import { EstadoSincronizacao } from './components/EstadoSincronizacao';
+import { HistoricoRequisicoes } from './components/HistoricoRequisicoes';
 import { modulosAtivos } from './cronograma';
 import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
@@ -25,7 +26,13 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
   turmaId: string; nomeProfessor: string;
   onAlteracao: () => void; onGuardado: () => void;
 }) {
-  const [tab, setTab] = React.useState<'fichas' | 'requisicoes'>('fichas');
+  // Começa em 'requisicoes': quem entra nos Orçamentos vem criar um,
+  // não vem ver fichas.
+  const [tab, setTab] = React.useState<'fichas' | 'requisicoes' | 'historico'>('requisicoes');
+  /** Marca que o professor veio da requisição criar uma ficha. */
+  const [veioDaRequisicao, setVeioDaRequisicao] = React.useState(false);
+  /** Documento do histórico que o professor quer reabrir. */
+  const [reqAberta, setReqAberta] = React.useState<string | null>(null);
   return (
     <div>
       <div style={{ background: '#fff7ed', borderRadius: 14, padding: '14px 16px',
@@ -41,8 +48,9 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         {([
-          { id: 'fichas',      label: '📄 Fichas Técnicas' },
-          { id: 'requisicoes', label: '🛒 Requisições' },
+          { id: 'requisicoes', label: 'Criar' },
+          { id: 'historico',   label: 'Histórico' },
+          { id: 'fichas',      label: 'Fichas técnicas' },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -54,11 +62,39 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
         ))}
       </div>
       {tab === 'fichas' && (
-        <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
-          onAlteracao={onAlteracao} onGuardado={onGuardado} />
+        <>
+          {/* Quem veio da requisição para criar uma ficha precisa de saber
+              como voltar — e que a requisição não se perdeu. */}
+          {veioDaRequisicao && (
+            <div style={{ background: '#fdf0e6', border: '1px solid #b5651d',
+              borderRadius: 12, padding: '13px 15px', marginBottom: 14,
+              display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 200px', fontSize: 14, color: '#78350f',
+                lineHeight: 1.5 }}>
+                Cria a ficha e volta à requisição — o que já tinhas escolhido
+                continua lá.
+              </span>
+              <button onClick={() => { setVeioDaRequisicao(false); setTab('requisicoes'); }} style={{
+                padding: '10px 16px', borderRadius: 10, border: 'none',
+                background: '#b5651d', color: '#fff', fontSize: 14,
+                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                Voltar à requisição
+              </button>
+            </div>
+          )}
+          <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+            onAlteracao={onAlteracao} onGuardado={onGuardado} />
+        </>
       )}
       {tab === 'requisicoes' && (
-        <Requisicao nomeProfessor={nomeProfessor} turmaId={turmaId} />
+        <Requisicao key={reqAberta || 'nova'}
+          nomeProfessor={nomeProfessor} turmaId={turmaId}
+          onCriarFicha={() => { setVeioDaRequisicao(true); setTab('fichas'); }} />
+      )}
+      {tab === 'historico' && (
+        <HistoricoRequisicoes turmaId={turmaId}
+          onAbrir={(id) => { setReqAberta(id); setTab('requisicoes'); }} />
       )}
     </div>
   );
