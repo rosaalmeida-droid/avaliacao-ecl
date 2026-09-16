@@ -46,7 +46,7 @@ function ChipAtivo() {
   return (
     <span style={{
       display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-      background: '#D6EFD8', color: '#1A6B2A', fontSize: 11, fontWeight: 700,
+      background: '#D6EFD8', color: '#1A6B2A', fontSize: 12.5, fontWeight: 700,
       letterSpacing: 0.3, textTransform: 'uppercase',
     }}>Em curso</span>
   );
@@ -55,7 +55,7 @@ function ChipBreve() {
   return (
     <span style={{
       display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-      background: '#FFF3CD', color: '#856404', fontSize: 11, fontWeight: 700,
+      background: '#FFF3CD', color: '#856404', fontSize: 12.5, fontWeight: 700,
       letterSpacing: 0.3, textTransform: 'uppercase',
     }}>A iniciar</span>
   );
@@ -64,7 +64,7 @@ function ChipTerminado() {
   return (
     <span style={{
       display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-      background: '#F8D7DA', color: '#842029', fontSize: 11, fontWeight: 700,
+      background: '#F8D7DA', color: '#842029', fontSize: 12.5, fontWeight: 700,
       letterSpacing: 0.3, textTransform: 'uppercase',
     }}>Terminou</span>
   );
@@ -83,7 +83,7 @@ function LinhaUFCD({ modulo, chip }: { modulo: ModuloCronograma; chip: 'ativo' |
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
           {/* Badge UFCD — cor azul-petróleo para distinguir do roxo das UCs */}
           <span style={{
-            fontFamily: 'monospace', fontSize: 12, fontWeight: 700,
+            fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
             color: '#1A5C7A', background: '#E0F2F9', padding: '1px 7px', borderRadius: 5,
           }}>{modulo.id}</span>
           {chip === 'ativo' && <ChipAtivo />}
@@ -95,28 +95,28 @@ function LinhaUFCD({ modulo, chip }: { modulo: ModuloCronograma; chip: 'ativo' |
           {modulo.nome}
         </div>
 
-        <div style={{ fontSize: 11, color: '#777' }}>
+        <div style={{ fontSize: 12.5, color: '#777' }}>
           {modulo.disciplina} · {modulo.horasPrevistas}h
           {modulo.docente ? ` · ${modulo.docente}` : ''}
         </div>
-        <div style={{ fontSize: 11, color: '#999', marginTop: 1 }}>
+        <div style={{ fontSize: 12.5, color: '#999', marginTop: 1 }}>
           {formatarData(modulo.dataInicio)} → {formatarData(modulo.dataFim)}
         </div>
 
         {/* UCs equivalentes — informação de apoio para o professor */}
         {ucsEquiv.length > 0 && ucsEquiv[0] !== modulo.id && (
-          <div style={{ fontSize: 10, color: '#9B6DD1', marginTop: 3 }}>
+          <div style={{ fontSize: 12.5, color: '#9B6DD1', marginTop: 3 }}>
             Equivalente a: {ucsEquiv.join(', ')} (referencial 811RA144)
           </div>
         )}
 
         {chip === 'ativo' && (
-          <div style={{ marginTop: 4, fontSize: 11, color: '#1A6B2A', fontWeight: 600 }}>
+          <div style={{ marginTop: 4, fontSize: 12.5, color: '#1A6B2A', fontWeight: 600 }}>
             ▶ Deve selecionar esta UFCD nos planos de aula
           </div>
         )}
         {chip === 'terminado' && (
-          <div style={{ marginTop: 4, fontSize: 11, color: '#842029', fontWeight: 600 }}>
+          <div style={{ marginTop: 4, fontSize: 12.5, color: '#842029', fontWeight: 600 }}>
             ✓ A UFCD {modulo.id} já terminou — verificar avaliação
           </div>
         )}
@@ -171,7 +171,7 @@ export function CronogramaModalAntigo({ turmaId, onFechar }: Props) {
           padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div>
-            <div style={{ color: '#B8E4F5', fontSize: 11, fontWeight: 600, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>
+            <div style={{ color: '#B8E4F5', fontSize: 12.5, fontWeight: 600, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>
               Cronograma · Referencial 811183
             </div>
             <div style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>
@@ -195,7 +195,7 @@ export function CronogramaModalAntigo({ turmaId, onFechar }: Props) {
 
           {ativos.length > 0 && (
             <section style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#1A6B2A', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#1A6B2A', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
                 Em curso
               </div>
               {ativos.map(m => <LinhaUFCD key={m.id} modulo={m} chip="ativo" />)}
@@ -204,7 +204,7 @@ export function CronogramaModalAntigo({ turmaId, onFechar }: Props) {
 
           {aIniciar.length > 0 && (
             <section style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#856404', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#856404', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
                 A iniciar nos próximos 7 dias
               </div>
               {aIniciar.map(m => <LinhaUFCD key={m.id} modulo={m} chip="breve" />)}
@@ -213,7 +213,7 @@ export function CronogramaModalAntigo({ turmaId, onFechar }: Props) {
 
           {terminados.length > 0 && (
             <section style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#842029', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#842029', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
                 Terminadas nos últimos 14 dias
               </div>
               {terminados.map(m => <LinhaUFCD key={m.id} modulo={m} chip="terminado" />)}

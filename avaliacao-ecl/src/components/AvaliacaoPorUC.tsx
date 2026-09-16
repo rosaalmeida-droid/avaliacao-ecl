@@ -186,11 +186,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
           <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, fontFamily: 'Nunito, sans-serif' }}>
             📊 Historial de Avaliações
           </h2>
-          <div style={{ fontSize: 12, opacity: 0.5 }}>Consulta e filtra o que foi avaliado — por UC, período ou aluno</div>
+          <div style={{ fontSize: 13, opacity: 0.5 }}>Consulta e filtra o que foi avaliado — por UC, período ou aluno</div>
         </div>
         <button className="no-print" onClick={() => window.print()} style={{
           background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:8,
-          color:'#faf7f2', fontSize:12, fontWeight:700, padding:'8px 14px', cursor:'pointer', whiteSpace:'nowrap' }}>
+          color:'#faf7f2', fontSize:13, fontWeight:700, padding:'8px 14px', cursor:'pointer', whiteSpace:'nowrap' }}>
           🖨️ Imprimir turma
         </button>
       </div>
@@ -207,7 +207,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
           {/* UC/UFCD */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>
               {modulos.some(m => m.tipo === 'UFCD') ? 'UFCD' : 'UC'}
             </div>
             <select value={filtroUC} onChange={e => setFiltroUC(e.target.value)}
@@ -219,7 +219,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
           {/* Aluno — só visível na vista do professor, não na vista do aluno */}
           {!alunoId && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>Aluno</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 4 }}>Aluno</div>
             <select value={filtroAluno} onChange={e => setFiltroAluno(e.target.value)}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: `1px solid ${T.border}`, fontSize: 13 }}>
               <option value="todos">Turma toda</option>
@@ -230,7 +230,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
         </div>
         {/* Período */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 6 }}>Período</div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 6 }}>Período</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {([
               { v: 'tudo', label: 'Todo o ano' },
@@ -240,7 +240,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
               { v: 'personalizado', label: '📅 Personalizado' },
             ] as const).map(opt => (
               <button key={opt.v} onClick={() => setFiltroPeriodo(opt.v)}
-                style={{ padding: '6px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                style={{ padding: '6px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                   background: filtroPeriodo === opt.v ? T.copper : 'rgba(26,23,20,0.06)',
                   color: filtroPeriodo === opt.v ? '#fff' : 'rgba(26,23,20,0.5)' }}>
                 {opt.label}
@@ -266,18 +266,18 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
             {(!analiseEquilibrio.temPratica || !analiseEquilibrio.temTeoria) ? '⚠️ Avaliação desequilibrada' : '✅ Avaliação equilibrada'}
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
             <span>🔪 Prática: <strong>{analiseEquilibrio.pratica}</strong> registos</span>
             <span>📚 Conhecimentos: <strong>{analiseEquilibrio.teoria}</strong> registos</span>
             <span>💡 Atitudes: <strong>{analiseEquilibrio.atitudes}</strong> registos</span>
           </div>
           {!analiseEquilibrio.temTeoria && (
-            <div style={{ fontSize: 12, color: '#b45309', marginTop: 6, fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: '#b45309', marginTop: 6, fontWeight: 600 }}>
               Não foram avaliados conhecimentos desta {modulos.some(m=>m.tipo==='UFCD')?'UFCD':'UC'} — considera adicionar uma aula teórica ou mista.
             </div>
           )}
           {!analiseEquilibrio.temPratica && (
-            <div style={{ fontSize: 12, color: '#b45309', marginTop: 6, fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: '#b45309', marginTop: 6, fontWeight: 600 }}>
               Não foram avaliadas técnicas práticas — o referencial exige evidências observáveis.
             </div>
           )}
@@ -314,7 +314,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{aluno.nome || `Aluno ${aluno.numero}`}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
+                  <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
                     {total} avaliações · {consolidadas} consolidadas
                     {emRecuperacao > 0 && <span style={{ color: '#c0392b', marginLeft: 6 }}>· {emRecuperacao} em recuperação</span>}
                   </div>
@@ -362,7 +362,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
                           <span style={{ fontSize: 16, flexShrink: 0 }}></span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 600 }}>{c.nome}</div>
-                            <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
+                            <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
                               {c.n} avaliação{c.n !== 1 ? 'ões' : ''} · última: {formatarData(c.ultima?.data || '')}
                             </div>
                           </div>

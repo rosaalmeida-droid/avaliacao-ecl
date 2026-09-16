@@ -22,8 +22,8 @@ function GrupoCompetencias({ titulo, icone, itens }: { titulo: string; icone: st
       </div>
       {ordenados.map(item => (
         <div key={item.competenciaId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 8, marginBottom: 4, background: '#fff', border: '1px solid var(--border)' }}>
-          <div style={{ flex: 1, fontSize: 12 }}>{item.nome}</div>
-          <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 20, fontWeight: 700, color: 'white', background: corNivel(item.nivel) }}>
+          <div style={{ flex: 1, fontSize: 13 }}>{item.nome}</div>
+          <span style={{ fontSize: 12.5, padding: '3px 8px', borderRadius: 20, fontWeight: 700, color: 'white', background: corNivel(item.nivel) }}>
             {NIVEL_DOMINIO_LABEL[item.nivel]}
           </span>
         </div>

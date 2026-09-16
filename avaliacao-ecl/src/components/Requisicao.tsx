@@ -216,9 +216,9 @@ const fQnEnvio = (n: number, und: string): string => {
 // ── Estilos ───────────────────────────────────────────────────
 const S = {
   card: { background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '18px', marginBottom: 12, boxShadow: 'var(--shadow-sm)' } as React.CSSProperties,
-  muted: { fontSize: 12, color: 'rgba(26,23,20,0.5)' } as React.CSSProperties,
+  muted: { fontSize: 13, color: 'rgba(26,23,20,0.5)' } as React.CSSProperties,
   lbl: { fontSize:13, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', display: 'block', marginBottom: 4, color: 'rgba(26,23,20,0.5)' },
-  inp: { fontFamily: 'var(--font-body)', fontSize: 12, padding: '6px 8px', borderRadius: 7, border: '1.5px solid rgba(26,23,20,0.55)', background: '#fff', color: '#1a1714', boxSizing: 'border-box' as const },
+  inp: { fontFamily: 'var(--font-body)', fontSize: 13, padding: '6px 8px', borderRadius: 7, border: '1.5px solid rgba(26,23,20,0.55)', background: '#fff', color: '#1a1714', boxSizing: 'border-box' as const },
   btnP: { padding: '10px 18px', borderRadius: 10, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' } as React.CSSProperties,
   btnG: { padding: '10px 18px', borderRadius: 10, border: '1.5px solid rgba(26,23,20,0.55)', background: 'transparent', color: '#1a1714', fontWeight: 600, fontSize: 13, cursor: 'pointer' } as React.CSSProperties,
 };
@@ -554,18 +554,18 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
             border: '1px solid rgba(26,23,20,0.1)' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 18,
               fontWeight: 700, marginBottom: 4 }}>{fichaDetalhe.nomePrato}</div>
-            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
               {fichaDetalhe.classificacao}
               {(fichaDetalhe as any).familia1 && ` · ${(fichaDetalhe as any).familia1}`}
               {fichaDetalhe.numPorcoes && ` · receita base: ${fichaDetalhe.numPorcoes} doses`}
             </div>
             {Array.isArray(fichaDetalhe.ingredientes) && fichaDetalhe.ingredientes.length > 0 && (
               <div>
-                <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--copper)',
+                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)',
                   textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                   Ingredientes
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: 'var(--copper)', color: '#fff' }}>
                       <th style={{ padding: '6px 10px', textAlign: 'left' }}>Ingrediente</th>
@@ -588,7 +588,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
             )}
             {fichaDetalhe.alergenicos && (
               <div style={{ marginTop: 12, padding: '8px 12px', background: '#FCEBEB',
-                borderRadius: 8, fontSize: 12, color: '#A32D2D' }}>
+                borderRadius: 8, fontSize: 13, color: '#A32D2D' }}>
                 ⚠️ {Array.isArray(fichaDetalhe.alergenicos)
                   ? fichaDetalhe.alergenicos.join(', ')
                   : fichaDetalhe.alergenicos}
@@ -632,7 +632,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)',
             gap: 2, marginBottom: 4 }}>
             {['D','S','T','Q','Q','S','S'].map((d, i) => (
-              <div key={i} style={{ textAlign: 'center', fontSize: 10,
+              <div key={i} style={{ textAlign: 'center', fontSize: 12.5,
                 fontWeight: 700, color: 'rgba(26,23,20,0.35)',
                 padding: '2px 0' }}>{d}</div>
             ))}
@@ -683,7 +683,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           {planoSel && diasComPlano[parseData(String(planoSel.data))?.getDate() ?? 0]?.length > 1 && (
             <div style={{ marginTop: 10, paddingTop: 10,
               borderTop: '1px solid rgba(26,23,20,0.08)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                 marginBottom: 6, textTransform: 'uppercase' }}>
                 Planos neste dia
               </div>
@@ -695,7 +695,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   cursor: 'pointer', fontSize: 13, fontWeight: 600,
                 }}>
                   {p.titulo}
-                  <span style={{ fontSize: 11, fontWeight: 400,
+                  <span style={{ fontSize: 12.5, fontWeight: 400,
                     color: 'rgba(26,23,20,0.5)', marginLeft: 6 }}>
                     {p.fichasIds?.length || 0} fichas
                   </span>
@@ -715,13 +715,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   color: 'var(--copper)', marginBottom: 2 }}>
                   ✓ {planoSel.titulo}
                 </div>
-                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>
+                <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>
                   {planoSel.data
                     ? (() => { const d = parseData(String(planoSel.data)); return d ? d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : String(planoSel.data).slice(0,10); })()
                     : ''}
                   {planoSel.ucId && ` · ${planoSel.ucId}`}
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
                   {planoSel.fichasIds?.length || 0} ficha(s) associada(s)
                 </div>
               </div>
@@ -730,7 +730,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   document.getElementById('req-fichas')?.scrollIntoView({ behavior: 'smooth' });
                 }}
                 style={{ padding: '8px 14px', borderRadius: 8, border: 'none',
-                  background: 'var(--copper)', color: '#fff', fontSize: 12,
+                  background: 'var(--copper)', color: '#fff', fontSize: 13,
                   fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                 Ver fichas ↓
               </button>
@@ -809,7 +809,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   </div>
                   <button onClick={e => { e.stopPropagation(); setFichaDetalhe(f); }}
                     style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(26,23,20,0.15)',
-                      background: '#fff', fontSize: 11, fontWeight: 600,
+                      background: '#fff', fontSize: 12.5, fontWeight: 600,
                       color: 'rgba(26,23,20,0.6)', cursor: 'pointer', flexShrink: 0 }}>
                     Ver ficha
                   </button>
@@ -826,7 +826,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 {/* Ingredientes com preço — só quando ficha seleccionada */}
                 {fichasSel.includes(f.id) && Array.isArray(f.ingredientes) && f.ingredientes.length > 0 && (
                   <div style={{ marginTop: 10, borderTop: '1px solid rgba(26,23,20,0.08)', paddingTop: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--copper)',
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--copper)',
                       textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                       💶 Preço dos ingredientes (opcional — preenche para estimativa de custo)
                     </div>
@@ -839,7 +839,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                         const valorActual = precosPreReq[chave] || (precoSugerido > 0 ? precoSugerido.toFixed(2).replace('.', ',') : '');
                         return (
                           <React.Fragment key={ii}>
-                            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)',
+                            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)',
                               alignSelf: 'center', paddingLeft: 4 }}>
                               {ing.produto}
                               <span style={{ color: 'rgba(26,23,20,0.4)', marginLeft: 4 }}>
@@ -867,12 +867,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                                     });
                                   }
                                 }}
-                                style={{ width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 12,
+                                style={{ width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 13,
                                   border: `1px solid ${valorActual ? 'var(--copper)' : 'var(--border)'}`,
                                   background: valorActual ? 'var(--copper-pale)' : '#fff',
                                   textAlign: 'right' }}
                               />
-                              <span style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', minWidth: 28 }}>
+                              <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', minWidth: 28 }}>
                                 {ing.un === 'un' ? '€/un' : '€/kg'}
                               </span>
                             </div>
@@ -895,7 +895,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.15)' }}>
                 <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--copper)' }}>
                   {f.nomePrato}
-                  <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.5)', marginLeft: 6, fontSize: 12 }}>
+                  <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.5)', marginLeft: 6, fontSize: 13 }}>
                     (receita base: {f.numPorcoes} doses)
                   </span>
                 </div>
@@ -914,7 +914,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 </div>
               </div>
             ))}
-            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.45)', textAlign: 'right', marginTop: 2 }}>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)', textAlign: 'right', marginTop: 2 }}>
               Total: {paxEncTotal} doses
             </div>
           </div>
@@ -940,7 +940,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               <label style={S.lbl}>Consumo</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 {([['bar', 'ECL BAR'], ['rest', 'ECL Restaurante'], ['interno', 'Consumo Interno'], ['convidados', 'Convidados']] as const).map(([k, l]) => (
-                  <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${consumo[k] ? 'var(--copper)' : 'var(--border)'}`, background: consumo[k] ? 'var(--copper-pale)' : '#fff', cursor: 'pointer', fontSize: 12 }}>
+                  <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1.5px solid ${consumo[k] ? 'var(--copper)' : 'var(--border)'}`, background: consumo[k] ? 'var(--copper-pale)' : '#fff', cursor: 'pointer', fontSize: 13 }}>
                     <input type="checkbox" checked={consumo[k]} onChange={e => setConsumo(p => ({ ...p, [k]: e.target.checked }))} style={{ accentColor: 'var(--copper)' }} />
                     {l}
                   </label>
@@ -986,13 +986,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
             ) : (
               <>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Preço (€/kg ou €/un)</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Preço (€/kg ou €/un)</label>
                   <input type="number" step="0.01" value={sugestaoForm.precoKg}
                     onChange={e => setSugestaoForm(f => ({ ...f, precoKg: e.target.value }))}
                     style={{ ...S.inp, width: '100%' }} placeholder="ex: 2.50" />
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Unidade de compra</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Unidade de compra</label>
                   <select value={sugestaoForm.unidadeCompra}
                     onChange={e => setSugestaoForm(f => ({ ...f, unidadeCompra: e.target.value }))}
                     style={{ ...S.inp, width: '100%' }}>
@@ -1003,7 +1003,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   </select>
                 </div>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Categoria</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Categoria</label>
                   <select value={sugestaoForm.categoria}
                     onChange={e => setSugestaoForm(f => ({ ...f, categoria: e.target.value }))}
                     style={{ ...S.inp, width: '100%' }}>
@@ -1023,7 +1023,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   </select>
                 </div>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Observação (opcional)</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 4 }}>Observação (opcional)</label>
                   <textarea value={sugestaoForm.observacao}
                     onChange={e => setSugestaoForm(f => ({ ...f, observacao: e.target.value }))}
                     style={{ ...S.inp, width: '100%', minHeight: 60 }}
@@ -1059,7 +1059,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--cream)', marginBottom: 8 }}>{nomeReceita}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
           {[['Familia', familia || '—'], ['Encomendas', `${paxEncTotal} doses`], ['Receita para', `${paxBaseTotal} doses`], ['Turma', planoSel?.turmaId || '—'], ['Data aula', planoSel?.data || '—'], ['Formador', planoSel?.professor || '—']].map(([l, v]) => (
-            <div key={l}><div style={{ fontSize:12, color: 'rgba(247,241,230,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div><div style={{ fontSize: 12, color: 'var(--cream)', fontWeight: 500 }}>{v}</div></div>
+            <div key={l}><div style={{ fontSize:13, color: 'rgba(247,241,230,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div><div style={{ fontSize: 13, color: 'var(--cream)', fontWeight: 500 }}>{v}</div></div>
           ))}
         </div>
         {atividade && <div style={{ marginTop: 8, fontSize:13, color: 'rgba(247,241,230,0.7)' }}>Atividade: {atividade}</div>}
@@ -1086,7 +1086,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--danger)', marginBottom: 4 }}>
             ⚠️ Atenção — massas base devem ser produzidas em aula
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.65)', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.65)', marginBottom: 12 }}>
             Em cozinha/pastelaria pedagógica, as massas base fazem parte das competências a desenvolver.
             Cada massa deve ter uma <strong>Ficha Técnica própria</strong> associada a este plano de aula.
           </div>
@@ -1099,37 +1099,37 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               <div key={l.id} style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(196,60,20,0.2)', background: '#fff', marginBottom: 10 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>📋 {l.produto}</div>
                 {materiais.length > 0 && (
-                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
                     Matérias-primas base: {materiais.join(', ')}
                   </div>
                 )}
-                <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, marginBottom: 10 }}>
+                <div style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, marginBottom: 10 }}>
                   → Cria uma Ficha Técnica separada para a produção desta massa e associa-a a este plano de aula.
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button onClick={() => setDecisao(i, 'produzir')}
-                    style={{ flex: 2, padding: '8px 12px', borderRadius: 8, border: `2px solid ${l.decisaoProfessor === 'produzir' ? 'var(--sage)' : 'var(--border)'}`, background: l.decisaoProfessor === 'produzir' ? 'var(--sage)' : '#fff', color: l.decisaoProfessor === 'produzir' ? 'white' : 'var(--charcoal)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                    style={{ flex: 2, padding: '8px 12px', borderRadius: 8, border: `2px solid ${l.decisaoProfessor === 'produzir' ? 'var(--sage)' : 'var(--border)'}`, background: l.decisaoProfessor === 'produzir' ? 'var(--sage)' : '#fff', color: l.decisaoProfessor === 'produzir' ? 'white' : 'var(--charcoal)', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
                     ✓ Produzir em aula (ficha técnica própria)
                   </button>
                   {podeTambemComprar && (
                     <button onClick={() => setDecisao(i, 'comprar')}
-                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `2px solid ${l.decisaoProfessor === 'comprar' ? 'var(--copper)' : 'var(--border)'}`, background: l.decisaoProfessor === 'comprar' ? 'var(--copper)' : '#fff', color: l.decisaoProfessor === 'comprar' ? 'white' : 'rgba(26,23,20,0.5)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `2px solid ${l.decisaoProfessor === 'comprar' ? 'var(--copper)' : 'var(--border)'}`, background: l.decisaoProfessor === 'comprar' ? 'var(--copper)' : '#fff', color: l.decisaoProfessor === 'comprar' ? 'white' : 'rgba(26,23,20,0.5)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
                       Excepção: comprar
                     </button>
                   )}
                 </div>
                 {l.decisaoProfessor === 'comprar' && (
-                  <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 7, background: 'var(--copper-pale)', fontSize: 11, color: 'var(--copper)' }}>
+                  <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 7, background: 'var(--copper-pale)', fontSize: 12.5, color: 'var(--copper)' }}>
                     ⚠️ Compra autorizada — fica registado. Justifica na observação da ficha técnica.
                   </div>
                 )}
                 {l.decisaoProfessor === 'produzir' && (
-                  <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(74,90,138,0.08)', border: '1px solid rgba(74,90,138,0.2)', fontSize: 12 }}>
+                  <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(74,90,138,0.08)', border: '1px solid rgba(74,90,138,0.2)', fontSize: 13 }}>
                     <div style={{ fontWeight: 700, color: 'var(--guia)', marginBottom: 4 }}>⏳ Pendência criada</div>
                     <div style={{ color: 'rgba(26,23,20,0.7)' }}>"{l.produto}" não vai para a requisição de compras. Antes da aula:</div>
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{ fontSize: 11, color: 'var(--guia)', fontWeight: 600 }}>✓ Cria uma Ficha Técnica para esta massa e associa-a a este plano</div>
-                      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>As matérias-primas base precisam de aparecer numa requisição separada</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--guia)', fontWeight: 600 }}>✓ Cria uma Ficha Técnica para esta massa e associa-a a este plano</div>
+                      <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>As matérias-primas base precisam de aparecer numa requisição separada</div>
                     </div>
                   </div>
                 )}
@@ -1142,7 +1142,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       {/* Conversoes automaticas */}
       {todosAvisos.length > 0 && (
         <div style={{ ...S.card, background: 'var(--info-pale)', border: '1px solid rgba(37,99,235,0.2)' }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--info)', marginBottom: 6 }}>Conversoes automaticas aplicadas</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--info)', marginBottom: 6 }}>Conversoes automaticas aplicadas</div>
           {todosAvisos.map((a, i) => <div key={i} style={{ fontSize:13, color: 'var(--info)', marginBottom: 2 }}>→ {a}</div>)}
         </div>
       )}
@@ -1154,7 +1154,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
             <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>
               {f.nomePrato}
-              <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.45)', marginLeft: 6, fontSize: 11 }}>(base: {f.numPorcoes})</span>
+              <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.45)', marginLeft: 6, fontSize: 12.5 }}>(base: {f.numPorcoes})</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <button onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, (p[f.id] || parseFloat(f.numPorcoes) || 4) - 1) }))}
@@ -1205,12 +1205,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
             <thead>
               <tr style={{ background: 'var(--charcoal)', color: 'var(--cream)' }}>
                 <th style={{ padding: '7px 8px', textAlign: 'left', minWidth: 130 }}>Produto</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:12 }}>Qt/pax</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:12 }}>Qt Receita</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:13 }}>Qt/pax</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:13 }}>Qt Receita</th>
                 <th style={{ padding: '7px 4px', textAlign: 'left', minWidth: 38 }}>Und</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 65, fontSize:12 }}>Qt Enc.</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 58, fontSize:12 }}>€/kg</th>
-                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:12 }}>€ Enc.</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 65, fontSize:13 }}>Qt Enc.</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 58, fontSize:13 }}>€/kg</th>
+                <th style={{ padding: '7px 5px', textAlign: 'right', minWidth: 55, fontSize:13 }}>€ Enc.</th>
               </tr>
             </thead>
             <tbody>
@@ -1228,12 +1228,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                         if (/microgreen|microvegeta/i.test(e.target.value)) setPainelMicrogreens(true);
                       }} style={{ ...S.inp, width: '100%', fontSize:13 }} />
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                        {l.daBD && <span style={{ fontSize:12, color: 'var(--sage)' }}>BD</span>}
-                        {rend && !formas.length && <span style={{ fontSize:12, color: 'rgba(26,23,20,0.35)' }}>Rend. {Math.round(rend.rendimento * 100)}%</span>}
+                        {l.daBD && <span style={{ fontSize:13, color: 'var(--sage)' }}>BD</span>}
+                        {rend && !formas.length && <span style={{ fontSize:13, color: 'rgba(26,23,20,0.35)' }}>Rend. {Math.round(rend.rendimento * 100)}%</span>}
                         {!l.daBD && (
                           <button type="button"
                             onClick={() => setSugestaoAberta(l.produto)}
-                            style={{ fontSize:10, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--copper)', background: 'var(--copper-pale)', color: 'var(--copper)', cursor: 'pointer', fontWeight: 600 }}>
+                            style={{ fontSize:12.5, padding: '2px 6px', borderRadius: 6, border: '1px solid var(--copper)', background: 'var(--copper-pale)', color: 'var(--copper)', cursor: 'pointer', fontWeight: 600 }}>
                             💡 Sugerir
                           </button>
                         )}
@@ -1249,7 +1249,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                               setL(i, 'rendimento', rend2);
                               setL(i, 'qtCompra', rend2 > 0 ? l.qtEncomenda / rend2 : l.qtEncomenda);
                             }}
-                            style={{ fontSize:11, padding:'2px 4px', borderRadius:4, border:'1px solid rgba(181,101,29,0.4)', background:'#fff', width:'100%', cursor:'pointer' }}
+                            style={{ fontSize:12.5, padding:'2px 4px', borderRadius:4, border:'1px solid rgba(181,101,29,0.4)', background:'#fff', width:'100%', cursor:'pointer' }}
                           >
                             <option value=''>🛒 Forma de compra...</option>
                             {formas.map(f => (
@@ -1260,7 +1260,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                             ))}
                           </select>
                           {l.formaCompra && l.rendimento && l.rendimento < 1 && (
-                            <div style={{ fontSize:11, color:'#b5651d', marginTop:3, fontWeight:600 }}>
+                            <div style={{ fontSize:12.5, color:'#b5651d', marginTop:3, fontWeight:600 }}>
                               → Comprar: {((l.qtEncomenda||0) / (l.rendimento||1)).toFixed(3)} {l.und}
                               {formas.find(f=>f.forma===l.formaCompra)?.nota && (
                                 <span style={{ color:'rgba(26,23,20,0.4)', fontWeight:400 }}> · {formas.find(f=>f.forma===l.formaCompra)?.nota}</span>
@@ -1284,7 +1284,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                     </td>
                     <td style={{ padding: '3px 3px', position: 'relative' }}>
                       {!l.precoUnitario && l.produto && (
-                        <div style={{ fontSize:10, color:'#b5651d', fontWeight:700, marginBottom:2,
+                        <div style={{ fontSize:12.5, color:'#b5651d', fontWeight:700, marginBottom:2,
                           background:'rgba(181,101,29,0.08)', borderRadius:4, padding:'2px 5px' }}>
                           ⚠️ Introduza o preço
                         </div>
@@ -1304,16 +1304,16 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 );
               })}
               <tr style={{ background: 'var(--copper-pale)', fontWeight: 700 }}>
-                <td colSpan={6} style={{ padding: '8px 8px', fontSize: 12 }}>Total Encomenda</td>
-                <td style={{ padding: '8px 5px', textAlign: 'right', color: 'var(--copper)', fontSize: 12 }}>{fE(totEnc)}</td>
+                <td colSpan={6} style={{ padding: '8px 8px', fontSize: 13 }}>Total Encomenda</td>
+                <td style={{ padding: '8px 5px', textAlign: 'right', color: 'var(--copper)', fontSize: 13 }}>{fE(totEnc)}</td>
               </tr>
               <tr style={{ background: 'var(--cream-dark)' }}>
                 <td colSpan={6} style={{ padding: '6px 8px', fontSize:13 }}>Quebras {quebras}%</td>
                 <td style={{ padding: '6px 5px', textAlign: 'right', fontSize:13 }}>{fE(qbVal)}</td>
               </tr>
               <tr style={{ background: 'var(--danger-pale)', fontWeight: 700 }}>
-                <td colSpan={6} style={{ padding: '8px 8px', fontSize: 12 }}>Custo Real Total</td>
-                <td style={{ padding: '8px 5px', textAlign: 'right', color: 'var(--danger)', fontSize: 12 }}>{fE(crTotal)}</td>
+                <td colSpan={6} style={{ padding: '8px 8px', fontSize: 13 }}>Custo Real Total</td>
+                <td style={{ padding: '8px 5px', textAlign: 'right', color: 'var(--danger)', fontSize: 13 }}>{fE(crTotal)}</td>
               </tr>
             </tbody>
           </table>
@@ -1337,7 +1337,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
       {/* Consumo */}
       <div style={{ ...S.card, padding: '12px 16px' }}>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12 }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
           {responsavel && <span><strong>Resp. compras:</strong> {responsavel}</span>}
           {atividade && <span><strong>Atividade:</strong> {atividade}</span>}
           <span><strong>Consumo:</strong> {Object.entries(consumo).filter(([, v]) => v).map(([k]) => k === 'bar' ? 'ECL BAR' : k === 'rest' ? 'ECL Restaurante' : k === 'interno' ? 'Consumo Interno' : 'Convidados').join(', ') || '—'}</span>
@@ -1349,7 +1349,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           {msg}
           {linkSheets && (
             <a href={linkSheets} target="_blank" rel="noreferrer"
-              style={{ display: 'block', marginTop: 8, padding: '6px 12px', borderRadius: 8, background: 'var(--sage)', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, fontSize: 12 }}>
+              style={{ display: 'block', marginTop: 8, padding: '6px 12px', borderRadius: 8, background: 'var(--sage)', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
               📊 Abrir no Google Sheets →
             </a>
           )}
@@ -1394,14 +1394,14 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 <div style={{ fontWeight: 700, fontSize: 15 }}>🌱 Escolher microgreens</div>
                 <button onClick={() => setPainelMicrogreens(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
               </div>
-              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4 }}>Clica numa variedade para seleccionar</div>
+              <div style={{ fontSize: 12.5, opacity: 0.8, marginTop: 4 }}>Clica numa variedade para seleccionar</div>
             </div>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
               <input
                 placeholder="Filtrar variedade..."
                 value={mgFiltro}
                 onChange={e => setMgFiltro(e.target.value)}
-                style={{ ...S.inp, width: '100%', fontSize: 12 }}
+                style={{ ...S.inp, width: '100%', fontSize: 13 }}
               />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
@@ -1435,16 +1435,16 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   <div style={{ padding: '8px 10px' }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: '#1a1714' }}>{mg.nome}</div>
                     {(mg as any).descricaoVisual && (
-                      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.55)', marginTop: 3 }}>{(mg as any).descricaoVisual}</div>
+                      <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginTop: 3 }}>{(mg as any).descricaoVisual}</div>
                     )}
-                    <div style={{ fontSize: 11, color: '#5B67EA', marginTop: 4, fontWeight: 600 }}>
+                    <div style={{ fontSize: 12.5, color: '#5B67EA', marginTop: 4, fontWeight: 600 }}>
                       ~€{mg.precoKg}/kg · {mg.fonte}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', fontSize: 10, color: 'rgba(26,23,20,0.4)', textAlign: 'center' }}>
+            <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', fontSize: 12.5, color: 'rgba(26,23,20,0.4)', textAlign: 'center' }}>
               Preços estimados · actualizar com Makro
             </div>
           </div>

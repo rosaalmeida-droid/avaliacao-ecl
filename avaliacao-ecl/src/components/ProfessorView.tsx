@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom , recuperarFichasDoSheets } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom , recuperarFichasDoSheets, recuperarFichasDeTodoOLado } from '../backend';
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
@@ -1755,7 +1755,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
       <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 6 }}>
         🤖 Extrair Ficha de Produção com IA
       </div>
-      <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
         Copia o prompt, cola numa IA com o link da receita e copia o resultado abaixo.
       </div>
       <SeletorIA prompt={promptFinal} />
@@ -1765,13 +1765,13 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
           style={{ background: copiado ? 'var(--copper)' : undefined, color: copiado ? '#fff' : undefined }}>
           {copiado ? '✅ Copiado!' : '📋 Copiar prompt'}
         </button>
-        <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }}
+        <button type="button" className="btn btn-ghost" style={{ fontSize: 13 }}
           onClick={() => setMostrarPrompt(!mostrarPrompt)}>
           {mostrarPrompt ? '🔼 Esconder' : '✏️ Ver/editar'}
         </button>
       </div>
       {copiado && (
-        <div style={{ padding: '8px 12px', background: 'var(--copper-pale)', borderRadius: 8, fontSize: 12, color: 'var(--copper)', marginBottom: 8 }}>
+        <div style={{ padding: '8px 12px', background: 'var(--copper-pale)', borderRadius: 8, fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>
           ✅ Prompt copiado! No ChatGPT faz <strong>Ctrl+V</strong> para colar.
         </div>
       )}
@@ -1792,7 +1792,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
         <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--sage)', marginBottom: 6 }}>
           📚 Gerar Guia de Apoio à Produção
         </div>
-        <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
           Após criar a ficha, usa este prompt para gerar o Guia de Apoio completo com HACCP, rendimentos, equilíbrio sensorial e questões pedagógicas.
         </div>
         <SeletorIA prompt={guiaFinal} corPrincipal="var(--guia)" />
@@ -1802,7 +1802,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
             style={{ background: copiadoGuia ? 'var(--sage)' : undefined, color: copiadoGuia ? '#fff' : undefined, borderColor: 'var(--sage)' }}>
             {copiadoGuia ? '✅ Copiado!' : '📋 Copiar prompt guia'}
           </button>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 12, borderColor: 'var(--sage)', color: 'var(--sage)' }}
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
             onClick={() => setMostrarGuia(!mostrarGuia)}>
             {mostrarGuia ? '🔼 Esconder' : '✏️ Ver/editar guia'}
           </button>
@@ -1923,7 +1923,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
           🤖 Passo 1 — Gerar a Ficha de Produção com IA
         </div>
-        <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
           Claude e ChatGPT abrem já com o prompt preenchido — no Gemini o prompt é copiado automaticamente, basta colar com Ctrl+V
         </div>
 
@@ -1931,33 +1931,33 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <button type="button"
             onClick={() => setModoProf(false)}
-            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: `2px solid ${!modoProf ? 'var(--copper)' : 'var(--border)'}`, background: !modoProf ? 'var(--copper)' : '#fff', color: !modoProf ? 'white' : 'rgba(26,23,20,0.6)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: `2px solid ${!modoProf ? 'var(--copper)' : 'var(--border)'}`, background: !modoProf ? 'var(--copper)' : '#fff', color: !modoProf ? 'white' : 'rgba(26,23,20,0.6)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
             📄 Fiel ao link
           </button>
           <button type="button"
             onClick={() => setModoProf(true)}
-            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: `2px solid ${modoProf ? 'var(--sage)' : 'var(--border)'}`, background: modoProf ? 'var(--sage)' : '#fff', color: modoProf ? 'white' : 'rgba(26,23,20,0.6)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: `2px solid ${modoProf ? 'var(--sage)' : 'var(--border)'}`, background: modoProf ? 'var(--sage)' : '#fff', color: modoProf ? 'white' : 'rgba(26,23,20,0.6)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
             ⭐ Versão profissional
           </button>
         </div>
         {modoProf && (
-          <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(90,122,78,0.08)', border: '1px solid rgba(90,122,78,0.2)', fontSize: 11, color: 'var(--sage)', marginBottom: 10 }}>
+          <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(90,122,78,0.08)', border: '1px solid rgba(90,122,78,0.2)', fontSize: 12.5, color: 'var(--sage)', marginBottom: 10 }}>
             A IA vai elevar as técnicas para nível profissional — cortes com nomenclatura clássica, métodos de confeção precisos, massas base assinaladas para produção em aula.
           </div>
         )}
 
         <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(90,122,78,0.06)',
-          border:'1px solid rgba(90,122,78,0.15)', marginBottom:10, fontSize:12, color:'var(--sage)' }}>
+          border:'1px solid rgba(90,122,78,0.15)', marginBottom:10, fontSize:13, color:'var(--sage)' }}>
           ✨ <strong>Prompt unificado</strong> — a IA gera a Ficha Técnica e o Guião de Apoio numa só resposta.
           Cola o resultado na app: primeiro o bloco da Ficha, depois o bloco do Guião (separados por ===GUIÃO===).
         </div>
         <SeletorIA prompt={promptUnificado} corPrincipal="var(--copper)" />
-        <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:12 }}
+        <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:13 }}
           onClick={() => copiarTexto(promptUnificado, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
           {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt unificado'}
         </button>
         {!nomePrato && (
-          <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(90,122,78,0.08)', borderRadius:8, fontSize:12, color:'var(--sage)' }}>
+          <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(90,122,78,0.08)', borderRadius:8, fontSize:13, color:'var(--sage)' }}>
             💡 Preenche o nome do prato acima para activar o Guia de Apoio
           </div>
         )}
@@ -1968,7 +1968,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
           📥 Passo 3 — Cola aqui o resultado da IA
         </div>
-        <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:8 }}>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:8 }}>
           Cola o resultado da ficha <strong>ou</strong> do guia — a app detecta automaticamente qual é.
         </div>
         <textarea className="input" value={textoManual}
@@ -1995,7 +1995,16 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: '#fff', borderRadius: 8, marginBottom: 6, border: '1px solid var(--border)' }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{String(f.nomePrato ?? '')}</div>
-                <div style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>{String(f.classificacao ?? '')} · {String(f.data ?? '')}</div>
+                <div style={{ fontSize:13.5, color: 'rgba(26,23,20,0.55)' }}>
+                  {String(f.classificacao ?? '')}
+                  {f.data && ` · ${(() => {
+                    const d = new Date(String(f.data).slice(0, 10) + 'T00:00:00');
+                    return isNaN(d.getTime())
+                      ? String(f.data).slice(0, 10)
+                      : d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
+                  })()}`}
+                  {!f.planoAulaId && ' · sem aula associada'}
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {f.linkFicha && (
@@ -2163,7 +2172,7 @@ function PassoFichaTecnica({
                       else if (!limite) setF('etiquetas', [...cur, et]);
                     }}
                     style={{
-                      padding:'4px 10px', borderRadius:100, fontSize:12, fontWeight:600,
+                      padding:'4px 10px', borderRadius:100, fontSize:13, fontWeight:600,
                       border:`1.5px solid ${selecionada ? 'var(--copper)' : 'var(--border)'}`,
                       background:selecionada ? 'var(--copper-pale)' : '#fff',
                       color:selecionada ? 'var(--copper)' : 'rgba(26,23,20,0.5)',
@@ -2176,7 +2185,7 @@ function PassoFichaTecnica({
               })}
             </div>
             {(ficha.etiquetas || []).length > 0 && (
-              <div style={{ fontSize:12, color:'var(--copper)', marginTop:6 }}>
+              <div style={{ fontSize:13, color:'var(--copper)', marginTop:6 }}>
                 Selecionadas: {(ficha.etiquetas || []).join(' · ')}
               </div>
             )}
@@ -2218,31 +2227,31 @@ function PassoFichaTecnica({
               {ficha.ingredientes.map((ing, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '4px 4px' }}>
-                    <input className="input" style={{ padding: '4px 6px', fontSize: 12 }}
+                    <input className="input" style={{ padding: '4px 6px', fontSize: 13 }}
                       value={ing.componente} onChange={e => setIngrediente(i, 'componente', e.target.value)} />
                   </td>
                   <td style={{ padding: '4px 4px' }}>
-                    <input className="input" style={{ padding: '4px 6px', fontSize: 12, width: 55 }}
+                    <input className="input" style={{ padding: '4px 6px', fontSize: 13, width: 55 }}
                       value={ing.qt} onChange={e => setIngrediente(i, 'qt', e.target.value)} />
                   </td>
                   <td style={{ padding: '4px 4px' }}>
-                    <input className="input" style={{ padding: '4px 6px', fontSize: 12, width: 45 }}
+                    <input className="input" style={{ padding: '4px 6px', fontSize: 13, width: 45 }}
                       value={ing.un} onChange={e => setIngrediente(i, 'un', e.target.value)} />
                   </td>
                   <td style={{ padding: '4px 4px' }}>
-                    <input className="input" style={{ padding: '4px 6px', fontSize: 12 }}
+                    <input className="input" style={{ padding: '4px 6px', fontSize: 13 }}
                       value={ing.produto} onChange={e => setIngrediente(i, 'produto', e.target.value)} />
                   </td>
                   <td style={{ padding: '4px 4px' }}>
-                    <input className="input" style={{ padding: '4px 6px', fontSize: 12, width: 45 }}
+                    <input className="input" style={{ padding: '4px 6px', fontSize: 13, width: 45 }}
                       value={ing.tPrep} onChange={e => setIngrediente(i, 'tPrep', e.target.value)} />
                   </td>
                   <td style={{ padding: '4px 4px' }}>
-                    <input className="input" style={{ padding: '4px 6px', fontSize: 12, width: 45 }}
+                    <input className="input" style={{ padding: '4px 6px', fontSize: 13, width: 45 }}
                       value={ing.tConf} onChange={e => setIngrediente(i, 'tConf', e.target.value)} />
                   </td>
                   <td style={{ padding: '4px 4px' }}>
-                    <input className="input" style={{ padding: '4px 6px', fontSize: 12 }}
+                    <input className="input" style={{ padding: '4px 6px', fontSize: 13 }}
                       value={ing.obs} onChange={e => setIngrediente(i, 'obs', e.target.value)} />
                   </td>
                   <td style={{ padding: '4px 4px' }}>
@@ -2411,7 +2420,7 @@ function PassoFichaTecnica({
       {subtecnicasDetetadas.length > 0 && (
         <Card>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>🔍 Subtécnicas detetadas automaticamente</div>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
             Com base no texto da receita. Serão usadas no passo seguinte para sugerir competências.
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -2466,7 +2475,7 @@ function PassoFichaTecnica({
             <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>
               🎯 Técnicas detectadas — para avaliação
             </div>
-            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
               O motor vai sugerir estas competências ao professor quando avaliar esta ficha. Toca para remover as que não se aplicam.
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -2474,7 +2483,7 @@ function PassoFichaTecnica({
                 <button key={i} type="button"
                   onClick={() => setFicha(f => ({ ...f, tecnicasDetectadas: (f.tecnicasDetectadas || []).filter((_, idx) => idx !== i) }))}
                   style={{ padding: '4px 10px', borderRadius: 20, background: 'white', border: '1px solid rgba(181,101,29,0.3)', fontSize:13, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {t} <span style={{ fontSize: 11, opacity: 0.6 }}>✕</span>
+                  {t} <span style={{ fontSize: 12.5, opacity: 0.6 }}>✕</span>
                 </button>
               ))}
             </div>
@@ -2483,7 +2492,7 @@ function PassoFichaTecnica({
 
         {/* Adicionar técnica manualmente */}
         <div style={{ marginBottom: 10 }}>
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 12 }}
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 13 }}
             onClick={() => {
               const nova = prompt('Nome da técnica/competência a adicionar:');
               if (nova && nova.trim()) {
@@ -2604,7 +2613,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
         <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <SeletorIA prompt={promptGuiaAtual} corPrincipal="var(--guia)" />
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 12, borderColor: 'var(--sage)', color: 'var(--sage)' }}
+          <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
             onClick={() => copiarTexto(promptGuiaAtual, () => {}, () => {})}>
             📋 Copiar prompt
           </button>
@@ -2618,7 +2627,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
               value={textoGuia}
               onChange={e => setTextoGuia(e.target.value)}
               placeholder={`Cola aqui o resultado da IA para o Guia de Apoio à Produção de "${nomePrato}"...`}
-              style={{ width: '100%', minHeight: 160, borderRadius: 10, border: '1.5px solid var(--border)', padding: 10, fontSize: 12, fontFamily: 'monospace', resize: 'vertical' }}
+              style={{ width: '100%', minHeight: 160, borderRadius: 10, border: '1.5px solid var(--border)', padding: 10, fontSize: 13, fontFamily: 'monospace', resize: 'vertical' }}
             />
             {textoGuia && (
               <button onClick={() => setModo('ver')} style={{ marginTop: 8, width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
@@ -2630,7 +2639,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
 
         {modo === 'ver' && textoGuia && (
           <>
-            <button onClick={() => setModo('colar')} className="no-print" style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+            <button onClick={() => setModo('colar')} className="no-print" style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
               ← Editar texto
             </button>
             <div className="guia-area-impressao" data-rodape={'Guião de Apoio à Produção · ' + nomePrato + (ucId ? ' · ' + ucId : '') + (ucNome ? ' — ' + ucNome : '') + ' · ECL 2025/26'}>
@@ -2790,7 +2799,17 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         ...({ aparelhosDetectados: (fichaConfirmada as any).aparelhosDetectados || [] } as any),
         ucsAssociadas: [ucId].filter(Boolean),
         elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
-        data: fichaConfirmada.data || now,
+        // A data da ficha é a da aula a que pertence. Sem plano, é a de
+        // criação — e em formato de data, não um timestamp completo, que
+        // era o que fazia aparecer "2026-09-12T20:15:33.421Z" na lista.
+        data: (() => {
+          const doPlano = planoId
+            ? getPlanosAula().find(x => x.id === planoId)?.data : undefined;
+          return doPlano
+            || fichaConfirmada.data
+            || fichaOriginal?.data
+            || now.slice(0, 10);
+        })(),
         planoAulaId: planoId || fichaOriginal?.planoAulaId || undefined,
         textoGuia: fichaConfirmada.textoGuia || fichaOriginal?.textoGuia,
         htmlCompleto,
@@ -2950,7 +2969,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
         {modoSelecao && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
+            <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
               {fichasSelecionadasIds.size} ficha(s) selecionada(s)
             </span>
             <button onClick={() => {
@@ -2962,14 +2981,14 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                 recarregar();
               }
             }} disabled={fichasSelecionadasIds.size === 0}
-              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12, cursor: fichasSelecionadasIds.size === 0 ? 'default' : 'pointer', opacity: fichasSelecionadasIds.size === 0 ? 0.4 : 1 }}>
+              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 13, cursor: fichasSelecionadasIds.size === 0 ? 'default' : 'pointer', opacity: fichasSelecionadasIds.size === 0 ? 0.4 : 1 }}>
               🗑️ Eliminar Selecionados
             </button>
           </div>
         )}
 
         {ucId && (
-          <div style={{ padding:'8px 14px', background:'var(--copper-pale)', borderRadius:10, marginBottom:12, fontSize:12, color:'var(--copper)', border:'1px solid rgba(181,101,29,0.2)' }}>
+          <div style={{ padding:'8px 14px', background:'var(--copper-pale)', borderRadius:10, marginBottom:12, fontSize:13, color:'var(--copper)', border:'1px solid rgba(181,101,29,0.2)' }}>
             <strong>UC activa:</strong> {ucId} — {ucNome}
           </div>
         )}
@@ -2992,19 +3011,24 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             </div>
             <button
               onClick={async () => {
-                const r = await recuperarFichasDoSheets();
+                // Procura em todas as fontes: cópia local, cópia do
+                // arranque do ano, e o Sheets.
+                const r = await recuperarFichasDeTodoOLado();
                 if (r.recuperadas > 0) {
                   alert(
-                    `Recuperadas ${r.recuperadas} de ${r.tentadas} fichas:\n\n` +
+                    `Recuperadas ${r.recuperadas} de ${r.tentadas} fichas.\n\n` +
+                    `Onde estavam: ${r.origens.join(', ')}\n\n` +
                     r.nomes.join('\n')
                   );
                   recarregar();
                 } else {
                   alert(
                     'Não foi possível recuperar nenhuma.\n\n' +
-                    'O Google Sheets também já tem a versão vazia. Se tiveres ' +
-                    'estas fichas noutro aparelho onde ainda estejam completas, ' +
-                    'abre-as aí e guarda — isso volta a enviá-las.'
+                    'Procurei na cópia local, na cópia do arranque do ano e no ' +
+                    'Google Sheets — em nenhum estava a versão completa.\n\n' +
+                    'Se tiveres estas fichas noutro aparelho ou noutro browser ' +
+                    'onde ainda apareçam completas, abre-as aí e guarda: isso ' +
+                    'volta a enviá-las para o Sheets e depois aparecem aqui.'
                   );
                 }
               }}
@@ -3047,7 +3071,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         )}
 
         {fichasParaMostrar.length > 0 && (
-          <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>
+          <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>
             {fichasParaMostrar.length} ficha{fichasParaMostrar.length!==1?'s':''}
             {mostrarBibliotecaCompleta ? ' em toda a app — clica para associar a este plano' : ' associada(s) a este plano'}.
           </div>
@@ -3129,7 +3153,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {modoSelecao && (
-                <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: fichasSelecionadasIds.has(f.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, color: 'white' }}>
+                <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: fichasSelecionadasIds.has(f.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, color: 'white' }}>
                   {fichasSelecionadasIds.has(f.id) && '✓'}
                 </div>
               )}
@@ -3141,7 +3165,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                   {/* Marcar as que estão vazias, para o professor saber antes
                       de abrir e não pensar que a ficha está perdida. */}
                   {(!f.ingredientes?.length || !f.preparacao?.length) && (
-                    <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px',
+                    <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px',
                       borderRadius:20, background:'var(--copper-pale)',
                       color:'var(--copper)', border:'1px solid var(--copper)' }}>
                       {!f.ingredientes?.length && !f.preparacao?.length

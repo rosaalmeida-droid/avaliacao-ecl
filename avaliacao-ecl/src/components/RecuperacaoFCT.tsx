@@ -324,15 +324,15 @@ export function CriarRecuperacaoFCT({
       {aberto && (
         <ModalFullscreen titulo="Nova recuperação via FCT" subtitulo="Formação em Contexto de Trabalho" onFechar={() => setAberto(false)}>
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Aluno</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Aluno</div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
               <button onClick={() => setTipoAluno('turma')} style={{
-                flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                 border: tipoAluno === 'turma' ? '2px solid #6d28d9' : '1px solid #ddd',
                 background: tipoAluno === 'turma' ? '#f3f0fb' : '#fff', color: tipoAluno === 'turma' ? '#6d28d9' : '#666',
               }}>Aluno desta turma</button>
               <button onClick={() => setTipoAluno('externo')} style={{
-                flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                 border: tipoAluno === 'externo' ? '2px solid #6d28d9' : '1px solid #ddd',
                 background: tipoAluno === 'externo' ? '#f3f0fb' : '#fff', color: tipoAluno === 'externo' ? '#6d28d9' : '#666',
               }}>Aluno externo / antigo</button>
@@ -371,7 +371,7 @@ export function CriarRecuperacaoFCT({
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
               Unidade de Competência / UFCD <span style={{ fontWeight: 400, color: '#999' }}>(todos os anos e planos — inclui alunos de coortes anteriores)</span>
             </div>
             <select value={ucId} onChange={e => { setUcId(e.target.value); setCompetenciasSel(new Set()); }}
@@ -383,7 +383,7 @@ export function CriarRecuperacaoFCT({
 
           {ucId && (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
                 Competências a evidenciar na FCT ({competenciasSel.size} seleccionadas)
               </div>
               <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 8, padding: 8, marginBottom: 8 }}>
@@ -393,10 +393,10 @@ export function CriarRecuperacaoFCT({
                     Aparece sempre primeiro, antes da biblioteca e da IA. */}
                 {(getReferencialUC(ucId)?.realizacoes || []).length > 0 && (
                   <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', marginBottom: 4 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', marginBottom: 4 }}>
                       Referencial oficial desta UC
                     </div>
-                    <div style={{ fontSize: 11, color: '#b5651d', marginBottom: 6 }}>
+                    <div style={{ fontSize: 12.5, color: '#b5651d', marginBottom: 6 }}>
                       ⚠️ Escolhe UM estilo por competência — ou isto (frase oficial curta), ou a
                       versão elaborada pela IA abaixo. Marcar os dois para a mesma ideia repete a
                       informação no documento final.
@@ -410,7 +410,7 @@ export function CriarRecuperacaoFCT({
                   </div>
                 )}
                 {competenciasDaUC.length > 0 && (
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#999', textTransform: 'uppercase', marginBottom: 4 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#999', textTransform: 'uppercase', marginBottom: 4 }}>
                     Técnicas da biblioteca (podem ser partilhadas com outras UCs relacionadas)
                   </div>
                 )}
@@ -424,7 +424,7 @@ export function CriarRecuperacaoFCT({
                   <label key={texto} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px' }}>
                     <input type="checkbox" checked readOnly onChange={() => toggleComp(texto)} />
                     <span style={{ fontSize: 13 }}>{texto}</span>
-                    <button onClick={() => toggleComp(texto)} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: '#c00', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                    <button onClick={() => toggleComp(texto)} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: '#c00', cursor: 'pointer', fontSize: 13 }}>✕</button>
                   </label>
                 ))}
               </div>
@@ -434,7 +434,7 @@ export function CriarRecuperacaoFCT({
                   professor pode preferir sempre a sugestão da IA, mais
                   focada em evidências observáveis fora da sala de aula. */}
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+                <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>
                   {competenciasDaUC.length === 0
                     ? 'Sem competências mapeadas para esta UC — gera uma sugestão por IA, baseada no referencial oficial, e cola-as no campo abaixo:'
                     : 'Preferes gerar por IA em vez de usar a lista da biblioteca acima? Gera uma sugestão baseada no referencial oficial:'}
@@ -452,7 +452,7 @@ export function CriarRecuperacaoFCT({
                   todas as UCs (ex: sociocultural), o professor tem de conseguir
                   colar a lista toda de uma vez (não uma a uma) para o formulário
                   nunca ficar bloqueado nem obrigar a trabalho repetitivo. */}
-              <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>
+              <div style={{ fontSize: 12.5, color: '#999', marginBottom: 4 }}>
                 Cola aqui a lista toda que a IA devolveu (uma competência por linha) —
                 não precisas de as escrever uma a uma.
               </div>
@@ -479,7 +479,7 @@ export function CriarRecuperacaoFCT({
                 placeholder="Horas mínimas" style={{ width: 120, padding: '8px 10px', borderRadius: 6, border: '1px solid #ddd' }} />
             )}
             {!exigirHoras && (
-              <div style={{ fontSize: 11, color: '#8a4a15' }}>
+              <div style={{ fontSize: 12.5, color: '#8a4a15' }}>
                 Sem exigência de horas — só contam as evidências das competências, seja qual for o tempo dedicado.
               </div>
             )}
@@ -487,12 +487,12 @@ export function CriarRecuperacaoFCT({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Início do período de FCT</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Início do período de FCT</div>
               <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Termo do período de FCT</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Termo do período de FCT</div>
               <input type="date" value={dataTermo} onChange={e => setDataTermo(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
             </div>
@@ -500,12 +500,12 @@ export function CriarRecuperacaoFCT({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Local de FCT (opcional)</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Local de FCT (opcional)</div>
               <input value={localFCT} onChange={e => setLocalFCT(e.target.value)} placeholder="Nome da empresa"
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Supervisor na empresa (opcional)</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Supervisor na empresa (opcional)</div>
               <input value={supervisorFCT} onChange={e => setSupervisorFCT(e.target.value)} placeholder="Nome do orientador"
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box' }} />
             </div>
@@ -513,16 +513,16 @@ export function CriarRecuperacaoFCT({
 
           {competenciasSel.size > 0 && (
             <div style={{ marginBottom: 16, padding: 12, background: '#f9f7fc', borderRadius: 8, border: '1px solid #e4d9f7' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
                 Importância de cada competência na nota final ({competenciasSel.size})
               </div>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 10 }}>
+              <div style={{ fontSize: 12.5, color: '#666', marginBottom: 10 }}>
                 Define se cada competência pesa pouco, o normal, ou muito na média final — o peso %
                 é calculado automaticamente a partir disto e aparece já pronto na tabela do documento.
               </div>
               {Array.from(competenciasSel).map(comp => (
                 <div key={comp} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid #eee' }}>
-                  <span style={{ flex: 1, fontSize: 12 }}>{comp.length > 70 ? comp.slice(0, 70) + '…' : comp}</span>
+                  <span style={{ flex: 1, fontSize: 13 }}>{comp.length > 70 ? comp.slice(0, 70) + '…' : comp}</span>
                   <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
                     {[
                       { valor: 1, label: 'Baixa' },
@@ -532,7 +532,7 @@ export function CriarRecuperacaoFCT({
                       <button key={op.valor}
                         onClick={() => setImportancias(prev => ({ ...prev, [comp]: op.valor }))}
                         style={{
-                          padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                          padding: '4px 8px', borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                           border: (importancias[comp] || 2) === op.valor ? 'none' : '1px solid #ddd',
                           background: (importancias[comp] || 2) === op.valor ? '#6d28d9' : '#fff',
                           color: (importancias[comp] || 2) === op.valor ? '#fff' : '#666',
@@ -548,7 +548,7 @@ export function CriarRecuperacaoFCT({
 
           {ucId && competenciasSel.size > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
                 Gerar guião de apoio (opcional, ajuda o aluno a estruturar as evidências)
               </div>
               <SeletorIA
@@ -565,15 +565,15 @@ export function CriarRecuperacaoFCT({
                   criteriosDesempenho: getReferencialUC(ucId)?.criteriosDesempenho,
                 })}
               />
-              <div style={{ fontSize: 11, color: '#999', marginBottom: 8 }}>
+              <div style={{ fontSize: 12.5, color: '#999', marginBottom: 8 }}>
                 Copia o prompt, cola numa IA, e o resultado ajuda o aluno a saber o que escrever em cada evidência.
               </div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Colocar aqui o guião</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Colocar aqui o guião</div>
               <textarea value={guiaoTexto} onChange={e => setGuiaoTexto(e.target.value)}
                 placeholder="Cola aqui o guião completo que a IA gerou — vai aparecer em anexo no documento final, numa folha própria para o aluno responder."
-                style={{ width: '100%', minHeight: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 12, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                style={{ width: '100%', minHeight: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }} />
               {guiaoTexto && (
-                <div style={{ fontSize: 11, color: '#5a7a4e', marginTop: 4 }}>
+                <div style={{ fontSize: 12.5, color: '#5a7a4e', marginTop: 4 }}>
                   ✓ Vai aparecer em anexo, numa folha formatada para o aluno escrever.
                 </div>
               )}
@@ -585,7 +585,7 @@ export function CriarRecuperacaoFCT({
               <input type="checkbox" checked={possivelOral} onChange={e => setPossivelOral(e.target.checked)} />
               <span style={{ fontSize: 13, fontWeight: 600 }}>Pode vir a ser necessária defesa oral desta recuperação</span>
             </label>
-            <div style={{ fontSize: 11, color: '#8a4a15', marginTop: 6 }}>
+            <div style={{ fontSize: 12.5, color: '#8a4a15', marginTop: 6 }}>
               Decide isto agora — depois de avaliares a recuperação já não podes voltar a exigir uma
               defesa oral que não tenhas previsto aqui.
             </div>
@@ -637,7 +637,7 @@ export function RecuperacaoFCTAluno({ recuperacao, onAtualizado }: {
 
   return (
     <div>
-      <div style={{ marginBottom: 14, padding: 12, background: '#f5f0e8', borderRadius: 8, fontSize: 12 }}>
+      <div style={{ marginBottom: 14, padding: 12, background: '#f5f0e8', borderRadius: 8, fontSize: 13 }}>
         {fct.exigirHoras
           ? `Esta recuperação exige um mínimo de ${fct.horasMinimasExigidas || 0} horas de FCT dedicadas a estas competências.`
           : 'Esta recuperação não exige um número mínimo de horas — contam as evidências concretas do que fizeste.'}
@@ -647,9 +647,9 @@ export function RecuperacaoFCTAluno({ recuperacao, onAtualizado }: {
       <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Evidências já registadas ({fct.evidencias.length})</div>
       {fct.evidencias.map(e => (
         <div key={e.id} style={{ padding: 10, borderRadius: 8, border: '1px solid #eee', marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#6d28d9' }}>{e.competenciaId} {e.dataOcorrencia ? `· ${e.dataOcorrencia}` : ''}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#6d28d9' }}>{e.competenciaId} {e.dataOcorrencia ? `· ${e.dataOcorrencia}` : ''}</div>
           <div style={{ fontSize: 13, marginTop: 4 }}>{e.descricao}</div>
-          {e.validadoPeloSupervisor && <div style={{ fontSize: 11, color: '#5a7a4e', marginTop: 4 }}>✓ Validado pelo supervisor</div>}
+          {e.validadoPeloSupervisor && <div style={{ fontSize: 12.5, color: '#5a7a4e', marginTop: 4 }}>✓ Validado pelo supervisor</div>}
         </div>
       ))}
 

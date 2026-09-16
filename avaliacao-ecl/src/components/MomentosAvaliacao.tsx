@@ -84,7 +84,7 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2' }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800 }}>📐 Momentos de Avaliação</h2>
-        <div style={{ fontSize: 12, opacity: 0.5 }}>Agrupa planos de aula em momentos para calcular a nota da {isUFCD ? 'UFCD' : 'UC'}</div>
+        <div style={{ fontSize: 13, opacity: 0.5 }}>Agrupa planos de aula em momentos para calcular a nota da {isUFCD ? 'UFCD' : 'UC'}</div>
       </div>
 
       {/* Selector UC */}
@@ -109,27 +109,27 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
                   background: momento.fechado ? 'rgba(26,23,20,0.03)' : 'rgba(181,101,29,0.04)' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{momento.nome}</div>
-                    <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
+                    <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)', marginTop: 2 }}>
                       {planosDoMomento.length} aula{planosDoMomento.length !== 1 ? 's' : ''} · {alunos.length} alunos
                       {momento.fechado && <span style={{ color: T.sage, marginLeft: 8 }}>🔒 Fechado</span>}
                     </div>
                   </div>
                   <button onClick={() => setMomentoAberto(aberto ? null : momento.id)}
                     style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${T.border}`,
-                      background: 'transparent', cursor: 'pointer', fontSize: 12 }}>
+                      background: 'transparent', cursor: 'pointer', fontSize: 13 }}>
                     {aberto ? '▲ Fechar' : '▼ Ver notas'}
                   </button>
                   {!momento.fechado && (
                     <button onClick={() => toggleFechado(momento.id)}
                       style={{ padding: '6px 12px', borderRadius: 8, border: 'none',
-                        background: T.sage, color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                        background: T.sage, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
                       🔒 Fechar
                     </button>
                   )}
                   {!momento.fechado && (
                     <button onClick={() => eliminarMomento(momento.id)}
                       style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid rgba(192,57,43,0.3)`,
-                        background: 'transparent', color: '#c0392b', cursor: 'pointer', fontSize: 12 }}>
+                        background: 'transparent', color: '#c0392b', cursor: 'pointer', fontSize: 13 }}>
                       ✕
                     </button>
                   )}
@@ -152,11 +152,11 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
                           {nota > 0 ? (
                             <div style={{ textAlign: 'right' }}>
                               <span style={{ fontWeight: 800, fontSize: 16, color: cor }}>{nota.toFixed(1)}</span>
-                              <span style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginLeft: 2 }}>/4</span>
-                              <div style={{ fontSize: 13, fontWeight: 900, color: cor }}>{para20(nota)}<span style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)' }}>/20</span></div>
+                              <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginLeft: 2 }}>/4</span>
+                              <div style={{ fontSize: 13, fontWeight: 900, color: cor }}>{para20(nota)}<span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)' }}>/20</span></div>
                             </div>
                           ) : (
-                            <span style={{ fontSize: 12, color: 'rgba(26,23,20,0.3)' }}>sem dados</span>
+                            <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.3)' }}>sem dados</span>
                           )}
                           
                         </div>
@@ -182,7 +182,7 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
                 placeholder="Nome (ex: Momento 1 — Outubro a Dezembro)"
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${T.border}`,
                   fontSize: 13, marginBottom: 12, boxSizing: 'border-box' }} />
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
                 Selecciona as aulas a incluir neste momento:
               </div>
               {planos.filter(p => {

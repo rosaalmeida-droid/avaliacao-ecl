@@ -80,7 +80,7 @@ function Tabela({ headers, rows }: { headers: string[]; rows: (string|React.Reac
 function Badge({ texto, cor }: { texto: string; cor: string }) {
   return (
     <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 100,
-      background: cor + '20', color: cor, fontWeight: 700, fontSize: 11, marginRight: 4 }}>
+      background: cor + '20', color: cor, fontWeight: 700, fontSize: 12.5, marginRight: 4 }}>
       {texto}
     </span>
   );
@@ -106,7 +106,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
       {/* Header */}
       <div style={{ background: `linear-gradient(135deg, ${T.copper}, #8B4513)`, padding: '24px 24px 0',
         color: '#fff', borderRadius: '0 0 0 0' }}>
-        <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           Avaliação ECL · Escola de Comércio de Lisboa
         </div>
         <h1 style={{ margin: '0 0 4px', fontSize: 24, fontWeight: 800 }}>
@@ -196,7 +196,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                   <div key={nome} style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 8,
                     background: cor + '15', border: `1px solid ${cor}40` }}>
                     <div style={{ fontSize: 18, fontWeight: 800, color: cor }}>{nome}</div>
-                    <div style={{ fontSize: 11, color: T.textLight, marginTop: 4 }}>peso igual</div>
+                    <div style={{ fontSize: 12.5, color: T.textLight, marginTop: 4 }}>peso igual</div>
                   </div>
                 ))}
               </div>
@@ -224,7 +224,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                     if (!atis.length) return null;
                     return (
                       <div key={tri} style={{ marginBottom: 8, paddingLeft: 12, borderLeft: `3px solid ${T.azul}40` }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: T.textLight, marginBottom: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.textLight, marginBottom: 4 }}>
                           Trimestre {tri}
                         </div>
                         {atis.map(a => (
@@ -233,12 +233,12 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                               <Badge texto={a.id} cor={T.azul} />
                               <span style={{ fontWeight: 600, fontSize: 13 }}>{a.nome}</span>
                             </div>
-                            <div style={{ fontSize: 12, color: T.textLight, margin: '3px 0 3px 4px' }}>
+                            <div style={{ fontSize: 13, color: T.textLight, margin: '3px 0 3px 4px' }}>
                               {a.descricao}
                             </div>
                             <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
                               {(['n1','n2','n3'] as const).map((n, i) => (
-                                <div key={n} style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4,
+                                <div key={n} style={{ fontSize: 12.5, padding: '2px 6px', borderRadius: 4,
                                   background: i === ano-1 ? T.azulP : '#f5f5f3',
                                   color: i === ano-1 ? T.azul : T.textLight,
                                   border: i === ano-1 ? `1px solid ${T.azul}40` : '1px solid transparent',

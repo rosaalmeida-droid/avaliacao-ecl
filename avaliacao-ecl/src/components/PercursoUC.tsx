@@ -50,7 +50,7 @@ export function PercursoUC({ aluno, ucId }: { aluno: { id: string; turmaId: stri
         <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--copper)' }}>
           O meu percurso nesta UC
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>{validados} de {planos.length} validados</div>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>{validados} de {planos.length} validados</div>
       </div>
 
       <div style={{ position: 'relative' }}>
@@ -67,10 +67,10 @@ export function PercursoUC({ aluno, ucId }: { aluno: { id: string; turmaId: stri
               <div style={{ flex: 1, background: st.fundo, borderRadius: 10, padding: '10px 13px', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: 'var(--charcoal)' }}>{rotuloPlano(p)}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>{dataCurta(p.data)}</div>
+                  <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>{dataCurta(p.data)}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: st.texto }}>{st.etiqueta}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: st.texto }}>{st.etiqueta}</span>
                   {estado === 'validado' && nota20 != null && (
                     <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 800, color: '#4e6a25' }}>{nota20}/20</span>
                   )}

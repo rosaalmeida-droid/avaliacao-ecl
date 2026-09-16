@@ -181,7 +181,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 17 }}>📊 Gerar Pauta de Avaliação</div>
-            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{turmaId}</div>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{turmaId}</div>
           </div>
           <button onClick={onFechar} style={{ background: 'none', border: 'none',
             fontSize: 20, cursor: 'pointer', color: 'rgba(26,23,20,0.4)' }}>✕</button>
@@ -193,10 +193,10 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
           {[1, 2, 3].map(n => (
             <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 26, height: 26, borderRadius: 13, display: 'flex',
-                alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
+                alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
                 background: passo >= n ? COR : 'rgba(26,23,20,0.08)',
                 color: passo >= n ? '#fff' : 'rgba(26,23,20,0.4)' }}>{n}</div>
-              <div style={{ fontSize: 12, color: passo === n ? COR : 'rgba(26,23,20,0.4)',
+              <div style={{ fontSize: 13, color: passo === n ? COR : 'rgba(26,23,20,0.4)',
                 fontWeight: passo === n ? 700 : 400 }}>
                 {n === 1 ? 'Planos' : n === 2 ? 'Alunos' : 'Notas'}
               </div>
@@ -212,7 +212,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
           {passo === 1 && (
             <div>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+                <label style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                   display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   UC / UFCD
                 </label>
@@ -234,12 +234,12 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => setPlanosSel(new Set(planosFiltrados.map(p => p.id)))}
-                    style={{ fontSize: 12, padding: '4px 10px', borderRadius: 7,
+                    style={{ fontSize: 13, padding: '4px 10px', borderRadius: 7,
                       border: '1px solid rgba(26,23,20,0.15)', background: '#fff', cursor: 'pointer' }}>
                     Todos
                   </button>
                   <button onClick={() => setPlanosSel(new Set())}
-                    style={{ fontSize: 12, padding: '4px 10px', borderRadius: 7,
+                    style={{ fontSize: 13, padding: '4px 10px', borderRadius: 7,
                       border: '1px solid rgba(26,23,20,0.15)', background: '#fff', cursor: 'pointer' }}>
                     Nenhum
                   </button>
@@ -265,18 +265,18 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                       border: `2px solid ${planosSel.has(p.id) ? COR : 'rgba(26,23,20,0.2)'}`,
                       background: planosSel.has(p.id) ? COR : '#fff',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 11, fontWeight: 700 }}>
+                      color: '#fff', fontSize: 12.5, fontWeight: 700 }}>
                       {planosSel.has(p.id) && '✓'}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#2E2A26' }}>
                         {p.titulo || 'Plano de aula'}
                       </div>
-                      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>
+                      <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>
                         {p.data ? fmtDataCurta(p.data) + ' · ' : ''}{p.ucId || ''}{p.ucNome ? ' — ' + p.ucNome : ''}
                       </div>
                     </div>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 600,
+                    <span style={{ fontSize: 12.5, padding: '2px 8px', borderRadius: 20, fontWeight: 600,
                       background: p.estado === 'publicado' ? 'rgba(90,122,78,0.12)' : 'rgba(181,101,29,0.1)',
                       color: p.estado === 'publicado' ? '#5a7a4e' : 'var(--copper)' }}>
                       {p.estado === 'publicado' ? 'Publicado' : 'Rascunho'}
@@ -298,12 +298,12 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => setAlunosSel(new Set(alunos.map(a => a.id)))}
-                    style={{ fontSize: 12, padding: '4px 10px', borderRadius: 7,
+                    style={{ fontSize: 13, padding: '4px 10px', borderRadius: 7,
                       border: '1px solid rgba(26,23,20,0.15)', background: '#fff', cursor: 'pointer' }}>
                     Todos
                   </button>
                   <button onClick={() => setAlunosSel(new Set())}
-                    style={{ fontSize: 12, padding: '4px 10px', borderRadius: 7,
+                    style={{ fontSize: 13, padding: '4px 10px', borderRadius: 7,
                       border: '1px solid rgba(26,23,20,0.15)', background: '#fff', cursor: 'pointer' }}>
                     Nenhum
                   </button>
@@ -324,7 +324,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                       border: `2px solid ${alunosSel.has(a.id) ? COR : 'rgba(26,23,20,0.2)'}`,
                       background: alunosSel.has(a.id) ? COR : '#fff',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 11, fontWeight: 700 }}>
+                      color: '#fff', fontSize: 12.5, fontWeight: 700 }}>
                       {alunosSel.has(a.id) && '✓'}
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{a.nome}</div>
@@ -354,7 +354,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                     Proposta calculada a partir do historial de avaliações. Ajusta antes de gerar.
                   </div>
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
                         <tr style={{ background: COR, color: '#fff' }}>
                           <th style={{ padding: '7px 8px', textAlign: 'left', fontWeight: 700 }}>Aluno</th>
@@ -369,7 +369,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                           <tr key={n.alunoId} style={{ background: ri % 2 === 0 ? '#e0f2f1' : '#fff' }}>
                             <td style={{ padding: '5px 8px', fontWeight: 600 }}>
                               {n.nome}
-                              {n.ajustada && <span style={{ marginLeft: 4, fontSize: 10,
+                              {n.ajustada && <span style={{ marginLeft: 4, fontSize: 12.5,
                                 color: '#00796B', fontWeight: 700 }}>✎</span>}
                             </td>
                             {(['cm', 'cp', 'cl', 'co', 'cr'] as const).map(campo => (
@@ -378,7 +378,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                                   value={n[campo]}
                                   onChange={e => ajustarNota(n.alunoId, campo, Math.max(0, Math.min(20, Number(e.target.value))))}
                                   style={{ width: 42, textAlign: 'center', padding: '3px 4px',
-                                    borderRadius: 6, border: '1px solid rgba(26,23,20,0.2)', fontSize: 12 }} />
+                                    borderRadius: 6, border: '1px solid rgba(26,23,20,0.2)', fontSize: 13 }} />
                               </td>
                             ))}
                             <td style={{ padding: '5px 8px', textAlign: 'center',
@@ -390,7 +390,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                       </tbody>
                     </table>
                   </div>
-                  <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 8 }}>
+                  <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 8 }}>
                     Ponderação: CM 20% · CP 40% · CL 15% · CO 15% · CR 10% · Escala 0–20
                   </div>
                   {erro && (

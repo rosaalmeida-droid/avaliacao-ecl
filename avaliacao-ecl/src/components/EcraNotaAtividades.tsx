@@ -214,7 +214,7 @@ export function EcraAtividades({
 
   const cartao = (a: Atividade, corpo: React.ReactNode) => (
     <div key={a.id} style={{ ...painel, padding: 16, marginBottom: 11 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
+      <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em',
         textTransform: 'uppercase', color: C.violeta }}>
         {a.tipo === 'concurso' ? 'Concurso' : 'Evento'}
       </div>
@@ -259,7 +259,7 @@ export function EcraAtividades({
         {/* Por fechar primeiro: é o que exige ação. */}
         {porFechar.length > 0 && (
           <>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em',
               textTransform: 'uppercase', color: C.cobre, marginBottom: 10 }}>
               Diz-nos como correu
             </div>
@@ -299,7 +299,7 @@ export function EcraAtividades({
 
         {abertas.length > 0 && (
           <>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em',
               textTransform: 'uppercase', color: C.suave, marginBottom: 10 }}>
               Podes inscrever-te
             </div>
@@ -337,7 +337,7 @@ export function EcraAtividades({
 
         {feitas.length > 0 && (
           <>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em',
               textTransform: 'uppercase', color: C.suave, marginBottom: 10 }}>
               Onde já participaste · {feitas.length}
             </div>

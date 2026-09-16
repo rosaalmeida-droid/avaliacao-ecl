@@ -341,7 +341,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
           {/* ── LISTA ── */}
           {modo === 'lista' && (
             <div>
-              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 14 }}>
+              <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>
                 Os manuais ficam guardados neste navegador. Para partilhar ou imprimir, abre um manual e exporta em Word ou PDF.
               </p>
               {lista.length === 0
@@ -352,7 +352,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
                       <div key={m.code} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid #f1f1f1' }}>
                         <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => abrir(m.code)}>
                           <div style={{ fontWeight: 600 }}><span style={{ color: ROXO }}>{m.code}</span> — {m.title}</div>
-                          <div style={{ fontSize: 12, color: m.pages === 0 ? '#dc2626' : '#6b7280' }}>
+                          <div style={{ fontSize: 13, color: m.pages === 0 ? '#dc2626' : '#6b7280' }}>
                             {m.pages === 0 ? '⚠ 0 páginas' : `${m.pages} páginas`}
                           </div>
                         </div>
@@ -378,7 +378,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
                   {UCS.map((u) => <option key={u.code} value={u.code}>{u.code} — {u.ref.nome}</option>)}
                 </select>
                 {uc && (
-                  <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 10px' }}>
+                  <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 10px' }}>
                     {buildTopics(uc).length} páginas · tipo: {uc.kind} · gera pela Gemini (deixa a aba aberta).
                   </p>
                 )}
@@ -394,13 +394,13 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
                   <button style={ghost} disabled={gerando} onClick={copiarPromptUC}>📋 Copiar prompt</button>
                   <button style={ghost} disabled={gerando} onClick={() => setColarAberto(!colarAberto)}>Colar JSON</button>
                 </div>
-                {saved && <p style={{ fontSize: 12, color: '#0a7d2c', marginTop: 8 }}>✓ Guardado em Manuais Guardados.</p>}
+                {saved && <p style={{ fontSize: 13, color: '#0a7d2c', marginTop: 8 }}>✓ Guardado em Manuais Guardados.</p>}
                 {colarAberto && (
                   <div style={{ marginTop: 10 }}>
                     <textarea
                       value={colarTxt} onChange={(e) => setColarTxt(e.target.value)}
                       placeholder="Cola aqui o array JSON de páginas gerado noutra IA…"
-                      style={{ width: '100%', height: 120, borderRadius: 8, border: '1px solid #d1d5db', padding: 8, fontSize: 12, fontFamily: 'monospace' }}
+                      style={{ width: '100%', height: 120, borderRadius: 8, border: '1px solid #d1d5db', padding: 8, fontSize: 13, fontFamily: 'monospace' }}
                     />
                     <button style={btn(ROXO)} onClick={importarColado}>Adicionar páginas</button>
                   </div>
@@ -413,13 +413,13 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
                   <div style={{ height: 8, borderRadius: 6, background: '#eee', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${(prog.done / prog.total) * 100}%`, background: ROXO, transition: 'width .2s' }} />
                   </div>
-                  <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>{prog.done} de {prog.total}</p>
+                  <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{prog.done} de {prog.total}</p>
                 </div>
               )}
 
               {/* log */}
               {logs.length > 0 && (
-                <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, maxHeight: 280, overflow: 'auto', fontSize: 12, fontFamily: 'monospace' }}>
+                <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, maxHeight: 280, overflow: 'auto', fontSize: 13, fontFamily: 'monospace' }}>
                   {logs.map((l, i) => (
                     <div key={i} style={{ color: l.startsWith('✗') ? '#dc2626' : l.startsWith('—') ? '#b45309' : '#374151', padding: '1px 0' }}>{l}</div>
                   ))}
@@ -458,7 +458,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
                 <button style={btn(BRAND)} onClick={reorganizar} title="Renumera e ordena os capítulos pela sequência do índice">↕ Reorganizar</button>
                 <button style={btn(ROXO)} onClick={guardar}>{saved ? 'Guardar (atualizar)' : '💾 Guardar'}</button>
               </div>
-              <p style={{ fontSize: 12, color: saved ? '#0a7d2c' : '#6b7280', marginBottom: 10 }}>
+              <p style={{ fontSize: 13, color: saved ? '#0a7d2c' : '#6b7280', marginBottom: 10 }}>
                 {saved ? '✓ Em Manuais Guardados. Exporta em Word/PDF para partilhar.' : 'Ainda não guardado. Clica Guardar, ou exporta directamente.'}
               </p>
 
@@ -470,17 +470,17 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
                     padding: '10px 14px', borderBottom: idx < doc.pages.length - 1 ? '1px solid #f1f1f1' : undefined,
                     background: page.incompleto ? '#fff8f0' : idx % 2 === 0 ? '#fff' : '#fafafa',
                   }}>
-                    <span style={{ fontSize: 11, color: '#999', minWidth: 22 }}>{page.pageNumber}</span>
+                    <span style={{ fontSize: 12.5, color: '#999', minWidth: 22 }}>{page.pageNumber}</span>
                     <span style={{ flex: 1, fontSize: 13, fontWeight: idx === 0 ? 700 : 400, color: page.incompleto ? '#e65100' : '#1f2937' }}>
                       {page.incompleto ? '⚠ ' : ''}{page.title}
                     </span>
-                    {page.subtitle && <span style={{ fontSize: 11, color: '#6b7280' }}>{page.subtitle}</span>}
+                    {page.subtitle && <span style={{ fontSize: 12.5, color: '#6b7280' }}>{page.subtitle}</span>}
                   </div>
                 ))}
               </div>
 
               {logs.length > 0 && (
-                <div style={{ marginTop: 10, background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, maxHeight: 160, overflow: 'auto', fontSize: 12, fontFamily: 'monospace' }}>
+                <div style={{ marginTop: 10, background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: 10, maxHeight: 160, overflow: 'auto', fontSize: 13, fontFamily: 'monospace' }}>
                   {logs.map((l, i) => (
                     <div key={i} style={{ color: l.startsWith('✗') ? '#dc2626' : l.startsWith('—') ? '#b45309' : '#374151', padding: '1px 0' }}>{l}</div>
                   ))}
@@ -494,8 +494,8 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
         {showSide && (
           <div style={{ flex: 1, minWidth: 0, position: 'sticky', top: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: BRAND }}>Preview do documento</span>
-              <span style={{ fontSize: 11, color: '#9ca3af' }}>— actualiza automaticamente</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: BRAND }}>Preview do documento</span>
+              <span style={{ fontSize: 12.5, color: '#9ca3af' }}>— actualiza automaticamente</span>
             </div>
             <div style={{ border: `1px solid ${LINE}`, borderRadius: 10, overflow: 'hidden', background: '#e5e7eb' }}>
               <iframe
@@ -505,7 +505,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
                 sandbox="allow-same-origin"
               />
             </div>
-            <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, textAlign: 'center' }}>
+            <p style={{ fontSize: 12.5, color: '#9ca3af', marginTop: 4, textAlign: 'center' }}>
               Para imprimir ou guardar como PDF, usa o botão «Exportar PDF» no painel esquerdo.
             </p>
           </div>

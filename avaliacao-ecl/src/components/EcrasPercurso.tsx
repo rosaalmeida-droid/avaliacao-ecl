@@ -335,7 +335,7 @@ export function EcraNotaProgressiva({
       </div>
 
       <div style={{
-        fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+        fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
         letterSpacing: '0.06em', color: T.suave, marginBottom: 9, paddingLeft: 2,
       }}>
         {avaliadas.length === 0

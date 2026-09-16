@@ -88,7 +88,7 @@ export function ModalFullscreen({
               {titulo}
             </div>
             {subtitulo && (
-              <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{subtitulo}</div>
+              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{subtitulo}</div>
             )}
           </div>
           <button
@@ -113,7 +113,7 @@ export function ModalFullscreen({
         {/* Rodapé — indicação de que fechar grava */}
         <div style={{
           padding: '10px 24px', borderTop: '1px solid rgba(26,23,20,0.06)',
-          background: '#fff', flexShrink: 0, fontSize: 11, color: 'rgba(26,23,20,0.4)',
+          background: '#fff', flexShrink: 0, fontSize: 12.5, color: 'rgba(26,23,20,0.4)',
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
           <span style={{ color: corDestaque }}>●</span>

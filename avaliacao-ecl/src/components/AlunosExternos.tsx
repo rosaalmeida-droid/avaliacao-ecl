@@ -97,7 +97,7 @@ export function GestaoAlunosExternos() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{a.nome}</div>
-              <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>
                 {a.turmaOrigem && `${a.turmaOrigem} · `}
                 {a.localFCT && `🏢 ${a.localFCT}`}
                 {a.dataInicio && ` · ${a.dataInicio}${a.dataTermo ? ' → ' + a.dataTermo : ''}`}
@@ -105,11 +105,11 @@ export function GestaoAlunosExternos() {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={() => setAEditar({ ...a })}
-                style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)', background: '#faf7f2', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)', background: '#faf7f2', fontSize: 12.5, cursor: 'pointer', fontWeight: 600 }}>
                 ✏️ Editar
               </button>
               <button onClick={() => eliminar(a.id)}
-                style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', fontSize: 11, cursor: 'pointer', color: '#dc2626', fontWeight: 600 }}>
+                style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid #fecaca', background: '#fef2f2', fontSize: 12.5, cursor: 'pointer', color: '#dc2626', fontWeight: 600 }}>
                 🗑
               </button>
             </div>
@@ -139,7 +139,7 @@ export function GestaoAlunosExternos() {
               { label: 'Fim FCT', field: 'dataTermo', type: 'date', placeholder: '' },
             ].map(({ label, field, type, placeholder }) => (
               <div key={field} style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{label}</div>
                 <input
                   type={type}
                   value={(aEditar as any)[field] || ''}

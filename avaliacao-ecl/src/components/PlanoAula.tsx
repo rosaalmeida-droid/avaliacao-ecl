@@ -171,9 +171,9 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
           background: selecionado ? 'var(--copper)' : (planosNesteDia.length > 0 ? 'var(--copper-pale)' : '#fff'),
           color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
           cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          padding: 1, position: 'relative', fontSize: 11,
+          padding: 1, position: 'relative', fontSize: 12.5,
         }}>
-        <span style={{ fontSize: 11, fontWeight: ehHoje || selecionado ? 700 : 500 }}>{data.getDate()}</span>
+        <span style={{ fontSize: 12.5, fontWeight: ehHoje || selecionado ? 700 : 500 }}>{data.getDate()}</span>
         {planosNesteDia.length > 0 && (
           <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
             {planosNesteDia.slice(0, 3).map((_, idx) => (
@@ -191,7 +191,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
     return (
       <div style={{ flex: 1, minWidth: 0 }}>
         {mostrarTitulo && (
-          <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', marginBottom: 6, textTransform: 'capitalize', color: 'rgba(26,23,20,0.6)' }}>{nomeMes}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, textAlign: 'center', marginBottom: 6, textTransform: 'capitalize', color: 'rgba(26,23,20,0.6)' }}>{nomeMes}</div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 3 }}>
           {diasSemana.map(d => (
@@ -218,7 +218,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
       <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
         {(['semana', 'mes', '2meses'] as const).map(m => (
           <button key={m} onClick={() => setModoVista(m)}
-            style={{ flex: 1, padding: '5px 6px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+            style={{ flex: 1, padding: '5px 6px', borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
               border: modoVista === m ? 'none' : '1px solid var(--border)',
               background: modoVista === m ? 'var(--copper)' : '#fff',
               color: modoVista === m ? 'white' : 'rgba(26,23,20,0.6)' }}>
@@ -235,7 +235,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
           style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 13 }}>›</button>
       </div>
       <button onClick={irParaHoje}
-        style={{ width: '100%', marginBottom: 10, padding: '5px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', fontSize: 11, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer' }}>
+        style={{ width: '100%', marginBottom: 10, padding: '5px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', fontSize: 12.5, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer' }}>
         Hoje
       </button>
 
@@ -275,14 +275,14 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
               </div>
               {planosDoDia.length > 0 && (
                 <button onClick={() => { setModoSelecaoCal(!modoSelecaoCal); setPlanosSelecionadosCal(new Set()); }}
-                  style={{ fontSize: 11, fontWeight: 700, color: 'var(--copper)', background: 'none', border: '1px solid var(--copper)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
+                  style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--copper)', background: 'none', border: '1px solid var(--copper)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
                   {modoSelecaoCal ? '✕ Cancelar' : '☑ Selecionar'}
                 </button>
               )}
             </div>
             {modoSelecaoCal && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
-                <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
+                <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
                   {planosSelecionadosCal.size} selecionado(s)
                 </span>
                 <button onClick={() => {
@@ -294,7 +294,7 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                     onPlanoEliminado?.();
                   }
                 }} disabled={planosSelecionadosCal.size === 0}
-                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 11, cursor: planosSelecionadosCal.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosCal.size === 0 ? 0.4 : 1 }}>
+                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12.5, cursor: planosSelecionadosCal.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosCal.size === 0 ? 0.4 : 1 }}>
                   🗑️ Eliminar
                 </button>
               </div>
@@ -321,19 +321,19 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
                 }} style={{ marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {modoSelecaoCal && (
-                      <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: planosSelecionadosCal.has(p.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, color: 'white' }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: planosSelecionadosCal.has(p.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, color: 'white' }}>
                         {planosSelecionadosCal.has(p.id) && '✓'}
                       </div>
                     )}
                     <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 10px', textAlign: 'center', minWidth: 50 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{horaI || '--:--'}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>{horaI || '--:--'}</div>
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
                       {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                     </div>
-                    <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
+                    <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
                       background: p.estado === 'publicado' ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
                       color: p.estado === 'publicado' ? 'var(--sage)' : 'var(--copper)' }}>
                       {p.estado === 'publicado' ? 'Publicado' : 'Rascunho'}
@@ -377,7 +377,7 @@ function FichaSelector({ todasFichas, fichasSel, onChange }: {
   return (
     <div>
       {fichasSel.length > 0 && (
-        <div style={{marginBottom:8,padding:'8px 10px',background:'var(--copper-pale)',borderRadius:8,fontSize:12,color:'var(--copper)',fontWeight:600}}>
+        <div style={{marginBottom:8,padding:'8px 10px',background:'var(--copper-pale)',borderRadius:8,fontSize:13,color:'var(--copper)',fontWeight:600}}>
           {fichasSel.length} ficha{fichasSel.length>1?'s':''} selecionada{fichasSel.length>1?'s':''}
         </div>
       )}
@@ -390,7 +390,7 @@ function FichaSelector({ todasFichas, fichasSel, onChange }: {
           return (
             <div key={f.id} onClick={()=>onChange(sel?fichasSel.filter(x=>x!==f.id):[...fichasSel,f.id])}
               style={{display:'flex',alignItems:'center',gap:10,padding:'9px 10px',borderRadius:8,marginBottom:4,cursor:'pointer',background:sel?'var(--copper-pale)':'#fff',border:'1px solid '+(sel?'var(--copper)':'transparent')}}>
-              <div style={{width:20,height:20,borderRadius:5,border:'1.5px solid '+(sel?'var(--copper)':'var(--border)'),background:sel?'var(--copper)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:12,fontWeight:700}}>
+              <div style={{width:20,height:20,borderRadius:5,border:'1.5px solid '+(sel?'var(--copper)':'var(--border)'),background:sel?'var(--copper)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:13,fontWeight:700}}>
                 {sel&&'✓'}
               </div>
               <div style={{flex:1}}>
@@ -424,7 +424,7 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
         </div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontWeight:600, fontSize:14 }}>{title}</div>
-          <div className="muted" style={{ fontSize:12, marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{desc}</div>
+          <div className="muted" style={{ fontSize:13, marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{desc}</div>
         </div>
         <span className="badge" style={{ ...statusStyles, fontSize:13 }}>
           {status==='done'?'Feito' : status==='active'?'Em curso' : 'Pendente'}
@@ -499,7 +499,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
           <button onClick={()=>setVista('arquivo')} className="tab-btn active" style={{ flex:1 }}>🗄️ Arquivo</button>
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 14 }}>
           Planos arquivados não aparecem no calendário nem na lista. Podes sempre trazê-los de volta.
         </div>
         {arquivados.length === 0 && <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>O arquivo está vazio.</div>}
@@ -511,11 +511,11 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
+                  <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
                   {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                 </div>
-                <button onClick={() => { desarquivarPlanoAula(p.id); setRefreshKey(k => k + 1); }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>↩️ Restaurar</button>
-                <button onClick={() => { if (confirm(`Eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"?`)) { eliminarPlanoAulaDefinitivamente(p.id); setRefreshKey(k => k + 1); } }} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--danger)', background: '#fff', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>🗑️ Eliminar</button>
+                <button onClick={() => { desarquivarPlanoAula(p.id); setRefreshKey(k => k + 1); }} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>↩️ Restaurar</button>
+                <button onClick={() => { if (confirm(`Eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"?`)) { eliminarPlanoAulaDefinitivamente(p.id); setRefreshKey(k => k + 1); } }} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--danger)', background: '#fff', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>🗑️ Eliminar</button>
               </div>
             </div>
           );
@@ -551,7 +551,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
       </div>
       {modoSelecaoPlanos && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{planosSelecionadosIds.size} plano(s) selecionado(s)</span>
+          <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{planosSelecionadosIds.size} plano(s) selecionado(s)</span>
           <button onClick={() => {
             if (planosSelecionadosIds.size === 0) return;
             if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosIds.size} plano(s)?`)) {
@@ -559,7 +559,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
               setPlanosSelecionadosIds(new Set()); setModoSelecaoPlanos(false); setRefreshKey(k => k + 1);
             }
           }} disabled={planosSelecionadosIds.size === 0}
-            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12, cursor: planosSelecionadosIds.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosIds.size === 0 ? 0.4 : 1 }}>
+            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 13, cursor: planosSelecionadosIds.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosIds.size === 0 ? 0.4 : 1 }}>
             🗑️ Eliminar Selecionados
           </button>
         </div>
@@ -590,21 +590,21 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           }}>
             <div style={{ display:'flex', alignItems:'center', gap:14 }}>
               {modoSelecaoPlanos && (
-                <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: planosSelecionadosIds.has(p.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, color: 'white' }}>
+                <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: planosSelecionadosIds.has(p.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, color: 'white' }}>
                   {planosSelecionadosIds.has(p.id) && '✓'}
                 </div>
               )}
               <div style={{ background:'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
                 <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'white', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
                 <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.85)', textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{p.titulo || 'Plano de aula'}</div>
                 {p.ucId && (
-                  <div style={{ fontSize:12, color:'var(--copper)', fontWeight:600, marginBottom:2, lineHeight:1.4 }}>
+                  <div style={{ fontSize:13, color:'var(--copper)', fontWeight:600, marginBottom:2, lineHeight:1.4 }}>
                     {p.ucId} · {rotuloPlano(p)}
-                    {p.ucNome && <div style={{ fontSize:12, color:'var(--copper)', fontWeight:500, opacity:0.85 }}>{p.ucNome}</div>}
+                    {p.ucNome && <div style={{ fontSize:13, color:'var(--copper)', fontWeight:500, opacity:0.85 }}>{p.ucNome}</div>}
                   </div>
                 )}
                 <div className="muted" style={{ fontSize:13 }}>
@@ -783,7 +783,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
               {!trocarUC ? (
                 <div style={{ padding: '13px 15px', borderRadius: 10,
                   background: 'var(--copper-pale, #fdf0e6)', border: '1px solid var(--copper)' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
+                  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em',
                     textTransform: 'uppercase', color: 'var(--copper)' }}>
                     {doCronograma.id}
                   </div>
@@ -839,9 +839,9 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
                   border: `2px solid ${dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'var(--border)'}`,
                   background: dados.tipoPlanAula === opt.v ? 'var(--copper-pale)' : '#fff',
                   color: dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'rgba(26,23,20,0.5)',
-                  fontSize: 12, fontWeight: dados.tipoPlanAula === opt.v ? 700 : 400, textAlign: 'center' }}>
+                  fontSize: 13, fontWeight: dados.tipoPlanAula === opt.v ? 700 : 400, textAlign: 'center' }}>
                 <div>{opt.label}</div>
-                <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>{opt.desc}</div>
+                <div style={{ fontSize: 12.5, opacity: 0.7, marginTop: 2 }}>{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -855,7 +855,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
         <div className="field" style={{ marginBottom: 20 }}>
           <label className="field-label">Título (opcional)</label>
           <input className="input" value={dados.titulo} onChange={e => setD('titulo', e.target.value)} placeholder={`Plano — ${dados.tipoAtividade} — ${dados.data}`} />
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>Se não preencheres, o título é gerado automaticamente com número sequencial</div>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>Se não preencheres, o título é gerado automaticamente com número sequencial</div>
         </div>
         <button className="btn btn-primary btn-block" disabled={!podeGuardar} onClick={guardar} style={{ fontSize: 15, padding: '14px', opacity: podeGuardar ? 1 : 0.4 }}>
           {podeGuardar ? 'Criar plano e começar →' : 'Selecciona a UC para continuar'}
@@ -902,7 +902,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
       <div style={{background:'var(--charcoal)',borderRadius:14,padding:'18px',marginBottom:12}}>
         <button onClick={onVoltar} className="btn" style={{fontSize:13,padding:'5px 10px',background:'rgba(247,241,230,0.6)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.6)',marginBottom:10}}>← Planos</button>
         <div className="display" style={{fontSize:16,color:'var(--cream)'}}>{rotuloPlano(plano)}{plano.turmaId ? ' · ' + plano.turmaId : ''}</div>
-        <div style={{fontSize:12,color:'rgba(247,241,230,0.5)',marginTop:2}}>{dataComDia(plano.data)}{plano.horaInicio ? ` · ${plano.horaInicio}–${plano.horaFim}` : ''}</div>
+        <div style={{fontSize:13,color:'rgba(247,241,230,0.5)',marginTop:2}}>{dataComDia(plano.data)}{plano.horaInicio ? ` · ${plano.horaInicio}–${plano.horaFim}` : ''}</div>
         {plano.ucId && (
           <div style={{marginTop:8,padding:'7px 11px',background:'rgba(181,101,29,0.3)',borderRadius:8,display:'inline-block'}}>
             <span style={{fontSize:14,color:'var(--cream)',fontWeight:800}}>{NUM_UC[plano.ucId] ? NUM_UC[plano.ucId] + ' · ' : ''}{plano.ucId} — {plano.ucNome}</span>
@@ -916,21 +916,21 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
 
       {/* Estado do plano */}
       <div className="card" style={{marginBottom:12}}>
-        <div style={{fontSize:12,fontWeight:700,color:'var(--charcoal)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>Estado do plano</div>
+        <div style={{fontSize:13,fontWeight:700,color:'var(--charcoal)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>Estado do plano</div>
         {[
           [temFichas, fichas.length+' ficha'+(fichas.length!==1?'s':'')+' de producao', 'Sem fichas de producao'],
           [publicado, 'Aula publicada para alunos', 'Nao publicado ainda'],
         ].map(([ok,sim,nao],i)=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
             <span style={{fontSize:16,flexShrink:0}}>{ok?'✅':'⚪'}</span>
-            <span style={{fontSize:12,color:ok?'var(--charcoal)':'rgba(26,23,20,0.4)'}}>{ok?String(sim):String(nao)}</span>
+            <span style={{fontSize:13,color:ok?'var(--charcoal)':'rgba(26,23,20,0.4)'}}>{ok?String(sim):String(nao)}</span>
           </div>
         ))}
       </div>
 
       {/* ALTERAÇÃO 3: card Evento Pedagógico */}
       <div className="card" style={{marginBottom:12}}>
-        <div style={{fontSize:12,fontWeight:700,color:'var(--copper)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>🎯 Evento Pedagógico</div>
+        <div style={{fontSize:13,fontWeight:700,color:'var(--copper)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>🎯 Evento Pedagógico</div>
         {(() => {
           const eventos = getEventosDaTurma(turmaId);
           return (
@@ -968,7 +968,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
       {/* Fichas de produção */}
       <div className="card">
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-          <div style={{fontSize:12,fontWeight:700,color:'var(--copper)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de producao</div>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--copper)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de producao</div>
           <button className="btn btn-ghost btn-sm" onClick={()=>setMostrarAdicionarFicha(!mostrarAdicionarFicha)}>{mostrarAdicionarFicha?'Fechar':'+ Adicionar ficha'}</button>
         </div>
         {fichas.length===0&&<div className="muted">Sem fichas associadas.</div>}
@@ -983,11 +983,11 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
         ))}
         {mostrarAdicionarFicha&&(
           <div style={{marginTop:12,padding:12,background:'var(--cream-dark)',borderRadius:10}}>
-            <div style={{fontSize:12,fontWeight:600,marginBottom:8}}>Fichas disponiveis</div>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Fichas disponiveis</div>
             {fichasDisponiveis.length===0&&<div className="muted">Sem fichas disponiveis.</div>}
             {fichasDisponiveis.map(f=>(
               <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
-                <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600}}>{f.nomePrato}</div><div className="muted">{f.classificacao}</div></div>
+                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{f.nomePrato}</div><div className="muted">{f.classificacao}</div></div>
                 <button className="btn btn-primary btn-sm" onClick={()=>adicionarFicha(f.id)}>Adicionar</button>
               </div>
             ))}
@@ -1007,13 +1007,13 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
           </div>
           {grelhaAberta&&(
             <div style={{borderTop:'1px solid var(--border)',padding:'14px 16px',background:'#fff'}}>
-              <div style={{padding:'8px 12px',background:'var(--copper-pale)',borderRadius:8,fontSize:12,color:'var(--copper)',marginBottom:12}}>
+              <div style={{padding:'8px 12px',background:'var(--copper-pale)',borderRadius:8,fontSize:13,color:'var(--copper)',marginBottom:12}}>
                 Registo do professor sobre as atitudes dos alunos — nao a autoavaliacao.
               </div>
               {alunos.length>0&&(
                 <>
                   <div style={{overflowX:'auto',marginBottom:10}}>
-                    <table style={{borderCollapse:'collapse',width:'100%',minWidth:400,fontSize:12}}>
+                    <table style={{borderCollapse:'collapse',width:'100%',minWidth:400,fontSize:13}}>
                       <thead>
                         <tr style={{background:'var(--charcoal)',color:'var(--cream)'}}>
                           <th style={{padding:'8px 10px',textAlign:'left',fontWeight:500,minWidth:90}}>Aluno</th>
@@ -1030,7 +1030,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                                 <td key={c.id} style={{padding:'3px 2px',textAlign:'center',borderBottom:'1px solid var(--border)'}}>
                                   <div style={{display:'flex',gap:2,justifyContent:'center'}}>
                                     {(['S','A','R'] as Nota[]).map(bv=>(
-                                      <button key={String(bv)} onClick={()=>setNotas(p=>({...p,[a.id]:{...p[a.id],[c.id]:p[a.id][c.id]===bv?null:bv}}))} className="btn" style={{width:22,height:22,padding:0,fontSize:12,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5}}>{bv}</button>
+                                      <button key={String(bv)} onClick={()=>setNotas(p=>({...p,[a.id]:{...p[a.id],[c.id]:p[a.id][c.id]===bv?null:bv}}))} className="btn" style={{width:22,height:22,padding:0,fontSize:13,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5}}>{bv}</button>
                                     ))}
                                   </div>
                                 </td>
@@ -1043,11 +1043,11 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                   </div>
                   <button className="btn btn-primary btn-block" style={{background:'var(--charcoal)',marginBottom:12}} onClick={()=>alert('Guardado!')}>Guardar avaliacoes</button>
                   <div style={{padding:'12px 14px',background:'rgba(90,122,78,0.08)',borderRadius:10,border:'1px solid rgba(90,122,78,0.2)'}}>
-                    <div style={{fontSize:12,fontWeight:700,color:'var(--sage)',marginBottom:6}}>+ Competencia extra de observacao</div>
+                    <div style={{fontSize:13,fontWeight:700,color:'var(--sage)',marginBottom:6}}>+ Competencia extra de observacao</div>
                     <div style={{fontSize:13,color:'rgba(26,23,20,0.5)',marginBottom:8}}>Nao entra na avaliacao formal.</div>
                     {!compExtraAtiva?(
                       <div style={{display:'flex',gap:6}}>
-                        <input className="input" value={compExtra} onChange={e=>setCompExtra(e.target.value)} placeholder="ex: Cooperacao, Iniciativa..." style={{flex:1,fontSize:12}}/>
+                        <input className="input" value={compExtra} onChange={e=>setCompExtra(e.target.value)} placeholder="ex: Cooperacao, Iniciativa..." style={{flex:1,fontSize:13}}/>
                         <button className="btn btn-ghost" onClick={()=>{if(compExtra.trim()){setCompExtraAtiva(compExtra.trim());setNotasExtra({});}}}>Activar</button>
                       </div>
                     ):(
@@ -1056,7 +1056,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                           <div style={{fontWeight:600,fontSize:13,color:'var(--sage)'}}>{compExtraAtiva}</div>
                           <button onClick={()=>{setCompExtraAtiva(null);setCompExtra('');}} style={{fontSize:13,color:'rgba(26,23,20,0.4)',background:'none',border:'none',cursor:'pointer'}}>Remover</button>
                         </div>
-                        <table style={{borderCollapse:'collapse',width:'100%',fontSize:12}}>
+                        <table style={{borderCollapse:'collapse',width:'100%',fontSize:13}}>
                           <thead><tr style={{background:'var(--sage)',color:'white'}}><th style={{padding:'6px 10px',textAlign:'left'}}>Aluno</th><th style={{padding:'6px 4px',textAlign:'center'}}>S</th><th style={{padding:'6px 4px',textAlign:'center'}}>A</th><th style={{padding:'6px 4px',textAlign:'center'}}>R</th></tr></thead>
                           <tbody>
                             {alunos.map((a,ai)=>{
@@ -1066,7 +1066,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
                                   <td style={{padding:'7px 10px'}}>{a.nome||'Aluno '+a.numero}</td>
                                   {(['S','A','R'] as Nota[]).map(bv=>(
                                     <td key={String(bv)} style={{textAlign:'center',padding:'3px 2px'}}>
-                                      <button onClick={()=>setNotasExtra(p=>({...p,[a.id]:p[a.id]===bv?null:bv}))} style={{width:22,height:22,padding:0,fontSize:12,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5,cursor:'pointer'}}>{bv}</button>
+                                      <button onClick={()=>setNotasExtra(p=>({...p,[a.id]:p[a.id]===bv?null:bv}))} style={{width:22,height:22,padding:0,fontSize:13,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5,cursor:'pointer'}}>{bv}</button>
                                     </td>
                                   ))}
                                 </tr>

@@ -82,7 +82,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
 
       {tab === 'progresso' && (
         <div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
             Estado das tuas competências por Unidade de Competência — combina o que demonstraste em aula com o que recuperaste.
           </div>
           {ucsComPlanos.length === 0 && (
@@ -97,9 +97,9 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 13 }}>{ucId}</div>
-                    <div className="muted" style={{ fontSize: 11 }}>{uc?.nome}</div>
+                    <div className="muted" style={{ fontSize: 12.5 }}>{uc?.nome}</div>
                   </div>
-                  <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
+                  <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
                     background: estado.estado === 'completo' ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
                     color: estado.estado === 'completo' ? 'var(--sage)' : 'var(--copper)' }}>
                     {estado.estado === 'completo' ? '✓ Completo' : `${pct}%`}
@@ -108,7 +108,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                 <div style={{ height: 6, background: 'var(--cream-dark)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{ width: `${pct}%`, height: '100%', background: estado.estado === 'completo' ? 'var(--sage)' : 'var(--copper)' }} />
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', marginTop: 4 }}>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginTop: 4 }}>
                   {estado.demonstradasEmAula} demonstradas em aula · {estado.recuperadas} recuperadas · {estado.total} no total
                 </div>
               </div>
@@ -132,13 +132,13 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{ucId}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>{uc?.nome}</div>
-                    <div style={{ fontSize: 12, color: 'var(--copper)', marginTop: 2 }}>
+                    <div className="muted" style={{ fontSize: 13 }}>{uc?.nome}</div>
+                    <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 2 }}>
                       {faltas.length} aula{faltas.length !== 1 ? 's' : ''} em falta: {faltas.map(p => p.titulo).join(', ')}
                     </div>
                   </div>
                   <button onClick={() => iniciarRecuperacao(ucId)}
-                    style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
+                    style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
                     Iniciar
                   </button>
                 </div>
@@ -176,7 +176,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                 <span style={{ fontSize: 20 }}>✅</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>Concluída em {r.dataValidacao ? fmtData(r.dataValidacao) : ''}</div>
+                  <div className="muted" style={{ fontSize: 13 }}>Concluída em {r.dataValidacao ? fmtData(r.dataValidacao) : ''}</div>
                 </div>
               </div>
             </div>
@@ -225,7 +225,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
         <span style={{ fontSize: 18 }}>{trancada ? '🔒' : jaSubmetida ? '⏳' : '📝'}</span>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
-          <div className="muted" style={{ fontSize: 12 }}>
+          <div className="muted" style={{ fontSize: 13 }}>
             {trancada ? 'Prazo terminado — fala com o professor' : r.estado === 'pendente' ? 'Por fazer' : r.estado === 'submetida' ? 'Submetida — a aguardar avaliação' : 'Em avaliação'}
           </div>
         </div>
@@ -329,10 +329,10 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--copper)', marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--copper)', marginBottom: 6 }}>
                 Aulas em falta nesta recuperação:
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 14 }}>
                 {r.planosIds.length} aula{r.planosIds.length !== 1 ? 's' : ''}
               </div>
 
@@ -345,7 +345,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sage)', marginBottom: 8 }}>
                     📚 Estuda primeiro o(s) Guia(s) de Apoio à Produção
                   </div>
-                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)', marginBottom: 10 }}>
+                  <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 10 }}>
                     Todo o trabalho abaixo (B, C, D) deve ser respondido com base no que está aqui — enquadramento, HACCP, rendimentos, food cost e as questões já preparadas para esta produção.
                   </div>
                   {guias.map(g => (
@@ -354,7 +354,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                         style={{ width: '100%', padding: '10px 12px', background: guiaAberto === g.fichaId ? 'var(--sage-pale)' : '#fff', border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span>📄</span>
                         <span style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>{g.nomePrato}</span>
-                        <span style={{ fontSize: 12, color: 'var(--sage)' }}>{guiaAberto === g.fichaId ? '▲ fechar' : '▼ abrir guia completo'}</span>
+                        <span style={{ fontSize: 13, color: 'var(--sage)' }}>{guiaAberto === g.fichaId ? '▲ fechar' : '▼ abrir guia completo'}</span>
                       </button>
                       {guiaAberto === g.fichaId && (
                         <div style={{ padding: 12, maxHeight: 500, overflowY: 'auto' }}>
@@ -365,17 +365,17 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                   ))}
                 </div>
               ) : (
-                <div style={{ background: 'var(--copper-pale)', borderRadius: 8, padding: 12, marginBottom: 18, fontSize: 12, color: 'var(--copper)' }}>
+                <div style={{ background: 'var(--copper-pale)', borderRadius: 8, padding: 12, marginBottom: 18, fontSize: 13, color: 'var(--copper)' }}>
                   ⚠️ Ainda não há Guia de Apoio gerado para a(s) aula(s) em falta. Fala com o professor.
                 </div>
               )}
 
               {refUC && refUC.realizacoes.length > 0 && (
                 <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                     📖 O que esta UC exige (referencial oficial 811RA144)
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'rgba(26,23,20,0.65)' }}>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'rgba(26,23,20,0.65)' }}>
                     {refUC.realizacoes.slice(0, 5).map((r2, i) => <li key={i} style={{ marginBottom: 3 }}>{r2}</li>)}
                   </ul>
                 </div>
@@ -397,7 +397,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                 style={{ width: '100%', minHeight: 80, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 13, marginBottom: 14 }} />
 
               {ehTecnica && (
-                <div style={{ padding: '10px 12px', background: 'var(--sage-pale)', borderRadius: 8, fontSize: 12, color: 'var(--sage)', marginBottom: 14 }}>
+                <div style={{ padding: '10px 12px', background: 'var(--sage-pale)', borderRadius: 8, fontSize: 13, color: 'var(--sage)', marginBottom: 14 }}>
                   📷 Esta UC é predominantemente técnica — fala com o professor sobre como apresentar evidência prática (fotos, vídeo, ou repetição da técnica numa próxima aula).
                 </div>
               )}
@@ -505,10 +505,10 @@ function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: impo
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--copper)', marginBottom: 6 }}>
           🤖 Plano de Recuperação Individual
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
           Gera um plano feito só para ti, com as tuas competências em falta. A app tenta gerar automaticamente — se não conseguir, dá-te um texto para colares numa IA.
         </div>
-        {avisoIA && <div style={{ fontSize: 12, color: 'var(--copper)', marginBottom: 8 }}>{avisoIA}</div>}
+        {avisoIA && <div style={{ fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>{avisoIA}</div>}
         <button onClick={gerar} disabled={aGerarIA} style={{ width: '100%', padding: 12, borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: aGerarIA ? 'default' : 'pointer', opacity: aGerarIA ? 0.7 : 1 }}>
           {aGerarIA ? '⏳ A gerar...' : '✨ Gerar o meu Plano de Recuperação'}
         </button>
@@ -521,34 +521,34 @@ function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: impo
       <button onClick={() => setAberto(!aberto)} style={{ width: '100%', padding: '10px 14px', background: 'var(--copper-pale)', border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span>🤖</span>
         <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--copper)' }}>Plano de Recuperação Individual</span>
-        <span style={{ fontSize: 12 }}>{aberto ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 13 }}>{aberto ? '▲' : '▼'}</span>
       </button>
 
       {aberto && (
         <div style={{ padding: 14 }}>
           {!r.planoIndividualTexto && (
             <>
-              <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
                 Escolhe uma IA — depois cola aqui o resultado.
               </div>
-              <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 11, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 200, overflowY: 'auto', marginBottom: 8 }}>
+              <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 12.5, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 200, overflowY: 'auto', marginBottom: 8 }}>
                 {prompt}
               </div>
               <SeletorIA prompt={prompt} corPrincipal="var(--recuperacao)" />
-              <button onClick={copiar} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--copper)', background: copiado ? 'var(--sage)' : '#fff', color: copiado ? 'white' : 'var(--copper)', fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 8 }}>
+              <button onClick={copiar} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--copper)', background: copiado ? 'var(--sage)' : '#fff', color: copiado ? 'white' : 'var(--copper)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>
                 {copiado ? '✓ Copiado!' : '📋 Copiar prompt'}
               </button>
               {!colando ? (
-                <button onClick={() => setColando(true)} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                <button onClick={() => setColando(true)} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                   Já tenho o resultado da IA →
                 </button>
               ) : (
                 <>
                   <textarea value={textoColado} onChange={e => setTextoColado(e.target.value)}
                     placeholder="Cola aqui o resultado que a IA te deu..."
-                    style={{ width: '100%', minHeight: 120, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 12, marginBottom: 8 }} />
+                    style={{ width: '100%', minHeight: 120, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 13, marginBottom: 8 }} />
                   <button onClick={guardarResultado} disabled={!textoColado}
-                    style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: textoColado ? 1 : 0.4 }}>
+                    style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: textoColado ? 1 : 0.4 }}>
                     Guardar Plano
                   </button>
                 </>
@@ -557,10 +557,10 @@ function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: impo
           )}
           {r.planoIndividualTexto && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', marginBottom: 6 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', marginBottom: 6 }}>
                 O teu plano {r.planoIndividualAprovado ? '✓ aprovado pelo professor' : '— a aguardar revisão do professor'}
               </div>
-              <div style={{ background: '#fff', borderRadius: 8, padding: 10, fontSize: 12, whiteSpace: 'pre-wrap', border: '1px solid var(--border)' }}>
+              <div style={{ background: '#fff', borderRadius: 8, padding: 10, fontSize: 13, whiteSpace: 'pre-wrap', border: '1px solid var(--border)' }}>
                 {r.planoIndividualTexto}
               </div>
             </div>
@@ -598,21 +598,21 @@ function AnexosBloco({ anexos, setAnexos }: { anexos: Anexo[]; setAnexos: (a: An
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>F. Evidências (opcional)</div>
-      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.55)', marginBottom: 8 }}>
+      <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginBottom: 8 }}>
         Se a competência precisar de prova prática, cola aqui o link (Google Drive, vídeo, etc.) — foto da mise en place, vídeo da técnica, áudio de explicação...
       </div>
 
       {anexos.map((a, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--cream-dark)', borderRadius: 8, marginBottom: 4 }}>
           <span>{icones[a.tipo]}</span>
-          <a href={a.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 12, color: 'var(--copper)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.descricao || a.url}</a>
+          <a href={a.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontSize: 13, color: 'var(--copper)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.descricao || a.url}</a>
           <button onClick={() => remover(i)} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.4)', cursor: 'pointer', fontSize: 14 }}>✕</button>
         </div>
       ))}
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
         <select value={novoTipo} onChange={e => setNovoTipo(e.target.value as Anexo['tipo'])}
-          style={{ borderRadius: 8, border: '1px solid var(--border)', padding: '8px 6px', fontSize: 12 }}>
+          style={{ borderRadius: 8, border: '1px solid var(--border)', padding: '8px 6px', fontSize: 13 }}>
           <option value="foto">📷 Foto</option>
           <option value="video">🎥 Vídeo</option>
           <option value="audio">🎙️ Áudio</option>
@@ -620,12 +620,12 @@ function AnexosBloco({ anexos, setAnexos }: { anexos: Anexo[]; setAnexos: (a: An
           <option value="link">🔗 Outro link</option>
         </select>
         <input value={novoUrl} onChange={e => setNovoUrl(e.target.value)} placeholder="Cola o link aqui..."
-          style={{ flex: 1, borderRadius: 8, border: '1px solid var(--border)', padding: '8px 10px', fontSize: 12 }} />
+          style={{ flex: 1, borderRadius: 8, border: '1px solid var(--border)', padding: '8px 10px', fontSize: 13 }} />
       </div>
       <input value={novaDescricao} onChange={e => setNovaDescricao(e.target.value)} placeholder="Descrição curta (opcional)"
-        style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)', padding: '8px 10px', fontSize: 12, marginBottom: 6 }} />
+        style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)', padding: '8px 10px', fontSize: 13, marginBottom: 6 }} />
       <button onClick={adicionar} disabled={!novoUrl.trim()}
-        style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: novoUrl.trim() ? 1 : 0.4 }}>
+        style={{ width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer', opacity: novoUrl.trim() ? 1 : 0.4 }}>
         + Adicionar evidência
       </button>
     </div>

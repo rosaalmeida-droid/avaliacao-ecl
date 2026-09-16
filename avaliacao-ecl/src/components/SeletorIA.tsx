@@ -10,7 +10,7 @@ export function SeletorIA({ prompt, corPrincipal }: { prompt: string; corPrincip
   const [copiado, setCopiado] = useState(false);
   const botaoStyle: React.CSSProperties = {
     flex: 1, padding: '9px 6px', borderRadius: 8, border: `1px solid ${cor}`,
-    background: '#fff', color: cor, fontWeight: 700, fontSize: 12, cursor: 'pointer',
+    background: '#fff', color: cor, fontWeight: 700, fontSize: 13, cursor: 'pointer',
   };
 
   async function copiar() {

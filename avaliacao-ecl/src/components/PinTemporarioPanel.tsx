@@ -54,7 +54,7 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
         <div style={{ fontWeight: 700, fontSize: 13, color: '#92400e', marginBottom: 4 }}>
           🔑 PIN Temporário
         </div>
-        <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: '#78350f', lineHeight: 1.5 }}>
           Se um aluno esqueceu o PIN e não consegue entrar na aula, podes criar um PIN temporário aqui.
           A coordenadora será avisada para definir um PIN definitivo.
         </div>
@@ -63,7 +63,7 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
       {/* Selector de aluno */}
       {!confirmado ? (
         <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 8 }}>
             Selecciona o aluno
           </div>
           <select value={alunoSel} onChange={e => { setAlunoSel(e.target.value); setPinGerado(''); setConfirmado(false); }}
@@ -88,13 +88,13 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
             <div>
               <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '16px', textAlign: 'center', marginBottom: 12,
                 border: '2px solid #86efac' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#15803d', textTransform: 'uppercase', marginBottom: 6 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#15803d', textTransform: 'uppercase', marginBottom: 6 }}>
                   PIN gerado
                 </div>
                 <div style={{ fontSize: 48, fontWeight: 900, letterSpacing: '0.2em', color: '#166534', fontFamily: 'monospace' }}>
                   {pinGerado}
                 </div>
-                <div style={{ fontSize: 12, color: '#15803d', marginTop: 6 }}>
+                <div style={{ fontSize: 13, color: '#15803d', marginTop: 6 }}>
                   Diz este PIN ao aluno em voz baixa
                 </div>
               </div>

@@ -104,7 +104,7 @@ export function AvisoAvaliacaoAnterior({ plano, alunos, microIds, nomeProfessor,
         <div style={{ fontWeight: 700, fontSize: 13, color: '#5A3E00', marginBottom: 2 }}>
           ⚠️ {conflitos.length} competência{conflitos.length !== 1 ? 's' : ''} já avaliada{conflitos.length !== 1 ? 's' : ''} nesta UC
         </div>
-        <div style={{ fontSize: 11, color: '#7A5500' }}>
+        <div style={{ fontSize: 12.5, color: '#7A5500' }}>
           Decide o que fazer para cada aluno antes de avançar para a avaliação.
           {pendentes.length > 0 && ` · ${pendentes.length} por decidir`}
         </div>
@@ -130,14 +130,14 @@ export function AvisoAvaliacaoAnterior({ plano, alunos, microIds, nomeProfessor,
                 <div style={{ fontWeight: 700, fontSize: 13 }}>
                   {aluno?.nome || `Aluno ${aluno?.numero || '?'}`}
                 </div>
-                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
+                <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
                   {micro?.nome || microId}
-                  <span style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(26,23,20,0.35)', marginLeft: 6 }}>({microId})</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 12.5, color: 'rgba(26,23,20,0.35)', marginLeft: 6 }}>({microId})</span>
                 </div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <NotaBadge nota={maisRecente.nota} />
-                <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
                   {fmtData(maisRecente.data)}
                 </div>
               </div>
@@ -145,14 +145,14 @@ export function AvisoAvaliacaoAnterior({ plano, alunos, microIds, nomeProfessor,
 
             {/* Histórico resumido */}
             {registos.length > 1 && (
-              <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.45)', marginBottom: 8, paddingLeft: 4 }}>
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginBottom: 8, paddingLeft: 4 }}>
                 {registos.length} avaliações anteriores · média {(registos.reduce((s, r) => s + r.nota, 0) / registos.length).toFixed(1)}
               </div>
             )}
 
             {/* Decisão já tomada */}
             {decisao?.tipo && (
-              <div style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 600 }}>
+              <div style={{ fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>
                 {decisao.tipo === 'reavaliar' && '🔄 Vai ser reavaliado nesta aula'}
                 {decisao.tipo === 'feito_nota' && '✓ Considerado feito — nota anterior conta'}
                 {decisao.tipo === 'feito_registo' && '✓ Considerado feito — só registo'}
@@ -165,21 +165,21 @@ export function AvisoAvaliacaoAnterior({ plano, alunos, microIds, nomeProfessor,
                 <button
                   onClick={() => tomarDecisao(alunoId, microId, 'reavaliar', registos)}
                   disabled={!!isProcessando}
-                  style={{ flex: 1, minWidth: 100, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #1d6fa4', background: 'white', color: '#1d6fa4', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ flex: 1, minWidth: 100, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #1d6fa4', background: 'white', color: '#1d6fa4', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                 >
                   🔄 Reavaliar
                 </button>
                 <button
                   onClick={() => tomarDecisao(alunoId, microId, 'feito_nota', registos)}
                   disabled={!!isProcessando}
-                  style={{ flex: 1, minWidth: 100, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--sage)', background: 'white', color: 'var(--sage)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ flex: 1, minWidth: 100, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--sage)', background: 'white', color: 'var(--sage)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                 >
                   ✓ Feito · nota {maisRecente.nota}
                 </button>
                 <button
                   onClick={() => tomarDecisao(alunoId, microId, 'feito_registo', registos)}
                   disabled={!!isProcessando}
-                  style={{ flex: 1, minWidth: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', background: 'white', color: 'rgba(26,23,20,0.5)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ flex: 1, minWidth: 100, padding: '7px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', background: 'white', color: 'rgba(26,23,20,0.5)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                 >
                   ✓ Feito · só registo
                 </button>

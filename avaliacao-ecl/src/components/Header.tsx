@@ -135,7 +135,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
             </div>
             <div>
               <div style={{ color: WHITE, fontWeight: 800, fontSize: 14, lineHeight: 1.2, fontFamily: "'Nunito', 'DM Sans', sans-serif" }}>Avaliação ECL</div>
-              <div style={{ color: SIDEBAR_TXT, fontSize: 11, marginTop: 1 }}>Escola de Comércio</div>
+              <div style={{ color: SIDEBAR_TXT, fontSize: 12.5, marginTop: 1 }}>Escola de Comércio</div>
             </div>
           </div>
         </div>
@@ -149,7 +149,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
             <div style={{ color: WHITE, fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {nomeProfessor || 'Professor'}
             </div>
-            <div style={{ color: SIDEBAR_TXT, fontSize: 11 }}>Professor</div>
+            <div style={{ color: SIDEBAR_TXT, fontSize: 12.5 }}>Professor</div>
           </div>
         </div>
 
@@ -157,7 +157,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
         <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
           {secoes.map(secao => (
             <div key={secao} style={{ marginBottom: 10 }}>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '5px 10px 4px' }}>
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '5px 10px 4px' }}>
                 {secao}
               </div>
               {NAV.filter(n => n.secao === secao).map(item => {
@@ -191,13 +191,13 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
           {(() => {
             const al = calcularAnoLetivo();
             return (<>
-              <div style={{ color: WHITE, fontSize: 12, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Lectivo {al.anoLetivo}</div>
+              <div style={{ color: WHITE, fontSize: 13, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Lectivo {al.anoLetivo}</div>
               {turmaId && <div style={{ color: WHITE, fontSize: 13, fontWeight: 800, marginBottom: 2 }}>🏫 {turmaId}</div>}
-              <div style={{ color: SIDEBAR_TXT, fontSize: 11, marginBottom: 8 }}>{al.semestre}</div>
+              <div style={{ color: SIDEBAR_TXT, fontSize: 12.5, marginBottom: 8 }}>{al.semestre}</div>
               <div style={{ height: 5, background: 'rgba(255,255,255,0.15)', borderRadius: 99, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${al.percentagem}%`, background: WHITE, borderRadius: 99, transition: 'width 0.4s' }} />
               </div>
-              <div style={{ color: SIDEBAR_TXT, fontSize: 10, marginTop: 5 }}>{al.percentagem}% concluído</div>
+              <div style={{ color: SIDEBAR_TXT, fontSize: 12.5, marginTop: 5 }}>{al.percentagem}% concluído</div>
             </>);
           })()}
         </div>
@@ -217,7 +217,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
           >
             <span style={{ fontSize: 16, flexShrink: 0 }}>🏭</span>
             <span>KitchenFlow ECL</span>
-            <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.5 }}>↗</span>
+            <span style={{ marginLeft: 'auto', fontSize: 12.5, opacity: 0.5 }}>↗</span>
           </button>
         </div>
 
@@ -279,7 +279,7 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, s
         <div style={{ fontWeight: 700, fontSize: 15, color: FG, fontFamily: "'Nunito', 'DM Sans', sans-serif", lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {subtitulo || 'Avaliação ECL'}
         </div>
-        <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>
+        <div style={{ fontSize: 12.5, color: MUTED, marginTop: 1 }}>
           {perfilLabel[perfil]}{nomeProfessor ? ` · ${nomeProfessor}` : ''}
         </div>
       </div>
@@ -287,13 +287,13 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, s
       {syncInfo && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '4px 10px', borderRadius: 20, background: syncInfo.cor + '15' }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: syncInfo.cor, flexShrink: 0 }} />
-          <span style={{ fontSize: 11, color: syncInfo.cor, fontWeight: 600, whiteSpace: 'nowrap' }}>{syncInfo.txt}</span>
+          <span style={{ fontSize: 12.5, color: syncInfo.cor, fontWeight: 600, whiteSpace: 'nowrap' }}>{syncInfo.txt}</span>
         </div>
       )}
 
       {onAtualizar && (
         <button onClick={onAtualizar} disabled={syncStatus === 'syncing'}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: `1px solid ${BORDER}`, background: CARD_BG, color: MUTED, fontSize: 12, fontWeight: 600, cursor: syncStatus === 'syncing' ? 'default' : 'pointer', opacity: syncStatus === 'syncing' ? 0.6 : 1, flexShrink: 0, transition: 'all 0.15s' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: `1px solid ${BORDER}`, background: CARD_BG, color: MUTED, fontSize: 13, fontWeight: 600, cursor: syncStatus === 'syncing' ? 'default' : 'pointer', opacity: syncStatus === 'syncing' ? 0.6 : 1, flexShrink: 0, transition: 'all 0.15s' }}>
           {Icons.sync}
         </button>
       )}
@@ -376,7 +376,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
                   <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: FG, fontFamily: "'Nunito', 'DM Sans', sans-serif", lineHeight: 1.2 }}>
                     {itemAtivo?.label || 'Avaliação ECL'}
                   </h1>
-                  <p style={{ margin: 0, fontSize: 12, color: MUTED, marginTop: 2 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: MUTED, marginTop: 2 }}>
                     Avaliação ECL · {nomeProfessor}
                   </p>
                 </div>

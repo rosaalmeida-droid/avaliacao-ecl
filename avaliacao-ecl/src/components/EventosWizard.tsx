@@ -404,7 +404,7 @@ const input: React.CSSProperties = {
   border: '1.5px solid #e5e7eb', fontSize: 14, fontFamily: 'Arial', boxSizing: 'border-box',
 };
 const label: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, color: COR.cinza,
+  fontSize: 12.5, fontWeight: 700, color: COR.cinza,
   textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, display: 'block',
 };
 
@@ -446,7 +446,7 @@ function EditorMomento({ momento, onChange, onRemove }: {
             {' · '}{momento.tipoServico || 'serviço por definir'}
           </div>
         </div>
-        <button onClick={e => { e.stopPropagation(); onRemove(); }} style={{ ...btn('#fee2e2', '#991b1b'), padding: '6px 12px', fontSize: 12 }}>✕</button>
+        <button onClick={e => { e.stopPropagation(); onRemove(); }} style={{ ...btn('#fee2e2', '#991b1b'), padding: '6px 12px', fontSize: 13 }}>✕</button>
         <span style={{ color: COR.cinza, fontSize: 16 }}>{aberto ? '▲' : '▼'}</span>
       </div>
 
@@ -458,7 +458,7 @@ function EditorMomento({ momento, onChange, onRemove }: {
             <span style={label}>Número de pessoas</span>
             <input type="number" style={input} value={momento.numPessoas} min={1}
               onChange={e => onChange({ ...momento, numPessoas: parseInt(e.target.value) || 1 })} />
-            <div style={{ fontSize: 11, color: COR.cinza, marginTop: 4 }}>
+            <div style={{ fontSize: 12.5, color: COR.cinza, marginTop: 4 }}>
               Com margem de 10%: <strong>{Math.ceil(momento.numPessoas * 1.1)}</strong> pessoas
             </div>
           </div>
@@ -469,7 +469,7 @@ function EditorMomento({ momento, onChange, onRemove }: {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {['Nenhuma', 'Sem glúten', 'Sem lactose', 'Vegetariano', 'Vegan', 'Halal', 'Alergia a marisco', 'Alergia a frutos secos', 'Diabético'].map(r => {
                 const sel = momento.restricoes.includes(r);
-                return <button key={r} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 12, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
+                return <button key={r} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 13, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
                   onClick={() => onChange({ ...momento, restricoes: toggle(momento.restricoes, r) })}>{r}</button>;
               })}
             </div>
@@ -537,7 +537,7 @@ function EditorMomento({ momento, onChange, onRemove }: {
                   : [['sumo', '🍊 Sumo'], ['cafe', '☕ Café/chá'], ['iogurte', '🥛 Iogurte'], ['fruta', '🍎 Fruta'], ['pastelaria', '🥐 Pastelaria'], ['torradas', '🍞 Torradas/pão']]
                 ).map(([v, l]) => {
                   const sel = momento.estruturaMenu.includes(v);
-                  return <button key={v} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 12, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
+                  return <button key={v} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 13, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
                     onClick={() => onChange({ ...momento, estruturaMenu: toggle(momento.estruturaMenu, v) })}>{l}</button>;
                 })}
               </div>
@@ -607,7 +607,7 @@ function EditorMomento({ momento, onChange, onRemove }: {
             <div style={label}>📊 Louça necessária (calculada automaticamente)</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
               {louca.map(l => (
-                <div key={l.item} style={{ fontSize: 12, color: COR.preto }}>
+                <div key={l.item} style={{ fontSize: 13, color: COR.preto }}>
                   <strong>{l.quantidade}×</strong> {l.item}{l.nota ? <span style={{ color: COR.cinza }}> ({l.nota})</span> : ''}
                 </div>
               ))}
@@ -841,7 +841,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
         <div key={ev.id} onClick={() => { setEventoAtual(ev); setVista('detalhe'); }}
           style={{ background: '#fff', borderRadius: 12, padding: 16, marginBottom: 10, border: `2px solid ${ev.publicado ? COR.verde : COR.roxo}`, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ fontWeight: 800, fontSize: 16 }}>EVT-{ev.numero || '—'} · {ev.nome}</div>
-          <div style={{ fontSize: 12, color: COR.cinza, marginTop: 4 }}>
+          <div style={{ fontSize: 13, color: COR.cinza, marginTop: 4 }}>
             {ev.dias.length} dia(s) · {ev.dias.reduce((acc, d) => acc + d.momentos.length, 0)} momentos · {ev.checklist.filter(c => c.estado === 'feito').length}/{ev.checklist.length} itens feitos
             {ev.publicado ? ' · ✅ Publicado' : ''}
           </div>
@@ -905,7 +905,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
           <span style={label}>Orçamento</span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[['aprovado', '✅ Aprovado'], ['falta_criar', '📝 Falta criar'], ['nao_necessario', '❌ N/A']].map(([v, l]) => (
-              <button key={v} style={{ ...btn(orcamento === v ? COR.roxo : '#fff', orcamento === v ? '#fff' : COR.cinza), flex: 1, fontSize: 12, padding: '8px 8px', border: `1.5px solid ${orcamento === v ? COR.roxo : '#e5e7eb'}` }}
+              <button key={v} style={{ ...btn(orcamento === v ? COR.roxo : '#fff', orcamento === v ? '#fff' : COR.cinza), flex: 1, fontSize: 13, padding: '8px 8px', border: `1.5px solid ${orcamento === v ? COR.roxo : '#e5e7eb'}` }}
                 onClick={() => setOrcamento(v)}>{l}</button>
             ))}
           </div>
@@ -918,7 +918,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {[['restaurante_bar', '🍷 Restaurante/Bar'], ['turismo', '✈️ Turismo'], ['gestao_controlo', '📊 Gestão e Controlo'], ['ingles', '🇬🇧 Inglês Técnico'], ['area_projeto', '📐 Área de Projecto'], ['portugues', '📝 Português'], ['matematica', '🔢 Matemática']].map(([v, l]) => {
             const sel = outrasTurmas.includes(v);
-            return <button key={v} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 12, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
+            return <button key={v} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 13, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
               onClick={() => toggleOutrasTurmas(v)}>{l}</button>;
           })}
         </div>
@@ -958,7 +958,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
               <input type="date" style={{ ...input, flex: 1 }} value={dia.data}
                 onChange={e => atualizarDia(diaIdx, { ...dia, data: e.target.value })} />
               {dias.length > 1 && (
-                <button style={{ ...btn('#fee2e2', '#991b1b'), padding: '6px 12px', fontSize: 12 }}
+                <button style={{ ...btn('#fee2e2', '#991b1b'), padding: '6px 12px', fontSize: 13 }}
                   onClick={() => removerDia(diaIdx)}>✕ Dia</button>
               )}
             </div>
@@ -977,14 +977,14 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
                 {ORDEM_MOMENTOS.filter(t => !dia.momentos.some(m => m.tipo === t)).map(tipo => {
                   const cfg = MOMENTOS_CONFIG[tipo];
                   return (
-                    <button key={tipo} style={{ ...btnOutline, padding: '7px 13px', fontSize: 12 }}
+                    <button key={tipo} style={{ ...btnOutline, padding: '7px 13px', fontSize: 13 }}
                       onClick={() => adicionarMomento(diaIdx, tipo)}>
                       {cfg.emoji} {cfg.label}
                     </button>
                   );
                 })}
                 {ORDEM_MOMENTOS.every(t => dia.momentos.some(m => m.tipo === t)) && (
-                  <span style={{ fontSize: 12, color: COR.cinza, padding: '8px 0' }}>Todos os momentos já adicionados</span>
+                  <span style={{ fontSize: 13, color: COR.cinza, padding: '8px 0' }}>Todos os momentos já adicionados</span>
                 )}
               </div>
             </div>
@@ -1017,11 +1017,11 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <button style={btnOutline} onClick={() => setVista('lista')}>←</button>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: COR.cinza, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>EVT-{eventoAtual.numero || '—'}</div>
+            <div style={{ fontSize: 12.5, color: COR.cinza, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>EVT-{eventoAtual.numero || '—'}</div>
             <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>{eventoAtual.nome}</h2>
-            <div style={{ fontSize: 12, color: COR.cinza }}>{feitos}/{total} itens · {eventoAtual.dias.length} dia(s)</div>
+            <div style={{ fontSize: 13, color: COR.cinza }}>{feitos}/{total} itens · {eventoAtual.dias.length} dia(s)</div>
           </div>
-          <span style={{ padding: '4px 10px', borderRadius: 16, fontSize: 11, fontWeight: 700, background: eventoAtual.publicado ? COR.verdeClaro : COR.roxoClaro, color: eventoAtual.publicado ? COR.verde : COR.roxo }}>
+          <span style={{ padding: '4px 10px', borderRadius: 16, fontSize: 12.5, fontWeight: 700, background: eventoAtual.publicado ? COR.verdeClaro : COR.roxoClaro, color: eventoAtual.publicado ? COR.verde : COR.roxo }}>
             {eventoAtual.publicado ? '✅ Publicado' : '⏳ Rascunho'}
           </span>
         </div>
@@ -1043,12 +1043,12 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
                   {d.momentos.map(m => {
                     const cfg = MOMENTOS_CONFIG[m.tipo];
                     return (
-                      <span key={m.id} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: cfg.cor + '22', color: cfg.cor }}>
+                      <span key={m.id} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 13, fontWeight: 600, background: cfg.cor + '22', color: cfg.cor }}>
                         {cfg.emoji} {cfg.label} — {m.numPessoas} pax
                       </span>
                     );
                   })}
-                  {d.momentos.length === 0 && <span style={{ fontSize: 12, color: COR.cinza }}>Nenhum momento</span>}
+                  {d.momentos.length === 0 && <span style={{ fontSize: 13, color: COR.cinza }}>Nenhum momento</span>}
                 </div>
               </div>
             );
@@ -1065,11 +1065,11 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
               <div key={item.id} onClick={() => toggleItem(item.id)}
                 style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${item.estado === 'feito' ? COR.verde : '#e5e7eb'}`, background: item.estado === 'feito' ? COR.verdeClaro + '44' : '#fff', cursor: 'pointer', marginBottom: 6 }}>
                 <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${item.estado === 'feito' ? COR.verde : '#d1d5db'}`, background: item.estado === 'feito' ? COR.verde : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                  {item.estado === 'feito' && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
+                  {item.estado === 'feito' && <span style={{ color: '#fff', fontSize: 13 }}>✓</span>}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: item.estado === 'feito' ? COR.verde : COR.preto, textDecoration: item.estado === 'feito' ? 'line-through' : 'none' }}>{item.texto}</div>
-                  <div style={{ fontSize: 11, color: COR.cinza }}>{item.responsavel}</div>
+                  <div style={{ fontSize: 12.5, color: COR.cinza }}>{item.responsavel}</div>
                 </div>
               </div>
             ))}
@@ -1083,12 +1083,12 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
             <div key={t.id} onClick={() => toggleTarefa(t.id)}
               style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${t.selecionada ? COR.roxo : '#e5e7eb'}`, background: t.selecionada ? COR.roxoClaro + '44' : '#fff', cursor: 'pointer', marginBottom: 6 }}>
               <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${t.selecionada ? COR.roxo : '#d1d5db'}`, background: t.selecionada ? COR.roxo : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                {t.selecionada && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
+                {t.selecionada && <span style={{ color: '#fff', fontSize: 13 }}>✓</span>}
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>{t.titulo}</div>
-                <div style={{ fontSize: 11, color: COR.roxo, fontWeight: 600 }}>{t.disciplina}</div>
-                <div style={{ fontSize: 12, color: COR.cinza }}>{t.descricao}</div>
+                <div style={{ fontSize: 12.5, color: COR.roxo, fontWeight: 600 }}>{t.disciplina}</div>
+                <div style={{ fontSize: 13, color: COR.cinza }}>{t.descricao}</div>
               </div>
             </div>
           ))}
@@ -1111,29 +1111,29 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1.5px solid ${COR.roxo}`, background: COR.roxoClaro + '44', marginBottom: 6 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1714' }}>{p.titulo || 'Plano de aula'}</div>
-                      <div style={{ fontSize: 11, color: COR.cinza }}>{p.data} · {p.ucId || '—'} · {p.turmaId}</div>
+                      <div style={{ fontSize: 12.5, color: COR.cinza }}>{p.data} · {p.ucId || '—'} · {p.turmaId}</div>
                     </div>
                     <button onClick={() => { desassociarPlano(p); setPlanosEvento(getPlanosDoEvento(turmaId, eventoAtual.id)); }}
-                      style={{ ...btn('#fee2e2', '#991b1b'), padding: '5px 10px', fontSize: 11 }}>
+                      style={{ ...btn('#fee2e2', '#991b1b'), padding: '5px 10px', fontSize: 12.5 }}>
                       ✕ Remover
                     </button>
                   </div>
                 ))}
                 {mostrarSeletorPlanos && planosDisponiveis.length > 0 && (
                   <div style={{ background: COR.cinzaClaro, borderRadius: 10, padding: 12, marginBottom: 10 }}>
-                    <div style={{ fontSize: 12, color: COR.cinza, marginBottom: 8 }}>Selecciona os planos a associar a este evento:</div>
+                    <div style={{ fontSize: 13, color: COR.cinza, marginBottom: 8 }}>Selecciona os planos a associar a este evento:</div>
                     {planosDisponiveis.map(p => (
                       <div key={p.id} onClick={() => { associarPlano(p, eventoAtual.id); setPlanosEvento(getPlanosDoEvento(turmaId, eventoAtual.id)); setMostrarSeletorPlanos(false); }}
                         style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', marginBottom: 6 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 600 }}>{p.titulo || 'Plano de aula'}</div>
-                          <div style={{ fontSize: 11, color: COR.cinza }}>{p.data} · {p.ucId || '—'}</div>
+                          <div style={{ fontSize: 12.5, color: COR.cinza }}>{p.data} · {p.ucId || '—'}</div>
                         </div>
-                        <span style={{ fontSize: 12, color: COR.roxo, fontWeight: 700 }}>+ Associar</span>
+                        <span style={{ fontSize: 13, color: COR.roxo, fontWeight: 700 }}>+ Associar</span>
                       </div>
                     ))}
                     {planosDisponiveis.length === 0 && (
-                      <div style={{ fontSize: 12, color: COR.cinza }}>Não há planos disponíveis para associar.</div>
+                      <div style={{ fontSize: 13, color: COR.cinza }}>Não há planos disponíveis para associar.</div>
                     )}
                   </div>
                 )}

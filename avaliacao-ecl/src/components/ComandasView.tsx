@@ -37,7 +37,7 @@ export function ComandasView({ turmaId }: { turmaId: string }) {
       {comandas.map(c => (
         <div key={c.id} className="option-card" onClick={() => setEditando(c)}>
           <div style={{ fontWeight: 600 }}>{c.titulo}</div>
-          <div className="muted" style={{ fontSize: 12 }}>
+          <div className="muted" style={{ fontSize: 13 }}>
             {c.data} · {c.modo === 'grupo' ? 'Grupo' : 'Individual'} · {TIPO_SERVICO_LABEL[c.tipoServico || 'normal']} · alunos: {c.alunosIds.map(id => id.split('-').pop()).join(', ')}
           </div>
         </div>

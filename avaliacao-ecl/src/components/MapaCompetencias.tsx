@@ -34,14 +34,14 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
           <div key={a.id} style={{ marginBottom: 8, border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
             <button onClick={() => setAlunoAberto(aberto ? null : a.id)}
               style={{ width: '100%', padding: '10px 14px', background: aberto ? 'var(--copper-pale)' : '#fff', border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--copper)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--copper)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
                 {a.numero}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{a.nome || `Aluno ${a.numero}`}</div>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>{consolidadas}/{total} competências consolidadas</div>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>{consolidadas}/{total} competências consolidadas</div>
               </div>
-              <span style={{ fontSize: 12, color: 'var(--copper)' }}>{aberto ? '▲' : '▼'}</span>
+              <span style={{ fontSize: 13, color: 'var(--copper)' }}>{aberto ? '▲' : '▼'}</span>
             </button>
 
             {aberto && (
@@ -51,14 +51,14 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
                 onFechar={() => setAlunoAberto(null)}
               >
                 <div style={{ marginBottom: 12, padding: 10, background: 'var(--cream-dark)', borderRadius: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.6)', textTransform: 'uppercase', marginBottom: 6 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.6)', textTransform: 'uppercase', marginBottom: 6 }}>
                     Nível de Medidas Educativas — adapta os planos de recuperação gerados por IA
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {[1, 2, 3].map(n => (
                       <button key={n} onClick={() => { addAluno({ ...a, nivelMedidas: n as 1|2|3 }); setRefresh(k => k + 1); }}
                         style={{
-                          flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                          flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                           border: (a.nivelMedidas || 1) === n ? 'none' : '1px solid var(--border)',
                           background: (a.nivelMedidas || 1) === n ? 'var(--copper)' : '#fff',
                           color: (a.nivelMedidas || 1) === n ? 'white' : 'rgba(26,23,20,0.6)',
@@ -69,7 +69,7 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
                   </div>
                 </div>
 
-                {total === 0 && <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}>Sem competências registadas ainda.</div>}
+                {total === 0 && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)' }}>Sem competências registadas ainda.</div>}
 
                 {perfil.tecnicas.length > 0 && (
                   <MiniGrupo titulo="Técnicas" itens={perfil.tecnicas} />
@@ -93,13 +93,13 @@ function MiniGrupo({ titulo, itens }: { titulo: string; itens: { nome: string; n
   const cor = (n: number) => n >= 4 ? '#2980b9' : n === 3 ? 'var(--sage)' : n === 2 ? 'var(--copper)' : n === 1 ? '#b8985a' : 'rgba(26,23,20,0.3)';
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{titulo} ({itens.length})</div>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{titulo} ({itens.length})</div>
       {/* Grelha em vez de flex-wrap — cada etiqueta tem espaço próprio garantido,
           nunca se sobrepõe mesmo com muitos itens de comprimentos diferentes. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 6 }}>
         {itens.map((item, i) => (
           <span key={i} style={{
-            fontSize: 11, padding: '5px 10px', borderRadius: 8, color: 'white',
+            fontSize: 12.5, padding: '5px 10px', borderRadius: 8, color: 'white',
             background: cor(item.nivel), fontWeight: 600, textAlign: 'center',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }} title={item.nome}>

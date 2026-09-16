@@ -163,7 +163,7 @@ export function EditorComanda({
 
       <div className="divider" />
       <div style={{ fontWeight: 700, marginBottom: 4 }}>Competências sugeridas</div>
-      <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
         Clica numa sugestão para a tornar <strong>obrigatória</strong> (🔒) — o aluno não a poderá remover. As não marcadas ficam como sugestão que o aluno pode aceitar ou trocar.
       </div>
 
@@ -174,7 +174,7 @@ export function EditorComanda({
       ]).map(({ cat, label, sugeridas }) => (
         <div key={cat} style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{label}</div>
-          {sugeridas.length === 0 && <span className="muted" style={{ fontSize: 12 }}>Nenhuma sugestão automática.</span>}
+          {sugeridas.length === 0 && <span className="muted" style={{ fontSize: 13 }}>Nenhuma sugestão automática.</span>}
           {sugeridas.map(id => (
             <Chip key={id} selected={estado.fixas[cat].includes(id)} suggested onClick={() => toggleFixa(cat, id)}>
               {estado.fixas[cat].includes(id) ? '🔒 ' : '★ '}{getCompetencia(id)?.nome}

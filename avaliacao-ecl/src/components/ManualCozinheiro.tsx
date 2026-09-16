@@ -250,10 +250,10 @@ function RenderizadorManual({ texto }: { texto: string }) {
       elementos.push(<div key={key++} style={{ borderLeft: '4px solid ' + corBorda,
         background: '#f0faf8', borderRadius: '0 8px 8px 0', padding: '10px 14px',
         marginBottom: 10 }}>
-        <div style={{ fontWeight: 700, color: corBorda, fontSize: 12, marginBottom: 4 }}>
+        <div style={{ fontWeight: 700, color: corBorda, fontSize: 13, marginBottom: 4 }}>
           {mCaixa[1]} {mCaixa[2]}
         </div>
-        {conteudo.map((c, ci) => <div key={ci} style={{ fontSize: 12, color: '#2E2A26',
+        {conteudo.map((c, ci) => <div key={ci} style={{ fontSize: 13, color: '#2E2A26',
           lineHeight: 1.5 }}>{c.replace(/^[•\-]\s*/, '')}</div>)}
       </div>);
       continue;
@@ -270,7 +270,7 @@ function RenderizadorManual({ texto }: { texto: string }) {
         i++;
       }
       elementos.push(<div key={key++} style={{ overflowX: 'auto', marginBottom: 12 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr>{headers.map((h, hi) => <th key={hi} style={{ background: '#00796B',
               color: '#fff', padding: '6px 10px', textAlign: 'left', fontWeight: 700 }}>{h}</th>)}
@@ -498,17 +498,17 @@ function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
             {entrada.titulo}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+            <span style={{ fontSize: 12.5, padding: '2px 8px', borderRadius: 100,
               background: COR_DOURADO_P, color: COR_DOURADO, fontWeight: 600 }}>
               {entrada.categoria}
             </span>
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+            <span style={{ fontSize: 12.5, padding: '2px 8px', borderRadius: 100,
               background: nivel.bg, color: nivel.cor, fontWeight: 600 }}>
               {entrada.nivel}
             </span>
           </div>
           {entrada.palavrasChave.length > 0 && (
-            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)' }}>
               🏷️ {entrada.palavrasChave.slice(0, 4).join(' · ')}
             </div>
           )}
@@ -521,15 +521,15 @@ function CardManual({ entrada, onAbrir, onEditar, onApagar, modoProf }: {
           onClick={e => e.stopPropagation()}>
           <button onClick={onEditar} style={{ padding: '5px 12px', borderRadius: 7,
             border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
-            color: 'rgba(26,23,20,0.6)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            color: 'rgba(26,23,20,0.6)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             ✏️ Editar
           </button>
           <button onClick={onApagar} style={{ padding: '5px 12px', borderRadius: 7,
             border: '1px solid rgba(192,57,43,0.3)', background: '#fdf0ef',
-            color: '#c0392b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            color: '#c0392b', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             🗑️ Apagar
           </button>
-          <span style={{ fontSize: 11, color: 'rgba(26,23,20,0.3)', alignSelf: 'center', marginLeft: 'auto' }}>
+          <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.3)', alignSelf: 'center', marginLeft: 'auto' }}>
             {fmtData(entrada.criadoEm)}
           </span>
         </div>
@@ -706,14 +706,14 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
 
             {/* Ano letivo */}
             <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+              <label style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                 display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Ano Lectivo
               </label>
               <div style={{ display: 'flex', gap: 6 }}>
                 {ANOS.map(a => (
                   <button key={a} onClick={() => setAnoLetivo(a)} style={{
-                    padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+                    padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13,
                     fontWeight: 700, border: `2px solid ${anoLetivo === a ? COR_IA : 'rgba(26,23,20,0.15)'}`,
                     background: anoLetivo === a ? COR_IA : '#fff',
                     color: anoLetivo === a ? '#fff' : 'rgba(26,23,20,0.5)',
@@ -724,14 +724,14 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
 
             {/* Turma */}
             <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+              <label style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                 display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Turma
               </label>
               <div style={{ display: 'flex', gap: 6 }}>
                 {([1, 2, 3] as const).map(t => (
                   <button key={t} onClick={() => { setTurmaSel(t); setModuloSel(null); }} style={{
-                    flex: 1, padding: '8px 4px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+                    flex: 1, padding: '8px 4px', borderRadius: 8, cursor: 'pointer', fontSize: 13,
                     fontWeight: 700, border: `2px solid ${turmaSel === t ? COR_IA : 'rgba(26,23,20,0.1)'}`,
                     background: turmaSel === t ? COR_IA_P : '#fff',
                     color: turmaSel === t ? COR_IA : 'rgba(26,23,20,0.5)',
@@ -743,7 +743,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
             {/* Lista de módulos */}
             {turmaSel && (
               <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                   display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   UC / UFCD
                 </label>
@@ -755,13 +755,13 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
                       textAlign: 'left', padding: '8px 10px', borderRadius: 8,
                       border: `1.5px solid ${moduloSel?.id === m.id ? COR_IA : 'transparent'}`,
                       background: moduloSel?.id === m.id ? COR_IA_P : 'transparent',
-                      cursor: 'pointer', fontSize: 12, color: COR_PRIMARIA,
+                      cursor: 'pointer', fontSize: 13, color: COR_PRIMARIA,
                     }}>
                       <span style={{ fontWeight: 700, color: COR_IA, marginRight: 6 }}>
                         {m.tipo} {m.id.replace('UFCD ', '')}
                       </span>
                       {m.nome}
-                      <span style={{ color: 'rgba(26,23,20,0.35)', marginLeft: 6, fontSize: 11 }}>
+                      <span style={{ color: 'rgba(26,23,20,0.35)', marginLeft: 6, fontSize: 12.5 }}>
                         · {m.horasPrevistas}h · {m.disciplina}
                       </span>
                     </button>
@@ -772,38 +772,38 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
 
             {/* Gerar manual — 3 IAs à escolha */}
             {!moduloSel ? (
-              <div style={{ fontSize: 12, color: 'rgba(109,40,217,0.4)', textAlign: 'center', padding: 8 }}>
+              <div style={{ fontSize: 13, color: 'rgba(109,40,217,0.4)', textAlign: 'center', padding: 8 }}>
                 Selecciona um módulo para activar.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>
                   Escolhe a IA → gera → copia → cola no campo Conteúdo abaixo → Guardar.
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => abrirIA('claude', construirPromptUnico(moduloSel, anoLetivo))}
                     style={{ flex: 1, padding: '10px 4px', borderRadius: 9, border: 'none',
-                      background: COR_IA, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      background: COR_IA, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                     ✨ Claude
                   </button>
                   <button onClick={() => abrirIA('chatgpt', construirPromptUnico(moduloSel, anoLetivo))}
                     style={{ flex: 1, padding: '10px 4px', borderRadius: 9, border: 'none',
-                      background: '#10a37f', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      background: '#10a37f', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                     💬 ChatGPT
                   </button>
                   <button onClick={() => abrirIA('gemini', construirPromptUnico(moduloSel, anoLetivo))}
                     style={{ flex: 1, padding: '10px 4px', borderRadius: 9, border: 'none',
-                      background: '#4285f4', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      background: '#4285f4', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                     ✦ Gemini
                   </button>
                 </div>
-                <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.35)' }}>Opcionais:</div>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.35)' }}>Opcionais:</div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   {(['claude', 'chatgpt', 'gemini'] as const).map(ia => (
                     <button key={'ft-' + ia} onClick={() => abrirIA(ia, construirPromptFichasTecnicas(moduloSel))}
                       style={{ flex: 1, padding: '6px 2px', borderRadius: 8,
                         border: '1px solid rgba(26,23,20,0.12)', background: '#fff',
-                        color: 'rgba(26,23,20,0.5)', fontSize: 10, cursor: 'pointer' }}>
+                        color: 'rgba(26,23,20,0.5)', fontSize: 12.5, cursor: 'pointer' }}>
                       📋 {ia === 'claude' ? 'Claude' : ia === 'chatgpt' ? 'GPT' : 'Gemini'}
                     </button>
                   ))}
@@ -813,7 +813,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
                     <button key={'fw-' + ia} onClick={() => abrirIA(ia, construirPromptFichasTrabalho(moduloSel))}
                       style={{ flex: 1, padding: '6px 2px', borderRadius: 8,
                         border: '1px solid rgba(26,23,20,0.12)', background: '#fff',
-                        color: 'rgba(26,23,20,0.5)', fontSize: 10, cursor: 'pointer' }}>
+                        color: 'rgba(26,23,20,0.5)', fontSize: 12.5, cursor: 'pointer' }}>
                       📝 {ia === 'claude' ? 'Claude' : ia === 'chatgpt' ? 'GPT' : 'Gemini'}
                     </button>
                   ))}
@@ -825,7 +825,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
 
         {/* Título */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+          <label style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
             display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Título
           </label>
@@ -839,7 +839,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
         {/* Categoria e Nível */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+            <label style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
               display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Categoria
             </label>
@@ -853,7 +853,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
             </select>
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+            <label style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
               display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Nível
             </label>
@@ -866,7 +866,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
                     border: `2px solid ${nivel === n ? c.cor : 'rgba(26,23,20,0.1)'}`,
                     background: nivel === n ? c.bg : '#fff',
                     color: nivel === n ? c.cor : 'rgba(26,23,20,0.5)',
-                    fontSize: 11, fontWeight: 700,
+                    fontSize: 12.5, fontWeight: 700,
                   }}>{n}</button>
                 );
               })}
@@ -876,7 +876,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
 
         {/* Palavras-chave */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+          <label style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
             display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Palavras-chave (separadas por vírgula)
           </label>
@@ -889,7 +889,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
 
         {/* Texto */}
         <div>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
+          <label style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
             display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Conteúdo {texto ? '✓' : '— gerado pela IA ou colado manualmente'}
           </label>
@@ -898,7 +898,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
             placeholder={'Clica em "✨ Gerar guião com IA" acima, ou cola o texto manualmente.'}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 10,
               border: `1.5px solid ${texto ? 'rgba(109,40,217,0.4)' : 'rgba(26,23,20,0.15)'}`,
-              fontSize: 12, fontFamily: 'var(--font-mono)', resize: 'vertical', lineHeight: 1.5 }} />
+              fontSize: 13, fontFamily: 'var(--font-mono)', resize: 'vertical', lineHeight: 1.5 }} />
         </div>
 
         {erro && (
@@ -969,16 +969,16 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
         <div style={{ background: COR_PRIMARIA, borderRadius: 16, padding: '16px 18px', marginBottom: 16 }}>
           <button onClick={() => { setModo('lista'); setEntradaAtiva(null); }}
             style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8,
-              padding: '6px 14px', color: 'rgba(247,241,230,0.7)', fontSize: 12,
+              padding: '6px 14px', color: 'rgba(247,241,230,0.7)', fontSize: 13,
               cursor: 'pointer', marginBottom: 12 }}>
             ← Manual do Cozinheiro
           </button>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 100,
+            <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 100,
               background: 'rgba(255,255,255,0.12)', color: 'rgba(247,241,230,0.8)', fontWeight: 600 }}>
               {ICONES_CATEGORIA[entradaAtiva.categoria]} {entradaAtiva.categoria}
             </span>
-            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 100,
+            <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 100,
               background: nivel.bg, color: nivel.cor, fontWeight: 700 }}>
               {entradaAtiva.nivel}
             </span>
@@ -987,13 +987,13 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
             fontWeight: 700, color: '#faf7f2', lineHeight: 1.2 }}>
             {entradaAtiva.titulo}
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
+          <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
             {entradaAtiva.criadoPor} · {fmtData(entradaAtiva.criadoEm)}
           </div>
           {entradaAtiva.palavrasChave.length > 0 && (
             <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {entradaAtiva.palavrasChave.map((p: string, i: number) => (
-                <span key={i} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+                <span key={i} style={{ fontSize: 12.5, padding: '2px 8px', borderRadius: 100,
                   background: 'rgba(255,255,255,0.08)', color: 'rgba(247,241,230,0.6)' }}>
                   #{p}
                 </span>
@@ -1079,7 +1079,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 22,
               fontWeight: 700, color: '#faf7f2' }}>📖 Manual do Cozinheiro</div>
-            <div style={{ fontSize: 12, color: 'rgba(247,241,230,0.45)', marginTop: 3 }}>
+            <div style={{ fontSize: 13, color: 'rgba(247,241,230,0.45)', marginTop: 3 }}>
               {entradas.length} {entradas.length === 1 ? 'entrada' : 'entradas'} · Escola de Comércio de Lisboa
             </div>
           </div>
@@ -1111,14 +1111,14 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
         <button onClick={() => setCategoriaFiltro('Todas')} style={{
-          padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+          padding: '5px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600,
           border: `1.5px solid ${categoriaFiltro === 'Todas' ? COR_PRIMARIA : 'rgba(26,23,20,0.1)'}`,
           background: categoriaFiltro === 'Todas' ? COR_PRIMARIA : '#fff',
           color: categoriaFiltro === 'Todas' ? '#fff' : 'rgba(26,23,20,0.5)', cursor: 'pointer',
         }}>Todas</button>
         {CATEGORIAS_MANUAL.filter((c: CategoriaManual) => entradas.some(e => e.categoria === c)).map((c: CategoriaManual) => (
           <button key={c} onClick={() => setCategoriaFiltro(c === categoriaFiltro ? 'Todas' : c)} style={{
-            padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+            padding: '5px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600,
             border: `1.5px solid ${categoriaFiltro === c ? COR_DOURADO : 'rgba(26,23,20,0.1)'}`,
             background: categoriaFiltro === c ? COR_DOURADO_P : '#fff',
             color: categoriaFiltro === c ? COR_DOURADO : 'rgba(26,23,20,0.5)', cursor: 'pointer',
@@ -1132,7 +1132,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           const c = n !== 'Todos' ? CORES_NIVEL[n] : null;
           return (
             <button key={n} onClick={() => setNivelFiltro(n)} style={{
-              padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 600,
+              padding: '4px 10px', borderRadius: 100, fontSize: 12.5, fontWeight: 600,
               border: `1.5px solid ${ativo ? (c?.cor || COR_PRIMARIA) : 'rgba(26,23,20,0.1)'}`,
               background: ativo ? (c?.bg || COR_PRIMARIA) : '#fff',
               color: ativo ? (c?.cor || '#fff') : 'rgba(26,23,20,0.4)', cursor: 'pointer',
@@ -1161,7 +1161,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
         </div>
       ) : pesquisa ? (
         <div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)', marginBottom: 10, fontWeight: 600 }}>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', marginBottom: 10, fontWeight: 600 }}>
             {resultados.length} resultado{resultados.length !== 1 ? 's' : ''} para "{pesquisa}"
           </div>
           {resultados.map(e => (
@@ -1179,7 +1179,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
                 <span style={{ fontSize: 20 }}>{ICONES_CATEGORIA[cat as CategoriaManual]}</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.6)',
                   textTransform: 'uppercase', letterSpacing: '0.05em' }}>{cat}</span>
-                <span style={{ fontSize: 12, color: 'rgba(26,23,20,0.3)',
+                <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.3)',
                   background: 'rgba(26,23,20,0.05)', borderRadius: 100, padding: '1px 8px' }}>
                   {items.length}
                 </span>

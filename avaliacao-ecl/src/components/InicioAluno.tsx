@@ -295,7 +295,7 @@ export function InicioAluno({
                   {badge && (
                     <span style={{ position: 'absolute', top: 8, right: 9,
                       background: '#fff', color: C.violeta, borderRadius: 20,
-                      minWidth: 20, height: 20, fontSize: 12, fontWeight: 700,
+                      minWidth: 20, height: 20, fontSize: 13, fontWeight: 700,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       padding: '0 5px' }}>{badge}</span>
                   )}

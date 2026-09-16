@@ -77,7 +77,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
       {/* Cabeçalho */}
       <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 14, color: '#faf7f2' }}>
         <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800 }}>📋 Ficha de Registo por {isUFCD ? 'UFCD' : 'UC'}</h2>
-        <div style={{ fontSize: 12, opacity: 0.5 }}>Registo formal das avaliações por competência — para impressão ou exportação</div>
+        <div style={{ fontSize: 13, opacity: 0.5 }}>Registo formal das avaliações por competência — para impressão ou exportação</div>
       </div>
 
       {/* Filtros */}
@@ -91,7 +91,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
           {(['tudo','T1','T2','T3'] as const).map(p => (
             <button key={p} onClick={() => setPeriodo(p)}
               style={{ flex:1, padding: '10px 4px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                fontSize: 11, fontWeight: 700,
+                fontSize: 12.5, fontWeight: 700,
                 background: periodo === p ? '#b5651d' : 'rgba(26,23,20,0.06)',
                 color: periodo === p ? '#fff' : 'rgba(26,23,20,0.5)' }}>
               {p === 'tudo' ? 'Ano' : p}
@@ -109,7 +109,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
         <>
           {/* Info da ficha */}
           <div style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 12,
-            border: '1px solid rgba(26,23,20,0.08)', display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12 }}>
+            border: '1px solid rgba(26,23,20,0.08)', display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
             <span><strong>Turma:</strong> {turmaId}</span>
             {ucSel && <span><strong>{isUFCD ? 'UFCD' : 'UC'}:</strong> {ucSel} — {ucNome.slice(0,40)}</span>}
             <span><strong>Período:</strong> {periodo === 'tudo' ? 'Ano lectivo' : `${periodo.slice(1)}º Trimestre`}</span>
@@ -120,7 +120,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
 
           {/* Tabela */}
           <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid rgba(26,23,20,0.08)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: '#1a1714', color: '#faf7f2' }}>
                   <th style={{ padding: '10px 12px', textAlign: 'left', position: 'sticky', left: 0, background: '#1a1714', minWidth: 100 }}>
@@ -129,7 +129,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
                   {compsAvaliadas.map(cId => (
                     <th key={cId} style={{ padding: '10px 6px', textAlign: 'center', minWidth: 60, maxWidth: 80 }}>
                       <div style={{ fontSize: 9, opacity: 0.7, marginBottom: 2 }}>{cId.split('-').slice(0,2).join('-')}</div>
-                      <div style={{ fontSize: 10, fontWeight: 600, lineHeight: 1.2 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.2 }}>
                         {getNomeComp(cId).slice(0, 20)}{getNomeComp(cId).length > 20 ? '…' : ''}
                       </div>
                     </th>
@@ -147,7 +147,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
                   const media = mediaAluno(aluno.id);
                   return (
                     <tr key={aluno.id} style={{ background: i%2===0 ? '#fff' : '#fafaf8' }}>
-                      <td style={{ padding: '8px 12px', fontWeight: 600, fontSize: 12,
+                      <td style={{ padding: '8px 12px', fontWeight: 600, fontSize: 13,
                         position: 'sticky', left: 0, background: i%2===0 ? '#fff' : '#fafaf8',
                         borderRight: '2px solid rgba(26,23,20,0.08)' }}>
                         <span style={{ color: 'rgba(26,23,20,0.4)', marginRight: 4 }}>{aluno.numero}</span>
@@ -184,7 +184,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
                 })}
                 {/* Linha de médias da turma */}
                 <tr style={{ background: '#f0f0ec', fontWeight: 700 }}>
-                  <td style={{ padding: '8px 12px', fontSize: 11, color: 'rgba(26,23,20,0.6)',
+                  <td style={{ padding: '8px 12px', fontSize: 12.5, color: 'rgba(26,23,20,0.6)',
                     position: 'sticky', left: 0, background: '#f0f0ec',
                     borderTop: '2px solid rgba(26,23,20,0.12)', borderRight: '2px solid rgba(26,23,20,0.08)' }}>
                     Média da turma
@@ -196,7 +196,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
                       <td key={cId} style={{ padding: '8px 4px', textAlign: 'center',
                         borderTop: '2px solid rgba(26,23,20,0.12)' }}>
                         {m > 0 ? (
-                          <span style={{ fontWeight: 800, fontSize: 12, color: corNota(m) }}>{m.toFixed(1)}</span>
+                          <span style={{ fontWeight: 800, fontSize: 13, color: corNota(m) }}>{m.toFixed(1)}</span>
                         ) : <span style={{ color: 'rgba(26,23,20,0.2)' }}>—</span>}
                       </td>
                     );
@@ -215,7 +215,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
           </div>
 
           {/* Legenda */}
-          <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap', fontSize: 11 }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap', fontSize: 12.5 }}>
             {[
               { n: 4, label: '🌟 Faço com muito bom resultado', cor: '#0369a1' },
               { n: 3, label: '✅ Faz sozinho/a',      cor: '#5a7a4e' },
@@ -224,7 +224,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
             ].map(l => (
               <div key={l.n} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ display: 'inline-block', width: 24, height: 16, borderRadius: 10,
-                  background: `${l.cor}18`, color: l.cor, fontWeight: 800, fontSize: 10, textAlign: 'center', lineHeight: '16px' }}>
+                  background: `${l.cor}18`, color: l.cor, fontWeight: 800, fontSize: 12.5, textAlign: 'center', lineHeight: '16px' }}>
                   {l.n}
                 </span>
                 <span style={{ color: 'rgba(26,23,20,0.5)' }}>{l.label}</span>

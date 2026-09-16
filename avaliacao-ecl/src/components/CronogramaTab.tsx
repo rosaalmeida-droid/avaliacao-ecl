@@ -63,30 +63,30 @@ function LinhaModulo({
       {/* Linha topo: badge código + chip estado */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
         <span style={{
-          fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+          fontFamily: 'monospace', fontSize: 12.5, fontWeight: 700,
           color: cor.badgeText, background: cor.badgePale,
           padding: '1px 7px', borderRadius: 5,
         }}>{modulo.id}</span>
         <span style={{
-          fontSize: 10, fontWeight: 700, padding: '1px 8px', borderRadius: 20,
+          fontSize: 12.5, fontWeight: 700, padding: '1px 8px', borderRadius: 20,
           background: chipEstado.bg, color: chipEstado.color,
           textTransform: 'uppercase' as const, letterSpacing: 0.3,
         }}>{chipEstado.label}</span>
       </div>
 
       {/* Nome */}
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1714', lineHeight: 1.4, marginBottom: 2 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1714', lineHeight: 1.4, marginBottom: 2 }}>
         {modulo.nome}
       </div>
 
       {/* Disciplina + horas + docente */}
-      <div style={{ fontSize: 10, color: '#888' }}>
+      <div style={{ fontSize: 12.5, color: '#888' }}>
         {modulo.disciplina} · {modulo.horasPrevistas}h
         {modulo.docente ? ` · ${modulo.docente}` : ''}
       </div>
 
       {/* Datas */}
-      <div style={{ fontSize: 10, color: '#aaa', marginTop: 1 }}>
+      <div style={{ fontSize: 12.5, color: '#aaa', marginTop: 1 }}>
         {formatarData(modulo.dataInicio)} → {formatarData(modulo.dataFim)}
       </div>
 
@@ -99,12 +99,12 @@ function LinhaModulo({
 
       {/* Mensagem de ação */}
       {estado === 'ativo' && (
-        <div style={{ fontSize: 10, color: '#1A6B2A', fontWeight: 700, marginTop: 4 }}>
+        <div style={{ fontSize: 12.5, color: '#1A6B2A', fontWeight: 700, marginTop: 4 }}>
           ▶ Selecionar nos planos de aula
         </div>
       )}
       {estado === 'terminado' && (
-        <div style={{ fontSize: 10, color: '#842029', fontWeight: 700, marginTop: 4 }}>
+        <div style={{ fontSize: 12.5, color: '#842029', fontWeight: 700, marginTop: 4 }}>
           ✓ Verificar avaliação
         </div>
       )}
@@ -137,19 +137,19 @@ function ColunaTurma({
         background: cor.badge,
         display: 'flex', flexDirection: 'column', gap: 2,
       }}>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', fontWeight: 700,
+        <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)', fontWeight: 700,
           textTransform: 'uppercase' as const, letterSpacing: 0.8 }}>
           {referencial === 'novo' ? 'Ref. 811RA144 · UCs' : 'Ref. 811183 · UFCDs'}
         </div>
         <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>{label}</div>
-        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
+        <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.5)' }}>
           {ativos.length} em curso · {aIniciar.length} a iniciar · {terminados.length} a verificar
         </div>
       </div>
 
       {!temAlgo && (
         <div style={{ textAlign: 'center', padding: '20px 0',
-          fontSize: 12, color: 'rgba(26,23,20,0.35)' }}>
+          fontSize: 13, color: 'rgba(26,23,20,0.35)' }}>
           Sem módulos ativos ou recentes.
         </div>
       )}
@@ -222,7 +222,7 @@ export function CronogramaTab({ turmaId }: { turmaId?: string }) {
           <div style={{ fontSize: 15, fontWeight: 700, color: '#faf7f2' }}>
             📆 Cronograma 2026-2027
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.45)', marginTop: 2 }}>
+          <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.45)', marginTop: 2 }}>
             {turmaId
               ? `${turmaId} · ${turmaAtiva?.referencial === 'novo' ? 'Ref. 811RA144 (UCs)' : 'Ref. 811183 (UFCDs)'} · ${hoje}`
               : hoje}
@@ -234,7 +234,7 @@ export function CronogramaTab({ turmaId }: { turmaId?: string }) {
             border: '1px solid rgba(255,255,255,0.15)' }}>
             {(['colunas', 'abas'] as const).map(v => (
               <button key={v} onClick={() => setModoVista(v)} style={{
-                padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                 background: modoVista === v ? 'rgba(255,255,255,0.2)' : 'transparent',
                 color: modoVista === v ? '#fff' : 'rgba(255,255,255,0.45)',
               }}>
@@ -294,7 +294,7 @@ export function CronogramaTab({ turmaId }: { turmaId?: string }) {
       {turmasVisiveis.length > 1 && (
         <div style={{
           marginTop: 16, padding: '10px 14px', borderRadius: 10,
-          background: 'rgba(26,23,20,0.04)', fontSize: 11,
+          background: 'rgba(26,23,20,0.04)', fontSize: 12.5,
           color: 'rgba(26,23,20,0.45)', display: 'flex', gap: 16, flexWrap: 'wrap',
         }}>
           <span style={{ color: '#FBC02D', fontWeight: 700 }}>■</span> 1º CP — ref. 811RA144 (UCs)

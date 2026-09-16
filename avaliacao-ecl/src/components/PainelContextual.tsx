@@ -55,7 +55,7 @@ function guardarComentarios(d: Record<string, { aula: string; aluno: Record<stri
 function TabCompetencias({ plano }: { plano?: PlanoAula }) {
   if (!plano) {
     return (
-      <div style={{ padding: 16, color: 'rgba(26,23,20,0.4)', fontSize: 12, textAlign: 'center', marginTop: 32 }}>
+      <div style={{ padding: 16, color: 'rgba(26,23,20,0.4)', fontSize: 13, textAlign: 'center', marginTop: 32 }}>
         Abre um plano de aula para ver as competências associadas.
       </div>
     );
@@ -66,37 +66,37 @@ function TabCompetencias({ plano }: { plano?: PlanoAula }) {
 
   return (
     <div style={{ padding: '10px 12px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: COR, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: COR, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
         {plano.ucId || 'UC'} — {plano.titulo}
       </div>
 
       {/* Obrigatórias */}
-      <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+      <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
         Obrigatórias
       </div>
       {['Higiene pessoal', 'Higiene e Segurança Alimentar', 'Assiduidade e pontualidade'].map(n => (
-        <div key={n} style={{ fontSize: 11, color: 'rgba(26,23,20,0.6)', padding: '4px 0', borderBottom: '0.5px solid rgba(26,23,20,0.06)', display: 'flex', gap: 5 }}>
+        <div key={n} style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', padding: '4px 0', borderBottom: '0.5px solid rgba(26,23,20,0.06)', display: 'flex', gap: 5 }}>
           <span style={{ color: '#0f766e' }}>✓</span>{n}
         </div>
       ))}
 
       {/* Técnicas e subtécnicas */}
       {!compRemovidas.length && !compAdicionadas.length ? (
-        <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.35)', marginTop: 10, fontStyle: 'italic' }}>
+        <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.35)', marginTop: 10, fontStyle: 'italic' }}>
           Define as competências no plano para as ver aqui.
         </div>
       ) : (
         <>
-          <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 10, marginBottom: 4 }}>
+          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 10, marginBottom: 4 }}>
             Adicionadas ({compAdicionadas.length})
           </div>
           {compAdicionadas.map(id => (
-            <div key={id} style={{ fontSize: 11, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: '0.5px solid rgba(26,23,20,0.06)', display: 'flex', gap: 5 }}>
+            <div key={id} style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: '0.5px solid rgba(26,23,20,0.06)', display: 'flex', gap: 5 }}>
               <span style={{ color: COR }}>●</span>{id}
             </div>
           ))}
           {compRemovidas.length > 0 && (
-            <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.35)', marginTop: 6 }}>
+            <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.35)', marginTop: 6 }}>
               {compRemovidas.length} removida{compRemovidas.length !== 1 ? 's' : ''}
             </div>
           )}
@@ -104,7 +104,7 @@ function TabCompetencias({ plano }: { plano?: PlanoAula }) {
       )}
 
       {(plano as any).criteriosCongelados && (
-        <div style={{ marginTop: 10, padding: '6px 8px', background: '#EDE9FE', borderRadius: 6, fontSize: 10, color: '#5B21B6', fontWeight: 600 }}>
+        <div style={{ marginTop: 10, padding: '6px 8px', background: '#EDE9FE', borderRadius: 6, fontSize: 12.5, color: '#5B21B6', fontWeight: 600 }}>
           🏁 Aula realizada · critérios congelados
         </div>
       )}
@@ -129,7 +129,7 @@ function TabComentario({ plano, nomeProfessor }: { plano?: PlanoAula; nomeProfes
 
   if (!plano) {
     return (
-      <div style={{ padding: 16, color: 'rgba(26,23,20,0.4)', fontSize: 12, textAlign: 'center', marginTop: 32 }}>
+      <div style={{ padding: 16, color: 'rgba(26,23,20,0.4)', fontSize: 13, textAlign: 'center', marginTop: 32 }}>
         Abre um plano para deixar comentários.
       </div>
     );
@@ -137,7 +137,7 @@ function TabComentario({ plano, nomeProfessor }: { plano?: PlanoAula; nomeProfes
 
   return (
     <div style={{ padding: '10px 12px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
         📝 Nota sobre esta aula
       </div>
       <textarea
@@ -147,16 +147,16 @@ function TabComentario({ plano, nomeProfessor }: { plano?: PlanoAula; nomeProfes
         rows={5}
         style={{
           width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.12)',
-          fontSize: 12, resize: 'vertical', fontFamily: 'inherit', background: 'rgba(26,23,20,0.02)',
+          fontSize: 13, resize: 'vertical', fontFamily: 'inherit', background: 'rgba(26,23,20,0.02)',
           color: 'rgba(26,23,20,0.8)', lineHeight: 1.5,
         }}
       />
-      {saved && <div style={{ fontSize: 11, color: '#0f766e', marginTop: 4 }}>✓ Guardado</div>}
+      {saved && <div style={{ fontSize: 12.5, color: '#0f766e', marginTop: 4 }}>✓ Guardado</div>}
 
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(26,23,20,0.5)', marginTop: 14, marginBottom: 8 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)', marginTop: 14, marginBottom: 8 }}>
         👤 Notas por aluno
       </div>
-      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', fontStyle: 'italic' }}>
+      <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', fontStyle: 'italic' }}>
         Clica num aluno na Validação para deixar nota individual.
       </div>
     </div>
@@ -174,17 +174,17 @@ function TabKitchenFlow({ turmaId, plano }: { turmaId: string; plano?: PlanoAula
 
   return (
     <div style={{ padding: '10px 12px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
         🍃 Registos KitchenFlow
       </div>
       {registos.length === 0 ? (
-        <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', textAlign: 'center', marginTop: 24, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', textAlign: 'center', marginTop: 24, lineHeight: 1.6 }}>
           Sem registos sincronizados.<br />
           Os registos aparecem aqui após os alunos registarem no KitchenFlow.
         </div>
       ) : (
         registos.slice(0, 15).map((r: any, i: number) => (
-          <div key={i} style={{ fontSize: 11, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: '0.5px solid rgba(26,23,20,0.06)' }}>
+          <div key={i} style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: '0.5px solid rgba(26,23,20,0.06)' }}>
             <span style={{ color: '#0f766e', marginRight: 4 }}>●</span>
             {r.tipo} — {r.alunoNome || r.alunoId}
             {r.data && <span style={{ color: 'rgba(26,23,20,0.35)', marginLeft: 4 }}>{r.data}</span>}
@@ -251,7 +251,7 @@ export function PainelContextual({ contexto, isMobile }: Props) {
               border: 'none',
               background: tabAtiva === tab.id ? COR_PALE : 'transparent',
               color: tabAtiva === tab.id ? COR : 'rgba(26,23,20,0.45)',
-              fontSize: 11,
+              fontSize: 12.5,
               fontWeight: tabAtiva === tab.id ? 700 : 400,
               cursor: 'pointer',
               display: 'flex',
@@ -260,7 +260,7 @@ export function PainelContextual({ contexto, isMobile }: Props) {
               position: 'relative',
             }}
           >
-            <span style={{ fontSize: 12 }}>{tab.emoji}</span>
+            <span style={{ fontSize: 13 }}>{tab.emoji}</span>
             <span>{tab.label}</span>
             {tab.badge && tab.badge > 0 ? (
               <span style={{
@@ -306,7 +306,7 @@ export function PainelContextual({ contexto, isMobile }: Props) {
         <div style={{
           padding: '8px 12px',
           borderTop: '1px solid rgba(26,23,20,0.08)',
-          fontSize: 10,
+          fontSize: 12.5,
           color: 'rgba(26,23,20,0.35)',
           background: '#fff',
         }}>

@@ -135,38 +135,38 @@ function CriteriosEditor({
         style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginTop: 4 }}
         onClick={() => !editando && setAberto(a => !a)}
       >
-        <span style={{ fontSize: 10, color: 'var(--copper)', transform: aberto ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: '0.15s' }}>▶</span>
-        <span style={{ fontSize: 11, color: 'var(--copper)', fontWeight: 600 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--copper)', transform: aberto ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: '0.15s' }}>▶</span>
+        <span style={{ fontSize: 12.5, color: 'var(--copper)', fontWeight: 600 }}>
           {criteriosAtivos.length > 0 ? `${criteriosAtivos.length} critérios observáveis` : 'Sem critérios definidos'}
         </span>
         {criteriosCustom[entrada.id] && (
-          <span style={{ fontSize: 10, color: 'var(--sage)', background: 'var(--sage-pale)', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>editado</span>
+          <span style={{ fontSize: 12.5, color: 'var(--sage)', background: 'var(--sage-pale)', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>editado</span>
         )}
       </div>
 
       {aberto && !editando && (
         <div style={{ marginTop: 6, paddingLeft: 16 }}>
           {criteriosAtivos.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)', fontStyle: 'italic' }}>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', fontStyle: 'italic' }}>
               Nenhum critério definido ainda.
             </div>
           ) : (
             criteriosAtivos.map((cr, i) => (
-              <div key={i} style={{ fontSize: 12, color: 'rgba(26,23,20,0.75)', padding: '4px 0', borderBottom: i < criteriosAtivos.length - 1 ? '1px solid rgba(26,23,20,0.06)' : 'none' }}>
+              <div key={i} style={{ fontSize: 13, color: 'rgba(26,23,20,0.75)', padding: '4px 0', borderBottom: i < criteriosAtivos.length - 1 ? '1px solid rgba(26,23,20,0.06)' : 'none' }}>
                 <span style={{ color: 'var(--copper)', fontWeight: 700, marginRight: 6 }}>✓</span>
                 {cr.criterio}
-                {cr.como && <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 18 }}>{cr.como}</div>}
+                {cr.como && <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 18 }}>{cr.como}</div>}
               </div>
             ))
           )}
           <button
             onClick={iniciarEdicao}
-            style={{ marginTop: 8, fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid rgba(26,23,20,0.2)', background: 'white', cursor: 'pointer', color: 'rgba(26,23,20,0.5)' }}
+            style={{ marginTop: 8, fontSize: 12.5, padding: '3px 10px', borderRadius: 6, border: '1px solid rgba(26,23,20,0.2)', background: 'white', cursor: 'pointer', color: 'rgba(26,23,20,0.5)' }}
           >
             {perfil === 'coordenadora' ? '✏️ Editar critérios' : '💡 Sugerir alteração'}
           </button>
           {guardado && (
-            <div style={{ fontSize: 11, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>
               {perfil === 'coordenadora' ? '✓ Guardado!' : '✓ Sugestão enviada à coordenadora'}
             </div>
           )}
@@ -175,7 +175,7 @@ function CriteriosEditor({
 
       {aberto && editando && (
         <div style={{ marginTop: 8, paddingLeft: 16 }}>
-          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginBottom: 6 }}>
+          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginBottom: 6 }}>
             Um critério por linha. Separa critério e "como observar" com | (pipe).<br />
             Ex: <em>Verifica temperatura com sonda | Observação direta durante a produção.</em>
           </div>
@@ -183,18 +183,18 @@ function CriteriosEditor({
             value={texto}
             onChange={e => setTexto(e.target.value)}
             rows={Math.max(4, texto.split('\n').length + 1)}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--copper)', fontSize: 12, resize: 'vertical', fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--copper)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }}
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
             <button
               onClick={submeterSugestao}
-              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
             >
               {perfil === 'coordenadora' ? '✓ Guardar' : '📤 Enviar sugestão'}
             </button>
             <button
               onClick={() => setEditando(false)}
-              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'white', fontSize: 12, cursor: 'pointer' }}
+              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'white', fontSize: 13, cursor: 'pointer' }}
             >
               Cancelar
             </button>
@@ -307,19 +307,19 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
         {perfil === 'coordenadora' && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
             <button onClick={() => setAbaVista('dicionario')} style={{
-              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
               background: abaVista === 'dicionario' ? '#fff' : 'rgba(255,255,255,0.15)',
               color: abaVista === 'dicionario' ? '#1a1714' : 'rgba(255,255,255,0.6)',
             }}>Dicionário</button>
             <button onClick={() => setAbaVista('sugestoes')} style={{
-              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
               background: abaVista === 'sugestoes' ? '#fff' : 'rgba(255,255,255,0.15)',
               color: abaVista === 'sugestoes' ? '#1a1714' : 'rgba(255,255,255,0.6)',
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
               💡 Sugestões pendentes
               {sugestoes.length > 0 && (
-                <span style={{ background: '#e63946', color: 'white', borderRadius: 10, fontSize: 10, padding: '1px 6px', fontWeight: 800 }}>{sugestoes.length}</span>
+                <span style={{ background: '#e63946', color: 'white', borderRadius: 10, fontSize: 12.5, padding: '1px 6px', fontWeight: 800 }}>{sugestoes.length}</span>
               )}
             </button>
           </div>
@@ -338,20 +338,20 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
             </div>
             {/* Filtro UC */}
             <select value={ucFiltro} onChange={e => setUcFiltro(e.target.value)}
-              style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#faf7f2', fontSize: 12 }}>
+              style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#faf7f2', fontSize: 13 }}>
               <option value="">Todas as UCs</option>
               {ucs.map(uc => <option key={uc} value={uc}>{uc}</option>)}
             </select>
             {/* Filtro tipo */}
             <select value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value as any)}
-              style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#faf7f2', fontSize: 12 }}>
+              style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#faf7f2', fontSize: 13 }}>
               <option value="todos">Todos os tipos</option>
               <option value="subtecnica">Só subtécnicas (S)</option>
               <option value="micro">Só microcompetências (M)</option>
             </select>
           </div>
         )}
-        <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
+        <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
           {filtradas.length} entradas
         </div>
       </div>
@@ -368,14 +368,14 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{sug.subNome}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>
+                  <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>
                     {sug.subId} · {sug.professor} · {new Date(sug.criadoEm).toLocaleDateString('pt-PT')}
                   </div>
                 </div>
               </div>
               <div style={{ background: 'rgba(26,23,20,0.03)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
                 {sug.criterios.map((cr, i) => (
-                  <div key={i} style={{ fontSize: 12, color: 'rgba(26,23,20,0.75)', padding: '3px 0' }}>
+                  <div key={i} style={{ fontSize: 13, color: 'rgba(26,23,20,0.75)', padding: '3px 0' }}>
                     <span style={{ color: 'var(--copper)', fontWeight: 700, marginRight: 6 }}>✓</span>
                     {cr.criterio}
                     {cr.como && <span style={{ color: 'rgba(26,23,20,0.4)', marginLeft: 6 }}>— {cr.como}</span>}
@@ -405,19 +405,19 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
           ) : Object.entries(porUC).map(([uc, items]) => (
             <div key={uc} style={{ marginBottom: 16 }}>
               {/* Cabeçalho UC */}
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--copper)', letterSpacing: 0.8, textTransform: 'uppercase', padding: '6px 0', borderBottom: '2px solid var(--copper-pale)', marginBottom: 6 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--copper)', letterSpacing: 0.8, textTransform: 'uppercase', padding: '6px 0', borderBottom: '2px solid var(--copper-pale)', marginBottom: 6 }}>
                 {uc}
               </div>
               {items.map(e => (
                 <div key={e.id} style={{ background: '#fff', borderRadius: 10, padding: '10px 14px', marginBottom: 6, border: '1px solid rgba(26,23,20,0.07)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{
-                      fontFamily: 'monospace', fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 5,
+                      fontFamily: 'monospace', fontSize: 12.5, fontWeight: 700, padding: '1px 7px', borderRadius: 5,
                       background: e.tipo === 'subtecnica' ? 'rgba(15,118,110,0.08)' : 'var(--copper-pale)',
                       color: e.tipo === 'subtecnica' ? '#0f766e' : 'var(--copper)',
                     }}>{e.id}</span>
                     <span style={{ fontSize: 13, fontWeight: 600 }}>{e.nome}</span>
-                    <span style={{ fontSize: 10, color: 'rgba(26,23,20,0.35)', marginLeft: 'auto' }}>
+                    <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.35)', marginLeft: 'auto' }}>
                       {e.tipo === 'subtecnica' ? 'subtécnica' : 'microcompetência'}
                     </span>
                   </div>

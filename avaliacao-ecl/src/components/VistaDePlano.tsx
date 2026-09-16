@@ -4,9 +4,11 @@ import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao, getHistoricoAvaliacoes, getSelecoes, getValidacoes,
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
+  estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
   definirLiderKF, liderKFdoGrupo } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
+import { TurmaNaAula } from './TurmaNaAula';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC, encontrarAparelho, encontrarSubtecnica,
@@ -52,7 +54,7 @@ function EventoAssociador({ plano, turmaId, onPlanoActualizado }: {
   const eventoAssociado = eventos.find((e: any) => e.id === plano.eventoId);
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
         🎯 Evento Pedagógico
       </div>
       {eventoAssociado && (
@@ -103,7 +105,7 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
 
   return (
     <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '16px 18px', marginBottom: 16 }}>
-      <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 12, cursor: 'pointer', marginBottom: 12 }}>
+      <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
         ← Todos os planos
       </button>
 
@@ -163,7 +165,7 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
             { id: 'registos', label: 'PIN temp.', icone: '🔑' },
           ] as { id: Modulo; label: string; icone: string }[]).map(t => (
             <button key={t.id} onClick={() => setModulo(t.id)}
-              style={{ whiteSpace: 'nowrap', flexShrink: 0, padding: '7px 12px', borderRadius: 8, border: 'none', background: modulo === t.id ? 'var(--copper)' : 'rgba(247,241,230,0.1)', color: modulo === t.id ? 'white' : 'rgba(247,241,230,0.6)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ whiteSpace: 'nowrap', flexShrink: 0, padding: '7px 12px', borderRadius: 8, border: 'none', background: modulo === t.id ? 'var(--copper)' : 'rgba(247,241,230,0.1)', color: modulo === t.id ? 'white' : 'rgba(247,241,230,0.6)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               {t.icone} {t.label}
             </button>
           ))}
@@ -185,7 +187,7 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
           </div>
           {plano.ucId ? (
             <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 12px', marginTop: 4, display: 'inline-block' }}>
-              <div style={{ fontSize:12, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Unidade de Competência</div>
+              <div style={{ fontSize:13, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Unidade de Competência</div>
               <div style={{ fontSize: 13, color: 'white', fontWeight: 700, marginTop: 1 }}>{String(plano.ucId ?? '')}</div>
               <div style={{ fontSize:13, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>{String(plano.ucNome ?? '')}</div>
             </div>
@@ -214,7 +216,7 @@ function BarraUC({ plano }: { plano: PlanoAula }) {
   if (!plano.ucId) return null;
   return (
     <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'var(--copper)', padding: '6px 16px', marginBottom: 12, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{ fontSize:12, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, flexShrink: 0 }}>UC</div>
+      <div style={{ fontSize:13, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, flexShrink: 0 }}>UC</div>
       <div style={{ flex: 1 }}>
         <span style={{ fontSize: 13, color: 'white', fontWeight: 700 }}>{String(plano.ucId ?? '')}</span>
         <span style={{ fontSize:13, color: 'rgba(255,255,255,0.8)', marginLeft: 8 }}>{String(plano.ucNome ?? '')}</span>
@@ -242,7 +244,7 @@ function ModuloCard({ icone, titulo, descricao, estado, cor, onClick, desativado
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: estado === 'bloqueado' ? 'rgba(26,23,20,0.4)' : 'var(--charcoal)' }}>{titulo}</div>
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{descricao}</div>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{descricao}</div>
       </div>
       {estado !== 'bloqueado' && <span style={{ fontSize: 20, color: estado === 'concluido' ? 'var(--sage)' : cor }}>›</span>}
     </div>
@@ -317,11 +319,11 @@ function ModalRequisicao({ plano, fichas, onSim, onNao, onNovaFicha }: {
               <div key={f.id} onClick={() => toggle(f.id)}
                 style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:`1.5px solid ${sel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, background: sel.includes(f.id) ? 'var(--copper-pale)' : '#fff', cursor:'pointer', marginBottom:6 }}>
                 <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${sel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, background: sel.includes(f.id) ? 'var(--copper)' : '#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  {sel.includes(f.id) && <span style={{ color:'white', fontSize:12, fontWeight:700 }}>✓</span>}
+                  {sel.includes(f.id) && <span style={{ color:'white', fontSize:13, fontWeight:700 }}>✓</span>}
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:600, fontSize:14 }}>{f.nomePrato}</div>
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)' }}>{f.numPorcoes} doses · {f.classificacao}</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{f.numPorcoes} doses · {f.classificacao}</div>
                 </div>
               </div>
             ))}
@@ -387,11 +389,11 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
             <div style={{ width:36, height:36, borderRadius:10, background: submetido ? 'var(--sage)' : 'var(--cream-dark)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14, color: submetido ? 'white' : 'rgba(26,23,20,0.4)', flexShrink:0 }}>{a.numero}</div>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:600, fontSize:14 }}>{a.nome || `Aluno ${a.numero}`}</div>
-              <div style={{ fontSize:12, color: submetido ? 'var(--sage)' : 'rgba(26,23,20,0.4)' }}>{submetido ? `✓ Submetido em ${hora}` : 'Ainda não submeteu'}</div>
+              <div style={{ fontSize:13, color: submetido ? 'var(--sage)' : 'rgba(26,23,20,0.4)' }}>{submetido ? `✓ Submetido em ${hora}` : 'Ainda não submeteu'}</div>
             </div>
             {submetido && (
               <button onClick={() => setReabrirConfirm(a.id)}
-                style={{ fontSize:12, padding:'6px 12px', borderRadius:8, border:'1px solid var(--copper)', background:'#fff', color:'var(--copper)', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                style={{ fontSize:13, padding:'6px 12px', borderRadius:8, border:'1px solid var(--copper)', background:'#fff', color:'var(--copper)', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
                 🔓 Reabrir
               </button>
             )}
@@ -423,9 +425,20 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [fichaEmEdicao, setFichaEmEdicao] = useState<string | null>(null);
   /** true quando vem do plano com "Ir buscar uma ficha". */
   const [irParaBiblioteca, setIrParaBiblioteca] = useState(false);
+  /** Aluno a validar, vindo da vista de turma. */
+  const [alunoParaValidar, setAlunoParaValidar] = useState<string | null>(null);
   const [modalProximo, setModalProximo] = useState<string | null>(null);
   const [fichasParaRequisicao, setFichasParaRequisicao] = React.useState<string[]>([]);
-  const [tabInicio, setTabInicio] = useState<'orientacao' | 'resumo' | 'competencias'>('orientacao');
+  // A turma entra como separador do plano: é onde o professor está
+  // durante a aula, e antes tinha de sair do plano para ver quem chegou
+  // ou para validar seja o que for.
+  // Três separadores, um por momento do professor: preparar a aula,
+  // dar a aula, e a árvore de competências.
+  //
+  // Eram quatro, e dois deles — Orientação e Resumo — mostravam a mesma
+  // coisa com arranjos diferentes. Sobra de termos construído o novo sem
+  // apagar o velho.
+  const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma'>('resumo');
   const [compRemovidas, setCompRemovidas] = useState<string[]>(
     Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []
   );
@@ -684,7 +697,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
-        <div style={{ background: 'var(--copper-pale)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 12, color: 'var(--copper)', fontWeight: 600 }}>
+        <div style={{ background: 'var(--copper-pale)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: 'var(--copper)', fontWeight: 600 }}>
           📄 A criar Ficha de Produção para este plano — será associada automaticamente
         </div>
         <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id}
@@ -751,17 +764,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {todasRequisicoesDoPlano.length > 0 && (
           <div style={{ background: 'var(--sage-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: modoSelecaoReq ? 8 : 0 }}>
-              <span style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 600 }}>✓ {todasRequisicoesDoPlano.length} requisição(ões) para este plano</span>
+              <span style={{ fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>✓ {todasRequisicoesDoPlano.length} requisição(ões) para este plano</span>
               {todasRequisicoesDoPlano.length > 1 && (
                 <button onClick={() => { setModoSelecaoReq(!modoSelecaoReq); setReqSelecionadasIds(new Set()); }}
-                  style={{ fontSize: 11, fontWeight: 700, color: 'var(--sage)', background: 'none', border: '1px solid var(--sage)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
+                  style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--sage)', background: 'none', border: '1px solid var(--sage)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
                   {modoSelecaoReq ? '✕ Cancelar' : '☑ Selecionar'}
                 </button>
               )}
             </div>
             {modoSelecaoReq && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{reqSelecionadasIds.size} selecionada(s)</span>
+                <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{reqSelecionadasIds.size} selecionada(s)</span>
                 <button onClick={() => {
                   if (reqSelecionadasIds.size === 0) return;
                   if (confirm(`Eliminar DEFINITIVAMENTE ${reqSelecionadasIds.size} requisição(ões)?`)) {
@@ -769,7 +782,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                     setReqSelecionadasIds(new Set()); setModoSelecaoReq(false); onPlanoActualizado({ ...plano });
                   }
                 }} disabled={reqSelecionadasIds.size === 0}
-                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 11, cursor: reqSelecionadasIds.size === 0 ? 'default' : 'pointer', opacity: reqSelecionadasIds.size === 0 ? 0.4 : 1 }}>
+                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12.5, cursor: reqSelecionadasIds.size === 0 ? 'default' : 'pointer', opacity: reqSelecionadasIds.size === 0 ? 0.4 : 1 }}>
                   🗑️ Eliminar
                 </button>
               </div>
@@ -778,11 +791,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               <div key={r.id} onClick={() => { if (!modoSelecaoReq) return; setReqSelecionadasIds(prev => { const novo = new Set(prev); if (novo.has(r.id)) novo.delete(r.id); else novo.add(r.id); return novo; }); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, background: '#fff', marginBottom: 4, cursor: modoSelecaoReq ? 'pointer' : 'default' }}>
                 {modoSelecaoReq && (
-                  <div style={{ width: 18, height: 18, borderRadius: 5, border: '2px solid var(--sage)', background: reqSelecionadasIds.has(r.id) ? 'var(--sage)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 10, color: 'white' }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 5, border: '2px solid var(--sage)', background: reqSelecionadasIds.has(r.id) ? 'var(--sage)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12.5, color: 'white' }}>
                     {reqSelecionadasIds.has(r.id) && '✓'}
                   </div>
                 )}
-                <span style={{ fontSize: 12, flex: 1 }}>
+                <span style={{ fontSize: 13, flex: 1 }}>
                   {r.criadaEm ? fmtData(r.criadaEm) + ' ' + new Date(r.criadaEm).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : r.id}
                   {' · '}{(r?.linhas || []).length} ingredientes
                 </span>
@@ -856,13 +869,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {atitudesActivas.length > 0 && (
           <div style={{ marginBottom:14, padding:'10px 12px', borderRadius:8,
             background:'rgba(3,105,161,0.06)', border:'1px solid rgba(3,105,161,0.2)' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#0369a1', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#0369a1', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>
               💡 Atitude activa — {trimestreActual}º trimestre · {anoTurma}º ano
             </div>
             {atitudesActivas.map(a => (
               <div key={a.id}>
                 <div style={{ fontSize:13, fontWeight:600 }}>{a.nome} <span style={{ color:'rgba(26,23,20,0.4)', fontWeight:400 }}>{a.id}</span></div>
-                <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginTop:3 }}>{a.nivelComplexidade[('n'+anoTurma) as 'n1'|'n2'|'n3']}</div>
+                <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:3 }}>{a.nivelComplexidade[('n'+anoTurma) as 'n1'|'n2'|'n3']}</div>
               </div>
             ))}
           </div>
@@ -880,7 +893,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               {Array.isArray((c as any).criterios) && (c as any).criterios.length > 0 && (
                 <ul style={{ margin:'6px 0 0 28px', padding:0 }}>
                   {(c as any).criterios.map((cr:any, i:number) => (
-                    <li key={i} style={{ fontSize:12, color:'rgba(26,23,20,0.65)', marginBottom:2 }}>{cr.criterio}</li>
+                    <li key={i} style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginBottom:2 }}>{cr.criterio}</li>
                   ))}
                 </ul>
               )}
@@ -898,7 +911,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <span>{removida ? '○' : '●'}</span>
                   <div style={{ flex:1, fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
                   <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
-                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
                 </div>
@@ -918,13 +931,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <span>{removida ? '○' : '●'}</span>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
-                    <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)' }}>
+                    <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)' }}>
                       {m.categoria} ·
                       <span style={{ fontWeight:700, marginLeft:4, color: m.nivel===1?'#5a7a4e':m.nivel===2?'#b5651d':'#c0392b' }}>N{m.nivel}</span>
                     </div>
                   </div>
                   <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
-                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
                 </div>
@@ -944,10 +957,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <span>{removida ? '○' : '●'}</span>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{k.nome}</div>
-                    {k.definicao && <div style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginTop:2 }}>{k.definicao.slice(0, 80)}{k.definicao.length > 80 ? '…' : ''}</div>}
+                    {k.definicao && <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.4)', marginTop:2 }}>{k.definicao.slice(0, 80)}{k.definicao.length > 80 ? '…' : ''}</div>}
                   </div>
                   <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== k.id) : [...compRemovidas, k.id], compAdicionadas)}
-                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
                 </div>
@@ -971,9 +984,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               return (
                 <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
                   <span>{removida ? '○' : '●'}</span>
-                  <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)' }}>{m.criterios.length} critérios</div>}</div>
+                  <div style={{ flex:1 }}><div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>{m.criterios.length > 0 && <div style={{ fontSize:13, color:'rgba(26,23,20,0.45)' }}>{m.criterios.length} critérios</div>}</div>
                   <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
-                    style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                    style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
                 </div>
@@ -999,10 +1012,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                     <span>{removida ? '○' : '●'}</span>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13, fontWeight: removida ? 400 : 600, textDecoration: removida ? 'line-through' : 'none' }}>{det?.nome || a.nome || a.id}</div>
-                      {det && <div style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginTop:2 }}>{det.nivelComplexidade?.[`n${anoTurmaLocal}` as 'n1'|'n2'|'n3'] || ''}</div>}
+                      {det && <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.4)', marginTop:2 }}>{det.nivelComplexidade?.[`n${anoTurmaLocal}` as 'n1'|'n2'|'n3'] || ''}</div>}
                     </div>
                     <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== a.id) : [...compRemovidas, a.id], compAdicionadas)}
-                      style={{ fontSize:12, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
+                      style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                       {removida ? '+ Incluir' : '− Remover'}
                     </button>
                   </div>
@@ -1062,7 +1075,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
     return (
       <div>
-        <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
+        <CabecalhoPlano plano={plano}
+          onVoltar={() => {
+            setModulo('inicio');
+            // Volta ao sítio de onde veio, se veio da turma.
+            if (alunoParaValidar) { setTabInicio('turma'); setAlunoParaValidar(null); }
+          }}
+          modulo={modulo} setModulo={setModulo} />
         <BarraUC plano={plano} />
 
         {/* Resumo rápido */}
@@ -1074,7 +1093,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           ].map(s => (
             <div key={s.label} style={{ flex:1, minWidth:80, padding:'10px 12px', borderRadius:10, background:'#fff', border:'1px solid var(--border)', textAlign:'center' }}>
               <div style={{ fontSize:22, fontWeight:800, color:s.cor }}>{s.valor}<span style={{ fontSize:13, color:'rgba(26,23,20,0.3)' }}>/{s.total}</span></div>
-              <div style={{ fontSize:11, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{s.label}</div>
+              <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -1082,7 +1101,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {/* Tabela de turma */}
         {alunosDaTurma.length > 0 && (
           <div style={{ overflowX:'auto', marginBottom:16 }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr style={{ background:'var(--charcoal)', color:'var(--cream)' }}>
                   <th style={{ padding:'8px 10px', textAlign:'left', borderRadius:'8px 0 0 0' }}>Aluno</th>
@@ -1266,238 +1285,57 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <CabecalhoPlano plano={plano} onVoltar={onVoltar} modulo={modulo} setModulo={setModulo} />
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 10, flexWrap: 'wrap' }}>
-        <button onClick={() => setTabInicio('orientacao')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'orientacao' ? '#0e7490' : 'transparent', color: tabInicio === 'orientacao' ? 'white' : 'rgba(26,23,20,0.5)' }}>🚦 Orientação</button>
-        <button onClick={() => setTabInicio('resumo')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'resumo' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'resumo' ? 'white' : 'rgba(26,23,20,0.5)' }}>📋 Resumo</button>
-        <button onClick={() => setTabInicio('competencias')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, background: tabInicio === 'competencias' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'competencias' ? 'white' : 'rgba(26,23,20,0.5)' }}>🎯 Competências ({totalComp})</button>
+        <button onClick={() => setTabInicio('resumo')} style={{ padding: '8px 15px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13.5, background: tabInicio === 'resumo' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'resumo' ? 'white' : 'rgba(26,23,20,0.5)' }}>Preparar</button>
+        <button onClick={() => setTabInicio('competencias')} style={{ padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13.5, background: tabInicio === 'competencias' ? 'var(--charcoal)' : 'transparent', color: tabInicio === 'competencias' ? 'white' : 'rgba(26,23,20,0.5)' }}>Competências ({totalComp})</button>
+        {(() => {
+          // Só faz sentido depois de a aula abrir — antes disso não há
+          // ninguém para ver.
+          const sessao = getSessaoAula(plano.id);
+          if (!sessao?.abertaEm) return null;
+          const est = estadoDaTurmaNaAula(plano.id, plano.turmaId);
+          const res = resumoDaTurmaNaAula(est);
+          const pendentes = res.foraDeTempo + res.porValidar;
+          return (
+            <button onClick={() => setTabInicio('turma')} style={{
+              padding: '7px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+              fontWeight: 600, fontSize: 13, position: 'relative',
+              background: tabInicio === 'turma' ? 'var(--charcoal)' : 'transparent',
+              color: tabInicio === 'turma' ? 'white' : 'rgba(26,23,20,0.5)',
+            }}>
+              Turma ({res.entraram}/{res.total})
+              {pendentes > 0 && (
+                <span style={{ marginLeft: 6, background: 'var(--copper)', color: '#fff',
+                  borderRadius: 20, padding: '1px 7px', fontSize: 12.5, fontWeight: 700 }}>
+                  {pendentes}
+                </span>
+              )}
+            </button>
+          );
+        })()}
       </div>
 
       {/* TAB ORIENTAÇÃO */}
-      {tabInicio === 'orientacao' && (
+      {tabInicio === 'turma' && (
         <div>
-          <div style={{ background: '#E6F1FB', borderRadius: 14, padding: '14px 16px', border: '1.5px solid #B5D4F4', marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0C447C', marginBottom: 10 }}>🚦 Antes de começar — verificar</div>
-            {[
-              { ok: temFichas, label: 'Fichas de produção criadas', acao: () => setModulo('ficha'), acaoLabel: 'Criar ficha →' },
-              { ok: fichasDoPlano.some((f: any) => f.textoGuia), label: 'Guião de produção gerado', acao: () => setModulo('guia'), acaoLabel: 'Gerar guião →' },
-              { ok: temRequisicao, label: 'Requisição enviada', acao: () => setModulo('requisicao'), acaoLabel: 'Fazer requisição →' },
-              { ok: publicado, label: 'Plano publicado para os alunos', acao: null, acaoLabel: '' },
-            ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 9, marginBottom: 6, background: item.ok ? '#EAF3DE' : '#fff', border: `1px solid ${item.ok ? '#C0DD97' : 'rgba(14,116,144,0.2)'}` }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>{item.ok ? '✅' : '⭕'}</span>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: item.ok ? 500 : 600, color: item.ok ? '#27500A' : '#0C447C' }}>{item.label}</span>
-                {!item.ok && item.acao && (
-                  <button onClick={item.acao} style={{ padding: '4px 10px', borderRadius: 7, border: 'none', background: '#0e7490', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>{item.acaoLabel}</button>
-                )}
-              </div>
-            ))}
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', marginBottom:12,
+            lineHeight:1.55 }}>
+            Quem entrou, o estado da farda, os registos e as autoavaliações.
+            As decisões de falta fazem-se aqui.
           </div>
-
-          {fichasDoPlano.length > 0 && (
-            <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>🍽️ Produção desta aula</div>
-              {/* Cada ficha pode ser editada ou tirada do plano. Antes,
-                  uma vez associada ficava lá para sempre — e um plano com
-                  a ficha errada não tinha como se corrigir. */}
-              {fichasDoPlano.map((f: any, i: number) => (
-                <div key={i} style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 7,
-                  background: 'rgba(181,101,29,0.05)', border: '1px solid rgba(181,101,29,0.15)',
-                  display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13.5 }}>{f.nomePrato}</div>
-                    <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>
-                      {f.numPorcoes && `${f.numPorcoes} doses`}
-                      {f.textoGuia ? ' · com guião' : ' · sem guião'}
-                      {f.alergenicos?.length > 0 && ` · ⚠️ ${Array.isArray(f.alergenicos) ? f.alergenicos.join(', ') : f.alergenicos}`}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                    <button
-                      onClick={() => { setFichaEmEdicao(f.id); setModulo('ficha'); }}
-                      title="Editar esta ficha"
-                      style={{ padding: '6px 10px', borderRadius: 8, fontSize: 11.5,
-                        fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                        border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
-                        color: 'rgba(26,23,20,0.7)' }}>
-                      Editar
-                    </button>
-                    {f.textoGuia && (
-                      <button
-                        onClick={() => {
-                          if (!confirm(`Apagar o guião de "${f.nomePrato}"?\n\nA ficha técnica fica intacta — só o guião é apagado.`)) return;
-                          addOrUpdateFichaProducao({ ...f, textoGuia: '' });
-                          registarAlteracaoPublicado('guia', `Guião de ${f.nomePrato} apagado`);
-                          onPlanoActualizado({ ...plano });
-                        }}
-                        title="Apagar só o guião"
-                        style={{ padding: '6px 10px', borderRadius: 8, fontSize: 11.5,
-                          fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                          border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
-                          color: 'rgba(26,23,20,0.55)' }}>
-                        Apagar guião
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        if (!confirm(`Tirar "${f.nomePrato}" deste plano?\n\nA ficha continua na biblioteca — só deixa de estar associada a esta aula.`)) return;
-                        const p = {
-                          ...plano,
-                          fichasIds: (plano.fichasIds || []).filter((id: string) => id !== f.id),
-                          atualizadoEm: new Date().toISOString(),
-                        };
-                        addOrUpdatePlanoAula(p);
-                        registarAlteracaoPublicado('ficha', `${f.nomePrato} retirada do plano`);
-                        onPlanoActualizado(p);
-                      }}
-                      title="Tirar do plano"
-                      style={{ padding: '6px 10px', borderRadius: 8, fontSize: 11.5,
-                        fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                        border: '1px solid var(--danger, #c0392b)', background: '#fff',
-                        color: 'var(--danger, #c0392b)' }}>
-                      Tirar
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              <button onClick={() => { setFichaEmEdicao(null); setModulo('ficha'); }}
-                style={{ width: '100%', marginTop: 4, padding: '11px', borderRadius: 10,
-                  border: '1.5px dashed rgba(181,101,29,0.4)', background: 'transparent',
-                  color: 'var(--copper)', fontSize: 13.5, fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'inherit' }}>
-                + Acrescentar outra ficha
-              </button>
-            </div>
-          )}
-
-          {(() => {
-            const presencasHoje = getPresencas().filter((r: any) => r.planoAulaId === plano.id || r.data === plano.data?.slice(0,10));
-            const alunosDaTurma = getAlunos().filter(a => a.turmaId === plano.turmaId);
-            if (alunosDaTurma.length === 0) return null;
-            return (
-              <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>👤 Presenças — {presencasHoje.length}/{alunosDaTurma.length} alunos</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {alunosDaTurma.map(a => {
-                    const presente = presencasHoje.find((p: any) => p.alunoId === a.id);
-                    return (
-                      <div key={a.id} style={{ padding: '6px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600, background: presente ? (presente.fardamentoOk===false?'#fff7ed':'#f0fdf4') : 'rgba(26,23,20,0.05)', color: presente ? '#15803d' : 'rgba(26,23,20,0.4)', border: `1px solid ${presente ? (presente.fardamentoOk===false?'#fed7aa':'#bbf7d0') : 'rgba(26,23,20,0.08)'}` }}>
-                        <div style={{ fontWeight:700 }}>{presente ? '✓' : '—'} {a.nome || a.id}</div>
-                        {presente && (
-                          <div style={{ fontSize:10, marginTop:2, color: presente.atrasado ? '#dc2626' : '#15803d' }}>
-                            {presente.horaEntrada || ''}
-                            {presente.atrasado && ` · ${presente.atrasadoMins || '?'}min atraso`}
-                            {presente.fardamentoOk === false && <span style={{ color:'#dc2626' }}> · farda ⚠</span>}
-                            {presente.observacao && <div style={{ color:'#b5651d', fontSize:9 }}>{presente.observacao}</div>}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* ── Líder do KitchenFlow ──────────────────────────────
-              Num grupo, os registos fazem-se uma vez. Sem alguém
-              designado, ou ninguém faz ou fazem todos o mesmo. O
-              professor escolhe, e pode trocar se o líder faltar. */}
-          {(() => {
-            const alunosT = getAlunos().filter(a => a.turmaId === plano.turmaId && a.ativo !== false);
-            if (alunosT.length === 0) return null;
-            const liderId = liderKFdoGrupo(plano.id);
-            const lider = alunosT.find(a => a.id === liderId);
-
-            return (
-              <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px',
-                border: '1px solid rgba(26,23,20,0.08)', marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
-                  textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                  Líder do KitchenFlow
-                </div>
-                <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10,
-                  lineHeight: 1.5 }}>
-                  {lider
-                    ? `${lider.nome || 'Aluno nº ' + lider.numero} faz os registos desta aula. Os colegas consultam.`
-                    : 'Sem líder definido — cada aluno faz os seus registos.'}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {alunosT.map(a => {
-                    const eh = a.id === liderId;
-                    return (
-                      <button key={a.id}
-                        onClick={() => {
-                          definirLiderKF(plano.id, eh ? '' : a.id, nomeProfessor || 'professor');
-                          onPlanoActualizado?.(plano);
-                        }}
-                        style={{
-                          padding: '8px 12px', borderRadius: 10, fontSize: 12.5,
-                          fontWeight: eh ? 700 : 600, cursor: 'pointer',
-                          border: `1.5px solid ${eh ? '#0e7490' : 'rgba(26,23,20,0.12)'}`,
-                          background: eh ? 'rgba(14,116,144,0.1)' : '#fff',
-                          color: eh ? '#0e7490' : 'rgba(26,23,20,0.6)',
-                          fontFamily: 'inherit',
-                        }}>
-                        {eh ? '★ ' : ''}{a.nome || `nº ${a.numero}`}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
-          <div style={{ background: '#0e7490', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 6 }}>🏭 KitchenFlow ECL</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', marginBottom: 10, lineHeight: 1.5 }}>Abre o KitchenFlow para verificar os registos da cozinha antes de começar a aula.</div>
-            <button onClick={() => window.open('https://ecl-haccp.vercel.app/', '_blank')}
-              style={{ padding: '10px 16px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
-              🔗 Abrir KitchenFlow ECL →
-            </button>
-          </div>
-
-          {/* ── Detecção cruzamento Ficha/UC ── */}
-          {(() => {
-            if (!plano.ucId || fichasDoPlano.length === 0) return null;
-            // Verificar se alguma ficha tem técnicas que cruzam com a UC
-            const ucIdPlano = plano.ucId;
-            const tecnicasFichas = fichasDoPlano.flatMap(f => [
-              ...((f as any).tecnicasSugeridas || []),
-              ...((f as any).aparelhosDetectados || []),
-            ]);
-            const knwDoPlano = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('KNW-'));
-            const temCruzamento = tecnicasFichas.length > 0 || knwDoPlano.length > 0;
-            if (temCruzamento) return null;
-            // Não há cruzamento — mostrar aviso
-            const isUFCD = ucIdPlano.startsWith('UFCD');
-            const labelUC = isUFCD ? 'UFCD' : 'UC';
-            return (
-              <div style={{ background:'#fffbeb', borderRadius:12, padding:'12px 14px', marginBottom:12,
-                border:'1.5px solid #fcd34d' }}>
-                <div style={{ fontWeight:700, fontSize:13, color:'#92400e', marginBottom:4 }}>
-                  ⚠️ Sem cruzamento com a {labelUC} {ucIdPlano}
-                </div>
-                <div style={{ fontSize:12, color:'#78350f', lineHeight:1.5, marginBottom:8 }}>
-                  As fichas técnicas desta aula não cruzam com as competências da {labelUC} activa.
-                  Os alunos serão avaliados pelas técnicas da ficha, mas os conhecimentos da {labelUC} não serão trabalhados.
-                </div>
-                <div style={{ fontSize:12, color:'#92400e', fontWeight:600 }}>
-                  💡 Sugestão: altera o tipo de aula para "Mista" e adiciona conhecimentos da {labelUC} no tab Competências.
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* ── NOVO: Evento Pedagógico ── */}
-          <EventoAssociador plano={plano} turmaId={turmaId} onPlanoActualizado={onPlanoActualizado} />
-
+          <TurmaNaAula
+            planoAulaId={plano.id}
+            turmaId={plano.turmaId}
+            nomeProfessor={nomeProfessor}
+            onAtualizar={() => onPlanoActualizado({ ...plano })}
+            onValidar={(alunoId: string) => { setAlunoParaValidar(alunoId); setModulo('validacao'); }}
+          />
         </div>
       )}
 
       {/* TAB COMPETÊNCIAS */}
       {tabInicio === 'competencias' && (
         <div>
-          <div style={{ padding: '10px 14px', background: 'var(--copper-pale)', borderRadius: 10, fontSize: 12, color: 'var(--copper)', marginBottom: 14, border: '1px solid rgba(181,101,29,0.2)' }}>
+          <div style={{ padding: '10px 14px', background: 'var(--copper-pale)', borderRadius: 10, fontSize: 13, color: 'var(--copper)', marginBottom: 14, border: '1px solid rgba(181,101,29,0.2)' }}>
             <strong>{totalComp} competências</strong> no total para esta aula.
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -1512,7 +1350,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 {Array.isArray((c as any).criterios) && (c as any).criterios.length > 0 && (
                   <ul style={{ margin:'6px 0 0 28px', padding:0 }}>
                     {(c as any).criterios.map((cr:any, i:number) => (
-                      <li key={i} style={{ fontSize:12, color:'rgba(26,23,20,0.65)', marginBottom:2 }}>{cr.criterio}</li>
+                      <li key={i} style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginBottom:2 }}>{cr.criterio}</li>
                     ))}
                   </ul>
                 )}
@@ -1531,8 +1369,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                     <div style={{ flex: 1, cursor: (m as any).criterios?.length > 0 ? 'pointer' : 'default' }} onClick={() => (m as any).criterios?.length > 0 && toggleComp(m.id)}>
                       <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
                       {(m as any).criterios?.length > 0 && (
-                        <div style={{ fontSize: 12, color: 'rgba(181,101,29,0.7)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {(m as any).criterios?.length} critérios observáveis <span style={{ fontSize: 10 }}>{aberta ? '▲' : '▼'}</span>
+                        <div style={{ fontSize: 13, color: 'rgba(181,101,29,0.7)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {(m as any).criterios?.length} critérios observáveis <span style={{ fontSize: 12.5 }}>{aberta ? '▲' : '▼'}</span>
                         </div>
                       )}
                     </div>
@@ -1544,10 +1382,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   {aberta && (m as any).criterios?.length > 0 && (
                     <div style={{ padding: '0 12px 10px 36px', borderTop: '1px solid rgba(181,101,29,0.12)' }}>
                       {((m as any).criterios || []).map((cr: any, i: number) => (
-                        <div key={i} style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: i < (m as any).criterios?.length - 1 ? '1px solid rgba(181,101,29,0.08)' : 'none' }}>
+                        <div key={i} style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: i < (m as any).criterios?.length - 1 ? '1px solid rgba(181,101,29,0.08)' : 'none' }}>
                           <span style={{ color: 'var(--copper)', fontWeight: 600, marginRight: 6 }}>✓</span>
                           {cr.criterio}
-                          {cr.como && <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 16 }}>{cr.como}</div>}
+                          {cr.como && <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 16 }}>{cr.como}</div>}
                         </div>
                       ))}
                     </div>
@@ -1570,7 +1408,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                       <div style={{ flex: 1, cursor: criterios.length > 0 ? 'pointer' : 'default' }} onClick={() => criterios.length > 0 && toggleComp(s.id)}>
                         <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{s.nome}</div>
                         {criterios.length > 0 && (
-                          <div style={{ fontSize: 11, color: '#0f766e', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <div style={{ fontSize: 12.5, color: '#0f766e', display: 'flex', alignItems: 'center', gap: 4 }}>
                             {criterios.length} critérios <span style={{ fontSize: 9, transform: aberta ? 'rotate(90deg)' : 'none', display: 'inline-block', transition: '0.15s' }}>▶</span>
                           </div>
                         )}
@@ -1583,10 +1421,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                     {aberta && criterios.length > 0 && (
                       <div style={{ padding: '0 12px 10px 36px', borderTop: '1px solid rgba(15,118,110,0.12)' }}>
                         {criterios.map((cr: any, i: number) => (
-                          <div key={i} style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: i < criterios.length-1 ? '1px solid rgba(15,118,110,0.08)' : 'none' }}>
+                          <div key={i} style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)', padding: '4px 0', borderBottom: i < criterios.length-1 ? '1px solid rgba(15,118,110,0.08)' : 'none' }}>
                             <span style={{ color: '#0f766e', fontWeight: 700, marginRight: 6 }}>✓</span>
                             {cr.criterio}
-                            {cr.como && <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 16 }}>{cr.como}</div>}
+                            {cr.como && <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 16 }}>{cr.como}</div>}
                           </div>
                         ))}
                       </div>
@@ -1612,7 +1450,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               );
             })}
           </div>
-          <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 12, textAlign: 'center' }}>
+          <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 13, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
             <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{compAtitudes.length} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
             {totalComp > 7 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
@@ -1621,8 +1459,54 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
       )}
 
-      {/* TAB RESUMO */}
+      {/* TAB PREPARAR — era o Resumo. Recebeu da Orientação o que não
+          estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
+
+        {/* Lista de verificação — o que falta antes da aula */}
+        <div style={{ background:'#E6F1FB', borderRadius:14, padding:'14px 16px',
+          border:'1.5px solid #B5D4F4', marginBottom:14 }}>
+          <div style={{ fontSize:13.5, fontWeight:700, color:'#0C447C', marginBottom:10 }}>
+            Antes de começar
+          </div>
+          {[
+            { ok: temFichas, label: 'Fichas de produção criadas',
+              acao: () => setModulo('ficha'), acaoLabel: 'Criar' },
+            { ok: fichasDoPlano.some((f: any) => f.textoGuia), label: 'Guião de produção',
+              acao: () => setModulo('guia'), acaoLabel: 'Gerar' },
+            { ok: temRequisicao, label: 'Requisição enviada',
+              acao: () => setModulo('requisicao'), acaoLabel: 'Fazer' },
+            { ok: publicado, label: 'Plano publicado para os alunos',
+              acao: null, acaoLabel: '' },
+          ].map((item, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:10,
+              padding:'10px 12px', borderRadius:9, marginBottom:6,
+              background: item.ok ? '#EAF3DE' : '#fff',
+              border:`1px solid ${item.ok ? '#C0DD97' : 'rgba(14,116,144,0.2)'}` }}>
+              <span style={{ width:20, height:20, borderRadius:6, flexShrink:0,
+                background: item.ok ? 'var(--sage)' : 'transparent',
+                border: item.ok ? 'none' : '2px dashed rgba(26,23,20,0.2)',
+                display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {item.ok && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff"
+                    strokeWidth={3.5} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                )}
+              </span>
+              <span style={{ flex:1, fontSize:14,
+                color: item.ok ? 'rgba(26,23,20,0.75)' : 'rgba(26,23,20,0.55)' }}>
+                {item.label}
+              </span>
+              {!item.ok && item.acao && (
+                <button onClick={item.acao} style={{ padding:'6px 12px', borderRadius:8,
+                  border:'1px solid #0e7490', background:'#fff', color:'#0e7490',
+                  fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                  {item.acaoLabel}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
 
         {/* ═══ O QUE ESTE PLANO TEM ═══════════════════════════
             Duas colunas: à esquerda o que já está, à direita o que se
@@ -1676,7 +1560,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               {/* ── Coluna 1: o que está no plano ── */}
               <div style={{ background:'#fff', borderRadius:14, padding:16,
                 border:'1px solid rgba(26,23,20,0.08)' }}>
-                <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.07em',
+                <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em',
                   textTransform:'uppercase', color:B, marginBottom:10 }}>
                   O que este plano tem
                 </div>
@@ -1732,7 +1616,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               {/* ── Coluna 2: o que se pode juntar ── */}
               <div style={{ background:BS, borderRadius:14, padding:16,
                 border:`1px solid ${B}22` }}>
-                <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.07em',
+                <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em',
                   textTransform:'uppercase', color:B, marginBottom:10 }}>
                   O que podes juntar
                 </div>
@@ -1877,11 +1761,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ padding: '14px 16px', borderRadius: 14, border: `2px solid ${publicado ? 'var(--sage)' : 'var(--copper)'}`, background: publicado ? 'var(--sage-pale)' : 'var(--copper-pale)' }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: publicado ? 'var(--sage)' : 'var(--copper)' }}>{publicado ? '✓ Aula publicada para os alunos' : '🚀 Publicar para os alunos'}</div>
           {publicado && plano.atualizadoEm && (
-            <div style={{ fontSize: 12, color: 'var(--sage)', marginBottom: 6, fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: 'var(--sage)', marginBottom: 6, fontWeight: 600 }}>
               Última publicação: {fmtData(plano.atualizadoEm)} às {new Date(plano.atualizadoEm).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' })}
             </div>
           )}
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>{publicado ? 'Os alunos vêem sempre a versão mais recente.' : 'Quando estiver pronto, publica para os alunos poderem aceder.'}</div>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>{publicado ? 'Os alunos vêem sempre a versão mais recente.' : 'Quando estiver pronto, publica para os alunos poderem aceder.'}</div>
           {publicado ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ padding:'8px 12px', borderRadius:8, background:'rgba(90,122,78,0.15)', fontSize:13, color:'var(--sage)', fontWeight:600, textAlign:'center' }}>
@@ -1903,7 +1787,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   : '🔄 Publicar atualização para alunos e Classroom'}
               </button>
               {atualizacaoPublicada && (
-                <div style={{ fontSize: 11, color: 'var(--sage)', textAlign: 'center' }}>
+                <div style={{ fontSize: 12.5, color: 'var(--sage)', textAlign: 'center' }}>
                   Sheets e Classroom notificados · Os alunos vêem o aviso ao refrescar a app
                 </div>
               )}
@@ -1912,6 +1796,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             <button onClick={publicar} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>🚀 Publicar esta aula para os alunos</button>
           )}
         </div>
+        {/* Evento pedagógico — um almoço, uma mostra. */}
+        <EventoAssociador plano={plano} turmaId={turmaId} onPlanoActualizado={onPlanoActualizado} />
+
       </>)}
     </div>
   );

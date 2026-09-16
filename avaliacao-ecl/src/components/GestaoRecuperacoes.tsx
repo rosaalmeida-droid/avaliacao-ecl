@@ -101,11 +101,11 @@ function ListaHistorico({ items, nomeAluno, onClick }: { items: RecuperacaoModul
               <span style={{ fontSize: 18 }}>✅</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{nomeAluno(r.alunoId)}</div>
-                <div className="muted" style={{ fontSize: 12 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
-                <div style={{ fontSize: 11, color: 'var(--sage)', marginTop: 2 }}>
+                <div className="muted" style={{ fontSize: 13 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--sage)', marginTop: 2 }}>
                   {nConsolidadas}/{nTotal} competências consolidadas
                 </div>
-                <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
                   Atribuída: {r.dataAtribuicao ? fmtData(r.dataAtribuicao) : '—'}
                   {' · '}Submetida: {r.dataSubmissao ? fmtData(r.dataSubmissao) : '—'}
                   {' · '}Validada: {r.dataValidacao ? fmtData(r.dataValidacao) : '—'}
@@ -132,9 +132,9 @@ function Lista({ items, nomeAluno, vazio, onClick }: { items: RecuperacaoModulo[
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{nomeAluno(r.alunoId)}</div>
-              <div className="muted" style={{ fontSize: 12 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
-              <div style={{ fontSize: 11, color: 'var(--copper)' }}>{r.planosIds.length} aula(s) em falta</div>
-              <div style={{ fontSize: 10, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
+              <div className="muted" style={{ fontSize: 13 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--copper)' }}>{r.planosIds.length} aula(s) em falta</div>
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
                 Atribuída em {r.dataAtribuicao ? fmtData(r.dataAtribuicao) : '—'}
                 {r.dataSubmissao ? ` · submetida em ${fmtData(r.dataSubmissao)}` : ''}
               </div>
@@ -256,7 +256,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
     return (
       <div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-          <button onClick={onVoltar} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+          <button onClick={onVoltar} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
             ← Voltar
           </button>
           <button onClick={() => {
@@ -272,7 +272,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
             // Voltar à lista — ao montar, o CriarRecuperacaoFCT vê a flag
             // e abre o modal já pré-preenchido; só falta mudar o aluno.
             onVoltar();
-          }} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #6d28d9', background: 'var(--purple-pale)', color: '#6d28d9', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+          }} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #6d28d9', background: 'var(--purple-pale)', color: '#6d28d9', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             📋 Duplicar para outro aluno
           </button>
         </div>
@@ -371,7 +371,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
 
   return (
     <div>
-      <button onClick={onVoltar} style={{ marginBottom: 12, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+      <button onClick={onVoltar} style={{ marginBottom: 12, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
         ← Voltar
       </button>
 
@@ -380,9 +380,9 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
 
       {recuperacaoEstaTrancada(r) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
-          <span style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>🔒 Prazo de 1 mês terminado — o aluno já não consegue submeter</span>
+          <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>🔒 Prazo de 1 mês terminado — o aluno já não consegue submeter</span>
           <button onClick={() => { destrancarRecuperacao(r.id); setRefreshLocal(k => k + 1); }}
-            style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
             Destrancar (+1 mês)
           </button>
         </div>
@@ -390,32 +390,32 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
 
       {r.planoIndividualTexto && (
         <div style={{ marginBottom: 16, background: 'var(--copper-pale)', borderRadius: 10, padding: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--copper)', marginBottom: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--copper)', marginBottom: 8 }}>
             🤖 Plano de Recuperação Individual (gerado por IA, único para este aluno)
           </div>
-          <div style={{ background: '#fff', borderRadius: 8, padding: 10, fontSize: 12, whiteSpace: 'pre-wrap', maxHeight: 250, overflowY: 'auto', marginBottom: 8 }}>
+          <div style={{ background: '#fff', borderRadius: 8, padding: 10, fontSize: 13, whiteSpace: 'pre-wrap', maxHeight: 250, overflowY: 'auto', marginBottom: 8 }}>
             {r.planoIndividualTexto}
           </div>
           {!r.planoIndividualAprovado ? (
             <button onClick={() => { addOrUpdateRecuperacao({ ...r, planoIndividualAprovado: true, atualizadoEm: new Date().toISOString() }); setRefreshLocal(k => k + 1); }}
-              style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+              style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
               ✓ Aprovar este plano para o aluno usar
             </button>
           ) : (
-            <div style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 700 }}>✓ Plano aprovado</div>
+            <div style={{ fontSize: 13, color: 'var(--sage)', fontWeight: 700 }}>✓ Plano aprovado</div>
           )}
         </div>
       )}
 
       {guias.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--sage)', marginBottom: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--sage)', marginBottom: 6 }}>
             📚 Guia(s) de Apoio desta recuperação (compara com o trabalho do aluno)
           </div>
           {guias.map(g => (
             <div key={g.fichaId} style={{ marginBottom: 6, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
               <button onClick={() => setGuiaAberto(guiaAberto === g.fichaId ? null : g.fichaId)}
-                style={{ width: '100%', padding: '8px 10px', background: guiaAberto === g.fichaId ? 'var(--sage-pale)' : '#fff', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                style={{ width: '100%', padding: '8px 10px', background: guiaAberto === g.fichaId ? 'var(--sage-pale)' : '#fff', border: 'none', textAlign: 'left', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                 📄 {g.nomePrato} {guiaAberto === g.fichaId ? '▲' : '▼'}
               </button>
               {guiaAberto === g.fichaId && (
@@ -460,7 +460,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
             const icones: Record<string, string> = { foto: '📷', video: '🎥', audio: '🎙️', documento: '📄', link: '🔗' };
             return (
               <a key={i} href={a.url} target="_blank" rel="noreferrer"
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--cream-dark)', borderRadius: 8, marginBottom: 4, fontSize: 12, color: 'var(--copper)' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--cream-dark)', borderRadius: 8, marginBottom: 4, fontSize: 13, color: 'var(--copper)' }}>
                 <span>{icones[a.tipo]}</span>
                 <span>{a.descricao || a.url}</span>
               </a>
@@ -475,40 +475,40 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
           style={{ width: '100%', padding: '10px 14px', background: 'var(--sage-pale)', border: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>🔍</span>
           <span style={{ flex: 1, fontWeight: 700, fontSize: 13, color: 'var(--sage)' }}>Análise Preliminar com IA (apoio à decisão)</span>
-          <span style={{ fontSize: 12 }}>{mostrarAnaliseIA ? '▲' : '▼'}</span>
+          <span style={{ fontSize: 13 }}>{mostrarAnaliseIA ? '▲' : '▼'}</span>
         </button>
         {mostrarAnaliseIA && (
           <div style={{ padding: 14 }}>
             {!r.analiseIA ? (
               <>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.55)', marginBottom: 8 }}>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginBottom: 8 }}>
                   A IA não decide a nota — só ajuda a preparar a defesa oral e a identificar lacunas. Abre directo no Claude (já preenchido) ou copia para outra IA.
                 </div>
-                <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 11, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
+                <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 12.5, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
                   {promptAnalise}
                 </div>
                 <SeletorIA prompt={promptAnalise} corPrincipal="var(--recuperacao)" />
-                <button onClick={copiarPromptAnalise} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--sage)', background: copiadoAnalise ? 'var(--sage)' : '#fff', color: copiadoAnalise ? 'white' : 'var(--sage)', fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 8 }}>
+                <button onClick={copiarPromptAnalise} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--sage)', background: copiadoAnalise ? 'var(--sage)' : '#fff', color: copiadoAnalise ? 'white' : 'var(--sage)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>
                   {copiadoAnalise ? '✓ Copiado!' : '📋 Copiar prompt'}
                 </button>
                 {!colandoAnalise ? (
-                  <button onClick={() => setColandoAnalise(true)} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                  <button onClick={() => setColandoAnalise(true)} style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                     Já tenho a análise da IA →
                   </button>
                 ) : (
                   <>
                     <textarea value={textoAnaliseColado} onChange={e => setTextoAnaliseColado(e.target.value)}
                       placeholder="Cola aqui a análise que a IA devolveu..."
-                      style={{ width: '100%', minHeight: 120, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 12, marginBottom: 8 }} />
+                      style={{ width: '100%', minHeight: 120, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 13, marginBottom: 8 }} />
                     <button onClick={guardarAnaliseIA} disabled={!textoAnaliseColado}
-                      style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: textoAnaliseColado ? 1 : 0.4 }}>
+                      style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: textoAnaliseColado ? 1 : 0.4 }}>
                       Guardar Análise
                     </button>
                   </>
                 )}
               </>
             ) : (
-              <div style={{ background: '#fff', borderRadius: 8, padding: 10, fontSize: 12, whiteSpace: 'pre-wrap', border: '1px solid var(--border)' }}>
+              <div style={{ background: '#fff', borderRadius: 8, padding: 10, fontSize: 13, whiteSpace: 'pre-wrap', border: '1px solid var(--border)' }}>
                 {r.analiseIA.relatorioConsistencia}
               </div>
             )}
@@ -519,7 +519,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
       <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--copper)', marginBottom: 10, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
         Grelha de Avaliação — Competências Técnicas e Responsabilidades
       </div>
-      <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
+      <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
         Apenas estas competências determinam se a UC fica completa. As atitudes transversais ficam registadas em baixo, sem bloquear a conclusão.
       </div>
 
@@ -531,7 +531,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
             {NIVEIS.map(n => (
               <button key={n.v} onClick={() => setNiveis(prev => ({ ...prev, [compId]: n.v }))}
                 style={{
-                  padding: '6px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  padding: '6px 10px', borderRadius: 20, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
                   border: niveis[compId] === n.v ? 'none' : '1px solid var(--border)',
                   background: niveis[compId] === n.v ? n.cor : '#fff',
                   color: niveis[compId] === n.v ? 'white' : 'rgba(26,23,20,0.6)',
@@ -547,18 +547,18 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
         <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: 'var(--copper)' }}>
           🗣️ Defesa Oral (3-5 minutos) — obrigatória
         </div>
-        <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.55)', marginBottom: 10 }}>
+        <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginBottom: 10 }}>
           Nenhuma recuperação deve ser validada só com base no trabalho escrito. Faz estas perguntas ao aluno para confirmar que compreende o que escreveu.
         </div>
         {(r.perguntasDefesaOral || []).map((p, i) => (
-          <div key={i} style={{ fontSize: 12, padding: '6px 10px', background: '#fff', borderRadius: 6, marginBottom: 4 }}>
+          <div key={i} style={{ fontSize: 13, padding: '6px 10px', background: '#fff', borderRadius: 6, marginBottom: 4 }}>
             {i + 1}. {p.pergunta}
           </div>
         ))}
         <textarea value={defesaOralNotas} onChange={e => setDefesaOralNotas(e.target.value)}
           placeholder="Notas sobre as respostas do aluno na defesa oral..."
-          style={{ width: '100%', minHeight: 60, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 12, marginTop: 8, marginBottom: 8 }} />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          style={{ width: '100%', minHeight: 60, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 13, marginTop: 8, marginBottom: 8 }} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
           <input type="checkbox" checked={defesaOralRealizada} onChange={e => setDefesaOralRealizada(e.target.checked)} />
           Confirmo que realizei a defesa oral com o aluno
         </label>
@@ -569,12 +569,12 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: 'rgba(26,23,20,0.7)' }}>
             🪞 Atitudes Transversais — pendentes de observação futura
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
+          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginBottom: 8 }}>
             Não bloqueiam esta recuperação. Serão observadas em qualquer aula futura (desta ou de outra UC) e registadas no perfil do aluno através do Banco de Evidências.
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {r.atitudesIds.map(aId => (
-              <span key={aId} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 12, background: '#fff', border: '1px solid var(--border)', color: 'rgba(26,23,20,0.6)' }}>
+              <span key={aId} style={{ fontSize: 12.5, padding: '3px 8px', borderRadius: 12, background: '#fff', border: '1px solid var(--border)', color: 'rgba(26,23,20,0.6)' }}>
                 {getNomeComp(aId)}
               </span>
             ))}

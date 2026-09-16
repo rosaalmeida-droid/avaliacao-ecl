@@ -188,7 +188,7 @@ export function PainelProfessor({
           borderLeft: `5px solid ${C.bordeaux}`,
         }}>
           <div style={{
-            fontSize: 12, fontWeight: 700, letterSpacing: '0.08em',
+            fontSize: 13, fontWeight: 700, letterSpacing: '0.08em',
             textTransform: 'uppercase', color: C.bordeaux,
           }}>
             {ucId || 'Sem unidade em curso'}
@@ -210,7 +210,7 @@ export function PainelProfessor({
         {gs.map(g => (
           <div key={g.titulo} style={{ marginBottom: 20 }}>
             <div style={{
-              fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+              fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
               letterSpacing: '0.07em', color: C.suave, marginBottom: 10, paddingLeft: 2,
             }}>
               {g.titulo}

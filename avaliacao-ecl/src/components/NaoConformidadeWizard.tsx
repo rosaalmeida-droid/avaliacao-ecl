@@ -120,7 +120,7 @@ export function NaoConformidadeWizard({ perfil, turmaId, alunoId, nomeUtilizador
               fontWeight: 700, fontSize: 13 }}>
               {s.n}
             </div>
-            <div style={{ fontSize: 11, color: passo >= s.n ? T.copper : 'rgba(26,23,20,0.4)', fontWeight: 600 }}>{s.label}</div>
+            <div style={{ fontSize: 12.5, color: passo >= s.n ? T.copper : 'rgba(26,23,20,0.4)', fontWeight: 600 }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -137,7 +137,7 @@ export function NaoConformidadeWizard({ perfil, turmaId, alunoId, nomeUtilizador
                 cursor: 'pointer', textAlign: 'left', marginBottom: 6 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: tipoSel === tipo.id ? T.copper : '#1a1714' }}>{tipo.label}</div>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{tipo.desc}</div>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{tipo.desc}</div>
               </div>
               {tipoSel === tipo.id && <span style={{ color: T.copper, fontSize: 18 }}>✓</span>}
             </button>
@@ -158,7 +158,7 @@ export function NaoConformidadeWizard({ perfil, turmaId, alunoId, nomeUtilizador
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
             {TIPOS_NC.find(t => t.id === tipoSel)?.label}
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
             {TIPOS_NC.find(t => t.id === tipoSel)?.desc}
           </div>
           <textarea value={descricao} onChange={e => setDescricao(e.target.value)}
@@ -193,7 +193,7 @@ export function NaoConformidadeWizard({ perfil, turmaId, alunoId, nomeUtilizador
                 cursor: 'pointer', textAlign: 'left', marginBottom: 6 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: decisaoSel === d.id ? T.sage : '#1a1714' }}>{d.label}</div>
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{d.desc}</div>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{d.desc}</div>
               </div>
               {decisaoSel === d.id && <span style={{ color: T.sage, fontSize: 18 }}>✓</span>}
             </button>
@@ -255,8 +255,8 @@ export function ListaNaoConformidades({ turmaId, perfil }: { turmaId: string; pe
               <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
                 {TIPOS_NC.find(t => t.id === nc.tipo)?.label || nc.tipo}
               </div>
-              {nc.descricao && <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>{nc.descricao}</div>}
-              <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>
+              {nc.descricao && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>{nc.descricao}</div>}
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>
                 Registado por {nc.registadoPor} · {fmtDataHora(nc.criadaEm)}
               </div>
               {perfil !== 'aluno' && (
@@ -264,7 +264,7 @@ export function ListaNaoConformidades({ turmaId, perfil }: { turmaId: string; pe
                   {DECISOES.map(d => (
                     <button key={d.id} onClick={() => decidir(nc, d.id)}
                       style={{ padding: '6px 10px', borderRadius: 8, border: `1px solid ${T.border}`,
-                        background: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+                        background: '#fff', cursor: 'pointer', fontSize: 12.5, fontWeight: 600 }}>
                       {d.label}
                     </button>
                   ))}
@@ -276,15 +276,15 @@ export function ListaNaoConformidades({ turmaId, perfil }: { turmaId: string; pe
       )}
       {resolvidas.length > 0 && (
         <div>
-          <div style={{ fontWeight: 700, fontSize: 12, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 8 }}>
             Resolvidas ({resolvidas.length})
           </div>
           {resolvidas.slice(0, 5).map(nc => (
             <div key={nc.id} style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(26,23,20,0.03)',
               border: `1px solid ${T.border}`, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: T.sage }}>✓</span>
-              <div style={{ flex: 1, fontSize: 12 }}>{TIPOS_NC.find(t => t.id === nc.tipo)?.label || nc.tipo}</div>
-              <span style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)' }}>
+              <div style={{ flex: 1, fontSize: 13 }}>{TIPOS_NC.find(t => t.id === nc.tipo)?.label || nc.tipo}</div>
+              <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)' }}>
                 {DECISOES.find(d => d.id === nc.decisao)?.label || nc.decisao}
               </span>
             </div>

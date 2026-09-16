@@ -76,7 +76,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
               Sou Coordenadora
             </button>
           </div>
-          <div style={{ textAlign: 'center', marginTop: 24, fontSize: 11, color: 'rgba(26,23,20,0.3)' }}>
+          <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12.5, color: 'rgba(26,23,20,0.3)' }}>
             Escola de Comércio de Lisboa © 2026
           </div>
         </div>

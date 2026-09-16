@@ -166,7 +166,7 @@ export function HistorialPorUC({ turmaId, onAbrirPlano, onValidar }: {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontSize: 12, fontWeight: 700, letterSpacing: '0.07em',
+                    fontSize: 13, fontWeight: 700, letterSpacing: '0.07em',
                     textTransform: 'uppercase', color: C.bordeaux,
                   }}>
                     {u.ucId}

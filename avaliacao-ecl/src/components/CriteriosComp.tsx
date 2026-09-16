@@ -68,11 +68,11 @@ export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = f
         onClick={() => setAberta(a => !a)}
         style={{
           background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 11, color: cor, fontWeight: 600,
+          fontSize: 12.5, color: cor, fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0',
         }}
       >
-        <span style={{ fontSize: 10, transform: aberta ? 'rotate(90deg)' : 'none', transition: '0.15s', display: 'inline-block' }}>▶</span>
+        <span style={{ fontSize: 12.5, transform: aberta ? 'rotate(90deg)' : 'none', transition: '0.15s', display: 'inline-block' }}>▶</span>
         {aberta ? 'Esconder' : criterios.length > 0 ? `Ver ${criterios.length} critérios observáveis` : 'Ver descrição'}
       </button>
 
@@ -83,20 +83,20 @@ export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = f
           borderLeft: `3px solid ${cor}`,
         }}>
           {descricao && (
-            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 6, fontStyle: 'italic' }}>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 6, fontStyle: 'italic' }}>
               {descricao}
             </div>
           )}
           {criterios.map((cr, i) => (
             <div key={i} style={{
-              fontSize: 12, color: 'rgba(26,23,20,0.75)',
+              fontSize: 13, color: 'rgba(26,23,20,0.75)',
               padding: '4px 0',
               borderBottom: i < criterios.length - 1 ? '1px solid rgba(26,23,20,0.06)' : 'none',
             }}>
               <span style={{ color: cor, fontWeight: 700, marginRight: 6 }}>✓</span>
               {cr.criterio}
               {cr.como && (
-                <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 18 }}>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2, marginLeft: 18 }}>
                   {cr.como}
                 </div>
               )}

@@ -168,7 +168,7 @@ function BotaoGrande({ onClick, cor, corTexto, emoji, label, sublabel, disabled,
 function ChipEstado({ texto, cor, bg }: { texto:string; cor:string; bg:string }) {
   return (
     <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:100,
-      background:bg, color:cor, fontSize:12, fontWeight:700, letterSpacing:'0.02em' }}>
+      background:bg, color:cor, fontSize:13, fontWeight:700, letterSpacing:'0.02em' }}>
       {texto}
     </span>
   );
@@ -250,7 +250,7 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)',
         background:'rgba(26,23,20,0.04)', borderBottom:`1px solid ${T.border}` }}>
         {DIAS_SEMANA.map(d => (
-          <div key={d} style={{ textAlign:'center', padding:'8px 0', fontSize:11,
+          <div key={d} style={{ textAlign:'center', padding:'8px 0', fontSize:12.5,
             fontWeight:700, color:'rgba(26,23,20,0.4)', letterSpacing:'0.05em' }}>{d}</div>
         ))}
       </div>
@@ -290,11 +290,11 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
 
       {/* Legenda */}
       <div style={{ display:'flex', gap:16, padding:'10px 16px 14px', borderTop:`1px solid ${T.border}` }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'rgba(26,23,20,0.5)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'rgba(26,23,20,0.5)' }}>
           <span style={{ width:10, height:10, borderRadius:'50%', background:T.copper, display:'inline-block' }}/>
           Hoje
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'rgba(26,23,20,0.5)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'rgba(26,23,20,0.5)' }}>
           <span style={{ width:10, height:10, borderRadius:'50%', background:T.sage, display:'inline-block' }}/>
           Aula
         </div>
@@ -336,7 +336,7 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
           </div>
         </div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:12, fontWeight:600, color:'rgba(26,23,20,0.55)',
+          <div style={{ fontSize:13, fontWeight:600, color:'rgba(26,23,20,0.55)',
             overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {plano.numeroPlan ? rotuloPlano(plano) : (plano.titulo || 'Plano de aula')}
           </div>
@@ -363,13 +363,13 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
       <div style={{ background:`linear-gradient(135deg, ${corFundo}, ${corFundo}dd)`,
         padding:'16px 18px' }}>
         {hoje && (
-          <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.65)',
+          <div style={{ fontSize:12.5, fontWeight:800, color:'rgba(255,255,255,0.65)',
             textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:4 }}>
             🔥 Aula de hoje
           </div>
         )}
         {!hoje && diasLabel && (
-          <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.65)',
+          <div style={{ fontSize:12.5, fontWeight:800, color:'rgba(255,255,255,0.65)',
             textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
             📅 {diasLabel}
           </div>
@@ -385,7 +385,7 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
           {dataLonga}
         </div>
         {plano.horaInicio && (
-          <div style={{ fontSize:12, color:'rgba(255,255,255,0.7)' }}>
+          <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)' }}>
             🕗 {plano.horaInicio}–{plano.horaFim}
           </div>
         )}
@@ -440,7 +440,7 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
     <div style={{ marginBottom:20 }}>
       <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:10 }}>
         <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--copper)' }}>O meu percurso nesta UC</div>
-        <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)' }}>{validados} de {planos.length} validados</div>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{validados} de {planos.length} validados</div>
       </div>
       <div>
         {linhas.map(({ p, estado, nota20 }, i) => {
@@ -454,10 +454,10 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
               <div style={{ flex:1, background:st.fundo, borderRadius:10, padding:'10px 13px', marginBottom:8 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <div style={{ flex:1, fontSize:13.5, fontWeight:700, color:'var(--charcoal)' }}>{rotuloPlano(p)}</div>
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)' }}>{dataCurtaPU(p.data)}</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{dataCurtaPU(p.data)}</div>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
-                  <span style={{ fontSize:12, fontWeight:600, color:st.texto }}>{st.etiqueta}</span>
+                  <span style={{ fontSize:13, fontWeight:600, color:st.texto }}>{st.etiqueta}</span>
                   {estado === 'validado' && nota20 != null && (
                     <span style={{ marginLeft:'auto', fontSize:13, fontWeight:800, color:'#4e6a25' }}>{nota20}/20</span>
                   )}
@@ -726,8 +726,8 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             return (
               <div style={{ margin:'16px 16px 0', padding:'14px 18px', borderRadius:14, background:cor+'14', border:'1.5px solid '+cor+'44', display:'flex', alignItems:'center', gap:14 }}>
                 <div>
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.5)' }}>Nota desta aula</div>
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)' }}>Validada pelo professor</div>
+                  <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.5)' }}>Nota desta aula</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>Validada pelo professor</div>
                 </div>
                 <div style={{ marginLeft:'auto', fontFamily:'var(--font-display)', fontSize:34, fontWeight:900, color:cor, lineHeight:1 }}>
                   {nota20}<span style={{ fontSize:18 }}>/20</span>
@@ -764,7 +764,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                   <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:8,
                     padding:'4px 10px', borderRadius:99, background:'rgba(247,241,230,0.12)' }}>
                     <span style={{ fontSize:15 }}>{EMOJI[pr.nivel]}</span>
-                    <span style={{ fontSize:11, fontWeight:700, color:'rgba(247,241,230,0.85)' }}>
+                    <span style={{ fontSize:12.5, fontWeight:700, color:'rgba(247,241,230,0.85)' }}>
                       Regularidade {LABEL[pr.nivel]} · {pr.pontos} pts
                     </span>
                   </div>
@@ -776,7 +776,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                   background: aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.25)' : 'rgba(181,101,29,0.25)',
                   border: `1px solid ${aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.5)' : 'rgba(181,101,29,0.5)'}` }}>
                   <span style={{ fontSize:14 }}>{aluno.nivelMedidas === 3 ? '🔴' : '🟡'}</span>
-                  <span style={{ fontSize:12, fontWeight:700,
+                  <span style={{ fontSize:13, fontWeight:700,
                     color: aluno.nivelMedidas === 3 ? '#ff9a9a' : '#ffd0a0' }}>
                     {aluno.nivelMedidas === 3 ? 'Medidas Adicionais (Nível 3)' : 'Medidas Seletivas (Nível 2)'}
                   </span>
@@ -789,13 +789,13 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 padding:'10px 16px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
                   color:'#faf7f2', lineHeight:1 }}>{historicoAluno.length}</div>
-                <div style={{ fontSize:11, color:'rgba(247,241,230,0.45)', marginTop:3 }}>avaliações</div>
+                <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.45)', marginTop:3 }}>avaliações</div>
               </div>
               <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
                 padding:'10px 16px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
                   color:'#faf7f2', lineHeight:1 }}>{planos.length}</div>
-                <div style={{ fontSize:11, color:'rgba(247,241,230,0.45)', marginTop:3 }}>aulas</div>
+                <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.45)', marginTop:3 }}>aulas</div>
               </div>
             </div>
           </div>
@@ -962,7 +962,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 return (<>
                   {deHoje.length > 0 && (
                     <>
-                      <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                      <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
                         letterSpacing:'0.06em', color:'#6B3FA0', marginBottom:10 }}>
                         Hoje
                       </div>
@@ -973,7 +973,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                     </>
                   )}
 
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                  <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
                     letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:12 }}>
                     {nomeMes}
                   </div>
@@ -1925,7 +1925,7 @@ function PainelKitchenFlow({ fichas, aluno, plano }: {
         <span style={{ fontSize:20 }}>🏭</span>
         <div style={{ flex:1, textAlign:'left' }}>
           <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>KitchenFlow ECL</div>
-          <div style={{ fontSize:12, color:'rgba(255,255,255,0.75)' }}>
+          <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)' }}>
             {registos.filter(r => enviado.includes(r.id) || r.auto).length}/{registos.length} registos concluídos
           </div>
         </div>
@@ -1946,14 +1946,14 @@ function PainelKitchenFlow({ fichas, aluno, plano }: {
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:13, fontWeight:700,
                       color:feito?'#065f46':'#0e7490' }}>{reg.label}</div>
-                    <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:1 }}>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:1 }}>
                       {feito ? 'Registado ✓' : reg.desc}
                     </div>
                   </div>
                   {!feito && !reg.auto && reg.id !== 'temp' && reg.id !== 'nc' && (
                     <button onClick={() => abrirKitchenFlow(reg.id)} style={{
                       padding:'6px 12px', borderRadius:8, border:'none',
-                      background:'#0e7490', color:'#fff', fontSize:12,
+                      background:'#0e7490', color:'#fff', fontSize:13,
                       fontWeight:700, cursor:'pointer', flexShrink:0,
                     }}>
                       Registar →
@@ -1962,7 +1962,7 @@ function PainelKitchenFlow({ fichas, aluno, plano }: {
                   {!feito && reg.id === 'nc' && !regNC && (
                     <button onClick={() => setRegNC({zona:'Cozinha',desc:'',acao:''})} style={{
                       padding:'6px 12px', borderRadius:8, border:'none',
-                      background:'#dc2626', color:'#fff', fontSize:12,
+                      background:'#dc2626', color:'#fff', fontSize:13,
                       fontWeight:700, cursor:'pointer', flexShrink:0,
                     }}>
                       Registar →
@@ -1971,7 +1971,7 @@ function PainelKitchenFlow({ fichas, aluno, plano }: {
                   {!feito && reg.id === 'temp' && !regTemp && (
                     <button onClick={() => setRegTemp({prato:fichas[0]?.nomePrato||'',tipo:'quente',temp:''})} style={{
                       padding:'6px 12px', borderRadius:8, border:'none',
-                      background:'#0e7490', color:'#fff', fontSize:12,
+                      background:'#0e7490', color:'#fff', fontSize:13,
                       fontWeight:700, cursor:'pointer', flexShrink:0,
                     }}>
                       Registar →
@@ -1989,7 +1989,7 @@ function PainelKitchenFlow({ fichas, aluno, plano }: {
                           flex:1, padding:'6px', borderRadius:6, cursor:'pointer',
                           border:`2px solid ${regTemp.tipo===t?'#0e7490':'rgba(14,116,144,0.3)'}`,
                           background:regTemp.tipo===t?'#0e7490':'#fff',
-                          color:regTemp.tipo===t?'#fff':'#0e7490', fontSize:12, fontWeight:700,
+                          color:regTemp.tipo===t?'#fff':'#0e7490', fontSize:13, fontWeight:700,
                         }}>{t==='quente'?'🔥 Quente':'❄️ Frio'}</button>
                       ))}
                     </div>
@@ -1998,7 +1998,7 @@ function PainelKitchenFlow({ fichas, aluno, plano }: {
                         onChange={e => setRegTemp(p => p?{...p,temp:e.target.value}:null)}
                         placeholder="°C" style={{ flex:1, padding:'8px', borderRadius:6,
                           border:'1px solid rgba(14,116,144,0.3)', fontSize:15, textAlign:'center' }} />
-                      <span style={{ fontSize:12, color:'#0e7490', fontWeight:600 }}>
+                      <span style={{ fontSize:13, color:'#0e7490', fontWeight:600 }}>
                         {regTemp.tipo==='quente'?'mín. 63°C':'máx. 4°C'}
                       </span>
                     </div>
@@ -2049,12 +2049,12 @@ function PainelKitchenFlow({ fichas, aluno, plano }: {
           })}
 
           <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(14,116,144,0.08)',
-            borderRadius:8, fontSize:12, color:'#0e7490', display:'flex', alignItems:'center', gap:8 }}>
+            borderRadius:8, fontSize:13, color:'#0e7490', display:'flex', alignItems:'center', gap:8 }}>
             <span>🔗</span>
             <span>Abrir KitchenFlow ECL completo:</span>
             <button onClick={() => abrirKitchenFlow()} style={{ padding:'4px 10px',
               borderRadius:6, border:'none', background:'#0e7490', color:'#fff',
-              fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              fontSize:13, fontWeight:700, cursor:'pointer' }}>
               Abrir →
             </button>
           </div>
@@ -2103,7 +2103,7 @@ function SecaoGuiao({ fichas, plano, onConcluido }: {
           {fichasComGuiao.map((f: any) => (
             <button key={f.id} onClick={() => setFichaActiva(f.id)} style={{
               padding:'6px 14px', borderRadius:100, border:'none', cursor:'pointer',
-              fontSize:12, fontWeight:700,
+              fontSize:13, fontWeight:700,
               background: fichaActiva === f.id ? '#1a6b5a' : 'rgba(26,106,90,0.08)',
               color: fichaActiva === f.id ? '#fff' : '#1a6b5a',
             }}>{f.nomePrato}</button>
@@ -2235,7 +2235,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
 
               {f.ingredientes?.length>0 && (
                 <div style={{ marginBottom:14 }}>
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                  <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
                     letterSpacing:'0.05em', color:'#2980b9', marginBottom:8 }}>Ingredientes</div>
                   {f.ingredientes.map((ing,i) => {
                     const marcado = checklist[f.id]?.ing.has(i)||false;
@@ -2261,7 +2261,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
 
               {f.preparacao?.length>0 && (
                 <div>
-                  <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase',
+                  <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
                     letterSpacing:'0.05em', color:'#2980b9', marginBottom:8 }}>Preparação</div>
                   {f.preparacao.map((p,i) => {
                     const marcado = checklist[f.id]?.passo.has(i)||false;
@@ -2278,8 +2278,8 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                           }} />
                         <div style={{ fontSize:14, textDecoration:marcado?'line-through':'none', lineHeight:1.4 }}>
                           <strong>{p.num}.</strong> {p.descricao}
-                          {p.temperatura&&<span style={{ color:'#2980b9', marginLeft:6, fontSize:12 }}>🌡 {p.temperatura}</span>}
-                          {p.haccp&&<div style={{ color:T.danger, fontSize:12, marginTop:2 }}>⚠️ {p.haccp}</div>}
+                          {p.temperatura&&<span style={{ color:'#2980b9', marginLeft:6, fontSize:13 }}>🌡 {p.temperatura}</span>}
+                          {p.haccp&&<div style={{ color:T.danger, fontSize:13, marginTop:2 }}>⚠️ {p.haccp}</div>}
                         </div>
                       </label>
                     );
@@ -2394,7 +2394,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       <div style={{ marginTop:16, padding:'14px 16px', borderRadius:12,
         background:'rgba(181,101,29,0.05)', border:'1px solid rgba(181,101,29,0.2)' }}>
         <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>💡 Iniciativa</div>
-        <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginBottom:12 }}>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:12 }}>
           Como avalias a tua iniciativa hoje na cozinha?
         </div>
         {INICIATIVA_FRASES.map(f => (
@@ -2407,7 +2407,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             <span style={{ display:'inline-block', width:20, height:20, borderRadius:'50%',
               background: nivelIniciativa===f.nivel ? '#b5651d' : 'rgba(26,23,20,0.1)',
               color: nivelIniciativa===f.nivel ? '#fff' : 'rgba(26,23,20,0.4)',
-              fontSize:11, fontWeight:800, textAlign:'center', lineHeight:'20px',
+              fontSize:12.5, fontWeight:800, textAlign:'center', lineHeight:'20px',
               marginRight:8, flexShrink:0 }}>{f.nivel}</span>
             {f.texto}
           </button>
@@ -2427,10 +2427,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         marginBottom: 10 }}>
         <span style={{ fontSize: 16 }}>🍳</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1' }}>
             {nEvidencias} registo{nEvidencias !== 1 ? 's' : ''} do KitchenFlow verificado{nEvidencias !== 1 ? 's' : ''}
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)', marginTop: 1 }}>
+          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginTop: 1 }}>
             As competências marcadas com 🍳 têm evidência no KitchenFlow
           </div>
         </div>
@@ -2664,7 +2664,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           <div style={{ fontSize:40, marginBottom:8 }}>✅</div>
           <div style={{ fontSize:16, fontWeight:700, color:T.sage }}>Autoavaliação enviada!</div>
           {dataSubmissao && (
-            <div style={{ fontSize:12, color:'rgba(26,23,20,0.45)', marginTop:4 }}>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.45)', marginTop:4 }}>
               {fmtDataHora(dataSubmissao)}
             </div>
           )}
@@ -2674,7 +2674,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         {/* Mostrar o que foi submetido */}
         {autoavsSubmetidas.length > 0 && (
           <div style={{ marginBottom:16 }}>
-            <div style={{ fontSize:12, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
+            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
               O que submeteste
             </div>
             {autoavsSubmetidas.map((av: any, i: number) => {
@@ -2686,7 +2686,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background:'#fff', border:`1px solid ${T.border}`, marginBottom:6 }}>
                   <span style={{ fontSize:18, flexShrink:0 }}>{emoji}</span>
                   <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{nomeComp}</div>
-                  <span style={{ fontSize:12, fontWeight:600, color:'rgba(26,23,20,0.5)' }}>{label}</span>
+                  <span style={{ fontSize:13, fontWeight:600, color:'rgba(26,23,20,0.5)' }}>{label}</span>
                 </div>
               );
             })}
@@ -2733,7 +2733,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
 
             return (
               <div style={{ padding:'14px 16px', borderRadius:12, background:'rgba(90,122,78,0.06)', border:'1.5px solid rgba(90,122,78,0.2)' }}>
-                <div style={{ fontSize:12, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', marginBottom:8 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', marginBottom:8 }}>
                   ✅ Professor confirmou
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -2745,7 +2745,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   <span style={{ marginLeft:'auto', fontSize:14, fontWeight:700, color:cor }}>{label}</span>
                 </div>
                 {detalhes && (
-                  <div style={{ marginTop:10, fontSize:11, color:'rgba(26,23,20,0.45)',
+                  <div style={{ marginTop:10, fontSize:12.5, color:'rgba(26,23,20,0.45)',
                     padding:'6px 10px', borderRadius:8, background:'rgba(26,23,20,0.03)',
                     fontFamily:'monospace' }}>
                     {detalhes}
@@ -2753,12 +2753,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 )}
                 {comparacoes.length > 0 && (
                   <details style={{ marginTop:8 }}>
-                    <summary style={{ fontSize:10, color:'rgba(26,23,20,0.35)', cursor:'pointer', userSelect:'none' }}>
+                    <summary style={{ fontSize:12.5, color:'rgba(26,23,20,0.35)', cursor:'pointer', userSelect:'none' }}>
                       A tua autoavaliação
                     </summary>
                     <div style={{ marginTop:6, paddingTop:6 }}>
                       {comparacoes.map(c => (
-                        <div key={c.competenciaId} style={{ display:'flex', justifyContent:'space-between', fontSize:11, padding:'2px 0', color:'rgba(26,23,20,0.4)' }}>
+                        <div key={c.competenciaId} style={{ display:'flex', justifyContent:'space-between', fontSize:12.5, padding:'2px 0', color:'rgba(26,23,20,0.4)' }}>
                           <span>{c.competenciaId}</span>
                           <span>Tu: {c.alunoDisse} · Professor: {c.professorValidou}</span>
                         </div>
@@ -2834,11 +2834,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 <div key={id} style={{ marginBottom:8, padding:'8px 10px', borderRadius:8,
                   background:'rgba(192,57,43,0.04)', border:'1px solid rgba(192,57,43,0.15)' }}>
                   <div style={{ fontSize:13, fontWeight:600, color:'#c0392b' }}>🔁 {a?.nome ?? id}</div>
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
                     <strong>Tens de mostrar que melhoraste.</strong> {dica}
                   </div>
                   {nivel && (
-                    <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginTop:4, fontStyle:'italic' }}>
+                    <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)', marginTop:4, fontStyle:'italic' }}>
                       {nivel ? `Nível esperado: ${nivel}` : ''}
                     </div>
                   )}
@@ -2867,7 +2867,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 <button key={op.v} onClick={() => obr.set(op.v)} style={{
                   padding:'12px 6px', borderRadius:10, border:`2px solid ${obr.val===op.v?op.cor:T.border}`,
                   background:obr.val===op.v?op.cor:'#fff', color:obr.val===op.v?op.cor:'rgba(26,23,20,0.5)',
-                  fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                  fontSize:13, fontWeight:700, cursor:'pointer', textAlign:'center',
                   display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                 }}>
                   <span style={{ fontSize:24 }}>{op.nota}</span>
@@ -2876,7 +2876,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               ))}
             </div>
             {obr.id === 'hac' && obr.val && !temEvidenciaKF('OBR_02') && (
-              <div style={{ marginTop:10, padding:'8px 10px', borderRadius:8, fontSize:11,
+              <div style={{ marginTop:10, padding:'8px 10px', borderRadius:8, fontSize:12.5,
                 background:'rgba(181,101,29,0.1)', color:'#8a4a15' }}>
                 ⚠️ Não encontrámos registo teu no KitchenFlow para esta aula — mesmo que
                 tenhas feito tudo bem, esta competência fica ao mínimo até haver registo.
@@ -2912,7 +2912,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                       {(m as any).descricao}
                     </div>
                   )}
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
                 {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
@@ -2925,7 +2925,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                     const idx = ['nao','ajuda','sozinho','autonomia'].indexOf(notasMicro[m.id] as string);
                     return idx >= 0 ? (
                       <div style={{ margin:'10px 0', padding:'10px 12px', borderRadius:8,
-                        background:'rgba(181,101,29,0.06)', fontSize:12, color:'rgba(26,23,20,0.7)', fontStyle:'italic' }}>
+                        background:'rgba(181,101,29,0.06)', fontSize:13, color:'rgba(26,23,20,0.7)', fontStyle:'italic' }}>
                         "{frases[idx]}"
                       </div>
                     ) : null;
@@ -2936,7 +2936,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
                         padding:'10px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
                         background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
-                        fontSize:11, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        fontSize:12.5, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
                         <span style={{ fontSize:20 }}>{op.nota}</span>{op.label}
@@ -2956,13 +2956,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
             letterSpacing:'0.06em', color:'#5B67EA', marginBottom:12 }}>🧪 Preparações base desta aula</div>
           {aluno.nivelMedidas === 3 && (
-            <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
+            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
               background:'rgba(181,101,29,0.06)', borderRadius:8 }}>
               ℹ️ Só são apresentadas preparações de Nível 1 (adequadas ao teu plano de estudos)
             </div>
           )}
           {aluno.nivelMedidas === 2 && (
-            <div style={{ fontSize:11, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
+            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
               background:'rgba(181,101,29,0.06)', borderRadius:8 }}>
               ℹ️ São apresentadas preparações de Nível 1 e 2 (adequadas ao teu plano de estudos)
             </div>
@@ -2977,11 +2977,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 <div style={{ flex:1 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
-                    <span style={{ fontSize:10, fontWeight:700, padding:'2px 6px', borderRadius:100,
+                    <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 6px', borderRadius:100,
                       background: m.nivel===1?'rgba(90,122,78,0.15)':m.nivel===2?'rgba(181,101,29,0.15)':'rgba(192,57,43,0.15)',
                       color: m.nivel===1?'#5a7a4e':m.nivel===2?'#b5651d':'#c0392b' }}>N{m.nivel}</span>
                   </div>
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.categoria} · {m.motivo}</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.categoria} · {m.motivo}</div>
                 </div>
                 {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:'#5B67EA', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
@@ -2995,7 +2995,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
                         padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
                         background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
-                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        fontSize:13, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
                         <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
@@ -3034,7 +3034,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                       {(m as any).descricao}
                     </div>
                   )}
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
                 {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:'#0369a1', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
@@ -3042,7 +3042,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               {microAberta===m.id && (
                 <div style={{ padding:'12px 16px', borderTop:'2px solid #0369a1', background:'#fdfcfb' }}>
                   {m.definicao && (
-                    <div style={{ fontSize:12, color:'rgba(26,23,20,0.6)', marginBottom:12, padding:'8px', background:'rgba(3,105,161,0.05)', borderRadius:8 }}>
+                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginBottom:12, padding:'8px', background:'rgba(3,105,161,0.05)', borderRadius:8 }}>
                       {m.definicao}
                     </div>
                   )}
@@ -3052,7 +3052,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
                         padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
                         background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
-                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        fontSize:13, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
                         <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
@@ -3091,7 +3091,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                       {(m as any).descricao}
                     </div>
                   )}
-                  <div style={{ fontSize:12, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
                 {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
@@ -3105,7 +3105,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                       <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
                         padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
                         background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
-                        fontSize:12, fontWeight:700, cursor:'pointer', textAlign:'center',
+                        fontSize:13, fontWeight:700, cursor:'pointer', textAlign:'center',
                         display:'flex', flexDirection:'column', alignItems:'center', gap:4,
                       }}>
                         <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
@@ -3126,7 +3126,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
           letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>💡 Propõe-te a uma atitude</div>
-        <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)', marginBottom:12 }}>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:12 }}>
           Escolhe uma atitude que reconheces em ti hoje. Fica como proposta tua — o professor valida.</div>
         <div>
           {(() => {

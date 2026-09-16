@@ -248,7 +248,7 @@ export function PainelAluno({
           borderLeft: `5px solid ${C.violeta}`,
         }}>
           <div style={{
-            fontSize: 12, fontWeight: 700, letterSpacing: '0.08em',
+            fontSize: 13, fontWeight: 700, letterSpacing: '0.08em',
             textTransform: 'uppercase', color: C.violeta,
           }}>
             {ucId || 'Sem unidade'}

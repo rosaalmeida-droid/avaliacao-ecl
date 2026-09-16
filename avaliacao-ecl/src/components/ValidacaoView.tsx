@@ -129,14 +129,14 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
               <div style={{ fontWeight: 600, fontSize: 14 }}>
                 {nomeDoAluno(s.alunoId)} — {plano?.titulo || s.planoAulaId}
               </div>
-              <div className="muted" style={{ fontSize: 12 }}>
+              <div className="muted" style={{ fontSize: 13 }}>
                 {plano?.ucId ? `${plano.ucId} · ` : ''}
                 {jaValidada
                   ? '✓ Validado — tocar para alterar'
                   : `${nMicros} competência${nMicros !== 1 ? 's' : ''} a validar`}
               </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+            <span style={{ fontSize: 13, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
               background: jaValidada ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.15)',
               color: jaValidada ? 'var(--sage)' : 'var(--copper)' }}>
               {jaValidada ? 'Validado' : 'Pendente'}
@@ -343,7 +343,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
 
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '14px 16px', marginBottom: 16, color: 'var(--cream)' }}>
         <div style={{ fontWeight: 700, fontSize: 15 }}>{planoTitulo}</div>
-        <div style={{ fontSize: 12, opacity: 0.6, marginTop: 3 }}>
+        <div style={{ fontSize: 13, opacity: 0.6, marginTop: 3 }}>
           {ucId && `${ucId} · `}{nomeDoAluno(selecao.alunoId)}
           {fichasNomes.length > 0 && ` · ${fichasNomes.join(', ')}`}
         </div>
@@ -381,24 +381,24 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{nome}</span>
               {_isApp && _app && (
-                <span style={{ fontSize:10, fontWeight:700, padding:'2px 6px', borderRadius:100,
+                <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 6px', borderRadius:100,
                   background: _app.nivel===1?'rgba(90,122,78,0.15)':_app.nivel===2?'rgba(181,101,29,0.15)':'rgba(192,57,43,0.15)',
                   color: _app.nivel===1?'#5a7a4e':_app.nivel===2?'#b5651d':'#c0392b' }}>
                   Aparelho N{_app.nivel} · {_app.categoria}
                 </span>
               )}
               {_isSub && (
-                <span style={{ fontSize:10, color:'rgba(26,23,20,0.4)', fontStyle:'italic' }}>subtécnica</span>
+                <span style={{ fontSize:12.5, color:'rgba(26,23,20,0.4)', fontStyle:'italic' }}>subtécnica</span>
               )}
               {auto.competenciaId.startsWith('KNW-') && (
-                <span style={{ fontSize:10, color:'#0369a1', fontStyle:'italic', fontWeight:600 }}>conhecimento</span>
+                <span style={{ fontSize:12.5, color:'#0369a1', fontStyle:'italic', fontWeight:600 }}>conhecimento</span>
               )}
             </div>
 
             {/* Autoavaliação do aluno */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 10px', background: 'var(--cream-dark)', borderRadius: 8 }}>
               <span style={{ fontSize:13, color: 'rgba(26,23,20,0.5)' }}>Aluno disse:</span>
-              <span style={{ fontWeight: 600, fontSize: 12, color: corAluno }}>{labelAluno}</span>
+              <span style={{ fontWeight: 600, fontSize: 13, color: corAluno }}>{labelAluno}</span>
             </div>
 
             {/* Critérios observáveis */}
@@ -504,7 +504,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             {previsaoNota.nota20}<span style={{fontSize:14, fontWeight:600, opacity:0.6}}>/20</span>
           </div>
         </div>
-        <div style={{ fontSize:12, color:'rgba(26,23,20,0.65)', lineHeight:1.6 }}>
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', lineHeight:1.6 }}>
           {Object.entries(previsaoNota.porCategoria).map(([cat, n]) => (
             <div key={cat} style={{ display:'flex', justifyContent:'space-between', padding:'2px 0' }}>
               <span>{LABEL_CAT[cat] || cat}</span>
@@ -512,7 +512,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             </div>
           ))}
         </div>
-        <div style={{ fontSize:11, color:'rgba(26,23,20,0.4)', marginTop:8 }}>
+        <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.4)', marginTop:8 }}>
           Ponderação de aula {tipoPlanAula === 'teorico' ? 'teórica' : tipoPlanAula === 'misto' ? 'mista' : 'prática'}.
           Falta preencher {autoavaliacoes.filter(a => !notasProf[a.competenciaId]).length} de {autoavaliacoes.length} competências.
         </div>

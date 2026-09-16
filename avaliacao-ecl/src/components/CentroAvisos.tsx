@@ -70,7 +70,7 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
           writingMode: 'vertical-rl', textOrientation: 'mixed',
           background: tudoOk ? 'var(--sage)' : 'var(--copper)',
           color: 'white', border: 'none', borderRadius: '10px 0 0 10px',
-          padding: '16px 8px', cursor: 'pointer', fontWeight: 700, fontSize: 12,
+          padding: '16px 8px', cursor: 'pointer', fontWeight: 700, fontSize: 13,
           alignSelf: 'center', display: 'flex', alignItems: 'center', gap: 8,
           boxShadow: '-2px 2px 8px rgba(0,0,0,0.15)',
         }}>
@@ -91,7 +91,7 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>✅</div>
               <div style={{ fontWeight: 700, color: 'var(--sage)' }}>Tudo em dia!</div>
-              <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)', marginTop: 4 }}>Não há avisos pendentes.</div>
+              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginTop: 4 }}>Não há avisos pendentes.</div>
             </div>
           ) : (
             avisos.map(a => {
@@ -106,17 +106,17 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
                   background: ehSugestao ? 'rgba(74,90,138,0.06)' : 'var(--copper-pale)'
                 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{a.titulo}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>{a.descricao}</div>
+                  <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>{a.descricao}</div>
 
                   {/* Sugestão de ingrediente — formulário de aprovação */}
                   {ehSugestao && !formAberto && (
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => iniciarAprovacao(a)}
-                        style={{ flex: 2, padding: '6px 10px', borderRadius: 8, border: 'none', background: 'var(--guia)', color: 'white', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>
+                        style={{ flex: 2, padding: '6px 10px', borderRadius: 8, border: 'none', background: 'var(--guia)', color: 'white', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>
                         ✓ Aprovar / Editar
                       </button>
                       <button onClick={() => { rejeitarSugestaoIngrediente(a.id); setAvisos(getAvisosPendentes()); }}
-                        style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 11, cursor: 'pointer', color: 'var(--danger)' }}>
+                        style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', color: 'var(--danger)' }}>
                         Rejeitar
                       </button>
                     </div>
@@ -129,28 +129,28 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
                     }));
                     return (
                       <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--guia)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Editar antes de aprovar</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--guia)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Editar antes de aprovar</div>
                         <div style={{ marginBottom: 7 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>Nome correcto</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>Nome correcto</div>
                           <input value={form.nomeCorrigido} onChange={e => setF('nomeCorrigido', e.target.value)}
-                            style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12 }} />
+                            style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 13 }} />
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 7 }}>
                           <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>€/kg</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>€/kg</div>
                             <input type="number" step="0.01" value={form.precoKg} onChange={e => setF('precoKg', e.target.value)}
-                              style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12 }} />
+                              style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 13 }} />
                           </div>
                           <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>€/un</div>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>€/un</div>
                             <input type="number" step="0.01" value={form.precoUnitario} onChange={e => setF('precoUnitario', e.target.value)}
-                              style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12 }} />
+                              style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 13 }} />
                           </div>
                         </div>
                         <div style={{ marginBottom: 7 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>Unidade compra</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>Unidade compra</div>
                           <select value={form.unidadeCompra} onChange={e => setF('unidadeCompra', e.target.value)}
-                            style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12 }}>
+                            style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 13 }}>
                             <option value="kg">kg</option>
                             <option value="un">un</option>
                             <option value="l">l</option>
@@ -158,9 +158,9 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
                           </select>
                         </div>
                         <div style={{ marginBottom: 10 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>Categoria</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>Categoria</div>
                           <select value={form.categoria} onChange={e => setF('categoria', e.target.value)}
-                            style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12 }}>
+                            style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 13 }}>
                             <option value="">Seleccionar...</option>
                             <option>Proteína animal</option>
                             <option>Peixe e marisco</option>
@@ -178,11 +178,11 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
                         </div>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button onClick={() => setAprovacaoForm(prev => { const n = { ...prev }; delete n[a.id]; return n; })}
-                            style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 11, cursor: 'pointer' }}>
+                            style={{ flex: 1, padding: '7px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 12.5, cursor: 'pointer' }}>
                             Cancelar
                           </button>
                           <button onClick={() => aprovar(a)}
-                            style={{ flex: 2, padding: '7px', borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
+                            style={{ flex: 2, padding: '7px', borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
                             ✓ Confirmar e adicionar à BD
                           </button>
                         </div>
@@ -195,13 +195,13 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {onNavegar && a.contexto?.tabDestino && (
                         <button onClick={() => onNavegar(a)}
-                          style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 600, fontSize: 11, cursor: 'pointer', minWidth: 80 }}>
+                          style={{ flex: 1, padding: '6px 10px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 600, fontSize: 12.5, cursor: 'pointer', minWidth: 80 }}>
                           Ir corrigir →
                         </button>
                       )}
                       {/* Dispensar disponível para todos — coordenadora também pode anular avisos de plano */}
                       <button onClick={() => resolver(a.id)}
-                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 11, cursor: 'pointer' }}>
+                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>
                         {perfil === 'coordenadora' && ehOperacional ? '🗑️ Anular' : 'Dispensar'}
                       </button>
                     </div>

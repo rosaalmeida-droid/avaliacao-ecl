@@ -37,7 +37,7 @@ export function CoordenadoraView() {
     <div>
       {/* Cabeçalho roxo com abas coloridas */}
       <div style={{ background:'#6d28d9', padding:'14px 16px 0' }}>
-        <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', fontWeight:700,
+        <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', fontWeight:700,
           textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
           Avaliação ECL
         </div>
@@ -48,7 +48,7 @@ export function CoordenadoraView() {
           {TABS_COORD.map(t => (
             <button key={t.id} onClick={() => setTab(t.id as any)} style={{
               whiteSpace:'nowrap', flexShrink:0, padding:'8px 12px',
-              border:'none', cursor:'pointer', fontSize:12, fontWeight:800,
+              border:'none', cursor:'pointer', fontSize:13, fontWeight:800,
               borderRadius:10,
               background: tab === t.id ? t.cor : 'rgba(255,255,255,0.15)',
               color: tab === t.id ? '#fff' : 'rgba(255,255,255,0.55)',
@@ -74,7 +74,7 @@ export function CoordenadoraView() {
         <div>
           {getTurmas().map((t: any) => (
             <div key={t.id} style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
+              <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
                 letterSpacing: '0.06em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>
                 {t.nome}
               </div>
@@ -92,10 +92,10 @@ export function CoordenadoraView() {
 
 // ── Etiqueta de nível de medidas ─────────────────────────────
 function BadgeNivel({ nivel }: { nivel?: 1|2|3 }) {
-  if (!nivel || nivel === 1) return <span style={{ fontSize:12, color:'rgba(26,23,20,0.4)' }}>Nível 1 — Universal</span>;
+  if (!nivel || nivel === 1) return <span style={{ fontSize:13, color:'rgba(26,23,20,0.4)' }}>Nível 1 — Universal</span>;
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px',
-      borderRadius:100, fontSize:12, fontWeight:700,
+      borderRadius:100, fontSize:13, fontWeight:700,
       background: nivel === 3 ? '#fdf0ef' : '#fdf0e6',
       color: nivel === 3 ? '#c0392b' : '#b5651d',
       border: `1px solid ${nivel === 3 ? '#c0392b40' : '#b5651d40'}` }}>
@@ -156,10 +156,10 @@ function PresencasTab() {
             <button onClick={() => { setDataFiltro(''); setTurmaFiltro('todas'); }}
               style={{ padding: '7px 12px', borderRadius: 8, border: 'none',
                 background: 'rgba(255,255,255,0.15)', color: '#faf7f2',
-                fontSize: 12, cursor: 'pointer' }}>✕ Limpar</button>
+                fontSize: 13, cursor: 'pointer' }}>✕ Limpar</button>
           )}
         </div>
-        <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
+        <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
           {presencasFiltradas.length} registo{presencasFiltradas.length !== 1 ? 's' : ''}
         </div>
       </div>
@@ -192,24 +192,24 @@ function PresencasTab() {
                     <div style={{ fontWeight: 700, fontSize: 14 }}>
                       {nomeAluno(r.alunoId)}
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
+                    <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>
                       {r.turmaId} · {r.data?.slice(0,10)} · {r.horaEntrada || '--:--'}
                     </div>
                     <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                       {/* Pontualidade */}
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+                      <span style={{ fontSize: 12.5, padding: '2px 8px', borderRadius: 100,
                         background: atrasado ? '#fef2f2' : '#f0fdf4',
                         color: atrasado ? '#dc2626' : '#15803d', fontWeight: 600 }}>
                         {atrasado ? `⚠ ${r.atrasadoMins || '?'} min atraso` : '✓ A tempo'}
                       </span>
                       {/* Fardamento */}
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+                      <span style={{ fontSize: 12.5, padding: '2px 8px', borderRadius: 100,
                         background: fardOk ? '#f0fdf4' : '#fef2f2',
                         color: fardOk ? '#15803d' : '#dc2626', fontWeight: 600 }}>
                         {fardOk ? '✓ Fardamento OK' : '⚠ Fardamento incompleto'}
                       </span>
                       {/* Higiene */}
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100,
+                      <span style={{ fontSize: 12.5, padding: '2px 8px', borderRadius: 100,
                         background: '#f0fdf4', color: '#15803d', fontWeight: 600 }}>
                         ✓ Higiene OK
                       </span>
@@ -221,7 +221,7 @@ function PresencasTab() {
                 {alunoAberto === r.alunoId && porAluno[r.alunoId] && (
                   <div style={{ marginTop: 12, paddingTop: 12,
                     borderTop: '1px solid rgba(26,23,20,0.06)' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700,
+                    <div style={{ fontSize: 12.5, fontWeight: 700,
                       color: 'rgba(26,23,20,0.5)', marginBottom: 8,
                       textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Historial de {nomeAluno(r.alunoId)}
@@ -233,7 +233,7 @@ function PresencasTab() {
                         <div key={hi} style={{ display: 'flex', gap: 8,
                           padding: '5px 8px', borderRadius: 6, marginBottom: 3,
                           background: hi % 2 === 0 ? 'rgba(26,23,20,0.02)' : '#fff',
-                          fontSize: 12, alignItems: 'center' }}>
+                          fontSize: 13, alignItems: 'center' }}>
                           <span style={{ color: 'rgba(26,23,20,0.4)', minWidth: 80 }}>
                             {h.data?.slice(0,10)}
                           </span>
@@ -248,7 +248,7 @@ function PresencasTab() {
                             {h.fardamentoOk !== false ? '👔✓' : '👔✗'}
                           </span>
                           {h.ucId && (
-                            <span style={{ fontSize: 10, color: 'var(--copper)',
+                            <span style={{ fontSize: 12.5, color: 'var(--copper)',
                               background: 'var(--copper-pale)', padding: '1px 6px',
                               borderRadius: 4 }}>{h.ucId}</span>
                           )}
@@ -257,7 +257,7 @@ function PresencasTab() {
                     {/* Estatísticas rápidas */}
                     <div style={{ marginTop: 8, padding: '8px 10px',
                       background: 'rgba(26,23,20,0.03)', borderRadius: 8,
-                      display: 'flex', gap: 16, fontSize: 12 }}>
+                      display: 'flex', gap: 16, fontSize: 13 }}>
                       <span>📅 {porAluno[r.alunoId].length} aulas</span>
                       <span style={{ color: '#dc2626' }}>
                         ⚠ {porAluno[r.alunoId].filter((h: RegistoPresenca) => h.atrasado).length} atrasos
@@ -332,9 +332,9 @@ function BibliotecaPlanosTab() {
           marginBottom: 8, border: '1px solid rgba(26,23,20,0.08)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{p.titulo || '(sem título)'}</div>
-            <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.4)', whiteSpace: 'nowrap' }}>{fmtDataCurta(p.data)}</div>
+            <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', whiteSpace: 'nowrap' }}>{fmtDataCurta(p.data)}</div>
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)', marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginTop: 2 }}>
             {p.ucId} · {p.ucNome} · <span style={{
               color: p.estado === 'publicado' ? '#15803d' : p.estado === 'arquivado' ? '#999' : '#b5651d',
               fontWeight: 600 }}>{p.estado}</span>
@@ -345,7 +345,7 @@ function BibliotecaPlanosTab() {
                 <button key={f.id} onClick={() => setFichaAberta(f)}
                   style={{ padding: '4px 10px', borderRadius: 100, border: 'none',
                     background: 'var(--copper-pale)', color: 'var(--copper)',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   🍽 {f.nomePrato}
                 </button>
               ))}
@@ -412,7 +412,7 @@ function ConfigTab() {
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
         🍂 Reset de Início de Ano Letivo
       </div>
-      <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)', marginBottom: 14 }}>
+      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 14 }}>
         Esta operação existe apenas aqui, na área da Coordenadora. Apaga TODA a atividade de
         testes — avaliações, presenças, planos, fichas, tudo — e mantém apenas os alunos
         reais com os seus PINs, prontos para o ano letivo começar limpo.
@@ -425,7 +425,7 @@ function ConfigTab() {
           color: backupFeito ? '#15803d' : '#dc2626' }}>
           {backupFeito ? '✅ Passo 1 — Cópia de segurança feita' : '1️⃣ Passo 1 — Cópia de segurança (OBRIGATÓRIO)'}
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
           Antes de apagar seja o que for, descarrega uma cópia de segurança completa.
           Sem um backup dos últimos 10 minutos, a limpeza recusa-se a executar.
           Guarda o ficheiro num sítio seguro (Drive, email).
@@ -461,28 +461,28 @@ function ConfigTab() {
         )}
         {preview && !nadaParaApagar && (
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>
               VAI SER APAGADO:
             </div>
             {preview.alunosApagar.length > 0 && (
               <div style={{ background: '#fef2f2', borderRadius: 8, padding: '8px 10px', marginBottom: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
                   {preview.alunosApagar.length} aluno(s) de teste (desaparecem):
                 </div>
                 {preview.alunosApagar.map(a => (
-                  <div key={a.id} style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)' }}>
+                  <div key={a.id} style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)' }}>
                     · {a.nome || '(sem nome)'} — {a.id}
                   </div>
                 ))}
               </div>
             )}
-            <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.7)', marginBottom: 8 }}>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)', marginBottom: 8 }}>
               {preview.planosApagar.length} plano(s) · {preview.fichasApagar.length} ficha(s) · {preview.requisicoesApagar.length} requisição(ões) · {preview.avaliacoesApagar} avaliação(ões) · {preview.presencasApagar} presença(s)
               {preview.outrasContagens.filter(c => c.n > 0).map(c => ` · ${c.n} ${c.rotulo.toLowerCase()}`).join('')}
               {' '}· eventos, ingredientes custom, técnicas custom, manual e rascunhos — tudo apagado
             </div>
             <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--sage-pale)',
-              fontSize: 12, color: 'var(--sage)', fontWeight: 600 }}>
+              fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>
               ✅ SOBREVIVE APENAS ISTO: {preview.alunosManter.length} alunos reais com os seus PINs
               {preview.alunosManter.length > 0 && ` (${preview.alunosManter.slice(0, 3).map(a => a.nome || a.id).join(', ')}…)`}
               , e as turmas. Nada mais.
@@ -498,7 +498,7 @@ function ConfigTab() {
         <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>
           3️⃣ Passo 3 — Confirmar por escrito
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
           Escreve <strong>APAGAR</strong> (em maiúsculas) para executar o reset. Isto não tem volta — só o backup do Passo 1 recupera o que for apagado.
         </div>
         <input value={confirmacao} onChange={e => setConfirmacao(e.target.value)}
@@ -568,10 +568,10 @@ function GestaoAlunosTab() {
         </select>
         <button onClick={sincronizar} disabled={aSincronizar}
           style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--sage)',
-            color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           {aSincronizar ? 'A sincronizar…' : '🔄 Sincronizar da Sheet'}
         </button>
-        <span style={{ fontSize: 12, color: 'rgba(26,23,20,0.45)' }}>{alunos.length} alunos</span>
+        <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)' }}>{alunos.length} alunos</span>
       </div>
 
       {alunos.length === 0 ? (
@@ -589,12 +589,12 @@ function GestaoAlunosTab() {
             <div style={{ fontWeight: 700, fontSize: 14 }}>{a.nome || '(sem nome)'}</div>
             <BadgeNivel nivel={a.nivelMedidas} />
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>PIN: {a.pin || '—'}</div>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>PIN: {a.pin || '—'}</div>
           <button onClick={() => mudarPin(a)} style={{ padding: '5px 10px', borderRadius: 8,
-            border: '1px solid rgba(26,23,20,0.15)', background: '#faf7f2', fontSize: 11,
+            border: '1px solid rgba(26,23,20,0.15)', background: '#faf7f2', fontSize: 12.5,
             cursor: 'pointer', fontWeight: 600 }}>🔑 PIN</button>
           <button onClick={() => mudarNivel(a)} style={{ padding: '5px 10px', borderRadius: 8,
-            border: '1px solid rgba(26,23,20,0.15)', background: '#faf7f2', fontSize: 11,
+            border: '1px solid rgba(26,23,20,0.15)', background: '#faf7f2', fontSize: 12.5,
             cursor: 'pointer', fontWeight: 600 }}>🎚 Nível</button>
         </div>
       ))}
@@ -629,12 +629,12 @@ function VisaoPedagogicaTab() {
             onClick={() => setAlunoAberto(aberto ? null : a.id)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>{a.numero}. {a.nome || '(sem nome)'}</div>
-              <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>
+              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>
                 💪 {perfil.pontosFortes.length} · 📈 {perfil.areasADesenvolver.length}
               </div>
             </div>
             {aberto && (
-              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 12 }}>
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 13 }}>
                 <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 4 }}>Pontos fortes</div>
                 {perfil.pontosFortes.length === 0
                   ? <div style={{ color: 'rgba(26,23,20,0.4)', marginBottom: 8 }}>Ainda sem competências consolidadas.</div>

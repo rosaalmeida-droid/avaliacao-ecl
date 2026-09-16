@@ -249,7 +249,7 @@ function RodaSensorial({ dados }: { dados: { componente: string; intensidade: st
       {/* Legenda */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
         {sabores.map((s, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11 }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: s.cor, flexShrink: 0 }} />
             <span style={{ fontWeight: 600 }}>{s.nome}</span>
             <span style={{ color: 'rgba(26,23,20,0.5)' }}>{'●'.repeat(s.intensidade)}{'○'.repeat(5 - s.intensidade)}</span>
@@ -278,7 +278,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
             <thead>
               <tr style={{ background: `linear-gradient(135deg, ${cor} 0%, ${cor}cc 100%)`, color: 'white' }}>
                 {cabecalho.map((h, i) => (
-                  <th key={i} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 700, fontSize: 12, letterSpacing: '0.02em' }}>{h}</th>
+                  <th key={i} style={{ padding: '11px 14px', textAlign: 'left', fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -381,7 +381,7 @@ function RenderConteudo({ texto, cor }: { texto: string; cor: string }) {
           <span style={{
             background: cor, color: 'white', borderRadius: '50%',
             width: 26, height: 26, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0,
+            justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0,
             boxShadow: `0 2px 6px ${cor}40`,
           }}>
             {mNum[1]}
@@ -466,7 +466,7 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
       {questoes.map((q, qi) => (
         <div key={qi} style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: '#fff', border: `1px solid ${cor}30` }}>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: '#1a1714' }}>
-            <span style={{ background: cor, color: 'white', borderRadius: '50%', width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, marginRight: 8 }}>
+            <span style={{ background: cor, color: 'white', borderRadius: '50%', width: 22, height: 22, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12.5, fontWeight: 700, marginRight: 8 }}>
               {qi + 1}
             </span>
             {q.pergunta}
@@ -476,7 +476,7 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
               {q.opcoes.map((op, oi) => (
                 <label key={oi} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', background: respostas[q.id] === op ? `${cor}15` : '#f9f9f9', border: `1px solid ${respostas[q.id] === op ? cor : 'rgba(0,0,0,0.08)'}` }}>
                   <input type="radio" name={q.id} value={op} checked={respostas[q.id] === op} onChange={() => setRespostas(p => ({ ...p, [q.id]: op }))} style={{ accentColor: cor }} />
-                  <span style={{ fontSize: 12 }}>{op}</span>
+                  <span style={{ fontSize: 13 }}>{op}</span>
                 </label>
               ))}
             </div>
@@ -484,14 +484,14 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
           {q.tipo === 'vf' && (
             <div style={{ display: 'flex', gap: 8 }}>
               {['Verdadeiro', 'Falso'].map(op => (
-                <button key={op} onClick={() => setRespostas(p => ({ ...p, [q.id]: op }))} style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1.5px solid ${respostas[q.id] === op ? cor : 'var(--border)'}`, background: respostas[q.id] === op ? `${cor}15` : '#fff', color: respostas[q.id] === op ? cor : 'rgba(26,23,20,0.6)', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                <button key={op} onClick={() => setRespostas(p => ({ ...p, [q.id]: op }))} style={{ flex: 1, padding: '8px', borderRadius: 8, border: `1.5px solid ${respostas[q.id] === op ? cor : 'var(--border)'}`, background: respostas[q.id] === op ? `${cor}15` : '#fff', color: respostas[q.id] === op ? cor : 'rgba(26,23,20,0.6)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
                   {op === 'Verdadeiro' ? '✓ ' : '✗ '}{op}
                 </button>
               ))}
             </div>
           )}
           {q.tipo === 'pratica' && (
-            <textarea style={{ width: '100%', minHeight: 70, borderRadius: 8, border: '1px solid var(--border)', padding: 8, fontSize: 12, fontFamily: 'var(--font-body)', resize: 'vertical' }} placeholder="Escreve a tua resposta aqui..." />
+            <textarea style={{ width: '100%', minHeight: 70, borderRadius: 8, border: '1px solid var(--border)', padding: 8, fontSize: 13, fontFamily: 'var(--font-body)', resize: 'vertical' }} placeholder="Escreve a tua resposta aqui..." />
           )}
         </div>
       ))}
@@ -510,7 +510,7 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
       {mostrarRespostas && Object.keys(respostasCorretas).length > 0 && (
         <div style={{ marginTop: 10, padding: '12px 14px', background: `${cor}10`,
           borderRadius: 10, border: `1px solid ${cor}30` }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: cor, marginBottom: 8,
+          <div style={{ fontWeight: 700, fontSize: 13, color: cor, marginBottom: 8,
             textTransform: 'uppercase', letterSpacing: '0.05em' }}>Respostas correctas</div>
           {Object.entries(respostasCorretas).map(([id, resp]) => (
             <div key={id} style={{ fontSize: 13, marginBottom: 5, display: 'flex', gap: 8 }}>
@@ -543,7 +543,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
       <div style={{ padding: 20, textAlign: 'center', color: 'rgba(26,23,20,0.5)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
         <div>O Guia de Apoio ainda não foi gerado.</div>
-        <div style={{ fontSize: 12, marginTop: 6 }}>Usa o botão "Gerar Guia" na Ficha de Produção.</div>
+        <div style={{ fontSize: 13, marginTop: 6 }}>Usa o botão "Gerar Guia" na Ficha de Produção.</div>
       </div>
     );
   }
@@ -565,7 +565,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.12em',
+            <div style={{ fontSize: 12.5, textTransform: 'uppercase', letterSpacing: '0.12em',
               color: 'rgba(247,241,230,0.5)', marginBottom: 6, fontWeight: 600 }}>
               🍽️ Guia de Apoio à Produção
             </div>
@@ -574,10 +574,10 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
               {nomePrato}
             </div>
             {ucNome && (
-              <div style={{ fontSize: 11, color: 'rgba(247,241,230,0.45)', marginTop: 5,
+              <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.45)', marginTop: 5,
                 display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ background: 'rgba(181,101,29,0.3)', padding: '2px 8px',
-                  borderRadius: 100, fontSize: 10, fontWeight: 700, color: '#f0b470' }}>
+                  borderRadius: 100, fontSize: 12.5, fontWeight: 700, color: '#f0b470' }}>
                   {ucId}
                 </span>
                 {ucNome}
@@ -589,14 +589,14 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
               className="no-print"
               onClick={() => gerarPDFGuiao({ nomePrato, ucId, ucNome, guia, textoOriginal: textoGuia })}
               style={{ background: 'var(--copper)', border: 'none', borderRadius: 8,
-                padding: '7px 14px', color: '#fff', cursor: 'pointer', fontSize: 12,
+                padding: '7px 14px', color: '#fff', cursor: 'pointer', fontSize: 13,
                 fontWeight: 700 }}>
               ⬇ PDF
             </button>
             {onFechar && (
               <button onClick={onFechar} style={{ background: 'rgba(255,255,255,0.08)',
                 border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
-                padding: '6px 12px', color: '#faf7f2', cursor: 'pointer', fontSize: 12 }}>
+                padding: '6px 12px', color: '#faf7f2', cursor: 'pointer', fontSize: 13 }}>
                 ✕
               </button>
             )}
@@ -609,7 +609,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
             <button key={s.num}
               onClick={() => setSecaoAberta(secaoAberta === s.num ? null : s.num)}
               style={{
-                padding: '5px 11px', borderRadius: 100, fontSize: 11, cursor: 'pointer',
+                padding: '5px 11px', borderRadius: 100, fontSize: 12.5, cursor: 'pointer',
                 fontWeight: secaoAberta === s.num ? 700 : 500,
                 border: `1.5px solid ${secaoAberta === s.num ? s.cor : 'rgba(255,255,255,0.18)'}`,
                 background: secaoAberta === s.num ? s.cor : 'rgba(255,255,255,0.06)',
@@ -652,7 +652,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
 
             <div style={{ flex: 1 }}>
               {/* Número pequeno */}
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+              <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 color: secaoAberta === s.num ? 'rgba(255,255,255,0.65)' : `${s.cor}90`,
                 marginBottom: 2 }}>
@@ -723,7 +723,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
                 background: secaoAberta === 15 ? 'rgba(255,255,255,0.22)' : '#2c3e5018',
               }}>📖</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
                   color: secaoAberta === 15 ? 'rgba(255,255,255,0.65)' : '#2c3e5090', marginBottom: 2 }}>
                   Secção 15
                 </div>
@@ -758,7 +758,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
       </button>
 
       {/* Rodapé */}
-      <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 11, color: 'rgba(26,23,20,0.3)' }}>
+      <div style={{ textAlign: 'center', padding: '12px 0', fontSize: 12.5, color: 'rgba(26,23,20,0.3)' }}>
         Escola de Comércio de Lisboa · Avaliação ECL · {new Date().getFullYear()}
       </div>
     </div>
@@ -788,7 +788,7 @@ export function CaixaGuia({ nomePrato, ucId, ucNome, textoGuiaInicial, onGuiaAlt
         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sage)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 14 }}>Guia de Apoio à Produção</div>
-          <div style={{ fontSize: 11, color: 'rgba(26,23,20,0.5)' }}>Cola o texto gerado pela IA para ver o guia formatado</div>
+          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>Cola o texto gerado pela IA para ver o guia formatado</div>
         </div>
       </div>
 
@@ -798,7 +798,7 @@ export function CaixaGuia({ nomePrato, ucId, ucNome, textoGuiaInicial, onGuiaAlt
             value={textoGuia}
             onChange={e => actualizarTexto(e.target.value)}
             placeholder={`Cola aqui o resultado da IA para o Guia de Apoio à Produção de "${nomePrato}"...\n\nEx:\n# 1. ENQUADRAMENTO DA PRODUÇÃO\n...`}
-            style={{ width: '100%', minHeight: 120, borderRadius: 10, border: '1.5px solid var(--border)', padding: 10, fontSize: 12, fontFamily: 'monospace', resize: 'vertical' }}
+            style={{ width: '100%', minHeight: 120, borderRadius: 10, border: '1.5px solid var(--border)', padding: 10, fontSize: 13, fontFamily: 'monospace', resize: 'vertical' }}
           />
           {textoGuia && (
             <button onClick={() => setModo('ver')} style={{ marginTop: 8, width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
@@ -810,7 +810,7 @@ export function CaixaGuia({ nomePrato, ucId, ucNome, textoGuiaInicial, onGuiaAlt
 
       {modo === 'ver' && textoGuia && (
         <>
-          <button onClick={() => setModo('colar')} style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
+          <button onClick={() => setModo('colar')} style={{ marginBottom: 10, padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
             ← Editar texto
           </button>
           <GuiaProducao textoGuia={textoGuia} nomePrato={nomePrato} ucId={ucId} ucNome={ucNome} />
