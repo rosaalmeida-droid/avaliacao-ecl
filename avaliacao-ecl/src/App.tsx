@@ -7,6 +7,7 @@ import { ManualCozinheiro } from './components/ManualCozinheiro';
 import { ManuaisAluno } from './components/ManuaisAluno';
 import { Header, LayoutProfessor, VistaProf } from './components/Header';
 import { PainelProfessor } from './components/PainelProfessor';
+import { EstadoSincronizacao } from './components/EstadoSincronizacao';
 import { modulosAtivos } from './cronograma';
 import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
@@ -319,6 +320,13 @@ function AppInterno() {
             const emCurso = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
             const planos = getPlanosAulaPorTurma(turmaId);
             return (
+              <>
+              {/* O que ainda não chegou ao Sheets. Fica no topo do painel,
+                  onde o professor passa sempre — antes só se descobria
+                  quando o trabalho já estava perdido. */}
+              <div style={{ maxWidth: 820, margin: '0 auto 4px' }}>
+                <EstadoSincronizacao turmaId={turmaId} />
+              </div>
               <PainelProfessor
                 nomeProfessor={nomeProfessor}
                 turmaId={turmaId}
@@ -334,6 +342,7 @@ function AppInterno() {
                 })()}
                 onAbrir={(v) => setVistaGlobal(v)}
               />
+              </>
             );
           })()}
           {vistaGlobal === 'planos' && (

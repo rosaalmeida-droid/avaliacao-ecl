@@ -1376,11 +1376,13 @@ export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false
 }
 
 export function addOrUpdatePlanoAula(p: PlanoAula): void {
+  // O registo fica no fim da função, depois de gravar e enviar.
   const all = getPlanosAula();
   const idx = all.findIndex(x => x.id === p.id);
   if (idx >= 0) all[idx] = p; else all.push(p);
   save(KEYS.planos, all);
   enviar(SHEETS_PLANOS_URL, 'plano', { plano: p });
+  registarEnvio(p.id, 'plano', p.titulo || `Plano de ${p.data}`);
   sincronizarPlanoComCalendario(p);
 }
 
@@ -1523,12 +1525,120 @@ export function getFichasPorPlano(planoId: string): FichaProducao[] {
   return getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
 }
 
+const KEY_FICHAS_HIST = 'ecl_fichas_historico';
+
+/**
+ * Guarda a versão anterior de uma ficha antes de a substituir.
+ *
+ * Perderam-se fichas por serem gravadas por cima com versões vazias.
+ * Isto mantém as últimas versões COMPLETAS de cada ficha — e só as
+ * completas, porque guardar as vazias não serve de nada.
+ */
+function guardarVersaoAnterior(f: FichaProducao): void {
+  const anterior = getFichasProducao().find(x => x.id === f.id);
+  if (!anterior) return;
+  // Só vale a pena guardar se tinha conteúdo.
+  if (!anterior.ingredientes?.length && !anterior.preparacao?.length) return;
+  // E só se a nova está a perder alguma coisa.
+  const perdeIngredientes = !!anterior.ingredientes?.length && !f.ingredientes?.length;
+  const perdePreparacao = !!anterior.preparacao?.length && !f.preparacao?.length;
+  if (!perdeIngredientes && !perdePreparacao) return;
+
+  try {
+    const hist = JSON.parse(localStorage.getItem(KEY_FICHAS_HIST) || '[]');
+    const semEsta = hist.filter((x: any) => x.id !== f.id);
+    // Guardar no máximo 60 — chega para um ano letivo.
+    localStorage.setItem(KEY_FICHAS_HIST, JSON.stringify(
+      [{ ...anterior, _guardadoEm: new Date().toISOString() }, ...semEsta].slice(0, 60)
+    ));
+  } catch { /* se não couber, segue */ }
+}
+
 export function addOrUpdateFichaProducao(f: FichaProducao): void {
+  guardarVersaoAnterior(f);
   const all = getFichasProducao();
   const idx = all.findIndex(x => x.id === f.id);
   if (idx >= 0) all[idx] = f; else all.push(f);
   save(KEYS.fichas, all);
   enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f });
+  // Registar para confirmar depois: o envio não devolve resposta.
+  registarEnvio(f.id, 'ficha', f.nomePrato || 'Ficha sem nome');
+}
+
+/** Versões completas guardadas antes de terem sido esvaziadas. */
+export function versoesAnterioresDeFichas(): FichaProducao[] {
+  try { return JSON.parse(localStorage.getItem(KEY_FICHAS_HIST) || '[]'); }
+  catch { return []; }
+}
+
+/**
+ * Procura as fichas vazias em todos os sítios onde possam estar
+ * completas: cópia local, cópia do arranque do ano, e o Sheets.
+ */
+export async function recuperarFichasDeTodoOLado(): Promise<{
+  tentadas: number; recuperadas: number; nomes: string[]; origens: string[];
+}> {
+  const vazias = getFichasProducao().filter(
+    f => !f.ingredientes?.length || !f.preparacao?.length
+  );
+  if (vazias.length === 0) {
+    return { tentadas: 0, recuperadas: 0, nomes: [], origens: [] };
+  }
+
+  // Todas as fontes possíveis, da mais fiável para a menos.
+  const fontes: { nome: string; fichas: any[] }[] = [];
+
+  fontes.push({ nome: 'cópia local', fichas: versoesAnterioresDeFichas() });
+
+  try {
+    const arranque = JSON.parse(localStorage.getItem('ecl_backup_pre_arranque') || '{}');
+    if (arranque.fichas?.length) {
+      fontes.push({ nome: 'cópia do arranque do ano', fichas: arranque.fichas });
+    }
+  } catch { /* ignorar */ }
+
+  try {
+    const json = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
+    const doSheets = json?.dados || json?.fichas || [];
+    if (doSheets.length) fontes.push({ nome: 'Google Sheets', fichas: doSheets });
+  } catch { /* ignorar */ }
+
+  const nomes: string[] = [];
+  const origens = new Set<string>();
+  const locais = getFichasProducao();
+
+  const atualizadas = locais.map(f => {
+    if (f.ingredientes?.length && f.preparacao?.length) return f;
+
+    for (const fonte of fontes) {
+      const candidata = fonte.fichas.find((x: any) => x.id === f.id);
+      if (!candidata) continue;
+
+      const ganhaI = !f.ingredientes?.length && candidata.ingredientes?.length > 0;
+      const ganhaP = !f.preparacao?.length && candidata.preparacao?.length > 0;
+      if (!ganhaI && !ganhaP) continue;
+
+      nomes.push(f.nomePrato || f.id);
+      origens.add(fonte.nome);
+      return {
+        ...f,
+        ingredientes: ganhaI ? candidata.ingredientes : f.ingredientes,
+        preparacao: ganhaP ? candidata.preparacao : f.preparacao,
+      };
+    }
+    return f;
+  });
+
+  save(KEYS.fichas, atualizadas);
+  // Reenviar as recuperadas, para o Sheets voltar a ter a versão boa.
+  atualizadas
+    .filter(f => nomes.includes(f.nomePrato || f.id))
+    .forEach(f => enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f }));
+
+  return {
+    tentadas: vazias.length, recuperadas: nomes.length,
+    nomes, origens: [...origens],
+  };
 }
 
 // Elimina a ficha DEFINITIVAMENTE — local e no Sheets (remove a sheet
@@ -3871,4 +3981,297 @@ export async function recuperarFichasDoSheets(): Promise<{
 
   save(KEYS.fichas, atualizadas);
   return { tentadas: incompletas.length, recuperadas: nomes.length, nomes };
+}
+
+// ============================================================
+// Vista de turma durante a aula
+// ============================================================
+// O professor não tinha onde ver, num ecrã, quem entrou, quem tem a
+// farda em falta, quem fez os registos e quem já se avaliou. Tinha de
+// ir a cada aluno.
+
+export interface EstadoAlunoNaAula {
+  alunoId: string;
+  nome: string;
+  numero: number;
+  entrou: boolean;
+  horaEntrada?: string;
+  foraDeTempo: boolean;
+  minutosAposAbertura: number;
+  decisaoFalta?: string;
+  fardamentoOk: boolean;
+  itensEmFalta: string;
+  kfInicial: boolean;
+  kfFinal: boolean;
+  ehLider: boolean;
+  autoavaliou: boolean;
+  validado: boolean;
+}
+
+export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): EstadoAlunoNaAula[] {
+  const alunos = getAlunos()
+    .filter(a => a.turmaId === turmaId && a.ativo !== false)
+    .sort((a, b) => a.numero - b.numero);
+
+  const presencas = getPresencas().filter(p => p.planoAulaId === planoAulaId);
+  const selecoes = getSelecoes().filter(s => s.planoAulaId === planoAulaId);
+  const validacoes = getValidacoes();
+  const liderId = liderKFdoGrupo(planoAulaId);
+
+  return alunos.map(a => {
+    const pres = presencas.find(p => p.alunoId === a.id);
+    const sel = selecoes.find(s => s.alunoId === a.id);
+    const val = sel ? validacoes.find(v => (v as any).selecaoId === sel.id) : undefined;
+
+    // Os itens em falta ficam na observação da presença.
+    const obs = pres?.observacao || '';
+    const emFalta = obs.includes('em falta:')
+      ? obs.split('em falta:')[1].trim()
+      : '';
+
+    return {
+      alunoId: a.id,
+      nome: a.nome || `Aluno ${a.numero}`,
+      numero: a.numero,
+      entrou: !!pres?.presente,
+      horaEntrada: pres?.horaEntrada,
+      foraDeTempo: !!pres?.atrasado,
+      minutosAposAbertura: pres?.atrasadoMins || 0,
+      decisaoFalta: (pres as any)?.decisaoProfessor,
+      fardamentoOk: !!pres?.fardamentoOk,
+      itensEmFalta: emFalta,
+      kfInicial: kfFaseCompleta(a.id, planoAulaId, 'inicial'),
+      kfFinal: kfFaseCompleta(a.id, planoAulaId, 'final'),
+      ehLider: liderId === a.id,
+      autoavaliou: !!sel,
+      validado: !!val,
+    };
+  });
+}
+
+/** Resumo para o cabeçalho: quantos em cada estado. */
+export function resumoDaTurmaNaAula(estados: EstadoAlunoNaAula[]) {
+  return {
+    total: estados.length,
+    entraram: estados.filter(e => e.entrou).length,
+    foraDeTempo: estados.filter(e => e.foraDeTempo && !e.decisaoFalta).length,
+    semFarda: estados.filter(e => e.entrou && !e.fardamentoOk).length,
+    kfPorFazer: estados.filter(e => e.entrou && !e.kfFinal).length,
+    porAvaliar: estados.filter(e => e.entrou && !e.autoavaliou).length,
+    porValidar: estados.filter(e => e.autoavaliou && !e.validado).length,
+  };
+}
+
+// ============================================================
+// Fila de sincronização — saber o que chegou ao Sheets
+// ============================================================
+// Tudo é guardado primeiro no browser e enviado ao Sheets a seguir.
+// O envio usa `mode: 'no-cors'`, obrigatório para o Apps Script aceitar
+// pedidos do browser — mas com ele a resposta vem sempre vazia. Mesmo
+// que o script rejeite, dê erro ou o URL esteja errado, o fetch diz que
+// correu bem.
+//
+// Resultado: o professor fecha o browser, muda de computador, e perdeu
+// trabalho sem nunca ter sido avisado.
+//
+// Isto não resolve o no-cors — não há como. O que faz é registar o que
+// foi enviado e confirmar depois, lendo do Sheets. O que não aparecer
+// fica sinalizado.
+
+const KEY_FILA_SYNC = 'ecl_fila_sync';
+
+export interface ItemFila {
+  id: string;
+  tipo: string;
+  descricao: string;
+  enviadoEm: string;
+  confirmadoEm?: string;
+  tentativas: number;
+}
+
+export function getFilaSync(): ItemFila[] {
+  try { return JSON.parse(localStorage.getItem(KEY_FILA_SYNC) || '[]'); }
+  catch { return []; }
+}
+
+function guardarFila(itens: ItemFila[]): void {
+  try {
+    // Manter só o que interessa: por confirmar, e os últimos confirmados.
+    const porConfirmar = itens.filter(i => !i.confirmadoEm);
+    const confirmados = itens.filter(i => i.confirmadoEm).slice(0, 40);
+    localStorage.setItem(KEY_FILA_SYNC, JSON.stringify([...porConfirmar, ...confirmados]));
+  } catch { /* se não couber, segue */ }
+}
+
+/** Regista que algo foi enviado, à espera de confirmação. */
+export function registarEnvio(id: string, tipo: string, descricao: string): void {
+  const fila = getFilaSync();
+  const existente = fila.find(i => i.id === id);
+  if (existente) {
+    existente.enviadoEm = new Date().toISOString();
+    existente.confirmadoEm = undefined;
+    existente.tentativas += 1;
+  } else {
+    fila.unshift({
+      id, tipo, descricao,
+      enviadoEm: new Date().toISOString(),
+      tentativas: 1,
+    });
+  }
+  guardarFila(fila);
+}
+
+/**
+ * Lê do Sheets e confirma o que lá chegou.
+ *
+ * É a única forma de saber: o envio não devolve resposta, mas a leitura
+ * devolve. Se a ficha está lá, chegou.
+ */
+export async function confirmarSincronizacao(turmaId: string): Promise<{
+  confirmados: number; porConfirmar: number; falhados: ItemFila[];
+}> {
+  const fila = getFilaSync().filter(i => !i.confirmadoEm);
+  if (fila.length === 0) {
+    return { confirmados: 0, porConfirmar: 0, falhados: [] };
+  }
+
+  // Ler tudo o que o Sheets tem, por tipo.
+  const idsNoSheets = new Set<string>();
+
+  const tenta = async (url: string, tipo: string, campo: string) => {
+    try {
+      const json = await lerDoSheets(url, { tipo, turmaId });
+      const itens = json?.[campo] || json?.dados || [];
+      itens.forEach((x: any) => { if (x?.id) idsNoSheets.add(String(x.id)); });
+    } catch { /* falha na leitura não é falha no envio */ }
+  };
+
+  await Promise.all([
+    tenta(SHEETS_FICHAS_URL, 'get_fichas', 'fichas'),
+    tenta(SHEETS_PLANOS_URL, 'get_planos', 'planos'),
+    tenta(SHEETS_HISTORICO_URL, 'get_selecoes', 'selecoes'),
+    tenta(SHEETS_HISTORICO_URL, 'get_validacoes', 'validacoes'),
+  ]);
+
+  const agora = new Date().toISOString();
+  const todos = getFilaSync();
+  let confirmados = 0;
+
+  todos.forEach(item => {
+    if (item.confirmadoEm) return;
+    if (idsNoSheets.has(item.id)) {
+      item.confirmadoEm = agora;
+      confirmados += 1;
+    }
+  });
+  guardarFila(todos);
+
+  // Falhado = enviado há mais de 5 min e ainda sem confirmação.
+  const limite = Date.now() - 5 * 60 * 1000;
+  const falhados = todos.filter(i =>
+    !i.confirmadoEm && new Date(i.enviadoEm).getTime() < limite
+  );
+
+  return {
+    confirmados,
+    porConfirmar: todos.filter(i => !i.confirmadoEm).length,
+    falhados,
+  };
+}
+
+/** Reenvia o que não chegou. */
+export async function reenviarFalhados(): Promise<number> {
+  const falhados = getFilaSync().filter(i => !i.confirmadoEm);
+  let n = 0;
+
+  for (const item of falhados) {
+    if (item.tipo === 'ficha') {
+      const f = getFichasProducao().find(x => x.id === item.id);
+      if (f) { enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f }); n += 1; }
+    } else if (item.tipo === 'plano') {
+      const p = getPlanosAula().find(x => x.id === item.id);
+      if (p) { enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }); n += 1; }
+    }
+    registarEnvio(item.id, item.tipo, item.descricao);
+  }
+  return n;
+}
+
+// ============================================================
+// Guardar com confirmação
+// ============================================================
+// O envio não devolve resposta (no-cors), mas a leitura devolve. Este
+// é o gesto explícito: envia, espera, lê do Sheets, e só diz que está
+// guardado quando o encontra lá.
+
+export interface ResultadoGuardar {
+  ok: boolean;
+  confirmados: number;
+  porConfirmar: number;
+  mensagem: string;
+}
+
+/**
+ * Envia o que falta e confirma lendo do Sheets.
+ * @param aoMudarEstado chamado a cada passo, para a interface mostrar
+ */
+export async function guardarNoSheetsComConfirmacao(
+  turmaId: string,
+  aoMudarEstado?: (estado: 'a_enviar' | 'a_confirmar' | 'pronto') => void
+): Promise<ResultadoGuardar> {
+  const pendentes = getFilaSync().filter(i => !i.confirmadoEm);
+
+  if (pendentes.length === 0) {
+    // Mesmo sem pendentes, confirmar — pode haver coisas de outra sessão.
+    aoMudarEstado?.('a_confirmar');
+    const r = await confirmarSincronizacao(turmaId);
+    aoMudarEstado?.('pronto');
+    return {
+      ok: r.porConfirmar === 0,
+      confirmados: r.confirmados,
+      porConfirmar: r.porConfirmar,
+      mensagem: r.porConfirmar === 0
+        ? 'Está tudo guardado no Google Sheets.'
+        : `${r.porConfirmar} ainda por confirmar.`,
+    };
+  }
+
+  aoMudarEstado?.('a_enviar');
+  await reenviarFalhados();
+
+  // O Apps Script demora a escrever. Esperar antes de ler, senão a
+  // confirmação falha só porque chegámos cedo demais.
+  await new Promise(r => setTimeout(r, 2500));
+
+  aoMudarEstado?.('a_confirmar');
+  const r = await confirmarSincronizacao(turmaId);
+  aoMudarEstado?.('pronto');
+
+  return {
+    ok: r.porConfirmar === 0,
+    confirmados: r.confirmados,
+    porConfirmar: r.porConfirmar,
+    mensagem: r.porConfirmar === 0
+      ? `Guardado. ${r.confirmados} ${r.confirmados === 1 ? 'item confirmado' : 'itens confirmados'} no Sheets.`
+      : `${r.confirmados} guardados, ${r.porConfirmar} ainda por chegar. Tenta outra vez dentro de um minuto.`,
+  };
+}
+
+/** Há coisas por guardar? Para o aviso ao fechar o browser. */
+export function haCoisasPorGuardar(): number {
+  return getFilaSync().filter(i => !i.confirmadoEm).length;
+}
+
+/**
+ * Ao voltar à aplicação, reenvia o que ficou pendente da última vez.
+ * Apanha o caso de o professor ter fechado com coisas por guardar.
+ */
+export async function recuperarPendentesAoArrancar(turmaId: string): Promise<number> {
+  const pendentes = getFilaSync().filter(i => !i.confirmadoEm);
+  if (pendentes.length === 0) return 0;
+
+  await reenviarFalhados();
+  await new Promise(r => setTimeout(r, 2500));
+  const r = await confirmarSincronizacao(turmaId);
+  return r.confirmados;
 }

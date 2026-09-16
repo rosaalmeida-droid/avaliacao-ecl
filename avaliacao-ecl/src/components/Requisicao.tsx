@@ -790,22 +790,120 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
             {/* As que já estão escolhidas, para não se perderem ao trocar
                 de separador ou ao procurar. */}
+            {/* As escolhidas, sempre à vista, com as doses ao lado.
+                Antes era só um contador — o professor escolhia fichas,
+                mudava de separador ou pesquisava, e perdia de vista o que
+                já tinha posto. E as doses só se mudavam entrando na linha
+                de cada ficha, no meio de dezenas. */}
             {fichasSel.length > 0 && (
-              <div style={{ background: 'var(--copper-pale)', borderRadius: 10,
-                padding: '10px 12px', marginBottom: 10, fontSize: 13,
-                color: 'var(--copper)', fontWeight: 600 }}>
-                {fichasSel.length} ficha{fichasSel.length > 1 ? 's' : ''} nesta requisição
+              <div style={{ background: 'var(--copper-pale)',
+                border: '1.5px solid var(--copper)', borderRadius: 12,
+                padding: 14, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center',
+                  justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--copper)' }}>
+                    Nesta requisição — {fichasSel.length} ficha{fichasSel.length > 1 ? 's' : ''}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>
+                    {paxEncTotal} doses ao todo
+                  </span>
+                </div>
+
+                {fichasSelecionadas.map(f => (
+                  <div key={f.id} style={{
+                    background: '#fff', borderRadius: 10, padding: '11px 13px',
+                    marginBottom: 7, display: 'flex', alignItems: 'center', gap: 10,
+                    flexWrap: 'wrap',
+                  }}>
+                    <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 600,
+                        color: 'var(--charcoal, #1a1714)' }}>
+                        {f.nomePrato}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)' }}>
+                        ficha para {f.numPorcoes || '?'} doses
+                      </div>
+                    </div>
+
+                    {/* Doses desta requisição — não mexe na ficha. */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5,
+                      flexShrink: 0 }}>
+                      <button
+                        onClick={() => setPaxPorFicha(p => ({
+                          ...p,
+                          [f.id]: Math.max(1, (p[f.id] || parseFloat(f.numPorcoes) || 4) - 1),
+                        }))}
+                        style={{ width: 34, height: 34, borderRadius: 8,
+                          border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+                          fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                          color: 'rgba(26,23,20,0.6)', fontFamily: 'inherit' }}>
+                        −
+                      </button>
+                      <input type="number" min={1}
+                        value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
+                        onChange={e => setPaxPorFicha(p => ({
+                          ...p, [f.id]: Math.max(1, Number(e.target.value) || 1),
+                        }))}
+                        style={{ width: 56, height: 34, textAlign: 'center',
+                          borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
+                          fontSize: 15.5, fontWeight: 700, fontFamily: 'inherit' }} />
+                      <button
+                        onClick={() => setPaxPorFicha(p => ({
+                          ...p,
+                          [f.id]: (p[f.id] || parseFloat(f.numPorcoes) || 4) + 1,
+                        }))}
+                        style={{ width: 34, height: 34, borderRadius: 8,
+                          border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+                          fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                          color: 'rgba(26,23,20,0.6)', fontFamily: 'inherit' }}>
+                        +
+                      </button>
+                    </div>
+
+                    <button onClick={() => toggleFicha(f.id)}
+                      title="Tirar da requisição"
+                      style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                        border: '1px solid rgba(192,57,43,0.3)', background: '#fff',
+                        color: '#C0392B', fontSize: 16, cursor: 'pointer',
+                        fontFamily: 'inherit', lineHeight: 1 }}>
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
             {fichasDisp.map(f => (
               <div key={f.id} style={{ border: `1.5px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'var(--border)'}`, borderRadius: 10, padding: '10px 12px', marginBottom: 6, background: fichasSel.includes(f.id) ? 'var(--copper-pale)' : '#fff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div onClick={() => toggleFicha(f.id)} style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize:13, color: 'white', border: `1.5px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'rgba(26,23,20,0.55)'}`, background: fichasSel.includes(f.id) ? 'var(--copper)' : 'transparent' }}>
-                    {fichasSel.includes(f.id) && 'v'}
+                  {/* Visto a sério em vez da letra "v", e a linha inteira
+                      muda de cor: o professor tem de ver de relance o que
+                      já escolheu no meio de dezenas de fichas. */}
+                  <div onClick={() => toggleFicha(f.id)} style={{
+                    width: 24, height: 24, borderRadius: 7, flexShrink: 0, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: `2px solid ${fichasSel.includes(f.id) ? 'var(--copper)' : 'rgba(26,23,20,0.25)'}`,
+                    background: fichasSel.includes(f.id) ? 'var(--copper)' : 'transparent',
+                  }}>
+                    {fichasSel.includes(f.id) && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff"
+                        strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    )}
                   </div>
-                  <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => toggleFicha(f.id)}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{f.nomePrato}</div>
-                    <div style={S.muted}>{f.classificacao} · receita base: {f.numPorcoes} doses</div>
+                  <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => toggleFicha(f.id)}>
+                    <div style={{ fontWeight: fichasSel.includes(f.id) ? 700 : 600, fontSize: 14,
+                      color: fichasSel.includes(f.id) ? 'var(--copper)' : 'inherit' }}>
+                      {f.nomePrato}
+                    </div>
+                    <div style={S.muted}>
+                      {f.classificacao} · receita base: {f.numPorcoes} doses
+                      {fichasSel.includes(f.id) && (
+                        <b style={{ color: 'var(--copper)' }}>
+                          {' '}· {paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4} nesta requisição
+                        </b>
+                      )}
+                    </div>
                   </div>
                   <button onClick={e => { e.stopPropagation(); setFichaDetalhe(f); }}
                     style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(26,23,20,0.15)',
