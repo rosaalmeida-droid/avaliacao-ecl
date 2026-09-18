@@ -33,7 +33,7 @@ const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/a/macros/eclisboa.net
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
 // modelo com ingredientes, preços, turma, data, formador, responsável e atividade.
-export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
+export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbz7g1xOC8gg23zI-wbE5ttAIHVj0l7GQrGkhSudCRvJqvgL5OK3bsBRmOSu4nNsEpR4aA/exec';
 // ID do Google Sheets da Requisição — para abrir directamente após o envio
 export const SHEETS_REQUISICAO_ID = ''; // preencher quando confirmado
 
@@ -4274,4 +4274,57 @@ export async function recuperarPendentesAoArrancar(turmaId: string): Promise<num
   await new Promise(r => setTimeout(r, 2500));
   const r = await confirmarSincronizacao(turmaId);
   return r.confirmados;
+}
+
+// ============================================================
+// Numeração de requisições e orçamentos
+// ============================================================
+// Cada documento precisa de um número próprio, para se identificar numa
+// conversa, num email ou no economato.
+//
+//   R01, R02…  requisições feitas fora de um plano de aula
+//   O01, O02…  orçamentos
+//
+// Uma requisição DENTRO de um plano não leva número próprio: identifica-se
+// pelo plano a que pertence ("Plano de Aula 3 de 8").
+
+/** Próximo número livre para o prefixo dado. */
+function proximoNumero(prefixo: 'R' | 'O'): string {
+  const todas = getRequisicoes();
+  const usados = todas
+    .map(r => (r as any).numero as string | undefined)
+    .filter((n): n is string => !!n && n.startsWith(prefixo))
+    .map(n => parseInt(n.slice(1), 10))
+    .filter(n => !isNaN(n));
+  const proximo = usados.length ? Math.max(...usados) + 1 : 1;
+  return prefixo + String(proximo).padStart(2, '0');
+}
+
+/** Número para uma requisição nova. Sem plano é orçamento. */
+export function numeroParaDocumento(temPlano: boolean, ehOrcamento?: boolean): string {
+  if (temPlano) return '';
+  return proximoNumero(ehOrcamento ? 'O' : 'R');
+}
+
+/** Como o documento se identifica: número próprio ou o plano a que pertence. */
+export function rotuloDocumento(req: any): string {
+  if (req?.numero) return req.numero;
+  if (req?.planoAulaId) {
+    const plano = getPlanosAula().find(p => p.id === req.planoAulaId);
+    if (plano) {
+      const mesmaUC = getPlanosAula()
+        .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId)
+        .sort((a, b) => String(a.data).localeCompare(String(b.data)));
+      const pos = mesmaUC.findIndex(p => p.id === plano.id) + 1;
+      return `Aula ${pos} de ${mesmaUC.length}`;
+    }
+  }
+  return '—';
+}
+
+/** Requisições e orçamentos, do mais recente para o mais antigo. */
+export function historicoDocumentos(turmaId?: string): any[] {
+  return getRequisicoes()
+    .filter(r => !turmaId || r.turmaId === turmaId)
+    .sort((a, b) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')));
 }
