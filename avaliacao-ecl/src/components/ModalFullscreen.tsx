@@ -26,6 +26,7 @@ export function ModalFullscreen({
   children,
   corDestaque = 'var(--copper, #b5651d)',
   largura = '1100px',
+  menuLateral,
 }: {
   titulo: string;
   subtitulo?: string;
@@ -33,6 +34,10 @@ export function ModalFullscreen({
   children: React.ReactNode;
   corDestaque?: string;
   largura?: string;
+  /** Menu do plano, à esquerda. Enquanto se está dentro de um plano, é
+   *  ele que manda — o professor tem de ver a toda a hora em que plano
+   *  está e que tudo o que cria fica lá dentro. */
+  menuLateral?: React.ReactNode;
 }) {
   // Fechar com Esc
   useEffect(() => {
@@ -105,9 +110,19 @@ export function ModalFullscreen({
           </button>
         </div>
 
-        {/* Conteúdo — scroll interno próprio */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-          {children}
+        {/* Conteúdo — com o menu do plano à esquerda, quando existe */}
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          {menuLateral && (
+            <div style={{
+              width: 196, flexShrink: 0, overflowY: 'auto',
+              background: '#7B2233', color: '#fff',
+            }}>
+              {menuLateral}
+            </div>
+          )}
+          <div style={{ flex: 1, overflowY: 'auto', padding: 24, minWidth: 0 }}>
+            {children}
+          </div>
         </div>
 
         {/* Rodapé — indicação de que fechar grava */}
