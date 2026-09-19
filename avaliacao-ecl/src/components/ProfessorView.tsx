@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom , recuperarFichasDoSheets, recuperarFichasDeTodoOLado } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom , recuperarFichasDoSheets, recuperarFichasDeTodoOLado, fichasDuplicadas, limparFichasDuplicadas } from '../backend';
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
@@ -2606,7 +2606,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
       <div className="no-print" style={{ background: 'var(--guia)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
         <div style={{ fontWeight: 700, fontSize: 16, color: 'white' }}>📚 Guia de Apoio à Produção</div>
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>{nomePrato}</div>
-        <EtiquetaLigacaoPlano planoAulaId={(fichaAlvo as any)?.planoAulaId} />
+        <EtiquetaLigacaoPlano planoAulaId={(fichaAlvo as any)?.planoAulaId} fichaId={fichaAlvo?.id} />
       </div>
 
       <Card>
@@ -2936,11 +2936,21 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   // ── BIBLIOTECA ────────────────────────────────────────────
   if (vista === 'biblioteca') {
     // Por defeito, só mostrar fichas associadas a ESTE plano específico
+    // Só as fichas REALMENTE associadas a este plano.
+    //
+    // O filtro tinha "|| !fPlanoId" — ou seja, incluía também todas as
+    // fichas sem plano. Como a maioria das fichas da biblioteca não tem
+    // plano associado, apareciam todas em todos os planos: 81 fichas num
+    // plano que tinha duas, cada uma marcada "Solta (sem plano)" mesmo a
+    // aparecer em "Deste plano".
+    //
+    // A associação é dupla: a ficha aponta para o plano (planoAulaId) ou
+    // o plano aponta para a ficha (fichasIds). Basta uma das duas.
     const fichasDoPlano = planoId
       ? fichasGuardadas.filter(f => {
-          const fPlanoId = (f as any).planoAulaId;
-          // Incluir fichas associadas a este plano OU sem plano (criadas directamente)
-          return fPlanoId === planoId || !fPlanoId;
+          if ((f as any).planoAulaId === planoId) return true;
+          const plano = getPlanosAula().find(p => p.id === planoId);
+          return !!plano?.fichasIds?.includes(f.id);
         })
       : fichasGuardadas;
     const fichasParaMostrar = mostrarBibliotecaCompleta ? fichasGuardadas : fichasDoPlano;
@@ -2992,6 +3002,40 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             <strong>UC activa:</strong> {ucId} — {ucNome}
           </div>
         )}
+
+        {/* Fichas repetidas — a mesma várias vezes na biblioteca. */}
+        {(() => {
+          const dup = fichasDuplicadas();
+          if (!dup.length) return null;
+          const total = dup.reduce((s, g) => s + g.fichas.length - 1, 0);
+          return (
+            <div style={{ background:'var(--copper-pale)', border:'1px solid var(--copper)',
+              borderRadius:12, padding:14, marginBottom:12 }}>
+              <div style={{ fontSize:14.5, fontWeight:700, color:'var(--copper)' }}>
+                {total} ficha{total > 1 ? 's' : ''} repetida{total > 1 ? 's' : ''}
+              </div>
+              <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:4,
+                lineHeight:1.55 }}>
+                {dup.slice(0, 4).map(g => `${g.nome} (${g.fichas.length}×)`).join(' · ')}
+                {dup.length > 4 && ` e mais ${dup.length - 4}`}
+                <br />
+                Fica a mais completa de cada uma. Os planos que usavam as
+                outras passam a apontar para essa.
+              </div>
+              <button
+                onClick={() => {
+                  const r = limparFichasDuplicadas();
+                  alert(`Apagadas ${r.apagadas} cópias. Ficaram ${r.mantidas} fichas.`);
+                  recarregar();
+                }}
+                style={{ marginTop:11, padding:'10px 16px', borderRadius:10, border:'none',
+                  background:'var(--copper)', color:'#fff', fontSize:14, fontWeight:700,
+                  cursor:'pointer', fontFamily:'inherit' }}>
+                Juntar as repetidas
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Fichas que perderam o conteúdo — e como as recuperar. */}
         {incompletas.length > 0 && (
@@ -3139,10 +3183,16 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             setVista('editar');
             setPasso('ficha');
             setFichaEmEdicaoId(f.id);
-            // Associar ao plano actual se ainda não estiver
-            if (planoId && f.planoAulaId !== planoId) {
-              addOrUpdateFichaProducao({ ...f, planoAulaId: planoId, atualizadoEm: new Date().toISOString() });
-              // Também adicionar ao fichasIds do plano
+            // Associar ao plano — mexendo SÓ no plano, nunca na ficha.
+            //
+            // Antes isto gravava também a ficha, e a gravação envia-a para
+            // o Sheets. Bastava abrir uma ficha para a versão que estava na
+            // aplicação ir por cima da do Sheets — e se a da aplicação
+            // estivesse vazia, destruía a boa.
+            //
+            // Para ligar uma ficha a um plano basta o plano guardar o id
+            // dela. A ficha não precisa de ser tocada.
+            if (planoId) {
               const planos = getPlanosAula();
               const plano = planos.find(p => p.id === planoId);
               if (plano && !plano.fichasIds.includes(f.id)) {
@@ -3178,7 +3228,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                   {f.classificacao} · {f.ingredientes?.length || 0} ingredientes · {f.numPorcoes} porções
                 </div>
                 {(f.ucsAssociadas || []).length > 0 && <div style={{ fontSize:13, color:'var(--copper)' }}>{(f.ucsAssociadas || [])[0]}</div>}
-                <EtiquetaLigacaoPlano planoAulaId={f.planoAulaId} />
+                <EtiquetaLigacaoPlano planoAulaId={f.planoAulaId} fichaId={f.id} />
               </div>
               <span className="stamp">Ver / Editar</span>
               <button onClick={(e) => {
