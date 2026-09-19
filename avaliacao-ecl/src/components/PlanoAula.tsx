@@ -100,7 +100,14 @@ function getEventosDaTurma(turmaId: string) {
 }
 
 // ── Calendário mensal ─────────────────────────────────────────────────────
-function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: TPlanoAula[]; onAbrirPlano: (p: TPlanoAula) => void; onPlanoEliminado?: () => void }) {
+function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turmaId, onCriarNoDia }: {
+  planos: TPlanoAula[];
+  onAbrirPlano: (p: TPlanoAula) => void;
+  onPlanoEliminado?: () => void;
+  turmaId?: string;
+  /** Criar um plano para este dia, com a data já preenchida. */
+  onCriarNoDia?: (dataISO: string) => void;
+}) {
   const hoje = new Date();
   const [modoVista, setModoVista] = useState<'semana' | 'mes' | '2meses'>('mes');
   const [dataReferencia, setDataReferencia] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
@@ -300,8 +307,42 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado }: { planos: 
               </div>
             )}
             {planosDoDia.length === 0 && (
-              <div style={{ padding: '20px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)', fontSize: 13 }}>
-                Sem aulas planeadas neste dia.
+              /* Sem aulas — mas com forma de criar uma, ali mesmo.
+                 Antes só dizia "Sem aulas planeadas" e o professor tinha
+                 de ir procurar o botão de criar noutro sítio, e depois
+                 escrever a data à mão. */
+              <div style={{ padding: '16px 14px', textAlign: 'center' }}>
+                <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.5)', marginBottom: 4 }}>
+                  Sem aulas planeadas neste dia.
+                </div>
+                {(() => {
+                  // A unidade sai do cronograma, pela data escolhida — o
+                  // professor não tem de a procurar, mas pode trocá-la
+                  // depois no formulário.
+                  const iso = diaSelecionado
+                    ? `${diaSelecionado.getFullYear()}-${String(diaSelecionado.getMonth()+1).padStart(2,'0')}-${String(diaSelecionado.getDate()).padStart(2,'0')}`
+                    : '';
+                  const ativos = (iso && turmaId) ? modulosAtivos(turmaId, iso) : [];
+                  const emCurso = [...ativos].sort((a: any, b: any) =>
+                    String(a.dataFim).localeCompare(String(b.dataFim)))[0];
+
+                  return (
+                    <>
+                      {emCurso && (
+                        <div style={{ fontSize: 13, color: 'var(--copper)', marginBottom: 12 }}>
+                          Unidade em curso nesta data: <b>{emCurso.id}</b>
+                        </div>
+                      )}
+                      {onCriarNoDia && <button
+                        onClick={() => onCriarNoDia(iso)}
+                        style={{ padding: '12px 20px', borderRadius: 10, border: 'none',
+                          background: 'var(--copper)', color: '#fff', fontSize: 14.5,
+                          fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        + Criar plano para este dia
+                      </button>}
+                    </>
+                  );
+                })()}
               </div>
             )}
             {planosDoDia.map(p => {
@@ -457,6 +498,8 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   onPlanoIdInicialUsado?: () => void;
 }) {
   const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>('calendario');
+  /** Data escolhida no calendário — entra já preenchida no formulário. */
+  const [dataNovoPlano, setDataNovoPlano] = useState<string>('');
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
 
   React.useEffect(() => {
@@ -474,7 +517,11 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   const [planosSelecionadosIds, setPlanosSelecionadosIds] = useState<Set<string>>(new Set());
   const planos = getPlanosAulaPorTurma(turmaId);
 
-  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor} onConcluido={p => { onGuardado?.(p); }} onVoltar={()=>setVista('lista')} onAlteracao={onAlteracao} onGuardado={onGuardado} />;
+  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor}
+    dataInicial={dataNovoPlano || undefined}
+    onConcluido={p => { setDataNovoPlano(''); onGuardado?.(p); }}
+    onVoltar={()=>{ setDataNovoPlano(''); setVista('calendario'); }}
+    onAlteracao={onAlteracao} onGuardado={onGuardado} />;
 
   // DetalhePlano unificado — usar VistaDePlano via onGuardado
   if (vista==='detalhe' && planoAtivo) { onGuardado?.(planoAtivo); return null; }
@@ -491,7 +538,10 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
         <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
       </div>
       <div style={{ maxWidth: 420 }}>
-        <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)} onPlanoEliminado={() => setRefreshKey(k => k + 1)} key={refreshKey} />
+        <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)}
+          onPlanoEliminado={() => setRefreshKey(k => k + 1)} key={refreshKey}
+          turmaId={turmaId}
+          onCriarNoDia={(iso) => { setDataNovoPlano(iso); setVista('criar'); }} />
       </div>
     </div>
   );
@@ -643,12 +693,14 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   );
 }
 
-function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado }: {
+function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado, dataInicial }: {
   turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void;
   onVoltar:()=>void; onAlteracao?:(guardar?:()=>void)=>void; onGuardado?:()=>void;
+  /** Data vinda do calendário. Sem ela, começa em hoje. */
+  dataInicial?: string;
 }) {
   const [dados, setDados] = useState({
-    data: new Date().toISOString().split('T')[0],
+    data: dataInicial || new Date().toISOString().split('T')[0],
     horaInicio: '08:30',
     horaFim: '17:30',
     ucId: '',
