@@ -16,6 +16,7 @@ import { CoordenadoraView } from './components/CoordenadoraView';
 import PlanoAula from './components/PlanoAula';
 import { ModalFullscreen } from './components/ModalFullscreen';
 import { VistaDePlano } from './components/VistaDePlano';
+import { MenuDoPlano } from './components/MenuDoPlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { MomentosAvaliacao } from './components/MomentosAvaliacao';
 import Requisicao from './components/Requisicao';
@@ -114,7 +115,9 @@ import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
 import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
 import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
-  getPlanosAulaPorTurma, getSelecoes, getValidacoes } from './backend';
+  getPlanosAulaPorTurma, getSelecoes, getValidacoes,
+  getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
+  estadoDaTurmaNaAula, addOrUpdatePlanoAula } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -141,6 +144,10 @@ function AppInterno() {
   const [turmaId, setTurmaId] = useState<string>('1º ACP');
   const [nomeProfessor, setNomeProfessor] = useState<string>('');
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
+  /** Onde o professor está dentro do plano — para o menu se marcar. */
+  const [moduloPlano, setModuloPlano] = useState<string>('inicio');
+  /** O menu pede para ir a um sítio; a vista obedece e limpa o pedido. */
+  const [moduloPedido, setModuloPedido] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   // 'inicio' é o painel de blocos; os outros valores são os destinos.
@@ -293,24 +300,70 @@ function AppInterno() {
         {/* Conteúdo da vista activa — o plano aberto passa a mostrar-se
             num modal quase-fullscreen por cima do calendário, em vez de
             substituir o ecrã todo. O calendário/lista continua por trás. */}
-        {planoAberto && (
-          <ModalFullscreen
-            titulo={planoAberto.titulo || 'Plano de Aula'}
-            subtitulo={turmaId}
-            onFechar={fecharPlano}
-          >
-            <VistaDePlano
-              key={refreshKey}
-              plano={planoAberto}
-              turmaId={turmaId}
-              nomeProfessor={nomeProfessor}
-              onVoltar={fecharPlano}
-              onPlanoActualizado={(p: any) => setPlanoAberto(p)}
-              onAlteracao={registarAlteracao}
-              onGuardado={limparAlteracoes}
-            />
-          </ModalFullscreen>
-        )}
+        {planoAberto && (() => {
+          // Tudo o que o menu do plano precisa de saber. Lido aqui, não
+          // calculado de novo: são as mesmas funções que o resto usa.
+          const fichasDoPlano = getFichasProducao()
+            .filter((f: any) => (planoAberto.fichasIds || []).includes(f.id));
+          const req = getRequisicaoPorPlano(planoAberto.id);
+
+          // "Plano 3 de 5" — a posição dentro da unidade.
+          const mesmaUC = getPlanosAulaPorTurma(turmaId)
+            .filter((p: any) => p.ucId === planoAberto.ucId && p.estado !== 'arquivado')
+            .sort((a: any, b: any) => String(a.data).localeCompare(String(b.data)));
+          const posicao = mesmaUC.findIndex((p: any) => p.id === planoAberto.id) + 1;
+
+          const sessao = getSessaoAula(planoAberto.id);
+          const alunosNaAula = sessao?.abertaEm
+            ? (() => {
+                const est = estadoDaTurmaNaAula(planoAberto.id, turmaId);
+                return `${est.filter((e: any) => e.entrou).length}/${est.length}`;
+              })()
+            : undefined;
+
+          return (
+            <ModalFullscreen
+              titulo={planoAberto.titulo || 'Plano de Aula'}
+              subtitulo={turmaId}
+              onFechar={fecharPlano}
+              menuLateral={
+                <MenuDoPlano
+                  plano={planoAberto}
+                  fichas={fichasDoPlano}
+                  temRequisicao={!!req}
+                  numeroRequisicao={(req as any)?.numero}
+                  totalCompetencias={(planoAberto as any).competenciasIds?.length
+                    || (planoAberto as any).compAdicionadas?.length || 0}
+                  posicao={posicao > 0 ? posicao : undefined}
+                  totalPlanos={mesmaUC.length || undefined}
+                  moduloActivo={moduloPlano as any}
+                  aoIrPara={(m) => setModuloPedido(m)}
+                  aoSair={fecharPlano}
+                  alunosNaAula={alunosNaAula}
+                  aoPublicar={planoAberto.estado !== 'publicado' ? () => {
+                    const p = { ...planoAberto, estado: 'publicado' as const,
+                      atualizadoEm: new Date().toISOString() };
+                    addOrUpdatePlanoAula(p);
+                    setPlanoAberto(p);
+                  } : undefined}
+                />
+              }
+            >
+              <VistaDePlano
+                key={refreshKey}
+                plano={planoAberto}
+                turmaId={turmaId}
+                nomeProfessor={nomeProfessor}
+                onVoltar={fecharPlano}
+                onPlanoActualizado={(p: any) => setPlanoAberto(p)}
+                onAlteracao={registarAlteracao}
+                onGuardado={limparAlteracoes}
+                aoMudarModulo={(m) => { setModuloPlano(m); setModuloPedido(null); }}
+                moduloPedido={moduloPedido}
+              />
+            </ModalFullscreen>
+          );
+        })()}
         <>
           {vistaGlobal === 'inicio' && (() => {
             // A unidade em curso sai do cronograma, pela data de hoje —
