@@ -75,6 +75,7 @@ const Icons = {
   sair:       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
   chef:       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>,
   chevron:    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>,
+  inicio:     <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
   sync:       <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>,
 };
 
@@ -82,6 +83,9 @@ const Icons = {
 interface NavItem { id: VistaProf; label: string; icon: JSX.Element; secao: string }
 
 const NAV: NavItem[] = [
+  // Sem isto não havia como voltar ao painel: abria-se uma secção e
+  // ficava-se lá, sem caminho de regresso.
+  { id: 'inicio',              label: 'Início',               icon: Icons.inicio,      secao: 'Dia a dia' },
   // ── DIA A DIA ──────────────────────────────────────────
   { id: 'planos',              label: 'Planos de Aula',       icon: Icons.planos,      secao: 'Dia a dia' },
   { id: 'eventos',             label: 'Eventos',              icon: Icons.eventos,     secao: 'Dia a dia' },
@@ -366,8 +370,21 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
               subtitulo={itemAtivo?.label}
             />
 
-            {/* Banner da secção activa */}
+            {/* Banner da secção activa, com caminho de volta */}
             <div style={{ padding: '20px 28px 0' }}>
+              {vistaAtiva !== 'inicio' && (
+                <button onClick={() => onNavegar('inicio')} style={{
+                  display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12,
+                  background: 'transparent', border: 'none', padding: '4px 0',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5,
+                  fontWeight: 600, color: MUTED,
+                }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"
+                    strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                  Início
+                </button>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: PRIMARY + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', color: PRIMARY }}>
                   {itemAtivo?.icon}
