@@ -395,7 +395,17 @@ function FichaSelector({ todasFichas, fichasSel, onChange }: {
               </div>
               <div style={{flex:1}}>
                 <div style={{fontWeight:600,fontSize:13}}>{f.nomePrato}</div>
-                <div className="muted" style={{fontSize:13}}>{f.classificacao} · {f.numPorcoes} doses{f.data?' · '+f.data:''}</div>
+                {/* A data vinha em bruto do armazenamento —
+                    "2026-06-18T23:00:00.000Z" na lista das fichas. */}
+                <div className="muted" style={{fontSize:13.5}}>
+                  {f.classificacao} · {f.numPorcoes} doses
+                  {f.data && ` · ${(() => {
+                    const d = new Date(String(f.data).slice(0, 10) + 'T00:00:00');
+                    return isNaN(d.getTime())
+                      ? String(f.data).slice(0, 10)
+                      : d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
+                  })()}`}
+                </div>
               </div>
               {f.ucsAssociadas?.length>0&&<span style={{fontSize:13,color:'var(--copper)',fontWeight:600}}>{f.ucsAssociadas[0]}</span>}
             </div>

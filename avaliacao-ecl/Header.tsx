@@ -83,7 +83,6 @@ const Icons = {
 interface NavItem { id: VistaProf; label: string; icon: JSX.Element; secao: string }
 
 const NAV: NavItem[] = [
-  // ── INÍCIO ─────────────────────────────────────────────
   // Sem isto não havia como voltar ao painel: abria-se uma secção e
   // ficava-se lá, sem caminho de regresso.
   { id: 'inicio',              label: 'Início',               icon: Icons.inicio,      secao: 'Dia a dia' },
@@ -247,15 +246,13 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
 }
 
 // ── Topbar ─────────────────────────────────────────────────────
-function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, subtitulo, onNavegar }: {
+function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, subtitulo }: {
   nomeProfessor?: string;
   syncStatus?: 'idle' | 'syncing' | 'ok' | 'offline';
   onAtualizar?: () => void;
   onAbrirMenu: () => void;
   perfil: Perfil;
   subtitulo?: string;
-  /** Leva ao painel ao carregar no logótipo ou no título. */
-  onNavegar?: (v: VistaProf) => void;
 }) {
   const syncInfo = syncStatus === 'syncing' ? { cor: '#F6A623', txt: 'A sincronizar' }
     : syncStatus === 'ok'      ? { cor: ACCENT,    txt: 'Guardado' }
@@ -280,27 +277,16 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, s
         {Icons.menu}
       </button>
 
-      {/* O logótipo e o título levam ao painel. É onde as pessoas
-          carregam por instinto para voltar ao início. */}
-      <button
-        onClick={() => onNavegar?.('inicio')}
-        title="Voltar ao início"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0,
-          background: 'transparent', border: 'none', padding: 0,
-          cursor: onNavegar ? 'pointer' : 'default', fontFamily: 'inherit',
-          textAlign: 'left',
-        }}>
-        <img src={logoEcl} alt="ECL" style={{ height: 30, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontWeight: 700, fontSize: 15, color: FG, fontFamily: "'Nunito', 'DM Sans', sans-serif", lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {subtitulo || 'Avaliação ECL'}
-          </span>
-          <span style={{ display: 'block', fontSize: 12.5, color: MUTED, marginTop: 1 }}>
-            {perfilLabel[perfil]}{nomeProfessor ? ` · ${nomeProfessor}` : ''}
-          </span>
-        </span>
-      </button>
+      <img src={logoEcl} alt="ECL" style={{ height: 30, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: FG, fontFamily: "'Nunito', 'DM Sans', sans-serif", lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {subtitulo || 'Avaliação ECL'}
+        </div>
+        <div style={{ fontSize: 12.5, color: MUTED, marginTop: 1 }}>
+          {perfilLabel[perfil]}{nomeProfessor ? ` · ${nomeProfessor}` : ''}
+        </div>
+      </div>
 
       {syncInfo && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '4px 10px', borderRadius: 20, background: syncInfo.cor + '15' }}>
@@ -382,10 +368,9 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
               onAtualizar={onAtualizar}
               onAbrirMenu={() => setSidebarAberta(s => !s)}
               subtitulo={itemAtivo?.label}
-              onNavegar={onNavegar}
             />
 
-            {/* Banner da secção activa, com caminho de volta ao painel */}
+            {/* Banner da secção activa, com caminho de volta */}
             <div style={{ padding: '20px 28px 0' }}>
               {vistaAtiva !== 'inicio' && (
                 <button onClick={() => onNavegar('inicio')} style={{

@@ -33,7 +33,7 @@ const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/a/macros/eclisboa.net
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
 // modelo com ingredientes, preços, turma, data, formador, responsável e atividade.
-export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
+export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbz7g1xOC8gg23zI-wbE5ttAIHVj0l7GQrGkhSudCRvJqvgL5OK3bsBRmOSu4nNsEpR4aA/exec';
 // ID do Google Sheets da Requisição — para abrir directamente após o envio
 export const SHEETS_REQUISICAO_ID = ''; // preencher quando confirmado
 
@@ -1555,13 +1555,58 @@ function guardarVersaoAnterior(f: FichaProducao): void {
 }
 
 export function addOrUpdateFichaProducao(f: FichaProducao): void {
-  guardarVersaoAnterior(f);
   const all = getFichasProducao();
   const idx = all.findIndex(x => x.id === f.id);
+  const anterior = idx >= 0 ? all[idx] : undefined;
+
+  // ── TRAVA: uma ficha vazia nunca apaga uma que tem conteúdo ──
+  //
+  // Uma ficha podia estar vazia na aplicação (do bug antigo de leitura do
+  // Sheets) e completa no Sheets. Bastava associá-la a um plano para a
+  // aplicação a gravar — e a versão vazia ia por cima da boa, destruindo
+  // no Sheets o que lá estava.
+  //
+  // Aqui, se o que vai ser gravado perde conteúdo em relação ao que já
+  // existe, recupera-se o que se ia perder em vez de o deitar fora.
+  let paraGravar = f;
+  if (anterior) {
+    const perdeIngredientes = !!anterior.ingredientes?.length && !f.ingredientes?.length;
+    const perdePreparacao   = !!anterior.preparacao?.length   && !f.preparacao?.length;
+    const perdeGuiao = !!(anterior as any).textoGuia && !(f as any).textoGuia;
+
+    if (perdeIngredientes || perdePreparacao || perdeGuiao) {
+      paraGravar = {
+        ...f,
+        ingredientes: perdeIngredientes ? anterior.ingredientes : f.ingredientes,
+        preparacao:   perdePreparacao   ? anterior.preparacao   : f.preparacao,
+        ...(perdeGuiao ? { textoGuia: (anterior as any).textoGuia } : {}),
+      } as FichaProducao;
+    }
+  }
+
+  guardarVersaoAnterior(paraGravar);
+  if (idx >= 0) all[idx] = paraGravar; else all.push(paraGravar);
+  save(KEYS.fichas, all);
+
+  // Nunca enviar uma ficha sem conteúdo nenhum para o Sheets: se lá
+  // estiver a versão boa, seria apagada.
+  const temConteudo = !!paraGravar.ingredientes?.length
+    || !!paraGravar.preparacao?.length;
+  if (temConteudo) {
+    enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: paraGravar });
+    registarEnvio(paraGravar.id, 'ficha', paraGravar.nomePrato || 'Ficha sem nome');
+  }
+}
+
+/** Grava a ficha tal como está, mesmo vazia. Só para quando o professor
+ *  apaga o conteúdo de propósito no editor. */
+export function guardarFichaMesmoVazia(f: FichaProducao): void {
+  const all = getFichasProducao();
+  const idx = all.findIndex(x => x.id === f.id);
+  guardarVersaoAnterior(f);
   if (idx >= 0) all[idx] = f; else all.push(f);
   save(KEYS.fichas, all);
   enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f });
-  // Registar para confirmar depois: o envio não devolve resposta.
   registarEnvio(f.id, 'ficha', f.nomePrato || 'Ficha sem nome');
 }
 
@@ -4327,4 +4372,89 @@ export function historicoDocumentos(turmaId?: string): any[] {
   return getRequisicoes()
     .filter(r => !turmaId || r.turmaId === turmaId)
     .sort((a, b) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')));
+}
+
+// ============================================================
+// Fichas duplicadas
+// ============================================================
+// A mesma ficha aparece duas ou três vezes na biblioteca, com o mesmo
+// nome, as mesmas porções e a mesma data. Acontece quando a mesma ficha
+// chega do Sheets com um id diferente do que já cá está — por exemplo
+// depois de ser gravada em dois aparelhos.
+
+export interface GrupoDuplicado {
+  nome: string;
+  fichas: FichaProducao[];
+  /** A que vale a pena guardar: a mais completa, e entre iguais a mais recente. */
+  melhor: FichaProducao;
+}
+
+/** Fichas que parecem ser a mesma. */
+export function fichasDuplicadas(): GrupoDuplicado[] {
+  const porChave = new Map<string, FichaProducao[]>();
+
+  getFichasProducao().forEach(f => {
+    const nome = (f.nomePrato || '').trim().toLowerCase();
+    if (!nome) return;
+    // Nome + porções: duas fichas com o mesmo nome mas doses diferentes
+    // podem ser versões legítimas.
+    const chave = `${nome}|${f.numPorcoes || ''}`;
+    porChave.set(chave, [...(porChave.get(chave) || []), f]);
+  });
+
+  const grupos: GrupoDuplicado[] = [];
+  porChave.forEach(fichas => {
+    if (fichas.length < 2) return;
+
+    // A melhor é a que tem mais conteúdo; em caso de empate, a mais recente.
+    const melhor = [...fichas].sort((a, b) => {
+      const pesoA = (a.ingredientes?.length || 0) + (a.preparacao?.length || 0)
+        + ((a as any).textoGuia ? 10 : 0);
+      const pesoB = (b.ingredientes?.length || 0) + (b.preparacao?.length || 0)
+        + ((b as any).textoGuia ? 10 : 0);
+      if (pesoA !== pesoB) return pesoB - pesoA;
+      return String(b.criadoEm || '').localeCompare(String(a.criadoEm || ''));
+    })[0];
+
+    grupos.push({ nome: fichas[0].nomePrato || '', fichas, melhor });
+  });
+
+  return grupos.sort((a, b) => b.fichas.length - a.fichas.length);
+}
+
+/**
+ * Apaga as cópias, ficando com a melhor de cada grupo.
+ *
+ * Os planos que apontavam para uma cópia passam a apontar para a que
+ * fica — senão perderiam a ficha.
+ */
+export function limparFichasDuplicadas(): { apagadas: number; mantidas: number } {
+  const grupos = fichasDuplicadas();
+  if (!grupos.length) return { apagadas: 0, mantidas: 0 };
+
+  const aApagar = new Set<string>();
+  const substituir = new Map<string, string>();   // id antigo → id que fica
+
+  grupos.forEach(g => {
+    g.fichas.forEach(f => {
+      if (f.id !== g.melhor.id) {
+        aApagar.add(f.id);
+        substituir.set(f.id, g.melhor.id);
+      }
+    });
+  });
+
+  // Redirigir os planos antes de apagar.
+  const planos = getPlanosAula().map(p => {
+    if (!p.fichasIds?.some(id => substituir.has(id))) return p;
+    const novos = p.fichasIds.map(id => substituir.get(id) || id);
+    // Sem repetidos, caso o plano já tivesse as duas versões.
+    return { ...p, fichasIds: [...new Set(novos)] };
+  });
+  save(KEYS.planos, planos);
+
+  const ficam = getFichasProducao().filter(f => !aApagar.has(f.id));
+  save(KEYS.fichas, ficam);
+
+  return { apagadas: aApagar.size, mantidas: grupos.length };
 }
