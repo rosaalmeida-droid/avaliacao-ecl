@@ -418,8 +418,24 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
 }
 
 // ════════════════════════════════════════════════════════════════
-export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoActualizado, onAlteracao, onGuardado }: Props) {
+export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoActualizado, onAlteracao, onGuardado, aoMudarModulo, moduloPedido }: Props & {
+  /** Avisa o pai de onde estamos, para o menu do plano se marcar. */
+  aoMudarModulo?: (m: string) => void;
+  /** O pai pede para ir a um módulo — é assim que o menu navega. */
+  moduloPedido?: string | null;
+}) {
   const [modulo, setModulo] = useState<Modulo>('inicio');
+
+  // Manter o menu do plano a par de onde estamos, e obedecer-lhe quando
+  // ele pede para ir a outro sítio. A lógica de cada módulo não muda.
+  React.useEffect(() => { aoMudarModulo?.(modulo); }, [modulo]);
+  React.useEffect(() => {
+    if (!moduloPedido) return;
+    if (moduloPedido === 'turma') { setModulo('inicio'); setTabInicio('turma'); }
+    else if (moduloPedido === 'competencias') { setModulo('inicio'); setTabInicio('competencias'); }
+    else if (moduloPedido === 'inicio') { setModulo('inicio'); setTabInicio('resumo'); }
+    else setModulo(moduloPedido as Modulo);
+  }, [moduloPedido]);
   const [incluirSubApp, setIncluirSubApp] = useState(true);
   /** Ficha que está a ser editada; null = criar nova. */
   const [fichaEmEdicao, setFichaEmEdicao] = useState<string | null>(null);

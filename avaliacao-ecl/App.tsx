@@ -8,7 +8,6 @@ import { ManuaisAluno } from './components/ManuaisAluno';
 import { Header, LayoutProfessor, VistaProf } from './components/Header';
 import { PainelProfessor } from './components/PainelProfessor';
 import { EstadoSincronizacao } from './components/EstadoSincronizacao';
-import { HistoricoRequisicoes } from './components/HistoricoRequisicoes';
 import { modulosAtivos } from './cronograma';
 import ProfessorView from './components/ProfessorView';
 import { AlunoView } from './components/AlunoView';
@@ -17,6 +16,7 @@ import { CoordenadoraView } from './components/CoordenadoraView';
 import PlanoAula from './components/PlanoAula';
 import { ModalFullscreen } from './components/ModalFullscreen';
 import { VistaDePlano } from './components/VistaDePlano';
+import { MenuDoPlano } from './components/MenuDoPlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { MomentosAvaliacao } from './components/MomentosAvaliacao';
 import Requisicao from './components/Requisicao';
@@ -26,13 +26,7 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
   turmaId: string; nomeProfessor: string;
   onAlteracao: () => void; onGuardado: () => void;
 }) {
-  // Começa em 'requisicoes': quem entra nos Orçamentos vem criar um,
-  // não vem ver fichas.
-  const [tab, setTab] = React.useState<'fichas' | 'requisicoes' | 'historico'>('requisicoes');
-  /** Marca que o professor veio da requisição criar uma ficha. */
-  const [veioDaRequisicao, setVeioDaRequisicao] = React.useState(false);
-  /** Documento do histórico que o professor quer reabrir. */
-  const [reqAberta, setReqAberta] = React.useState<string | null>(null);
+  const [tab, setTab] = React.useState<'fichas' | 'requisicoes'>('fichas');
   return (
     <div>
       <div style={{ background: '#fff7ed', borderRadius: 14, padding: '14px 16px',
@@ -48,9 +42,8 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         {([
-          { id: 'requisicoes', label: 'Criar' },
-          { id: 'historico',   label: 'Histórico' },
-          { id: 'fichas',      label: 'Fichas técnicas' },
+          { id: 'fichas',      label: '📄 Fichas Técnicas' },
+          { id: 'requisicoes', label: '🛒 Requisições' },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -62,39 +55,11 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
         ))}
       </div>
       {tab === 'fichas' && (
-        <>
-          {/* Quem veio da requisição para criar uma ficha precisa de saber
-              como voltar — e que a requisição não se perdeu. */}
-          {veioDaRequisicao && (
-            <div style={{ background: '#fdf0e6', border: '1px solid #b5651d',
-              borderRadius: 12, padding: '13px 15px', marginBottom: 14,
-              display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <span style={{ flex: '1 1 200px', fontSize: 14, color: '#78350f',
-                lineHeight: 1.5 }}>
-                Cria a ficha e volta à requisição — o que já tinhas escolhido
-                continua lá.
-              </span>
-              <button onClick={() => { setVeioDaRequisicao(false); setTab('requisicoes'); }} style={{
-                padding: '10px 16px', borderRadius: 10, border: 'none',
-                background: '#b5651d', color: '#fff', fontSize: 14,
-                fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
-                Voltar à requisição
-              </button>
-            </div>
-          )}
-          <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
-            onAlteracao={onAlteracao} onGuardado={onGuardado} />
-        </>
+        <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
+          onAlteracao={onAlteracao} onGuardado={onGuardado} />
       )}
       {tab === 'requisicoes' && (
-        <Requisicao key={reqAberta || 'nova'}
-          nomeProfessor={nomeProfessor} turmaId={turmaId}
-          onCriarFicha={() => { setVeioDaRequisicao(true); setTab('fichas'); }} />
-      )}
-      {tab === 'historico' && (
-        <HistoricoRequisicoes turmaId={turmaId}
-          onAbrir={(id) => { setReqAberta(id); setTab('requisicoes'); }} />
+        <Requisicao nomeProfessor={nomeProfessor} turmaId={turmaId} />
       )}
     </div>
   );
@@ -150,7 +115,9 @@ import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
 import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
 import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
-  getPlanosAulaPorTurma, getSelecoes, getValidacoes } from './backend';
+  getPlanosAulaPorTurma, getSelecoes, getValidacoes,
+  getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
+  estadoDaTurmaNaAula, addOrUpdatePlanoAula } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -177,6 +144,10 @@ function AppInterno() {
   const [turmaId, setTurmaId] = useState<string>('1º ACP');
   const [nomeProfessor, setNomeProfessor] = useState<string>('');
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
+  /** Onde o professor está dentro do plano — para o menu se marcar. */
+  const [moduloPlano, setModuloPlano] = useState<string>('inicio');
+  /** O menu pede para ir a um sítio; a vista obedece e limpa o pedido. */
+  const [moduloPedido, setModuloPedido] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   // 'inicio' é o painel de blocos; os outros valores são os destinos.
@@ -329,24 +300,70 @@ function AppInterno() {
         {/* Conteúdo da vista activa — o plano aberto passa a mostrar-se
             num modal quase-fullscreen por cima do calendário, em vez de
             substituir o ecrã todo. O calendário/lista continua por trás. */}
-        {planoAberto && (
-          <ModalFullscreen
-            titulo={planoAberto.titulo || 'Plano de Aula'}
-            subtitulo={turmaId}
-            onFechar={fecharPlano}
-          >
-            <VistaDePlano
-              key={refreshKey}
-              plano={planoAberto}
-              turmaId={turmaId}
-              nomeProfessor={nomeProfessor}
-              onVoltar={fecharPlano}
-              onPlanoActualizado={(p: any) => setPlanoAberto(p)}
-              onAlteracao={registarAlteracao}
-              onGuardado={limparAlteracoes}
-            />
-          </ModalFullscreen>
-        )}
+        {planoAberto && (() => {
+          // Tudo o que o menu do plano precisa de saber. Lido aqui, não
+          // calculado de novo: são as mesmas funções que o resto usa.
+          const fichasDoPlano = getFichasProducao()
+            .filter((f: any) => (planoAberto.fichasIds || []).includes(f.id));
+          const req = getRequisicaoPorPlano(planoAberto.id);
+
+          // "Plano 3 de 5" — a posição dentro da unidade.
+          const mesmaUC = getPlanosAulaPorTurma(turmaId)
+            .filter((p: any) => p.ucId === planoAberto.ucId && p.estado !== 'arquivado')
+            .sort((a: any, b: any) => String(a.data).localeCompare(String(b.data)));
+          const posicao = mesmaUC.findIndex((p: any) => p.id === planoAberto.id) + 1;
+
+          const sessao = getSessaoAula(planoAberto.id);
+          const alunosNaAula = sessao?.abertaEm
+            ? (() => {
+                const est = estadoDaTurmaNaAula(planoAberto.id, turmaId);
+                return `${est.filter((e: any) => e.entrou).length}/${est.length}`;
+              })()
+            : undefined;
+
+          return (
+            <ModalFullscreen
+              titulo={planoAberto.titulo || 'Plano de Aula'}
+              subtitulo={turmaId}
+              onFechar={fecharPlano}
+              menuLateral={
+                <MenuDoPlano
+                  plano={planoAberto}
+                  fichas={fichasDoPlano}
+                  temRequisicao={!!req}
+                  numeroRequisicao={(req as any)?.numero}
+                  totalCompetencias={(planoAberto as any).competenciasIds?.length
+                    || (planoAberto as any).compAdicionadas?.length || 0}
+                  posicao={posicao > 0 ? posicao : undefined}
+                  totalPlanos={mesmaUC.length || undefined}
+                  moduloActivo={moduloPlano as any}
+                  aoIrPara={(m) => setModuloPedido(m)}
+                  aoSair={fecharPlano}
+                  alunosNaAula={alunosNaAula}
+                  aoPublicar={planoAberto.estado !== 'publicado' ? () => {
+                    const p = { ...planoAberto, estado: 'publicado' as const,
+                      atualizadoEm: new Date().toISOString() };
+                    addOrUpdatePlanoAula(p);
+                    setPlanoAberto(p);
+                  } : undefined}
+                />
+              }
+            >
+              <VistaDePlano
+                key={refreshKey}
+                plano={planoAberto}
+                turmaId={turmaId}
+                nomeProfessor={nomeProfessor}
+                onVoltar={fecharPlano}
+                onPlanoActualizado={(p: any) => setPlanoAberto(p)}
+                onAlteracao={registarAlteracao}
+                onGuardado={limparAlteracoes}
+                aoMudarModulo={(m) => { setModuloPlano(m); setModuloPedido(null); }}
+                moduloPedido={moduloPedido}
+              />
+            </ModalFullscreen>
+          );
+        })()}
         <>
           {vistaGlobal === 'inicio' && (() => {
             // A unidade em curso sai do cronograma, pela data de hoje —
