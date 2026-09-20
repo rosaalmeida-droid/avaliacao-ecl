@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { novoId } from '../backend';
 
 // ═══════════════════════════════════════════════════════════════
 // AlunosExternos — Gestão de alunos externos à escola (FCT externos)
@@ -48,7 +49,7 @@ export function GestaoAlunosExternos() {
 
   function novoAluno() {
     setAEditar({
-      id: `ext_${Date.now()}`,
+      id: novoId('ext'),
       nome: '', numeroProcesso: '', turmaOrigem: '', cursoOrigem: '',
       anoLetivo: '', localFCT: '', supervisorFCT: '', dataInicio: '', dataTermo: '',
       criadoEm: new Date().toISOString(),
