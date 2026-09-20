@@ -150,13 +150,18 @@ export function PainelProfessor({
   nomeProfessor, turmaId, turmaNome, ucId, ucNome,
   aulasHoje = 0, proximasAulas = 0,
   porValidar = 0, recuperacoesEmCurso = 0,
-  onAbrir,
-}: Props) {
+  onAbrir, calendario,
+}: Props & {
+  /** O calendário das aulas, ao lado dos cartões. Estava escondido
+   *  dentro de "Planos de Aula" — o professor tinha de lá ir para ver
+   *  o mês, quando é a primeira coisa que quer ver. */
+  calendario?: React.ReactNode;
+}) {
   const gs = grupos({ validar: porValidar, recuperacoes: recuperacoesEmCurso });
 
   return (
     <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ maxWidth: calendario ? 1060 : 720, margin: '0 auto' }}>
 
         {/* Quem sou */}
         <div style={{
@@ -207,6 +212,12 @@ export function PainelProfessor({
           </div>
         </div>
 
+        <div style={{
+          display: calendario ? 'grid' : 'block',
+          gridTemplateColumns: calendario ? 'minmax(0, 1fr) minmax(300px, 380px)' : undefined,
+          gap: 20, alignItems: 'start',
+        }}>
+        <div>
         {gs.map(g => (
           <div key={g.titulo} style={{ marginBottom: 20 }}>
             <div style={{
@@ -220,6 +231,24 @@ export function PainelProfessor({
             </div>
           </div>
         ))}
+        </div>
+
+        {/* O calendário, à direita. */}
+        {calendario && (
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 16,
+            border: '1px solid rgba(26,23,20,0.1)', position: 'sticky', top: 14,
+          }}>
+            <div style={{
+              fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
+              letterSpacing: '0.07em', color: C.suave, marginBottom: 10,
+            }}>
+              As tuas aulas
+            </div>
+            {calendario}
+          </div>
+        )}
+        </div>
 
       </div>
     </div>
