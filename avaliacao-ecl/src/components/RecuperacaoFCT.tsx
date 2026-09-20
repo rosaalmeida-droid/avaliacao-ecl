@@ -3,8 +3,7 @@ import { Aluno, RecuperacaoModulo } from '../types';
 import { ModalFullscreen } from './ModalFullscreen';
 import {
   getAlunos, criarRecuperacaoFCT, addEvidenciaFCT, addOrUpdateRecuperacao,
-  getRecuperacoesPorAluno,
-} from '../backend';
+  getRecuperacoesPorAluno, novoId } from '../backend';
 import { microsPorUC, encontrarMicro } from '../compatECL';
 import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
@@ -272,7 +271,7 @@ export function CriarRecuperacaoFCT({
     }
     // Aluno externo/antigo — gera um ID próprio (não existe em getAlunos()),
     // o nome fica guardado directamente na recuperação para a impressão/PDF.
-    const idParaUsar = tipoAluno === 'turma' ? alunoId : `externo_${Date.now()}`;
+    const idParaUsar = tipoAluno === 'turma' ? alunoId : novoId('externo');
     // A recuperação tem de ficar guardada sempre com a turma ACTUAL (onde o
     // professor está a trabalhar) — é isso que decide em que lista aparece.
     // A turma de origem de um aluno externo/antigo é só informativa, guarda-se
@@ -626,7 +625,7 @@ export function RecuperacaoFCTAluno({ recuperacao, onAtualizado }: {
       return;
     }
     addEvidenciaFCT(recuperacao.id, {
-      id: `ev_${Date.now()}`,
+      id: novoId('ev'),
       competenciaId: novaEvidencia.competenciaId,
       descricao: novaEvidencia.descricao,
       dataOcorrencia: novaEvidencia.dataOcorrencia || undefined,
