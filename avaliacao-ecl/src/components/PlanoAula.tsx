@@ -528,14 +528,17 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
 
   if (vista==='calendario') return (
     <div>
-      <div className="header-bar">
-        <h2 className="display" style={{ margin:0 }}>Planos de Aula</h2>
-        <button className="btn btn-primary" onClick={()=>setVista('criar')} style={{ background: 'var(--copper)', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>📋 + Novo Plano de Aula</button>
-      </div>
-      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-        <button onClick={()=>setVista('calendario')} className="tab-btn active" style={{ flex:1 }}>📅 Calendário</button>
-        <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
-        <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
+      {/* O título "Planos de Aula" já vem do banner da secção — repeti-lo
+          aqui dava-o duas vezes no mesmo ecrã. */}
+      <div style={{ display:'flex', gap:6, marginBottom:14, alignItems:'center', flexWrap:'wrap' }}>
+        <button onClick={()=>setVista('calendario')} className="tab-btn active" style={{ flex:'1 1 100px' }}>Calendário</button>
+        <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:'1 1 100px' }}>Lista</button>
+        <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:'1 1 100px' }}>Arquivo</button>
+        <button className="btn btn-primary" onClick={()=>setVista('criar')}
+          style={{ background: 'var(--copper)', fontWeight: 700, fontSize: 14,
+            padding: '10px 18px', marginLeft: 'auto' }}>
+          + Novo Plano
+        </button>
       </div>
       <div style={{ maxWidth: 420 }}>
         <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)}
