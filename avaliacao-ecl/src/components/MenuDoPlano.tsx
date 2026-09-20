@@ -56,7 +56,7 @@ function Linha({
 export function MenuDoPlano({
   plano, fichas, temRequisicao, numeroRequisicao, totalCompetencias,
   posicao, totalPlanos, moduloActivo, aoIrPara, aoSair, aoPublicar,
-  alunosNaAula, porValidar,
+  alunosNaAula, porValidar, aviso,
 }: {
   plano: PlanoAula;
   fichas: FichaProducao[];
@@ -74,9 +74,23 @@ export function MenuDoPlano({
   alunosNaAula?: string;
   /** Autoavaliações deste plano à espera de validação. */
   porValidar?: number;
+  /** Aviso de fim de unidade, quando se aplica. */
+  aviso?: string;
 }) {
   const comGuiao = fichas.filter(f => !!(f as any).textoGuia).length;
   const publicado = plano.estado === 'publicado';
+
+  const diaSemana = (() => {
+    const d = new Date(String(plano.data).slice(0, 10) + 'T00:00:00');
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-PT', { weekday: 'long' });
+  })();
+
+  const limpa = (h?: string) => !h ? '' :
+    (h.includes('T')
+      ? new Date(h).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+      : h.substring(0, 5));
+  const horario = (limpa(plano.horaInicio) && limpa(plano.horaFim))
+    ? `${limpa(plano.horaInicio)}–${limpa(plano.horaFim)}` : '';
 
   const dataCurta = (() => {
     const d = new Date(String(plano.data).slice(0, 10) + 'T00:00:00');
@@ -87,7 +101,9 @@ export function MenuDoPlano({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
 
-      {/* Identificação — quem é este plano */}
+      {/* Identificação — tudo o que o professor precisa de saber sobre
+          este plano. Estava repetido num cabeçalho por cima do conteúdo;
+          aqui fica num sítio só, sempre à vista. */}
       <div style={{ padding: '15px 15px 14px', borderBottom: `1px solid ${RISCA}` }}>
         <div style={{ fontSize: 10, letterSpacing: '0.09em', fontWeight: 800,
           color: BRANCO_TENUE }}>
@@ -99,8 +115,46 @@ export function MenuDoPlano({
           {dataCurta}
         </div>
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', marginTop: 1 }}>
-          {plano.turmaId}{plano.ucId ? ` · ${plano.ucId}` : ''}
+          {diaSemana}{horario ? ` · ${horario}` : ''}
         </div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)' }}>
+          {plano.turmaId}
+        </div>
+
+        {/* A unidade, com o nome por extenso. */}
+        {plano.ucId ? (
+          <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8,
+            background: 'rgba(255,255,255,0.12)' }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.08em', fontWeight: 800,
+              color: 'rgba(255,255,255,0.55)' }}>
+              UNIDADE
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: BRANCO_FORTE, marginTop: 2 }}>
+              {plano.ucId}
+            </div>
+            {plano.ucNome && (
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)',
+                marginTop: 2, lineHeight: 1.4 }}>
+                {plano.ucNome}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8,
+            background: 'rgba(255,180,80,0.2)', fontSize: 12,
+            color: '#ffd9a0', fontWeight: 700 }}>
+            Unidade por definir
+          </div>
+        )}
+
+        {/* O aviso de última aula da unidade, quando se aplica. */}
+        {aviso && (
+          <div style={{ marginTop: 9, padding: '8px 10px', borderRadius: 8,
+            background: 'rgba(255,255,255,0.14)', fontSize: 11.5,
+            color: 'rgba(255,255,255,0.9)', lineHeight: 1.45 }}>
+            {aviso}
+          </div>
+        )}
         <span style={{
           display: 'inline-block', marginTop: 9, fontSize: 10.5, fontWeight: 800,
           padding: '3px 9px', borderRadius: 12,
