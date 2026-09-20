@@ -1169,7 +1169,10 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
           </div>
         )}
 
-        <button style={{ ...btnOutline, width: '100%' }} onClick={() => setVista('lista')}>← Voltar à lista</button>
+        {/* Avisar antes de deixar o evento a meio. */}
+        <button style={{ ...btnOutline, width: '100%' }} onClick={() => {
+          if (confirm('Voltar à lista?\n\nSe não guardaste, o que preencheste perde-se.')) setVista('lista');
+        }}>← Voltar à lista</button>
       </div>
     );
   }
