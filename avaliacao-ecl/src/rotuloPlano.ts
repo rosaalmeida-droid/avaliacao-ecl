@@ -32,7 +32,13 @@ export function rotuloPlano(plano: PlanoAula): string {
   if (!plano) return 'Plano de aula';
   const n = posicaoNaUC(plano);
   const m = totalAulasUC(plano);
-  return 'Plano de Aula ' + n + (m ? ' de ' + m : '');
+
+  // "12 de 5" não quer dizer nada: são 12 planos criados numa unidade
+  // que o cronograma diz ter 5 semanas. Quando isso acontece, mostra-se
+  // só a posição — o total do cronograma deixou de servir de referência.
+  if (!m || n > m) return 'Plano de Aula ' + n;
+
+  return 'Plano de Aula ' + n + ' de ' + m;
 }
 
 /** Aviso a mostrar ao professor sobre o fim da UC. '' se não há aviso. */
