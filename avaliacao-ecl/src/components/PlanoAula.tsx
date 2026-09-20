@@ -12,6 +12,7 @@ import {
   getAlunos, publicarNoClassroom } from '../backend';
 import { fmtDataCurta, fmtData } from '../datas';
 import { modulosDaTurma, modulosAtivos } from '../cronograma';
+import { avisoDoDia, temCozinha, horasSugeridas } from '../horarios';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Data no formato "20-07-2026 · quarta-feira"
@@ -100,7 +101,7 @@ function getEventosDaTurma(turmaId: string) {
 }
 
 // ── Calendário mensal ─────────────────────────────────────────────────────
-function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turmaId, onCriarNoDia }: {
+export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turmaId, onCriarNoDia }: {
   planos: TPlanoAula[];
   onAbrirPlano: (p: TPlanoAula) => void;
   onPlanoEliminado?: () => void;
@@ -171,11 +172,20 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turmaId, onC
     const planosNesteDia = planosPorDia.get(chave) || [];
     const ehHoje = ehMesmoDia(data, hoje);
     const selecionado = diaSelecionado && ehMesmoDia(data, diaSelecionado);
+    // Dias em que a turma tem cozinha — os únicos em que faz sentido
+    // marcar uma aula prática.
+    const diaDeCozinha = turmaId ? temCozinha(turmaId, chave) : false;
     return (
       <button onClick={() => setDiaSelecionado(selecionado ? null : data)}
+        title={diaDeCozinha ? 'Dia de cozinha' : undefined}
         style={{
-          aspectRatio: '1', maxHeight: 34, borderRadius: 6, border: ehHoje ? '1.5px solid var(--copper)' : '1px solid var(--border)',
-          background: selecionado ? 'var(--copper)' : (planosNesteDia.length > 0 ? 'var(--copper-pale)' : '#fff'),
+          aspectRatio: '1', maxHeight: 34, borderRadius: 6,
+          border: ehHoje ? '1.5px solid var(--copper)'
+            : diaDeCozinha ? '1.5px solid var(--sage)'
+            : '1px solid var(--border)',
+          background: selecionado ? 'var(--copper)'
+            : (planosNesteDia.length > 0 ? 'var(--copper-pale)'
+            : diaDeCozinha ? 'rgba(90,122,78,0.08)' : '#fff'),
           color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
           cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           padding: 1, position: 'relative', fontSize: 12.5,
@@ -315,6 +325,25 @@ function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turmaId, onC
                 <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.5)', marginBottom: 4 }}>
                   Sem aulas planeadas neste dia.
                 </div>
+                {/* Dizer se é sequer dia de cozinha nesta turma, e se o
+                    ano letivo já começou. Sem isto o professor podia
+                    marcar uma prática para um dia em que a turma tem
+                    Matemática. */}
+                {(() => {
+                  const iso2 = diaSelecionado
+                    ? `${diaSelecionado.getFullYear()}-${String(diaSelecionado.getMonth()+1).padStart(2,'0')}-${String(diaSelecionado.getDate()).padStart(2,'0')}`
+                    : '';
+                  const av = (iso2 && turmaId) ? avisoDoDia(turmaId, iso2) : '';
+                  if (!av) return null;
+                  return (
+                    <div style={{ fontSize: 13.5, color: '#78350f',
+                      background: '#fdf0e6', border: '1px solid var(--copper)',
+                      borderRadius: 9, padding: '9px 12px', margin: '8px 0 4px',
+                      lineHeight: 1.5 }}>
+                      {av}
+                    </div>
+                  );
+                })()}
                 {(() => {
                   // A unidade sai do cronograma, pela data escolhida — o
                   // professor não tem de a procurar, mas pode trocá-la
@@ -702,15 +731,21 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   /** Data vinda do calendário. Sem ela, começa em hoje. */
   dataInicial?: string;
 }) {
-  const [dados, setDados] = useState({
-    data: dataInicial || new Date().toISOString().split('T')[0],
-    horaInicio: '08:30',
-    horaFim: '17:30',
+  const [dados, setDados] = useState(() => {
+    const data = dataInicial || new Date().toISOString().split('T')[0];
+    // As horas saem do horário da turma. Eram 08:30–17:30 fixas, o dia
+    // inteiro, mesmo quando a turma só tem cozinha das 10 às 13.
+    const h = horasSugeridas(turmaId, data);
+    return {
+    data,
+    horaInicio: h?.inicio || '08:30',
+    horaFim: h?.fim || '17:30',
     ucId: '',
     titulo: '',
     professor: nomeProfessor || '',
     tipoAtividade: 'Aula prática',
     tipoPlanAula: 'pratico' as 'pratico' | 'teorico' | 'misto',
+    };
   });
 
   // Estado do "trocar de unidade": por omissão a unidade vem do
@@ -768,12 +803,12 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     (p as any).tipoPlanAula = dados.tipoPlanAula;
     addOrUpdatePlanoAula(p);
     onGuardado?.();
-    if (window.confirm('📚 Publicar este plano de aula no Google Classroom?')) {
-      publicarNoClassroom('plano', turmaId, {
-        titulo: p.titulo, data: p.data, horaInicio: p.horaInicio, horaFim: p.horaFim,
-        ucId: p.ucId, ucNome: p.ucNome, pratos: [], observacoes: (p as any).observacoes || '',
-      }).then(res => { if (res.ok) alert('✅ Plano publicado no Classroom!'); else console.warn('Classroom:', res.erro); });
-    }
+    // O Classroom fica para quando o plano for publicado, não agora.
+    //
+    // Perguntava-se aqui, logo a seguir a criar o plano — antes de haver
+    // fichas, guião ou requisição. Publicava-se um plano vazio, e o
+    // professor tinha de responder a uma pergunta sobre uma coisa que
+    // ainda não tinha feito.
     onConcluido(p);
   }
 
