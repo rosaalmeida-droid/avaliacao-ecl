@@ -28,13 +28,32 @@ export interface HorarioTurma {
 
 export const HORARIOS: HorarioTurma[] = [
   {
+    // Técnico de Cozinha e Restauração — turma nova de 2026/2029.
+    turmaId: '1º BCR',
+    inicioAulas: '2026-09-21',
+    blocos: [
+      // Terça-feira, o dia inteiro.
+      { dia: 2, inicio: '08:30', fim: '17:30' },
+    ],
+  },
+  {
     turmaId: '2º ACP',
     inicioAulas: '2026-09-21',
     blocos: [
-      // Quarta-feira: o dia inteiro de cozinha. Os dois blocos do
-      // horário — manhã e tarde — são um plano de aula só, porque um
-      // plano é o conjunto de horas seguidas que se dá no mesmo dia.
+      // Quarta-feira: o dia inteiro. Os dois blocos do horário — manhã
+      // e tarde — são um plano de aula só, porque um plano é o conjunto
+      // de horas seguidas que se dá no mesmo dia.
       { dia: 3, inicio: '08:30', fim: '17:30', sala: 'TCC' },
+    ],
+  },
+  {
+    turmaId: '3º ACP',
+    inicioAulas: '2026-09-21',
+    blocos: [
+      // Três dias, com durações diferentes. A sexta é o dia longo.
+      { dia: 1, inicio: '08:30', fim: '09:30' },   // segunda
+      { dia: 4, inicio: '10:30', fim: '12:00' },   // quinta
+      { dia: 5, inicio: '08:30', fim: '16:00' },   // sexta
     ],
   },
 ];
