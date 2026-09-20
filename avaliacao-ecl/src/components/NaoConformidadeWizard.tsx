@@ -1,5 +1,6 @@
 import { fmtDataHora } from '../datas';
 import React, { useState } from 'react';
+import { novoId } from '../backend';
 
 type Perfil = 'professor' | 'coordenadora' | 'auxiliar' | 'aluno';
 type EstadoNC = 'pendente' | 'em_analise' | 'resolvida' | 'rejeitada';
@@ -67,7 +68,7 @@ export function NaoConformidadeWizard({ perfil, turmaId, alunoId, nomeUtilizador
 
   function guardar() {
     const nc: NaoConformidade = {
-      id: `nc_${Date.now()}`,
+      id: novoId('nc'),
       tipo: tipoSel,
       descricao,
       turmaId,
