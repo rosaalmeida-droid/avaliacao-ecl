@@ -727,22 +727,23 @@ export function seedAlunosReais(): void {
   const agora = new Date().toISOString();
   const alunos: Aluno[] = [
     // ── 2º CP (1º ACP 2025/2028) ─────────────────────────────────
+    // 2º ACP — constituição de 2026/27 (eSchooling).
+    // Saíram Carlos Maia (7), Jorgeana Varela (13) e Martim Silva (16).
+    // Os números dos restantes mantêm-se os da pauta oficial — não se
+    // renumeram, senão deixam de bater certo com o que a escola usa.
     { id: '2º ACP-1', turmaId: '2º ACP', numero: 1, ano: 2 as const, nome: 'Agnes Paola A. Conceição', pin: '2001', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-2', turmaId: '2º ACP', numero: 2, ano: 2 as const, nome: 'Alcides João S. Neto', pin: '2002', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-3', turmaId: '2º ACP', numero: 3, ano: 2 as const, nome: 'Anamar Padinha Gomes', pin: '2003', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-4', turmaId: '2º ACP', numero: 4, ano: 2 as const, nome: 'Arthur Oliveira Santos', pin: '2004', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-5', turmaId: '2º ACP', numero: 5, ano: 2 as const, nome: 'Beatriz Mendes Brito', pin: '2005', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-6', turmaId: '2º ACP', numero: 6, ano: 2 as const, nome: 'Beatriz Pompeu Pinheiro', pin: '2006', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-7', turmaId: '2º ACP', numero: 7, ano: 2 as const, nome: 'Carlos Alexandre C. Maia', pin: '2007', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-8', turmaId: '2º ACP', numero: 8, ano: 2 as const, nome: 'Eduardo Júnior S. Paulo', pin: '2008', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-9', turmaId: '2º ACP', numero: 9, ano: 2 as const, nome: 'Folly Orax Sallah', pin: '2009', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-10', turmaId: '2º ACP', numero: 10, ano: 2 as const, nome: 'Gonçalo Rafael Claro', pin: '2010', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-11', turmaId: '2º ACP', numero: 11, ano: 2 as const, nome: 'Gustavo Lopes Costa', pin: '2011', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-12', turmaId: '2º ACP', numero: 12, ano: 2 as const, nome: 'Isabella Medina Jurado', pin: '2012', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-13', turmaId: '2º ACP', numero: 13, ano: 2 as const, nome: 'Jorgeana Patricia T. Varela', pin: '2013', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-14', turmaId: '2º ACP', numero: 14, ano: 2 as const, nome: 'Mafalda Resende C. Ferreira', pin: '2014', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-15', turmaId: '2º ACP', numero: 15, ano: 2 as const, nome: 'Manuel José M. Maca', pin: '2015', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-16', turmaId: '2º ACP', numero: 16, ano: 2 as const, nome: 'Martim Rocha D. F. Silva', pin: '2016', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-17', turmaId: '2º ACP', numero: 17, ano: 2 as const, nome: 'Neide Tavares Cardoso', pin: '2017', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-18', turmaId: '2º ACP', numero: 18, ano: 2 as const, nome: 'Raquel Luis O. Diogo', pin: '2018', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-19', turmaId: '2º ACP', numero: 19, ano: 2 as const, nome: 'Rita Maria S. Nunes', pin: '2019', ativo: true, pinCriadoEm: agora },
@@ -750,7 +751,6 @@ export function seedAlunosReais(): void {
     { id: '2º ACP-21', turmaId: '2º ACP', numero: 21, ano: 2 as const, nome: 'Sara Andrade Arruda', pin: '2021', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-22', turmaId: '2º ACP', numero: 22, ano: 2 as const, nome: 'Telmo Márcio T. Mendes', pin: '2022', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-23', turmaId: '2º ACP', numero: 23, ano: 2 as const, nome: 'Yichen Wu', pin: '2023', ativo: true, pinCriadoEm: agora },
-    // ── 3º CP (2º ACP 2024/2027) ─────────────────────────────────
     { id: '3º ACP-1', turmaId: '3º ACP', numero: 1, ano: 3 as const, nome: 'Afonso Miguel C. Dias', pin: '3001', ativo: true, pinCriadoEm: agora },
     { id: '3º ACP-2', turmaId: '3º ACP', numero: 2, ano: 3 as const, nome: 'Aldmir Afonso Marques', pin: '3002', ativo: true, pinCriadoEm: agora },
     { id: '3º ACP-3', turmaId: '3º ACP', numero: 3, ano: 3 as const, nome: 'Bernardo Alexandre B. Correia', pin: '3003', ativo: true, pinCriadoEm: agora },
