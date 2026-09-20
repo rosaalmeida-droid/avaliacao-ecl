@@ -20,6 +20,7 @@ import { VistaDePlano } from './components/VistaDePlano';
 import { MenuDoPlano } from './components/MenuDoPlano';
 import { ManualProfessor } from './components/ManualProfessor';
 import { posicaoNaUC, totalAulasUC, avisoFimUC } from './rotuloPlano';
+import { CRONOGRAMA_2026_2027 } from './cronograma';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { MomentosAvaliacao } from './components/MomentosAvaliacao';
 import Requisicao from './components/Requisicao';
@@ -348,6 +349,10 @@ function AppInterno() {
                   aoSair={fecharPlano}
                   alunosNaAula={alunosNaAula}
                   aviso={avisoFimUC(planoAberto) || undefined}
+                  disciplina={(() => {
+                    const m = CRONOGRAMA_2026_2027.find((x: any) => x.id === planoAberto.ucId);
+                    return (m as any)?.disciplina;
+                  })()}
                   porValidar={(() => {
                     const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
                     return getSelecoes().filter((s: any) =>
