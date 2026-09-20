@@ -218,3 +218,45 @@ export function modulosTerminados(turmaIdOuNome: string, dias = 14, dataISO?: st
 export function getModulo(id: string): ModuloCronograma | undefined {
   return CRONOGRAMA_2026_2027.find(m => m.id === id);
 }
+
+// ============================================================
+// Disciplinas
+// ============================================================
+// A Rosa dá duas disciplinas ao 3º ACP — Serviços de Cozinha/Pastelaria
+// e Gestão e Controlo — e ambas correm ao mesmo tempo.
+//
+// O `modulosAtivos` devolve as duas, e quem pegava na primeira ficava
+// com a que calhasse. Daí a aplicação dizer que o primeiro módulo era
+// uma UFCD de Gestão e Controlo quando se estava a preparar uma aula
+// de cozinha.
+//
+// A disciplina tem de ser escolhida, não adivinhada.
+
+/** As disciplinas com módulos a decorrer nesta data, nesta turma. */
+export function disciplinasAtivas(turmaIdOuNome: string, dataISO?: string): string[] {
+  const ativos = modulosAtivos(turmaIdOuNome, dataISO);
+  const nomes = ativos
+    .map(m => (m as any).disciplina as string | undefined)
+    .filter((d): d is string => !!d);
+  return [...new Set(nomes)].sort();
+}
+
+/** Os módulos a decorrer, de uma disciplina só. */
+export function modulosAtivosDaDisciplina(
+  turmaIdOuNome: string, disciplina: string, dataISO?: string
+): ModuloCronograma[] {
+  return modulosAtivos(turmaIdOuNome, dataISO)
+    .filter(m => (m as any).disciplina === disciplina);
+}
+
+/**
+ * A disciplina a assumir quando o professor ainda não escolheu.
+ *
+ * Só devolve alguma coisa quando não há dúvida — uma disciplina ativa
+ * apenas. Com duas ou mais, devolve vazio: é o professor que decide, e
+ * a aplicação tem de lho perguntar.
+ */
+export function disciplinaUnica(turmaIdOuNome: string, dataISO?: string): string {
+  const d = disciplinasAtivas(turmaIdOuNome, dataISO);
+  return d.length === 1 ? d[0] : '';
+}
