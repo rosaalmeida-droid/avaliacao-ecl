@@ -56,7 +56,7 @@ function Linha({
 export function MenuDoPlano({
   plano, fichas, temRequisicao, numeroRequisicao, totalCompetencias,
   posicao, totalPlanos, moduloActivo, aoIrPara, aoSair, aoPublicar,
-  alunosNaAula,
+  alunosNaAula, porValidar,
 }: {
   plano: PlanoAula;
   fichas: FichaProducao[];
@@ -72,6 +72,8 @@ export function MenuDoPlano({
   aoPublicar?: () => void;
   /** "12/18" quando a aula está aberta; nada antes disso. */
   alunosNaAula?: string;
+  /** Autoavaliações deste plano à espera de validação. */
+  porValidar?: number;
 }) {
   const comGuiao = fichas.filter(f => !!(f as any).textoGuia).length;
   const publicado = plano.estado === 'publicado';
@@ -149,6 +151,27 @@ export function MenuDoPlano({
             aoClicar={() => aoIrPara('turma')} />
         )}
       </div>
+
+      {/* Autoavaliações por validar. Enquanto não forem validadas não
+          contam para nada — nem para a nota, nem para o banco. */}
+      {!!porValidar && porValidar > 0 && (
+        <button
+          onClick={() => aoIrPara('turma')}
+          style={{
+            margin: '10px 12px', padding: '11px 13px', borderRadius: 10,
+            border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            textAlign: 'left', width: 'calc(100% - 24px)',
+            background: '#F6A623', color: '#3d2a00',
+          }}>
+          <span style={{ display: 'block', fontSize: 13.5, fontWeight: 800 }}>
+            {porValidar} autoavaliaç{porValidar === 1 ? 'ão' : 'ões'} por validar
+          </span>
+          <span style={{ display: 'block', fontSize: 11.5, marginTop: 2,
+            lineHeight: 1.4, opacity: 0.85 }}>
+            Sem validação não contam para a nota.
+          </span>
+        </button>
+      )}
 
       <div style={{ flex: 1 }} />
 
