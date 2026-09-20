@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
 import { Button, Card, Field } from './ui';
-import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom , recuperarFichasDoSheets, recuperarFichasDeTodoOLado, fichasDuplicadas, limparFichasDuplicadas } from '../backend';
+import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom , recuperarFichasDoSheets, recuperarFichasDeTodoOLado, fichasDuplicadas, limparFichasDuplicadas, novoIdFicha, fichasComIdRepetido, separarFichasComIdRepetido } from '../backend';
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
 import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
@@ -2772,7 +2772,9 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       // Quando estamos a EDITAR uma ficha já existente, reutilizar o ID
       // original — sem isto, "guardar" criava sempre uma ficha NOVA,
       // duplicando (Bacalhau, Bacalhau 2, Bacalhau 3...).
-      const novaFichaId = (vista === 'editar' && fichaEmEdicaoId) ? fichaEmEdicaoId : `ficha_${Date.now()}`;
+      // Id único — duas fichas criadas no mesmo milissegundo ficavam com
+      // o mesmo, e uma apagava a outra aqui e no Sheets.
+      const novaFichaId = (vista === 'editar' && fichaEmEdicaoId) ? fichaEmEdicaoId : novoIdFicha();
       const fichaOriginal = vista === 'editar' && fichaEmEdicaoId ? todasFichas.find(f => f.id === fichaEmEdicaoId) : undefined;
       addOrUpdateFichaProducao({
         id: novaFichaId,
@@ -3002,6 +3004,48 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             <strong>UC activa:</strong> {ucId} — {ucNome}
           </div>
         )}
+
+        {/* Fichas com o MESMO id — o estrago do bug antigo. Estas não
+            são cópias: são fichas diferentes que se sobrepõem, porque
+            partilham o identificador. Enquanto assim estiverem, gravar
+            uma apaga a outra, aqui e no Sheets. */}
+        {(() => {
+          const repetidos = fichasComIdRepetido();
+          if (!repetidos.length) return null;
+          const total = repetidos.reduce((s, g) => s + g.fichas.length - 1, 0);
+          return (
+            <div style={{ background:'#fdf0ef', border:'1.5px solid #c0392b',
+              borderRadius:12, padding:15, marginBottom:12 }}>
+              <div style={{ fontSize:15, fontWeight:700, color:'#c0392b' }}>
+                {total} ficha{total > 1 ? 's' : ''} com o identificador repetido
+              </div>
+              <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', marginTop:5,
+                lineHeight:1.55 }}>
+                Não são cópias — são fichas diferentes a partilhar o mesmo
+                identificador. Enquanto assim estiverem, gravar uma apaga a
+                outra, aqui e no Google Sheets.
+                <br />
+                {repetidos.slice(0, 3).map(g =>
+                  g.fichas.map(f => f.nomePrato).join(' / ')).join(' · ')}
+              </div>
+              <button
+                onClick={() => {
+                  const r = separarFichasComIdRepetido();
+                  alert(
+                    `${r.corrigidas} fichas separadas.\n\n` +
+                    'Cada uma tem agora um identificador próprio e deixam de se ' +
+                    'sobrepor. Verifica se o conteúdo de cada uma está certo.'
+                  );
+                  recarregar();
+                }}
+                style={{ marginTop:12, padding:'11px 18px', borderRadius:10, border:'none',
+                  background:'#c0392b', color:'#fff', fontSize:14.5, fontWeight:700,
+                  cursor:'pointer', fontFamily:'inherit' }}>
+                Separar as fichas
+              </button>
+            </div>
+          );
+        })()}
 
         {/* Fichas repetidas — a mesma várias vezes na biblioteca. */}
         {(() => {
