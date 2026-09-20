@@ -338,6 +338,37 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       }
     }
 
+    // ── Requisições e orçamentos ─────────────────────────────
+    //
+    // Iam para o Sheets e nunca voltavam. O professor fazia a requisição
+    // num computador e noutro não a via — parecia que se tinha perdido.
+    // É a única coisa que era enviada sem leitura de volta.
+    if (SHEETS_PLANOS_URL) {
+      try {
+        const jsonReq = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_requisicoes', turmaId });
+        const doSheets = jsonReq?.requisicoes || jsonReq?.dados || [];
+        if (Array.isArray(doSheets) && doSheets.length > 0) {
+          const locais = getRequisicoes();
+          const merged = [...locais];
+          for (const r of doSheets) {
+            if (!r?.id) continue;
+            const idx = merged.findIndex(x => x.id === r.id);
+            if (idx < 0) {
+              merged.push(r);
+            } else if ((r.atualizadaEm || '') > (merged[idx].atualizadaEm || '')) {
+              // A do Sheets é mais recente — mas nunca deitar fora linhas
+              // que ela não traga e a local tenha.
+              merged[idx] = {
+                ...r,
+                linhas: (r.linhas?.length ? r.linhas : merged[idx].linhas) || [],
+              };
+            }
+          }
+          save(KEYS.requisicoes, merged);
+        }
+      } catch { /* sem rede, fica o que está */ }
+    }
+
     // ── Sincronizar Avaliações (historico_avaliacoes) ──────────────────
     if (SHEETS_HISTORICO_URL) {
       const jsonAval = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
@@ -1528,6 +1559,62 @@ export function getFichasPorPlano(planoId: string): FichaProducao[] {
 const KEY_FICHAS_HIST = 'ecl_fichas_historico';
 
 /**
+ * Identificador único para uma ficha nova.
+ *
+ * Era `ficha_${Date.now()}` — o relógio em milissegundos. Duas fichas
+ * criadas no mesmo milissegundo ficavam com o MESMO id, e a segunda
+ * gravava por cima da primeira, aqui e no Sheets. Acontece sempre que
+ * se criam fichas em lote.
+ *
+ * Agora leva também uma parte aleatória: duas fichas nunca colidem,
+ * mesmo criadas ao mesmo tempo.
+ */
+export function novoId(prefixo: string): string {
+  const agora = Date.now().toString(36);
+  const acaso = Math.random().toString(36).slice(2, 8);
+  return `${prefixo}_${agora}_${acaso}`;
+}
+
+export function novoIdFicha(): string {
+  return novoId('ficha');
+}
+
+/**
+ * Fichas com o id repetido — o estrago que o bug acima deixou.
+ * Devolve os grupos, para se ver o que se perdeu.
+ */
+export function fichasComIdRepetido(): { id: string; fichas: FichaProducao[] }[] {
+  const porId = new Map<string, FichaProducao[]>();
+  getFichasProducao().forEach(f => {
+    porId.set(f.id, [...(porId.get(f.id) || []), f]);
+  });
+  const repetidos: { id: string; fichas: FichaProducao[] }[] = [];
+  porId.forEach((fichas, id) => {
+    if (fichas.length > 1) repetidos.push({ id, fichas });
+  });
+  return repetidos;
+}
+
+/**
+ * Dá um id novo às fichas que partilham o mesmo, para deixarem de se
+ * sobrepor. Os planos que as usavam continuam a apontar para a primeira.
+ */
+export function separarFichasComIdRepetido(): { corrigidas: number } {
+  const todas = getFichasProducao();
+  const vistos = new Set<string>();
+  let corrigidas = 0;
+
+  const novas = todas.map(f => {
+    if (!vistos.has(f.id)) { vistos.add(f.id); return f; }
+    corrigidas += 1;
+    return { ...f, id: novoIdFicha() };
+  });
+
+  if (corrigidas > 0) save(KEYS.fichas, novas);
+  return { corrigidas };
+}
+
+/**
  * Guarda a versão anterior de uma ficha antes de a substituir.
  *
  * Perderam-se fichas por serem gravadas por cima com versões vazias.
@@ -1590,8 +1677,14 @@ export function addOrUpdateFichaProducao(f: FichaProducao): void {
 
   // Nunca enviar uma ficha sem conteúdo nenhum para o Sheets: se lá
   // estiver a versão boa, seria apagada.
+  //
+  // O guião conta como conteúdo. Sem esta linha, uma ficha que tivesse
+  // só guião — ou a quem se acabasse de escrever um — nunca era enviada,
+  // e o guião perdia-se ao mudar de aparelho.
   const temConteudo = !!paraGravar.ingredientes?.length
-    || !!paraGravar.preparacao?.length;
+    || !!paraGravar.preparacao?.length
+    || !!(paraGravar as any).textoGuia
+    || !!(paraGravar as any).htmlCompleto;
   if (temConteudo) {
     enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: paraGravar });
     registarEnvio(paraGravar.id, 'ficha', paraGravar.nomePrato || 'Ficha sem nome');
@@ -3273,7 +3366,7 @@ export function addOrUpdateMateriaPrimaCustom(m: Omit<MateriaPrimaCustom, 'id' |
   const idExistente = m.id || all.find(x => x.nome.toLowerCase() === m.nome.toLowerCase())?.id;
   const idx = idExistente ? all.findIndex(x => x.id === idExistente) : -1;
   const registo: MateriaPrimaCustom = {
-    id: idExistente || `mp_custom_${Date.now()}`,
+    id: idExistente || novoId('mp_custom'),
     nome: m.nome, categoria: m.categoria || 'Outros',
     unidadeCompra: m.unidadeCompra, precoKg: m.precoKg, precoUnitario: m.precoUnitario,
     aliases: m.aliases || [],
@@ -3319,7 +3412,7 @@ export function addOrUpdateTecnicaCustom(t: Omit<TecnicaCustom, 'id' | 'criadoEm
   const idExistente = t.id || all.find(x => x.nome.toLowerCase() === t.nome.toLowerCase())?.id;
   const idx = idExistente ? all.findIndex(x => x.id === idExistente) : -1;
   const registo: TecnicaCustom = {
-    id: idExistente || `tec_custom_${Date.now()}`,
+    id: idExistente || novoId('tec_custom'),
     nome: t.nome,
     palavrasChave: t.palavrasChave || [t.nome.toLowerCase()],
     tecnicaMaeId: t.tecnicaMaeId,
@@ -4457,4 +4550,57 @@ export function limparFichasDuplicadas(): { apagadas: number; mantidas: number }
   save(KEYS.fichas, ficam);
 
   return { apagadas: aApagar.size, mantidas: grupos.length };
+}
+
+// ============================================================
+// Autoavaliações à espera de validação
+// ============================================================
+// Uma autoavaliação não validada não conta para nada — nem para a nota,
+// nem para o banco de competências. Se o professor não der por ela, o
+// trabalho do aluno fica no ar.
+
+export interface PorValidar {
+  planoAulaId: string;
+  planoTitulo: string;
+  data: string;
+  quantos: number;
+  nomes: string[];
+}
+
+/** Autoavaliações submetidas sem validação, por plano. */
+export function autoavaliacoesPorValidar(turmaId: string): PorValidar[] {
+  const validados = new Set(getValidacoes().map((v: any) => v.selecaoId));
+  const planos = getPlanosAula();
+  const alunos = getAlunos();
+
+  const porPlano = new Map<string, { nomes: string[] }>();
+
+  getSelecoes()
+    .filter((s: any) => s.turmaId === turmaId && !validados.has(s.id))
+    .forEach((s: any) => {
+      const atual = porPlano.get(s.planoAulaId) || { nomes: [] };
+      const aluno = alunos.find(a => a.id === s.alunoId);
+      atual.nomes.push(aluno?.nome || `Aluno ${aluno?.numero ?? '?'}`);
+      porPlano.set(s.planoAulaId, atual);
+    });
+
+  const saida: PorValidar[] = [];
+  porPlano.forEach((v, planoAulaId) => {
+    const p = planos.find(x => x.id === planoAulaId);
+    saida.push({
+      planoAulaId,
+      planoTitulo: p?.titulo || 'Plano de aula',
+      data: p?.data || '',
+      quantos: v.nomes.length,
+      nomes: v.nomes,
+    });
+  });
+
+  // Os mais antigos primeiro: são os que arriscam ficar esquecidos.
+  return saida.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+}
+
+/** Quantas ao todo, para o aviso do painel. */
+export function totalPorValidar(turmaId: string): number {
+  return autoavaliacoesPorValidar(turmaId).reduce((s, p) => s + p.quantos, 0);
 }
