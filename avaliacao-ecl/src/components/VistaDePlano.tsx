@@ -172,42 +172,9 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
         </div>
         </>
       )}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <div style={{ background: 'var(--copper)', borderRadius: 12, padding: '10px 14px', textAlign: 'center', flexShrink: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'white', lineHeight: 1 }}>{d.getDate().toString().padStart(2, '0')}</div>
-          <div style={{ fontSize:13, color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', fontWeight: 600 }}>{d.toLocaleDateString('pt-PT', { month: 'short' })}</div>
-          <div style={{ fontSize:13, color: 'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize:13, color: 'rgba(247,241,230,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>
-            {rotuloPlano(plano)} · {diaSemana} · {horaI && horaF ? `${horaI}–${horaF}` : ''} · {String(plano.turmaId ?? '')}
-          </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--cream)', lineHeight: 1.2, marginBottom: 6 }}>
-            {String(plano.titulo || `Aula de ${plano.ucNome || plano.ucId || 'Cozinha'}`)}
-          </div>
-          {plano.ucId ? (
-            <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 12px', marginTop: 4, display: 'inline-block' }}>
-              <div style={{ fontSize:13, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Unidade de Competência</div>
-              <div style={{ fontSize: 13, color: 'white', fontWeight: 700, marginTop: 1 }}>{String(plano.ucId ?? '')}</div>
-              <div style={{ fontSize:13, color: 'rgba(255,255,255,0.85)', marginTop: 1 }}>{String(plano.ucNome ?? '')}</div>
-            </div>
-          ) : (
-            <div style={{ background: 'rgba(179,65,58,0.3)', borderRadius: 8, padding: '5px 10px', marginTop: 4, display: 'inline-block' }}>
-              <span style={{ fontSize:13, color: 'var(--danger-light)', fontWeight: 600 }}>⚠️ UC não definida</span>
-            </div>
-          )}
-          {avisoFimUC(plano) && (
-            <div style={{ marginTop: 10, padding: '9px 13px', borderRadius: 8, background: 'rgba(247,241,230,0.14)', border: '1px solid rgba(247,241,230,0.3)', fontSize: 13, color: 'var(--cream)', fontWeight: 600, maxWidth: 520 }}>
-              {avisoFimUC(plano)}
-            </div>
-          )}
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize:13, padding: '4px 10px', borderRadius: 20, background: plano.estado === 'publicado' ? 'var(--sage)' : 'rgba(247,241,230,0.6)', color: 'white', fontWeight: 600 }}>
-            {plano.estado === 'publicado' ? '✓ Publicado' : plano.estado === 'fichas_pendentes' ? 'Fichas pendentes' : 'Rascunho'}
-          </div>
-        </div>
-      </div>
+      {/* A identificação do plano — data, unidade, horário, estado — está
+          agora no menu da esquerda. Aqui ficam só os atalhos, que mudam
+          com o sítio onde se está. */}
     </div>
   );
 }
