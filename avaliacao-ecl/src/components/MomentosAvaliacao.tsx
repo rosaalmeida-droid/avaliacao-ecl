@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getPlanosAulaPorTurma, getHistoricoAvaliacoes, getAlunos } from '../backend';
+import { getPlanosAulaPorTurma, getHistoricoAvaliacoes, getAlunos , novoId } from '../backend';
 import { modulosDaTurma } from '../cronograma';
 
 interface MomentoAval {
@@ -53,7 +53,7 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
   function criarMomento() {
     if (!nomeMomento || !ucSel || planosSel.size === 0) return;
     const novo: MomentoAval = {
-      id: `mom_${Date.now()}`, ucId: ucSel,
+      id: novoId('mom'), ucId: ucSel,
       nome: nomeMomento, planIds: Array.from(planosSel),
       fechado: false, criadoEm: new Date().toISOString(),
     };
