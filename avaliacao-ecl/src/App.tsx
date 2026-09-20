@@ -17,6 +17,8 @@ import PlanoAula from './components/PlanoAula';
 import { ModalFullscreen } from './components/ModalFullscreen';
 import { VistaDePlano } from './components/VistaDePlano';
 import { MenuDoPlano } from './components/MenuDoPlano';
+import { ManualProfessor } from './components/ManualProfessor';
+import { posicaoNaUC, totalAulasUC } from './rotuloPlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { MomentosAvaliacao } from './components/MomentosAvaliacao';
 import Requisicao from './components/Requisicao';
@@ -117,7 +119,8 @@ import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
 import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
-  estadoDaTurmaNaAula, addOrUpdatePlanoAula } from './backend';
+  estadoDaTurmaNaAula, addOrUpdatePlanoAula,
+  autoavaliacoesPorValidar, getPlanosAula } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -307,11 +310,12 @@ function AppInterno() {
             .filter((f: any) => (planoAberto.fichasIds || []).includes(f.id));
           const req = getRequisicaoPorPlano(planoAberto.id);
 
-          // "Plano 3 de 5" — a posição dentro da unidade.
-          const mesmaUC = getPlanosAulaPorTurma(turmaId)
-            .filter((p: any) => p.ucId === planoAberto.ucId && p.estado !== 'arquivado')
-            .sort((a: any, b: any) => String(a.data).localeCompare(String(b.data)));
-          const posicao = mesmaUC.findIndex((p: any) => p.id === planoAberto.id) + 1;
+          // "Plano 3 de 5" — vem das MESMAS funções que o resto da
+          // aplicação usa. Eu estava a contar os planos já criados e o
+          // rotuloPlano conta as semanas do cronograma: dois números
+          // diferentes a dizer a mesma coisa no mesmo ecrã.
+          const posicao = posicaoNaUC(planoAberto);
+          const totalDaUC = totalAulasUC(planoAberto);
 
           const sessao = getSessaoAula(planoAberto.id);
           const alunosNaAula = sessao?.abertaEm
@@ -335,11 +339,16 @@ function AppInterno() {
                   totalCompetencias={(planoAberto as any).competenciasIds?.length
                     || (planoAberto as any).compAdicionadas?.length || 0}
                   posicao={posicao > 0 ? posicao : undefined}
-                  totalPlanos={mesmaUC.length || undefined}
+                  totalPlanos={totalDaUC || undefined}
                   moduloActivo={moduloPlano as any}
                   aoIrPara={(m) => setModuloPedido(m)}
                   aoSair={fecharPlano}
                   alunosNaAula={alunosNaAula}
+                  porValidar={(() => {
+                    const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
+                    return getSelecoes().filter((s: any) =>
+                      s.planoAulaId === planoAberto.id && !vals.has(s.id)).length;
+                  })()}
                   aoPublicar={planoAberto.estado !== 'publicado' ? () => {
                     const p = { ...planoAberto, estado: 'publicado' as const,
                       atualizadoEm: new Date().toISOString() };
@@ -380,6 +389,52 @@ function AppInterno() {
               <div style={{ maxWidth: 820, margin: '0 auto 4px' }}>
                 <EstadoSincronizacao turmaId={turmaId} />
               </div>
+
+              {/* Autoavaliações por validar, de qualquer plano. Sem isto
+                  o professor passava para a aula seguinte sem dar por
+                  elas — e sem validação não contam para nada. */}
+              {(() => {
+                const pendentes = autoavaliacoesPorValidar(turmaId);
+                if (!pendentes.length) return null;
+                const total = pendentes.reduce((s, p) => s + p.quantos, 0);
+                return (
+                  <div style={{ maxWidth: 820, margin: '0 auto 12px',
+                    background: '#FFF4DC', border: '1.5px solid #F6A623',
+                    borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#7a4f00' }}>
+                      {total} autoavaliaç{total === 1 ? 'ão' : 'ões'} por validar
+                    </div>
+                    <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)',
+                      marginTop: 4, lineHeight: 1.55 }}>
+                      Enquanto não validares, não contam para a nota nem para
+                      o percurso do aluno.
+                    </div>
+                    <div style={{ marginTop: 10, display: 'flex', gap: 7,
+                      flexWrap: 'wrap' }}>
+                      {pendentes.slice(0, 4).map(p => (
+                        <button key={p.planoAulaId}
+                          onClick={() => {
+                            const plano = getPlanosAula().find((x: any) => x.id === p.planoAulaId);
+                            if (plano) { setPlanoAberto(plano as any); setModuloPedido('turma'); }
+                          }}
+                          style={{ padding: '8px 13px', borderRadius: 9,
+                            border: '1px solid #F6A623', background: '#fff',
+                            color: '#7a4f00', fontSize: 13, fontWeight: 700,
+                            cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {p.data ? new Date(p.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }) : 'Plano'}
+                          {' · '}{p.quantos}
+                        </button>
+                      ))}
+                      {pendentes.length > 4 && (
+                        <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)',
+                          alignSelf: 'center' }}>
+                          e mais {pendentes.length - 4} planos
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               <PainelProfessor
                 nomeProfessor={nomeProfessor}
                 turmaId={turmaId}
@@ -423,7 +478,7 @@ function AppInterno() {
               <HistorialView turmaId={turmaId}
                 onIrPara={(v, planoId) => { if (planoId) setPlanoIdAlvo(planoId); setVistaGlobal(v); }} />
             )}
-            {vistaGlobal === 'ajuda' && <AjudaProfessor />}
+            {vistaGlobal === 'ajuda' && <ManualProfessor />}
             {vistaGlobal === 'validacao' && <ValidacaoView turmaId={turmaId} />}
             {vistaGlobal === 'manual' && <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'manuais_aluno' && <ManuaisAluno nomeProfessor={nomeProfessor} />}
@@ -469,37 +524,6 @@ function AppInterno() {
 
 
 // ── Componente de Ajuda ────────────────────────────────────────
-function AjudaProfessor() {
-  const faqs = [
-    { q: 'Como crio um plano de aula?', r: 'Em "Planos de Aula", clica no botão + no canto. Preenche a data, selecciona a UC/UFCD e o tipo de aula.' },
-    { q: 'Qual a diferença entre Prática, Mista e Teórica?', r: 'Prática: avalia subtécnicas e aparelhos. Teórica: avalia só conhecimentos da UC. Mista: avalia os dois.' },
-    { q: 'O aluno esqueceu o PIN. O que faço?', r: 'Dentro do plano, vai ao tab "PIN temp." e gera um PIN temporário. A coordenadora será avisada.' },
-    { q: 'Porque vejo um aviso de "sem cruzamento" na aula?', r: 'A ficha técnica não cruza com a UC activa. Muda para aula Mista e adiciona conhecimentos da UC.' },
-    { q: 'Onde vejo as autoavaliações dos alunos?', r: 'Dentro do plano, no tab "Autoavaliações". Vês quem submeteu e as notas por componente.' },
-    { q: 'Como vejo a evolução de um aluno?', r: 'Em "Historial" no menu. Filtra por UC, trimestre ou aluno.' },
-    { q: 'O que são Orçamentos?', r: 'Fichas técnicas e requisições sem ligação a uma aula — para calcular custos ou preparar fichas.' },
-    { q: 'Como fecho um trimestre?', r: 'No Historial, filtra pelo trimestre e UC. Verifica o equilíbrio antes de lançar a nota.' },
-  ];
-  return (
-    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', padding: 4 }}>
-      <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2' }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800 }}>❓ Ajuda</h2>
-        <div style={{ fontSize: 12, opacity: 0.5 }}>Respostas às dúvidas mais frequentes</div>
-      </div>
-      {faqs.map((f, i) => (
-        <details key={i} style={{ marginBottom: 8, borderRadius: 10, border: '1px solid rgba(26,23,20,0.08)', overflow: 'hidden', background: '#fff' }}>
-          <summary style={{ padding: '12px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 14, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#b5651d', fontWeight: 800 }}>Q</span> {f.q}
-          </summary>
-          <div style={{ padding: '10px 14px 14px', fontSize: 13, color: 'rgba(26,23,20,0.7)', lineHeight: 1.6, borderTop: '1px solid rgba(26,23,20,0.06)', background: '#faf7f2' }}>
-            {f.r}
-          </div>
-        </details>
-      ))}
-    </div>
-  );
-}
-
 export default function App() {
   return (
     <ErrorBoundary>
