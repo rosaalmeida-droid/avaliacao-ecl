@@ -11,7 +11,8 @@ import {
   getFichasProducao,
   getAlunos, publicarNoClassroom } from '../backend';
 import { fmtDataCurta, fmtData } from '../datas';
-import { modulosDaTurma, modulosAtivos } from '../cronograma';
+import { modulosDaTurma, modulosAtivos, disciplinasAtivas,
+  modulosAtivosDaDisciplina, disciplinaUnica } from '../cronograma';
 import { avisoDoDia, temCozinha, horasSugeridas } from '../horarios';
 import { rotuloPlano } from '../rotuloPlano';
 
@@ -741,6 +742,9 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     horaInicio: h?.inicio || '08:30',
     horaFim: h?.fim || '17:30',
     ucId: '',
+    // Qual das disciplinas do professor é esta aula. Só se pergunta
+    // quando há mais do que uma a decorrer na mesma data.
+    disciplina: disciplinaUnica(turmaId, data),
     titulo: '',
     professor: nomeProfessor || '',
     tipoAtividade: 'Aula prática',
@@ -758,7 +762,20 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       // Ao mudar a data, a unidade acompanha o cronograma — a não ser
       // que o professor tenha escolhido trocar à mão.
       if (k === 'data' && !trocarUC) {
-        const ativos = modulosAtivos(turmaId, v);
+        // A disciplina é reavaliada com a data nova: a que estava a
+        // decorrer pode já não estar, ou podem passar a ser duas.
+        const disc = disciplinaUnica(turmaId, v);
+        novo.disciplina = disc || (disciplinasAtivas(turmaId, v).includes(p.disciplina) ? p.disciplina : '');
+
+        const ativos = novo.disciplina
+          ? modulosAtivosDaDisciplina(turmaId, novo.disciplina, v)
+          : [];
+        const doCrono = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+        novo.ucId = doCrono?.id ?? '';
+      }
+      // Ao escolher a disciplina, o módulo acompanha.
+      if (k === 'disciplina' && !trocarUC && p.data) {
+        const ativos = modulosAtivosDaDisciplina(turmaId, v, p.data);
         const doCrono = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
         novo.ucId = doCrono?.id ?? '';
       }
@@ -770,7 +787,10 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   // Preencher a unidade na abertura do formulário.
   useEffect(() => {
     if (trocarUC || !dados.data) return;
-    const ativos = modulosAtivos(turmaId, dados.data);
+    // Sem disciplina escolhida não se adivinha o módulo: com duas a
+    // decorrer, seria meio a meio acertar.
+    if (!dados.disciplina) return;
+    const ativos = modulosAtivosDaDisciplina(turmaId, dados.disciplina, dados.data);
     const doCrono = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
     if (doCrono && dados.ucId !== doCrono.id) {
       setDados(p => ({ ...p, ucId: doCrono.id }));
@@ -848,9 +868,19 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             const isUFCD = modulos.some(m => m.tipo === 'UFCD');
             const label = isUFCD ? 'UFCD' : 'unidade';
 
-            const ativos = dados.data ? modulosAtivos(turmaId, dados.data) : [];
-            // Com duas em curso — uma a acabar e outra a começar — fica a
-            // que acaba primeiro: é a que tem menos aulas pela frente.
+            // A disciplina vem primeiro. A Rosa dá duas ao 3º ACP —
+            // Serviços de Cozinha/Pastelaria e Gestão e Controlo — a
+            // correr ao mesmo tempo. Escolhia-se "a que acaba primeiro",
+            // e saía a de Gestão e Controlo numa aula de cozinha.
+            const disciplinas = dados.data ? disciplinasAtivas(turmaId, dados.data) : [];
+            const disciplinaEscolhida = dados.disciplina
+              || (disciplinas.length === 1 ? disciplinas[0] : '');
+
+            const ativos = (dados.data && disciplinaEscolhida)
+              ? modulosAtivosDaDisciplina(turmaId, disciplinaEscolhida, dados.data)
+              : [];
+            // Dentro da disciplina, fica o módulo que acaba primeiro: é o
+            // que tem menos aulas pela frente.
             const doCronograma = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
 
             const selNome = modulos.find(m => m.id === dados.ucId)?.nome
@@ -862,6 +892,42 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
                 <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--surface-2, #f6f4f1)',
                   fontSize: 13.5, color: 'rgba(26,23,20,0.6)' }}>
                   Escolhe primeiro a data. A {label} vem do cronograma.
+                </div>
+              );
+            }
+
+            // Duas ou mais disciplinas a decorrer: o professor escolhe.
+            if (disciplinas.length > 1 && !disciplinaEscolhida) {
+              return (
+                <div>
+                  <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)',
+                    marginBottom: 10, lineHeight: 1.55 }}>
+                    Nesta data tens {disciplinas.length} disciplinas a decorrer.
+                    Qual delas é esta aula?
+                  </div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {disciplinas.map(d => {
+                      const mods = modulosAtivosDaDisciplina(turmaId, d, dados.data);
+                      const m = [...mods].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+                      return (
+                        <button key={d}
+                          onClick={() => setDados({ ...dados, disciplina: d, ucId: m?.id || '' })}
+                          style={{ padding: '14px 16px', borderRadius: 12, textAlign: 'left',
+                            border: '1.5px solid var(--copper)', background: '#fff',
+                            cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--copper)' }}>
+                            {d}
+                          </div>
+                          {m && (
+                            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)',
+                              marginTop: 3, lineHeight: 1.45 }}>
+                              {m.id} · {m.nome}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             }
