@@ -56,7 +56,7 @@ function Linha({
 export function MenuDoPlano({
   plano, fichas, temRequisicao, numeroRequisicao, totalCompetencias,
   posicao, totalPlanos, moduloActivo, aoIrPara, aoSair, aoPublicar,
-  alunosNaAula, porValidar, aviso,
+  alunosNaAula, porValidar, aviso, disciplina,
 }: {
   plano: PlanoAula;
   fichas: FichaProducao[];
@@ -76,6 +76,8 @@ export function MenuDoPlano({
   porValidar?: number;
   /** Aviso de fim de unidade, quando se aplica. */
   aviso?: string;
+  /** A disciplina deste plano — cozinha, gestão e controlo… */
+  disciplina?: string;
 }) {
   const comGuiao = fichas.filter(f => !!(f as any).textoGuia).length;
   const publicado = plano.estado === 'publicado';
@@ -125,9 +127,17 @@ export function MenuDoPlano({
         {plano.ucId ? (
           <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 8,
             background: 'rgba(255,255,255,0.12)' }}>
+            {/* A disciplina, antes da unidade. O professor dá duas ao
+                mesmo tempo — tem de saber qual está a trabalhar. */}
+            {disciplina && (
+              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#ffd9a0',
+                marginBottom: 5, lineHeight: 1.3 }}>
+                {disciplina}
+              </div>
+            )}
             <div style={{ fontSize: 10, letterSpacing: '0.08em', fontWeight: 800,
               color: 'rgba(255,255,255,0.55)' }}>
-              UNIDADE
+              {disciplina ? 'MÓDULO' : 'UNIDADE'}
             </div>
             <div style={{ fontSize: 13, fontWeight: 800, color: BRANCO_FORTE, marginTop: 2 }}>
               {plano.ucId}
