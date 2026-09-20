@@ -185,7 +185,10 @@ export function EditorComanda({
 
       {onCancelar && (
         <>
-          <Button block variant="ghost" onClick={onCancelar}>← Voltar</Button>
+          {/* Voltar sem guardar descartava tudo em silêncio. */}
+          <Button block variant="ghost" onClick={() => {
+            if (confirm('Voltar sem guardar?\n\nO que preencheste perde-se.')) onCancelar();
+          }}>← Voltar</Button>
           <div style={{ height: 8 }} />
         </>
       )}
