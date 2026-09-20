@@ -443,7 +443,7 @@ export function getTurmas(): Turma[] {
   const t = load<Turma>(KEYS.turmas);
   if (t.length === 0) {
     const seed: Turma[] = [
-      { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+      { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
       { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
       { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
     ];
@@ -452,7 +452,8 @@ export function getTurmas(): Turma[] {
   }
   // Migração: corrigir nomes antigos (1º CP → 1º ACP)
   const mapa: Record<string, {id: string, nome: string}> = {
-    '1º CP': { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+    '1º CP': { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
+    '1º ACP': { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
     '2º CP': { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
     '3º CP': { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
     'CP1':   { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
@@ -726,7 +727,31 @@ export function seedAlunosReais(): void {
   if (todos.length > 0) return; // já existem — não sobrescrever
   const agora = new Date().toISOString();
   const alunos: Aluno[] = [
-    // ── 2º CP (1º ACP 2025/2028) ─────────────────────────────────
+    // ── 1º BCR-C — Técnico de Cozinha e Restauração (2026/2029) ──
+    // Turma nova deste ano letivo. Substitui o 1º ACP, que era outro
+    // curso. A Jorgeana Varela e o Martim Silva vieram do 2º ACP.
+    { id: '1º BCR-1', turmaId: '1º BCR', numero: 1, ano: 1 as const, nome: 'Dinis Fernandes Caralinda', pin: '1001', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-2', turmaId: '1º BCR', numero: 2, ano: 1 as const, nome: 'Diogo Barbaça', pin: '1002', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-3', turmaId: '1º BCR', numero: 3, ano: 1 as const, nome: 'Diogo Miguel Bernardo Lopes', pin: '1003', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-4', turmaId: '1º BCR', numero: 4, ano: 1 as const, nome: 'Érica Melissa Oliveira Leal', pin: '1004', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-5', turmaId: '1º BCR', numero: 5, ano: 1 as const, nome: 'Euler Fernando Kateque Cariango', pin: '1005', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-6', turmaId: '1º BCR', numero: 6, ano: 1 as const, nome: 'Guilherme Heitor Pereira Coutinho', pin: '1006', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-7', turmaId: '1º BCR', numero: 7, ano: 1 as const, nome: 'Joelma Barbosa de Pina Tavares', pin: '1007', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-8', turmaId: '1º BCR', numero: 8, ano: 1 as const, nome: 'Jorgeana Patricia Tavares Varela', pin: '1008', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-9', turmaId: '1º BCR', numero: 9, ano: 1 as const, nome: 'José Luís Tavares', pin: '1009', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-10', turmaId: '1º BCR', numero: 10, ano: 1 as const, nome: 'Kiara Alexandra de White Fernandes', pin: '1010', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-11', turmaId: '1º BCR', numero: 11, ano: 1 as const, nome: 'Luana Pinto', pin: '1011', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-12', turmaId: '1º BCR', numero: 12, ano: 1 as const, nome: 'Lúcia do Espírito Santo Cabral', pin: '1012', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-13', turmaId: '1º BCR', numero: 13, ano: 1 as const, nome: 'Martim Alexandre Mendes Máximo', pin: '1013', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-14', turmaId: '1º BCR', numero: 14, ano: 1 as const, nome: 'Martim Rocha Delgado Felizardo da Silva', pin: '1014', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-15', turmaId: '1º BCR', numero: 15, ano: 1 as const, nome: 'Melissa Gaspar da Costa', pin: '1015', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-16', turmaId: '1º BCR', numero: 16, ano: 1 as const, nome: 'Orcinela Campos dos Reis da Cruz', pin: '1016', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-17', turmaId: '1º BCR', numero: 17, ano: 1 as const, nome: 'Rodrigo Pereira Carvalho', pin: '1017', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-18', turmaId: '1º BCR', numero: 18, ano: 1 as const, nome: 'Sakibul Islam Sipat', pin: '1018', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-19', turmaId: '1º BCR', numero: 19, ano: 1 as const, nome: 'Tiago Gaty Lopes', pin: '1019', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-20', turmaId: '1º BCR', numero: 20, ano: 1 as const, nome: 'Tomás Paiva Novais', pin: '1020', ativo: true, pinCriadoEm: agora },
+
+    // ── 2º ACP ───────────────────────────────────────────────────
     // 2º ACP — constituição de 2026/27 (eSchooling).
     // Saíram Carlos Maia (7), Jorgeana Varela (13) e Martim Silva (16).
     // Os números dos restantes mantêm-se os da pauta oficial — não se
