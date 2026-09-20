@@ -7,6 +7,7 @@ import { ManualCozinheiro } from './components/ManualCozinheiro';
 import { ManuaisAluno } from './components/ManuaisAluno';
 import { Header, LayoutProfessor, VistaProf } from './components/Header';
 import { PainelProfessor } from './components/PainelProfessor';
+import { CalendarioMensal } from './components/PlanoAula';
 import { EstadoSincronizacao } from './components/EstadoSincronizacao';
 import { modulosAtivos } from './cronograma';
 import ProfessorView from './components/ProfessorView';
@@ -18,7 +19,7 @@ import { ModalFullscreen } from './components/ModalFullscreen';
 import { VistaDePlano } from './components/VistaDePlano';
 import { MenuDoPlano } from './components/MenuDoPlano';
 import { ManualProfessor } from './components/ManualProfessor';
-import { posicaoNaUC, totalAulasUC } from './rotuloPlano';
+import { posicaoNaUC, totalAulasUC, avisoFimUC } from './rotuloPlano';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
 import { MomentosAvaliacao } from './components/MomentosAvaliacao';
 import Requisicao from './components/Requisicao';
@@ -120,7 +121,7 @@ import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedP
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
-  autoavaliacoesPorValidar, getPlanosAula } from './backend';
+  autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -330,6 +331,8 @@ function AppInterno() {
               titulo={planoAberto.titulo || 'Plano de Aula'}
               subtitulo={turmaId}
               onFechar={fecharPlano}
+              temAlteracoes={temAlteracoes}
+              aoGuardar={guardarCallback || undefined}
               menuLateral={
                 <MenuDoPlano
                   plano={planoAberto}
@@ -344,6 +347,7 @@ function AppInterno() {
                   aoIrPara={(m) => setModuloPedido(m)}
                   aoSair={fecharPlano}
                   alunosNaAula={alunosNaAula}
+                  aviso={avisoFimUC(planoAberto) || undefined}
                   porValidar={(() => {
                     const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
                     return getSelecoes().filter((s: any) =>
@@ -354,6 +358,27 @@ function AppInterno() {
                       atualizadoEm: new Date().toISOString() };
                     addOrUpdatePlanoAula(p);
                     setPlanoAberto(p);
+
+                    // O Classroom só agora faz sentido: o plano está
+                    // pronto, com as fichas e o guião que tiver. Antes
+                    // perguntava-se ao criar o plano, ainda vazio.
+                    if (window.confirm(
+                      'Plano publicado para os alunos.\n\n'
+                      + 'Publicar também no Google Classroom?'
+                    )) {
+                      const fichas = getFichasProducao()
+                        .filter((f: any) => (p.fichasIds || []).includes(f.id));
+                      publicarNoClassroom('plano', turmaId, {
+                        titulo: p.titulo, data: p.data,
+                        horaInicio: p.horaInicio, horaFim: p.horaFim,
+                        ucId: p.ucId, ucNome: p.ucNome,
+                        pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
+                        observacoes: (p as any).observacoes || '',
+                      }).then(res => {
+                        if (res.ok) alert('Publicado no Classroom.');
+                        else alert('Não foi possível publicar no Classroom: ' + (res.erro || 'erro desconhecido'));
+                      });
+                    }
                   } : undefined}
                 />
               }
@@ -449,6 +474,14 @@ function AppInterno() {
                     s.turmaId === turmaId && !vals.has(s.id)).length;
                 })()}
                 onAbrir={(v) => setVistaGlobal(v)}
+                calendario={
+                  <CalendarioMensal
+                    planos={getPlanosAulaPorTurma(turmaId).filter((p: any) => p.estado !== 'arquivado')}
+                    onAbrirPlano={(p: any) => setPlanoAberto(p)}
+                    turmaId={turmaId}
+                    onCriarNoDia={() => setVistaGlobal('planos')}
+                  />
+                }
               />
               </>
             );
