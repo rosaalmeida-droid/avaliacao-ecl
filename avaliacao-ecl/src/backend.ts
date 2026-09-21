@@ -409,11 +409,18 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         const locais = getAlunos();
         const merged = [...locais];
         for (const a of jsonAlunos.dados) {
+          // Linhas sem nome são alunos-fantasma dos PINs inventados — não
+          // entram noutros aparelhos.
+          if (!a?.id || !a.nome) continue;
           const idx = merged.findIndex((x: Aluno) => x.id === a.id);
           if (idx < 0) merged.push(a);
-          else merged[idx] = { ...merged[idx], ...a, pin: merged[idx].pin || a.pin };
+          else merged[idx] = { ...merged[idx], ...a,
+            nome: a.nome || merged[idx].nome,
+            pin: merged[idx].pin || a.pin };
         }
         save(KEYS.alunos, merged);
+        // A lista oficial manda: repor nomes, turmas e desativações.
+        seedAlunosReais();
       }
     }
 
@@ -456,7 +463,7 @@ export function getTurmas(): Turma[] {
     '1º ACP': { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
     '2º CP': { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
     '3º CP': { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
-    'CP1':   { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+    'CP1':   { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
     'CP2':   { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
     'CP3':   { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
   };
@@ -721,90 +728,128 @@ export async function sincronizarFichaPortefolio(ficha: FichaProducao): Promise<
 
 // ── Alunos reais ECL 2025/2026 ──────────────────────────────────────────────
 // 2º CP = turma 1º ACP 2025/2028  |  3º CP = turma 2º ACP 2024/2027
-// PINs iniciais: 2NNN para 2ºCP, 3NNN para 3ºCP (professor altera depois)
+// PINs: aleatórios, um por aluno, entregues em papel. O professor pode
+// mudá-los depois (PIN temporário).
 export function seedAlunosReais(): void {
-  const todos = getAlunos().filter((a: Aluno) => a.turmaId === '2º ACP' || a.turmaId === '3º ACP');
-  if (todos.length > 0) return; // já existem — não sobrescrever
+  // Antes saía logo se o aparelho já tivesse alunos do 2º ou 3º ACP.
+  // Num tablet já usado, o 1º BCR nunca entrava — e os três alunos que
+  // saíram do 2º ACP continuavam lá. Agora acerta sempre a lista com a
+  // oficial: acrescenta os que faltam, corrige os que estão mal, e
+  // desativa os que já não pertencem à turma.
   const agora = new Date().toISOString();
   const alunos: Aluno[] = [
     // ── 1º BCR-C — Técnico de Cozinha e Restauração (2026/2029) ──
     // Turma nova deste ano letivo. Substitui o 1º ACP, que era outro
     // curso. A Jorgeana Varela e o Martim Silva vieram do 2º ACP.
-    { id: '1º BCR-1', turmaId: '1º BCR', numero: 1, ano: 1 as const, nome: 'Dinis Fernandes Caralinda', pin: '1001', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-2', turmaId: '1º BCR', numero: 2, ano: 1 as const, nome: 'Diogo Barbaça', pin: '1002', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-3', turmaId: '1º BCR', numero: 3, ano: 1 as const, nome: 'Diogo Miguel Bernardo Lopes', pin: '1003', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-4', turmaId: '1º BCR', numero: 4, ano: 1 as const, nome: 'Érica Melissa Oliveira Leal', pin: '1004', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-5', turmaId: '1º BCR', numero: 5, ano: 1 as const, nome: 'Euler Fernando Kateque Cariango', pin: '1005', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-6', turmaId: '1º BCR', numero: 6, ano: 1 as const, nome: 'Guilherme Heitor Pereira Coutinho', pin: '1006', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-7', turmaId: '1º BCR', numero: 7, ano: 1 as const, nome: 'Joelma Barbosa de Pina Tavares', pin: '1007', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-8', turmaId: '1º BCR', numero: 8, ano: 1 as const, nome: 'Jorgeana Patricia Tavares Varela', pin: '1008', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-9', turmaId: '1º BCR', numero: 9, ano: 1 as const, nome: 'José Luís Tavares', pin: '1009', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-10', turmaId: '1º BCR', numero: 10, ano: 1 as const, nome: 'Kiara Alexandra de White Fernandes', pin: '1010', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-11', turmaId: '1º BCR', numero: 11, ano: 1 as const, nome: 'Luana Pinto', pin: '1011', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-12', turmaId: '1º BCR', numero: 12, ano: 1 as const, nome: 'Lúcia do Espírito Santo Cabral', pin: '1012', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-13', turmaId: '1º BCR', numero: 13, ano: 1 as const, nome: 'Martim Alexandre Mendes Máximo', pin: '1013', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-14', turmaId: '1º BCR', numero: 14, ano: 1 as const, nome: 'Martim Rocha Delgado Felizardo da Silva', pin: '1014', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-15', turmaId: '1º BCR', numero: 15, ano: 1 as const, nome: 'Melissa Gaspar da Costa', pin: '1015', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-16', turmaId: '1º BCR', numero: 16, ano: 1 as const, nome: 'Orcinela Campos dos Reis da Cruz', pin: '1016', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-17', turmaId: '1º BCR', numero: 17, ano: 1 as const, nome: 'Rodrigo Pereira Carvalho', pin: '1017', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-18', turmaId: '1º BCR', numero: 18, ano: 1 as const, nome: 'Sakibul Islam Sipat', pin: '1018', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-19', turmaId: '1º BCR', numero: 19, ano: 1 as const, nome: 'Tiago Gaty Lopes', pin: '1019', ativo: true, pinCriadoEm: agora },
-    { id: '1º BCR-20', turmaId: '1º BCR', numero: 20, ano: 1 as const, nome: 'Tomás Paiva Novais', pin: '1020', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-1', turmaId: '1º BCR', numero: 1, ano: 1 as const, nome: 'Dinis Fernandes Caralinda', pin: '6875', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-2', turmaId: '1º BCR', numero: 2, ano: 1 as const, nome: 'Diogo Barbaça', pin: '1406', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-3', turmaId: '1º BCR', numero: 3, ano: 1 as const, nome: 'Diogo Miguel Bernardo Lopes', pin: '6849', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-4', turmaId: '1º BCR', numero: 4, ano: 1 as const, nome: 'Érica Melissa Oliveira Leal', pin: '6174', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-5', turmaId: '1º BCR', numero: 5, ano: 1 as const, nome: 'Euler Fernando Kateque Cariango', pin: '4657', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-6', turmaId: '1º BCR', numero: 6, ano: 1 as const, nome: 'Guilherme Heitor Pereira Coutinho', pin: '4341', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-7', turmaId: '1º BCR', numero: 7, ano: 1 as const, nome: 'Joelma Barbosa de Pina Tavares', pin: '1219', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-8', turmaId: '1º BCR', numero: 8, ano: 1 as const, nome: 'Jorgeana Patricia Tavares Varela', pin: '5977', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-9', turmaId: '1º BCR', numero: 9, ano: 1 as const, nome: 'José Luís Tavares', pin: '9152', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-10', turmaId: '1º BCR', numero: 10, ano: 1 as const, nome: 'Kiara Alexandra de White Fernandes', pin: '3087', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-11', turmaId: '1º BCR', numero: 11, ano: 1 as const, nome: 'Luana Pinto', pin: '9267', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-12', turmaId: '1º BCR', numero: 12, ano: 1 as const, nome: 'Lúcia do Espírito Santo Cabral', pin: '8900', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-13', turmaId: '1º BCR', numero: 13, ano: 1 as const, nome: 'Martim Alexandre Mendes Máximo', pin: '5580', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-14', turmaId: '1º BCR', numero: 14, ano: 1 as const, nome: 'Martim Rocha Delgado Felizardo da Silva', pin: '8078', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-15', turmaId: '1º BCR', numero: 15, ano: 1 as const, nome: 'Melissa Gaspar da Costa', pin: '1205', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-16', turmaId: '1º BCR', numero: 16, ano: 1 as const, nome: 'Orcinela Campos dos Reis da Cruz', pin: '7100', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-17', turmaId: '1º BCR', numero: 17, ano: 1 as const, nome: 'Rodrigo Pereira Carvalho', pin: '6230', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-18', turmaId: '1º BCR', numero: 18, ano: 1 as const, nome: 'Sakibul Islam Sipat', pin: '1339', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-19', turmaId: '1º BCR', numero: 19, ano: 1 as const, nome: 'Tiago Gaty Lopes', pin: '1409', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-20', turmaId: '1º BCR', numero: 20, ano: 1 as const, nome: 'Tomás Paiva Novais', pin: '5399', ativo: true, pinCriadoEm: agora },
 
     // ── 2º ACP ───────────────────────────────────────────────────
     // 2º ACP — constituição de 2026/27 (eSchooling).
     // Saíram Carlos Maia (7), Jorgeana Varela (13) e Martim Silva (16).
     // Os números dos restantes mantêm-se os da pauta oficial — não se
     // renumeram, senão deixam de bater certo com o que a escola usa.
-    { id: '2º ACP-1', turmaId: '2º ACP', numero: 1, ano: 2 as const, nome: 'Agnes Paola A. Conceição', pin: '2001', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-2', turmaId: '2º ACP', numero: 2, ano: 2 as const, nome: 'Alcides João S. Neto', pin: '2002', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-3', turmaId: '2º ACP', numero: 3, ano: 2 as const, nome: 'Anamar Padinha Gomes', pin: '2003', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-4', turmaId: '2º ACP', numero: 4, ano: 2 as const, nome: 'Arthur Oliveira Santos', pin: '2004', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-5', turmaId: '2º ACP', numero: 5, ano: 2 as const, nome: 'Beatriz Mendes Brito', pin: '2005', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-6', turmaId: '2º ACP', numero: 6, ano: 2 as const, nome: 'Beatriz Pompeu Pinheiro', pin: '2006', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-8', turmaId: '2º ACP', numero: 8, ano: 2 as const, nome: 'Eduardo Júnior S. Paulo', pin: '2008', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-9', turmaId: '2º ACP', numero: 9, ano: 2 as const, nome: 'Folly Orax Sallah', pin: '2009', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-10', turmaId: '2º ACP', numero: 10, ano: 2 as const, nome: 'Gonçalo Rafael Claro', pin: '2010', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-11', turmaId: '2º ACP', numero: 11, ano: 2 as const, nome: 'Gustavo Lopes Costa', pin: '2011', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-12', turmaId: '2º ACP', numero: 12, ano: 2 as const, nome: 'Isabella Medina Jurado', pin: '2012', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-14', turmaId: '2º ACP', numero: 14, ano: 2 as const, nome: 'Mafalda Resende C. Ferreira', pin: '2014', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-15', turmaId: '2º ACP', numero: 15, ano: 2 as const, nome: 'Manuel José M. Maca', pin: '2015', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-17', turmaId: '2º ACP', numero: 17, ano: 2 as const, nome: 'Neide Tavares Cardoso', pin: '2017', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-18', turmaId: '2º ACP', numero: 18, ano: 2 as const, nome: 'Raquel Luis O. Diogo', pin: '2018', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-19', turmaId: '2º ACP', numero: 19, ano: 2 as const, nome: 'Rita Maria S. Nunes', pin: '2019', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-20', turmaId: '2º ACP', numero: 20, ano: 2 as const, nome: 'Rute Santos Rodrigues', pin: '2020', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-21', turmaId: '2º ACP', numero: 21, ano: 2 as const, nome: 'Sara Andrade Arruda', pin: '2021', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-22', turmaId: '2º ACP', numero: 22, ano: 2 as const, nome: 'Telmo Márcio T. Mendes', pin: '2022', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-23', turmaId: '2º ACP', numero: 23, ano: 2 as const, nome: 'Yichen Wu', pin: '2023', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-1', turmaId: '3º ACP', numero: 1, ano: 3 as const, nome: 'Afonso Miguel C. Dias', pin: '3001', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-2', turmaId: '3º ACP', numero: 2, ano: 3 as const, nome: 'Aldmir Afonso Marques', pin: '3002', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-3', turmaId: '3º ACP', numero: 3, ano: 3 as const, nome: 'Bernardo Alexandre B. Correia', pin: '3003', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-4', turmaId: '3º ACP', numero: 4, ano: 3 as const, nome: 'Bruno Monteiro Cardoso', pin: '3004', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-5', turmaId: '3º ACP', numero: 5, ano: 3 as const, nome: 'Cilaine Espírito S. Pereira', pin: '3005', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-6', turmaId: '3º ACP', numero: 6, ano: 3 as const, nome: 'Diogo Alexandre S. Neves', pin: '3006', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-7', turmaId: '3º ACP', numero: 7, ano: 3 as const, nome: 'Djeison Patrick R. Pina', pin: '3007', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-8', turmaId: '3º ACP', numero: 8, ano: 3 as const, nome: 'Éria Santana Roberto', pin: '3008', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-9', turmaId: '3º ACP', numero: 9, ano: 3 as const, nome: 'Francisco Miguel P. Neto', pin: '3009', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-10', turmaId: '3º ACP', numero: 10, ano: 3 as const, nome: 'Hugo Guilherme B. Sequeira', pin: '3010', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-11', turmaId: '3º ACP', numero: 11, ano: 3 as const, nome: 'Íris Filipa G. Monteiro', pin: '3011', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-12', turmaId: '3º ACP', numero: 12, ano: 3 as const, nome: 'Lara Maria D. N. Machado', pin: '3012', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-13', turmaId: '3º ACP', numero: 13, ano: 3 as const, nome: 'Leonel Dino S. Tavares', pin: '3013', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-14', turmaId: '3º ACP', numero: 14, ano: 3 as const, nome: 'Leonor Sofia M. Cruz', pin: '3014', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-15', turmaId: '3º ACP', numero: 15, ano: 3 as const, nome: 'Luizito Campos Assunção', pin: '3015', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-16', turmaId: '3º ACP', numero: 16, ano: 3 as const, nome: 'Martim Fonseca M. Ramos', pin: '3016', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-17', turmaId: '3º ACP', numero: 17, ano: 3 as const, nome: 'Melisa Carine Cardoso', pin: '3017', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-18', turmaId: '3º ACP', numero: 18, ano: 3 as const, nome: 'Mishant Tamang', pin: '3018', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-19', turmaId: '3º ACP', numero: 19, ano: 3 as const, nome: 'Raquel Oliveira Pinto', pin: '3019', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-20', turmaId: '3º ACP', numero: 20, ano: 3 as const, nome: 'Ricardo Miguel G. Mendes', pin: '3020', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-21', turmaId: '3º ACP', numero: 21, ano: 3 as const, nome: 'Ronnen Alem Cardoso', pin: '3021', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-22', turmaId: '3º ACP', numero: 22, ano: 3 as const, nome: 'Vanessa Ramos Mestre', pin: '3022', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-1', turmaId: '2º ACP', numero: 1, ano: 2 as const, nome: 'Agnes Paola A. Conceição', pin: '4469', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-2', turmaId: '2º ACP', numero: 2, ano: 2 as const, nome: 'Alcides João S. Neto', pin: '3464', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-3', turmaId: '2º ACP', numero: 3, ano: 2 as const, nome: 'Anamar Padinha Gomes', pin: '8618', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-4', turmaId: '2º ACP', numero: 4, ano: 2 as const, nome: 'Arthur Oliveira Santos', pin: '6244', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-5', turmaId: '2º ACP', numero: 5, ano: 2 as const, nome: 'Beatriz Mendes Brito', pin: '6397', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-6', turmaId: '2º ACP', numero: 6, ano: 2 as const, nome: 'Beatriz Pompeu Pinheiro', pin: '1310', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-8', turmaId: '2º ACP', numero: 8, ano: 2 as const, nome: 'Eduardo Júnior S. Paulo', pin: '7924', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-9', turmaId: '2º ACP', numero: 9, ano: 2 as const, nome: 'Folly Orax Sallah', pin: '3616', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-10', turmaId: '2º ACP', numero: 10, ano: 2 as const, nome: 'Gonçalo Rafael Claro', pin: '5709', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-11', turmaId: '2º ACP', numero: 11, ano: 2 as const, nome: 'Gustavo Lopes Costa', pin: '3190', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-12', turmaId: '2º ACP', numero: 12, ano: 2 as const, nome: 'Isabella Medina Jurado', pin: '9527', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-14', turmaId: '2º ACP', numero: 14, ano: 2 as const, nome: 'Mafalda Resende C. Ferreira', pin: '4090', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-15', turmaId: '2º ACP', numero: 15, ano: 2 as const, nome: 'Manuel José M. Maca', pin: '9522', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-17', turmaId: '2º ACP', numero: 17, ano: 2 as const, nome: 'Neide Tavares Cardoso', pin: '8287', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-18', turmaId: '2º ACP', numero: 18, ano: 2 as const, nome: 'Raquel Luis O. Diogo', pin: '1739', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-19', turmaId: '2º ACP', numero: 19, ano: 2 as const, nome: 'Rita Maria S. Nunes', pin: '8550', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-20', turmaId: '2º ACP', numero: 20, ano: 2 as const, nome: 'Rute Santos Rodrigues', pin: '3607', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-21', turmaId: '2º ACP', numero: 21, ano: 2 as const, nome: 'Sara Andrade Arruda', pin: '2439', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-22', turmaId: '2º ACP', numero: 22, ano: 2 as const, nome: 'Telmo Márcio T. Mendes', pin: '1393', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-23', turmaId: '2º ACP', numero: 23, ano: 2 as const, nome: 'Yichen Wu', pin: '7955', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-1', turmaId: '3º ACP', numero: 1, ano: 3 as const, nome: 'Afonso Miguel C. Dias', pin: '6728', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-2', turmaId: '3º ACP', numero: 2, ano: 3 as const, nome: 'Aldmir Afonso Marques', pin: '1374', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-3', turmaId: '3º ACP', numero: 3, ano: 3 as const, nome: 'Bernardo Alexandre B. Correia', pin: '2359', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-4', turmaId: '3º ACP', numero: 4, ano: 3 as const, nome: 'Bruno Monteiro Cardoso', pin: '2792', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-5', turmaId: '3º ACP', numero: 5, ano: 3 as const, nome: 'Cilaine Espírito S. Pereira', pin: '7229', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-6', turmaId: '3º ACP', numero: 6, ano: 3 as const, nome: 'Diogo Alexandre S. Neves', pin: '6156', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-7', turmaId: '3º ACP', numero: 7, ano: 3 as const, nome: 'Djeison Patrick R. Pina', pin: '7153', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-8', turmaId: '3º ACP', numero: 8, ano: 3 as const, nome: 'Éria Santana Roberto', pin: '1579', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-9', turmaId: '3º ACP', numero: 9, ano: 3 as const, nome: 'Francisco Miguel P. Neto', pin: '1434', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-10', turmaId: '3º ACP', numero: 10, ano: 3 as const, nome: 'Hugo Guilherme B. Sequeira', pin: '8061', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-11', turmaId: '3º ACP', numero: 11, ano: 3 as const, nome: 'Íris Filipa G. Monteiro', pin: '1075', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-12', turmaId: '3º ACP', numero: 12, ano: 3 as const, nome: 'Lara Maria D. N. Machado', pin: '8915', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-13', turmaId: '3º ACP', numero: 13, ano: 3 as const, nome: 'Leonel Dino S. Tavares', pin: '5608', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-14', turmaId: '3º ACP', numero: 14, ano: 3 as const, nome: 'Leonor Sofia M. Cruz', pin: '7455', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-15', turmaId: '3º ACP', numero: 15, ano: 3 as const, nome: 'Luizito Campos Assunção', pin: '6943', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-16', turmaId: '3º ACP', numero: 16, ano: 3 as const, nome: 'Martim Fonseca M. Ramos', pin: '2136', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-17', turmaId: '3º ACP', numero: 17, ano: 3 as const, nome: 'Melisa Carine Cardoso', pin: '8177', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-18', turmaId: '3º ACP', numero: 18, ano: 3 as const, nome: 'Mishant Tamang', pin: '2738', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-19', turmaId: '3º ACP', numero: 19, ano: 3 as const, nome: 'Raquel Oliveira Pinto', pin: '4098', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-20', turmaId: '3º ACP', numero: 20, ano: 3 as const, nome: 'Ricardo Miguel G. Mendes', pin: '3014', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-21', turmaId: '3º ACP', numero: 21, ano: 3 as const, nome: 'Ronnen Alem Cardoso', pin: '9302', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-22', turmaId: '3º ACP', numero: 22, ano: 3 as const, nome: 'Vanessa Ramos Mestre', pin: '9101', ativo: true, pinCriadoEm: agora },
   ];
   const existentes = getAlunos();
   const merged = [...existentes];
-  for (const a of alunos) {
-    if (!merged.find((x: Aluno) => x.id === a.id)) merged.push(a);
+  let mudou = false;
+  const idsOficiais = new Set(alunos.map(a => a.id));
+
+  for (const oficial of alunos) {
+    const idx = merged.findIndex((x: Aluno) => x.id === oficial.id);
+    if (idx < 0) { merged.push(oficial); mudou = true; continue; }
+
+    const atual = merged[idx];
+    // O nome, a turma e o número vêm sempre da lista oficial. O PIN só se
+    // mantém se o professor o tiver mudado de propósito — um PIN escrito
+    // por um aluno no primeiro acesso não conta.
+    // PINs oficiais de 2026/27 — aleatórios, entregues em papel a cada aluno.
+    // Um PIN mudado pelo professor DEPOIS desta data mantém-se; os de
+    // antes (os antigos 1005, 2005… e os temporários do primeiro dia)
+    // dão lugar ao oficial, para a folha impressa ser a que vale.
+    const PINS_OFICIAIS_DESDE = '2026-09-22T00:00:00.000Z';
+    const pin = (atual.pinAlteradoEm && atual.pinAlteradoEm >= PINS_OFICIAIS_DESDE)
+      ? atual.pin : oficial.pin;
+    if (atual.nome !== oficial.nome || atual.turmaId !== oficial.turmaId
+        || atual.numero !== oficial.numero || atual.pin !== pin || atual.ativo === false) {
+      merged[idx] = { ...atual, nome: oficial.nome, turmaId: oficial.turmaId,
+        numero: oficial.numero, ano: oficial.ano, pin, ativo: true };
+      mudou = true;
+    }
   }
-  save(KEYS.alunos, merged);
+
+  // Quem está numa destas turmas mas não na lista oficial fica desativado:
+  // os que saíram, e os alunos-fantasma criados por PINs inventados.
+  const turmasOficiais = new Set(['1º ACP', '1º BCR', '2º ACP', '3º ACP']);
+  for (let i = 0; i < merged.length; i++) {
+    const a = merged[i];
+    if (turmasOficiais.has(a.turmaId) && !idsOficiais.has(a.id) && a.ativo !== false) {
+      merged[i] = { ...a, ativo: false };
+      mudou = true;
+    }
+  }
+
+  if (mudou) save(KEYS.alunos, merged);
   alunos.forEach((a: Aluno) => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a }));
 }
 
@@ -1296,25 +1341,21 @@ export async function validarLoginAluno(
   const all = getAlunos();
   let aluno = all.find(a => a.id === id);
 
-  // Se ainda não tem PIN definido (primeiro acesso) — criar PIN agora
-  if (!aluno?.pin) {
-    if (pinIntroduzido.length < 4) return { ok: false, erro: 'O PIN deve ter 4 dígitos.' };
-    const agora = new Date().toISOString();
-    if (!aluno) {
-      aluno = { id, turmaId, numero, ano, pin: pinIntroduzido, pinCriadoEm: agora, ativo: true };
-      addAluno(aluno);
-    } else {
-      aluno.pin = pinIntroduzido;
-      aluno.pinCriadoEm = agora;
-      aluno.ativo = true;
-      save(KEYS.alunos, getAlunos());
-    }
-    // Sincronizar com sheet
-    await sincronizarAlunoComSheet(aluno);
-    return { ok: true, aluno };
+  // O login NUNCA cria alunos.
+  //
+  // Antes, um aluno que não existisse no aparelho era criado na hora com
+  // o PIN que escrevesse. Qualquer número e qualquer PIN entravam — e
+  // ficava um aluno sem nome, noutra turma, que depois não via plano
+  // nenhum. Os alunos vêm só da lista oficial; o PIN, do professor.
+  if (!aluno) {
+    return { ok: false, erro: `Não há nenhum aluno nº ${numero} nesta turma. Confirma a turma e o número, ou fala com o professor.` };
   }
-
-  // Aluno já tem PIN — validar
+  if (aluno.ativo === false) {
+    return { ok: false, erro: 'Este aluno já não está nesta turma. Fala com o professor.' };
+  }
+  if (!aluno.pin) {
+    return { ok: false, erro: 'Ainda não tens PIN. Pede-o ao professor.' };
+  }
   if (aluno.pin !== pinIntroduzido) return { ok: false, erro: 'PIN incorreto.' };
   return { ok: true, aluno };
 }
@@ -1351,6 +1392,12 @@ async function sincronizarAlunoComSheet(aluno: Aluno): Promise<void> {
 
 /** Carrega todos os alunos da Sheet para localStorage (usado pela coordenadora). */
 export async function sincronizarAlunosDaSheet(): Promise<void> {
+  // Depois de ler do Sheets, a lista oficial volta a mandar — senão os
+  // PINs inventados e os alunos-fantasma de lá voltavam a entrar.
+  try { await sincronizarAlunosDaSheetBruto(); } finally { seedAlunosReais(); }
+}
+
+async function sincronizarAlunosDaSheetBruto(): Promise<void> {
   // Usa a Sheet do KitchenFlow como fonte única de alunos
   const url = KITCHENFLOW_SHEET_URL || SHEETS_ALUNOS_URL;
   if (!url) return;
@@ -4628,4 +4675,45 @@ export function autoavaliacoesPorValidar(turmaId: string): PorValidar[] {
 /** Quantas ao todo, para o aviso do painel. */
 export function totalPorValidar(turmaId: string): number {
   return autoavaliacoesPorValidar(turmaId).reduce((s, p) => s + p.quantos, 0);
+}
+
+
+// ============================================================
+// 1º ACP → 1º BCR nos planos e requisições
+// ============================================================
+// A turma mudou de nome, mas os planos e requisições já criados
+// continuavam com '1º ACP'. O aluno do 1º BCR só vê planos com a turma
+// exatamente igual à dele — e via "não há plano de aula".
+//
+// `enviarAoSheets` só no aparelho do professor: é lá que está a versão
+// mais recente de cada plano, e o Sheets tem de ficar com a turma nova
+// para os tablets dos alunos o encontrarem.
+export function migrarTurmaAntiga(enviarAoSheets = false): number {
+  const DE = '1º ACP', PARA = '1º BCR';
+  let n = 0;
+
+  const planos = getPlanosAula();
+  const planosNovos = planos.map(p => {
+    if (p.turmaId !== DE) return p;
+    n++;
+    return { ...p, turmaId: PARA, atualizadoEm: new Date().toISOString() };
+  });
+  if (n > 0) {
+    save(KEYS.planos, planosNovos);
+    if (enviarAoSheets) {
+      planosNovos.filter(p => p.turmaId === PARA)
+        .forEach(p => enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }));
+    }
+  }
+
+  const reqs = getRequisicoes();
+  let nr = 0;
+  const reqsNovas = reqs.map(r => {
+    if (r.turmaId !== DE) return r;
+    nr++;
+    return { ...r, turmaId: PARA };
+  });
+  if (nr > 0) save(KEYS.requisicoes, reqsNovas);
+
+  return n + nr;
 }
