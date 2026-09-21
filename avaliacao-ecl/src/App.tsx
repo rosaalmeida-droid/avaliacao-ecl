@@ -119,6 +119,7 @@ import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
 import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
 import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
+  migrarTurmaAntiga,
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
@@ -146,7 +147,8 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
 function AppInterno() {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [aluno, setAluno] = useState<Aluno | null>(null);
-  const [turmaId, setTurmaId] = useState<string>('1º ACP');
+  // Arrancava com '1º ACP', a turma antiga — que já não existe.
+  const [turmaId, setTurmaId] = useState<string>(() => getTurmas()[0]?.id || '1º BCR');
   const [nomeProfessor, setNomeProfessor] = useState<string>('');
   const [planoAberto, setPlanoAberto] = useState<TPlanoAula | null>(null);
   /** Onde o professor está dentro do plano — para o menu se marcar. */
@@ -184,12 +186,16 @@ function AppInterno() {
     getTurmas();
     // Sincronizar dados do Sheets ao arrancar — garante dados actualizados em qualquer dispositivo
     sincronizarDoSheets(turmaId).catch(e => console.warn('[App] Sync inicial falhou:', e));
-    seedAlunosReais(); // popula alunos reais se ainda não existirem
+    migrarTurmaAntiga(false);   // planos com a turma antiga passam para a nova
+    seedAlunosReais();          // acerta a lista de alunos com a oficial
     // seedAlunosTeste/seedHistorialTeste/seedPlanoTeste removidos — não injectar dados de teste em produção
   }, []);
 
   useEffect(() => {
     if (perfil === 'professor' && turmaId) {
+      // O professor tem a versão mais recente dos planos: é daqui que o
+      // Sheets recebe a turma nova, para os tablets dos alunos os verem.
+      migrarTurmaAntiga(true);
       const { temSheets } = getEstadoSync();
       if (temSheets) atualizarDados();
     }
