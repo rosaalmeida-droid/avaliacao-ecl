@@ -1,258 +1,1254 @@
-// ============================================================
-// Painel inicial do professor.
-//
-// Mesmo princípio do aluno: grelha de blocos de cor com ícone e uma
-// palavra. A cor é bordeaux, para o professor saber num relance em que
-// perfil está — o aluno é violeta.
-//
-// São dezassete destinos, o que numa grelha corrida seria uma parede.
-// Ficam agrupados por momento de uso: o que se faz antes da aula, o que
-// se faz depois, e o que raramente se toca.
-// ============================================================
+import React, { useState, useEffect } from 'react';
+import {
+  getPlanosAulaPorTurma,
+  addOrUpdatePlanoAula,
+  arquivarPlanoAula,
+  desarquivarPlanoAula,
+  eliminarPlanoAulaDefinitivamente,
+  proximoNumeroPlano,
+  gerarCodigoPlano,
+  getPlanosArquivados,
+  getFichasProducao,
+  getAlunos, publicarNoClassroom } from '../backend';
+import { fmtDataCurta, fmtData } from '../datas';
+import { modulosDaTurma, modulosAtivos, disciplinasAtivas,
+  modulosAtivosDaDisciplina, disciplinaUnica } from '../cronograma';
+import { avisoDoDia, temCozinha, horasSugeridas } from '../horarios';
+import { rotuloPlano } from '../rotuloPlano';
 
-import React from 'react';
-import { VistaProf } from './Header';
+// Data no formato "20-07-2026 · quarta-feira"
+function dataComDia(iso?: string): string {
+  if (!iso) return '';
+  const d = /^\d{4}-\d{2}-\d{2}/.test(iso) ? new Date(iso.slice(0,10) + 'T12:00:00') : new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dia = d.toLocaleDateString('pt-PT', { weekday: 'long' });
+  return `${dd}-${mm}-${d.getFullYear()} · ${dia}`;
+}
 
-const C = {
-  fundo:         '#F5F2F3',
-  branco:        '#FFFFFF',
-  bordeaux:      '#7B2233',
-  bordeauxSuave: '#F6ECEE',
-  bordeauxClaro: '#EBCDD3',
-  tinta:         '#1A1A1A',
-  texto:         '#555555',
-  suave:         '#777777',
-  sombra:        '0 1px 3px rgba(0,0,0,0.06)',
+// N.º da UC no referencial 811RA144 (coluna N.º do elenco — obrigatórias)
+const NUM_UC: Record<string, number> = {
+  UC03576:1, UC01999:2, UC03577:3, UC02002:4, UC02003:5, UC02004:6, UC02005:7,
+  UC03578:8, UC00596:9, UC03579:10, UC03580:11, UC03581:12, UC03582:13, UC00039:14,
+  UC00056:15, UC00034:16, UC00054:17, UC03583:18, UC00038:19, UC03584:20, UC00031:21,
+  UC00032:22, UC00035:23, UC00595:24, UC00069:25, UC00068:26,
 };
+import { PlanoAula as TPlanoAula } from '../types';
+import { Card } from './ui';
+import ProfessorView from './ProfessorView';
+import { ModalPauta } from './ModalPauta';
 
-export type { VistaProf };
+const TIPOS_ATIVIDADE = [
+  'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
+  'Pequeno-almoço','Coffee break','Serviço real à carta','Catering',
+  'Buffet','Evento externo','Outro',
+];
 
-const svg = (d: React.ReactNode, t = 38) => (
-  <svg width={t} height={t} viewBox="0 0 24 24" fill="none"
-       stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
-    {d}
-  </svg>
-);
+// COMP_PERM e COMP_OPC removidos — sistema de avaliação antigo substituído por OBR/SUB/APP/KNW/ATI
 
-const I = {
-  plano: () => svg(<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4M8 15h8" /></>),
-  ficha: () => svg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></>),
-  guia: () => svg(<><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M9 7h6M9 11h6" /></>),
-  requisicao: () => svg(<><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z" /><path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2" /><path d="M9 12l1.8 1.8L15 10" /></>),
-  eventos: () => svg(<><path d="M5 21V8l7-5 7 5v13" /><path d="M9 21v-6h6v6M3 21h18" /></>),
-  validar: () => svg(<><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>),
-  notas: () => svg(<><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 3v18M14 13l2 2 4-4" /></>),
-  mapa: () => svg(<><path d="M4 20V6l6-3 4 3 6-3v14l-6 3-4-3-6 3z" /><path d="M10 3v15M14 6v15" /></>),
-  recuperar: () => svg(<><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5" /></>),
-  biblioteca: () => svg(<><path d="M4 4h5v16H4zM10 4h5v16h-5z" /><path d="M16.5 4.5l3.5.9-3.5 15-.5-.1" /></>),
-  manual: () => svg(<><path d="M12 6.5C10.5 5 8.5 4.5 6 4.5V19c2.5 0 4.5.5 6 2 1.5-1.5 3.5-2 6-2V4.5c-2.5 0-4.5.5-6 2z" /><path d="M12 6.5V21" /></>),
-  orcamento: () => svg(<><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h8M8 11h8M8 15h4" /></>),
-  cronograma: () => svg(<><path d="M4 6h10M4 12h16M4 18h7" /><circle cx="17" cy="6" r="2" /><circle cx="14" cy="18" r="2" /></>),
-  historial: () => svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></>),
-  copia: () => svg(<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5M12 15V3" /></>),
-  ajuda: () => svg(<><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7" /><circle cx="12" cy="17" r="0.7" fill="currentColor" /></>),
-};
+export const UCS_COZINHA = [
+  { id:'UC03576', nome:'Planear e organizar a producao de cozinha' },
+  { id:'UC01999', nome:'Preparar e executar confecoes de cozinha' },
+  { id:'UC03577', nome:'Preparar e confecionar molhos e fundos' },
+  { id:'UC02002', nome:'Preparar e confecionar sopas, acepipes, ovos e massas' },
+  { id:'UC02003', nome:'Preparar e confecionar peixes, mariscos e guarnicoes' },
+  { id:'UC02004', nome:'Preparar e confecionar carnes, aves, caca e guarnicoes' },
+  { id:'UC02005', nome:'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria' },
+  { id:'UC03579', nome:'Gerir aprovisionamentos e controlar custos' },
+  { id:'UC03584', nome:'Implementar regras de higiene e seguranca alimentar' },
+  { id:'UC03585', nome:'Conservar materias-primas alimentares' },
+  { id:'UC03586', nome:'Confecionar cozinha e docaria tradicional portuguesa' },
+  { id:'UC03587', nome:'Preparar e confecionar pastelaria de sobremesa' },
+  { id:'UC03588', nome:'Preparar e confecionar gastronomia do Mundo' },
+  { id:'UC03589', nome:'Implementar novas tendencias na cozinha' },
+  { id:'UC03590', nome:'Confecionar produtos sustentaveis' },
+  { id:'UC03591', nome:'Planear e executar servicos especiais de cozinha' },
+  { id:'UC03592', nome:'Planear e confecionar pastelaria internacional' },
+  { id:'UC03593', nome:'Planear e confecionar massas basicas de panificacao' },
+  { id:'UC03594', nome:'Planear e confecionar Cake Design' },
+  { id:'UC03595', nome:'Planear e confecionar cozinha alternativa' },
+  { id:'UC03596', nome:'Planear e confecionar cozinha criativa' },
+  { id:'UC03597', nome:'Planear e confecionar massas especiais de panificacao' },
+];
 
-interface Destino {
-  id: VistaProf;
-  label: string;
-  icone: () => React.ReactNode;
-  sub?: string;
+function parsearDataPlano(dataStr?: string): Date {
+  try {
+    if (!dataStr || dataStr === 'undefined') throw new Error();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
+      return new Date(dataStr + 'T12:00:00');
+    }
+    const d = new Date(dataStr);
+    if (isNaN(d.getTime())) throw new Error();
+    return d;
+  } catch {
+    return new Date();
+  }
 }
 
-interface Grupo {
-  titulo: string;
-  destinos: Destino[];
+function limparHora(h?: string): string {
+  if (!h) return '';
+  return h.includes('T')
+    ? new Date(h).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    : h.substring(0, 5);
 }
 
-function grupos(pendentes: { validar: number; recuperacoes: number }): Grupo[] {
-  return [
-    {
-      titulo: 'Preparar a aula',
-      destinos: [
-        { id: 'planos',     label: 'Planos de aula', icone: I.plano },
-        { id: 'ficha',      label: 'Fichas técnicas', icone: I.ficha },
-        { id: 'guia',       label: 'Guiões', icone: I.guia },
-        { id: 'requisicao', label: 'Requisições', icone: I.requisicao },
-        { id: 'eventos',    label: 'Eventos', icone: I.eventos },
-        { id: 'orcamentos', label: 'Orçamentos', icone: I.orcamento },
-      ],
-    },
-    {
-      titulo: 'Avaliar',
-      destinos: [
-        { id: 'validacao', label: 'Validar', icone: I.validar,
-          sub: pendentes.validar > 0 ? `${pendentes.validar} por validar` : undefined },
-        { id: 'avaliacao_uc', label: 'Notas da UC', icone: I.notas },
-        { id: 'mapa_competencias', label: 'Mapa da turma', icone: I.mapa },
-        { id: 'gestao_recuperacoes', label: 'Recuperações', icone: I.recuperar,
-          sub: pendentes.recuperacoes > 0 ? `${pendentes.recuperacoes} em curso` : undefined },
-      ],
-    },
-    {
-      titulo: 'Consultar',
-      destinos: [
-        { id: 'biblioteca',    label: 'Biblioteca', icone: I.biblioteca },
-        { id: 'manual',        label: 'Manual do cozinheiro', icone: I.manual },
-        { id: 'manuais_aluno', label: 'Manuais do aluno', icone: I.manual },
-        { id: 'cronograma',    label: 'Cronograma', icone: I.cronograma },
-      ],
-    },
-    {
-      titulo: 'Sistema',
-      destinos: [
-        { id: 'historial',       label: 'Historial', icone: I.historial },
-        { id: 'copia_seguranca', label: 'Cópia de segurança', icone: I.copia },
-        { id: 'ajuda',           label: 'Ajuda', icone: I.ajuda },
-      ],
-    },
-  ];
+// ── ALTERAÇÃO 1: Helper para ler eventos do EventosWizard ─────────────────
+function getEventosDaTurma(turmaId: string) {
+  try {
+    const todos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]');
+    return todos.filter((e: any) => e.turmaId === turmaId);
+  } catch { return []; }
 }
 
-function Cartao({ d, onAbrir }: { d: Destino; onAbrir: (v: VistaProf) => void }) {
+// ── Calendário mensal ─────────────────────────────────────────────────────
+export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turmaId, onCriarNoDia }: {
+  planos: TPlanoAula[];
+  onAbrirPlano: (p: TPlanoAula) => void;
+  onPlanoEliminado?: () => void;
+  turmaId?: string;
+  /** Criar um plano para este dia, com a data já preenchida. */
+  onCriarNoDia?: (dataISO: string) => void;
+}) {
+  const hoje = new Date();
+  const [modoVista, setModoVista] = useState<'semana' | 'mes' | '2meses'>('mes');
+  const [dataReferencia, setDataReferencia] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
+  const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(hoje);
+  const [modoSelecaoCal, setModoSelecaoCal] = useState(false);
+  const [planosSelecionadosCal, setPlanosSelecionadosCal] = useState<Set<string>>(new Set());
+
+  const planosPorDia = new Map<string, TPlanoAula[]>();
+  planos.forEach(p => {
+    const d = parsearDataPlano(p.data);
+    const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!planosPorDia.has(chave)) planosPorDia.set(chave, []);
+    planosPorDia.get(chave)!.push(p);
+  });
+
+  function chaveDia(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function ehMesmoDia(a: Date, b: Date) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  function navegar(direcao: 1 | -1) {
+    const nova = new Date(dataReferencia);
+    if (modoVista === 'semana') nova.setDate(nova.getDate() + direcao * 7);
+    else if (modoVista === 'mes') nova.setMonth(nova.getMonth() + direcao);
+    else nova.setMonth(nova.getMonth() + direcao * 2);
+    setDataReferencia(nova);
+  }
+
+  function irParaHoje() {
+    setDataReferencia(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()));
+    setDiaSelecionado(hoje);
+  }
+
+  const diasSemana = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+
+  function gerarMes(ano: number, mes: number) {
+    const primeiroDiaSemana = (new Date(ano, mes, 1).getDay() + 6) % 7;
+    const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+    const celulas: (Date | null)[] = [];
+    for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null);
+    for (let d = 1; d <= diasNoMes; d++) celulas.push(new Date(ano, mes, d));
+    return celulas;
+  }
+
+  function gerarSemana(ref: Date) {
+    const diaSemana = (ref.getDay() + 6) % 7;
+    const inicio = new Date(ref);
+    inicio.setDate(ref.getDate() - diaSemana);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(inicio);
+      d.setDate(inicio.getDate() + i);
+      return d;
+    });
+  }
+
+  function CelulaDia({ data }: { data: Date | null }) {
+    if (!data) return <div />;
+    const chave = chaveDia(data);
+    const planosNesteDia = planosPorDia.get(chave) || [];
+    const ehHoje = ehMesmoDia(data, hoje);
+    const selecionado = diaSelecionado && ehMesmoDia(data, diaSelecionado);
+    // Dias em que a turma tem cozinha — os únicos em que faz sentido
+    // marcar uma aula prática.
+    const diaDeCozinha = turmaId ? temCozinha(turmaId, chave) : false;
+    return (
+      <button onClick={() => setDiaSelecionado(selecionado ? null : data)}
+        title={diaDeCozinha ? 'Dia de cozinha' : undefined}
+        style={{
+          aspectRatio: '1', maxHeight: 34, borderRadius: 6,
+          border: ehHoje ? '1.5px solid var(--copper)'
+            : diaDeCozinha ? '1.5px solid var(--sage)'
+            : '1px solid var(--border)',
+          background: selecionado ? 'var(--copper)'
+            : (planosNesteDia.length > 0 ? 'var(--copper-pale)'
+            : diaDeCozinha ? 'rgba(90,122,78,0.08)' : '#fff'),
+          color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
+          cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: 1, position: 'relative', fontSize: 12.5,
+        }}>
+        <span style={{ fontSize: 12.5, fontWeight: ehHoje || selecionado ? 700 : 500 }}>{data.getDate()}</span>
+        {planosNesteDia.length > 0 && (
+          <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
+            {planosNesteDia.slice(0, 3).map((_, idx) => (
+              <div key={idx} style={{ width: 3, height: 3, borderRadius: '50%', background: selecionado ? 'white' : 'var(--copper)' }} />
+            ))}
+          </div>
+        )}
+      </button>
+    );
+  }
+
+  function GrelhaMes({ ano, mes, mostrarTitulo }: { ano: number; mes: number; mostrarTitulo?: boolean }) {
+    const celulas = gerarMes(ano, mes);
+    const nomeMes = new Date(ano, mes, 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+    return (
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {mostrarTitulo && (
+          <div style={{ fontSize: 13, fontWeight: 700, textAlign: 'center', marginBottom: 6, textTransform: 'capitalize', color: 'rgba(26,23,20,0.6)' }}>{nomeMes}</div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 3 }}>
+          {diasSemana.map(d => (
+            <div key={d} style={{ textAlign: 'center', fontSize: 8, fontWeight: 700, color: 'rgba(26,23,20,0.4)' }}>{d[0]}</div>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+          {celulas.map((dia, i) => <CelulaDia key={i} data={dia} />)}
+        </div>
+      </div>
+    );
+  }
+
+  const ano = dataReferencia.getFullYear();
+  const mes = dataReferencia.getMonth();
+  const tituloAtual = modoVista === 'semana'
+    ? `Semana de ${gerarSemana(dataReferencia)[0].toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })}`
+    : modoVista === 'mes'
+    ? dataReferencia.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+    : `${dataReferencia.toLocaleDateString('pt-PT', { month: 'short' })} – ${new Date(ano, mes + 1, 1).toLocaleDateString('pt-PT', { month: 'short', year: 'numeric' })}`;
+
   return (
-    <button
-      onClick={() => onAbrir(d.id)}
-      style={{
-        background: C.bordeaux, border: 'none', borderRadius: 14,
-        padding: '22px 10px', minHeight: 120, width: '100%',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 12,
-        cursor: 'pointer', fontFamily: 'inherit', color: '#fff',
-        WebkitTapHighlightColor: 'transparent',
-      }}
-    >
-      {d.icone()}
-      <span style={{ fontSize: 15, fontWeight: 500, textAlign: 'center', lineHeight: 1.25 }}>
-        {d.label}
-      </span>
-      {d.sub && (
-        <span style={{ fontSize: 12.5, color: C.bordeauxClaro, textAlign: 'center' }}>{d.sub}</span>
+    <div>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+        {(['semana', 'mes', '2meses'] as const).map(m => (
+          <button key={m} onClick={() => setModoVista(m)}
+            style={{ flex: 1, padding: '5px 6px', borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+              border: modoVista === m ? 'none' : '1px solid var(--border)',
+              background: modoVista === m ? 'var(--copper)' : '#fff',
+              color: modoVista === m ? 'white' : 'rgba(26,23,20,0.6)' }}>
+            {m === 'semana' ? 'Semana' : m === 'mes' ? 'Mês' : '2 Meses'}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <button onClick={() => navegar(-1)}
+          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 13 }}>‹</button>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, textTransform: 'capitalize' }}>{tituloAtual}</div>
+        <button onClick={() => navegar(1)}
+          style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 13 }}>›</button>
+      </div>
+      <button onClick={irParaHoje}
+        style={{ width: '100%', marginBottom: 10, padding: '5px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', fontSize: 12.5, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer' }}>
+        Hoje
+      </button>
+
+      {modoVista === 'semana' && (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
+            {diasSemana.map(d => (
+              <div key={d} style={{ textAlign: 'center', fontSize: 9, fontWeight: 700, color: 'rgba(26,23,20,0.4)' }}>{d}</div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 14 }}>
+            {gerarSemana(dataReferencia).map((d, i) => <CelulaDia key={i} data={d} />)}
+          </div>
+        </div>
       )}
-    </button>
+      {modoVista === 'mes' && (
+        <div style={{ marginBottom: 14 }}>
+          <GrelhaMes ano={ano} mes={mes} />
+        </div>
+      )}
+      {modoVista === '2meses' && (
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+          <GrelhaMes ano={ano} mes={mes} mostrarTitulo />
+          <GrelhaMes ano={mes === 11 ? ano + 1 : ano} mes={(mes + 1) % 12} mostrarTitulo />
+        </div>
+      )}
+
+      {diaSelecionado !== null && (() => {
+        const chave = chaveDia(diaSelecionado);
+        const planosDoDia = planosPorDia.get(chave) || [];
+        const nomeDia = diaSelecionado.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
+        return (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {nomeDia}
+              </div>
+              {planosDoDia.length > 0 && (
+                <button onClick={() => { setModoSelecaoCal(!modoSelecaoCal); setPlanosSelecionadosCal(new Set()); }}
+                  style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--copper)', background: 'none', border: '1px solid var(--copper)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>
+                  {modoSelecaoCal ? '✕ Cancelar' : '☑ Selecionar'}
+                </button>
+              )}
+            </div>
+            {modoSelecaoCal && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '8px 12px', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>
+                  {planosSelecionadosCal.size} selecionado(s)
+                </span>
+                <button onClick={() => {
+                  if (planosSelecionadosCal.size === 0) return;
+                  if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosCal.size} plano(s)?`)) {
+                    planosSelecionadosCal.forEach(id => eliminarPlanoAulaDefinitivamente(id));
+                    setPlanosSelecionadosCal(new Set());
+                    setModoSelecaoCal(false);
+                    onPlanoEliminado?.();
+                  }
+                }} disabled={planosSelecionadosCal.size === 0}
+                  style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12.5, cursor: planosSelecionadosCal.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosCal.size === 0 ? 0.4 : 1 }}>
+                  🗑️ Eliminar
+                </button>
+              </div>
+            )}
+            {planosDoDia.length === 0 && (
+              /* Sem aulas — mas com forma de criar uma, ali mesmo.
+                 Antes só dizia "Sem aulas planeadas" e o professor tinha
+                 de ir procurar o botão de criar noutro sítio, e depois
+                 escrever a data à mão. */
+              <div style={{ padding: '16px 14px', textAlign: 'center' }}>
+                <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.5)', marginBottom: 4 }}>
+                  Sem aulas planeadas neste dia.
+                </div>
+                {/* Dizer se é sequer dia de cozinha nesta turma, e se o
+                    ano letivo já começou. Sem isto o professor podia
+                    marcar uma prática para um dia em que a turma tem
+                    Matemática. */}
+                {(() => {
+                  const iso2 = diaSelecionado
+                    ? `${diaSelecionado.getFullYear()}-${String(diaSelecionado.getMonth()+1).padStart(2,'0')}-${String(diaSelecionado.getDate()).padStart(2,'0')}`
+                    : '';
+                  const av = (iso2 && turmaId) ? avisoDoDia(turmaId, iso2) : '';
+                  if (!av) return null;
+                  return (
+                    <div style={{ fontSize: 13.5, color: '#78350f',
+                      background: '#fdf0e6', border: '1px solid var(--copper)',
+                      borderRadius: 9, padding: '9px 12px', margin: '8px 0 4px',
+                      lineHeight: 1.5 }}>
+                      {av}
+                    </div>
+                  );
+                })()}
+                {(() => {
+                  // A unidade sai do cronograma, pela data escolhida — o
+                  // professor não tem de a procurar, mas pode trocá-la
+                  // depois no formulário.
+                  const iso = diaSelecionado
+                    ? `${diaSelecionado.getFullYear()}-${String(diaSelecionado.getMonth()+1).padStart(2,'0')}-${String(diaSelecionado.getDate()).padStart(2,'0')}`
+                    : '';
+                  const ativos = (iso && turmaId) ? modulosAtivos(turmaId, iso) : [];
+                  const emCurso = [...ativos].sort((a: any, b: any) =>
+                    String(a.dataFim).localeCompare(String(b.dataFim)))[0];
+
+                  return (
+                    <>
+                      {emCurso && (
+                        <div style={{ fontSize: 13, color: 'var(--copper)', marginBottom: 12 }}>
+                          Unidade em curso nesta data: <b>{emCurso.id}</b>
+                        </div>
+                      )}
+                      {onCriarNoDia && <button
+                        onClick={() => onCriarNoDia(iso)}
+                        style={{ padding: '12px 20px', borderRadius: 10, border: 'none',
+                          background: 'var(--copper)', color: '#fff', fontSize: 14.5,
+                          fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        + Criar plano para este dia
+                      </button>}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+            {planosDoDia.map(p => {
+              const horaI = limparHora(p.horaInicio);
+              const horaF = limparHora(p.horaFim);
+              return (
+                <div key={p.id} className="option-card" onClick={() => {
+                  if (modoSelecaoCal) {
+                    setPlanosSelecionadosCal(prev => {
+                      const novo = new Set(prev);
+                      if (novo.has(p.id)) novo.delete(p.id); else novo.add(p.id);
+                      return novo;
+                    });
+                    return;
+                  }
+                  onAbrirPlano(p);
+                }} style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {modoSelecaoCal && (
+                      <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: planosSelecionadosCal.has(p.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, color: 'white' }}>
+                        {planosSelecionadosCal.has(p.id) && '✓'}
+                      </div>
+                    )}
+                    <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 10px', textAlign: 'center', minWidth: 50 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>{horaI || '--:--'}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
+                      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
+                      {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
+                    </div>
+                    <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
+                      background: p.estado === 'publicado' ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
+                      color: p.estado === 'publicado' ? 'var(--sage)' : 'var(--copper)' }}>
+                      {p.estado === 'publicado' ? 'Publicado' : 'Rascunho'}
+                    </span>
+                    {!modoSelecaoCal && (
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        const escolha = window.prompt(
+                          `O que queres fazer com "${p.titulo || 'este plano'}"?\n\n` +
+                          `Escreve 1 para ARQUIVAR\nEscreve 2 para ELIMINAR DEFINITIVAMENTE\n\nOu cancela.`
+                        );
+                        if (escolha === '1') { arquivarPlanoAula(p.id); onPlanoEliminado?.(); }
+                        else if (escolha === '2') {
+                          if (confirm(`Eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"?`)) {
+                            eliminarPlanoAulaDefinitivamente(p.id); onPlanoEliminado?.();
+                          }
+                        }
+                      }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}>
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+    </div>
   );
 }
 
-interface Props {
-  nomeProfessor: string;
-  turmaId: string;
-  turmaNome?: string;
-  ucId?: string;
-  ucNome?: string;
-  aulasHoje?: number;
-  proximasAulas?: number;
-  porValidar?: number;
-  recuperacoesEmCurso?: number;
-  onAbrir: (v: VistaProf) => void;
-}
-
-export function PainelProfessor({
-  nomeProfessor, turmaId, turmaNome, ucId, ucNome,
-  aulasHoje = 0, proximasAulas = 0,
-  porValidar = 0, recuperacoesEmCurso = 0,
-  onAbrir, calendario,
-}: Props & {
-  /** O calendário das aulas, ao lado dos cartões. Estava escondido
-   *  dentro de "Planos de Aula" — o professor tinha de lá ir para ver
-   *  o mês, quando é a primeira coisa que quer ver. */
-  calendario?: React.ReactNode;
+function FichaSelector({ todasFichas, fichasSel, onChange }: {
+  todasFichas: any[]; fichasSel: string[]; onChange: (ids: string[]) => void;
 }) {
-  const gs = grupos({ validar: porValidar, recuperacoes: recuperacoesEmCurso });
-
+  const [pesquisa, setPesquisa] = useState('');
+  const fichasFiltradas = todasFichas.filter(f =>
+    !pesquisa || (f.nomePrato||'').toLowerCase().includes(pesquisa.toLowerCase()) ||
+    (f.classificacao||'').toLowerCase().includes(pesquisa.toLowerCase())
+  );
   return (
-    <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
-      <div style={{ maxWidth: calendario ? 1060 : 720, margin: '0 auto' }}>
-
-        {/* Quem sou */}
-        <div style={{
-          background: C.branco, borderRadius: 16, boxShadow: C.sombra,
-          padding: '14px 16px', marginBottom: 14,
-          display: 'flex', alignItems: 'center', gap: 13,
-        }}>
-          <div style={{
-            width: 46, height: 46, borderRadius: '50%', background: C.bordeauxSuave,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#B07C88', flexShrink: 0,
-          }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" />
-            </svg>
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.tinta, lineHeight: 1.2 }}>
-              {nomeProfessor || 'Professor'}
-            </div>
-            <div style={{ fontSize: 15, color: C.texto }}>{turmaNome || turmaId}</div>
-          </div>
+    <div>
+      {fichasSel.length > 0 && (
+        <div style={{marginBottom:8,padding:'8px 10px',background:'var(--copper-pale)',borderRadius:8,fontSize:13,color:'var(--copper)',fontWeight:600}}>
+          {fichasSel.length} ficha{fichasSel.length>1?'s':''} selecionada{fichasSel.length>1?'s':''}
         </div>
-
-        {/* A unidade em curso */}
-        <div style={{
-          background: C.bordeauxSuave, borderRadius: 16,
-          padding: '15px 17px', marginBottom: 18,
-          borderLeft: `5px solid ${C.bordeaux}`,
-        }}>
-          <div style={{
-            fontSize: 13, fontWeight: 700, letterSpacing: '0.08em',
-            textTransform: 'uppercase', color: C.bordeaux,
-          }}>
-            {ucId || 'Sem unidade em curso'}
-          </div>
-          {ucNome && (
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.tinta, marginTop: 4, lineHeight: 1.3 }}>
-              {ucNome}
+      )}
+      <input className="input" value={pesquisa} onChange={e=>setPesquisa(e.target.value)}
+        placeholder="Pesquisar fichas por nome ou tipo..." style={{marginBottom:8}} />
+      <div style={{maxHeight:280,overflowY:'auto',border:'1px solid var(--border)',borderRadius:10,padding:6}}>
+        {fichasFiltradas.length===0&&<div className="muted" style={{padding:10,textAlign:'center'}}>Sem resultados para "{pesquisa}"</div>}
+        {fichasFiltradas.map(f=>{
+          const sel = fichasSel.includes(f.id);
+          return (
+            <div key={f.id} onClick={()=>onChange(sel?fichasSel.filter(x=>x!==f.id):[...fichasSel,f.id])}
+              style={{display:'flex',alignItems:'center',gap:10,padding:'9px 10px',borderRadius:8,marginBottom:4,cursor:'pointer',background:sel?'var(--copper-pale)':'#fff',border:'1px solid '+(sel?'var(--copper)':'transparent')}}>
+              <div style={{width:20,height:20,borderRadius:5,border:'1.5px solid '+(sel?'var(--copper)':'var(--border)'),background:sel?'var(--copper)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:13,fontWeight:700}}>
+                {sel&&'✓'}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:600,fontSize:13}}>{f.nomePrato}</div>
+                {/* A data vinha em bruto do armazenamento —
+                    "2026-06-18T23:00:00.000Z" na lista das fichas. */}
+                <div className="muted" style={{fontSize:13.5}}>
+                  {f.classificacao} · {f.numPorcoes} doses
+                  {f.data && ` · ${(() => {
+                    const d = new Date(String(f.data).slice(0, 10) + 'T00:00:00');
+                    return isNaN(d.getTime())
+                      ? String(f.data).slice(0, 10)
+                      : d.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
+                  })()}`}
+                </div>
+              </div>
+              {f.ucsAssociadas?.length>0&&<span style={{fontSize:13,color:'var(--copper)',fontWeight:600}}>{f.ucsAssociadas[0]}</span>}
             </div>
-          )}
-          <div style={{ fontSize: 15, color: C.texto, marginTop: 7 }}>
-            {aulasHoje > 0
-              ? `${aulasHoje} aula${aulasHoje > 1 ? 's' : ''} hoje`
-              : proximasAulas > 0
-                ? `Sem aulas hoje · ${proximasAulas} marcada${proximasAulas > 1 ? 's' : ''} para os próximos dias`
-                : 'Sem aulas marcadas'}
-          </div>
-        </div>
-
-        <div style={{
-          display: calendario ? 'grid' : 'block',
-          gridTemplateColumns: calendario ? 'minmax(0, 1fr) minmax(300px, 380px)' : undefined,
-          gap: 20, alignItems: 'start',
-        }}>
-        <div>
-        {gs.map(g => (
-          <div key={g.titulo} style={{ marginBottom: 20 }}>
-            <div style={{
-              fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
-              letterSpacing: '0.07em', color: C.suave, marginBottom: 10, paddingLeft: 2,
-            }}>
-              {g.titulo}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 12 }}>
-              {g.destinos.map(d => <Cartao key={d.id} d={d} onAbrir={onAbrir} />)}
-            </div>
-          </div>
-        ))}
-        </div>
-
-        {/* O calendário, à direita. */}
-        {calendario && (
-          <div style={{
-            background: '#fff', borderRadius: 16, padding: 16,
-            border: '1px solid rgba(26,23,20,0.1)', position: 'sticky', top: 14,
-          }}>
-            <div style={{
-              fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
-              letterSpacing: '0.07em', color: C.suave, marginBottom: 10,
-            }}>
-              As tuas aulas
-            </div>
-            {calendario}
-          </div>
-        )}
-        </div>
-
+          );
+        })}
       </div>
     </div>
   );
 }
 
-export const CORES_PROF = C;
+function Acc({ num, icon, title, desc, status, open, locked, onToggle, children }: {
+  num: number; icon: string; title: string; desc: string;
+  status: 'done'|'active'|'pending'; open: boolean; locked: boolean;
+  onToggle: () => void; children: React.ReactNode;
+}) {
+  const statusStyles = {
+    done:    { bg:'rgba(107,124,94,0.15)',  color:'var(--sage)' },
+    active:  { bg:'rgba(181,101,29,0.12)', color:'var(--copper)' },
+    pending: { bg:'rgba(31,27,22,0.06)',   color:'rgba(31,27,22,0.4)' },
+  }[status];
+  return (
+    <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:10 }}>
+      <div onClick={() => !locked && onToggle()} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', cursor:locked?'default':'pointer' }}>
+        <div style={{ width:36, height:36, borderRadius:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, background: status==='done'?'rgba(107,124,94,0.15)' : status==='active'?'var(--copper)' : 'rgba(31,27,22,0.06)' }}>
+          {status==='done' ? '✓' : icon}
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontWeight:600, fontSize:14 }}>{title}</div>
+          <div className="muted" style={{ fontSize:13, marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{desc}</div>
+        </div>
+        <span className="badge" style={{ ...statusStyles, fontSize:13 }}>
+          {status==='done'?'Feito' : status==='active'?'Em curso' : 'Pendente'}
+        </span>
+      </div>
+      {open && (
+        <div style={{ borderTop:'1px solid var(--border)', padding:'14px 16px' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoIdInicial, onPlanoIdInicialUsado }: {
+  turmaId: string; nomeProfessor?: string;
+  onAlteracao?: (guardar?: () => void) => void;
+  onGuardado?: (plano?: TPlanoAula) => void;
+  planoIdInicial?: string;
+  onPlanoIdInicialUsado?: () => void;
+}) {
+  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>('calendario');
+  /** Data escolhida no calendário — entra já preenchida no formulário. */
+  const [dataNovoPlano, setDataNovoPlano] = useState<string>('');
+  const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
+
+  React.useEffect(() => {
+    if (!planoIdInicial) return;
+    const todos = getPlanosAulaPorTurma(turmaId, true);
+    const plano = todos.find(p => p.id === planoIdInicial);
+    if (plano) { setPlanoAtivo(plano); setVista('detalhe'); }
+    else console.warn('PlanoAula: planoIdInicial não encontrado:', planoIdInicial);
+    onPlanoIdInicialUsado?.();
+  }, [planoIdInicial]);
+
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [modoSelecaoPlanos, setModoSelecaoPlanos] = useState(false);
+  const [mostrarModalPauta, setMostrarModalPauta] = useState(false);
+  const [planosSelecionadosIds, setPlanosSelecionadosIds] = useState<Set<string>>(new Set());
+  const planos = getPlanosAulaPorTurma(turmaId);
+
+  if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor}
+    dataInicial={dataNovoPlano || undefined}
+    onConcluido={p => { setDataNovoPlano(''); onGuardado?.(p); }}
+    onVoltar={()=>{ setDataNovoPlano(''); setVista('calendario'); }}
+    onAlteracao={onAlteracao} onGuardado={onGuardado} />;
+
+  // DetalhePlano unificado — usar VistaDePlano via onGuardado
+  if (vista==='detalhe' && planoAtivo) { onGuardado?.(planoAtivo); return null; }
+
+  if (vista==='calendario') return (
+    <div>
+      {/* O título "Planos de Aula" já vem do banner da secção — repeti-lo
+          aqui dava-o duas vezes no mesmo ecrã. */}
+      <div style={{ display:'flex', gap:6, marginBottom:14, alignItems:'center', flexWrap:'wrap' }}>
+        <button onClick={()=>setVista('calendario')} className="tab-btn active" style={{ flex:'1 1 100px' }}>Calendário</button>
+        <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:'1 1 100px' }}>Lista</button>
+        <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:'1 1 100px' }}>Arquivo</button>
+        <button className="btn btn-primary" onClick={()=>setVista('criar')}
+          style={{ background: 'var(--copper)', fontWeight: 700, fontSize: 14,
+            padding: '10px 18px', marginLeft: 'auto' }}>
+          + Novo Plano
+        </button>
+      </div>
+      <div style={{ maxWidth: 420 }}>
+        <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)}
+          onPlanoEliminado={() => setRefreshKey(k => k + 1)} key={refreshKey}
+          turmaId={turmaId}
+          onCriarNoDia={(iso) => { setDataNovoPlano(iso); setVista('criar'); }} />
+      </div>
+    </div>
+  );
+
+  if (vista==='arquivo') {
+    const arquivados = getPlanosArquivados(turmaId);
+    return (
+      <div>
+        <div className="header-bar">
+          <h2 className="display" style={{ margin:0 }}>Arquivo</h2>
+          <button className="btn btn-primary" onClick={()=>setVista('criar')} style={{ background: 'var(--copper)', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>📋 + Novo Plano de Aula</button>
+        </div>
+        <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+          <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
+          <button onClick={()=>setVista('lista')} className="tab-btn" style={{ flex:1 }}>📋 Lista</button>
+          <button onClick={()=>setVista('arquivo')} className="tab-btn active" style={{ flex:1 }}>🗄️ Arquivo</button>
+        </div>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 14 }}>
+          Planos arquivados não aparecem no calendário nem na lista. Podes sempre trazê-los de volta.
+        </div>
+        {arquivados.length === 0 && <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>O arquivo está vazio.</div>}
+        {arquivados.map(p => {
+          const horaI = limparHora(p.horaInicio);
+          const horaF = limparHora(p.horaFim);
+          return (
+            <div key={p.id} className="option-card" style={{ marginBottom: 8, opacity: 0.75 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
+                  <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
+                  {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
+                </div>
+                <button onClick={() => { desarquivarPlanoAula(p.id); setRefreshKey(k => k + 1); }} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>↩️ Restaurar</button>
+                <button onClick={() => { if (confirm(`Eliminar DEFINITIVAMENTE "${p.titulo || 'este plano'}"?`)) { eliminarPlanoAulaDefinitivamente(p.id); setRefreshKey(k => k + 1); } }} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--danger)', background: '#fff', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>🗑️ Eliminar</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: 'var(--copper-pale)', borderRadius: 16, padding: 16 }}>
+      <div style={{ background: 'var(--copper)', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <h2 className="display" style={{ margin:0, color: 'white' }}>Planos de Aula</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setMostrarModalPauta(true)}
+            style={{ padding: '8px 14px', borderRadius: 9, border: 'none',
+              background: 'rgba(255,255,255,0.2)', color: 'white',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            📊 Gerar Pauta
+          </button>
+          {vista === 'lista' && (
+            <button className="btn btn-ghost" onClick={() => { setModoSelecaoPlanos(!modoSelecaoPlanos); setPlanosSelecionadosIds(new Set()); }}
+              style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>
+              {modoSelecaoPlanos ? '✕ Cancelar' : '☑ Selecionar'}
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={()=>setVista('criar')} style={{ background: 'white', color: 'var(--copper)', fontWeight: 700, fontSize: 14, padding: '10px 18px' }}>📋 + Novo Plano de Aula</button>
+        </div>
+      </div>
+      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+        <button onClick={()=>setVista('calendario')} className="tab-btn" style={{ flex:1 }}>📅 Calendário</button>
+        <button onClick={()=>setVista('lista')} className="tab-btn active" style={{ flex:1 }}>📋 Lista</button>
+        <button onClick={()=>setVista('arquivo')} className="tab-btn" style={{ flex:1 }}>🗄️ Arquivo</button>
+      </div>
+      {modoSelecaoPlanos && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--danger-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+          <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{planosSelecionadosIds.size} plano(s) selecionado(s)</span>
+          <button onClick={() => {
+            if (planosSelecionadosIds.size === 0) return;
+            if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosIds.size} plano(s)?`)) {
+              planosSelecionadosIds.forEach(id => eliminarPlanoAulaDefinitivamente(id));
+              setPlanosSelecionadosIds(new Set()); setModoSelecaoPlanos(false); setRefreshKey(k => k + 1);
+            }
+          }} disabled={planosSelecionadosIds.size === 0}
+            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 13, cursor: planosSelecionadosIds.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosIds.size === 0 ? 0.4 : 1 }}>
+            🗑️ Eliminar Selecionados
+          </button>
+        </div>
+      )}
+      {planos.length===0 && (
+        <div className="card" style={{ textAlign:'center', padding:40 }}>
+          <div style={{ fontSize:40, marginBottom:10 }}>📋</div>
+          <div className="display" style={{ fontSize:18, marginBottom:6 }}>Ainda não há planos</div>
+          <p className="muted">Cria o primeiro plano de aula para começar.</p>
+        </div>
+      )}
+      {planos.map(p=>{
+        let d: Date;
+        try {
+          if (!p.data || p.data === 'undefined') throw new Error();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(p.data)) d = new Date(p.data + 'T12:00:00');
+          else if (p.data.includes('T')) d = new Date(p.data);
+          else d = new Date(p.data);
+          if (isNaN(d.getTime())) throw new Error();
+        } catch { d = new Date(); }
+        const horaI = (p.horaInicio||'').includes('T') ? new Date(p.horaInicio).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}) : (p.horaInicio||'').substring(0,5);
+        const horaF = (p.horaFim||'').includes('T') ? new Date(p.horaFim).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}) : (p.horaFim||'').substring(0,5);
+
+        return (
+          <div key={p.id} className="option-card" onClick={() => {
+            if (modoSelecaoPlanos) { setPlanosSelecionadosIds(prev => { const novo = new Set(prev); if (novo.has(p.id)) novo.delete(p.id); else novo.add(p.id); return novo; }); return; }
+            onGuardado?.(p);
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+              {modoSelecaoPlanos && (
+                <div style={{ width: 20, height: 20, borderRadius: 5, border: '2px solid var(--copper)', background: planosSelecionadosIds.has(p.id) ? 'var(--copper)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, color: 'white' }}>
+                  {planosSelecionadosIds.has(p.id) && '✓'}
+                </div>
+              )}
+              <div style={{ background:'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
+                <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'white', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
+                <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.85)', textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{p.titulo || 'Plano de aula'}</div>
+                {p.ucId && (
+                  <div style={{ fontSize:13, color:'var(--copper)', fontWeight:600, marginBottom:2, lineHeight:1.4 }}>
+                    {p.ucId} · {rotuloPlano(p)}
+                    {p.ucNome && <div style={{ fontSize:13, color:'var(--copper)', fontWeight:500, opacity:0.85 }}>{p.ucNome}</div>}
+                  </div>
+                )}
+                <div className="muted" style={{ fontSize:13 }}>
+                  {p.data ? fmtDataCurta(p.data) + ' · ' : ''}{horaI && horaF ? horaI+'-'+horaF+' ' : ''}{p.turmaId}{(p.fichasIds?.length||0) > 0 ? ' - '+p.fichasIds.length+' ficha'+(p.fichasIds.length!==1?'s':'') : ''}
+                </div>
+              </div>
+              <span style={{ fontSize:13, padding:'3px 10px', borderRadius:20, fontWeight:700, flexShrink:0,
+                background:p.estado==='publicado'?'rgba(90,122,78,0.15)':'rgba(181,101,29,0.12)',
+                color:p.estado==='publicado'?'var(--sage)':'var(--copper)',
+                border:'1px solid '+(p.estado==='publicado'?'rgba(90,122,78,0.3)':'rgba(181,101,29,0.3)'),
+              }}>
+                {p.estado==='publicado'?'Publicado':'Rascunho'}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+      {mostrarModalPauta && (
+        <ModalPauta
+          turmaId={turmaId}
+          nomeProfessor={nomeProfessor || 'Professor'}
+          onFechar={() => setMostrarModalPauta(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado, dataInicial }: {
+  turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void;
+  onVoltar:()=>void; onAlteracao?:(guardar?:()=>void)=>void; onGuardado?:()=>void;
+  /** Data vinda do calendário. Sem ela, começa em hoje. */
+  dataInicial?: string;
+}) {
+  const [dados, setDados] = useState(() => {
+    const data = dataInicial || new Date().toISOString().split('T')[0];
+    // As horas saem do horário da turma. Eram 08:30–17:30 fixas, o dia
+    // inteiro, mesmo quando a turma só tem cozinha das 10 às 13.
+    const h = horasSugeridas(turmaId, data);
+    return {
+    data,
+    horaInicio: h?.inicio || '08:30',
+    horaFim: h?.fim || '17:30',
+    ucId: '',
+    // Qual das disciplinas do professor é esta aula. Só se pergunta
+    // quando há mais do que uma a decorrer na mesma data.
+    disciplina: disciplinaUnica(turmaId, data),
+    titulo: '',
+    professor: nomeProfessor || '',
+    tipoAtividade: 'Aula prática',
+    tipoPlanAula: 'pratico' as 'pratico' | 'teorico' | 'misto',
+    };
+  });
+
+  // Estado do "trocar de unidade": por omissão a unidade vem do
+  // cronograma e não é editável.
+  const [trocarUC, setTrocarUC] = useState(false);
+
+  function setD(k: string, v: string) {
+    setDados(p => {
+      const novo: any = { ...p, [k]: v };
+      // Ao mudar a data, a unidade acompanha o cronograma — a não ser
+      // que o professor tenha escolhido trocar à mão.
+      if (k === 'data' && !trocarUC) {
+        // A disciplina é reavaliada com a data nova: a que estava a
+        // decorrer pode já não estar, ou podem passar a ser duas.
+        const disc = disciplinaUnica(turmaId, v);
+        novo.disciplina = disc || (disciplinasAtivas(turmaId, v).includes(p.disciplina) ? p.disciplina : '');
+
+        const ativos = novo.disciplina
+          ? modulosAtivosDaDisciplina(turmaId, novo.disciplina, v)
+          : [];
+        const doCrono = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+        novo.ucId = doCrono?.id ?? '';
+      }
+      // Ao escolher a disciplina, o módulo acompanha.
+      if (k === 'disciplina' && !trocarUC && p.data) {
+        const ativos = modulosAtivosDaDisciplina(turmaId, v, p.data);
+        const doCrono = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+        novo.ucId = doCrono?.id ?? '';
+      }
+      return novo;
+    });
+    onAlteracao?.();
+  }
+
+  // Preencher a unidade na abertura do formulário.
+  useEffect(() => {
+    if (trocarUC || !dados.data) return;
+    // Sem disciplina escolhida não se adivinha o módulo: com duas a
+    // decorrer, seria meio a meio acertar.
+    if (!dados.disciplina) return;
+    const ativos = modulosAtivosDaDisciplina(turmaId, dados.disciplina, dados.data);
+    const doCrono = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+    if (doCrono && dados.ucId !== doCrono.id) {
+      setDados(p => ({ ...p, ucId: doCrono.id }));
+    }
+    if (!doCrono && dados.ucId) setDados(p => ({ ...p, ucId: '' }));
+  }, [dados.data, turmaId, trocarUC]);
+
+  function guardar() {
+    const now = new Date().toISOString();
+    const modulos = modulosDaTurma(turmaId);
+    const ucSel = modulos.find(m => m.id === dados.ucId) || UCS_COZINHA.find(u => u.id === dados.ucId);
+    const numeroPlan = proximoNumeroPlano();
+    const codigoPlano = gerarCodigoPlano(turmaId, dados.ucId, numeroPlan);
+    const titulo = dados.titulo || `${dados.tipoAtividade}${dados.data ? ' — ' + dados.data : ''}`;
+    const p: TPlanoAula = {
+      id: 'plano_' + Date.now(), turmaId,
+      professor: dados.professor,
+      data: dados.data,
+      horaInicio: dados.horaInicio,
+      horaFim: dados.horaFim,
+      titulo,
+      observacoes: '', fichasIds: [],
+      estado: 'rascunho',
+      criadoEm: now, atualizadoEm: now,
+      ucId: dados.ucId,
+      ucNome: ucSel?.nome || '',
+      numeroPlan,
+    } as TPlanoAula;
+    // Guardar tipoPlanAula no plano
+    (p as any).tipoPlanAula = dados.tipoPlanAula;
+    addOrUpdatePlanoAula(p);
+    onGuardado?.();
+    // O Classroom fica para quando o plano for publicado, não agora.
+    //
+    // Perguntava-se aqui, logo a seguir a criar o plano — antes de haver
+    // fichas, guião ou requisição. Publicava-se um plano vazio, e o
+    // professor tinha de responder a uma pergunta sobre uma coisa que
+    // ainda não tinha feito.
+    onConcluido(p);
+  }
+
+  const podeGuardar = !!dados.data && !!dados.ucId;
+
+  return (
+    <div>
+      <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
+        <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: '1px solid rgba(247,241,230,0.2)', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>← Voltar</button>
+        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>Novo Plano de Aula</div>
+        <div style={{ fontSize: 13, color: 'rgba(247,241,230,0.5)', marginTop: 3 }}>ECL · {turmaId}</div>
+      </div>
+      <Card>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div className="field">
+            <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)' }}>Data <span style={{ color: 'var(--danger)' }}>*</span></label>
+            <input type="date" className="input" value={dados.data} onChange={e => setD('data', e.target.value)} style={{ border: !dados.data ? '2px solid var(--danger)' : undefined, fontSize: 14 }} />
+          </div>
+          <div className="field">
+            <label className="field-label">Início</label>
+            <input type="time" className="input" value={dados.horaInicio} onChange={e => setD('horaInicio', e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="field-label">Fim</label>
+            <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
+          </div>
+        </div>
+        <div className="field" style={{ marginBottom: 16 }}>
+          <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>
+            {modulosDaTurma(turmaId).some(m => m.tipo === 'UFCD') ? 'UFCD' : 'Unidade de Competência'} <span style={{ color: 'var(--danger)' }}>*</span>
+          </label>
+          {(() => {
+            // A unidade não é escolha livre: sai do cronograma, pela data
+            // da aula. O professor não tem de saber de cor o que está a
+            // decorrer, e não pode enganar-se.
+            const modulos = modulosDaTurma(turmaId);
+            const isUFCD = modulos.some(m => m.tipo === 'UFCD');
+            const label = isUFCD ? 'UFCD' : 'unidade';
+
+            // A disciplina vem primeiro. A Rosa dá duas ao 3º ACP —
+            // Serviços de Cozinha/Pastelaria e Gestão e Controlo — a
+            // correr ao mesmo tempo. Escolhia-se "a que acaba primeiro",
+            // e saía a de Gestão e Controlo numa aula de cozinha.
+            const disciplinas = dados.data ? disciplinasAtivas(turmaId, dados.data) : [];
+            const disciplinaEscolhida = dados.disciplina
+              || (disciplinas.length === 1 ? disciplinas[0] : '');
+
+            const ativos = (dados.data && disciplinaEscolhida)
+              ? modulosAtivosDaDisciplina(turmaId, disciplinaEscolhida, dados.data)
+              : [];
+            // Dentro da disciplina, fica o módulo que acaba primeiro: é o
+            // que tem menos aulas pela frente.
+            const doCronograma = [...ativos].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+
+            const selNome = modulos.find(m => m.id === dados.ucId)?.nome
+              || UCS_COZINHA.find(u => u.id === dados.ucId)?.nome || '';
+            const foraDoCronograma = !!dados.ucId && doCronograma && dados.ucId !== doCronograma.id;
+
+            if (!dados.data) {
+              return (
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: 'var(--surface-2, #f6f4f1)',
+                  fontSize: 13.5, color: 'rgba(26,23,20,0.6)' }}>
+                  Escolhe primeiro a data. A {label} vem do cronograma.
+                </div>
+              );
+            }
+
+            // Duas ou mais disciplinas a decorrer: o professor escolhe.
+            if (disciplinas.length > 1 && !disciplinaEscolhida) {
+              return (
+                <div>
+                  <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)',
+                    marginBottom: 10, lineHeight: 1.55 }}>
+                    Nesta data tens {disciplinas.length} disciplinas a decorrer.
+                    Qual delas é esta aula?
+                  </div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {disciplinas.map(d => {
+                      const mods = modulosAtivosDaDisciplina(turmaId, d, dados.data);
+                      const m = [...mods].sort((a, b) => a.dataFim.localeCompare(b.dataFim))[0];
+                      return (
+                        <button key={d}
+                          onClick={() => setDados({ ...dados, disciplina: d, ucId: m?.id || '' })}
+                          style={{ padding: '14px 16px', borderRadius: 12, textAlign: 'left',
+                            border: '1.5px solid var(--copper)', background: '#fff',
+                            cursor: 'pointer', fontFamily: 'inherit' }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--copper)' }}>
+                            {d}
+                          </div>
+                          {m && (
+                            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)',
+                              marginTop: 3, lineHeight: 1.45 }}>
+                              {m.id} · {m.nome}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
+            if (!doCronograma) {
+              return (
+                <div style={{ padding: '13px 15px', borderRadius: 10,
+                  background: 'var(--danger-pale, #fdf0ef)', border: '1px solid var(--danger)',
+                  fontSize: 13.5, color: 'var(--danger)', lineHeight: 1.55 }}>
+                  <b>Não há {label} no cronograma para {dados.data}.</b><br />
+                  Ou é período de interrupção, ou a {label} ainda não foi lançada no
+                  cronograma. Corrige a data, ou acrescenta a {label} ao cronograma antes
+                  de criar a aula.
+                </div>
+              );
+            }
+
+            return (<>
+              {!trocarUC ? (
+                <div style={{ padding: '13px 15px', borderRadius: 10,
+                  background: 'var(--copper-pale, #fdf0e6)', border: '1px solid var(--copper)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em',
+                    textTransform: 'uppercase', color: 'var(--copper)' }}>
+                    {doCronograma.id}
+                  </div>
+                  <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--charcoal, #1a1714)',
+                    marginTop: 3, lineHeight: 1.3 }}>
+                    {doCronograma.nome}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--copper)', marginTop: 5 }}>
+                    do cronograma · {doCronograma.dataInicio} a {doCronograma.dataFim}
+                    {ativos.length > 1 && ' · há outra em curso'}
+                  </div>
+                  <button type="button" onClick={() => setTrocarUC(true)}
+                    style={{ marginTop: 9, background: 'transparent', border: 'none', padding: 0,
+                      fontSize: 13, color: 'var(--copper)', fontWeight: 700, cursor: 'pointer',
+                      textDecoration: 'underline', fontFamily: 'inherit' }}>
+                    Trocar de {label}
+                  </button>
+                </div>
+              ) : (<>
+                <select className="input" value={dados.ucId}
+                  onChange={e => setD('ucId', e.target.value)} style={{ fontSize: 14 }}>
+                  <option value="">— Selecciona a {label} desta aula —</option>
+                  {(modulos.length > 0 ? modulos : UCS_COZINHA).map((m: any) =>
+                    <option key={m.id} value={m.id}>{m.id} — {m.nome}</option>)}
+                </select>
+                {selNome && <div style={{ fontSize: 13, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>✓ {selNome}</div>}
+                {foraDoCronograma && (
+                  <div style={{ fontSize: 12.5, color: 'var(--danger)', marginTop: 6, lineHeight: 1.5 }}>
+                    Estás a sair do cronograma: para {dados.data} está prevista a {doCronograma.id}.
+                  </div>
+                )}
+                <button type="button"
+                  onClick={() => { setTrocarUC(false); setD('ucId', doCronograma.id); }}
+                  style={{ marginTop: 8, background: 'transparent', border: 'none', padding: 0,
+                    fontSize: 13, color: 'var(--copper)', fontWeight: 700, cursor: 'pointer',
+                    textDecoration: 'underline', fontFamily: 'inherit' }}>
+                  Voltar à {label} do cronograma
+                </button>
+              </>)}
+            </>);
+          })()}
+        </div>
+        <div className="field" style={{ marginBottom: 14 }}>
+          <label className="field-label" style={{ fontSize: 13, fontWeight: 700 }}>Tipo de aula</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {([
+              { v: 'pratico',  label: '🔪 Prática',  desc: 'Produção em cozinha' },
+              { v: 'misto',    label: '📚+🔪 Mista',  desc: 'Teoria + produção' },
+              { v: 'teorico',  label: '📚 Teórica',  desc: 'Só conhecimentos' },
+            ] as const).map(opt => (
+              <button key={opt.v} type="button" onClick={() => setD('tipoPlanAula', opt.v)}
+                style={{ flex: 1, padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
+                  border: `2px solid ${dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'var(--border)'}`,
+                  background: dados.tipoPlanAula === opt.v ? 'var(--copper-pale)' : '#fff',
+                  color: dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'rgba(26,23,20,0.5)',
+                  fontSize: 13, fontWeight: dados.tipoPlanAula === opt.v ? 700 : 400, textAlign: 'center' }}>
+                <div>{opt.label}</div>
+                <div style={{ fontSize: 12.5, opacity: 0.7, marginTop: 2 }}>{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field" style={{ marginBottom: 14 }}>
+          <label className="field-label">Tipo de actividade</label>
+          <select className="input" value={dados.tipoAtividade} onChange={e => setD('tipoAtividade', e.target.value)}>
+            {TIPOS_ATIVIDADE.map(t => <option key={t}>{t}</option>)}
+          </select>
+        </div>
+        <div className="field" style={{ marginBottom: 20 }}>
+          <label className="field-label">Título (opcional)</label>
+          <input className="input" value={dados.titulo} onChange={e => setD('titulo', e.target.value)} placeholder={`Plano — ${dados.tipoAtividade} — ${dados.data}`} />
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>Se não preencheres, o título é gerado automaticamente com número sequencial</div>
+        </div>
+        <button className="btn btn-primary btn-block" disabled={!podeGuardar} onClick={guardar} style={{ fontSize: 15, padding: '14px', opacity: podeGuardar ? 1 : 0.4 }}>
+          {podeGuardar ? 'Criar plano e começar →' : 'Selecciona a UC para continuar'}
+        </button>
+      </Card>
+    </div>
+  );
+}
+
+function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
+  plano:TPlanoAula; turmaId:string; onVoltar:()=>void; onEditar:()=>void; onIrParaFicha?:()=>void;
+}) {
+  const fichas = getFichasProducao().filter(f=>plano.fichasIds.includes(f.id));
+  const todasFichas = getFichasProducao();
+  const fichasDisponiveis = todasFichas.filter(f=>!plano.fichasIds.includes(f.id));
+  const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
+  const [grelhaAberta, setGrelhaAberta] = useState(false);
+  const [mostrarAdicionarFicha, setMostrarAdicionarFicha] = useState(false);
+  // ALTERAÇÃO 2: estado para evento seleccionado
+  const [eventoSel, setEventoSel] = useState<string>(plano.eventoId || '');
+  const temFichas = fichas.length > 0;
+  const publicado = plano.estado === 'publicado';
+
+  function adicionarFicha(fichaId: string) {
+    addOrUpdatePlanoAula({...plano, fichasIds:[...plano.fichasIds,fichaId], atualizadoEm:new Date().toISOString()});
+    setMostrarAdicionarFicha(false);
+  }
+
+  type Nota='S'|'A'|'R'|null;
+  // Grelha antiga removida — avaliação agora via sistema OBR/SUB/APP/KNW/ATI
+  const comps: {id:string;abrev:string}[] = [];
+  const [notas,setNotas]=useState<Record<string,Record<string,Nota>>>({});
+  const [compExtra,setCompExtra]=useState('');
+  const [compExtraAtiva,setCompExtraAtiva]=useState<string|null>(null);
+  const [notasExtra,setNotasExtra]=useState<Record<string,Nota>>({});
+  const COR={
+    S:{bg:'rgba(107,124,94,0.15)',color:'var(--sage)',border:'var(--sage)'},
+    A:{bg:'rgba(31,27,22,0.06)',color:'var(--charcoal)',border:'var(--charcoal)'},
+    R:{bg:'rgba(179,65,58,0.1)',color:'var(--danger)',border:'var(--danger)'}
+  };
+
+  return (
+    <div>
+      <div style={{background:'var(--charcoal)',borderRadius:14,padding:'18px',marginBottom:12}}>
+        <button onClick={onVoltar} className="btn" style={{fontSize:13,padding:'5px 10px',background:'rgba(247,241,230,0.6)',color:'rgba(247,241,230,0.7)',border:'1px solid rgba(247,241,230,0.6)',marginBottom:10}}>← Planos</button>
+        <div className="display" style={{fontSize:16,color:'var(--cream)'}}>{rotuloPlano(plano)}{plano.turmaId ? ' · ' + plano.turmaId : ''}</div>
+        <div style={{fontSize:13,color:'rgba(247,241,230,0.5)',marginTop:2}}>{dataComDia(plano.data)}{plano.horaInicio ? ` · ${plano.horaInicio}–${plano.horaFim}` : ''}</div>
+        {plano.ucId && (
+          <div style={{marginTop:8,padding:'7px 11px',background:'rgba(181,101,29,0.3)',borderRadius:8,display:'inline-block'}}>
+            <span style={{fontSize:14,color:'var(--cream)',fontWeight:800}}>{NUM_UC[plano.ucId] ? NUM_UC[plano.ucId] + ' · ' : ''}{plano.ucId} — {plano.ucNome}</span>
+          </div>
+        )}
+        <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
+          <span style={{fontSize:13,padding:'3px 10px',borderRadius:20,background:publicado?'rgba(107,124,94,0.3)':'rgba(181,101,29,0.3)',color:'var(--cream)'}}>{publicado?'Publicado':'Rascunho'}</span>
+          <span style={{fontSize:13,color:'rgba(247,241,230,0.4)'}}>☁️ Guardado no Sheets</span>
+        </div>
+      </div>
+
+      {/* Estado do plano */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{fontSize:13,fontWeight:700,color:'var(--charcoal)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>Estado do plano</div>
+        {[
+          [temFichas, fichas.length+' ficha'+(fichas.length!==1?'s':'')+' de producao', 'Sem fichas de producao'],
+          [publicado, 'Aula publicada para alunos', 'Nao publicado ainda'],
+        ].map(([ok,sim,nao],i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+            <span style={{fontSize:16,flexShrink:0}}>{ok?'✅':'⚪'}</span>
+            <span style={{fontSize:13,color:ok?'var(--charcoal)':'rgba(26,23,20,0.4)'}}>{ok?String(sim):String(nao)}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ALTERAÇÃO 3: card Evento Pedagógico */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{fontSize:13,fontWeight:700,color:'var(--copper)',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.04em'}}>🎯 Evento Pedagógico</div>
+        {(() => {
+          const eventos = getEventosDaTurma(turmaId);
+          return (
+            <div>
+              {plano.eventoId && (
+                <div style={{padding:'8px 10px',background:'var(--copper-pale)',borderRadius:8,marginBottom:8,fontSize:13,color:'var(--copper)',fontWeight:600}}>
+                  ✅ Associado a: {eventos.find((e: any) => e.id === plano.eventoId)?.nome || 'Evento'}
+                </div>
+              )}
+              {eventos.length === 0 ? (
+                <div className="muted">Nenhum evento criado para esta turma ainda.</div>
+              ) : (
+                <>
+                  <select className="input" value={eventoSel} onChange={e => setEventoSel(e.target.value)} style={{fontSize:13,marginBottom:8}}>
+                    <option value="">— Sem evento associado —</option>
+                    {eventos.map((e: any) => (
+                      <option key={e.id} value={e.id}>{e.nome} ({e.dias?.length || 0} dia(s))</option>
+                    ))}
+                  </select>
+                  <button className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      addOrUpdatePlanoAula({ ...plano, eventoId: eventoSel || undefined, atualizadoEm: new Date().toISOString() });
+                      alert(eventoSel ? '✅ Plano associado ao evento!' : '✅ Associação removida.');
+                    }}
+                    style={{background:'var(--copper)',color:'white'}}>
+                    {eventoSel ? 'Guardar associação' : 'Remover associação'}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Fichas de produção */}
+      <div className="card">
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--copper)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de producao</div>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setMostrarAdicionarFicha(!mostrarAdicionarFicha)}>{mostrarAdicionarFicha?'Fechar':'+ Adicionar ficha'}</button>
+        </div>
+        {fichas.length===0&&<div className="muted">Sem fichas associadas.</div>}
+        {fichas.map(f=>(
+          <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+            <div style={{width:36,height:36,borderRadius:8,background:'var(--copper-pale)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>📄</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600}}>{f.nomePrato}</div>
+              <div className="muted">{f.classificacao} · {f.numPorcoes} doses</div>
+            </div>
+          </div>
+        ))}
+        {mostrarAdicionarFicha&&(
+          <div style={{marginTop:12,padding:12,background:'var(--cream-dark)',borderRadius:10}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>Fichas disponiveis</div>
+            {fichasDisponiveis.length===0&&<div className="muted">Sem fichas disponiveis.</div>}
+            {fichasDisponiveis.map(f=>(
+              <div key={f.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{f.nomePrato}</div><div className="muted">{f.classificacao}</div></div>
+                <button className="btn btn-primary btn-sm" onClick={()=>adicionarFicha(f.id)}>Adicionar</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {plano.estado==='publicado'&&(
+        <div style={{border:'1.5px solid '+(grelhaAberta?'var(--copper)':'var(--border)'),borderRadius:14,overflow:'hidden',marginTop:10}}>
+          <div onClick={()=>setGrelhaAberta(!grelhaAberta)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',cursor:'pointer',background:grelhaAberta?'var(--copper-pale)':'#fff'}}>
+            <div style={{width:36,height:36,borderRadius:10,background:grelhaAberta?'var(--copper)':'var(--cream-dark)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>📊</div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:600,fontSize:14}}>Grelha de avaliacao</div>
+              <div className="muted" style={{fontSize:13}}>Competencias atitudinais durante a aula</div>
+            </div>
+            <span style={{fontSize:18,color:'var(--copper)'}}>{grelhaAberta?'▲':'▼'}</span>
+          </div>
+          {grelhaAberta&&(
+            <div style={{borderTop:'1px solid var(--border)',padding:'14px 16px',background:'#fff'}}>
+              <div style={{padding:'8px 12px',background:'var(--copper-pale)',borderRadius:8,fontSize:13,color:'var(--copper)',marginBottom:12}}>
+                Registo do professor sobre as atitudes dos alunos — nao a autoavaliacao.
+              </div>
+              {alunos.length>0&&(
+                <>
+                  <div style={{overflowX:'auto',marginBottom:10}}>
+                    <table style={{borderCollapse:'collapse',width:'100%',minWidth:400,fontSize:13}}>
+                      <thead>
+                        <tr style={{background:'var(--charcoal)',color:'var(--cream)'}}>
+                          <th style={{padding:'8px 10px',textAlign:'left',fontWeight:500,minWidth:90}}>Aluno</th>
+                          {comps.map(c=><th key={c.id} style={{padding:'6px 4px',fontWeight:500,textAlign:'center',fontSize:13,minWidth:60}}>{c.abrev}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {alunos.map((a,ai)=>(
+                          <tr key={a.id} style={{background:ai%2===0?'#fff':'var(--cream)'}}>
+                            <td style={{padding:'7px 10px',fontWeight:500,borderBottom:'1px solid var(--border)'}}>{a.nome||'Aluno '+a.numero}</td>
+                            {comps.map(c=>{
+                              const v=notas[a.id]?.[c.id]||null;
+                              return(
+                                <td key={c.id} style={{padding:'3px 2px',textAlign:'center',borderBottom:'1px solid var(--border)'}}>
+                                  <div style={{display:'flex',gap:2,justifyContent:'center'}}>
+                                    {(['S','A','R'] as Nota[]).map(bv=>(
+                                      <button key={String(bv)} onClick={()=>setNotas(p=>({...p,[a.id]:{...p[a.id],[c.id]:p[a.id][c.id]===bv?null:bv}}))} className="btn" style={{width:22,height:22,padding:0,fontSize:13,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5}}>{bv}</button>
+                                    ))}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button className="btn btn-primary btn-block" style={{background:'var(--charcoal)',marginBottom:12}} onClick={()=>alert('Guardado!')}>Guardar avaliacoes</button>
+                  <div style={{padding:'12px 14px',background:'rgba(90,122,78,0.08)',borderRadius:10,border:'1px solid rgba(90,122,78,0.2)'}}>
+                    <div style={{fontSize:13,fontWeight:700,color:'var(--sage)',marginBottom:6}}>+ Competencia extra de observacao</div>
+                    <div style={{fontSize:13,color:'rgba(26,23,20,0.5)',marginBottom:8}}>Nao entra na avaliacao formal.</div>
+                    {!compExtraAtiva?(
+                      <div style={{display:'flex',gap:6}}>
+                        <input className="input" value={compExtra} onChange={e=>setCompExtra(e.target.value)} placeholder="ex: Cooperacao, Iniciativa..." style={{flex:1,fontSize:13}}/>
+                        <button className="btn btn-ghost" onClick={()=>{if(compExtra.trim()){setCompExtraAtiva(compExtra.trim());setNotasExtra({});}}}>Activar</button>
+                      </div>
+                    ):(
+                      <div>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                          <div style={{fontWeight:600,fontSize:13,color:'var(--sage)'}}>{compExtraAtiva}</div>
+                          <button onClick={()=>{setCompExtraAtiva(null);setCompExtra('');}} style={{fontSize:13,color:'rgba(26,23,20,0.4)',background:'none',border:'none',cursor:'pointer'}}>Remover</button>
+                        </div>
+                        <table style={{borderCollapse:'collapse',width:'100%',fontSize:13}}>
+                          <thead><tr style={{background:'var(--sage)',color:'white'}}><th style={{padding:'6px 10px',textAlign:'left'}}>Aluno</th><th style={{padding:'6px 4px',textAlign:'center'}}>S</th><th style={{padding:'6px 4px',textAlign:'center'}}>A</th><th style={{padding:'6px 4px',textAlign:'center'}}>R</th></tr></thead>
+                          <tbody>
+                            {alunos.map((a,ai)=>{
+                              const v=notasExtra[a.id]||null;
+                              return(
+                                <tr key={a.id} style={{background:ai%2===0?'#fff':'var(--cream)'}}>
+                                  <td style={{padding:'7px 10px'}}>{a.nome||'Aluno '+a.numero}</td>
+                                  {(['S','A','R'] as Nota[]).map(bv=>(
+                                    <td key={String(bv)} style={{textAlign:'center',padding:'3px 2px'}}>
+                                      <button onClick={()=>setNotasExtra(p=>({...p,[a.id]:p[a.id]===bv?null:bv}))} style={{width:22,height:22,padding:0,fontSize:13,fontWeight:700,background:v===bv?COR[bv!].bg:'transparent',color:v===bv?COR[bv!].color:'rgba(31,27,22,0.2)',border:'1px solid '+(v===bv?COR[bv!].border:'var(--border)'),borderRadius:5,cursor:'pointer'}}>{bv}</button>
+                                    </td>
+                                  ))}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
