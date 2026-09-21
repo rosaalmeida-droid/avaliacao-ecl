@@ -406,6 +406,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [incluirSubApp, setIncluirSubApp] = useState(true);
   /** Ficha que está a ser editada; null = criar nova. */
   const [fichaEmEdicao, setFichaEmEdicao] = useState<string | null>(null);
+  /** Mostra a confirmação durante uns segundos depois de abrir a aula. */
+  const [acabouDeAbrir, setAcabouDeAbrir] = useState(false);
   /** true quando vem do plano com "Ir buscar uma ficha". */
   const [irParaBiblioteca, setIrParaBiblioteca] = useState(false);
   /** Aluno a validar, vindo da vista de turma. */
@@ -1157,7 +1159,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </div>
               <button onClick={() => {
                   abrirSessaoAula(plano.id, turmaId, nomeProfessor || 'professor');
-                  onPlanoActualizado?.(plano);
+                  // Um objeto NOVO — com o mesmo, o ecrã não se redesenhava
+                  // e o botão ficava à vista como se nada tivesse acontecido.
+                  onPlanoActualizado?.({ ...plano });
+                  setAcabouDeAbrir(true);
+                  setTimeout(() => setAcabouDeAbrir(false), 6000);
                 }}
                 style={{ marginTop:12, width:'100%', padding:16, borderRadius:12, border:'none',
                   background:'var(--copper)', color:'#fff', fontSize:17, fontWeight:700,
@@ -1177,6 +1183,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
         return (
           <div style={{ marginBottom:14 }}>
+            {/* Confirmação visível logo a seguir ao clique. */}
+            {acabouDeAbrir && (
+              <div style={{ background:'var(--sage)', color:'#fff', borderRadius:12,
+                padding:'13px 16px', marginBottom:8, fontSize:15.5, fontWeight:700,
+                display:'flex', alignItems:'center', gap:10 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
+                  strokeWidth={3} strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+                Aula aberta. Os alunos já podem entrar.
+              </div>
+            )}
             <div style={{ background:'var(--sage-pale, #eef4eb)', border:'1px solid var(--sage)',
               borderRadius:14, padding:'14px 16px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
