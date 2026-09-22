@@ -326,7 +326,7 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
   const [tick, setTick] = React.useState(0);
 
   React.useEffect(() => {
-    setAlunos(getAlunos().filter((a: any) => a.turmaId === turmaId).sort((a: any, b: any) => a.numero - b.numero));
+    setAlunos(getAlunos().filter((a: any) => a.turmaId === turmaId && a.ativo !== false).sort((a: any, b: any) => a.numero - b.numero));
   }, [turmaId]);
 
   function estaSubmetido(alunoId: string): { submetido: boolean; hora: string } {
@@ -424,6 +424,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // coisa com arranjos diferentes. Sobra de termos construído o novo sem
   // apagar o velho.
   const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma'>('resumo');
+  /** Conhecimentos marcados para retirar/incluir, à espera de confirmação. */
+  const [knwPendentes, setKnwPendentes] = useState<Set<string>>(new Set());
   const [compRemovidas, setCompRemovidas] = useState<string[]>(
     Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []
   );
@@ -483,12 +485,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // Biblioteca pode ainda não estar carregada — proteger com try/catch
   let lib: ReturnType<typeof getLibrary> | null = null;
   try { lib = getLibrary(); } catch { lib = null; }
-  const compConhecimentos = tipoPlanAula !== 'pratico' && plano.ucId && lib
+  // Os sugeridos são escolhidos ANTES de tirar os retirados. Antes, o
+  // filtro de retirados vinha primeiro: retirar um fazia entrar outro no
+  // lugar, sem aviso, e o retirado desaparecia da lista — não havia como
+  // o voltar a incluir.
+  const conhecimentosSugeridos = tipoPlanAula !== 'pratico' && plano.ucId && lib
     ? (lib.conhecimentos as any[])
-        .filter((k: any) => !compRemovidas.includes(k.id) && !IDS_JA_USADOS.has(k.id))
+        .filter((k: any) => !IDS_JA_USADOS.has(k.id))
         .slice(0, 6)
         .map((k: any) => ({ id: k.id, nome: k.nome, definicao: k.definicao, criterios: [] as any[] }))
     : [];
+  const compConhecimentos = conhecimentosSugeridos.filter(k => !compRemovidas.includes(k.id));
   compConhecimentos.forEach(k => IDS_JA_USADOS.add(k.id));
 
   // ── Fallback: sistema antigo (microsPorUC) se não há SUB/APP ─
@@ -932,11 +939,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         )}
 
         {/* ── Conhecimentos da UC (aula teórica/mista) ── */}
-        {compConhecimentos.length > 0 && (
+        {conhecimentosSugeridos.length > 0 && (
           <div style={{ marginBottom:14 }}>
             <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#0369a1', marginBottom:8 }}>📚 Conhecimentos da UC</div>
-            {compConhecimentos.map(k => {
-              const removida = compRemovidas.includes(k.id);
+            {conhecimentosSugeridos.map(k => {
+              // Estado visível = o guardado, com as marcações por confirmar por cima.
+              const removida = knwPendentes.has(k.id)
+                ? !compRemovidas.includes(k.id)
+                : compRemovidas.includes(k.id);
               return (
                 <div key={k.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'rgba(3,105,161,0.06)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
                   <span>{removida ? '○' : '●'}</span>
@@ -944,13 +954,58 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                     <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{k.nome}</div>
                     {k.definicao && <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.4)', marginTop:2 }}>{k.definicao.slice(0, 80)}{k.definicao.length > 80 ? '…' : ''}</div>}
                   </div>
-                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== k.id) : [...compRemovidas, k.id], compAdicionadas)}
+                  <button onClick={() => {
+                      // Só marca. Nada se retira sem confirmação.
+                      const n = new Set(knwPendentes);
+                      if (n.has(k.id)) n.delete(k.id); else n.add(k.id);
+                      setKnwPendentes(n);
+                    }}
                     style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
                 </div>
               );
             })}
+
+            {/* Alterações por confirmar — uma confirmação, com a lista toda. */}
+            {knwPendentes.size > 0 && (() => {
+              const aRetirar = conhecimentosSugeridos.filter(k => knwPendentes.has(k.id) && !compRemovidas.includes(k.id));
+              const aIncluir = conhecimentosSugeridos.filter(k => knwPendentes.has(k.id) && compRemovidas.includes(k.id));
+              return (
+                <div style={{ marginTop:10, padding:'12px 14px', borderRadius:10,
+                  background:'#fdf0e6', border:'1.5px solid var(--copper)' }}>
+                  <div style={{ fontSize:13.5, fontWeight:700, color:'var(--copper)', marginBottom:8 }}>
+                    {aRetirar.length > 0 && `${aRetirar.length} a retirar`}
+                    {aRetirar.length > 0 && aIncluir.length > 0 && ' · '}
+                    {aIncluir.length > 0 && `${aIncluir.length} a incluir`}
+                  </div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button onClick={() => setKnwPendentes(new Set())}
+                      style={{ flex:'1 1 110px', padding:10, borderRadius:9, border:'1px solid rgba(26,23,20,0.18)',
+                        background:'#fff', fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                      Desfazer
+                    </button>
+                    <button onClick={() => {
+                        if (aRetirar.length > 0 && !confirm(
+                          'Está a excluir os seguintes conhecimentos deste plano de aula:\n\n'
+                          + aRetirar.map(k => '· ' + k.nome).join('\n')
+                          + '\n\nConfirma que pretende excluí-los?'
+                        )) return;
+                        let novas = [...compRemovidas];
+                        aRetirar.forEach(k => { if (!novas.includes(k.id)) novas.push(k.id); });
+                        novas = novas.filter(id => !aIncluir.some(k => k.id === id));
+                        guardarCompetencias(novas, compAdicionadas);
+                        setKnwPendentes(new Set());
+                      }}
+                      style={{ flex:'1 1 110px', padding:10, borderRadius:9, border:'none',
+                        background:'var(--copper)', color:'#fff', fontSize:13.5, fontWeight:700,
+                        cursor:'pointer', fontFamily:'inherit' }}>
+                      Guardar alterações
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1033,7 +1088,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   if (modulo === 'validacao') {
-    const alunosDaTurma = getAlunos().filter(a => a.turmaId === turmaId);
+    const alunosDaTurma = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
     const historico = getHistoricoAvaliacoes().filter(r => r.planoAulaId === plano.id);
     const selecoes = getSelecoes().filter(s => s.planoAulaId === plano.id);
     const validacoes = getValidacoes().filter(v => v.planoAulaId === plano.id);
@@ -1452,6 +1507,42 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {/* TAB PREPARAR — era o Resumo. Recebeu da Orientação o que não
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
+      {/* Aula atitudinal — o professor escolhe as atitudes a trabalhar,
+          de todas as do curso. São estas que o aluno se autoavalia. */}
+      {(plano as any).tipoPlanAula === 'atitudinal' && (
+        <div style={{ background:'#fff', borderRadius:14, padding:18, marginBottom:16,
+          border:'1.5px solid rgba(125,79,140,0.35)' }}>
+          <div style={{ fontSize:16, fontWeight:700, color:'#7d4f8c' }}>
+            Atitudes a trabalhar nesta aula
+          </div>
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'4px 0 12px', lineHeight:1.5 }}>
+            Aula atitudinal: sem farda, sem KitchenFlow, sem técnicas. Marca as atitudes
+            que vais trabalhar — o aluno autoavalia-se nelas e tu validas. Contam para a
+            nota da UC.
+          </div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+            {ATITUDES.map((at: any) => {
+              const marcada = compAdicionadas.includes(at.id);
+              return (
+                <button key={at.id}
+                  onClick={() => guardarCompetencias(compRemovidas,
+                    marcada ? compAdicionadas.filter(x => x !== at.id) : [...compAdicionadas, at.id])}
+                  style={{ padding:'8px 12px', borderRadius:20, fontSize:13.5, cursor:'pointer',
+                    fontFamily:'inherit', fontWeight: marcada ? 700 : 500,
+                    border:`1.5px solid ${marcada ? '#7d4f8c' : 'rgba(26,23,20,0.15)'}`,
+                    background: marcada ? '#7d4f8c' : '#fff', color: marcada ? '#fff' : 'rgba(26,23,20,0.75)' }}>
+                  {marcada ? '✓ ' : ''}{at.nome}
+                </button>
+              );
+            })}
+          </div>
+          {compAdicionadas.filter(x => x.startsWith('ATI-')).length === 0 && (
+            <div style={{ fontSize:13, color:'var(--copper)', marginTop:10, fontWeight:600 }}>
+              Ainda não marcaste nenhuma — sem isto o aluno não tem o que avaliar.
+            </div>
+          )}
+        </div>
+      )}
       {/* ═══ O QUE ESTE PLANO TEM ═══════════════════════════════
           Duas colunas, para o ecrã de computador onde o professor prepara
           as aulas: à esquerda as fichas, com espaço para as manejar; à
