@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -529,13 +529,16 @@ function ConfigTab() {
 // ── Gestão de Alunos (PINs, níveis de medidas) ───────────────
 function GestaoAlunosTab() {
   const turmas = getTurmas();
-  const [turmaSel, setTurmaSel] = useState<string>(turmas[0]?.id || '1º ACP');
+  const [turmaSel, setTurmaSel] = useState<string>(turmas[0]?.id || '1º BCR');
   const [refresh, setRefresh] = useState(0);
   const [aSincronizar, setASincronizar] = useState(false);
   const alunos = useMemo(
     () => getAlunos().filter(a => a.turmaId === turmaSel).sort((a, b) => a.numero - b.numero),
     [turmaSel, refresh]
   );
+
+  const ativos = alunos.filter(a => a.ativo !== false);
+  const removidos = alunos.filter(a => a.ativo === false);
 
   async function sincronizar() {
     setASincronizar(true);
@@ -547,6 +550,32 @@ function GestaoAlunosTab() {
   function mudarPin(a: Aluno) {
     const novo = prompt(`Novo PIN para ${a.nome || 'aluno ' + a.numero} (4 dígitos):`, a.pin || '');
     if (novo && novo.length >= 4) { alterarPinAluno(a.id, novo); setRefresh(r => r + 1); }
+  }
+
+  function remover(a: Aluno) {
+    if (!confirm(
+      `Tem a certeza de que pretende remover este aluno da turma?\n\n`
+      + `${a.numero} · ${a.nome || '(sem nome)'} · ${a.turmaId}\n\n`
+      + `As notas e presenças ficam guardadas. Pode repô-lo depois.`
+    )) return;
+    removerAlunoDaTurma(a.id, 'coordenação');
+    setRefresh(r => r + 1);
+  }
+
+  function repor(a: Aluno) {
+    reporAlunoNaTurma(a.id);
+    setRefresh(r => r + 1);
+  }
+
+  function eliminar(a: Aluno) {
+    if (!confirm(
+      `Eliminar definitivamente?\n\n${a.numero} · ${a.nome || '(sem nome)'} · ${a.turmaId}\n\n`
+      + `Usa isto só para alunos que nunca deviam ter estado na turma — de teste, ou `
+      + `criados por engano. O aluno desaparece de todas as listas. Para quem saiu `
+      + `da turma, usa antes "Remover", que guarda as notas.`
+    )) return;
+    eliminarAlunoDefinitivo(a.id);
+    setRefresh(r => r + 1);
   }
 
   function mudarNivel(a: Aluno) {
@@ -571,14 +600,14 @@ function GestaoAlunosTab() {
             color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           {aSincronizar ? 'A sincronizar…' : '🔄 Sincronizar da Sheet'}
         </button>
-        <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)' }}>{alunos.length} alunos</span>
+        <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)' }}>{ativos.length} alunos</span>
       </div>
 
-      {alunos.length === 0 ? (
+      {ativos.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 32, color: 'rgba(26,23,20,0.4)' }}>
           Sem alunos nesta turma. Usa a Cópia de Segurança para restaurar, ou sincroniza da Sheet.
         </div>
-      ) : alunos.map(a => (
+      ) : ativos.map(a => (
         <div key={a.id} style={{ background: '#fff', borderRadius: 12, padding: '10px 14px',
           marginBottom: 6, border: '1px solid rgba(26,23,20,0.08)',
           display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -596,8 +625,72 @@ function GestaoAlunosTab() {
           <button onClick={() => mudarNivel(a)} style={{ padding: '5px 10px', borderRadius: 8,
             border: '1px solid rgba(26,23,20,0.15)', background: '#faf7f2', fontSize: 12.5,
             cursor: 'pointer', fontWeight: 600 }}>🎚 Nível</button>
+          <button onClick={() => remover(a)} style={{ padding: '5px 10px', borderRadius: 8,
+            border: '1px solid #c0392b', background: '#fff', color: '#c0392b', fontSize: 12.5,
+            cursor: 'pointer', fontWeight: 700 }}>Remover</button>
         </div>
       ))}
+
+      {/* Removidos — já não aparecem nas listas da turma nem conseguem
+          entrar, mas as notas e presenças ficam guardadas. */}
+      {removidos.length > 0 && (
+        <div style={{ marginTop: 18 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em',
+            textTransform: 'uppercase', color: 'rgba(26,23,20,0.45)', marginBottom: 8 }}>
+            Removidos da turma ({removidos.length})
+          </div>
+          {removidos.map(a => (
+            <div key={a.id} style={{ background: '#f7f5f2', borderRadius: 12, padding: '9px 14px',
+              marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+              color: 'rgba(26,23,20,0.55)' }}>
+              <div style={{ width: 30, textAlign: 'center', fontWeight: 800, fontSize: 13 }}>{a.numero}</div>
+              <div style={{ flex: 1, minWidth: 140, fontSize: 14 }}>
+                {a.nome || '(sem nome)'}
+                {a.removidoEm && (
+                  <span style={{ fontSize: 12.5 }}>
+                    {' '}· removido a {new Date(a.removidoEm).toLocaleDateString('pt-PT')}
+                  </span>
+                )}
+              </div>
+              <button onClick={() => repor(a)} style={{ padding: '5px 12px', borderRadius: 8,
+                border: '1px solid rgba(26,23,20,0.2)', background: '#fff', fontSize: 12.5,
+                cursor: 'pointer', fontWeight: 700 }}>Repor</button>
+              <button onClick={() => eliminar(a)} style={{ padding: '5px 12px', borderRadius: 8,
+                border: 'none', background: '#c0392b', color: '#fff', fontSize: 12.5,
+                cursor: 'pointer', fontWeight: 700 }}>Eliminar</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Alunos em turmas que já não existem — de teste, ou de nomes de
+          turma antigos. Não aparecem em nenhuma turma, por isso nunca se
+          conseguiam tirar. */}
+      {(() => {
+        const orfaos = alunosForaDasTurmas();
+        if (!orfaos.length) return null;
+        return (
+          <div style={{ marginTop: 18 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em',
+              textTransform: 'uppercase', color: 'rgba(26,23,20,0.45)', marginBottom: 8 }}>
+              Em turmas que já não existem ({orfaos.length})
+            </div>
+            {orfaos.map(a => (
+              <div key={a.id} style={{ background: '#f7f5f2', borderRadius: 12, padding: '9px 14px',
+                marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                color: 'rgba(26,23,20,0.6)' }}>
+                <div style={{ flex: 1, minWidth: 140, fontSize: 14 }}>
+                  {a.numero} · {a.nome || '(sem nome)'}
+                  <span style={{ fontSize: 12.5 }}> · turma "{a.turmaId}"</span>
+                </div>
+                <button onClick={() => eliminar(a)} style={{ padding: '5px 12px', borderRadius: 8,
+                  border: 'none', background: '#c0392b', color: '#fff', fontSize: 12.5,
+                  cursor: 'pointer', fontWeight: 700 }}>Eliminar</button>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -605,9 +698,9 @@ function GestaoAlunosTab() {
 // ── Visão Pedagógica (progresso por turma) ───────────────────
 function VisaoPedagogicaTab() {
   const turmas = getTurmas();
-  const [turmaSel, setTurmaSel] = useState<string>(turmas[0]?.id || '1º ACP');
+  const [turmaSel, setTurmaSel] = useState<string>(turmas[0]?.id || '1º BCR');
   const alunos = useMemo(
-    () => getAlunos().filter(a => a.turmaId === turmaSel).sort((a, b) => a.numero - b.numero),
+    () => getAlunos().filter(a => a.turmaId === turmaSel && a.ativo !== false).sort((a, b) => a.numero - b.numero),
     [turmaSel]
   );
   const [alunoAberto, setAlunoAberto] = useState<string | null>(null);
@@ -655,9 +748,9 @@ function VisaoPedagogicaTab() {
 // ── Ranking (participação e regularidade) ────────────────────
 function RankingTab() {
   const turmas = getTurmas();
-  const [turmaSel, setTurmaSel] = useState<string>(turmas[0]?.id || '1º ACP');
+  const [turmaSel, setTurmaSel] = useState<string>(turmas[0]?.id || '1º BCR');
   const alunos = useMemo(
-    () => getAlunos().filter(a => a.turmaId === turmaSel),
+    () => getAlunos().filter(a => a.turmaId === turmaSel && a.ativo !== false),
     [turmaSel]
   );
 
