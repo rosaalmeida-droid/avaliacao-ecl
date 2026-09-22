@@ -4,13 +4,13 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
-import { ucsEquivalentes } from './cronograma';
+import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
   Turma, Aluno, PlanoAula, FichaProducao,
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
-, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha } from './types';
+, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO } from './types';
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
@@ -246,6 +246,9 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             compAdicionadas: Array.isArray(pRaw.compAdicionadas) ? pRaw.compAdicionadas : [],
           };
           const idx = merged.findIndex((x: PlanoAula) => x.id === p.id);
+          // Um plano que não existe cá, mas igual a um que existe (mesma
+          // turma, dia, horas, unidade e título), é uma cópia: não entra.
+          if (idx < 0 && merged.some(x => assinaturaPlano(x) === assinaturaPlano(p))) continue;
           if (idx >= 0) {
             if (new Date(p.atualizadoEm) > new Date((merged[idx] as any).atualizadoEm || '')) {
               // Preservar campos que a Sheet pode não guardar (eventoId, criteriosCongelados, ultimaAlteracao)
@@ -373,10 +376,28 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     if (SHEETS_HISTORICO_URL) {
       const jsonAval = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
       if (jsonAval?.ok && jsonAval.dados?.length > 0) {
+        // Os +1 da transição de referencial vão para o registo deles — se
+        // entrassem aqui, contavam para as notas das UCs e para a pauta.
+        const transicao = jsonAval.dados.filter((r: any) => r.validadoPor === 'transicao');
+        const normais = jsonAval.dados.filter((r: any) => r.validadoPor !== 'transicao');
+
         const locais = getHistoricoAvaliacoes();
         const idsLocais = new Set(locais.map((r: RegistoAvaliacao) => r.id));
-        const novas = jsonAval.dados.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
+        const novas = normais.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
         if (novas.length > 0) save(KEY_HIST, [...locais, ...novas]);
+
+        if (transicao.length > 0) {
+          const jaTem = getRegistosTransicao();
+          const ids = new Set(jaTem.map(t => t.id));
+          const chegados: RegistoTransicao[] = transicao
+            .filter((r: any) => !ids.has(r.id))
+            .map((r: any) => ({
+              id: r.id, alunoId: r.alunoId, turmaId: r.turmaId,
+              atitudeId: r.microcompetenciaId, nivel: Number(r.nota) || 1,
+              data: r.data, planoAulaId: r.planoAulaId || '', professor: '',
+            }));
+          if (chegados.length) save(KEY_TRANSICAO, [...jaTem, ...chegados]);
+        }
       }
 
       // ── Sincronizar Validações ──────────────────────────────────────
@@ -815,7 +836,10 @@ export function seedAlunosReais(): void {
   let mudou = false;
   const idsOficiais = new Set(alunos.map(a => a.id));
 
+  const eliminados = alunosEliminados();
   for (const oficial of alunos) {
+    // Eliminado pela coordenação — a lista oficial não o repõe.
+    if (eliminados.has(oficial.id)) continue;
     const idx = merged.findIndex((x: Aluno) => x.id === oficial.id);
     if (idx < 0) { merged.push(oficial); mudou = true; continue; }
 
@@ -830,10 +854,13 @@ export function seedAlunosReais(): void {
     const PINS_OFICIAIS_DESDE = '2026-09-22T00:00:00.000Z';
     const pin = (atual.pinAlteradoEm && atual.pinAlteradoEm >= PINS_OFICIAIS_DESDE)
       ? atual.pin : oficial.pin;
+    // O estado (ativo/removido) NÃO vem da lista oficial: é decisão da
+    // coordenação. Se a lista reativasse, uma remoção feita pela
+    // coordenadora era desfeita na próxima vez que a aplicação abrisse.
     if (atual.nome !== oficial.nome || atual.turmaId !== oficial.turmaId
-        || atual.numero !== oficial.numero || atual.pin !== pin || atual.ativo === false) {
+        || atual.numero !== oficial.numero || atual.pin !== pin) {
       merged[idx] = { ...atual, nome: oficial.nome, turmaId: oficial.turmaId,
-        numero: oficial.numero, ano: oficial.ano, pin, ativo: true };
+        numero: oficial.numero, ano: oficial.ano, pin };
       mudou = true;
     }
   }
@@ -1087,7 +1114,13 @@ export function resetInicioAnoLetivo(): ResultadoLimpeza {
 }
 
 // ── Alunos ───────────────────────────────────────────────────
-export function getAlunos(): Aluno[] { return load<Aluno>(KEYS.alunos); }
+export function getAlunos(): Aluno[] {
+  // Os eliminados pela coordenação não voltam — nem pela lista oficial,
+  // nem pelo Sheets.
+  const fora = alunosEliminados();
+  const todos = load<Aluno>(KEYS.alunos);
+  return fora.size ? todos.filter(a => !fora.has(a.id)) : todos;
+}
 
 export function addAluno(a: Aluno): void {
   const all = getAlunos();
@@ -1586,6 +1619,16 @@ function sincronizarPlanoComCalendario(p: PlanoAula): void {
   if (!SHEETS_CALENDARIO_URL || !p.data) return;
   const fichas = getFichasProducao().filter(f => p.fichasIds.includes(f.id)).map(f => f.nomePrato);
   const temRequisicao = getRequisicoes().some(r => r.planoAulaId === p.id);
+  // Um plano é gravado muitas vezes (competências, publicar, fichas…) e
+  // cada gravação mandava tudo outra vez para o calendário. Só se envia
+  // quando muda alguma coisa que o calendário mostra.
+  const assinatura = JSON.stringify([p.data, p.horaInicio, p.horaFim, p.titulo, p.ucId, p.turmaId, fichas, temRequisicao]);
+  const KEY_CAL = 'ecl_calendario_enviados';
+  let enviados: Record<string, string> = {};
+  try { enviados = JSON.parse(localStorage.getItem(KEY_CAL) || '{}'); } catch { enviados = {}; }
+  if (enviados[p.id] === assinatura) return;
+  enviados[p.id] = assinatura;
+  try { localStorage.setItem(KEY_CAL, JSON.stringify(enviados)); } catch { /* sem espaço */ }
   enviar(SHEETS_CALENDARIO_URL, 'plano', {
     planoId: p.id,
     data: p.data,
@@ -2260,13 +2303,113 @@ export function getPresencas(): RegistoPresenca[] {
 // Para um aluno e uma UC, devolve os planos de aula dessa UC a que o aluno
 // NÃO esteve presente (faltou) — usado para a Recuperação de Módulos.
 export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: string): PlanoAula[] {
-  const todosPlanosDaUC = getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && p.estado === 'publicado');
+  // Só contam aulas que JÁ ACONTECERAM. Antes contava todos os planos
+  // publicados da UC, incluindo os das semanas seguintes: publicava-se o
+  // plano da próxima aula e o aluno aparecia logo com faltas — e com a UC
+  // "por concluir". Plano de aula ≠ falta ≠ recuperação.
+  const hoje = new Date().toISOString().slice(0, 10);
+  const todosPlanosDaUC = getPlanosAula().filter(p =>
+    p.ucId === ucId && p.turmaId === turmaId
+    && (p.estado === 'publicado' || p.estado === 'realizada')
+    && aulaJaAconteceu(p, hoje));
   const presencas = getPresencas().filter(r => r.alunoId === alunoId);
   return todosPlanosDaUC.filter(plano => {
-    const registo = presencas.find(r => r.planoAulaId === plano.id);
-    // Falta = não há registo de presença, OU há registo explícito de ausência
-    return !registo || registo.presente === false;
+    const registo: any = presencas.find(r => r.planoAulaId === plano.id);
+    if (registo?.decisaoProfessor === 'sem_falta') return false;
+    if (registo?.decisaoProfessor === 'falta_presenca') return true;
+    // Aula que o professor nunca abriu não conta contra o aluno: sem a
+    // aula aberta ele nem conseguia marcar presença. A responsabilidade é
+    // do professor — só uma decisão explícita dele conta como falta.
+    if (!getSessaoAula(plano.id)?.abertaEm) return false;
+    // Esteve na aula (mesmo atrasado) → não falta horas.
+    if (registo?.presente) return false;
+    return true;
   });
+}
+
+/** A aula já aconteceu: dia anterior a hoje, ou hoje com a aula fechada. */
+function aulaJaAconteceu(p: PlanoAula, hoje: string): boolean {
+  const d = String(p.data || '').slice(0, 10);
+  if (!d) return false;
+  if (d < hoje) return true;
+  if (d === hoje) {
+    // Hoje conta a partir do momento em que o professor abre a aula.
+    const s = getSessaoAula(p.id);
+    return !!(s?.fechadaEm || s?.abertaEm);
+  }
+  return false;
+}
+
+/** Horas de um plano. Um dia inteiro (08:30–17:30) desconta a hora de almoço. */
+function horasDoPlano(p: PlanoAula): number {
+  const min = (h?: string) => {
+    if (!h) return NaN;
+    const s = h.includes('T') ? new Date(h).toTimeString().slice(0, 5) : h.slice(0, 5);
+    const [hh, mm] = s.split(':').map(Number);
+    return hh * 60 + mm;
+  };
+  const ini = min(p.horaInicio), fim = min(p.horaFim);
+  if (isNaN(ini) || isNaN(fim) || fim <= ini) return 0;
+  let m = fim - ini;
+  if (ini <= 13 * 60 && fim >= 14 * 60) m -= 60;   // almoço
+  return m / 60;
+}
+
+// ============================================================
+// Recuperação — só em dois casos
+// ============================================================
+// O aluno só fica "em recuperação" quando:
+//   1. faltou a mais de 10% das horas do módulo (presença abaixo de 90%), ou
+//   2. o módulo já terminou e a nota não é positiva.
+//
+// Enquanto o módulo decorre, conhecimentos por avaliar, notas por lançar
+// ou a simples existência de planos NÃO põem o aluno em recuperação.
+
+export interface SituacaoRecuperacao {
+  precisa: boolean;
+  motivo: 'faltas' | 'negativa' | null;
+  horasPrevistas: number;
+  horasFaltadas: number;
+  /** 0–100 */
+  presenca: number;
+  terminou: boolean;
+  nota20: number | null;
+}
+
+export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: string): SituacaoRecuperacao {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mod = modulosDaTurma(turmaId).find(m => m.id === ucId);
+
+  const planosDaUC = getPlanosAula().filter(p =>
+    p.ucId === ucId && p.turmaId === turmaId
+    && (p.estado === 'publicado' || p.estado === 'realizada'));
+
+  // Horas do módulo: as do cronograma. Sem cronograma, as dos planos.
+  const horasPrevistas = mod?.horasPrevistas
+    || planosDaUC.reduce((s, p) => s + horasDoPlano(p), 0);
+
+  const horasFaltadas = getPlanosFaltadosPorUC(alunoId, ucId, turmaId)
+    .reduce((s, p) => s + horasDoPlano(p), 0);
+
+  const presenca = horasPrevistas > 0
+    ? Math.max(0, Math.round((1 - horasFaltadas / horasPrevistas) * 100))
+    : 100;
+
+  const terminou = !!mod?.dataFim && mod.dataFim < hoje;
+
+  // Nota final da UC — a mesma do ecrã "Notas da UC" (notaFinalUC).
+  const nota20: number | null = notaFinalUC(alunoId, turmaId, ucId).final;
+
+  // 1. Faltas acima de 10% das horas do módulo.
+  if (horasPrevistas > 0 && horasFaltadas > horasPrevistas * 0.10) {
+    return { precisa: true, motivo: 'faltas', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+  }
+  // 2. Módulo terminado sem positiva. Sem nenhuma avaliação não se decide
+  //    por nota — seria pôr em recuperação quem ainda não foi avaliado.
+  if (terminou && nota20 !== null && nota20 < 10) {
+    return { precisa: true, motivo: 'negativa', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+  }
+  return { precisa: false, motivo: null, horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
 }
 
 // ── Recuperação de Módulos ──────────────────────────────────────
@@ -2823,9 +2966,9 @@ export function calcularPontosRegularidade(alunoId: string): PontosRegularidade 
 //   · 1.0 valor   — Fardamento (farda completa)
 // Cada aluno começa no máximo (2.0) e desce por cada falha. Os valores de
 // desconto por falha (abaixo) são um ponto de partida — ajustar livremente.
-const DESCONTO_POR_ATRASO = 0.1;   // por cada atraso registado
-const DESCONTO_POR_FALTA = 0.25;   // por cada aula da UC em que o aluno faltou
-const DESCONTO_POR_FARDA_INCOMPLETA = 0.1; // por cada aula com farda incompleta
+export const DESCONTO_POR_ATRASO = 0.1;   // por cada atraso registado
+export const DESCONTO_POR_FALTA = 0.25;   // por cada aula da UC em que o aluno faltou
+export const DESCONTO_POR_FARDA_INCOMPLETA = 0.1; // por cada aula com farda incompleta
 
 export interface BonusAssiduidadeUC {
   pontualidade: number;    // 0 a 0.5
@@ -2836,17 +2979,28 @@ export interface BonusAssiduidadeUC {
 }
 
 export function calcularBonusAssiduidadeUC(alunoId: string, turmaId: string, ucId: string): BonusAssiduidadeUC {
+  // Só aulas que já aconteceram e que o professor abriu. Antes contava
+  // todos os planos publicados — os das semanas seguintes também — e o
+  // aluno perdia bónus por aulas que ainda não tinham acontecido, ou que o
+  // professor nunca abriu. O atraso conta a partir da abertura da aula; se
+  // o professor não abriu, não há atraso nem falta a imputar ao aluno.
+  const hoje = new Date().toISOString().slice(0, 10);
   const planosDaUC = getPlanosAulaPorTurma(turmaId)
-    .filter(p => p.ucId === ucId && p.estado !== 'rascunho');
+    .filter(p => p.ucId === ucId && p.estado !== 'rascunho' && aulaJaAconteceu(p, hoje));
   const presencas = getPresencas().filter(p => p.alunoId === alunoId);
 
   let faltas = 0, atrasos = 0, fardaIncompleta = 0;
 
   planosDaUC.forEach(p => {
-    const pres = presencas.find(x => x.planoAulaId === p.id);
+    const pres: any = presencas.find(x => x.planoAulaId === p.id);
+    const decisao = pres?.decisaoProfessor;
+    // A decisão do professor manda.
+    if (decisao === 'falta_presenca') { faltas++; return; }
+    if (!getSessaoAula(p.id)?.abertaEm && !decisao) return;
     if (!pres || pres.presente === false) { faltas++; return; }
-    if (pres.atrasado) atrasos++;
-    if (!pres.fardamentoOk) fardaIncompleta++;
+    if (decisao === 'falta_atraso' || (pres.atrasado && decisao !== 'sem_falta')) atrasos++;
+    // Aula atitudinal não tem farda — não desconta.
+    if (!pres.fardamentoOk && (p as any).tipoPlanAula !== 'atitudinal') fardaIncompleta++;
   });
 
   const pontualidade = Math.max(0, 0.5 - atrasos * DESCONTO_POR_ATRASO);
@@ -4716,4 +4870,314 @@ export function migrarTurmaAntiga(enviarAoSheets = false): number {
   if (nr > 0) save(KEYS.requisicoes, reqsNovas);
 
   return n + nr;
+}
+
+
+// ============================================================
+// Remover um aluno da turma (coordenação)
+// ============================================================
+// Desativa — não apaga. Apagar levaria também as notas, as presenças e
+// as autoavaliações, que continuam a fazer falta na pauta e no arquivo.
+// O aluno deixa de aparecer nas listas da turma e deixa de conseguir
+// entrar; a coordenação pode repô-lo.
+export function removerAlunoDaTurma(alunoId: string, por: string): void {
+  const todos = getAlunos();
+  const a = todos.find(x => x.id === alunoId);
+  if (!a) return;
+  a.ativo = false;
+  a.removidoEm = new Date().toISOString();
+  a.removidoPor = por;
+  save(KEYS.alunos, todos);
+  enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a });
+}
+
+export function reporAlunoNaTurma(alunoId: string): void {
+  const todos = getAlunos();
+  const a = todos.find(x => x.id === alunoId);
+  if (!a) return;
+  a.ativo = true;
+  delete a.removidoEm;
+  delete a.removidoPor;
+  save(KEYS.alunos, todos);
+  enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a });
+}
+
+
+// ============================================================
+// Transição de referencial — o +1 do professor
+// ============================================================
+// Nas turmas do referencial antigo (ACP), as atitudes do 1º e 2º ano vão
+// sendo consolidadas nas aulas deste ano. Quando o professor vê que o
+// aluno demonstrou uma delas, soma +1 ao nível dessa atitude.
+//
+// Fica num registo À PARTE, e não no histórico das avaliações: esse é o
+// histórico de onde saem as notas das UCs, a pauta e a recuperação. Um
+// +1 que desse nível 1 ou 2 puxaria a nota para baixo — a imagem de
+// incumprimento que a mudança de referencial não pode criar. Aqui conta
+// só para a consolidação da atitude.
+
+const KEY_TRANSICAO = 'ecl_atitudes_transicao';
+
+export interface RegistoTransicao {
+  id: string;
+  alunoId: string;
+  turmaId: string;
+  atitudeId: string;
+  /** Nível depois do +1, de 1 a 5. */
+  nivel: number;
+  data: string;
+  planoAulaId: string;
+  professor: string;
+}
+
+export function getRegistosTransicao(alunoId?: string): RegistoTransicao[] {
+  const todos = load<RegistoTransicao>(KEY_TRANSICAO);
+  return alunoId ? todos.filter(t => t.alunoId === alunoId) : todos;
+}
+
+/** Nível atual da atitude: o maior entre as avaliações normais e os +1. */
+export function nivelConsolidadoAtitude(alunoId: string, atitudeId: string): number {
+  const normais = getHistoricoAlunoMicro(alunoId, atitudeId).map(r => Number(r.nota) || 0);
+  const mais = getRegistosTransicao(alunoId)
+    .filter(t => t.atitudeId === atitudeId).map(t => t.nivel);
+  return Math.max(0, ...normais, ...mais);
+}
+
+/** +1 no nível da atitude, até ao máximo de 5. Devolve o nível novo. */
+export function somarUmAtitude(
+  alunoId: string, turmaId: string, atitudeId: string,
+  planoAulaId: string, professor: string
+): number {
+  const atual = nivelConsolidadoAtitude(alunoId, atitudeId);
+  if (atual >= 5) return 5;
+  const nivel = atual + 1;
+  const reg: RegistoTransicao = {
+    id: novoId('trans'), alunoId, turmaId, atitudeId, nivel,
+    data: new Date().toISOString(), planoAulaId, professor,
+  };
+  save(KEY_TRANSICAO, [...getRegistosTransicao(), reg]);
+
+  // Para o Sheets vai como avaliação marcada "transicao" — é assim que,
+  // ao voltar, a sincronização a separa das notas.
+  const aluno = getAlunos().find(a => a.id === alunoId);
+  enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
+    id: reg.id, alunoId, turmaId, turma: turmaId, planoAulaId,
+    nomeAluno: aluno?.nome || '', numero: aluno?.numero || 0, ano: aluno?.ano || 1,
+    ucId: 'TRANSICAO', microcompetencia: atitudeId, microcompetenciaId: atitudeId,
+    nota: nivel, nota_1_5: nivel, nota_0_20: nivel * 4,
+    data: reg.data, validadoPor: 'transicao',
+    observacoes: '+1 — atitude do referencial anterior',
+  });
+  return nivel;
+}
+
+
+// ============================================================
+// Nota final de uma UC — um só cálculo para toda a aplicação
+// ============================================================
+// Decisões da Rosa (set/2026), depois da simulação do creme de cenoura:
+//
+//   1. Só conta a validação do professor. Antes a nota da UC fazia a
+//      média de TODOS os registos — autoavaliação do aluno, validação do
+//      professor e farda à entrada. O aluno avalia-se sempre acima, e na
+//      simulação o aluno fraco (7,3 na aula) aparecia com 11,7 na UC.
+//   2. O bónus de assiduidade, pontualidade e farda (até +2) mantém-se
+//      como está.
+//   3. O bónus de eventos passa a ser aplicado, como no modelo: +0,75 por
+//      atividade em que o aluno participou, até 3; só com nota base de 10
+//      ou mais; sem nenhuma participação, a nota não passa de 17. Estava
+//      escrito (BONUS_PARTICIPACAO) mas não era chamado em lado nenhum.
+//
+// A ordem: base das competências → + assiduidade → eventos/teto.
+// O teto de 17 aplica-se no fim, senão a assiduidade passava-o por cima.
+// O mínimo de 10 para o bónus de eventos olha para a base das
+// competências — "não se leva a concurso quem tem negativa".
+
+/** Registos que contam para notas: validados pelo professor. */
+export function registosQueContam(r: RegistoAvaliacao): boolean {
+  return r.validadoPor === 'professor' || r.validadoPor === 'recuperacao';
+}
+
+function categoriaDe(id: string): 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI' {
+  return id?.startsWith('OBR_') ? 'OBR'
+    : (id?.startsWith('SUB-') || id?.startsWith('APP-')) ? 'SUB'
+    : id?.startsWith('KNW-') ? 'KNW' : id?.startsWith('INI-') ? 'INI' : 'ATI';
+}
+
+/** Tipo de aula mais comum entre os registos (prática/mista/teórica). */
+function tipoDominante(regs: RegistoAvaliacao[]): 'pratico' | 'misto' | 'teorico' | 'atitudinal' {
+  const planos = getPlanosAula();
+  const tipos = regs.map(r => (planos.find(p => p.id === r.planoAulaId) as any)?.tipoPlanAula || 'pratico');
+  if (tipos.filter(t => t === 'teorico').length > tipos.length / 2) return 'teorico';
+  if (tipos.filter(t => t === 'misto').length > tipos.length / 2) return 'misto';
+  return 'pratico';
+}
+
+/** Nota das competências (0–20) a partir de registos já filtrados. */
+export function notaBaseDeRegistos(regs: RegistoAvaliacao[]): number | null {
+  const validos = regs.filter(registosQueContam);
+  if (!validos.length) return null;
+  return calcularNotaPlano(
+    validos.map(r => ({ categoria: categoriaDe(r.microcompetenciaId), nota: r.nota })),
+    tipoDominante(validos)).nota20;
+}
+
+/** Atividades (eventos, concursos) em que o aluno participou mesmo. */
+export function participacoesDoAluno(alunoId: string): number {
+  return getAtividades().filter(a => (a.participantesIds || []).includes(alunoId)).length;
+}
+
+export interface NotaUC {
+  base: number | null;
+  bonusAssiduidade: number;
+  bonusParticipacao: number;
+  participacoes: number;
+  limitadaPorTeto: boolean;
+  final: number | null;
+}
+
+/** Aplica os dois bónus e o teto a uma nota base de UC. */
+export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: string, ucId: string): NotaUC {
+  const participacoes = participacoesDoAluno(alunoId);
+  if (base === null) {
+    return { base, bonusAssiduidade: 0, bonusParticipacao: 0, participacoes, limitadaPorTeto: false, final: null };
+  }
+  const B = BONUS_PARTICIPACAO;
+  const bonusAssiduidade = calcularBonusAssiduidadeUC(alunoId, turmaId, ucId)?.total || 0;
+  let nota = base + bonusAssiduidade;
+
+  const n = Math.min(participacoes, B.maxAtividades);
+  let bonusParticipacao = 0, limitadaPorTeto = false;
+  if (n === 0) {
+    if (nota > B.tetoSemParticipacao) { nota = B.tetoSemParticipacao; limitadaPorTeto = true; }
+  } else if (base >= B.notaBaseMinima) {
+    bonusParticipacao = n * B.porAtividade;
+    nota += bonusParticipacao;
+  }
+  const final = Math.min(20, Math.round(nota * 10) / 10);
+  return { base, bonusAssiduidade, bonusParticipacao, participacoes, limitadaPorTeto, final };
+}
+
+/** A nota final de um aluno numa UC. */
+export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
+  const regs = getHistoricoAvaliacoes().filter(r =>
+    r.alunoId === alunoId && r.turmaId === turmaId && r.ucId === ucId);
+  return aplicarBonusesUC(notaBaseDeRegistos(regs), alunoId, turmaId, ucId);
+}
+
+// ============================================================
+// Planos repetidos
+// ============================================================
+// Cliques repetidos em "Criar plano" deixaram planos iguais: mesma turma,
+// dia, horas, unidade e título, com identificadores diferentes.
+
+export function assinaturaPlano(p: any): string {
+  const h = (x?: string) => String(x || '').slice(0, 5);
+  return [p.turmaId, String(p.data || '').slice(0, 10), h(p.horaInicio), h(p.horaFim),
+    p.ucId || '', String(p.titulo || '').trim()].join('|');
+}
+
+/** Grupos de planos iguais numa turma (só os não arquivados). */
+export function planosRepetidos(turmaId: string): PlanoAula[][] {
+  const grupos = new Map<string, PlanoAula[]>();
+  getPlanosAulaPorTurma(turmaId).forEach(p => {
+    const k = assinaturaPlano(p);
+    grupos.set(k, [...(grupos.get(k) || []), p]);
+  });
+  return [...grupos.values()].filter(g => g.length > 1);
+}
+
+/** Quanto trabalho tem uma cópia — a que tiver mais é a que fica. */
+function pesoDoPlano(p: PlanoAula): number {
+  let n = 0;
+  if (getSessaoAula(p.id)?.abertaEm) n += 1000;
+  n += getPresencas().filter(r => r.planoAulaId === p.id).length * 50;
+  n += getSelecoes().filter((s: any) => s.planoAulaId === p.id).length * 50;
+  if (getRequisicoes().some(r => r.planoAulaId === p.id)) n += 100;
+  if (p.estado === 'publicado') n += 20;
+  n += (p.fichasIds || []).length * 10;
+  return n;
+}
+
+/**
+ * Junta as cópias. Fica a que tem mais trabalho feito — aula aberta,
+ * presenças, autoavaliações, requisição —, recebe as fichas das outras, e
+ * as outras são arquivadas, não apagadas.
+ */
+export function juntarPlanosRepetidos(turmaId: string): { arquivados: number } {
+  let arquivados = 0;
+  for (const grupo of planosRepetidos(turmaId)) {
+    const ordenado = [...grupo].sort((a, b) => pesoDoPlano(b) - pesoDoPlano(a));
+    const fica = ordenado[0];
+    const fichas = [...new Set(grupo.flatMap(p => p.fichasIds || []))];
+    addOrUpdatePlanoAula({ ...fica, fichasIds: fichas, atualizadoEm: new Date().toISOString() } as any);
+    for (const copia of ordenado.slice(1)) {
+      addOrUpdatePlanoAula({ ...copia, estado: 'arquivado', atualizadoEm: new Date().toISOString() } as any);
+      arquivados++;
+    }
+  }
+  return { arquivados };
+}
+
+// ============================================================
+// Eliminar alunos de vez (coordenação)
+// ============================================================
+// "Remover" desativa e guarda as notas. "Eliminar" é para quem nunca
+// devia ter estado na turma — alunos de teste, criados por engano. Fica
+// numa lista, para a lista oficial e o Sheets não o trazerem de volta.
+
+const KEY_ALUNOS_ELIMINADOS = 'ecl_alunos_eliminados';
+
+export function alunosEliminados(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(KEY_ALUNOS_ELIMINADOS) || '[]')); }
+  catch { return new Set(); }
+}
+
+export function eliminarAlunoDefinitivo(alunoId: string): void {
+  const todos = load<Aluno>(KEYS.alunos);
+  const a = todos.find(x => x.id === alunoId);
+  const fora = alunosEliminados();
+  fora.add(alunoId);
+  try { localStorage.setItem(KEY_ALUNOS_ELIMINADOS, JSON.stringify([...fora])); } catch { /* */ }
+  save(KEYS.alunos, todos.filter(x => x.id !== alunoId));
+  // Noutros aparelhos fica, pelo menos, desativado.
+  if (a) enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: { ...a, ativo: false, eliminado: true } });
+}
+
+/** Alunos numa turma que já não existe (turmas de teste, nomes antigos). */
+export function alunosForaDasTurmas(): Aluno[] {
+  const validas = new Set(getTurmas().map(t => t.id));
+  return getAlunos().filter(a => !validas.has(a.turmaId));
+}
+
+// ============================================================
+// Nota prevista pela autoavaliação
+// ============================================================
+// Quando o aluno se autoavalia, vê já a nota que a proposta dele dá, com
+// uma margem — o professor ainda confirma, e pode subir ou descer. A
+// margem vem do exemplo da Rosa: o aluno propõe 14, o professor dá 12.
+
+export const MARGEM_AJUSTE_PROFESSOR = 2;   // valores, para cima e para baixo
+
+export interface NotaPrevista { nota: number; min: number; max: number; }
+
+export function previsaoNota(
+  autos: { competenciaId: string; nota: number }[],
+  tipo: 'pratico' | 'misto' | 'teorico' | 'atitudinal' = 'pratico'
+): NotaPrevista | null {
+  const validas = autos.filter(a => a.nota > 0);
+  if (!validas.length) return null;
+  const nota = calcularNotaPlano(
+    validas.map(a => ({ categoria: categoriaDe(a.competenciaId), nota: a.nota })), tipo).nota20;
+  return {
+    nota,
+    min: Math.max(0, Math.round((nota - MARGEM_AJUSTE_PROFESSOR) * 10) / 10),
+    max: Math.min(20, Math.round((nota + MARGEM_AJUSTE_PROFESSOR) * 10) / 10),
+  };
+}
+
+
+/** Aula atitudinal — dinâmicas de grupo e atitudes, sem farda nem KitchenFlow. */
+export function ehAulaAtitudinal(p: any): boolean {
+  return p?.tipoPlanAula === 'atitudinal';
 }
