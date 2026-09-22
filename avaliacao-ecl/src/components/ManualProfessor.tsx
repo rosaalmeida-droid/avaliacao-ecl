@@ -15,6 +15,7 @@
 
 import React, { useState } from 'react';
 import { PESOS_AULA, BONUS_PARTICIPACAO } from '../types';
+import { DESCONTO_POR_ATRASO, DESCONTO_POR_FALTA, DESCONTO_POR_FARDA_INCOMPLETA } from '../backend';
 
 const C = {
   bordeaux: '#7B2233', bordeauxSuave: '#F6ECEE',
@@ -132,16 +133,39 @@ const SECCOES: Seccao[] = [
           conhecimentos passam a valer {PESOS_AULA.teorico.KNW * 100}%.
         </P>
 
+        <H>Quando uma parte não é avaliada</H>
+        <P>
+          O peso dessa parte passa para as outras. Numa aula prática sem
+          conhecimentos avaliados, as técnicas passam a valer 50%, e as
+          obrigatórias e as atitudes 25% cada.
+        </P>
+
+        <H>A nota da aula e a nota da UC</H>
+        <P>
+          <b>Só conta a tua validação.</b> A autoavaliação do aluno é uma
+          proposta — aparece-te já preenchida para corrigires, mas não entra
+          em nota nenhuma.
+        </P>
+        <P>
+          A nota da UC junta as tuas validações de todas as aulas dessa UC,
+          com os mesmos pesos, e depois soma os dois bónus: o de
+          assiduidade e o de eventos.
+        </P>
+
         <H>As competências obrigatórias</H>
         <P>
-          São três e avaliam-se em <b>todas as aulas práticas</b>, tenha a
-          aula fichas técnicas ou não:
+          São três, em <b>todas as aulas práticas</b>, tenha a aula fichas
+          técnicas ou não — mas não contam todas no mesmo sítio:
         </P>
         <ul style={{ lineHeight: 1.75, fontSize: 14.5, paddingLeft: 20 }}>
-          <li><b>Higiene pessoal</b> — fardamento completo, sem adornos, mãos lavadas</li>
-          <li><b>HACCP e registos</b> — o KitchenFlow preenchido</li>
-          <li><b>Assiduidade e pontualidade</b></li>
+          <li><b>HACCP e registos</b> — o KitchenFlow preenchido. É esta que entra na nota da aula.</li>
+          <li><b>Higiene pessoal</b> — farda completa, sem adornos, mãos lavadas. Verificada à entrada; conta no bónus de assiduidade da UC.</li>
+          <li><b>Assiduidade e pontualidade</b> — contam também no bónus de assiduidade.</li>
         </ul>
+        <P>
+          Se o aluno não tiver registos no KitchenFlow, o HACCP que ele se
+          propõe chega-te marcado com 1. Confirma antes de validar.
+        </P>
 
         <H>As técnicas não são obrigatórias em cada aula</H>
         <Destaque>
@@ -160,13 +184,32 @@ const SECCOES: Seccao[] = [
   // ── 2 ────────────────────────────────────────────────────
   {
     id: 'bonus',
-    titulo: 'Eventos e concursos — o bónus',
-    resumo: `Até +${(BONUS_PARTICIPACAO.porAtividade * BONUS_PARTICIPACAO.maxAtividades).toFixed(2).replace('.', ',')} valores. Sem participar, o teto é ${BONUS_PARTICIPACAO.tetoSemParticipacao}.`,
+    titulo: 'Os dois bónus da nota da UC',
+    resumo: `Assiduidade até +2 · eventos até +${(BONUS_PARTICIPACAO.porAtividade * BONUS_PARTICIPACAO.maxAtividades).toFixed(2).replace('.', ',')}. Sem eventos, o teto é ${BONUS_PARTICIPACAO.tetoSemParticipacao}.`,
     conteudo: (
       <>
+        <H>1. Assiduidade, pontualidade e farda — até +2</H>
+        <P>
+          Cada aluno começa com os 2 valores e perde uma parte por cada falha,
+          ao longo de todas as aulas da UC:
+        </P>
+        <Tabela
+          cabecalho={['', 'Parte do bónus', 'Desconto por falha']}
+          linhas={[
+            ['Pontualidade', '0,5', `−${String(DESCONTO_POR_ATRASO).replace('.', ',')} por atraso`],
+            ['Assiduidade', '0,5', `−${String(DESCONTO_POR_FALTA).replace('.', ',')} por falta`],
+            ['Farda', '1,0', `−${String(DESCONTO_POR_FARDA_INCOMPLETA).replace('.', ',')} por aula com farda incompleta`],
+          ]}
+        />
+        <P>
+          É por isso que a farda não entra na nota da aula: conta aqui.
+        </P>
+
+        <H>2. Eventos e concursos</H>
         <P>
           A participação em eventos e concursos <b>não é uma componente
-          ponderada</b>. É um acréscimo à nota já calculada.
+          ponderada</b>. É um acréscimo à nota já calculada. Conta quem
+          participou mesmo, não quem se inscreveu.
         </P>
         <P>
           Foi desenhado assim de propósito: quem participa <b>sobe</b>, em
@@ -201,13 +244,27 @@ const SECCOES: Seccao[] = [
           chega no máximo a {BONUS_PARTICIPACAO.tetoSemParticipacao}.
         </P>
 
+        <H>A ordem das contas</H>
+        <P>
+          Primeiro a nota das competências; depois soma-se o bónus de
+          assiduidade; por fim o de eventos — ou o teto de{' '}
+          {BONUS_PARTICIPACAO.tetoSemParticipacao}, se o aluno não participou
+          em nada. O mínimo de {BONUS_PARTICIPACAO.notaBaseMinima} para o bónus
+          de eventos olha para a nota das competências, antes de qualquer bónus.
+        </P>
+
         <Destaque cor="verde">
-          <b>Exemplo.</b> Aluno com 15 valores de base, participou em duas
-          atividades: 15 + (2 × {BONUS_PARTICIPACAO.porAtividade.toFixed(2).replace('.', ',')})
-          = <b>{(15 + 2 * BONUS_PARTICIPACAO.porAtividade).toFixed(1).replace('.', ',')} valores</b>.
+          <b>Exemplo.</b> Aluno com 15 nas competências, sem faltas nem
+          atrasos, farda sempre completa, participou em duas atividades:
+          15 + 2 + (2 × {BONUS_PARTICIPACAO.porAtividade.toFixed(2).replace('.', ',')})
+          = <b>{Math.min(20, 15 + 2 + 2 * BONUS_PARTICIPACAO.porAtividade).toFixed(1).replace('.', ',')} valores</b>.
           <br /><br />
-          Aluno com 18 de base e nenhuma participação:
-          fica em <b>{BONUS_PARTICIPACAO.tetoSemParticipacao}</b>.
+          Aluno com 16 nas competências, bónus de assiduidade completo, nenhuma
+          participação: 16 + 2 = 18, mas fica em <b>{BONUS_PARTICIPACAO.tetoSemParticipacao}</b>.
+          <br /><br />
+          Aluno com 8 nas competências e bónus de assiduidade completo: fica
+          em 10. Participou em três eventos, mas não recebe esse bónus, porque
+          a nota das competências está abaixo de {BONUS_PARTICIPACAO.notaBaseMinima}.
         </Destaque>
       </>
     ),
@@ -222,8 +279,15 @@ const SECCOES: Seccao[] = [
       <>
         <P>
           A tolerância conta-se a partir do momento em que <b>abres a
-          aula</b>, não da hora marcada no plano. São 10 minutos.
+          aula</b>, não da hora marcada no plano. São 10 minutos. Mesmo que
+          abras a aula a dez minutos do fim, os atrasos só contam a partir daí.
         </P>
+        <Destaque>
+          <b>Aula que não abriste não conta contra o aluno.</b> Sem a aula
+          aberta ele não consegue marcar presença — a responsabilidade é do
+          professor. Nessa aula não há faltas nem atrasos, a não ser que os
+          decidas tu, aluno a aluno.
+        </Destaque>
 
         <H>A aplicação não decide faltas</H>
         <P>
@@ -318,6 +382,14 @@ const SECCOES: Seccao[] = [
           Uma autoavaliação não validada <b>não conta para nada</b> — nem
           para a nota, nem para o banco de competências.
         </Destaque>
+
+        <H>A nota prevista</H>
+        <P>
+          Enquanto se autoavalia, o aluno vê a nota que a proposta dele dá
+          nessa aula, com uma margem de 2 valores para cima e para baixo — por
+          exemplo, "14, deve ficar entre 12 e 16". A aplicação diz-lhe sempre
+          que és tu quem confirma.
+        </P>
 
         <H>Porquê pedir a autoavaliação</H>
         <P>
