@@ -1,8 +1,9 @@
+import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import React, { useState, useMemo } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude } from '../backend';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
@@ -158,6 +159,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   validacaoExistente?: any;
   onVoltar: () => void;
 }) {
+  /** +1 já dados nesta validação — um por atitude, para não somar duas vezes. */
+  const [maisUm, setMaisUm] = useState<Record<string, boolean>>({});
   // Pré-preencher com a proposta do aluno — o professor só precisa de clicar
   // onde quer discordar (subir ou descer); o resto fica já seleccionado, pronto
   // a confirmar com um só toque em "Guardar".
@@ -380,6 +383,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             {/* Nome da competência */}
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{nome}</span>
+              {(auto as any).semRegistoKF && (
+                <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100,
+                  background:'#fdf0e6', color:'#b5651d' }}>
+                  Sem registos no KitchenFlow — proposta a 1
+                </span>
+              )}
               {_isApp && _app && (
                 <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 6px', borderRadius:100,
                   background: _app.nivel===1?'rgba(90,122,78,0.15)':_app.nivel===2?'rgba(181,101,29,0.15)':'rgba(192,57,43,0.15)',
@@ -513,10 +522,69 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           ))}
         </div>
         <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.4)', marginTop:8 }}>
-          Ponderação de aula {tipoPlanAula === 'teorico' ? 'teórica' : tipoPlanAula === 'misto' ? 'mista' : 'prática'}.
+          Ponderação de aula {tipoPlanAula === 'teorico' ? 'teórica' : tipoPlanAula === 'misto' ? 'mista' : (tipoPlanAula as any) === 'atitudinal' ? 'atitudinal — só atitudes' : 'prática'}.
           Falta preencher {autoavaliacoes.filter(a => !notasProf[a.competenciaId]).length} de {autoavaliacoes.length} competências.
         </div>
       </div>
+
+      {/* Turmas ACP — +1 nas atitudes dos anos anteriores. Conta para a
+          consolidação da atitude, não para a nota desta aula nem da UC. */}
+      {ehTurmaTransicao(selecao.turmaId) && (() => {
+        const aluno = getAlunos().find(a => a.id === selecao.alunoId);
+        if (!aluno) return null;
+        const lista = atitudesAnteriores(aluno);
+        if (!lista.length) return null;
+        const escolhidas = new Set(selecao.atitudes || []);
+        // Sugestão: a que o aluno escolheu para apanhar vem primeiro.
+        const ordenada = [...lista].sort((x, y) =>
+          (escolhidas.has(y.id) ? 1 : 0) - (escolhidas.has(x.id) ? 1 : 0) || x.ano - y.ano);
+        return (
+          <Card>
+            <div style={{ fontSize:15, fontWeight:700 }}>Atitudes dos anos anteriores</div>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', margin:'4px 0 10px', lineHeight:1.5 }}>
+              O aluno vem do referencial antigo. Se o viste demonstrar alguma destas
+              atitudes hoje, soma +1. Não entra na nota da aula nem da UC — conta só
+              para consolidar a atitude.
+            </div>
+            {ordenada.map(x => {
+              const nivel = nivelConsolidadoAtitude(aluno.id, x.id);
+              const sugerida = escolhidas.has(x.id);
+              const somadaHoje = maisUm[x.id];
+              return (
+                <div key={x.id} style={{ display:'flex', alignItems:'center', gap:10,
+                  padding:'9px 10px', borderRadius:10, marginBottom:5,
+                  background: sugerida ? 'rgba(125,79,140,0.07)' : 'transparent',
+                  border: sugerida ? '1px solid rgba(125,79,140,0.3)' : '1px solid transparent' }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:14, fontWeight: sugerida ? 700 : 500 }}>
+                      {x.nome} <span style={{ fontSize:12, color:'rgba(26,23,20,0.45)', fontWeight:500 }}>· {x.ano}º ano</span>
+                    </div>
+                    {sugerida && (
+                      <div style={{ fontSize:12, color:'#7d4f8c' }}>O aluno escolheu esta para apanhar</div>
+                    )}
+                  </div>
+                  <span style={{ fontSize:13, color:'rgba(26,23,20,0.55)', flexShrink:0 }}>
+                    nível {nivel}
+                  </span>
+                  <button
+                    disabled={nivel >= 5 || somadaHoje}
+                    onClick={() => {
+                      somarUmAtitude(aluno.id, selecao.turmaId, x.id, selecao.planoAulaId || '', 'professor');
+                      setMaisUm(m => ({ ...m, [x.id]: true }));
+                    }}
+                    style={{ padding:'6px 12px', borderRadius:8, border:'none', flexShrink:0,
+                      background: somadaHoje ? 'var(--sage)' : '#7d4f8c', color:'#fff',
+                      fontSize:13, fontWeight:700, fontFamily:'inherit',
+                      cursor: nivel >= 5 || somadaHoje ? 'default' : 'pointer',
+                      opacity: nivel >= 5 ? 0.35 : 1 }}>
+                    {somadaHoje ? '✓ +1' : '+1'}
+                  </button>
+                </div>
+              );
+            })}
+          </Card>
+        );
+      })()}
 
       {/* Comentário e guardar */}
       <Card>
