@@ -434,6 +434,25 @@ const SECCOES: Seccao[] = [
           aplicação avisa que os ingredientes mudaram.
         </P>
 
+        <H>Corrigir um plano</H>
+        <P>
+          No menu do plano, <b>Editar o plano</b> muda a data, as horas, o tipo
+          de aula, a unidade e o título — a qualquer momento, mesmo com a aula
+          já aberta e os alunos avaliados. As avaliações ficam; se mudares a
+          unidade, passam a contar para a nova. As fichas mudam-se no Preparar.
+        </P>
+
+        <H>Eliminar um plano</H>
+        <P>
+          Se a aula ainda não tem trabalho dos alunos, podes arquivá-la ou
+          eliminá-la. Se já tem — entradas, autoavaliações, validações — a
+          aplicação mostra-te tudo o que existe e dá-te duas saídas:
+        </P>
+        <ul style={{ lineHeight: 1.75, fontSize: 14.5, paddingLeft: 20 }}>
+          <li><b>Corrigir o plano e manter as avaliações</b> — para enganos na ficha, na unidade ou na data.</li>
+          <li><b>Anular a aula e apagar as avaliações</b> — a aula não devia ter contado. Pede uma segunda confirmação e apaga mesmo: as notas, as presenças e os atrasos dessa aula deixam de contar. A requisição fica, fora de plano.</li>
+        </ul>
+
         <H>Publicar</H>
         <P>
           <b>Enquanto não publicares, os alunos não veem a aula</b> — nem
@@ -471,11 +490,25 @@ const SECCOES: Seccao[] = [
           As decisões de falta fazem-se daí, sem sair do ecrã.
         </P>
 
+        <H>O PIN e o telemóvel</H>
+        <P>
+          Na primeira entrada, o PIN do aluno fica ligado ao telemóvel onde
+          ele entrou. Nas seguintes, só esse telemóvel entra com esse PIN — um
+          colega que o saiba não consegue entrar noutro.
+        </P>
+        <Destaque>
+          Se o aluno mudar de telemóvel, limpar o browser ou usar uma janela
+          anónima, fica recusado. <b>Liberta-o</b> no separador <b>PIN temp.</b>{' '}
+          do plano — a próxima entrada volta a ligar. Não experimentes a
+          aplicação com o PIN de um aluno no teu computador: o PIN fica ligado
+          a ele.
+        </Destaque>
+
         <H>Aluno sem PIN</H>
         <P>
           Se um aluno esqueceu o PIN e não consegue entrar, gera-lhe um
-          PIN temporário no separador <b>PIN temp.</b> dentro do plano. A
-          coordenadora fica a saber.
+          PIN temporário no separador <b>PIN temp.</b> dentro do plano. O
+          telemóvel fica libertado ao mesmo tempo.
         </P>
 
         <H>Líder do KitchenFlow</H>

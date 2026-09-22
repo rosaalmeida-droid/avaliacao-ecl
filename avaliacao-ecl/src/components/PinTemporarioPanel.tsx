@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getAlunos, alterarPinAluno } from '../backend';
+import { getAlunos, alterarPinAluno, libertarTelemovel, temTelemovelLigado } from '../backend';
 
 interface Props {
   turmaId: string;
@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
+  const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
   const [alunoSel, setAlunoSel] = useState<string>('');
   const [pinGerado, setPinGerado] = useState<string>('');
   const [confirmado, setConfirmado] = useState(false);
@@ -82,6 +82,32 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
                 background: '#b5651d', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
               Gerar PIN temporário para {aluno?.nome || `Aluno ${aluno?.numero}`}
             </button>
+          )}
+
+          {/* O PIN fica preso ao telemóvel da primeira entrada. Se o aluno
+              mudou de telemóvel ou limpou o browser, liberta-se aqui — o PIN
+              mantém-se, e a próxima entrada volta a ligar. */}
+          {alunoSel && !pinGerado && (
+            <div style={{ marginTop: 10, padding: '11px 13px', borderRadius: 10,
+              background: 'rgba(26,23,20,0.04)', fontSize: 13.5, color: 'rgba(26,23,20,0.7)' }}>
+              {temTelemovelLigado(alunoSel)
+                ? 'O PIN deste aluno está ligado a um telemóvel.'
+                : 'O PIN deste aluno ainda não está ligado a nenhum telemóvel.'}
+              {temTelemovelLigado(alunoSel) && (
+                <button onClick={() => {
+                    if (!aluno) return;
+                    if (!confirm(`Libertar o PIN de ${aluno.nome || 'este aluno'}?\n\nO PIN mantém-se. `
+                      + 'A próxima entrada fica ligada ao telemóvel onde ele entrar.')) return;
+                    libertarTelemovel(aluno.id, aluno.turmaId);
+                    setAlunoSel(''); setTimeout(() => setAlunoSel(aluno.id), 0);
+                  }}
+                  style={{ display: 'block', marginTop: 8, padding: '9px 14px', borderRadius: 9,
+                    border: '1px solid #b5651d', background: '#fff', color: '#b5651d',
+                    fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+                  Libertar telemóvel
+                </button>
+              )}
+            </div>
           )}
 
           {pinGerado && (

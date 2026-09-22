@@ -13,7 +13,7 @@ import type { PlanoAula, FichaProducao } from '../types';
 
 export type ModuloPlano =
   | 'inicio' | 'ficha' | 'guia' | 'requisicao'
-  | 'competencias' | 'turma' | 'validacao' | 'registos';
+  | 'competencias' | 'turma' | 'validacao' | 'registos' | 'editar';
 
 const BRANCO_FORTE = '#ffffff';
 const BRANCO_MEIO = 'rgba(255,255,255,0.82)';
@@ -56,7 +56,7 @@ function Linha({
 export function MenuDoPlano({
   plano, fichas, temRequisicao, numeroRequisicao, totalCompetencias,
   posicao, totalPlanos, moduloActivo, aoIrPara, aoSair, aoPublicar,
-  alunosNaAula, porValidar, aviso, disciplina,
+  alunosNaAula, porValidar, aviso, disciplina, requisicaoDesatualizada,
 }: {
   plano: PlanoAula;
   fichas: FichaProducao[];
@@ -78,6 +78,8 @@ export function MenuDoPlano({
   aviso?: string;
   /** A disciplina deste plano — cozinha, gestão e controlo… */
   disciplina?: string;
+  /** A requisição foi feita antes de mudarem as fichas. */
+  requisicaoDesatualizada?: boolean;
 }) {
   const comGuiao = fichas.filter(f => !!(f as any).textoGuia).length;
   const publicado = plano.estado === 'publicado';
@@ -192,8 +194,8 @@ export function MenuDoPlano({
           aoClicar={() => aoIrPara('guia')} />
 
         <Linha
-          marca={temRequisicao ? 'feito' : 'falta'}
-          texto="Requisição"
+          marca={temRequisicao && !requisicaoDesatualizada ? 'feito' : 'falta'}
+          texto={requisicaoDesatualizada ? 'Requisição — desatualizada' : 'Requisição'}
           contador={numeroRequisicao || (temRequisicao ? '✓' : '—')}
           activo={moduloActivo === 'requisicao'}
           aoClicar={() => aoIrPara('requisicao')} />
@@ -238,6 +240,17 @@ export function MenuDoPlano({
       )}
 
       <div style={{ flex: 1 }} />
+
+      {/* Corrigir o plano — data, horas, tipo, unidade, título — a
+          qualquer momento, mesmo com a aula já aberta. */}
+      <button onClick={() => aoIrPara('editar')} style={{
+        margin: '4px 12px', padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+        border: '1px solid rgba(255,255,255,0.3)', fontFamily: 'inherit', textAlign: 'left',
+        background: moduloActivo === 'editar' ? 'rgba(255,255,255,0.16)' : 'transparent',
+        color: BRANCO_FORTE, fontSize: 13.5, fontWeight: 700,
+      }}>
+        ✏️ Editar o plano
+      </button>
 
       {/* Publicar — só enquanto não estiver */}
       {!publicado && aoPublicar && (

@@ -203,6 +203,9 @@ interface Props {
   proximasAulas?: number;
   avisos?: AvisoAluno[];
   fichasAtribuidas?: number;
+  /** Falhou ir buscar as aulas — botão para tentar outra vez. */
+  onTentarOutraVez?: () => void;
+  aLigar?: boolean;
   notaProgressiva?: number | null;
   recuperacoesPendentes?: number;
   atividadesAbertas?: number;
@@ -215,6 +218,7 @@ export function InicioAluno({
   proximasAulas = 0, avisos = [],
   fichasAtribuidas = 0, notaProgressiva = null,
   recuperacoesPendentes = 0, atividadesAbertas = 0,
+  onTentarOutraVez, aLigar = false,
   onAbrir,
 }: Props) {
   // Antes da ativação o botão diz Consultar plano; depois, Iniciar aula.
@@ -326,6 +330,18 @@ export function InicioAluno({
         )}
 
         {/* ── AVISOS: só quando exigem uma ação ── */}
+        {/* Sem ligação: o aluno tenta outra vez sem sair do ecrã. */}
+        {onTentarOutraVez && (
+          <button onClick={onTentarOutraVez} disabled={aLigar} style={{
+            width: '100%', padding: 13, borderRadius: 11, marginBottom: 12,
+            border: '1.5px solid #c0392b', background: '#fff', color: '#c0392b',
+            fontSize: 14.5, fontWeight: 700, cursor: aLigar ? 'default' : 'pointer',
+            fontFamily: 'inherit', opacity: aLigar ? 0.6 : 1,
+          }}>
+            {aLigar ? 'A tentar…' : 'Tentar ir buscar as aulas outra vez'}
+          </button>
+        )}
+
         {avisos.length > 0 && (
           <div style={{ marginBottom: 22 }}>
             <div style={rotulo}>Avisos</div>

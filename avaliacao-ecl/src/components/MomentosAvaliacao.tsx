@@ -43,7 +43,7 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
   const planos = getPlanosAulaPorTurma(turmaId)
     .filter(p => !ucSel || p.ucId === ucSel)
     .sort((a, b) => b.data.localeCompare(a.data));
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId);
+  const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
   const historico = getHistoricoAvaliacoes().filter(r => r.turmaId === turmaId);
   const momentosFiltrados = momentos.filter(m => !ucSel || m.ucId === ucSel);
   const isUFCD = modulos.some(m => m.tipo === 'UFCD');

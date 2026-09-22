@@ -6,7 +6,7 @@ import { ModalFullscreen } from './ModalFullscreen';
 export function MapaCompetencias({ turmaId }: { turmaId: string }) {
   const [alunoAberto, setAlunoAberto] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
+  const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
 
   return (
     <div style={{ background: 'var(--competencias-pale)', borderRadius: 16, padding: 16 }}>

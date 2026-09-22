@@ -36,6 +36,11 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
       if (!resultado.ok || !resultado.aluno) {
         setErro(resultado.erro || 'Número ou PIN incorretos.');
       } else {
+        if ((resultado as any).primeiraVezNesteTelemovel) {
+          alert('Bem-vindo! O teu PIN ficou ligado a este telemóvel.\n\n'
+            + 'A partir de agora só entras com ele. Se mudares de telemóvel, '
+            + 'pede ao professor para libertar o teu PIN.');
+        }
         onLogin('aluno', resultado.aluno.id, turmaId);
       }
     } finally {

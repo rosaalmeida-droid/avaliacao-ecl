@@ -59,7 +59,7 @@ export function CriarRecuperacaoFCT({
   const [guiaoTexto, setGuiaoTexto] = useState('');
   const [supervisorFCT, setSupervisorFCT] = useState('');
 
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
+  const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
   const uc = TODOS_OS_MODULOS.find(u => u.id === ucId);
   const competenciasDaUC = ucId ? microsPorUC(ucId) : [];
   const formularioValido = tipoAluno === 'turma' ? !!alunoId : nomeExterno.trim().length > 0;

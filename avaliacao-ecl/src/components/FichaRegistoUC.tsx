@@ -26,7 +26,7 @@ function para20(n: number): number { return Math.min(20, Math.round(n * 4)); }
 
 export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
   const modulos = modulosDaTurma(turmaId);
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a,b) => a.numero - b.numero);
+  const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false).sort((a,b) => a.numero - b.numero);
   const historico = getHistoricoAvaliacoes().filter(r => r.turmaId === turmaId);
   const planos = getPlanosAulaPorTurma(turmaId);
 

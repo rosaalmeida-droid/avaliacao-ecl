@@ -27,7 +27,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -484,11 +484,18 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
 
-  useEffect(() => {
+  const [falhouLigacao, setFalhouLigacao] = useState(false);
+  const [aLigar, setALigar] = useState(false);
+
+  function irBuscarAulas() {
+    setALigar(true);
     sincronizarDoSheets(aluno.turmaId).then(() => {
       setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
-    }).catch(() => {});
-  }, [aluno.turmaId]);
+      setFalhouLigacao(leituraDePlanosFalhou());
+    }).catch(() => setFalhouLigacao(true)).finally(() => setALigar(false));
+  }
+
+  useEffect(() => { irBuscarAulas(); }, [aluno.turmaId]);
 
   const historicoAluno = getHistoricoAluno(aluno.id);
   const planoHoje = planos.find(p => isHoje(p.data));
@@ -497,6 +504,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 
   // Avisos para o aluno
   const avisos: { emoji:string; titulo:string; corpo:string; cor:string; bg:string }[] = [];
+
   if (planoHoje) {
     avisos.push({ emoji:'🔔', titulo:'Tens aula hoje!',
       corpo:`${planoHoje.titulo} · ${planoHoje.horaInicio}–${planoHoje.horaFim}`,
@@ -642,6 +650,18 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   const avisosCalculados: AvisoAluno[] = (() => {
     const av: AvisoAluno[] = [];
     const hojeISO = new Date().toISOString().slice(0, 10);
+
+    // Ecrã vazio por não se conseguir ligar: o aluno tem de perceber que o
+    // problema não é dele, e o professor tem de saber que a aula não chegou.
+    if (falhouLigacao) {
+      av.push({
+        id: 'sem-ligacao',
+        titulo: 'Não consegui ir buscar as aulas',
+        detalhe: 'A aula pode existir e não estar a chegar a este telemóvel. Toca aqui para tentar outra vez; se continuar, avisa o professor.',
+        destino: 'inicio' as any,
+        urgente: true,
+      });
+    }
 
     if (planoHoje) {
       const sessao = getSessaoAula(planoHoje.id);
@@ -835,6 +855,8 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             )}
             proximasAulas={aulasFuturas.length}
             avisos={avisosCalculados}
+            onTentarOutraVez={falhouLigacao ? irBuscarAulas : undefined}
+            aLigar={aLigar}
             fichasAtribuidas={fichasAtribuidas}
             notaProgressiva={notaProgressiva}
             recuperacoesPendentes={recuperacoesPendentes}

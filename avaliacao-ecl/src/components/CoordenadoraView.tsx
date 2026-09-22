@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -625,6 +625,15 @@ function GestaoAlunosTab() {
           <button onClick={() => mudarNivel(a)} style={{ padding: '5px 10px', borderRadius: 8,
             border: '1px solid rgba(26,23,20,0.15)', background: '#faf7f2', fontSize: 12.5,
             cursor: 'pointer', fontWeight: 600 }}>🎚 Nível</button>
+          {temTelemovelLigado(a.id) && (
+            <button onClick={() => {
+                if (!confirm(`Libertar o PIN de ${a.nome || 'este aluno'} do telemóvel?\n\nA próxima entrada fica ligada ao telemóvel onde ele entrar.`)) return;
+                libertarTelemovel(a.id, a.turmaId); setRefresh(r => r + 1);
+              }}
+              title="O PIN está ligado a um telemóvel"
+              style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
+                background: '#faf7f2', fontSize: 12.5, cursor: 'pointer', fontWeight: 600 }}>📱 Libertar</button>
+          )}
           <button onClick={() => remover(a)} style={{ padding: '5px 10px', borderRadius: 8,
             border: '1px solid #c0392b', background: '#fff', color: '#c0392b', fontSize: 12.5,
             cursor: 'pointer', fontWeight: 700 }}>Remover</button>

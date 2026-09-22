@@ -3,7 +3,7 @@ import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { ModalFullscreen } from './ModalFullscreen';
 import { RecuperacaoFCTAluno } from './RecuperacaoFCT';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
-import { gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript } from '../backend';
+import { gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript , situacaoRecuperacaoUC } from '../backend';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import {
@@ -36,12 +36,13 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
   const planosDaTurma = getPlanosAulaPorTurma(aluno.turmaId);
   const ucsComPlanos = Array.from(new Set(planosDaTurma.filter(p => p.ucId).map(p => p.ucId!)));
 
-  // UCs sem nenhuma recuperação ainda criada, mas com faltas
+  // UCs a recuperar — só pelos dois critérios: faltas acima de 10% das
+  // horas do módulo, ou módulo terminado sem positiva. Antes bastava uma
+  // aula sem presença (incluindo aulas futuras) para a UC aparecer aqui.
   const ucsPorConcluir = ucsComPlanos.filter(ucId => {
     const jaTem = todasRecuperacoes.some(r => r.ucId === ucId);
     if (jaTem) return false;
-    const faltas = getPlanosFaltadosPorUC(aluno.id, ucId, aluno.turmaId);
-    return faltas.length > 0;
+    return situacaoRecuperacaoUC(aluno.id, aluno.turmaId, ucId).precisa;
   });
 
   const emRecuperacao = todasRecuperacoes.filter(r => r.estado === 'pendente' || r.estado === 'submetida' || r.estado === 'em_avaliacao');
@@ -121,20 +122,24 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
         <div>
           {ucsPorConcluir.length === 0 && (
             <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>
-              Não tens módulos por concluir. 🎉
+              Não tens módulos a recuperar.
             </div>
           )}
           {ucsPorConcluir.map(ucId => {
             const uc = UCS_COZINHA.find(u => u.id === ucId);
-            const faltas = getPlanosFaltadosPorUC(aluno.id, ucId, aluno.turmaId);
+            const s = situacaoRecuperacaoUC(aluno.id, aluno.turmaId, ucId);
+            const h = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',');
             return (
               <div key={ucId} className="option-card" style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{ucId}</div>
                     <div className="muted" style={{ fontSize: 13 }}>{uc?.nome}</div>
+                    {/* Porquê — dito de forma que o aluno perceba. */}
                     <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 2 }}>
-                      {faltas.length} aula{faltas.length !== 1 ? 's' : ''} em falta: {faltas.map(p => p.titulo).join(', ')}
+                      {s.motivo === 'faltas'
+                        ? `Faltaste a ${h(s.horasFaltadas)} h de ${h(s.horasPrevistas)} h — a presença mínima é 90%.`
+                        : `O módulo terminou com ${h(s.nota20 ?? 0)} valores.`}
                     </div>
                   </div>
                   <button onClick={() => iniciarRecuperacao(ucId)}

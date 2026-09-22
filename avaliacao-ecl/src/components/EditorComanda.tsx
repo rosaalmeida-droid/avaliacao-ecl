@@ -103,7 +103,7 @@ export function EditorComanda({
   const atitudesSugeridas = sugerirAtitudes(estado.modo, estado.atendimentoCliente, estado.tipoServico);
   const responsabilidadesSugeridas = sugerirResponsabilidades(estado.modo, estado.atendimentoCliente, estado.tipoServico);
 
-  const alunosDaTurma = getAlunos().filter(a => a.turmaId === turmaId);
+  const alunosDaTurma = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
 
   function set<K extends keyof EditorComandaState>(key: K, value: EditorComandaState[K]) {
     setEstado(prev => ({ ...prev, [key]: value }));

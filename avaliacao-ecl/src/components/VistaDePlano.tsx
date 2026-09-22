@@ -6,7 +6,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import {
@@ -20,10 +20,11 @@ import { getLibrary } from '../libraryService';
 import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
+import { EditarPlano } from './EditarPlano';
 import { AvisoAvaliacaoAnterior } from './AvisoAvaliacaoAnterior';
 import { PinTemporarioPanel } from './PinTemporarioPanel';
 
-type Modulo = 'inicio' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'competencias' | 'registos';
+type Modulo = 'inicio' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'competencias' | 'registos' | 'editar';
 
 interface Props {
   plano: PlanoAula;
@@ -143,9 +144,13 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
                   + 'calendário e nas próximas aulas, e podes associar a '
                   + 'ficha mais tarde.'
                 )) return;
-                const p = { ...(getPlanosAula().find(x => x.id === plano.id) || plano), estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
-                addOrUpdatePlanoAula(p);
-                // o componente-pai relê do armazenamento
+                // Este botão está no cabeçalho, fora da vista principal:
+                // publica e confirma no Sheets, e diz o que aconteceu.
+                publicarPlanoParaAlunos(plano.id).then(r => {
+                  alert(r.ok
+                    ? 'Publicado. A aula está no Sheets e os alunos já a veem.'
+                    : 'ATENÇÃO — os alunos ainda NÃO veem esta aula.\n\n' + (r.erro || ''));
+                });
               }}
                 style={{ marginLeft: 'auto', padding: '8px 14px', borderRadius: 10, border: 'none',
                   background: 'var(--sage)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
@@ -396,6 +401,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // Manter o menu do plano a par de onde estamos, e obedecer-lhe quando
   // ele pede para ir a outro sítio. A lógica de cada módulo não muda.
   React.useEffect(() => { aoMudarModulo?.(modulo); }, [modulo]);
+
+  // Veio do aviso de eliminação com "Corrigir o plano" — abrir o editor.
+  React.useEffect(() => {
+    try {
+      if (sessionStorage.getItem('ecl_abrir_editor') === plano.id) {
+        sessionStorage.removeItem('ecl_abrir_editor');
+        setModulo('editar');
+      }
+    } catch { /* */ }
+  }, []);
   React.useEffect(() => {
     if (!moduloPedido) return;
     if (moduloPedido === 'turma') { setModulo('inicio'); setTabInicio('turma'); }
@@ -567,10 +582,18 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return 'pendente';
   }
 
-  function publicar() {
-    const p = { ...planoFresco(), estado: 'publicado' as const, atualizadoEm: new Date().toISOString(), ultimaAlteracao: undefined };
-    addOrUpdatePlanoAula(p);
-    onPlanoActualizado(p);
+  const [aPublicar, setAPublicar] = useState(false);
+
+  /** Publica e confirma no Sheets — é de lá que o aluno lê. */
+  async function publicar() {
+    setAPublicar(true);
+    try {
+      const r = await publicarPlanoParaAlunos(plano.id);
+      const p = planoFresco();
+      onPlanoActualizado({ ...p, ultimaAlteracao: undefined } as any);
+      if (r.ok) alert('Publicado. Os alunos já veem esta aula.');
+      else alert('Atenção: ' + r.erro);
+    } finally { setAPublicar(false); }
   }
 
   /** Regista uma alteração num plano já publicado e propaga ao AlunoView */
@@ -1077,6 +1100,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     );
   }
 
+  if (modulo === 'editar') {
+    return (
+      <div>
+        <EditarPlano plano={plano}
+          onGuardado={p => { onPlanoActualizado?.(p); setModulo('inicio'); }}
+          onCancelar={() => setModulo('inicio')}
+          onEliminado={onVoltar} />
+      </div>
+    );
+  }
+
   if (modulo === 'registos') {
     return (
       <div>
@@ -1507,6 +1541,31 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {/* TAB PREPARAR — era o Resumo. Recebeu da Orientação o que não
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
+      {/* Requisição feita antes de mudar as fichas — o pedido ao economato
+          já não corresponde à aula. */}
+      {(() => {
+        const dif = requisicaoDesatualizada(plano.id);
+        if (!dif) return null;
+        const nome = (id: string) => getFichasProducao().find(f => f.id === id)?.nomePrato || 'ficha';
+        return (
+          <div style={{ background:'#fdf0e6', border:'1.5px solid var(--copper)', borderRadius:12,
+            padding:'14px 16px', marginBottom:14 }}>
+            <div style={{ fontSize:15, fontWeight:700, color:'var(--copper)' }}>
+              A requisição está desatualizada
+            </div>
+            <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', margin:'4px 0 10px', lineHeight:1.55 }}>
+              Mudaste as fichas depois de fazer a requisição.
+              {dif.faltam.length > 0 && <div>· Não tem: {dif.faltam.map(nome).join(', ')}</div>}
+              {dif.sobram.length > 0 && <div>· Tem a mais: {dif.sobram.map(nome).join(', ')}</div>}
+            </div>
+            <button onClick={() => setModulo('requisicao')} style={{ padding:'10px 16px', borderRadius:9,
+              border:'none', background:'var(--copper)', color:'#fff', fontSize:14, fontWeight:700,
+              cursor:'pointer', fontFamily:'inherit' }}>
+              Atualizar a requisição
+            </button>
+          </div>
+        );
+      })()}
       {/* Aula atitudinal — o professor escolhe as atitudes a trabalhar,
           de todas as do curso. São estas que o aluno se autoavalia. */}
       {(plano as any).tipoPlanAula === 'atitudinal' && (
@@ -2054,7 +2113,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               )}
             </div>
           ) : (
-            <button onClick={publicar} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>🚀 Publicar esta aula para os alunos</button>
+            <button onClick={publicar} disabled={aPublicar} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor: aPublicar ? 'default' : 'pointer', opacity: aPublicar ? 0.6 : 1 }}>
+              {aPublicar ? 'A publicar e a confirmar…' : '🚀 Publicar esta aula para os alunos'}
+            </button>
           )}
         </div>
         {/* Evento pedagógico — um almoço, uma mostra. */}

@@ -29,7 +29,7 @@ export function GestaoRecuperacoes({ turmaId, nomeProfessor }: { turmaId: string
   const [activa, setActiva] = useState<RecuperacaoModulo | null>(null);
 
   const todas = getRecuperacoesPorTurma(turmaId);
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId);
+  const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
 
   const pendentes = todas.filter(r => r.estado === 'pendente');
   const submetidas = todas.filter(r => r.estado === 'submetida' || r.estado === 'em_avaliacao');
