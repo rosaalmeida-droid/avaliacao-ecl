@@ -9,7 +9,7 @@ import {
   gerarCodigoPlano,
   getPlanosArquivados,
   getFichasProducao,
-  getAlunos, publicarNoClassroom } from '../backend';
+  getAlunos, publicarNoClassroom , planosRepetidos, juntarPlanosRepetidos } from '../backend';
 import { fmtDataCurta, fmtData } from '../datas';
 import { modulosDaTurma, modulosAtivos, disciplinasAtivas,
   modulosAtivosDaDisciplina, disciplinaUnica } from '../cronograma';
@@ -558,6 +558,39 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
 
   if (vista==='calendario') return (
     <div>
+      {/* Planos repetidos — ficaram de cliques repetidos em "Criar plano". */}
+      {(() => {
+        const grupos = planosRepetidos(turmaId);
+        if (!grupos.length) return null;
+        const copias = grupos.reduce((s, g) => s + g.length - 1, 0);
+        return (
+          <div style={{ background:'#fdf0e6', border:'1.5px solid var(--copper)', borderRadius:12,
+            padding:'14px 16px', marginBottom:14 }}>
+            <div style={{ fontSize:15, fontWeight:700, color:'var(--copper)' }}>
+              {copias} plano{copias > 1 ? 's' : ''} repetido{copias > 1 ? 's' : ''}
+            </div>
+            <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', margin:'4px 0 10px', lineHeight:1.55 }}>
+              Há planos iguais — mesma data, horas, unidade e título. Ficaram de cliques
+              repetidos em "Criar plano". Ao juntar, fica a cópia com mais trabalho feito
+              (aula aberta, presenças, autoavaliações, requisição), com as fichas de todas;
+              as outras vão para o Arquivo.
+              {grupos.slice(0, 3).map((g, i) => (
+                <div key={i} style={{ marginTop:4 }}>· {g[0].titulo || 'Plano'} — {String(g[0].data).slice(0, 10)} ({g.length} cópias)</div>
+              ))}
+            </div>
+            <button onClick={() => {
+                const r = juntarPlanosRepetidos(turmaId);
+                alert(`${r.arquivados} cópia${r.arquivados === 1 ? '' : 's'} passaram para o Arquivo.`);
+                setRefreshKey(k => k + 1);
+              }}
+              style={{ padding:'10px 16px', borderRadius:9, border:'none', background:'var(--copper)',
+                color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+              Juntar as cópias
+            </button>
+          </div>
+        );
+      })()}
+
       {/* O título "Planos de Aula" já vem do banner da secção — repeti-lo
           aqui dava-o duas vezes no mesmo ecrã. */}
       <div style={{ display:'flex', gap:6, marginBottom:14, alignItems:'center', flexWrap:'wrap' }}>
@@ -748,13 +781,18 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     titulo: '',
     professor: nomeProfessor || '',
     tipoAtividade: 'Aula prática',
-    tipoPlanAula: 'pratico' as 'pratico' | 'teorico' | 'misto',
+    tipoPlanAula: 'pratico' as 'pratico' | 'teorico' | 'misto' | 'atitudinal',
     };
   });
 
   // Estado do "trocar de unidade": por omissão a unidade vem do
   // cronograma e não é editável.
   const [trocarUC, setTrocarUC] = useState(false);
+  /** Planos já existentes na mesma turma, dia e horas — para o aviso. */
+  const [duplicados, setDuplicados] = useState<TPlanoAula[] | null>(null);
+  /** O plano já está a ser criado — o botão fica bloqueado. */
+  const aCriar = React.useRef(false);
+  const [estadoCriar, setEstadoCriar] = useState(false);
 
   function setD(k: string, v: string) {
     setDados(p => {
@@ -781,6 +819,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       }
       return novo;
     });
+    setDuplicados(null);   // os dados mudaram — o aviso pode já não se aplicar
     onAlteracao?.();
   }
 
@@ -798,7 +837,31 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     if (!doCrono && dados.ucId) setDados(p => ({ ...p, ucId: '' }));
   }, [dados.data, turmaId, trocarUC]);
 
-  function guardar() {
+  function guardar(forcar = false) {
+    // Um clique, um plano. Sem isto, cliques repetidos criavam cópias.
+    if (aCriar.current) return;
+    // Aviso de plano duplicado: mesma turma, mesmo dia, horas sobrepostas.
+    // Não bloqueia — pode haver exceções — mas obriga a confirmar.
+    if (!forcar) {
+      const min = (h?: string) => {
+        if (!h) return NaN;
+        const [hh, mm] = h.slice(0, 5).split(':').map(Number);
+        return hh * 60 + mm;
+      };
+      const i1 = min(dados.horaInicio), f1 = min(dados.horaFim);
+      const iguais = getPlanosAulaPorTurma(turmaId).filter((x: any) => {
+        if (x.estado === 'arquivado') return false;
+        if (String(x.data || '').slice(0, 10) !== dados.data) return false;
+        const i2 = min(x.horaInicio), f2 = min(x.horaFim);
+        // Sem horas num dos lados, conta como sobreposto.
+        if ([i1, f1, i2, f2].some(isNaN)) return true;
+        return i1 < f2 && i2 < f1;
+      });
+      if (iguais.length) { setDuplicados(iguais); return; }
+    }
+    setDuplicados(null);
+    aCriar.current = true;
+    setEstadoCriar(true);
     const now = new Date().toISOString();
     const modulos = modulosDaTurma(turmaId);
     const ucSel = modulos.find(m => m.id === dados.ucId) || UCS_COZINHA.find(u => u.id === dados.ucId);
@@ -994,14 +1057,18 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
         </div>
         <div className="field" style={{ marginBottom: 14 }}>
           <label className="field-label" style={{ fontSize: 13, fontWeight: 700 }}>Tipo de aula</label>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {([
               { v: 'pratico',  label: '🔪 Prática',  desc: 'Produção em cozinha' },
               { v: 'misto',    label: '📚+🔪 Mista',  desc: 'Teoria + produção' },
               { v: 'teorico',  label: '📚 Teórica',  desc: 'Só conhecimentos' },
+              { v: 'atitudinal', label: '🤝 Atitudinal', desc: 'Dinâmicas e atitudes' },
             ] as const).map(opt => (
-              <button key={opt.v} type="button" onClick={() => setD('tipoPlanAula', opt.v)}
-                style={{ flex: 1, padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
+              <button key={opt.v} type="button" onClick={() => {
+                  setD('tipoPlanAula', opt.v);
+                  if (opt.v === 'atitudinal') setD('tipoAtividade', 'Dinâmica de grupo — atitudes');
+                }}
+                style={{ flex: '1 1 120px', padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
                   border: `2px solid ${dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'var(--border)'}`,
                   background: dados.tipoPlanAula === opt.v ? 'var(--copper-pale)' : '#fff',
                   color: dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'rgba(26,23,20,0.5)',
@@ -1023,8 +1090,40 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
           <input className="input" value={dados.titulo} onChange={e => setD('titulo', e.target.value)} placeholder={`Plano — ${dados.tipoAtividade} — ${dados.data}`} />
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>Se não preencheres, o título é gerado automaticamente com número sequencial</div>
         </div>
-        <button className="btn btn-primary btn-block" disabled={!podeGuardar} onClick={guardar} style={{ fontSize: 15, padding: '14px', opacity: podeGuardar ? 1 : 0.4 }}>
-          {podeGuardar ? 'Criar plano e começar →' : 'Selecciona a UC para continuar'}
+        {/* Já há um plano nesta turma, neste dia e a estas horas. */}
+        {duplicados && duplicados.length > 0 && (
+          <div style={{ background: '#fdf0e6', border: '1.5px solid var(--copper)',
+            borderRadius: 12, padding: 16, marginBottom: 12 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--copper)' }}>
+              Já existe um plano de aula para esta turma neste dia e horário.
+            </div>
+            <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', margin: '6px 0 12px',
+              lineHeight: 1.55 }}>
+              {duplicados.map(d => {
+                const hi = (d.horaInicio || '').slice(0, 5), hf = (d.horaFim || '').slice(0, 5);
+                return <div key={d.id}>· {d.titulo || 'Plano sem título'}{hi && hf ? ` — ${hi}–${hf}` : ''}{d.ucId ? ` · ${d.ucId}` : ''}</div>;
+              })}
+              <div style={{ marginTop: 6 }}>Pretende criar outro plano de aula?</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={() => setDuplicados(null)}
+                style={{ flex: '1 1 120px', padding: 12, borderRadius: 10,
+                  border: '1px solid rgba(26,23,20,0.18)', background: '#fff',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Cancelar
+              </button>
+              <button onClick={() => guardar(true)}
+                style={{ flex: '1 1 120px', padding: 12, borderRadius: 10, border: 'none',
+                  background: 'var(--copper)', color: '#fff', fontSize: 14, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit' }}>
+                Criar mesmo assim
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button className="btn btn-primary btn-block" disabled={!podeGuardar || estadoCriar} onClick={() => guardar()} style={{ fontSize: 15, padding: '14px', opacity: podeGuardar && !estadoCriar ? 1 : 0.5 }}>
+          {estadoCriar ? 'A criar o plano…' : podeGuardar ? 'Criar plano e começar →' : 'Selecciona a UC para continuar'}
         </button>
       </Card>
     </div>
@@ -1037,7 +1136,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
   const fichas = getFichasProducao().filter(f=>plano.fichasIds.includes(f.id));
   const todasFichas = getFichasProducao();
   const fichasDisponiveis = todasFichas.filter(f=>!plano.fichasIds.includes(f.id));
-  const alunos = getAlunos().filter(a=>a.turmaId===turmaId);
+  const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
   const [grelhaAberta, setGrelhaAberta] = useState(false);
   const [mostrarAdicionarFicha, setMostrarAdicionarFicha] = useState(false);
   // ALTERAÇÃO 2: estado para evento seleccionado
