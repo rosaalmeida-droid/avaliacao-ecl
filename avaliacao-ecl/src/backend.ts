@@ -16,19 +16,31 @@ import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAna
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos } from './materiasPrimasBase';
 
+// ══ SCRIPT ÚNICO ══
+// Um só script guarda tudo: planos, fichas, alunos, avaliações,
+// presenças, autoavaliações, validações, sessões, recuperações,
+// evidências e telemóveis (AppsScript_ECL_UNICO.gs).
+//
+// Enquanto esta linha estiver vazia, a aplicação usa os endereços
+// antigos, um por assunto. Assim que aqui estiver o endereço do script
+// único, passa tudo a ir e a vir de lá — sem mexer em mais nada.
+//
+// Colar entre as plicas o URL que acaba em /exec:
+export const SHEETS_ECL_URL = 'https://script.google.com/macros/s/AKfycbzFbA8e0U9GCSKyCvrCo2Pe28XgG9_UDcu7f9lqyZJ3kmWpnCj5PbWRyctLmN5OP6sC8Q/exec';
+
 // ── URLs dos Apps Scripts ────────────────────────────────────
 // Histórico de avaliações dos alunos (já configurado e a funcionar)
-const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbw9F0aZWCQOi-zIDUaMljLkAh3ilWt9R6D_EZe3as3pFm234q3u8iF1428Ga86ma_aYTg/exec';
+const SHEETS_HISTORICO_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbw9F0aZWCQOi-zIDUaMljLkAh3ilWt9R6D_EZe3as3pFm234q3u8iF1428Ga86ma_aYTg/exec';
 
 // Planos de Aula (preencher após criar o Sheets de Planos)
-const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxT00cLo_mTHjv-swqo-lxqdq-YRmOB3gQ4AZ8rbIdyzTbAFt_Yi56D6-_GHV7miAlv/exec';
+const SHEETS_PLANOS_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbxT00cLo_mTHjv-swqo-lxqdq-YRmOB3gQ4AZ8rbIdyzTbAFt_Yi56D6-_GHV7miAlv/exec';
 
 // Fichas de Produção (preencher após criar o Sheets de Fichas)
-const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
+const SHEETS_FICHAS_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
 // Deployment do script RecuperacaoFCT_PDF_ECL.gs — a Rosa preenche isto
 // depois de instalar o script (ver instruções no topo do ficheiro .gs).
-const PAUTA_FCT_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbwz_L-z2nmhUUambttWLf1TV8_aOk68zJ6tpR8vZiD7kz4dL9reUZa8hvdnfmMaAzp-uA/exec';
-const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxWgbuC3U6LN3O6R9LFxU9DecUaub5YDwz2wD2E76bJI0sP_1pWYg1CsSRhp1PFM3I/exec';
+const PAUTA_FCT_URL = 'https://script.google.com/macros/s/AKfycbwz_L-z2nmhUUambttWLf1TV8_aOk68zJ6tpR8vZiD7kz4dL9reUZa8hvdnfmMaAzp-uA/exec';
+const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbxWgbuC3U6LN3O6R9LFxU9DecUaub5YDwz2wD2E76bJI0sP_1pWYg1CsSRhp1PFM3I/exec';
 
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
@@ -37,13 +49,13 @@ export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbz
 // ID do Google Sheets da Requisição — para abrir directamente após o envio
 export const SHEETS_REQUISICAO_ID = ''; // preencher quando confirmado
 
-export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
+export const SHEETS_CALENDARIO_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
 
 // Sheet de Alunos — registo central de alunos, PINs e timestamps
 // Preencher após criar o Apps Script de alunos (conta eclisboa.net)
 // Login partilhado — mesma Sheet e Apps Script do KitchenFlow
 // O aluno cria PIN num lado e fica disponível no outro automaticamente
-export let SHEETS_ALUNOS_URL = 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
+export let SHEETS_ALUNOS_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
 
 // ── Integração KitchenFlow ECL ───────────────────────────────
 // URL do Apps Script do KitchenFlow — envia registos em background
@@ -231,6 +243,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     // Carregar planos do Sheets de Planos
     if (SHEETS_PLANOS_URL) {
       const jsonPlanos = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
+      marcarLeituraPlanos(!!jsonPlanos?.ok);
       if (jsonPlanos?.ok && jsonPlanos.dados?.length > 0) {
         const locais = getPlanosAula();
         const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
@@ -242,13 +255,20 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             ...pRaw,
             fichasIds: Array.isArray(pRaw.fichasIds) ? pRaw.fichasIds
               : (typeof pRaw.fichasIds === 'string' && pRaw.fichasIds ? pRaw.fichasIds.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean) : []),
+            // A data pode vir com hora (o Sheets devolve datas como
+            // instante UTC). '2026-09-21T23:00:00.000Z' em Lisboa é dia 22:
+            // sem isto, a aula de hoje aparecia ao aluno como a de ontem.
+            data: dataSoDia(pRaw.data),
             compRemovidas: Array.isArray(pRaw.compRemovidas) ? pRaw.compRemovidas : [],
             compAdicionadas: Array.isArray(pRaw.compAdicionadas) ? pRaw.compAdicionadas : [],
           };
           const idx = merged.findIndex((x: PlanoAula) => x.id === p.id);
-          // Um plano que não existe cá, mas igual a um que existe (mesma
-          // turma, dia, horas, unidade e título), é uma cópia: não entra.
-          if (idx < 0 && merged.some(x => assinaturaPlano(x) === assinaturaPlano(p))) continue;
+          // NÃO filtrar por "plano parecido": um plano publicado que chega
+          // do Sheets tem de entrar sempre. A filtragem por assinatura fazia
+          // o telemóvel do aluno deitar fora a aula publicada, por já ter cá
+          // uma cópia antiga com o mesmo dia e título — e o aluno ficava sem
+          // aula nenhuma. Os planos repetidos resolvem-se no ecrã do
+          // professor, com "Juntar as cópias".
           if (idx >= 0) {
             if (new Date(p.atualizadoEm) > new Date((merged[idx] as any).atualizadoEm || '')) {
               // Preservar campos que a Sheet pode não guardar (eventoId, criteriosCongelados, ultimaAlteracao)
@@ -416,10 +436,29 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       // ── Sincronizar Presenças ───────────────────────────────────────
       const jsonPres = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId });
       if (jsonPres?.ok && jsonPres.dados?.length > 0) {
-        const locais = getPresencas();
-        const idsLocais = new Set(locais.map((p: any) => p.id));
-        const novas = jsonPres.dados.filter((p: any) => !idsLocais.has(p.id));
-        if (novas.length > 0) save(KEYS.presencas, [...locais, ...novas]);
+        // As linhas do Sheets não trazem identificador: comparar pelo id
+        // fazia cada sincronização acrescentar tudo outra vez. Agora é uma
+        // presença por aluno e aula — e a decisão do professor que está no
+        // Sheets (a última tomada, em qualquer aparelho) é a que vale.
+        const porChave = new Map<string, any>();
+        for (const p of load<any>(KEYS.presencas)) {
+          const k = p.alunoId + '|' + p.planoAulaId;
+          if (!porChave.has(k)) porChave.set(k, p);          // tira duplicados antigos
+          else if (p.decisaoProfessor && !porChave.get(k).decisaoProfessor) porChave.set(k, { ...porChave.get(k), ...p, id: porChave.get(k).id });
+        }
+        for (const s of jsonPres.dados) {
+          if (!s?.alunoId || !s?.planoAulaId) continue;
+          const k = s.alunoId + '|' + s.planoAulaId;
+          const local = porChave.get(k);
+          if (!local) {
+            porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
+          } else if (s.decisaoProfessor && s.decisaoProfessor !== local.decisaoProfessor) {
+            porChave.set(k, { ...local, decisaoProfessor: s.decisaoProfessor,
+              presente: s.decisaoProfessor === 'falta_presenca' ? false
+                : s.decisaoProfessor === 'sem_falta' ? true : local.presente });
+          }
+        }
+        save(KEYS.presencas, [...porChave.values()]);
       }
     }
 
@@ -1390,11 +1429,112 @@ export async function validarLoginAluno(
     return { ok: false, erro: 'Ainda não tens PIN. Pede-o ao professor.' };
   }
   if (aluno.pin !== pinIntroduzido) return { ok: false, erro: 'PIN incorreto.' };
-  return { ok: true, aluno };
+
+  // O PIN fica preso ao telemóvel onde o aluno entrou pela primeira vez.
+  const tel = await verificarTelemovel(aluno);
+  if (!tel.ok) return { ok: false, erro: tel.erro };
+  return { ok: true, aluno, primeiraVezNesteTelemovel: tel.primeiraVez } as any;
 }
 
-/** Altera o PIN de um aluno já existente (pelo professor/coordenadora). */
+// ============================================================
+// O PIN ligado ao telemóvel
+// ============================================================
+// Na primeira entrada, o PIN do aluno fica ligado ao telemóvel onde ele
+// entrou. Nas seguintes, só esse telemóvel entra com esse PIN — um colega
+// que saiba o PIN não entra noutro telemóvel.
+//
+// O browser não deixa ver o número do telemóvel. O que se faz é deixar no
+// telemóvel uma marca aleatória, guardada na primeira entrada, e
+// reconhecê-la depois. A ligação fica no Sheets (script do Histórico,
+// folha TELEMOVEIS), para todos os aparelhos a conhecerem.
+//
+// Se o aluno limpar os dados do browser, usar uma janela anónima ou mudar
+// de browser, o telemóvel parece outro — e é recusado. O professor liberta
+// (PIN temporário ou "Libertar telemóvel"), e a próxima entrada volta a ligar.
+
+const KEY_MEU_TELEMOVEL = 'ecl_telemovel';
+const KEY_TELEMOVEIS = 'ecl_telemoveis_ligados';
+
+/** A marca deste telemóvel — criada uma vez, fica para sempre. */
+export function meuTelemovel(): string {
+  let t = '';
+  try { t = localStorage.getItem(KEY_MEU_TELEMOVEL) || ''; } catch { /* */ }
+  if (!t) {
+    t = novoId('tel');
+    try { localStorage.setItem(KEY_MEU_TELEMOVEL, t); } catch { /* */ }
+  }
+  return t;
+}
+
+function ligacoesLocais(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(KEY_TELEMOVEIS) || '{}'); } catch { return {}; }
+}
+function guardarLigacoes(l: Record<string, string>): void {
+  try { localStorage.setItem(KEY_TELEMOVEIS, JSON.stringify(l)); } catch { /* */ }
+}
+
+/** Vai buscar ao Sheets as ligações da turma. O Sheets manda. */
+async function atualizarLigacoes(turmaId: string): Promise<boolean> {
+  try {
+    const json: any = await Promise.race([
+      lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_telemoveis', turmaId }),
+      new Promise(res => setTimeout(() => res(null), 5000)),
+    ]);
+    if (!json?.ok || !Array.isArray(json.telemoveis)) return false;
+    const l = ligacoesLocais();
+    const daTurma = new Set(json.telemoveis.map((x: any) => x.alunoId));
+    // Os desta turma que o Sheets já não tem foram libertados.
+    for (const id of Object.keys(l)) {
+      if (id.startsWith(turmaId + '-') && !daTurma.has(id)) delete l[id];
+    }
+    json.telemoveis.forEach((x: any) => { if (x.alunoId && x.dispositivoId) l[x.alunoId] = x.dispositivoId; });
+    guardarLigacoes(l);
+    return true;
+  } catch { return false; }
+}
+
+async function verificarTelemovel(aluno: Aluno): Promise<{ ok: boolean; erro?: string; primeiraVez?: boolean }> {
+  const eu = meuTelemovel();
+  await atualizarLigacoes(aluno.turmaId);   // sem rede, fica o que está cá
+  const l = ligacoesLocais();
+  const dono = l[aluno.id];
+
+  if (!dono) {
+    // Primeira entrada deste aluno: fica ligado a este telemóvel.
+    l[aluno.id] = eu;
+    guardarLigacoes(l);
+    enviar(SHEETS_HISTORICO_URL, 'ligar_telemovel', {
+      alunoId: aluno.id, turmaId: aluno.turmaId, dispositivoId: eu,
+    });
+    return { ok: true, primeiraVez: true };
+  }
+  if (dono === eu) return { ok: true };
+  return {
+    ok: false,
+    erro: 'Este PIN está ligado a outro telemóvel. Se mudaste de telemóvel ou limpaste '
+      + 'o browser, pede ao professor para libertar o teu PIN.',
+  };
+}
+
+/** O professor liberta o PIN — a próxima entrada volta a ligar. */
+export function libertarTelemovel(alunoId: string, turmaId: string): void {
+  const l = ligacoesLocais();
+  delete l[alunoId];
+  guardarLigacoes(l);
+  enviar(SHEETS_HISTORICO_URL, 'libertar_telemovel', { alunoId, turmaId });
+}
+
+/** Tem o PIN ligado a algum telemóvel? (para os ecrãs do professor) */
+export function temTelemovelLigado(alunoId: string): boolean {
+  return !!ligacoesLocais()[alunoId];
+}
+
+/** Altera o PIN de um aluno já existente (pelo professor/coordenadora).
+ *  Liberta também o telemóvel: quem precisa de PIN novo muitas vezes
+ *  mudou de telemóvel ou limpou o browser. */
 export function alterarPinAluno(alunoId: string, novoPin: string): void {
+  const alunoAntes = getAlunos().find(a => a.id === alunoId);
+  if (alunoAntes) libertarTelemovel(alunoId, alunoAntes.turmaId);
   const all = getAlunos();
   const aluno = all.find(a => a.id === alunoId);
   if (!aluno) return;
@@ -1986,8 +2126,8 @@ export function updateComanda(c: Comanda): void {
   enviar(SHEETS_HISTORICO_URL, 'comanda', c as unknown as Record<string, unknown>);
 }
 
-export function getSelecoes(): SelecaoAluno[] { return load<SelecaoAluno>(KEYS.selecoes); }
-export function getValidacoes(): Validacao[] { return load<Validacao>(KEYS.validacoes); }
+export function getSelecoes(): SelecaoAluno[] { return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)); }
+export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
 
 /** Inscreve ou retira o aluno de uma atividade. Inscrever não é
@@ -2152,7 +2292,7 @@ export function mapaAvaliacoesAnteriores(
 }
 
 export function getHistoricoAvaliacoes(): RegistoAvaliacao[] {
-  return load<RegistoAvaliacao>(KEY_HIST);
+  return semPlanosEliminados(load<RegistoAvaliacao>(KEY_HIST));
 }
 
 export interface RegistoPresenca {
@@ -2297,7 +2437,7 @@ export function addRegistoPresenca(dados: {
 
 // Lê todas as presenças guardadas localmente
 export function getPresencas(): RegistoPresenca[] {
-  return load<RegistoPresenca>(KEYS.presencas);
+  return semPlanosEliminados(load<RegistoPresenca>(KEYS.presencas));
 }
 
 // Para um aluno e uma UC, devolve os planos de aula dessa UC a que o aluno
@@ -2414,7 +2554,7 @@ export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: st
 
 // ── Recuperação de Módulos ──────────────────────────────────────
 // Script dedicado de Recuperações/Evidências — deploy concluído em 21/06/2026.
-export const SHEETS_RECUPERACAO_URL = 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
+export const SHEETS_RECUPERACAO_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
 
 export function getRecuperacoes(): RecuperacaoModulo[] {
   return load<RecuperacaoModulo>(KEYS.recuperacoes);
@@ -3714,7 +3854,7 @@ export async function publicarNoClassroom(
 const KEY_SESSOES = 'ecl_sessoes_aula';
 
 export function getSessoesAula(): SessaoAula[] {
-  return load<SessaoAula>(KEY_SESSOES as any);
+  return semPlanosEliminados(load<SessaoAula>(KEY_SESSOES as any));
 }
 
 export function getSessaoAula(planoAulaId: string): SessaoAula | undefined {
@@ -3889,19 +4029,47 @@ export function presencasPorDecidir(planoAulaId: string): RegistoPresenca[] {
 export function decidirFalta(
   alunoId: string, planoAulaId: string, decisao: DecisaoFalta, professor: string, nota?: string
 ): void {
-  const all = getPresencas().map(p => {
-    if (p.alunoId !== alunoId || p.planoAulaId !== planoAulaId) return p;
-    return {
-      ...p,
-      decisaoProfessor: decisao,
-      decididoPor: professor,
-      decididoEm: new Date().toISOString(),
-      observacao: nota ?? p.observacao,
-      // Falta de presença anula a presença; as outras mantêm-na.
-      presente: decisao !== 'falta_presenca',
-    } as RegistoPresenca;
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  let reg: any = all.find(p => p.alunoId === alunoId && p.planoAulaId === planoAulaId);
+
+  // Aluno que não entrou não tinha registo — e a decisão perdia-se. Agora
+  // cria-se o registo com a decisão do professor.
+  if (!reg) {
+    const aluno = getAlunos().find(a => a.id === alunoId);
+    const plano = getPlanosAula().find(p => p.id === planoAulaId);
+    reg = {
+      id: `presenca_${alunoId}_${planoAulaId}_${Date.now()}`,
+      alunoId, turmaId: aluno?.turmaId || plano?.turmaId || '', planoAulaId,
+      ucId: plano?.ucId || '', presente: false, atrasado: false, atrasadoMins: 0,
+      horaEntrada: '', fardamentoOk: false, observacao: '',
+      data: String(plano?.data || '').slice(0, 10),
+    };
+    all.push(reg);
+  }
+  Object.assign(reg, {
+    decisaoProfessor: decisao,
+    decididoPor: professor,
+    decididoEm: new Date().toISOString(),
+    observacao: nota ?? reg.observacao,
+    // Falta de presença anula a presença; "sem falta" conta como presente.
+    presente: decisao === 'falta_presenca' ? false
+      : decisao === 'sem_falta' ? true : reg.presente,
   });
   save(KEYS.presencas, all);
+
+  // Para o Sheets — a mesma linha do aluno nesta aula é atualizada, e os
+  // outros aparelhos do professor passam a ver a decisão.
+  const aluno = getAlunos().find(a => a.id === alunoId);
+  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+  enviar(SHEETS_HISTORICO_URL, 'presenca', {
+    alunoId, planoAulaId, turmaId: reg.turmaId,
+    nomeAluno: aluno?.nome || ('Aluno ' + (aluno?.numero || 0)), numero: aluno?.numero || 0,
+    planoTitulo: plano?.titulo || '', ucId: reg.ucId,
+    presente: reg.presente, atrasado: !!reg.atrasado, atrasadoMins: reg.atrasadoMins || 0,
+    horaEntrada: reg.horaEntrada || '', fardamentoOk: !!reg.fardamentoOk,
+    data: reg.data || '', decisaoProfessor: decisao, decididoPor: professor,
+    observacao: reg.observacao || '',
+  });
 }
 
 // ── Líder do KitchenFlow ──────────────────────────────────────
@@ -4931,7 +5099,7 @@ export interface RegistoTransicao {
 }
 
 export function getRegistosTransicao(alunoId?: string): RegistoTransicao[] {
-  const todos = load<RegistoTransicao>(KEY_TRANSICAO);
+  const todos = semPlanosEliminados(load<RegistoTransicao>(KEY_TRANSICAO));
   return alunoId ? todos.filter(t => t.alunoId === alunoId) : todos;
 }
 
@@ -5180,4 +5348,184 @@ export function previsaoNota(
 /** Aula atitudinal — dinâmicas de grupo e atitudes, sem farda nem KitchenFlow. */
 export function ehAulaAtitudinal(p: any): boolean {
   return p?.tipoPlanAula === 'atitudinal';
+}
+
+
+// ============================================================
+// Eliminar e corrigir planos com avaliações
+// ============================================================
+// Eliminar um plano apagava só o plano. As autoavaliações, validações,
+// notas e presenças dessa aula ficavam soltas — e continuavam a contar
+// para a nota da UC. A aplicação não fazia o que dizia.
+//
+// Agora, tudo o que pertence a um plano eliminado deixa de ser lido, em
+// toda a aplicação. Mesmo que o Sheets o mande de volta numa
+// sincronização, não volta a contar.
+
+function planosEliminados(): Set<string> {
+  return new Set(load<string>(KEYS.eliminadosPlanos));
+}
+
+/** Tira tudo o que pertence a planos eliminados. */
+function semPlanosEliminados<T>(lista: T[]): T[] {
+  const fora = planosEliminados();
+  if (!fora.size) return lista;
+  return lista.filter((x: any) => !x || !fora.has(x.planoAulaId || x.comandaId || ''));
+}
+
+export interface ResumoPlano {
+  autoavaliacoes: number;
+  validacoes: number;
+  notas: number;
+  presencas: number;
+  aulaAberta: boolean;
+  requisicoes: number;
+  /** Há alguma coisa que se perde se o plano for eliminado? */
+  temAvaliacoes: boolean;
+}
+
+/** O que uma aula já tem — para o professor saber o que vai perder. */
+export function resumoDoPlano(planoId: string): ResumoPlano {
+  const autoavaliacoes = getSelecoes().filter((s: any) => s.planoAulaId === planoId).length;
+  const validacoes = getValidacoes().filter((v: any) => v.planoAulaId === planoId).length;
+  const notas = getHistoricoAvaliacoes().filter(r => r.planoAulaId === planoId).length;
+  const presencas = getPresencas().filter(p => p.planoAulaId === planoId).length;
+  const aulaAberta = !!getSessaoAula(planoId)?.abertaEm;
+  const requisicoes = getRequisicoes().filter(r => r.planoAulaId === planoId).length;
+  return {
+    autoavaliacoes, validacoes, notas, presencas, aulaAberta, requisicoes,
+    temAvaliacoes: autoavaliacoes + validacoes + notas + presencas > 0 || aulaAberta,
+  };
+}
+
+/**
+ * Anula a aula: o plano e tudo o que os alunos fizeram nela desaparecem.
+ * A requisição não se apaga — pode já ter ido para o economato; fica
+ * solta, fora de plano.
+ */
+export function anularPlanoAula(planoId: string): void {
+  getRequisicoes().filter(r => r.planoAulaId === planoId).forEach(r =>
+    addOrUpdateRequisicao({ ...r, planoAulaId: '' } as any));
+  eliminarPlanoAulaDefinitivamente(planoId);
+  // Limpar já do aparelho — as leituras já os escondem, isto só arruma.
+  save(KEY_HIST, load<RegistoAvaliacao>(KEY_HIST).filter(r => r.planoAulaId !== planoId));
+  save(KEYS.selecoes, load<any>(KEYS.selecoes).filter(s => s.planoAulaId !== planoId));
+  save(KEYS.validacoes, load<any>(KEYS.validacoes).filter(v => v.planoAulaId !== planoId));
+  save(KEYS.presencas, load<any>(KEYS.presencas).filter(p => p.planoAulaId !== planoId));
+  save(KEY_SESSOES as any, load<any>(KEY_SESSOES as any).filter(s => s.planoAulaId !== planoId));
+  save(KEY_TRANSICAO, load<any>(KEY_TRANSICAO).filter(t => t.planoAulaId !== planoId));
+}
+
+/**
+ * Corrige um plano já criado — data, horas, tipo, unidade, título. As
+ * avaliações ficam; se a unidade mudar, passam a contar para a nova.
+ */
+export function atualizarPlano(planoId: string, alteracoes: Partial<PlanoAula>): PlanoAula | null {
+  const p = getPlanosAula().find(x => x.id === planoId);
+  if (!p) return null;
+  const novo = { ...p, ...alteracoes, atualizadoEm: new Date().toISOString() } as PlanoAula;
+  addOrUpdatePlanoAula(novo);
+  if (alteracoes.ucId && alteracoes.ucId !== p.ucId) {
+    const uc = alteracoes.ucId;
+    save(KEY_HIST, load<RegistoAvaliacao>(KEY_HIST).map(r => r.planoAulaId === planoId ? { ...r, ucId: uc } : r));
+    save(KEYS.presencas, load<any>(KEYS.presencas).map(r => r.planoAulaId === planoId ? { ...r, ucId: uc } : r));
+  }
+  return novo;
+}
+
+// ============================================================
+// Requisição desatualizada
+// ============================================================
+// O professor faz a requisição e depois acrescenta ou tira fichas ao
+// plano. A requisição ficava com os ingredientes antigos, sem aviso — e
+// ao economato chegava um pedido que já não correspondia à aula.
+
+export interface DiferencaRequisicao { faltam: string[]; sobram: string[]; }
+
+/** Fichas do plano que a requisição não tem, e as que tem a mais. Null se está em dia. */
+export function requisicaoDesatualizada(planoId: string): DiferencaRequisicao | null {
+  const plano = getPlanosAula().find(p => p.id === planoId);
+  const req = getRequisicoes().find(r => r.planoAulaId === planoId);
+  if (!plano || !req) return null;
+  const doPlano = new Set(plano.fichasIds || []);
+  const naReq = new Set(req.fichasIds || []);
+  const faltam = [...doPlano].filter(id => !naReq.has(id));
+  const sobram = [...naReq].filter(id => !doPlano.has(id));
+  return faltam.length || sobram.length ? { faltam, sobram } : null;
+}
+
+
+// ============================================================
+// Datas e estado da ligação
+// ============================================================
+
+/** 'YYYY-MM-DD' no dia local, venha a data como vier do Sheets. */
+export function dataSoDia(v: any): string {
+  if (!v) return '';
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s.slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+const KEY_LEITURA_PLANOS = 'ecl_leitura_planos';
+
+function marcarLeituraPlanos(ok: boolean): void {
+  try { localStorage.setItem(KEY_LEITURA_PLANOS, JSON.stringify({ ok, quando: new Date().toISOString() })); }
+  catch { /* */ }
+}
+
+/** A última tentativa de ir buscar as aulas correu bem? */
+export function leituraDePlanosFalhou(): boolean {
+  try {
+    const r = JSON.parse(localStorage.getItem(KEY_LEITURA_PLANOS) || 'null');
+    return !!r && r.ok === false;
+  } catch { return false; }
+}
+
+// ============================================================
+// Publicar para os alunos — com confirmação
+// ============================================================
+// O envio para o Apps Script não devolve resposta (limitação do Google).
+// A aplicação dizia "publicado" sem saber se a aula tinha chegado ao
+// Sheets — e o aluno, que só lê de lá, ficava sem aula nenhuma.
+//
+// Agora publica-se assim: marcar, enviar, e ir ler ao Sheets se a aula
+// lá está mesmo. Só então se diz ao professor que os alunos já a veem.
+
+export interface ResultadoPublicacao {
+  ok: boolean;
+  erro?: string;
+}
+
+export async function publicarPlanoParaAlunos(planoId: string): Promise<ResultadoPublicacao> {
+  const plano = getPlanosAula().find(p => p.id === planoId);
+  if (!plano) return { ok: false, erro: 'Plano não encontrado.' };
+
+  const publicado = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
+  addOrUpdatePlanoAula(publicado);          // grava e envia
+
+  // Duas tentativas: o Sheets demora um instante a gravar.
+  for (let i = 0; i < 2; i++) {
+    await new Promise(res => setTimeout(res, i === 0 ? 1800 : 3000));
+    try {
+      const json: any = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId: plano.turmaId });
+      if (!json?.ok) {
+        if (i === 1) return { ok: false, erro: 'Não consegui ligar-me ao Sheets dos planos. A aula ficou publicada aqui, mas os alunos não a veem enquanto não chegar lá.' };
+        continue;
+      }
+      const la: any = (json.dados || []).find((p: any) => p.id === planoId);
+      if (la && String(la.estado) === 'publicado') return { ok: true };
+      if (i === 1) {
+        return { ok: false, erro: la
+          ? 'A aula está no Sheets, mas não como publicada. Tenta publicar outra vez.'
+          : 'A aula não chegou ao Sheets. Os alunos não a veem. Tenta outra vez; se continuar, é o Apps Script dos planos que não está a receber.' };
+      }
+      addOrUpdatePlanoAula(publicado);       // segunda tentativa de envio
+    } catch {
+      if (i === 1) return { ok: false, erro: 'Não consegui confirmar a publicação.' };
+    }
+  }
+  return { ok: false, erro: 'Não consegui confirmar a publicação.' };
 }

@@ -123,7 +123,7 @@ import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedP
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
-  autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom } from './backend';
+  autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -355,6 +355,7 @@ function AppInterno() {
                   aoSair={fecharPlano}
                   alunosNaAula={alunosNaAula}
                   aviso={avisoFimUC(planoAberto) || undefined}
+                  requisicaoDesatualizada={!!requisicaoDesatualizada(planoAberto.id)}
                   disciplina={(() => {
                     const m = CRONOGRAMA_2026_2027.find((x: any) => x.id === planoAberto.ucId);
                     return (m as any)?.disciplina;
@@ -367,8 +368,13 @@ function AppInterno() {
                   aoPublicar={planoAberto.estado !== 'publicado' ? () => {
                     const p = { ...planoAberto, estado: 'publicado' as const,
                       atualizadoEm: new Date().toISOString() };
-                    addOrUpdatePlanoAula(p);
                     setPlanoAberto(p);
+                    // Publica e vai confirmar ao Sheets — é de lá que o
+                    // aluno lê. Sem confirmação, a aula podia nunca chegar.
+                    publicarPlanoParaAlunos(planoAberto.id).then(r => {
+                      if (r.ok) alert('Publicado. Os alunos já veem esta aula.');
+                      else alert('Atenção: ' + r.erro);
+                    });
 
                     // O Classroom só agora faz sentido: o plano está
                     // pronto, com as fichas e o guião que tiver. Antes
@@ -491,6 +497,8 @@ function AppInterno() {
                     onAbrirPlano={(p: any) => setPlanoAberto(p)}
                     turmaId={turmaId}
                     onCriarNoDia={() => setVistaGlobal('planos')}
+                    onPlanoEliminado={() => setRefreshKey(k => k + 1)}
+                    key={'cal-' + refreshKey}
                   />
                 }
               />
