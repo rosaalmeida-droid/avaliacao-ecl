@@ -117,7 +117,7 @@ const NOME_CARTAO: Record<EstadoComp, string> = {
 export function EcraAvaliarMe({
   ucId, ucNome, competencias, substantivo = 'competência',
   rotuloConjunto = 'competências', onAvaliar, temAulaHoje = false,
-  triado = false, bloco = 'realizacoes', onMudarBloco,
+  triado = false, bloco = 'realizacoes', onMudarBloco, anteriores,
 }: {
   ucId?: string; ucNome?: string;
   competencias: { id: string; nome: string; nivel?: number | null }[];
@@ -129,6 +129,8 @@ export function EcraAvaliarMe({
   triado?: boolean;
   bloco?: 'realizacoes' | 'conhecimentos' | 'atitudes';
   onMudarBloco?: (b: 'realizacoes' | 'conhecimentos' | 'atitudes') => void;
+  /** Turmas ACP: atitudes dos anos anteriores, a apanhar este ano. */
+  anteriores?: { id: string; nome: string; ano: 1 | 2; nivel: number; avaliada: boolean }[];
 }) {
   const [aberto, setAberto] = React.useState<EstadoComp | null>(null);
 
@@ -281,6 +283,45 @@ export function EcraAvaliarMe({
           {trabalhadas === 1 ? '' : 's'}
         </div>
       </div>
+
+      {/* Turmas ACP: as atitudes dos anos anteriores. Não são falhas —
+          vêm do referencial antigo e vão-se apanhando este ano. */}
+      {anteriores && anteriores.length > 0 && (() => {
+        const anos = [...new Set(anteriores.map(a => a.ano))].sort();
+        const titulo = anos.map(n => `${n}º`).join(' e ') + ' ano';
+        const feitas = anteriores.filter(a => a.nivel > 0).length;
+        return (
+          <div style={{ marginTop: 14, background: '#fff', borderRadius: 14,
+            padding: '14px 16px', border: `1px solid ${T.border}` }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: T.charcoal }}>
+              Do {titulo} — para ir fazendo
+            </div>
+            <div style={{ fontSize: 13, color: T.suave, marginTop: 3, lineHeight: 1.5 }}>
+              Mudaste de referencial a meio do curso. Estas atitudes vais
+              apanhando nas aulas deste ano: em cada aula podes escolher uma.
+              {' '}{feitas} de {anteriores.length} já começadas.
+            </div>
+            <div style={{ marginTop: 10 }}>
+              {anteriores.map(a => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '9px 0', borderTop: `1px solid ${T.border}` }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: T.charcoal }}>
+                    {a.nome}
+                    <span style={{ fontSize: 12, color: T.suave }}> · {a.ano}º ano</span>
+                  </span>
+                  {/* Pontos de 1 a 5 — progresso, sem rótulo de "fraco". */}
+                  <span style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <span key={n} style={{ width: 9, height: 9, borderRadius: '50%',
+                        background: n <= a.nivel ? T.violeta : 'rgba(26,23,20,0.12)' }} />
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
