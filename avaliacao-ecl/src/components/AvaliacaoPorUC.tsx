@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, calcularBonusAssiduidadeUC } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, calcularBonusAssiduidadeUC , registosQueContam, aplicarBonusesUC } from '../backend';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
 import { calcularNotaPlano } from '../types';
@@ -55,7 +55,7 @@ function datasDoTrimestre(tri: 1 | 2 | 3, ano = 2026): { inicio: string; fim: st
 // ── Componente principal ──────────────────────────────────────
 export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?: string }) {
   const modulos = modulosDaTurma(turmaId);
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId).sort((a, b) => a.numero - b.numero);
+  const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
   const todosRegistos = getHistoricoAvaliacoes();
   const planos = getPlanosAulaPorTurma(turmaId);
 
@@ -87,7 +87,9 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
 
   // Registos filtrados
   const registosFiltrados = useMemo(() => {
-    let regs = todosRegistos.filter(r => r.turmaId === turmaId);
+    // Só a validação do professor conta — a autoavaliação do aluno é uma
+    // proposta, não uma nota. Antes entravam as duas na média.
+    let regs = todosRegistos.filter(r => r.turmaId === turmaId && registosQueContam(r));
     if (filtroUC) regs = regs.filter(r => r.ucId === filtroUC);
     if (datas) regs = regs.filter(r => r.data >= datas.inicio && r.data <= datas.fim);
     return regs;
@@ -131,11 +133,13 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
       const { nota20 } = notasComCat.length > 0
         ? calcularNotaPlano(notasComCat, tipoDominante as 'pratico'|'misto'|'teorico')
         : { nota20: 0 };
-      // Bónus de Assiduidade/Pontualidade/Fardamento (máx. 2 valores) — só faz
-      // sentido somar quando se está a ver UMA UC específica (filtroUC activo),
-      // porque o bónus é calculado por UC, não de forma genérica.
+      // Os bónus são por UC — só se somam quando se está a ver UMA UC.
+      // O cálculo é o mesmo da recuperação e do resto da aplicação
+      // (aplicarBonusesUC): assiduidade, eventos e teto de 17.
       const bonus = filtroUC ? calcularBonusAssiduidadeUC(aluno.id, turmaId, filtroUC) : null;
-      const nota20ComBonus = bonus ? Math.min(20, nota20 + bonus.total) : nota20;
+      const notaUC = filtroUC && notasComCat.length > 0
+        ? aplicarBonusesUC(nota20, aluno.id, turmaId, filtroUC) : null;
+      const nota20ComBonus = notaUC?.final ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
       // deste aluno nesta UC, para o professor perceber SEMPRE como a nota
       // se formou (OBR/SUB/KNW/ATI), não só ver o número final.
@@ -150,6 +154,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
         mediaGeral: nota20ComBonus,
         mediaGeralSemBonus: nota20,
         bonus,
+        notaUC,
         porCategoriaUltima,
         total: regs.length,
         consolidadas: comps.filter(c => c.media >= 3).length,
@@ -292,7 +297,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
           <div style={{ fontSize: 13, marginTop: 4 }}>Tenta seleccionar uma UC/UFCD diferente ou alargar o período</div>
         </div>
       ) : (
-        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, bonus, porCategoriaUltima }) => {
+        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, bonus, notaUC, porCategoriaUltima }) => {
           const aberto = vistaAluno === aluno.id;
           const { emoji, cor } = labelNota(mediaGeral);
           return (
@@ -322,16 +327,28 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
                 {mediaGeral > 0 && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{mediaGeral.toFixed(1)}</div>
-                    <div style={{ fontSize: 9, color: 'rgba(26,23,20,0.4)' }}
+                    <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}
                       title={porCategoriaUltima
                         ? 'Como esta nota foi calculada: ' + Object.entries(porCategoriaUltima).map(([c,n]) => `${c} ${n}/20`).join(' · ')
                         : 'Sem decomposição disponível — aguarda a próxima validação do professor'}>
                       /20 {porCategoriaUltima ? 'ⓘ' : ''}
                     </div>
                     {bonus && bonus.total > 0 && (
-                      <div style={{ fontSize: 9, color: 'var(--sage)', fontWeight: 700, marginTop: 2 }}
+                      <div style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 700, marginTop: 2 }}
                         title={`Pontualidade +${bonus.pontualidade} · Assiduidade +${bonus.assiduidade} · Farda +${bonus.fardamento} (${bonus.detalhe.faltas} faltas, ${bonus.detalhe.atrasos} atrasos, ${bonus.detalhe.fardaIncompleta} farda incompleta)`}>
-                        +{bonus.total} bónus
+                        +{bonus.total} assiduidade
+                      </div>
+                    )}
+                    {notaUC && notaUC.bonusParticipacao > 0 && (
+                      <div style={{ fontSize: 12, color: '#7d4f8c', fontWeight: 700 }}
+                        title={`${notaUC.participacoes} participação(ões) em eventos — +0,75 cada, até 3`}>
+                        +{notaUC.bonusParticipacao.toFixed(2).replace('.', ',')} eventos
+                      </div>
+                    )}
+                    {notaUC?.limitadaPorTeto && (
+                      <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 700 }}
+                        title="Sem participação em eventos, a nota não passa de 17">
+                        teto 17
                       </div>
                     )}
                   </div>
