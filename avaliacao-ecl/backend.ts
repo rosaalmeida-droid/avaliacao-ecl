@@ -4,31 +4,43 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
-import { ucsEquivalentes } from './cronograma';
+import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
   Turma, Aluno, PlanoAula, FichaProducao,
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
-, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha } from './types';
+, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO } from './types';
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos } from './materiasPrimasBase';
 
+// ══ SCRIPT ÚNICO ══
+// Um só script guarda tudo: planos, fichas, alunos, avaliações,
+// presenças, autoavaliações, validações, sessões, recuperações,
+// evidências e telemóveis (AppsScript_ECL_UNICO.gs).
+//
+// Enquanto esta linha estiver vazia, a aplicação usa os endereços
+// antigos, um por assunto. Assim que aqui estiver o endereço do script
+// único, passa tudo a ir e a vir de lá — sem mexer em mais nada.
+//
+// Colar entre as plicas o URL que acaba em /exec:
+export const SHEETS_ECL_URL = 'https://script.google.com/macros/s/AKfycbzFbA8e0U9GCSKyCvrCo2Pe28XgG9_UDcu7f9lqyZJ3kmWpnCj5PbWRyctLmN5OP6sC8Q/exec';
+
 // ── URLs dos Apps Scripts ────────────────────────────────────
 // Histórico de avaliações dos alunos (já configurado e a funcionar)
-const SHEETS_HISTORICO_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbw9F0aZWCQOi-zIDUaMljLkAh3ilWt9R6D_EZe3as3pFm234q3u8iF1428Ga86ma_aYTg/exec';
+const SHEETS_HISTORICO_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbw9F0aZWCQOi-zIDUaMljLkAh3ilWt9R6D_EZe3as3pFm234q3u8iF1428Ga86ma_aYTg/exec';
 
 // Planos de Aula (preencher após criar o Sheets de Planos)
-const SHEETS_PLANOS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxT00cLo_mTHjv-swqo-lxqdq-YRmOB3gQ4AZ8rbIdyzTbAFt_Yi56D6-_GHV7miAlv/exec';
+const SHEETS_PLANOS_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbxT00cLo_mTHjv-swqo-lxqdq-YRmOB3gQ4AZ8rbIdyzTbAFt_Yi56D6-_GHV7miAlv/exec';
 
 // Fichas de Produção (preencher após criar o Sheets de Fichas)
-const SHEETS_FICHAS_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
+const SHEETS_FICHAS_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbzhKheayYwBaIVNoz0dgHkb8JK1w8dViGY2T_HUILD2CXJJ7EPaIcnR97_uxBOqbRHw/exec';
 // Deployment do script RecuperacaoFCT_PDF_ECL.gs — a Rosa preenche isto
 // depois de instalar o script (ver instruções no topo do ficheiro .gs).
-const PAUTA_FCT_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbwz_L-z2nmhUUambttWLf1TV8_aOk68zJ6tpR8vZiD7kz4dL9reUZa8hvdnfmMaAzp-uA/exec';
-const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/a/macros/eclisboa.net/s/AKfycbxWgbuC3U6LN3O6R9LFxU9DecUaub5YDwz2wD2E76bJI0sP_1pWYg1CsSRhp1PFM3I/exec';
+const PAUTA_FCT_URL = 'https://script.google.com/macros/s/AKfycbwz_L-z2nmhUUambttWLf1TV8_aOk68zJ6tpR8vZiD7kz4dL9reUZa8hvdnfmMaAzp-uA/exec';
+const RECUPERACAO_FCT_PDF_URL = 'https://script.google.com/macros/s/AKfycbxWgbuC3U6LN3O6R9LFxU9DecUaub5YDwz2wD2E76bJI0sP_1pWYg1CsSRhp1PFM3I/exec';
 
 
 // URL do Apps Script de Requisição (apps_script_requisicao_v3.js) — preenche a sheet
@@ -37,13 +49,13 @@ export const SHEETS_REQUISICAO_URL = 'https://script.google.com/macros/s/AKfycbz
 // ID do Google Sheets da Requisição — para abrir directamente após o envio
 export const SHEETS_REQUISICAO_ID = ''; // preencher quando confirmado
 
-export const SHEETS_CALENDARIO_URL = 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
+export const SHEETS_CALENDARIO_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
 
 // Sheet de Alunos — registo central de alunos, PINs e timestamps
 // Preencher após criar o Apps Script de alunos (conta eclisboa.net)
 // Login partilhado — mesma Sheet e Apps Script do KitchenFlow
 // O aluno cria PIN num lado e fica disponível no outro automaticamente
-export let SHEETS_ALUNOS_URL = 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
+export let SHEETS_ALUNOS_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
 
 // ── Integração KitchenFlow ECL ───────────────────────────────
 // URL do Apps Script do KitchenFlow — envia registos em background
@@ -231,6 +243,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     // Carregar planos do Sheets de Planos
     if (SHEETS_PLANOS_URL) {
       const jsonPlanos = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
+      marcarLeituraPlanos(!!jsonPlanos?.ok);
       if (jsonPlanos?.ok && jsonPlanos.dados?.length > 0) {
         const locais = getPlanosAula();
         const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
@@ -242,10 +255,20 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             ...pRaw,
             fichasIds: Array.isArray(pRaw.fichasIds) ? pRaw.fichasIds
               : (typeof pRaw.fichasIds === 'string' && pRaw.fichasIds ? pRaw.fichasIds.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean) : []),
+            // A data pode vir com hora (o Sheets devolve datas como
+            // instante UTC). '2026-09-21T23:00:00.000Z' em Lisboa é dia 22:
+            // sem isto, a aula de hoje aparecia ao aluno como a de ontem.
+            data: dataSoDia(pRaw.data),
             compRemovidas: Array.isArray(pRaw.compRemovidas) ? pRaw.compRemovidas : [],
             compAdicionadas: Array.isArray(pRaw.compAdicionadas) ? pRaw.compAdicionadas : [],
           };
           const idx = merged.findIndex((x: PlanoAula) => x.id === p.id);
+          // NÃO filtrar por "plano parecido": um plano publicado que chega
+          // do Sheets tem de entrar sempre. A filtragem por assinatura fazia
+          // o telemóvel do aluno deitar fora a aula publicada, por já ter cá
+          // uma cópia antiga com o mesmo dia e título — e o aluno ficava sem
+          // aula nenhuma. Os planos repetidos resolvem-se no ecrã do
+          // professor, com "Juntar as cópias".
           if (idx >= 0) {
             if (new Date(p.atualizadoEm) > new Date((merged[idx] as any).atualizadoEm || '')) {
               // Preservar campos que a Sheet pode não guardar (eventoId, criteriosCongelados, ultimaAlteracao)
@@ -338,14 +361,63 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       }
     }
 
+    // ── Requisições e orçamentos ─────────────────────────────
+    //
+    // Iam para o Sheets e nunca voltavam. O professor fazia a requisição
+    // num computador e noutro não a via — parecia que se tinha perdido.
+    // É a única coisa que era enviada sem leitura de volta.
+    if (SHEETS_PLANOS_URL) {
+      try {
+        const jsonReq = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_requisicoes', turmaId });
+        const doSheets = jsonReq?.requisicoes || jsonReq?.dados || [];
+        if (Array.isArray(doSheets) && doSheets.length > 0) {
+          const locais = getRequisicoes();
+          const merged = [...locais];
+          for (const r of doSheets) {
+            if (!r?.id) continue;
+            const idx = merged.findIndex(x => x.id === r.id);
+            if (idx < 0) {
+              merged.push(r);
+            } else if ((r.atualizadaEm || '') > (merged[idx].atualizadaEm || '')) {
+              // A do Sheets é mais recente — mas nunca deitar fora linhas
+              // que ela não traga e a local tenha.
+              merged[idx] = {
+                ...r,
+                linhas: (r.linhas?.length ? r.linhas : merged[idx].linhas) || [],
+              };
+            }
+          }
+          save(KEYS.requisicoes, merged);
+        }
+      } catch { /* sem rede, fica o que está */ }
+    }
+
     // ── Sincronizar Avaliações (historico_avaliacoes) ──────────────────
     if (SHEETS_HISTORICO_URL) {
       const jsonAval = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
       if (jsonAval?.ok && jsonAval.dados?.length > 0) {
+        // Os +1 da transição de referencial vão para o registo deles — se
+        // entrassem aqui, contavam para as notas das UCs e para a pauta.
+        const transicao = jsonAval.dados.filter((r: any) => r.validadoPor === 'transicao');
+        const normais = jsonAval.dados.filter((r: any) => r.validadoPor !== 'transicao');
+
         const locais = getHistoricoAvaliacoes();
         const idsLocais = new Set(locais.map((r: RegistoAvaliacao) => r.id));
-        const novas = jsonAval.dados.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
+        const novas = normais.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
         if (novas.length > 0) save(KEY_HIST, [...locais, ...novas]);
+
+        if (transicao.length > 0) {
+          const jaTem = getRegistosTransicao();
+          const ids = new Set(jaTem.map(t => t.id));
+          const chegados: RegistoTransicao[] = transicao
+            .filter((r: any) => !ids.has(r.id))
+            .map((r: any) => ({
+              id: r.id, alunoId: r.alunoId, turmaId: r.turmaId,
+              atitudeId: r.microcompetenciaId, nivel: Number(r.nota) || 1,
+              data: r.data, planoAulaId: r.planoAulaId || '', professor: '',
+            }));
+          if (chegados.length) save(KEY_TRANSICAO, [...jaTem, ...chegados]);
+        }
       }
 
       // ── Sincronizar Validações ──────────────────────────────────────
@@ -364,10 +436,29 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       // ── Sincronizar Presenças ───────────────────────────────────────
       const jsonPres = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId });
       if (jsonPres?.ok && jsonPres.dados?.length > 0) {
-        const locais = getPresencas();
-        const idsLocais = new Set(locais.map((p: any) => p.id));
-        const novas = jsonPres.dados.filter((p: any) => !idsLocais.has(p.id));
-        if (novas.length > 0) save(KEYS.presencas, [...locais, ...novas]);
+        // As linhas do Sheets não trazem identificador: comparar pelo id
+        // fazia cada sincronização acrescentar tudo outra vez. Agora é uma
+        // presença por aluno e aula — e a decisão do professor que está no
+        // Sheets (a última tomada, em qualquer aparelho) é a que vale.
+        const porChave = new Map<string, any>();
+        for (const p of load<any>(KEYS.presencas)) {
+          const k = p.alunoId + '|' + p.planoAulaId;
+          if (!porChave.has(k)) porChave.set(k, p);          // tira duplicados antigos
+          else if (p.decisaoProfessor && !porChave.get(k).decisaoProfessor) porChave.set(k, { ...porChave.get(k), ...p, id: porChave.get(k).id });
+        }
+        for (const s of jsonPres.dados) {
+          if (!s?.alunoId || !s?.planoAulaId) continue;
+          const k = s.alunoId + '|' + s.planoAulaId;
+          const local = porChave.get(k);
+          if (!local) {
+            porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
+          } else if (s.decisaoProfessor && s.decisaoProfessor !== local.decisaoProfessor) {
+            porChave.set(k, { ...local, decisaoProfessor: s.decisaoProfessor,
+              presente: s.decisaoProfessor === 'falta_presenca' ? false
+                : s.decisaoProfessor === 'sem_falta' ? true : local.presente });
+          }
+        }
+        save(KEYS.presencas, [...porChave.values()]);
       }
     }
 
@@ -378,11 +469,18 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         const locais = getAlunos();
         const merged = [...locais];
         for (const a of jsonAlunos.dados) {
+          // Linhas sem nome são alunos-fantasma dos PINs inventados — não
+          // entram noutros aparelhos.
+          if (!a?.id || !a.nome) continue;
           const idx = merged.findIndex((x: Aluno) => x.id === a.id);
           if (idx < 0) merged.push(a);
-          else merged[idx] = { ...merged[idx], ...a, pin: merged[idx].pin || a.pin };
+          else merged[idx] = { ...merged[idx], ...a,
+            nome: a.nome || merged[idx].nome,
+            pin: merged[idx].pin || a.pin };
         }
         save(KEYS.alunos, merged);
+        // A lista oficial manda: repor nomes, turmas e desativações.
+        seedAlunosReais();
       }
     }
 
@@ -412,7 +510,7 @@ export function getTurmas(): Turma[] {
   const t = load<Turma>(KEYS.turmas);
   if (t.length === 0) {
     const seed: Turma[] = [
-      { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+      { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
       { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
       { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
     ];
@@ -421,10 +519,11 @@ export function getTurmas(): Turma[] {
   }
   // Migração: corrigir nomes antigos (1º CP → 1º ACP)
   const mapa: Record<string, {id: string, nome: string}> = {
-    '1º CP': { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+    '1º CP': { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
+    '1º ACP': { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
     '2º CP': { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
     '3º CP': { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
-    'CP1':   { id: '1º ACP', nome: '1º ACP — Cozinha e Pastelaria' },
+    'CP1':   { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
     'CP2':   { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
     'CP3':   { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
   };
@@ -689,66 +788,134 @@ export async function sincronizarFichaPortefolio(ficha: FichaProducao): Promise<
 
 // ── Alunos reais ECL 2025/2026 ──────────────────────────────────────────────
 // 2º CP = turma 1º ACP 2025/2028  |  3º CP = turma 2º ACP 2024/2027
-// PINs iniciais: 2NNN para 2ºCP, 3NNN para 3ºCP (professor altera depois)
+// PINs: aleatórios, um por aluno, entregues em papel. O professor pode
+// mudá-los depois (PIN temporário).
 export function seedAlunosReais(): void {
-  const todos = getAlunos().filter((a: Aluno) => a.turmaId === '2º ACP' || a.turmaId === '3º ACP');
-  if (todos.length > 0) return; // já existem — não sobrescrever
+  // Antes saía logo se o aparelho já tivesse alunos do 2º ou 3º ACP.
+  // Num tablet já usado, o 1º BCR nunca entrava — e os três alunos que
+  // saíram do 2º ACP continuavam lá. Agora acerta sempre a lista com a
+  // oficial: acrescenta os que faltam, corrige os que estão mal, e
+  // desativa os que já não pertencem à turma.
   const agora = new Date().toISOString();
   const alunos: Aluno[] = [
-    // ── 2º CP (1º ACP 2025/2028) ─────────────────────────────────
-    { id: '2º ACP-1', turmaId: '2º ACP', numero: 1, ano: 2 as const, nome: 'Agnes Paola A. Conceição', pin: '2001', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-2', turmaId: '2º ACP', numero: 2, ano: 2 as const, nome: 'Alcides João S. Neto', pin: '2002', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-3', turmaId: '2º ACP', numero: 3, ano: 2 as const, nome: 'Anamar Padinha Gomes', pin: '2003', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-4', turmaId: '2º ACP', numero: 4, ano: 2 as const, nome: 'Arthur Oliveira Santos', pin: '2004', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-5', turmaId: '2º ACP', numero: 5, ano: 2 as const, nome: 'Beatriz Mendes Brito', pin: '2005', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-6', turmaId: '2º ACP', numero: 6, ano: 2 as const, nome: 'Beatriz Pompeu Pinheiro', pin: '2006', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-7', turmaId: '2º ACP', numero: 7, ano: 2 as const, nome: 'Carlos Alexandre C. Maia', pin: '2007', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-8', turmaId: '2º ACP', numero: 8, ano: 2 as const, nome: 'Eduardo Júnior S. Paulo', pin: '2008', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-9', turmaId: '2º ACP', numero: 9, ano: 2 as const, nome: 'Folly Orax Sallah', pin: '2009', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-10', turmaId: '2º ACP', numero: 10, ano: 2 as const, nome: 'Gonçalo Rafael Claro', pin: '2010', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-11', turmaId: '2º ACP', numero: 11, ano: 2 as const, nome: 'Gustavo Lopes Costa', pin: '2011', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-12', turmaId: '2º ACP', numero: 12, ano: 2 as const, nome: 'Isabella Medina Jurado', pin: '2012', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-13', turmaId: '2º ACP', numero: 13, ano: 2 as const, nome: 'Jorgeana Patricia T. Varela', pin: '2013', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-14', turmaId: '2º ACP', numero: 14, ano: 2 as const, nome: 'Mafalda Resende C. Ferreira', pin: '2014', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-15', turmaId: '2º ACP', numero: 15, ano: 2 as const, nome: 'Manuel José M. Maca', pin: '2015', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-16', turmaId: '2º ACP', numero: 16, ano: 2 as const, nome: 'Martim Rocha D. F. Silva', pin: '2016', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-17', turmaId: '2º ACP', numero: 17, ano: 2 as const, nome: 'Neide Tavares Cardoso', pin: '2017', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-18', turmaId: '2º ACP', numero: 18, ano: 2 as const, nome: 'Raquel Luis O. Diogo', pin: '2018', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-19', turmaId: '2º ACP', numero: 19, ano: 2 as const, nome: 'Rita Maria S. Nunes', pin: '2019', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-20', turmaId: '2º ACP', numero: 20, ano: 2 as const, nome: 'Rute Santos Rodrigues', pin: '2020', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-21', turmaId: '2º ACP', numero: 21, ano: 2 as const, nome: 'Sara Andrade Arruda', pin: '2021', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-22', turmaId: '2º ACP', numero: 22, ano: 2 as const, nome: 'Telmo Márcio T. Mendes', pin: '2022', ativo: true, pinCriadoEm: agora },
-    { id: '2º ACP-23', turmaId: '2º ACP', numero: 23, ano: 2 as const, nome: 'Yichen Wu', pin: '2023', ativo: true, pinCriadoEm: agora },
-    // ── 3º CP (2º ACP 2024/2027) ─────────────────────────────────
-    { id: '3º ACP-1', turmaId: '3º ACP', numero: 1, ano: 3 as const, nome: 'Afonso Miguel C. Dias', pin: '3001', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-2', turmaId: '3º ACP', numero: 2, ano: 3 as const, nome: 'Aldmir Afonso Marques', pin: '3002', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-3', turmaId: '3º ACP', numero: 3, ano: 3 as const, nome: 'Bernardo Alexandre B. Correia', pin: '3003', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-4', turmaId: '3º ACP', numero: 4, ano: 3 as const, nome: 'Bruno Monteiro Cardoso', pin: '3004', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-5', turmaId: '3º ACP', numero: 5, ano: 3 as const, nome: 'Cilaine Espírito S. Pereira', pin: '3005', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-6', turmaId: '3º ACP', numero: 6, ano: 3 as const, nome: 'Diogo Alexandre S. Neves', pin: '3006', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-7', turmaId: '3º ACP', numero: 7, ano: 3 as const, nome: 'Djeison Patrick R. Pina', pin: '3007', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-8', turmaId: '3º ACP', numero: 8, ano: 3 as const, nome: 'Éria Santana Roberto', pin: '3008', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-9', turmaId: '3º ACP', numero: 9, ano: 3 as const, nome: 'Francisco Miguel P. Neto', pin: '3009', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-10', turmaId: '3º ACP', numero: 10, ano: 3 as const, nome: 'Hugo Guilherme B. Sequeira', pin: '3010', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-11', turmaId: '3º ACP', numero: 11, ano: 3 as const, nome: 'Íris Filipa G. Monteiro', pin: '3011', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-12', turmaId: '3º ACP', numero: 12, ano: 3 as const, nome: 'Lara Maria D. N. Machado', pin: '3012', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-13', turmaId: '3º ACP', numero: 13, ano: 3 as const, nome: 'Leonel Dino S. Tavares', pin: '3013', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-14', turmaId: '3º ACP', numero: 14, ano: 3 as const, nome: 'Leonor Sofia M. Cruz', pin: '3014', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-15', turmaId: '3º ACP', numero: 15, ano: 3 as const, nome: 'Luizito Campos Assunção', pin: '3015', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-16', turmaId: '3º ACP', numero: 16, ano: 3 as const, nome: 'Martim Fonseca M. Ramos', pin: '3016', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-17', turmaId: '3º ACP', numero: 17, ano: 3 as const, nome: 'Melisa Carine Cardoso', pin: '3017', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-18', turmaId: '3º ACP', numero: 18, ano: 3 as const, nome: 'Mishant Tamang', pin: '3018', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-19', turmaId: '3º ACP', numero: 19, ano: 3 as const, nome: 'Raquel Oliveira Pinto', pin: '3019', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-20', turmaId: '3º ACP', numero: 20, ano: 3 as const, nome: 'Ricardo Miguel G. Mendes', pin: '3020', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-21', turmaId: '3º ACP', numero: 21, ano: 3 as const, nome: 'Ronnen Alem Cardoso', pin: '3021', ativo: true, pinCriadoEm: agora },
-    { id: '3º ACP-22', turmaId: '3º ACP', numero: 22, ano: 3 as const, nome: 'Vanessa Ramos Mestre', pin: '3022', ativo: true, pinCriadoEm: agora },
+    // ── 1º BCR-C — Técnico de Cozinha e Restauração (2026/2029) ──
+    // Turma nova deste ano letivo. Substitui o 1º ACP, que era outro
+    // curso. A Jorgeana Varela e o Martim Silva vieram do 2º ACP.
+    { id: '1º BCR-1', turmaId: '1º BCR', numero: 1, ano: 1 as const, nome: 'Dinis Fernandes Caralinda', pin: '6875', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-2', turmaId: '1º BCR', numero: 2, ano: 1 as const, nome: 'Diogo Barbaça', pin: '1406', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-3', turmaId: '1º BCR', numero: 3, ano: 1 as const, nome: 'Diogo Miguel Bernardo Lopes', pin: '6849', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-4', turmaId: '1º BCR', numero: 4, ano: 1 as const, nome: 'Érica Melissa Oliveira Leal', pin: '6174', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-5', turmaId: '1º BCR', numero: 5, ano: 1 as const, nome: 'Euler Fernando Kateque Cariango', pin: '4657', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-6', turmaId: '1º BCR', numero: 6, ano: 1 as const, nome: 'Guilherme Heitor Pereira Coutinho', pin: '4341', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-7', turmaId: '1º BCR', numero: 7, ano: 1 as const, nome: 'Joelma Barbosa de Pina Tavares', pin: '1219', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-8', turmaId: '1º BCR', numero: 8, ano: 1 as const, nome: 'Jorgeana Patricia Tavares Varela', pin: '5977', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-9', turmaId: '1º BCR', numero: 9, ano: 1 as const, nome: 'José Luís Tavares', pin: '9152', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-10', turmaId: '1º BCR', numero: 10, ano: 1 as const, nome: 'Kiara Alexandra de White Fernandes', pin: '3087', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-11', turmaId: '1º BCR', numero: 11, ano: 1 as const, nome: 'Luana Pinto', pin: '9267', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-12', turmaId: '1º BCR', numero: 12, ano: 1 as const, nome: 'Lúcia do Espírito Santo Cabral', pin: '8900', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-13', turmaId: '1º BCR', numero: 13, ano: 1 as const, nome: 'Martim Alexandre Mendes Máximo', pin: '5580', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-14', turmaId: '1º BCR', numero: 14, ano: 1 as const, nome: 'Martim Rocha Delgado Felizardo da Silva', pin: '8078', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-15', turmaId: '1º BCR', numero: 15, ano: 1 as const, nome: 'Melissa Gaspar da Costa', pin: '1205', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-16', turmaId: '1º BCR', numero: 16, ano: 1 as const, nome: 'Orcinela Campos dos Reis da Cruz', pin: '7100', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-17', turmaId: '1º BCR', numero: 17, ano: 1 as const, nome: 'Rodrigo Pereira Carvalho', pin: '6230', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-18', turmaId: '1º BCR', numero: 18, ano: 1 as const, nome: 'Sakibul Islam Sipat', pin: '1339', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-19', turmaId: '1º BCR', numero: 19, ano: 1 as const, nome: 'Tiago Gaty Lopes', pin: '1409', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-20', turmaId: '1º BCR', numero: 20, ano: 1 as const, nome: 'Tomás Paiva Novais', pin: '5399', ativo: true, pinCriadoEm: agora },
+
+    // ── 2º ACP ───────────────────────────────────────────────────
+    // 2º ACP — constituição de 2026/27 (eSchooling).
+    // Saíram Carlos Maia (7), Jorgeana Varela (13) e Martim Silva (16).
+    // Os números dos restantes mantêm-se os da pauta oficial — não se
+    // renumeram, senão deixam de bater certo com o que a escola usa.
+    { id: '2º ACP-1', turmaId: '2º ACP', numero: 1, ano: 2 as const, nome: 'Agnes Paola A. Conceição', pin: '4469', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-2', turmaId: '2º ACP', numero: 2, ano: 2 as const, nome: 'Alcides João S. Neto', pin: '3464', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-3', turmaId: '2º ACP', numero: 3, ano: 2 as const, nome: 'Anamar Padinha Gomes', pin: '8618', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-4', turmaId: '2º ACP', numero: 4, ano: 2 as const, nome: 'Arthur Oliveira Santos', pin: '6244', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-5', turmaId: '2º ACP', numero: 5, ano: 2 as const, nome: 'Beatriz Mendes Brito', pin: '6397', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-6', turmaId: '2º ACP', numero: 6, ano: 2 as const, nome: 'Beatriz Pompeu Pinheiro', pin: '1310', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-8', turmaId: '2º ACP', numero: 8, ano: 2 as const, nome: 'Eduardo Júnior S. Paulo', pin: '7924', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-9', turmaId: '2º ACP', numero: 9, ano: 2 as const, nome: 'Folly Orax Sallah', pin: '3616', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-10', turmaId: '2º ACP', numero: 10, ano: 2 as const, nome: 'Gonçalo Rafael Claro', pin: '5709', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-11', turmaId: '2º ACP', numero: 11, ano: 2 as const, nome: 'Gustavo Lopes Costa', pin: '3190', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-12', turmaId: '2º ACP', numero: 12, ano: 2 as const, nome: 'Isabella Medina Jurado', pin: '9527', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-14', turmaId: '2º ACP', numero: 14, ano: 2 as const, nome: 'Mafalda Resende C. Ferreira', pin: '4090', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-15', turmaId: '2º ACP', numero: 15, ano: 2 as const, nome: 'Manuel José M. Maca', pin: '9522', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-17', turmaId: '2º ACP', numero: 17, ano: 2 as const, nome: 'Neide Tavares Cardoso', pin: '8287', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-18', turmaId: '2º ACP', numero: 18, ano: 2 as const, nome: 'Raquel Luis O. Diogo', pin: '1739', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-19', turmaId: '2º ACP', numero: 19, ano: 2 as const, nome: 'Rita Maria S. Nunes', pin: '8550', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-20', turmaId: '2º ACP', numero: 20, ano: 2 as const, nome: 'Rute Santos Rodrigues', pin: '3607', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-21', turmaId: '2º ACP', numero: 21, ano: 2 as const, nome: 'Sara Andrade Arruda', pin: '2439', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-22', turmaId: '2º ACP', numero: 22, ano: 2 as const, nome: 'Telmo Márcio T. Mendes', pin: '1393', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-23', turmaId: '2º ACP', numero: 23, ano: 2 as const, nome: 'Yichen Wu', pin: '7955', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-1', turmaId: '3º ACP', numero: 1, ano: 3 as const, nome: 'Afonso Miguel C. Dias', pin: '6728', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-2', turmaId: '3º ACP', numero: 2, ano: 3 as const, nome: 'Aldmir Afonso Marques', pin: '1374', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-3', turmaId: '3º ACP', numero: 3, ano: 3 as const, nome: 'Bernardo Alexandre B. Correia', pin: '2359', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-4', turmaId: '3º ACP', numero: 4, ano: 3 as const, nome: 'Bruno Monteiro Cardoso', pin: '2792', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-5', turmaId: '3º ACP', numero: 5, ano: 3 as const, nome: 'Cilaine Espírito S. Pereira', pin: '7229', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-6', turmaId: '3º ACP', numero: 6, ano: 3 as const, nome: 'Diogo Alexandre S. Neves', pin: '6156', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-7', turmaId: '3º ACP', numero: 7, ano: 3 as const, nome: 'Djeison Patrick R. Pina', pin: '7153', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-8', turmaId: '3º ACP', numero: 8, ano: 3 as const, nome: 'Éria Santana Roberto', pin: '1579', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-9', turmaId: '3º ACP', numero: 9, ano: 3 as const, nome: 'Francisco Miguel P. Neto', pin: '1434', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-10', turmaId: '3º ACP', numero: 10, ano: 3 as const, nome: 'Hugo Guilherme B. Sequeira', pin: '8061', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-11', turmaId: '3º ACP', numero: 11, ano: 3 as const, nome: 'Íris Filipa G. Monteiro', pin: '1075', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-12', turmaId: '3º ACP', numero: 12, ano: 3 as const, nome: 'Lara Maria D. N. Machado', pin: '8915', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-13', turmaId: '3º ACP', numero: 13, ano: 3 as const, nome: 'Leonel Dino S. Tavares', pin: '5608', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-14', turmaId: '3º ACP', numero: 14, ano: 3 as const, nome: 'Leonor Sofia M. Cruz', pin: '7455', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-15', turmaId: '3º ACP', numero: 15, ano: 3 as const, nome: 'Luizito Campos Assunção', pin: '6943', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-16', turmaId: '3º ACP', numero: 16, ano: 3 as const, nome: 'Martim Fonseca M. Ramos', pin: '2136', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-17', turmaId: '3º ACP', numero: 17, ano: 3 as const, nome: 'Melisa Carine Cardoso', pin: '8177', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-18', turmaId: '3º ACP', numero: 18, ano: 3 as const, nome: 'Mishant Tamang', pin: '2738', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-19', turmaId: '3º ACP', numero: 19, ano: 3 as const, nome: 'Raquel Oliveira Pinto', pin: '4098', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-20', turmaId: '3º ACP', numero: 20, ano: 3 as const, nome: 'Ricardo Miguel G. Mendes', pin: '3014', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-21', turmaId: '3º ACP', numero: 21, ano: 3 as const, nome: 'Ronnen Alem Cardoso', pin: '9302', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-22', turmaId: '3º ACP', numero: 22, ano: 3 as const, nome: 'Vanessa Ramos Mestre', pin: '9101', ativo: true, pinCriadoEm: agora },
   ];
   const existentes = getAlunos();
   const merged = [...existentes];
-  for (const a of alunos) {
-    if (!merged.find((x: Aluno) => x.id === a.id)) merged.push(a);
+  let mudou = false;
+  const idsOficiais = new Set(alunos.map(a => a.id));
+
+  const eliminados = alunosEliminados();
+  for (const oficial of alunos) {
+    // Eliminado pela coordenação — a lista oficial não o repõe.
+    if (eliminados.has(oficial.id)) continue;
+    const idx = merged.findIndex((x: Aluno) => x.id === oficial.id);
+    if (idx < 0) { merged.push(oficial); mudou = true; continue; }
+
+    const atual = merged[idx];
+    // O nome, a turma e o número vêm sempre da lista oficial. O PIN só se
+    // mantém se o professor o tiver mudado de propósito — um PIN escrito
+    // por um aluno no primeiro acesso não conta.
+    // PINs oficiais de 2026/27 — aleatórios, entregues em papel a cada aluno.
+    // Um PIN mudado pelo professor DEPOIS desta data mantém-se; os de
+    // antes (os antigos 1005, 2005… e os temporários do primeiro dia)
+    // dão lugar ao oficial, para a folha impressa ser a que vale.
+    const PINS_OFICIAIS_DESDE = '2026-09-22T00:00:00.000Z';
+    const pin = (atual.pinAlteradoEm && atual.pinAlteradoEm >= PINS_OFICIAIS_DESDE)
+      ? atual.pin : oficial.pin;
+    // O estado (ativo/removido) NÃO vem da lista oficial: é decisão da
+    // coordenação. Se a lista reativasse, uma remoção feita pela
+    // coordenadora era desfeita na próxima vez que a aplicação abrisse.
+    if (atual.nome !== oficial.nome || atual.turmaId !== oficial.turmaId
+        || atual.numero !== oficial.numero || atual.pin !== pin) {
+      merged[idx] = { ...atual, nome: oficial.nome, turmaId: oficial.turmaId,
+        numero: oficial.numero, ano: oficial.ano, pin };
+      mudou = true;
+    }
   }
-  save(KEYS.alunos, merged);
+
+  // Quem está numa destas turmas mas não na lista oficial fica desativado:
+  // os que saíram, e os alunos-fantasma criados por PINs inventados.
+  const turmasOficiais = new Set(['1º ACP', '1º BCR', '2º ACP', '3º ACP']);
+  for (let i = 0; i < merged.length; i++) {
+    const a = merged[i];
+    if (turmasOficiais.has(a.turmaId) && !idsOficiais.has(a.id) && a.ativo !== false) {
+      merged[i] = { ...a, ativo: false };
+      mudou = true;
+    }
+  }
+
+  if (mudou) save(KEYS.alunos, merged);
   alunos.forEach((a: Aluno) => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a }));
 }
 
@@ -986,7 +1153,13 @@ export function resetInicioAnoLetivo(): ResultadoLimpeza {
 }
 
 // ── Alunos ───────────────────────────────────────────────────
-export function getAlunos(): Aluno[] { return load<Aluno>(KEYS.alunos); }
+export function getAlunos(): Aluno[] {
+  // Os eliminados pela coordenação não voltam — nem pela lista oficial,
+  // nem pelo Sheets.
+  const fora = alunosEliminados();
+  const todos = load<Aluno>(KEYS.alunos);
+  return fora.size ? todos.filter(a => !fora.has(a.id)) : todos;
+}
 
 export function addAluno(a: Aluno): void {
   const all = getAlunos();
@@ -1240,31 +1413,128 @@ export async function validarLoginAluno(
   const all = getAlunos();
   let aluno = all.find(a => a.id === id);
 
-  // Se ainda não tem PIN definido (primeiro acesso) — criar PIN agora
-  if (!aluno?.pin) {
-    if (pinIntroduzido.length < 4) return { ok: false, erro: 'O PIN deve ter 4 dígitos.' };
-    const agora = new Date().toISOString();
-    if (!aluno) {
-      aluno = { id, turmaId, numero, ano, pin: pinIntroduzido, pinCriadoEm: agora, ativo: true };
-      addAluno(aluno);
-    } else {
-      aluno.pin = pinIntroduzido;
-      aluno.pinCriadoEm = agora;
-      aluno.ativo = true;
-      save(KEYS.alunos, getAlunos());
-    }
-    // Sincronizar com sheet
-    await sincronizarAlunoComSheet(aluno);
-    return { ok: true, aluno };
+  // O login NUNCA cria alunos.
+  //
+  // Antes, um aluno que não existisse no aparelho era criado na hora com
+  // o PIN que escrevesse. Qualquer número e qualquer PIN entravam — e
+  // ficava um aluno sem nome, noutra turma, que depois não via plano
+  // nenhum. Os alunos vêm só da lista oficial; o PIN, do professor.
+  if (!aluno) {
+    return { ok: false, erro: `Não há nenhum aluno nº ${numero} nesta turma. Confirma a turma e o número, ou fala com o professor.` };
   }
-
-  // Aluno já tem PIN — validar
+  if (aluno.ativo === false) {
+    return { ok: false, erro: 'Este aluno já não está nesta turma. Fala com o professor.' };
+  }
+  if (!aluno.pin) {
+    return { ok: false, erro: 'Ainda não tens PIN. Pede-o ao professor.' };
+  }
   if (aluno.pin !== pinIntroduzido) return { ok: false, erro: 'PIN incorreto.' };
-  return { ok: true, aluno };
+
+  // O PIN fica preso ao telemóvel onde o aluno entrou pela primeira vez.
+  const tel = await verificarTelemovel(aluno);
+  if (!tel.ok) return { ok: false, erro: tel.erro };
+  return { ok: true, aluno, primeiraVezNesteTelemovel: tel.primeiraVez } as any;
 }
 
-/** Altera o PIN de um aluno já existente (pelo professor/coordenadora). */
+// ============================================================
+// O PIN ligado ao telemóvel
+// ============================================================
+// Na primeira entrada, o PIN do aluno fica ligado ao telemóvel onde ele
+// entrou. Nas seguintes, só esse telemóvel entra com esse PIN — um colega
+// que saiba o PIN não entra noutro telemóvel.
+//
+// O browser não deixa ver o número do telemóvel. O que se faz é deixar no
+// telemóvel uma marca aleatória, guardada na primeira entrada, e
+// reconhecê-la depois. A ligação fica no Sheets (script do Histórico,
+// folha TELEMOVEIS), para todos os aparelhos a conhecerem.
+//
+// Se o aluno limpar os dados do browser, usar uma janela anónima ou mudar
+// de browser, o telemóvel parece outro — e é recusado. O professor liberta
+// (PIN temporário ou "Libertar telemóvel"), e a próxima entrada volta a ligar.
+
+const KEY_MEU_TELEMOVEL = 'ecl_telemovel';
+const KEY_TELEMOVEIS = 'ecl_telemoveis_ligados';
+
+/** A marca deste telemóvel — criada uma vez, fica para sempre. */
+export function meuTelemovel(): string {
+  let t = '';
+  try { t = localStorage.getItem(KEY_MEU_TELEMOVEL) || ''; } catch { /* */ }
+  if (!t) {
+    t = novoId('tel');
+    try { localStorage.setItem(KEY_MEU_TELEMOVEL, t); } catch { /* */ }
+  }
+  return t;
+}
+
+function ligacoesLocais(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(KEY_TELEMOVEIS) || '{}'); } catch { return {}; }
+}
+function guardarLigacoes(l: Record<string, string>): void {
+  try { localStorage.setItem(KEY_TELEMOVEIS, JSON.stringify(l)); } catch { /* */ }
+}
+
+/** Vai buscar ao Sheets as ligações da turma. O Sheets manda. */
+async function atualizarLigacoes(turmaId: string): Promise<boolean> {
+  try {
+    const json: any = await Promise.race([
+      lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_telemoveis', turmaId }),
+      new Promise(res => setTimeout(() => res(null), 5000)),
+    ]);
+    if (!json?.ok || !Array.isArray(json.telemoveis)) return false;
+    const l = ligacoesLocais();
+    const daTurma = new Set(json.telemoveis.map((x: any) => x.alunoId));
+    // Os desta turma que o Sheets já não tem foram libertados.
+    for (const id of Object.keys(l)) {
+      if (id.startsWith(turmaId + '-') && !daTurma.has(id)) delete l[id];
+    }
+    json.telemoveis.forEach((x: any) => { if (x.alunoId && x.dispositivoId) l[x.alunoId] = x.dispositivoId; });
+    guardarLigacoes(l);
+    return true;
+  } catch { return false; }
+}
+
+async function verificarTelemovel(aluno: Aluno): Promise<{ ok: boolean; erro?: string; primeiraVez?: boolean }> {
+  const eu = meuTelemovel();
+  await atualizarLigacoes(aluno.turmaId);   // sem rede, fica o que está cá
+  const l = ligacoesLocais();
+  const dono = l[aluno.id];
+
+  if (!dono) {
+    // Primeira entrada deste aluno: fica ligado a este telemóvel.
+    l[aluno.id] = eu;
+    guardarLigacoes(l);
+    enviar(SHEETS_HISTORICO_URL, 'ligar_telemovel', {
+      alunoId: aluno.id, turmaId: aluno.turmaId, dispositivoId: eu,
+    });
+    return { ok: true, primeiraVez: true };
+  }
+  if (dono === eu) return { ok: true };
+  return {
+    ok: false,
+    erro: 'Este PIN está ligado a outro telemóvel. Se mudaste de telemóvel ou limpaste '
+      + 'o browser, pede ao professor para libertar o teu PIN.',
+  };
+}
+
+/** O professor liberta o PIN — a próxima entrada volta a ligar. */
+export function libertarTelemovel(alunoId: string, turmaId: string): void {
+  const l = ligacoesLocais();
+  delete l[alunoId];
+  guardarLigacoes(l);
+  enviar(SHEETS_HISTORICO_URL, 'libertar_telemovel', { alunoId, turmaId });
+}
+
+/** Tem o PIN ligado a algum telemóvel? (para os ecrãs do professor) */
+export function temTelemovelLigado(alunoId: string): boolean {
+  return !!ligacoesLocais()[alunoId];
+}
+
+/** Altera o PIN de um aluno já existente (pelo professor/coordenadora).
+ *  Liberta também o telemóvel: quem precisa de PIN novo muitas vezes
+ *  mudou de telemóvel ou limpou o browser. */
 export function alterarPinAluno(alunoId: string, novoPin: string): void {
+  const alunoAntes = getAlunos().find(a => a.id === alunoId);
+  if (alunoAntes) libertarTelemovel(alunoId, alunoAntes.turmaId);
   const all = getAlunos();
   const aluno = all.find(a => a.id === alunoId);
   if (!aluno) return;
@@ -1295,6 +1565,12 @@ async function sincronizarAlunoComSheet(aluno: Aluno): Promise<void> {
 
 /** Carrega todos os alunos da Sheet para localStorage (usado pela coordenadora). */
 export async function sincronizarAlunosDaSheet(): Promise<void> {
+  // Depois de ler do Sheets, a lista oficial volta a mandar — senão os
+  // PINs inventados e os alunos-fantasma de lá voltavam a entrar.
+  try { await sincronizarAlunosDaSheetBruto(); } finally { seedAlunosReais(); }
+}
+
+async function sincronizarAlunosDaSheetBruto(): Promise<void> {
   // Usa a Sheet do KitchenFlow como fonte única de alunos
   const url = KITCHENFLOW_SHEET_URL || SHEETS_ALUNOS_URL;
   if (!url) return;
@@ -1483,6 +1759,16 @@ function sincronizarPlanoComCalendario(p: PlanoAula): void {
   if (!SHEETS_CALENDARIO_URL || !p.data) return;
   const fichas = getFichasProducao().filter(f => p.fichasIds.includes(f.id)).map(f => f.nomePrato);
   const temRequisicao = getRequisicoes().some(r => r.planoAulaId === p.id);
+  // Um plano é gravado muitas vezes (competências, publicar, fichas…) e
+  // cada gravação mandava tudo outra vez para o calendário. Só se envia
+  // quando muda alguma coisa que o calendário mostra.
+  const assinatura = JSON.stringify([p.data, p.horaInicio, p.horaFim, p.titulo, p.ucId, p.turmaId, fichas, temRequisicao]);
+  const KEY_CAL = 'ecl_calendario_enviados';
+  let enviados: Record<string, string> = {};
+  try { enviados = JSON.parse(localStorage.getItem(KEY_CAL) || '{}'); } catch { enviados = {}; }
+  if (enviados[p.id] === assinatura) return;
+  enviados[p.id] = assinatura;
+  try { localStorage.setItem(KEY_CAL, JSON.stringify(enviados)); } catch { /* sem espaço */ }
   enviar(SHEETS_CALENDARIO_URL, 'plano', {
     planoId: p.id,
     data: p.data,
@@ -1526,6 +1812,62 @@ export function getFichasPorPlano(planoId: string): FichaProducao[] {
 }
 
 const KEY_FICHAS_HIST = 'ecl_fichas_historico';
+
+/**
+ * Identificador único para uma ficha nova.
+ *
+ * Era `ficha_${Date.now()}` — o relógio em milissegundos. Duas fichas
+ * criadas no mesmo milissegundo ficavam com o MESMO id, e a segunda
+ * gravava por cima da primeira, aqui e no Sheets. Acontece sempre que
+ * se criam fichas em lote.
+ *
+ * Agora leva também uma parte aleatória: duas fichas nunca colidem,
+ * mesmo criadas ao mesmo tempo.
+ */
+export function novoId(prefixo: string): string {
+  const agora = Date.now().toString(36);
+  const acaso = Math.random().toString(36).slice(2, 8);
+  return `${prefixo}_${agora}_${acaso}`;
+}
+
+export function novoIdFicha(): string {
+  return novoId('ficha');
+}
+
+/**
+ * Fichas com o id repetido — o estrago que o bug acima deixou.
+ * Devolve os grupos, para se ver o que se perdeu.
+ */
+export function fichasComIdRepetido(): { id: string; fichas: FichaProducao[] }[] {
+  const porId = new Map<string, FichaProducao[]>();
+  getFichasProducao().forEach(f => {
+    porId.set(f.id, [...(porId.get(f.id) || []), f]);
+  });
+  const repetidos: { id: string; fichas: FichaProducao[] }[] = [];
+  porId.forEach((fichas, id) => {
+    if (fichas.length > 1) repetidos.push({ id, fichas });
+  });
+  return repetidos;
+}
+
+/**
+ * Dá um id novo às fichas que partilham o mesmo, para deixarem de se
+ * sobrepor. Os planos que as usavam continuam a apontar para a primeira.
+ */
+export function separarFichasComIdRepetido(): { corrigidas: number } {
+  const todas = getFichasProducao();
+  const vistos = new Set<string>();
+  let corrigidas = 0;
+
+  const novas = todas.map(f => {
+    if (!vistos.has(f.id)) { vistos.add(f.id); return f; }
+    corrigidas += 1;
+    return { ...f, id: novoIdFicha() };
+  });
+
+  if (corrigidas > 0) save(KEYS.fichas, novas);
+  return { corrigidas };
+}
 
 /**
  * Guarda a versão anterior de uma ficha antes de a substituir.
@@ -1590,8 +1932,14 @@ export function addOrUpdateFichaProducao(f: FichaProducao): void {
 
   // Nunca enviar uma ficha sem conteúdo nenhum para o Sheets: se lá
   // estiver a versão boa, seria apagada.
+  //
+  // O guião conta como conteúdo. Sem esta linha, uma ficha que tivesse
+  // só guião — ou a quem se acabasse de escrever um — nunca era enviada,
+  // e o guião perdia-se ao mudar de aparelho.
   const temConteudo = !!paraGravar.ingredientes?.length
-    || !!paraGravar.preparacao?.length;
+    || !!paraGravar.preparacao?.length
+    || !!(paraGravar as any).textoGuia
+    || !!(paraGravar as any).htmlCompleto;
   if (temConteudo) {
     enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: paraGravar });
     registarEnvio(paraGravar.id, 'ficha', paraGravar.nomePrato || 'Ficha sem nome');
@@ -1778,8 +2126,8 @@ export function updateComanda(c: Comanda): void {
   enviar(SHEETS_HISTORICO_URL, 'comanda', c as unknown as Record<string, unknown>);
 }
 
-export function getSelecoes(): SelecaoAluno[] { return load<SelecaoAluno>(KEYS.selecoes); }
-export function getValidacoes(): Validacao[] { return load<Validacao>(KEYS.validacoes); }
+export function getSelecoes(): SelecaoAluno[] { return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)); }
+export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
 
 /** Inscreve ou retira o aluno de uma atividade. Inscrever não é
@@ -1944,7 +2292,7 @@ export function mapaAvaliacoesAnteriores(
 }
 
 export function getHistoricoAvaliacoes(): RegistoAvaliacao[] {
-  return load<RegistoAvaliacao>(KEY_HIST);
+  return semPlanosEliminados(load<RegistoAvaliacao>(KEY_HIST));
 }
 
 export interface RegistoPresenca {
@@ -2089,24 +2437,124 @@ export function addRegistoPresenca(dados: {
 
 // Lê todas as presenças guardadas localmente
 export function getPresencas(): RegistoPresenca[] {
-  return load<RegistoPresenca>(KEYS.presencas);
+  return semPlanosEliminados(load<RegistoPresenca>(KEYS.presencas));
 }
 
 // Para um aluno e uma UC, devolve os planos de aula dessa UC a que o aluno
 // NÃO esteve presente (faltou) — usado para a Recuperação de Módulos.
 export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: string): PlanoAula[] {
-  const todosPlanosDaUC = getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && p.estado === 'publicado');
+  // Só contam aulas que JÁ ACONTECERAM. Antes contava todos os planos
+  // publicados da UC, incluindo os das semanas seguintes: publicava-se o
+  // plano da próxima aula e o aluno aparecia logo com faltas — e com a UC
+  // "por concluir". Plano de aula ≠ falta ≠ recuperação.
+  const hoje = new Date().toISOString().slice(0, 10);
+  const todosPlanosDaUC = getPlanosAula().filter(p =>
+    p.ucId === ucId && p.turmaId === turmaId
+    && (p.estado === 'publicado' || p.estado === 'realizada')
+    && aulaJaAconteceu(p, hoje));
   const presencas = getPresencas().filter(r => r.alunoId === alunoId);
   return todosPlanosDaUC.filter(plano => {
-    const registo = presencas.find(r => r.planoAulaId === plano.id);
-    // Falta = não há registo de presença, OU há registo explícito de ausência
-    return !registo || registo.presente === false;
+    const registo: any = presencas.find(r => r.planoAulaId === plano.id);
+    if (registo?.decisaoProfessor === 'sem_falta') return false;
+    if (registo?.decisaoProfessor === 'falta_presenca') return true;
+    // Aula que o professor nunca abriu não conta contra o aluno: sem a
+    // aula aberta ele nem conseguia marcar presença. A responsabilidade é
+    // do professor — só uma decisão explícita dele conta como falta.
+    if (!getSessaoAula(plano.id)?.abertaEm) return false;
+    // Esteve na aula (mesmo atrasado) → não falta horas.
+    if (registo?.presente) return false;
+    return true;
   });
+}
+
+/** A aula já aconteceu: dia anterior a hoje, ou hoje com a aula fechada. */
+function aulaJaAconteceu(p: PlanoAula, hoje: string): boolean {
+  const d = String(p.data || '').slice(0, 10);
+  if (!d) return false;
+  if (d < hoje) return true;
+  if (d === hoje) {
+    // Hoje conta a partir do momento em que o professor abre a aula.
+    const s = getSessaoAula(p.id);
+    return !!(s?.fechadaEm || s?.abertaEm);
+  }
+  return false;
+}
+
+/** Horas de um plano. Um dia inteiro (08:30–17:30) desconta a hora de almoço. */
+function horasDoPlano(p: PlanoAula): number {
+  const min = (h?: string) => {
+    if (!h) return NaN;
+    const s = h.includes('T') ? new Date(h).toTimeString().slice(0, 5) : h.slice(0, 5);
+    const [hh, mm] = s.split(':').map(Number);
+    return hh * 60 + mm;
+  };
+  const ini = min(p.horaInicio), fim = min(p.horaFim);
+  if (isNaN(ini) || isNaN(fim) || fim <= ini) return 0;
+  let m = fim - ini;
+  if (ini <= 13 * 60 && fim >= 14 * 60) m -= 60;   // almoço
+  return m / 60;
+}
+
+// ============================================================
+// Recuperação — só em dois casos
+// ============================================================
+// O aluno só fica "em recuperação" quando:
+//   1. faltou a mais de 10% das horas do módulo (presença abaixo de 90%), ou
+//   2. o módulo já terminou e a nota não é positiva.
+//
+// Enquanto o módulo decorre, conhecimentos por avaliar, notas por lançar
+// ou a simples existência de planos NÃO põem o aluno em recuperação.
+
+export interface SituacaoRecuperacao {
+  precisa: boolean;
+  motivo: 'faltas' | 'negativa' | null;
+  horasPrevistas: number;
+  horasFaltadas: number;
+  /** 0–100 */
+  presenca: number;
+  terminou: boolean;
+  nota20: number | null;
+}
+
+export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: string): SituacaoRecuperacao {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mod = modulosDaTurma(turmaId).find(m => m.id === ucId);
+
+  const planosDaUC = getPlanosAula().filter(p =>
+    p.ucId === ucId && p.turmaId === turmaId
+    && (p.estado === 'publicado' || p.estado === 'realizada'));
+
+  // Horas do módulo: as do cronograma. Sem cronograma, as dos planos.
+  const horasPrevistas = mod?.horasPrevistas
+    || planosDaUC.reduce((s, p) => s + horasDoPlano(p), 0);
+
+  const horasFaltadas = getPlanosFaltadosPorUC(alunoId, ucId, turmaId)
+    .reduce((s, p) => s + horasDoPlano(p), 0);
+
+  const presenca = horasPrevistas > 0
+    ? Math.max(0, Math.round((1 - horasFaltadas / horasPrevistas) * 100))
+    : 100;
+
+  const terminou = !!mod?.dataFim && mod.dataFim < hoje;
+
+  // Nota final da UC — a mesma do ecrã "Notas da UC" (notaFinalUC).
+  const nota20: number | null = notaFinalUC(alunoId, turmaId, ucId).final;
+
+  // 1. Faltas acima de 10% das horas do módulo.
+  if (horasPrevistas > 0 && horasFaltadas > horasPrevistas * 0.10) {
+    return { precisa: true, motivo: 'faltas', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+  }
+  // 2. Módulo terminado sem positiva. Sem nenhuma avaliação não se decide
+  //    por nota — seria pôr em recuperação quem ainda não foi avaliado.
+  if (terminou && nota20 !== null && nota20 < 10) {
+    return { precisa: true, motivo: 'negativa', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+  }
+  return { precisa: false, motivo: null, horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
 }
 
 // ── Recuperação de Módulos ──────────────────────────────────────
 // Script dedicado de Recuperações/Evidências — deploy concluído em 21/06/2026.
-export const SHEETS_RECUPERACAO_URL = 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
+export const SHEETS_RECUPERACAO_URL = SHEETS_ECL_URL || 'https://script.google.com/macros/s/AKfycbweU15FtVE5AIdl-kpV0PCmuNxYsd4pUIfdSLIAmVIal7z0Sb2oGimGgsjKHUHYxDML/exec';
 
 export function getRecuperacoes(): RecuperacaoModulo[] {
   return load<RecuperacaoModulo>(KEYS.recuperacoes);
@@ -2658,9 +3106,9 @@ export function calcularPontosRegularidade(alunoId: string): PontosRegularidade 
 //   · 1.0 valor   — Fardamento (farda completa)
 // Cada aluno começa no máximo (2.0) e desce por cada falha. Os valores de
 // desconto por falha (abaixo) são um ponto de partida — ajustar livremente.
-const DESCONTO_POR_ATRASO = 0.1;   // por cada atraso registado
-const DESCONTO_POR_FALTA = 0.25;   // por cada aula da UC em que o aluno faltou
-const DESCONTO_POR_FARDA_INCOMPLETA = 0.1; // por cada aula com farda incompleta
+export const DESCONTO_POR_ATRASO = 0.1;   // por cada atraso registado
+export const DESCONTO_POR_FALTA = 0.25;   // por cada aula da UC em que o aluno faltou
+export const DESCONTO_POR_FARDA_INCOMPLETA = 0.1; // por cada aula com farda incompleta
 
 export interface BonusAssiduidadeUC {
   pontualidade: number;    // 0 a 0.5
@@ -2671,17 +3119,28 @@ export interface BonusAssiduidadeUC {
 }
 
 export function calcularBonusAssiduidadeUC(alunoId: string, turmaId: string, ucId: string): BonusAssiduidadeUC {
+  // Só aulas que já aconteceram e que o professor abriu. Antes contava
+  // todos os planos publicados — os das semanas seguintes também — e o
+  // aluno perdia bónus por aulas que ainda não tinham acontecido, ou que o
+  // professor nunca abriu. O atraso conta a partir da abertura da aula; se
+  // o professor não abriu, não há atraso nem falta a imputar ao aluno.
+  const hoje = new Date().toISOString().slice(0, 10);
   const planosDaUC = getPlanosAulaPorTurma(turmaId)
-    .filter(p => p.ucId === ucId && p.estado !== 'rascunho');
+    .filter(p => p.ucId === ucId && p.estado !== 'rascunho' && aulaJaAconteceu(p, hoje));
   const presencas = getPresencas().filter(p => p.alunoId === alunoId);
 
   let faltas = 0, atrasos = 0, fardaIncompleta = 0;
 
   planosDaUC.forEach(p => {
-    const pres = presencas.find(x => x.planoAulaId === p.id);
+    const pres: any = presencas.find(x => x.planoAulaId === p.id);
+    const decisao = pres?.decisaoProfessor;
+    // A decisão do professor manda.
+    if (decisao === 'falta_presenca') { faltas++; return; }
+    if (!getSessaoAula(p.id)?.abertaEm && !decisao) return;
     if (!pres || pres.presente === false) { faltas++; return; }
-    if (pres.atrasado) atrasos++;
-    if (!pres.fardamentoOk) fardaIncompleta++;
+    if (decisao === 'falta_atraso' || (pres.atrasado && decisao !== 'sem_falta')) atrasos++;
+    // Aula atitudinal não tem farda — não desconta.
+    if (!pres.fardamentoOk && (p as any).tipoPlanAula !== 'atitudinal') fardaIncompleta++;
   });
 
   const pontualidade = Math.max(0, 0.5 - atrasos * DESCONTO_POR_ATRASO);
@@ -3273,7 +3732,7 @@ export function addOrUpdateMateriaPrimaCustom(m: Omit<MateriaPrimaCustom, 'id' |
   const idExistente = m.id || all.find(x => x.nome.toLowerCase() === m.nome.toLowerCase())?.id;
   const idx = idExistente ? all.findIndex(x => x.id === idExistente) : -1;
   const registo: MateriaPrimaCustom = {
-    id: idExistente || `mp_custom_${Date.now()}`,
+    id: idExistente || novoId('mp_custom'),
     nome: m.nome, categoria: m.categoria || 'Outros',
     unidadeCompra: m.unidadeCompra, precoKg: m.precoKg, precoUnitario: m.precoUnitario,
     aliases: m.aliases || [],
@@ -3319,7 +3778,7 @@ export function addOrUpdateTecnicaCustom(t: Omit<TecnicaCustom, 'id' | 'criadoEm
   const idExistente = t.id || all.find(x => x.nome.toLowerCase() === t.nome.toLowerCase())?.id;
   const idx = idExistente ? all.findIndex(x => x.id === idExistente) : -1;
   const registo: TecnicaCustom = {
-    id: idExistente || `tec_custom_${Date.now()}`,
+    id: idExistente || novoId('tec_custom'),
     nome: t.nome,
     palavrasChave: t.palavrasChave || [t.nome.toLowerCase()],
     tecnicaMaeId: t.tecnicaMaeId,
@@ -3395,7 +3854,7 @@ export async function publicarNoClassroom(
 const KEY_SESSOES = 'ecl_sessoes_aula';
 
 export function getSessoesAula(): SessaoAula[] {
-  return load<SessaoAula>(KEY_SESSOES as any);
+  return semPlanosEliminados(load<SessaoAula>(KEY_SESSOES as any));
 }
 
 export function getSessaoAula(planoAulaId: string): SessaoAula | undefined {
@@ -3570,19 +4029,47 @@ export function presencasPorDecidir(planoAulaId: string): RegistoPresenca[] {
 export function decidirFalta(
   alunoId: string, planoAulaId: string, decisao: DecisaoFalta, professor: string, nota?: string
 ): void {
-  const all = getPresencas().map(p => {
-    if (p.alunoId !== alunoId || p.planoAulaId !== planoAulaId) return p;
-    return {
-      ...p,
-      decisaoProfessor: decisao,
-      decididoPor: professor,
-      decididoEm: new Date().toISOString(),
-      observacao: nota ?? p.observacao,
-      // Falta de presença anula a presença; as outras mantêm-na.
-      presente: decisao !== 'falta_presenca',
-    } as RegistoPresenca;
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  let reg: any = all.find(p => p.alunoId === alunoId && p.planoAulaId === planoAulaId);
+
+  // Aluno que não entrou não tinha registo — e a decisão perdia-se. Agora
+  // cria-se o registo com a decisão do professor.
+  if (!reg) {
+    const aluno = getAlunos().find(a => a.id === alunoId);
+    const plano = getPlanosAula().find(p => p.id === planoAulaId);
+    reg = {
+      id: `presenca_${alunoId}_${planoAulaId}_${Date.now()}`,
+      alunoId, turmaId: aluno?.turmaId || plano?.turmaId || '', planoAulaId,
+      ucId: plano?.ucId || '', presente: false, atrasado: false, atrasadoMins: 0,
+      horaEntrada: '', fardamentoOk: false, observacao: '',
+      data: String(plano?.data || '').slice(0, 10),
+    };
+    all.push(reg);
+  }
+  Object.assign(reg, {
+    decisaoProfessor: decisao,
+    decididoPor: professor,
+    decididoEm: new Date().toISOString(),
+    observacao: nota ?? reg.observacao,
+    // Falta de presença anula a presença; "sem falta" conta como presente.
+    presente: decisao === 'falta_presenca' ? false
+      : decisao === 'sem_falta' ? true : reg.presente,
   });
   save(KEYS.presencas, all);
+
+  // Para o Sheets — a mesma linha do aluno nesta aula é atualizada, e os
+  // outros aparelhos do professor passam a ver a decisão.
+  const aluno = getAlunos().find(a => a.id === alunoId);
+  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+  enviar(SHEETS_HISTORICO_URL, 'presenca', {
+    alunoId, planoAulaId, turmaId: reg.turmaId,
+    nomeAluno: aluno?.nome || ('Aluno ' + (aluno?.numero || 0)), numero: aluno?.numero || 0,
+    planoTitulo: plano?.titulo || '', ucId: reg.ucId,
+    presente: reg.presente, atrasado: !!reg.atrasado, atrasadoMins: reg.atrasadoMins || 0,
+    horaEntrada: reg.horaEntrada || '', fardamentoOk: !!reg.fardamentoOk,
+    data: reg.data || '', decisaoProfessor: decisao, decididoPor: professor,
+    observacao: reg.observacao || '',
+  });
 }
 
 // ── Líder do KitchenFlow ──────────────────────────────────────
@@ -4457,4 +4944,588 @@ export function limparFichasDuplicadas(): { apagadas: number; mantidas: number }
   save(KEYS.fichas, ficam);
 
   return { apagadas: aApagar.size, mantidas: grupos.length };
+}
+
+// ============================================================
+// Autoavaliações à espera de validação
+// ============================================================
+// Uma autoavaliação não validada não conta para nada — nem para a nota,
+// nem para o banco de competências. Se o professor não der por ela, o
+// trabalho do aluno fica no ar.
+
+export interface PorValidar {
+  planoAulaId: string;
+  planoTitulo: string;
+  data: string;
+  quantos: number;
+  nomes: string[];
+}
+
+/** Autoavaliações submetidas sem validação, por plano. */
+export function autoavaliacoesPorValidar(turmaId: string): PorValidar[] {
+  const validados = new Set(getValidacoes().map((v: any) => v.selecaoId));
+  const planos = getPlanosAula();
+  const alunos = getAlunos();
+
+  const porPlano = new Map<string, { nomes: string[] }>();
+
+  getSelecoes()
+    .filter((s: any) => s.turmaId === turmaId && !validados.has(s.id))
+    .forEach((s: any) => {
+      const atual = porPlano.get(s.planoAulaId) || { nomes: [] };
+      const aluno = alunos.find(a => a.id === s.alunoId);
+      atual.nomes.push(aluno?.nome || `Aluno ${aluno?.numero ?? '?'}`);
+      porPlano.set(s.planoAulaId, atual);
+    });
+
+  const saida: PorValidar[] = [];
+  porPlano.forEach((v, planoAulaId) => {
+    const p = planos.find(x => x.id === planoAulaId);
+    saida.push({
+      planoAulaId,
+      planoTitulo: p?.titulo || 'Plano de aula',
+      data: p?.data || '',
+      quantos: v.nomes.length,
+      nomes: v.nomes,
+    });
+  });
+
+  // Os mais antigos primeiro: são os que arriscam ficar esquecidos.
+  return saida.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+}
+
+/** Quantas ao todo, para o aviso do painel. */
+export function totalPorValidar(turmaId: string): number {
+  return autoavaliacoesPorValidar(turmaId).reduce((s, p) => s + p.quantos, 0);
+}
+
+
+// ============================================================
+// 1º ACP → 1º BCR nos planos e requisições
+// ============================================================
+// A turma mudou de nome, mas os planos e requisições já criados
+// continuavam com '1º ACP'. O aluno do 1º BCR só vê planos com a turma
+// exatamente igual à dele — e via "não há plano de aula".
+//
+// `enviarAoSheets` só no aparelho do professor: é lá que está a versão
+// mais recente de cada plano, e o Sheets tem de ficar com a turma nova
+// para os tablets dos alunos o encontrarem.
+export function migrarTurmaAntiga(enviarAoSheets = false): number {
+  const DE = '1º ACP', PARA = '1º BCR';
+  let n = 0;
+
+  const planos = getPlanosAula();
+  const planosNovos = planos.map(p => {
+    if (p.turmaId !== DE) return p;
+    n++;
+    return { ...p, turmaId: PARA, atualizadoEm: new Date().toISOString() };
+  });
+  if (n > 0) {
+    save(KEYS.planos, planosNovos);
+    if (enviarAoSheets) {
+      planosNovos.filter(p => p.turmaId === PARA)
+        .forEach(p => enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }));
+    }
+  }
+
+  const reqs = getRequisicoes();
+  let nr = 0;
+  const reqsNovas = reqs.map(r => {
+    if (r.turmaId !== DE) return r;
+    nr++;
+    return { ...r, turmaId: PARA };
+  });
+  if (nr > 0) save(KEYS.requisicoes, reqsNovas);
+
+  return n + nr;
+}
+
+
+// ============================================================
+// Remover um aluno da turma (coordenação)
+// ============================================================
+// Desativa — não apaga. Apagar levaria também as notas, as presenças e
+// as autoavaliações, que continuam a fazer falta na pauta e no arquivo.
+// O aluno deixa de aparecer nas listas da turma e deixa de conseguir
+// entrar; a coordenação pode repô-lo.
+export function removerAlunoDaTurma(alunoId: string, por: string): void {
+  const todos = getAlunos();
+  const a = todos.find(x => x.id === alunoId);
+  if (!a) return;
+  a.ativo = false;
+  a.removidoEm = new Date().toISOString();
+  a.removidoPor = por;
+  save(KEYS.alunos, todos);
+  enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a });
+}
+
+export function reporAlunoNaTurma(alunoId: string): void {
+  const todos = getAlunos();
+  const a = todos.find(x => x.id === alunoId);
+  if (!a) return;
+  a.ativo = true;
+  delete a.removidoEm;
+  delete a.removidoPor;
+  save(KEYS.alunos, todos);
+  enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a });
+}
+
+
+// ============================================================
+// Transição de referencial — o +1 do professor
+// ============================================================
+// Nas turmas do referencial antigo (ACP), as atitudes do 1º e 2º ano vão
+// sendo consolidadas nas aulas deste ano. Quando o professor vê que o
+// aluno demonstrou uma delas, soma +1 ao nível dessa atitude.
+//
+// Fica num registo À PARTE, e não no histórico das avaliações: esse é o
+// histórico de onde saem as notas das UCs, a pauta e a recuperação. Um
+// +1 que desse nível 1 ou 2 puxaria a nota para baixo — a imagem de
+// incumprimento que a mudança de referencial não pode criar. Aqui conta
+// só para a consolidação da atitude.
+
+const KEY_TRANSICAO = 'ecl_atitudes_transicao';
+
+export interface RegistoTransicao {
+  id: string;
+  alunoId: string;
+  turmaId: string;
+  atitudeId: string;
+  /** Nível depois do +1, de 1 a 5. */
+  nivel: number;
+  data: string;
+  planoAulaId: string;
+  professor: string;
+}
+
+export function getRegistosTransicao(alunoId?: string): RegistoTransicao[] {
+  const todos = semPlanosEliminados(load<RegistoTransicao>(KEY_TRANSICAO));
+  return alunoId ? todos.filter(t => t.alunoId === alunoId) : todos;
+}
+
+/** Nível atual da atitude: o maior entre as avaliações normais e os +1. */
+export function nivelConsolidadoAtitude(alunoId: string, atitudeId: string): number {
+  const normais = getHistoricoAlunoMicro(alunoId, atitudeId).map(r => Number(r.nota) || 0);
+  const mais = getRegistosTransicao(alunoId)
+    .filter(t => t.atitudeId === atitudeId).map(t => t.nivel);
+  return Math.max(0, ...normais, ...mais);
+}
+
+/** +1 no nível da atitude, até ao máximo de 5. Devolve o nível novo. */
+export function somarUmAtitude(
+  alunoId: string, turmaId: string, atitudeId: string,
+  planoAulaId: string, professor: string
+): number {
+  const atual = nivelConsolidadoAtitude(alunoId, atitudeId);
+  if (atual >= 5) return 5;
+  const nivel = atual + 1;
+  const reg: RegistoTransicao = {
+    id: novoId('trans'), alunoId, turmaId, atitudeId, nivel,
+    data: new Date().toISOString(), planoAulaId, professor,
+  };
+  save(KEY_TRANSICAO, [...getRegistosTransicao(), reg]);
+
+  // Para o Sheets vai como avaliação marcada "transicao" — é assim que,
+  // ao voltar, a sincronização a separa das notas.
+  const aluno = getAlunos().find(a => a.id === alunoId);
+  enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
+    id: reg.id, alunoId, turmaId, turma: turmaId, planoAulaId,
+    nomeAluno: aluno?.nome || '', numero: aluno?.numero || 0, ano: aluno?.ano || 1,
+    ucId: 'TRANSICAO', microcompetencia: atitudeId, microcompetenciaId: atitudeId,
+    nota: nivel, nota_1_5: nivel, nota_0_20: nivel * 4,
+    data: reg.data, validadoPor: 'transicao',
+    observacoes: '+1 — atitude do referencial anterior',
+  });
+  return nivel;
+}
+
+
+// ============================================================
+// Nota final de uma UC — um só cálculo para toda a aplicação
+// ============================================================
+// Decisões da Rosa (set/2026), depois da simulação do creme de cenoura:
+//
+//   1. Só conta a validação do professor. Antes a nota da UC fazia a
+//      média de TODOS os registos — autoavaliação do aluno, validação do
+//      professor e farda à entrada. O aluno avalia-se sempre acima, e na
+//      simulação o aluno fraco (7,3 na aula) aparecia com 11,7 na UC.
+//   2. O bónus de assiduidade, pontualidade e farda (até +2) mantém-se
+//      como está.
+//   3. O bónus de eventos passa a ser aplicado, como no modelo: +0,75 por
+//      atividade em que o aluno participou, até 3; só com nota base de 10
+//      ou mais; sem nenhuma participação, a nota não passa de 17. Estava
+//      escrito (BONUS_PARTICIPACAO) mas não era chamado em lado nenhum.
+//
+// A ordem: base das competências → + assiduidade → eventos/teto.
+// O teto de 17 aplica-se no fim, senão a assiduidade passava-o por cima.
+// O mínimo de 10 para o bónus de eventos olha para a base das
+// competências — "não se leva a concurso quem tem negativa".
+
+/** Registos que contam para notas: validados pelo professor. */
+export function registosQueContam(r: RegistoAvaliacao): boolean {
+  return r.validadoPor === 'professor' || r.validadoPor === 'recuperacao';
+}
+
+function categoriaDe(id: string): 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI' {
+  return id?.startsWith('OBR_') ? 'OBR'
+    : (id?.startsWith('SUB-') || id?.startsWith('APP-')) ? 'SUB'
+    : id?.startsWith('KNW-') ? 'KNW' : id?.startsWith('INI-') ? 'INI' : 'ATI';
+}
+
+/** Tipo de aula mais comum entre os registos (prática/mista/teórica). */
+function tipoDominante(regs: RegistoAvaliacao[]): 'pratico' | 'misto' | 'teorico' | 'atitudinal' {
+  const planos = getPlanosAula();
+  const tipos = regs.map(r => (planos.find(p => p.id === r.planoAulaId) as any)?.tipoPlanAula || 'pratico');
+  if (tipos.filter(t => t === 'teorico').length > tipos.length / 2) return 'teorico';
+  if (tipos.filter(t => t === 'misto').length > tipos.length / 2) return 'misto';
+  return 'pratico';
+}
+
+/** Nota das competências (0–20) a partir de registos já filtrados. */
+export function notaBaseDeRegistos(regs: RegistoAvaliacao[]): number | null {
+  const validos = regs.filter(registosQueContam);
+  if (!validos.length) return null;
+  return calcularNotaPlano(
+    validos.map(r => ({ categoria: categoriaDe(r.microcompetenciaId), nota: r.nota })),
+    tipoDominante(validos)).nota20;
+}
+
+/** Atividades (eventos, concursos) em que o aluno participou mesmo. */
+export function participacoesDoAluno(alunoId: string): number {
+  return getAtividades().filter(a => (a.participantesIds || []).includes(alunoId)).length;
+}
+
+export interface NotaUC {
+  base: number | null;
+  bonusAssiduidade: number;
+  bonusParticipacao: number;
+  participacoes: number;
+  limitadaPorTeto: boolean;
+  final: number | null;
+}
+
+/** Aplica os dois bónus e o teto a uma nota base de UC. */
+export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: string, ucId: string): NotaUC {
+  const participacoes = participacoesDoAluno(alunoId);
+  if (base === null) {
+    return { base, bonusAssiduidade: 0, bonusParticipacao: 0, participacoes, limitadaPorTeto: false, final: null };
+  }
+  const B = BONUS_PARTICIPACAO;
+  const bonusAssiduidade = calcularBonusAssiduidadeUC(alunoId, turmaId, ucId)?.total || 0;
+  let nota = base + bonusAssiduidade;
+
+  const n = Math.min(participacoes, B.maxAtividades);
+  let bonusParticipacao = 0, limitadaPorTeto = false;
+  if (n === 0) {
+    if (nota > B.tetoSemParticipacao) { nota = B.tetoSemParticipacao; limitadaPorTeto = true; }
+  } else if (base >= B.notaBaseMinima) {
+    bonusParticipacao = n * B.porAtividade;
+    nota += bonusParticipacao;
+  }
+  const final = Math.min(20, Math.round(nota * 10) / 10);
+  return { base, bonusAssiduidade, bonusParticipacao, participacoes, limitadaPorTeto, final };
+}
+
+/** A nota final de um aluno numa UC. */
+export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
+  const regs = getHistoricoAvaliacoes().filter(r =>
+    r.alunoId === alunoId && r.turmaId === turmaId && r.ucId === ucId);
+  return aplicarBonusesUC(notaBaseDeRegistos(regs), alunoId, turmaId, ucId);
+}
+
+// ============================================================
+// Planos repetidos
+// ============================================================
+// Cliques repetidos em "Criar plano" deixaram planos iguais: mesma turma,
+// dia, horas, unidade e título, com identificadores diferentes.
+
+export function assinaturaPlano(p: any): string {
+  const h = (x?: string) => String(x || '').slice(0, 5);
+  return [p.turmaId, String(p.data || '').slice(0, 10), h(p.horaInicio), h(p.horaFim),
+    p.ucId || '', String(p.titulo || '').trim()].join('|');
+}
+
+/** Grupos de planos iguais numa turma (só os não arquivados). */
+export function planosRepetidos(turmaId: string): PlanoAula[][] {
+  const grupos = new Map<string, PlanoAula[]>();
+  getPlanosAulaPorTurma(turmaId).forEach(p => {
+    const k = assinaturaPlano(p);
+    grupos.set(k, [...(grupos.get(k) || []), p]);
+  });
+  return [...grupos.values()].filter(g => g.length > 1);
+}
+
+/** Quanto trabalho tem uma cópia — a que tiver mais é a que fica. */
+function pesoDoPlano(p: PlanoAula): number {
+  let n = 0;
+  if (getSessaoAula(p.id)?.abertaEm) n += 1000;
+  n += getPresencas().filter(r => r.planoAulaId === p.id).length * 50;
+  n += getSelecoes().filter((s: any) => s.planoAulaId === p.id).length * 50;
+  if (getRequisicoes().some(r => r.planoAulaId === p.id)) n += 100;
+  if (p.estado === 'publicado') n += 20;
+  n += (p.fichasIds || []).length * 10;
+  return n;
+}
+
+/**
+ * Junta as cópias. Fica a que tem mais trabalho feito — aula aberta,
+ * presenças, autoavaliações, requisição —, recebe as fichas das outras, e
+ * as outras são arquivadas, não apagadas.
+ */
+export function juntarPlanosRepetidos(turmaId: string): { arquivados: number } {
+  let arquivados = 0;
+  for (const grupo of planosRepetidos(turmaId)) {
+    const ordenado = [...grupo].sort((a, b) => pesoDoPlano(b) - pesoDoPlano(a));
+    const fica = ordenado[0];
+    const fichas = [...new Set(grupo.flatMap(p => p.fichasIds || []))];
+    addOrUpdatePlanoAula({ ...fica, fichasIds: fichas, atualizadoEm: new Date().toISOString() } as any);
+    for (const copia of ordenado.slice(1)) {
+      addOrUpdatePlanoAula({ ...copia, estado: 'arquivado', atualizadoEm: new Date().toISOString() } as any);
+      arquivados++;
+    }
+  }
+  return { arquivados };
+}
+
+// ============================================================
+// Eliminar alunos de vez (coordenação)
+// ============================================================
+// "Remover" desativa e guarda as notas. "Eliminar" é para quem nunca
+// devia ter estado na turma — alunos de teste, criados por engano. Fica
+// numa lista, para a lista oficial e o Sheets não o trazerem de volta.
+
+const KEY_ALUNOS_ELIMINADOS = 'ecl_alunos_eliminados';
+
+export function alunosEliminados(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(KEY_ALUNOS_ELIMINADOS) || '[]')); }
+  catch { return new Set(); }
+}
+
+export function eliminarAlunoDefinitivo(alunoId: string): void {
+  const todos = load<Aluno>(KEYS.alunos);
+  const a = todos.find(x => x.id === alunoId);
+  const fora = alunosEliminados();
+  fora.add(alunoId);
+  try { localStorage.setItem(KEY_ALUNOS_ELIMINADOS, JSON.stringify([...fora])); } catch { /* */ }
+  save(KEYS.alunos, todos.filter(x => x.id !== alunoId));
+  // Noutros aparelhos fica, pelo menos, desativado.
+  if (a) enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: { ...a, ativo: false, eliminado: true } });
+}
+
+/** Alunos numa turma que já não existe (turmas de teste, nomes antigos). */
+export function alunosForaDasTurmas(): Aluno[] {
+  const validas = new Set(getTurmas().map(t => t.id));
+  return getAlunos().filter(a => !validas.has(a.turmaId));
+}
+
+// ============================================================
+// Nota prevista pela autoavaliação
+// ============================================================
+// Quando o aluno se autoavalia, vê já a nota que a proposta dele dá, com
+// uma margem — o professor ainda confirma, e pode subir ou descer. A
+// margem vem do exemplo da Rosa: o aluno propõe 14, o professor dá 12.
+
+export const MARGEM_AJUSTE_PROFESSOR = 2;   // valores, para cima e para baixo
+
+export interface NotaPrevista { nota: number; min: number; max: number; }
+
+export function previsaoNota(
+  autos: { competenciaId: string; nota: number }[],
+  tipo: 'pratico' | 'misto' | 'teorico' | 'atitudinal' = 'pratico'
+): NotaPrevista | null {
+  const validas = autos.filter(a => a.nota > 0);
+  if (!validas.length) return null;
+  const nota = calcularNotaPlano(
+    validas.map(a => ({ categoria: categoriaDe(a.competenciaId), nota: a.nota })), tipo).nota20;
+  return {
+    nota,
+    min: Math.max(0, Math.round((nota - MARGEM_AJUSTE_PROFESSOR) * 10) / 10),
+    max: Math.min(20, Math.round((nota + MARGEM_AJUSTE_PROFESSOR) * 10) / 10),
+  };
+}
+
+
+/** Aula atitudinal — dinâmicas de grupo e atitudes, sem farda nem KitchenFlow. */
+export function ehAulaAtitudinal(p: any): boolean {
+  return p?.tipoPlanAula === 'atitudinal';
+}
+
+
+// ============================================================
+// Eliminar e corrigir planos com avaliações
+// ============================================================
+// Eliminar um plano apagava só o plano. As autoavaliações, validações,
+// notas e presenças dessa aula ficavam soltas — e continuavam a contar
+// para a nota da UC. A aplicação não fazia o que dizia.
+//
+// Agora, tudo o que pertence a um plano eliminado deixa de ser lido, em
+// toda a aplicação. Mesmo que o Sheets o mande de volta numa
+// sincronização, não volta a contar.
+
+function planosEliminados(): Set<string> {
+  return new Set(load<string>(KEYS.eliminadosPlanos));
+}
+
+/** Tira tudo o que pertence a planos eliminados. */
+function semPlanosEliminados<T>(lista: T[]): T[] {
+  const fora = planosEliminados();
+  if (!fora.size) return lista;
+  return lista.filter((x: any) => !x || !fora.has(x.planoAulaId || x.comandaId || ''));
+}
+
+export interface ResumoPlano {
+  autoavaliacoes: number;
+  validacoes: number;
+  notas: number;
+  presencas: number;
+  aulaAberta: boolean;
+  requisicoes: number;
+  /** Há alguma coisa que se perde se o plano for eliminado? */
+  temAvaliacoes: boolean;
+}
+
+/** O que uma aula já tem — para o professor saber o que vai perder. */
+export function resumoDoPlano(planoId: string): ResumoPlano {
+  const autoavaliacoes = getSelecoes().filter((s: any) => s.planoAulaId === planoId).length;
+  const validacoes = getValidacoes().filter((v: any) => v.planoAulaId === planoId).length;
+  const notas = getHistoricoAvaliacoes().filter(r => r.planoAulaId === planoId).length;
+  const presencas = getPresencas().filter(p => p.planoAulaId === planoId).length;
+  const aulaAberta = !!getSessaoAula(planoId)?.abertaEm;
+  const requisicoes = getRequisicoes().filter(r => r.planoAulaId === planoId).length;
+  return {
+    autoavaliacoes, validacoes, notas, presencas, aulaAberta, requisicoes,
+    temAvaliacoes: autoavaliacoes + validacoes + notas + presencas > 0 || aulaAberta,
+  };
+}
+
+/**
+ * Anula a aula: o plano e tudo o que os alunos fizeram nela desaparecem.
+ * A requisição não se apaga — pode já ter ido para o economato; fica
+ * solta, fora de plano.
+ */
+export function anularPlanoAula(planoId: string): void {
+  getRequisicoes().filter(r => r.planoAulaId === planoId).forEach(r =>
+    addOrUpdateRequisicao({ ...r, planoAulaId: '' } as any));
+  eliminarPlanoAulaDefinitivamente(planoId);
+  // Limpar já do aparelho — as leituras já os escondem, isto só arruma.
+  save(KEY_HIST, load<RegistoAvaliacao>(KEY_HIST).filter(r => r.planoAulaId !== planoId));
+  save(KEYS.selecoes, load<any>(KEYS.selecoes).filter(s => s.planoAulaId !== planoId));
+  save(KEYS.validacoes, load<any>(KEYS.validacoes).filter(v => v.planoAulaId !== planoId));
+  save(KEYS.presencas, load<any>(KEYS.presencas).filter(p => p.planoAulaId !== planoId));
+  save(KEY_SESSOES as any, load<any>(KEY_SESSOES as any).filter(s => s.planoAulaId !== planoId));
+  save(KEY_TRANSICAO, load<any>(KEY_TRANSICAO).filter(t => t.planoAulaId !== planoId));
+}
+
+/**
+ * Corrige um plano já criado — data, horas, tipo, unidade, título. As
+ * avaliações ficam; se a unidade mudar, passam a contar para a nova.
+ */
+export function atualizarPlano(planoId: string, alteracoes: Partial<PlanoAula>): PlanoAula | null {
+  const p = getPlanosAula().find(x => x.id === planoId);
+  if (!p) return null;
+  const novo = { ...p, ...alteracoes, atualizadoEm: new Date().toISOString() } as PlanoAula;
+  addOrUpdatePlanoAula(novo);
+  if (alteracoes.ucId && alteracoes.ucId !== p.ucId) {
+    const uc = alteracoes.ucId;
+    save(KEY_HIST, load<RegistoAvaliacao>(KEY_HIST).map(r => r.planoAulaId === planoId ? { ...r, ucId: uc } : r));
+    save(KEYS.presencas, load<any>(KEYS.presencas).map(r => r.planoAulaId === planoId ? { ...r, ucId: uc } : r));
+  }
+  return novo;
+}
+
+// ============================================================
+// Requisição desatualizada
+// ============================================================
+// O professor faz a requisição e depois acrescenta ou tira fichas ao
+// plano. A requisição ficava com os ingredientes antigos, sem aviso — e
+// ao economato chegava um pedido que já não correspondia à aula.
+
+export interface DiferencaRequisicao { faltam: string[]; sobram: string[]; }
+
+/** Fichas do plano que a requisição não tem, e as que tem a mais. Null se está em dia. */
+export function requisicaoDesatualizada(planoId: string): DiferencaRequisicao | null {
+  const plano = getPlanosAula().find(p => p.id === planoId);
+  const req = getRequisicoes().find(r => r.planoAulaId === planoId);
+  if (!plano || !req) return null;
+  const doPlano = new Set(plano.fichasIds || []);
+  const naReq = new Set(req.fichasIds || []);
+  const faltam = [...doPlano].filter(id => !naReq.has(id));
+  const sobram = [...naReq].filter(id => !doPlano.has(id));
+  return faltam.length || sobram.length ? { faltam, sobram } : null;
+}
+
+
+// ============================================================
+// Datas e estado da ligação
+// ============================================================
+
+/** 'YYYY-MM-DD' no dia local, venha a data como vier do Sheets. */
+export function dataSoDia(v: any): string {
+  if (!v) return '';
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s.slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+const KEY_LEITURA_PLANOS = 'ecl_leitura_planos';
+
+function marcarLeituraPlanos(ok: boolean): void {
+  try { localStorage.setItem(KEY_LEITURA_PLANOS, JSON.stringify({ ok, quando: new Date().toISOString() })); }
+  catch { /* */ }
+}
+
+/** A última tentativa de ir buscar as aulas correu bem? */
+export function leituraDePlanosFalhou(): boolean {
+  try {
+    const r = JSON.parse(localStorage.getItem(KEY_LEITURA_PLANOS) || 'null');
+    return !!r && r.ok === false;
+  } catch { return false; }
+}
+
+// ============================================================
+// Publicar para os alunos — com confirmação
+// ============================================================
+// O envio para o Apps Script não devolve resposta (limitação do Google).
+// A aplicação dizia "publicado" sem saber se a aula tinha chegado ao
+// Sheets — e o aluno, que só lê de lá, ficava sem aula nenhuma.
+//
+// Agora publica-se assim: marcar, enviar, e ir ler ao Sheets se a aula
+// lá está mesmo. Só então se diz ao professor que os alunos já a veem.
+
+export interface ResultadoPublicacao {
+  ok: boolean;
+  erro?: string;
+}
+
+export async function publicarPlanoParaAlunos(planoId: string): Promise<ResultadoPublicacao> {
+  const plano = getPlanosAula().find(p => p.id === planoId);
+  if (!plano) return { ok: false, erro: 'Plano não encontrado.' };
+
+  const publicado = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
+  addOrUpdatePlanoAula(publicado);          // grava e envia
+
+  // Duas tentativas: o Sheets demora um instante a gravar.
+  for (let i = 0; i < 2; i++) {
+    await new Promise(res => setTimeout(res, i === 0 ? 1800 : 3000));
+    try {
+      const json: any = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId: plano.turmaId });
+      if (!json?.ok) {
+        if (i === 1) return { ok: false, erro: 'Não consegui ligar-me ao Sheets dos planos. A aula ficou publicada aqui, mas os alunos não a veem enquanto não chegar lá.' };
+        continue;
+      }
+      const la: any = (json.dados || []).find((p: any) => p.id === planoId);
+      if (la && String(la.estado) === 'publicado') return { ok: true };
+      if (i === 1) {
+        return { ok: false, erro: la
+          ? 'A aula está no Sheets, mas não como publicada. Tenta publicar outra vez.'
+          : 'A aula não chegou ao Sheets. Os alunos não a veem. Tenta outra vez; se continuar, é o Apps Script dos planos que não está a receber.' };
+      }
+      addOrUpdatePlanoAula(publicado);       // segunda tentativa de envio
+    } catch {
+      if (i === 1) return { ok: false, erro: 'Não consegui confirmar a publicação.' };
+    }
+  }
+  return { ok: false, erro: 'Não consegui confirmar a publicação.' };
 }
