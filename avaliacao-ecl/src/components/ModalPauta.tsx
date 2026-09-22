@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   getPlanosAulaPorTurma, getAlunos, getHistoricoAvaliacoes,
-  gerarPautaFCTViaScript,
+  gerarPautaFCTViaScript, registosQueContam,
 } from '../backend';
 import { fmtDataCurta } from '../datas';
 import { PlanoAula } from '../types';
@@ -40,14 +40,19 @@ function notaParaEscala20(nota1a5: number): number {
 function calcularNotaPropostaAluno(alunoId: string, planosIds: string[]): {
   cm: number; cp: number; cl: number; co: number; cr: number; notaFinal: number;
 } {
+  // Só a validação do professor — a autoavaliação do aluno não é nota.
   const hist = getHistoricoAvaliacoes().filter(
-    r => r.alunoId === alunoId && planosIds.includes(r.planoAulaId || '')
+    r => r.alunoId === alunoId && planosIds.includes(r.planoAulaId || '') && registosQueContam(r)
   );
+  // As atitudes são 'ATI-' desde a biblioteca nova; 'ATT_' era o prefixo
+  // antigo. Só com 'ATT_', as atitudes caíam nas técnicas (CP) e a CM
+  // ficava sempre no valor por omissão.
+  const ehAtitude = (id?: string) => !!id && (id.startsWith('ATI-') || id.startsWith('ATT_'));
   // CP — média das notas de avaliação de competências técnicas
-  const notasCP = hist.filter(r => r.microcompetenciaId && !r.microcompetenciaId.startsWith('ATT_'))
+  const notasCP = hist.filter(r => r.microcompetenciaId && !ehAtitude(r.microcompetenciaId))
     .map(r => r.nota);
   // CM — média das notas de atitudes
-  const notasCM = hist.filter(r => r.microcompetenciaId?.startsWith('ATT_'))
+  const notasCM = hist.filter(r => ehAtitude(r.microcompetenciaId))
     .map(r => r.nota);
 
   const cp = notaParaEscala20(mediaNotas(notasCP) || 3);
@@ -77,7 +82,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
   const todosPlanos = useMemo(() =>
     getPlanosAulaPorTurma(turmaId).filter(p => p.estado !== 'arquivado'),
     [turmaId]);
-  const alunos = useMemo(() => getAlunos().filter(a => a.turmaId === turmaId), [turmaId]);
+  const alunos = useMemo(() => getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false), [turmaId]);
 
   // UCs disponíveis nos planos
   const ucsDosPlanos = useMemo(() => {
