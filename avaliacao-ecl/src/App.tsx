@@ -500,7 +500,15 @@ function AppInterno() {
           {vistaGlobal === 'planos' && (
             <PlanoAula key={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
               onAlteracao={registarAlteracao}
-              onGuardado={(p?: TPlanoAula) => { limparAlteracoes(); if (p) abrirPlano(p); }}
+              onGuardado={(p?: TPlanoAula) => {
+                limparAlteracoes();
+                // O plano acabou de ser gravado — abre logo, sem o aviso de
+                // "perdes o que estás a preencher". Esse aviso aparecia porque
+                // a limpeza ainda não tinha sido aplicada; o professor achava
+                // que o plano não fora criado e carregava outra vez, e cada
+                // clique criava um plano novo, igual ao anterior.
+                if (p) { setPlanoAberto(p); setPlanoEmPausa(null); }
+              }}
               planoIdInicial={planoIdAlvo || undefined}
               onPlanoIdInicialUsado={() => setPlanoIdAlvo(null)} />
           )}
