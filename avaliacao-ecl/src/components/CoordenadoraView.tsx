@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, enviarTudoParaOSheets, oQueHaParaEnviar } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -537,6 +537,7 @@ function GestaoAlunosTab() {
     [turmaSel, refresh]
   );
 
+  const [aEnviarTudo, setAEnviarTudo] = useState<string | null>(null);
   const ativos = alunos.filter(a => a.ativo !== false);
   const removidos = alunos.filter(a => a.ativo === false);
 
@@ -602,6 +603,39 @@ function GestaoAlunosTab() {
         </button>
         <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)' }}>{ativos.length} alunos</span>
       </div>
+
+      {/* Encher o Sheets com o que está no aparelho. As fichas, os planos e
+          as avaliações completas estão aqui; para o Sheets só sobem quando
+          se mexe em cada uma. */}
+      {(() => {
+        const contas = oQueHaParaEnviar(turmaSel);
+        const total = Object.values(contas).reduce((a, b) => a + b, 0);
+        return (
+          <div style={{ background: '#f7f5f2', borderRadius: 12, padding: '13px 15px',
+            marginBottom: 14, fontSize: 13.5 }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Enviar tudo para o Google Sheets</div>
+            <div style={{ color: 'rgba(26,23,20,0.6)', lineHeight: 1.55, marginBottom: 10 }}>
+              {Object.entries(contas).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(' · ') || 'Nada para enviar.'}
+            </div>
+            <button
+              disabled={aEnviarTudo !== null || total === 0}
+              onClick={async () => {
+                if (!confirm(`Enviar ${total} registos de ${turmaSel} para o Sheets?\n\nNão apaga nada. O que já lá estiver é atualizado.`)) return;
+                setAEnviarTudo('a começar…');
+                const r = await enviarTudoParaOSheets(turmaSel, p =>
+                  setAEnviarTudo(`${p.feito} de ${p.total} — ${p.oQue}`));
+                setAEnviarTudo(null);
+                alert(`${r.enviados} registos enviados.\n\nConfirma no ficheiro de dados que as folhas ficaram preenchidas.`);
+              }}
+              style={{ padding: '10px 16px', borderRadius: 9, border: 'none',
+                background: total === 0 ? 'rgba(26,23,20,0.15)' : 'var(--copper)',
+                color: '#fff', fontSize: 14, fontWeight: 700,
+                cursor: aEnviarTudo || total === 0 ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+              {aEnviarTudo || 'Enviar tudo'}
+            </button>
+          </div>
+        );
+      })()}
 
       {ativos.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 32, color: 'rgba(26,23,20,0.4)' }}>
