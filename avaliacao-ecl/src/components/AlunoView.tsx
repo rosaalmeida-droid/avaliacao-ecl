@@ -15,6 +15,7 @@ function ucAncora(ucId?: string, ucNome?: string): string {
   return (NUM_UC_AL[ucId] ? NUM_UC_AL[ucId] + ' · ' : '') + ucId + (ucNome ? ' — ' + ucNome : '');
 }
 import { Aluno, PlanoAula, FichaProducao, INICIATIVA_FRASES, calcularNotaPlano, PESOS_AULA } from '../types';
+import { atitudesAnteriores, idsAtitudesAnteriores, atitudesQueFaltam, ehTurmaTransicao } from '../transicaoReferencial';
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
   getDistribuicoesPorPlano, getChecklistAlunoFicha, addOrUpdateChecklistAluno,
@@ -26,7 +27,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-} from '../backend';
+  situacaoRecuperacaoUC, previsaoNota } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -578,8 +579,15 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
     });
   })();
 
+  // Nas turmas ACP (transição de referencial), as atitudes dos anos
+  // anteriores saem desta lista: apareciam como "por avaliar" e o aluno
+  // achava que tinha falhado. Vão para um grupo próprio, como trabalho a
+  // apanhar.
+  const anterioresIds = idsAtitudesAnteriores(aluno);
+  const atitudesAnterioresDoAluno = atitudesAnteriores(aluno);
   const atitudesDaUC = ATITUDES
     .filter(at => opcoesDeEscolhaDoAluno(aluno.ano ?? 1).includes(at.id))
+    .filter(at => !anterioresIds.has(at.id))
     .map(at => ({ id: at.id, nome: at.nome, nivel: nivelDe(at.id) }));
 
   // Aulas marcadas a partir de hoje — o aluno tem de as ver sem
@@ -621,9 +629,13 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
     ? Math.round((notasValidas.reduce((s, n) => s + n, 0) / notasValidas.length) * 10) / 10
     : null;
 
-  // Módulos com nota negativa = por recuperar
-  const recuperacoesPendentes = validacoesAluno
-    .filter(v => v.validada && v.nota20 != null && v.nota20 < 10).length;
+  // Módulos a recuperar — só pelos dois critérios: faltas acima de 10%
+  // das horas do módulo, ou módulo terminado sem positiva. Antes contava
+  // cada AULA validada abaixo de 10: uma aula fraca a meio do módulo
+  // punha o aluno "em recuperação".
+  const ucsDoAluno = [...new Set(planos.map(p => p.ucId).filter(Boolean) as string[])];
+  const recuperacoesPendentes = ucsDoAluno
+    .filter(ucId => situacaoRecuperacaoUC(aluno.id, aluno.turmaId, ucId).precisa).length;
 
   // Avisos calculados a partir do estado real — presenças, registos,
   // prazos e inscrições. Nunca texto guardado à mão.
@@ -670,7 +682,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
       av.push({
         id: 'recuperacoes',
         titulo: 'Tens módulos por recuperar',
-        detalhe: `${recuperacoesPendentes} módulo${recuperacoesPendentes > 1 ? 's' : ''} abaixo de 10.`,
+        detalhe: `${recuperacoesPendentes} módulo${recuperacoesPendentes > 1 ? 's' : ''} — por faltas ou por ter terminado sem positiva.`,
         destino: 'recuperacoes',
         urgente: true,
       });
@@ -884,6 +896,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 substantivo={blocoAvaliar === 'conhecimentos' ? 'conhecimento'
                            : blocoAvaliar === 'atitudes' ? 'atitude' : 'competência'}
                 competencias={listaDoBloco}
+                anteriores={blocoAvaliar === 'atitudes' ? atitudesAnterioresDoAluno : undefined}
                 onAvaliar={() => { if (planoHoje) { setDestino(null); setPlanoAtivo(planoHoje); } }}
               />
             )}
@@ -1045,7 +1058,8 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 bloco={blocoAvaliar} onMudarBloco={setBlocoAvaliar}
                 substantivo={blocoAvaliar === 'conhecimentos' ? 'conhecimento'
                            : blocoAvaliar === 'atitudes' ? 'atitude' : 'competência'}
-                competencias={listaDoBloco} />
+                competencias={listaDoBloco}
+                anteriores={blocoAvaliar === 'atitudes' ? atitudesAnterioresDoAluno : undefined} />
             )}
             {destino === 'nota' && (
               <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
@@ -1175,7 +1189,12 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   // Sequência da especificação: entrada, farda, KF inicial, produção,
   // KF final, autoavaliação. O KitchenFlow deixou de ser um atalho geral
   // — são dois pontos de controlo dentro do fluxo da aula.
-  const PASSOS = [
+  // Aula atitudinal: sem farda, KitchenFlow, produção nem requisição.
+  const PASSOS = (plano as any).tipoPlanAula === 'atitudinal' ? [
+    { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
+    { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
+    { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
+  ] : [
     { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
     { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
     { id:'kf_inicial', label:'Registos iniciais',          agora:'Antes de produzir',cor:V },
@@ -1316,7 +1335,8 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             )}
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
-                onConcluido={() => { setEntradaConcluida(true); _save('entrada'); setSecAberta('kf_inicial'); }} />
+                onConcluido={() => { setEntradaConcluida(true); _save('entrada');
+                  setSecAberta((plano as any).tipoPlanAula === 'atitudinal' ? 'avaliacao' : 'kf_inicial'); }} />
             )}
             {secAberta==='kf_inicial' && (
               <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="inicial"
@@ -1675,7 +1695,12 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
 
   function entrar() {
     const r = marcarPresenca(aluno.id, plano.id, aluno.turmaId, plano.ucId);
-    if (r) setEntrada(r);
+    if (r) {
+      setEntrada(r);
+      // Aula atitudinal: conta a presença e a hora de entrada, mas não há
+      // farda nem registos do KitchenFlow.
+      if ((plano as any).tipoPlanAula === 'atitudinal') onConcluido();
+    }
   }
 
   async function gravarFarda() {
@@ -2577,6 +2602,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const MAX_ATITUDES_MOSTRADAS = 3;
   // Posição da frase escolhida (0-3). A nota sai daqui, não de um valor fixo.
   const [nivelAtitudeFrase, setNivelAtitudeFrase] = useState<number|null>(null);
+  // Turmas ACP: a segunda atitude, só entre as dos anos anteriores que faltam.
+  const [atitudeApanhar, setAtitudeApanhar] = useState<string|null>(null);
+  const [nivelApanharFrase, setNivelApanharFrase] = useState<number|null>(null);
+  const [verTodasApanhar, setVerTodasApanhar] = useState(false);
   const [nivelIniciativa, setNivelIniciativa] = useState<number>(0); // 0 = não avaliado
   const [modalConfirmar, setModalConfirmar] = useState(false);
   const [submetido, setSubmetido] = useState(() => {
@@ -2592,7 +2621,36 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   ];
 
   // Só o HACCP: a higiene pessoal vem da entrada na aula.
-  const prontoParaSubmeter = nivelHaccp !== null;
+  // Aula atitudinal: o aluno avalia-se nas atitudes que o professor marcou.
+  const ehAtitudinal = tipoPlanAula === 'atitudinal';
+  const atitudesDaAula: string[] = ehAtitudinal
+    ? ((plano as any).compAdicionadas || []).filter((id: string) => id.startsWith('ATI-')) : [];
+  const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
+  const prontoParaSubmeter = ehAtitudinal
+    ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null)
+    : nivelHaccp !== null;
+
+  // Nota prevista, com o que o aluno já preencheu. As mesmas conversões do
+  // submeterDefinitivo, e a mesma regra do KitchenFlow para o HACCP.
+  const previsao = (() => {
+    const n = (v: string | null): number =>
+      v==='mbr'||v==='autonomia'||v==='superei' ? 5
+      : v==='fs'||v==='sozinho'||v==='atingi' ? 4
+      : v==='ca'||v==='ajuda'||v==='desenvolvimento' ? 3
+      : v==='tp' ? 2 : v==='nf'||v==='nao'||v==='nao_atingi' ? 1 : 0;
+    const autos: { competenciaId: string; nota: number }[] = [];
+    if (nivelHaccp) autos.push({ competenciaId: 'OBR_02', nota: temEvidenciaKF('OBR_02') ? n(nivelHaccp) : 1 });
+    Object.entries(notasMicro).forEach(([id, v]) => { if (v) autos.push({ competenciaId: id, nota: n(v as string) }); });
+    if (atitudeEscolhida) autos.push({ competenciaId: atitudeEscolhida,
+      nota: nivelAtitudeFrase != null ? Math.round(NOTAS_FRASES[nivelAtitudeFrase] / 4) : 3 });
+    if (atitudeApanhar) autos.push({ competenciaId: atitudeApanhar,
+      nota: nivelApanharFrase != null ? Math.round(NOTAS_FRASES[nivelApanharFrase] / 4) : 3 });
+    if (tipoPlanAula === 'teorico' && nivelIniciativa > 0) autos.push({ competenciaId: 'INI-001', nota: nivelIniciativa });
+    atitudesDaAula.forEach(id => { if (frasesAula[id] != null)
+      autos.push({ competenciaId: id, nota: Math.round(NOTAS_FRASES[frasesAula[id]] / 4) }); });
+    return previsaoNota(autos, tipoPlanAula as any);
+  })();
+  const fmtN = (x: number) => (Math.round(x * 10) / 10).toString().replace('.', ',');
 
   function submeterDefinitivo() {
     const agora = new Date().toISOString();
@@ -2630,15 +2688,33 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       ? Math.round(NOTAS_FRASES[nivelAtitudeFrase] / 4)
       : 3;
     if (atitudeEscolhida) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeEscolhida}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeEscolhida,nota:notaDaAtitude,data:agora,validadoPor:'aluno'});
+    // Aula atitudinal: uma autoavaliação por atitude marcada pelo professor.
+    atitudesDaAula.forEach(id => {
+      if (frasesAula[id] == null) return;
+      addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${id}_${Date.now()}_aula`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:id,nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4),data:agora,validadoPor:'aluno'});
+    });
+    // Turmas ACP: a segunda atitude, do ano anterior.
+    const notaApanhar = nivelApanharFrase != null
+      ? Math.round(NOTAS_FRASES[nivelApanharFrase] / 4)
+      : 3;
+    if (atitudeApanhar) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeApanhar}_${Date.now()}_ap`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeApanhar,nota:notaApanhar,data:agora,validadoPor:'aluno'});
     // Guardar SelecaoAluno com autoavaliacoes preenchidas para o professor validar
     const todasAutoavaliacoes = [
       // OBR_01 fica de fora: vem da verificação da farda à entrada.
-      ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,nota:paraNota(nivelHaccp)}]:[]),
+      // HACCP: sem registo no KitchenFlow, a proposta chega ao professor
+      // com 1 — ele decide. Antes o 1 só ia para o histórico, que já não
+      // conta para nota nenhuma; a regra perdia-se.
+      ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,
+        nota: temEvidenciaKF('OBR_02') ? paraNota(nivelHaccp) : 1,
+        semRegistoKF: !temEvidenciaKF('OBR_02')}]:[]),
       ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
       ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude}]:[]),
+      ...(atitudeApanhar?[{competenciaId:atitudeApanhar,nivel:'sozinho',nota:notaApanhar}]:[]),
+      ...atitudesDaAula.filter(id => frasesAula[id] != null)
+        .map(id => ({competenciaId:id,nivel:'sozinho',nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4)})),
       ...(tipoPlanAula==='teorico'&&nivelIniciativa>0?[{competenciaId:'INI-001',nivel:`ini_${nivelIniciativa}`,nota:nivelIniciativa}]:[]),
     ];
-    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:atitudeEscolhida?[atitudeEscolhida]:[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,criadaEm:agora});
+    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => frasesAula[id] != null)].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,criadaEm:agora});
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
     setSubmetido(true); setModalConfirmar(false); onConcluido();
   }
@@ -2776,6 +2852,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           ) : (
             <div style={{ padding:'12px 14px', borderRadius:10, background:'rgba(26,23,20,0.04)', border:`1px solid ${T.border}`, textAlign:'center' }}>
               <div style={{ fontSize:13, color:'rgba(26,23,20,0.4)' }}>Aguarda a confirmação do professor.</div>
+              {(() => {
+                const sel = getSelecoes().find((s: any) => s.planoAulaId === plano.id && s.alunoId === aluno.id);
+                const p = sel ? previsaoNota(((sel as any).autoavaliacoes || [])
+                  .map((x: any) => ({ competenciaId: x.competenciaId, nota: Number(x.nota) || 0 })),
+                  ((plano as any).tipoPlanAula || 'pratico')) : null;
+                if (!p) return null;
+                return (
+                  <div style={{ fontSize:14, color:'#7d4f8c', fontWeight:700, marginTop:6 }}>
+                    A tua proposta dá {fmtN(p.nota)} — deve ficar entre {fmtN(p.min)} e {fmtN(p.max)}.
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}
@@ -2811,7 +2899,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
 
   return (
     <div>
-      {/* ── Aviso de recuperação ── */}
+      {/* ── Atitudes a melhorar ── */}
       {(() => {
         const idsAtitudes = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('ATI-'));
         const atitudesEmRecup = idsAtitudes.filter((id: string) => {
@@ -2822,9 +2910,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         if (!atitudesEmRecup.length) return null;
         return (
           <div style={{ margin:'0 0 16px', padding:'12px 14px', borderRadius:10,
-            background:'rgba(192,57,43,0.06)', border:'2px solid rgba(192,57,43,0.3)' }}>
-            <div style={{ fontSize:13, fontWeight:700, color:'#c0392b', marginBottom:8 }}>
-              🔁 Tens competências em recuperação nesta aula
+            background:'#fdf0e6', border:'1.5px solid rgba(181,101,29,0.4)' }}>
+            <div style={{ fontSize:13.5, fontWeight:700, color:'#b5651d', marginBottom:8 }}>
+              {/* Não é recuperação — essa palavra fica só para faltas acima de
+                  10% ou módulo terminado sem positiva. Aqui é uma atitude em
+                  que a última nota ficou baixa e que vale a pena trabalhar. */}
+              Atitudes a melhorar nesta aula
             </div>
             {atitudesEmRecup.map((id: string) => {
               const a = getAtitudeDetalhada(id);
@@ -2832,10 +2923,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               const nivel = nivelComplexidadeAtitude(id, 1);
               return (
                 <div key={id} style={{ marginBottom:8, padding:'8px 10px', borderRadius:8,
-                  background:'rgba(192,57,43,0.04)', border:'1px solid rgba(192,57,43,0.15)' }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:'#c0392b' }}>🔁 {a?.nome ?? id}</div>
+                  background:'#fff', border:'1px solid rgba(181,101,29,0.2)' }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:'#b5651d' }}>{a?.nome ?? id}</div>
                   <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
-                    <strong>Tens de mostrar que melhoraste.</strong> {dica}
+                    <strong>Da última vez ficaste abaixo de 3.</strong> {dica}
                   </div>
                   {nivel && (
                     <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)', marginTop:4, fontStyle:'italic' }}>
@@ -2849,7 +2940,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         );
       })()}
 
-      {/* Obrigatórias */}
+      {/* Obrigatórias — não na aula atitudinal (sem farda nem KitchenFlow). */}
+      {!ehAtitudinal && (
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
           letterSpacing:'0.06em', color:T.sage, marginBottom:12 }}>🔒 Sempre avaliadas</div>
@@ -2886,6 +2978,48 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           </div>
         ))}
       </div>
+      )}
+
+      {/* Aula atitudinal — o aluno avalia-se em cada atitude que o
+          professor marcou para esta aula. */}
+      {ehAtitudinal && (
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+            letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>🤝 As atitudes desta aula</div>
+          <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:12, lineHeight:1.5 }}>
+            Hoje trabalhamos atitudes. Em cada uma, escolhe a frase que te descreve melhor
+            nesta aula — o professor valida.
+          </div>
+          {atitudesDaAula.length === 0 && (
+            <div style={{ padding:'12px 14px', borderRadius:10, background:T.copperP, fontSize:13.5, color:T.copper }}>
+              O professor ainda não marcou as atitudes desta aula.
+            </div>
+          )}
+          {atitudesDaAula.map(id => {
+            const at = ATITUDES.find(x => x.id === id);
+            const frases = FRASES_ATITUDES.find(f => f.competenciaId === id)?.frases;
+            return (
+              <div key={id} style={{ marginBottom:12, padding:14, borderRadius:14, background:'#fff',
+                border:`1.5px solid ${frasesAula[id] != null ? '#7d4f8c' : T.border}` }}>
+                <div style={{ fontWeight:700, fontSize:14.5, marginBottom:8 }}>{at?.nome ?? id}</div>
+                {(frases || ['Ainda não', 'Às vezes', 'Quase sempre', 'Sempre']).map((fr, i) => {
+                  const sel = frasesAula[id] === i;
+                  return (
+                    <button key={i} onClick={() => setFrasesAula(p => ({ ...p, [id]: i }))}
+                      style={{ width:'100%', display:'block', textAlign:'left', padding:'11px 13px',
+                        marginBottom:6, borderRadius:11, fontSize:14, lineHeight:1.5, cursor:'pointer',
+                        fontFamily:'inherit', border:`1.5px solid ${sel ? '#7d4f8c' : T.border}`,
+                        background: sel ? 'rgba(125,79,140,0.08)' : '#fff',
+                        color:'rgba(26,23,20,0.8)', fontWeight: sel ? 600 : 400 }}>
+                      {fr}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Subtécnicas (SUB-xxx) */}
       {subsSug.length>0 && (
@@ -3123,6 +3257,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       <PercursoUC aluno={aluno} ucId={ucId} />
 
       {/* Atitude — AUTOPROPOSTA do aluno: só atitudes de maturidade (as que ele reconhece em si) */}
+      {!ehAtitudinal && (
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
           letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>💡 Propõe-te a uma atitude</div>
@@ -3220,11 +3355,107 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           )}
         </div>
       </div>
+      )}
+
+      {/* Turmas ACP — segunda atitude, para apanhar as dos anos anteriores.
+          Só aparecem as que o aluno ainda nunca teve avaliadas. */}
+      {ehTurmaTransicao(aluno.turmaId) && (() => {
+        const faltam = atitudesQueFaltam(aluno).filter(x => x.id !== atitudeEscolhida);
+        if (faltam.length === 0) return null;
+        const mostrar = verTodasApanhar ? faltam : faltam.slice(0, MAX_ATITUDES_MOSTRADAS);
+        const anos = [...new Set(faltam.map(x => x.ano))].sort().map(n => `${n}º`).join(' e ');
+        return (
+          <div style={{ background:'#fff', borderRadius:16, padding:16, marginBottom:12,
+            border:`1px solid ${T.border}` }}>
+            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
+              letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>
+              Apanha uma do {anos} ano
+            </div>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:12, lineHeight:1.5 }}>
+              Ainda te faltam {faltam.length}. Escolhe uma que reconheces em ti hoje —
+              o professor valida, como as outras.
+            </div>
+            {mostrar.map(x => {
+              const escolhida = atitudeApanhar === x.id;
+              const frases = FRASES_ATITUDES.find(f => f.competenciaId === x.id)?.frases;
+              return (
+                <div key={x.id} style={{ marginBottom:8 }}>
+                  <button
+                    onClick={() => { setAtitudeApanhar(escolhida ? null : x.id); setNivelApanharFrase(null); }}
+                    style={{
+                      width:'100%', padding:'13px 14px', borderRadius:12, fontSize:14.5,
+                      fontWeight:700, cursor:'pointer', textAlign:'left', fontFamily:'inherit',
+                      border:`1.5px solid ${escolhida ? '#7d4f8c' : T.border}`,
+                      background: escolhida ? 'rgba(125,79,140,0.08)' : '#fff',
+                      color: escolhida ? '#7d4f8c' : 'rgba(26,23,20,0.75)',
+                    }}>
+                    {escolhida ? '✓ ' : ''}{x.nome}
+                    <span style={{ fontWeight:500, fontSize:12.5, color:'rgba(26,23,20,0.45)' }}> · {x.ano}º ano</span>
+                  </button>
+                  {escolhida && frases && (
+                    <div style={{ marginTop:7, paddingLeft:10 }}>
+                      <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:7 }}>
+                        Qual destas te descreve melhor?
+                      </div>
+                      {frases.map((fr, i) => {
+                        const sel = nivelApanharFrase === i;
+                        return (
+                          <button key={i} onClick={() => setNivelApanharFrase(sel ? null : i)}
+                            style={{
+                              width:'100%', display:'block', textAlign:'left',
+                              padding:'12px 13px', marginBottom:6, borderRadius:11,
+                              fontSize:14, lineHeight:1.5, cursor:'pointer', fontFamily:'inherit',
+                              border:`1.5px solid ${sel ? '#7d4f8c' : T.border}`,
+                              background: sel ? 'rgba(125,79,140,0.08)' : '#fff',
+                              color:'rgba(26,23,20,0.8)', fontWeight: sel ? 600 : 400,
+                            }}>
+                            {fr}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {!verTodasApanhar && faltam.length > mostrar.length && (
+              <button onClick={() => setVerTodasApanhar(true)} style={{
+                width:'100%', marginTop:4, background:'transparent', border:'none',
+                padding:12, fontSize:14, color:'#6B3FA0', fontWeight:700,
+                cursor:'pointer', fontFamily:'inherit', textDecoration:'underline',
+              }}>
+                Ver as {faltam.length} que faltam
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Nota prevista pela autoavaliação — o professor ainda confirma. */}
+      {prontoParaSubmeter && previsao && (
+        <div style={{ padding:'14px 16px', background:'#fff', borderRadius:12, marginBottom:12,
+          border:'1.5px solid rgba(125,79,140,0.35)' }}>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em',
+            color:'#7d4f8c' }}>A tua nota prevista</div>
+          <div style={{ display:'flex', alignItems:'baseline', gap:8, marginTop:4 }}>
+            <span style={{ fontSize:30, fontWeight:900, color:'#7d4f8c' }}>{fmtN(previsao.nota)}</span>
+            <span style={{ fontSize:14, color:'rgba(26,23,20,0.5)' }}>
+              — deve ficar entre {fmtN(previsao.min)} e {fmtN(previsao.max)}
+            </span>
+          </div>
+          <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
+            É o que a tua autoavaliação dá nesta aula. O professor ainda vai confirmar,
+            e pode ajustar para cima ou para baixo.
+          </div>
+        </div>
+      )}
 
       {!prontoParaSubmeter && (
         <div style={{ padding:'12px 14px', background:T.copperP, borderRadius:10,
           fontSize:13, color:T.copper, marginBottom:12 }}>
-          ⚠️ Preenche pelo menos as duas competências obrigatórias para poderes submeter.
+          {ehAtitudinal
+            ? '⚠️ Escolhe uma frase em cada atitude desta aula para poderes submeter.'
+            : '⚠️ Preenche pelo menos as duas competências obrigatórias para poderes submeter.'}
         </div>
       )}
 
@@ -3256,6 +3487,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               <div>🔒 Higiene: {nivelHigiene==='sozinho'?'💪 Sozinho/a':nivelHigiene==='ajuda'?'🤝 Consegui com ajuda':'📖 A aprender'}</div>
               <div style={{ marginTop:4 }}>🔒 HACCP: {nivelHaccp==='sozinho'?'💪 Sozinho/a':nivelHaccp==='ajuda'?'🤝 Consegui com ajuda':'📖 A aprender'}</div>
               {atitudeEscolhida && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeEscolhida)?.nome}</div>}
+              {atitudeApanhar && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeApanhar)?.nome} <span style={{ opacity:0.6 }}>(ano anterior)</span></div>}
+              {previsao && (
+                <div style={{ marginTop:8, fontWeight:700, color:'#7d4f8c' }}>
+                  Nota prevista: {fmtN(previsao.nota)} (entre {fmtN(previsao.min)} e {fmtN(previsao.max)}) — o professor ainda confirma.
+                </div>
+              )}
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               <button onClick={submeterDefinitivo} style={{ padding:'15px', borderRadius:14, border:'none',
