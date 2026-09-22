@@ -270,6 +270,12 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
           // aula nenhuma. Os planos repetidos resolvem-se no ecrã do
           // professor, com "Juntar as cópias".
           if (idx >= 0) {
+            // O plano que vem do Sheets pode não trazer as fichas — o script
+            // antigo dos planos nem sequer as guardava. Nesse caso ficam as
+            // que o plano tem cá, senão perdiam-se na sincronização.
+            if (!p.fichasIds?.length && merged[idx].fichasIds?.length) {
+              p.fichasIds = merged[idx].fichasIds;
+            }
             if (new Date(p.atualizadoEm) > new Date((merged[idx] as any).atualizadoEm || '')) {
               // Preservar campos que a Sheet pode não guardar (eventoId, criteriosCongelados, ultimaAlteracao)
               merged[idx] = {
@@ -5528,4 +5534,65 @@ export async function publicarPlanoParaAlunos(planoId: string): Promise<Resultad
     }
   }
   return { ok: false, erro: 'Não consegui confirmar a publicação.' };
+}
+
+// ============================================================
+// Enviar tudo para o Sheets
+// ============================================================
+// O que está no aparelho está completo — as fichas com ingredientes e
+// preparação, os planos, as avaliações. Para o Sheets só sobe quando se
+// mexe em cada coisa. Isto empurra tudo de uma vez: serve para encher o
+// ficheiro novo, e para recuperar de um período sem ligação.
+
+export interface ProgressoEnvio { feito: number; total: number; oQue: string; }
+
+export async function enviarTudoParaOSheets(
+  turmaId: string,
+  aoProgredir?: (p: ProgressoEnvio) => void
+): Promise<{ enviados: number }> {
+  const alunos = getAlunos().filter(a => a.turmaId === turmaId);
+  const planos = getPlanosAula().filter(p => p.turmaId === turmaId);
+  const idsPlanos = new Set(planos.map(p => p.id));
+  const fichas = getFichasProducao();
+  const requisicoes = getRequisicoes().filter(r => r.turmaId === turmaId);
+  const avaliacoes = getHistoricoAvaliacoes().filter(r => r.turmaId === turmaId);
+  const presencas = getPresencas().filter(p => idsPlanos.has(p.planoAulaId || ''));
+  const selecoes = getSelecoes().filter((s: any) => s.turmaId === turmaId);
+  const validacoes = getValidacoes().filter((v: any) => v.turmaId === turmaId);
+  const sessoes = getSessoesAula().filter(s => s.turmaId === turmaId);
+
+  const tarefas: { oQue: string; fazer: () => void }[] = [];
+  alunos.forEach(a => tarefas.push({ oQue: 'alunos', fazer: () => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a }) }));
+  planos.forEach(p => tarefas.push({ oQue: 'planos', fazer: () => enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }) }));
+  fichas.forEach(f => tarefas.push({ oQue: 'fichas', fazer: () => enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f }) }));
+  requisicoes.forEach(r => tarefas.push({ oQue: 'requisições', fazer: () => enviar(SHEETS_PLANOS_URL, 'requisicao', { requisicao: r }) }));
+  sessoes.forEach(s => tarefas.push({ oQue: 'sessões', fazer: () => enviar(SHEETS_HISTORICO_URL, 'sessao', s as any) }));
+  presencas.forEach(p => tarefas.push({ oQue: 'presenças', fazer: () => enviar(SHEETS_HISTORICO_URL, 'presenca', p as any) }));
+  selecoes.forEach(s => tarefas.push({ oQue: 'autoavaliações', fazer: () => enviar(SHEETS_HISTORICO_URL, 'selecao', s as any) }));
+  validacoes.forEach(v => tarefas.push({ oQue: 'validações', fazer: () => enviar(SHEETS_HISTORICO_URL, 'validacao', v as any) }));
+  avaliacoes.forEach(r => tarefas.push({ oQue: 'avaliações', fazer: () => enviar(SHEETS_HISTORICO_URL, 'avaliacao', r as any) }));
+
+  for (let i = 0; i < tarefas.length; i++) {
+    tarefas[i].fazer();
+    aoProgredir?.({ feito: i + 1, total: tarefas.length, oQue: tarefas[i].oQue });
+    // Aos poucos, para o Google não recusar por excesso de pedidos.
+    if (i % 10 === 9) await new Promise(res => setTimeout(res, 400));
+  }
+  return { enviados: tarefas.length };
+}
+
+/** Só as contas, para o professor ver o que vai enviar. */
+export function oQueHaParaEnviar(turmaId: string): Record<string, number> {
+  const idsPlanos = new Set(getPlanosAula().filter(p => p.turmaId === turmaId).map(p => p.id));
+  return {
+    alunos: getAlunos().filter(a => a.turmaId === turmaId).length,
+    planos: idsPlanos.size,
+    fichas: getFichasProducao().length,
+    requisições: getRequisicoes().filter(r => r.turmaId === turmaId).length,
+    sessões: getSessoesAula().filter(s => s.turmaId === turmaId).length,
+    presenças: getPresencas().filter(p => idsPlanos.has(p.planoAulaId || '')).length,
+    autoavaliações: getSelecoes().filter((s: any) => s.turmaId === turmaId).length,
+    validações: getValidacoes().filter((v: any) => v.turmaId === turmaId).length,
+    avaliações: getHistoricoAvaliacoes().filter(r => r.turmaId === turmaId).length,
+  };
 }
