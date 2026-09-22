@@ -32,6 +32,9 @@ export interface Aluno {
   pinAlteradoEm?: string;
   nivelMedidas?: 1 | 2 | 3;
   ativo?: boolean;
+  /** Removido da turma pela coordenação — quando e por quem. */
+  removidoEm?: string;
+  removidoPor?: string;
 }
 
 export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
@@ -360,7 +363,9 @@ export interface FichaProducao {
 // teórica o trabalho pode ser de investigação, uma apresentação, uma
 // defesa oral ou um relatório — e é aí que os conhecimentos e as
 // atitudes são avaliados.
-export type TipoPlanAula = 'pratico' | 'teorico' | 'misto';
+// 'atitudinal' — dinâmicas de grupo e trabalho de atitudes: sem farda, sem
+// KitchenFlow, sem técnicas; só as atitudes que o professor escolhe.
+export type TipoPlanAula = 'pratico' | 'teorico' | 'misto' | 'atitudinal';
 
 export type TipoTrabalho =
   | 'investigacao'   // pesquisa e desenvolvimento → escrito
@@ -827,6 +832,8 @@ export const PESOS_AULA = {
   pratico: { OBR: 0.20, SUB: 0.40, KNW: 0.20, ATI: 0.20, INI: 0.00 },
   misto:   { OBR: 0.20, SUB: 0.40, KNW: 0.20, ATI: 0.20, INI: 0.00 },
   teorico: { OBR: 0.15, SUB: 0.00, KNW: 0.65, ATI: 0.20, INI: 0.00 },
+  // Aula atitudinal: só atitudes contam.
+  atitudinal: { OBR: 0.00, SUB: 0.00, KNW: 0.00, ATI: 1.00, INI: 0.00 },
 } as const;
 
 // Repartição interna dos conhecimentos, quando estiverem marcados.
@@ -892,7 +899,7 @@ export const INICIATIVA_FRASES = [
 // ── Função central: calcular nota 0-20 de um plano ───────────
 export function calcularNotaPlano(
   notas: { categoria: 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI'; nota: number }[],
-  tipoPlan: 'pratico' | 'misto' | 'teorico'
+  tipoPlan: 'pratico' | 'misto' | 'teorico' | 'atitudinal'
 ): { nota20: number; porCategoria: Record<string, number>; detalhes: string } {
   const pesos = PESOS_AULA[tipoPlan];
   const porCat: Record<string, number[]> = { OBR: [], SUB: [], KNW: [], ATI: [], INI: [] };
