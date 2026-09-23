@@ -497,6 +497,18 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 
   useEffect(() => { irBuscarAulas(); }, [aluno.turmaId]);
 
+  // O professor pode corrigir a aula depois de a publicar — trocar a
+  // ficha, mudar a hora. Sem isto, o aluno só via a correção quando
+  // voltasse a abrir a aplicação.
+  useEffect(() => {
+    const t = setInterval(() => {
+      sincronizarDoSheets(aluno.turmaId)
+        .then(() => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')))
+        .catch(() => {});
+    }, 60000);
+    return () => clearInterval(t);
+  }, [aluno.turmaId]);
+
   const historicoAluno = getHistoricoAluno(aluno.id);
   const planoHoje = planos.find(p => isHoje(p.data));
   const proximasAulas = planos.filter(p => isFuturo(p.data)).sort((a,b) => a.data.localeCompare(b.data)).slice(0, 5);
@@ -618,7 +630,11 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 
   // Que bloco o aluno está a ver no "Avaliar-me"
   const [blocoAvaliar, setBlocoAvaliar] = useState<'realizacoes'|'conhecimentos'|'atitudes'>('realizacoes');
-  const listaDoBloco = blocoAvaliar === 'realizacoes' ? competenciasDaUC
+  // Numa aula atitudinal o aluno trabalha atitudes. Antes de entrar no
+  // formulário via as técnicas da UC e ficava baralhado.
+  const aulaDeHojeAtitudinal = (planoHoje as any)?.tipoPlanAula === 'atitudinal';
+  const listaDoBloco = aulaDeHojeAtitudinal ? atitudesDaUC
+    : blocoAvaliar === 'realizacoes' ? competenciasDaUC
                      : blocoAvaliar === 'conhecimentos' ? conhecimentosDaUC
                      : atitudesDaUC;
 
@@ -918,7 +934,8 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 substantivo={blocoAvaliar === 'conhecimentos' ? 'conhecimento'
                            : blocoAvaliar === 'atitudes' ? 'atitude' : 'competência'}
                 competencias={listaDoBloco}
-                anteriores={blocoAvaliar === 'atitudes' ? atitudesAnterioresDoAluno : undefined}
+                anteriores={(aulaDeHojeAtitudinal || blocoAvaliar === 'atitudes') ? atitudesAnterioresDoAluno : undefined}
+                blocos={aulaDeHojeAtitudinal ? ['atitudes'] : undefined}
                 onAvaliar={() => { if (planoHoje) { setDestino(null); setPlanoAtivo(planoHoje); } }}
               />
             )}
@@ -1081,7 +1098,8 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 substantivo={blocoAvaliar === 'conhecimentos' ? 'conhecimento'
                            : blocoAvaliar === 'atitudes' ? 'atitude' : 'competência'}
                 competencias={listaDoBloco}
-                anteriores={blocoAvaliar === 'atitudes' ? atitudesAnterioresDoAluno : undefined} />
+                anteriores={(aulaDeHojeAtitudinal || blocoAvaliar === 'atitudes') ? atitudesAnterioresDoAluno : undefined}
+                blocos={aulaDeHojeAtitudinal ? ['atitudes'] : undefined} />
             )}
             {destino === 'nota' && (
               <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
@@ -1668,9 +1686,16 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   // mas não grava nada — e os dez minutos de tolerância contam da
   // abertura, não da hora prevista no plano.
   const [, forcarRender] = useState(0);
+  // Se o aluno já entrou nesta aula, o ecrã tem de o saber. Começava
+  // sempre do zero: ele voltava a "Entrar" e a preencher a farda, e
+  // ficava um registo de farda novo de cada vez.
   const [entrada, setEntrada] = useState<
     { foraDeTempo: boolean; minutosAposAbertura: number; jaExistia: boolean } | null
-  >(null);
+  >(() => {
+    const p: any = getPresencas().find(
+      x => x.alunoId === aluno.id && x.planoAulaId === plano.id);
+    return p ? { foraDeTempo: !!p.atrasado, minutosAposAbertura: p.atrasadoMins || 0, jaExistia: true } : null;
+  });
   // A farda em dois tempos: primeiro a pergunta, e só quem tem algo em
   // falta é que abre a lista dos nove itens.
   const [fardaModo, setFardaModo] = useState<'perguntar' | 'detalhe'>('perguntar');
@@ -1765,6 +1790,31 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   }
 
   // ── Aberta, mas ainda não entrou ──
+  // Já entrou: não repete a entrada nem a farda.
+  if (entrada?.jaExistia) {
+    const p: any = getPresencas().find(
+      x => x.alunoId === aluno.id && x.planoAulaId === plano.id);
+    const hora = String(p?.horaEntrada || '').slice(0, 5);
+    return (
+      <div style={{ background:'#eef4eb', border:'1.5px solid var(--sage, #5a7a4e)',
+        borderRadius:14, padding:'16px 18px' }}>
+        <div style={{ fontSize:16, fontWeight:700, color:'#2d4a22' }}>
+          Já entraste nesta aula{hora ? ` — ${hora}` : ''}
+        </div>
+        <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
+          A tua entrada e a farda já ficaram registadas. Não precisas de repetir.
+        </div>
+        <button onClick={onConcluido} style={{
+          marginTop:12, width:'100%', padding:13, borderRadius:11, border:'none',
+          background:'var(--sage, #5a7a4e)', color:'#fff', fontSize:15, fontWeight:700,
+          cursor:'pointer', fontFamily:'inherit',
+        }}>
+          Continuar
+        </button>
+      </div>
+    );
+  }
+
   if (!entrada) {
     return (
       <div>
@@ -2524,8 +2574,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     });
   }
 
-  // Subtécnicas como objectos para display
-  const subsSug = subIdsFiltrados.slice(0, 6).map((id: string) => {
+  // Subtécnicas como objectos para display.
+  // Numa aula atitudinal não há técnicas: trabalham-se dinâmicas de grupo
+  // e atitudes. As fichas do plano, se as houver, não entram na avaliação.
+  const subsSug = ((plano as any).tipoPlanAula === 'atitudinal' ? [] : subIdsFiltrados)
+    .slice(0, 6).map((id: string) => {
     const sub = encontrarSubtecnica(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
     const avs = hist.map(h => ({nota: h.nota, data: h.data}));
@@ -2559,7 +2612,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   });
 
   // Aparelhos como objectos para display
-  const aparelhosSug = appIdsFiltrados.slice(0, 4).map((id: string) => {
+  const aparelhosSug = ((plano as any).tipoPlanAula === 'atitudinal' ? [] : appIdsFiltrados)
+    .slice(0, 4).map((id: string) => {
     const app = encontrarAparelho(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
     const avs = hist.map(h => ({nota: h.nota, data: h.data}));
@@ -2588,7 +2642,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const microsDaUC = microsDaUCEsp.length>=3
     ? microsDaUCEsp
     : [...microsDaUCEsp,...microsEstr.filter(m=>!microsDaUCEsp.find(x=>x.id===m.id))].slice(0,8);
-  const microsSug = usarFallback ? microsDaUC
+  const microsSug = (plano as any).tipoPlanAula === 'atitudinal' ? []
+    : usarFallback ? microsDaUC
     .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
     .map(m => {
       const hist = getHistoricoAlunoMicro(aluno.id, m.id);

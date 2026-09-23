@@ -43,6 +43,8 @@ export function EditarPlano({ plano, onGuardado, onCancelar, onEliminado }: {
   const [tipo, setTipo] = useState<string>((plano as any).tipoPlanAula || 'pratico');
   const [ucId, setUcId] = useState(plano.ucId || '');
   const [titulo, setTitulo] = useState(plano.titulo || '');
+  const [contaAssiduidade, setContaAssiduidade] = useState(
+    (plano as any).contaAssiduidade !== false);
   const [aEliminar, setAEliminar] = useState(false);
 
   const modulos = modulosDaTurma(plano.turmaId);
@@ -67,7 +69,7 @@ export function EditarPlano({ plano, onGuardado, onCancelar, onEliminado }: {
     const novo = atualizarPlano(plano.id, {
       data, horaInicio, horaFim, titulo: titulo.trim() || plano.titulo,
       ucId, ...(m ? { ucNome: m.nome } : {}),
-      tipoPlanAula: tipo,
+      tipoPlanAula: tipo, contaAssiduidade,
     } as any);
     if (novo) onGuardado(novo);
   }
@@ -134,6 +136,21 @@ export function EditarPlano({ plano, onGuardado, onCancelar, onEliminado }: {
           </optgroup>
         ))}
       </select>
+
+      <div style={rotulo}>Faltas e atrasos</div>
+      <button onClick={() => setContaAssiduidade(!contaAssiduidade)} style={{
+        width: '100%', padding: '12px 14px', borderRadius: 10, textAlign: 'left',
+        border: `1.5px solid ${contaAssiduidade ? '#5a7a4e' : '#b5651d'}`,
+        background: contaAssiduidade ? '#eef4eb' : '#fdf0e6',
+        cursor: 'pointer', fontFamily: 'inherit', fontSize: 14,
+      }}>
+        <b>{contaAssiduidade ? 'Contam nesta aula' : 'Não contam nesta aula'}</b>
+        <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 2, lineHeight: 1.45 }}>
+          {contaAssiduidade
+            ? 'Como numa aula normal. Toca para deixar de contar.'
+            : 'Para aulas criadas depois de acontecerem. Os alunos avaliam-se, mas as faltas e os atrasos não entram no bónus nem na recuperação.'}
+        </div>
+      </button>
 
       <div style={rotulo}>Título</div>
       <input value={titulo} onChange={e => setTitulo(e.target.value)} style={campo} />

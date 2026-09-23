@@ -213,6 +213,7 @@ interface Props {
 }
 
 export function InicioAluno({
+  nomeAluno, turmaId,
   ucId, ucNome, planoHoje, numeroPlano,
   sessaoAberta = false, jaEntrou = false,
   proximasAulas = 0, avisos = [],
@@ -230,6 +231,20 @@ export function InicioAluno({
   return (
     <div style={{ background: C.fundo, minHeight: '100%', padding: '16px 14px 24px' }}>
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
+
+        {/* Quem está a usar a aplicação. O nome chegava aqui e não era
+            mostrado — o aluno entrava e não via sinal de que a aplicação
+            sabia quem ele era. */}
+        {nomeAluno && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: C.tinta }}>
+              Olá, {String(nomeAluno).trim().split(' ')[0]}
+            </div>
+            <div style={{ fontSize: 13.5, color: C.suave, marginTop: 1 }}>
+              {turmaId}{ucNome ? ` · ${ucNome}` : ''}
+            </div>
+          </div>
+        )}
 
         {/* ── A AULA DE HOJE ─────────────────────────────────
             O título diz ao aluno que tudo o que está aqui é daquela
@@ -330,7 +345,8 @@ export function InicioAluno({
         )}
 
         {/* ── AVISOS: só quando exigem uma ação ── */}
-        {/* Sem ligação: o aluno tenta outra vez sem sair do ecrã. */}
+        {/* Atualizar — sempre à mão. O professor pode corrigir a aula a
+            meio, e o aluno tem de conseguir ir buscar a versão nova. */}
         {onTentarOutraVez && (
           <button onClick={onTentarOutraVez} disabled={aLigar} style={{
             width: '100%', padding: 13, borderRadius: 11, marginBottom: 12,
@@ -338,7 +354,7 @@ export function InicioAluno({
             fontSize: 14.5, fontWeight: 700, cursor: aLigar ? 'default' : 'pointer',
             fontFamily: 'inherit', opacity: aLigar ? 0.6 : 1,
           }}>
-            {aLigar ? 'A tentar…' : 'Tentar ir buscar as aulas outra vez'}
+            {aLigar ? 'A atualizar…' : 'Atualizar a aula'}
           </button>
         )}
 

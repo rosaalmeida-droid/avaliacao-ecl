@@ -1,9 +1,9 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets } from '../backend';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
@@ -79,6 +79,26 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   const pendentes = selecoes.filter(s => !validacoes.some(v => v.selecaoId === s.id));
 
   const [ativa, setAtiva] = useState<SelecaoAluno | null>(null);
+  const [, redesenhar] = useState(0);
+  const [aProcurar, setAProcurar] = useState(false);
+
+  // As autoavaliações chegam pelo Sheets. Sem isto, só apareciam quando
+  // a aplicação era reaberta — o professor ficava à espera sem saber
+  // de quê. Enquanto este ecrã estiver aberto, procura de meio em meio
+  // minuto, e há um botão para procurar já.
+  function procurar() {
+    if (!turmaId) return;
+    setAProcurar(true);
+    sincronizarDoSheets(turmaId)
+      .catch(() => {})
+      .finally(() => { setAProcurar(false); redesenhar(n => n + 1); });
+  }
+
+  useEffect(() => {
+    if (!turmaId || ativa) return;
+    const t = setInterval(procurar, 30000);
+    return () => clearInterval(t);
+  }, [turmaId, ativa]);
 
   if (ativa) {
     const plano = planos.find(p => p.id === ativa.planoAulaId);
@@ -102,6 +122,14 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
         Validações pendentes
       </div>
+      <button onClick={procurar} disabled={aProcurar} style={{
+        padding: '9px 14px', borderRadius: 9, marginBottom: 12,
+        border: '1px solid rgba(26,23,20,0.18)', background: '#fff',
+        fontSize: 13.5, fontWeight: 700, cursor: aProcurar ? 'default' : 'pointer',
+        fontFamily: 'inherit', opacity: aProcurar ? 0.6 : 1,
+      }}>
+        {aProcurar ? 'A procurar…' : 'Procurar autoavaliações agora'}
+      </button>
 
       {selecoes.length === 0 && (
         <Card>
@@ -161,6 +189,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
 }) {
   /** +1 já dados nesta validação — um por atitude, para não somar duas vezes. */
   const [maisUm, setMaisUm] = useState<Record<string, boolean>>({});
+  const [aConfirmar, setAConfirmar] = useState(false);
   // Pré-preencher com a proposta do aluno — o professor só precisa de clicar
   // onde quer discordar (subir ou descer); o resto fica já seleccionado, pronto
   // a confirmar com um só toque em "Guardar".
@@ -180,7 +209,6 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   });
   const [comentario, setComentario] = useState('');
   const [guardado, setGuardado] = useState(false);
-  const [aConfirmar, setAConfirmar] = useState(false);
 
   // Obter competências da autoavaliação
   const autoavaliacoes = selecao.autoavaliacoes || [];
@@ -240,7 +268,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     INI: 'Iniciativa',
   };
 
-  function guardar() {
+  async function guardar() {
     const agora = new Date().toISOString();
     const notasFinais = autoavaliacoes.map((auto: any) => {
       const notaProf = notasProf[auto.competenciaId] || 2;
@@ -302,7 +330,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       selecao.alunoId,
       selecao.planoAulaId || '',
       notasFinais.map(n => ({
-        id: `registo_${selecao.alunoId}_${n.competenciaId}_${Date.now()}`,
+        // Identificador estável: se corrigires a validação, a linha do
+        // Sheets é a mesma — não fica uma nota velha ao lado da nova.
+        id: `registo_${selecao.alunoId}_${selecao.planoAulaId}_${n.competenciaId}`,
         alunoId: selecao.alunoId,
         turmaId: selecao.turmaId,
         planoAulaId: selecao.planoAulaId || '',
@@ -314,7 +344,21 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         validadoPor: 'professor' as const,
       }))
     );
+    // Confirmar que chegou ao Sheets. Uma nota que se perde engana o
+    // aluno e o professor — por isso é dito na hora.
     setGuardado(true);
+    const ids = notasFinais.map(n => `registo_${selecao.alunoId}_${selecao.planoAulaId}_${n.competenciaId}`);
+    setAConfirmar(true);
+    const r = await confirmarRegistosNoSheets(selecao.turmaId, ids);
+    setAConfirmar(false);
+    if (!r.ok) {
+      alert(
+        'ATENÇÃO — a avaliação ficou gravada aqui, mas NÃO chegou ao Google Sheets.\n\n'
+        + `Confirmadas ${r.encontrados} de ${r.total} notas.\n\n`
+        + 'Não feches a aplicação. Vai a Coordenadora → Alunos → "Testar ligação ao Sheets" '
+        + 'para veres onde está a falhar, e volta a validar depois.'
+      );
+    }
   }
 
   // Depois de guardar não se fecha o ecrã: o professor pode querer
@@ -600,7 +644,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         <button className="btn btn-primary" onClick={() => setAConfirmar(true)}
           disabled={autoavaliacoes.some(a => !notasProf[a.competenciaId])}
           style={{ width:'100%', background: 'var(--sage)', marginTop: 8, padding: '14px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', opacity: autoavaliacoes.some(a => !notasProf[a.competenciaId]) ? 0.4 : 1 }}>
-          ✓ Validar e guardar avaliação
+          {aConfirmar ? 'A confirmar no Sheets…' : '✓ Validar e guardar avaliação'}
         </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
           <div style={{ fontSize:13, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>

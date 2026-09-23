@@ -56,7 +56,7 @@ function Linha({
 export function MenuDoPlano({
   plano, fichas, temRequisicao, numeroRequisicao, totalCompetencias,
   posicao, totalPlanos, moduloActivo, aoIrPara, aoSair, aoPublicar,
-  alunosNaAula, porValidar, aviso, disciplina, requisicaoDesatualizada,
+  alunosNaAula, porValidar, autoavaliacoes, aviso, disciplina, requisicaoDesatualizada,
 }: {
   plano: PlanoAula;
   fichas: FichaProducao[];
@@ -74,6 +74,8 @@ export function MenuDoPlano({
   alunosNaAula?: string;
   /** Autoavaliações deste plano à espera de validação. */
   porValidar?: number;
+  /** Autoavaliações submetidas nesta aula, validadas ou não. */
+  autoavaliacoes?: number;
   /** Aviso de fim de unidade, quando se aplica. */
   aviso?: string;
   /** A disciplina deste plano — cozinha, gestão e controlo… */
@@ -206,6 +208,16 @@ export function MenuDoPlano({
           contador={totalCompetencias || '—'}
           activo={moduloActivo === 'competencias'}
           aoClicar={() => aoIrPara('competencias')} />
+
+        {/* Autoavaliações desta aula. Antes só havia o aviso quando estavam
+            por validar — depois de validadas, não havia sítio nenhum para
+            lhes voltar. */}
+        <Linha
+          marca={autoavaliacoes ? (porValidar ? 'falta' : 'feito') : 'neutro'}
+          texto="Autoavaliações"
+          contador={autoavaliacoes ? `${autoavaliacoes - (porValidar || 0)}/${autoavaliacoes}` : '—'}
+          activo={moduloActivo === 'validacao'}
+          aoClicar={() => aoIrPara('validacao')} />
 
         {/* A turma só faz sentido depois de a aula abrir. */}
         {alunosNaAula && (

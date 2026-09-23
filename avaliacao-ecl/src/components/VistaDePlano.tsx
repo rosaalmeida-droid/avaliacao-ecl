@@ -409,6 +409,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         sessionStorage.removeItem('ecl_abrir_editor');
         setModulo('editar');
       }
+      if (sessionStorage.getItem('ecl_abrir_turma') === plano.id) {
+        sessionStorage.removeItem('ecl_abrir_turma');
+        setModulo('inicio');
+        setTabInicio('turma');
+      }
     } catch { /* */ }
   }, []);
   React.useEffect(() => {
@@ -423,6 +428,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [fichaEmEdicao, setFichaEmEdicao] = useState<string | null>(null);
   /** Mostra a confirmação durante uns segundos depois de abrir a aula. */
   const [acabouDeAbrir, setAcabouDeAbrir] = useState(false);
+  /** A abrir — o botão fica bloqueado para não haver duas aberturas. */
+  const [aAbrir, setAAbrir] = useState(false);
   /** true quando vem do plano com "Ir buscar uma ficha". */
   const [irParaBiblioteca, setIrParaBiblioteca] = useState(false);
   /** Aluno a validar, vindo da vista de turma. */
@@ -464,7 +471,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const temRequisicao = !!requisicao;
   const publicado = plano.estado === 'publicado';
   // ── Competências ────────────────────────────────────────────
-  const compObrigatorias = OBRIGATORIAS;
+  // Aula atitudinal: sem farda, sem KitchenFlow, sem técnicas nem
+  // conhecimentos. Só as atitudes que o professor marcou.
+  const ehAtitudinal = (plano as any).tipoPlanAula === 'atitudinal';
+  const compObrigatorias = ehAtitudinal ? [] : OBRIGATORIAS;
   const IDS_JA_USADOS = new Set<string>(compObrigatorias.map(o => o.id));
 
   const IDS_ATITUDES_DUPLICAM = new Set([
@@ -476,7 +486,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   // ── SUB-xxx: subtécnicas da ficha (plano prático) ──────────
   const subIdsRaw = incluirSubApp ? fichasDoPlano.flatMap(f => (f.tecnicasSugeridas || []).filter((id: string) => id.startsWith('SUB-'))) : [];
-  const compSub = [...new Set(subIdsRaw)]
+  const compSub = ehAtitudinal ? [] : [...new Set(subIdsRaw)]
     .filter(id => !compRemovidas.includes(id) && !IDS_JA_USADOS.has(id))
     .slice(0, 6)
     .map(id => {
@@ -487,7 +497,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   // ── APP-xxx: aparelhos da ficha (plano prático) ────────────
   const appIdsRaw = incluirSubApp ? fichasDoPlano.flatMap(f => ((f as any).aparelhosDetectados || []).filter((id: string) => id.startsWith('APP-'))) : [];
-  const compApp = [...new Set(appIdsRaw)]
+  const compApp = ehAtitudinal ? [] : [...new Set(appIdsRaw)]
     .filter(id => !compRemovidas.includes(id) && !IDS_JA_USADOS.has(id))
     .slice(0, 4)
     .map(id => {
@@ -504,7 +514,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // filtro de retirados vinha primeiro: retirar um fazia entrar outro no
   // lugar, sem aviso, e o retirado desaparecia da lista — não havia como
   // o voltar a incluir.
-  const conhecimentosSugeridos = tipoPlanAula !== 'pratico' && plano.ucId && lib
+  const conhecimentosSugeridos = !ehAtitudinal && tipoPlanAula !== 'pratico' && plano.ucId && lib
     ? (lib.conhecimentos as any[])
         .filter((k: any) => !IDS_JA_USADOS.has(k.id))
         .slice(0, 6)
@@ -522,7 +532,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const textoFichas = fichasDoPlano.map(f =>
     [f.nomePrato, ...(f.ingredientes || []).map((i: any) => i.produto)].join(' ')
   ).join(' ').toLowerCase();
-  const compTecnicas = (usarFallback && temFichas) ? microsDaUC
+  const compTecnicas = ehAtitudinal ? [] : (usarFallback && temFichas) ? microsDaUC
     .filter(m => {
       if (IDS_DUPLICAM_OBRIGATORIAS.has(m.id) || IDS_JA_USADOS.has(m.id)) return false;
       if (textoFichas.length > 10) {
@@ -1246,7 +1256,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 conseguem marcar presença nem registar nada. Ao abrires, começam
                 os dez minutos de tolerância.
               </div>
-              <button onClick={() => {
+              <button disabled={aAbrir} onClick={() => {
+                  // Um clique só. Abrir não se repete: a hora de abertura é
+                  // a primeira, e a tolerância conta a partir dela.
+                  if (aAbrir) return;
+                  setAAbrir(true);
                   abrirSessaoAula(plano.id, turmaId, nomeProfessor || 'professor');
                   // Um objeto NOVO — com o mesmo, o ecrã não se redesenhava
                   // e o botão ficava à vista como se nada tivesse acontecido.
@@ -1256,8 +1270,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 }}
                 style={{ marginTop:12, width:'100%', padding:16, borderRadius:12, border:'none',
                   background:'var(--copper)', color:'#fff', fontSize:17, fontWeight:700,
-                  cursor:'pointer', fontFamily:'inherit' }}>
-                Abrir a aula agora
+                  cursor: aAbrir ? 'default' : 'pointer', fontFamily:'inherit',
+                  opacity: aAbrir ? 0.6 : 1 }}>
+                {aAbrir ? 'A abrir…' : 'Abrir a aula agora'}
               </button>
             </div>
           );

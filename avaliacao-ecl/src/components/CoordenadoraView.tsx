@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, enviarTudoParaOSheets, oQueHaParaEnviar } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -617,6 +617,18 @@ function GestaoAlunosTab() {
             <div style={{ color: 'rgba(26,23,20,0.6)', lineHeight: 1.55, marginBottom: 10 }}>
               {Object.entries(contas).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(' · ') || 'Nada para enviar.'}
             </div>
+            <button
+              onClick={async () => {
+                setAEnviarTudo('a testar…');
+                const linhas = await testarLigacaoAoSheets(turmaSel);
+                setAEnviarTudo(null);
+                alert('Ligação ao Google Sheets\n\n' + linhas.join('\n'));
+              }}
+              style={{ padding: '10px 16px', borderRadius: 9, marginRight: 8,
+                border: '1px solid rgba(26,23,20,0.2)', background: '#fff',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Testar ligação ao Sheets
+            </button>
             <button
               disabled={aEnviarTudo !== null || total === 0}
               onClick={async () => {

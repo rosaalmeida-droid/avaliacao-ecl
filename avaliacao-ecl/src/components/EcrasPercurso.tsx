@@ -117,7 +117,7 @@ const NOME_CARTAO: Record<EstadoComp, string> = {
 export function EcraAvaliarMe({
   ucId, ucNome, competencias, substantivo = 'competência',
   rotuloConjunto = 'competências', onAvaliar, temAulaHoje = false,
-  triado = false, bloco = 'realizacoes', onMudarBloco, anteriores,
+  triado = false, bloco = 'realizacoes', onMudarBloco, anteriores, blocos,
 }: {
   ucId?: string; ucNome?: string;
   competencias: { id: string; nome: string; nivel?: number | null }[];
@@ -131,6 +131,8 @@ export function EcraAvaliarMe({
   onMudarBloco?: (b: 'realizacoes' | 'conhecimentos' | 'atitudes') => void;
   /** Turmas ACP: atitudes dos anos anteriores, a apanhar este ano. */
   anteriores?: { id: string; nome: string; ano: 1 | 2; nivel: number; avaliada: boolean }[];
+  /** Que blocos mostrar. Numa aula atitudinal só há atitudes. */
+  blocos?: ('realizacoes' | 'conhecimentos' | 'atitudes')[];
 }) {
   const [aberto, setAberto] = React.useState<EstadoComp | null>(null);
 
@@ -167,13 +169,13 @@ export function EcraAvaliarMe({
       )}
 
       {/* Separadores: o que sei fazer · o que sei · como me comporto */}
-      {onMudarBloco && (
+      {onMudarBloco && (!blocos || blocos.length > 1) && (
         <div style={{ display: 'flex', gap: 7, marginBottom: 14 }}>
           {([
             ['realizacoes', 'Saber fazer'],
             ['conhecimentos', 'Saber'],
             ['atitudes', 'Atitudes'],
-          ] as const).map(([id, lbl]) => (
+          ] as const).filter(([id]) => !blocos || blocos.indexOf(id) >= 0).map(([id, lbl]) => (
             <button
               key={id}
               onClick={() => { onMudarBloco(id); setAberto(null); }}

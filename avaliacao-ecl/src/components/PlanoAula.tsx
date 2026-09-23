@@ -885,6 +885,20 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       });
       if (iguais.length) { setDuplicados(iguais); return; }
     }
+    // Aula criada depois de acontecer: o professor esqueceu-se de a criar
+    // e vai pedir a autoavaliação agora. As faltas e atrasos dessa aula
+    // podem não ser dos alunos — pergunta-se, não se assume.
+    let contaAssiduidade = true;
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    if (dados.data && dados.data < hojeISO) {
+      contaAssiduidade = confirm(
+        'Esta aula já passou.\n\n'
+        + 'Queres que as faltas e os atrasos desta aula contem para a assiduidade?\n\n'
+        + 'OK — contam, como numa aula normal.\n'
+        + 'Cancelar — não contam; serve só para os alunos se autoavaliarem.'
+      );
+    }
+
     setDuplicados(null);
     aCriar.current = true;
     setEstadoCriar(true);
@@ -910,6 +924,12 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     } as TPlanoAula;
     // Guardar tipoPlanAula no plano
     (p as any).tipoPlanAula = dados.tipoPlanAula;
+    (p as any).contaAssiduidade = contaAssiduidade;
+    // Se as faltas contam numa aula que já passou, o professor tem de as
+    // marcar agora — a aplicação leva-o direito à turma.
+    if (contaAssiduidade && dados.data < hojeISO) {
+      try { sessionStorage.setItem('ecl_abrir_turma', p.id); } catch { /* */ }
+    }
     addOrUpdatePlanoAula(p);
     onGuardado?.();
     // O Classroom fica para quando o plano for publicado, não agora.
