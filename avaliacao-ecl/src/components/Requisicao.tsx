@@ -234,6 +234,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || planos[0] || null : planos[0] || null;
   const fichasSelInicial = fichasIniciais?.length ? fichasIniciais : (planoInicial?.fichasIds || []);
 
+  /** Envio em curso — impede duas cópias do documento. */
+  const [aEnviarReq, setAEnviarReq] = useState(false);
   const [fase, setFase] = useState<'escolher' | 'editar'>(
     fichasIniciais?.length ? 'editar' : 'escolher'
   );
@@ -1455,7 +1457,15 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       )}
 
       <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button style={S.btnP} onClick={async () => {
+        <button style={{ ...S.btnP, opacity: aEnviarReq ? 0.6 : 1,
+            cursor: aEnviarReq ? 'default' : 'pointer' }}
+          disabled={aEnviarReq}
+          onClick={async () => {
+          // Um envio de cada vez: dois toques criavam duas cópias do
+          // documento no Sheets do economato.
+          if (aEnviarReq) return;
+          setAEnviarReq(true);
+          try {
           // 1. Guardar localmente
           if (planoSel) {
             // Reutilizar ID da requisição existente — evita duplicados ao editar
@@ -1470,7 +1480,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           // 2. Enviar para o Google Sheets com TODOS os dados (preço, unidade, turma, data, formador...)
           await enviarSheets();
           onGuardado?.();
-        }}>✓ Guardar e Enviar para o Google Sheets</button>
+          } finally { setAEnviarReq(false); }
+        }}>{aEnviarReq ? 'A enviar…' : '✓ Guardar e Enviar para o Google Sheets'}</button>
         <button style={S.btnG} onClick={() => {
           setLinhas(prev => prev.map(l => recalc(l)));
           setTimeout(() => window.print(), 150);

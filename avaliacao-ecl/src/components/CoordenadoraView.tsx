@@ -1,8 +1,9 @@
+import { AvisoEliminarAluno } from './AvisoEliminarAluno';
 import React, { useMemo, useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets, getHistoricoAvaliacoes } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -568,15 +569,21 @@ function GestaoAlunosTab() {
     setRefresh(r => r + 1);
   }
 
+  /** Aluno a eliminar — o aviso mostra o que se perde e pede o nome. */
+  const [aEliminar, setAEliminar] = useState<Aluno | null>(null);
+
   function eliminar(a: Aluno) {
-    if (!confirm(
-      `Eliminar definitivamente?\n\n${a.numero} · ${a.nome || '(sem nome)'} · ${a.turmaId}\n\n`
-      + `Usa isto só para alunos que nunca deviam ter estado na turma — de teste, ou `
-      + `criados por engano. O aluno desaparece de todas as listas. Para quem saiu `
-      + `da turma, usa antes "Remover", que guarda as notas.`
-    )) return;
-    eliminarAlunoDefinitivo(a.id);
-    setRefresh(r => r + 1);
+    setAEliminar(a);
+  }
+
+  /** O que desaparece com o aluno. */
+  function oQueSePerde(a: Aluno) {
+    return {
+      notas: getHistoricoAvaliacoes().filter(r => r.alunoId === a.id).length,
+      presencas: getPresencas().filter(p => p.alunoId === a.id).length,
+      autoavaliacoes: getSelecoes().filter((s: any) => s.alunoId === a.id).length,
+      recuperacoes: getRecuperacoesPorTurma(a.turmaId).filter((r: any) => r.alunoId === a.id).length,
+    };
   }
 
   function mudarNivel(a: Aluno) {
@@ -603,6 +610,16 @@ function GestaoAlunosTab() {
         </button>
         <span style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)' }}>{ativos.length} alunos</span>
       </div>
+
+      {aEliminar && (
+        <AvisoEliminarAluno aluno={aEliminar} perde={oQueSePerde(aEliminar)}
+          onCancelar={() => setAEliminar(null)}
+          onEliminar={() => {
+            eliminarAlunoDefinitivo(aEliminar.id);
+            setAEliminar(null);
+            setRefresh(r => r + 1);
+          }} />
+      )}
 
       {/* Encher o Sheets com o que está no aparelho. As fichas, os planos e
           as avaliações completas estão aqui; para o Sheets só sobem quando
@@ -637,7 +654,12 @@ function GestaoAlunosTab() {
                 const r = await enviarTudoParaOSheets(turmaSel, p =>
                   setAEnviarTudo(`${p.feito} de ${p.total} — ${p.oQue}`));
                 setAEnviarTudo(null);
-                alert(`${r.enviados} registos enviados.\n\nConfirma no ficheiro de dados que as folhas ficaram preenchidas.`);
+                alert(r.emFalta.length
+                  ? `${r.enviados} registos enviados, mas ${r.emFalta.length} não chegaram ao Sheets:\n\n`
+                    + r.emFalta.slice(0, 12).join('\n')
+                    + (r.emFalta.length > 12 ? `\n… e mais ${r.emFalta.length - 12}` : '')
+                    + '\n\nCarrega outra vez em "Enviar tudo" — só vão os que faltam.'
+                  : `${r.enviados} registos enviados e confirmados no Sheets.`);
               }}
               style={{ padding: '10px 16px', borderRadius: 9, border: 'none',
                 background: total === 0 ? 'rgba(26,23,20,0.15)' : 'var(--copper)',

@@ -89,7 +89,13 @@ function CriteriosEditor({
     setEditando(true);
   }
 
+  /** Trava — dois toques criavam duas sugestões iguais. */
+  const aSugerir = React.useRef(false);
+
   function submeterSugestao() {
+    if (aSugerir.current) return;
+    aSugerir.current = true;
+    setTimeout(() => { aSugerir.current = false; }, 3000);
     const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
     const novosCriterios = linhas.map(l => {
       const parts = l.split('|');

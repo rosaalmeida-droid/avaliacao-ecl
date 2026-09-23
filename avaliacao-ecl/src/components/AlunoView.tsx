@@ -2685,6 +2685,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [verTodasApanhar, setVerTodasApanhar] = useState(false);
   const [nivelIniciativa, setNivelIniciativa] = useState<number>(0); // 0 = não avaliado
   const [modalConfirmar, setModalConfirmar] = useState(false);
+  /** Trava de submissão — protege de dois toques seguidos. */
+  const aSubmeter = React.useRef(false);
   const [submetido, setSubmetido] = useState(() => {
     try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
   });
@@ -2730,6 +2732,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const fmtN = (x: number) => (Math.round(x * 10) / 10).toString().replace('.', ',');
 
   function submeterDefinitivo() {
+    // Um toque só. Dois toques rápidos passavam à frente da marca de
+    // "já submetido" e criavam duas autoavaliações da mesma aula.
+    if (aSubmeter.current || submetido) return;
+    aSubmeter.current = true;
+    setTimeout(() => { aSubmeter.current = false; }, 4000);
+
     const agora = new Date().toISOString();
     // Converter nível da autoavaliação para nota 1-5
     const paraNota = (v:string|null): number => {
@@ -3572,7 +3580,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               )}
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              <button onClick={submeterDefinitivo} style={{ padding:'15px', borderRadius:14, border:'none',
+              <button onClick={submeterDefinitivo} disabled={submetido} style={{ padding:'15px', borderRadius:14, border:'none',
                 background:T.sage, color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
                 ✓ Sim, confirmo!
               </button>

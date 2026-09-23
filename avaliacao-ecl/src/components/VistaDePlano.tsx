@@ -88,102 +88,45 @@ function EventoAssociador({ plano, turmaId, onPlanoActualizado }: {
 
 // ── Cabeçalho do Plano ────────────────────────────────────────
 function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAula; onVoltar: () => void; modulo?: Modulo; setModulo?: (m: Modulo) => void }) {
-  let d: Date;
-  try {
-    if (!plano.data || plano.data === 'undefined') throw new Error();
-    d = /^\d{4}-\d{2}-\d{2}$/.test(plano.data)
-      ? new Date(plano.data + 'T12:00:00')
-      : new Date(plano.data);
-    if (isNaN(d.getTime())) throw new Error();
-  } catch { d = new Date(); }
-  const diaSemana = d.toLocaleDateString('pt-PT', { weekday: 'long' });
-  const horaI = (plano.horaInicio || '').includes('T')
-    ? new Date(plano.horaInicio).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-    : (plano.horaInicio || '').substring(0, 5);
-  const horaF = (plano.horaFim || '').includes('T')
-    ? new Date(plano.horaFim).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
-    : (plano.horaFim || '').substring(0, 5);
-
+  // Só o que não está no menu da esquerda. Tinha aqui os mesmos atalhos
+  // (Fichas, Guião, Requisição, Competências) e ainda uma segunda fila de
+  // separadores — três navegações para os mesmos sítios.
+  if (plano.estado === 'publicado') return null;
   return (
-    <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '16px 18px', marginBottom: 16 }}>
-      <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.6)', border: 'none', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
-        ← Todos os planos
-      </button>
-
-
-      {modulo && setModulo && (
-        <>
-        {/* Botões de acção rápida — só quando o plano não está publicado */}
-        {(plano as any).estado !== 'publicado' && (plano as any).estado !== 'realizada' && (
-          <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-            {[
-              { id: 'ficha',     label: '📄 Criar Ficha',    desc: 'Adiciona uma receita a esta aula' },
-              { id: 'guia',      label: '📚 Gerar Guião',    desc: 'Guia de apoio à produção' },
-              { id: 'requisicao',label: '🛒 Requisição',     desc: 'Lista de ingredientes a encomendar' },
-            ].map(btn => (
-              <button key={btn.id} onClick={() => setModulo(btn.id as any)}
-                title={btn.desc}
-                style={{ padding: '8px 14px', borderRadius: 10, border: 'none',
-                  background: modulo === btn.id ? 'var(--copper)' : 'rgba(181,101,29,0.1)',
-                  color: modulo === btn.id ? '#fff' : 'var(--copper)',
-                  cursor: 'pointer', fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-                {btn.label}
-              </button>
-            ))}
-            {/* Publicar é o que faz o plano aparecer ao aluno. Antes o
-                botão só existia com ficha associada — uma aula marcada
-                sem ficha nunca chegava a ser publicada, e o aluno não a
-                via nas próximas aulas sem perceber porquê.
-                Agora publica-se sempre; se faltar ficha, avisa. */}
-            {plano.estado !== 'publicado' && (
-              <button onClick={() => {
-                const semFicha = (plano.fichasIds?.length || 0) === 0;
-                if (semFicha && !confirm(
-                  'Este plano ainda não tem ficha técnica.\n\n'
-                  + 'Publicar assim mesmo? O aluno passa a ver a aula no '
-                  + 'calendário e nas próximas aulas, e podes associar a '
-                  + 'ficha mais tarde.'
-                )) return;
-                // Este botão está no cabeçalho, fora da vista principal:
-                // publica e confirma no Sheets, e diz o que aconteceu.
-                publicarPlanoParaAlunos(plano.id).then(r => {
-                  alert(r.ok
-                    ? 'Publicado. A aula está no Sheets e os alunos já a veem.'
-                    : 'ATENÇÃO — os alunos ainda NÃO veem esta aula.\n\n' + (r.erro || ''));
-                });
-              }}
-                style={{ marginLeft: 'auto', padding: '8px 14px', borderRadius: 10, border: 'none',
-                  background: 'var(--sage)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
-                ✓ Publicar aula
-              </button>
-            )}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', marginBottom: 14, paddingBottom: 2 }}>
-          {([
-            { id: 'inicio', label: 'Resumo', icone: '📋' },
-            { id: 'ficha', label: 'Ficha', icone: '📄' },
-            { id: 'guia', label: 'Guia', icone: '📚' },
-            { id: 'requisicao', label: 'Requisição', icone: '🛒' },
-            { id: 'validacao', label: 'Autoavaliações', icone: '✓' },
-            { id: 'competencias', label: 'Competências', icone: '🎯' },
-            { id: 'registos', label: 'PIN temp.', icone: '🔑' },
-          ] as { id: Modulo; label: string; icone: string }[]).map(t => (
-            <button key={t.id} onClick={() => setModulo(t.id)}
-              style={{ whiteSpace: 'nowrap', flexShrink: 0, padding: '7px 12px', borderRadius: 8, border: 'none', background: modulo === t.id ? 'var(--copper)' : 'rgba(247,241,230,0.1)', color: modulo === t.id ? 'white' : 'rgba(247,241,230,0.6)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              {t.icone} {t.label}
-            </button>
-          ))}
+    <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '14px 16px',
+      marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 700, color: '#faf7f2' }}>
+          Esta aula ainda não está publicada
         </div>
-        </>
-      )}
-      {/* A identificação do plano — data, unidade, horário, estado — está
-          agora no menu da esquerda. Aqui ficam só os atalhos, que mudam
-          com o sítio onde se está. */}
+        <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.65)', marginTop: 2 }}>
+          Os alunos só a veem depois de publicares.
+        </div>
+      </div>
+      <button onClick={() => {
+        const semFicha = (plano.fichasIds?.length || 0) === 0;
+        if (semFicha && !confirm(
+          'Este plano ainda não tem ficha técnica.\n\n'
+          + 'Publicar assim mesmo? O aluno passa a ver a aula no calendário '
+          + 'e podes associar a ficha mais tarde.'
+        )) return;
+        publicarPlanoParaAlunos(plano.id).then(r => {
+          alert(r.ok
+            ? 'Publicado. A aula está no Sheets e os alunos já a veem.'
+            : 'ATENÇÃO — os alunos ainda NÃO veem esta aula.\n\n' + (r.erro || ''));
+        });
+      }}
+        style={{ padding: '10px 16px', borderRadius: 10, border: 'none',
+          background: 'var(--sage)', color: '#fff', cursor: 'pointer',
+          fontSize: 14, fontWeight: 700, fontFamily: 'inherit' }}>
+        ✓ Publicar aula
+      </button>
     </div>
   );
 }
 
+/** A unidade está no menu da esquerda; esta barra repetia-a em cada módulo. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function BarraUC({ plano }: { plano: PlanoAula }) {
   if (!plano.ucId) return null;
   return (
@@ -721,7 +664,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-        <BarraUC plano={plano} />
         <div style={{ background: 'var(--copper-pale)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: 'var(--copper)', fontWeight: 600 }}>
           📄 A criar Ficha de Produção para este plano — será associada automaticamente
         </div>
@@ -754,8 +696,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <div className="no-print">
           <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-          <BarraUC plano={plano} />
-          {nomePratoGuia && (
+            {nomePratoGuia && (
             <div style={{ background: 'rgba(90,122,78,0.1)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>
               📚 Guia de Apoio à Produção — <strong>{nomePratoGuia}</strong>
             </div>
@@ -785,7 +726,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-        <BarraUC plano={plano} />
         {todasRequisicoesDoPlano.length > 0 && (
           <div style={{ background: 'var(--sage-pale)', borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: modoSelecaoReq ? 8 : 0 }}>
@@ -869,7 +809,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-        <BarraUC plano={plano} />
         <div style={{ padding:'10px 14px', background:'var(--copper-pale)', borderRadius:10, fontSize:13, color:'var(--copper)', marginBottom:14, border:'1px solid rgba(181,101,29,0.2)' }}>
           <strong>{totalComp} competências</strong> para esta aula. As obrigatórias não podem ser removidas.
         </div>
@@ -1125,7 +1064,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-        <BarraUC plano={plano} />
         <PinTemporarioPanel turmaId={turmaId} nomeProfessor={nomeProfessor} />
       </div>
     );
@@ -1166,7 +1104,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             if (alunoParaValidar) { setTabInicio('turma'); setAlunoParaValidar(null); }
           }}
           modulo={modulo} setModulo={setModulo} />
-        <BarraUC plano={plano} />
 
         {/* Resumo rápido */}
         <div style={{ display:'flex', gap:10, marginBottom:14, flexWrap:'wrap' }}>
