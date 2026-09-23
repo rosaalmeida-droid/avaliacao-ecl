@@ -37,6 +37,15 @@ export const HORARIOS: HorarioTurma[] = [
     ],
   },
   {
+    // Cozinha e Restauração — a outra turma do 1º ano.
+    turmaId: '1º ACR',
+    inicioAulas: '2026-09-21',
+    blocos: [
+      // Quinta-feira, à tarde.
+      { dia: 4, inicio: '14:00', fim: '17:00' },
+    ],
+  },
+  {
     turmaId: '2º ACP',
     inicioAulas: '2026-09-21',
     blocos: [

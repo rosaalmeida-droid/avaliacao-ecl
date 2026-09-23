@@ -3,14 +3,17 @@
 //  M = dias de cozinha da turma entre início e fim da UC (horários.ts);
 //      para as outras disciplinas, semanas.
 import { getPlanosAula } from './backend';
-import { CRONOGRAMA_2026_2027 } from './cronograma';
+import { CRONOGRAMA_2026_2027, modulosDaTurma } from './cronograma';
 import { horarioDaTurma, temCozinha } from './horarios';
 import type { PlanoAula } from './types';
 
 const DIA = 86400000;
 
 function modDaUC(plano: PlanoAula): any {
-  return CRONOGRAMA_2026_2027.find(x => x.id === plano.ucId);
+  // Pela turma: a mesma UC pode ter datas diferentes em duas turmas do
+  // mesmo ano (a BCR dá a UC03576 até 16/10, a ACR até 13/11).
+  const daTurma = modulosDaTurma(plano.turmaId).find(x => x.id === plano.ucId);
+  return daTurma || CRONOGRAMA_2026_2027.find(x => x.id === plano.ucId);
 }
 
 // Feriados nacionais em dias de semana, dentro dos períodos letivos de

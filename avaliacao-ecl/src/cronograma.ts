@@ -35,6 +35,8 @@ export interface ModuloCronograma {
   dataInicio: string;
   dataFim: string;
   docente?: string;
+  /** Só destas turmas. Vazio ou ausente: todas as do ano. */
+  turmas?: string[];
 }
 
 // ------------------------------------------------------------------
@@ -46,11 +48,18 @@ const MODULOS_1CP: ModuloCronograma[] = [
   { id: 'UC00039', tipo: 'UC', numeroModulo: '14', nome: 'Implementar as normas de segurança e saúde no trabalho em hotelaria e restauração', disciplina: 'Tecnologia Alimentar', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2027-01-04', dataFim: '2027-06-01', docente: 'Raquel Ratado' },
 
   // — Serviços de Cozinha-Pastelaria (175h) —
-  { id: 'UC03576', tipo: 'UC', numeroModulo: '01', nome: 'Planear e organizar a produção de cozinha', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2026-09-21', dataFim: '2026-10-16', docente: 'Rosa Almeida' },
-  { id: 'UC01999', tipo: 'UC', numeroModulo: '02', nome: 'Preparar e executar confeções de cozinha', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 51, dataInicio: '2026-10-19', dataFim: '2026-11-20', docente: 'Rosa Almeida' },
-  { id: 'UC02002', tipo: 'UC', numeroModulo: '04', nome: 'Preparar e confecionar acepipes, sopas, entradas, ovos e massas', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, horasPrevistas: 50, horasEfetivas: 51, dataInicio: '2026-11-23', dataFim: '2027-02-05', docente: 'Rosa Almeida' },
-  { id: 'UC02005', tipo: 'UC', numeroModulo: '07', nome: 'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, horasPrevistas: 50, horasEfetivas: 25, dataInicio: '2027-02-08', dataFim: '2027-04-30', docente: 'Rosa Almeida' },
-  { id: 'UC03577', tipo: 'UC', numeroModulo: '03', nome: 'Preparar e confecionar molhos e fundos de cozinha', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 49, dataInicio: '2027-05-03', dataFim: '2027-06-01', docente: 'Rosa Almeida' },
+  { id: 'UC03576', tipo: 'UC', numeroModulo: '01', nome: 'Planear e organizar a produção de cozinha', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º BCR'], horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2026-09-21', dataFim: '2026-10-16', docente: 'Rosa Almeida' },
+  { id: 'UC01999', tipo: 'UC', numeroModulo: '02', nome: 'Preparar e executar confeções de cozinha', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º BCR'], horasPrevistas: 25, horasEfetivas: 51, dataInicio: '2026-10-19', dataFim: '2026-11-20', docente: 'Rosa Almeida' },
+  { id: 'UC02002', tipo: 'UC', numeroModulo: '04', nome: 'Preparar e confecionar acepipes, sopas, entradas, ovos e massas', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º BCR'], horasPrevistas: 50, horasEfetivas: 51, dataInicio: '2026-11-23', dataFim: '2027-02-05', docente: 'Rosa Almeida' },
+  { id: 'UC02005', tipo: 'UC', numeroModulo: '07', nome: 'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º BCR'], horasPrevistas: 50, horasEfetivas: 25, dataInicio: '2027-02-08', dataFim: '2027-04-30', docente: 'Rosa Almeida' },
+  { id: 'UC03577', tipo: 'UC', numeroModulo: '03', nome: 'Preparar e confecionar molhos e fundos de cozinha', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º BCR'], horasPrevistas: 25, horasEfetivas: 49, dataInicio: '2027-05-03', dataFim: '2027-06-01', docente: 'Rosa Almeida' },
+
+  // — 1º ACR — Serviços de Cozinha e Pastelaria (100h · 3h/semana) —
+  // Turma de Cozinha e Restauração, quinta-feira das 14h às 17h.
+  // Fonte: REVISTO_CNQ_Cronogramas_CR-Rest_2026-2029, tabela do 1º ano.
+  { id: 'UC03576', tipo: 'UC', numeroModulo: '01', nome: 'Planear e organizar a produção de cozinha', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º ACR'], horasPrevistas: 25, horasEfetivas: 25, dataInicio: '2026-09-21', dataFim: '2026-11-13', docente: 'Rosa Almeida' },
+  { id: 'UC01999', tipo: 'UC', numeroModulo: '02', nome: 'Preparar e executar confeções de cozinha', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º ACR'], horasPrevistas: 25, horasEfetivas: 25, dataInicio: '2026-11-16', dataFim: '2027-01-29', docente: 'Rosa Almeida' },
+  { id: 'UC02002', tipo: 'UC', numeroModulo: '04', nome: 'Preparar e confecionar acepipes, sopas, entradas, ovos e massas', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º ACR'], horasPrevistas: 50, horasEfetivas: 50, dataInicio: '2027-02-01', dataFim: '2027-06-01', docente: 'Rosa Almeida' },
 
   // — Serviços de Restaurante e Bar (75h) —
   { id: 'UC03580', tipo: 'UC', numeroModulo: '11', nome: 'Atender o cliente e gerir reclamações na restauração', disciplina: 'Serviços de Restaurante e Bar', turmaAno: 1, horasPrevistas: 50, horasEfetivas: 49, dataInicio: '2026-09-21', dataFim: '2027-03-19' },
@@ -62,7 +71,7 @@ const MODULOS_1CP: ModuloCronograma[] = [
   // Confirmado no cronograma ECL 2026-2029: módulo 09, Tecnologia Alimentar
   { id: 'UC00596', tipo: 'UC', numeroModulo: '09', nome: 'Implementar os princípios de nutrição e dietética', disciplina: 'Tecnologia Alimentar', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2027-01-04', dataFim: '2027-03-31' },
   // UC03593 — Panificação (25h, Serviços de Cozinha-Pastelaria, 1º CP)
-  { id: 'UC03593', tipo: 'UC', numeroModulo: '09', nome: 'Planear e confecionar massas básicas de panificação', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2027-04-01', dataFim: '2027-06-01' },
+  { id: 'UC03593', tipo: 'UC', numeroModulo: '09', nome: 'Planear e confecionar massas básicas de panificação', disciplina: 'Serviços de Cozinha-Pastelaria', turmaAno: 1, turmas: ['1º BCR'], horasPrevistas: 25, horasEfetivas: 24, dataInicio: '2027-04-01', dataFim: '2027-06-01' },
 ];
 
 // ------------------------------------------------------------------
@@ -182,7 +191,12 @@ export function anoDaTurma(turmaIdOuNome: string): 1 | 2 | 3 | null {
 export function modulosDaTurma(turmaIdOuNome: string): ModuloCronograma[] {
   const ano = anoDaTurma(turmaIdOuNome);
   if (!ano) return [];
-  return CRONOGRAMA_2026_2027.filter(m => m.turmaAno === ano);
+  const turma = String(turmaIdOuNome || '').trim();
+  // Duas turmas podem estar no mesmo ano com datas diferentes — a BCR e
+  // a ACR dão as mesmas UC de cozinha em alturas diferentes. Um módulo
+  // com "turmas" é só dessas; sem "turmas", é de todas as do ano.
+  return CRONOGRAMA_2026_2027.filter(m =>
+    m.turmaAno === ano && (!m.turmas || m.turmas.includes(turma)));
 }
 
 function hoje(): string {

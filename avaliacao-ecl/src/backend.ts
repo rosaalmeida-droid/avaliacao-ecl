@@ -512,11 +512,31 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
 }
 
 // ── Turmas ───────────────────────────────────────────────────
+/** As turmas oficiais deste ano letivo. */
+const TURMAS_OFICIAIS: Turma[] = [
+  { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
+  { id: '1º ACR', nome: '1º ACR — Cozinha e Restauração' },
+  { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
+  { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
+];
+
 export function getTurmas(): Turma[] {
   const t = load<Turma>(KEYS.turmas);
+  // Uma turma criada depois — como a ACR — não aparecia em aparelhos que
+  // já tinham a lista guardada: só se criava a lista quando estava vazia.
+  if (t.length > 0) {
+    const faltam = TURMAS_OFICIAIS.filter(o => !t.some(x => x.id === o.id));
+    if (faltam.length) {
+      const juntas = [...t, ...faltam];
+      save(KEYS.turmas, juntas);
+      return juntas;
+    }
+    return t;
+  }
   if (t.length === 0) {
     const seed: Turma[] = [
       { id: '1º BCR', nome: '1º BCR — Cozinha e Restauração' },
+      { id: '1º ACR', nome: '1º ACR — Cozinha e Restauração' },
       { id: '2º ACP', nome: '2º ACP — Cozinha e Pastelaria' },
       { id: '3º ACP', nome: '3º ACP — Cozinha e Pastelaria' },
     ];
@@ -828,6 +848,11 @@ export function seedAlunosReais(): void {
     { id: '1º BCR-19', turmaId: '1º BCR', numero: 19, ano: 1 as const, nome: 'Tiago Gaty Lopes', pin: '1409', ativo: true, pinCriadoEm: agora },
     { id: '1º BCR-20', turmaId: '1º BCR', numero: 20, ano: 1 as const, nome: 'Tomás Paiva Novais', pin: '5399', ativo: true, pinCriadoEm: agora },
 
+    // ── 1º ACR — Cozinha e Restauração (quinta, 14h-17h) ────────
+    { id: '1º ACR-1', turmaId: '1º ACR', numero: 1, ano: 1 as const, nome: 'Kayllany Souza de Morais', pin: '6419', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-2', turmaId: '1º ACR', numero: 2, ano: 1 as const, nome: 'Letícia Filipa Correia Vicente', pin: '5244', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-3', turmaId: '1º ACR', numero: 3, ano: 1 as const, nome: 'Luana Da Costa Oliveira', pin: '1823', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-99', turmaId: '1º ACR', numero: 99, ano: 1 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
     // Um aluno de teste por turma, para o professor experimentar sem
     // mexer no percurso de ninguém. PIN 9999.
     { id: '1º BCR-99', turmaId: '1º BCR', numero: 99, ano: 1 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
@@ -5215,6 +5240,22 @@ export function participacoesDoAluno(alunoId: string): number {
   return getAtividades().filter(a => (a.participantesIds || []).includes(alunoId)).length;
 }
 
+/**
+ * Participações que contam para uma UC: as do período do módulo. Um
+ * evento feito em novembro ajuda a nota do módulo que estava a decorrer
+ * em novembro, e não todos os módulos do ano.
+ */
+export function participacoesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: string): number {
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  const atividades = getAtividades().filter(a =>
+    (a.participantesIds || []).includes(alunoId) && a.turmaId === turmaId);
+  if (!mod?.dataInicio || !mod?.dataFim) return atividades.length;
+  return atividades.filter(a => {
+    const d = String(a.data || '').slice(0, 10);
+    return d >= mod.dataInicio && d <= mod.dataFim;
+  }).length;
+}
+
 export interface NotaUC {
   base: number | null;
   bonusAssiduidade: number;
@@ -5226,7 +5267,8 @@ export interface NotaUC {
 
 /** Aplica os dois bónus e o teto a uma nota base de UC. */
 export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: string, ucId: string): NotaUC {
-  const participacoes = participacoesDoAluno(alunoId);
+  // Só as atividades do período deste módulo (decisão da Rosa, set/2026).
+  const participacoes = participacoesDoAlunoNaUC(alunoId, turmaId, ucId);
   if (base === null) {
     return { base, bonusAssiduidade: 0, bonusParticipacao: 0, participacoes, limitadaPorTeto: false, final: null };
   }
@@ -5563,7 +5605,7 @@ export interface ProgressoEnvio { feito: number; total: number; oQue: string; }
 export async function enviarTudoParaOSheets(
   turmaId: string,
   aoProgredir?: (p: ProgressoEnvio) => void
-): Promise<{ enviados: number }> {
+): Promise<{ enviados: number; emFalta: string[] }> {
   const alunos = getAlunos().filter(a => a.turmaId === turmaId);
   const planos = getPlanosAula().filter(p => p.turmaId === turmaId);
   const idsPlanos = new Set(planos.map(p => p.id));
@@ -5586,13 +5628,63 @@ export async function enviarTudoParaOSheets(
   validacoes.forEach(v => tarefas.push({ oQue: 'validações', fazer: () => enviar(SHEETS_HISTORICO_URL, 'validacao', v as any) }));
   avaliacoes.forEach(r => tarefas.push({ oQue: 'avaliações', fazer: () => enviar(SHEETS_HISTORICO_URL, 'avaliacao', r as any) }));
 
+  // Um de cada vez, com espaço entre eles. Disparados todos ao mesmo
+  // tempo, o Google recusa os que passam do limite de execuções em
+  // paralelo — e não avisa. Foi assim que chegaram 25 de 65 alunos.
   for (let i = 0; i < tarefas.length; i++) {
     tarefas[i].fazer();
     aoProgredir?.({ feito: i + 1, total: tarefas.length, oQue: tarefas[i].oQue });
-    // Aos poucos, para o Google não recusar por excesso de pedidos.
-    if (i % 10 === 9) await new Promise(res => setTimeout(res, 400));
+    await new Promise(res => setTimeout(res, 220));
+    if (i % 25 === 24) await new Promise(res => setTimeout(res, 1500));
   }
-  return { enviados: tarefas.length };
+
+  // Conferir e repetir o que faltar. Duas rondas.
+  const emFalta: string[] = [];
+  for (let ronda = 0; ronda < 2; ronda++) {
+    await new Promise(res => setTimeout(res, 2500));
+    const faltam = await oQueNaoChegou(turmaId, alunos, planos, fichas);
+    if (!faltam.length) return { enviados: tarefas.length, emFalta: [] };
+    if (ronda === 1) { emFalta.push(...faltam.map(x => x.rotulo)); break; }
+    aoProgredir?.({ feito: tarefas.length, total: tarefas.length, oQue: `a repetir ${faltam.length}` });
+    for (const f of faltam) {
+      f.reenviar();
+      await new Promise(res => setTimeout(res, 300));
+    }
+  }
+  return { enviados: tarefas.length, emFalta };
+}
+
+/** O que foi enviado e não está no Sheets — com forma de o reenviar. */
+async function oQueNaoChegou(
+  turmaId: string, alunos: Aluno[], planos: PlanoAula[], fichas: FichaProducao[]
+): Promise<{ rotulo: string; reenviar: () => void }[]> {
+  const faltam: { rotulo: string; reenviar: () => void }[] = [];
+  const ler = async (url: string, tipo: string) => {
+    try {
+      const j: any = await lerDoSheets(url, { tipo, turmaId });
+      return j?.ok ? new Set((j.dados || []).map((x: any) => String(x.id))) : null;
+    } catch { return null; }
+  };
+
+  const la = await ler(SHEETS_ALUNOS_URL, 'get_alunos');
+  if (la) alunos.filter(a => !la.has(a.id)).forEach(a => faltam.push({
+    rotulo: `aluno ${a.numero} — ${a.nome}`,
+    reenviar: () => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a }),
+  }));
+
+  const lp = await ler(SHEETS_PLANOS_URL, 'get_planos');
+  if (lp) planos.filter(p => !lp.has(p.id)).forEach(p => faltam.push({
+    rotulo: `plano ${p.titulo || p.id}`,
+    reenviar: () => enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }),
+  }));
+
+  const lf = await ler(SHEETS_FICHAS_URL, 'get_fichas');
+  if (lf) fichas.filter(f => !lf.has(f.id)).forEach(f => faltam.push({
+    rotulo: `ficha ${f.nomePrato}`,
+    reenviar: () => enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f }),
+  }));
+
+  return faltam;
 }
 
 /** Só as contas, para o professor ver o que vai enviar. */
@@ -5703,4 +5795,107 @@ export function horasPerdidasPorAtraso(
     horas += Math.min(Math.floor(minutos / 60), horasDoPlano(p));
   }
   return horas;
+}
+
+// ============================================================
+// Fecho de UC — pauta e envio por email
+// ============================================================
+// Quando o módulo acaba, o professor tem de fechar a avaliação e mandar
+// a pauta para a direção. Sem isto ficava à espera de se lembrar, e
+// depois tinha de refazer as contas à mão.
+
+export interface LinhaPauta {
+  numero: number;
+  nome: string;
+  alunoId: string;
+  base: number | null;
+  bonusAssiduidade: number;
+  bonusParticipacao: number;
+  final: number | null;
+  presenca: number;
+  recuperacao: boolean;
+  motivo: string;
+}
+
+/** A pauta de uma UC: uma linha por aluno, com as contas já feitas. */
+export function pautaDaUC(turmaId: string, ucId: string): LinhaPauta[] {
+  return getAlunos()
+    .filter(a => a.turmaId === turmaId && a.ativo !== false)
+    .sort((a, b) => a.numero - b.numero)
+    .map(a => {
+      const n = notaFinalUC(a.id, turmaId, ucId);
+      const s = situacaoRecuperacaoUC(a.id, turmaId, ucId);
+      return {
+        numero: a.numero, nome: a.nome || `Aluno ${a.numero}`, alunoId: a.id,
+        base: n.base, bonusAssiduidade: n.bonusAssiduidade,
+        bonusParticipacao: n.bonusParticipacao, final: n.final,
+        presenca: s.presenca, recuperacao: s.precisa,
+        motivo: s.motivo === 'faltas' ? 'faltas acima de 10%'
+          : s.motivo === 'negativa' ? 'terminou sem positiva' : '',
+      };
+    });
+}
+
+const KEY_FECHOS = 'ecl_ucs_fechadas';
+
+function ucsFechadas(): string[] {
+  try { return JSON.parse(localStorage.getItem(KEY_FECHOS) || '[]'); } catch { return []; }
+}
+
+export function ucJaFechada(turmaId: string, ucId: string): boolean {
+  return ucsFechadas().includes(turmaId + '|' + ucId);
+}
+
+export function marcarUCFechada(turmaId: string, ucId: string): void {
+  const todas = ucsFechadas();
+  const chave = turmaId + '|' + ucId;
+  if (!todas.includes(chave)) {
+    todas.push(chave);
+    try { localStorage.setItem(KEY_FECHOS, JSON.stringify(todas)); } catch { /* */ }
+  }
+}
+
+/** UCs cujo módulo já acabou e que ainda não foram fechadas. */
+export function ucsPorFechar(turmaId: string): { ucId: string; nome: string; dataFim: string }[] {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const comAulas = new Set(getPlanosAulaPorTurma(turmaId).map(p => p.ucId).filter(Boolean) as string[]);
+  return modulosDaTurma(turmaId)
+    .filter((m: any) => m.dataFim && m.dataFim < hoje && comAulas.has(m.id) && !ucJaFechada(turmaId, m.id))
+    .map((m: any) => ({ ucId: m.id, nome: m.nome, dataFim: m.dataFim }));
+}
+
+/**
+ * Manda a pauta para o email do professor. O ficheiro fica no Drive da
+ * escola, numa folha própria; o email leva o link.
+ */
+export async function enviarPautaPorEmail(
+  turmaId: string, ucId: string, email: string, professor: string
+): Promise<{ ok: boolean; erro?: string }> {
+  if (!email || !email.includes('@')) return { ok: false, erro: 'Email inválido.' };
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  enviar(SHEETS_HISTORICO_URL, 'pauta', {
+    turmaId, ucId, ucNome: mod?.nome || '', email, professor,
+    disciplina: mod?.disciplina || '', horasPrevistas: mod?.horasPrevistas || 0,
+    dataInicio: mod?.dataInicio || '', dataFim: mod?.dataFim || '',
+    linhas: pautaDaUC(turmaId, ucId),
+    criadaEm: new Date().toISOString(),
+  });
+  // Dar tempo ao script e confirmar que a pauta ficou registada.
+  await new Promise(res => setTimeout(res, 2500));
+  try {
+    const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_pautas', turmaId });
+    const la = (json?.dados || json?.pautas || []).some((p: any) =>
+      String(p.ucId) === ucId && String(p.turmaId) === turmaId);
+    return la ? { ok: true } : { ok: false, erro: 'A pauta não chegou ao Sheets. Tenta outra vez.' };
+  } catch {
+    return { ok: false, erro: 'Não consegui confirmar o envio.' };
+  }
+}
+
+const KEY_EMAIL_PROF = 'ecl_email_professor';
+export function emailDoProfessor(): string {
+  try { return localStorage.getItem(KEY_EMAIL_PROF) || ''; } catch { return ''; }
+}
+export function guardarEmailDoProfessor(email: string): void {
+  try { localStorage.setItem(KEY_EMAIL_PROF, email.trim()); } catch { /* */ }
 }

@@ -18,6 +18,7 @@ import { ModalFullscreen } from './components/ModalFullscreen';
 import { VistaDePlano } from './components/VistaDePlano';
 import { MenuDoPlano } from './components/MenuDoPlano';
 import { ManualProfessor } from './components/ManualProfessor';
+import { FecharUC } from './components/FecharUC';
 import { posicaoNaUC, totalAulasUC, avisoFimUC } from './rotuloPlano';
 import { CRONOGRAMA_2026_2027 } from './cronograma';
 import { AvaliacaoPorUC } from './components/AvaliacaoPorUC';
@@ -122,7 +123,8 @@ import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedP
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
-  autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos } from './backend';
+  autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
+  ucsPorFechar } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -154,6 +156,8 @@ function AppInterno() {
   const [moduloPlano, setModuloPlano] = useState<string>('inicio');
   /** O menu pede para ir a um sítio; a vista obedece e limpa o pedido. */
   const [moduloPedido, setModuloPedido] = useState<string | null>(null);
+  /** Unidade que o professor está a fechar (pauta). */
+  const [ucAFechar, setUcAFechar] = useState<{ ucId: string; nome: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   // 'inicio' é o painel de blocos; os outros valores são os destinos.
@@ -310,6 +314,13 @@ function AppInterno() {
         {/* Conteúdo da vista activa — o plano aberto passa a mostrar-se
             num modal quase-fullscreen por cima do calendário, em vez de
             substituir o ecrã todo. O calendário/lista continua por trás. */}
+        {ucAFechar && (
+          <FecharUC turmaId={turmaId} ucId={ucAFechar.ucId} ucNome={ucAFechar.nome}
+            nomeProfessor={nomeProfessor}
+            onFechado={() => { setUcAFechar(null); setRefreshKey(k => k + 1); }}
+            onCancelar={() => setUcAFechar(null)} />
+        )}
+
         {planoAberto && (() => {
           // Tudo o que o menu do plano precisa de saber. Lido aqui, não
           // calculado de novo: são as mesmas funções que o resto usa.
@@ -431,6 +442,37 @@ function AppInterno() {
               <div style={{ maxWidth: 820, margin: '0 auto 4px' }}>
                 <EstadoSincronizacao turmaId={turmaId} />
               </div>
+
+              {/* Unidades que já acabaram e ainda não foram fechadas. O
+                  professor tem de mandar a pauta à direção, e assim não
+                  precisa de refazer as contas. */}
+              {(() => {
+                const porFechar = ucsPorFechar(turmaId);
+                if (!porFechar.length) return null;
+                return (
+                  <div style={{ maxWidth: 820, margin: '0 auto 12px',
+                    background: '#eef4eb', border: '1.5px solid var(--sage)',
+                    borderRadius: 12, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#2d4a22' }}>
+                      {porFechar.length === 1 ? 'Uma unidade terminou' : `${porFechar.length} unidades terminaram`}
+                    </div>
+                    <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)',
+                      marginTop: 4, lineHeight: 1.55 }}>
+                      Podes fechar a avaliação e mandar a pauta para o teu email.
+                    </div>
+                    <div style={{ marginTop: 10, display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                      {porFechar.slice(0, 4).map((u: { ucId: string; nome: string }) => (
+                        <button key={u.ucId} onClick={() => setUcAFechar(u)}
+                          style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid var(--sage)',
+                            background: '#fff', color: '#2d4a22', fontSize: 13.5, fontWeight: 700,
+                            cursor: 'pointer', fontFamily: 'inherit' }}>
+                          {u.ucId} — fechar
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Autoavaliações por validar, de qualquer plano. Sem isto
                   o professor passava para a aula seguinte sem dar por
