@@ -7,7 +7,6 @@ import { ManualCozinheiro } from './components/ManualCozinheiro';
 import { ManuaisAluno } from './components/ManuaisAluno';
 import { Header, LayoutProfessor, VistaProf } from './components/Header';
 import { PainelProfessor } from './components/PainelProfessor';
-import { CalendarioMensal } from './components/PlanoAula';
 import { EstadoSincronizacao } from './components/EstadoSincronizacao';
 import { modulosAtivos } from './cronograma';
 import ProfessorView from './components/ProfessorView';
@@ -360,6 +359,7 @@ function AppInterno() {
                     const m = CRONOGRAMA_2026_2027.find((x: any) => x.id === planoAberto.ucId);
                     return (m as any)?.disciplina;
                   })()}
+                  autoavaliacoes={getSelecoes().filter((s: any) => s.planoAulaId === planoAberto.id).length}
                   porValidar={(() => {
                     const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
                     return getSelecoes().filter((s: any) =>
@@ -491,16 +491,8 @@ function AppInterno() {
                     s.turmaId === turmaId && !vals.has(s.id)).length;
                 })()}
                 onAbrir={(v) => setVistaGlobal(v)}
-                calendario={
-                  <CalendarioMensal
-                    planos={getPlanosAulaPorTurma(turmaId).filter((p: any) => p.estado !== 'arquivado')}
-                    onAbrirPlano={(p: any) => setPlanoAberto(p)}
-                    turmaId={turmaId}
-                    onCriarNoDia={() => setVistaGlobal('planos')}
-                    onPlanoEliminado={() => setRefreshKey(k => k + 1)}
-                    key={'cal-' + refreshKey}
-                  />
-                }
+                // O calendário ao lado dos cartões apertava o ecrã no
+                // tablet. Fica só em Planos de Aula.
               />
               </>
             );

@@ -828,6 +828,12 @@ export function seedAlunosReais(): void {
     { id: '1º BCR-19', turmaId: '1º BCR', numero: 19, ano: 1 as const, nome: 'Tiago Gaty Lopes', pin: '1409', ativo: true, pinCriadoEm: agora },
     { id: '1º BCR-20', turmaId: '1º BCR', numero: 20, ano: 1 as const, nome: 'Tomás Paiva Novais', pin: '5399', ativo: true, pinCriadoEm: agora },
 
+    // Um aluno de teste por turma, para o professor experimentar sem
+    // mexer no percurso de ninguém. PIN 9999.
+    { id: '1º BCR-99', turmaId: '1º BCR', numero: 99, ano: 1 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-99', turmaId: '2º ACP', numero: 99, ano: 2 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-99', turmaId: '3º ACP', numero: 99, ano: 3 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
+
     // ── 2º ACP ───────────────────────────────────────────────────
     // 2º ACP — constituição de 2026/27 (eSchooling).
     // Saíram Carlos Maia (7), Jorgeana Varela (13) e Martim Silva (16).
@@ -2466,6 +2472,7 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
     // Aula que o professor nunca abriu não conta contra o aluno: sem a
     // aula aberta ele nem conseguia marcar presença. A responsabilidade é
     // do professor — só uma decisão explícita dele conta como falta.
+    if ((plano as any).contaAssiduidade === false) return false;
     if (!getSessaoAula(plano.id)?.abertaEm) return false;
     // Esteve na aula (mesmo atrasado) → não falta horas.
     if (registo?.presente) return false;
@@ -2534,8 +2541,12 @@ export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: st
   const horasPrevistas = mod?.horasPrevistas
     || planosDaUC.reduce((s, p) => s + horasDoPlano(p), 0);
 
-  const horasFaltadas = getPlanosFaltadosPorUC(alunoId, ucId, turmaId)
-    .reduce((s, p) => s + horasDoPlano(p), 0);
+  // As faltas contam-se em horas, como na escola. Faltar à aula toda são
+  // as horas todas; chegar duas horas atrasado são duas horas em falta.
+  const faltados = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
+  const idsFaltados = new Set(faltados.map(p => p.id));
+  const horasFaltadas = faltados.reduce((s, p) => s + horasDoPlano(p), 0)
+    + horasPerdidasPorAtraso(alunoId, ucId, turmaId, idsFaltados);
 
   const presenca = horasPrevistas > 0
     ? Math.max(0, Math.round((1 - horasFaltadas / horasPrevistas) * 100))
@@ -3139,6 +3150,9 @@ export function calcularBonusAssiduidadeUC(alunoId: string, turmaId: string, ucI
 
   planosDaUC.forEach(p => {
     const pres: any = presencas.find(x => x.planoAulaId === p.id);
+    // Aula marcada como "não conta para a assiduidade" — o professor
+    // criou-a depois de ela acontecer, e as faltas não são do aluno.
+    if ((p as any).contaAssiduidade === false) return;
     const decisao = pres?.decisaoProfessor;
     // A decisão do professor manda.
     if (decisao === 'falta_presenca') { faltas++; return; }
@@ -5595,4 +5609,98 @@ export function oQueHaParaEnviar(turmaId: string): Record<string, number> {
     validações: getValidacoes().filter((v: any) => v.turmaId === turmaId).length,
     avaliações: getHistoricoAvaliacoes().filter(r => r.turmaId === turmaId).length,
   };
+}
+
+// ============================================================
+// Confirmar que a avaliação chegou ao Sheets
+// ============================================================
+// O envio não devolve resposta (limitação do Apps Script). Sem
+// confirmação, uma avaliação podia ficar só no computador do professor
+// e ninguém dava por isso — e uma nota que se perde engana o aluno e o
+// professor. Depois de validar, a aplicação vai ler e confere.
+
+export async function confirmarRegistosNoSheets(
+  turmaId: string, ids: string[]
+): Promise<{ ok: boolean; encontrados: number; total: number; erro?: string }> {
+  if (!ids.length) return { ok: true, encontrados: 0, total: 0 };
+  for (let tentativa = 0; tentativa < 2; tentativa++) {
+    await new Promise(res => setTimeout(res, tentativa === 0 ? 1800 : 3000));
+    try {
+      const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
+      if (!json?.ok) continue;
+      const la = new Set((json.dados || json.avaliacoes || []).map((r: any) => String(r.id)));
+      const encontrados = ids.filter(id => la.has(String(id))).length;
+      if (encontrados === ids.length) return { ok: true, encontrados, total: ids.length };
+      if (tentativa === 1) return { ok: false, encontrados, total: ids.length };
+    } catch (e) {
+      if (tentativa === 1) return { ok: false, encontrados: 0, total: ids.length, erro: String(e) };
+    }
+  }
+  return { ok: false, encontrados: 0, total: ids.length };
+}
+
+/**
+ * Teste de ligação: escreve um registo de teste, vai lê-lo e apaga-o.
+ * Diz exatamente onde está a falhar — a escrever ou a ler.
+ */
+export async function testarLigacaoAoSheets(turmaId: string): Promise<string[]> {
+  const linhas: string[] = [];
+  const url = SHEETS_ECL_URL || SHEETS_HISTORICO_URL;
+  linhas.push('Endereço em uso: …' + url.slice(-16));
+  linhas.push(SHEETS_ECL_URL ? 'Script único: SIM' : 'Script único: NÃO (ainda a usar os antigos)');
+
+  // 1. Ler
+  try {
+    const json: any = await lerDoSheets(url, { tipo: 'get_avaliacoes', turmaId });
+    linhas.push(json?.ok ? `Leitura: OK (${(json.dados || []).length} avaliações desta turma)`
+      : 'Leitura: FALHOU — o script não respondeu como devia');
+  } catch (e) {
+    linhas.push('Leitura: FALHOU — ' + String(e).slice(0, 60));
+  }
+
+  // 2. Escrever e voltar a ler
+  const id = novoId('teste');
+  enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
+    id, alunoId: 'TESTE', turmaId, planoAulaId: 'TESTE', ucId: 'TESTE',
+    microcompetencia: 'TESTE', microcompetenciaId: 'TESTE', nota: 1,
+    data: new Date().toISOString(), validadoPor: 'teste', nomeAluno: 'Teste de ligação',
+  });
+  const r = await confirmarRegistosNoSheets(turmaId, [id]);
+  linhas.push(r.ok ? 'Escrita: OK — o que gravas chega ao Sheets'
+    : 'Escrita: FALHOU — o que gravas NÃO chega ao Sheets');
+  if (!r.ok) linhas.push('Apaga a linha de teste se ela aparecer mais tarde (aluno TESTE).');
+  return linhas;
+}
+
+
+// ============================================================
+// Horas perdidas por atraso
+// ============================================================
+// Um atraso não é uma falta à aula inteira, mas também não é zero: o
+// aluno que chega duas horas depois perdeu duas horas de aula. Contam-se
+// as horas completas de atraso, depois da tolerância — quem chega dentro
+// dos dez minutos não perde nada.
+
+export function horasPerdidasPorAtraso(
+  alunoId: string, ucId: string, turmaId: string, jaContados?: Set<string>
+): number {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const planos = getPlanosAula().filter(p =>
+    p.ucId === ucId && p.turmaId === turmaId
+    && (p.estado === 'publicado' || p.estado === 'realizada')
+    && (p as any).contaAssiduidade !== false
+    && !jaContados?.has(p.id)
+    && aulaJaAconteceu(p, hoje));
+
+  const presencas = getPresencas().filter(r => r.alunoId === alunoId);
+  let horas = 0;
+  for (const p of planos) {
+    const reg: any = presencas.find(r => r.planoAulaId === p.id);
+    if (!reg || reg.decisaoProfessor === 'sem_falta') continue;
+    const minutos = Number(reg.atrasadoMins) || 0;
+    if (minutos <= 0) continue;
+    // Horas completas, e nunca mais do que a aula toda.
+    horas += Math.min(Math.floor(minutos / 60), horasDoPlano(p));
+  }
+  return horas;
 }

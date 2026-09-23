@@ -443,6 +443,9 @@ export interface SubmissaoTrabalho {
 }
 
 export interface PlanoAula {
+  /** false quando o professor criou a aula depois de ela acontecer e
+   *  decidiu que as faltas e atrasos dela não contam. */
+  contaAssiduidade?: boolean;
   id: string;
   turmaId: string;
   professor: string;
