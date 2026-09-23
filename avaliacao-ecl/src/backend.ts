@@ -192,6 +192,61 @@ function load<T>(key: string): T[] {
   catch { return []; }
 }
 
+function deduplicarPorId<T extends { id: string }>(itens: T[]): T[] {
+  const porId = new Map<string, T>();
+  itens.forEach(item => { if (item?.id) porId.set(item.id, item); });
+  return [...porId.values()];
+}
+
+function idsEliminados(valor: unknown): string[] {
+  const itens = Array.isArray(valor) ? valor
+    : typeof valor === 'string' ? valor.split(/[;,\n]/) : [];
+  return itens.map((item: any) => String(
+    typeof item === 'string' || typeof item === 'number' ? item
+      : item?.id || item?.planoId || item?.fichaId || item?.requisicaoId || ''
+  ).trim()).filter(Boolean);
+}
+
+async function sincronizarTombstones(): Promise<void> {
+  const resposta = await lerDoSheets(SHEETS_ECL_URL || SHEETS_PLANOS_URL, { tipo: 'get_eliminados' });
+  if (!resposta?.ok) return;
+
+  const dados = resposta.eliminados ?? resposta.dados ?? resposta;
+  const listas: Record<string, string[]> = { planos: [], fichas: [], requisicoes: [] };
+  if (Array.isArray(dados)) {
+    dados.forEach((item: any) => {
+      const tipo = String(item?.tipo || item?.tabela || item?.entidade || '').toLowerCase();
+      const id = String(item?.id || item?.planoId || item?.fichaId || item?.requisicaoId || '').trim();
+      if (!id) return;
+      if (tipo.includes('plano')) listas.planos.push(id);
+      else if (tipo.includes('ficha')) listas.fichas.push(id);
+      else if (tipo.includes('requis')) listas.requisicoes.push(id);
+    });
+  }
+  const fontes: Record<string, string[]> = {
+    planos: ['planos', 'eliminadosPlanos', 'planosEliminados', 'idsPlanos', 'planoIds'],
+    fichas: ['fichas', 'eliminadosFichas', 'fichasEliminadas', 'idsFichas', 'fichaIds'],
+    requisicoes: ['requisicoes', 'eliminadosRequisicoes', 'requisicoesEliminadas', 'idsRequisicoes', 'requisicaoIds'],
+  };
+  const chaves: Record<string, string> = {
+    planos: KEYS.eliminadosPlanos,
+    fichas: KEYS.eliminadosFichas,
+    requisicoes: KEYS.eliminadosRequisicoes,
+  };
+  for (const grupo of Object.keys(fontes)) {
+    for (const nome of fontes[grupo]) {
+      listas[grupo].push(...idsEliminados((dados as any)?.[nome] ?? (resposta as any)?.[nome]));
+    }
+    save(chaves[grupo], [...new Set([...load<string>(chaves[grupo]), ...listas[grupo]])]);
+  }
+
+  // A Requisição fica deliberadamente fora desta reconciliação local.
+  const planosRemovidos = new Set(load<string>(KEYS.eliminadosPlanos));
+  const fichasRemovidas = new Set(load<string>(KEYS.eliminadosFichas));
+  save(KEYS.planos, getPlanosAula().filter(p => !planosRemovidos.has(p.id)));
+  save(KEYS.fichas, getFichasProducao().filter(f => !fichasRemovidas.has(f.id)));
+}
+
 export function save<T>(key: string, data: T[]): void {
   try { localStorage.setItem(key, JSON.stringify(data)); }
   catch (e) { console.error('Erro ao guardar', key, e); }
@@ -234,6 +289,10 @@ export async function buscarFichasSimilares(nome: string): Promise<Array<{id: st
 // Chamada na inicialização da app — carrega dados do Sheets se houver URL
 export async function sincronizarDoSheets(turmaId: string): Promise<void> {
   try {
+    // Importar eliminações antes dos registos: evita que outro dispositivo
+    // volte a apresentar planos ou fichas removidos.
+    await sincronizarTombstones().catch(() => {});
+
     // Sessões e líderes primeiro: são o que o aluno precisa para saber
     // se pode entrar na aula. Falham em silêncio se o script ainda não
     // souber responder a estes tipos.
@@ -288,7 +347,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             }
           } else merged.push(p);
         }
-        save(KEYS.planos, merged);
+        save(KEYS.planos, deduplicarPorId(merged));
       }
     }
 
@@ -339,7 +398,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             merged[idx] = atualizado;
           }
         }
-        save(KEYS.fichas, merged);
+        save(KEYS.fichas, deduplicarPorId(merged));
       }
     }
 
@@ -407,10 +466,13 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         const transicao = jsonAval.dados.filter((r: any) => r.validadoPor === 'transicao');
         const normais = jsonAval.dados.filter((r: any) => r.validadoPor !== 'transicao');
 
-        const locais = getHistoricoAvaliacoes();
-        const idsLocais = new Set(locais.map((r: RegistoAvaliacao) => r.id));
-        const novas = normais.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
-        if (novas.length > 0) save(KEY_HIST, [...locais, ...novas]);
+        const locais = deduplicarPorId(getHistoricoAvaliacoes());
+        const porId = new Map(locais.map((r: RegistoAvaliacao) => [r.id, r]));
+        for (const registo of normais as RegistoAvaliacao[]) {
+          const atual = porId.get(registo.id);
+          if (!atual || (registo.data || '') > (atual.data || '')) porId.set(registo.id, registo);
+        }
+        save(KEY_HIST, [...porId.values()]);
 
         if (transicao.length > 0) {
           const jaTem = getRegistosTransicao();
@@ -429,14 +491,14 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       // ── Sincronizar Validações ──────────────────────────────────────
       const jsonVal = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_validacoes', turmaId });
       if (jsonVal?.ok && jsonVal.dados?.length > 0) {
-        const locais = getValidacoes();
+        const locais = deduplicarPorId(getValidacoes());
         const merged = [...locais];
         for (const v of jsonVal.dados) {
           const idx = merged.findIndex((x: Validacao) => x.id === v.id);
           if (idx < 0) merged.push(v);
           else if ((v.validadoEm || '') > (merged[idx].validadoEm || '')) merged[idx] = v;
         }
-        save(KEYS.validacoes, merged);
+        save(KEYS.validacoes, deduplicarPorId(merged));
       }
 
       // ── Sincronizar Presenças ───────────────────────────────────────
@@ -494,14 +556,14 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     if (SHEETS_HISTORICO_URL) {
       const jsonSel = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId });
       if (jsonSel?.ok && jsonSel.dados?.length > 0) {
-        const locais = getSelecoes();
+        const locais = deduplicarPorId(getSelecoes());
         const merged = [...locais];
         for (const s of jsonSel.dados) {
           const idx = merged.findIndex((x: SelecaoAluno) => x.id === s.id);
           if (idx < 0) merged.push(s);
           else if ((s.criadaEm || '') > (merged[idx].criadaEm || '')) merged[idx] = s;
         }
-        save(KEYS.selecoes, merged);
+        save(KEYS.selecoes, deduplicarPorId(merged));
       }
     }
 
@@ -2209,7 +2271,7 @@ export function registarBalancoAtividade(
 export function getPlanosAulaFn(): PlanoAula[] { return getPlanosAula(); }
 
 export function addOrUpdateSelecao(s: SelecaoAluno): void {
-  const all = getSelecoes();
+  const all = deduplicarPorId(getSelecoes());
   const idx = all.findIndex(x => x.id === s.id);
   if (idx >= 0) all[idx] = s; else all.push(s);
   save(KEYS.selecoes, all);
@@ -2225,10 +2287,11 @@ export function addOrUpdateSelecao(s: SelecaoAluno): void {
     autoavaliacoes: s.autoavaliacoes,
     criadaEm: s.criadaEm,
   });
+  registarEnvio(s.id, 'selecao', `Autoavaliação de ${s.alunoId}`);
 }
 
 export function addOrUpdateValidacao(v: Validacao): void {
-  const all = getValidacoes();
+  const all = deduplicarPorId(getValidacoes());
   const idx = all.findIndex(x => x.id === v.id);
   if (idx >= 0) all[idx] = v; else all.push(v);
   save(KEYS.validacoes, all);
@@ -2254,6 +2317,7 @@ export function addOrUpdateValidacao(v: Validacao): void {
     nota_media_1_5: Math.round((nota20Final / 4) * 10) / 10,
     nota_media_0_20: nota20Final,
   });
+  registarEnvio(v.id, 'validacao', `Validação de ${v.alunoId}`);
 }
 
 export function addOrUpdateAtividade(a: Atividade): void {
@@ -2380,8 +2444,9 @@ export function substituirRegistosDoProfessor(
 }
 
 export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
-  const all = getHistoricoAvaliacoes();
-  all.push(r);
+  const all = deduplicarPorId(getHistoricoAvaliacoes());
+  const idx = all.findIndex(item => item.id === r.id);
+  if (idx >= 0) all[idx] = r; else all.push(r);
   save(KEY_HIST, all);
 
   // Enriquecer com dados para o Apps Script do Histórico
@@ -2415,6 +2480,7 @@ export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
     data: r.data,
     validadoPor: r.validadoPor,
   });
+  registarEnvio(r.id, 'avaliacao', `Avaliação de ${r.alunoId}`);
 }
 
 export function addRegistoPresenca(dados: {
@@ -4683,7 +4749,7 @@ function guardarFila(itens: ItemFila[]): void {
 /** Regista que algo foi enviado, à espera de confirmação. */
 export function registarEnvio(id: string, tipo: string, descricao: string): void {
   const fila = getFilaSync();
-  const existente = fila.find(i => i.id === id);
+  const existente = fila.find(i => i.id === id && i.tipo === tipo);
   if (existente) {
     existente.enviadoEm = new Date().toISOString();
     existente.confirmadoEm = undefined;
@@ -4715,19 +4781,20 @@ export async function confirmarSincronizacao(turmaId: string): Promise<{
   // Ler tudo o que o Sheets tem, por tipo.
   const idsNoSheets = new Set<string>();
 
-  const tenta = async (url: string, tipo: string, campo: string) => {
+  const tenta = async (url: string, consulta: string, campo: string, tipoFila: string) => {
     try {
-      const json = await lerDoSheets(url, { tipo, turmaId });
+      const json = await lerDoSheets(url, { tipo: consulta, turmaId });
       const itens = json?.[campo] || json?.dados || [];
-      itens.forEach((x: any) => { if (x?.id) idsNoSheets.add(String(x.id)); });
-    } catch { /* falha na leitura não é falha no envio */ }
+      itens.forEach((x: any) => { if (x?.id) idsNoSheets.add(`${tipoFila}|${String(x.id)}`); });
+    } catch { /* falha na leitura não é confirmação nem falha de envio */ }
   };
 
   await Promise.all([
-    tenta(SHEETS_FICHAS_URL, 'get_fichas', 'fichas'),
-    tenta(SHEETS_PLANOS_URL, 'get_planos', 'planos'),
-    tenta(SHEETS_HISTORICO_URL, 'get_selecoes', 'selecoes'),
-    tenta(SHEETS_HISTORICO_URL, 'get_validacoes', 'validacoes'),
+    tenta(SHEETS_FICHAS_URL, 'get_fichas', 'fichas', 'ficha'),
+    tenta(SHEETS_PLANOS_URL, 'get_planos', 'planos', 'plano'),
+    tenta(SHEETS_HISTORICO_URL, 'get_selecoes', 'selecoes', 'selecao'),
+    tenta(SHEETS_HISTORICO_URL, 'get_validacoes', 'validacoes', 'validacao'),
+    tenta(SHEETS_HISTORICO_URL, 'get_avaliacoes', 'avaliacoes', 'avaliacao'),
   ]);
 
   const agora = new Date().toISOString();
@@ -4736,7 +4803,7 @@ export async function confirmarSincronizacao(turmaId: string): Promise<{
 
   todos.forEach(item => {
     if (item.confirmadoEm) return;
-    if (idsNoSheets.has(item.id)) {
+    if (idsNoSheets.has(`${item.tipo}|${item.id}`)) {
       item.confirmadoEm = agora;
       confirmados += 1;
     }
@@ -4768,8 +4835,52 @@ export async function reenviarFalhados(): Promise<number> {
     } else if (item.tipo === 'plano') {
       const p = getPlanosAula().find(x => x.id === item.id);
       if (p) { enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }); n += 1; }
+    } else if (item.tipo === 'selecao') {
+      const s = getSelecoes().find(x => x.id === item.id);
+      if (s) {
+        enviar(SHEETS_HISTORICO_URL, 'selecao', {
+          id: s.id, planoAulaId: s.planoAulaId, alunoId: s.alunoId, turmaId: s.turmaId,
+          tecnicas: s.tecnicas, atitudes: s.atitudes, autoavaliacoes: s.autoavaliacoes, criadaEm: s.criadaEm,
+        });
+        n += 1;
+      }
+    } else if (item.tipo === 'validacao') {
+      const v = getValidacoes().find(x => x.id === item.id);
+      if (v) {
+        const mediaPonderada = (v as any).notaMedia20;
+        const media = v.notas.length ? v.notas.reduce((s, nota) => s + nota.nota, 0) / v.notas.length : 0;
+        const nota20 = typeof mediaPonderada === 'number'
+          ? Math.round(mediaPonderada * 10) / 10 : Math.min(20, Math.round(media * 4));
+        const aluno = getAlunos().find(a => a.id === v.alunoId);
+        enviar(SHEETS_HISTORICO_URL, 'validacao', {
+          ...(v as unknown as Record<string, unknown>),
+          nomeAluno: aluno?.nome || (`Aluno ${aluno?.numero || 0}`), turma: v.turmaId,
+          nota_media_1_5: Math.round((nota20 / 4) * 10) / 10, nota_media_0_20: nota20,
+        });
+        n += 1;
+      }
+    } else if (item.tipo === 'avaliacao') {
+      const r = getHistoricoAvaliacoes().find(x => x.id === item.id);
+      if (r) {
+        const aluno = getAlunos().find(a => a.id === r.alunoId);
+        const plano = getPlanosAula().find(p => p.id === r.planoAulaId);
+        const ficha = getFichasProducao().find(f => f.id === r.fichaId);
+        const labels: Record<number, string> = {
+          1: 'Ainda não fiz', 2: 'Preciso de mais prática', 3: 'Consegui com ajuda',
+          4: 'Faço sozinho/a', 5: 'Faço com muito bom resultado',
+        };
+        enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
+          ...r, tipo: 'avaliacao', nomeAluno: aluno?.nome || (`Aluno ${aluno?.numero || 0}`),
+          numero: aluno?.numero || 0, turma: r.turmaId, ano: aluno?.ano || 1,
+          planoTitulo: plano?.titulo || '', planoData: plano?.data || '',
+          ucId: r.ucId || plano?.ucId || '', ucNome: plano?.ucNome || '', fichaNome: ficha?.nomePrato || '',
+          microcompetencia: r.microcompetenciaId, nota_1_5: r.nota, nota_0_20: Math.min(20, Math.round(r.nota * 4)),
+          nivel_label: labels[r.nota] || String(r.nota), data: r.data, validadoPor: r.validadoPor,
+        });
+        n += 1;
+      }
     }
-    registarEnvio(item.id, item.tipo, item.descricao);
+    if (n > 0) registarEnvio(item.id, item.tipo, item.descricao);
   }
   return n;
 }
