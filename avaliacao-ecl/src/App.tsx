@@ -546,7 +546,7 @@ function AppInterno() {
                         <button key={p.planoAulaId}
                           onClick={() => {
                             const plano = getPlanosAula().find((x: any) => x.id === p.planoAulaId);
-                            if (plano) { setPlanoAberto(plano as any); setModuloPedido('turma'); }
+                            if (plano) { setPlanoAberto(plano as any); setModuloPedido('validacao'); }
                           }}
                           style={{ padding: '8px 13px', borderRadius: 9,
                             border: '1px solid #F6A623', background: '#fff',
@@ -582,6 +582,40 @@ function AppInterno() {
                 onAbrir={(v) => setVistaGlobal(v)}
                 // O calendário ao lado dos cartões apertava o ecrã no
                 // tablet. Fica só em Planos de Aula.
+                aulaHoje={(() => {
+                  const p: any = planos
+                    .filter((x: any) => String(x.data).slice(0, 10) === hojeISO && !x.arquivado)
+                    .sort((a: any, b: any) => String(a.horaInicio || '').localeCompare(String(b.horaInicio || '')))[0];
+                  if (!p) return null;
+                  const nFichas = (p.fichasIds || []).length;
+                  const sessao = getSessaoAula(p.id);
+                  const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
+                  const porValidarHoje = getSelecoes().filter((x: any) =>
+                    x.planoAulaId === p.id && !vals.has(x.id)).length;
+                  const est = sessao?.abertaEm ? estadoDaTurmaNaAula(p.id, turmaId) : [];
+                  const etapa = porValidarHoje > 0 ? 'validar'
+                    : sessao?.abertaEm ? 'turma'
+                    : p.estado === 'publicado' ? 'abrir'
+                    : nFichas > 0 ? 'publicar' : 'preparar';
+                  const hora = (h?: string) => !h ? '' : h.includes('T')
+                    ? new Date(h).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : h.slice(0, 5);
+                  return {
+                    titulo: p.titulo || p.ucNome || 'Plano de aula',
+                    numero: posicaoNaUC(p) > 0 ? posicaoNaUC(p) : undefined,
+                    horario: hora(p.horaInicio) && hora(p.horaFim) ? `${hora(p.horaInicio)}–${hora(p.horaFim)}` : undefined,
+                    etapa,
+                    entraram: sessao?.abertaEm ? `${est.filter((e: any) => e.entrou).length}/${est.length}` : undefined,
+                    porValidar: porValidarHoje,
+                  };
+                })()}
+                onAbrirAulaHoje={(etapa) => {
+                  const p: any = planos
+                    .filter((x: any) => String(x.data).slice(0, 10) === hojeISO && !x.arquivado)
+                    .sort((a: any, b: any) => String(a.horaInicio || '').localeCompare(String(b.horaInicio || '')))[0];
+                  if (!p) return;
+                  setPlanoAberto(p);
+                  setModuloPedido(etapa === 'validar' ? 'validacao' : etapa === 'turma' ? 'turma' : 'inicio');
+                }}
               />
               </>
             );

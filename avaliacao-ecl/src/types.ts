@@ -902,6 +902,14 @@ export const INICIATIVA_FRASES = [
   { nivel: 5, texto: 'Antecipei necessidades, apoiei colegas e contribuí além do que era esperado' },
 ];
 
+// ── Classificação de uma nota 0-20 ────────────────────────────
+// Uma só escala em toda a aplicação — a mesma que o aluno vê. Antes o
+// professor via um 3 (12/20) como "Bom" e o aluno, com 12, "Suficiente".
+// 0–9 Insuficiente · 10–13 Suficiente · 14–16 Bom · 17–20 Muito Bom.
+export function classificacao20(nota20: number): 'Muito Bom' | 'Bom' | 'Suficiente' | 'Insuficiente' {
+  return nota20 >= 17 ? 'Muito Bom' : nota20 >= 14 ? 'Bom' : nota20 >= 10 ? 'Suficiente' : 'Insuficiente';
+}
+
 // ── Função central: calcular nota 0-20 de um plano ───────────
 export function calcularNotaPlano(
   notas: { categoria: 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI'; nota: number }[],

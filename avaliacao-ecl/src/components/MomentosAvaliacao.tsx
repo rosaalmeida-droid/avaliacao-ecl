@@ -3,6 +3,7 @@ import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getPlanosAulaPorTurma, getHistoricoAvaliacoes, getAlunos , novoId } from '../backend';
 import { modulosDaTurma } from '../cronograma';
+import { classificacao20 } from '../types';
 
 interface MomentoAval {
   id: string;
@@ -24,11 +25,13 @@ function saveMomentos(m: MomentoAval[]) {
 
 function para20(n: number): number { return n > 0 ? Math.min(20, Math.round(n * 4)) : 0; }
 
+// A cor segue a mesma regra do aluno; a palavra é a classificação única.
 function labelNota(n: number) {
-  if (n >= 4) return { emoji: '🌟', cor: '#0369a1', label: 'Faço com muito bom resultado' };
-  if (n >= 3) return { emoji: '✅', cor: '#5a7a4e', label: 'Bom' };
-  if (n >= 2) return { emoji: '🤝', cor: '#b5651d', label: 'Suficiente' };
-  return { emoji: '📖', cor: '#c0392b', label: 'Insuficiente' };
+  const label = classificacao20(n * 4);
+  if (n * 4 >= 17) return { emoji: '🌟', cor: '#0369a1', label };
+  if (n >= 3) return { emoji: '✅', cor: '#5a7a4e', label };
+  if (n >= 2) return { emoji: '🤝', cor: '#b5651d', label };
+  return { emoji: '📖', cor: '#c0392b', label };
 }
 
 export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {

@@ -206,8 +206,8 @@ interface Props {
   /** Falhou ir buscar as aulas — botão para tentar outra vez. */
   onTentarOutraVez?: () => void;
   aLigar?: boolean;
-  /** Verificar porque é que a aula não chega — aparece quando não há aula hoje. */
-  onDiagnostico?: () => void;
+  /** Depois de atualizar sem encontrar a aula: o porquê, numa frase. */
+  mensagemAula?: { titulo: string; texto: string; avisar: boolean } | null;
   notaProgressiva?: number | null;
   recuperacoesPendentes?: number;
   atividadesAbertas?: number;
@@ -221,7 +221,7 @@ export function InicioAluno({
   proximasAulas = 0, avisos = [],
   fichasAtribuidas = 0, notaProgressiva = null,
   recuperacoesPendentes = 0, atividadesAbertas = 0,
-  onTentarOutraVez, aLigar = false, onDiagnostico,
+  onTentarOutraVez, aLigar = false, mensagemAula = null,
   onAbrir,
 }: Props) {
   // Antes da ativação o botão diz Consultar plano; depois, Iniciar aula.
@@ -291,37 +291,12 @@ export function InicioAluno({
               </button>
             </div>
 
-            {/* Os materiais da aula, em violeta mais claro: pertencem à
-                aula, mas não competem com o botão de entrar. */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: 9, marginBottom: 22 }}>
-              {([
-                ['fichas',     'A minha ficha', Icones.panela,
-                  fichasAtribuidas ? `${fichasAtribuidas}` : undefined],
-                ['guiao',      'Guião',         Icones.documento, undefined],
-                ['requisicao', 'Requisição',    Icones.requisicao, undefined],
-              ] as [DestinoAluno, string, (t?: number) => React.ReactNode, string | undefined][])
-                .map(([d, lbl, ic, badge]) => (
-                <button key={d} onClick={() => onAbrir(d)} style={{
-                  background: C.violetaMedio, border: 'none', borderRadius: 14,
-                  padding: '15px 6px', minHeight: 92, cursor: 'pointer',
-                  fontFamily: 'inherit', color: '#fff', position: 'relative',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 7,
-                  WebkitTapHighlightColor: 'transparent',
-                }}>
-                  {ic(28)}
-                  <span style={{ fontSize: 13, fontWeight: 600, textAlign: 'center',
-                    lineHeight: 1.2 }}>{lbl}</span>
-                  {badge && (
-                    <span style={{ position: 'absolute', top: 8, right: 9,
-                      background: '#fff', color: C.violeta, borderRadius: 20,
-                      minWidth: 20, height: 20, fontSize: 13, fontWeight: 700,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '0 5px' }}>{badge}</span>
-                  )}
-                </button>
-              ))}
+            {/* A ficha, o guião e a requisição estão dentro da aula, passo a
+                passo. Havia três botões aqui que abriam todos o mesmo que o
+                botão grande — o aluno carregava em Guião e não via o guião. */}
+            <div style={{ fontSize: 13.5, color: C.suave, margin: '-2px 2px 22px', lineHeight: 1.5 }}>
+              {fichasAtribuidas > 0 ? `${fichasAtribuidas} ficha${fichasAtribuidas > 1 ? 's' : ''}, guião` : 'A ficha, o guião'}
+              {' '}e requisição estão dentro da aula, passo a passo.
             </div>
           </>
         ) : (
@@ -349,26 +324,34 @@ export function InicioAluno({
         {/* ── AVISOS: só quando exigem uma ação ── */}
         {/* Atualizar — sempre à mão. O professor pode corrigir a aula a
             meio, e o aluno tem de conseguir ir buscar a versão nova. */}
-        {onDiagnostico && (
-          <button onClick={onDiagnostico} style={{
-            width: '100%', padding: 10, borderRadius: 10, marginBottom: 8,
-            border: '1px dashed rgba(26,23,20,0.25)', background: 'transparent',
-            color: 'rgba(26,23,20,0.55)', fontSize: 12.5, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'inherit',
+        {/* Um só botão: vai buscar a aula outra vez e, se continuar sem
+            nada, verifica sozinho e explica porquê — sem números nem códigos. */}
+        {onTentarOutraVez && (
+          <button onClick={onTentarOutraVez} disabled={aLigar} style={{
+            width: '100%', minHeight: 48, padding: 12, borderRadius: 12, marginBottom: 12,
+            border: `1.5px solid ${C.violeta}`, background: C.violetaSuave, color: C.violeta,
+            fontSize: 15, fontWeight: 700, cursor: aLigar ? 'default' : 'pointer',
+            fontFamily: 'inherit', opacity: aLigar ? 0.6 : 1,
           }}>
-            Não vejo a aula de hoje — verificar
+            {aLigar ? 'A atualizar…' : planoHoje ? 'Atualizar a aula' : 'Não vejo a aula — atualizar'}
           </button>
         )}
 
-        {onTentarOutraVez && (
-          <button onClick={onTentarOutraVez} disabled={aLigar} style={{
-            width: '100%', padding: 13, borderRadius: 11, marginBottom: 12,
-            border: '1.5px solid #c0392b', background: '#fff', color: '#c0392b',
-            fontSize: 14.5, fontWeight: 700, cursor: aLigar ? 'default' : 'pointer',
-            fontFamily: 'inherit', opacity: aLigar ? 0.6 : 1,
-          }}>
-            {aLigar ? 'A atualizar…' : 'Atualizar a aula'}
-          </button>
+        {mensagemAula && !planoHoje && (
+          <div style={{ background: C.cobreSuave, border: '1px solid #F0D2BC', borderRadius: 14,
+            padding: 16, marginBottom: 22 }}>
+            <div style={{ fontSize: 15.5, fontWeight: 700, color: '#8A4E15' }}>{mensagemAula.titulo}</div>
+            <div style={{ fontSize: 14, color: '#6E3D10', marginTop: 4, lineHeight: 1.55 }}>{mensagemAula.texto}</div>
+            {mensagemAula.avisar && (
+              <button onClick={() => onAbrir('avisar_professor')} style={{
+                marginTop: 12, minHeight: 44, padding: '0 16px', borderRadius: 10, border: 'none',
+                background: C.cobre, color: '#fff', fontSize: 14, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                Avisar o professor
+              </button>
+            )}
+          </div>
         )}
 
         {avisos.length > 0 && (

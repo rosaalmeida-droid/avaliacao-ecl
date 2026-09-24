@@ -1,7 +1,7 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { SelecaoAluno, Validacao, calcularNotaPlano } from '../types';
+import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets } from '../backend';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
@@ -50,12 +50,9 @@ function calcularNotaFinal(notaProf: number, notaAluno: number): number {
 // Conversão 1-5 → 0-20 (×4)
 function para20(n: number): number { return n > 0 ? Math.min(20, Math.round(n * 4)) : 0; }
 
+/** Nota 1-5 → a mesma classificação que o aluno vê, em /20. */
 function labelNotaFinal(nota: number): string {
-  if (nota >= 4.5) return 'Excelente';
-  if (nota >= 3.5) return 'Muito Bom';
-  if (nota >= 3)   return 'Bom';
-  if (nota >= 2)   return 'Suficiente';
-  return 'Insuficiente';
+  return classificacao20(nota * 4);
 }
 
 function corNotaFinal(nota: number): string {
@@ -105,7 +102,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
     const fichas = getFichasProducao().filter(f => plano?.fichasIds?.includes(f.id));
     const valExistente = validacoes.find(v => v.selecaoId === ativa.id) || null;
     return (
-      <ValidarSelecao
+      <ValidarSelecao key={ativa.id}
         selecao={ativa}
         planoTitulo={plano?.titulo || ''}
         ucId={plano?.ucId || ''}
@@ -113,6 +110,14 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         tipoPlanAula={(plano as any)?.tipoPlanAula || 'pratico'}
         validacaoExistente={valExistente}
         onVoltar={() => setAtiva(null)}
+        // Depois de guardar, o seguinte por validar — sem voltar à lista.
+        seguintes={pendentes.filter(s => s.id !== ativa.id).length}
+        onSeguinte={() => {
+          const prox = getSelecoes().filter(s => (!turmaId || s.turmaId === turmaId)
+            && (!planoId || s.planoAulaId === planoId) && s.id !== ativa.id
+            && !getValidacoes().some(v => v.selecaoId === s.id))[0];
+          setAtiva(prox || null);
+        }}
       />
     );
   }
@@ -178,7 +183,9 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────
-function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula, validacaoExistente, onVoltar }: {
+function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula, validacaoExistente, onVoltar, seguintes = 0, onSeguinte }: {
+  seguintes?: number;
+  onSeguinte?: () => void;
   selecao: SelecaoAluno;
   planoTitulo: string;
   ucId: string;
@@ -377,6 +384,13 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           <div style={{ flex: 1, fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
             Validação guardada. Podes continuar a alterar — basta guardar outra vez.
           </div>
+          {seguintes > 0 && onSeguinte && (
+            <button onClick={onSeguinte} style={{ padding: '10px 14px', borderRadius: 9, border: 'none',
+              background: 'var(--sage)', color: '#fff', fontSize: 14, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              Seguinte ({seguintes}) →
+            </button>
+          )}
         </div>
       )}
 
@@ -530,7 +544,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: corNotaFinal(notaFinal) }}>
                   {notaFinal}
                 </span>
-                <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/4</span>
+                <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/5</span>
                 <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)', marginLeft: 8 }}>→</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: corNotaFinal(notaFinal), marginLeft: 4 }}>
                   {para20(notaFinal)}

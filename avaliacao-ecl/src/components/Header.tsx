@@ -83,23 +83,29 @@ const Icons = {
 // ── Itens de navegação ────────────────────────────────────────
 interface NavItem { id: VistaProf; label: string; icon: JSX.Element; secao: string }
 
-const NAV: NavItem[] = [
+// A mesma lista, com os mesmos nomes e pela mesma ordem, que os cartões
+// do painel inicial. Antes havia nomes diferentes nos dois sítios
+// ("Notas da UC" / "Avaliação por UC") e itens que só existiam num deles.
+export const NAV: NavItem[] = [
   // Sem isto não havia como voltar ao painel: abria-se uma secção e
   // ficava-se lá, sem caminho de regresso.
-  { id: 'inicio',              label: 'Início',               icon: Icons.inicio,      secao: 'Dia a dia' },
-  // ── DIA A DIA ──────────────────────────────────────────
-  { id: 'planos',              label: 'Planos de Aula',       icon: Icons.planos,      secao: 'Dia a dia' },
-  { id: 'eventos',             label: 'Eventos',              icon: Icons.eventos,     secao: 'Dia a dia' },
-  { id: 'orcamentos',          label: 'Orçamentos',           icon: Icons.req,         secao: 'Dia a dia' },
-  // ── AVALIAÇÃO ──────────────────────────────────────────
-  { id: 'historial',           label: 'Historial',            icon: Icons.avaliacao,   secao: 'Avaliação' },
-  { id: 'avaliacao_uc',        label: 'Avaliação por UC',     icon: Icons.avaliacao,   secao: 'Avaliação' },
-  { id: 'mapa_competencias',   label: 'Mapa de Competências', icon: Icons.mapa,      secao: 'Avaliação' },
-  { id: 'gestao_recuperacoes', label: 'Recuperações',         icon: Icons.recuper,   secao: 'Avaliação' },
-  { id: 'ajuda',               label: 'Como funciona',        icon: Icons.ajuda,     secao: 'Recursos' },
-  { id: 'manual',              label: 'Manual do Cozinheiro', icon: Icons.manual,    secao: 'Recursos' },
-  { id: 'manuais_aluno',       label: 'Manuais do Aluno',     icon: Icons.manual,    secao: 'Recursos' },
-  { id: 'copia_seguranca',     label: 'Cópia de Segurança',   icon: Icons.backup,    secao: 'Recursos' },
+  { id: 'inicio',              label: 'Início',               icon: Icons.inicio,     secao: 'Dia a dia' },
+  { id: 'planos',              label: 'Planos de aula',       icon: Icons.planos,     secao: 'Dia a dia' },
+  { id: 'eventos',             label: 'Eventos',              icon: Icons.eventos,    secao: 'Dia a dia' },
+  { id: 'validacao',           label: 'Validar',              icon: Icons.validacao,  secao: 'Avaliar' },
+  { id: 'avaliacao_uc',        label: 'Notas da UC',          icon: Icons.avaliacao,  secao: 'Avaliar' },
+  { id: 'mapa_competencias',   label: 'Mapa da turma',        icon: Icons.mapa,       secao: 'Avaliar' },
+  { id: 'gestao_recuperacoes', label: 'Recuperações',         icon: Icons.recuper,    secao: 'Avaliar' },
+  { id: 'biblioteca',          label: 'Biblioteca de fichas', icon: Icons.biblioteca, secao: 'Consultar' },
+  { id: 'manual',              label: 'Manual do cozinheiro', icon: Icons.manual,     secao: 'Consultar' },
+  { id: 'manuais_aluno',       label: 'Manuais do aluno',     icon: Icons.manual,     secao: 'Consultar' },
+  { id: 'cronograma',          label: 'Cronograma',           icon: Icons.cronograma, secao: 'Consultar' },
+  { id: 'guia',                label: 'Guiões',               icon: Icons.guia,       secao: 'Mais' },
+  { id: 'requisicao',          label: 'Requisições',          icon: Icons.req,        secao: 'Mais' },
+  { id: 'orcamentos',          label: 'Orçamentos',           icon: Icons.req,        secao: 'Mais' },
+  { id: 'historial',           label: 'Historial',            icon: Icons.avaliacao,  secao: 'Mais' },
+  { id: 'copia_seguranca',     label: 'Cópia de segurança',   icon: Icons.backup,     secao: 'Mais' },
+  { id: 'ajuda',               label: 'Ajuda',                icon: Icons.ajuda,      secao: 'Mais' },
 ];
 
 // ── Sidebar ────────────────────────────────────────────────────
@@ -402,9 +408,45 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
               </div>
             </div>
 
-            <main style={{ flex: 1, padding: '0 28px 36px', minWidth: 0, background: APP_BG }}>
+            <main style={{ flex: 1, padding: isMobile ? '0 16px 96px' : '0 28px 36px', minWidth: 0, background: APP_BG }}>
               {children}
             </main>
+
+            {/* No telemóvel, o que se usa na cozinha fica sempre à mão, sem
+                abrir o menu. O resto continua em Menu. */}
+            {isMobile && (
+              <nav className="no-print" style={{
+                position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 150,
+                display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                background: '#fff', borderTop: '1px solid rgba(26,23,20,0.1)',
+                padding: '4px 4px calc(8px + env(safe-area-inset-bottom))',
+              }}>
+                {([
+                  ['inicio', 'Início', Icons.inicio],
+                  ['planos', 'Planos', Icons.planos],
+                  ['validacao', 'Validar', Icons.validacao],
+                  ['avaliacao_uc', 'Notas', Icons.avaliacao],
+                ] as [VistaProf, string, JSX.Element][]).map(([id, label, icon]) => (
+                  <button key={id} onClick={() => onNavegar(id)} style={{
+                    minHeight: 54, border: 'none', background: 'transparent', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                    color: vistaAtiva === id ? PRIMARY : MUTED, fontSize: 11.5,
+                    fontWeight: vistaAtiva === id ? 700 : 500, fontFamily: 'inherit',
+                  }}>
+                    <span style={{ display: 'flex', transform: 'scale(1.35)' }}>{icon}</span>
+                    {label}
+                  </button>
+                ))}
+                <button onClick={() => setSidebarAberta(true)} style={{
+                  minHeight: 54, border: 'none', background: 'transparent', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                  color: MUTED, fontSize: 11.5, fontWeight: 500, fontFamily: 'inherit',
+                }}>
+                  <span style={{ display: 'flex' }}>{Icons.menu}</span>
+                  Menu
+                </button>
+              </nav>
+            )}
           </div>
 
           {/* Painel contextual fixo à direita — só desktop */}
