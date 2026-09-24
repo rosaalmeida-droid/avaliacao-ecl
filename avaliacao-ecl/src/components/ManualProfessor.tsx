@@ -570,27 +570,27 @@ const SECCOES: Seccao[] = [
   {
     id: 'dados',
     titulo: 'Onde ficam guardados os dados',
-    resumo: 'O que está no computador, o que está no Google Sheets.',
+    resumo: 'O que está guardado só aqui e o que já está no arquivo da escola.',
     conteudo: (
       <>
         <P>
           Tudo é guardado primeiro <b>no computador onde estás</b>, e
-          enviado a seguir para o Google Sheets.
+          enviado a seguir para o arquivo da escola.
         </P>
 
         <Destaque cor="bordeaux">
           <b>O envio não devolve confirmação.</b> É uma limitação do Google
           Apps Script, não do código. Por isso a aplicação confirma de
-          outra maneira: lê do Sheets e vê se o que enviou lá está.
+          outra maneira: vai ler o arquivo e vê se o que enviou lá está.
           <br /><br />
           No topo do painel há uma linha a dizer o estado. Se disser que
           há coisas por guardar, <b>não feches o browser</b> sem carregar
-          em "Guardar no Google Sheets agora".
+          em "Guardar agora".
         </Destaque>
 
         <H>Mudar de computador</H>
         <P>
-          Ao abrir a aplicação noutro computador, ela vai buscar ao Sheets
+          Ao abrir a aplicação noutro computador, ela vai buscar ao arquivo
           o que lá estiver. Se alguma coisa não tiver chegado lá, não
           aparece — daí a importância do aviso acima.
         </P>

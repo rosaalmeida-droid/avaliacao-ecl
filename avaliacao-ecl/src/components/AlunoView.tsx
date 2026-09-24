@@ -27,7 +27,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -498,16 +498,14 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   useEffect(() => { irBuscarAulas(); }, [aluno.turmaId]);
 
   // O professor pode corrigir a aula depois de a publicar — trocar a
-  // ficha, mudar a hora. Sem isto, o aluno só via a correção quando
-  // voltasse a abrir a aplicação.
-  useEffect(() => {
-    const t = setInterval(() => {
-      sincronizarDoSheets(aluno.turmaId)
-        .then(() => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')))
-        .catch(() => {});
-    }, 60000);
-    return () => clearInterval(t);
-  }, [aluno.turmaId]);
+  // ficha, mudar a hora. Em vez de ir buscar tudo de minuto a minuto,
+  // pergunta de 15 em 15 segundos se houve alterações, e só vai buscar
+  // quando houve: é rápido e não gasta quase nada.
+  useEffect(() => vigiarAlteracoes(aluno.turmaId, () => {
+    sincronizarDoSheets(aluno.turmaId)
+      .then(() => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')))
+      .catch(() => {});
+  }), [aluno.turmaId]);
 
   const historicoAluno = getHistoricoAluno(aluno.id);
   const planoHoje = planos.find(p => isHoje(p.data));
@@ -632,7 +630,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   const [blocoAvaliar, setBlocoAvaliar] = useState<'realizacoes'|'conhecimentos'|'atitudes'>('realizacoes');
   // Numa aula atitudinal o aluno trabalha atitudes. Antes de entrar no
   // formulário via as técnicas da UC e ficava baralhado.
-  const aulaDeHojeAtitudinal = (planoHoje as any)?.tipoPlanAula === 'atitudinal';
+  const aulaDeHojeAtitudinal = String((planoHoje as any)?.tipoPlanAula || '').startsWith('atitudinal');
   const listaDoBloco = aulaDeHojeAtitudinal ? atitudesDaUC
     : blocoAvaliar === 'realizacoes' ? competenciasDaUC
                      : blocoAvaliar === 'conhecimentos' ? conhecimentosDaUC
@@ -1230,7 +1228,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   // KF final, autoavaliação. O KitchenFlow deixou de ser um atalho geral
   // — são dois pontos de controlo dentro do fluxo da aula.
   // Aula atitudinal: sem farda, KitchenFlow, produção nem requisição.
-  const PASSOS = (plano as any).tipoPlanAula === 'atitudinal' ? [
+  const PASSOS = String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [
     { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
     { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
@@ -1376,7 +1374,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
                 onConcluido={() => { setEntradaConcluida(true); _save('entrada');
-                  setSecAberta((plano as any).tipoPlanAula === 'atitudinal' ? 'avaliacao' : 'kf_inicial'); }} />
+                  setSecAberta(String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : 'kf_inicial'); }} />
             )}
             {secAberta==='kf_inicial' && (
               <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="inicial"
@@ -1746,7 +1744,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       setEntrada(r);
       // Aula atitudinal: conta a presença e a hora de entrada, mas não há
       // farda nem registos do KitchenFlow.
-      if ((plano as any).tipoPlanAula === 'atitudinal') onConcluido();
+      if (String((plano as any).tipoPlanAula || '').startsWith('atitudinal')) onConcluido();
     }
   }
 
@@ -2577,7 +2575,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // Subtécnicas como objectos para display.
   // Numa aula atitudinal não há técnicas: trabalham-se dinâmicas de grupo
   // e atitudes. As fichas do plano, se as houver, não entram na avaliação.
-  const subsSug = ((plano as any).tipoPlanAula === 'atitudinal' ? [] : subIdsFiltrados)
+  const subsSug = (String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [] : subIdsFiltrados)
     .slice(0, 6).map((id: string) => {
     const sub = encontrarSubtecnica(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
@@ -2612,7 +2610,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   });
 
   // Aparelhos como objectos para display
-  const aparelhosSug = ((plano as any).tipoPlanAula === 'atitudinal' ? [] : appIdsFiltrados)
+  const aparelhosSug = (String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [] : appIdsFiltrados)
     .slice(0, 4).map((id: string) => {
     const app = encontrarAparelho(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
@@ -2642,7 +2640,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const microsDaUC = microsDaUCEsp.length>=3
     ? microsDaUCEsp
     : [...microsDaUCEsp,...microsEstr.filter(m=>!microsDaUCEsp.find(x=>x.id===m.id))].slice(0,8);
-  const microsSug = (plano as any).tipoPlanAula === 'atitudinal' ? []
+  const microsSug = String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? []
     : usarFallback ? microsDaUC
     .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
     .map(m => {
@@ -2701,12 +2699,15 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
 
   // Só o HACCP: a higiene pessoal vem da entrada na aula.
   // Aula atitudinal: o aluno avalia-se nas atitudes que o professor marcou.
-  const ehAtitudinal = tipoPlanAula === 'atitudinal';
+  const ehAtitudinal = String(tipoPlanAula || '').startsWith('atitudinal');
+  // O professor pode ter incluído a higiene e a farda nesta dinâmica.
+  const comObrigatorias = tipoPlanAula === 'atitudinal_obr';
   const atitudesDaAula: string[] = ehAtitudinal
     ? ((plano as any).compAdicionadas || []).filter((id: string) => id.startsWith('ATI-')) : [];
   const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
   const prontoParaSubmeter = ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null)
+      && (!comObrigatorias || nivelHaccp !== null)
     : nivelHaccp !== null;
 
   // Nota prevista, com o que o aluno já preencheu. As mesmas conversões do
@@ -3025,8 +3026,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         );
       })()}
 
-      {/* Obrigatórias — não na aula atitudinal (sem farda nem KitchenFlow). */}
-      {!ehAtitudinal && (
+      {/* Obrigatórias — numa aula atitudinal só se o professor as incluir. */}
+      {(!ehAtitudinal || comObrigatorias) && (
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
           letterSpacing:'0.06em', color:T.sage, marginBottom:12 }}>🔒 Sempre avaliadas</div>

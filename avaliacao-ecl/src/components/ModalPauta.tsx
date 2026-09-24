@@ -350,7 +350,7 @@ export function ModalPauta({ turmaId, nomeProfessor, onFechar }: Props) {
                     style={{ display: 'inline-block', padding: '12px 24px', borderRadius: 12,
                       background: COR, color: '#fff', fontWeight: 700, fontSize: 14,
                       textDecoration: 'none' }}>
-                    📊 Abrir pauta no Google Sheets
+                    📊 Abrir a pauta
                   </a>
                 </div>
               ) : (

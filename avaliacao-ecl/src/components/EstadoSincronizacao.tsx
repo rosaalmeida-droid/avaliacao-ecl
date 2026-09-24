@@ -106,7 +106,7 @@ export function EstadoSincronizacao({ turmaId }: { turmaId: string }) {
         <Ampulheta cor={C.cobre} />
         <div>
           <div style={{ fontSize: 14.5, fontWeight: 700, color: C.cobre }}>
-            {aGuardar === 'a_enviar' ? 'A enviar para o Google Sheets…' : 'A confirmar que chegou…'}
+            {aGuardar === 'a_enviar' ? 'A guardar no arquivo da escola…' : 'A confirmar que chegou…'}
           </div>
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
             Aguarda — não feches a aplicação.
@@ -144,7 +144,7 @@ export function EstadoSincronizacao({ turmaId }: { turmaId: string }) {
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.verde,
           flexShrink: 0 }} />
         <span style={{ flex: 1, fontSize: 13.5, color: C.verde }}>
-          Tudo guardado no Google Sheets
+          Tudo guardado no arquivo da escola
         </span>
         <button onClick={guardarAgora} style={{
           padding: '7px 13px', borderRadius: 9, border: `1px solid ${C.border}`,
@@ -174,13 +174,13 @@ export function EstadoSincronizacao({ turmaId }: { turmaId: string }) {
           <span style={{ display: 'block', fontSize: 14.5, fontWeight: 700,
             color: grave ? C.perigo : C.cobre }}>
             {grave
-              ? `${falhados.length} por guardar no Sheets`
-              : `${porConfirmar} a caminho do Sheets`}
+              ? `${falhados.length} por guardar`
+              : `${porConfirmar} a caminho do arquivo`}
           </span>
           <span style={{ display: 'block', fontSize: 13, color: 'rgba(26,23,20,0.6)',
             marginTop: 2, lineHeight: 1.45 }}>
             {grave
-              ? 'Estão guardados neste computador, mas não chegaram ao Sheets. Se limpares o browser, perdem-se.'
+              ? 'Estão guardados neste computador, mas não saíram deste computador. Se limpares o browser, perdem-se.'
               : aVerificar ? 'A confirmar…' : 'A confirmar dentro de momentos.'}
           </span>
         </span>
@@ -215,7 +215,7 @@ export function EstadoSincronizacao({ turmaId }: { turmaId: string }) {
               background: grave ? C.perigo : C.cobre, color: '#fff',
               fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
             }}>
-              Guardar no Google Sheets agora
+              Guardar agora
             </button>
           </div>
 

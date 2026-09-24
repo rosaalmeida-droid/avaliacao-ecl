@@ -621,8 +621,8 @@ function GestaoAlunosTab() {
           }} />
       )}
 
-      {/* Encher o Sheets com o que está no aparelho. As fichas, os planos e
-          as avaliações completas estão aqui; para o Sheets só sobem quando
+      {/* Encher o arquivo com o que está no aparelho. As fichas, os planos
+          e as avaliações completas estão aqui; só sobem quando
           se mexe em cada uma. */}
       {(() => {
         const contas = oQueHaParaEnviar(turmaSel);
@@ -630,7 +630,7 @@ function GestaoAlunosTab() {
         return (
           <div style={{ background: '#f7f5f2', borderRadius: 12, padding: '13px 15px',
             marginBottom: 14, fontSize: 13.5 }}>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>Enviar tudo para o Google Sheets</div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Guardar tudo no arquivo da escola</div>
             <div style={{ color: 'rgba(26,23,20,0.6)', lineHeight: 1.55, marginBottom: 10 }}>
               {Object.entries(contas).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(' · ') || 'Nada para enviar.'}
             </div>
@@ -639,27 +639,27 @@ function GestaoAlunosTab() {
                 setAEnviarTudo('a testar…');
                 const linhas = await testarLigacaoAoSheets(turmaSel);
                 setAEnviarTudo(null);
-                alert('Ligação ao Google Sheets\n\n' + linhas.join('\n'));
+                alert('Ligação ao arquivo da escola\n\n' + linhas.join('\n'));
               }}
               style={{ padding: '10px 16px', borderRadius: 9, marginRight: 8,
                 border: '1px solid rgba(26,23,20,0.2)', background: '#fff',
                 fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-              Testar ligação ao Sheets
+              Testar a ligação
             </button>
             <button
               disabled={aEnviarTudo !== null || total === 0}
               onClick={async () => {
-                if (!confirm(`Enviar ${total} registos de ${turmaSel} para o Sheets?\n\nNão apaga nada. O que já lá estiver é atualizado.`)) return;
+                if (!confirm(`Enviar ${total} registos de ${turmaSel} para o arquivo da escola?\n\nNão apaga nada. O que já lá estiver é atualizado.`)) return;
                 setAEnviarTudo('a começar…');
                 const r = await enviarTudoParaOSheets(turmaSel, p =>
                   setAEnviarTudo(`${p.feito} de ${p.total} — ${p.oQue}`));
                 setAEnviarTudo(null);
                 alert(r.emFalta.length
-                  ? `${r.enviados} registos enviados, mas ${r.emFalta.length} não chegaram ao Sheets:\n\n`
+                  ? `${r.enviados} registos enviados, mas ${r.emFalta.length} não ficaram guardados:\n\n`
                     + r.emFalta.slice(0, 12).join('\n')
                     + (r.emFalta.length > 12 ? `\n… e mais ${r.emFalta.length - 12}` : '')
                     + '\n\nCarrega outra vez em "Enviar tudo" — só vão os que faltam.'
-                  : `${r.enviados} registos enviados e confirmados no Sheets.`);
+                  : `${r.enviados} registos guardados e confirmados.`);
               }}
               style={{ padding: '10px 16px', borderRadius: 9, border: 'none',
                 background: total === 0 ? 'rgba(26,23,20,0.15)' : 'var(--copper)',

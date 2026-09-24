@@ -414,7 +414,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
   // Envio Sheets — estrutura exacta do template ECL
   async function enviarSheets() {
-    setMsg('A enviar para Google Sheets...');
+    setMsg('A enviar…');
     try {
       const payload = {
         nomeReceita, familia,
@@ -477,14 +477,14 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       if (dadosResposta?.ok === false) {
         setMsg('⚠️ Erro: ' + (dadosResposta.mensagem || 'desconhecido'));
       } else {
-        setMsg('✓ Enviado para o Google Sheets!');
+        setMsg('✓ Enviado!');
         if (dadosResposta?.urlSheets) {
           setLinkSheets(dadosResposta.urlSheets);
         }
       }
     } catch (e) {
       if (String(e).includes('abort')) {
-        setMsg('⏱️ Tempo limite — verifica se a aba apareceu no Sheets.');
+        setMsg('⏱️ Demorou demasiado — confirma se a requisição foi criada.');
       } else {
         setMsg('❌ Falhou: ' + String(e));
       }
@@ -1450,7 +1450,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           {linkSheets && (
             <a href={linkSheets} target="_blank" rel="noreferrer"
               style={{ display: 'block', marginTop: 8, padding: '6px 12px', borderRadius: 8, background: 'var(--sage)', color: 'white', textAlign: 'center', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
-              📊 Abrir no Google Sheets →
+              📊 Abrir a requisição →
             </a>
           )}
         </div>
@@ -1481,7 +1481,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           await enviarSheets();
           onGuardado?.();
           } finally { setAEnviarReq(false); }
-        }}>{aEnviarReq ? 'A enviar…' : '✓ Guardar e Enviar para o Google Sheets'}</button>
+        }}>{aEnviarReq ? 'A enviar…' : '✓ Guardar e enviar a requisição'}</button>
         <button style={S.btnG} onClick={() => {
           setLinhas(prev => prev.map(l => recalc(l)));
           setTimeout(() => window.print(), 150);

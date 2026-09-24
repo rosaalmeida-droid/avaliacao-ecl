@@ -2986,7 +2986,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             </span>
             <button onClick={() => {
               if (fichasSelecionadasIds.size === 0) return;
-              if (confirm(`Eliminar DEFINITIVAMENTE ${fichasSelecionadasIds.size} ficha(s)? Remove do telemóvel/computador E do Google Sheets — não pode ser desfeito.`)) {
+              if (confirm(`Eliminar DEFINITIVAMENTE ${fichasSelecionadasIds.size} ficha(s)? Apaga aqui e no arquivo da escola — não pode ser desfeito.`)) {
                 fichasSelecionadasIds.forEach(id => eliminarFichaProducaoDefinitivamente(id));
                 setFichasSelecionadasIds(new Set());
                 setModoSelecao(false);
@@ -3008,7 +3008,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         {/* Fichas com o MESMO id — o estrago do bug antigo. Estas não
             são cópias: são fichas diferentes que se sobrepõem, porque
             partilham o identificador. Enquanto assim estiverem, gravar
-            uma apaga a outra, aqui e no Sheets. */}
+            uma apaga a outra. */}
         {(() => {
           const repetidos = fichasComIdRepetido();
           if (!repetidos.length) return null;
@@ -3023,7 +3023,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                 lineHeight:1.55 }}>
                 Não são cópias — são fichas diferentes a partilhar o mesmo
                 identificador. Enquanto assim estiverem, gravar uma apaga a
-                outra, aqui e no Google Sheets.
+                outra.
                 <br />
                 {repetidos.slice(0, 3).map(g =>
                   g.fichas.map(f => f.nomePrato).join(' / ')).join(' · ')}
@@ -3095,7 +3095,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               <br />
               Ficaram sem ingredientes ou sem preparação por causa de um erro
               na sincronização, já corrigido. Posso tentar ir buscá-las ao
-              Google Sheets.
+              arquivo da escola.
             </div>
             <button
               onClick={async () => {
@@ -3113,17 +3113,17 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                   alert(
                     'Não foi possível recuperar nenhuma.\n\n' +
                     'Procurei na cópia local, na cópia do arranque do ano e no ' +
-                    'Google Sheets — em nenhum estava a versão completa.\n\n' +
+                    'nem no arquivo da escola — em nenhum estava a versão completa.\n\n' +
                     'Se tiveres estas fichas noutro aparelho ou noutro browser ' +
                     'onde ainda apareçam completas, abre-as aí e guarda: isso ' +
-                    'volta a enviá-las para o Sheets e depois aparecem aqui.'
+                    'volta a guardá-las e depois aparecem aqui.'
                   );
                 }
               }}
               style={{ marginTop:11, padding:'10px 16px', borderRadius:10, border:'none',
                 background:'var(--copper)', color:'#fff', fontSize:14, fontWeight:700,
                 cursor:'pointer', fontFamily:'inherit' }}>
-              Tentar recuperar do Sheets
+              Tentar recuperar
             </button>
           </div>
         )}
@@ -3277,7 +3277,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               <span className="stamp">Ver / Editar</span>
               <button onClick={(e) => {
                 e.stopPropagation();
-                if (confirm(`Eliminar definitivamente "${f.nomePrato}"? Esta ação remove a ficha do telemóvel/computador E do Google Sheets — não pode ser desfeita.`)) {
+                if (confirm(`Eliminar definitivamente "${f.nomePrato}"? Apaga a ficha aqui e no arquivo da escola — não pode ser desfeito.`)) {
                   eliminarFichaProducaoDefinitivamente(f.id);
                   recarregar();
                 }

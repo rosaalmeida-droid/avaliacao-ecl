@@ -5,7 +5,7 @@ import {
   addOrUpdatePlanoAula,
   arquivarPlanoAula,
   desarquivarPlanoAula,
-  eliminarPlanoAulaDefinitivamente, anularPlanoAula, resumoDoPlano,
+  eliminarPlanoAulaDefinitivamente, anularPlanoAula, resumoDoPlano, planoDoProfessor,
   proximoNumeroPlano,
   gerarCodigoPlano,
   getPlanosArquivados,
@@ -560,7 +560,33 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   const [modoSelecaoPlanos, setModoSelecaoPlanos] = useState(false);
   const [mostrarModalPauta, setMostrarModalPauta] = useState(false);
   const [planosSelecionadosIds, setPlanosSelecionadosIds] = useState<Set<string>>(new Set());
-  const planos = getPlanosAulaPorTurma(turmaId);
+  /** Ver também as aulas dos outros professores. */
+  const [verDeTodos, setVerDeTodos] = useState(false);
+  const planosDaTurma = getPlanosAulaPorTurma(turmaId);
+  // Cada professor vê as suas aulas. As antigas, sem dono gravado,
+  // aparecem a todos.
+  const planos = verDeTodos ? planosDaTurma
+    : planosDaTurma.filter(p => planoDoProfessor(p, nomeProfessor));
+  const dosOutros = planosDaTurma.length - planos.length;
+
+  /** Linha que diz de quem são as aulas à vista. */
+  const BarraDeQuem = () => (dosOutros > 0 || verDeTodos) ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+      background: '#f7f5f2', borderRadius: 10, padding: '9px 13px', marginBottom: 12,
+      fontSize: 13.5 }}>
+      <span style={{ flex: 1, minWidth: 180 }}>
+        {verDeTodos
+          ? 'A ver as aulas de todos os professores.'
+          : `A ver as tuas aulas. Há ${dosOutros} de outros professores.`}
+      </span>
+      <button onClick={() => setVerDeTodos(!verDeTodos)} style={{
+        padding: '7px 13px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)',
+        background: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+        {verDeTodos ? 'Ver só as minhas' : 'Ver as de todos'}
+      </button>
+    </div>
+  ) : null;
+
 
   if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor}
     dataInicial={dataNovoPlano || undefined}
@@ -619,6 +645,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
         </button>
       </div>
       <div style={{ maxWidth: 420 }}>
+        <BarraDeQuem />
         <CalendarioMensal planos={planos} onAbrirPlano={p => onGuardado?.(p)}
           onPlanoEliminado={() => setRefreshKey(k => k + 1)} key={refreshKey}
           turmaId={turmaId}
@@ -1221,7 +1248,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
         )}
         <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
           <span style={{fontSize:13,padding:'3px 10px',borderRadius:20,background:publicado?'rgba(107,124,94,0.3)':'rgba(181,101,29,0.3)',color:'var(--cream)'}}>{publicado?'Publicado':'Rascunho'}</span>
-          <span style={{fontSize:13,color:'rgba(247,241,230,0.4)'}}>☁️ Guardado no Sheets</span>
+          <span style={{fontSize:13,color:'rgba(247,241,230,0.4)'}}>☁️ Guardado</span>
         </div>
       </div>
 

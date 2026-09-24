@@ -112,7 +112,7 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
         )) return;
         publicarPlanoParaAlunos(plano.id).then(r => {
           alert(r.ok
-            ? 'Publicado. A aula está no Sheets e os alunos já a veem.'
+            ? 'Publicado. Os alunos já veem esta aula.'
             : 'ATENÇÃO — os alunos ainda NÃO veem esta aula.\n\n' + (r.erro || ''));
         });
       }}
@@ -294,7 +294,7 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
   return (
     <div>
       <div style={{ padding:'10px 14px', background:'rgba(22,160,133,0.08)', borderRadius:10, fontSize:13, color:'#16a085', marginBottom:14, border:'1px solid rgba(22,160,133,0.2)' }}>
-        O histórico completo de cada aluno está no Google Sheets. Aqui só destrancas a autoavaliação se um aluno se enganou.
+        O histórico completo de cada aluno fica no arquivo da escola. Aqui só destrancas a autoavaliação se um aluno se enganou.
       </div>
       {alunos.length === 0 && <div style={{ textAlign:'center', padding:'30px 0', color:'rgba(26,23,20,0.4)' }}>Nenhum aluno encontrado para esta turma.</div>}
       {alunos.map(a => {
@@ -394,6 +394,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [compRemovidas, setCompRemovidas] = useState<string[]>(
     Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []
   );
+  /** Atitudes marcadas nesta aula atitudinal, antes de guardar. */
+  const [atitudesEscolhidas, setAtitudesEscolhidas] = useState<string[]>(
+    () => ((plano.compAdicionadas || []) as string[]).filter(x => x.startsWith('ATI-')));
+  /** Higiene e farda, antes de guardar. */
+  const [obrigatoriasPendentes, setObrigatoriasPendentes] = useState(
+    (plano as any).tipoPlanAula === 'atitudinal_obr');
   const [compAdicionadas, setCompAdicionadas] = useState<string[]>(
     Array.isArray((plano as any).compAdicionadas) ? (plano as any).compAdicionadas : []
   );
@@ -416,8 +422,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // ── Competências ────────────────────────────────────────────
   // Aula atitudinal: sem farda, sem KitchenFlow, sem técnicas nem
   // conhecimentos. Só as atitudes que o professor marcou.
-  const ehAtitudinal = (plano as any).tipoPlanAula === 'atitudinal';
-  const compObrigatorias = ehAtitudinal ? [] : OBRIGATORIAS;
+  const ehAtitudinal = String((plano as any).tipoPlanAula || '').startsWith('atitudinal');
+  const obrigatoriasNaAtitudinal = (plano as any).tipoPlanAula === 'atitudinal_obr';
+  const compObrigatorias = (ehAtitudinal && !obrigatoriasNaAtitudinal) ? [] : OBRIGATORIAS;
   const IDS_JA_USADOS = new Set<string>(compObrigatorias.map(o => o.id));
 
   const IDS_ATITUDES_DUPLICAM = new Set([
@@ -1518,42 +1525,122 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
         );
       })()}
-      {/* Aula atitudinal — o professor escolhe as atitudes a trabalhar,
-          de todas as do curso. São estas que o aluno se autoavalia. */}
-      {(plano as any).tipoPlanAula === 'atitudinal' && (
-        <div style={{ background:'#fff', borderRadius:14, padding:18, marginBottom:16,
-          border:'1.5px solid rgba(125,79,140,0.35)' }}>
-          <div style={{ fontSize:16, fontWeight:700, color:'#7d4f8c' }}>
-            Atitudes a trabalhar nesta aula
-          </div>
-          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'4px 0 12px', lineHeight:1.5 }}>
-            Aula atitudinal: sem farda, sem KitchenFlow, sem técnicas. Marca as atitudes
-            que vais trabalhar — o aluno autoavalia-se nelas e tu validas. Contam para a
-            nota da UC.
-          </div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
-            {ATITUDES.map((at: any) => {
-              const marcada = compAdicionadas.includes(at.id);
-              return (
-                <button key={at.id}
-                  onClick={() => guardarCompetencias(compRemovidas,
-                    marcada ? compAdicionadas.filter(x => x !== at.id) : [...compAdicionadas, at.id])}
-                  style={{ padding:'8px 12px', borderRadius:20, fontSize:13.5, cursor:'pointer',
-                    fontFamily:'inherit', fontWeight: marcada ? 700 : 500,
-                    border:`1.5px solid ${marcada ? '#7d4f8c' : 'rgba(26,23,20,0.15)'}`,
-                    background: marcada ? '#7d4f8c' : '#fff', color: marcada ? '#fff' : 'rgba(26,23,20,0.75)' }}>
-                  {marcada ? '✓ ' : ''}{at.nome}
-                </button>
-              );
-            })}
-          </div>
-          {compAdicionadas.filter(x => x.startsWith('ATI-')).length === 0 && (
-            <div style={{ fontSize:13, color:'var(--copper)', marginTop:10, fontWeight:600 }}>
-              Ainda não marcaste nenhuma — sem isto o aluno não tem o que avaliar.
+      {/* Aula atitudinal — o professor escolhe o que se trabalha. Cada
+          toque marca ou desmarca; nada fica gravado até ele confirmar.
+          Antes gravava a cada clique, sem forma de desistir. */}
+      {ehAtitudinal && (() => {
+        const doTrimestre = new Set(compAtitudes.map((a: any) => a.id));
+        const marcadas = new Set(atitudesEscolhidas);
+        const guardadas = compAdicionadas.filter(x => x.startsWith('ATI-'));
+        const mudou = obrigatoriasPendentes !== obrigatoriasNaAtitudinal
+          || guardadas.length !== atitudesEscolhidas.length
+          || guardadas.some(x => !marcadas.has(x));
+
+        const Chip = ({ at }: { at: any }) => {
+          const m = marcadas.has(at.id);
+          return (
+            <button onClick={() => setAtitudesEscolhidas(
+                m ? atitudesEscolhidas.filter(x => x !== at.id) : [...atitudesEscolhidas, at.id])}
+              style={{ padding:'8px 12px', borderRadius:20, fontSize:13.5, cursor:'pointer',
+                fontFamily:'inherit', fontWeight: m ? 700 : 500,
+                border:`1.5px solid ${m ? '#7d4f8c' : 'rgba(26,23,20,0.15)'}`,
+                background: m ? '#7d4f8c' : '#fff', color: m ? '#fff' : 'rgba(26,23,20,0.75)' }}>
+              {m ? '✓ ' : ''}{at.nome}
+            </button>
+          );
+        };
+
+        return (
+          <div style={{ background:'#fff', borderRadius:14, padding:18, marginBottom:16,
+            border:'1.5px solid rgba(125,79,140,0.35)' }}>
+            <div style={{ fontSize:16, fontWeight:700, color:'#7d4f8c' }}>
+              O que se trabalha nesta aula
             </div>
-          )}
-        </div>
-      )}
+            <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'4px 0 12px', lineHeight:1.5 }}>
+              Dinâmica de grupo: sem técnicas nem KitchenFlow. As atitudes do trimestre
+              aparecem primeiro; podes tirá-las e escolher quaisquer outras do ano.
+            </div>
+
+            <button onClick={() => setObrigatoriasPendentes(!obrigatoriasPendentes)}
+              style={{ width:'100%', padding:'11px 13px', borderRadius:10, marginBottom:14,
+                textAlign:'left', cursor:'pointer', fontFamily:'inherit', fontSize:13.5,
+                border:`1.5px solid ${obrigatoriasPendentes ? '#5a7a4e' : 'rgba(26,23,20,0.18)'}`,
+                background: obrigatoriasPendentes ? '#eef4eb' : '#fff' }}>
+              <b>{obrigatoriasPendentes ? '✓ Higiene e farda contam nesta aula' : 'Higiene e farda não entram nesta aula'}</b>
+              <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.6)', marginTop:2, lineHeight:1.45 }}>
+                {obrigatoriasPendentes
+                  ? 'O aluno avalia-se nelas e valem 20% da nota da aula.'
+                  : 'Não aparecem ao aluno nem contam para a nota.'}
+              </div>
+            </button>
+
+            {compAtitudes.length > 0 && (
+              <>
+                <div style={{ fontSize:12, fontWeight:800, letterSpacing:'0.05em',
+                  textTransform:'uppercase', color:'rgba(26,23,20,0.5)', marginBottom:6 }}>
+                  Do trimestre
+                </div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:7, marginBottom:14 }}>
+                  {compAtitudes.map((at: any) => <Chip key={at.id} at={at} />)}
+                </div>
+              </>
+            )}
+
+            <div style={{ fontSize:12, fontWeight:800, letterSpacing:'0.05em',
+              textTransform:'uppercase', color:'rgba(26,23,20,0.5)', marginBottom:6 }}>
+              Outras do ano
+            </div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
+              {ATITUDES.filter((at: any) => !doTrimestre.has(at.id))
+                .map((at: any) => <Chip key={at.id} at={at} />)}
+            </div>
+
+            {atitudesEscolhidas.length === 0 && (
+              <div style={{ fontSize:13, color:'var(--copper)', marginTop:12, fontWeight:600 }}>
+                Sem nenhuma marcada, o aluno não tem o que avaliar.
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:8, marginTop:16, flexWrap:'wrap',
+              borderTop:'1px solid rgba(26,23,20,0.08)', paddingTop:14 }}>
+              <div style={{ flex:1, minWidth:150, fontSize:13.5, color:'rgba(26,23,20,0.6)',
+                alignSelf:'center' }}>
+                {mudou ? 'Tens alterações por guardar.'
+                  : `${atitudesEscolhidas.length} atitude${atitudesEscolhidas.length === 1 ? '' : 's'} nesta aula.`}
+              </div>
+              {mudou && (
+                <button onClick={() => {
+                    setAtitudesEscolhidas(guardadas);
+                    setObrigatoriasPendentes(obrigatoriasNaAtitudinal);
+                  }}
+                  style={{ padding:'10px 16px', borderRadius:9, border:'1px solid rgba(26,23,20,0.18)',
+                    background:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                  Desfazer
+                </button>
+              )}
+              <button disabled={!mudou}
+                onClick={() => {
+                  const outras = compAdicionadas.filter(x => !x.startsWith('ATI-'));
+                  guardarCompetencias(compRemovidas, [...outras, ...atitudesEscolhidas]);
+                  const tipo = obrigatoriasPendentes ? 'atitudinal_obr' : 'atitudinal';
+                  if (tipo !== (plano as any).tipoPlanAula) {
+                    const p = { ...planoFresco(), tipoPlanAula: tipo,
+                      atualizadoEm: new Date().toISOString() } as any;
+                    addOrUpdatePlanoAula(p);
+                    onPlanoActualizado(p);
+                  }
+                }}
+                style={{ padding:'10px 18px', borderRadius:9, border:'none',
+                  background: mudou ? '#7d4f8c' : 'rgba(26,23,20,0.15)', color:'#fff',
+                  fontSize:14, fontWeight:700, cursor: mudou ? 'pointer' : 'default',
+                  fontFamily:'inherit' }}>
+                Guardar alterações
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ═══ O QUE ESTE PLANO TEM ═══════════════════════════════
           Duas colunas, para o ecrã de computador onde o professor prepara
           as aulas: à esquerda as fichas, com espaço para as manejar; à
@@ -2060,7 +2147,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </button>
               {atualizacaoPublicada && (
                 <div style={{ fontSize: 12.5, color: 'var(--sage)', textAlign: 'center' }}>
-                  Sheets e Classroom notificados · Os alunos vêem o aviso ao refrescar a app
+                  Guardado e publicado no Classroom · Os alunos veem o aviso na aplicação
                 </div>
               )}
             </div>

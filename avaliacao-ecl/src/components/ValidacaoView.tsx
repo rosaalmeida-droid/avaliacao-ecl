@@ -353,9 +353,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     setAConfirmar(false);
     if (!r.ok) {
       alert(
-        'ATENÇÃO — a avaliação ficou gravada aqui, mas NÃO chegou ao Google Sheets.\n\n'
+        'ATENÇÃO — a avaliação ficou gravada aqui, mas NÃO saiu deste computador.\n\n'
         + `Confirmadas ${r.encontrados} de ${r.total} notas.\n\n`
-        + 'Não feches a aplicação. Vai a Coordenadora → Alunos → "Testar ligação ao Sheets" '
+        + 'Não feches a aplicação. Vai a Coordenadora → Alunos → "Testar a ligação" '
         + 'para veres onde está a falhar, e volta a validar depois.'
       );
     }
@@ -644,7 +644,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         <button className="btn btn-primary" onClick={() => setAConfirmar(true)}
           disabled={autoavaliacoes.some(a => !notasProf[a.competenciaId])}
           style={{ width:'100%', background: 'var(--sage)', marginTop: 8, padding: '14px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', opacity: autoavaliacoes.some(a => !notasProf[a.competenciaId]) ? 0.4 : 1 }}>
-          {aConfirmar ? 'A confirmar no Sheets…' : '✓ Validar e guardar avaliação'}
+          {aConfirmar ? 'A confirmar…' : '✓ Validar e guardar avaliação'}
         </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
           <div style={{ fontSize:13, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>
