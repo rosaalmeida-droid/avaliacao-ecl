@@ -2544,7 +2544,7 @@ function aulaJaAconteceu(p: PlanoAula, hoje: string): boolean {
 }
 
 /** Horas de um plano. Um dia inteiro (08:30–17:30) desconta a hora de almoço. */
-function horasDoPlano(p: PlanoAula): number {
+export function horasDoPlano(p: PlanoAula): number {
   const min = (h?: string) => {
     if (!h) return NaN;
     const s = h.includes('T') ? new Date(h).toTimeString().slice(0, 5) : h.slice(0, 5);
@@ -5961,7 +5961,9 @@ export function ucsPorFechar(turmaId: string): { ucId: string; nome: string; dat
  * escola, numa folha própria; o email leva o link.
  */
 export async function enviarPautaPorEmail(
-  turmaId: string, ucId: string, email: string, professor: string
+  turmaId: string, ucId: string, email: string, professor: string,
+  /** Só estes alunos entram na pauta. Sem lista, entram todos. */
+  alunosIds?: string[]
 ): Promise<{ ok: boolean; erro?: string }> {
   if (!email || !email.includes('@')) return { ok: false, erro: 'Email inválido.' };
   const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
@@ -5969,7 +5971,7 @@ export async function enviarPautaPorEmail(
     turmaId, ucId, ucNome: mod?.nome || '', email, professor,
     disciplina: mod?.disciplina || '', horasPrevistas: mod?.horasPrevistas || 0,
     dataInicio: mod?.dataInicio || '', dataFim: mod?.dataFim || '',
-    linhas: pautaDaUC(turmaId, ucId),
+    linhas: pautaDaUC(turmaId, ucId).filter(l => !alunosIds || alunosIds.includes(l.alunoId)),
     criadaEm: new Date().toISOString(),
   });
   // Dar tempo ao script e confirmar que a pauta ficou registada.

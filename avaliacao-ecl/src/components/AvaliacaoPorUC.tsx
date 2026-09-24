@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, calcularBonusAssiduidadeUC , registosQueContam, aplicarBonusesUC } from '../backend';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
@@ -177,6 +178,8 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
   }, [registosFiltrados, filtroUC]);
 
   const ucSelNome = modulos.find(m => m.id === filtroUC)?.nome || '';
+  // A pauta no modelo da escola — a qualquer momento, não só quando o módulo acaba.
+  const [pautaAberta, setPautaAberta] = useState(false);
   const T = {
     copper: '#b5651d', sage: '#5a7a4e', azul: '#0369a1',
     border: 'rgba(26,23,20,0.08)', cream: '#f8f6f2',
@@ -207,6 +210,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
         }
       `}</style>
 
+      {pautaAberta && filtroUC && (
+        <FecharUC turmaId={turmaId} ucId={filtroUC} ucNome={ucSelNome}
+          onFechado={() => setPautaAberta(false)} onCancelar={() => setPautaAberta(false)} />
+      )}
+
       {/* Filtros */}
       <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: `1px solid ${T.border}` }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -220,6 +228,13 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
               <option value="">Todas</option>
               {modulos.map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome.slice(0, 35)}{m.nome.length > 35 ? '…' : ''}</option>)}
             </select>
+            {!alunoId && filtroUC && (
+              <button onClick={() => setPautaAberta(true)} style={{ marginTop: 8, width: '100%', padding: '9px 10px',
+                borderRadius: 8, border: 'none', background: 'var(--sage, #5a7a4e)', color: '#fff',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Pauta da UC (modelo da escola)
+              </button>
+            )}
           </div>
           {/* Aluno — só visível na vista do professor, não na vista do aluno */}
           {!alunoId && (
