@@ -6116,3 +6116,80 @@ export function vigiarAlteracoes(
   const t = setInterval(espreitar, segundos * 1000);
   return () => { parado = true; clearInterval(t); };
 }
+
+// ============================================================
+// Diagnóstico — onde é que a corrente parte
+// ============================================================
+// Em vez de adivinhar porque é que uma aula não chega ao aluno, a
+// aplicação percorre a corrente toda e diz em que elo parou. Corre-se
+// no aparelho do professor e no do aluno, e compara-se.
+
+export async function diagnostico(turmaId: string): Promise<string[]> {
+  const L: string[] = [];
+  const hoje = new Date().toISOString().slice(0, 10);
+  const url = SHEETS_ECL_URL || SHEETS_PLANOS_URL;
+
+  L.push(`Turma: ${turmaId} · hoje: ${hoje}`);
+  L.push(SHEETS_ECL_URL ? '1. Versão nova da aplicação: SIM' : '1. Versão nova da aplicação: NÃO — o aparelho tem a antiga');
+  L.push(`   endereço …${String(url).slice(-14)}`);
+
+  // 2. O contador responde?
+  try {
+    const u = new URL(url);
+    u.searchParams.set('tipo', 'versao');
+    u.searchParams.set('turmaId', turmaId);
+    const r = await fetch(u.toString());
+    const t = (await r.text()).trim();
+    L.push(/^\d+$/.test(t) ? `2. Ligação ao arquivo: OK (número ${t.slice(-6)})`
+      : `2. Ligação ao arquivo: RESPOSTA ESTRANHA — ${t.slice(0, 40)}`);
+  } catch (e) {
+    L.push('2. Ligação ao arquivo: FALHOU — sem rede ou acesso barrado');
+  }
+
+  // 3. O que o arquivo tem desta turma
+  let doArquivo: any[] = [];
+  try {
+    const json: any = await lerDoSheets(url, { tipo: 'get_planos', turmaId });
+    if (!json?.ok) {
+      L.push('3. Planos no arquivo: NÃO CONSEGUI LER');
+    } else {
+      doArquivo = json.dados || [];
+      const publicados = doArquivo.filter((p: any) => p.estado === 'publicado');
+      const deHoje = publicados.filter((p: any) => dataSoDia(p.data) === hoje);
+      L.push(`3. Planos no arquivo: ${doArquivo.length} · publicados ${publicados.length} · de hoje ${deHoje.length}`);
+      deHoje.slice(0, 3).forEach((p: any) =>
+        L.push(`   · ${p.titulo || p.id} — turma "${p.turmaId}" — ${dataSoDia(p.data)}`));
+      if (!deHoje.length && publicados.length) {
+        const ultimo = publicados[publicados.length - 1];
+        L.push(`   último publicado: ${ultimo.titulo || ultimo.id} em ${dataSoDia(ultimo.data)}`);
+      }
+      if (doArquivo.length && !publicados.length) {
+        L.push('   ATENÇÃO: há planos, mas nenhum publicado. Falta carregar em Publicar.');
+      }
+    }
+  } catch { L.push('3. Planos no arquivo: FALHOU'); }
+
+  // 4. O que este aparelho tem
+  const locais = getPlanosAulaPorTurma(turmaId);
+  const locaisPub = locais.filter(p => p.estado === 'publicado');
+  const locaisHoje = locaisPub.filter(p => dataSoDia(p.data) === hoje);
+  L.push(`4. Neste aparelho: ${locais.length} planos · publicados ${locaisPub.length} · de hoje ${locaisHoje.length}`);
+
+  // 5. O que falta cá do que está lá
+  const idsLocais = new Set(locais.map(p => p.id));
+  const soLa = doArquivo.filter((p: any) => !idsLocais.has(p.id));
+  if (soLa.length) {
+    L.push(`5. No arquivo mas não aqui: ${soLa.length} — a sincronização não os trouxe`);
+    soLa.slice(0, 3).forEach((p: any) => L.push(`   · ${p.titulo || p.id}`));
+  } else {
+    L.push('5. Tudo o que está no arquivo também está aqui');
+  }
+
+  // 6. Turmas com que nome estão lá — o erro mais traiçoeiro
+  const turmasLa = [...new Set(doArquivo.map((p: any) => String(p.turmaId)))];
+  if (turmasLa.length && !turmasLa.includes(turmaId)) {
+    L.push(`6. ATENÇÃO: o arquivo devolveu planos das turmas [${turmasLa.join(', ')}], e esta é "${turmaId}"`);
+  }
+
+  return L;
+}
