@@ -65,17 +65,16 @@ interface Grupo {
   destinos: Destino[];
 }
 
+// Os mesmos nomes e a mesma ordem do menu lateral (NAV, no Header).
+// Fichas técnicas saiu: abria o mesmo ecrã que a Biblioteca. Guiões e
+// requisições criam-se dentro de cada plano; aqui ficam em "Mais".
 function grupos(pendentes: { validar: number; recuperacoes: number }): Grupo[] {
   return [
     {
-      titulo: 'Preparar a aula',
+      titulo: 'Dia a dia',
       destinos: [
-        { id: 'planos',     label: 'Planos de aula', icone: I.plano },
-        { id: 'ficha',      label: 'Fichas técnicas', icone: I.ficha },
-        { id: 'guia',       label: 'Guiões', icone: I.guia },
-        { id: 'requisicao', label: 'Requisições', icone: I.requisicao },
-        { id: 'eventos',    label: 'Eventos', icone: I.eventos },
-        { id: 'orcamentos', label: 'Orçamentos', icone: I.orcamento },
+        { id: 'planos',  label: 'Planos de aula', icone: I.plano },
+        { id: 'eventos', label: 'Eventos', icone: I.eventos },
       ],
     },
     {
@@ -92,22 +91,42 @@ function grupos(pendentes: { validar: number; recuperacoes: number }): Grupo[] {
     {
       titulo: 'Consultar',
       destinos: [
-        { id: 'biblioteca',    label: 'Biblioteca', icone: I.biblioteca },
+        { id: 'biblioteca',    label: 'Biblioteca de fichas', icone: I.biblioteca },
         { id: 'manual',        label: 'Manual do cozinheiro', icone: I.manual },
         { id: 'manuais_aluno', label: 'Manuais do aluno', icone: I.manual },
         { id: 'cronograma',    label: 'Cronograma', icone: I.cronograma },
       ],
     },
-    {
-      titulo: 'Sistema',
-      destinos: [
-        { id: 'historial',       label: 'Historial', icone: I.historial },
-        { id: 'copia_seguranca', label: 'Cópia de segurança', icone: I.copia },
-        { id: 'ajuda',           label: 'Ajuda', icone: I.ajuda },
-      ],
-    },
   ];
 }
+
+/** O que raramente se usa no dia a dia — fica atrás de "Mais". */
+const MAIS: Destino[] = [
+  { id: 'guia',            label: 'Guiões', icone: I.guia },
+  { id: 'requisicao',      label: 'Requisições', icone: I.requisicao },
+  { id: 'orcamentos',      label: 'Orçamentos', icone: I.orcamento },
+  { id: 'historial',       label: 'Historial', icone: I.historial },
+  { id: 'copia_seguranca', label: 'Cópia de segurança', icone: I.copia },
+  { id: 'ajuda',           label: 'Ajuda', icone: I.ajuda },
+];
+
+/** A aula de hoje e a etapa em que está. O botão muda com a etapa. */
+export interface AulaHojeProf {
+  titulo: string;
+  numero?: number;
+  horario?: string;
+  etapa: 'preparar' | 'publicar' | 'abrir' | 'turma' | 'validar';
+  entraram?: string;
+  porValidar: number;
+}
+
+const ETAPAS: { id: AulaHojeProf['etapa']; label: string; botao: string }[] = [
+  { id: 'preparar', label: 'Preparar',      botao: 'Preparar a aula' },
+  { id: 'publicar', label: 'Publicar',      botao: 'Rever e publicar' },
+  { id: 'abrir',    label: 'Abrir a aula',  botao: 'Abrir a aula' },
+  { id: 'turma',    label: 'Turma na aula', botao: 'Ver a turma' },
+  { id: 'validar',  label: 'Validar',       botao: 'Validar' },
+];
 
 function Cartao({ d, onAbrir }: { d: Destino; onAbrir: (v: VistaProf) => void }) {
   return (
@@ -144,13 +163,17 @@ interface Props {
   porValidar?: number;
   recuperacoesEmCurso?: number;
   onAbrir: (v: VistaProf) => void;
+  /** A aula de hoje, quando há. */
+  aulaHoje?: AulaHojeProf | null;
+  /** Abre o plano de hoje na etapa em que está. */
+  onAbrirAulaHoje?: (etapa: AulaHojeProf['etapa']) => void;
 }
 
 export function PainelProfessor({
   nomeProfessor, turmaId, turmaNome, ucId, ucNome,
   aulasHoje = 0, proximasAulas = 0,
   porValidar = 0, recuperacoesEmCurso = 0,
-  onAbrir, calendario,
+  onAbrir, calendario, aulaHoje = null, onAbrirAulaHoje,
 }: Props & {
   /** O calendário das aulas, ao lado dos cartões. Estava escondido
    *  dentro de "Planos de Aula" — o professor tinha de lá ir para ver
@@ -158,6 +181,8 @@ export function PainelProfessor({
   calendario?: React.ReactNode;
 }) {
   const gs = grupos({ validar: porValidar, recuperacoes: recuperacoesEmCurso });
+  const [verMais, setVerMais] = React.useState(false);
+  const iEtapa = aulaHoje ? ETAPAS.findIndex(e => e.id === aulaHoje.etapa) : -1;
 
   return (
     <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
@@ -212,13 +237,58 @@ export function PainelProfessor({
           </div>
         </div>
 
+        {/* A aula de hoje. O aluno tinha um botão grande para a aula; o
+            professor tinha de ir a Planos, encontrar o plano e só lá
+            dentro abria a aula. Agora o botão está aqui e muda com a
+            etapa: preparar, publicar, abrir, ver a turma, validar. */}
+        {aulaHoje && (
+          <div style={{ background: C.bordeaux, color: '#fff', borderRadius: 18,
+            padding: '20px 20px 18px', marginBottom: 20 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: C.bordeauxClaro }}>A aula de hoje</div>
+            {aulaHoje.horario && (
+              <div style={{ fontSize: 14, color: C.bordeauxClaro, marginTop: 3 }}>{aulaHoje.horario}</div>
+            )}
+            <div style={{ fontSize: 21, fontWeight: 800, marginTop: 3, lineHeight: 1.25 }}>
+              {aulaHoje.titulo}{aulaHoje.numero ? ` · Plano ${String(aulaHoje.numero).padStart(2, '0')}` : ''}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ETAPAS.length}, minmax(0, 1fr))`,
+              gap: 5, marginTop: 14 }}>
+              {ETAPAS.map((e, i) => (
+                <div key={e.id} style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+                  <div style={{ height: 5, borderRadius: 3,
+                    background: i < iEtapa ? '#fff' : i === iEtapa ? '#F6A623' : 'rgba(255,255,255,0.28)' }} />
+                  <span style={{ fontSize: 11.5, lineHeight: 1.2, overflowWrap: 'anywhere', paddingRight: 2,
+                    color: i === iEtapa ? '#fff' : C.bordeauxClaro, fontWeight: i === iEtapa ? 700 : 400 }}>
+                    {e.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {aulaHoje.entraram && (
+              <div style={{ fontSize: 13.5, color: C.bordeauxClaro, marginTop: 10 }}>
+                {aulaHoje.entraram} alunos entraram
+              </div>
+            )}
+            {onAbrirAulaHoje && (
+              <button onClick={() => onAbrirAulaHoje(aulaHoje.etapa)} style={{
+                marginTop: 14, minHeight: 52, padding: '0 24px', borderRadius: 12, border: 'none',
+                background: '#fff', color: C.bordeaux, fontSize: 16.5, fontWeight: 800,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                {ETAPAS[iEtapa]?.botao}{aulaHoje.etapa === 'validar' && aulaHoje.porValidar ? ` (${aulaHoje.porValidar})` : ''}
+              </button>
+            )}
+          </div>
+        )}
+
         <div style={{
           display: calendario ? 'grid' : 'block',
           gridTemplateColumns: calendario ? 'minmax(0, 1fr) minmax(300px, 380px)' : undefined,
           gap: 20, alignItems: 'start',
         }}>
         <div>
-        {gs.map(g => (
+        {[...gs, { titulo: 'Mais', destinos: verMais ? MAIS : [] }].filter(g => g.titulo !== 'Mais' || verMais).map(g => (
           <div key={g.titulo} style={{ marginBottom: 20 }}>
             <div style={{
               fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
@@ -231,6 +301,13 @@ export function PainelProfessor({
             </div>
           </div>
         ))}
+        <button onClick={() => setVerMais(v => !v)} style={{
+          width: '100%', minHeight: 48, borderRadius: 12, border: `1px dashed ${C.bordeauxClaro}`,
+          background: 'transparent', color: C.texto, fontSize: 14.5, fontWeight: 600,
+          cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20,
+        }}>
+          {verMais ? 'Menos' : 'Mais… (guiões, requisições, orçamentos, historial, cópia de segurança, ajuda)'}
+        </button>
         </div>
 
         {/* O calendário, à direita. */}

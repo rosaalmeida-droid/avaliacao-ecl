@@ -179,6 +179,33 @@ export function MenuDoPlano({
         </span>
       </div>
 
+      {/* Publicar — em cima e em grande enquanto for rascunho, com o que
+          ainda falta. Estava no fundo, pequeno, ao lado de "Editar". */}
+      {!publicado && aoPublicar && (() => {
+        const falta = [
+          fichas.length === 0 && 'as fichas',
+          (!temRequisicao || requisicaoDesatualizada) && 'a requisição',
+          totalCompetencias === 0 && 'as competências',
+        ].filter(Boolean) as string[];
+        return (
+          <div style={{ padding: '14px 14px 6px' }}>
+            <button onClick={aoPublicar} style={{
+              width: '100%', minHeight: 46, borderRadius: 10, border: 'none',
+              background: BRANCO_FORTE, color: '#7B2233',
+              fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              Publicar a aula
+            </button>
+            <div style={{ fontSize: 12, color: BRANCO_MEIO, marginTop: 7, lineHeight: 1.45 }}>
+              Só depois disto os alunos veem a aula.
+              {falta.length > 0
+                ? ` Ainda falta${falta.length > 1 ? 'm' : ''}: ${falta.join(', ')}.`
+                : ' Está tudo pronto.'}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* O que o plano tem */}
       <div style={{ paddingTop: 5 }}>
         <Linha
@@ -234,7 +261,7 @@ export function MenuDoPlano({
           contam para nada — nem para a nota, nem para o banco. */}
       {!!porValidar && porValidar > 0 && (
         <button
-          onClick={() => aoIrPara('turma')}
+          onClick={() => aoIrPara('validacao')}
           style={{
             margin: '10px 12px', padding: '11px 13px', borderRadius: 10,
             border: 'none', cursor: 'pointer', fontFamily: 'inherit',
@@ -264,22 +291,6 @@ export function MenuDoPlano({
         ✏️ Editar o plano
       </button>
 
-      {/* Publicar — só enquanto não estiver */}
-      {!publicado && aoPublicar && (
-        <div style={{ padding: '12px 15px' }}>
-          <button onClick={aoPublicar} style={{
-            width: '100%', padding: 10, borderRadius: 9, border: 'none',
-            background: 'var(--sage, #5a7a4e)', color: '#fff',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-          }}>
-            Publicar a aula
-          </button>
-          <div style={{ fontSize: 11.5, color: BRANCO_TENUE, marginTop: 7,
-            lineHeight: 1.45 }}>
-            Só depois disto os alunos veem a aula.
-          </div>
-        </div>
-      )}
 
       {/* A saída */}
       <button onClick={aoSair} style={{
