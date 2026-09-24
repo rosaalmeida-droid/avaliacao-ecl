@@ -2834,10 +2834,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               O que submeteste
             </div>
             {autoavsSubmetidas.map((av: any, i: number) => {
-              const nivel = av.nivel || '';
-              const emoji = nivel==='autonomia'||nivel==='superei'?'🌟':nivel==='sozinho'||nivel==='atingi'?'✅':nivel==='ajuda'||nivel==='desenvolvimento'?'🤝':'📖';
-              const label = nivel==='autonomia'?'Faço com muito bom resultado':nivel==='sozinho'||nivel==='atingi'?'Faço sozinho/a':nivel==='ajuda'||nivel==='desenvolvimento'?'Consegui com ajuda':'Não consegui';
-              const nomeComp = av.competenciaId?.startsWith('OBR_01')?'Higiene pessoal':av.competenciaId?.startsWith('OBR_02')?'Higiene e segurança alimentar':av.competenciaId || '';
+              // Pela nota (1-5), que é o que se grava. Os nomes antigos dos
+              // níveis (sozinho, ajuda…) já não batiam: tudo aparecia como
+              // "Não consegui", e a competência aparecia pelo código.
+              const nota = Number(av.nota) || OPCOES.find(o => o.v === av.nivel)?.nota || 0;
+              const emoji = nota >= 5 ? '🌟' : nota >= 4 ? '✅' : nota >= 3 ? '🤝' : '📖';
+              const ehAtitude = String(av.competenciaId || '').startsWith('ATI-');
+              const label = av.semRegistoKF ? 'Sem registo no KitchenFlow: 1'
+                : ehAtitude ? `Nível ${nota}`
+                : OPCOES.find(o => o.nota === nota)?.label || '';
+              const nomeComp = av.competenciaId?.startsWith('OBR_01') ? 'Higiene pessoal'
+                : av.competenciaId?.startsWith('OBR_02') ? 'Higiene e segurança alimentar'
+                : ATITUDES.find(x => x.id === av.competenciaId)?.nome || nomeCompetencia(av.competenciaId || '');
               return (
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background:'#fff', border:`1px solid ${T.border}`, marginBottom:6 }}>
                   <span style={{ fontSize:18, flexShrink:0 }}>{emoji}</span>
