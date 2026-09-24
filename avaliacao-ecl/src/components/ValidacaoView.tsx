@@ -1,7 +1,7 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { SelecaoAluno, Validacao, calcularNotaPlano } from '../types';
+import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets } from '../backend';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
@@ -50,12 +50,9 @@ function calcularNotaFinal(notaProf: number, notaAluno: number): number {
 // Conversão 1-5 → 0-20 (×4)
 function para20(n: number): number { return n > 0 ? Math.min(20, Math.round(n * 4)) : 0; }
 
+/** Nota 1-5 → a mesma classificação que o aluno vê, em /20. */
 function labelNotaFinal(nota: number): string {
-  if (nota >= 4.5) return 'Excelente';
-  if (nota >= 3.5) return 'Muito Bom';
-  if (nota >= 3)   return 'Bom';
-  if (nota >= 2)   return 'Suficiente';
-  return 'Insuficiente';
+  return classificacao20(nota * 4);
 }
 
 function corNotaFinal(nota: number): string {

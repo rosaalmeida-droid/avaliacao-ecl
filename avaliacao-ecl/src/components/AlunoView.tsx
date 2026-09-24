@@ -14,7 +14,7 @@ function ucAncora(ucId?: string, ucNome?: string): string {
   if (!ucId) return ucNome || '';
   return (NUM_UC_AL[ucId] ? NUM_UC_AL[ucId] + ' · ' : '') + ucId + (ucNome ? ' — ' + ucNome : '');
 }
-import { Aluno, PlanoAula, FichaProducao, INICIATIVA_FRASES, calcularNotaPlano, PESOS_AULA } from '../types';
+import { Aluno, PlanoAula, FichaProducao, INICIATIVA_FRASES, calcularNotaPlano, PESOS_AULA, classificacao20 } from '../types';
 import { atitudesAnteriores, idsAtitudesAnteriores, atitudesQueFaltam, ehTurmaTransicao } from '../transicaoReferencial';
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
@@ -2857,7 +2857,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             const tipoPlano = (plano as any).tipoPlanAula || 'pratico';
             const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlano);
             const cor = nota20 >= 16 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
-            const label = nota20 >= 16 ? 'Muito Bom' : nota20 >= 14 ? 'Bom' : nota20 >= 10 ? 'Suficiente' : 'Insuficiente';
+            const label = classificacao20(nota20);
 
             // Comparação com a autoavaliação — não conta para a nota, mas ajuda o
             // aluno a perceber se se avalia acima ou abaixo do que o professor observa.
