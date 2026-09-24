@@ -27,7 +27,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnostico } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,

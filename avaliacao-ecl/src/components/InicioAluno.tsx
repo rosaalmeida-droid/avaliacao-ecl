@@ -206,6 +206,8 @@ interface Props {
   /** Falhou ir buscar as aulas — botão para tentar outra vez. */
   onTentarOutraVez?: () => void;
   aLigar?: boolean;
+  /** Verificar porque é que a aula não chega — aparece quando não há aula hoje. */
+  onDiagnostico?: () => void;
   notaProgressiva?: number | null;
   recuperacoesPendentes?: number;
   atividadesAbertas?: number;
@@ -219,7 +221,7 @@ export function InicioAluno({
   proximasAulas = 0, avisos = [],
   fichasAtribuidas = 0, notaProgressiva = null,
   recuperacoesPendentes = 0, atividadesAbertas = 0,
-  onTentarOutraVez, aLigar = false,
+  onTentarOutraVez, aLigar = false, onDiagnostico,
   onAbrir,
 }: Props) {
   // Antes da ativação o botão diz Consultar plano; depois, Iniciar aula.
@@ -347,6 +349,17 @@ export function InicioAluno({
         {/* ── AVISOS: só quando exigem uma ação ── */}
         {/* Atualizar — sempre à mão. O professor pode corrigir a aula a
             meio, e o aluno tem de conseguir ir buscar a versão nova. */}
+        {onDiagnostico && (
+          <button onClick={onDiagnostico} style={{
+            width: '100%', padding: 10, borderRadius: 10, marginBottom: 8,
+            border: '1px dashed rgba(26,23,20,0.25)', background: 'transparent',
+            color: 'rgba(26,23,20,0.55)', fontSize: 12.5, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            Não vejo a aula de hoje — verificar
+          </button>
+        )}
+
         {onTentarOutraVez && (
           <button onClick={onTentarOutraVez} disabled={aLigar} style={{
             width: '100%', padding: 13, borderRadius: 11, marginBottom: 12,
