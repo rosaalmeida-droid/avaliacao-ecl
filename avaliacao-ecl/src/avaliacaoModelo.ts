@@ -8,7 +8,7 @@
 import { PESOS_AULA } from './types';
 
 export type Nivel = 1 | 2 | 3 | 4 | 5;
-export type TipoPlano = 'pratico' | 'teorico' | 'misto' | 'atitudinal';
+export type TipoPlano = 'pratico' | 'teorico' | 'misto' | 'atitudinal' | 'atitudinal_obr';
 
 export interface AvMicro { verificacao: string; ok: boolean }              // sim / ainda não
 export interface AvSubtecnica { nome: string; nivel: Nivel; micros?: AvMicro[] }

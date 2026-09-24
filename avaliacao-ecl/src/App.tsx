@@ -124,7 +124,7 @@ import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedP
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar } from './backend';
+  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -156,6 +156,34 @@ function AppInterno() {
   const [moduloPlano, setModuloPlano] = useState<string>('inicio');
   /** O menu pede para ir a um sítio; a vista obedece e limpa o pedido. */
   const [moduloPedido, setModuloPedido] = useState<string | null>(null);
+  /** O que ainda não se sabe se chegou ao Sheets. */
+  const [espera, setEspera] = useState<{ total: number; teimosos: any[] }>({ total: 0, teimosos: [] });
+
+  // De minuto a minuto: conferir o que foi enviado e repetir o que não
+  // chegou. Um plano podia ficar uma hora sem aparecer no Sheets e
+  // ninguém dava por isso.
+  // Alterações feitas noutro aparelho — o tablet da cozinha, o
+  // computador de casa — aparecem aqui em segundos.
+  useEffect(() => {
+    if (!turmaId || (perfil !== 'professor' && perfil !== 'coordenadora')) return;
+    return vigiarAlteracoes(turmaId, () => {
+      sincronizarDoSheets(turmaId).then(() => setRefreshKey(k => k + 1)).catch(() => {});
+    });
+  }, [turmaId, perfil]);
+
+  useEffect(() => {
+    if (perfil !== 'professor' && perfil !== 'coordenadora') return;
+    let vivo = true;
+    const correr = () => {
+      confirmarEReenviar()
+        .then(() => { if (vivo) setEspera(estadoDaEspera()); })
+        .catch(() => {});
+    };
+    correr();
+    const t = setInterval(correr, 60000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [perfil]);
+
   /** Unidade que o professor está a fechar (pauta). */
   const [ucAFechar, setUcAFechar] = useState<{ ucId: string; nome: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -436,12 +464,31 @@ function AppInterno() {
             const planos = getPlanosAulaPorTurma(turmaId);
             return (
               <>
-              {/* O que ainda não chegou ao Sheets. Fica no topo do painel,
+              {/* O que ainda não ficou guardado fora deste computador. Fica no topo do painel,
                   onde o professor passa sempre — antes só se descobria
                   quando o trabalho já estava perdido. */}
               <div style={{ maxWidth: 820, margin: '0 auto 4px' }}>
                 <EstadoSincronizacao turmaId={turmaId} />
               </div>
+
+              {espera.teimosos.length > 0 && (
+                <div style={{ maxWidth: 820, margin: '0 auto 12px', background: '#fdf0e6',
+                  border: '1.5px solid var(--copper)', borderRadius: 12, padding: '13px 16px' }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--copper)' }}>
+                    {espera.teimosos.length} registo{espera.teimosos.length > 1 ? 's' : ''} ainda não ficou guardado fora deste computador
+                  </div>
+                  <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.65)', marginTop: 4, lineHeight: 1.5 }}>
+                    {espera.teimosos.slice(0, 3).map((x: any) => x.rotulo).join(' · ')}
+                    {espera.teimosos.length > 3 ? ` · e mais ${espera.teimosos.length - 3}` : ''}
+                  </div>
+                  <button onClick={() => confirmarEReenviar().then(() => setEspera(estadoDaEspera()))}
+                    style={{ marginTop: 9, padding: '8px 14px', borderRadius: 8, border: 'none',
+                      background: 'var(--copper)', color: '#fff', fontSize: 13.5, fontWeight: 700,
+                      cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Tentar enviar agora
+                  </button>
+                </div>
+              )}
 
               {/* Unidades que já acabaram e ainda não foram fechadas. O
                   professor tem de mandar a pauta à direção, e assim não

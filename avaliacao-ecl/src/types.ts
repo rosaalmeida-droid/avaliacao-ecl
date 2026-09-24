@@ -365,7 +365,7 @@ export interface FichaProducao {
 // atitudes são avaliados.
 // 'atitudinal' — dinâmicas de grupo e trabalho de atitudes: sem farda, sem
 // KitchenFlow, sem técnicas; só as atitudes que o professor escolhe.
-export type TipoPlanAula = 'pratico' | 'teorico' | 'misto' | 'atitudinal';
+export type TipoPlanAula = 'pratico' | 'teorico' | 'misto' | 'atitudinal' | 'atitudinal_obr';
 
 export type TipoTrabalho =
   | 'investigacao'   // pesquisa e desenvolvimento → escrito
@@ -837,6 +837,9 @@ export const PESOS_AULA = {
   teorico: { OBR: 0.15, SUB: 0.00, KNW: 0.65, ATI: 0.20, INI: 0.00 },
   // Aula atitudinal: só atitudes contam.
   atitudinal: { OBR: 0.00, SUB: 0.00, KNW: 0.00, ATI: 1.00, INI: 0.00 },
+  // O professor decidiu incluir a higiene e a farda nesta aula
+  // atitudinal — aí contam, mas as atitudes continuam a mandar.
+  atitudinal_obr: { OBR: 0.20, SUB: 0.00, KNW: 0.00, ATI: 0.80, INI: 0.00 },
 } as const;
 
 // Repartição interna dos conhecimentos, quando estiverem marcados.
@@ -902,7 +905,7 @@ export const INICIATIVA_FRASES = [
 // ── Função central: calcular nota 0-20 de um plano ───────────
 export function calcularNotaPlano(
   notas: { categoria: 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI'; nota: number }[],
-  tipoPlan: 'pratico' | 'misto' | 'teorico' | 'atitudinal'
+  tipoPlan: 'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr'
 ): { nota20: number; porCategoria: Record<string, number>; detalhes: string } {
   const pesos = PESOS_AULA[tipoPlan];
   const porCat: Record<string, number[]> = { OBR: [], SUB: [], KNW: [], ATI: [], INI: [] };

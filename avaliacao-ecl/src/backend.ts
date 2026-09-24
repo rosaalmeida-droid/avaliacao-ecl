@@ -192,61 +192,6 @@ function load<T>(key: string): T[] {
   catch { return []; }
 }
 
-function deduplicarPorId<T extends { id: string }>(itens: T[]): T[] {
-  const porId = new Map<string, T>();
-  itens.forEach(item => { if (item?.id) porId.set(item.id, item); });
-  return [...porId.values()];
-}
-
-function idsEliminados(valor: unknown): string[] {
-  const itens = Array.isArray(valor) ? valor
-    : typeof valor === 'string' ? valor.split(/[;,\n]/) : [];
-  return itens.map((item: any) => String(
-    typeof item === 'string' || typeof item === 'number' ? item
-      : item?.id || item?.planoId || item?.fichaId || item?.requisicaoId || ''
-  ).trim()).filter(Boolean);
-}
-
-async function sincronizarTombstones(): Promise<void> {
-  const resposta = await lerDoSheets(SHEETS_ECL_URL || SHEETS_PLANOS_URL, { tipo: 'get_eliminados' });
-  if (!resposta?.ok) return;
-
-  const dados = resposta.eliminados ?? resposta.dados ?? resposta;
-  const listas: Record<string, string[]> = { planos: [], fichas: [], requisicoes: [] };
-  if (Array.isArray(dados)) {
-    dados.forEach((item: any) => {
-      const tipo = String(item?.tipo || item?.tabela || item?.entidade || '').toLowerCase();
-      const id = String(item?.id || item?.planoId || item?.fichaId || item?.requisicaoId || '').trim();
-      if (!id) return;
-      if (tipo.includes('plano')) listas.planos.push(id);
-      else if (tipo.includes('ficha')) listas.fichas.push(id);
-      else if (tipo.includes('requis')) listas.requisicoes.push(id);
-    });
-  }
-  const fontes: Record<string, string[]> = {
-    planos: ['planos', 'eliminadosPlanos', 'planosEliminados', 'idsPlanos', 'planoIds'],
-    fichas: ['fichas', 'eliminadosFichas', 'fichasEliminadas', 'idsFichas', 'fichaIds'],
-    requisicoes: ['requisicoes', 'eliminadosRequisicoes', 'requisicoesEliminadas', 'idsRequisicoes', 'requisicaoIds'],
-  };
-  const chaves: Record<string, string> = {
-    planos: KEYS.eliminadosPlanos,
-    fichas: KEYS.eliminadosFichas,
-    requisicoes: KEYS.eliminadosRequisicoes,
-  };
-  for (const grupo of Object.keys(fontes)) {
-    for (const nome of fontes[grupo]) {
-      listas[grupo].push(...idsEliminados((dados as any)?.[nome] ?? (resposta as any)?.[nome]));
-    }
-    save(chaves[grupo], [...new Set([...load<string>(chaves[grupo]), ...listas[grupo]])]);
-  }
-
-  // A Requisição fica deliberadamente fora desta reconciliação local.
-  const planosRemovidos = new Set(load<string>(KEYS.eliminadosPlanos));
-  const fichasRemovidas = new Set(load<string>(KEYS.eliminadosFichas));
-  save(KEYS.planos, getPlanosAula().filter(p => !planosRemovidos.has(p.id)));
-  save(KEYS.fichas, getFichasProducao().filter(f => !fichasRemovidas.has(f.id)));
-}
-
 export function save<T>(key: string, data: T[]): void {
   try { localStorage.setItem(key, JSON.stringify(data)); }
   catch (e) { console.error('Erro ao guardar', key, e); }
@@ -289,10 +234,6 @@ export async function buscarFichasSimilares(nome: string): Promise<Array<{id: st
 // Chamada na inicialização da app — carrega dados do Sheets se houver URL
 export async function sincronizarDoSheets(turmaId: string): Promise<void> {
   try {
-    // Importar eliminações antes dos registos: evita que outro dispositivo
-    // volte a apresentar planos ou fichas removidos.
-    await sincronizarTombstones().catch(() => {});
-
     // Sessões e líderes primeiro: são o que o aluno precisa para saber
     // se pode entrar na aula. Falham em silêncio se o script ainda não
     // souber responder a estes tipos.
@@ -347,7 +288,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             }
           } else merged.push(p);
         }
-        save(KEYS.planos, deduplicarPorId(merged));
+        save(KEYS.planos, merged);
       }
     }
 
@@ -398,7 +339,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             merged[idx] = atualizado;
           }
         }
-        save(KEYS.fichas, deduplicarPorId(merged));
+        save(KEYS.fichas, merged);
       }
     }
 
@@ -466,13 +407,10 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         const transicao = jsonAval.dados.filter((r: any) => r.validadoPor === 'transicao');
         const normais = jsonAval.dados.filter((r: any) => r.validadoPor !== 'transicao');
 
-        const locais = deduplicarPorId(getHistoricoAvaliacoes());
-        const porId = new Map(locais.map((r: RegistoAvaliacao) => [r.id, r]));
-        for (const registo of normais as RegistoAvaliacao[]) {
-          const atual = porId.get(registo.id);
-          if (!atual || (registo.data || '') > (atual.data || '')) porId.set(registo.id, registo);
-        }
-        save(KEY_HIST, [...porId.values()]);
+        const locais = getHistoricoAvaliacoes();
+        const idsLocais = new Set(locais.map((r: RegistoAvaliacao) => r.id));
+        const novas = normais.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
+        if (novas.length > 0) save(KEY_HIST, [...locais, ...novas]);
 
         if (transicao.length > 0) {
           const jaTem = getRegistosTransicao();
@@ -491,14 +429,14 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       // ── Sincronizar Validações ──────────────────────────────────────
       const jsonVal = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_validacoes', turmaId });
       if (jsonVal?.ok && jsonVal.dados?.length > 0) {
-        const locais = deduplicarPorId(getValidacoes());
+        const locais = getValidacoes();
         const merged = [...locais];
         for (const v of jsonVal.dados) {
           const idx = merged.findIndex((x: Validacao) => x.id === v.id);
           if (idx < 0) merged.push(v);
           else if ((v.validadoEm || '') > (merged[idx].validadoEm || '')) merged[idx] = v;
         }
-        save(KEYS.validacoes, deduplicarPorId(merged));
+        save(KEYS.validacoes, merged);
       }
 
       // ── Sincronizar Presenças ───────────────────────────────────────
@@ -556,14 +494,14 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     if (SHEETS_HISTORICO_URL) {
       const jsonSel = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId });
       if (jsonSel?.ok && jsonSel.dados?.length > 0) {
-        const locais = deduplicarPorId(getSelecoes());
+        const locais = getSelecoes();
         const merged = [...locais];
         for (const s of jsonSel.dados) {
           const idx = merged.findIndex((x: SelecaoAluno) => x.id === s.id);
           if (idx < 0) merged.push(s);
           else if ((s.criadaEm || '') > (merged[idx].criadaEm || '')) merged[idx] = s;
         }
-        save(KEYS.selecoes, deduplicarPorId(merged));
+        save(KEYS.selecoes, merged);
       }
     }
 
@@ -910,10 +848,32 @@ export function seedAlunosReais(): void {
     { id: '1º BCR-19', turmaId: '1º BCR', numero: 19, ano: 1 as const, nome: 'Tiago Gaty Lopes', pin: '1409', ativo: true, pinCriadoEm: agora },
     { id: '1º BCR-20', turmaId: '1º BCR', numero: 20, ano: 1 as const, nome: 'Tomás Paiva Novais', pin: '5399', ativo: true, pinCriadoEm: agora },
 
-    // ── 1º ACR — Cozinha e Restauração (quinta, 14h-17h) ────────
-    { id: '1º ACR-1', turmaId: '1º ACR', numero: 1, ano: 1 as const, nome: 'Kayllany Souza de Morais', pin: '6419', ativo: true, pinCriadoEm: agora },
-    { id: '1º ACR-2', turmaId: '1º ACR', numero: 2, ano: 1 as const, nome: 'Letícia Filipa Correia Vicente', pin: '5244', ativo: true, pinCriadoEm: agora },
-    { id: '1º ACR-3', turmaId: '1º ACR', numero: 3, ano: 1 as const, nome: 'Luana Da Costa Oliveira', pin: '1823', ativo: true, pinCriadoEm: agora },
+    // Entraram depois da folha de turma, vindas do 1º ACR.
+    { id: '1º BCR-21', turmaId: '1º BCR', numero: 21, ano: 1 as const, nome: 'Kayllany Souza de Morais', pin: '6419', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-22', turmaId: '1º BCR', numero: 22, ano: 1 as const, nome: 'Letícia Filipa Correia Vicente', pin: '5244', ativo: true, pinCriadoEm: agora },
+
+    // ── 1º ACR-R — Cozinha e Restauração (quinta, 14h-17h) ──────
+    // Números da folha de turma da escola. Faltam o 10 e o 12:
+    // a Kayllany e a Letícia passaram para o 1º BCR.
+    { id: '1º ACR-1', turmaId: '1º ACR', numero: 1, ano: 1 as const, nome: 'Alexandre Miguel Carvalho Rodrigues', pin: '2425', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-2', turmaId: '1º ACR', numero: 2, ano: 1 as const, nome: 'Cristiano da Conceição Pacheco Lima', pin: '7549', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-3', turmaId: '1º ACR', numero: 3, ano: 1 as const, nome: 'Cristyan Jesus Pereira Fernandes', pin: '1145', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-4', turmaId: '1º ACR', numero: 4, ano: 1 as const, nome: 'Dalila Afonso das Neves Dias', pin: '2519', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-5', turmaId: '1º ACR', numero: 5, ano: 1 as const, nome: 'Diana Sofia Antão Ascenso', pin: '9461', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-6', turmaId: '1º ACR', numero: 6, ano: 1 as const, nome: 'Dinis Filipe Nunes Monteiro', pin: '4396', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-7', turmaId: '1º ACR', numero: 7, ano: 1 as const, nome: 'Francisco do Nascimento Varela Lopes', pin: '8049', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-8', turmaId: '1º ACR', numero: 8, ano: 1 as const, nome: 'Gustavo Morgado Chainho Antão', pin: '9513', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-9', turmaId: '1º ACR', numero: 9, ano: 1 as const, nome: 'João Rafael Ramos Gomes', pin: '7944', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-11', turmaId: '1º ACR', numero: 11, ano: 1 as const, nome: 'Lara Esteves Runa', pin: '8752', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-13', turmaId: '1º ACR', numero: 13, ano: 1 as const, nome: 'Luana Da Costa Oliveira', pin: '1823', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-14', turmaId: '1º ACR', numero: 14, ano: 1 as const, nome: 'Margarida Guerra dos Santos Duarte Costa', pin: '6762', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-15', turmaId: '1º ACR', numero: 15, ano: 1 as const, nome: 'Martim José Costa Silva', pin: '4344', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-16', turmaId: '1º ACR', numero: 16, ano: 1 as const, nome: 'Paulo Simão da Encarnação Esteves', pin: '6687', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-17', turmaId: '1º ACR', numero: 17, ano: 1 as const, nome: 'Raul Alexandre Adolfo Cotrim', pin: '9652', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-18', turmaId: '1º ACR', numero: 18, ano: 1 as const, nome: 'Susana Fernandes Sousa', pin: '3195', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-19', turmaId: '1º ACR', numero: 19, ano: 1 as const, nome: 'Vicente Castanheira Lalanda', pin: '8471', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-20', turmaId: '1º ACR', numero: 20, ano: 1 as const, nome: 'Vinicius Oliveira Cabral', pin: '9087', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-21', turmaId: '1º ACR', numero: 21, ano: 1 as const, nome: 'Yaya Konate', pin: '9936', ativo: true, pinCriadoEm: agora },
     { id: '1º ACR-99', turmaId: '1º ACR', numero: 99, ano: 1 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
     // Um aluno de teste por turma, para o professor experimentar sem
     // mexer no percurso de ninguém. PIN 9999.
@@ -1758,6 +1718,7 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
   save(KEYS.planos, all);
   enviar(SHEETS_PLANOS_URL, 'plano', { plano: p });
   registarEnvio(p.id, 'plano', p.titulo || `Plano de ${p.data}`);
+  porConfirmar('plano', p.id, p.titulo || `Plano de ${p.data}`, p.turmaId);
   sincronizarPlanoComCalendario(p);
 }
 
@@ -2054,6 +2015,7 @@ export function guardarFichaMesmoVazia(f: FichaProducao): void {
   if (idx >= 0) all[idx] = f; else all.push(f);
   save(KEYS.fichas, all);
   enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f });
+  porConfirmar('ficha', f.id, f.nomePrato || 'Ficha', '');
   registarEnvio(f.id, 'ficha', f.nomePrato || 'Ficha sem nome');
 }
 
@@ -2271,7 +2233,7 @@ export function registarBalancoAtividade(
 export function getPlanosAulaFn(): PlanoAula[] { return getPlanosAula(); }
 
 export function addOrUpdateSelecao(s: SelecaoAluno): void {
-  const all = deduplicarPorId(getSelecoes());
+  const all = getSelecoes();
   const idx = all.findIndex(x => x.id === s.id);
   if (idx >= 0) all[idx] = s; else all.push(s);
   save(KEYS.selecoes, all);
@@ -2287,11 +2249,10 @@ export function addOrUpdateSelecao(s: SelecaoAluno): void {
     autoavaliacoes: s.autoavaliacoes,
     criadaEm: s.criadaEm,
   });
-  registarEnvio(s.id, 'selecao', `Autoavaliação de ${s.alunoId}`);
 }
 
 export function addOrUpdateValidacao(v: Validacao): void {
-  const all = deduplicarPorId(getValidacoes());
+  const all = getValidacoes();
   const idx = all.findIndex(x => x.id === v.id);
   if (idx >= 0) all[idx] = v; else all.push(v);
   save(KEYS.validacoes, all);
@@ -2317,7 +2278,6 @@ export function addOrUpdateValidacao(v: Validacao): void {
     nota_media_1_5: Math.round((nota20Final / 4) * 10) / 10,
     nota_media_0_20: nota20Final,
   });
-  registarEnvio(v.id, 'validacao', `Validação de ${v.alunoId}`);
 }
 
 export function addOrUpdateAtividade(a: Atividade): void {
@@ -2444,9 +2404,8 @@ export function substituirRegistosDoProfessor(
 }
 
 export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
-  const all = deduplicarPorId(getHistoricoAvaliacoes());
-  const idx = all.findIndex(item => item.id === r.id);
-  if (idx >= 0) all[idx] = r; else all.push(r);
+  const all = getHistoricoAvaliacoes();
+  all.push(r);
   save(KEY_HIST, all);
 
   // Enriquecer com dados para o Apps Script do Histórico
@@ -2461,6 +2420,7 @@ export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
   };
   const nota20 = Math.min(20, Math.round(r.nota * 4));
 
+  porConfirmar('avaliacao', r.id, `${aluno?.nome || 'aluno'} · ${r.microcompetenciaId}`, r.turmaId);
   enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
     ...r,
     tipo: 'avaliacao',
@@ -2480,7 +2440,6 @@ export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
     data: r.data,
     validadoPor: r.validadoPor,
   });
-  registarEnvio(r.id, 'avaliacao', `Avaliação de ${r.alunoId}`);
 }
 
 export function addRegistoPresenca(dados: {
@@ -4749,7 +4708,7 @@ function guardarFila(itens: ItemFila[]): void {
 /** Regista que algo foi enviado, à espera de confirmação. */
 export function registarEnvio(id: string, tipo: string, descricao: string): void {
   const fila = getFilaSync();
-  const existente = fila.find(i => i.id === id && i.tipo === tipo);
+  const existente = fila.find(i => i.id === id);
   if (existente) {
     existente.enviadoEm = new Date().toISOString();
     existente.confirmadoEm = undefined;
@@ -4781,20 +4740,19 @@ export async function confirmarSincronizacao(turmaId: string): Promise<{
   // Ler tudo o que o Sheets tem, por tipo.
   const idsNoSheets = new Set<string>();
 
-  const tenta = async (url: string, consulta: string, campo: string, tipoFila: string) => {
+  const tenta = async (url: string, tipo: string, campo: string) => {
     try {
-      const json = await lerDoSheets(url, { tipo: consulta, turmaId });
+      const json = await lerDoSheets(url, { tipo, turmaId });
       const itens = json?.[campo] || json?.dados || [];
-      itens.forEach((x: any) => { if (x?.id) idsNoSheets.add(`${tipoFila}|${String(x.id)}`); });
-    } catch { /* falha na leitura não é confirmação nem falha de envio */ }
+      itens.forEach((x: any) => { if (x?.id) idsNoSheets.add(String(x.id)); });
+    } catch { /* falha na leitura não é falha no envio */ }
   };
 
   await Promise.all([
-    tenta(SHEETS_FICHAS_URL, 'get_fichas', 'fichas', 'ficha'),
-    tenta(SHEETS_PLANOS_URL, 'get_planos', 'planos', 'plano'),
-    tenta(SHEETS_HISTORICO_URL, 'get_selecoes', 'selecoes', 'selecao'),
-    tenta(SHEETS_HISTORICO_URL, 'get_validacoes', 'validacoes', 'validacao'),
-    tenta(SHEETS_HISTORICO_URL, 'get_avaliacoes', 'avaliacoes', 'avaliacao'),
+    tenta(SHEETS_FICHAS_URL, 'get_fichas', 'fichas'),
+    tenta(SHEETS_PLANOS_URL, 'get_planos', 'planos'),
+    tenta(SHEETS_HISTORICO_URL, 'get_selecoes', 'selecoes'),
+    tenta(SHEETS_HISTORICO_URL, 'get_validacoes', 'validacoes'),
   ]);
 
   const agora = new Date().toISOString();
@@ -4803,7 +4761,7 @@ export async function confirmarSincronizacao(turmaId: string): Promise<{
 
   todos.forEach(item => {
     if (item.confirmadoEm) return;
-    if (idsNoSheets.has(`${item.tipo}|${item.id}`)) {
+    if (idsNoSheets.has(item.id)) {
       item.confirmadoEm = agora;
       confirmados += 1;
     }
@@ -4835,52 +4793,8 @@ export async function reenviarFalhados(): Promise<number> {
     } else if (item.tipo === 'plano') {
       const p = getPlanosAula().find(x => x.id === item.id);
       if (p) { enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }); n += 1; }
-    } else if (item.tipo === 'selecao') {
-      const s = getSelecoes().find(x => x.id === item.id);
-      if (s) {
-        enviar(SHEETS_HISTORICO_URL, 'selecao', {
-          id: s.id, planoAulaId: s.planoAulaId, alunoId: s.alunoId, turmaId: s.turmaId,
-          tecnicas: s.tecnicas, atitudes: s.atitudes, autoavaliacoes: s.autoavaliacoes, criadaEm: s.criadaEm,
-        });
-        n += 1;
-      }
-    } else if (item.tipo === 'validacao') {
-      const v = getValidacoes().find(x => x.id === item.id);
-      if (v) {
-        const mediaPonderada = (v as any).notaMedia20;
-        const media = v.notas.length ? v.notas.reduce((s, nota) => s + nota.nota, 0) / v.notas.length : 0;
-        const nota20 = typeof mediaPonderada === 'number'
-          ? Math.round(mediaPonderada * 10) / 10 : Math.min(20, Math.round(media * 4));
-        const aluno = getAlunos().find(a => a.id === v.alunoId);
-        enviar(SHEETS_HISTORICO_URL, 'validacao', {
-          ...(v as unknown as Record<string, unknown>),
-          nomeAluno: aluno?.nome || (`Aluno ${aluno?.numero || 0}`), turma: v.turmaId,
-          nota_media_1_5: Math.round((nota20 / 4) * 10) / 10, nota_media_0_20: nota20,
-        });
-        n += 1;
-      }
-    } else if (item.tipo === 'avaliacao') {
-      const r = getHistoricoAvaliacoes().find(x => x.id === item.id);
-      if (r) {
-        const aluno = getAlunos().find(a => a.id === r.alunoId);
-        const plano = getPlanosAula().find(p => p.id === r.planoAulaId);
-        const ficha = getFichasProducao().find(f => f.id === r.fichaId);
-        const labels: Record<number, string> = {
-          1: 'Ainda não fiz', 2: 'Preciso de mais prática', 3: 'Consegui com ajuda',
-          4: 'Faço sozinho/a', 5: 'Faço com muito bom resultado',
-        };
-        enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
-          ...r, tipo: 'avaliacao', nomeAluno: aluno?.nome || (`Aluno ${aluno?.numero || 0}`),
-          numero: aluno?.numero || 0, turma: r.turmaId, ano: aluno?.ano || 1,
-          planoTitulo: plano?.titulo || '', planoData: plano?.data || '',
-          ucId: r.ucId || plano?.ucId || '', ucNome: plano?.ucNome || '', fichaNome: ficha?.nomePrato || '',
-          microcompetencia: r.microcompetenciaId, nota_1_5: r.nota, nota_0_20: Math.min(20, Math.round(r.nota * 4)),
-          nivel_label: labels[r.nota] || String(r.nota), data: r.data, validadoPor: r.validadoPor,
-        });
-        n += 1;
-      }
     }
-    if (n > 0) registarEnvio(item.id, item.tipo, item.descricao);
+    registarEnvio(item.id, item.tipo, item.descricao);
   }
   return n;
 }
@@ -5329,7 +5243,7 @@ function categoriaDe(id: string): 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI' {
 }
 
 /** Tipo de aula mais comum entre os registos (prática/mista/teórica). */
-function tipoDominante(regs: RegistoAvaliacao[]): 'pratico' | 'misto' | 'teorico' | 'atitudinal' {
+function tipoDominante(regs: RegistoAvaliacao[]): 'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr' {
   const planos = getPlanosAula();
   const tipos = regs.map(r => (planos.find(p => p.id === r.planoAulaId) as any)?.tipoPlanAula || 'pratico');
   if (tipos.filter(t => t === 'teorico').length > tipos.length / 2) return 'teorico';
@@ -5483,6 +5397,9 @@ export function eliminarAlunoDefinitivo(alunoId: string): void {
   save(KEYS.alunos, todos.filter(x => x.id !== alunoId));
   // Noutros aparelhos fica, pelo menos, desativado.
   if (a) enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: { ...a, ativo: false, eliminado: true } });
+  // E sai do Sheets com tudo o que era dele: o aluno ficava lá, com as
+  // notas todas, depois de a aplicação dizer que o tinha eliminado.
+  enviar(SHEETS_ALUNOS_URL, 'eliminar_aluno', { alunoId });
 }
 
 /** Alunos numa turma que já não existe (turmas de teste, nomes antigos). */
@@ -5504,7 +5421,7 @@ export interface NotaPrevista { nota: number; min: number; max: number; }
 
 export function previsaoNota(
   autos: { competenciaId: string; nota: number }[],
-  tipo: 'pratico' | 'misto' | 'teorico' | 'atitudinal' = 'pratico'
+  tipo: 'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr' = 'pratico'
 ): NotaPrevista | null {
   const validas = autos.filter(a => a.nota > 0);
   if (!validas.length) return null;
@@ -5520,7 +5437,12 @@ export function previsaoNota(
 
 /** Aula atitudinal — dinâmicas de grupo e atitudes, sem farda nem KitchenFlow. */
 export function ehAulaAtitudinal(p: any): boolean {
-  return p?.tipoPlanAula === 'atitudinal';
+  return String(p?.tipoPlanAula || '').startsWith('atitudinal');
+}
+
+/** Nesta aula atitudinal, a higiene e a farda contam? */
+export function atitudinalComObrigatorias(p: any): boolean {
+  return p?.tipoPlanAula === 'atitudinal_obr';
 }
 
 
@@ -6009,4 +5931,188 @@ export function emailDoProfessor(): string {
 }
 export function guardarEmailDoProfessor(email: string): void {
   try { localStorage.setItem(KEY_EMAIL_PROF, email.trim()); } catch { /* */ }
+}
+
+// ============================================================
+// Cada professor vê os seus planos
+// ============================================================
+// Vários professores dão aulas à mesma turma. Sem isto, cada um via o
+// calendário cheio das aulas dos outros e não encontrava as suas.
+//
+// Os planos antigos não têm professor gravado — esses aparecem a todos,
+// senão desapareciam sem explicação.
+
+/** O plano é deste professor (ou é antigo, sem dono)? */
+export function planoDoProfessor(plano: PlanoAula, nomeProfessor?: string): boolean {
+  const dono = String((plano as any).professor || '').trim().toLowerCase();
+  if (!dono) return true;                       // plano antigo, sem dono
+  const eu = String(nomeProfessor || '').trim().toLowerCase();
+  if (!eu) return true;                         // sem nome, vê tudo
+  return dono === eu;
+}
+
+/** Quem tem planos nesta turma — para a coordenadora saber quem é quem. */
+export function professoresComPlanos(turmaId: string): string[] {
+  const nomes = new Set<string>();
+  getPlanosAulaPorTurma(turmaId).forEach(p => {
+    const n = String((p as any).professor || '').trim();
+    if (n) nomes.add(n);
+  });
+  return [...nomes].sort();
+}
+
+// ============================================================
+// Nada se perde: lista de espera com confirmação
+// ============================================================
+// O envio para o Apps Script não devolve resposta — o Google aceita ou
+// descarta sem dizer nada. Um plano criado podia nunca chegar ao Sheets
+// e ninguém dava por isso durante uma hora.
+//
+// Agora tudo o que é importante fica numa lista de espera. De minuto a
+// minuto a aplicação vai ler o Sheets, risca o que já lá está e reenvia
+// o que falta. O que teimar em não chegar aparece ao professor.
+
+const KEY_ESPERA = 'ecl_por_confirmar';
+
+export interface PorConfirmar {
+  tipo: 'plano' | 'ficha' | 'aluno' | 'avaliacao';
+  id: string;
+  rotulo: string;
+  turmaId: string;
+  desde: string;
+  tentativas: number;
+}
+
+function espera(): PorConfirmar[] {
+  try { return JSON.parse(localStorage.getItem(KEY_ESPERA) || '[]'); } catch { return []; }
+}
+function guardarEspera(l: PorConfirmar[]): void {
+  try { localStorage.setItem(KEY_ESPERA, JSON.stringify(l.slice(-300))); } catch { /* */ }
+}
+
+export function porConfirmar(tipo: PorConfirmar['tipo'], id: string, rotulo: string, turmaId: string): void {
+  const l = espera();
+  if (l.some(x => x.tipo === tipo && x.id === id)) return;
+  l.push({ tipo, id, rotulo, turmaId, desde: new Date().toISOString(), tentativas: 0 });
+  guardarEspera(l);
+}
+
+/** Quantos ainda não se sabe se chegaram, e há quanto tempo. */
+export function estadoDaEspera(): { total: number; teimosos: PorConfirmar[] } {
+  const l = espera();
+  return { total: l.length, teimosos: l.filter(x => x.tentativas >= 2) };
+}
+
+const LEITURA_POR_TIPO: Record<PorConfirmar['tipo'], [string, string]> = {
+  plano:     [SHEETS_PLANOS_URL, 'get_planos'],
+  ficha:     [SHEETS_FICHAS_URL, 'get_fichas'],
+  aluno:     [SHEETS_ALUNOS_URL, 'get_alunos'],
+  avaliacao: [SHEETS_HISTORICO_URL, 'get_avaliacoes'],
+};
+
+function reenviar(p: PorConfirmar): void {
+  if (p.tipo === 'plano') {
+    const plano = getPlanosAula().find(x => x.id === p.id);
+    if (plano) enviar(SHEETS_PLANOS_URL, 'plano', { plano });
+  } else if (p.tipo === 'ficha') {
+    const ficha = getFichasProducao().find(x => x.id === p.id);
+    if (ficha) enviar(SHEETS_FICHAS_URL, 'ficha', { ficha });
+  } else if (p.tipo === 'aluno') {
+    const aluno = getAlunos().find(x => x.id === p.id);
+    if (aluno) enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno });
+  } else {
+    const r = getHistoricoAvaliacoes().find(x => x.id === p.id);
+    if (r) enviar(SHEETS_HISTORICO_URL, 'avaliacao', r as any);
+  }
+}
+
+/** Confere o que está à espera e reenvia o que não chegou. */
+export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepetir: number }> {
+  const l = espera();
+  if (!l.length) return { confirmados: 0, aRepetir: 0 };
+
+  const turmas = [...new Set(l.map(x => x.turmaId).filter(Boolean))];
+  const tipos = [...new Set(l.map(x => x.tipo))];
+  const noSheets = new Map<string, Set<string>>();
+
+  for (const tipo of tipos) {
+    const [url, pedido] = LEITURA_POR_TIPO[tipo];
+    const ids = new Set<string>();
+    for (const t of (turmas.length ? turmas : [''])) {
+      try {
+        const json: any = await lerDoSheets(url, { tipo: pedido, turmaId: t });
+        (json?.dados || []).forEach((x: any) => ids.add(String(x.id)));
+      } catch { /* sem rede: fica para a próxima */ }
+    }
+    noSheets.set(tipo, ids);
+  }
+
+  const restantes: PorConfirmar[] = [];
+  let confirmados = 0;
+  for (const p of l) {
+    const ids = noSheets.get(p.tipo);
+    if (!ids || !ids.size) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
+    if (ids.has(String(p.id))) { confirmados++; continue; }
+    if (p.tentativas < 5) reenviar(p);
+    restantes.push({ ...p, tentativas: p.tentativas + 1 });
+  }
+  guardarEspera(restantes);
+  return { confirmados, aRepetir: restantes.length };
+}
+
+// ============================================================
+// Vigiar alterações — a pergunta pequena
+// ============================================================
+// Ir buscar tudo de minuto a minuto é pesado e lento. Agora pergunta-se
+// só o número de alterações da turma — uma resposta de meia dúzia de
+// letras — de 15 em 15 segundos. Quando o número muda, aí sim vai
+// buscar os dados.
+//
+// É o que faz uma alteração feita no tablet aparecer no computador em
+// segundos, e a aula publicada chegar depressa ao telemóvel do aluno.
+
+const KEY_ULTIMA_VERSAO = 'ecl_versao_vista';
+
+async function lerVersaoDaTurma(turmaId: string): Promise<string | null> {
+  const url = SHEETS_ECL_URL || SHEETS_PLANOS_URL;
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    u.searchParams.set('tipo', 'versao');
+    u.searchParams.set('turmaId', turmaId);
+    const r = await fetch(u.toString());
+    if (!r.ok) return null;
+    const t = (await r.text()).trim();
+    return /^\d+$/.test(t) ? t : null;
+  } catch { return null; }
+}
+
+/**
+ * Fica a vigiar a turma. Chama aoMudar() sempre que houver novidades.
+ * Devolve a função de parar.
+ */
+export function vigiarAlteracoes(
+  turmaId: string, aoMudar: () => void, segundos = 15
+): () => void {
+  let parado = false;
+  let ultima = '';
+  try { ultima = localStorage.getItem(KEY_ULTIMA_VERSAO + '_' + turmaId) || ''; } catch { /* */ }
+
+  async function espreitar() {
+    if (parado) return;
+    const v = await lerVersaoDaTurma(turmaId);
+    if (parado || !v) return;
+    if (ultima && v !== ultima) {
+      try { localStorage.setItem(KEY_ULTIMA_VERSAO + '_' + turmaId, v); } catch { /* */ }
+      ultima = v;
+      aoMudar();
+    } else if (!ultima) {
+      ultima = v;
+      try { localStorage.setItem(KEY_ULTIMA_VERSAO + '_' + turmaId, v); } catch { /* */ }
+    }
+  }
+
+  espreitar();
+  const t = setInterval(espreitar, segundos * 1000);
+  return () => { parado = true; clearInterval(t); };
 }
