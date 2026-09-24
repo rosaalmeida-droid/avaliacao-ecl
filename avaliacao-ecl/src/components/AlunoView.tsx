@@ -14,7 +14,7 @@ function ucAncora(ucId?: string, ucNome?: string): string {
   if (!ucId) return ucNome || '';
   return (NUM_UC_AL[ucId] ? NUM_UC_AL[ucId] + ' · ' : '') + ucId + (ucNome ? ' — ' + ucNome : '');
 }
-import { Aluno, PlanoAula, FichaProducao, INICIATIVA_FRASES, calcularNotaPlano, PESOS_AULA, classificacao20 } from '../types';
+import { Aluno, PlanoAula, FichaProducao, calcularNotaPlano, PESOS_AULA, classificacao20 } from '../types';
 import { atitudesAnteriores, idsAtitudesAnteriores, atitudesQueFaltam, ehTurmaTransicao } from '../transicaoReferencial';
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
@@ -2486,35 +2486,6 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     return evidenciasKF.some(e => e.competenciaId === compId);
   }
 
-  // ── Iniciativa (aulas teóricas) ──────────────────────────────
-  function SecaoIniciativa() {
-    if (tipoPlanAula !== 'teorico') return null;
-    return (
-      <div style={{ marginTop:16, padding:'14px 16px', borderRadius:12,
-        background:'rgba(181,101,29,0.05)', border:'1px solid rgba(181,101,29,0.2)' }}>
-        <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>💡 Iniciativa</div>
-        <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:12 }}>
-          Como avalias a tua iniciativa hoje na cozinha?
-        </div>
-        {INICIATIVA_FRASES.map(f => (
-          <button key={f.nivel} onClick={() => setNivelIniciativa(f.nivel)}
-            style={{ width:'100%', textAlign:'left', padding:'10px 12px', marginBottom:6,
-              borderRadius:10, cursor:'pointer', fontSize:13,
-              border:`2px solid ${nivelIniciativa===f.nivel ? '#b5651d' : 'rgba(26,23,20,0.08)'}`,
-              background: nivelIniciativa===f.nivel ? 'rgba(181,101,29,0.08)' : '#fff',
-              fontWeight: nivelIniciativa===f.nivel ? 700 : 400 }}>
-            <span style={{ display:'inline-block', width:20, height:20, borderRadius:'50%',
-              background: nivelIniciativa===f.nivel ? '#b5651d' : 'rgba(26,23,20,0.1)',
-              color: nivelIniciativa===f.nivel ? '#fff' : 'rgba(26,23,20,0.4)',
-              fontSize:12.5, fontWeight:800, textAlign:'center', lineHeight:'20px',
-              marginRight:8, flexShrink:0 }}>{f.nivel}</span>
-            {f.texto}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
   // Badge KF — mostra ao aluno que os seus registos do KitchenFlow foram verificados
   const BadgeKF = () => {
     if (!kfCarregado) return null;
@@ -2685,8 +2656,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [atitudeApanhar, setAtitudeApanhar] = useState<string|null>(null);
   const [nivelApanharFrase, setNivelApanharFrase] = useState<number|null>(null);
   const [verTodasApanhar, setVerTodasApanhar] = useState(false);
-  const [nivelIniciativa, setNivelIniciativa] = useState<number>(0); // 0 = não avaliado
   const [modalConfirmar, setModalConfirmar] = useState(false);
+  /** Em que passo da autoavaliação está o aluno. */
+  const [passoIdx, setPassoIdx] = useState(0);
+  const topoRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [passoIdx]);
   /** Trava de submissão — protege de dois toques seguidos. */
   const aSubmeter = React.useRef(false);
   const [submetido, setSubmetido] = useState(() => {
@@ -2782,7 +2756,6 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       ...(atitudeApanhar?[{competenciaId:atitudeApanhar,nivel:'sozinho',nota:notaApanhar}]:[]),
       ...atitudesDaAula.filter(id => frasesAula[id] != null)
         .map(id => ({competenciaId:id,nivel:'sozinho',nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4)})),
-      ...(tipoPlanAula==='teorico'&&nivelIniciativa>0?[{competenciaId:'INI-001',nivel:`ini_${nivelIniciativa}`,nota:nivelIniciativa}]:[]),
     ];
     addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => frasesAula[id] != null)].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,criadaEm:agora});
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
@@ -2963,594 +2936,411 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     );
   }
 
+  // ── A autoavaliação passo a passo ─────────────────────────────
+  // Uma coisa de cada vez: cada técnica no seu ecrã, depois a higiene e
+  // segurança alimentar, a atitude, e no fim um ecrã para rever e enviar.
+  // As regras e as contas são as mesmas do submeterDefinitivo.
+  const V = '#6B3FA0';
+  const notaDoNivel = (v: string | null | undefined) => OPCOES.find(o => o.v === v)?.nota ?? 0;
+  // As quatro frases de cada técnica correspondem aos níveis 2 a 5;
+  // "Ainda não fiz" é o nível 1.
+  const NIVEIS_FRASES = ['tp', 'ca', 'fs', 'mbr'];
+
+  const itensComp: { id: string; nome: string; contexto: string; descricao: string;
+    resultado: string; rotulo: string; frases: boolean }[] = [
+    ...subsSug.map(m => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
+      resultado: m.resultadoEsperado, rotulo: 'Técnica', frases: true })),
+    ...aparelhosSug.map(m => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
+      resultado: '', rotulo: 'Preparação base', frases: false })),
+    ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome, contexto: 'Conhecimento', descricao: m.definicao,
+      resultado: '', rotulo: 'Conhecimento', frases: false })),
+    ...microsSug.map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
+      descricao: (m as any).descricao || '', resultado: '', rotulo: 'Técnica', frases: false })),
+  ];
+
+  // Atitudes: a do trimestre, a que está a melhorar e as do plano, no máximo três.
+  const atitudesPermitidas = opcoesDeEscolhaDoAluno(aluno.ano ?? 1);
+  const atitudesDoPlano = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('ATI-'));
+  const idsDoTrimestre = atitudesDoTrimestre((aluno.ano ?? 1) as 1|2|3,
+    trimestreAtual(new Date(plano.data + 'T00:00:00'))).map((x: any) => x.id);
+  const atitudesEmRecup = atitudesDoPlano.filter((id: string) => {
+    const hist = getHistoricoAlunoMicro(aluno.id, id);
+    return hist.length > 0 && hist[hist.length - 1].nota < 3;
+  });
+  const atitudesSugeridas = [...new Set([...atitudesDoPlano, ...idsDoTrimestre])]
+    .filter(id => atitudesPermitidas.includes(id) && !compRemovidas.includes(id))
+    .slice(0, MAX_ATITUDES_MOSTRADAS);
+  const opcoesAtitude = ATITUDES.filter(a =>
+    (verTodasAtitudes ? atitudesPermitidas.includes(a.id) : atitudesSugeridas.includes(a.id))
+    && !compRemovidas.includes(a.id));
+  const porqueAtitude = (id: string) =>
+    atitudesEmRecup.includes(id) ? 'Para melhorar'
+    : idsDoTrimestre.includes(id) ? 'A do trimestre'
+    : atitudesDoPlano.includes(id) ? 'Desta aula' : 'Proposta tua';
+
+  const faltamApanhar = ehTurmaTransicao(aluno.turmaId)
+    ? atitudesQueFaltam(aluno).filter(x => x.id !== atitudeEscolhida) : [];
+
+  type Passo = { id: string; tipo: 'comp' | 'haccp' | 'atiAula' | 'atitude' | 'apanhar' | 'rever';
+    comp?: typeof itensComp[number]; atiId?: string };
+  const passos: Passo[] = [
+    ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
+    ...((!ehAtitudinal || comObrigatorias) ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
+    ...(ehAtitudinal
+      ? atitudesDaAula.map(id => ({ id: 'a_' + id, tipo: 'atiAula' as const, atiId: id }))
+      : opcoesAtitude.length > 0 ? [{ id: 'atitude', tipo: 'atitude' as const }] : []),
+    ...(faltamApanhar.length > 0 ? [{ id: 'apanhar', tipo: 'apanhar' as const }] : []),
+    { id: 'rever', tipo: 'rever' as const },
+  ];
+  const idx = Math.min(passoIdx, passos.length - 1);
+  const passo = passos[idx];
+  const nPerguntas = passos.length - 1;
+  const podeAvancar =
+    passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
+    : passo.tipo === 'haccp' ? nivelHaccp !== null
+    : passo.tipo === 'atiAula' ? frasesAula[passo.atiId!] != null
+    : passo.tipo === 'atitude' ? (!atitudeEscolhida || nivelAtitudeFrase !== null)
+    : passo.tipo === 'apanhar' ? (!atitudeApanhar || nivelApanharFrase !== null)
+    : true;
+  const irPara = (i: number) => setPassoIdx(Math.max(0, Math.min(i, passos.length - 1)));
+  const tituloPasso = (p: Passo) =>
+    p.tipo === 'comp' ? p.comp!.rotulo
+    : p.tipo === 'haccp' ? 'Higiene e segurança alimentar'
+    : p.tipo === 'atiAula' || p.tipo === 'atitude' ? 'Atitude'
+    : p.tipo === 'apanhar' ? 'Atitude do ano anterior' : 'Rever e enviar';
+
+  const estiloOpcao = (sel: boolean): React.CSSProperties => ({
+    width:'100%', display:'flex', alignItems:'center', gap:12, textAlign:'left',
+    padding:'12px 14px', marginBottom:8, borderRadius:12, cursor:'pointer', fontFamily:'inherit',
+    border: sel ? `2px solid ${V}` : `1.5px solid ${T.border}`,
+    background: sel ? '#F0EBF7' : '#fff', fontSize:14.5, lineHeight:1.45,
+    color: sel ? '#2A1745' : 'rgba(26,23,20,0.8)', fontWeight: sel ? 600 : 400,
+  });
+  const circulo = (conteudo: React.ReactNode, sel: boolean) => (
+    <span style={{ width:28, height:28, borderRadius:'50%', flexShrink:0,
+      background: sel ? V : '#EEE9F5', color: sel ? '#fff' : V,
+      fontSize:13.5, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      {conteudo}
+    </span>
+  );
+  const rotuloSecao = (texto: string) => (
+    <div style={{ fontSize:15, fontWeight:700, margin:'16px 0 10px' }}>{texto}</div>
+  );
+
+  /** Escolher atitude + frase — o mesmo ecrã para a atitude e para a do ano anterior. */
+  const blocoAtitude = (
+    lista: { id: string; nome: string; etiqueta: string }[],
+    escolhida: string | null, escolher: (id: string | null) => void,
+    frase: number | null, escolherFrase: (i: number | null) => void,
+  ) => {
+    const frases = escolhida ? FRASES_ATITUDES.find(f => f.competenciaId === escolhida)?.frases : undefined;
+    return (
+      <>
+        {lista.map(a => {
+          const sel = escolhida === a.id;
+          return (
+            <button key={a.id} onClick={() => { escolher(sel ? null : a.id); escolherFrase(null); }}
+              style={{ ...estiloOpcao(sel), flexDirection:'column', alignItems:'flex-start', gap:2 }}>
+              <span style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.05em',
+                textTransform:'uppercase', color: sel ? V : 'rgba(26,23,20,0.5)' }}>{a.etiqueta}</span>
+              <span style={{ fontSize:15, fontWeight:700 }}>{a.nome}</span>
+            </button>
+          );
+        })}
+        {/* O aluno lê descrições de si próprio, não números — se visse as
+            notas escolhia a que quer, não a que o descreve. */}
+        {frases && (
+          <>
+            {rotuloSecao('Qual destas frases é a tua hoje?')}
+            {frases.map((fr, i) => (
+              <button key={i} onClick={() => escolherFrase(frase === i ? null : i)} style={estiloOpcao(frase === i)}>
+                <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
+                  border: frase === i ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
+                {fr}
+              </button>
+            ))}
+          </>
+        )}
+      </>
+    );
+  };
+
+  /** Uma linha do ecrã de rever. */
+  const linhasRever: { nome: string; resposta: string; nota: number | null; passo: number }[] = [];
+  passos.forEach((p, i) => {
+    if (p.tipo === 'comp') {
+      const v = notasMicro[p.comp!.id];
+      const fi = NIVEIS_FRASES.indexOf(v as string);
+      const resposta = !v ? 'Por responder'
+        : p.comp!.frases && fi >= 0 ? getFrasesParaCompetencia(p.comp!.id, p.comp!.nome)[fi]
+        : OPCOES.find(o => o.v === v)?.label || '';
+      linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
+    } else if (p.tipo === 'haccp') {
+      const semKF = !temEvidenciaKF('OBR_02');
+      linhasRever.push({ nome: 'Higiene e segurança alimentar',
+        resposta: !nivelHaccp ? 'Por responder'
+          : semKF ? 'Sem registo no KitchenFlow: fica a 1' : OPCOES.find(o => o.v === nivelHaccp)?.label || '',
+        nota: nivelHaccp ? (semKF ? 1 : notaDoNivel(nivelHaccp)) : null, passo: i });
+    } else if (p.tipo === 'atiAula') {
+      const f = frasesAula[p.atiId!];
+      linhasRever.push({ nome: ATITUDES.find(x => x.id === p.atiId)?.nome ?? 'Atitude',
+        resposta: f == null ? 'Por responder' : FRASES_ATITUDES.find(x => x.competenciaId === p.atiId)?.frases[f] || '',
+        nota: f == null ? null : Math.round(NOTAS_FRASES[f] / 4), passo: i });
+    } else if (p.tipo === 'atitude' || p.tipo === 'apanhar') {
+      const id = p.tipo === 'atitude' ? atitudeEscolhida : atitudeApanhar;
+      const f = p.tipo === 'atitude' ? nivelAtitudeFrase : nivelApanharFrase;
+      linhasRever.push({ nome: id ? (ATITUDES.find(x => x.id === id)?.nome ?? 'Atitude') : tituloPasso(p),
+        resposta: !id ? 'Nenhuma escolhida' : f == null ? 'Por responder'
+          : FRASES_ATITUDES.find(x => x.competenciaId === id)?.frases[f] || '',
+        nota: id && f != null ? Math.round(NOTAS_FRASES[f] / 4) : null, passo: i });
+    }
+  });
+
   return (
-    <div>
-      {/* ── Atitudes a melhorar ── */}
-      {(() => {
-        const idsAtitudes = (plano.compAdicionadas || []).filter((id: string) => id.startsWith('ATI-'));
-        const atitudesEmRecup = idsAtitudes.filter((id: string) => {
-          const hist = getHistoricoAlunoMicro(aluno.id, id);
-          if (!hist.length) return false;
-          return hist[hist.length - 1].nota < 3;
-        });
-        if (!atitudesEmRecup.length) return null;
+    <div ref={topoRef} style={{ scrollMarginTop: 12 }}>
+      {/* Onde estou */}
+      <div style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>
+          <span style={{ fontSize:13, fontWeight:700, color:V }}>{tituloPasso(passo)}</span>
+          <span style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)' }}>
+            {passo.tipo === 'rever' ? 'Último passo' : `${idx + 1} de ${nPerguntas}`}
+          </span>
+        </div>
+        <div style={{ display:'flex', gap:4 }}>
+          {passos.slice(0, -1).map((p, i) => (
+            <div key={p.id} style={{ flex:1, height:5, borderRadius:3,
+              background: i < idx || passo.tipo === 'rever' ? V : i === idx ? '#B98FD9' : '#E4E1E8' }} />
+          ))}
+        </div>
+      </div>
+
+      {/* ── Uma técnica, preparação ou conhecimento ── */}
+      {passo.tipo === 'comp' && (() => {
+        const c = passo.comp!;
+        const v = notasMicro[c.id];
+        const frases = c.frases ? getFrasesParaCompetencia(c.id, c.nome) : null;
+        const escolher = (nivel: string) => setNotasMicro(p => ({ ...p, [c.id]: nivel }));
         return (
-          <div style={{ margin:'0 0 16px', padding:'12px 14px', borderRadius:10,
-            background:'#fdf0e6', border:'1.5px solid rgba(181,101,29,0.4)' }}>
-            <div style={{ fontSize:13.5, fontWeight:700, color:'#b5651d', marginBottom:8 }}>
-              {/* Não é recuperação — essa palavra fica só para faltas acima de
-                  10% ou módulo terminado sem positiva. Aqui é uma atitude em
-                  que a última nota ficou baixa e que vale a pena trabalhar. */}
-              Atitudes a melhorar nesta aula
+          <div>
+            {c.contexto && (
+              <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:V }}>
+                {c.contexto}
+              </div>
+            )}
+            <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800, marginTop:2 }}>{c.nome}</div>
+            {c.descricao && (
+              <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>{c.descricao}</div>
+            )}
+            {c.resultado && (
+              <div style={{ marginTop:12, padding:'11px 13px', borderRadius:12, background:'#fff',
+                border:`1px solid ${T.border}`, fontSize:13.5, lineHeight:1.45 }}>
+                <strong>Bem feito é:</strong> {c.resultado}
+              </div>
+            )}
+            <div style={{ marginTop:10 }}>
+              <CriteriosComp compId={c.id} cor={V} abertaInicial={false} />
             </div>
-            {atitudesEmRecup.map((id: string) => {
-              const a = getAtitudeDetalhada(id);
-              const dica = dicaRecuperacaoAtitude(id, 1);
-              const nivel = nivelComplexidadeAtitude(id, 1);
-              return (
-                <div key={id} style={{ marginBottom:8, padding:'8px 10px', borderRadius:8,
-                  background:'#fff', border:'1px solid rgba(181,101,29,0.2)' }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:'#b5651d' }}>{a?.nome ?? id}</div>
-                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
-                    <strong>Da última vez ficaste abaixo de 3.</strong> {dica}
-                  </div>
-                  {nivel && (
-                    <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)', marginTop:4, fontStyle:'italic' }}>
-                      {nivel ? `Nível esperado: ${nivel}` : ''}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {rotuloSecao(frases ? 'Qual destas frases diz o que fizeste hoje?' : 'Como correu hoje?')}
+            {NIVEIS_FRASES.map((nivel, i) => (
+              <button key={nivel} onClick={() => escolher(nivel)} style={estiloOpcao(v === nivel)}>
+                {circulo(notaDoNivel(nivel), v === nivel)}
+                <span>{frases ? frases[i] : OPCOES.find(o => o.v === nivel)?.label}</span>
+              </button>
+            ))}
+            <button onClick={() => escolher('nf')} style={{ ...estiloOpcao(v === 'nf'),
+              ...(v === 'nf' ? {} : { border:'none', background:'transparent', textDecoration:'underline',
+                color:'rgba(26,23,20,0.6)', fontWeight:600, width:'auto', padding:'10px 4px' }) }}>
+              {v === 'nf' && circulo(1, true)}
+              {v === 'nf' ? 'Ainda não fiz esta' : '1 · Ainda não fiz esta'}
+            </button>
           </div>
         );
       })()}
 
-      {/* Obrigatórias — numa aula atitudinal só se o professor as incluir. */}
-      {(!ehAtitudinal || comObrigatorias) && (
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-          letterSpacing:'0.06em', color:T.sage, marginBottom:12 }}>🔒 Sempre avaliadas</div>
-        {/* A higiene pessoal não se pergunta aqui: foi verificada à
-            entrada, com os itens da farda à frente. Perguntar outra vez
-            era pedir ao aluno para responder duas vezes ao mesmo. */}
-        {[
-          { id:'hac', label:'Higiene e Segurança Alimentar', val:nivelHaccp, set:setNivelHaccp },
-        ].map(obr => (
-          <div key={obr.id} style={{ marginBottom:12, padding:'14px', borderRadius:14,
-            background:T.sageP, border:`1px solid ${T.sage}30` }}>
-            <div style={{ fontWeight:700, fontSize:14, marginBottom:10 }}>{obr.label}</div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-              {OPCOES.map(op => (
-                <button key={op.v} onClick={() => obr.set(op.v)} style={{
-                  padding:'12px 6px', borderRadius:10, border:`2px solid ${obr.val===op.v?op.cor:T.border}`,
-                  background:obr.val===op.v?op.cor:'#fff', color:obr.val===op.v?op.cor:'rgba(26,23,20,0.5)',
-                  fontSize:13, fontWeight:700, cursor:'pointer', textAlign:'center',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                }}>
-                  <span style={{ fontSize:24 }}>{op.nota}</span>
-                  {op.label}
-                </button>
+      {/* ── Higiene e segurança alimentar ── */}
+      {passo.tipo === 'haccp' && (
+        <div>
+          {/* A higiene pessoal não se pergunta aqui: foi verificada à
+              entrada, com os itens da farda à frente. */}
+          <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800 }}>Higiene e segurança alimentar</div>
+          <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>
+            Registos no KitchenFlow, temperaturas, contaminações. É obrigatória.
+          </div>
+          {rotuloSecao('Como correu hoje?')}
+          {[...OPCOES].reverse().map(op => (
+            <button key={op.v} onClick={() => setNivelHaccp(op.v)} style={estiloOpcao(nivelHaccp === op.v)}>
+              {circulo(op.nota, nivelHaccp === op.v)}
+              <span>{op.label}</span>
+            </button>
+          ))}
+          {nivelHaccp && !temEvidenciaKF('OBR_02') && (
+            <div style={{ marginTop:4, padding:'10px 12px', borderRadius:10, fontSize:13.5, lineHeight:1.5,
+              background:T.copperP, color:'#8a4a15' }}>
+              Não encontrei registo teu no KitchenFlow para esta aula. Mesmo que tenhas feito
+              tudo bem, fica a 1 até haver registo. O professor decide.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Aula atitudinal: uma atitude marcada pelo professor ── */}
+      {passo.tipo === 'atiAula' && (() => {
+        const id = passo.atiId!;
+        const frases = FRASES_ATITUDES.find(f => f.competenciaId === id)?.frases
+          || ['Ainda não', 'Às vezes', 'Quase sempre', 'Sempre'];
+        return (
+          <div>
+            <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:V }}>
+              Atitude desta aula
+            </div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800, marginTop:2 }}>
+              {ATITUDES.find(x => x.id === id)?.nome ?? 'Atitude'}
+            </div>
+            {rotuloSecao('Qual destas frases é a tua hoje?')}
+            {frases.map((fr, i) => (
+              <button key={i} onClick={() => setFrasesAula(p => ({ ...p, [id]: i }))} style={estiloOpcao(frasesAula[id] === i)}>
+                <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
+                  border: frasesAula[id] === i ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
+                {fr}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ── A atitude que o aluno se propõe ── */}
+      {passo.tipo === 'atitude' && (
+        <div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.25, marginBottom:10 }}>
+            Em que atitude trabalhaste hoje?
+          </div>
+          {/* Não é recuperação — essa palavra fica só para faltas acima de
+              10% ou módulo terminado sem positiva. */}
+          {atitudesEmRecup.length > 0 && (
+            <div style={{ marginBottom:12, padding:'10px 12px', borderRadius:10, background:T.copperP,
+              fontSize:13.5, color:'#8a4a15', lineHeight:1.5 }}>
+              {atitudesEmRecup.map((id: string) => (
+                <div key={id}><strong>{getAtitudeDetalhada(id)?.nome ?? 'Atitude'}:</strong> da última vez ficaste
+                  abaixo de 3. {dicaRecuperacaoAtitude(id, 1)}</div>
               ))}
             </div>
-            {obr.id === 'hac' && obr.val && !temEvidenciaKF('OBR_02') && (
-              <div style={{ marginTop:10, padding:'8px 10px', borderRadius:8, fontSize:12.5,
-                background:'rgba(181,101,29,0.1)', color:'#8a4a15' }}>
-                ⚠️ Não encontrámos registo teu no KitchenFlow para esta aula — mesmo que
-                tenhas feito tudo bem, esta competência fica ao mínimo até haver registo.
-                Regista no KitchenFlow para esta nota reflectir o que fizeste.
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      )}
-
-      {/* Aula atitudinal — o aluno avalia-se em cada atitude que o
-          professor marcou para esta aula. */}
-      {ehAtitudinal && (
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-            letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>🤝 As atitudes desta aula</div>
-          <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:12, lineHeight:1.5 }}>
-            Hoje trabalhamos atitudes. Em cada uma, escolhe a frase que te descreve melhor
-            nesta aula — o professor valida.
-          </div>
-          {atitudesDaAula.length === 0 && (
-            <div style={{ padding:'12px 14px', borderRadius:10, background:T.copperP, fontSize:13.5, color:T.copper }}>
-              O professor ainda não marcou as atitudes desta aula.
-            </div>
           )}
-          {atitudesDaAula.map(id => {
-            const at = ATITUDES.find(x => x.id === id);
-            const frases = FRASES_ATITUDES.find(f => f.competenciaId === id)?.frases;
-            return (
-              <div key={id} style={{ marginBottom:12, padding:14, borderRadius:14, background:'#fff',
-                border:`1.5px solid ${frasesAula[id] != null ? '#7d4f8c' : T.border}` }}>
-                <div style={{ fontWeight:700, fontSize:14.5, marginBottom:8 }}>{at?.nome ?? id}</div>
-                {(frases || ['Ainda não', 'Às vezes', 'Quase sempre', 'Sempre']).map((fr, i) => {
-                  const sel = frasesAula[id] === i;
-                  return (
-                    <button key={i} onClick={() => setFrasesAula(p => ({ ...p, [id]: i }))}
-                      style={{ width:'100%', display:'block', textAlign:'left', padding:'11px 13px',
-                        marginBottom:6, borderRadius:11, fontSize:14, lineHeight:1.5, cursor:'pointer',
-                        fontFamily:'inherit', border:`1.5px solid ${sel ? '#7d4f8c' : T.border}`,
-                        background: sel ? 'rgba(125,79,140,0.08)' : '#fff',
-                        color:'rgba(26,23,20,0.8)', fontWeight: sel ? 600 : 400 }}>
-                      {fr}
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Subtécnicas (SUB-xxx) */}
-      {subsSug.length>0 && (
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-            letterSpacing:'0.06em', color:T.copper, marginBottom:12 }}>🔬 Técnicas desta aula</div>
-          {subsSug.map(m => (
-            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
-              border:`1.5px solid ${microAberta===m.id?T.copper:T.border}` }}>
-              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
-                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
-                background:microAberta===m.id?T.copperP:'#fff', border:'none', cursor:'pointer', textAlign:'left',
-              }}>
-                <div style={{ flex:1 }}>
-                  {(m as any).contexto && (
-                    <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.05em',
-                      textTransform:'uppercase', color:T.copper, marginBottom:2 }}>
-                      {(m as any).contexto}
-                    </div>
-                  )}
-                  <div style={{ fontWeight:700, fontSize:15.5 }}>{m.nome}</div>
-                  {(m as any).descricao && (
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginTop:3, lineHeight:1.45 }}>
-                      {(m as any).descricao}
-                    </div>
-                  )}
-                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
-                </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='fs'||notasMicro[m.id]==='mbr'?'💪':notasMicro[m.id]==='ca'?'🤝':'📖'}</span>}
-                <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
-              </button>
-              {microAberta===m.id && (
-                <div style={{ padding:'12px 16px', borderTop:`2px solid ${T.copper}`, background:'#fdfcfb' }}>
-                  <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
-                  {notasMicro[m.id] && (() => {
-                    const frases = getFrasesParaCompetencia(m.id, m.nome);
-                    // As quatro frases correspondem aos níveis 2 a 5; "Ainda não fiz" não tem frase.
-                    const idx = ['tp','ca','fs','mbr'].indexOf(notasMicro[m.id] as string);
-                    return idx >= 0 ? (
-                      <div style={{ margin:'10px 0', padding:'10px 12px', borderRadius:8,
-                        background:'rgba(181,101,29,0.06)', fontSize:13, color:'rgba(26,23,20,0.7)', fontStyle:'italic' }}>
-                        "{frases[idx]}"
-                      </div>
-                    ) : null;
-                  })()}
-                  <div style={{ marginTop:12 }} />
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                    {OPCOES.map(op => (
-                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
-                        padding:'10px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
-                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
-                        fontSize:12.5, fontWeight:700, cursor:'pointer', textAlign:'center',
-                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                      }}>
-                        <span style={{ fontSize:20 }}>{op.nota}</span>{op.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Aparelhos (APP-xxx) — preparações base, filtradas pelo nível de medidas */}
-      {aparelhosSug.length>0 && (
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-            letterSpacing:'0.06em', color:'#5B67EA', marginBottom:12 }}>🧪 Preparações base desta aula</div>
-          {aluno.nivelMedidas === 3 && (
-            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
-              background:'rgba(181,101,29,0.06)', borderRadius:8 }}>
-              ℹ️ Só são apresentadas preparações de Nível 1 (adequadas ao teu plano de estudos)
-            </div>
-          )}
-          {aluno.nivelMedidas === 2 && (
-            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)', marginBottom:8, padding:'6px 10px',
-              background:'rgba(181,101,29,0.06)', borderRadius:8 }}>
-              ℹ️ São apresentadas preparações de Nível 1 e 2 (adequadas ao teu plano de estudos)
-            </div>
-          )}
-          {aparelhosSug.map(m => (
-            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
-              border:`1.5px solid ${microAberta===m.id?'#5B67EA':T.border}` }}>
-              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
-                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
-                background:microAberta===m.id?'rgba(91,103,234,0.06)':'#fff', border:'none', cursor:'pointer', textAlign:'left',
-              }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <div style={{ fontWeight:700, fontSize:14 }}>{m.nome}</div>
-                    <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 6px', borderRadius:100,
-                      background: m.nivel===1?'rgba(90,122,78,0.15)':m.nivel===2?'rgba(181,101,29,0.15)':'rgba(192,57,43,0.15)',
-                      color: m.nivel===1?'#5a7a4e':m.nivel===2?'#b5651d':'#c0392b' }}>N{m.nivel}</span>
-                  </div>
-                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.categoria} · {m.motivo}</div>
-                </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='fs'||notasMicro[m.id]==='mbr'?'💪':notasMicro[m.id]==='ca'?'🤝':'📖'}</span>}
-                <span style={{ fontSize:18, color:'#5B67EA', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
-              </button>
-              {microAberta===m.id && (
-                <div style={{ padding:'12px 16px', borderTop:'2px solid #5B67EA', background:'#fdfcfb' }}>
-                  <CriteriosComp compId={m.id} cor='#5B67EA' abertaInicial={true} />
-                  <div style={{ marginTop:12 }} />
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-                    {OPCOES.map(op => (
-                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
-                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
-                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
-                        fontSize:13, fontWeight:700, cursor:'pointer', textAlign:'center',
-                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                      }}>
-                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Conhecimentos (KNW-xxx) — plano teórico ou misto */}
-      {conhecimentosSug.length>0 && (
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-            letterSpacing:'0.06em', color:'#0369a1', marginBottom:12 }}>📚 Conhecimentos desta aula</div>
-          {conhecimentosSug.map(m => (
-            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
-              border:`1.5px solid ${microAberta===m.id?'#0369a1':T.border}` }}>
-              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
-                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
-                background:microAberta===m.id?'rgba(3,105,161,0.06)':'#fff', border:'none', cursor:'pointer', textAlign:'left',
-              }}>
-                <div style={{ flex:1 }}>
-                  {(m as any).contexto && (
-                    <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.05em',
-                      textTransform:'uppercase', color:T.copper, marginBottom:2 }}>
-                      {(m as any).contexto}
-                    </div>
-                  )}
-                  <div style={{ fontWeight:700, fontSize:15.5 }}>{m.nome}</div>
-                  {(m as any).descricao && (
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginTop:3, lineHeight:1.45 }}>
-                      {(m as any).descricao}
-                    </div>
-                  )}
-                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
-                </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='fs'||notasMicro[m.id]==='mbr'?'💪':notasMicro[m.id]==='ca'?'🤝':'📖'}</span>}
-                <span style={{ fontSize:18, color:'#0369a1', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
-              </button>
-              {microAberta===m.id && (
-                <div style={{ padding:'12px 16px', borderTop:'2px solid #0369a1', background:'#fdfcfb' }}>
-                  {m.definicao && (
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginBottom:12, padding:'8px', background:'rgba(3,105,161,0.05)', borderRadius:8 }}>
-                      {m.definicao}
-                    </div>
-                  )}
-                  <div style={{ marginTop:12 }} />
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-                    {OPCOES.map(op => (
-                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
-                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
-                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
-                        fontSize:13, fontWeight:700, cursor:'pointer', textAlign:'center',
-                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                      }}>
-                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Fallback — sistema antigo quando não há SUB/APP */}
-      {microsSug.length>0 && (
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-            letterSpacing:'0.06em', color:T.copper, marginBottom:12 }}>🔬 Técnicas desta aula</div>
-          {microsSug.map(m => (
-            <div key={m.id} style={{ marginBottom:8, borderRadius:14, overflow:'hidden',
-              border:`1.5px solid ${microAberta===m.id?T.copper:T.border}` }}>
-              <button onClick={() => setMicroAberta(s=>s===m.id?null:m.id)} style={{
-                width:'100%', display:'flex', alignItems:'center', gap:12, padding:'14px 16px',
-                background:microAberta===m.id?T.copperP:'#fff', border:'none', cursor:'pointer', textAlign:'left',
-              }}>
-                <div style={{ flex:1 }}>
-                  {(m as any).contexto && (
-                    <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.05em',
-                      textTransform:'uppercase', color:T.copper, marginBottom:2 }}>
-                      {(m as any).contexto}
-                    </div>
-                  )}
-                  <div style={{ fontWeight:700, fontSize:15.5 }}>{m.nome}</div>
-                  {(m as any).descricao && (
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', marginTop:3, lineHeight:1.45 }}>
-                      {(m as any).descricao}
-                    </div>
-                  )}
-                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
-                </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='fs'||notasMicro[m.id]==='mbr'?'💪':notasMicro[m.id]==='ca'?'🤝':'📖'}</span>}
-                <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
-              </button>
-              {microAberta===m.id && (
-                <div style={{ padding:'12px 16px', borderTop:`2px solid ${T.copper}`, background:'#fdfcfb' }}>
-                  <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
-                  <div style={{ marginTop:12 }} />
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-                    {OPCOES.map(op => (
-                      <button key={op.v} onClick={() => setNotasMicro(p=>({...p,[m.id]:p[m.id]===op.v?null:op.v}))} style={{
-                        padding:'12px 6px', borderRadius:10, border:`2px solid ${notasMicro[m.id]===op.v?op.cor:T.border}`,
-                        background:notasMicro[m.id]===op.v?op.cor:'#fff', color:notasMicro[m.id]===op.v?op.cor:'rgba(26,23,20,0.5)',
-                        fontSize:13, fontWeight:700, cursor:'pointer', textAlign:'center',
-                        display:'flex', flexDirection:'column', alignItems:'center', gap:4,
-                      }}>
-                        <span style={{ fontSize:24 }}>{op.nota}</span>{op.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Percurso do aluno ao longo da UC — estado (validado/aguarda/por avaliar) plano a plano */}
-      <PercursoUC aluno={aluno} ucId={ucId} />
-
-      {/* Atitude — AUTOPROPOSTA do aluno: só atitudes de maturidade (as que ele reconhece em si) */}
-      {!ehAtitudinal && (
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-          letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>💡 Propõe-te a uma atitude</div>
-        <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:12 }}>
-          Escolhe uma atitude que reconheces em ti hoje. Fica como proposta tua — o professor valida.</div>
-        <div>
-          {(() => {
-            // Progressão por ano: 1ºACP 8 atitudes, 2ºACP 16, 3ºACP 22.
-            // Inclui as do ano seguinte — um aluno pode querer propor-se a
-            // uma atitude mais avançada do que o seu ano exige.
-            // Substitui a lista fixa de 7 que era igual para toda a gente.
-            // Máximo três à frente, como definimos: a do trimestre, a que
-            // está em recuperação e uma proposta do aluno. Mostrar as 16
-            // ou 22 do ano numa lista era um muro — o aluno não escolhe,
-            // desiste. Quem quiser propor outra tem o link em baixo.
-            const permitidas = opcoesDeEscolhaDoAluno(aluno.ano ?? 1);
-            const doPlano = (plano.compAdicionadas || [])
-              .filter((id: string) => id.startsWith('ATI-'));
-            const doTrimestre = atitudesDoTrimestre(
-              (aluno.ano ?? 1) as 1|2|3,
-              trimestreAtual(new Date(plano.data + 'T00:00:00'))
-            ).map((x: any) => x.id);
-
-            const sugeridas = [...new Set([...doPlano, ...doTrimestre])]
-              .filter(id => permitidas.includes(id) && !compRemovidas.includes(id))
-              .slice(0, MAX_ATITUDES_MOSTRADAS);
-
-            const opcoes = ATITUDES.filter(a =>
-              (verTodasAtitudes ? permitidas.includes(a.id) : sugeridas.includes(a.id))
-              && !compRemovidas.includes(a.id)
-            );
-            if (opcoes.length === 0) return null;
-
-            return opcoes.map(a => {
-              const escolhida = atitudeEscolhida === a.id;
-              const frases = FRASES_ATITUDES.find(f => f.competenciaId === a.id)?.frases;
-              return (
-                <div key={a.id} style={{ marginBottom:8 }}>
-                  <button
-                    onClick={() => { setAtitudeEscolhida(escolhida ? null : a.id); setNivelAtitudeFrase(null); }}
-                    style={{
-                      width:'100%', padding:'13px 14px', borderRadius:12, fontSize:14.5,
-                      fontWeight:700, cursor:'pointer', textAlign:'left', fontFamily:'inherit',
-                      border:`1.5px solid ${escolhida ? '#7d4f8c' : T.border}`,
-                      background: escolhida ? 'rgba(125,79,140,0.08)' : '#fff',
-                      color: escolhida ? '#7d4f8c' : 'rgba(26,23,20,0.75)',
-                    }}>
-                    {escolhida ? '✓ ' : ''}{a.nome}
-                  </button>
-
-                  {/* Frases: só aparecem depois de escolher a atitude. O aluno
-                      lê descrições de si próprio, não números — se visse as
-                      notas escolhia a que quer, não a que o descreve. */}
-                  {escolhida && frases && (
-                    <div style={{ marginTop:7, paddingLeft:10 }}>
-                      <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:7 }}>
-                        Qual destas te descreve melhor?
-                      </div>
-                      {frases.map((fr, i) => {
-                        const sel = nivelAtitudeFrase === i;
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => setNivelAtitudeFrase(sel ? null : i)}
-                            style={{
-                              width:'100%', display:'block', textAlign:'left',
-                              padding:'12px 13px', marginBottom:6, borderRadius:11,
-                              fontSize:14, lineHeight:1.5, cursor:'pointer', fontFamily:'inherit',
-                              border:`1.5px solid ${sel ? '#7d4f8c' : T.border}`,
-                              background: sel ? 'rgba(125,79,140,0.08)' : '#fff',
-                              color: sel ? '#7d4f8c' : 'rgba(26,23,20,0.75)',
-                              fontWeight: sel ? 700 : 400,
-                            }}>
-                            {fr}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            });
-          })()}
-
-          {/* Quem quiser propor outra vai buscá-la — mas não é o que
-              aparece à frente. */}
+          {blocoAtitude(
+            opcoesAtitude.map(a => ({ id: a.id, nome: a.nome, etiqueta: porqueAtitude(a.id) })),
+            atitudeEscolhida, setAtitudeEscolhida, nivelAtitudeFrase, setNivelAtitudeFrase)}
           {!verTodasAtitudes && (
-            <button onClick={() => setVerTodasAtitudes(true)} style={{
-              width:'100%', marginTop:8, background:'transparent', border:'none',
-              padding:12, fontSize:14, color:'#6B3FA0', fontWeight:700,
-              cursor:'pointer', fontFamily:'inherit', textDecoration:'underline',
-            }}>
+            <button onClick={() => setVerTodasAtitudes(true)} style={{ background:'transparent', border:'none',
+              padding:'10px 4px', fontSize:14, color:V, fontWeight:700, cursor:'pointer',
+              fontFamily:'inherit', textDecoration:'underline' }}>
               Quero propor outra atitude
             </button>
           )}
         </div>
-      </div>
       )}
 
-      {/* Turmas ACP — segunda atitude, para apanhar as dos anos anteriores.
-          Só aparecem as que o aluno ainda nunca teve avaliadas. */}
-      {ehTurmaTransicao(aluno.turmaId) && (() => {
-        const faltam = atitudesQueFaltam(aluno).filter(x => x.id !== atitudeEscolhida);
-        if (faltam.length === 0) return null;
-        const mostrar = verTodasApanhar ? faltam : faltam.slice(0, MAX_ATITUDES_MOSTRADAS);
-        const anos = [...new Set(faltam.map(x => x.ano))].sort().map(n => `${n}º`).join(' e ');
+      {/* ── Turmas ACP: uma atitude dos anos anteriores ── */}
+      {passo.tipo === 'apanhar' && (() => {
+        const mostrar = verTodasApanhar ? faltamApanhar : faltamApanhar.slice(0, MAX_ATITUDES_MOSTRADAS);
+        const anos = [...new Set(faltamApanhar.map(x => x.ano))].sort().map(n => `${n}º`).join(' e ');
         return (
-          <div style={{ background:'#fff', borderRadius:16, padding:16, marginBottom:12,
-            border:`1px solid ${T.border}` }}>
-            <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-              letterSpacing:'0.06em', color:'#7d4f8c', marginBottom:4 }}>
+          <div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.25 }}>
               Apanha uma do {anos} ano
             </div>
-            <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:12, lineHeight:1.5 }}>
-              Ainda te faltam {faltam.length}. Escolhe uma que reconheces em ti hoje —
-              o professor valida, como as outras.
+            <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', margin:'4px 0 12px', lineHeight:1.5 }}>
+              Ainda te faltam {faltamApanhar.length}. Escolhe uma que reconheces em ti hoje, ou passa à frente.
             </div>
-            {mostrar.map(x => {
-              const escolhida = atitudeApanhar === x.id;
-              const frases = FRASES_ATITUDES.find(f => f.competenciaId === x.id)?.frases;
-              return (
-                <div key={x.id} style={{ marginBottom:8 }}>
-                  <button
-                    onClick={() => { setAtitudeApanhar(escolhida ? null : x.id); setNivelApanharFrase(null); }}
-                    style={{
-                      width:'100%', padding:'13px 14px', borderRadius:12, fontSize:14.5,
-                      fontWeight:700, cursor:'pointer', textAlign:'left', fontFamily:'inherit',
-                      border:`1.5px solid ${escolhida ? '#7d4f8c' : T.border}`,
-                      background: escolhida ? 'rgba(125,79,140,0.08)' : '#fff',
-                      color: escolhida ? '#7d4f8c' : 'rgba(26,23,20,0.75)',
-                    }}>
-                    {escolhida ? '✓ ' : ''}{x.nome}
-                    <span style={{ fontWeight:500, fontSize:12.5, color:'rgba(26,23,20,0.45)' }}> · {x.ano}º ano</span>
-                  </button>
-                  {escolhida && frases && (
-                    <div style={{ marginTop:7, paddingLeft:10 }}>
-                      <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:7 }}>
-                        Qual destas te descreve melhor?
-                      </div>
-                      {frases.map((fr, i) => {
-                        const sel = nivelApanharFrase === i;
-                        return (
-                          <button key={i} onClick={() => setNivelApanharFrase(sel ? null : i)}
-                            style={{
-                              width:'100%', display:'block', textAlign:'left',
-                              padding:'12px 13px', marginBottom:6, borderRadius:11,
-                              fontSize:14, lineHeight:1.5, cursor:'pointer', fontFamily:'inherit',
-                              border:`1.5px solid ${sel ? '#7d4f8c' : T.border}`,
-                              background: sel ? 'rgba(125,79,140,0.08)' : '#fff',
-                              color:'rgba(26,23,20,0.8)', fontWeight: sel ? 600 : 400,
-                            }}>
-                            {fr}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {!verTodasApanhar && faltam.length > mostrar.length && (
-              <button onClick={() => setVerTodasApanhar(true)} style={{
-                width:'100%', marginTop:4, background:'transparent', border:'none',
-                padding:12, fontSize:14, color:'#6B3FA0', fontWeight:700,
-                cursor:'pointer', fontFamily:'inherit', textDecoration:'underline',
-              }}>
-                Ver as {faltam.length} que faltam
+            {blocoAtitude(
+              mostrar.map(x => ({ id: x.id, nome: x.nome, etiqueta: `${x.ano}º ano` })),
+              atitudeApanhar, setAtitudeApanhar, nivelApanharFrase, setNivelApanharFrase)}
+            {!verTodasApanhar && faltamApanhar.length > mostrar.length && (
+              <button onClick={() => setVerTodasApanhar(true)} style={{ background:'transparent', border:'none',
+                padding:'10px 4px', fontSize:14, color:V, fontWeight:700, cursor:'pointer',
+                fontFamily:'inherit', textDecoration:'underline' }}>
+                Ver as {faltamApanhar.length} que faltam
               </button>
             )}
           </div>
         );
       })()}
 
-      {/* Sem nota prevista antes de submeter: o aluno ia mexer nas
-          respostas só para a fazer subir. Vê a proposta depois de enviar. */}
+      {/* ── Rever e enviar ── */}
+      {passo.tipo === 'rever' && (
+        <div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800 }}>Rever antes de enviar</div>
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'2px 0 12px' }}>Toca numa linha para mudar.</div>
+          <div style={{ background:'#fff', borderRadius:14, border:`1px solid ${T.border}`, overflow:'hidden' }}>
+            {linhasRever.map((l, i) => (
+              <button key={i} onClick={() => irPara(l.passo)} style={{ width:'100%', display:'flex',
+                alignItems:'center', gap:10, textAlign:'left', padding:'12px 14px', border:'none',
+                borderBottom: i < linhasRever.length - 1 ? `1px solid ${T.border}` : 'none',
+                background:'#fff', cursor:'pointer', fontFamily:'inherit' }}>
+                <span style={{ flex:1, minWidth:0 }}>
+                  <span style={{ display:'block', fontSize:14.5, fontWeight:700 }}>{l.nome}</span>
+                  <span style={{ display:'block', fontSize:12.5, color:'rgba(26,23,20,0.6)', marginTop:1 }}>{l.resposta}</span>
+                </span>
+                {circulo(l.nota ?? '—', false)}
+              </button>
+            ))}
+          </div>
 
-      {!prontoParaSubmeter && (
-        <div style={{ padding:'12px 14px', background:T.copperP, borderRadius:10,
-          fontSize:13, color:T.copper, marginBottom:12 }}>
-          {ehAtitudinal
-            ? '⚠️ Escolhe uma frase em cada atitude desta aula para poderes submeter.'
-            : '⚠️ Preenche a Higiene e Segurança Alimentar para poderes submeter.'}
+          {nivelHaccp && !temEvidenciaKF('OBR_02') && (
+            <div style={{ marginTop:12, padding:'10px 12px', borderRadius:10, background:T.copperP,
+              fontSize:13.5, color:'#8a4a15', lineHeight:1.5 }}>
+              <strong>Higiene e segurança alimentar:</strong> não encontrei o teu registo no KitchenFlow.
+              Fica a 1 até haver registo. O professor decide.
+            </div>
+          )}
+
+          {/* Sem nota antes de enviar: o aluno ia mexer nas respostas só
+              para a fazer subir. Vê a proposta depois de enviar. */}
+          <div style={{ marginTop:12, padding:'10px 12px', borderRadius:10, border:'1px dashed #CFC6DB',
+            fontSize:13.5, color:'rgba(26,23,20,0.65)', lineHeight:1.5 }}>
+            A nota só aparece depois de enviares. Responde pelo que fizeste, não pela nota.
+          </div>
+
+          {!prontoParaSubmeter && (
+            <div style={{ marginTop:12, padding:'10px 12px', background:T.copperP, borderRadius:10,
+              fontSize:13.5, color:T.copper }}>
+              {ehAtitudinal
+                ? 'Escolhe uma frase em cada atitude desta aula para poderes enviar.'
+                : 'Responde à Higiene e Segurança Alimentar para poderes enviar.'}
+            </div>
+          )}
+
+          <button onClick={submeterDefinitivo} disabled={!prontoParaSubmeter || submetido} style={{
+            width:'100%', marginTop:14, minHeight:54, borderRadius:12, border:'none', fontSize:17, fontWeight:700,
+            fontFamily:'inherit', background: prontoParaSubmeter ? T.sage : 'rgba(26,23,20,0.08)',
+            color: prontoParaSubmeter ? '#fff' : 'rgba(26,23,20,0.3)',
+            cursor: prontoParaSubmeter ? 'pointer' : 'not-allowed' }}>
+            Enviar ao professor
+          </button>
+          <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)', textAlign:'center', marginTop:6 }}>
+            Depois de enviar já não podes mudar.
+          </div>
+
+          <div style={{ marginTop:20 }}>
+            <PercursoUC aluno={aluno} ucId={ucId} />
+          </div>
         </div>
       )}
 
-      <button onClick={() => setModalConfirmar(true)} disabled={!prontoParaSubmeter} style={{
-        width:'100%', padding:'16px', borderRadius:14, border:'none', fontSize:16, fontWeight:700,
-        background:prontoParaSubmeter?T.sage:'rgba(26,23,20,0.08)',
-        color:prontoParaSubmeter?'#fff':'rgba(26,23,20,0.3)',
-        cursor:prontoParaSubmeter?'pointer':'not-allowed',
-        boxShadow:prontoParaSubmeter?`0 4px 16px ${T.sage}40`:'none', transition:'all 0.2s',
-      }}>
-        ✓ Submeter autoavaliação
-      </button>
-
-      {/* Modal confirmação */}
-      {modalConfirmar && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.7)',
-          display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
-          <div style={{ background:'#fff', borderRadius:24, padding:'28px 24px', maxWidth:380, width:'100%' }}>
-            <div style={{ textAlign:'center', marginBottom:16 }}>
-              <div style={{ fontSize:48, marginBottom:8 }}>🎯</div>
-              <div style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:700, marginBottom:6 }}>
-                Confirmas o teu registo?
-              </div>
-              <div style={{ fontSize:14, color:'rgba(26,23,20,0.55)' }}>
-                Depois de submeter não podes alterar.
-              </div>
-            </div>
-            <div style={{ background:T.cream, borderRadius:12, padding:'12px 16px', marginBottom:20, fontSize:14 }}>
-              <div>🔒 HACCP: {OPCOES.find(o => o.v === nivelHaccp)?.label || '—'}</div>
-              {atitudeEscolhida && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeEscolhida)?.nome}</div>}
-              {atitudeApanhar && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeApanhar)?.nome} <span style={{ opacity:0.6 }}>(ano anterior)</span></div>}
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              <button onClick={submeterDefinitivo} disabled={submetido} style={{ padding:'15px', borderRadius:14, border:'none',
-                background:T.sage, color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer' }}>
-                ✓ Sim, confirmo!
-              </button>
-              <button onClick={() => setModalConfirmar(false)} style={{ padding:'12px', borderRadius:12,
-                border:`1px solid ${T.border}`, background:'#fff', color:'rgba(26,23,20,0.6)',
-                fontSize:14, fontWeight:600, cursor:'pointer' }}>
-                Voltar e rever
-              </button>
-            </div>
-          </div>
+      {/* Anterior / Seguinte */}
+      {passo.tipo !== 'rever' && (
+        <div style={{ display:'flex', gap:10, marginTop:18 }}>
+          {idx > 0 && (
+            <button onClick={() => irPara(idx - 1)} style={{ minHeight:52, padding:'0 18px', borderRadius:12,
+              border:`1px solid ${T.border}`, background:'#fff', color:'rgba(26,23,20,0.7)',
+              fontSize:15, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+              Anterior
+            </button>
+          )}
+          <button onClick={() => irPara(idx + 1)} disabled={!podeAvancar} style={{ flex:1, minHeight:52,
+            borderRadius:12, border:'none', fontSize:16.5, fontWeight:700, fontFamily:'inherit',
+            background: podeAvancar ? V : 'rgba(26,23,20,0.08)', color: podeAvancar ? '#fff' : 'rgba(26,23,20,0.3)',
+            cursor: podeAvancar ? 'pointer' : 'not-allowed' }}>
+            {passos[idx + 1]?.tipo === 'rever' ? 'Rever antes de enviar' : 'Seguinte'}
+          </button>
         </div>
       )}
     </div>
