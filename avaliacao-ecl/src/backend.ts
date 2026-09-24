@@ -2795,7 +2795,9 @@ export function getEstadoCompetenciasUC(alunoId: string, ucId: string): {
 } {
   const micros = microsPorUC(ucId);
   const total = micros.length;
-  const historico = getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.validadoPor !== 'recuperacao');
+  // Só conta o que o professor validou. Antes contava também o que o aluno
+  // disse na autoavaliação — bastava dizer "consegui" para somar.
+  const historico = getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.validadoPor === 'professor');
   const demonstradasEmAula = new Set(historico.filter(r => r.nota >= 3).map(r => r.microcompetenciaId)).size;
   const recuperacoesConcluidas = getRecuperacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.estado === 'concluida');
   const competenciasRecuperadas = new Set<string>();
@@ -4356,23 +4358,31 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
   // aulas que ainda não houve. Um aluno na primeira aula aparecia com
   // quatro faltas.
   const hoje = new Date().toISOString().slice(0, 10);
+  // As mesmas regras da recuperação (getPlanosFaltadosPorUC): só aulas que
+  // já aconteceram; uma aula que o professor nunca abriu não conta contra
+  // o aluno; a decisão do professor manda. Antes a aula de hoje contava
+  // como falta antes de começar.
+  const presencas = getPresencas().filter(p => p.alunoId === alunoId);
   const planos = getPlanosAulaPorTurma(turmaId)
     .filter(p => !ucId || (p as any).ucId === ucId)
     .filter(p => p.estado === 'publicado' || p.estado === 'realizada')
-    .filter(p => p.data <= hoje);
-
-  const presencas = getPresencas().filter(p => p.alunoId === alunoId);
+    .filter(p => aulaJaAconteceu(p, hoje))
+    .filter(p => {
+      const dec = (presencas.find(r => r.planoAulaId === p.id) as any)?.decisaoProfessor;
+      if (dec) return true;
+      return (p as any).contaAssiduidade !== false && !!getSessaoAula(p.id)?.abertaEm;
+    });
   const selecoes = getSelecoes().filter(s => s.alunoId === alunoId);
 
   let comPresenca = 0, atrasos = 0, semAuto = 0, comDecisao = 0;
   for (const plano of planos) {
-    const pres = presencas.find(p => p.planoAulaId === plano.id);
-    if (pres?.presente) {
+    const pres: any = presencas.find(p => p.planoAulaId === plano.id);
+    if (pres?.presente || pres?.decisaoProfessor === 'sem_falta') {
       comPresenca++;
       if (pres.atrasado) atrasos++;
       if (!selecoes.some(s => s.planoAulaId === plano.id)) semAuto++;
     }
-    if ((pres as any)?.decisaoProfessor) comDecisao++;
+    if (pres?.decisaoProfessor) comDecisao++;
   }
 
   const faltas = planos.length - comPresenca;
@@ -4384,6 +4394,55 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
     atrasos,
     percentagemPresenca: planos.length ? Math.round((comPresenca / planos.length) * 100) : 100,
     semAutoavaliacao: semAuto,
+  };
+}
+
+// ── Assiduidade em horas ─────────────────────────────────────
+// Na escola as faltas contam-se em horas: cada hora do plano de aula é
+// uma hora de falta, e um atraso conta as horas perdidas. É a mesma conta
+// da recuperação (situacaoRecuperacaoUC), para o perfil e as recuperações
+// dizerem sempre o mesmo ao aluno.
+
+/** Horas da UC que já foram dadas: planos publicados de aulas que já aconteceram. */
+export function horasDadasDaUC(turmaId: string, ucId: string): number {
+  const hoje = new Date().toISOString().slice(0, 10);
+  return getPlanosAula()
+    .filter(p => p.ucId === ucId && p.turmaId === turmaId
+      && (p.estado === 'publicado' || p.estado === 'realizada')
+      && aulaJaAconteceu(p, hoje))
+    .reduce((s, p) => s + horasDoPlano(p), 0);
+}
+
+export interface AssiduidadeHorasUC {
+  ucId: string;
+  horasPrevistas: number;
+  horasDadas: number;
+  horasFaltadas: number;
+  /** 10% das horas previstas — acima disto o aluno fica em recuperação. */
+  limite: number;
+  acimaDoLimite: boolean;
+}
+
+export function assiduidadeEmHoras(alunoId: string, turmaId: string): {
+  horasDadas: number; horasFaltadas: number; presenca: number; porUC: AssiduidadeHorasUC[];
+} {
+  const ucs = [...new Set(getPlanosAulaPorTurma(turmaId).map(p => p.ucId).filter(Boolean))] as string[];
+  const porUC = ucs.map(ucId => {
+    const s = situacaoRecuperacaoUC(alunoId, turmaId, ucId);
+    return {
+      ucId,
+      horasPrevistas: s.horasPrevistas,
+      horasDadas: horasDadasDaUC(turmaId, ucId),
+      horasFaltadas: s.horasFaltadas,
+      limite: s.horasPrevistas * 0.10,
+      acimaDoLimite: s.horasPrevistas > 0 && s.horasFaltadas > s.horasPrevistas * 0.10,
+    };
+  }).filter(u => u.horasDadas > 0 || u.horasFaltadas > 0);
+  const horasDadas = porUC.reduce((t, u) => t + u.horasDadas, 0);
+  const horasFaltadas = porUC.reduce((t, u) => t + u.horasFaltadas, 0);
+  return {
+    horasDadas, horasFaltadas, porUC,
+    presenca: horasDadas > 0 ? Math.max(0, Math.round((1 - horasFaltadas / horasDadas) * 100)) : 100,
   };
 }
 
@@ -4411,7 +4470,7 @@ export function leituraAssiduidade(a: Assiduidade): {
   if (a.faltas > 0) {
     partes.push(`Faltaste a ${a.faltas} de ${a.aulasPrevistas} aulas`);
     // Uma aula sem produção não gera nota: é zero na aula inteira.
-    partes.push(`— essas aulas contam zero, porque não houve trabalho para avaliar`);
+    partes.push(` — essas aulas contam zero, porque não houve trabalho para avaliar`);
     atitudes.push('ATI-001', 'ATI-015');
   }
   if (a.atrasos > 0) {
