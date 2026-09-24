@@ -6124,8 +6124,18 @@ export function vigiarAlteracoes(
 // aplicação percorre a corrente toda e diz em que elo parou. Corre-se
 // no aparelho do professor e no do aluno, e compara-se.
 
+/** Porque é que a aula de hoje não aparece — para explicar ao aluno numa frase. */
+export type CausaAulaEmFalta =
+  | 'ok' | 'sem_rede' | 'resposta_estranha' | 'nada_no_arquivo'
+  | 'nao_publicada' | 'sem_aula_hoje' | 'nao_chegou' | 'outra_turma';
+
 export async function diagnostico(turmaId: string): Promise<string[]> {
+  return (await diagnosticoDetalhado(turmaId)).linhas;
+}
+
+export async function diagnosticoDetalhado(turmaId: string): Promise<{ linhas: string[]; causa: CausaAulaEmFalta }> {
   const L: string[] = [];
+  let causa: CausaAulaEmFalta = 'ok';
   const hoje = new Date().toISOString().slice(0, 10);
   const url = SHEETS_ECL_URL || SHEETS_PLANOS_URL;
 
@@ -6142,8 +6152,10 @@ export async function diagnostico(turmaId: string): Promise<string[]> {
     const t = (await r.text()).trim();
     L.push(/^\d+$/.test(t) ? `2. Ligação ao arquivo: OK (número ${t.slice(-6)})`
       : `2. Ligação ao arquivo: RESPOSTA ESTRANHA — ${t.slice(0, 40)}`);
+    if (!/^\d+$/.test(t)) causa = 'resposta_estranha';
   } catch (e) {
     L.push('2. Ligação ao arquivo: FALHOU — sem rede ou acesso barrado');
+    causa = 'sem_rede';
   }
 
   // 3. O que o arquivo tem desta turma
@@ -6152,6 +6164,7 @@ export async function diagnostico(turmaId: string): Promise<string[]> {
     const json: any = await lerDoSheets(url, { tipo: 'get_planos', turmaId });
     if (!json?.ok) {
       L.push('3. Planos no arquivo: NÃO CONSEGUI LER');
+      if (causa === 'ok') causa = 'resposta_estranha';
     } else {
       doArquivo = json.dados || [];
       const publicados = doArquivo.filter((p: any) => p.estado === 'publicado');
@@ -6166,8 +6179,13 @@ export async function diagnostico(turmaId: string): Promise<string[]> {
       if (doArquivo.length && !publicados.length) {
         L.push('   ATENÇÃO: há planos, mas nenhum publicado. Falta carregar em Publicar.');
       }
+      if (causa === 'ok') {
+        causa = !doArquivo.length ? 'nada_no_arquivo'
+          : !publicados.length ? 'nao_publicada'
+          : !deHoje.length ? 'sem_aula_hoje' : 'ok';
+      }
     }
-  } catch { L.push('3. Planos no arquivo: FALHOU'); }
+  } catch { L.push('3. Planos no arquivo: FALHOU'); if (causa === 'ok') causa = 'sem_rede'; }
 
   // 4. O que este aparelho tem
   const locais = getPlanosAulaPorTurma(turmaId);
@@ -6180,6 +6198,7 @@ export async function diagnostico(turmaId: string): Promise<string[]> {
   const soLa = doArquivo.filter((p: any) => !idsLocais.has(p.id));
   if (soLa.length) {
     L.push(`5. No arquivo mas não aqui: ${soLa.length} — a sincronização não os trouxe`);
+    if (causa === 'ok' && soLa.some((p: any) => p.estado === 'publicado' && dataSoDia(p.data) === hoje)) causa = 'nao_chegou';
     soLa.slice(0, 3).forEach((p: any) => L.push(`   · ${p.titulo || p.id}`));
   } else {
     L.push('5. Tudo o que está no arquivo também está aqui');
@@ -6189,7 +6208,8 @@ export async function diagnostico(turmaId: string): Promise<string[]> {
   const turmasLa = [...new Set(doArquivo.map((p: any) => String(p.turmaId)))];
   if (turmasLa.length && !turmasLa.includes(turmaId)) {
     L.push(`6. ATENÇÃO: o arquivo devolveu planos das turmas [${turmasLa.join(', ')}], e esta é "${turmaId}"`);
+    causa = 'outra_turma';
   }
 
-  return L;
+  return { linhas: L, causa };
 }

@@ -27,7 +27,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnostico } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -497,6 +497,46 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 
   useEffect(() => { irBuscarAulas(); }, [aluno.turmaId]);
 
+  // "Não vejo a aula": vai buscar outra vez e, se continuar sem aula hoje,
+  // descobre porquê e explica numa frase.
+  const EXPLICA_AULA: Record<CausaAulaEmFalta, { titulo: string; texto: string; avisar: boolean }> = {
+    sem_rede: { titulo: 'Sem ligação', avisar: false,
+      texto: 'Não consegui falar com a escola. Verifica a internet e tenta outra vez.' },
+    resposta_estranha: { titulo: 'A escola não respondeu bem', avisar: true,
+      texto: 'Tenta outra vez daqui a um minuto. Se continuar, avisa o professor.' },
+    nada_no_arquivo: { titulo: 'Ainda não há aulas para a tua turma', avisar: true,
+      texto: 'O professor ainda não criou planos de aula para a tua turma.' },
+    nao_publicada: { titulo: 'A aula ainda não foi publicada', avisar: true,
+      texto: 'O professor já preparou o plano, mas ainda não carregou em Publicar. Assim que o fizer, aparece aqui.' },
+    sem_aula_hoje: { titulo: 'Não há aula marcada para hoje', avisar: false,
+      texto: 'As aulas publicadas são para outros dias. Vê o calendário.' },
+    nao_chegou: { titulo: 'A aula ainda não chegou a este telemóvel', avisar: false,
+      texto: 'Existe, mas ainda não foi descarregada. Tenta outra vez daqui a pouco.' },
+    outra_turma: { titulo: 'A aula foi publicada para outra turma', avisar: true,
+      texto: 'Avisa o professor para confirmar a turma do plano.' },
+    ok: { titulo: 'Não encontrei nenhum problema', avisar: true,
+      texto: 'Tenta atualizar outra vez. Se a aula continuar sem aparecer, avisa o professor.' },
+  };
+  const [mensagemAula, setMensagemAula] = useState<{ titulo: string; texto: string; avisar: boolean } | null>(null);
+  async function verificarAula() {
+    setALigar(true);
+    setMensagemAula(null);
+    try {
+      await sincronizarDoSheets(aluno.turmaId);
+      const ps = getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado');
+      setPlanos(ps);
+      setFalhouLigacao(leituraDePlanosFalhou());
+      if (ps.some(p => isHoje(p.data))) return;
+      const { causa } = await diagnosticoDetalhado(aluno.turmaId);
+      setMensagemAula(EXPLICA_AULA[causa]);
+    } catch {
+      setFalhouLigacao(true);
+      setMensagemAula(EXPLICA_AULA.sem_rede);
+    } finally {
+      setALigar(false);
+    }
+  }
+
   // O professor pode corrigir a aula depois de a publicar — trocar a
   // ficha, mudar a hora. Em vez de ir buscar tudo de minuto a minuto,
   // pergunta de 15 em 15 segundos se houve alterações, e só vai buscar
@@ -869,12 +909,9 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             )}
             proximasAulas={aulasFuturas.length}
             avisos={avisosCalculados}
-            onTentarOutraVez={falhouLigacao ? irBuscarAulas : undefined}
+            onTentarOutraVez={falhouLigacao || !planoHoje ? verificarAula : undefined}
             aLigar={aLigar}
-            onDiagnostico={planoHoje ? undefined : async () => {
-              const linhas = await diagnostico(aluno.turmaId);
-              alert('Porque é que a aula não chega\n\n' + linhas.join('\n'));
-            }}
+            mensagemAula={mensagemAula}
             fichasAtribuidas={fichasAtribuidas}
             notaProgressiva={notaProgressiva}
             recuperacoesPendentes={recuperacoesPendentes}
