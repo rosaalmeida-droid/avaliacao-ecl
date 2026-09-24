@@ -768,7 +768,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             const val = sel ? getValidacoes().find(v => (v as any).selecaoId === sel.id) : undefined;
             const nota20 = val ? ((val as any).notaMedia20 ?? null) : null;
             if (nota20 == null) return null;
-            const cor = nota20 >= 16 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
+            const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             return (
               <div style={{ margin:'16px 16px 0', padding:'14px 18px', borderRadius:14, background:cor+'14', border:'1.5px solid '+cor+'44', display:'flex', alignItems:'center', gap:14 }}>
                 <div>
@@ -2856,7 +2856,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             });
             const tipoPlano = (plano as any).tipoPlanAula || 'pratico';
             const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlano);
-            const cor = nota20 >= 16 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
+            const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             const label = classificacao20(nota20);
 
             // Comparação com a autoavaliação — não conta para a nota, mas ajuda o

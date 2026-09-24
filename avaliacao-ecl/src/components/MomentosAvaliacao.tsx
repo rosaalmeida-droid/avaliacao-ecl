@@ -28,7 +28,7 @@ function para20(n: number): number { return n > 0 ? Math.min(20, Math.round(n * 
 // A cor segue a mesma regra do aluno; a palavra é a classificação única.
 function labelNota(n: number) {
   const label = classificacao20(n * 4);
-  if (n >= 4) return { emoji: '🌟', cor: '#0369a1', label };
+  if (n * 4 >= 17) return { emoji: '🌟', cor: '#0369a1', label };
   if (n >= 3) return { emoji: '✅', cor: '#5a7a4e', label };
   if (n >= 2) return { emoji: '🤝', cor: '#b5651d', label };
   return { emoji: '📖', cor: '#c0392b', label };
