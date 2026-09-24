@@ -635,6 +635,7 @@ function GestaoAlunosTab() {
               {Object.entries(contas).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(' · ') || 'Nada para enviar.'}
             </div>
             <button
+              disabled={aEnviarTudo !== null}
               onClick={async () => {
                 setAEnviarTudo('a verificar…');
                 const linhas = await diagnostico(turmaSel);

@@ -871,6 +871,10 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             avisos={avisosCalculados}
             onTentarOutraVez={falhouLigacao ? irBuscarAulas : undefined}
             aLigar={aLigar}
+            onDiagnostico={planoHoje ? undefined : async () => {
+              const linhas = await diagnostico(aluno.turmaId);
+              alert('Porque é que a aula não chega\n\n' + linhas.join('\n'));
+            }}
             fichasAtribuidas={fichasAtribuidas}
             notaProgressiva={notaProgressiva}
             recuperacoesPendentes={recuperacoesPendentes}
