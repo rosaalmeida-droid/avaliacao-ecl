@@ -530,7 +530,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: corNotaFinal(notaFinal) }}>
                   {notaFinal}
                 </span>
-                <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/4</span>
+                <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/5</span>
                 <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)', marginLeft: 8 }}>→</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: corNotaFinal(notaFinal), marginLeft: 4 }}>
                   {para20(notaFinal)}

@@ -2714,26 +2714,6 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       && (!comObrigatorias || nivelHaccp !== null)
     : nivelHaccp !== null;
 
-  // Nota prevista, com o que o aluno já preencheu. As mesmas conversões do
-  // submeterDefinitivo, e a mesma regra do KitchenFlow para o HACCP.
-  const previsao = (() => {
-    const n = (v: string | null): number =>
-      v==='mbr'||v==='autonomia'||v==='superei' ? 5
-      : v==='fs'||v==='sozinho'||v==='atingi' ? 4
-      : v==='ca'||v==='ajuda'||v==='desenvolvimento' ? 3
-      : v==='tp' ? 2 : v==='nf'||v==='nao'||v==='nao_atingi' ? 1 : 0;
-    const autos: { competenciaId: string; nota: number }[] = [];
-    if (nivelHaccp) autos.push({ competenciaId: 'OBR_02', nota: temEvidenciaKF('OBR_02') ? n(nivelHaccp) : 1 });
-    Object.entries(notasMicro).forEach(([id, v]) => { if (v) autos.push({ competenciaId: id, nota: n(v as string) }); });
-    if (atitudeEscolhida) autos.push({ competenciaId: atitudeEscolhida,
-      nota: nivelAtitudeFrase != null ? Math.round(NOTAS_FRASES[nivelAtitudeFrase] / 4) : 3 });
-    if (atitudeApanhar) autos.push({ competenciaId: atitudeApanhar,
-      nota: nivelApanharFrase != null ? Math.round(NOTAS_FRASES[nivelApanharFrase] / 4) : 3 });
-    if (tipoPlanAula === 'teorico' && nivelIniciativa > 0) autos.push({ competenciaId: 'INI-001', nota: nivelIniciativa });
-    atitudesDaAula.forEach(id => { if (frasesAula[id] != null)
-      autos.push({ competenciaId: id, nota: Math.round(NOTAS_FRASES[frasesAula[id]] / 4) }); });
-    return previsaoNota(autos, tipoPlanAula as any);
-  })();
   const fmtN = (x: number) => (Math.round(x * 10) / 10).toString().replace('.', ',');
 
   function submeterDefinitivo() {
@@ -2876,7 +2856,6 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             });
             const tipoPlano = (plano as any).tipoPlanAula || 'pratico';
             const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlano);
-            const notaFinal = val.notaMedia;
             const cor = nota20 >= 16 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             const label = nota20 >= 16 ? 'Muito Bom' : nota20 >= 14 ? 'Bom' : nota20 >= 10 ? 'Suficiente' : 'Insuficiente';
 
@@ -2903,10 +2882,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   ✅ Professor confirmou
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{notaFinal.toFixed(1)}</span>
-                  <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/4</span>
-                  <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)', marginLeft:4 }}>→</span>
-                  <span style={{ fontFamily:'var(--font-display)', fontSize:28, fontWeight:900, color:cor, marginLeft:4 }}>{nota20}</span>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{nota20}</span>
                   <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/20</span>
                   <span style={{ marginLeft:'auto', fontSize:14, fontWeight:700, color:cor }}>{label}</span>
                 </div>
@@ -2925,7 +2901,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                     <div style={{ marginTop:6, paddingTop:6 }}>
                       {comparacoes.map(c => (
                         <div key={c.competenciaId} style={{ display:'flex', justifyContent:'space-between', fontSize:12.5, padding:'2px 0', color:'rgba(26,23,20,0.4)' }}>
-                          <span>{c.competenciaId}</span>
+                          <span>{c.competenciaId === 'INI-001' ? 'Iniciativa' : ATITUDES.find(x => x.id === c.competenciaId)?.nome || nomeCompetencia(c.competenciaId)}</span>
                           <span>Tu: {c.alunoDisse} · Professor: {c.professorValidou}</span>
                         </div>
                       ))}
@@ -3138,7 +3114,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   )}
                   <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='fs'||notasMicro[m.id]==='mbr'?'💪':notasMicro[m.id]==='ca'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
               </button>
               {microAberta===m.id && (
@@ -3146,7 +3122,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   <CriteriosComp compId={m.id} cor={T.copper} abertaInicial={true} />
                   {notasMicro[m.id] && (() => {
                     const frases = getFrasesParaCompetencia(m.id, m.nome);
-                    const idx = ['nao','ajuda','sozinho','autonomia'].indexOf(notasMicro[m.id] as string);
+                    // As quatro frases correspondem aos níveis 2 a 5; "Ainda não fiz" não tem frase.
+                    const idx = ['tp','ca','fs','mbr'].indexOf(notasMicro[m.id] as string);
                     return idx >= 0 ? (
                       <div style={{ margin:'10px 0', padding:'10px 12px', borderRadius:8,
                         background:'rgba(181,101,29,0.06)', fontSize:13, color:'rgba(26,23,20,0.7)', fontStyle:'italic' }}>
@@ -3207,7 +3184,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   </div>
                   <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:2 }}>{m.categoria} · {m.motivo}</div>
                 </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='fs'||notasMicro[m.id]==='mbr'?'💪':notasMicro[m.id]==='ca'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:'#5B67EA', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
               </button>
               {microAberta===m.id && (
@@ -3260,7 +3237,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   )}
                   <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='fs'||notasMicro[m.id]==='mbr'?'💪':notasMicro[m.id]==='ca'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:'#0369a1', transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
               </button>
               {microAberta===m.id && (
@@ -3317,7 +3294,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   )}
                   <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:4 }}>{m.motivo}</div>
                 </div>
-                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='sozinho'?'💪':notasMicro[m.id]==='ajuda'?'🤝':'📖'}</span>}
+                {notasMicro[m.id] && <span style={{ fontSize:24 }}>{notasMicro[m.id]==='fs'||notasMicro[m.id]==='mbr'?'💪':notasMicro[m.id]==='ca'?'🤝':'📖'}</span>}
                 <span style={{ fontSize:18, color:T.copper, transform:microAberta===m.id?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
               </button>
               {microAberta===m.id && (
@@ -3521,31 +3498,15 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         );
       })()}
 
-      {/* Nota prevista pela autoavaliação — o professor ainda confirma. */}
-      {prontoParaSubmeter && previsao && (
-        <div style={{ padding:'14px 16px', background:'#fff', borderRadius:12, marginBottom:12,
-          border:'1.5px solid rgba(125,79,140,0.35)' }}>
-          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em',
-            color:'#7d4f8c' }}>A tua nota prevista</div>
-          <div style={{ display:'flex', alignItems:'baseline', gap:8, marginTop:4 }}>
-            <span style={{ fontSize:30, fontWeight:900, color:'#7d4f8c' }}>{fmtN(previsao.nota)}</span>
-            <span style={{ fontSize:14, color:'rgba(26,23,20,0.5)' }}>
-              — deve ficar entre {fmtN(previsao.min)} e {fmtN(previsao.max)}
-            </span>
-          </div>
-          <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:4, lineHeight:1.5 }}>
-            É o que a tua autoavaliação dá nesta aula. O professor ainda vai confirmar,
-            e pode ajustar para cima ou para baixo.
-          </div>
-        </div>
-      )}
+      {/* Sem nota prevista antes de submeter: o aluno ia mexer nas
+          respostas só para a fazer subir. Vê a proposta depois de enviar. */}
 
       {!prontoParaSubmeter && (
         <div style={{ padding:'12px 14px', background:T.copperP, borderRadius:10,
           fontSize:13, color:T.copper, marginBottom:12 }}>
           {ehAtitudinal
             ? '⚠️ Escolhe uma frase em cada atitude desta aula para poderes submeter.'
-            : '⚠️ Preenche pelo menos as duas competências obrigatórias para poderes submeter.'}
+            : '⚠️ Preenche a Higiene e Segurança Alimentar para poderes submeter.'}
         </div>
       )}
 
@@ -3574,15 +3535,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               </div>
             </div>
             <div style={{ background:T.cream, borderRadius:12, padding:'12px 16px', marginBottom:20, fontSize:14 }}>
-              <div>🔒 Higiene: {nivelHigiene==='sozinho'?'💪 Sozinho/a':nivelHigiene==='ajuda'?'🤝 Consegui com ajuda':'📖 A aprender'}</div>
-              <div style={{ marginTop:4 }}>🔒 HACCP: {nivelHaccp==='sozinho'?'💪 Sozinho/a':nivelHaccp==='ajuda'?'🤝 Consegui com ajuda':'📖 A aprender'}</div>
+              <div>🔒 HACCP: {OPCOES.find(o => o.v === nivelHaccp)?.label || '—'}</div>
               {atitudeEscolhida && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeEscolhida)?.nome}</div>}
               {atitudeApanhar && <div style={{ marginTop:4 }}>💡 {ATITUDES.find(a=>a.id===atitudeApanhar)?.nome} <span style={{ opacity:0.6 }}>(ano anterior)</span></div>}
-              {previsao && (
-                <div style={{ marginTop:8, fontWeight:700, color:'#7d4f8c' }}>
-                  Nota prevista: {fmtN(previsao.nota)} (entre {fmtN(previsao.min)} e {fmtN(previsao.max)}) — o professor ainda confirma.
-                </div>
-              )}
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               <button onClick={submeterDefinitivo} disabled={submetido} style={{ padding:'15px', borderRadius:14, border:'none',
