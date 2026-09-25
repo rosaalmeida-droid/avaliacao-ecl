@@ -1,4 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
+import { PERGUNTAS_TRIAGEM, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../types';
@@ -216,6 +217,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   });
   const [comentario, setComentario] = useState('');
   const [guardado, setGuardado] = useState(false);
+  // Triagem do CL e do CR: vem a resposta do aluno; o professor confirma ou muda.
+  const [triagem, setTriagem] = useState<Triagem5C | null>(() =>
+    validacaoExistente?.triagem5c || (selecao as any).triagem5c || null);
 
   // Obter competências da autoavaliação
   const autoavaliacoes = selecao.autoavaliacoes || [];
@@ -304,6 +308,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         nota: n.notaFinal,
         origem: 'professor' as const,
       })),
+      ...(triagem ? { triagem5c: triagem } : {}),
       comentarioGeral: comentario,
       validadoPor: 'professor',
       validadoEm: agora,
@@ -558,6 +563,42 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           </div>
         );
       })}
+
+      {/* Triagem do Colaborativo e do Criativo — não entra na nota da aula. */}
+      {triagem && (
+        <Card>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
+            color:'rgba(26,23,20,0.5)', marginBottom:4 }}>Equipa e problemas (5 C da pauta)</div>
+          <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>
+            Não conta para a nota desta aula. Entra no Colaborativo e no Criativo da pauta da UC.
+          </div>
+          {PERGUNTAS_TRIAGEM.map(q => {
+            const r = triagem[q.chave];
+            const opcoes: { v: number | 'sem'; txt: string }[] = [
+              ...q.frases.map((f, i) => ({ v: i, txt: f })), { v: 'sem', txt: q.semOcasiao }];
+            return (
+              <div key={q.chave} style={{ marginBottom:10 }}>
+                <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>{q.sigla} · {q.pergunta}</div>
+                {opcoes.map(o => (
+                  <button key={String(o.v)} onClick={() => setTriagem(t => t && ({ ...t, [q.chave]: o.v }))}
+                    style={{ display:'flex', gap:8, alignItems:'center', width:'100%', textAlign:'left',
+                      padding:'7px 10px', marginBottom:4, borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                      fontSize:13.5, border: r === o.v ? '2px solid var(--sage)' : '1px solid var(--border)',
+                      background: r === o.v ? 'rgba(90,122,78,0.1)' : '#fff' }}>
+                    <span style={{ minWidth:18, fontWeight:800, color:'var(--sage)' }}>
+                      {typeof o.v === 'number' ? o.v + 2 : '–'}</span>
+                    <span style={{ flex:1 }}>{o.txt}</span>
+                  </button>
+                ))}
+                {q.chave === 'cr' && triagem.problema && (
+                  <div style={{ fontSize:13, fontStyle:'italic', color:'rgba(26,23,20,0.6)' }}>
+                    Problema, nas palavras do aluno: “{triagem.problema}”</div>
+                )}
+              </div>
+            );
+          })}
+        </Card>
+      )}
 
       {/* Pré-visualização da nota final — mostra SEMPRE a decomposição por
           categoria, para o professor perceber como se chegou ao número, mesmo

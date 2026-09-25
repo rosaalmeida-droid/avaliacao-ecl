@@ -159,6 +159,8 @@ export interface SelecaoAluno {
   atitudes: string[];
   responsabilidades: string[];
   autoavaliacoes: AutoavaliacaoCompetencia[];
+  /** Triagem do Colaborativo e do Criativo (só para os 5 C da pauta). */
+  triagem5c?: import('./triagem5c').Triagem5C;
   comentario?: string;
   fotoUrl?: string;
   criadaEm: string;
@@ -179,6 +181,8 @@ export interface Validacao {
   alunoId: string;
   turmaId: string;
   notas: NotaCompetencia[];
+  /** Triagem do CL e do CR confirmada pelo professor (só para os 5 C). */
+  triagem5c?: import('./triagem5c').Triagem5C;
   comentarioGeral?: string;
   validadoPor: string;
   validadoEm: string;

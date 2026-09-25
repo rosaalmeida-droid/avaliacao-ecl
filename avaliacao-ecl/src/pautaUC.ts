@@ -26,6 +26,7 @@
 //   - PROPOSTA ALUNO: a nota que o aluno propôs na autoavaliação final.
 //   - CLASSIF. ATRIBUÍDA: a nota final da UC; negativas levam "a)".
 // ============================================================
+import { PERGUNTAS_TRIAGEM, notaTriagem } from './triagem5c';
 import {
   getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes, getSelecoes, getPresencas,
   getPlanosFaltadosPorUC, getAtividades, situacaoRecuperacaoUC, assiduidadeNaUC,
@@ -52,13 +53,13 @@ export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; atitudes: s
     evidencias: 'assiduidade (horas), pontualidade, farda completa à entrada, autoavaliações entregues' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
     atitudes: ['ATI-009', 'ATI-008', 'ATI-007', 'ATI-018', 'ATI-022', 'ATI-006'],
-    evidencias: 'participação em eventos e atividades extra, registos de grupo no KitchenFlow, liderança do grupo' },
+    evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, registos de grupo no KitchenFlow, liderança do grupo' },
   co: { sigla: 'CO', nome: 'Consciente',
     atitudes: ['ATI-015', 'ATI-016', 'ATI-017', 'ATI-005', 'ATI-014'],
     evidencias: 'higiene pessoal e segurança alimentar (obrigatórias, em todas as aulas práticas)' },
   cr: { sigla: 'CR', nome: 'Criativo',
     atitudes: ['ATI-010', 'ATI-012', 'ATI-004', 'ATI-021', 'ATI-019'],
-    evidencias: 'resolução de problemas: problemas que detetou e registou, sentido crítico na autoavaliação' },
+    evidencias: 'resolução de problemas: pergunta de cada aula «resolveste algum problema?», problemas que detetou e registou, sentido crítico na autoavaliação' },
 };
 
 const nomeAtitude = (id: string) => (ATITUDES as any[]).find(a => a.id === id)?.nome || id;
@@ -224,7 +225,22 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       const selecoes = getSelecoes().filter(x => x.alunoId === a.id && idsVeio.has(x.planoAulaId as string));
       junta('cm', `Autoavaliações entregues: ${selecoes.length} de ${nVeio} aulas`, pct(selecoes.length, nVeio), nVeio);
 
+      // Triagem das aulas (CL e CR): a resposta do aluno em cada autoavaliação,
+      // ou a do professor quando a confirmou ou mudou na validação.
+      const triagens = selecoes.map(sel => {
+        const v: any = getValidacoes().find((x: any) => x.selecaoId === sel.id || (x.planoAulaId === sel.planoAulaId && x.alunoId === a.id));
+        return { t: v?.triagem5c || sel.triagem5c, prof: !!v?.triagem5c };
+      }).filter(x => x.t);
+      const juntaTriagem = (c: 'cl' | 'cr') => {
+        const q = PERGUNTAS_TRIAGEM.find(x => x.chave === c)!;
+        const ns = triagens.map(x => notaTriagem(x.t![c])).filter((n): n is number => n !== null);
+        const conf = triagens.filter(x => x.prof && notaTriagem(x.t![c]) !== null).length;
+        junta(c, `${q.titulo} (pergunta de cada aula): respondeu em ${ns.length} aula${ns.length === 1 ? '' : 's'}, ${conf} confirmada${conf === 1 ? '' : 's'} pelo professor`,
+          media(ns.map(n => n * 4)), ns.length);
+      };
+
       // CL — colaboração: eventos e atividades extra, trabalho de grupo
+      juntaTriagem('cl');
       if (totalAtiv > 0) {
         const part = participacoesDoAlunoNaUC(a.id, turmaId, ucId);
         junta('cl', `Eventos e atividades extra: ${part} de ${totalAtiv}`, pct(Math.min(part, totalAtiv), totalAtiv), totalAtiv);
@@ -240,6 +256,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       if (!obr.length) junta('co', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
 
       // CR — resolução de problemas
+      juntaTriagem('cr');
       const ncs = (() => { try { return JSON.parse(localStorage.getItem('ecl_nao_conformidades') || '[]'); } catch { return []; } })()
         .filter((n: any) => n.perfilRegistou === 'aluno' && n.alunoId === a.id && idsVeio.size > 0);
       if (ncs.length) junta('cr', `Problemas que detetou e registou: ${ncs.length}`, Math.min(20, 14 + 2 * ncs.length), ncs.length);
