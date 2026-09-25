@@ -5666,7 +5666,7 @@ export interface DiferencaRequisicao { faltam: string[]; sobram: string[]; }
 /** Fichas do plano que a requisição não tem, e as que tem a mais. Null se está em dia. */
 export function requisicaoDesatualizada(planoId: string): DiferencaRequisicao | null {
   const plano = getPlanosAula().find(p => p.id === planoId);
-  const req = getRequisicoes().find(r => r.planoAulaId === planoId);
+  const req = getRequisicaoPorPlano(planoId); // a mais recente
   if (!plano || !req) return null;
   const doPlano = new Set(plano.fichasIds || []);
   const naReq = new Set(req.fichasIds || []);

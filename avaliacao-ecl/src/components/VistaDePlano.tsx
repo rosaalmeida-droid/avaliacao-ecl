@@ -368,6 +368,15 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     else if (moduloPedido === 'inicio') { setModulo('inicio'); setTabInicio('resumo'); }
     else setModulo(moduloPedido as Modulo);
   }, [moduloPedido]);
+  // O botão «Criar Requisição →» da ficha pede para abrir a requisição deste plano.
+  React.useEffect(() => {
+    const abrir = (e: Event) => {
+      if ((e as CustomEvent).detail?.planoId !== plano.id) return;
+      setModalProximo(null); setFichasParaRequisicao([]); setModulo('requisicao');
+    };
+    window.addEventListener('ecl:abrirRequisicao', abrir);
+    return () => window.removeEventListener('ecl:abrirRequisicao', abrir);
+  }, [plano.id]);
   const [incluirSubApp, setIncluirSubApp] = useState(true);
   /** Ficha que está a ser editada; null = criar nova. */
   const [fichaEmEdicao, setFichaEmEdicao] = useState<string | null>(null);
@@ -1717,7 +1726,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700 }}>{f.nomePrato}</div>
                     <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>
-                      {f.classificacao || 'Sem classificação'} · {f.numPorcoes || '?'} doses
+                      {f.classificacao || 'Sem classificação'} · {f.numPorcoes ? `${f.numPorcoes} doses` : 'doses por definir'}
                       {' · '}{f.ingredientes?.length || 0} ingredientes
                     </div>
                     <div style={{ fontSize: 13, marginTop: 1,
