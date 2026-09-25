@@ -362,13 +362,19 @@ function extrairFicha(texto: string): FichaTecnica {
                     texto.match(/DOSES?:\s*(\d+)/i)?.[1] || '';
     const tPrepIA = extrair('TEMPO DE PREPARAÇÃO');
     const tConfIA = extrair('TEMPO DE CONFEÇÃO');
-    const alergenicosIA = extrair('ALERGÉNICOS');
+    // As IAs escrevem umas vezes ALERGÉNICOS, outras ALERGÉNIOS.
+    const alergenicosIA = extrair('ALERGÉNICOS') || extrair('ALERGÉNIOS') || extrair('ALERGENIOS');
 
     // Ingredientes com separador |
     const secIngIA = texto.match(/INGREDIENTES:\n([\s\S]*?)(?=\nPREPARAÇÃO:|$)/i);
     const ingredientesIA: LinhaIngrediente[] = [];
     if (secIngIA) {
-      const linhasIng = secIngIA[1].split('\n').filter(l => l.trim() && !l.toUpperCase().includes('COMPONENTE') && !l.toUpperCase().startsWith('INGREDIENTE'));
+      // Tabelas em Markdown começam e acabam em "|" e têm uma linha "|---|":
+      // sem tirar isso, tudo ficava uma coluna ao lado (a quantidade ia
+      // para a unidade, a unidade para o produto).
+      const linhasIng = secIngIA[1].split('\n')
+        .map(l => l.trim().replace(/^\|/, '').replace(/\|$/, '').trim())
+        .filter(l => l && !/^[\s|:\-]+$/.test(l) && !l.toUpperCase().includes('COMPONENTE') && !l.toUpperCase().startsWith('INGREDIENTE'));
       for (const linha of linhasIng) {
         // Formato com | (formato preferido)
         if (linha.includes('|')) {
@@ -427,10 +433,14 @@ function extrairFicha(texto: string): FichaTecnica {
     }
 
     // Preparação — aceita formato com ou sem |
-    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|\nEQUIPAMENTO|\nCONSERVAÇÃO:|$)/i);
+    // A preparação acaba no campo seguinte — também nos alergénios e nos
+    // registos: antes, "ALERGÉNIOS: …" ia parar às observações do último passo.
+    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|\nEQUIPAMENTO|\nCONSERVAÇÃO:|\nALERG|\nREGENERAÇÃO|\nREGISTOS|\nSUBTÉCNICAS|\nAPARELHOS|\n===GUI|$)/i);
     const preparacaoIA: PassoPreparacao[] = [];
     if (secPrepIA) {
-      const linhasRaw = secPrepIA[1].split('\n').filter(l => l.trim());
+      const linhasRaw = secPrepIA[1].split('\n')
+        .map(l => l.trim().replace(/^\|/, '').replace(/\|$/, '').trim())
+        .filter(l => l && !/^[\s|:\-]+$/.test(l));
       const temPipe = linhasRaw.some(l => l.includes('|'));
 
       if (temPipe) {
@@ -464,7 +474,8 @@ function extrairFicha(texto: string): FichaTecnica {
         let passoActual: PassoPreparacao | null = null;
         for (const linha of linhasRaw) {
           if (/^NR\s+DESCRI/i.test(linha)) continue; // cabeçalho
-          const mNum = linha.match(/^(\d+)\s+(.+)/);
+          // "1 Desfiar…", "1. Desfiar…" ou "1) Desfiar…"
+          const mNum = linha.match(/^(\d+)[.)ºº\-]?\s+(.+)/);
           if (mNum) {
             if (passoActual) preparacaoIA.push(passoActual);
             // Extrair PCC/HACCP da linha se presente
@@ -1966,7 +1977,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
       {/* 4. CAIXA RESULTADO */}
       <div style={{ background:'rgba(181,101,29,0.04)', borderRadius:10, padding:'12px 14px', marginBottom:12, border:'1px solid rgba(181,101,29,0.15)' }}>
         <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
-          📥 Passo 3 — Cola aqui o resultado da IA
+          📥 Passo 2 — Cola aqui o resultado da IA
         </div>
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:8 }}>
           Cola o resultado da ficha <strong>ou</strong> do guia — a app detecta automaticamente qual é.
@@ -2191,7 +2202,7 @@ function PassoFichaTecnica({
             )}
           </Field>
 
-          <Field label="Alergénicos">
+          <Field label="Alergénios">
             <input className="input" value={ficha.alergenicos} onChange={e => setF('alergenicos', e.target.value)} />
           </Field>
           <Field label="Nº Porções">
@@ -2406,7 +2417,7 @@ function PassoFichaTecnica({
       {/* Alergénicos */}
       {ficha.alergenicos && (
         <Card>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Alergénicos detetados</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Alergénios detetados</div>
           <div style={{ fontSize: 14 }}>{ficha.alergenicos}</div>
           <div className="muted" style={{ fontSize:13, marginTop: 4 }}>
             ⚠️ Verificar sempre — baseado nos ingredientes introduzidos
@@ -2799,6 +2810,13 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         kitchenflow: fichaConfirmada.kitchenflow || '',
         tecnicasSugeridas: fichaConfirmada.tecnicasDetectadas || [],
         ...({ aparelhosDetectados: (fichaConfirmada as any).aparelhosDetectados || [] } as any),
+        // A família (obrigatória para a avaliação), a secundária e as
+        // etiquetas escolhiam-se no formulário mas não eram guardadas.
+        ...({
+          familia1: fichaConfirmada.familia1 || (fichaOriginal as any)?.familia1 || undefined,
+          familia2: fichaConfirmada.familia2 || (fichaOriginal as any)?.familia2 || undefined,
+          etiquetas: Array.isArray(fichaConfirmada.etiquetas) ? fichaConfirmada.etiquetas : ((fichaOriginal as any)?.etiquetas || []),
+        } as any),
         ucsAssociadas: [ucId].filter(Boolean),
         elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
         // A data da ficha é a da aula a que pertence. Sem plano, é a de
