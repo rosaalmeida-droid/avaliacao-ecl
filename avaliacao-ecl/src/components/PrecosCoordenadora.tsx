@@ -28,7 +28,9 @@ const e2 = (x: number) => x > 0 ? x.toFixed(2).replace('.', ',') + ' €' : '—
 export function PrecosCoordenadora() {
   const [versao, setVersao] = useState(0);
   const grupos = useMemo(() => gruposDeProdutos(), []);
-  const [parte, setParte] = useState(0);
+  // -3 = todos os produtos num só pedido (o normal); as partes ficam para
+  // quando a IA não aguenta a lista toda.
+  const [parte, setParte] = useState(-3);
   const [resposta, setResposta] = useState('');
   const [res, setRes] = useState<ResultadoVerificacao | null>(null);
   const [escolhidos, setEscolhidos] = useState<Set<string>>(new Set());
@@ -41,9 +43,10 @@ export function PrecosCoordenadora() {
   const aReverNaBase = aRever.filter(p => p.mpId);
   useEffect(() => { lerPrecosDoSheets().then(ok => { if (ok) setVersao(v => v + 1); }); }, []);
   // Se há pedidos dos professores, o pedido à IA começa por esses.
-  useEffect(() => { if (aReverNaBase.length && parte === 0 && !res) setParte(-2); }, [aReverNaBase.length]);
+  useEffect(() => { if (aReverNaBase.length && parte === -3 && !res) setParte(-2); }, [aReverNaBase.length]);
   const revistos = useMemo(() => new Map(getPrecosRevistos().map(p => [p.id, p])), [versao]);
-  const idsParte = parte === -2 ? aReverNaBase.map(p => p.mpId)
+  const idsParte = parte === -3 ? getMateriaPrimasBase().map(m => m.id)
+    : parte === -2 ? aReverNaBase.map(p => p.mpId)
     : parte < 0 ? faltam.map(m => m.id) : grupos[parte]?.ids || [];
   const pedido = useMemo(() => gerarPedidoIA(idsParte), [parte, versao]);
   const mesNome = new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
@@ -118,12 +121,14 @@ export function PrecosCoordenadora() {
       <div style={caixa}>
         <div style={titulo}>1. Copiar o pedido para a IA</div>
         <div style={nota}>
-          Cola-o numa IA que pesquise na internet (ChatGPT, Claude, Gemini, com pesquisa ligada). Se a lista for
-          grande demais para a IA, faz por partes.
+          Cola-o numa IA que pesquise na internet (ChatGPT, Claude, Gemini, com pesquisa ligada). O pedido leva
+          todas as matérias-primas. Se a IA parar a meio ou disser que é demasiado, escolhe «Parte 1», «Parte 2»… e
+          faz uma de cada vez.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
           <select value={parte} onChange={e => { setParte(Number(e.target.value)); setRes(null); }}
             style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 14, fontFamily: 'inherit' }}>
+            <option value={-3}>Todos os produtos ({getMateriaPrimasBase().length})</option>
             {aReverNaBase.length > 0 && <option value={-2}>Os que os professores pediram para rever ({aReverNaBase.length})</option>}
             {faltam.length > 0 && <option value={-1}>Só os por rever este mês ({faltam.length})</option>}
             {grupos.map((g, i) => <option key={i} value={i}>Parte {i + 1} de {grupos.length}: {g.nome} ({g.ids.length})</option>)}

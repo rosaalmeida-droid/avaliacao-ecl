@@ -1105,7 +1105,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   // a primeira, e a tolerância conta a partir dela.
                   if (aAbrir) return;
                   setAAbrir(true);
-                  abrirSessaoAula(plano.id, turmaId, nomeProfessor || 'professor');
+                  // A turma do PLANO — é a que os alunos leem. A turma escolhida no
+                  // menu pode ser outra, e os alunos nunca viam a aula aberta.
+                  abrirSessaoAula(plano.id, plano.turmaId || turmaId, nomeProfessor || 'professor');
                   // Um objeto NOVO — com o mesmo, o ecrã não se redesenhava
                   // e o botão ficava à vista como se nada tivesse acontecido.
                   onPlanoActualizado?.({ ...plano });
