@@ -250,12 +250,13 @@ export function MenuDoPlano({
           activo={moduloActivo === 'validacao'}
           aoClicar={() => aoIrPara('validacao')} />
 
-        {/* A turma só faz sentido depois de a aula abrir. */}
-        {alunosNaAula && (
+        {/* A turma: depois de a aula abrir, ou numa aula que já passou —
+            é aí que se marcam as faltas de uma aula criada depois. */}
+        {(alunosNaAula || String(plano.data || '').slice(0, 10) < new Date().toISOString().slice(0, 10)) && (
           <Linha
             marca="neutro"
-            texto="Turma"
-            contador={alunosNaAula}
+            texto="Turma e faltas"
+            contador={alunosNaAula || '—'}
             activo={moduloActivo === 'turma'}
             aoClicar={() => aoIrPara('turma')} />
         )}

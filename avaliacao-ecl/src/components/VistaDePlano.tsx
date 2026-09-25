@@ -1075,6 +1075,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         const sessao = getSessaoAula(plano.id);
         const t = estadoTolerancia(plano.id);
 
+        // Aula que já passou: não se abre (os dez minutos começavam agora).
+        // As faltas marcam-se na lista da turma.
+        if (!sessao?.abertaEm && String(plano.data || '').slice(0, 10) < new Date().toISOString().slice(0, 10)) {
+          return (
+            <div style={{ background:'var(--cream-dark)', borderRadius:14, padding:'12px 16px', fontSize:13.5,
+              color:'rgba(26,23,20,0.7)', lineHeight:1.5 }}>
+              <b>Esta aula já passou.</b> Marca as faltas de cada aluno na lista abaixo
+              {tabInicio !== 'turma' && <> — <button onClick={() => setTabInicio('turma')} style={{ background:'none', border:'none',
+                padding:0, color:'var(--copper)', fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', fontSize:13.5 }}>
+                abrir a lista da turma</button></>}.
+            </div>
+          );
+        }
         if (!sessao?.abertaEm) {
           return (
             <div style={{ background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
