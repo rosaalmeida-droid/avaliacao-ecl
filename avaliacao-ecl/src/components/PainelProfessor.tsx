@@ -106,7 +106,6 @@ const MAIS: Destino[] = [
   { id: 'requisicao',      label: 'Requisições', icone: I.requisicao },
   { id: 'orcamentos',      label: 'Orçamentos', icone: I.orcamento },
   { id: 'historial',       label: 'Historial', icone: I.historial },
-  { id: 'copia_seguranca', label: 'Cópia de segurança', icone: I.copia },
   { id: 'ajuda',           label: 'Ajuda', icone: I.ajuda },
 ];
 
@@ -306,7 +305,7 @@ export function PainelProfessor({
           background: 'transparent', color: C.texto, fontSize: 14.5, fontWeight: 600,
           cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20,
         }}>
-          {verMais ? 'Menos' : 'Mais… (guiões, requisições, orçamentos, historial, cópia de segurança, ajuda)'}
+          {verMais ? 'Menos' : 'Mais… (guiões, requisições, orçamentos, historial, ajuda)'}
         </button>
         </div>
 

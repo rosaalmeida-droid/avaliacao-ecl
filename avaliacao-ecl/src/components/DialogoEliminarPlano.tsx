@@ -32,8 +32,10 @@ function Botao({ children, onClick, cor = '#fff', texto = '#1a1714', borda = 'rg
   );
 }
 
-export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir }: {
+export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir, podeEliminar = false }: {
   plano: PlanoAula;
+  /** Só a coordenadora elimina para sempre; o professor arquiva. */
+  podeEliminar?: boolean;
   onFechar: () => void;
   /** Depois de arquivar ou eliminar. */
   onFeito: () => void;
@@ -62,7 +64,7 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir }: {
         background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 480,
         maxHeight: '90vh', overflowY: 'auto',
       }}>
-        <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>Eliminar o plano</div>
+        <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{podeEliminar ? 'Eliminar o plano' : 'Arquivar o plano'}</div>
         <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.6)', marginBottom: 14 }}>{nome}</div>
 
         {/* ── Sem nada feito na aula ── */}
@@ -75,10 +77,16 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir }: {
               Arquivar
               <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.55)' }}>Sai do calendário; podes repô-lo no Arquivo.</div>
             </Botao>
-            <Botao cor={VERMELHO} texto="#fff" borda={VERMELHO}
-              onClick={() => { anularPlanoAula(plano.id); onFeito(); }}>
-              Eliminar de vez
-            </Botao>
+            {podeEliminar ? (
+              <Botao cor={VERMELHO} texto="#fff" borda={VERMELHO}
+                onClick={() => { anularPlanoAula(plano.id); onFeito(); }}>
+                Eliminar de vez
+              </Botao>
+            ) : (
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', margin: '0 2px 10px' }}>
+                Eliminar para sempre é com a coordenadora.
+              </div>
+            )}
             <Botao onClick={onFechar}>Cancelar</Botao>
           </>
         )}
@@ -107,18 +115,27 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir }: {
                 </div>
               </Botao>
             )}
-            <Botao borda={VERMELHO} texto={VERMELHO} onClick={() => setPasso('confirmar')}>
-              Anular a aula e apagar as avaliações
-              <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
-                A aula não devia ter contado. Tudo o que os alunos fizeram nela desaparece.
-              </div>
-            </Botao>
+            {podeEliminar ? (
+              <Botao borda={VERMELHO} texto={VERMELHO} onClick={() => setPasso('confirmar')}>
+                Anular a aula e apagar as avaliações
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
+                  A aula não devia ter contado. Tudo o que os alunos fizeram nela desaparece.
+                </div>
+              </Botao>
+            ) : (
+              <Botao onClick={() => { arquivarPlanoAula(plano.id); onFeito(); }}>
+                Arquivar
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
+                  Sai do calendário. Se a aula não devia ter contado, a coordenadora anula-a e apaga as avaliações.
+                </div>
+              </Botao>
+            )}
             <Botao onClick={onFechar}>Cancelar</Botao>
           </>
         )}
 
         {/* ── Com avaliações: segunda confirmação ── */}
-        {r.temAvaliacoes && passo === 'confirmar' && (
+        {r.temAvaliacoes && podeEliminar && passo === 'confirmar' && (
           <>
             <div style={{ background: VERMELHO, color: '#fff', borderRadius: 12,
               padding: '14px 16px', marginBottom: 14, lineHeight: 1.6 }}>

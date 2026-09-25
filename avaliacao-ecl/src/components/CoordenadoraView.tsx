@@ -16,9 +16,10 @@ import { coresDaTurma } from '../cores';
 import { EventosWizard } from './EventosWizard';
 import { ManualCoordenador } from './ManualCoordenador';
 import { GestaoAlunosExternos } from './AlunosExternos';
+import { DadosSeguranca } from './DadosSeguranca';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos' | 'dados'>('avisos');
 
   const TABS_COORD = [
     { id:'avisos',      emoji:'🔔', label:'Avisos',      cor:'#e63946' },
@@ -30,6 +31,7 @@ export function CoordenadoraView() {
     { id:'cronograma',  emoji:'📆', label:'Cronograma',  cor:'#5C3D8F' },
     { id:'atividades',  emoji:'🎯', label:'Eventos',     cor:'#e67e22' },
     { id:'config',      emoji:'⚙️', label:'Config',      cor:'#8e44ad' },
+    { id:'dados',       emoji:'🔒', label:'Dados e segurança', cor:'#c0392b' },
     { id:'manual',      emoji:'📋', label:'Manual',      cor:'#b5651d' },
     { id:'externos',    emoji:'🌍', label:'Externos',    cor:'#0f766e' },
   ] as const;
@@ -87,6 +89,7 @@ export function CoordenadoraView() {
       {tab === 'pedagogico' && <VisaoPedagogicaTab />}
       {tab === 'alunos' && <GestaoAlunosTab />}
       {tab === 'config' && <ConfigTab />}
+      {tab === 'dados' && <DadosSeguranca />}
     </div>
   );
 }

@@ -2971,10 +2971,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         <div style={{ background: 'var(--sage)', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <h2 className="display" style={{ margin: 0, color: 'white' }}>Fichas de Produção</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost" onClick={() => { setModoSelecao(!modoSelecao); setFichasSelecionadasIds(new Set()); }}
-              style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>
-              {modoSelecao ? '✕ Cancelar' : '☑ Selecionar'}
-            </button>
+            {/* Eliminar fichas para sempre é com a coordenadora (Dados e segurança). */}
             <button className="btn btn-primary" onClick={novaFicha} style={{ background: 'white', color: 'var(--sage)' }}>+ Nova ficha</button>
           </div>
         </div>
@@ -3275,16 +3272,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                 <EtiquetaLigacaoPlano planoAulaId={f.planoAulaId} fichaId={f.id} />
               </div>
               <span className="stamp">Ver / Editar</span>
-              <button onClick={(e) => {
-                e.stopPropagation();
-                if (confirm(`Eliminar definitivamente "${f.nomePrato}"? Apaga a ficha aqui e no arquivo da escola — não pode ser desfeito.`)) {
-                  eliminarFichaProducaoDefinitivamente(f.id);
-                  recarregar();
-                }
-              }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
-                title="Eliminar definitivamente">
-                🗑️
-              </button>
+
             </div>
           </div>
         ))}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PainelContextual, ContextoPainel } from './PainelContextual';
+import { turmasDoProfessor } from '../professores';
 import { ContadorUCEmAtraso } from './UCEmAtraso';
 
 // Calcula o ano letivo actual com base na data de hoje.
@@ -105,12 +106,12 @@ export const NAV: NavItem[] = [
   { id: 'requisicao',          label: 'Requisições',          icon: Icons.req,        secao: 'Mais' },
   { id: 'orcamentos',          label: 'Orçamentos',           icon: Icons.req,        secao: 'Mais' },
   { id: 'historial',           label: 'Historial',            icon: Icons.avaliacao,  secao: 'Mais' },
-  { id: 'copia_seguranca',     label: 'Cópia de segurança',   icon: Icons.backup,     secao: 'Mais' },
   { id: 'ajuda',               label: 'Ajuda',                icon: Icons.ajuda,      secao: 'Mais' },
 ];
 
 // ── Sidebar ────────────────────────────────────────────────────
-function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta, isMobile, onFechar }: {
+function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta, isMobile, onFechar, onMudarTurma }: {
+  onMudarTurma?: (turmaId: string) => void;
   vistaAtiva: VistaProf;
   onNavegar: (v: VistaProf) => void;
   nomeProfessor: string;
@@ -205,7 +206,18 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
             const al = calcularAnoLetivo();
             return (<>
               <div style={{ color: WHITE, fontSize: 13, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Lectivo {al.anoLetivo}</div>
-              {turmaId && <div style={{ color: WHITE, fontSize: 13, fontWeight: 800, marginBottom: 2 }}>🏫 {turmaId}</div>}
+              {turmaId && (() => {
+                // Só as turmas deste professor; com mais de uma, muda-se aqui.
+                const minhas = turmasDoProfessor(nomeProfessor);
+                if (minhas.length > 1 && onMudarTurma) return (
+                  <select value={turmaId} onChange={e => onMudarTurma(e.target.value)} aria-label="Turma"
+                    style={{ width: '100%', margin: '2px 0 4px', padding: '6px 8px', borderRadius: 8, border: 'none',
+                      fontSize: 13.5, fontWeight: 800, fontFamily: 'inherit', background: WHITE, color: '#1a1714', cursor: 'pointer' }}>
+                    {minhas.map(t => <option key={t} value={t}>🏫 {t}</option>)}
+                  </select>
+                );
+                return <div style={{ color: WHITE, fontSize: 13, fontWeight: 800, marginBottom: 2 }}>🏫 {turmaId}</div>;
+              })()}
               <div style={{ color: SIDEBAR_TXT, fontSize: 12.5, marginBottom: 8 }}>{al.semestre}</div>
               <div style={{ height: 5, background: 'rgba(255,255,255,0.15)', borderRadius: 99, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${al.percentagem}%`, background: WHITE, borderRadius: 99, transition: 'width 0.4s' }} />
@@ -330,7 +342,8 @@ export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus, o
 }
 
 // ── Layout completo do professor ────────────────────────────────
-export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, syncStatus, onAtualizar, contextoPainel, children }: {
+export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, syncStatus, onAtualizar, contextoPainel, children, onMudarTurma }: {
+  onMudarTurma?: (turmaId: string) => void;
   vistaAtiva: VistaProf;
   onNavegar: (v: VistaProf) => void;
   nomeProfessor: string;
@@ -364,6 +377,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
         aberta={aberta}
         isMobile={isMobile}
         onFechar={() => setSidebarAberta(false)}
+        onMudarTurma={onMudarTurma}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: isMobile ? 0 : 240, minWidth: 0, transition: 'margin-left 0.22s', background: APP_BG }}>

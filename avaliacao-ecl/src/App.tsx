@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { confirmarTurmaAoPublicar } from './professores';
 import { inicializarCompat } from './compatECL';
 import { loadLibrary } from './libraryService';
 import { Perfil, Aluno, PlanoAula as TPlanoAula } from './types';
@@ -109,7 +110,6 @@ function HistorialView({ turmaId, onIrPara }: {
     </div>
   );
 }
-import { CopiaSegurancaView } from './components/CopiaSeguranca';
 import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
 import { MapaCompetencias } from './components/MapaCompetencias';
 import { CentroAvisos } from './components/CentroAvisos';
@@ -304,6 +304,11 @@ function AppInterno() {
   if (perfil === 'professor') {
     return (
       <LayoutProfessor
+        onMudarTurma={(t: string) => navegarCom(() => {
+          // Mudar de turma fecha o plano aberto: é outra turma, outros planos.
+          setPlanoAberto(null); setVistaGlobal('inicio'); limparAlteracoes();
+          setTurmaId(t); sincronizarDoSheets(t).then(() => setRefreshKey(k => k + 1)).catch(() => {});
+        }, 'Se mudares de turma agora perdes o que estás a preencher.')}
         vistaAtiva={vistaGlobal}
         onNavegar={irPara}
         nomeProfessor={nomeProfessor}
@@ -405,6 +410,7 @@ function AppInterno() {
                       s.planoAulaId === planoAberto.id && !vals.has(s.id)).length;
                   })()}
                   aoPublicar={planoAberto.estado !== 'publicado' ? () => {
+                    if (!confirmarTurmaAoPublicar(planoAberto.turmaId, planoAberto.titulo)) return;
                     const p = { ...planoAberto, estado: 'publicado' as const,
                       atualizadoEm: new Date().toISOString() };
                     setPlanoAberto(p);
@@ -665,7 +671,7 @@ function AppInterno() {
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
             )}
             {vistaGlobal === 'avaliacao_uc' && <AvaliacaoPorUC turmaId={turmaId} />}
-            {vistaGlobal === 'copia_seguranca' && <CopiaSegurancaView />}
+            {/* A cópia de segurança passou para a coordenadora (Dados e segurança). */}
             {vistaGlobal === 'gestao_recuperacoes' && <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
             {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}

@@ -320,23 +320,15 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                 </span>
                 <button onClick={() => {
                   if (planosSelecionadosCal.size === 0) return;
-                  // Em lote só se eliminam aulas sem trabalho dos alunos. As que
-                  // têm avaliações eliminam-se uma a uma, para se ver o que se perde.
-                  const comTrabalho = [...planosSelecionadosCal].filter(id => resumoDoPlano(id).temAvaliacoes);
-                  if (comTrabalho.length) {
-                    alert(`${comTrabalho.length} dos planos escolhidos já têm entradas ou avaliações de alunos.\n\n`
-                      + 'Esses eliminam-se um a um, no caixote de cada plano — para veres o que vai desaparecer.');
-                    return;
-                  }
-                  if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosCal.size} plano(s)?`)) {
-                    planosSelecionadosCal.forEach(id => anularPlanoAula(id));
+                  if (confirm(`Arquivar ${planosSelecionadosCal.size} plano(s)? Saem do calendário; podes repô-los no Arquivo.`)) {
+                    planosSelecionadosCal.forEach(id => arquivarPlanoAula(id));
                     setPlanosSelecionadosCal(new Set());
                     setModoSelecaoCal(false);
                     onPlanoEliminado?.();
                   }
                 }} disabled={planosSelecionadosCal.size === 0}
                   style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12.5, cursor: planosSelecionadosCal.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosCal.size === 0 ? 0.4 : 1 }}>
-                  🗑️ Eliminar
+                  🗄️ Arquivar
                 </button>
               </div>
             )}
@@ -692,7 +684,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                   {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                 </div>
                 <button onClick={() => { desarquivarPlanoAula(p.id); setRefreshKey(k => k + 1); }} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>↩️ Restaurar</button>
-                <button onClick={() => setArquivadoAEliminar(p)} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--danger)', background: '#fff', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>🗑️ Eliminar</button>
+
               </div>
             </div>
           );
@@ -731,19 +723,13 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{planosSelecionadosIds.size} plano(s) selecionado(s)</span>
           <button onClick={() => {
             if (planosSelecionadosIds.size === 0) return;
-            const comTrabalho = [...planosSelecionadosIds].filter(id => resumoDoPlano(id).temAvaliacoes);
-            if (comTrabalho.length) {
-              alert(`${comTrabalho.length} dos planos escolhidos já têm entradas ou avaliações de alunos.\n\n`
-                + 'Esses eliminam-se um a um — para veres o que vai desaparecer.');
-              return;
-            }
-            if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosIds.size} plano(s)?`)) {
-              planosSelecionadosIds.forEach(id => anularPlanoAula(id));
+            if (confirm(`Arquivar ${planosSelecionadosIds.size} plano(s)? Saem da lista; podes repô-los no Arquivo.`)) {
+              planosSelecionadosIds.forEach(id => arquivarPlanoAula(id));
               setPlanosSelecionadosIds(new Set()); setModoSelecaoPlanos(false); setRefreshKey(k => k + 1);
             }
           }} disabled={planosSelecionadosIds.size === 0}
             style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 13, cursor: planosSelecionadosIds.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosIds.size === 0 ? 0.4 : 1 }}>
-            🗑️ Eliminar Selecionados
+            🗄️ Arquivar selecionados
           </button>
         </div>
       )}
@@ -1007,7 +993,14 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
         <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: '1px solid rgba(247,241,230,0.2)', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>← Voltar</button>
         <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>Novo Plano de Aula</div>
-        <div style={{ fontSize: 13, color: 'rgba(247,241,230,0.5)', marginTop: 3 }}>ECL · {turmaId}</div>
+        {/* A turma bem à vista: o plano fica nesta turma e só estes alunos o veem. */}
+        <div style={{ display: 'inline-block', marginTop: 8, padding: '6px 12px', borderRadius: 8,
+          background: 'var(--copper)', color: '#fff', fontSize: 15, fontWeight: 800 }}>
+          Turma: {turmaId}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.6)', marginTop: 4 }}>
+          Só os alunos desta turma veem este plano. Se não é esta a turma, muda-a no menu antes de criar.
+        </div>
       </div>
       <Card>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>

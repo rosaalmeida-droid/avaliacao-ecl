@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { confirmarTurmaAoPublicar } from '../professores';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { PlanoAula, FichaProducao } from '../types';
 import {
@@ -100,10 +101,11 @@ function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAu
           Esta aula ainda não está publicada
         </div>
         <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.65)', marginTop: 2 }}>
-          Os alunos só a veem depois de publicares.
+          Os alunos do {plano.turmaId} só a veem depois de publicares.
         </div>
       </div>
       <button onClick={() => {
+        if (!confirmarTurmaAoPublicar(plano.turmaId, plano.titulo)) return;
         const semFicha = (plano.fichasIds?.length || 0) === 0;
         if (semFicha && !confirm(
           'Este plano ainda não tem ficha técnica.\n\n'
@@ -546,6 +548,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   /** Publica e confirma no Sheets — é de lá que o aluno lê. */
   async function publicar() {
+    if (!confirmarTurmaAoPublicar(plano.turmaId, plano.titulo)) return;
     setAPublicar(true);
     try {
       const r = await publicarPlanoParaAlunos(plano.id);
