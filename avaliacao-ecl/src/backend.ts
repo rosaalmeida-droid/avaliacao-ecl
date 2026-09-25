@@ -234,6 +234,57 @@ export async function buscarFichasSimilares(nome: string): Promise<Array<{id: st
 
 // ── Sincronização do Sheets para localStorage ─────────────────
 // Chamada na inicialização da app — carrega dados do Sheets se houver URL
+
+// ============================================================
+// O Sheets manda
+// ============================================================
+// A aplicação guarda uma cópia de tudo no aparelho. Ao ler do Sheets,
+// juntava o que vinha de lá ao que já tinha — e nunca tirava nada. As
+// aulas, fichas e requisições apagadas no Sheets continuavam a aparecer.
+//
+// Depois de uma leitura que correu bem (mesmo com a folha vazia):
+//  - o que já esteve no Sheets e deixou de estar foi apagado lá: sai;
+//  - o que nunca lá chegou e é recente, ou está na lista de espera,
+//    fica e volta a ser enviado (é trabalho novo que ainda não chegou);
+//  - o que nunca lá chegou e é antigo é sobra de antes: sai.
+
+const KEY_VISTOS_SHEETS = 'ecl_vistos_no_sheets';
+const DIAS_PARA_CHEGAR = 2;
+
+function vistosNoSheets(colecao: string): Set<string> {
+  try { return new Set((JSON.parse(localStorage.getItem(KEY_VISTOS_SHEETS) || '{}')[colecao]) || []); }
+  catch { return new Set(); }
+}
+function marcarVistosNoSheets(colecao: string, ids: Set<string>): void {
+  try {
+    const todos = JSON.parse(localStorage.getItem(KEY_VISTOS_SHEETS) || '{}');
+    todos[colecao] = [...ids].slice(-5000);
+    localStorage.setItem(KEY_VISTOS_SHEETS, JSON.stringify(todos));
+  } catch { /* */ }
+}
+
+function reconciliarComSheets<T extends { id: string }>(
+  colecao: string, itens: T[], idsNoSheets: Set<string>,
+  abrange: (x: T) => boolean, dataDe: (x: T) => string, reenviarItem: (x: T) => void,
+): T[] {
+  const vistos = vistosNoSheets(colecao);
+  idsNoSheets.forEach(id => vistos.add(id));
+  const emEspera = new Set(espera().map(p => String(p.id)));
+  const limite = new Date(Date.now() - DIAS_PARA_CHEGAR * 86400000).toISOString();
+  const ficam = itens.filter(x => {
+    if (!abrange(x) || idsNoSheets.has(String(x.id))) return true;
+    if (vistos.has(String(x.id))) return false;              // apagado no Sheets
+    const recente = String(dataDe(x) || '') >= limite;
+    if (recente || emEspera.has(String(x.id))) {             // ainda não chegou: reenviar
+      reenviarItem(x);
+      return true;
+    }
+    return false;                                            // sobra antiga
+  });
+  marcarVistosNoSheets(colecao, vistos);
+  return ficam;
+}
+
 export async function sincronizarDoSheets(turmaId: string): Promise<void> {
   try {
     // Sessões e líderes primeiro: são o que o aluno precisa para saber
@@ -246,10 +297,10 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     if (SHEETS_PLANOS_URL) {
       const jsonPlanos = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
       marcarLeituraPlanos(!!jsonPlanos?.ok);
-      if (jsonPlanos?.ok && jsonPlanos.dados?.length > 0) {
+      if (jsonPlanos?.ok && Array.isArray(jsonPlanos.dados)) {
         const locais = getPlanosAula();
         const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
-        const merged = [...locais];
+        let merged = [...locais];
         for (const pRaw of jsonPlanos.dados) {
           if (eliminados.has(pRaw.id)) continue; // já foi eliminado de propósito — não trazer de volta
           // Normalizar — o Sheets pode devolver campos array como string (CSV de uma célula)
@@ -290,6 +341,11 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             }
           } else merged.push(p);
         }
+        merged = reconciliarComSheets('planos', merged,
+          new Set(jsonPlanos.dados.map((x: any) => String(x.id))),
+          x => x.turmaId === turmaId,
+          x => String((x as any).atualizadoEm || (x as any).criadoEm || x.data || ''),
+          x => enviar(SHEETS_PLANOS_URL, 'plano', { plano: x }));
         save(KEYS.planos, merged);
       }
     }
@@ -300,10 +356,10 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     // de origem, mas o aluno pode sempre ver/imprimir a versão completa em HTML.
     if (SHEETS_FICHAS_URL) {
       const jsonFichas = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
-      if (jsonFichas?.ok && jsonFichas.dados?.length > 0) {
+      if (jsonFichas?.ok && Array.isArray(jsonFichas.dados)) {
         const locais = getFichasProducao();
         const eliminadas = new Set(load<string>(KEYS.eliminadosFichas));
-        const merged = [...locais];
+        let merged = [...locais];
         for (const f of jsonFichas.dados) {
           if (eliminadas.has(f.id)) continue; // já foi eliminada de propósito — não trazer de volta
           const idx = merged.findIndex((x: FichaProducao) => x.id === f.id);
@@ -341,6 +397,11 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             merged[idx] = atualizado;
           }
         }
+        merged = reconciliarComSheets('fichas', merged,
+          new Set(jsonFichas.dados.map((x: any) => String(x.id))),
+          () => true,
+          x => String((x as any).atualizadoEm || (x as any).criadoEm || ''),
+          x => enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: x }));
         save(KEYS.fichas, merged);
       }
     }
@@ -378,9 +439,9 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       try {
         const jsonReq = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_requisicoes', turmaId });
         const doSheets = jsonReq?.requisicoes || jsonReq?.dados || [];
-        if (Array.isArray(doSheets) && doSheets.length > 0) {
+        if (jsonReq?.ok && Array.isArray(doSheets)) {
           const locais = getRequisicoes();
-          const merged = [...locais];
+          let merged = [...locais];
           for (const r of doSheets) {
             if (!r?.id) continue;
             const idx = merged.findIndex(x => x.id === r.id);
@@ -395,6 +456,11 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
               };
             }
           }
+          merged = reconciliarComSheets('requisicoes', merged,
+            new Set(doSheets.map((x: any) => String(x.id))),
+            x => x.turmaId === turmaId,
+            x => String(x.atualizadaEm || x.criadaEm || ''),
+            x => enviar(SHEETS_PLANOS_URL, 'requisicao', { requisicao: x }));
           save(KEYS.requisicoes, merged);
         }
       } catch { /* sem rede, fica o que está */ }
@@ -6279,24 +6345,32 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   const turmas = [...new Set(l.map(x => x.turmaId).filter(Boolean))];
   const tipos = [...new Set(l.map(x => x.tipo))];
   const noSheets = new Map<string, Set<string>>();
+  // Leitura que correu bem, mesmo com a folha vazia. Antes, uma folha sem
+  // nenhuma linha (por exemplo, depois de limpar os dados de teste) era
+  // tomada por "não consegui ler" — e o que estava à espera nunca mais era
+  // reenviado: a aula criada não chegava ao Sheets nem aos alunos.
+  const lidoComSucesso = new Set<string>();
 
   for (const tipo of tipos) {
     const [url, pedido] = LEITURA_POR_TIPO[tipo];
     const ids = new Set<string>();
+    let algumaLeitura = false;
     for (const t of (turmas.length ? turmas : [''])) {
       try {
         const json: any = await lerDoSheets(url, { tipo: pedido, turmaId: t });
+        if (json?.ok) algumaLeitura = true;
         (json?.dados || []).forEach((x: any) => ids.add(String(x.id)));
       } catch { /* sem rede: fica para a próxima */ }
     }
     noSheets.set(tipo, ids);
+    if (algumaLeitura) lidoComSucesso.add(tipo);
   }
 
   const restantes: PorConfirmar[] = [];
   let confirmados = 0;
   for (const p of l) {
     const ids = noSheets.get(p.tipo);
-    if (!ids || !ids.size) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
+    if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id))) { confirmados++; continue; }
     if (p.tentativas < 5) reenviar(p);
     restantes.push({ ...p, tentativas: p.tentativas + 1 });
