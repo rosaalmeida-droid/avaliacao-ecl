@@ -10,7 +10,7 @@
 //
 // Duas correções ao modelo, sem mudar o formato nem a fórmula do TOTAL:
 //   - a coluna 60% do CP (U), que o TOTAL lê, estava vazia: passa a ter o
-//     CP (=T, o nível N); sem isto o Competente não chegava ao TOTAL;
+//     CP arredondado à unidade (=ROUND(T)); sem isto não chegava ao TOTAL;
 //   - o CR não tinha peso (X14 vazio): os 5 C's somavam 90%.
 //
 // O que a aplicação calcula:
@@ -296,11 +296,14 @@ export function calculoDoModelo(l: LinhaPautaUC, produtos: ProdutoPauta[], total
   const nAtiv = l.atividades < 1 ? 0 : l.atividades < totalAtividades * 0.5 ? 2
     : l.atividades < totalAtividades * 0.7 ? 4 : l.atividades < totalAtividades * 0.85 ? 5 : 6;
   const niveis = l.produtos.map(v => nivelPauta(v));
-  const cp = niveis.reduce((s, n, j) => s + n * ((produtos[j]?.peso || 0) / 100), 0);
+  // CP em duas colunas, como no modelo: N (a conta dos níveis) e 60%, o
+  // Competente arredondado à unidade, que é o que entra no TOTAL.
+  const cpN = niveis.reduce((s, n, j) => s + n * ((produtos[j]?.peso || 0) / 100), 0);
+  const cp = Math.round(cpN);
   const total = (l.c5.cm ?? 0) * PESOS_5C.cm + cp * PESOS_5C.cp + (l.c5.cl ?? 0) * PESOS_5C.cl
     + (l.c5.co ?? 0) * PESOS_5C.co + (l.c5.cr ?? 0) * PESOS_5C.cr;
   const resultado = total < 3.5 ? 'Módulo em atraso' : total < 4.5 ? 'Suficiente' : total < 5.5 ? 'Bom' : 'Muito bom';
-  return { nAtiv, niveis, cp, total, resultado };
+  return { nAtiv, niveis, cpN, cp, total, resultado };
 }
 
 // ── CLASSIF. ATRIBUÍDA ───────────────────────────────────────
@@ -327,32 +330,35 @@ export function notaDoCompetente(l: LinhaPautaUC, produtos: ProdutoPauta[]): num
 }
 
 /** Sugestão para a CLASSIF. ATRIBUÍDA: o Competente em 0-20, dentro da
- *  faixa do nível do CP (um aluno com 4 no CP fica entre 10 e 13). */
-export function sugestaoClassificacao(l: LinhaPautaUC, produtos: ProdutoPauta[], cpNivel: number): number | null {
+ *  faixa do Competente (um aluno com 4 no CP fica entre 10 e 13). */
+export function sugestaoClassificacao(l: LinhaPautaUC, produtos: ProdutoPauta[], cp: number): number | null {
   const n = notaDoCompetente(l, produtos);
   if (n === null) return null;
-  const f = FAIXAS[faixaDoNivel(cpNivel)];
+  const f = FAIXAS[faixaDoNivel(cp)];
   return Math.min(f.ate, Math.max(f.de, Math.round(n)));
 }
 
-/** Avisos quando a nota atribuída não corresponde ao CP ou ao RESULTADO. */
-export function avisosClassificacao(nota: number | null, cpNivel: number, total: number, resultado: string): string[] {
-  if (nota === null) return [];
-  const av: string[] = [];
-  const fCP = FAIXAS[faixaDoNivel(cpNivel)];
-  if (faixaDaNota(nota) !== faixaDoNivel(cpNivel))
-    av.push(`Não corresponde ao Competente (CP ${String(Math.round(cpNivel * 100) / 100).replace('.', ',')} → ${fCP.nome}, ${fCP.de} a ${fCP.ate}).`);
-  const fT = FAIXAS[faixaDoNivel(total)];
-  if (faixaDaNota(nota) !== faixaDoNivel(total))
-    av.push(`Não corresponde ao RESULTADO da folha (${resultado} → ${fT.de} a ${fT.ate}).`);
-  return av;
+/** A nota tem de estar na faixa do Competente: devolve o erro, ou null. */
+export function erroClassificacao(nota: number | null, cp: number): string | null {
+  if (nota === null) return null;
+  const f = FAIXAS[faixaDoNivel(cp)];
+  return faixaDaNota(nota) === faixaDoNivel(cp) ? null
+    : `Com Competente ${cp} (${f.nome}) a nota tem de estar entre ${f.de} e ${f.ate}.`;
 }
 
-/** O que vai para a célula: com "a)" nas negativas e no Módulo em atraso. */
-export const classificacaoComNota = (nota: number | null, resultado: string) => {
+/** Aviso (não impede) quando a nota não corresponde ao RESULTADO da folha. */
+export function avisosClassificacao(nota: number | null, total: number, resultado: string): string[] {
+  if (nota === null) return [];
+  const fT = FAIXAS[faixaDoNivel(total)];
+  return faixaDaNota(nota) !== faixaDoNivel(total)
+    ? [`Não corresponde ao RESULTADO da folha (${resultado} → ${fT.de} a ${fT.ate}).`] : [];
+}
+
+/** O que vai para a célula: "a)" só nas notas negativas. */
+export const classificacaoComNota = (nota: number | null) => {
   if (nota === null) return '';
   const f = Math.round(nota);
-  return f < 10 || resultado === 'Módulo em atraso' ? `${f} a)` : f;
+  return f < 10 ? `${f} a)` : f;
 };
 
 // ── Cabeçalho ────────────────────────────────────────────────
@@ -504,20 +510,21 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
     // As fórmulas do modelo, só com as colunas no sítio novo. O CP tem duas
     // colunas: N (o nível, em T) e 60% (em U), que é a que o TOTAL lê. No
     // original a U ficava vazia e o CP não chegava ao TOTAL: passa a ter o
-    // CP (=T). O TOTAL fica com a fórmula original. O CR pesa 10% (X14 vazia).
+    // CP arredondado à unidade. O TOTAL fica com a fórmula original. O CR pesa 10% (X14 vazia).
     f(lm(COL.T), Array.from({ length: nProd }, (_, j) => `(${LETRA(colNota(j) + 1)}${R}*$${LETRA(colPeso(j))}$9)`).join('+'));
     set(lm(COL.S), l.c5.cm);
     set(lm(COL.V), l.c5.cl);
     set(lm(COL.W), l.c5.co);
     set(lm(COL.X), l.c5.cr);
     const $ = (c: number) => `$${L(c)}$14`;
-    f(lm(COL.U), lm(COL.T));
+    f(lm(COL.U), `ROUND(${lm(COL.T)},0)`);
+    ws.getCell(lm(COL.U)).numFmt = '0';
     f(lm(COL.Y), `(${lm(COL.S)}*${$(COL.S)})+(${lm(COL.U)}*${$(COL.U)})+(${lm(COL.V)}*${$(COL.V)})+(${lm(COL.W)}*${$(COL.W)})+(${lm(COL.X)}*${$(COL.X)})`);
     f(lm(COL.Z), `IF(${lm(COL.Y)}<3.5,"Módulo em atraso",IF(${lm(COL.Y)}<4.5,"Suficiente",IF(${lm(COL.Y)}<5.5,"Bom","Muito bom")))`);
     set(lm(COL.AE), l.proposta);
     // CLASSIF. ATRIBUÍDA: a nota que o professor atribuiu (sem fórmula, como no modelo).
     const calc = calculoDoModelo(l, d.produtos, d.totalAtividades);
-    const cl = classificacaoComNota(d.classificacoes[l.alunoId] ?? null, calc.resultado);
+    const cl = classificacaoComNota(d.classificacoes[l.alunoId] ?? null);
     set(lm(COL.AG), cl === '' ? null : cl);
   }
   if (e2) ws.pageSetup.printArea = `A1:${LETRA(ULTIMA_COL + e2)}${41 + extra}`;
@@ -631,13 +638,13 @@ export function htmlDaPauta(d: DadosPauta): string {
       // Colunas sem produto ficam em branco (não 0).
       if (d.produtos[j]) val(r, colNota(j), calc.niveis[j]);
     }
-    val(r, X0(COL.S), l.c5.cm ?? ''); val(r, X0(COL.T), Math.round(calc.cp * 100) / 100);
-    val(r, X0(COL.U), Math.round(calc.cp * 100) / 100);
+    val(r, X0(COL.S), l.c5.cm ?? ''); val(r, X0(COL.T), Math.round(calc.cpN * 100) / 100);
+    val(r, X0(COL.U), calc.cp);
     val(r, X0(COL.V), l.c5.cl ?? ''); val(r, X0(COL.W), l.c5.co ?? ''); val(r, X0(COL.X), l.c5.cr ?? '');
     val(r, X0(COL.Y), Math.round(calc.total * 100) / 100);
     val(r, X0(COL.Z), calc.resultado);
     if (l.proposta !== null) val(r, X0(COL.AE), l.proposta);
-    val(r, X0(COL.AG), classificacaoComNota(d.classificacoes[l.alunoId] ?? null, calc.resultado));
+    val(r, X0(COL.AG), classificacaoComNota(d.classificacoes[l.alunoId] ?? null));
   }
 
   // Grelha: as linhas a mais repetem a penúltima linha de alunos.

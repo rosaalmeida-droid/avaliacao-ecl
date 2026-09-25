@@ -9,7 +9,7 @@
 //   - a nota que o aluno propôs na autoavaliação final;
 //   - a CLASSIF. ATRIBUÍDA: a aplicação sugere uma nota perto do
 //     Competente, o professor decide, e avisa-se quando não corresponde
-//     ao CP ou ao RESULTADO; "a)" nas negativas e no Módulo em atraso.
+//     ao RESULTADO; fora da faixa do Competente não deixa gerar; "a)" nas negativas.
 // Antes de tudo pergunta que Planos de Avaliação entram (recomendado:
 // todos os realizados na UC). Cada coluna da pauta é um plano.
 // Depois descarrega a pauta no modelo da escola, em Excel (.xlsx, abre
@@ -25,7 +25,7 @@ import { modulosDaTurma } from '../cronograma';
 import {
   produtosDaUC, linhasDaPautaUC, atividadesDoModulo, gerarPautaXLSX, gerarPautaPDF, nomeFicheiroPauta,
   calculoDoModelo, classificacaoComNota, descarregar, MAPA_5C, colunasDeProdutos,
-  planosRealizadosDaUC, sugestaoClassificacao, avisosClassificacao, notaDoCompetente,
+  planosRealizadosDaUC, sugestaoClassificacao, avisosClassificacao, erroClassificacao, notaDoCompetente,
   type CabecalhoPauta, type DadosPauta, type Letra5C,
 } from '../pautaUC';
 
@@ -83,12 +83,14 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
     const escrita = classifEscrita[l.alunoId];
     const n = escrita !== undefined && escrita !== '' ? Number(escrita.replace(',', '.')) : NaN;
     const nota = !isNaN(n) && n >= 0 && n <= 20 ? Math.round(n) : sugestao;
-    return [l.alunoId, { c, sugestao, nota, avisos: avisosClassificacao(nota, c.cp, c.total, c.resultado) }];
+    const erro = erroClassificacao(nota, c.cp);
+    return [l.alunoId, { c, sugestao, nota, erro, avisos: [...(erro ? [erro] : []), ...avisosClassificacao(nota, c.total, c.resultado)] }];
   })), [linhas, produtos, totalAtividades, classifEscrita]);
   const classificacoes = Object.fromEntries(escolhidas.map(l => [l.alunoId, contas[l.alunoId]?.nota ?? null]));
-  const comAlinea = escolhidas.filter(l => String(classificacaoComNota(contas[l.alunoId].nota, contas[l.alunoId].c.resultado)).endsWith('a)'));
+  const comAlinea = escolhidas.filter(l => String(classificacaoComNota(contas[l.alunoId].nota)).endsWith('a)'));
   const negativas = comAlinea.length;
   const naoCorrespondem = escolhidas.filter(l => contas[l.alunoId].avisos.length > 0);
+  const foraDaFaixa = escolhidas.filter(l => contas[l.alunoId].erro);
   const semProposta = escolhidas.filter(l => l.proposta === null);
   const semEvidencia = (Object.keys(MAPA_5C) as Letra5C[])
     .map(c => ({ c, n: escolhidas.filter(l => l.c5[c] === null).length })).filter(x => x.n > 0);
@@ -110,6 +112,12 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
 
   /** Pergunta antes de sair uma pauta com classificações que não batem certo. */
   function confirmarClassificacoes(): boolean {
+    // Fora da faixa do Competente não pode sair: tem de se corrigir primeiro.
+    if (foraDaFaixa.length) {
+      alert('Há classificações fora da faixa do Competente. Corrige antes de continuar:\n\n'
+        + foraDaFaixa.map(l => `${l.numero}. ${l.nome} — ${contas[l.alunoId].nota}: ${contas[l.alunoId].erro}`).join('\n'));
+      return false;
+    }
     if (!naoCorrespondem.length) return true;
     return confirm('Há classificações que não correspondem à folha:\n\n'
       + naoCorrespondem.map(l => `${l.numero}. ${l.nome} — ${contas[l.alunoId].nota}: ${contas[l.alunoId].avisos.join(' ')}`).join('\n')
@@ -330,7 +338,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
             <tbody>
               {escolhidas.map(l => {
                 const { c, sugestao, nota, avisos } = contas[l.alunoId];
-                const cel = classificacaoComNota(nota, c.resultado);
+                const cel = classificacaoComNota(nota);
                 const neg = String(cel).endsWith('a)');
                 return (
                   <React.Fragment key={l.alunoId}>
@@ -340,7 +348,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
                       <td style={{ ...td, textAlign: 'left', whiteSpace: 'nowrap' }}>{l.nome}</td>
                       {l.produtos.map((v, j) => <td key={j} style={{ ...td, color: v === 0 ? '#c0392b' : undefined }}>{n1(v)}</td>)}
                       <td style={td}>{l.c5.cm ?? '—'}</td>
-                      <td style={{ ...td, background: '#ccffff', fontWeight: 700 }}>{n1(c.cp)}</td>
+                      <td style={{ ...td, background: '#ccffff', fontWeight: 700 }}>{c.cp}</td>
                       <td style={td}>{l.c5.cl ?? '—'}</td>
                       <td style={td}>{l.c5.co ?? '—'}</td>
                       <td style={td}>{l.c5.cr ?? '—'}</td>
@@ -391,7 +399,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
                               </div>
                             ))}
                             <div>
-                              <div style={{ fontWeight: 800, fontSize: 13.5 }}>CP · Competente: {n1(c.cp)}</div>
+                              <div style={{ fontWeight: 800, fontSize: 13.5 }}>CP · Competente: {c.cp} <span style={{ fontWeight: 400 }}>(N = {n1(c.cpN)})</span></div>
                               <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.75)' }}>
                                 Dos planos, com a ponderação acima. Em valores: {n1(notaDoCompetente(l, produtos))}.
                                 Sugestão para a classificação: {sugestao ?? '—'}.
