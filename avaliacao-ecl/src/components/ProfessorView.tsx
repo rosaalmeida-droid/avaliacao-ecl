@@ -1962,11 +1962,9 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           ✨ <strong>Prompt unificado</strong> — a IA gera a Ficha Técnica e o Guião de Apoio numa só resposta.
           Cola o resultado na app: primeiro o bloco da Ficha, depois o bloco do Guião (separados por ===GUIÃO===).
         </div>
+        {/* O seletor já tem "Copiar prompt" (é o mesmo prompt): havia um
+            segundo botão, "Copiar prompt unificado", que copiava o mesmo. */}
         <SeletorIA prompt={promptUnificado} corPrincipal="var(--copper)" />
-        <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:13 }}
-          onClick={() => copiarTexto(promptUnificado, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
-          {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt unificado'}
-        </button>
         {!nomePrato && (
           <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(90,122,78,0.08)', borderRadius:8, fontSize:13, color:'var(--sage)' }}>
             💡 Preenche o nome do prato acima para activar o Guia de Apoio

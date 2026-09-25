@@ -72,19 +72,20 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
 import { FichaRegistoUC } from './components/FichaRegistoUC';
 
 // Wrapper que combina Historial + Momentos + Ficha de Registo
-function HistorialView({ turmaId, onIrPara }: {
+// "Notas da UC" e "Historial" eram dois itens do menu que abriam o mesmo
+// historial. Ficou um só — "Notas da UC" — com a pauta à frente.
+function HistorialView({ turmaId, onIrPara, nomeProfessor }: {
   turmaId: string;
   onIrPara?: (vista: VistaProf, planoId?: string) => void;
+  nomeProfessor?: string;
 }) {
-  // "Por unidade" é o primeiro separador: é assim que o professor
-  // pensa no percurso, e é onde vê o que ficou por avaliar.
-  const [tab, setTab] = React.useState<'porUC' | 'historial' | 'momentos' | 'ficha'>('porUC');
+  const [tab, setTab] = React.useState<'porUC' | 'historial' | 'momentos' | 'ficha'>('historial');
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         {([
+          { id: 'historial', label: '📊 Notas e pauta' },
           { id: 'porUC',     label: '📚 Por unidade' },
-          { id: 'historial', label: '📊 Historial' },
           { id: 'momentos',  label: '📐 Momentos' },
           { id: 'ficha',     label: '📋 Ficha de Registo' },
         ] as const).map(t => (
@@ -104,7 +105,7 @@ function HistorialView({ turmaId, onIrPara }: {
           onValidar={(planoId) => onIrPara?.('validacao', planoId)}
         />
       )}
-      {tab === 'historial' && <AvaliacaoPorUC turmaId={turmaId} />}
+      {tab === 'historial' && <AvaliacaoPorUC turmaId={turmaId} nomeProfessor={nomeProfessor} />}
       {tab === 'momentos'  && <MomentosAvaliacao turmaId={turmaId} />}
       {tab === 'ficha'     && <FichaRegistoUC turmaId={turmaId} />}
     </div>
@@ -661,8 +662,8 @@ function AppInterno() {
               <OrcamentosView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
             )}
-            {vistaGlobal === 'historial' && (
-              <HistorialView turmaId={turmaId}
+            {(vistaGlobal === 'historial' || vistaGlobal === 'avaliacao_uc') && (
+              <HistorialView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onIrPara={(v, planoId) => { if (planoId) setPlanoIdAlvo(planoId); setVistaGlobal(v); }} />
             )}
             {vistaGlobal === 'ajuda' && <ManualProfessor />}
@@ -673,7 +674,6 @@ function AppInterno() {
               <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
             )}
-            {vistaGlobal === 'avaliacao_uc' && <AvaliacaoPorUC turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {/* A cópia de segurança passou para a coordenadora (Dados e segurança). */}
             {vistaGlobal === 'gestao_recuperacoes' && <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}

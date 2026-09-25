@@ -1065,105 +1065,14 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                       color: 'rgba(26,23,20,0.6)', cursor: 'pointer', flexShrink: 0 }}>
                     Ver ficha
                   </button>
-                  {fichasSel.includes(f.id) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <span style={{ fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>Doses:</span>
-                      <input type="number" min={1} value={paxPorFicha[f.id] || porcoesDe(f)}
-                        onChange={e => setPaxPorFicha(p => ({ ...p, [f.id]: Number(e.target.value) }))}
-                        style={{ ...S.inp, width: 60, textAlign: 'center' }} />
-                    </div>
-                  )}
+                  {/* As doses mudam-se só em "Nesta requisição", em cima. */}
                 </div>
 
-                {/* Ingredientes com preço — só quando ficha seleccionada */}
-                {fichasSel.includes(f.id) && Array.isArray(f.ingredientes) && f.ingredientes.length > 0 && (
-                  <div style={{ marginTop: 10, borderTop: '1px solid rgba(26,23,20,0.08)', paddingTop: 10 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--copper)',
-                      textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-                      💶 Preço dos ingredientes (opcional — preenche para estimativa de custo)
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 4 }}>
-                      {f.ingredientes.filter(ing => ing?.produto?.trim()).map((ing, ii) => {
-                        const chave = ing.produto.toLowerCase().trim();
-                        const custom = getMateriasPrimasCustom();
-                        const { mp } = encontrarMateriaPrimaComConfianca(ing.produto, custom);
-                        const precoSugerido = mp ? (ing.un === 'un' ? mp.precoUnitario : mp.precoKg) : 0;
-                        const valorActual = precosPreReq[chave] || (precoSugerido > 0 ? precoSugerido.toFixed(2).replace('.', ',') : '');
-                        return (
-                          <React.Fragment key={ii}>
-                            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)',
-                              alignSelf: 'center', paddingLeft: 4 }}>
-                              {ing.produto}
-                              <span style={{ color: 'rgba(26,23,20,0.4)', marginLeft: 4 }}>
-                                ({ing.qt} {ing.un})
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={valorActual}
-                                placeholder={ing.un === 'un' ? '€/un' : '€/kg'}
-                                onChange={e => setPrecosPreReq(p => ({ ...p, [chave]: e.target.value }))}
-                                // Vale nesta requisição; se for diferente do da
-                                // base, fica a rever pela coordenadora.
-                                onBlur={() => {
-                                  if (precosPreReq[chave] === undefined) return;
-                                  registarPrecoDoProfessor(ing.produto, ing.un === 'un' ? 'un' : 'kg',
-                                    precoNum(precosPreReq[chave]), f.classificacao || '');
-                                }}
-                                style={{ width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 13,
-                                  border: `1px solid ${valorActual ? 'var(--copper)' : 'var(--border)'}`,
-                                  background: valorActual ? 'var(--copper-pale)' : '#fff',
-                                  textAlign: 'right' }}
-                              />
-                              <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', minWidth: 28 }}>
-                                {ing.un === 'un' ? '€/un' : '€/kg'}
-                              </span>
-                            </div>
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                {/* Os preços escrevem-se na tabela da requisição, depois de a
+                    gerar: aqui pediam-se uma primeira vez, ficha a ficha. */}
               </div>
             ))}
         </div>
-
-        {/* Ajuste de doses — aparece sempre que há fichas selecionadas.
-            Já não exige plano: uma requisição de orçamento não tem plano. */}
-        {fichasSel.length > 0 && (
-          <div style={S.card}>
-            <label style={S.lbl}>Nº de doses por ficha</label>
-            {fichasSelecionadas.map(f => (
-              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.15)' }}>
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--copper)' }}>
-                  {f.nomePrato}
-                  <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.5)', marginLeft: 6, fontSize: 13 }}>
-                    (receita base: {porcoesDe(f)} doses)
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  <button
-                    onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, (p[f.id] || porcoesDe(f)) - 1) }))}
-                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-                  <input
-                    type="number" min={1}
-                    value={paxPorFicha[f.id] || porcoesDe(f)}
-                    onChange={e => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, Number(e.target.value)) }))}
-                    style={{ ...S.inp, width: 60, textAlign: 'center', fontWeight: 700, fontSize: 15 }} />
-                  <button
-                    onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: (p[f.id] || porcoesDe(f)) + 1 }))}
-                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                </div>
-              </div>
-            ))}
-            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)', textAlign: 'right', marginTop: 2 }}>
-              Total: {paxEncTotal} doses
-            </div>
-          </div>
-        )}
 
         {/* 3. Dados adicionais */}
         {fichasSel.length > 0 && (

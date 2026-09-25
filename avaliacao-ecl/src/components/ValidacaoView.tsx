@@ -392,7 +392,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
 
   return (
     <div>
-      <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={onVoltar}>← Voltar</button>
+      <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={onVoltar}>← Voltar à lista</button>
 
       {guardado && (
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',

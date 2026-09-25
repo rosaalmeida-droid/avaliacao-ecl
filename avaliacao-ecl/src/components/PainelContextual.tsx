@@ -197,23 +197,29 @@ function TabKitchenFlow({ turmaId, plano }: { turmaId: string; plano?: PlanoAula
 
 // ── Componente principal ──────────────────────────────────────
 export function PainelContextual({ contexto, isMobile }: Props) {
-  const [tabAtiva, setTabAtiva] = useState<TabId>('competencias');
+  const [tabAtiva, setTabAtiva] = useState<TabId>(contexto.plano ? 'competencias' : 'avisos');
   // Lazy — só calcular após montagem para evitar erro de inicialização
   const [nAvisos, setNAvisos] = useState(0);
   React.useEffect(() => {
     try { setNAvisos(getAvisosPendentes().length); } catch {}
   }, [tabAtiva]);
 
+  // Sem plano, o separador Competências desaparece: não ficar nele.
+  React.useEffect(() => {
+    if (!contexto.plano && tabAtiva === 'competencias') setTabAtiva('avisos');
+  }, [contexto.plano, tabAtiva]);
+
   // Não mostrar no mobile
   if (isMobile) return null;
 
+  // Só o que não está noutro sítio. KitchenFlow e Cronograma estão no
+  // menu lateral; as Competências só com um plano (fora dele ficava
+  // "Abre um plano de aula…").
   const TABS: Tab[] = [
-    { id: 'competencias', emoji: '📋', label: 'Competências' },
-    { id: 'kitchenflow',  emoji: '🍃', label: 'KitchenFlow' },
+    ...(contexto.plano ? [{ id: 'competencias' as TabId, emoji: '📋', label: 'Competências' }] : []),
     { id: 'avisos',       emoji: '⚠️', label: 'Avisos', badge: nAvisos },
     { id: 'comentario',   emoji: '💬', label: 'Comentário' },
     { id: 'dicionario',   emoji: '📖', label: 'Dicionário' },
-    { id: 'cronograma',   emoji: '📅', label: 'Cronograma' },
   ];
 
   return (
