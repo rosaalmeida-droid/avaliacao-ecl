@@ -259,10 +259,37 @@ const fQn = (n: number, und: string) => {
 // espera sempre um número, mesmo que seja 0). fQn esconde zeros só para
 // efeitos visuais na tabela; usar essa função no envio fazia desaparecer
 // ingredientes com quantidade pequena ou exactamente 0.
-const fQnEnvio = (n: number, und: string): string => {
-  if (und === 'un') return String(Math.round(n));
-  return n.toFixed(4);
+//
+// Vai como NÚMERO, não como texto: "0.4000" em texto depende da língua da
+// folha (em português o separador é a vírgula) e podia não ser lido como
+// número. As unidades também levam casas decimais: arredondar à unidade
+// fazia 0,4 limão passar a 0 e desaparecer.
+const fQnEnvio = (n: number, _und: string): number => {
+  const x = isFinite(n) ? n : 0;
+  return Math.round(x * 10000) / 10000;
 };
+
+/**
+ * Quantidade a pôr na coluna B («quantidade receita») do documento.
+ *
+ * O documento calcula a encomenda de cada linha com UMA só proporção
+ * para a folha toda: A = B / M7 (1 dose) e a encomenda = A × H7. Com uma
+ * ficha, ou com todas as fichas na mesma proporção, isto dá certo.
+ *
+ * Com fichas em proporções diferentes (Arroz 4→4 e Omelete 4→5), a
+ * proporção única (9/8) aumentava também o arroz. E as quantidades de
+ * encomenda corrigidas à mão na app não chegavam ao documento.
+ *
+ * Por isso envia-se a quantidade de encomenda que a app calculou,
+ * trazida para a base da folha: B = encomenda × M7 / H7. O documento,
+ * ao fazer B / M7 × H7, volta a dar exactamente a encomenda da app.
+ * Quando as proporções são todas iguais, B é a quantidade da receita,
+ * como antes.
+ */
+function qtParaColunaB(l: { qtEncomenda: number }, paxReceita: number, paxTotal: number): number {
+  if (!(paxReceita > 0) || !(paxTotal > 0)) return l.qtEncomenda;
+  return l.qtEncomenda * paxReceita / paxTotal;
+}
 
 // ── Estilos ───────────────────────────────────────────────────
 const S = {
@@ -480,7 +507,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       const payload = {
         nomeReceita, familia,
         paxTotal: paxEncTotal,   // H7 — Encomendas
-        paxReceita: paxBaseTotal, // L7 — Receita para
+        paxReceita: paxBaseTotal, // M7 — Receita para
         turma: planoSel?.turmaId || turmaId || '',
         dataAula: planoSel?.data || '',
         formador: nomeProfessor || planoSel?.professor || '',
@@ -503,13 +530,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           .join('\n\n'),
         consumo: { bar: consumo.bar, rest: consumo.rest, interno: consumo.interno, convidados: consumo.convidados },
         // Ingredientes → linhas 16-58 do Sheets
-        // A = fórmula calculada (não escrever) | B=qtReceita | C=nome | H=und | L=precoUnitario
+        // A = fórmula (B/M7, não escrever) | B=qtReceita | C=nome | J=und | L=preço
         // Inclui também linhas Q.B. (sal, especiarias a gosto) — já têm uma
         // quantidade mínima estimada calculada, não devem ser excluídas da
         // requisição (o responsável de compras precisa de saber que existem).
         ingredientes: linhasAtivas.map(l => ({
           nome: l.produto,
-          qtReceita: fQnEnvio(l.qtReceita, l.und),
+          qtReceita: fQnEnvio(qtParaColunaB(l, paxBaseTotal, paxEncTotal), l.und),
           und: l.und,
           // Normalizar preço: vírgula → ponto (formato pt-PT → número universal)
           // O Apps Script e o Google Sheets esperam sempre ponto decimal.
