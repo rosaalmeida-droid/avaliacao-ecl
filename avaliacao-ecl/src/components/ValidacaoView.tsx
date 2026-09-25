@@ -26,7 +26,10 @@ const NIVEIS_PROF = [
 ];
 
 // Label do nível do aluno (vem da autoavaliação)
-function labelNivelAluno(nivel: string): string {
+function labelNivelAluno(nivel: string, nota?: number): string {
+  // A farda é verificada à entrada da aula: dizia só "entrada".
+  if (nivel === 'entrada') return nota && nota >= 5 ? 'Farda completa (verificada à entrada)'
+    : nota ? `Faltava-lhe parte da farda à entrada (${nota}/5)` : 'Verificado à entrada';
   if (nivel === 'mbr' || nivel === 'autonomia' || nivel === 'superei') return 'Faço com muito bom resultado';
   if (nivel === 'fs'  || nivel === 'sozinho'   || nivel === 'atingi')  return 'Faço sozinho/a';
   if (nivel === 'ca'  || nivel === 'ajuda'     || nivel === 'desenvolvimento') return 'Consegui com ajuda';
@@ -35,10 +38,13 @@ function labelNivelAluno(nivel: string): string {
   return nivel;
 }
 
-function corNivelAluno(nivel: string): string {
-  if (nivel === 'autonomia' || nivel === 'superei')          return '#0369a1';
-  if (nivel === 'sozinho'   || nivel === 'atingi')           return 'var(--sage)';
-  if (nivel === 'ajuda'     || nivel === 'desenvolvimento')  return 'var(--copper)';
+function corNivelAluno(nivel: string, nota?: number): string {
+  // A escala nova (mbr, fs, ca, tp) caía toda no vermelho: "Faço sozinho/a"
+  // aparecia como se fosse mau.
+  if (nivel === 'entrada') return nota && nota >= 5 ? 'var(--sage)' : 'var(--copper)';
+  if (nivel === 'mbr' || nivel === 'autonomia' || nivel === 'superei')          return '#0369a1';
+  if (nivel === 'fs'  || nivel === 'sozinho'   || nivel === 'atingi')           return 'var(--sage)';
+  if (nivel === 'ca'  || nivel === 'tp' || nivel === 'ajuda' || nivel === 'desenvolvimento')  return 'var(--copper)';
   return 'var(--danger)';
 }
 
@@ -199,6 +205,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   /** +1 já dados nesta validação — um por atitude, para não somar duas vezes. */
   const [maisUm, setMaisUm] = useState<Record<string, boolean>>({});
   const [aConfirmar, setAConfirmar] = useState(false);
+  /** A confirmar no Sheets. Era o mesmo estado da janela de confirmação —
+   *  e a janela voltava a abrir enquanto a nota seguia. */
+  const [aEnviar, setAEnviar] = useState(false);
   // Pré-preencher com a proposta do aluno — o professor só precisa de clicar
   // onde quer discordar (subir ou descer); o resto fica já seleccionado, pronto
   // a confirmar com um só toque em "Guardar".
@@ -364,9 +373,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     // aluno e o professor — por isso é dito na hora.
     setGuardado(true);
     const ids = notasFinais.map(n => `registo_${selecao.alunoId}_${selecao.planoAulaId}_${n.competenciaId}`);
-    setAConfirmar(true);
+    setAEnviar(true);
     const r = await confirmarRegistosNoSheets(selecao.turmaId, ids);
-    setAConfirmar(false);
+    setAEnviar(false);
     if (!r.ok) {
       alert(
         'ATENÇÃO — a avaliação ficou gravada aqui, mas NÃO saiu deste computador.\n\n'
@@ -442,8 +451,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         const notaFinal = notaProf ? calcularNotaFinal(notaProf, notaAluno14) : null;
 
         // Cor e label do nível do aluno — suporta escala nova e antiga
-        const corAluno = corNivelAluno((auto as any).nivel || '');
-        const labelAluno = labelNivelAluno((auto as any).nivel || '');
+        const corAluno = corNivelAluno((auto as any).nivel || '', (auto as any).nota);
+        const labelAluno = labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
 
         return (
           <div key={auto.competenciaId} style={{ marginBottom: 10, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
@@ -492,7 +501,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             )}
 
             {/* Critérios observáveis do Dicionário — ajuda o professor a validar com precisão */}
-            <CriteriosComp compId={auto.competenciaId} cor="var(--sage)" />
+            {/* Só quando a lista de cima não existe: eram os mesmos critérios duas vezes. */}
+            {criterios.length === 0 && <CriteriosComp compId={auto.competenciaId} cor="var(--sage)" />}
 
             {/* Avaliação do professor (1-4) */}
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, marginTop: 12, color: 'rgba(26,23,20,0.5)' }}>
@@ -701,9 +711,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           />
         </Field>
         <button className="btn btn-primary" onClick={() => setAConfirmar(true)}
-          disabled={autoavaliacoes.some(a => !notasProf[a.competenciaId])}
+          disabled={aEnviar || autoavaliacoes.some(a => !notasProf[a.competenciaId])}
           style={{ width:'100%', background: 'var(--sage)', marginTop: 8, padding: '14px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', opacity: autoavaliacoes.some(a => !notasProf[a.competenciaId]) ? 0.4 : 1 }}>
-          {aConfirmar ? 'A confirmar…' : '✓ Validar e guardar avaliação'}
+          {aEnviar ? 'A confirmar no arquivo da escola…' : '✓ Validar e guardar avaliação'}
         </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
           <div style={{ fontSize:13, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>

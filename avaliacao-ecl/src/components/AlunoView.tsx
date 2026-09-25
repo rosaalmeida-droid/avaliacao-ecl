@@ -1326,6 +1326,18 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   const pctProgresso = Math.round(passosConcluidos / totalPassos * 100);
   const passoActivo = PASSOS.find(p => p.id === secAberta);
 
+  // Ao voltar à aula, abre no passo onde o aluno ficou (e, com tudo feito,
+  // no que enviou). Abria sempre no passo 1, "Vamos começar", mesmo com a
+  // aula acabada e a nota já dada.
+  const _abriuNoPasso = React.useRef(false);
+  React.useEffect(() => {
+    if (_abriuNoPasso.current) return;
+    _abriuNoPasso.current = true;
+    const falta = PASSOS.find(p => estadoPasso(p.id) !== 'concluido');
+    setSecAberta(falta ? falta.id : PASSOS[PASSOS.length - 1].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div style={{ background:'#f0f4f8', display:'flex', flexDirection:'column' }}>
 
@@ -2638,7 +2650,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               {fmtDataHora(dataSubmissao)}
             </div>
           )}
-          <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:6 }}>O professor vai confirmar o teu registo.</div>
+          <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:6 }}>
+            {getValidacoes().some(v => v.alunoId === aluno.id && v.planoAulaId === plano.id)
+              ? 'O professor já validou. A nota desta aula está no topo.'
+              : 'O professor vai confirmar o teu registo.'}
+          </div>
         </div>
 
         {/* Mostrar o que foi submetido */}

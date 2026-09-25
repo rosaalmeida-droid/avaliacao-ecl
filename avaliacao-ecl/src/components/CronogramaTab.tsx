@@ -13,10 +13,13 @@ import {
 import { coresDaTurma } from '../cores';
 
 // IDs reais das turmas
+// As turmas deste ano. Estava ainda '1º ACP' (que já não existe) e
+// faltavam o 1º BCR e o 1º ACR: o cronograma do 1º ano aparecia vazio.
 const TURMAS_CONFIG = [
-  { id: '1º ACP', label: '1º CP', referencial: 'novo'   as const },
-  { id: '2º ACP', label: '2º CP', referencial: 'antigo' as const },
-  { id: '3º ACP', label: '3º CP', referencial: 'antigo' as const },
+  { id: '1º BCR', label: '1º BCR', referencial: 'novo'   as const },
+  { id: '1º ACR', label: '1º ACR', referencial: 'novo'   as const },
+  { id: '2º ACP', label: '2º ACP', referencial: 'antigo' as const },
+  { id: '3º ACP', label: '3º ACP', referencial: 'antigo' as const },
 ];
 
 function formatarData(iso: string): string {
