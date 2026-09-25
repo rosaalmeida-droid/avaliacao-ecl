@@ -16,7 +16,7 @@ import {
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
-import { estadoDosPrecos } from './materiasPrimasBase';
+import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
 
 // ══ SCRIPT ÚNICO ══
 // Um só script guarda tudo: planos, fichas, alunos, avaliações,
@@ -505,6 +505,12 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         }
         save(KEYS.selecoes, merged);
       }
+    }
+
+    // ── Preços revistos (Continente) — iguais para todas as turmas ────
+    if (SHEETS_ECL_URL) {
+      const jsonPrecos = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos' });
+      if (jsonPrecos?.ok && jsonPrecos.dados?.length > 0) juntarPrecosRevistos(jsonPrecos.dados);
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -3824,6 +3830,13 @@ export function rejeitarSugestaoIngrediente(avisoId: string): void {
 // só leitura). O professor nunca edita o ficheiro de código — só esta
 // camada, que cresce organicamente sempre que confirma um preço na
 // Requisição. Entradas aqui têm sempre prioridade sobre as de fábrica.
+/** Os preços revistos pela coordenadora vão para o Sheets (folha PRECOS),
+ *  todos de uma vez, para os outros aparelhos os usarem. */
+export function enviarPrecosRevistos(lista: PrecoRevisto[]): void {
+  if (!lista.length || !SHEETS_ECL_URL) return;
+  enviar(SHEETS_ECL_URL, 'precos', { precos: lista });
+}
+
 export function getMateriasPrimasCustom(): MateriaPrimaCustom[] {
   return load<MateriaPrimaCustom>(KEYS.materiasPrimasCustom);
 }

@@ -41,10 +41,10 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   { id:'a001', nome:'Açúcar branco granulado', categoria:'Açúcares', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.00, precoUnitario:1.00, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar','açúcar branco','açúcar granulado','acucar branco','sugar'] },
   { id:'a002', nome:'Açúcar amarelo', categoria:'Açúcares', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.49, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar amarelo','açúcar demerara','acucar amarelo'] },
   { id:'a003', nome:'Açúcar mascavado escuro', categoria:'Açúcares', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:2.39, precoUnitario:2.39, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar mascavado','mascavado','brown sugar','açúcar escuro'] },
-  { id:'a004', nome:'Açúcar em pó', categoria:'Açúcares', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:500, precoKg:3.34, precoUnitario:1.67, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar em pó','açúcar glacê','açúcar fino','icing sugar','acucar po'] },
-  { id:'a005', nome:'Açúcar baunilhado', categoria:'Açúcares', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:8, precoKg:5.00, precoUnitario:0.40, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar baunilhado','vanilla sugar','açúcar de baunilha'] },
-  { id:'a006', nome:'Mel', categoria:'Açúcares', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:500, precoKg:7.98, precoUnitario:3.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['mel','honey','mel de abelha'] },
-  { id:'a007', nome:'Açúcar de coco', categoria:'Açúcares', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:400, precoKg:9.97, precoUnitario:3.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar coco','coconut sugar'] },
+  { id:'a004', nome:'Açúcar em pó', categoria:'Açúcares', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:500, precoKg:3.34, precoUnitario:1.67, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar em pó','açúcar glacê','açúcar fino','icing sugar','acucar po'] },
+  { id:'a005', nome:'Açúcar baunilhado', categoria:'Açúcares', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:8, precoKg:50.00, precoUnitario:0.40, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar baunilhado','vanilla sugar','açúcar de baunilha'] },
+  { id:'a006', nome:'Mel', categoria:'Açúcares', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:500, precoKg:7.98, precoUnitario:3.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['mel','honey','mel de abelha'] },
+  { id:'a007', nome:'Açúcar de coco', categoria:'Açúcares', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:400, precoKg:9.97, precoUnitario:3.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar coco','coconut sugar'] },
 
   // ══════════════════════════════════════════════════════════
   // FARINHAS E CEREAIS
@@ -52,7 +52,7 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   { id:'f001', nome:'Farinha de trigo T55', categoria:'Farinhas', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:0.79, precoUnitario:0.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['farinha','farinha de trigo','farinha branca','farinha t55','flour'] },
   { id:'f002', nome:'Farinha de trigo T65', categoria:'Farinhas', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:0.99, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['farinha t65','farinha semi-integral'] },
   { id:'f003', nome:'Farinha integral de trigo', categoria:'Farinhas', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.19, precoUnitario:1.19, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['farinha integral','wholemeal flour','farinha wholemeal'] },
-  { id:'f004', nome:'Farinha de milho', categoria:'Farinhas', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:500, precoKg:1.58, precoUnitario:0.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['farinha milho','cornmeal','fuba','farinha de milho'] },
+  { id:'f004', nome:'Farinha de milho', categoria:'Farinhas', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:500, precoKg:1.58, precoUnitario:0.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['farinha milho','cornmeal','fuba','farinha de milho'] },
   { id:'f005', nome:'Amido de milho (Maizena)', categoria:'Farinhas', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:400, precoKg:3.22, precoUnitario:1.29, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['maizena','amido milho','cornstarch','amido de milho','espessante'] },
   { id:'f006', nome:'Arroz agulha branco', categoria:'Cereais', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.09, precoUnitario:1.09, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['arroz','arroz agulha','arroz longo','rice'] },
   { id:'f007', nome:'Arroz carolino', categoria:'Cereais', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.39, precoUnitario:1.39, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['arroz carolino','arroz redondo','arroz de grão redondo'] },
@@ -67,8 +67,8 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   // ══════════════════════════════════════════════════════════
   // GORDURAS E ÓLEOS
   // ══════════════════════════════════════════════════════════
-  { id:'g001', nome:'Azeite virgem extra', categoria:'Gorduras', unidadeCompra:'l', unidadeReceita:'ml', fatorConversao:750, precoKg:6.65, precoUnitario:4.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['azeite','azeite virgem','azeite veve','olive oil','azeite extra virgem'] },
-  { id:'g002', nome:'Azeite virgem', categoria:'Gorduras', unidadeCompra:'l', unidadeReceita:'ml', fatorConversao:750, precoKg:5.32, precoUnitario:3.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['azeite virgem normal'] },
+  { id:'g001', nome:'Azeite virgem extra', categoria:'Gorduras', unidadeCompra:'un', unidadeReceita:'ml', fatorConversao:750, precoKg:6.65, precoUnitario:4.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['azeite','azeite veve','olive oil','azeite extra virgem'] },
+  { id:'g002', nome:'Azeite virgem', categoria:'Gorduras', unidadeCompra:'un', unidadeReceita:'ml', fatorConversao:750, precoKg:5.32, precoUnitario:3.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['azeite virgem normal'] },
   { id:'g003', nome:'Óleo de girassol', categoria:'Gorduras', unidadeCompra:'l', unidadeReceita:'ml', fatorConversao:1000, precoKg:1.49, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['óleo','óleo girassol','óleo vegetal','sunflower oil','oil'] },
   { id:'g004', nome:'Manteiga sem sal', categoria:'Gorduras', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:7.16, precoUnitario:1.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['manteiga','butter','manteiga sem sal','manteiga s/sal'] },
   { id:'g005', nome:'Manteiga com sal', categoria:'Gorduras', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:7.16, precoUnitario:1.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['manteiga com sal','manteiga c/sal','salted butter'] },
@@ -89,7 +89,7 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   { id:'l007', nome:'Queijo mozzarella fresco', categoria:'Laticínios', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:125, precoKg:7.92, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['mozzarella','queijo mozzarella','mozzarela'] },
   { id:'l008', nome:'Queijo mozzarella ralado', categoria:'Laticínios', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:200, precoKg:8.95, precoUnitario:1.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['mozzarella ralada','queijo ralado mozzarella'] },
   { id:'l009', nome:'Queijo parmesão ralado', categoria:'Laticínios', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:80, precoKg:18.62, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['parmesão','parmesan','queijo parmesão','queijo parmigiano'] },
-  { id:'l010', nome:'Queijo ricotta', categoria:'Laticínios', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:5.96, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['ricotta','ricota','requeijão'] },
+  { id:'l010', nome:'Queijo ricotta', categoria:'Laticínios', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:5.96, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['ricotta','ricota'] },
   { id:'l011', nome:'Queijo creme (philadelphia tipo)', categoria:'Laticínios', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:200, precoKg:6.45, precoUnitario:1.29, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['queijo creme','cream cheese','philadelphia','queijo fresco creme'] },
   { id:'l012', nome:'Queijo fresco', categoria:'Laticínios', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:3.96, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['queijo fresco','fresh cheese'] },
   { id:'l013', nome:'Requeijão', categoria:'Laticínios', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:200, precoKg:3.95, precoUnitario:0.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['requeijão','reqeijao','requesón'] },
@@ -127,7 +127,7 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   // TOMATE E DERIVADOS
   // ══════════════════════════════════════════════════════════
   { id:'t001', nome:'Tomate redondo fresco', categoria:'Legumes', subcategoria:'Tomate', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.99, precoUnitario:1.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['tomate','tomate fresco','tomato','tomates'] },
-  { id:'t002', nome:'Tomate cherry', categoria:'Legumes', subcategoria:'Tomate', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:2.99, precoUnitario:2.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['tomate cherry','cherry tomato','tomate cereja'] },
+  { id:'t002', nome:'Tomate cherry', categoria:'Legumes', subcategoria:'Tomate', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:11.96, precoUnitario:2.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['tomate cherry','cherry tomato','tomate cereja'] },
   { id:'t003', nome:'Tomate pelado em lata', categoria:'Conservas', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:400, precoKg:1.47, precoUnitario:0.59, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['tomate pelado','tomate lata','tinned tomato','tomate inteiro lata'] },
   { id:'t004', nome:'Tomate triturado em lata', categoria:'Conservas', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:400, precoKg:1.47, precoUnitario:0.59, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['tomate triturado','crushed tomato','tomate partido'] },
   { id:'t005', nome:'Concentrado de tomate', categoria:'Conservas', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:200, precoKg:3.95, precoUnitario:0.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['concentrado tomate','tomato paste','pasta de tomate','polpa concentrada'] },
@@ -161,17 +161,17 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   // ══════════════════════════════════════════════════════════
   // OUTROS LEGUMES E HORTÍCOLAS
   // ══════════════════════════════════════════════════════════
-  { id:'v001', nome:'Cenoura', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:0.99, precoUnitario:1.98, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['cenoura','carrot','cenouras'] },
+  { id:'v001', nome:'Cenoura', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:0.99, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['cenoura','carrot','cenouras'] },
   { id:'v002', nome:'Pimento vermelho', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:2.49, precoUnitario:2.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['pimento vermelho','red pepper','pimento','capsicum vermelho'] },
   { id:'v003', nome:'Pimento verde', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.99, precoUnitario:1.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['pimento verde','green pepper','pimento verde'] },
   { id:'v004', nome:'Pimento amarelo', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:2.99, precoUnitario:2.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['pimento amarelo','yellow pepper'] },
   { id:'v005', nome:'Courgette', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.49, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['courgette','curgete','zucchini','aboborinha'] },
   { id:'v006', nome:'Beringela', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.49, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['beringela','eggplant','aubergine'] },
-  { id:'v007', nome:'Brócolos', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:500, precoKg:4.24, precoUnitario:4.24, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['brócolos','broccoli','brocolo','brocoli'] },
+  { id:'v007', nome:'Brócolos', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:500, precoKg:8.48, precoUnitario:4.24, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['brócolos','broccoli','brocolo','brocoli'] },
   { id:'v008', nome:'Couve-flor', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:800, precoKg:2.49, precoUnitario:1.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['couve flor','cauliflower','couve-flor'] },
   { id:'v009', nome:'Couve lombarda', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:1000, precoKg:1.49, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['couve lombarda','savoy cabbage','couve'] },
   { id:'v010', nome:'Couve portuguesa', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:0.99, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['couve portuguesa','couve galega','couve caldo verde'] },
-  { id:'v011', nome:'Espinafres frescos', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:200, precoKg:1.49, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['espinafres','spinach','espinafre'] },
+  { id:'v011', nome:'Espinafres frescos', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:200, precoKg:7.45, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['espinafres','spinach','espinafre'] },
   { id:'v012', nome:'Alface iceberg', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:300, precoKg:2.63, precoUnitario:0.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['alface','alface iceberg','lettuce','iceberg'] },
   { id:'v013', nome:'Rúcula', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:100, precoKg:9.90, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['rúcula','rocket','arugula'] },
   { id:'v014', nome:'Cogumelos brancos frescos', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:5.16, precoUnitario:1.29, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['cogumelos','mushrooms','cogumelo branco','champignon'] },
@@ -184,7 +184,7 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   { id:'v021', nome:'Nabo', categoria:'Legumes', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:0.89, precoUnitario:0.89, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['nabo','turnip','nabos'] },
   { id:'v022', nome:'Aipo', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:400, precoKg:2.47, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['aipo','celery','salsão'] },
   { id:'v023', nome:'Pepino', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:400, precoKg:1.97, precoUnitario:0.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['pepino','cucumber'] },
-  { id:'v024', nome:'Alho-francês (porro)', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:300, precoKg:3.30, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['porro','alho porro','alho francês','leek'] },
+  { id:'v024', nome:'Alho-francês (porro)', categoria:'Legumes', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:300, precoKg:3.30, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['alho francês à unidade','alho-francês à unidade'] },
 
   // ══════════════════════════════════════════════════════════
   // FRUTA
@@ -197,12 +197,12 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   { id:'fr006', nome:'Banana', categoria:'Fruta', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:1.09, precoUnitario:1.09, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['banana','bananas'] },
   { id:'fr007', nome:'Morangos', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:500, precoKg:5.98, precoUnitario:2.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['morango','morangos','strawberry','strawberries'] },
   { id:'fr008', nome:'Frutos vermelhos congelados', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:500, precoKg:3.98, precoUnitario:1.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['frutos vermelhos','mixed berries','frutos silvestres','bagas congeladas'] },
-  { id:'fr009', nome:'Manga', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:300, precoKg:3.30, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['manga','mango'] },
-  { id:'fr010', nome:'Ananás', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:800, precoKg:1.87, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['ananás','pineapple','abacaxi'] },
+  { id:'fr009', nome:'Manga', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:300, precoKg:3.30, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['manga à unidade'] },
+  { id:'fr010', nome:'Ananás', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:800, precoKg:1.87, precoUnitario:1.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['ananás à unidade'] },
   { id:'fr011', nome:'Kiwi', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'un', fatorConversao:1, precoKg:0.00, precoUnitario:0.29, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['kiwi'] },
   { id:'fr012', nome:'Lima', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'un', fatorConversao:1, precoKg:0.00, precoUnitario:0.29, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['lima','lime'] },
   { id:'fr013', nome:'Pêssego', categoria:'Fruta', unidadeCompra:'kg', unidadeReceita:'g', fatorConversao:1000, precoKg:2.49, precoUnitario:2.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['pêssego','peach','pessego'] },
-  { id:'fr014', nome:'Frutos secos mistos', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:200, precoKg:9.95, precoUnitario:1.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['frutos secos','nozes','amendoins','nuts'] },
+  { id:'fr014', nome:'Frutos secos mistos', categoria:'Fruta', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:200, precoKg:9.95, precoUnitario:1.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['frutos secos','amendoins','nuts'] },
 
   // ══════════════════════════════════════════════════════════
   // CARNES
@@ -279,7 +279,7 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   { id:'tm003', nome:'Pimenta branca moída', categoria:'Temperos', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:45, precoKg:26.44, precoUnitario:1.19, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['pimenta branca','white pepper'] },
   { id:'tm004', nome:'Louro folhas secas', categoria:'Temperos', unidadeCompra:'un', unidadeReceita:'folha', fatorConversao:10, precoKg:0.00, precoUnitario:0.79, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['louro','bay leaf','folha de louro','bay leaves'] },
   { id:'tm005', nome:'Salsa fresca', categoria:'Temperos', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:30, precoKg:16.33, precoUnitario:0.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['salsa','parsley','salsa fresca','perejil'] },
-  { id:'tm006', nome:'Coentros frescos', categoria:'Temperos', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:30, precoKg:19.80, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['coentros','cilantro','coriander','coentros frescos'] },
+  { id:'tm006', nome:'Coentros frescos', categoria:'Temperos', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:30, precoKg:33.00, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['coentros','cilantro','coriander','coentros frescos'] },
   { id:'tm007', nome:'Tomilho seco', categoria:'Temperos', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:20, precoKg:49.50, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['tomilho','thyme','thyme seco'] },
   { id:'tm008', nome:'Orégãos secos', categoria:'Temperos', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:20, precoKg:44.50, precoUnitario:0.89, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['orégãos','oregano','oregão','oreganos'] },
   { id:'tm009', nome:'Paprika (colorau) doce', categoria:'Temperos', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:50, precoKg:25.80, precoUnitario:1.29, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['paprika','colorau','paprica','pimentão doce'] },
@@ -377,7 +377,7 @@ export const MATERIAS_PRIMAS_BASE: MateriaPrimaBase[] = [
   { id:'pa002', nome:'Baunilha em vagem', categoria:'Pastelaria', unidadeCompra:'un', unidadeReceita:'un', fatorConversao:1, precoKg:0.00, precoUnitario:1.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['vagem baunilha','vanilla pod','pau baunilha'] },
   { id:'pa003', nome:'Rum escuro', categoria:'Pastelaria', unidadeCompra:'un', unidadeReceita:'ml', fatorConversao:700, precoKg:9.98, precoUnitario:6.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['rum','rum escuro','dark rum','aguardente'] },
   { id:'pa004', nome:'Açúcar pérola', categoria:'Pastelaria', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:5.16, precoUnitario:1.29, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['açúcar pérola','pearl sugar','granulated sugar decorating'] },
-  { id:'pa005', nome:'Corante alimentar', categoria:'Pastelaria', unidadeCompra:'un', unidadeReceita:'ml', fatorConversao:10, precoKg:0.00, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['corante','food coloring','corante gel','corante líquido'] },
+  { id:'pa005', nome:'Corante alimentar', categoria:'Pastelaria', unidadeCompra:'un', unidadeReceita:'ml', fatorConversao:10, precoKg:99.00, precoUnitario:0.99, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['corante','food coloring','corante gel','corante líquido'] },
   { id:'pa006', nome:'Massa folhada', categoria:'Pastelaria', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:275, precoKg:5.27, precoUnitario:1.45, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['massa folhada','puff pastry','folhado'] },
   { id:'pa007', nome:'Massa quebrada', categoria:'Pastelaria', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:230, precoKg:5.17, precoUnitario:1.19, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['massa quebrada','shortcrust pastry','brisa'] },
   { id:'pa008', nome:'Pão ralado', categoria:'Pastelaria', unidadeCompra:'un', unidadeReceita:'g', fatorConversao:250, precoKg:1.96, precoUnitario:0.49, fonte:'Melhor preço mai/2026', atualizadoEm:'2026-05', aliases:['pão ralado','breadcrumbs','panko','pão ralado fino'] },
@@ -450,6 +450,24 @@ export interface ResultadoBuscaMP {
   confianca: ConfiancaMatch;
 }
 
+/** Palavras que só dizem o corte ou o estado — não mudam o produto. */
+const DESCRITORES = new Set(['picada', 'picado', 'picadas', 'picados', 'ralada', 'ralado', 'fresca', 'fresco',
+  'frescas', 'frescos', 'cortada', 'cortado', 'cubo', 'cubos', 'lamina', 'laminas', 'laminado', 'laminada',
+  'fatia', 'fatias', 'fatiado', 'fatiada', 'inteira', 'inteiro', 'descascada', 'descascado', 'limpa', 'limpo',
+  'cozida', 'cozido', 'crua', 'cru', 'grande', 'grandes', 'pequena', 'pequeno', 'media', 'medio', 'rodela',
+  'rodelas', 'tira', 'tiras', 'juliana', 'brunoise', 'pedaco', 'pedacos', 'aos', 'para', 'decorar', 'q', 'b', 'qb',
+  'gosto', 'bem', 'maduro', 'madura', 'maduros', 'maduras', 'derretida', 'derretido', 'amolecida', 'temperatura',
+  'ambiente', 'frio', 'fria', 'quente', 'batido', 'batida', 'batidos', 'batidas', 'peneirada', 'peneirado']);
+const PALAVRAS_VAZIAS = new Set(['e', 'com', 'sem', 'em', 'a', 'o', 'os', 'as', 'ao', 'na', 'no', 'nas', 'nos', 'ou']);
+
+/** Palavras de um nome, sem acentos nem plurais simples ("ovos" = "ovo"). */
+function palavrasDe(texto: string): string[] {
+  return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)
+    .filter(w => w && !PALAVRAS_VAZIAS.has(w) && !['de', 'da', 'do', 'das', 'dos', 'um', 'uma', 'e'].includes(w))
+    .map(w => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
+}
+
 export function encontrarMateriaPrimaComConfianca(
   nome: string,
   custom: { nome: string; categoria: string; unidadeCompra: string; precoKg: number; precoUnitario: number; aliases: string[] }[] = []
@@ -478,13 +496,28 @@ export function encontrarMateriaPrimaComConfianca(
   );
   if (exata) return { mp: exata, confianca: 'exata' };
 
-  // 2. Correspondência PARCIAL — confiança ambígua, vale a pena confirmar
-  const matches = todasFontes.filter(mp =>
-    mp.nome.toLowerCase().includes(t) || t.includes(mp.nome.toLowerCase()) ||
-    mp.aliases.some(a => a.toLowerCase().includes(t) || t.includes(a.toLowerCase()))
-  ).sort((a, b) => a.precoUnitario - b.precoUnitario);
-
-  if (matches.length > 0) return { mp: matches[0], confianca: 'ambigua' };
+  // 2. Correspondência PARCIAL, por palavras — confiança ambígua, a confirmar.
+  // Antes bastava um pedaço do nome e ganhava o mais barato: "pão" dava
+  // fermento, "farinha de amêndoa" dava farinha de trigo, "leite de coco"
+  // dava leite de vaca. Agora só vale se as palavras baterem:
+  //   a) todas as palavras do ingrediente estão no produto, e cobrem mais
+  //      de metade do nome do produto ("queijo ralado" → queijo mozzarella ralado);
+  //   b) ou o produto está todo no ingrediente e o que sobra só descreve o
+  //      corte ou o estado ("cebola picada" → cebola).
+  // Sem isto, fica sem produto e o professor confirma — melhor do que errado.
+  const q = palavrasDe(t);
+  let melhor: { mp: MateriaPrimaBase; pontos: number } | undefined;
+  for (const mp of todasFontes) {
+    for (const rotulo of [mp.nome, ...mp.aliases]) {
+      const r = palavrasDe(rotulo);
+      if (!r.length || !q.length) continue;
+      let pontos = 0;
+      if (q.every(w => r.includes(w)) && q.length / r.length > 0.5) pontos = q.length / r.length;
+      else if (r.every(w => q.includes(w)) && q.filter(w => !r.includes(w)).every(w => DESCRITORES.has(w))) pontos = 0.9 * r.length / q.length + 0.1;
+      if (pontos > 0 && (!melhor || pontos > melhor.pontos)) melhor = { mp, pontos };
+    }
+  }
+  if (melhor) return { mp: melhor.mp, confianca: 'ambigua' };
 
   // 3. Nada encontrado
   return { mp: undefined, confianca: 'nenhuma' };
@@ -494,6 +527,83 @@ export function encontrarMateriaPrimaComConfianca(
 export function getMateriaPrimasBase(): MateriaPrimaBase[] {
   return MATERIAS_PRIMAS_BASE;
 }
+
+// ============================================================
+// Preços revistos (Continente, marca branca) — por cima da base
+// ============================================================
+// A base acima é a "de fábrica". Todos os meses a coordenadora revê os
+// preços (com a ajuda de uma IA que vai ao continente.pt) e o que ela
+// confirma fica aqui, no aparelho e no Sheets (folha PRECOS). Ao abrir a
+// aplicação, estes preços são aplicados por cima da base.
+
+export interface PrecoRevisto {
+  /** O id do produto na base (a001, f004…). */
+  id: string;
+  nome: string;
+  /** O produto no Continente (nome da embalagem). */
+  produtoContinente: string;
+  marca: string;
+  /** Quantidade da embalagem, em g, ml ou unidades. */
+  embalagem: number;
+  unidadeEmbalagem: 'g' | 'ml' | 'un';
+  precoEmbalagem: number;
+  /** € por kg ou por litro (0 quando só se vende à unidade). */
+  precoKg: number;
+  /** € de UMA unidade (um ovo, um limão), para o que se conta à unidade. */
+  precoUnidade: number;
+  link?: string;
+  atualizadoEm: string;
+  revistoPor: string;
+}
+
+const KEY_PRECOS_REVISTOS = 'ecl_precos_revistos';
+
+export function getPrecosRevistos(): PrecoRevisto[] {
+  try { return JSON.parse(localStorage.getItem(KEY_PRECOS_REVISTOS) || '[]'); } catch { return []; }
+}
+
+const numero = (v: unknown) => { const n = Number(String(v ?? '').replace(',', '.')); return isNaN(n) ? 0 : n; };
+
+/** Junta preços revistos (de cá ou do Sheets): por produto, fica o mais recente. */
+export function juntarPrecosRevistos(novos: PrecoRevisto[]): void {
+  const porId = new Map(getPrecosRevistos().map(p => [p.id, p]));
+  novos.forEach(raw => {
+    if (!raw?.id) return;
+    const p: PrecoRevisto = { ...raw, embalagem: numero(raw.embalagem), precoEmbalagem: numero(raw.precoEmbalagem),
+      precoKg: numero(raw.precoKg), precoUnidade: numero(raw.precoUnidade), atualizadoEm: String(raw.atualizadoEm || '') };
+    const atual = porId.get(p.id);
+    if (!atual || p.atualizadoEm >= atual.atualizadoEm) porId.set(p.id, p);
+  });
+  try { localStorage.setItem(KEY_PRECOS_REVISTOS, JSON.stringify([...porId.values()])); } catch { /* */ }
+  aplicarPrecosRevistos();
+}
+
+/** Os valores de fábrica, para se poder comparar e repor. */
+const BASE_DE_FABRICA = new Map(MATERIAS_PRIMAS_BASE.map(mp => [mp.id, { ...mp }]));
+
+/** Aplica os preços revistos por cima da base. Idempotente. */
+export function aplicarPrecosRevistos(): void {
+  const revistos = new Map(getPrecosRevistos().map(p => [p.id, p]));
+  MATERIAS_PRIMAS_BASE.forEach(mp => {
+    const r = revistos.get(mp.id);
+    const fab = BASE_DE_FABRICA.get(mp.id);
+    if (!r) { if (fab) Object.assign(mp, fab); return; }
+    if (r.precoKg > 0) mp.precoKg = Math.round(r.precoKg * 100) / 100;
+    if (mp.unidadeReceita === 'un') {
+      const un = r.precoUnidade > 0 ? r.precoUnidade
+        : r.unidadeEmbalagem === 'un' && r.embalagem > 0 ? r.precoEmbalagem / r.embalagem : 0;
+      if (un > 0) mp.precoUnitario = Math.round(un * 100) / 100;
+    } else if (r.precoEmbalagem > 0 && r.embalagem > 0 && r.unidadeEmbalagem !== 'un') {
+      mp.fatorConversao = r.embalagem;
+      mp.precoUnitario = Math.round(r.precoEmbalagem * 100) / 100;
+      mp.unidadeCompra = r.embalagem === 1000 ? (r.unidadeEmbalagem === 'ml' ? 'l' : 'kg') : 'un';
+    }
+    mp.fonte = `Continente — ${r.marca || 'marca branca'}`;
+    mp.atualizadoEm = r.atualizadoEm.slice(0, 7);
+  });
+}
+
+try { aplicarPrecosRevistos(); } catch { /* sem localStorage */ }
 
 // ============================================================
 // Validade dos preços

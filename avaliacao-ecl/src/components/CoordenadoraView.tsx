@@ -17,9 +17,10 @@ import { EventosWizard } from './EventosWizard';
 import { ManualCoordenador } from './ManualCoordenador';
 import { GestaoAlunosExternos } from './AlunosExternos';
 import { DadosSeguranca } from './DadosSeguranca';
+import { PrecosCoordenadora } from './PrecosCoordenadora';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos' | 'dados'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos' | 'dados' | 'precos'>('avisos');
 
   const TABS_COORD = [
     { id:'avisos',      emoji:'🔔', label:'Avisos',      cor:'#e63946' },
@@ -31,6 +32,7 @@ export function CoordenadoraView() {
     { id:'cronograma',  emoji:'📆', label:'Cronograma',  cor:'#5C3D8F' },
     { id:'atividades',  emoji:'🎯', label:'Eventos',     cor:'#e67e22' },
     { id:'config',      emoji:'⚙️', label:'Config',      cor:'#8e44ad' },
+    { id:'precos',      emoji:'💶', label:'Preços',      cor:'#0f766e' },
     { id:'dados',       emoji:'🔒', label:'Dados e segurança', cor:'#c0392b' },
     { id:'manual',      emoji:'📋', label:'Manual',      cor:'#b5651d' },
     { id:'externos',    emoji:'🌍', label:'Externos',    cor:'#0f766e' },
@@ -90,6 +92,7 @@ export function CoordenadoraView() {
       {tab === 'alunos' && <GestaoAlunosTab />}
       {tab === 'config' && <ConfigTab />}
       {tab === 'dados' && <DadosSeguranca />}
+      {tab === 'precos' && <PrecosCoordenadora />}
     </div>
   );
 }
