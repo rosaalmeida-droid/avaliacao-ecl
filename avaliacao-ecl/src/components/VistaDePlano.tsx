@@ -16,6 +16,7 @@ import {
   nomeCompetencia, aparelhosPermitidos,
   ATITUDES_DETALHADAS, atitudesDoTrimestre, todasAtitudesAteAno,
   dicaRecuperacaoAtitude, nivelComplexidadeAtitude, getAtitudeDetalhada,
+  tecnicasDeRecurso,
 } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import ProfessorView from './ProfessorView';
@@ -486,22 +487,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   // ── Fallback: sistema antigo (microsPorUC) se não há SUB/APP ─
   const usarFallback = compSub.length === 0 && compApp.length === 0 && tipoPlanAula === 'pratico';
-  const microsDaUC = usarFallback
-    ? (plano.ucId ? microsPorUC(plano.ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A'))
+  // A mesma regra da autoavaliação do aluno (tecnicasDeRecurso).
+  const compTecnicas = ehAtitudinal ? [] : (usarFallback && temFichas)
+    ? tecnicasDeRecurso(plano.ucId, fichasDoPlano)
+        .filter(m => !IDS_JA_USADOS.has(m.id) && !compRemovidas.includes(m.id))
     : [];
-  const IDS_DUPLICAM_OBRIGATORIAS = new Set(['M0150', 'M0196']);
-  const textoFichas = fichasDoPlano.map(f =>
-    [f.nomePrato, ...(f.ingredientes || []).map((i: any) => i.produto)].join(' ')
-  ).join(' ').toLowerCase();
-  const compTecnicas = ehAtitudinal ? [] : (usarFallback && temFichas) ? microsDaUC
-    .filter(m => {
-      if (IDS_DUPLICAM_OBRIGATORIAS.has(m.id) || IDS_JA_USADOS.has(m.id)) return false;
-      if (textoFichas.length > 10) {
-        const palavras = m.nome.toLowerCase().split(/[\s\/]+/);
-        return palavras.some((p: string) => p.length > 3 && textoFichas.includes(p));
-      }
-      return true;
-    }).slice(0, 8).filter(m => !compRemovidas.includes(m.id)) : [];
   compTecnicas.forEach(m => IDS_JA_USADOS.add(m.id));
 
   // ── Determinar ano do curso pela turma ─────────────────────
@@ -715,11 +705,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <div className="no-print">
           <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-            {nomePratoGuia && (
-            <div style={{ background: 'rgba(90,122,78,0.1)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: 'var(--sage)', fontWeight: 600 }}>
-              📚 Guia de Apoio à Produção — <strong>{nomePratoGuia}</strong>
-            </div>
-          )}
+            {/* O título do guião e a ficha já aparecem no ecrã do guião (e a
+                ficha escolhe-se lá): aqui repetiam-se, às vezes com outra ficha. */}
         </div>
         <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id} modoGuia={true} nomePratoInicial={nomePratoGuia} onAlteracao={onAlteracao}
           onGuardado={() => { registarAlteracaoPublicado('guia', 'Guia de produção atualizado pelo professor'); onGuardado?.(); setModalProximo('apos_guia'); }} />

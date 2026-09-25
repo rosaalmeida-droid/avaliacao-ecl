@@ -2578,18 +2578,32 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
   planoId?: string; ucId?: string; ucNome?: string; nomePratoInicial?: string;
   onAlteracao?: () => void; onGuardado?: () => void;
 }) {
-  // Encontrar a ficha-alvo UMA VEZ ao montar — não recalcula a cada render do pai
-  const [fichaAlvo] = useState<FichaProducao | null>(() => {
-    const fichasDoPlano = planoId
-      ? getFichasProducao().filter(f => (f as any).planoAulaId === planoId)
-      : getFichasProducao();
-    // Ordenar por data de criação real — não confiar na ordem do array
-    const ordenadas = [...fichasDoPlano].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
-    return ordenadas[ordenadas.length - 1] || null;
+  // As fichas do plano são as que o plano tem (fichasIds) — também as
+  // juntadas da biblioteca. Antes só contavam as criadas dentro do plano,
+  // e o guião dizia "Ainda não há nenhuma ficha" num plano com fichas.
+  const [fichasDoPlano] = useState<FichaProducao[]>(() => {
+    const todas = getFichasProducao();
+    if (!planoId) return todas;
+    const ids = new Set(getPlanosAula().find(p => p.id === planoId)?.fichasIds || []);
+    return todas.filter(f => ids.has(f.id) || (f as any).planoAulaId === planoId)
+      .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
   });
-  const nomePrato = nomePratoInicial || fichaAlvo?.nomePrato || '';
+  // A ficha do guião: a pedida pelo nome; senão a primeira ainda sem guião;
+  // senão a última. E o professor pode escolher outra (uma por ficha).
+  const [fichaAlvo, setFichaAlvoEstado] = useState<FichaProducao | null>(() =>
+    fichasDoPlano.find(f => nomePratoInicial && f.nomePrato === nomePratoInicial && !(f as any).textoGuia)
+    || fichasDoPlano.find(f => !(f as any).textoGuia)
+    || fichasDoPlano[fichasDoPlano.length - 1] || null);
+  const nomePrato = fichaAlvo?.nomePrato || nomePratoInicial || '';
   const [textoGuia, setTextoGuia] = useState((fichaAlvo as any)?.textoGuia || '');
   const [modo, setModo] = useState<'colar' | 'ver'>((fichaAlvo as any)?.textoGuia ? 'ver' : 'colar');
+  function escolherFicha(f: FichaProducao) {
+    const atual = getFichasProducao().find(x => x.id === f.id) || f;
+    setFichaAlvoEstado(atual);
+    setTextoGuia((atual as any).textoGuia || '');
+    setModo((atual as any).textoGuia ? 'ver' : 'colar');
+    setGuardadoOk(false);
+  }
   const [guardadoOk, setGuardadoOk] = useState(false);
 
   if (!fichaAlvo) {
@@ -2620,14 +2634,36 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
         <EtiquetaLigacaoPlano planoAulaId={(fichaAlvo as any)?.planoAulaId} fichaId={fichaAlvo?.id} />
       </div>
 
+      {/* Um guião por ficha: com várias fichas, escolhe-se de qual. */}
+      {/* Fora de um plano há todas as fichas: escolhe-se numa lista. */}
+      {!planoId && fichasDoPlano.length > 1 && (
+        <select className="input no-print" value={fichaAlvo.id} style={{ marginBottom: 12 }}
+          onChange={e => { const f = fichasDoPlano.find(x => x.id === e.target.value); if (f) escolherFicha(f); }}>
+          {fichasDoPlano.map(f => <option key={f.id} value={f.id}>{f.nomePrato}{(f as any).textoGuia ? ' ✓' : ''}</option>)}
+        </select>
+      )}
+      {planoId && fichasDoPlano.length > 1 && (
+        <div className="no-print" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          {fichasDoPlano.map(f => {
+            const ativa = f.id === fichaAlvo.id;
+            const temGuia = !!(getFichasProducao().find(x => x.id === f.id) as any)?.textoGuia;
+            return (
+              <button key={f.id} onClick={() => escolherFicha(f)} style={{
+                padding: '7px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+                border: `1.5px solid ${ativa ? 'var(--guia)' : 'rgba(26,23,20,0.15)'}`,
+                background: ativa ? 'var(--guia)' : '#fff', color: ativa ? '#fff' : 'inherit' }}>
+                {temGuia ? '✓ ' : ''}{f.nomePrato}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <Card>
         <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* O seletor já tem "Copiar prompt": havia um segundo botão igual. */}
           <SeletorIA prompt={promptGuiaAtual} corPrincipal="var(--guia)" />
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-            onClick={() => copiarTexto(promptGuiaAtual, () => {}, () => {})}>
-            📋 Copiar prompt
-          </button>
         </div>
 
         <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginTop: 16, marginBottom: 8 }}>2. Colar o resultado</div>

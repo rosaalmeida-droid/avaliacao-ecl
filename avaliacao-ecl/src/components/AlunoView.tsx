@@ -34,6 +34,7 @@ import {
   encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos,
   nomeCompetencia, encontrarConhecimento, dicaRecuperacaoAtitude,
   nivelComplexidadeAtitude, getAtitudeDetalhada, atitudesDoTrimestre,
+  tecnicasDeRecurso,
 } from '../compatECL';
 import { definicaoDaTecnica } from '../definicoesTecnicas';
 import { definicaoDaSubtecnica } from '../definicoesSubtecnicas';
@@ -2457,16 +2458,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
 
   // Fallback — se não há SUB/APP da ficha, usar sistema antigo
   const usarFallback = subsSug.length === 0 && aparelhosSug.length === 0;
-  const familia1 = fichas.length > 0 ? (fichas[0] as any).familia1 : undefined;
-  const familia2 = fichas.length > 0 ? (fichas[0] as any).familia2 : undefined;
-  const etiquetas = fichas.flatMap((f: any) => f.etiquetas || []);
-  const microsDaUCEsp = usarFallback ? ((familia1 || familia2)
-    ? microsPorFamilia(familia1, familia2, etiquetas, ucId)
-    : ucId ? microsPorUC(ucId) : []) : [];
-  const microsEstr = MICROCOMPETENCIAS.filter(m => m.prioridade==='A');
-  const microsDaUC = microsDaUCEsp.length>=3
-    ? microsDaUCEsp
-    : [...microsDaUCEsp,...microsEstr.filter(m=>!microsDaUCEsp.find(x=>x.id===m.id))].slice(0,8);
+  // A mesma regra que o professor vê nas Competências do plano.
+  const microsDaUC = usarFallback ? tecnicasDeRecurso(ucId, fichas as any[]) : [];
   const microsSug = String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? []
     : usarFallback ? microsDaUC
     .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
