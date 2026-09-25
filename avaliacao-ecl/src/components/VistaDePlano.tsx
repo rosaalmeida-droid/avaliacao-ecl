@@ -1474,7 +1474,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
             {atitudesEscolhidas.length === 0 && (
               <div style={{ fontSize:13, color:'var(--copper)', marginTop:12, fontWeight:600 }}>
-                Sem nenhuma marcada, o aluno não tem o que avaliar.
+                Sem nenhuma marcada, o aluno avalia-se nas atitudes do trimestre.
               </div>
             )}
 
