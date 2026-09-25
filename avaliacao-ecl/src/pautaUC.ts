@@ -30,7 +30,7 @@ import { PERGUNTAS_TRIAGEM, notaTriagem } from './triagem5c';
 import {
   getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes, getSelecoes, getPresencas,
   getPlanosFaltadosPorUC, getAtividades, situacaoRecuperacaoUC, assiduidadeNaUC,
-  notaFinalUC, participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
+  participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
   kfFaseCompleta, liderKFdoGrupo,
 } from './backend';
 import { calcularNotaPlano } from './types';
@@ -278,13 +278,18 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       })) as Record<Letra5C, number | null>;
 
       const prop = getPropostaFinalUC(a.id, ucId);
-      return {
+      const linha: LinhaPautaUC = {
         alunoId: a.id, numero: a.numero, nome: a.nome || `Aluno ${a.numero}`,
         atividades: participacoesDoAlunoNaUC(a.id, turmaId, ucId),
         produtos: notasProd, c5, evidencias,
         proposta: prop ? prop.nota : null, justificacao: prop?.justificacao || '',
-        final: notaFinalUC(a.id, turmaId, ucId).final,
+        final: null,
       };
+      // A nota final sai da conta da própria folha (o TOTAL), não de outra
+      // conta da aplicação — assim a classificação bate sempre com o RESULTADO.
+      const temDados = notasProd.some(v => v !== null) || Object.values(c5).some(v => v !== null);
+      if (temDados) linha.final = notaDoTotal(calculoDoModelo(linha, produtos, totalAtiv).total);
+      return linha;
     });
 }
 
@@ -312,6 +317,26 @@ export function calculoDoModelo(l: LinhaPautaUC, produtos: ProdutoPauta[], total
   const resultado = total < 3.5 ? 'Módulo em atraso' : total < 4.5 ? 'Suficiente' : total < 5.5 ? 'Bom' : 'Muito bom';
   return { nAtiv, niveis, cp, total, resultado };
 }
+
+/**
+ * Nota 0-20 a partir do TOTAL da folha (escala de níveis 0-6), dentro da
+ * banda que o RESULTADO dá, para as duas baterem sempre certo:
+ *   TOTAL < 3,5  → Módulo em atraso → 0 a 9
+ *   3,5 a 4,5    → Suficiente       → 10 a 13
+ *   4,5 a 5,5    → Bom              → 14 a 16
+ *   5,5 a 6      → Muito bom        → 17 a 20
+ * Dentro de cada banda, proporcional ao TOTAL. É a mesma fórmula que vai
+ * para a coluna CLASSIF. ATRIBUÍDA do Excel.
+ */
+export function notaDoTotal(y: number): number {
+  const n = y < 3.5 ? y * 9.49 / 3.5
+    : y < 4.5 ? 9.5 + (y - 3.5) * 4
+    : y < 5.5 ? 13.5 + (y - 4.5) * 3
+    : 16.5 + (y - 5.5) * 7;
+  return Math.max(0, Math.min(20, Math.round(n)));
+}
+const formulaNotaDoTotal = (y: string) =>
+  `ROUND(IF(${y}<3.5,${y}*9.49/3.5,IF(${y}<4.5,9.5+(${y}-3.5)*4,IF(${y}<5.5,13.5+(${y}-4.5)*3,MIN(20,16.5+(${y}-5.5)*7)))),0)`;
 
 export const classificacaoComNota = (final: number | null) => {
   if (final === null) return '';
@@ -419,7 +444,12 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
     f(lv(COL.Y), `(S${R}*$S$14)+(T${R}*$U$14)+(V${R}*$V$14)+(W${R}*$W$14)+(X${R}*$X$14)`);
     f(lv(COL.Z), `IF(Y${R}<3.5,"Módulo em atraso",IF(Y${R}<4.5,"Suficiente",IF(Y${R}<5.5,"Bom","Muito bom")))`);
     set(lv(COL.AE), l.proposta);
-    set(lv(COL.AG), classificacaoComNota(l.final));
+    // CLASSIF. ATRIBUÍDA: fórmula na folha, a partir do TOTAL; negativa leva "a)".
+    if (l.final === null) set(lv(COL.AG), null);
+    else {
+      const nt = formulaNotaDoTotal(`Y${R}`);
+      f(lv(COL.AG), `IF(${nt}<10,${nt}&" a)",${nt})`);
+    }
   }
 
   // Logo da escola, no sítio do modelo.
