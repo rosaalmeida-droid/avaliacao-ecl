@@ -35,34 +35,28 @@ import {
 } from './backend';
 import { calcularNotaPlano } from './types';
 import { modulosDaTurma } from './cronograma';
-import { ATITUDES, getAtitudeDetalhada } from './compatECL';
 import MODELO from './pautaModelo.json';
 
 // ── Os 5 C's: que atitudes contribuem para cada um ───────────
 
 export type Letra5C = 'cm' | 'cl' | 'co' | 'cr';
 
-// Cada C junta as atitudes validadas pelo professor (as que as regras do
-// ano e do trimestre permitem avaliar) com evidências que existem em
-// TODAS as aulas, desde o 1.º ano. Assim nenhum C fica sem avaliação:
-// no 1.º ano, quando ainda não há atitudes de colaboração ou de resolução
-// de problemas, o C sai das evidências das aulas.
-export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; atitudes: string[]; evidencias: string }> = {
+// Os 5 C's saem SÓ de evidências que não contam na nota dos Planos de
+// Avaliação. As atitudes validadas e a higiene e segurança alimentar já
+// entram na nota de cada aula (logo no CP); contá-las outra vez aqui era
+// avaliar a mesma evidência duas vezes. Cada evidência entra num só C.
+// Nenhuma destas evidências cria um elemento novo nos planos.
+export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias: string }> = {
   cm: { sigla: 'CM', nome: 'Comprometido',
-    atitudes: ['ATI-001', 'ATI-003', 'ATI-011', 'ATI-013', 'ATI-002', 'ATI-020'],
-    evidencias: 'assiduidade (horas), pontualidade, farda completa à entrada, autoavaliações entregues' },
+    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
-    atitudes: ['ATI-009', 'ATI-008', 'ATI-007', 'ATI-018', 'ATI-022', 'ATI-006'],
     evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, registos de grupo no KitchenFlow, liderança do grupo' },
   co: { sigla: 'CO', nome: 'Consciente',
-    atitudes: ['ATI-015', 'ATI-016', 'ATI-017', 'ATI-005', 'ATI-014'],
-    evidencias: 'higiene pessoal e segurança alimentar (obrigatórias, em todas as aulas práticas)' },
+    evidencias: 'higiene pessoal: farda completa à entrada de cada aula' },
   cr: { sigla: 'CR', nome: 'Criativo',
-    atitudes: ['ATI-010', 'ATI-012', 'ATI-004', 'ATI-021', 'ATI-019'],
     evidencias: 'resolução de problemas: pergunta de cada aula «resolveste algum problema?», problemas que detetou e registou, sentido crítico na autoavaliação' },
 };
 
-const nomeAtitude = (id: string) => getAtitudeDetalhada(id)?.nome || (ATITUDES as any[]).find(a => a.id === id)?.nome || id;
 
 /** Nível do modelo: 0 N.R./N.O. · 2 Insuficiente · 4 Suficiente · 5 Bom · 6 Muito bom
  *  (as mesmas fronteiras das fórmulas do modelo). */
@@ -82,7 +76,7 @@ const hojeISO = () => new Date().toISOString().slice(0, 10);
 export const MAX_PRODUTOS = 7;   // as colunas do modelo
 
 export interface ProdutoPauta {
-  numero: number;              // 1..7, como no modelo
+  numero: number;              // 1, 2, 3… — a ordem na pauta
   titulo: string;
   planosIds: string[];
   /** Elementos (competências) efetivamente avaliados neste produto. */
@@ -104,37 +98,37 @@ export function notaDoPlano(alunoId: string, planoId: string, tipo: string): num
   return notas.length ? calcularNotaPlano(notas, (tipo || 'pratico') as any).nota20 : null;
 }
 
-/** Os planos da UC que já aconteceram e foram avaliados, como produtos do modelo. */
-export function produtosDaUC(turmaId: string, ucId: string): ProdutoPauta[] {
+export interface PlanoRealizado { id: string; titulo: string; data: string; avaliado: boolean }
+
+/** Os Planos de Avaliação já realizados na UC, por ordem de data. */
+export function planosRealizadosDaUC(turmaId: string, ucId: string): PlanoRealizado[] {
   const validacoes = getValidacoes() as any[];
-  const planos = getPlanosAulaPorTurma(turmaId)
+  return getPlanosAulaPorTurma(turmaId)
     .filter(p => p.ucId === ucId && (p.estado === 'publicado' || (p.estado as string) === 'realizada')
       && String(p.data).slice(0, 10) <= hojeISO())
     .sort((a, b) => String(a.data).localeCompare(String(b.data))
       || String(a.horaInicio || '').localeCompare(String(b.horaInicio || '')))
-    // Só o que foi efetivamente avaliado entra na pauta.
-    .filter(p => validacoes.some(v => v.planoAulaId === p.id));
+    .map(p => ({ id: p.id, titulo: p.titulo || 'Plano', data: String(p.data).slice(0, 10),
+      avaliado: validacoes.some(v => v.planoAulaId === p.id) }));
+}
+
+/**
+ * Os produtos da pauta: cada coluna é a nota final de UM Plano de Avaliação.
+ * Por omissão entram todos os planos realizados e avaliados; o professor
+ * pode escolher outros (`escolhidos`). Com mais de 7, a pauta ganha colunas.
+ */
+export function produtosDaUC(turmaId: string, ucId: string, escolhidos?: string[]): ProdutoPauta[] {
+  const validacoes = getValidacoes() as any[];
+  const planos = planosRealizadosDaUC(turmaId, ucId)
+    .filter(p => p.avaliado && (!escolhidos || escolhidos.includes(p.id)));
 
   // Elementos avaliados em cada plano: as competências que o professor validou.
-  const elementosDe = (ids: string[]) => new Set(validacoes
-    .filter(v => ids.includes(v.planoAulaId))
+  const elementosDe = (id: string) => new Set(validacoes
+    .filter(v => v.planoAulaId === id)
     .flatMap(v => (v.notas || []).map((n: any) => n.competenciaId))).size || 1;
 
-  // Até 7 colunas; com mais planos, juntam-se por ordem, em grupos seguidos.
-  const grupos: typeof planos[] = [];
-  const n = planos.length, k = Math.min(MAX_PRODUTOS, n);
-  let i = 0;
-  for (let g = 0; g < k; g++) {
-    const tam = Math.floor(n / k) + (g < n % k ? 1 : 0);
-    grupos.push(planos.slice(i, i + tam)); i += tam;
-  }
-  const produtos = grupos.map((g, j) => ({
-    numero: j + 1,
-    titulo: g.length === 1 ? (g[0].titulo || `Plano ${j + 1}`)
-      : g.map(p => p.titulo || '').filter(Boolean).join(' + '),
-    planosIds: g.map(p => p.id),
-    elementos: elementosDe(g.map(p => p.id)),
-    peso: 0,
+  const produtos = planos.map((p, j) => ({
+    numero: j + 1, titulo: p.titulo, planosIds: [p.id], elementos: elementosDe(p.id), peso: 0,
   }));
   const total = produtos.reduce((s, p) => s + p.elementos, 0) || 1;
   produtos.forEach(p => { p.peso = Math.round((p.elementos / total) * 1000) / 10; });
@@ -146,6 +140,9 @@ export function produtosDaUC(turmaId: string, ucId: string): ProdutoPauta[] {
   return produtos;
 }
 
+/** Colunas de produto na pauta: as 7 do modelo, ou mais se houver mais planos. */
+export const colunasDeProdutos = (produtos: ProdutoPauta[]) => Math.max(MAX_PRODUTOS, produtos.length);
+
 // ── Linhas dos alunos ────────────────────────────────────────
 
 export interface Evidencia5C { rotulo: string; nota20: number; vezes: number }
@@ -155,7 +152,7 @@ export interface LinhaPautaUC {
   numero: number;
   nome: string;
   atividades: number;
-  /** Nota 0-20 de cada produto (7): 0 se faltou, null se sem avaliação. */
+  /** Nota 0-20 de cada produto: 0 se faltou, null se sem avaliação. */
   produtos: (number | null)[];
   /** Nível 0-6 de cada C; null quando não houve nenhuma evidência. */
   c5: Record<Letra5C, number | null>;
@@ -163,7 +160,6 @@ export interface LinhaPautaUC {
   evidencias: Record<Letra5C, Evidencia5C[]>;
   proposta: number | null;
   justificacao: string;
-  final: number | null;
 }
 
 export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: ProdutoPauta[]): LinhaPautaUC[] {
@@ -182,7 +178,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       const regs = validados.filter(r => r.alunoId === a.id);
 
       // Produtos: média dos planos do grupo; falta = 0 (ou a recuperação).
-      const notasProd = Array.from({ length: MAX_PRODUTOS }, (_, j) => {
+      const notasProd = Array.from({ length: colunasDeProdutos(produtos) }, (_, j) => {
         const p = produtos[j];
         if (!p) return null;
         const notas = p.planosIds.map(id => {
@@ -198,13 +194,6 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       const junta = (c: Letra5C, rotulo: string, nota20: number | null, vezes: number) => {
         if (nota20 !== null && !isNaN(nota20) && vezes > 0) evidencias[c].push({ rotulo, nota20: Math.max(0, Math.min(20, nota20)), vezes });
       };
-      // As atitudes validadas pelo professor
-      (Object.keys(MAPA_5C) as Letra5C[]).forEach(c => {
-        MAPA_5C[c].atitudes.forEach(id => {
-          const ns = regs.filter(r => r.microcompetenciaId === id).map(r => r.nota * 4);
-          junta(c, nomeAtitude(id), media(ns), ns.length);
-        });
-      });
 
       // As aulas desta UC a que o aluno veio
       const planosUC = planos.filter(p => p.ucId === ucId && String(p.data).slice(0, 10) <= hojeISO()
@@ -221,7 +210,6 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       junta('cm', `Pontualidade: ${assid.atrasos} atraso${assid.atrasos === 1 ? '' : 's'}`,
         assid.presencas > 0 ? (1 - assid.atrasos / assid.presencas) * 20 : null, assid.presencas);
       const comFarda = presencas.filter(x => (x as any).fardamentoOk).length;
-      junta('cm', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
       const selecoes = getSelecoes().filter(x => x.alunoId === a.id && idsVeio.has(x.planoAulaId as string));
       junta('cm', `Autoavaliações entregues: ${selecoes.length} de ${nVeio} aulas`, pct(selecoes.length, nVeio), nVeio);
 
@@ -250,10 +238,9 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       const liderou = [...idsVeio].filter(id => liderKFdoGrupo(id) === a.id).length;
       if (liderou > 0) junta('cl', `Liderou o grupo em ${liderou} aula${liderou === 1 ? '' : 's'}`, 20, liderou);
 
-      // CO — consciência: higiene e segurança (obrigatórias)
-      const obr = regs.filter(r => r.microcompetenciaId.startsWith('OBR_')).map(r => r.nota * 4);
-      junta('co', 'Higiene pessoal e segurança alimentar (validadas)', media(obr), obr.length);
-      if (!obr.length) junta('co', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
+      // CO — consciência: higiene pessoal à entrada (não entra na nota da aula;
+      // a higiene e segurança alimentar, que entra, fica só nos planos).
+      junta('co', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
 
       // CR — resolução de problemas
       juntaTriagem('cr');
@@ -283,7 +270,6 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         atividades: participacoesDoAlunoNaUC(a.id, turmaId, ucId),
         produtos: notasProd, c5, evidencias,
         proposta: prop ? prop.nota : null, justificacao: prop?.justificacao || '',
-        final: null,
       };
       // CLASSIF. ATRIBUÍDA: no modelo oficial não tem fórmula — quem calcula
       // é a folha (TOTAL e RESULTADO). A aplicação não faz uma nota paralela.
@@ -316,10 +302,56 @@ export function calculoDoModelo(l: LinhaPautaUC, produtos: ProdutoPauta[], total
   return { nAtiv, niveis, cp, total, resultado };
 }
 
-export const classificacaoComNota = (final: number | null) => {
-  if (final === null) return '';
-  const f = Math.round(final);
-  return f < 10 ? `${f} a)` : f;
+// ── CLASSIF. ATRIBUÍDA ───────────────────────────────────────
+// No modelo esta coluna não tem fórmula: é o professor que a atribui. A
+// aplicação só SUGERE uma nota perto do Competente e avisa quando a nota
+// escolhida não corresponde ao CP nem ao RESULTADO da folha.
+
+export const FAIXAS = [
+  { nome: 'Insuficiente', de: 0, ate: 9 },
+  { nome: 'Suficiente', de: 10, ate: 13 },
+  { nome: 'Bom', de: 14, ate: 16 },
+  { nome: 'Muito bom', de: 17, ate: 20 },
+];
+/** Faixa de uma nota 0-20 (0 Insuficiente … 3 Muito bom). */
+export const faixaDaNota = (n: number) => { const r = Math.round(n); return r < 10 ? 0 : r < 14 ? 1 : r < 17 ? 2 : 3; };
+/** Faixa de um nível da folha (CP ou TOTAL), com as fronteiras do RESULTADO. */
+export const faixaDoNivel = (y: number) => y < 3.5 ? 0 : y < 4.5 ? 1 : y < 5.5 ? 2 : 3;
+
+/** O Competente em 0-20: as notas dos planos com os pesos da pauta
+ *  (um plano sem nota conta 0, como na folha). */
+export function notaDoCompetente(l: LinhaPautaUC, produtos: ProdutoPauta[]): number | null {
+  if (!produtos.length) return null;
+  return Math.round(produtos.reduce((s, p, j) => s + (l.produtos[j] ?? 0) * p.peso / 100, 0) * 10) / 10;
+}
+
+/** Sugestão para a CLASSIF. ATRIBUÍDA: o Competente em 0-20, dentro da
+ *  faixa do nível do CP (um aluno com 4 no CP fica entre 10 e 13). */
+export function sugestaoClassificacao(l: LinhaPautaUC, produtos: ProdutoPauta[], cpNivel: number): number | null {
+  const n = notaDoCompetente(l, produtos);
+  if (n === null) return null;
+  const f = FAIXAS[faixaDoNivel(cpNivel)];
+  return Math.min(f.ate, Math.max(f.de, Math.round(n)));
+}
+
+/** Avisos quando a nota atribuída não corresponde ao CP ou ao RESULTADO. */
+export function avisosClassificacao(nota: number | null, cpNivel: number, total: number, resultado: string): string[] {
+  if (nota === null) return [];
+  const av: string[] = [];
+  const fCP = FAIXAS[faixaDoNivel(cpNivel)];
+  if (faixaDaNota(nota) !== faixaDoNivel(cpNivel))
+    av.push(`Não corresponde ao Competente (CP ${String(Math.round(cpNivel * 100) / 100).replace('.', ',')} → ${fCP.nome}, ${fCP.de} a ${fCP.ate}).`);
+  const fT = FAIXAS[faixaDoNivel(total)];
+  if (faixaDaNota(nota) !== faixaDoNivel(total))
+    av.push(`Não corresponde ao RESULTADO da folha (${resultado} → ${fT.de} a ${fT.ate}).`);
+  return av;
+}
+
+/** O que vai para a célula: com "a)" nas negativas e no Módulo em atraso. */
+export const classificacaoComNota = (nota: number | null, resultado: string) => {
+  if (nota === null) return '';
+  const f = Math.round(nota);
+  return f < 10 || resultado === 'Módulo em atraso' ? `${f} a)` : f;
 };
 
 // ── Cabeçalho ────────────────────────────────────────────────
@@ -343,21 +375,67 @@ export function nomeFicheiroPauta(cab: CabecalhoPauta, ext: 'xlsx' | 'pdf'): str
   return `Pauta ${cab.ucId} ${cab.turma.split(' — ')[0]}.${ext}`.replace(/[\\/:*?"<>|]/g, '-');
 }
 
-// Colunas do modelo (base 1, como no Excel)
-const COL = { A: 1, B: 2, C: 3, D: 4, S: 19, T: 20, V: 22, W: 23, X: 24, Y: 25, Z: 26, AE: 31, AG: 33 };
-const COL_PROD = [5, 7, 9, 11, 13, 15, 17];              // E G I K M O Q (nota)
-const COL_PESO = [10, 11, 12, 13, 14, 15, 16];            // J..P linha 9
-const LETRA = (c: number) => { let s = ''; for (let n = c; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s; };
-const PRIMEIRA = 15, LINHAS_MODELO = 23;
-
 export interface DadosPauta {
   cabecalho: CabecalhoPauta;
   produtos: ProdutoPauta[];
   linhas: LinhaPautaUC[];
   totalAtividades: number;
+  /** CLASSIF. ATRIBUÍDA, escolhida pelo professor (por aluno). */
+  classificacoes: Record<string, number | null>;
 }
 
+// Colunas do modelo (base 1, como no Excel)
+const COL = { A: 1, B: 2, C: 3, D: 4, S: 19, T: 20, U: 21, V: 22, W: 23, X: 24, Y: 25, Z: 26, AB: 28, AE: 31, AF: 32, AG: 33 };
+const ULTIMA_COL = 34;                                   // AH
+// Produto j (0, 1, 2…): nota na coluna 5+2j (E, G, I…), nível na seguinte,
+// peso na linha 9, coluna 10+j (J, K, L…); a soma dos pesos logo a seguir.
+const colNota = (j: number) => 5 + 2 * j;
+const colPeso = (j: number) => 10 + j;
+const LETRA = (c: number) => { let s = ''; for (let n = c; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s; };
+const PRIMEIRA = 15, LINHAS_MODELO = 23;
+// Com mais de 7 planos, a pauta ganha duas colunas (nota e nível) por plano,
+// inseridas antes do Modelo 5 C's (coluna S). Tudo o resto só se desloca.
+const INSERE = 19;
+const colunasAMais = (d: DadosPauta) => (colunasDeProdutos(d.produtos) - MAX_PRODUTOS) * 2;
+
 // ── Excel (.xlsx) ────────────────────────────────────────────
+
+/** Acrescenta colunas de produto ao modelo, com o mesmo formato das do 7.º produto. */
+function alargarModeloXLSX(ws: any, e2: number, nProd: number) {
+  const merges = Object.values(ws._merges || {}).map((m: any) => ({ top: m.top, left: m.left, bottom: m.bottom, right: m.right }));
+  merges.forEach(m => ws.unMergeCells(m.top, m.left, m.bottom, m.right));
+  const copia = (st: any) => JSON.parse(JSON.stringify(st || {}));
+  const estiloNumero = copia(ws.getCell(8, 16).style), estiloPeso = copia(ws.getCell(9, 16).style);
+  const estiloSoma = copia(ws.getCell(9, 17).style);
+  const vazio8 = copia(ws.getCell(8, 18).style), vazio9 = copia(ws.getCell(9, 18).style);
+  const nLinhas = Math.max(ws.rowCount, 41);
+  const larguras = [ws.getColumn(17).width, ws.getColumn(18).width];
+
+  ws.spliceColumns(INSERE, 0, ...Array.from({ length: e2 }, () => []));
+  for (let k = 0; k < e2; k++) {
+    ws.getColumn(INSERE + k).width = larguras[k % 2];
+    for (let r = 1; r <= nLinhas; r++) {
+      const orig = r === 8 ? vazio8 : r === 9 ? vazio9 : copia(ws.getCell(r, 17 + (k % 2)).style);
+      ws.getCell(r, INSERE + k).style = copia(orig);
+    }
+  }
+  // Tabela "Produtos / %" da linha 8 e 9: um lugar por produto e a soma a seguir.
+  for (let j = MAX_PRODUTOS; j < nProd; j++) {
+    ws.getCell(8, colPeso(j)).style = copia(estiloNumero);
+    ws.getCell(9, colPeso(j)).style = copia(estiloPeso);
+  }
+  ws.getCell(9, colPeso(nProd)).style = copia(estiloSoma);
+
+  merges.forEach(m => {
+    let { left, right } = m;
+    if (left >= INSERE) { left += e2; right += e2; }
+    else if (right >= INSERE || (right === 18 && left < 17)) right += e2;
+    ws.mergeCells(m.top, left, m.bottom, right);
+    // O cabeçalho do 7.º produto repete-se nos produtos novos.
+    if (m.left === 17 && m.right === 18)
+      for (let k = 2; k <= e2; k += 2) ws.mergeCells(m.top, 17 + k, m.bottom, 18 + k);
+  });
+}
 
 export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
   const ExcelJS: any = (await import('exceljs')).default;
@@ -366,25 +444,32 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
   if (!resp.ok) throw new Error('Não encontrei o modelo da pauta.');
   await wb.xlsx.load(await resp.arrayBuffer());
   const ws = wb.worksheets[0];
+  const nProd = colunasDeProdutos(d.produtos);
+  const e2 = colunasAMais(d);
+  if (e2) alargarModeloXLSX(ws, e2, nProd);
+  const X = (c: number) => c >= INSERE ? c + e2 : c;      // coluna do modelo → coluna na pauta
+  const L = (c: number) => LETRA(X(c));
   const set = (addr: string, v: any) => { ws.getCell(addr).value = v; };
   const f = (addr: string, formula: string) => { ws.getCell(addr).value = { formula }; };
 
   // Cabeçalho
-  set('AB1', d.cabecalho.turma.split(' — ')[0]);
-  set('AB2', d.cabecalho.disciplina);
-  set('AB3', d.cabecalho.formador);
-  set('AB5', `${d.cabecalho.ucId} — ${d.cabecalho.ucNome}`);
-  set('AB6', dataPT(d.cabecalho.dataInicio));
-  set('AF6', dataPT(d.cabecalho.dataFim));
+  set(`${L(COL.AB)}1`, d.cabecalho.turma.split(' — ')[0]);
+  set(`${L(COL.AB)}2`, d.cabecalho.disciplina);
+  set(`${L(COL.AB)}3`, d.cabecalho.formador);
+  set(`${L(COL.AB)}5`, `${d.cabecalho.ucId} — ${d.cabecalho.ucNome}`);
+  set(`${L(COL.AB)}6`, dataPT(d.cabecalho.dataInicio));
+  set(`${L(COL.AF)}6`, dataPT(d.cabecalho.dataFim));
   set('C14', d.totalAtividades);
-  set('V39', dataPT(hojeISO()));
+  set(`${L(COL.V)}39`, dataPT(hojeISO()));
 
-  // Produtos: nome na linha 13, peso na linha 9
-  COL_PROD.forEach((c, j) => {
+  // Produtos: nome na linha 13, número na linha 8, peso na linha 9, e a soma.
+  for (let j = 0; j < nProd; j++) {
     const p = d.produtos[j];
-    set(`${LETRA(c)}13`, p ? p.titulo : j + 1);
-    set(`${LETRA(COL_PESO[j])}9`, p ? p.peso / 100 : 0);
-  });
+    set(`${LETRA(colNota(j))}13`, p ? p.titulo : j + 1);
+    set(`${LETRA(colPeso(j))}8`, j + 1);
+    set(`${LETRA(colPeso(j))}9`, p ? p.peso / 100 : 0);
+  }
+  f(`${LETRA(colPeso(nProd))}9`, `SUM(J9:${LETRA(colPeso(nProd - 1))}9)`);
 
   // Alunos. Se houver mais do que as 23 linhas do modelo, acrescentam-se
   // linhas iguais antes da última (que tem a borda de fecho).
@@ -394,10 +479,11 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
   for (let k = 0; k < nLinhas; k++) {
     const R = PRIMEIRA + k;
     const l = d.linhas[k];
-    const lv = (c: number) => `${LETRA(c)}${R}`;
+    const lv = (c: number) => `${LETRA(c)}${R}`;          // coluna já na pauta
+    const lm = (c: number) => `${L(c)}${R}`;               // coluna do modelo
     if (!l) {
       // Linha sem aluno: fica em branco, com o formato do modelo.
-      for (let c = 1; c <= 34; c++) {
+      for (let c = 1; c <= ULTIMA_COL + e2; c++) {
         const cell = ws.getCell(R, c);
         if (!cell.isMerged || cell.master === cell) cell.value = null;
       }
@@ -407,24 +493,31 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
     set(lv(COL.B), l.nome);
     set(lv(COL.C), l.atividades);
     f(lv(COL.D), `IF(C${R}<1,"0",IF(C${R}<$C$14*0.5,"2",IF(C${R}<$C$14*0.7,"4",IF(C${R}<$C$14*0.85,"5","6"))))`);
-    COL_PROD.forEach((c, j) => {
-      const v = l.produtos[j];
-      set(lv(c), v === null ? null : v);
+    for (let j = 0; j < nProd; j++) {
+      const c = colNota(j), v = l.produtos[j];
+      set(lv(c), v === null || v === undefined ? null : v);
       const e = lv(c);
       if (d.produtos[j]) f(lv(c + 1), `IF(${e}=0,"0",IF(${e}<9.5,"2",IF(${e}<14,"4",IF(${e}<17,"5","6"))))`);
       else set(lv(c + 1), null);
-    });
-    f(lv(COL.T), COL_PROD.map((c, j) => `(${LETRA(c + 1)}${R}*$${LETRA(COL_PESO[j])}$9)`).join('+'));
-    set(lv(COL.S), l.c5.cm);
-    set(lv(COL.V), l.c5.cl);
-    set(lv(COL.W), l.c5.co);
-    set(lv(COL.X), l.c5.cr);
-    f(lv(COL.Y), `(S${R}*$S$14)+(T${R}*$U$14)+(V${R}*$V$14)+(W${R}*$W$14)+(X${R}*$X$14)`);
-    f(lv(COL.Z), `IF(Y${R}<3.5,"Módulo em atraso",IF(Y${R}<4.5,"Suficiente",IF(Y${R}<5.5,"Bom","Muito bom")))`);
-    set(lv(COL.AE), l.proposta);
-    // CLASSIF. ATRIBUÍDA: sem fórmula no modelo oficial — fica em branco.
-    set(lv(COL.AG), null);
+    }
+    // As fórmulas do modelo, só com as colunas no sítio novo. Corrigidos os
+    // dois erros do original (autorizado): o TOTAL lê o CP em T (e não U,
+    // que está vazia) e o CR pesa 10% (X14 estava vazia).
+    f(lm(COL.T), Array.from({ length: nProd }, (_, j) => `(${LETRA(colNota(j) + 1)}${R}*$${LETRA(colPeso(j))}$9)`).join('+'));
+    set(lm(COL.S), l.c5.cm);
+    set(lm(COL.V), l.c5.cl);
+    set(lm(COL.W), l.c5.co);
+    set(lm(COL.X), l.c5.cr);
+    const $ = (c: number) => `$${L(c)}$14`;
+    f(lm(COL.Y), `(${lm(COL.S)}*${$(COL.S)})+(${lm(COL.T)}*${$(COL.U)})+(${lm(COL.V)}*${$(COL.V)})+(${lm(COL.W)}*${$(COL.W)})+(${lm(COL.X)}*${$(COL.X)})`);
+    f(lm(COL.Z), `IF(${lm(COL.Y)}<3.5,"Módulo em atraso",IF(${lm(COL.Y)}<4.5,"Suficiente",IF(${lm(COL.Y)}<5.5,"Bom","Muito bom")))`);
+    set(lm(COL.AE), l.proposta);
+    // CLASSIF. ATRIBUÍDA: a nota que o professor atribuiu (sem fórmula, como no modelo).
+    const calc = calculoDoModelo(l, d.produtos, d.totalAtividades);
+    const cl = classificacaoComNota(d.classificacoes[l.alunoId] ?? null, calc.resultado);
+    set(lm(COL.AG), cl === '' ? null : cl);
   }
+  if (e2) ws.pageSetup.printArea = `A1:${LETRA(ULTIMA_COL + e2)}${41 + extra}`;
 
   // Logo da escola, no sítio do modelo.
   const logo = await fetch('/pauta_logo.png').then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
@@ -452,37 +545,72 @@ const fmtNum = (v: number, num: string | null) =>
   : num === '0' ? String(Math.round(v))
   : String(Math.round(v * 100) / 100).replace('.', ',');
 
+/** A grelha do modelo com as colunas de produto a mais (base 0). */
+function modeloAlargado(nProd: number) {
+  const M: any = MODELO;
+  const e2 = (nProd - MAX_PRODUTOS) * 2, I0 = INSERE - 1;
+  if (!e2) return { cols: M.cols as number[], cells: M.cells as Record<string, any>, merges: M.merges as number[][] };
+  const cols = [...M.cols.slice(0, I0), ...Array.from({ length: e2 }, (_, k) => M.cols[16 + (k % 2)]), ...M.cols.slice(I0)];
+  const cells: Record<string, any> = {};
+  Object.entries(M.cells as Record<string, any>).forEach(([k, x]) => {
+    const [r, c] = k.split(',').map(Number);
+    cells[`${r},${c >= I0 ? c + e2 : c}`] = x;
+  });
+  const nRows = M.rows.length;
+  for (let r = 0; r < nRows; r++) for (let k = 0; k < e2; k++) {
+    const src = M.cells[`${r},${r === 7 || r === 8 ? 17 : 16 + (k % 2)}`];
+    if (src) cells[`${r},${I0 + k}`] = { s: src.s };
+  }
+  for (let j = MAX_PRODUTOS; j < nProd; j++) {
+    cells[`7,${9 + j}`] = { s: M.cells['7,15']?.s };
+    cells[`8,${9 + j}`] = { s: M.cells['8,15']?.s };
+  }
+  cells[`8,${9 + nProd}`] = { s: M.cells['8,16']?.s };
+  const merges: number[][] = [];
+  (M.merges as number[][]).forEach(([r1, c1, r2, c2]) => {
+    if (c1 >= I0) merges.push([r1, c1 + e2, r2, c2 + e2]);
+    else if (c2 >= I0 || (c2 === 17 && c1 < 16)) merges.push([r1, c1, r2, c2 + e2]);
+    else merges.push([r1, c1, r2, c2]);
+    if (c1 === 16 && c2 === 17) for (let k = 2; k <= e2; k += 2) merges.push([r1, c1 + k, r2, c2 + k]);
+  });
+  return { cols, cells, merges };
+}
+
 export function htmlDaPauta(d: DadosPauta): string {
   const M: any = MODELO;
-  const cols: number[] = M.cols, alturas: number[] = [...M.rows];
+  const nProd = colunasDeProdutos(d.produtos);
+  const e2 = colunasAMais(d);
+  const G = modeloAlargado(nProd);
+  const cols: number[] = G.cols, alturas: number[] = [...M.rows];
   const E: Record<string, EstiloModelo> = M.estilos;
   const valores = new Map<string, string | number>();   // "r,c" (base 0) → valor
   const val = (r: number, c: number, v: any) => valores.set(`${r},${c}`, v);
+  const X0 = (c1: number) => (c1 >= INSERE ? c1 + e2 : c1) - 1;   // coluna do modelo (base 1) → base 0 na pauta
 
   // Valores fixos do modelo
-  Object.entries(M.cells as Record<string, any>).forEach(([k, x]) => {
+  Object.entries(G.cells).forEach(([k, x]) => {
     const r = Number(k.split(',')[0]);
     if (r >= PRIMEIRA - 1 && r < PRIMEIRA - 1 + LINHAS_MODELO) return;   // zona dos alunos
     if (x.t !== undefined) valores.set(k, x.t);
     else if (x.n !== undefined) valores.set(k, x.n);
   });
-  const c0 = (c: number) => c - 1;
-  val(0, 27, d.cabecalho.turma.split(' — ')[0]);
-  val(1, 27, d.cabecalho.disciplina);
-  val(2, 27, d.cabecalho.formador);
-  val(4, 27, `${d.cabecalho.ucId} — ${d.cabecalho.ucNome}`);
-  val(5, 27, dataPT(d.cabecalho.dataInicio));
-  val(5, 31, dataPT(d.cabecalho.dataFim));
+  val(0, X0(COL.AB), d.cabecalho.turma.split(' — ')[0]);
+  val(1, X0(COL.AB), d.cabecalho.disciplina);
+  val(2, X0(COL.AB), d.cabecalho.formador);
+  val(4, X0(COL.AB), `${d.cabecalho.ucId} — ${d.cabecalho.ucNome}`);
+  val(5, X0(COL.AB), dataPT(d.cabecalho.dataInicio));
+  val(5, X0(COL.AF), dataPT(d.cabecalho.dataFim));
   val(13, 2, d.totalAtividades);
-  val(38, 21, dataPT(hojeISO()));
+  val(38, X0(COL.V), dataPT(hojeISO()));
   let somaPesos = 0;
-  COL_PROD.forEach((c, j) => {
+  for (let j = 0; j < nProd; j++) {
     const p = d.produtos[j];
-    val(12, c0(c), p ? p.titulo : j + 1);
-    val(8, c0(COL_PESO[j]), p ? p.peso / 100 : 0);
+    val(12, colNota(j) - 1, p ? p.titulo : j + 1);
+    val(7, colPeso(j) - 1, j + 1);
+    val(8, colPeso(j) - 1, p ? p.peso / 100 : 0);
     somaPesos += p ? p.peso / 100 : 0;
-  });
-  val(8, 16, somaPesos);   // Q9 = SOMA
+  }
+  val(8, colPeso(nProd) - 1, somaPesos);   // a SOMA dos pesos
 
   // Linhas dos alunos (e linhas a mais, se for preciso)
   const extra = Math.max(0, d.linhas.length - LINHAS_MODELO);
@@ -494,17 +622,18 @@ export function htmlDaPauta(d: DadosPauta): string {
     if (!l) continue;
     const calc = calculoDoModelo(l, d.produtos, d.totalAtividades);
     val(r, 0, l.numero); val(r, 1, l.nome); val(r, 2, l.atividades); val(r, 3, calc.nAtiv);
-    COL_PROD.forEach((c, j) => {
-      if (l.produtos[j] !== null) val(r, c0(c), l.produtos[j] as number);
+    for (let j = 0; j < nProd; j++) {
+      const v = l.produtos[j];
+      if (v !== null && v !== undefined) val(r, colNota(j) - 1, v);
       // Colunas sem produto ficam em branco (não 0).
-      if (d.produtos[j]) val(r, c0(c + 1), calc.niveis[j]);
-    });
-    val(r, 18, l.c5.cm ?? ''); val(r, 19, Math.round(calc.cp * 100) / 100);
-    val(r, 21, l.c5.cl ?? ''); val(r, 22, l.c5.co ?? ''); val(r, 23, l.c5.cr ?? '');
-    val(r, 24, Math.round(calc.total * 100) / 100);
-    val(r, 25, calc.resultado);
-    if (l.proposta !== null) val(r, 30, l.proposta);
-    val(r, 32, classificacaoComNota(l.final));
+      if (d.produtos[j]) val(r, colNota(j), calc.niveis[j]);
+    }
+    val(r, X0(COL.S), l.c5.cm ?? ''); val(r, X0(COL.T), Math.round(calc.cp * 100) / 100);
+    val(r, X0(COL.V), l.c5.cl ?? ''); val(r, X0(COL.W), l.c5.co ?? ''); val(r, X0(COL.X), l.c5.cr ?? '');
+    val(r, X0(COL.Y), Math.round(calc.total * 100) / 100);
+    val(r, X0(COL.Z), calc.resultado);
+    if (l.proposta !== null) val(r, X0(COL.AE), l.proposta);
+    val(r, X0(COL.AG), classificacaoComNota(d.classificacoes[l.alunoId] ?? null, calc.resultado));
   }
 
   // Grelha: as linhas a mais repetem a penúltima linha de alunos.
@@ -513,7 +642,7 @@ export function htmlDaPauta(d: DadosPauta): string {
     : r - extra;
   const nTotal = alturas.length + extra;
   const merges: number[][] = [];
-  (M.merges as number[][]).forEach(([r1, c1, r2, c2]) => {
+  G.merges.forEach(([r1, c1, r2, c2]) => {
     const desloca = (r: number) => r >= PRIMEIRA - 1 + LINHAS_MODELO - 1 ? r + extra : r;
     merges.push([desloca(r1), c1, desloca(r2), c2]);
     if (r1 === PRIMEIRA - 1 + LINHAS_MODELO - 2 && r2 === r1)
@@ -545,7 +674,7 @@ export function htmlDaPauta(d: DadosPauta): string {
     const rm = mapaLinha(r);
     for (let c = 0; c < cols.length; c++) {
       if (cobertas.has(`${r},${c}`)) continue;
-      const x = (M.cells as any)[`${rm},${c}`] || { s: 'Default' };
+      const x = G.cells[`${rm},${c}`] || { s: 'Default' };
       const e = E[x.s] || E['Default'] || Object.values(E)[0];
       let v: any = valores.get(`${r},${c}`);
       if (v === undefined && r >= PRIMEIRA - 1 + nLinhas) v = valores.get(`${r - extra},${c}`);
