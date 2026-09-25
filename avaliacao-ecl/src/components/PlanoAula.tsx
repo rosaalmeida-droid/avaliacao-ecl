@@ -38,7 +38,8 @@ const NUM_UC: Record<string, number> = {
 import { PlanoAula as TPlanoAula } from '../types';
 import { Card } from './ui';
 import ProfessorView from './ProfessorView';
-import { ModalPauta } from './ModalPauta';
+import { FecharUC } from './FecharUC';
+import { modulosDaTurma as modulosParaPauta } from '../cronograma';
 
 const TIPOS_ATIVIDADE = [
   'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
@@ -535,6 +536,8 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
 
 export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoIdInicial, onPlanoIdInicialUsado }: {
   turmaId: string; nomeProfessor?: string;
+  /** Muda quando chegam dados novos: re-desenha sem perder a vista. */
+  versao?: number;
   onAlteracao?: (guardar?: () => void) => void;
   onGuardado?: (plano?: TPlanoAula) => void;
   planoIdInicial?: string;
@@ -559,6 +562,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   const [refreshKey, setRefreshKey] = useState(0);
   const [modoSelecaoPlanos, setModoSelecaoPlanos] = useState(false);
   const [mostrarModalPauta, setMostrarModalPauta] = useState(false);
+  const [ucPauta, setUcPauta] = useState<{ id: string; nome: string } | null>(null);
   const [planosSelecionadosIds, setPlanosSelecionadosIds] = useState<Set<string>>(new Set());
   /** Ver também as aulas dos outros professores. */
   const [verDeTodos, setVerDeTodos] = useState(false);
@@ -801,12 +805,40 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           </div>
         );
       })}
-      {mostrarModalPauta && (
-        <ModalPauta
-          turmaId={turmaId}
-          nomeProfessor={nomeProfessor || 'Professor'}
-          onFechar={() => setMostrarModalPauta(false)}
-        />
+      {/* A pauta é sempre a do modelo da escola, por UC: escolhe-se a UC e
+          abre-se o mesmo ecrã de "Notas da UC → Pauta da UC". */}
+      {mostrarModalPauta && !ucPauta && (() => {
+        const comPlanos = new Set(planosDaTurma.map(p => p.ucId).filter(Boolean));
+        const ucs = modulosParaPauta(turmaId).filter((m: any) => comPlanos.has(m.id));
+        return (
+          <div onClick={() => setMostrarModalPauta(false)} style={{ position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(26,23,20,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: 20,
+              width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Pauta de que UC?</div>
+              <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', marginBottom: 12 }}>
+                A pauta sai no modelo da escola, com os Planos de Avaliação da UC.
+              </div>
+              {ucs.length === 0 && <div style={{ fontSize: 14 }}>Ainda não há planos de aula com UC nesta turma.</div>}
+              {ucs.map((m: any) => (
+                <button key={m.id} onClick={() => setUcPauta({ id: m.id, nome: m.nome })} style={{ display: 'block',
+                  width: '100%', textAlign: 'left', padding: '11px 12px', marginBottom: 6, borderRadius: 10,
+                  border: '1px solid rgba(26,23,20,0.14)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
+                  <b>{m.id}</b> — {m.nome}
+                </button>
+              ))}
+              <button onClick={() => setMostrarModalPauta(false)} style={{ marginTop: 6, padding: '9px 14px', borderRadius: 9,
+                border: '1px solid rgba(26,23,20,0.18)', background: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+      {ucPauta && (
+        <FecharUC turmaId={turmaId} ucId={ucPauta.id} ucNome={ucPauta.nome} nomeProfessor={nomeProfessor}
+          onFechado={() => { setUcPauta(null); setMostrarModalPauta(false); }}
+          onCancelar={() => { setUcPauta(null); setMostrarModalPauta(false); }} />
       )}
     </div>
   );

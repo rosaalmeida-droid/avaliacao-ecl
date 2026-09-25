@@ -18,7 +18,7 @@
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  pautaDaUC, enviarPautaPorEmail, marcarUCFechada,
+  pautaDaUC, enviarPautaPorEmail, marcarUCFechada, situacaoRecuperacaoUC,
   emailDoProfessor, guardarEmailDoProfessor, getTurmas,
 } from '../backend';
 import { modulosDaTurma } from '../cronograma';
@@ -154,7 +154,23 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
     if (!confirmarClassificacoes()) return;
     guardarEmailDoProfessor(email);
     setAEnviar(true);
-    const r = await enviarPautaPorEmail(turmaId, ucId, email, nomeProfessor || '', [...incluidos]);
+    // O que vai por email é a pauta oficial: os mesmos campos de sempre
+    // (o script da escola conta com eles), com os valores da folha.
+    const oficiais = escolhidas.map(l => {
+      const { c, nota } = contas[l.alunoId];
+      const s = situacaoRecuperacaoUC(l.alunoId, turmaId, ucId);
+      return {
+        numero: l.numero, nome: l.nome, alunoId: l.alunoId,
+        base: notaDoCompetente(l, produtos), bonusAssiduidade: 0, bonusParticipacao: 0,
+        final: nota, presenca: s.presenca, recuperacao: s.precisa,
+        motivo: s.motivo === 'faltas' ? 'faltas acima de 10%' : s.motivo === 'negativa' ? 'terminou sem positiva' : '',
+        produtos: l.produtos.slice(0, produtos.length),
+        cm: l.c5.cm, cp: c.cp, cl: l.c5.cl, co: l.c5.co, cr: l.c5.cr,
+        total: Math.round(c.total * 100) / 100, resultado: c.resultado,
+        proposta: l.proposta, classificacao: String(classificacaoComNota(nota)),
+      };
+    });
+    const r = await enviarPautaPorEmail(turmaId, ucId, email, nomeProfessor || '', [...incluidos], oficiais);
     setAEnviar(false);
     if (!r.ok) { alert('Não consegui enviar a pauta.\n\n' + (r.erro || '')); return; }
     marcarUCFechada(turmaId, ucId);

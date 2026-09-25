@@ -621,7 +621,10 @@ function AppInterno() {
             );
           })()}
           {vistaGlobal === 'planos' && (
-            <PlanoAula key={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
+            // Sem key: dados novos só re-desenham o ecrã. Com key={refreshKey}
+            // o ecrã recriava-se a cada sincronização e voltava ao calendário
+            // (perdia a Lista, o Arquivo e até um plano a meio de criar).
+            <PlanoAula versao={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
               onAlteracao={registarAlteracao}
               onGuardado={(p?: TPlanoAula) => {
                 limparAlteracoes();

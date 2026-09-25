@@ -5998,7 +5998,11 @@ export function ucsPorFechar(turmaId: string): { ucId: string; nome: string; dat
 export async function enviarPautaPorEmail(
   turmaId: string, ucId: string, email: string, professor: string,
   /** Só estes alunos entram na pauta. Sem lista, entram todos. */
-  alunosIds?: string[]
+  alunosIds?: string[],
+  /** As linhas da pauta oficial (modelo da escola), já com a classificação
+   *  atribuída pelo professor. Com elas, o email leva essas notas e não
+   *  outra conta. */
+  linhasOficiais?: Record<string, unknown>[]
 ): Promise<{ ok: boolean; erro?: string }> {
   if (!email || !email.includes('@')) return { ok: false, erro: 'Email inválido.' };
   const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
@@ -6006,7 +6010,7 @@ export async function enviarPautaPorEmail(
     turmaId, ucId, ucNome: mod?.nome || '', email, professor,
     disciplina: mod?.disciplina || '', horasPrevistas: mod?.horasPrevistas || 0,
     dataInicio: mod?.dataInicio || '', dataFim: mod?.dataFim || '',
-    linhas: pautaDaUC(turmaId, ucId).filter(l => !alunosIds || alunosIds.includes(l.alunoId)),
+    linhas: linhasOficiais || pautaDaUC(turmaId, ucId).filter(l => !alunosIds || alunosIds.includes(l.alunoId)),
     criadaEm: new Date().toISOString(),
   });
   // Dar tempo ao script e confirmar que a pauta ficou registada.
