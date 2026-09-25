@@ -199,15 +199,63 @@ export function save<T>(key: string, data: T[]): void {
   catch (e) { console.error('Erro ao guardar', key, e); }
 }
 
-async function enviar(url: string, tipo: string, dados: Record<string, unknown>): Promise<void> {
-  if (!url) return;
+async function enviarAgora(url: string, corpo: Record<string, unknown>): Promise<void> {
   try {
     await fetch(url, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ tipo, ...dados }),
+      body: JSON.stringify(corpo),
     });
   } catch (e) { console.error('Erro Sheets:', e); }
+}
+
+// ── Envios em pacote (script v16) ──────────────────────────────
+// Uma autoavaliação ou uma validação eram um envio por competência, todos
+// ao mesmo tempo. O script grava um de cada vez, e os últimos da fila
+// desistiam: 4 competências avaliadas, 2 no Sheets. Agora o que é enviado
+// no mesmo instante vai junto, num só pacote. Só com o script v16 ou
+// posterior (que sabe abrir pacotes); com um script antigo, vai um a um.
+let loteSuportado: boolean | null = null;
+let aVerLote: Promise<void> | null = null;
+function verSeHaLote(): Promise<void> {
+  if (aVerLote) return aVerLote;
+  aVerLote = (async () => {
+    try {
+      const r = await fetch(SHEETS_ECL_URL);
+      const j = await r.json();
+      const m = String(j?.versao || '').match(/v(\d+)/);
+      loteSuportado = !!m && Number(m[1]) >= 16;
+    } catch { loteSuportado = null; aVerLote = null; }
+  })();
+  return aVerLote;
+}
+// Sabe-se logo ao abrir a aplicação, para a primeira autoavaliação já ir junta.
+if (typeof window !== 'undefined') setTimeout(() => { verSeHaLote(); }, 800);
+const filas = new Map<string, { itens: Record<string, unknown>[]; resolver: (() => void)[]; t: any }>();
+function despejarFila(url: string) {
+  const f = filas.get(url);
+  filas.delete(url);
+  if (!f) return;
+  const fim = () => f.resolver.forEach(r => r());
+  const partes: Record<string, unknown>[][] = [];
+  for (let i = 0; i < f.itens.length; i += 40) partes.push(f.itens.slice(i, i + 40));
+  Promise.all(partes.map(p => p.length === 1 ? enviarAgora(url, p[0]) : enviarAgora(url, { tipo: 'lote', itens: p })))
+    .then(fim, fim);
+}
+
+async function enviar(url: string, tipo: string, dados: Record<string, unknown>): Promise<void> {
+  if (!url) return;
+  const corpo = { tipo, ...dados };
+  if (url !== SHEETS_ECL_URL || loteSuportado !== true) {
+    if (url === SHEETS_ECL_URL && loteSuportado === null) verSeHaLote();
+    return enviarAgora(url, corpo);
+  }
+  return new Promise<void>(resolve => {
+    let f = filas.get(url);
+    if (!f) { f = { itens: [], resolver: [], t: setTimeout(() => despejarFila(url), 300) }; filas.set(url, f); }
+    f.itens.push(corpo);
+    f.resolver.push(resolve);
+  });
 }
 
 async function lerDoSheets(url: string, params: Record<string, string>): Promise<any> {
@@ -2422,7 +2470,14 @@ export function addOrUpdateSelecao(s: SelecaoAluno): void {
   save(KEYS.selecoes, all);
   // Enviar selecao para Sheets — necessário para sincronização entre dispositivos
   // Tipo 'selecao' é diferente de 'avaliacao' para não criar linhas duplicadas
-  enviar(SHEETS_HISTORICO_URL, 'selecao', {
+  enviar(SHEETS_HISTORICO_URL, 'selecao', corpoSelecao(s));
+  // Se não chegar, volta a ser enviada: sem ela o professor não vê esta
+  // autoavaliação na lista para validar.
+  porConfirmar('selecao', s.id, 'autoavaliação', s.turmaId);
+}
+
+function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
+  return {
     id: s.id,
     planoAulaId: s.planoAulaId,
     alunoId: s.alunoId,
@@ -2431,7 +2486,7 @@ export function addOrUpdateSelecao(s: SelecaoAluno): void {
     atitudes: s.atitudes,
     autoavaliacoes: s.autoavaliacoes,
     criadaEm: s.criadaEm,
-  });
+  };
 }
 
 export function addOrUpdateValidacao(v: Validacao): void {
@@ -6474,7 +6529,7 @@ export function professoresComPlanos(turmaId: string): string[] {
 const KEY_ESPERA = 'ecl_por_confirmar';
 
 export interface PorConfirmar {
-  tipo: 'plano' | 'ficha' | 'aluno' | 'avaliacao';
+  tipo: 'plano' | 'ficha' | 'aluno' | 'avaliacao' | 'selecao';
   id: string;
   rotulo: string;
   turmaId: string;
@@ -6507,6 +6562,7 @@ const LEITURA_POR_TIPO: Record<PorConfirmar['tipo'], [string, string]> = {
   ficha:     [SHEETS_FICHAS_URL, 'get_fichas'],
   aluno:     [SHEETS_ALUNOS_URL, 'get_alunos'],
   avaliacao: [SHEETS_HISTORICO_URL, 'get_avaliacoes'],
+  selecao:   [SHEETS_HISTORICO_URL, 'get_selecoes'],
 };
 
 function reenviar(p: PorConfirmar): void {
@@ -6519,6 +6575,9 @@ function reenviar(p: PorConfirmar): void {
   } else if (p.tipo === 'aluno') {
     const aluno = getAlunos().find(x => x.id === p.id);
     if (aluno) enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno });
+  } else if (p.tipo === 'selecao') {
+    const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
+    if (sel) enviar(SHEETS_HISTORICO_URL, 'selecao', corpoSelecao(sel));
   } else {
     const r = getHistoricoAvaliacoes().find(x => x.id === p.id);
     if (r) enviar(SHEETS_HISTORICO_URL, 'avaliacao', r as any);
