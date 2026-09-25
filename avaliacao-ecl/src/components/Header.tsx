@@ -102,10 +102,10 @@ export const NAV: NavItem[] = [
   { id: 'manual',              label: 'Manual do cozinheiro', icon: Icons.manual,     secao: 'Consultar' },
   { id: 'manuais_aluno',       label: 'Manuais do aluno',     icon: Icons.manual,     secao: 'Consultar' },
   { id: 'cronograma',          label: 'Cronograma',           icon: Icons.cronograma, secao: 'Consultar' },
-  // Saíram do menu por repetirem outros sítios: "Guiões" (é o Guião de
-  // dentro do plano), "Orçamentos" (a requisição sem plano já faz isso) e
-  // "Historial" (é o mesmo que "Notas da UC").
+  { id: 'guia',                label: 'Guiões',               icon: Icons.guia,       secao: 'Mais' },
   { id: 'requisicao',          label: 'Requisições',          icon: Icons.req,        secao: 'Mais' },
+  { id: 'orcamentos',          label: 'Orçamentos',           icon: Icons.req,        secao: 'Mais' },
+  { id: 'historial',           label: 'Historial',            icon: Icons.avaliacao,  secao: 'Mais' },
   { id: 'ajuda',               label: 'Ajuda',                icon: Icons.ajuda,      secao: 'Mais' },
 ];
 

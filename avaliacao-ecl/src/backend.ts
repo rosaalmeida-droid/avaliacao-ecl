@@ -339,16 +339,41 @@ function reconciliarComSheets<T extends { id: string }>(
 }
 
 export async function sincronizarDoSheets(turmaId: string): Promise<void> {
+  // Todos os pedidos ao Sheets partem ao mesmo tempo. Eram 15, um depois do
+  // outro, e cada um leva 1 a 3 segundos no Google: «Atualizar» chegava a
+  // demorar meio minuto. Agora demora o tempo do pedido mais lento.
+  const pedidos = new Map<string, Promise<any>>();
+  const ler = (url: string, params: Record<string, string>): Promise<any> => {
+    const k = url + '|' + JSON.stringify(params);
+    if (!pedidos.has(k)) pedidos.set(k, lerDoSheets(url, params));
+    return pedidos.get(k)!;
+  };
+  [
+    [SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId }],
+    [SHEETS_FICHAS_URL, { tipo: 'get_fichas' }],
+    [SHEETS_RECUPERACAO_URL, { tipo: 'recuperacoes', turmaId }],
+    [SHEETS_RECUPERACAO_URL, { tipo: 'evidencias' }],
+    [SHEETS_PLANOS_URL, { tipo: 'get_requisicoes', turmaId }],
+    [SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId }],
+    [SHEETS_HISTORICO_URL, { tipo: 'get_validacoes', turmaId }],
+    [SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId }],
+    [SHEETS_ALUNOS_URL, { tipo: 'get_alunos', turmaId }],
+    [SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId }],
+    [SHEETS_ECL_URL, { tipo: 'get_precos' }],
+    [SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' }],
+  ].forEach(([url, params]) => { if (url) ler(url as string, params as Record<string, string>); });
   try {
     // Sessões e líderes primeiro: são o que o aluno precisa para saber
     // se pode entrar na aula. Falham em silêncio se o script ainda não
     // souber responder a estes tipos.
-    await sincronizarSessoes(turmaId).catch(() => {});
-    await sincronizarLideresKF(turmaId).catch(() => {});
+    await Promise.all([
+      sincronizarSessoes(turmaId).catch(() => {}),
+      sincronizarLideresKF(turmaId).catch(() => {}),
+    ]);
 
     // Carregar planos do Sheets de Planos
     if (SHEETS_PLANOS_URL) {
-      const jsonPlanos = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
+      const jsonPlanos = await ler(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
       marcarLeituraPlanos(!!jsonPlanos?.ok);
       if (jsonPlanos?.ok && Array.isArray(jsonPlanos.dados)) {
         const locais = getPlanosAula();
@@ -409,7 +434,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     // os dados estruturados (ingredientes/preparação) continuam só no localStorage
     // de origem, mas o aluno pode sempre ver/imprimir a versão completa em HTML.
     if (SHEETS_FICHAS_URL) {
-      const jsonFichas = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
+      const jsonFichas = await ler(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
       if (jsonFichas?.ok && Array.isArray(jsonFichas.dados)) {
         const locais = getFichasProducao();
         const eliminadas = new Set(load<string>(KEYS.eliminadosFichas));
@@ -464,7 +489,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     // Carregar Recuperações e Evidências do Sheets dedicado — merge por ID,
     // a versão mais recente (atualizadoEm) ganha em caso de conflito.
     if (SHEETS_RECUPERACAO_URL) {
-      const jsonRecup = await lerDoSheets(SHEETS_RECUPERACAO_URL, { tipo: 'recuperacoes', turmaId });
+      const jsonRecup = await ler(SHEETS_RECUPERACAO_URL, { tipo: 'recuperacoes', turmaId });
       if (jsonRecup?.ok && jsonRecup.dados?.length > 0) {
         const locais = getRecuperacoes();
         const merged = [...locais];
@@ -476,7 +501,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         save(KEYS.recuperacoes, merged);
       }
 
-      const jsonEvid = await lerDoSheets(SHEETS_RECUPERACAO_URL, { tipo: 'evidencias' });
+      const jsonEvid = await ler(SHEETS_RECUPERACAO_URL, { tipo: 'evidencias' });
       if (jsonEvid?.ok && jsonEvid.dados?.length > 0) {
         const locais = getEvidencias();
         const idsLocais = new Set(locais.map((e: Evidencia) => e.id));
@@ -492,7 +517,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     // É a única coisa que era enviada sem leitura de volta.
     if (SHEETS_PLANOS_URL) {
       try {
-        const jsonReq = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_requisicoes', turmaId });
+        const jsonReq = await ler(SHEETS_PLANOS_URL, { tipo: 'get_requisicoes', turmaId });
         const doSheets = jsonReq?.requisicoes || jsonReq?.dados || [];
         if (jsonReq?.ok && Array.isArray(doSheets)) {
           const locais = getRequisicoes();
@@ -523,7 +548,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
 
     // ── Sincronizar Avaliações (historico_avaliacoes) ──────────────────
     if (SHEETS_HISTORICO_URL) {
-      const jsonAval = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
+      const jsonAval = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
       if (jsonAval?.ok && jsonAval.dados?.length > 0) {
         // Os +1 da transição de referencial vão para o registo deles — se
         // entrassem aqui, contavam para as notas das UCs e para a pauta.
@@ -550,7 +575,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       }
 
       // ── Sincronizar Validações ──────────────────────────────────────
-      const jsonVal = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_validacoes', turmaId });
+      const jsonVal = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_validacoes', turmaId });
       if (jsonVal?.ok && jsonVal.dados?.length > 0) {
         const locais = getValidacoes();
         const merged = [...locais];
@@ -563,7 +588,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       }
 
       // ── Sincronizar Presenças ───────────────────────────────────────
-      const jsonPres = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId });
+      const jsonPres = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId });
       if (jsonPres?.ok && jsonPres.dados?.length > 0) {
         // As linhas do Sheets não trazem identificador: comparar pelo id
         // fazia cada sincronização acrescentar tudo outra vez. Agora é uma
@@ -598,7 +623,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
 
     // ── Sincronizar Alunos ──────────────────────────────────────────────
     if (SHEETS_ALUNOS_URL) {
-      const jsonAlunos = await lerDoSheets(SHEETS_ALUNOS_URL, { tipo: 'get_alunos', turmaId });
+      const jsonAlunos = await ler(SHEETS_ALUNOS_URL, { tipo: 'get_alunos', turmaId });
       if (jsonAlunos?.ok && jsonAlunos.dados?.length > 0) {
         const locais = getAlunos();
         const merged = [...locais];
@@ -620,7 +645,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
 
     // ── Sincronizar Autoavaliações (Selecoes) ───────────────────────────
     if (SHEETS_HISTORICO_URL) {
-      const jsonSel = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId });
+      const jsonSel = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId });
       if (jsonSel?.ok && jsonSel.dados?.length > 0) {
         const locais = load<SelecaoAluno>(KEYS.selecoes);
         const merged = [...locais];
@@ -635,10 +660,10 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
 
     // ── Preços revistos (Continente) — iguais para todas as turmas ────
     if (SHEETS_ECL_URL) {
-      const jsonPrecos = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos' });
+      const jsonPrecos = await ler(SHEETS_ECL_URL, { tipo: 'get_precos' });
       if (jsonPrecos?.ok && jsonPrecos.dados?.length > 0) juntarPrecosRevistos(jsonPrecos.dados);
       // Preços que os professores pediram para rever (v14).
-      const jsonARever = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' });
+      const jsonARever = await ler(SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' });
       if (jsonARever?.ok && jsonARever.dados?.length > 0) juntarPrecosARever(jsonARever.dados);
     }
 
