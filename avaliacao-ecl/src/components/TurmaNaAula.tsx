@@ -13,6 +13,7 @@ import React, { useState } from 'react';
 import {
   estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta,
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
+  getPlanosAula, getPresencas, blocosDeHoraDoPlano,
 } from '../backend';
 
 const C = {
@@ -44,6 +45,16 @@ export function TurmaNaAula({
 }) {
   // O ecrã redesenha-se sozinho depois de cada decisão.
   const [, redesenhar] = useState(0);
+  // Alunos com a escolha das horas aberta, e os que entraram a horas mas
+  // o professor quer marcar (saiu mais cedo).
+  const [horasAbertas, setHorasAbertas] = useState<Set<string>>(new Set());
+  const [marcarAberto, setMarcarAberto] = useState<Set<string>>(new Set());
+  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+  const blocos = plano ? blocosDeHoraDoPlano(plano) : [];
+  const presencas = getPresencas().filter(p => p.planoAulaId === planoAulaId);
+  const horasDe = (alunoId: string): string[] =>
+    ((presencas.find(p => p.alunoId === alunoId) as any)?.horasPresentes) || [];
+  const alternarSet = (set: Set<string>, id: string) => { const t = new Set(set); t.has(id) ? t.delete(id) : t.add(id); return t; };
   const estados = estadoDaTurmaNaAula(planoAulaId, turmaId);
   const r = resumoDaTurmaNaAula(estados);
 
@@ -80,7 +91,6 @@ export function TurmaNaAula({
         <div key={e.alunoId} style={{
           background: '#fff', borderRadius: 12, padding: '12px 14px', marginBottom: 8,
           border: `1px solid ${e.entrou ? C.border : 'rgba(192,57,43,0.25)'}`,
-          opacity: e.entrou ? 1 : 0.7,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
             <span style={{
@@ -114,7 +124,8 @@ export function TurmaNaAula({
                   <Pastilha texto={`entrou ${e.horaEntrada}`} cor={C.verde} fundo={C.verdeSuave} />
                 )}
 
-                {e.entrou && !e.fardamentoOk && (
+                {/* A farda só se sabe de quem entrou pela aplicação. */}
+                {e.entrou && !!e.horaEntrada && !e.fardamentoOk && (
                   <Pastilha texto={e.itensEmFalta ? `falta: ${e.itensEmFalta}` : 'farda incompleta'}
                     cor={C.cobre} fundo={C.cobreSuave} />
                 )}
@@ -147,32 +158,95 @@ export function TurmaNaAula({
               {/* A decisão da falta faz-se daqui, sem sair do ecrã */}
               {/* Quem entrou fora de tempo, e quem não entrou: o professor
                   decide. Também se muda uma decisão já tomada. */}
-              {(e.foraDeTempo || !e.entrou || e.decisaoFalta) && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 5, marginTop: 9 }}>
-                  {(['sem_falta', 'falta_atraso', 'falta_presenca'] as DecisaoFalta[]).map(d => (
-                    <button key={d}
-                      onClick={() => {
-                        decidirFalta(e.alunoId, planoAulaId, d, nomeProfessor || 'professor');
-                        redesenhar(n => n + 1);
-                        onAtualizar?.();
-                      }}
-                      aria-pressed={e.decisaoFalta === d}
-                      style={{
-                        padding: '8px 4px', borderRadius: 8, fontSize: 11.5, fontWeight: 700,
-                        cursor: 'pointer', fontFamily: 'inherit',
-                        border: `1px solid ${e.decisaoFalta === d ? 'transparent' : C.border}`,
-                        background: e.decisaoFalta === d
-                          ? (d === 'sem_falta' ? C.verde : d === 'falta_atraso' ? C.cobre : '#C0392B')
-                          : '#fff',
-                        color: e.decisaoFalta === d ? '#fff'
-                          : d === 'sem_falta' ? C.verde : d === 'falta_atraso' ? C.cobre : '#C0392B',
-                      }}>
-                      {LABEL_DECISAO[d]}
-                    </button>
-                  ))}
-                </div>
+              {/* Quem entrou a horas não precisa de decisão — mas pode ter
+                  saído mais cedo. Um toque abre as mesmas opções. */}
+              {e.entrou && !e.foraDeTempo && !e.decisaoFalta && !marcarAberto.has(e.alunoId) && (
+                <button onClick={() => setMarcarAberto(s => alternarSet(s, e.alunoId))}
+                  style={{ marginTop: 8, background: 'none', border: 'none', padding: 0,
+                    color: C.suave, fontSize: 12.5, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Saiu mais cedo? Marcar as horas
+                </button>
               )}
+
+              {(e.foraDeTempo || !e.entrou || e.decisaoFalta || marcarAberto.has(e.alunoId)) && (() => {
+                const escolhidas = horasDe(e.alunoId);
+                const verHoras = e.decisaoFalta === 'parcial' || horasAbertas.has(e.alunoId);
+                const cor = (d: DecisaoFalta) => d === 'sem_falta' ? C.verde : d === 'falta_presenca' ? '#C0392B' : C.cobre;
+                return (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5, marginTop: 9 }}>
+                      {(['sem_falta', 'falta_atraso', 'falta_presenca', 'parcial'] as DecisaoFalta[]).map(d => {
+                        const activo = e.decisaoFalta === d || (d === 'parcial' && verHoras);
+                        return (
+                          <button key={d}
+                            onClick={() => {
+                              if (d === 'parcial') {
+                                // Abre as horas; a decisão fica quando se escolhe a primeira.
+                                setHorasAbertas(s => new Set(s).add(e.alunoId));
+                                if (e.decisaoFalta !== 'parcial')
+                                  decidirFalta(e.alunoId, planoAulaId, 'parcial', nomeProfessor || 'professor', undefined, escolhidas);
+                              } else {
+                                setHorasAbertas(s => { const t = new Set(s); t.delete(e.alunoId); return t; });
+                                decidirFalta(e.alunoId, planoAulaId, d, nomeProfessor || 'professor');
+                              }
+                              redesenhar(n => n + 1);
+                              onAtualizar?.();
+                            }}
+                            aria-pressed={activo}
+                            style={{
+                              padding: '9px 4px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                              cursor: 'pointer', fontFamily: 'inherit',
+                              border: `1px solid ${activo ? 'transparent' : C.border}`,
+                              background: activo ? cor(d) : '#fff',
+                              color: activo ? '#fff' : cor(d),
+                            }}>
+                            {activo ? '✓ ' : ''}{LABEL_DECISAO[d]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {verHoras && (
+                      <div style={{ marginTop: 8, padding: '8px 10px', background: '#FAFAF7', borderRadius: 8, border: `1px solid ${C.border}` }}>
+                        <div style={{ fontSize: 12.5, color: C.suave, marginBottom: 6 }}>
+                          Toca nas horas em que o aluno <b>esteve</b>. As outras contam como falta.
+                        </div>
+                        {blocos.length === 0 ? (
+                          <div style={{ fontSize: 12.5, color: '#C0392B' }}>O plano não tem hora de início e de fim.</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                            {blocos.map(bl => {
+                              const esteve = escolhidas.includes(bl.inicio);
+                              return (
+                                <button key={bl.inicio}
+                                  onClick={() => {
+                                    const novas = esteve ? escolhidas.filter(x => x !== bl.inicio) : [...escolhidas, bl.inicio].sort();
+                                    decidirFalta(e.alunoId, planoAulaId, 'parcial', nomeProfessor || 'professor', undefined, novas);
+                                    redesenhar(n => n + 1);
+                                    onAtualizar?.();
+                                  }}
+                                  aria-pressed={esteve}
+                                  style={{
+                                    padding: '7px 10px', borderRadius: 20, fontSize: 12.5, fontWeight: 700,
+                                    cursor: 'pointer', fontFamily: 'inherit',
+                                    border: `1px solid ${esteve ? C.verde : C.border}`,
+                                    background: esteve ? C.verde : '#fff', color: esteve ? '#fff' : C.tinta,
+                                  }}>
+                                  {esteve ? '✓ ' : ''}{bl.inicio}–{bl.fim}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {blocos.length > 0 && (
+                          <div style={{ fontSize: 12, color: C.suave, marginTop: 6 }}>
+                            Esteve {escolhidas.length} de {blocos.length} {blocos.length === 1 ? 'hora' : 'horas'}.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

@@ -550,11 +550,19 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
   // ficha, mudar a hora. Em vez de ir buscar tudo de minuto a minuto,
   // pergunta de 15 em 15 segundos se houve alterações, e só vai buscar
   // quando houve: é rápido e não gasta quase nada.
+  //
+  // A abertura da aula vem primeiro e mostra-se logo: ir buscar tudo o
+  // resto (fichas, avaliações, presenças…) leva meio minuto, e o aluno
+  // ficava esse tempo todo sem saber que a aula já estava aberta.
   useEffect(() => vigiarAlteracoes(aluno.turmaId, () => {
-    sincronizarDoSheets(aluno.turmaId)
-      .then(() => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')))
+    const mostrar = () => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
+    sincronizarSessoes(aluno.turmaId)
+      .then(mostrar)
+      .catch(() => {})
+      .then(() => sincronizarDoSheets(aluno.turmaId))
+      .then(mostrar)
       .catch(() => {});
-  }), [aluno.turmaId]);
+  }, 10), [aluno.turmaId]);
 
   const historicoAluno = getHistoricoAluno(aluno.id);
   const planoHoje = planos.find(p => isHoje(p.data));
@@ -1753,8 +1761,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
 
   // Enquanto espera, pergunta ao Sheets se a aula já abriu. O professor
   // abre no computador dele e isto é o que faz a notícia chegar ao
-  // tablet do aluno. Meio minuto de atraso, no pior caso — aceitável
-  // para uma tolerância de dez minutos.
+  // tablet do aluno. Dez segundos de atraso, no pior caso.
   //
   // Só corre neste ecrã e pára assim que a aula abre: não faz sentido
   // estar a consultar o Sheets durante as sete horas de aula.
@@ -1767,7 +1774,8 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
         .catch(() => {});
     };
     perguntar();
-    const id = setInterval(perguntar, 30000);
+    // De 10 em 10 segundos (antes 30): é só enquanto o aluno espera.
+    const id = setInterval(perguntar, 10000);
     return () => { vivo = false; clearInterval(id); };
   }, [t.aberta, aluno.turmaId]);
 

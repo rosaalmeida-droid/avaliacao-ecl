@@ -208,6 +208,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   /** A confirmar no Sheets. Era o mesmo estado da janela de confirmação —
    *  e a janela voltava a abrir enquanto a nota seguia. */
   const [aEnviar, setAEnviar] = useState(false);
+  const [chegou, setChegou] = useState<boolean | null>(null);
   // Pré-preencher com a proposta do aluno — o professor só precisa de clicar
   // onde quer discordar (subir ou descer); o resto fica já seleccionado, pronto
   // a confirmar com um só toque em "Guardar".
@@ -372,18 +373,25 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     // Confirmar que chegou ao Sheets. Uma nota que se perde engana o
     // aluno e o professor — por isso é dito na hora.
     setGuardado(true);
+    // A confirmação no Sheets faz-se por trás: cada nota é um envio, e o
+    // professor ficava parado à espera de todas. Agora grava, diz logo que
+    // está guardado, e pode passar ao aluno seguinte. Só avisa se, ao fim
+    // de meio minuto, as notas ainda não tiverem chegado.
     const ids = notasFinais.map(n => `registo_${selecao.alunoId}_${selecao.planoAulaId}_${n.competenciaId}`);
     setAEnviar(true);
-    const r = await confirmarRegistosNoSheets(selecao.turmaId, ids);
-    setAEnviar(false);
-    if (!r.ok) {
-      alert(
-        'ATENÇÃO — a avaliação ficou gravada aqui, mas NÃO saiu deste computador.\n\n'
-        + `Confirmadas ${r.encontrados} de ${r.total} notas.\n\n`
-        + 'Não feches a aplicação. Vai a Coordenadora → Alunos → "Testar a ligação" '
-        + 'para veres onde está a falhar, e volta a validar depois.'
-      );
-    }
+    const nome = getAlunos().find(a => a.id === selecao.alunoId)?.nome || 'este aluno';
+    confirmarRegistosNoSheets(selecao.turmaId, ids).then(r => {
+      setAEnviar(false);
+      setChegou(r.ok);
+      if (!r.ok) {
+        alert(
+          `ATENÇÃO — a avaliação de ${nome} ficou gravada aqui, mas ainda NÃO chegou ao arquivo da escola.\n\n`
+          + `Confirmadas ${r.encontrados} de ${r.total} notas.\n\n`
+          + 'A aplicação volta a tentar sozinha. Se o aviso se repetir, vai a Coordenadora → Alunos → '
+          + '"Testar a ligação".'
+        );
+      }
+    });
   }
 
   // Depois de guardar não se fecha o ecrã: o professor pode querer
@@ -401,6 +409,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           <span style={{ fontSize: 20, color: 'var(--sage)' }}>✓</span>
           <div style={{ flex: 1, fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
             Validação guardada. Podes continuar a alterar — basta guardar outra vez.
+            <div style={{ fontSize: 12.5, fontWeight: 500, marginTop: 3,
+              color: chegou === false ? 'var(--danger)' : 'rgba(26,23,20,0.55)' }}>
+              {aEnviar ? '⏳ A chegar ao arquivo da escola… podes passar ao seguinte.'
+                : chegou ? '✓ Já está no arquivo da escola.'
+                : chegou === false ? '⚠ Ainda não chegou ao arquivo — a aplicação volta a tentar.' : ''}
+            </div>
           </div>
           {seguintes > 0 && onSeguinte && (
             <button onClick={onSeguinte} style={{ padding: '10px 14px', borderRadius: 9, border: 'none',
@@ -711,9 +725,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           />
         </Field>
         <button className="btn btn-primary" onClick={() => setAConfirmar(true)}
-          disabled={aEnviar || autoavaliacoes.some(a => !notasProf[a.competenciaId])}
+          disabled={autoavaliacoes.some(a => !notasProf[a.competenciaId])}
           style={{ width:'100%', background: 'var(--sage)', marginTop: 8, padding: '14px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', opacity: autoavaliacoes.some(a => !notasProf[a.competenciaId]) ? 0.4 : 1 }}>
-          {aEnviar ? 'A confirmar no arquivo da escola…' : '✓ Validar e guardar avaliação'}
+          {guardado ? '✓ Guardar outra vez' : '✓ Validar e guardar avaliação'}
         </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
           <div style={{ fontSize:13, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>

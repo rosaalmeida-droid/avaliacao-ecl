@@ -1075,6 +1075,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         const sessao = getSessaoAula(plano.id);
         const t = estadoTolerancia(plano.id);
 
+        // Aula que já passou: não se abre (os dez minutos começavam agora).
+        // As faltas marcam-se na lista da turma.
+        if (!sessao?.abertaEm && String(plano.data || '').slice(0, 10) < new Date().toISOString().slice(0, 10)) {
+          return (
+            <div style={{ background:'var(--cream-dark)', borderRadius:14, padding:'12px 16px', fontSize:13.5,
+              color:'rgba(26,23,20,0.7)', lineHeight:1.5 }}>
+              <b>Esta aula já passou.</b> Marca as faltas de cada aluno na lista abaixo
+              {tabInicio !== 'turma' && <> — <button onClick={() => setTabInicio('turma')} style={{ background:'none', border:'none',
+                padding:0, color:'var(--copper)', fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', fontSize:13.5 }}>
+                abrir a lista da turma</button></>}.
+            </div>
+          );
+        }
         if (!sessao?.abertaEm) {
           return (
             <div style={{ background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
@@ -1148,46 +1161,21 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
             {/* A aplicação regista a hora, não decide a falta. Quem entrou
                 fora da janela fica aqui à espera da decisão do professor. */}
+            {/* Só o aviso: a decisão faz-se num sítio só, na lista da turma.
+                Havia aqui outros três botões por aluno, e confundiam. */}
             {porDecidir.length > 0 && (
-              <div style={{ background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
-                borderRadius:14, padding:16, marginTop:10 }}>
-                <div style={{ fontSize:15.5, fontWeight:700, color:'var(--copper)' }}>
+              <button onClick={() => setTabInicio('turma')}
+                style={{ display:'block', width:'100%', textAlign:'left', marginTop:10,
+                  background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
+                  borderRadius:14, padding:'12px 16px', cursor: tabInicio === 'turma' ? 'default' : 'pointer',
+                  fontFamily:'inherit' }}>
+                <span style={{ fontSize:15, fontWeight:700, color:'var(--copper)' }}>
                   {porDecidir.length} {porDecidir.length === 1 ? 'aluno entrou' : 'alunos entraram'} fora do tempo
-                </div>
-                <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:4,
-                  marginBottom:12, lineHeight:1.5 }}>
-                  A aplicação registou a hora. A falta é decisão tua.
-                </div>
-                {porDecidir.map(p => (
-                  <div key={p.alunoId} style={{ background:'#fff', borderRadius:12,
-                    padding:'12px 14px', marginBottom:8 }}>
-                    <div style={{ fontSize:15, fontWeight:700, color:'var(--charcoal, #1a1714)' }}>
-                      {nomeDe(p.alunoId)}
-                    </div>
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:2,
-                      marginBottom:10 }}>
-                      Entrou {p.atrasadoMins} min depois da abertura
-                    </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
-                      {(['sem_falta','falta_atraso','falta_presenca'] as const).map(d => (
-                        <button key={d}
-                          onClick={() => {
-                            decidirFalta(p.alunoId, plano.id, d, nomeProfessor || 'professor');
-                            redesenhar(n => n + 1);
-                          }}
-                          style={{ padding:'10px 4px', borderRadius:9, cursor:'pointer',
-                            border:'1px solid var(--border, rgba(26,23,20,0.15))',
-                            background:'#fff', fontSize:12.5, fontWeight:700,
-                            color: d === 'sem_falta' ? 'var(--sage)'
-                                 : d === 'falta_atraso' ? 'var(--copper)' : 'var(--danger, #c0392b)',
-                            fontFamily:'inherit' }}>
-                          {LABEL_DECISAO[d]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                </span>
+                <span style={{ display:'block', fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:3 }}>
+                  {tabInicio === 'turma' ? 'Decide a falta na lista abaixo.' : 'Toca aqui para decidir a falta na lista da turma.'}
+                </span>
+              </button>
             )}
           </div>
         );

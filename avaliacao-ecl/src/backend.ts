@@ -583,8 +583,13 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
           } else if (s.decisaoProfessor && s.decisaoProfessor !== local.decisaoProfessor) {
             porChave.set(k, { ...local, decisaoProfessor: s.decisaoProfessor,
+              horasPresentes: s.horasPresentes || undefined,
               presente: s.decisaoProfessor === 'falta_presenca' ? false
-                : s.decisaoProfessor === 'sem_falta' ? true : local.presente });
+                : s.decisaoProfessor === 'parcial' ? (s.horasPresentes || []).length > 0 : true });
+          } else if (s.decisaoProfessor === 'parcial'
+              && JSON.stringify(s.horasPresentes || []) !== JSON.stringify(local.horasPresentes || [])) {
+            porChave.set(k, { ...local, horasPresentes: s.horasPresentes || [],
+              presente: (s.horasPresentes || []).length > 0 });
           }
         }
         save(KEYS.presencas, [...porChave.values()]);
@@ -2672,6 +2677,12 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
     const registo: any = presencas.find(r => r.planoAulaId === plano.id);
     if (registo?.decisaoProfessor === 'sem_falta') return false;
     if (registo?.decisaoProfessor === 'falta_presenca') return true;
+    // Esteve parte da aula: as horas em falta contam-se à parte
+    // (horasPerdidasPorAtraso), não a aula inteira.
+    if (registo?.decisaoProfessor === 'parcial') return false;
+    // Falta de atraso: o aluno esteve na aula, mesmo que o registo antigo
+    // diga "não presente" (era assim gravado para quem não entrou na app).
+    if (registo?.decisaoProfessor === 'falta_atraso') return false;
     // Aula que o professor nunca abriu não conta contra o aluno: sem a
     // aula aberta ele nem conseguia marcar presença. A responsabilidade é
     // do professor — só uma decisão explícita dele conta como falta.
@@ -3400,6 +3411,7 @@ export function calcularBonusAssiduidadeUC(alunoId: string, turmaId: string, ucI
     // A decisão do professor manda.
     if (decisao === 'falta_presenca') { faltas++; return; }
     if (!getSessaoAula(p.id)?.abertaEm && !decisao) return;
+    if (decisao === 'falta_atraso') { atrasos++; return; }
     if (!pres || pres.presente === false) { faltas++; return; }
     if (decisao === 'falta_atraso' || (pres.atrasado && decisao !== 'sem_falta')) atrasos++;
     // Aula atitudinal não tem farda — não desconta.
@@ -4364,13 +4376,47 @@ export function marcarPresenca(
   return { foraDeTempo: t.foraDeTempo, minutosAposAbertura: minutos, jaExistia: false };
 }
 
-export type DecisaoFalta = 'sem_falta' | 'falta_atraso' | 'falta_presenca';
+export type DecisaoFalta = 'sem_falta' | 'falta_atraso' | 'falta_presenca' | 'parcial';
 
 export const LABEL_DECISAO: Record<DecisaoFalta, string> = {
   sem_falta:      'Sem falta',
   falta_atraso:   'Falta de atraso',
   falta_presenca: 'Falta de presença',
+  parcial:        'Só algumas horas',
 };
+
+/** As horas de um plano, uma a uma ("13:00"), sem a hora de almoço. */
+export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string }[] {
+  const min = (h?: string) => {
+    if (!h) return NaN;
+    const x = h.includes('T') ? new Date(h).toTimeString().slice(0, 5) : h.slice(0, 5);
+    const [hh, mm] = x.split(':').map(Number);
+    return hh * 60 + mm;
+  };
+  const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const ini = min(p.horaInicio), fim = min(p.horaFim);
+  if (isNaN(ini) || isNaN(fim) || fim <= ini) return [];
+  const almoco = ini <= 13 * 60 && fim >= 14 * 60;
+  const blocos: { inicio: string; fim: string }[] = [];
+  for (let m = ini; m < fim; ) {
+    if (almoco && m >= 13 * 60 && m < 14 * 60) { m = 14 * 60; continue; }
+    let f = Math.min(m + 60, fim);
+    if (almoco && m < 13 * 60 && f > 13 * 60) f = 13 * 60;
+    blocos.push({ inicio: hm(m), fim: hm(f) });
+    m = f;
+  }
+  return blocos;
+}
+
+/** Horas (com frações) em que o aluno esteve, pelos blocos escolhidos. */
+export function horasDosBlocos(p: PlanoAula, inicios: string[]): number {
+  const mins = (a: string, b: string) => {
+    const [h1, m1] = a.split(':').map(Number), [h2, m2] = b.split(':').map(Number);
+    return (h2 * 60 + m2) - (h1 * 60 + m1);
+  };
+  return blocosDeHoraDoPlano(p).filter(b => inicios.includes(b.inicio))
+    .reduce((t, b) => t + mins(b.inicio, b.fim) / 60, 0);
+}
 
 /** Entradas fora da janela que o professor ainda não decidiu. */
 export function presencasPorDecidir(planoAulaId: string): RegistoPresenca[] {
@@ -4383,7 +4429,9 @@ export function presencasPorDecidir(planoAulaId: string): RegistoPresenca[] {
 
 /** O professor decide o tipo de falta. Pode voltar atrás quando quiser. */
 export function decidirFalta(
-  alunoId: string, planoAulaId: string, decisao: DecisaoFalta, professor: string, nota?: string
+  alunoId: string, planoAulaId: string, decisao: DecisaoFalta, professor: string, nota?: string,
+  /** Só com 'parcial': o início de cada hora em que o aluno esteve ("09:00"). */
+  horasPresentes?: string[]
 ): void {
   const all = load<RegistoPresenca>(KEYS.presencas);
   let reg: any = all.find(p => p.alunoId === alunoId && p.planoAulaId === planoAulaId);
@@ -4407,9 +4455,14 @@ export function decidirFalta(
     decididoPor: professor,
     decididoEm: new Date().toISOString(),
     observacao: nota ?? reg.observacao,
-    // Falta de presença anula a presença; "sem falta" conta como presente.
+    // Falta de presença anula a presença. "Sem falta", "falta de atraso"
+    // e "só algumas horas" querem dizer que o aluno ESTEVE na aula — antes
+    // a falta de atraso de quem não tinha entrado na aplicação ficava como
+    // ausência, e contava as horas todas do dia.
     presente: decisao === 'falta_presenca' ? false
-      : decisao === 'sem_falta' ? true : reg.presente,
+      : decisao === 'parcial' ? (horasPresentes || []).length > 0
+      : true,
+    horasPresentes: decisao === 'parcial' ? [...(horasPresentes || [])] : undefined,
   });
   save(KEYS.presencas, all);
 
@@ -4424,6 +4477,7 @@ export function decidirFalta(
     presente: reg.presente, atrasado: !!reg.atrasado, atrasadoMins: reg.atrasadoMins || 0,
     horaEntrada: reg.horaEntrada || '', fardamentoOk: !!reg.fardamentoOk,
     data: reg.data || '', decisaoProfessor: decisao, decididoPor: professor,
+    horasPresentes: reg.horasPresentes || null,
     observacao: reg.observacao || '',
   });
 }
@@ -4661,7 +4715,7 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
   let comPresenca = 0, atrasos = 0, semAuto = 0, comDecisao = 0;
   for (const plano of planos) {
     const pres: any = presencas.find(p => p.planoAulaId === plano.id);
-    if (pres?.presente || pres?.decisaoProfessor === 'sem_falta') {
+    if (pres?.presente || pres?.decisaoProfessor === 'sem_falta' || pres?.decisaoProfessor === 'falta_atraso') {
       comPresenca++;
       if (pres.atrasado) atrasos++;
       if (!selecoes.some(s => s.planoAulaId === plano.id)) semAuto++;
@@ -5001,7 +5055,7 @@ export function resumoDaTurmaNaAula(estados: EstadoAlunoNaAula[]) {
     total: estados.length,
     entraram: estados.filter(e => e.entrou).length,
     foraDeTempo: estados.filter(e => e.foraDeTempo && !e.decisaoFalta).length,
-    semFarda: estados.filter(e => e.entrou && !e.fardamentoOk).length,
+    semFarda: estados.filter(e => e.entrou && !!e.horaEntrada && !e.fardamentoOk).length,
     kfPorFazer: estados.filter(e => e.entrou && !e.kfFinal).length,
     porAvaliar: estados.filter(e => e.entrou && !e.autoavaliou).length,
     porValidar: estados.filter(e => e.autoavaliou && !e.validado).length,
@@ -6149,20 +6203,21 @@ export async function confirmarRegistosNoSheets(
   turmaId: string, ids: string[]
 ): Promise<{ ok: boolean; encontrados: number; total: number; erro?: string }> {
   if (!ids.length) return { ok: true, encontrados: 0, total: 0 };
-  for (let tentativa = 0; tentativa < 2; tentativa++) {
-    await new Promise(res => setTimeout(res, tentativa === 0 ? 1800 : 3000));
+  // Cada nota é um envio, e o Sheets grava um de cada vez: 15 notas podem
+  // levar meio minuto. Vai vendo, e pára logo que estiverem todas.
+  const esperas = [2000, 3000, 5000, 8000, 12000];
+  let encontrados = 0, erro: string | undefined;
+  for (const espera of esperas) {
+    await new Promise(res => setTimeout(res, espera));
     try {
       const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
       if (!json?.ok) continue;
       const la = new Set((json.dados || json.avaliacoes || []).map((r: any) => String(r.id)));
-      const encontrados = ids.filter(id => la.has(String(id))).length;
+      encontrados = ids.filter(id => la.has(String(id))).length;
       if (encontrados === ids.length) return { ok: true, encontrados, total: ids.length };
-      if (tentativa === 1) return { ok: false, encontrados, total: ids.length };
-    } catch (e) {
-      if (tentativa === 1) return { ok: false, encontrados: 0, total: ids.length, erro: String(e) };
-    }
+    } catch (e) { erro = String(e); }
   }
-  return { ok: false, encontrados: 0, total: ids.length };
+  return { ok: false, encontrados, total: ids.length, erro };
 }
 
 /**
@@ -6223,6 +6278,13 @@ export function horasPerdidasPorAtraso(
   for (const p of planos) {
     const reg: any = presencas.find(r => r.planoAulaId === p.id);
     if (!reg || reg.decisaoProfessor === 'sem_falta') continue;
+    // Só algumas horas: faltou as que não foram escolhidas.
+    if (reg.decisaoProfessor === 'parcial') {
+      horas += Math.max(0, horasDoPlano(p) - horasDosBlocos(p, reg.horasPresentes || []));
+      continue;
+    }
+    // Falta de atraso marcada pelo professor sem hora de entrada (aula
+    // passada, aluno não entrou na aplicação): conta o atraso, não horas.
     const minutos = Number(reg.atrasadoMins) || 0;
     if (minutos <= 0) continue;
     // Horas completas, e nunca mais do que a aula toda.
