@@ -302,6 +302,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
         let merged = [...locais];
         for (const pRaw of jsonPlanos.dados) {
+          if (!pRaw?.id) continue;               // linha sem código (aula fantasma do antigo envio ao calendário)
           if (eliminados.has(pRaw.id)) continue; // já foi eliminado de propósito — não trazer de volta
           // Normalizar — o Sheets pode devolver campos array como string (CSV de uma célula)
           const p: any = {
@@ -361,6 +362,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         const eliminadas = new Set(load<string>(KEYS.eliminadosFichas));
         let merged = [...locais];
         for (const f of jsonFichas.dados) {
+          if (!f?.id) continue;
           if (eliminadas.has(f.id)) continue; // já foi eliminada de propósito — não trazer de volta
           const idx = merged.findIndex((x: FichaProducao) => x.id === f.id);
           if (idx < 0) {
@@ -1778,7 +1780,9 @@ async function sincronizarAlunosDaSheetBruto(): Promise<void> {
 }
 
 // ── Planos de Aula ───────────────────────────────────────────
-export function getPlanosAula(): PlanoAula[] { return load<PlanoAula>(KEYS.planos); }
+// Sem as aulas fantasma (sem código) que o antigo envio ao calendário
+// deixou na folha PLANOS e que a sincronização trouxe para o aparelho.
+export function getPlanosAula(): PlanoAula[] { return load<PlanoAula>(KEYS.planos).filter(p => p && p.id); }
 
 export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false): PlanoAula[] {
   return getPlanosAula()
@@ -1894,6 +1898,11 @@ export function getPlanosArquivados(turmaId: string): PlanoAula[] {
 // nunca a data em que o plano foi criado. Não bloqueia nem espera resposta.
 function sincronizarPlanoComCalendario(p: PlanoAula): void {
   if (!SHEETS_CALENDARIO_URL || !p.data) return;
+  // Com o script único, o "calendário" ia para o mesmo endereço, com o tipo
+  // "plano" e sem o código do plano: o script gravava na folha PLANOS uma
+  // aula fantasma, sem código, igual à verdadeira. O script único não tem
+  // calendário — não se envia nada.
+  if (SHEETS_CALENDARIO_URL === SHEETS_ECL_URL) return;
   const fichas = getFichasProducao().filter(f => p.fichasIds.includes(f.id)).map(f => f.nomePrato);
   const temRequisicao = getRequisicoes().some(r => r.planoAulaId === p.id);
   // Um plano é gravado muitas vezes (competências, publicar, fichas…) e
