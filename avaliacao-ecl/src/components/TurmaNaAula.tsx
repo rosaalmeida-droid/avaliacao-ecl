@@ -9,7 +9,7 @@
 // decisões de falta fazem-se daqui, sem sair do ecrã.
 // ============================================================
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta,
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
@@ -42,6 +42,8 @@ export function TurmaNaAula({
   /** Abre a validação deste aluno, sem sair do plano. */
   onValidar?: (alunoId: string) => void;
 }) {
+  // O ecrã redesenha-se sozinho depois de cada decisão.
+  const [, redesenhar] = useState(0);
   const estados = estadoDaTurmaNaAula(planoAulaId, turmaId);
   const r = resumoDaTurmaNaAula(estados);
 
@@ -143,20 +145,28 @@ export function TurmaNaAula({
               )}
 
               {/* A decisão da falta faz-se daqui, sem sair do ecrã */}
-              {e.foraDeTempo && !e.decisaoFalta && (
+              {/* Quem entrou fora de tempo, e quem não entrou: o professor
+                  decide. Também se muda uma decisão já tomada. */}
+              {(e.foraDeTempo || !e.entrou || e.decisaoFalta) && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
                   gap: 5, marginTop: 9 }}>
                   {(['sem_falta', 'falta_atraso', 'falta_presenca'] as DecisaoFalta[]).map(d => (
                     <button key={d}
                       onClick={() => {
                         decidirFalta(e.alunoId, planoAulaId, d, nomeProfessor || 'professor');
+                        redesenhar(n => n + 1);
                         onAtualizar?.();
                       }}
+                      aria-pressed={e.decisaoFalta === d}
                       style={{
                         padding: '8px 4px', borderRadius: 8, fontSize: 11.5, fontWeight: 700,
-                        cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${C.border}`,
-                        background: '#fff',
-                        color: d === 'sem_falta' ? C.verde : d === 'falta_atraso' ? C.cobre : '#C0392B',
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        border: `1px solid ${e.decisaoFalta === d ? 'transparent' : C.border}`,
+                        background: e.decisaoFalta === d
+                          ? (d === 'sem_falta' ? C.verde : d === 'falta_atraso' ? C.cobre : '#C0392B')
+                          : '#fff',
+                        color: e.decisaoFalta === d ? '#fff'
+                          : d === 'sem_falta' ? C.verde : d === 'falta_atraso' ? C.cobre : '#C0392B',
                       }}>
                       {LABEL_DECISAO[d]}
                     </button>

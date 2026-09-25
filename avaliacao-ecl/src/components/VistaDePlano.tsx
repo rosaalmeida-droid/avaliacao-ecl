@@ -359,6 +359,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   /** Aluno a validar, vindo da vista de turma. */
   const [alunoParaValidar, setAlunoParaValidar] = useState<string | null>(null);
   const [modalProximo, setModalProximo] = useState<string | null>(null);
+  // Redesenha depois de decidir uma falta. Passar o mesmo plano ao pai não
+  // mudava nada, e o botão parecia não responder.
+  const [, redesenhar] = useState(0);
   const [fichasParaRequisicao, setFichasParaRequisicao] = React.useState<string[]>([]);
   // A turma entra como separador do plano: é onde o professor está
   // durante a aula, e antes tinha de sair do plano para ver quem chegou
@@ -1170,7 +1173,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                         <button key={d}
                           onClick={() => {
                             decidirFalta(p.alunoId, plano.id, d, nomeProfessor || 'professor');
-                            onPlanoActualizado?.(plano);
+                            redesenhar(n => n + 1);
                           }}
                           style={{ padding:'10px 4px', borderRadius:9, cursor:'pointer',
                             border:'1px solid var(--border, rgba(26,23,20,0.15))',
@@ -1203,7 +1206,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             planoAulaId={plano.id}
             turmaId={plano.turmaId}
             nomeProfessor={nomeProfessor}
-            onAtualizar={() => onPlanoActualizado({ ...plano })}
+            onAtualizar={() => redesenhar(n => n + 1)}
             onValidar={(alunoId: string) => { setAlunoParaValidar(alunoId); setModulo('validacao'); }}
           />
         </div>
