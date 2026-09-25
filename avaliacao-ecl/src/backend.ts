@@ -6405,6 +6405,7 @@ export function criarPlanoRecuperacao(
   const base = adiado || criarRecuperacaoAutomatica(alunoId, turmaId, ucId, mod?.nome || '');
   const r: RecuperacaoModulo = {
     ...base, modalidade, descricaoPlano: descricao, estado: 'em_curso', quando: adiado ? 'depois' : 'ja',
+    atualizadoEm: new Date().toISOString(),
     dataLimite: prazo ? new Date(prazo + 'T23:59:00').toISOString() : base.dataLimite,
   };
   addOrUpdateRecuperacao(r);
