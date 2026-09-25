@@ -14,7 +14,7 @@ import { MICROCOMPETENCIAS, encontrarMicro, SUBTECNICAS } from '../compatECL';
 import { addAviso } from '../backend';
 
 interface Props {
-  perfil: 'professor' | 'coordenadora';
+  perfil: 'professor' | 'coordenadora' | 'aluno';
   nomeProfessor?: string;
   turmaId?: string;
 }
@@ -71,7 +71,7 @@ function CriteriosEditor({
   entrada, perfil, nomeProfessor, turmaId, criteriosCustom, onCriteriosChange,
 }: {
   entrada: EntradaDic;
-  perfil: 'professor' | 'coordenadora';
+  perfil: 'professor' | 'coordenadora' | 'aluno';
   nomeProfessor?: string;
   turmaId?: string;
   criteriosCustom: Record<string, { criterio: string; como?: string }[]>;
@@ -165,12 +165,15 @@ function CriteriosEditor({
               </div>
             ))
           )}
+          {/* O aluno só consulta: sugerir alterações é do professor. */}
+          {perfil !== 'aluno' && (
           <button
             onClick={iniciarEdicao}
             style={{ marginTop: 8, fontSize: 12.5, padding: '3px 10px', borderRadius: 6, border: '1px solid rgba(26,23,20,0.2)', background: 'white', cursor: 'pointer', color: 'rgba(26,23,20,0.5)' }}
           >
             {perfil === 'coordenadora' ? '✏️ Editar critérios' : '💡 Sugerir alteração'}
           </button>
+          )}
           {guardado && (
             <div style={{ fontSize: 12.5, color: 'var(--sage)', marginTop: 4, fontWeight: 600 }}>
               {perfil === 'coordenadora' ? '✓ Guardado!' : '✓ Sugestão enviada à coordenadora'}

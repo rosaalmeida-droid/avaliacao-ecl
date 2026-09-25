@@ -176,7 +176,12 @@ function exportarPDF(doc: ManualDocument) {
 }
 
 // ── componente principal ──────────────────────────────────────────────────────
-export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string }) {
+export function ManuaisAluno({ nomeProfessor: _nome, soLeitura = false }: {
+  nomeProfessor?: string;
+  /** Vista do aluno: só lê. Antes o aluno abria o gerador do professor,
+   *  que gasta a IA e grava só no telemóvel dele. */
+  soLeitura?: boolean;
+}) {
   const [modo, setModo]         = useState<'lista' | 'gerar' | 'ver'>('lista');
   const [lista, setLista]       = useState(listSaved());
   const [selCode, setSelCode]   = useState(UCS[0]?.code || '');
@@ -317,7 +322,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", color: '#1f2937', height: '100%' }}>
       {/* tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', padding: '0 4px' }}>
-        {(['lista', 'gerar'] as const).map((m) => (
+        {(soLeitura ? ['lista'] as const : ['lista', 'gerar'] as const).map((m) => (
           <button key={m} onClick={() => setModo(m)} style={tabBtn(modo === m)}>
             {m === 'lista' ? 'Manuais Guardados' : 'Gerar Manual'}
           </button>
@@ -342,10 +347,14 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
           {modo === 'lista' && (
             <div>
               <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>
-                Os manuais ficam guardados neste navegador. Para partilhar ou imprimir, abre um manual e exporta em Word ou PDF.
+                {soLeitura
+                  ? 'Os manuais das unidades que o professor te entregar aparecem aqui.'
+                  : 'Os manuais ficam guardados neste navegador. Para partilhar ou imprimir, abre um manual e exporta em Word ou PDF.'}
               </p>
               {lista.length === 0
-                ? <p style={{ color: '#6b7280' }}>Ainda não há manuais. Vai a <b>Gerar Manual</b>.</p>
+                ? <p style={{ color: '#6b7280' }}>{soLeitura
+                    ? 'Ainda não há nenhum manual. Quando o professor o der, pede-lhe o PDF.'
+                    : <>Ainda não há manuais. Vai a <b>Gerar Manual</b>.</>}</p>
                 : (
                   <div style={{ border: '1px solid #eee', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
                     {lista.map((m) => (
@@ -357,7 +366,7 @@ export function ManuaisAluno({ nomeProfessor: _nome }: { nomeProfessor?: string 
                           </div>
                         </div>
                         <button style={ghost} onClick={() => abrir(m.code)}>Abrir</button>
-                        <button style={{ ...ghost, color: '#dc2626' }} onClick={() => apagar(m.code)}>Apagar</button>
+                        {!soLeitura && <button style={{ ...ghost, color: '#dc2626' }} onClick={() => apagar(m.code)}>Apagar</button>}
                       </div>
                     ))}
                   </div>

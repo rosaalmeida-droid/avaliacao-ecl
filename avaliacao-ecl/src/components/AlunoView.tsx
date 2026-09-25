@@ -892,13 +892,13 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 padding:'10px 16px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
                   color:'#faf7f2', lineHeight:1 }}>{historicoAluno.length}</div>
-                <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.45)', marginTop:3 }}>avaliações</div>
+                <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.45)', marginTop:3 }}>{historicoAluno.length === 1 ? 'avaliação' : 'avaliações'}</div>
               </div>
               <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
                 padding:'10px 16px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
                   color:'#faf7f2', lineHeight:1 }}>{planos.length}</div>
-                <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.45)', marginTop:3 }}>aulas</div>
+                <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.45)', marginTop:3 }}>{planos.length === 1 ? 'aula' : 'aulas'}</div>
               </div>
             </div>
           </div>
@@ -930,6 +930,9 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             sessaoAberta={!!planoHoje && !!getSessaoAula(planoHoje.id)?.abertaEm}
             jaEntrou={!!planoHoje && getPresencas().some(
               p => p.alunoId === aluno.id && p.planoAulaId === planoHoje.id
+            )}
+            jaAvaliou={!!planoHoje && getSelecoes().some(
+              s => s.alunoId === aluno.id && s.planoAulaId === planoHoje.id
             )}
             proximasAulas={aulasFuturas.length}
             avisos={avisosCalculados}
@@ -1047,7 +1050,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
 
-            {destino === 'manual' && <ManuaisAluno />}
+            {destino === 'manual' && <ManuaisAluno soLeitura />}
           </div>
         )}
 
@@ -1174,7 +1177,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 notaPossivel={notaProgressiva != null ? Math.min(20, notaProgressiva + 2) : null} />
             )}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
-            {destino === 'manual' && <ManuaisAluno />}
+            {destino === 'manual' && <ManuaisAluno soLeitura />}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
                 onInscrever={(id) => { inscreverEmAtividade(id, aluno.id, true); setRefreshAtiv(n => n + 1); }}
@@ -1209,7 +1212,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
                 letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
                 📖 Dicionário de Cozinha
               </div>
-              <DicionarioComp perfil="professor" turmaId={aluno.turmaId} />
+              <DicionarioComp perfil="aluno" turmaId={aluno.turmaId} />
             </div>
           </div>
         )}
@@ -1304,7 +1307,9 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     { id:'ficha',      label:'Produzi',                    agora:'Produzir',         cor:V },
     ...(fichas.some((f:any) => f.textoGuia)
       ? [{ id:'guia', label:'Consultei o guião', agora:'Ver o guião', cor:V }] : []),
-    { id:'requisicao', label:'Fiz a requisição',           agora:'Requisitar',       cor:V },
+    // A requisição é do professor: o aluno só a consulta, e só se existir.
+    // Antes o passo aparecia sempre, com "Nenhuma requisição criada".
+    ...(requisicao ? [{ id:'requisicao', label:'Vi a requisição', agora:'Ver a requisição', cor:V }] : []),
     { id:'kf_final',   label:'Registos finais',            agora:'Antes de fechar',  cor:V },
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ];
@@ -1328,46 +1333,19 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   const passoActivo = PASSOS.find(p => p.id === secAberta);
 
   return (
-    <div style={{ height:'100vh', background:'#f0f4f8', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div style={{ background:'#f0f4f8', display:'flex', flexDirection:'column' }}>
 
-      {/* TOPO */}
-      <div style={{ background:'linear-gradient(135deg,#1a1714,#2d2520)',
-        padding:'10px 14px', flexShrink:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <button onClick={onVoltar} style={{ background:'rgba(255,255,255,0.1)',
-            border:'none', borderRadius:9, padding:'7px 12px',
-            color:'rgba(247,241,230,0.8)', fontSize:13, cursor:'pointer',
-            fontWeight:700, flexShrink:0 }}>←</button>
-          <div style={{ flex:1, minWidth:0 }}>
-            {plano.ucId && (
-              <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.55)', marginBottom:2,
-                overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {plano.ucId}{plano.ucNome ? ` · ${plano.ucNome}` : ''}
-              </div>
-            )}
-            <div style={{ fontSize:17, fontWeight:800, color:'#faf7f2', lineHeight:1.25,
-              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-              {plano.titulo}
-            </div>
-            <div style={{ fontSize:13, color:'rgba(247,241,230,0.5)', marginTop:2 }}>
-              {fmtData(plano.data)}{plano.horaInicio && ` · ${plano.horaInicio}–${plano.horaFim}`}
-            </div>
-          </div>
-          <div style={{ background: pctProgresso===100 ? '#22c55e' : 'rgba(255,255,255,0.12)',
-            borderRadius:100, padding:'5px 11px', flexShrink:0 }}>
-            <div style={{ fontSize:13, fontWeight:800, color:'#fff' }}>
-              {pctProgresso===100 ? '🎉' : `${passosConcluidos}/${totalPassos}`}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* O topo escuro (← título, data, 0/7) saiu: repetia o cabeçalho da
+          janela (Voltar e o título) e o cartão roxo em baixo — no
+          telemóvel, três cabeçalhos com o mesmo título ocupavam metade do
+          ecrã antes de o aluno ver o que tinha de fazer. */}
 
       {/* CORPO — um passo de cada vez.
           A fita horizontal de separadores obrigava o aluno a perceber um
           mapa antes de fazer o que quer que fosse. Passa a haver uma
           frase que lhe diz o que fazer agora, um botão principal só, e a
           lista dos passos em baixo para saber onde está. */}
-      <div style={{ flex:1, overflowY:'auto', background:'#F3F2F5', minHeight:0 }}>
+      <div style={{ background:'#F3F2F5' }}>
         <div style={{ padding:14, maxWidth:640, margin:'0 auto' }}>
 
           {/* Barra de progresso: vê-se em meio segundo quantos faltam. */}
@@ -1377,12 +1355,10 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
                 textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                 {plano.ucId}{plano.ucNome ? ` · ${plano.ucNome}` : ''}
               </div>
-              <div style={{ fontSize:13, color:'#DCCFF0', flexShrink:0 }}>
-                {new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}
-              </div>
             </div>
-            <div style={{ fontSize:20, fontWeight:700, color:'#fff', marginTop:5, lineHeight:1.25 }}>
-              {plano.titulo}
+            {/* O título já está no cabeçalho da janela: aqui, a data e a hora. */}
+            <div style={{ fontSize:17, fontWeight:700, color:'#fff', marginTop:5, lineHeight:1.25 }}>
+              {fmtData(plano.data)}{plano.horaInicio && ` · ${plano.horaInicio}–${plano.horaFim}`}
             </div>
             <div style={{ display:'flex', gap:5, marginTop:14 }}>
               {PASSOS.map(p => {
@@ -1394,6 +1370,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             </div>
             <div style={{ fontSize:13, color:'#DCCFF0', marginTop:8 }}>
               Passo {PASSOS.findIndex(p => p.id === secAberta) + 1} de {totalPassos}
+              {passosConcluidos > 0 && ` · ${pctProgresso === 100 ? 'tudo feito 🎉' : `${passosConcluidos} feito${passosConcluidos > 1 ? 's' : ''}`}`}
             </div>
           </div>
 
@@ -1415,20 +1392,8 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
                 </div>
               </div>
 
-              {/* A ficha do aluno fica sempre à vista: não tem de se
-                  lembrar do que lhe calhou. */}
-              {fichas.length > 0 && (secAberta==='ficha' || secAberta==='guia') && (
-                <div style={{ background:'#FAF9FB', borderRadius:12, padding:14, marginTop:15 }}>
-                  <div style={{ fontSize:13, color:'#777', marginBottom:5 }}>
-                    {fichas.length === 1 ? 'A tua ficha' : 'As tuas fichas'}
-                  </div>
-                  {fichas.map((f:any) => (
-                    <div key={f.id} style={{ fontSize:17, fontWeight:600, color:'#1A1A1A' }}>
-                      {f.nomePrato}
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* A lista "As tuas fichas" saiu: as fichas aparecem logo a
+                  seguir, uma a uma, com ingredientes e passos. */}
             </div>
           )}
 
@@ -1462,11 +1427,11 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             {secAberta==='ficha' && (
               <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
                 onConcluido={() => { setFichaConcluida(true); _save('ficha');
-                  setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : 'requisicao'); }} />
+                  setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : requisicao ? 'requisicao' : 'kf_final'); }} />
             )}
             {secAberta==='guia' && (
               <SecaoGuiao fichas={fichas} plano={plano}
-                onConcluido={() => { setGuiaoConcluido(true); _save('guia'); setSecAberta('requisicao'); }} />
+                onConcluido={() => { setGuiaoConcluido(true); _save('guia'); setSecAberta(requisicao ? 'requisicao' : 'kf_final'); }} />
             )}
             {secAberta==='requisicao' && (
               <SecaoRequisicao requisicao={requisicao}
@@ -1813,8 +1778,9 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
     }
   }
 
-  async function gravarFarda() {
-    const nomes = emFalta.map(i => i.label);
+  async function gravarFarda(faltas = emFalta) {
+    const impedido = faltas.some(i => IMPEDEM.includes(i.id));
+    const nomes = faltas.map(i => i.label);
     const agora = new Date().toISOString();
     const reg = (suf: string, comp: string, nota: number) => addRegistoAvaliacao({
       id: `${plano.id}_${aluno.id}_${suf}_${Date.now()}`, alunoId: aluno.id,
@@ -1950,17 +1916,21 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
               preso, sem adornos, unhas curtas, mãos lavadas.
             </div>
             <button
-              onClick={() => {
-                setOk(Object.fromEntries(ITENS_FARDA.map(i => [i.id, true])));
-                setFardaModo('detalhe');
-              }}
+              // Um toque só: antes pedia outra vez "Confirmar — está tudo".
+              onClick={() => gravarFarda([])}
               style={{ width:'100%', background:V, color:'#fff', border:'none',
                 borderRadius:12, padding:17, fontSize:17.5, fontWeight:600,
                 cursor:'pointer', fontFamily:'inherit', marginBottom:10 }}>
               A minha farda está completa
             </button>
             <button
-              onClick={() => setFardaModo('detalhe')}
+              // Começa com tudo marcado: o aluno toca só no que lhe falta.
+              // Antes começava com tudo em falta e o aviso "não podes
+              // entrar na cozinha" aparecia logo, antes de tocar em nada.
+              onClick={() => {
+                setOk(Object.fromEntries(ITENS_FARDA.map(i => [i.id, true])));
+                setFardaModo('detalhe');
+              }}
               style={{ width:'100%', background:'transparent', border:`2px solid ${V}`,
                 color:V, borderRadius:12, padding:15, fontSize:16, fontWeight:600,
                 cursor:'pointer', fontFamily:'inherit' }}>
@@ -1970,9 +1940,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
         ) : (
         <>
         <div style={{ fontSize:14, color:'#777', marginTop:4, marginBottom:15 }}>
-          {emFalta.length === 0
-            ? 'Confirmaste tudo. Se afinal te falta alguma coisa, toca para desmarcar.'
-            : 'Toca no que tens contigo.'}
+          Toca no que te falta (fica a cinzento).
         </div>
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:9,
@@ -2015,7 +1983,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           </div>
         )}
 
-        <button onClick={gravarFarda} style={{
+        <button onClick={() => gravarFarda()} style={{
           width:'100%', background:V, color:'#fff', border:'none', borderRadius:12,
           padding:17, fontSize:18, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
         }}>
@@ -2030,206 +1998,6 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   );
 }
 
-function PainelKitchenFlow({ fichas, aluno, plano }: {
-  fichas: any[]; aluno: any; plano: any;
-}) {
-  const [aberto, setAberto] = useState(false);
-  const [regTemp, setRegTemp] = useState<{prato:string;tipo:'quente'|'frio';temp:string}|null>(null);
-  const [regNC, setRegNC] = useState<{zona:string;desc:string;acao:string}|null>(null);
-  const [enviado, setEnviado] = useState<string[]>([]);
-  const nomeAluno = aluno.nome || `Aluno ${aluno.numero}`;
-
-  // Extrair registos obrigatórios do campo kitchenflow das fichas
-  const registosTexto = fichas.map(f => f.kitchenflow || '').filter(Boolean).join('\n');
-  const temTemperatura = /temperatura.*servi|temperatura de servi/i.test(registosTexto);
-  const temOleos = /controlo.*óleo|controlo de óleo/i.test(registosTexto);
-  const temConservacao = /conserva[cç]/i.test(registosTexto);
-  const temTestemunho = /amostra.*testemunho/i.test(registosTexto);
-
-  const registos = [
-    { id:'higiene', emoji:'🧼', label:'Higiene Pessoal', desc:'Registado automaticamente na entrada', auto:true },
-    ...(temTemperatura ? [{ id:'temp', emoji:'🌡️', label:'Temperatura de Serviço', desc:'Registar temperatura do prato antes de servir', auto:false }] : []),
-    ...(temOleos ? [{ id:'oleos', emoji:'🛢️', label:'Controlo de Óleos', desc:'Registar controlo de óleos de fritura', auto:false }] : []),
-    ...(temConservacao ? [{ id:'conservacao', emoji:'📦', label:'Conservação de Produtos', desc:'Registar produtos que sobram', auto:false }] : []),
-    { id:'nc', emoji:'⚠️', label:'Não Conformidades', desc:'Registar qualquer problema detetado', auto:false },
-    ...(temTestemunho ? [{ id:'testemunho', emoji:'🧪', label:'Amostra Testemunho', desc:'Recolher amostra se houver serviço a clientes', auto:false }] : []),
-  ];
-
-  async function enviarTemperatura() {
-    if (!regTemp || !regTemp.prato || !regTemp.temp) return;
-    await registarTemperaturaKitchenFlow(
-      aluno.turmaId, aluno.id, nomeAluno,
-      regTemp.prato, regTemp.tipo, Number(regTemp.temp)
-    );
-    setEnviado(p => [...p, 'temp']);
-    setRegTemp(null);
-  }
-
-  async function enviarNC() {
-    if (!regNC || !regNC.desc) return;
-    await registarNaoConformidadeKitchenFlow(
-      aluno.turmaId, aluno.id, nomeAluno,
-      regNC.zona || 'Cozinha', regNC.desc, regNC.acao || 'A definir'
-    );
-    setEnviado(p => [...p, 'nc']);
-    setRegNC(null);
-  }
-
-  return (
-    <div style={{ marginBottom:16, borderRadius:14, overflow:'hidden',
-      border:`1.5px solid #0e7490`, background:'#f0f9ff' }}>
-      <button onClick={() => setAberto(a => !a)} style={{
-        width:'100%', display:'flex', alignItems:'center', gap:12,
-        padding:'12px 16px', background:'#0e7490', border:'none', cursor:'pointer',
-      }}>
-        <span style={{ fontSize:20 }}>🏭</span>
-        <div style={{ flex:1, textAlign:'left' }}>
-          <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>KitchenFlow ECL</div>
-          <div style={{ fontSize:13, color:'rgba(255,255,255,0.75)' }}>
-            {registos.filter(r => enviado.includes(r.id) || r.auto).length}/{registos.length} registos concluídos
-          </div>
-        </div>
-        <span style={{ fontSize:18, color:'rgba(255,255,255,0.7)',
-          transform:aberto?'rotate(90deg)':'none', transition:'0.2s' }}>›</span>
-      </button>
-
-      {aberto && (
-        <div style={{ padding:'12px 14px' }}>
-          {registos.map(reg => {
-            const feito = enviado.includes(reg.id) || reg.auto;
-            return (
-              <div key={reg.id} style={{ marginBottom:8, padding:'10px 12px',
-                borderRadius:10, background:feito?'#d1fae5':'#fff',
-                border:`1px solid ${feito?'#6ee7b7':'rgba(14,116,144,0.2)'}` }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontSize:20 }}>{feito ? '✅' : reg.emoji}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:700,
-                      color:feito?'#065f46':'#0e7490' }}>{reg.label}</div>
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginTop:1 }}>
-                      {feito ? 'Registado ✓' : reg.desc}
-                    </div>
-                  </div>
-                  {!feito && !reg.auto && reg.id !== 'temp' && reg.id !== 'nc' && (
-                    <button onClick={() => abrirKitchenFlow(reg.id)} style={{
-                      padding:'6px 12px', borderRadius:8, border:'none',
-                      background:'#0e7490', color:'#fff', fontSize:13,
-                      fontWeight:700, cursor:'pointer', flexShrink:0,
-                    }}>
-                      Registar →
-                    </button>
-                  )}
-                  {!feito && reg.id === 'nc' && !regNC && (
-                    <button onClick={() => setRegNC({zona:'Cozinha',desc:'',acao:''})} style={{
-                      padding:'6px 12px', borderRadius:8, border:'none',
-                      background:'#dc2626', color:'#fff', fontSize:13,
-                      fontWeight:700, cursor:'pointer', flexShrink:0,
-                    }}>
-                      Registar →
-                    </button>
-                  )}
-                  {!feito && reg.id === 'temp' && !regTemp && (
-                    <button onClick={() => setRegTemp({prato:fichas[0]?.nomePrato||'',tipo:'quente',temp:''})} style={{
-                      padding:'6px 12px', borderRadius:8, border:'none',
-                      background:'#0e7490', color:'#fff', fontSize:13,
-                      fontWeight:700, cursor:'pointer', flexShrink:0,
-                    }}>
-                      Registar →
-                    </button>
-                  )}
-                </div>
-
-                {/* Formulário Temperatura */}
-                {reg.id === 'temp' && regTemp && (
-                  <div style={{ marginTop:10, padding:'10px', background:'#e0f2fe',
-                    borderRadius:8, display:'flex', flexDirection:'column', gap:8 }}>
-                    <div style={{ display:'flex', gap:6 }}>
-                      {(['quente','frio'] as const).map(t => (
-                        <button key={t} onClick={() => setRegTemp(p => p?{...p,tipo:t}:null)} style={{
-                          flex:1, padding:'6px', borderRadius:6, cursor:'pointer',
-                          border:`2px solid ${regTemp.tipo===t?'#0e7490':'rgba(14,116,144,0.3)'}`,
-                          background:regTemp.tipo===t?'#0e7490':'#fff',
-                          color:regTemp.tipo===t?'#fff':'#0e7490', fontSize:13, fontWeight:700,
-                        }}>{t==='quente'?'🔥 Quente':'❄️ Frio'}</button>
-                      ))}
-                    </div>
-                    <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                      <input type="number" value={regTemp.temp}
-                        onChange={e => setRegTemp(p => p?{...p,temp:e.target.value}:null)}
-                        placeholder="°C" style={{ flex:1, padding:'8px', borderRadius:6,
-                          border:'1px solid rgba(14,116,144,0.3)', fontSize:15, textAlign:'center' }} />
-                      <span style={{ fontSize:13, color:'#0e7490', fontWeight:600 }}>
-                        {regTemp.tipo==='quente'?'mín. 63°C':'máx. 4°C'}
-                      </span>
-                    </div>
-                    <div style={{ display:'flex', gap:6 }}>
-                      <button onClick={enviarTemperatura} style={{ flex:1, padding:'8px',
-                        borderRadius:8, border:'none', background:'#0e7490', color:'#fff',
-                        fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                        ✓ Confirmar
-                      </button>
-                      <button onClick={() => setRegTemp(null)} style={{ padding:'8px 12px',
-                        borderRadius:8, border:'1px solid rgba(14,116,144,0.3)',
-                        background:'#fff', color:'#0e7490', fontSize:13, cursor:'pointer' }}>
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Formulário Não Conformidade */}
-                {reg.id === 'nc' && regNC && (
-                  <div style={{ marginTop:10, padding:'10px', background:'#fef2f2',
-                    borderRadius:8, display:'flex', flexDirection:'column', gap:8 }}>
-                    <input value={regNC.zona} onChange={e => setRegNC(p => p?{...p,zona:e.target.value}:null)}
-                      placeholder="Zona (ex: Cozinha fria)" style={{ padding:'8px', borderRadius:6,
-                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13 }} />
-                    <textarea value={regNC.desc} onChange={e => setRegNC(p => p?{...p,desc:e.target.value}:null)}
-                      placeholder="Descreve o problema..." rows={2} style={{ padding:'8px', borderRadius:6,
-                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13, resize:'none' }} />
-                    <input value={regNC.acao} onChange={e => setRegNC(p => p?{...p,acao:e.target.value}:null)}
-                      placeholder="Ação corretiva tomada" style={{ padding:'8px', borderRadius:6,
-                        border:'1px solid rgba(220,38,38,0.3)', fontSize:13 }} />
-                    <div style={{ display:'flex', gap:6 }}>
-                      <button onClick={enviarNC} style={{ flex:1, padding:'8px',
-                        borderRadius:8, border:'none', background:'#dc2626', color:'#fff',
-                        fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                        ✓ Registar NC
-                      </button>
-                      <button onClick={() => setRegNC(null)} style={{ padding:'8px 12px',
-                        borderRadius:8, border:'1px solid rgba(220,38,38,0.3)',
-                        background:'#fff', color:'#dc2626', fontSize:13, cursor:'pointer' }}>
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(14,116,144,0.08)',
-            borderRadius:8, fontSize:13, color:'#0e7490', display:'flex', alignItems:'center', gap:8 }}>
-            <span>🔗</span>
-            <span>Abrir KitchenFlow ECL completo:</span>
-            <button onClick={() => abrirKitchenFlow()} style={{ padding:'4px 10px',
-              borderRadius:6, border:'none', background:'#0e7490', color:'#fff',
-              fontSize:13, fontWeight:700, cursor:'pointer' }}>
-              Abrir →
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// SECÇÃO 2 — Fichas de Produção (mantida da versão anterior)
-// ─────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-// SECÇÃO GUIÃO — Guião de Apoio à Produção para o aluno
-// ─────────────────────────────────────────────────────────────
 function SecaoGuiao({ fichas, plano, onConcluido }: {
   fichas: FichaProducao[]; plano: PlanoAula; onConcluido: () => void;
 }) {
@@ -2361,8 +2129,9 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
 
   return (
     <div>
-      {/* Painel KitchenFlow — registos obrigatórios desta produção */}
-      <PainelKitchenFlow fichas={fichas} aluno={aluno} plano={plano} />
+      {/* O painel do KitchenFlow que estava aqui saiu: repetia os registos
+          iniciais e finais, que já são passos próprios da aula, e contava
+          outros ("1/2 registos concluídos") — o aluno não sabia qual valia. */}
 
       {fichas.map(f => (
         <div key={f.id} style={{ marginBottom:12 }}>
@@ -2530,12 +2299,15 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // Evidências do KitchenFlow — carregadas automaticamente
   const [evidenciasKF, setEvidenciasKF] = useState<EvidenciaKitchenFlow[]>([]);
   const [kfCarregado, setKfCarregado] = useState(false);
+  /** Houve registos obrigatórios a procurar no KitchenFlow nesta aula. */
+  const [kfHaTipos, setKfHaTipos] = useState(false);
 
   useEffect(() => {
     // Ir buscar registos KitchenFlow do aluno nesta data
     const data = plano.data ? String(plano.data).slice(0, 10) : new Date().toISOString().slice(0, 10);
     const registosObrig = fichas.flatMap(f => extrairRegistosObrigatorios(f as any));
     const tiposUnicos = Array.from(new Set(registosObrig));
+    setKfHaTipos(tiposUnicos.length > 0);
 
     sincronizarEvidenciasKitchenFlow(aluno.turmaId, aluno.id, data, tiposUnicos)
       .then(ev => { setEvidenciasKF(ev); setKfCarregado(true); })
@@ -2545,6 +2317,19 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // Verificar se uma competência tem evidência no KitchenFlow
   function temEvidenciaKF(compId: string): boolean {
     return evidenciasKF.some(e => e.competenciaId === compId);
+  }
+
+  /**
+   * A higiene e segurança alimentar fica a 1 por falta de registo no
+   * KitchenFlow só quando o registo era deste aluno. Antes ficava a 1
+   * também para quem não é o líder do grupo — a quem a aplicação diz que
+   * "é o colega que faz os registos pelo grupo" — e nas aulas sem nenhum
+   * registo obrigatório a procurar. O professor confirma na validação.
+   */
+  function hsaSemRegisto(): boolean {
+    if (!kfHaTipos) return false;
+    if (!ehLiderKF(aluno.id, plano.id)) return false;
+    return !temEvidenciaKF('OBR_02');
   }
 
   // Badge KF — mostra ao aluno que os seus registos do KitchenFlow foram verificados
@@ -2784,7 +2569,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     // aqui. A técnica em si (SUB) nunca é afectada por isto — só o registo.
     if (nivelHaccp) {
       const notaAutoDeclarada = paraNota(nivelHaccp);
-      const notaFinalHaccp = temEvidenciaKF('OBR_02') ? notaAutoDeclarada : 1;
+      const notaFinalHaccp = !hsaSemRegisto() ? notaAutoDeclarada : 1;
       addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hac_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_02',nota:notaFinalHaccp,data:agora,validadoPor:'aluno'});
     }
     // Guardar todas as competências com escala 1-4
@@ -2819,8 +2604,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       // com 1 — ele decide. Antes o 1 só ia para o histórico, que já não
       // conta para nota nenhuma; a regra perdia-se.
       ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,
-        nota: temEvidenciaKF('OBR_02') ? paraNota(nivelHaccp) : 1,
-        semRegistoKF: !temEvidenciaKF('OBR_02')}]:[]),
+        nota: !hsaSemRegisto() ? paraNota(nivelHaccp) : 1,
+        semRegistoKF: hsaSemRegisto()}]:[]),
       ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
       ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude}]:[]),
       ...(atitudeApanhar?[{competenciaId:atitudeApanhar,nivel:'sozinho',nota:notaApanhar}]:[]),
@@ -3159,7 +2944,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         : OPCOES.find(o => o.v === v)?.label || '';
       linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
     } else if (p.tipo === 'haccp') {
-      const semKF = !temEvidenciaKF('OBR_02');
+      const semKF = hsaSemRegisto();
       linhasRever.push({ nome: 'Higiene e segurança alimentar',
         resposta: !nivelHaccp ? 'Por responder'
           : semKF ? 'Sem registo no KitchenFlow: fica a 1' : OPCOES.find(o => o.v === nivelHaccp)?.label || '',
@@ -3257,13 +3042,21 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             Registos no KitchenFlow, temperaturas, contaminações. É obrigatória.
           </div>
           {rotuloSecao('Como correu hoje?')}
-          {[...OPCOES].reverse().map(op => (
+          {/* A mesma ordem das técnicas (2 → 5, e o 1 à parte): aqui estava
+              ao contrário, de 5 para 1, e o aluno trocava as respostas. */}
+          {OPCOES.filter(op => op.v !== 'nf').map(op => (
             <button key={op.v} onClick={() => setNivelHaccp(op.v)} style={estiloOpcao(nivelHaccp === op.v)}>
               {circulo(op.nota, nivelHaccp === op.v)}
               <span>{op.label}</span>
             </button>
           ))}
-          {nivelHaccp && !temEvidenciaKF('OBR_02') && (
+          <button onClick={() => setNivelHaccp('nf')} style={{ ...estiloOpcao(nivelHaccp === 'nf'),
+            ...(nivelHaccp === 'nf' ? {} : { border:'none', background:'transparent', textDecoration:'underline',
+              color:'rgba(26,23,20,0.6)', fontWeight:600, width:'auto', padding:'10px 4px' }) }}>
+            {nivelHaccp === 'nf' && circulo(1, true)}
+            {nivelHaccp === 'nf' ? 'Ainda não fiz' : '1 · Ainda não fiz'}
+          </button>
+          {nivelHaccp && hsaSemRegisto() && (
             <div style={{ marginTop:4, padding:'10px 12px', borderRadius:10, fontSize:13.5, lineHeight:1.5,
               background:T.copperP, color:'#8a4a15' }}>
               Não encontrei registo teu no KitchenFlow para esta aula. Mesmo que tenhas feito
@@ -3415,7 +3208,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             ))}
           </div>
 
-          {nivelHaccp && !temEvidenciaKF('OBR_02') && (
+          {nivelHaccp && hsaSemRegisto() && (
             <div style={{ marginTop:12, padding:'10px 12px', borderRadius:10, background:T.copperP,
               fontSize:13.5, color:'#8a4a15', lineHeight:1.5 }}>
               <strong>Higiene e segurança alimentar:</strong> não encontrei o teu registo no KitchenFlow.

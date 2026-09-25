@@ -10,9 +10,11 @@ import type {
   CodigoAutoavaliacao, CodigoValidacaoProfessor, Nivel
 } from './library.types';
 
-// ── Base URL dos ficheiros JSON ───────────────────────────────
-// Em produção: GitHub raw ou Vercel static
-const BASE_URL = 'https://raw.githubusercontent.com/rosaalmeida-droid/avaliacao-ecl/main/avaliacao-ecl/public/library';
+// ── Onde estão os ficheiros JSON ──────────────────────────────
+// Primeiro na própria aplicação (public/library, publicada com ela — é
+// sempre a versão certa). O GitHub fica só de reserva: dependia do ramo
+// main e da ligação ao GitHub, e sem ele as competências não carregavam.
+const LOCAIS = ['/library', 'https://raw.githubusercontent.com/rosaalmeida-droid/avaliacao-ecl/main/avaliacao-ecl/public/library'];
 
 // ── Singleton cache ───────────────────────────────────────────
 let _library: Library | null = null;
@@ -20,9 +22,15 @@ let _loading: Promise<Library> | null = null;
 
 // ── Carregar biblioteca ───────────────────────────────────────
 async function fetchJSON<T>(name: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}/${name}`);
-  if (!res.ok) throw new Error(`Erro ao carregar ${name}: ${res.status}`);
-  return res.json() as Promise<T>;
+  let erro: unknown;
+  for (const base of LOCAIS) {
+    try {
+      const res = await fetch(`${base}/${name}`);
+      if (!res.ok) throw new Error(`Erro ao carregar ${name}: ${res.status}`);
+      return await res.json() as T;
+    } catch (e) { erro = e; }
+  }
+  throw erro;
 }
 
 export async function loadLibrary(): Promise<Library> {

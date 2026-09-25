@@ -196,7 +196,10 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
   return (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
 
-      {/* Cabeçalho */}
+      {/* Cabeçalho — só na vista do professor. O aluno já tem o título por
+          cima ("O meu historial") e aqui lia "Imprimir turma" e "filtra por
+          aluno", que não são para ele. */}
+      {!alunoId && (
       <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
           <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, fontFamily: 'Nunito, sans-serif' }}>
@@ -210,6 +213,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
           🖨️ Imprimir turma
         </button>
       </div>
+      )}
       <style>{`
         @media print {
           .no-print { display: none !important; }

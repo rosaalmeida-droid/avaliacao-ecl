@@ -118,7 +118,7 @@ import { EventosWizard } from './components/EventosWizard';
 import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
 import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
-import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
+import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   migrarTurmaAntiga,
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
@@ -285,9 +285,12 @@ function AppInterno() {
       // Derivar ano do turmaId — '1º ACP' → 1, '2º ACP' → 2, '3º ACP' → 3
       const anoMatch = tId.match(/[123]/);
       const ano = anoMatch ? (parseInt(anoMatch[0]) as 1|2|3) : 1;
-      const novoAluno: Aluno = { id: alunoId, turmaId: tId, numero, ano };
+      // O aluno da lista oficial, com o nome. Antes montava-se um aluno só
+      // com o número, e a aplicação chamava-lhe "Aluno 2" em todo o lado.
+      const daLista = getAlunos().find(a => a.id === alunoId);
+      const novoAluno: Aluno = daLista || { id: alunoId, turmaId: tId, numero, ano };
       setAluno(novoAluno);
-      addAluno(novoAluno);
+      if (!daLista) addAluno(novoAluno);
     }
   }
 

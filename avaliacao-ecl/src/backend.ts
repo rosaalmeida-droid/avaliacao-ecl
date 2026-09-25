@@ -2561,9 +2561,17 @@ function aulaJaAconteceu(p: PlanoAula, hoje: string): boolean {
   if (!d) return false;
   if (d < hoje) return true;
   if (d === hoje) {
-    // Hoje conta a partir do momento em que o professor abre a aula.
+    // A aula de hoje só conta quando acaba: o professor fecha-a, ou passa a
+    // hora de fim (com a aula aberta). Antes contava logo que era aberta —
+    // e quem ainda estava a chegar, dentro dos 10 minutos, aparecia com
+    // a aula toda em falta e o módulo "por recuperar".
     const s = getSessaoAula(p.id);
-    return !!(s?.fechadaEm || s?.abertaEm);
+    if (s?.fechadaEm) return true;
+    if (!s?.abertaEm) return false;
+    const fim = String(p.horaFim || '').match(/(\d{1,2}):(\d{2})/);
+    if (!fim) return false;
+    const agora = new Date();
+    return agora.getHours() * 60 + agora.getMinutes() >= Number(fim[1]) * 60 + Number(fim[2]);
   }
   return false;
 }

@@ -90,6 +90,7 @@ export function ModalFullscreen({
   return (
     <div
       onClick={sair}
+      className="mf-fundo"
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(26,23,20,0.55)',
@@ -101,6 +102,7 @@ export function ModalFullscreen({
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="mf-caixa"
         style={{
           background: '#faf7f2',
           borderRadius: 20,
@@ -116,7 +118,7 @@ export function ModalFullscreen({
         }}
       >
         {/* Cabeçalho fixo do modal */}
-        <div style={{
+        <div className="mf-topo" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '18px 24px', borderBottom: '1px solid rgba(26,23,20,0.08)',
           background: '#fff', flexShrink: 0,
@@ -142,7 +144,7 @@ export function ModalFullscreen({
           </button>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1714', fontFamily: "'Nunito', sans-serif" }}>
+            <div className="mf-titulo" style={{ fontSize: 18, fontWeight: 800, color: '#1a1714', fontFamily: "'Nunito', sans-serif" }}>
               {titulo}
             </div>
             {subtitulo && (
@@ -161,7 +163,7 @@ export function ModalFullscreen({
               por guardar
             </span>
           ) : (
-            <span style={{
+            <span className="mf-guardado" style={{
               flexShrink: 0, fontSize: 12.5, fontWeight: 600,
               padding: '6px 12px', borderRadius: 20,
               background: 'rgba(90,122,78,0.12)', color: '#3E7A31',
@@ -181,13 +183,13 @@ export function ModalFullscreen({
               {menuLateral}
             </div>
           )}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 24, minWidth: 0 }}>
+          <div className="mf-corpo" style={{ flex: 1, overflowY: 'auto', padding: 24, minWidth: 0 }}>
             {children}
           </div>
         </div>
 
         {/* Rodapé — indicação de que fechar grava */}
-        <div style={{
+        <div className="mf-rodape" style={{
           padding: '10px 24px', borderTop: '1px solid rgba(26,23,20,0.06)',
           background: '#fff', flexShrink: 0, fontSize: 12.5, color: 'rgba(26,23,20,0.4)',
           display: 'flex', alignItems: 'center', gap: 6,
@@ -200,6 +202,17 @@ export function ModalFullscreen({
       <style>{`
         @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes modalSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        /* No telemóvel a janela ocupa o ecrã todo e o topo fica numa linha:
+           o título em três linhas, o "guardado" e o rodapé comiam um terço
+           do ecrã antes do conteúdo. */
+        @media (max-width: 640px) {
+          .mf-fundo { padding: 0 !important; }
+          .mf-caixa { height: 100% !important; max-height: 100% !important; border-radius: 0 !important; }
+          .mf-topo { padding: 10px 12px !important; }
+          .mf-titulo { font-size: 15.5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .mf-guardado, .mf-rodape { display: none !important; }
+          .mf-corpo { padding: 12px !important; }
+        }
       `}</style>
     </div>
   );
