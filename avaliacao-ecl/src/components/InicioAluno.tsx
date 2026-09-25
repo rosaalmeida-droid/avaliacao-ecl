@@ -378,60 +378,10 @@ export function InicioAluno({
           </div>
         )}
 
-        {/* ── O MEU PERCURSO ─────────────────────────────────
-            Cartões cheios: são destinos importantes, mas de consulta,
-            não da aula que está a decorrer. */}
-        <div style={rotulo}>O meu percurso</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 11, marginBottom: 22 }}>
-          <button onClick={() => onAbrir('nota')} style={cartaoCheio}>
-            <span style={{ fontSize: 27, fontWeight: 700, lineHeight: 1 }}>
-              {notaProgressiva != null
-                ? notaProgressiva.toFixed(1).replace('.', ',')
-                : '—'}
-            </span>
-            <span style={{ fontSize: 14.5, fontWeight: 600 }}>A minha nota</span>
-          </button>
-
-          <button onClick={() => onAbrir('perfil')} style={cartaoCheio}>
-            {Icones.alvo(28)}
-            <span style={{ fontSize: 14.5, fontWeight: 600 }}>O meu perfil</span>
-          </button>
-
-          <button onClick={() => onAbrir('recuperacoes')} style={cartaoCheio}>
-            {Icones.repetir(28)}
-            <span style={{ fontSize: 14.5, fontWeight: 600 }}>Recuperações</span>
-            {recuperacoesPendentes > 0 && (
-              <span style={{ fontSize: 12.5, color: C.violetaClaro }}>
-                {recuperacoesPendentes} por recuperar
-              </span>
-            )}
-          </button>
-
-          <button onClick={() => onAbrir('atividades')} style={cartaoCheio}>
-            {Icones.atividades(28)}
-            <span style={{ fontSize: 14.5, fontWeight: 600 }}>Atividades</span>
-            {atividadesAbertas > 0 && (
-              <span style={{ fontSize: 12.5, color: C.violetaClaro }}>
-                {atividadesAbertas} aberta{atividadesAbertas > 1 ? 's' : ''}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* ── CONSULTA: brancos com borda, para se distinguirem ── */}
-        <div style={rotulo}>Consulta</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 11 }}>
-          <button onClick={() => onAbrir('manual')} style={cartaoBranco}>
-            {Icones.livro(26)}
-            <span style={{ fontSize: 14, fontWeight: 600, color: C.tinta }}>Manual da UC</span>
-          </button>
-          <button onClick={() => onAbrir('calendario')} style={cartaoBranco}>
-            {Icones.calendario(26)}
-            <span style={{ fontSize: 14, fontWeight: 600, color: C.tinta }}>Calendário</span>
-          </button>
-        </div>
-
+        {/* O Início fica só com a aula de hoje e os avisos. "A minha nota",
+            "O meu perfil", "Recuperações", "Atividades", "Manual" e
+            "Calendário" estavam aqui e também nos separadores de baixo
+            (Recuperações em três sítios): cada coisa fica num só lugar. */}
       </div>
     </div>
   );

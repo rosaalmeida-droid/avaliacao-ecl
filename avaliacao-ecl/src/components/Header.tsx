@@ -267,11 +267,14 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
 }
 
 // ── Topbar ─────────────────────────────────────────────────────
-function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, subtitulo }: {
+function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, onSair, perfil, subtitulo }: {
   nomeProfessor?: string;
   syncStatus?: 'idle' | 'syncing' | 'ok' | 'offline';
   onAtualizar?: () => void;
-  onAbrirMenu: () => void;
+  /** Sem menu lateral (aluno, coordenadora), o ☰ não aparece. */
+  onAbrirMenu?: () => void;
+  /** Sair da sessão — no aluno e na coordenadora fica aqui, no topo. */
+  onSair?: () => void;
   perfil: Perfil;
   subtitulo?: string;
 }) {
@@ -294,9 +297,11 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, s
       boxShadow: '0 1px 4px rgba(91,103,234,0.07)',
       fontFamily: "'Inter', system-ui, sans-serif",
     }}>
-      <button onClick={onAbrirMenu} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-        {Icons.menu}
-      </button>
+      {onAbrirMenu && (
+        <button onClick={onAbrirMenu} aria-label="Menu" style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {Icons.menu}
+        </button>
+      )}
 
       <img src={logoEcl} alt="ECL" style={{ height: 30, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
 
@@ -322,6 +327,14 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, s
           {Icons.sync}
         </button>
       )}
+
+      {onSair && (
+        <button onClick={onSair}
+          style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${BORDER}`, background: CARD_BG, color: FG,
+            fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>
+          Sair
+        </button>
+      )}
     </header>
   );
 }
@@ -336,8 +349,12 @@ export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus, o
   onAtualizar?: () => void;
 }) {
   return (
+    // O ☰ não abria nada e o "Sair" nunca aparecia: o aluno e a
+    // coordenadora não tinham como sair da sessão — num tablet partilhado,
+    // o aluno seguinte ficava na conta do anterior.
     <Topbar perfil={perfil} nomeProfessor={nomeProfessor} syncStatus={syncStatus}
-      onAtualizar={onAtualizar} onAbrirMenu={() => {}} subtitulo={subtitulo} />
+      onAtualizar={onAtualizar} subtitulo={subtitulo}
+      onSair={() => { if (confirm('Sair da sessão?')) onSair(); }} />
   );
 }
 

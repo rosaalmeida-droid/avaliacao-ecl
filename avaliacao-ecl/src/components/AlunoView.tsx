@@ -849,7 +849,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             <div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)', fontWeight:600,
                 textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
-                Avaliação ECL · {aluno.turmaId}
+                {aluno.turmaId}
               </div>
               <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
                 color:'#faf7f2', lineHeight:1.1 }}>
@@ -888,12 +888,8 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             </div>
             {/* Resumo rápido */}
             <div style={{ display:'flex', gap:10 }}>
-              <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
-                padding:'10px 16px', textAlign:'center' }}>
-                <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
-                  color:'#faf7f2', lineHeight:1 }}>{historicoAluno.length}</div>
-                <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.45)', marginTop:3 }}>{historicoAluno.length === 1 ? 'avaliação' : 'avaliações'}</div>
-              </div>
+              {/* O contador de "avaliações" saiu: contava registos internos
+                  (farda, higiene…) e não as aulas avaliadas — enganava. */}
               <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
                 padding:'10px 16px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
@@ -1197,9 +1193,7 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
         {aba === 'perfil' && (
           <div>
             <PerfilProfissionalAluno aluno={aluno} />
-            <div style={{ marginTop:24 }}>
-              <RecuperacaoModulosAluno aluno={aluno} />
-            </div>
+            {/* As recuperações estão no Percurso: aqui repetiam-se. */}
             <div style={{ marginTop:24 }}>
               <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
                 letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
