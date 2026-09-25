@@ -511,6 +511,9 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     if (SHEETS_ECL_URL) {
       const jsonPrecos = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos' });
       if (jsonPrecos?.ok && jsonPrecos.dados?.length > 0) juntarPrecosRevistos(jsonPrecos.dados);
+      // Preços que os professores pediram para rever (v14).
+      const jsonARever = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' });
+      if (jsonARever?.ok && jsonARever.dados?.length > 0) juntarPrecosARever(jsonARever.dados);
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -3835,6 +3838,92 @@ export function rejeitarSugestaoIngrediente(avisoId: string): void {
 export function enviarPrecosRevistos(lista: PrecoRevisto[]): void {
   if (!lista.length || !SHEETS_ECL_URL) return;
   enviar(SHEETS_ECL_URL, 'precos', { precos: lista });
+}
+
+// ── Preços a rever — o professor desconfia de um preço ────────────
+// O preço que o professor escreve na requisição vale só nessa requisição:
+// não passa à frente do preço da coordenadora. Fica numa lista a rever
+// (aqui e no Sheets, folha PRECOS_A_REVER) e a coordenadora vê-a no
+// separador Preços; no pedido seguinte à IA, estes produtos vão primeiro.
+
+export interface PrecoARever {
+  /** Um registo por produto: o código da base, ou "novo:<nome>". */
+  id: string;
+  mpId: string;
+  nome: string;
+  /** O nome como estava na ficha. */
+  produto: string;
+  und: string;
+  precoBase: number;
+  precoProfessor: number;
+  professor: string;
+  turmaId: string;
+  sugeridoEm: string;
+  estado: 'pendente' | 'revisto';
+  revistoEm?: string;
+}
+
+const KEY_PRECOS_A_REVER = 'ecl_precos_a_rever';
+
+export function getPrecosARever(): PrecoARever[] {
+  return load<PrecoARever>(KEY_PRECOS_A_REVER);
+}
+
+export function getPrecosAReverPendentes(): PrecoARever[] {
+  return getPrecosARever().filter(p => p.estado === 'pendente')
+    .sort((a, b) => (b.sugeridoEm || '').localeCompare(a.sugeridoEm || ''));
+}
+
+const momentoDe = (p: PrecoARever) => (p.estado === 'revisto' ? p.revistoEm : p.sugeridoEm) || '';
+
+/** Junta registos (do Sheets ou deste aparelho): o mais recente de cada produto ganha. */
+export function juntarPrecosARever(lista: any[]): void {
+  const porId = new Map(getPrecosARever().map(p => [p.id, p]));
+  (lista || []).forEach((x: any) => {
+    if (!x || !x.id) return;
+    const novo: PrecoARever = {
+      ...x, id: String(x.id), precoBase: Number(x.precoBase) || 0, precoProfessor: Number(x.precoProfessor) || 0,
+      estado: x.estado === 'revisto' ? 'revisto' : 'pendente',
+    };
+    const velho = porId.get(novo.id);
+    if (!velho || momentoDe(novo) >= momentoDe(velho)) porId.set(novo.id, novo);
+  });
+  save(KEY_PRECOS_A_REVER, [...porId.values()]);
+}
+
+/** Vai buscar ao Sheets a lista a rever (e os preços do mês), para o ecrã da coordenadora. */
+export async function lerPrecosDoSheets(): Promise<boolean> {
+  if (!SHEETS_ECL_URL) return false;
+  try {
+    const [precos, aRever] = await Promise.all([
+      lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos' }),
+      lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' }),
+    ]);
+    if (precos?.ok && precos.dados?.length > 0) juntarPrecosRevistos(precos.dados);
+    if (aRever?.ok && aRever.dados?.length > 0) juntarPrecosARever(aRever.dados);
+    return !!(precos?.ok || aRever?.ok);
+  } catch { return false; }
+}
+
+/** O professor escreveu um preço diferente: fica a rever pela coordenadora. */
+export function sinalizarPrecoARever(p: Omit<PrecoARever, 'id' | 'sugeridoEm' | 'estado'>): void {
+  const reg: PrecoARever = {
+    ...p, id: p.mpId || `novo:${p.nome.toLowerCase().trim()}`,
+    sugeridoEm: new Date().toISOString(), estado: 'pendente',
+  };
+  juntarPrecosARever([reg]);
+  if (SHEETS_ECL_URL) enviar(SHEETS_ECL_URL, 'precos_a_rever', { precosARever: [reg] });
+}
+
+/** A coordenadora reviu estes produtos (com a IA ou à mão): saem da lista. */
+export function marcarPrecosRevistos(ids: string[]): void {
+  const agora = new Date().toISOString();
+  const revistos = getPrecosARever()
+    .filter(p => p.estado === 'pendente' && ids.includes(p.id))
+    .map(p => ({ ...p, estado: 'revisto' as const, revistoEm: agora }));
+  if (!revistos.length) return;
+  juntarPrecosARever(revistos);
+  if (SHEETS_ECL_URL) enviar(SHEETS_ECL_URL, 'precos_a_rever', { precosARever: revistos });
 }
 
 export function getMateriasPrimasCustom(): MateriaPrimaCustom[] {

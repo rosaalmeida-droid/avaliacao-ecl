@@ -487,8 +487,10 @@ export function encontrarMateriaPrimaComConfianca(
     unidadeCompra: c.unidadeCompra, unidadeReceita: c.unidadeCompra, fatorConversao: 1,
     precoKg: c.precoKg, precoUnitario: c.precoUnitario, fonte: 'Professor', atualizadoEm: '', aliases: c.aliases,
   }));
-  // Custom tem prioridade — procurar lá primeiro
-  const todasFontes = [...customComoBase, ...MATERIAS_PRIMAS_BASE];
+  // A base (preços revistos pela coordenadora) vem primeiro. Os produtos
+  // acrescentados à mão só contam para o que a base não tem: antes, um
+  // preço escrito por um professor passava à frente do preço do mês.
+  const todasFontes = [...MATERIAS_PRIMAS_BASE, ...customComoBase];
 
   // 1. Correspondência EXATA (nome ou alias igual) — alta confiança
   const exata = todasFontes.find(mp =>

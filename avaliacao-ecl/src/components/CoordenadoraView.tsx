@@ -18,9 +18,16 @@ import { ManualCoordenador } from './ManualCoordenador';
 import { GestaoAlunosExternos } from './AlunosExternos';
 import { DadosSeguranca } from './DadosSeguranca';
 import { PrecosCoordenadora } from './PrecosCoordenadora';
+import { getPrecosAReverPendentes, lerPrecosDoSheets } from '../backend';
 
 export function CoordenadoraView() {
   const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos' | 'dados' | 'precos'>('avisos');
+
+  // Preços que os professores pediram para rever — aviso logo à entrada.
+  const [nARever, setNARever] = useState(() => getPrecosAReverPendentes().length);
+  React.useEffect(() => {
+    lerPrecosDoSheets().then(() => setNARever(getPrecosAReverPendentes().length));
+  }, [tab]);
 
   const TABS_COORD = [
     { id:'avisos',      emoji:'🔔', label:'Avisos',      cor:'#e63946' },
@@ -60,12 +67,24 @@ export function CoordenadoraView() {
               transition:'all 0.15s',
             }}>
               {t.emoji} {t.label}
+              {t.id === 'precos' && nARever > 0 && (
+                <span style={{ marginLeft: 6, background: '#e63946', color: '#fff', borderRadius: 9,
+                  padding: '1px 7px', fontSize: 12 }}>{nARever}</span>
+              )}
             </button>
           ))}
         </div>
       </div>
       {tab === 'avisos' && (
         <div style={{ marginTop: 12 }}>
+          {nARever > 0 && (
+            <button onClick={() => setTab('precos')} style={{ display: 'block', width: '100%', textAlign: 'left',
+              marginBottom: 12, padding: '12px 14px', borderRadius: 12, border: '1px solid #f0c98a',
+              background: '#fff8ec', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
+              ⚠️ <b>{nARever} preço{nARever === 1 ? '' : 's'} a rever</b> — um professor achou que o preço da base
+              pode estar mal. <u>Ver em Preços</u>
+            </button>
+          )}
           <CentroAvisos perfil="coordenadora" />
         </div>
       )}

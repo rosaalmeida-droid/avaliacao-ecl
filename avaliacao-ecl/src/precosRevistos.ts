@@ -11,7 +11,7 @@
 // O documento oficial da requisição não muda: só os preços que o enchem.
 // ============================================================
 import { getMateriaPrimasBase, getPrecosRevistos, juntarPrecosRevistos, type MateriaPrimaBase, type PrecoRevisto } from './materiasPrimasBase';
-import { enviarPrecosRevistos } from './backend';
+import { enviarPrecosRevistos, marcarPrecosRevistos } from './backend';
 
 /** Grupos de produtos, para o pedido não ser grande demais para a IA. */
 export function gruposDeProdutos(): { nome: string; ids: string[] }[] {
@@ -172,6 +172,8 @@ export function confirmarPrecos(novos: PrecoRevisto[]): void {
   if (!novos.length) return;
   juntarPrecosRevistos(novos);
   enviarPrecosRevistos(novos);
+  // Os que os professores tinham pedido para rever saem da lista.
+  marcarPrecosRevistos(novos.map(p => p.id));
 }
 
 /** Link de pesquisa no Continente, do mais barato para o mais caro. */

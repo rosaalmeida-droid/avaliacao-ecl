@@ -8,7 +8,8 @@
 // 4. Confirmar: fica no aparelho e vai para o Sheets (folha PRECOS).
 // O documento oficial da requisição não muda: só os preços que o enchem.
 // ============================================================
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { getPrecosAReverPendentes, marcarPrecosRevistos, lerPrecosDoSheets } from '../backend';
 import { getMateriaPrimasBase, getPrecosRevistos } from '../materiasPrimasBase';
 import {
   gruposDeProdutos, gerarPedidoIA, verificarRespostaIA, confirmarPrecos, linkContinente, porReverEsteMes,
@@ -35,8 +36,15 @@ export function PrecosCoordenadora() {
   const [copiado, setCopiado] = useState(false);
 
   const faltam = useMemo(() => porReverEsteMes(), [versao]);
+  // Preços de que os professores desconfiaram (escritos à mão na requisição).
+  const aRever = useMemo(() => getPrecosAReverPendentes(), [versao]);
+  const aReverNaBase = aRever.filter(p => p.mpId);
+  useEffect(() => { lerPrecosDoSheets().then(ok => { if (ok) setVersao(v => v + 1); }); }, []);
+  // Se há pedidos dos professores, o pedido à IA começa por esses.
+  useEffect(() => { if (aReverNaBase.length && parte === 0 && !res) setParte(-2); }, [aReverNaBase.length]);
   const revistos = useMemo(() => new Map(getPrecosRevistos().map(p => [p.id, p])), [versao]);
-  const idsParte = parte < 0 ? faltam.map(m => m.id) : grupos[parte]?.ids || [];
+  const idsParte = parte === -2 ? aReverNaBase.map(p => p.mpId)
+    : parte < 0 ? faltam.map(m => m.id) : grupos[parte]?.ids || [];
   const pedido = useMemo(() => gerarPedidoIA(idsParte), [parte, versao]);
   const mesNome = new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
 
@@ -77,6 +85,36 @@ export function PrecosCoordenadora() {
         </div>
       </div>
 
+      {aRever.length > 0 && (
+        <div style={{ ...caixa, background: '#fff8ec', border: '1px solid #f0c98a' }}>
+          <div style={titulo}>⚠️ Preços a rever — {aRever.length} pedido{aRever.length === 1 ? '' : 's'} dos professores</div>
+          <div style={nota}>
+            Um professor escreveu na requisição um preço diferente do da base. Esse preço valeu só nessa requisição;
+            a base continua com o teu. Revê-os no pedido à IA (a opção «Os que os professores pediram para rever»)
+            ou, se o preço da base está certo, carrega em «Está certo».
+          </div>
+          {aRever.map(p => (
+            <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 0',
+              borderTop: '1px solid rgba(26,23,20,0.08)', fontSize: 13.5, flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <b>{p.nome}</b>
+                {p.produto && p.produto.toLowerCase() !== p.nome.toLowerCase() && <span style={{ color: 'rgba(26,23,20,0.5)' }}> («{p.produto}» na ficha)</span>}
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>
+                  {p.professor || 'Professor'}{p.turmaId ? ` · ${p.turmaId}` : ''} · {new Date(p.sugeridoEm).toLocaleDateString('pt-PT')}
+                  {!p.mpId && ' · não está na base — não entra no pedido à IA'}
+                </div>
+              </span>
+              <span style={{ minWidth: 150 }}>
+                Base: <b>{p.precoBase > 0 ? `${e2(p.precoBase)}/${p.und === 'un' ? 'un' : p.und}` : '—'}</b><br />
+                Professor: <b style={{ color: '#8a4a15' }}>{e2(p.precoProfessor)}/{p.und === 'un' ? 'un' : p.und}</b>
+              </span>
+              <a href={linkContinente(p.nome)} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>Ver no Continente</a>
+              <button style={botao()} onClick={() => { marcarPrecosRevistos([p.id]); setVersao(v => v + 1); }}>Está certo</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={caixa}>
         <div style={titulo}>1. Copiar o pedido para a IA</div>
         <div style={nota}>
@@ -86,7 +124,8 @@ export function PrecosCoordenadora() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
           <select value={parte} onChange={e => { setParte(Number(e.target.value)); setRes(null); }}
             style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)', fontSize: 14, fontFamily: 'inherit' }}>
-            {faltam.length > 0 && <option value={-1}>Só os por rever ({faltam.length})</option>}
+            {aReverNaBase.length > 0 && <option value={-2}>Os que os professores pediram para rever ({aReverNaBase.length})</option>}
+            {faltam.length > 0 && <option value={-1}>Só os por rever este mês ({faltam.length})</option>}
             {grupos.map((g, i) => <option key={i} value={i}>Parte {i + 1} de {grupos.length}: {g.nome} ({g.ids.length})</option>)}
           </select>
           <button onClick={copiar} style={botao(true)}>{copiado ? 'Copiado ✓' : 'Copiar o pedido'}</button>

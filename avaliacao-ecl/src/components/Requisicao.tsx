@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getRequisicaoPorPlano, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente } from '../backend';
+import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getRequisicaoPorPlano, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente, sinalizarPrecoARever } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
 import { loadEventos } from './EventosWizard';
 import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
@@ -461,7 +461,11 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     if (fichasSemIngredientes.length > 0) {
       alert(`Atenção: a(s) ficha(s) "${fichasSemIngredientes.map(f => f.nomePrato).join('", "')}" não têm ingredientes guardados. Abre a ficha e confirma que está completa antes de gerar a requisição.`);
     }
-    setLinhas(novasLinhas);
+    // Os preços escritos antes de gerar (por ficha) entram nesta requisição.
+    setLinhas(novasLinhas.map(l => {
+      const v = precosPreReq[l.produto.toLowerCase().trim()];
+      return v && precoNum(v) > 0 ? recalc({ ...l, precoUnitario: v, daBD: false }) : l;
+    }));
     setFase('editar');
   }
 
@@ -469,21 +473,48 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     setLinhas(prev => { const n = [...prev]; n[i] = recalc({ ...n[i], [campo]: v }); return n; });
   }
 
-  // Quando o professor confirma/corrige o preço de um ingrediente, a base
-  // de dados aprende — fica guardado para a próxima vez (sem precisar de
-  // ecrã de gestão à parte), e o aviso pendente é resolvido automaticamente.
+  /**
+   * Preço escrito à mão pelo professor.
+   *
+   * Vale nesta requisição, mas não substitui o preço da coordenadora:
+   * antes ficava guardado e passava à frente do preço revisto do mês.
+   * Se for diferente do da base, vai para a lista «a rever» (aqui e no
+   * Sheets) e a coordenadora confirma-o no próximo pedido à IA.
+   * Um produto que a base não tem continua a ser aprendido, como antes,
+   * e também vai para a lista, para a coordenadora saber que existe.
+   */
+  function registarPrecoDoProfessor(produto: string, und: string, preco: number, categoria: string) {
+    if (!(preco > 0) || !produto.trim()) return;
+    const nomeLimpo = produto.replace(/\s*\([^)]*\)/g, '').trim();
+    const { mp } = encontrarMateriaPrimaComConfianca(nomeLimpo, []); // só a base
+    const quem = { professor: nomeProfessor || planoSel?.professor || '', turmaId: planoSel?.turmaId || turmaId };
+    if (mp) {
+      let base = mp.precoKg;
+      if (und === 'un') {
+        const pesoUn = converterUnidadeParaPeso(1, 'un', nomeLimpo);
+        base = mp.precoUnitario > 0 && mp.precoUnitario !== mp.precoKg ? mp.precoUnitario
+          : pesoUn ? pesoUn.qt * mp.precoKg : mp.precoUnitario;
+      }
+      if (base > 0 && Math.abs(preco - base) / base < 0.02) return; // é o preço da coordenadora
+      sinalizarPrecoARever({ mpId: mp.id, nome: mp.nome, produto, und,
+        precoBase: Math.round(base * 100) / 100, precoProfessor: preco, ...quem });
+      setMsg('ℹ️ Preço usado só nesta requisição. A coordenadora vai revê-lo na próxima atualização.');
+      setTimeout(() => setMsg(''), 6000);
+    } else {
+      addOrUpdateMateriaPrimaCustom({
+        nome: produto, categoria: categoria || 'Outros', unidadeCompra: und,
+        precoKg: und === 'un' ? 0 : preco, precoUnitario: preco,
+        aliases: [produto.toLowerCase()],
+      });
+      sinalizarPrecoARever({ mpId: '', nome: produto, produto, und, precoBase: 0, precoProfessor: preco, ...quem });
+    }
+  }
+
   function confirmarPrecoIngrediente(i: number) {
     const l = linhas[i];
     const preco = precoNum(l.precoUnitario);
     if (preco <= 0) return;
-    addOrUpdateMateriaPrimaCustom({
-      nome: l.produto,
-      categoria: familia || 'Outros',
-      unidadeCompra: l.und,
-      precoKg: l.und === 'un' ? 0 : preco,
-      precoUnitario: l.und === 'un' ? preco : preco,
-      aliases: [l.produto.toLowerCase()],
-    });
+    registarPrecoDoProfessor(l.produto, l.und, preco, familia);
     resolverAvisosDoIngrediente(l.produto);
   }
 
@@ -1073,20 +1104,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                                 inputMode="decimal"
                                 value={valorActual}
                                 placeholder={ing.un === 'un' ? '€/un' : '€/kg'}
-                                onChange={e => {
-                                  const v = e.target.value.replace(',', '.');
-                                  setPrecosPreReq(p => ({ ...p, [chave]: e.target.value }));
-                                  // Guardar na base de dados para próxima vez
-                                  if (precoNum(v) > 0) {
-                                    addOrUpdateMateriaPrimaCustom({
-                                      nome: ing.produto,
-                                      categoria: f.classificacao || 'Outros',
-                                      unidadeCompra: ing.un === 'un' ? 'un' : 'kg',
-                                      precoKg: ing.un === 'un' ? 0 : precoNum(v),
-                                      precoUnitario: precoNum(v),
-                                      aliases: [chave],
-                                    });
-                                  }
+                                onChange={e => setPrecosPreReq(p => ({ ...p, [chave]: e.target.value }))}
+                                // Vale nesta requisição; se for diferente do da
+                                // base, fica a rever pela coordenadora.
+                                onBlur={() => {
+                                  if (precosPreReq[chave] === undefined) return;
+                                  registarPrecoDoProfessor(ing.produto, ing.un === 'un' ? 'un' : 'kg',
+                                    precoNum(precosPreReq[chave]), f.classificacao || '');
                                 }}
                                 style={{ width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 13,
                                   border: `1px solid ${valorActual ? 'var(--copper)' : 'var(--border)'}`,
