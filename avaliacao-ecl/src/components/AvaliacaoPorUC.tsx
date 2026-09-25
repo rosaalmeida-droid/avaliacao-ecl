@@ -166,7 +166,8 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         pauta,
         porCategoriaUltima,
         total: regs.length,
-        consolidadas: comps.filter(c => c.media >= 3).length,
+        // Consolidada: 2 aulas diferentes com nota 3 ou mais (regra da escola).
+        consolidadas: comps.filter(c => new Set(c.todas.filter(r => r.nota >= 3).map(r => r.planoAulaId)).size >= 2).length,
         emRecuperacao: comps.filter(c => c.media < 3 && c.n > 0).length,
       };
     });

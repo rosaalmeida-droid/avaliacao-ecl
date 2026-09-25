@@ -3060,7 +3060,14 @@ export interface ItemPerfil {
   nivel: 0 | 1 | 2 | 3 | 4 | 5;
   origem: 'aula' | 'recuperacao' | 'evidencia' | 'nao_observado';
   ultimaData?: string;
+  /** Aulas (validadas) com sucesso — nota 3 ou mais em 5. */
+  sucessos?: number;
+  /** Regra da escola: consolidada com 2 sucessos em aulas diferentes. */
+  consolidada?: boolean;
 }
+
+/** Sucessos precisos para uma competência estar consolidada (PARAMETROS_AVALIACAO). */
+export const SUCESSOS_PARA_CONSOLIDAR = 2;
 
 export interface PerfilProfissionalAluno {
   alunoId: string;
@@ -3117,6 +3124,10 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   // mais alto já validado (consolidação não regride — ver ponto 29 do documento
   // pedagógico), mas agora usando sempre a nota resolvida por aula (passo 1).
   const porCompetencia = new Map<string, { nivel: 0 | 1 | 2 | 3 | 4 | 5; origem: ItemPerfil['origem']; data: string }>();
+  // Quantas aulas (validadas) correram bem em cada competência. O nível
+  // guarda o melhor resultado; a consolidação pede 2 sucessos — antes
+  // uma só aula positiva já contava como "consolidada".
+  const sucessos = new Map<string, number>();
 
   porAula.forEach((info, chave) => {
     // A autoavaliação alimenta, mas não valida: uma competência só entra
@@ -3129,6 +3140,7 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
 
     const competenciaId = chave.split('__')[1];
     const nivel = notaParaNivel(info.nota);
+    if (nivel >= 3) sucessos.set(competenciaId, (sucessos.get(competenciaId) || 0) + 1);
     const actual = porCompetencia.get(competenciaId);
     if (!actual || nivel > actual.nivel) {
       porCompetencia.set(competenciaId, {
@@ -3138,6 +3150,7 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   });
 
   evidencias.forEach(e => {
+    if (e.nivel >= 3) sucessos.set(e.competenciaId, (sucessos.get(e.competenciaId) || 0) + 1);
     const actual = porCompetencia.get(e.competenciaId);
     if (!actual || e.nivel > actual.nivel) {
       porCompetencia.set(e.competenciaId, { nivel: e.nivel, origem: 'evidencia', data: e.data });
@@ -3153,6 +3166,8 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
     const item: ItemPerfil = {
       competenciaId, nome: getNomeCompetenciaGenerica(competenciaId),
       nivel: info.nivel, origem: info.origem, ultimaData: info.data,
+      sucessos: sucessos.get(competenciaId) || 0,
+      consolidada: (sucessos.get(competenciaId) || 0) >= SUCESSOS_PARA_CONSOLIDAR,
     };
     if (grupo === 'tecnica') tecnicas.push(item);
     else if (grupo === 'responsabilidade') responsabilidades.push(item);
@@ -3165,7 +3180,8 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   // esperado ("produtos com cor viva") não serve como ponto forte: o aluno
   // não consegue reconhecer-se nele nem sabe o que treinar.
   const comVerbo = todos.filter(i => !!nomeComVerbo(i.nome, i.competenciaId));
-  const pontosFortes = comVerbo.filter(i => i.nivel >= 3).map(i => i.nome);
+  // Ponto forte só depois de consolidada (2 aulas com sucesso).
+  const pontosFortes = comVerbo.filter(i => i.nivel >= 3 && i.consolidada).map(i => i.nome);
   const areasADesenvolver = comVerbo.filter(i => i.nivel <= 1).map(i => i.nome);
 
   return { alunoId, tecnicas, responsabilidades, atitudes, pontosFortes, areasADesenvolver };
