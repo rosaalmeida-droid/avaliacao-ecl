@@ -18,10 +18,11 @@ import { ManualCoordenador } from './ManualCoordenador';
 import { GestaoAlunosExternos } from './AlunosExternos';
 import { DadosSeguranca } from './DadosSeguranca';
 import { PrecosCoordenadora } from './PrecosCoordenadora';
+import { SimulacaoPauta } from './SimulacaoPauta';
 import { getPrecosAReverPendentes, lerPrecosDoSheets } from '../backend';
 
 export function CoordenadoraView() {
-  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos' | 'dados' | 'precos'>('avisos');
+  const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos' | 'dados' | 'precos' | 'pauta'>('avisos');
 
   // Preços que os professores pediram para rever — aviso logo à entrada.
   const [nARever, setNARever] = useState(() => getPrecosAReverPendentes().length);
@@ -40,6 +41,7 @@ export function CoordenadoraView() {
     { id:'atividades',  emoji:'🎯', label:'Eventos',     cor:'#e67e22' },
     { id:'config',      emoji:'⚙️', label:'Config',      cor:'#8e44ad' },
     { id:'precos',      emoji:'💶', label:'Preços',      cor:'#0f766e' },
+    { id:'pauta',       emoji:'🧾', label:'Simular pauta', cor:'#1f4e79' },
     { id:'dados',       emoji:'🔒', label:'Dados e segurança', cor:'#c0392b' },
     { id:'manual',      emoji:'📋', label:'Manual',      cor:'#b5651d' },
     { id:'externos',    emoji:'🌍', label:'Externos',    cor:'#0f766e' },
@@ -112,6 +114,7 @@ export function CoordenadoraView() {
       {tab === 'config' && <ConfigTab />}
       {tab === 'dados' && <DadosSeguranca />}
       {tab === 'precos' && <PrecosCoordenadora />}
+      {tab === 'pauta' && <SimulacaoPauta />}
     </div>
   );
 }
