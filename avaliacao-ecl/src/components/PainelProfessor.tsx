@@ -106,7 +106,6 @@ const MAIS: Destino[] = [
   { id: 'requisicao',      label: 'Requisições', icone: I.requisicao },
   { id: 'orcamentos',      label: 'Orçamentos', icone: I.orcamento },
   { id: 'historial',       label: 'Historial', icone: I.historial },
-  { id: 'copia_seguranca', label: 'Cópia de segurança', icone: I.copia },
   { id: 'ajuda',           label: 'Ajuda', icone: I.ajuda },
 ];
 
@@ -188,28 +187,7 @@ export function PainelProfessor({
     <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
       <div style={{ maxWidth: calendario ? 1060 : 720, margin: '0 auto' }}>
 
-        {/* Quem sou */}
-        <div style={{
-          background: C.branco, borderRadius: 16, boxShadow: C.sombra,
-          padding: '14px 16px', marginBottom: 14,
-          display: 'flex', alignItems: 'center', gap: 13,
-        }}>
-          <div style={{
-            width: 46, height: 46, borderRadius: '50%', background: C.bordeauxSuave,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#B07C88', flexShrink: 0,
-          }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" />
-            </svg>
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.tinta, lineHeight: 1.2 }}>
-              {nomeProfessor || 'Professor'}
-            </div>
-            <div style={{ fontSize: 15, color: C.texto }}>{turmaNome || turmaId}</div>
-          </div>
-        </div>
+        {/* O cartão "Quem sou" (nome e turma) saiu: está no menu lateral. */}
 
         {/* A unidade em curso */}
         <div style={{
@@ -282,34 +260,24 @@ export function PainelProfessor({
           </div>
         )}
 
+        {/* Os cartões de atalho (Planos, Eventos, Validar, Notas…) saíram:
+            repetiam, um a um, o menu lateral. O Início fica com a unidade
+            em curso, a aula de hoje e o que falta fazer. */}
+        {!aulaHoje && (
+          <button onClick={() => onAbrir('planos' as any)} style={{
+            width: '100%', minHeight: 52, borderRadius: 12, border: 'none', marginBottom: 20,
+            background: C.bordeaux, color: '#fff', fontSize: 16, fontWeight: 700,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            Ver os planos de aula
+          </button>
+        )}
         <div style={{
           display: calendario ? 'grid' : 'block',
           gridTemplateColumns: calendario ? 'minmax(0, 1fr) minmax(300px, 380px)' : undefined,
           gap: 20, alignItems: 'start',
         }}>
-        <div>
-        {[...gs, { titulo: 'Mais', destinos: verMais ? MAIS : [] }].filter(g => g.titulo !== 'Mais' || verMais).map(g => (
-          <div key={g.titulo} style={{ marginBottom: 20 }}>
-            <div style={{
-              fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
-              letterSpacing: '0.07em', color: C.suave, marginBottom: 10, paddingLeft: 2,
-            }}>
-              {g.titulo}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 12 }}>
-              {g.destinos.map(d => <Cartao key={d.id} d={d} onAbrir={onAbrir} />)}
-            </div>
-          </div>
-        ))}
-        <button onClick={() => setVerMais(v => !v)} style={{
-          width: '100%', minHeight: 48, borderRadius: 12, border: `1px dashed ${C.bordeauxClaro}`,
-          background: 'transparent', color: C.texto, fontSize: 14.5, fontWeight: 600,
-          cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20,
-        }}>
-          {verMais ? 'Menos' : 'Mais… (guiões, requisições, orçamentos, historial, cópia de segurança, ajuda)'}
-        </button>
-        </div>
-
+        <div />
         {/* O calendário, à direita. */}
         {calendario && (
           <div style={{

@@ -212,12 +212,14 @@ interface Props {
   recuperacoesPendentes?: number;
   atividadesAbertas?: number;
   onAbrir: (destino: DestinoAluno) => void;
+  /** Já enviou a autoavaliação desta aula. */
+  jaAvaliou?: boolean;
 }
 
 export function InicioAluno({
   nomeAluno, turmaId,
   ucId, ucNome, planoHoje, numeroPlano,
-  sessaoAberta = false, jaEntrou = false,
+  sessaoAberta = false, jaEntrou = false, jaAvaliou = false,
   proximasAulas = 0, avisos = [],
   fichasAtribuidas = 0, notaProgressiva = null,
   recuperacoesPendentes = 0, atividadesAbertas = 0,
@@ -226,6 +228,9 @@ export function InicioAluno({
 }: Props) {
   // Antes da ativação o botão diz Consultar plano; depois, Iniciar aula.
   const acao = !planoHoje ? null
+    // Com a autoavaliação enviada, a aula acabou para o aluno: dizia
+    // "Continuar a aula" como se faltasse alguma coisa.
+    : jaAvaliou ? { texto: 'Ver a aula · autoavaliação enviada ✓', destino: 'entrar' as DestinoAluno }
     : jaEntrou ? { texto: 'Continuar a aula', destino: 'entrar' as DestinoAluno }
     : sessaoAberta ? { texto: 'Iniciar aula', destino: 'entrar' as DestinoAluno }
     : { texto: 'Consultar plano', destino: 'consultar_plano' as DestinoAluno };
@@ -237,16 +242,8 @@ export function InicioAluno({
         {/* Quem está a usar a aplicação. O nome chegava aqui e não era
             mostrado — o aluno entrava e não via sinal de que a aplicação
             sabia quem ele era. */}
-        {nomeAluno && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: C.tinta }}>
-              Olá, {String(nomeAluno).trim().split(' ')[0]}
-            </div>
-            <div style={{ fontSize: 13.5, color: C.suave, marginTop: 1 }}>
-              {turmaId}{ucNome ? ` · ${ucNome}` : ''}
-            </div>
-          </div>
-        )}
+        {/* A saudação e a turma já estão no cabeçalho roxo, por cima: aqui
+            repetiam-se ("Olá, Diogo" duas vezes). A UC vem no cartão da aula. */}
 
         {/* ── A AULA DE HOJE ─────────────────────────────────
             O título diz ao aluno que tudo o que está aqui é daquela
@@ -295,8 +292,11 @@ export function InicioAluno({
                 passo. Havia três botões aqui que abriam todos o mesmo que o
                 botão grande — o aluno carregava em Guião e não via o guião. */}
             <div style={{ fontSize: 13.5, color: C.suave, margin: '-2px 2px 22px', lineHeight: 1.5 }}>
-              {fichasAtribuidas > 0 ? `${fichasAtribuidas} ficha${fichasAtribuidas > 1 ? 's' : ''}, guião` : 'A ficha, o guião'}
-              {' '}e requisição estão dentro da aula, passo a passo.
+              {/* Só se diz o que a aula tem: antes prometia sempre guião e
+                  requisição, mesmo quando o professor não os tinha feito. */}
+              {fichasAtribuidas > 0
+                ? `${fichasAtribuidas === 1 ? 'A ficha de produção está' : `As ${fichasAtribuidas} fichas de produção estão`} dentro da aula, passo a passo.`
+                : 'Tudo o que precisas está dentro da aula, passo a passo.'}
             </div>
           </>
         ) : (
@@ -378,60 +378,10 @@ export function InicioAluno({
           </div>
         )}
 
-        {/* ── O MEU PERCURSO ─────────────────────────────────
-            Cartões cheios: são destinos importantes, mas de consulta,
-            não da aula que está a decorrer. */}
-        <div style={rotulo}>O meu percurso</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 11, marginBottom: 22 }}>
-          <button onClick={() => onAbrir('nota')} style={cartaoCheio}>
-            <span style={{ fontSize: 27, fontWeight: 700, lineHeight: 1 }}>
-              {notaProgressiva != null
-                ? notaProgressiva.toFixed(1).replace('.', ',')
-                : '—'}
-            </span>
-            <span style={{ fontSize: 14.5, fontWeight: 600 }}>A minha nota</span>
-          </button>
-
-          <button onClick={() => onAbrir('perfil')} style={cartaoCheio}>
-            {Icones.alvo(28)}
-            <span style={{ fontSize: 14.5, fontWeight: 600 }}>O meu perfil</span>
-          </button>
-
-          <button onClick={() => onAbrir('recuperacoes')} style={cartaoCheio}>
-            {Icones.repetir(28)}
-            <span style={{ fontSize: 14.5, fontWeight: 600 }}>Recuperações</span>
-            {recuperacoesPendentes > 0 && (
-              <span style={{ fontSize: 12.5, color: C.violetaClaro }}>
-                {recuperacoesPendentes} por recuperar
-              </span>
-            )}
-          </button>
-
-          <button onClick={() => onAbrir('atividades')} style={cartaoCheio}>
-            {Icones.atividades(28)}
-            <span style={{ fontSize: 14.5, fontWeight: 600 }}>Atividades</span>
-            {atividadesAbertas > 0 && (
-              <span style={{ fontSize: 12.5, color: C.violetaClaro }}>
-                {atividadesAbertas} aberta{atividadesAbertas > 1 ? 's' : ''}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* ── CONSULTA: brancos com borda, para se distinguirem ── */}
-        <div style={rotulo}>Consulta</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 11 }}>
-          <button onClick={() => onAbrir('manual')} style={cartaoBranco}>
-            {Icones.livro(26)}
-            <span style={{ fontSize: 14, fontWeight: 600, color: C.tinta }}>Manual da UC</span>
-          </button>
-          <button onClick={() => onAbrir('calendario')} style={cartaoBranco}>
-            {Icones.calendario(26)}
-            <span style={{ fontSize: 14, fontWeight: 600, color: C.tinta }}>Calendário</span>
-          </button>
-        </div>
-
+        {/* O Início fica só com a aula de hoje e os avisos. "A minha nota",
+            "O meu perfil", "Recuperações", "Atividades", "Manual" e
+            "Calendário" estavam aqui e também nos separadores de baixo
+            (Recuperações em três sítios): cada coisa fica num só lugar. */}
       </div>
     </div>
   );

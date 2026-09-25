@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getRequisicaoPorPlano, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente } from '../backend';
+import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getRequisicaoPorPlano, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente, sinalizarPrecoARever } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
 import { loadEventos } from './EventosWizard';
 import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
@@ -38,8 +38,43 @@ interface Linha {
   preparacaoInfo?: { nome: string; materiasPrimas?: string[]; podeComprar: boolean }; // dados da preparação identificada
 }
 
+/** Preço escrito à portuguesa ("1,49") → número. parseFloat("1,49") dava 1
+ *  e parseFloat("0,95") dava 0: os totais da requisição saíam errados. */
+function precoNum(v: unknown): number {
+  const x = parseFloat(String(v ?? '').trim().replace(/\s/g, '').replace(',', '.'));
+  return isNaN(x) ? 0 : x;
+}
+
+/** Nº de pessoas do evento ligado ao plano, nesse dia (ou null). */
+function paxDoEventoDoPlano(p: PlanoAula): number | null {
+  if (!p?.eventoId) return null;
+  const evento = loadEventos().find((e: any) => e.id === p.eventoId);
+  const dia = evento?.dias?.find((d: any) => d.data === p.data);
+  const total = (dia?.momentos || []).reduce((s: number, m: any) => s + (m.numPessoas || 0), 0);
+  return total > 0 ? total : null;
+}
+
+/** Junta às linhas recalculadas o que o professor já tinha mudado. */
+function manterEdicoes(novas: Linha[], antigas: Linha[]): Linha[] {
+  const porId = new Map(antigas.map(l => [l.id, l]));
+  return novas.map(n => {
+    const a = porId.get(n.id);
+    if (!a) return n;
+    return recalc({ ...n, produto: a.produto, precoUnitario: a.precoUnitario,
+      decisaoProfessor: a.decisaoProfessor, perguntarProfessor: a.perguntarProfessor });
+  });
+}
+
+/** Doses da receita base da ficha. O mesmo valor serve de base e de
+ *  pedido por omissão — antes era 1 num lado e 4 no outro, e uma ficha
+ *  sem doses escritas saía com tudo multiplicado por 4. */
+function porcoesDe(f: { numPorcoes?: unknown }): number {
+  const x = parseFloat(String(f?.numPorcoes ?? '').replace(',', '.'));
+  return x > 0 ? x : 4;
+}
+
 function recalc(l: Linha): Linha {
-  const p = parseFloat(l.precoUnitario) || 0;
+  const p = precoNum(l.precoUnitario);
   return { ...l, precoReceita: p * l.qtReceita, preco1pax: p * l.qt1pax, precoEncomenda: p * l.qtEncomenda };
 }
 
@@ -48,7 +83,7 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
   const mapa = new Map<string, Linha>();
 
   fichas.forEach(f => {
-    const paxBase = parseFloat(f.numPorcoes) || 1;
+    const paxBase = porcoesDe(f);
     const paxPedido = paxPorFicha[f.id] || paxBase;
     const fator = paxPedido / paxBase;
 
@@ -64,9 +99,7 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
       const proc = processarIngrediente(ing.produto, ing.qt, ing.un, f.nomePrato);
       if (proc.excluir) return;
 
-      const qtReceitaBase = proc.qtKg;
-      const qt1pax = paxBase > 0 ? qtReceitaBase / paxBase : 0;
-      const qtEncomenda = qt1pax * paxPedido;
+      let qtReceitaBase = proc.qtKg;
 
       // ── Chave de consolidação ──────────────────────────────
       // Regra 1: QB e quantidade normal do MESMO produto juntam-se
@@ -74,7 +107,24 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
       // Regra 2: manteiga c/sal ≠ manteiga s/sal (palavras distintas)
       //   → preservar "com sal" / "sem sal" no nome do produto
       const produtoChave = proc.produto.toLowerCase().trim();
-      const undChave = proc.isQB ? (proc.und === 'un' ? 'un' : 'kg') : proc.und;
+      // O mesmo produto em unidades numa ficha e em peso noutra ("2 cebolas"
+      // e "300 g de cebola") ficava em duas linhas. Junta-se em kg, pelo
+      // peso médio de uma unidade — quando se conhece.
+      const nomeParaPeso = proc.produto.replace(/\s*\([^)]*\)/g, '').trim();
+      const pesoUn = !proc.isQB ? converterUnidadeParaPeso(1, 'un', nomeParaPeso) : null;
+      if (pesoUn && pesoUn.und === 'kg' && proc.und === 'un' && mapa.has(`${produtoChave}__kg`)) {
+        qtReceitaBase = qtReceitaBase * pesoUn.qt;
+        proc.und = 'kg';
+      } else if (pesoUn && pesoUn.und === 'kg' && proc.und === 'kg' && mapa.has(`${produtoChave}__un`)) {
+        const velha = mapa.get(`${produtoChave}__un`)!;
+        mapa.delete(`${produtoChave}__un`);
+        mapa.set(`${produtoChave}__kg`, { ...velha, id: `${produtoChave}__kg`, und: 'kg',
+          qtReceita: velha.qtReceita * pesoUn.qt, qt1pax: velha.qt1pax * pesoUn.qt, qtEncomenda: velha.qtEncomenda * pesoUn.qt,
+          precoUnitario: '', avisos: [...velha.avisos, `ℹ️ Unidades de "${velha.produto}" passadas a kg (peso médio)`] });
+      }
+      const qt1pax = paxBase > 0 ? qtReceitaBase / paxBase : 0;
+      const qtEncomenda = qt1pax * paxPedido;
+      const undChave = proc.isQB ? 'qb' : proc.und;
       const chave = `${produtoChave}__${undChave}`;
 
       // Verificar se existe uma linha normal (não QB) com este produto
@@ -143,27 +193,38 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
         avisos.push(`⚠️ "${proc.produto}" ficou em unidades — verificar se é correcto`);
       }
 
-      const chaveUsada = mapa.has(chaveNormal) ? chaveNormal : chave;
+      // Q.b. e quantidade real do mesmo produto: fica a quantidade real.
+      let chaveUsada = mapa.has(chaveNormal) ? chaveNormal : chave;
+      if (proc.isQB) {
+        const real = ['kg', 'l', 'un'].map(u => `${produtoChave}__${u}`).find(k => mapa.has(k));
+        if (real) chaveUsada = real;
+      } else if (mapa.has(`${produtoChave}__qb`)) {
+        const qb = mapa.get(`${produtoChave}__qb`)!;
+        mapa.delete(`${produtoChave}__qb`);
+        mapa.set(chaveUsada, { ...qb, id: chaveUsada, und: proc.und, isQB: false, precoUnitario: '',
+          qtReceita: 0, qt1pax: 0, qtEncomenda: 0, precoReceita: 0, preco1pax: 0, precoEncomenda: 0 });
+      }
 
       if (mapa.has(chaveUsada)) {
         const l = mapa.get(chaveUsada)!;
+        if (!l.precoUnitario && precoUnitario) l.precoUnitario = precoUnitario;
         // QB soma como quantidade mínima estimada
         l.qtReceita += qtReceitaBase;
         l.qt1pax += qt1pax;
         l.qtEncomenda += qtEncomenda;
         // Se tinha QB e agora tem quantidade real, marcar como não-QB
         if (!proc.isQB) l.isQB = false;
-        l.precoReceita = (parseFloat(l.precoUnitario)||0) * l.qtReceita;
-        l.preco1pax = (parseFloat(l.precoUnitario)||0) * l.qt1pax;
-        l.precoEncomenda = (parseFloat(l.precoUnitario)||0) * l.qtEncomenda;
+        l.precoReceita = precoNum(l.precoUnitario) * l.qtReceita;
+        l.preco1pax = precoNum(l.precoUnitario) * l.qt1pax;
+        l.precoEncomenda = precoNum(l.precoUnitario) * l.qtEncomenda;
         if (!l.fichas.includes(f.nomePrato)) l.fichas.push(f.nomePrato);
         if (avisos.length > 0) l.avisos.push(...avisos.filter(a => !l.avisos.includes(a)));
       } else {
-        const p = parseFloat(precoUnitario) || 0;
+        const p = precoNum(precoUnitario);
         mapa.set(chaveUsada, {
           id: chaveUsada,
           produto: proc.produto,
-          und: proc.isQB ? (proc.und === 'un' ? 'un' : 'kg') : proc.und,
+          und: proc.isQB ? 'q.b.' : proc.und,
           qt1pax,
           qtReceita: qtReceitaBase,
           qtEncomenda,
@@ -208,10 +269,37 @@ const fQn = (n: number, und: string) => {
 // espera sempre um número, mesmo que seja 0). fQn esconde zeros só para
 // efeitos visuais na tabela; usar essa função no envio fazia desaparecer
 // ingredientes com quantidade pequena ou exactamente 0.
-const fQnEnvio = (n: number, und: string): string => {
-  if (und === 'un') return String(Math.round(n));
-  return n.toFixed(4);
+//
+// Vai como NÚMERO, não como texto: "0.4000" em texto depende da língua da
+// folha (em português o separador é a vírgula) e podia não ser lido como
+// número. As unidades também levam casas decimais: arredondar à unidade
+// fazia 0,4 limão passar a 0 e desaparecer.
+const fQnEnvio = (n: number, _und: string): number => {
+  const x = isFinite(n) ? n : 0;
+  return Math.round(x * 10000) / 10000;
 };
+
+/**
+ * Quantidade a pôr na coluna B («quantidade receita») do documento.
+ *
+ * O documento calcula a encomenda de cada linha com UMA só proporção
+ * para a folha toda: A = B / M7 (1 dose) e a encomenda = A × H7. Com uma
+ * ficha, ou com todas as fichas na mesma proporção, isto dá certo.
+ *
+ * Com fichas em proporções diferentes (Arroz 4→4 e Omelete 4→5), a
+ * proporção única (9/8) aumentava também o arroz. E as quantidades de
+ * encomenda corrigidas à mão na app não chegavam ao documento.
+ *
+ * Por isso envia-se a quantidade de encomenda que a app calculou,
+ * trazida para a base da folha: B = encomenda × M7 / H7. O documento,
+ * ao fazer B / M7 × H7, volta a dar exactamente a encomenda da app.
+ * Quando as proporções são todas iguais, B é a quantidade da receita,
+ * como antes.
+ */
+function qtParaColunaB(l: { qtEncomenda: number }, paxReceita: number, paxTotal: number): number {
+  if (!(paxReceita > 0) || !(paxTotal > 0)) return l.qtEncomenda;
+  return l.qtEncomenda * paxReceita / paxTotal;
+}
 
 // ── Estilos ───────────────────────────────────────────────────
 const S = {
@@ -231,9 +319,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const hoje = new Date();
   const limite60dias = new Date(hoje.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const planosRecentes = planos.filter(p => (p.data || '') >= limite60dias || p.fichasIds.length > 0);
-  const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || planos[0] || null : planos[0] || null;
+  // Sem plano pedido, não se escolhe nenhum: antes ficava o plano mais
+  // recente, e uma requisição feita "sozinha" ia gravada nesse plano.
+  const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || null : null;
   const fichasSelInicial = fichasIniciais?.length ? fichasIniciais : (planoInicial?.fichasIds || []);
 
+  /** Id da requisição feita sem plano (uma por ecrã aberto). */
+  const reqAvulsaId = React.useRef<string>('');
   /** Envio em curso — impede duas cópias do documento. */
   const [aEnviarReq, setAEnviarReq] = useState(false);
   const [fase, setFase] = useState<'escolher' | 'editar'>(
@@ -247,17 +339,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     // Se o plano está associado a um evento, usar a capacitação (nº pessoas)
     // desse evento como ponto de partida das doses — em vez do nº de porções
     // "de receita" da ficha, que é só uma referência genérica.
-    let paxDoEvento: number | null = null;
-    if (planoInicial?.eventoId) {
-      const eventos = loadEventos();
-      const evento = eventos.find((e: any) => e.id === planoInicial.eventoId);
-      const dia = evento?.dias?.find((d: any) => d.data === planoInicial.data);
-      const totalPax = (dia?.momentos || []).reduce((s: number, m: any) => s + (m.numPessoas || 0), 0);
-      if (totalPax > 0) paxDoEvento = totalPax;
-    }
+    const paxDoEvento = planoInicial ? paxDoEventoDoPlano(planoInicial) : null;
     fichasSelInicial.forEach(fid => {
       const f = getFichasProducao().find(x => x.id === fid);
-      if (f) r[fid] = paxDoEvento || parseFloat(f.numPorcoes) || 4;
+      if (f) r[fid] = paxDoEvento || porcoesDe(f);
     });
     return r;
   });
@@ -290,7 +375,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     const pax: Record<string, number> = {};
     fichasSelInicial.forEach(fid => {
       const f = getFichasProducao().find(x => x.id === fid);
-      if (f) pax[fid] = parseFloat(f.numPorcoes) || 4;
+      if (f) pax[fid] = porcoesDe(f);
     });
     return agregarIngredientes(fsel, pax);
   });
@@ -301,7 +386,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   React.useEffect(() => {
     if (linhas.length > 0 && fichasSel.length > 0) {
       const fsel = getFichasProducao().filter(f => fichasSel.includes(f.id));
-      setLinhas(agregarIngredientes(fsel, paxPorFicha));
+      // Mudar as doses recalcula as quantidades, mas guarda o que o
+      // professor corrigiu à mão: preço, produto e comprar/produzir.
+      setLinhas(prev => manterEdicoes(agregarIngredientes(fsel, paxPorFicha), prev));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paxPorFicha]);
@@ -336,25 +423,34 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const fichasExtra: FichaProducao[] = [];
   const fichasSelecionadas = todasFichas.filter(f => fichasSel.includes(f.id));
 
-  const paxBaseTotal = fichasSelecionadas.reduce((s, f) => s + (parseFloat(f.numPorcoes) || 1), 0) || 1;
-  const paxEncTotal = fichasSelecionadas.reduce((s, f) => s + (paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 1), 0) || 1;
+  const paxBaseTotal = fichasSelecionadas.reduce((s, f) => s + (porcoesDe(f)), 0) || 1;
+  const paxEncTotal = fichasSelecionadas.reduce((s, f) => s + (paxPorFicha[f.id] || porcoesDe(f)), 0) || 1;
   const nomeReceita = fichasSelecionadas.map(f => f.nomePrato).join(' + ') || 'Requisicao';
 
   function selecionarPlano(p: PlanoAula) {
     setPlanoSel(p);
     setFichasSel(p.fichasIds);
+    const pax = paxDoEventoDoPlano(p);
     const r: Record<string, number> = {};
     p.fichasIds.forEach(fid => {
       const f = todasFichas.find(x => x.id === fid);
-      if (f) r[fid] = parseFloat(f.numPorcoes) || 4;
+      if (f) r[fid] = pax || porcoesDe(f);
     });
     setPaxPorFicha(r);
+    // A atividade e a família eram só as do primeiro plano: ao escolher
+    // outro, o documento saía com o título do plano errado.
+    setAtividade(p.titulo || '');
+    const f1 = todasFichas.find(x => (p.fichasIds || []).includes(x.id));
+    if (f1?.classificacao) setFamilia(f1.classificacao);
+    setOrigemFichas((p.fichasIds || []).length ? 'plano' : 'biblioteca');
   }
 
   function toggleFicha(id: string) {
     setFichasSel(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
     const f = todasFichas.find(x => x.id === id);
-    if (f && !paxPorFicha[id]) setPaxPorFicha(p => ({ ...p, [id]: parseFloat(f.numPorcoes) || 4 }));
+    if (f && !paxPorFicha[id]) setPaxPorFicha(p => ({ ...p, [id]: porcoesDe(f) }));
+    // Sem plano, a família ficava vazia no documento: vem da primeira ficha.
+    if (f?.classificacao && !familia) setFamilia(f.classificacao);
   }
 
   function gerarLinhas() {
@@ -365,7 +461,11 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     if (fichasSemIngredientes.length > 0) {
       alert(`Atenção: a(s) ficha(s) "${fichasSemIngredientes.map(f => f.nomePrato).join('", "')}" não têm ingredientes guardados. Abre a ficha e confirma que está completa antes de gerar a requisição.`);
     }
-    setLinhas(novasLinhas);
+    // Os preços escritos antes de gerar (por ficha) entram nesta requisição.
+    setLinhas(novasLinhas.map(l => {
+      const v = precosPreReq[l.produto.toLowerCase().trim()];
+      return v && precoNum(v) > 0 ? recalc({ ...l, precoUnitario: v, daBD: false }) : l;
+    }));
     setFase('editar');
   }
 
@@ -373,21 +473,48 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     setLinhas(prev => { const n = [...prev]; n[i] = recalc({ ...n[i], [campo]: v }); return n; });
   }
 
-  // Quando o professor confirma/corrige o preço de um ingrediente, a base
-  // de dados aprende — fica guardado para a próxima vez (sem precisar de
-  // ecrã de gestão à parte), e o aviso pendente é resolvido automaticamente.
+  /**
+   * Preço escrito à mão pelo professor.
+   *
+   * Vale nesta requisição, mas não substitui o preço da coordenadora:
+   * antes ficava guardado e passava à frente do preço revisto do mês.
+   * Se for diferente do da base, vai para a lista «a rever» (aqui e no
+   * Sheets) e a coordenadora confirma-o no próximo pedido à IA.
+   * Um produto que a base não tem continua a ser aprendido, como antes,
+   * e também vai para a lista, para a coordenadora saber que existe.
+   */
+  function registarPrecoDoProfessor(produto: string, und: string, preco: number, categoria: string) {
+    if (!(preco > 0) || !produto.trim()) return;
+    const nomeLimpo = produto.replace(/\s*\([^)]*\)/g, '').trim();
+    const { mp } = encontrarMateriaPrimaComConfianca(nomeLimpo, []); // só a base
+    const quem = { professor: nomeProfessor || planoSel?.professor || '', turmaId: planoSel?.turmaId || turmaId };
+    if (mp) {
+      let base = mp.precoKg;
+      if (und === 'un') {
+        const pesoUn = converterUnidadeParaPeso(1, 'un', nomeLimpo);
+        base = mp.precoUnitario > 0 && mp.precoUnitario !== mp.precoKg ? mp.precoUnitario
+          : pesoUn ? pesoUn.qt * mp.precoKg : mp.precoUnitario;
+      }
+      if (base > 0 && Math.abs(preco - base) / base < 0.02) return; // é o preço da coordenadora
+      sinalizarPrecoARever({ mpId: mp.id, nome: mp.nome, produto, und,
+        precoBase: Math.round(base * 100) / 100, precoProfessor: preco, ...quem });
+      setMsg('ℹ️ Preço usado só nesta requisição. A coordenadora vai revê-lo na próxima atualização.');
+      setTimeout(() => setMsg(''), 6000);
+    } else {
+      addOrUpdateMateriaPrimaCustom({
+        nome: produto, categoria: categoria || 'Outros', unidadeCompra: und,
+        precoKg: und === 'un' ? 0 : preco, precoUnitario: preco,
+        aliases: [produto.toLowerCase()],
+      });
+      sinalizarPrecoARever({ mpId: '', nome: produto, produto, und, precoBase: 0, precoProfessor: preco, ...quem });
+    }
+  }
+
   function confirmarPrecoIngrediente(i: number) {
     const l = linhas[i];
-    const preco = parseFloat(l.precoUnitario) || 0;
+    const preco = precoNum(l.precoUnitario);
     if (preco <= 0) return;
-    addOrUpdateMateriaPrimaCustom({
-      nome: l.produto,
-      categoria: familia || 'Outros',
-      unidadeCompra: l.und,
-      precoKg: l.und === 'un' ? 0 : preco,
-      precoUnitario: l.und === 'un' ? preco : preco,
-      aliases: [l.produto.toLowerCase()],
-    });
+    registarPrecoDoProfessor(l.produto, l.und, preco, familia);
     resolverAvisosDoIngrediente(l.produto);
   }
 
@@ -413,13 +540,15 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const linhasPergunta = linhas.filter(l => l.perguntarProfessor);
 
   // Envio Sheets — estrutura exacta do template ECL
-  async function enviarSheets() {
+  /** Envia para o documento oficial. Devolve se chegou lá. */
+  async function enviarSheets(): Promise<boolean> {
+    let chegou = false;
     setMsg('A enviar…');
     try {
       const payload = {
         nomeReceita, familia,
         paxTotal: paxEncTotal,   // H7 — Encomendas
-        paxReceita: paxBaseTotal, // L7 — Receita para
+        paxReceita: paxBaseTotal, // M7 — Receita para
         turma: planoSel?.turmaId || turmaId || '',
         dataAula: planoSel?.data || '',
         formador: nomeProfessor || planoSel?.professor || '',
@@ -442,17 +571,18 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           .join('\n\n'),
         consumo: { bar: consumo.bar, rest: consumo.rest, interno: consumo.interno, convidados: consumo.convidados },
         // Ingredientes → linhas 16-58 do Sheets
-        // A = fórmula calculada (não escrever) | B=qtReceita | C=nome | H=und | L=precoUnitario
+        // A = fórmula (B/M7, não escrever) | B=qtReceita | C=nome | J=und | L=preço
         // Inclui também linhas Q.B. (sal, especiarias a gosto) — já têm uma
         // quantidade mínima estimada calculada, não devem ser excluídas da
         // requisição (o responsável de compras precisa de saber que existem).
         ingredientes: linhasAtivas.map(l => ({
           nome: l.produto,
-          qtReceita: fQnEnvio(l.qtReceita, l.und),
+          qtReceita: fQnEnvio(qtParaColunaB(l, paxBaseTotal, paxEncTotal), l.und),
           und: l.und,
           // Normalizar preço: vírgula → ponto (formato pt-PT → número universal)
           // O Apps Script e o Google Sheets esperam sempre ponto decimal.
-          preco: parseFloat((l.precoUnitario || '0').replace(',', '.')) || 0,
+          // Q.b. vai sem peso e sem preço: fica só a indicação "q.b.".
+          preco: l.isQB ? 0 : precoNum(l.precoUnitario),
         })),
       };
       // PROXY VERCEL — em vez de enviar directamente para o Apps Script
@@ -476,7 +606,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       }
       if (dadosResposta?.ok === false) {
         setMsg('⚠️ Erro: ' + (dadosResposta.mensagem || 'desconhecido'));
+      } else if (!dadosResposta) {
+        setMsg('⚠️ Não houve resposta do documento. Confirma se a requisição foi criada antes de enviar outra vez.');
       } else {
+        chegou = true;
         setMsg('✓ Enviado!');
         if (dadosResposta?.urlSheets) {
           setLinkSheets(dadosResposta.urlSheets);
@@ -490,6 +623,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       }
     }
     setTimeout(() => setMsg(''), 8000);
+    return chegou;
   }
 
   // ── FASE 1 — ESCOLHER ─────────────────────────────────────
@@ -559,7 +693,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
             <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
               {fichaDetalhe.classificacao}
               {(fichaDetalhe as any).familia1 && ` · ${(fichaDetalhe as any).familia1}`}
-              {fichaDetalhe.numPorcoes && ` · receita base: ${fichaDetalhe.numPorcoes} doses`}
+              {` · receita base: ${porcoesDe(fichaDetalhe)} doses`}
             </div>
             {Array.isArray(fichaDetalhe.ingredientes) && fichaDetalhe.ingredientes.length > 0 && (
               <div>
@@ -608,12 +742,15 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 20,
             fontWeight: 700, marginBottom: 4, color: 'white' }}>🛒 Nova Requisição</div>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
-            Selecciona o dia no calendário, escolhe as fichas e define as doses.
+            {planoIdFixo
+              ? 'Escolhe as fichas desta aula e define as doses.'
+              : 'Selecciona o dia no calendário (ou faz sem plano), escolhe as fichas e define as doses.'}
           </div>
         </div>
 
-        {/* ── CALENDÁRIO ── */}
+        {/* ── CALENDÁRIO ── (dentro de um plano não faz falta: a aula já está escolhida) */}
         <div style={S.card}>
+          {!planoIdFixo && (<>
           <div style={{ display: 'flex', alignItems: 'center',
             justifyContent: 'space-between', marginBottom: 12 }}>
             <button onClick={() => setMesAtual(m => {
@@ -705,10 +842,17 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               ))}
             </div>
           )}
+          </>)}
+
+          {!planoSel && !planoIdFixo && (
+            <div style={{ marginTop: 10, fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>
+              Sem plano escolhido: a requisição fica avulsa (por exemplo, um orçamento). Escolhe as fichas na biblioteca.
+            </div>
+          )}
 
           {/* Plano seleccionado */}
           {planoSel && (
-            <div style={{ marginTop: 12, padding: '12px 14px',
+            <div style={{ marginTop: planoIdFixo ? 0 : 12, padding: '12px 14px',
               background: 'var(--copper-pale)', borderRadius: 10,
               border: '1.5px solid var(--copper)',
               display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -736,6 +880,14 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
                 Ver fichas ↓
               </button>
+              {!planoIdFixo && (
+                <button title="Fazer sem plano" onClick={() => {
+                  setPlanoSel(null); setOrigemFichas('biblioteca'); setFichasSel([]); setPaxPorFicha({});
+                }} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--copper)',
+                  background: '#fff', color: 'var(--copper)', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  ✕
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -823,7 +975,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                         {f.nomePrato}
                       </div>
                       <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)' }}>
-                        ficha para {f.numPorcoes || '?'} doses
+                        {parseFloat(String(f.numPorcoes || '').replace(',', '.')) > 0 ? `ficha para ${porcoesDe(f)} doses` : 'a ficha não diz as doses — conta-se 4'}
                       </div>
                     </div>
 
@@ -833,7 +985,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                       <button
                         onClick={() => setPaxPorFicha(p => ({
                           ...p,
-                          [f.id]: Math.max(1, (p[f.id] || parseFloat(f.numPorcoes) || 4) - 1),
+                          [f.id]: Math.max(1, (p[f.id] || porcoesDe(f)) - 1),
                         }))}
                         style={{ width: 34, height: 34, borderRadius: 8,
                           border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
@@ -842,7 +994,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                         −
                       </button>
                       <input type="number" min={1}
-                        value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
+                        value={paxPorFicha[f.id] || porcoesDe(f)}
                         onChange={e => setPaxPorFicha(p => ({
                           ...p, [f.id]: Math.max(1, Number(e.target.value) || 1),
                         }))}
@@ -852,7 +1004,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                       <button
                         onClick={() => setPaxPorFicha(p => ({
                           ...p,
-                          [f.id]: (p[f.id] || parseFloat(f.numPorcoes) || 4) + 1,
+                          [f.id]: (p[f.id] || porcoesDe(f)) + 1,
                         }))}
                         style={{ width: 34, height: 34, borderRadius: 8,
                           border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
@@ -899,10 +1051,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                       {f.nomePrato}
                     </div>
                     <div style={S.muted}>
-                      {f.classificacao} · receita base: {f.numPorcoes} doses
+                      {f.classificacao} · receita base: {porcoesDe(f)} doses
                       {fichasSel.includes(f.id) && (
                         <b style={{ color: 'var(--copper)' }}>
-                          {' '}· {paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4} nesta requisição
+                          {' '}· {paxPorFicha[f.id] || porcoesDe(f)} nesta requisição
                         </b>
                       )}
                     </div>
@@ -913,112 +1065,14 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                       color: 'rgba(26,23,20,0.6)', cursor: 'pointer', flexShrink: 0 }}>
                     Ver ficha
                   </button>
-                  {fichasSel.includes(f.id) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <span style={{ fontSize:13, color: 'var(--copper)', fontWeight: 600 }}>Doses:</span>
-                      <input type="number" min={1} value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
-                        onChange={e => setPaxPorFicha(p => ({ ...p, [f.id]: Number(e.target.value) }))}
-                        style={{ ...S.inp, width: 60, textAlign: 'center' }} />
-                    </div>
-                  )}
+                  {/* As doses mudam-se só em "Nesta requisição", em cima. */}
                 </div>
 
-                {/* Ingredientes com preço — só quando ficha seleccionada */}
-                {fichasSel.includes(f.id) && Array.isArray(f.ingredientes) && f.ingredientes.length > 0 && (
-                  <div style={{ marginTop: 10, borderTop: '1px solid rgba(26,23,20,0.08)', paddingTop: 10 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--copper)',
-                      textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-                      💶 Preço dos ingredientes (opcional — preenche para estimativa de custo)
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 4 }}>
-                      {f.ingredientes.filter(ing => ing?.produto?.trim()).map((ing, ii) => {
-                        const chave = ing.produto.toLowerCase().trim();
-                        const custom = getMateriasPrimasCustom();
-                        const { mp } = encontrarMateriaPrimaComConfianca(ing.produto, custom);
-                        const precoSugerido = mp ? (ing.un === 'un' ? mp.precoUnitario : mp.precoKg) : 0;
-                        const valorActual = precosPreReq[chave] || (precoSugerido > 0 ? precoSugerido.toFixed(2).replace('.', ',') : '');
-                        return (
-                          <React.Fragment key={ii}>
-                            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)',
-                              alignSelf: 'center', paddingLeft: 4 }}>
-                              {ing.produto}
-                              <span style={{ color: 'rgba(26,23,20,0.4)', marginLeft: 4 }}>
-                                ({ing.qt} {ing.un})
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={valorActual}
-                                placeholder={ing.un === 'un' ? '€/un' : '€/kg'}
-                                onChange={e => {
-                                  const v = e.target.value.replace(',', '.');
-                                  setPrecosPreReq(p => ({ ...p, [chave]: e.target.value }));
-                                  // Guardar na base de dados para próxima vez
-                                  if (parseFloat(v) > 0) {
-                                    addOrUpdateMateriaPrimaCustom({
-                                      nome: ing.produto,
-                                      categoria: f.classificacao || 'Outros',
-                                      unidadeCompra: ing.un === 'un' ? 'un' : 'kg',
-                                      precoKg: ing.un === 'un' ? 0 : parseFloat(v),
-                                      precoUnitario: ing.un === 'un' ? parseFloat(v) : parseFloat(v),
-                                      aliases: [chave],
-                                    });
-                                  }
-                                }}
-                                style={{ width: 72, padding: '3px 6px', borderRadius: 6, fontSize: 13,
-                                  border: `1px solid ${valorActual ? 'var(--copper)' : 'var(--border)'}`,
-                                  background: valorActual ? 'var(--copper-pale)' : '#fff',
-                                  textAlign: 'right' }}
-                              />
-                              <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', minWidth: 28 }}>
-                                {ing.un === 'un' ? '€/un' : '€/kg'}
-                              </span>
-                            </div>
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                {/* Os preços escrevem-se na tabela da requisição, depois de a
+                    gerar: aqui pediam-se uma primeira vez, ficha a ficha. */}
               </div>
             ))}
         </div>
-
-        {/* Ajuste de doses — aparece sempre que há fichas selecionadas.
-            Já não exige plano: uma requisição de orçamento não tem plano. */}
-        {fichasSel.length > 0 && (
-          <div style={S.card}>
-            <label style={S.lbl}>Nº de doses por ficha</label>
-            {fichasSelecionadas.map(f => (
-              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.15)' }}>
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--copper)' }}>
-                  {f.nomePrato}
-                  <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.5)', marginLeft: 6, fontSize: 13 }}>
-                    (receita base: {f.numPorcoes} doses)
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  <button
-                    onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, (p[f.id] || parseFloat(f.numPorcoes) || 4) - 1) }))}
-                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-                  <input
-                    type="number" min={1}
-                    value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
-                    onChange={e => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, Number(e.target.value)) }))}
-                    style={{ ...S.inp, width: 60, textAlign: 'center', fontWeight: 700, fontSize: 15 }} />
-                  <button
-                    onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: (p[f.id] || parseFloat(f.numPorcoes) || 4) + 1 }))}
-                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                </div>
-              </div>
-            ))}
-            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)', textAlign: 'right', marginTop: 2 }}>
-              Total: {paxEncTotal} doses
-            </div>
-          </div>
-        )}
 
         {/* 3. Dados adicionais */}
         {fichasSel.length > 0 && (
@@ -1137,7 +1191,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   <button onClick={() => {
                     addSugestaoIngrediente({
                       nomeOriginal: sugestaoAberta,
-                      precoKg: parseFloat(sugestaoForm.precoKg) || 0,
+                      precoKg: precoNum(sugestaoForm.precoKg),
                       unidadeCompra: sugestaoForm.unidadeCompra,
                       categoria: sugestaoForm.categoria,
                       observacao: sugestaoForm.observacao,
@@ -1174,7 +1228,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
           {fichasSelecionadas.map(f => (
             <span key={f.id} style={{ fontSize:13, padding: '2px 8px', borderRadius: 20, background: 'rgba(247,241,230,0.6)', color: 'var(--cream)' }}>
-              {f.nomePrato} · {paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 1} doses
+              {f.nomePrato} · {paxPorFicha[f.id] || porcoesDe(f)} doses
             </span>
           ))}
         </div>
@@ -1254,16 +1308,16 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
             <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>
               {f.nomePrato}
-              <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.45)', marginLeft: 6, fontSize: 12.5 }}>(base: {f.numPorcoes})</span>
+              <span style={{ fontWeight: 400, color: 'rgba(26,23,20,0.45)', marginLeft: 6, fontSize: 12.5 }}>(base: {porcoesDe(f)})</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, (p[f.id] || parseFloat(f.numPorcoes) || 4) - 1) }))}
+              <button onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, (p[f.id] || porcoesDe(f)) - 1) }))}
                 style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
               <input type="number" min={1}
-                value={paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4}
+                value={paxPorFicha[f.id] || porcoesDe(f)}
                 onChange={e => setPaxPorFicha(p => ({ ...p, [f.id]: Math.max(1, Number(e.target.value)) }))}
                 style={{ width: 60, textAlign: 'center', fontWeight: 700, fontSize: 15, padding: '4px 6px', borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)' }} />
-              <button onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: (p[f.id] || parseFloat(f.numPorcoes) || 4) + 1 }))}
+              <button onClick={() => setPaxPorFicha(p => ({ ...p, [f.id]: (p[f.id] || porcoesDe(f)) + 1 }))}
                 style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(181,101,29,0.3)', background: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 700, color: 'var(--copper)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
             </div>
           </div>
@@ -1271,7 +1325,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         <button
           onClick={() => setLinhas(agregarIngredientes(fichasSelecionadas, paxPorFicha))}
           style={{ marginTop: 8, padding: '8px 14px', borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', width: '100%' }}>
-          🔄 Recalcular para {fichasSelecionadas.reduce((s, f) => s + (paxPorFicha[f.id] || parseFloat(f.numPorcoes) || 4), 0)} doses
+          🔄 Recalcular para {fichasSelecionadas.reduce((s, f) => s + (paxPorFicha[f.id] || porcoesDe(f)), 0)} doses
         </button>
       </div>
 
@@ -1423,7 +1477,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       {/* QB */}
       {linhasQB.length > 0 && (
         <div style={S.card}>
-          <label style={S.lbl}>Ingredientes q.b. — quantidade minima estimada</label>
+          <label style={S.lbl}>Ingredientes q.b. — vão na requisição como q.b., sem peso nem custo</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
             {linhasQB.map(l => (
               <div key={l.id} style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--cream-dark)', border: '1px solid var(--border)', fontSize:13 }}>
@@ -1466,20 +1520,23 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           if (aEnviarReq) return;
           setAEnviarReq(true);
           try {
-          // 1. Guardar localmente
-          if (planoSel) {
-            // Reutilizar ID da requisição existente — evita duplicados ao editar
-            const reqExistente = getRequisicaoPorPlano(planoSel.id);
-            addOrUpdateRequisicao({
-              id: reqExistente?.id || `req_${planoSel.id}`, planoAulaId: planoSel.id, turmaId: planoSel.turmaId,
-              dataAula: planoSel.data, professor: planoSel.professor, fichasIds: fichasSel,
-              linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: parseFloat(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
-              custoTotal: crTotal, estado: 'enviada', criadaEm: new Date().toISOString(), atualizadaEm: new Date().toISOString(),
-            });
-          }
-          // 2. Enviar para o Google Sheets com TODOS os dados (preço, unidade, turma, data, formador...)
-          await enviarSheets();
-          onGuardado?.();
+          // 1. Enviar para o documento oficial (o documento e o envio não mudam).
+          const chegou = await enviarSheets();
+          // 2. Guardar na aplicação — também a requisição feita sem plano,
+          //    que antes só ia para o documento e não ficava registada.
+          //    Se o envio falhou, fica como rascunho (antes dizia "enviada").
+          const agoraISO = new Date().toISOString();
+          const reqExistente = planoSel ? getRequisicaoPorPlano(planoSel.id) : undefined;
+          if (!reqAvulsaId.current) reqAvulsaId.current = `req_avulsa_${Date.now()}`;
+          addOrUpdateRequisicao({
+            id: planoSel ? (reqExistente?.id || `req_${planoSel.id}`) : reqAvulsaId.current,
+            planoAulaId: planoSel?.id || '', turmaId: planoSel?.turmaId || turmaId,
+            dataAula: planoSel?.data || '', professor: planoSel?.professor || nomeProfessor || '', fichasIds: fichasSel,
+            linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: precoNum(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
+            custoTotal: crTotal, estado: chegou ? 'enviada' : 'rascunho',
+            criadaEm: reqExistente?.criadaEm || agoraISO, atualizadaEm: agoraISO,
+          });
+          if (chegou) onGuardado?.();
           } finally { setAEnviarReq(false); }
         }}>{aEnviarReq ? 'A enviar…' : '✓ Guardar e enviar a requisição'}</button>
         <button style={S.btnG} onClick={() => {

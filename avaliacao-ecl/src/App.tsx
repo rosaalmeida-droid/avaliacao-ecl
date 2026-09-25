@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { confirmarTurmaAoPublicar } from './professores';
 import { inicializarCompat } from './compatECL';
 import { loadLibrary } from './libraryService';
 import { Perfil, Aluno, PlanoAula as TPlanoAula } from './types';
@@ -71,19 +72,20 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
 import { FichaRegistoUC } from './components/FichaRegistoUC';
 
 // Wrapper que combina Historial + Momentos + Ficha de Registo
-function HistorialView({ turmaId, onIrPara }: {
+// "Notas da UC" e "Historial" eram dois itens do menu que abriam o mesmo
+// historial. Ficou um só — "Notas da UC" — com a pauta à frente.
+function HistorialView({ turmaId, onIrPara, nomeProfessor }: {
   turmaId: string;
   onIrPara?: (vista: VistaProf, planoId?: string) => void;
+  nomeProfessor?: string;
 }) {
-  // "Por unidade" é o primeiro separador: é assim que o professor
-  // pensa no percurso, e é onde vê o que ficou por avaliar.
-  const [tab, setTab] = React.useState<'porUC' | 'historial' | 'momentos' | 'ficha'>('porUC');
+  const [tab, setTab] = React.useState<'porUC' | 'historial' | 'momentos' | 'ficha'>('historial');
   return (
     <div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         {([
+          { id: 'historial', label: '📊 Notas e pauta' },
           { id: 'porUC',     label: '📚 Por unidade' },
-          { id: 'historial', label: '📊 Historial' },
           { id: 'momentos',  label: '📐 Momentos' },
           { id: 'ficha',     label: '📋 Ficha de Registo' },
         ] as const).map(t => (
@@ -103,13 +105,12 @@ function HistorialView({ turmaId, onIrPara }: {
           onValidar={(planoId) => onIrPara?.('validacao', planoId)}
         />
       )}
-      {tab === 'historial' && <AvaliacaoPorUC turmaId={turmaId} />}
+      {tab === 'historial' && <AvaliacaoPorUC turmaId={turmaId} nomeProfessor={nomeProfessor} />}
       {tab === 'momentos'  && <MomentosAvaliacao turmaId={turmaId} />}
       {tab === 'ficha'     && <FichaRegistoUC turmaId={turmaId} />}
     </div>
   );
 }
-import { CopiaSegurancaView } from './components/CopiaSeguranca';
 import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
 import { MapaCompetencias } from './components/MapaCompetencias';
 import { CentroAvisos } from './components/CentroAvisos';
@@ -118,7 +119,7 @@ import { EventosWizard } from './components/EventosWizard';
 import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
 import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
-import { sincronizarDoSheets, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
+import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   migrarTurmaAntiga,
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
@@ -285,9 +286,12 @@ function AppInterno() {
       // Derivar ano do turmaId — '1º ACP' → 1, '2º ACP' → 2, '3º ACP' → 3
       const anoMatch = tId.match(/[123]/);
       const ano = anoMatch ? (parseInt(anoMatch[0]) as 1|2|3) : 1;
-      const novoAluno: Aluno = { id: alunoId, turmaId: tId, numero, ano };
+      // O aluno da lista oficial, com o nome. Antes montava-se um aluno só
+      // com o número, e a aplicação chamava-lhe "Aluno 2" em todo o lado.
+      const daLista = getAlunos().find(a => a.id === alunoId);
+      const novoAluno: Aluno = daLista || { id: alunoId, turmaId: tId, numero, ano };
       setAluno(novoAluno);
-      addAluno(novoAluno);
+      if (!daLista) addAluno(novoAluno);
     }
   }
 
@@ -304,6 +308,11 @@ function AppInterno() {
   if (perfil === 'professor') {
     return (
       <LayoutProfessor
+        onMudarTurma={(t: string) => navegarCom(() => {
+          // Mudar de turma fecha o plano aberto: é outra turma, outros planos.
+          setPlanoAberto(null); setVistaGlobal('inicio'); limparAlteracoes();
+          setTurmaId(t); sincronizarDoSheets(t).then(() => setRefreshKey(k => k + 1)).catch(() => {});
+        }, 'Se mudares de turma agora perdes o que estás a preencher.')}
         vistaAtiva={vistaGlobal}
         onNavegar={irPara}
         nomeProfessor={nomeProfessor}
@@ -404,22 +413,15 @@ function AppInterno() {
                     return getSelecoes().filter((s: any) =>
                       s.planoAulaId === planoAberto.id && !vals.has(s.id)).length;
                   })()}
-                  aoPublicar={planoAberto.estado !== 'publicado' ? () => {
-                    const p = { ...planoAberto, estado: 'publicado' as const,
-                      atualizadoEm: new Date().toISOString() };
+                  aoPublicar={() => confirmarTurmaAoPublicar(planoAberto.turmaId, planoAberto.titulo)}
+                  depoisDePublicar={(ok) => {
+                    // O botão já mostra se chegou. Aqui só se actualiza o
+                    // plano aberto e, se chegou, oferece-se o Classroom.
+                    const p = getPlanosAula().find(x => x.id === planoAberto.id) || planoAberto;
                     setPlanoAberto(p);
-                    // Publica e vai confirmar ao Sheets — é de lá que o
-                    // aluno lê. Sem confirmação, a aula podia nunca chegar.
-                    publicarPlanoParaAlunos(planoAberto.id).then(r => {
-                      if (r.ok) alert('Publicado. Os alunos já veem esta aula.');
-                      else alert('Atenção: ' + r.erro);
-                    });
-
-                    // O Classroom só agora faz sentido: o plano está
-                    // pronto, com as fichas e o guião que tiver. Antes
-                    // perguntava-se ao criar o plano, ainda vazio.
+                    if (!ok) return;
                     if (window.confirm(
-                      'Plano publicado para os alunos.\n\n'
+                      'Os alunos já veem a aula.\n\n'
                       + 'Publicar também no Google Classroom?'
                     )) {
                       const fichas = getFichasProducao()
@@ -435,7 +437,7 @@ function AppInterno() {
                         else alert('Não foi possível publicar no Classroom: ' + (res.erro || 'erro desconhecido'));
                       });
                     }
-                  } : undefined}
+                  }}
                 />
               }
             >
@@ -621,7 +623,10 @@ function AppInterno() {
             );
           })()}
           {vistaGlobal === 'planos' && (
-            <PlanoAula key={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
+            // Sem key: dados novos só re-desenham o ecrã. Com key={refreshKey}
+            // o ecrã recriava-se a cada sincronização e voltava ao calendário
+            // (perdia a Lista, o Arquivo e até um plano a meio de criar).
+            <PlanoAula versao={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
               onAlteracao={registarAlteracao}
               onGuardado={(p?: TPlanoAula) => {
                 limparAlteracoes();
@@ -649,8 +654,8 @@ function AppInterno() {
               <OrcamentosView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
             )}
-            {vistaGlobal === 'historial' && (
-              <HistorialView turmaId={turmaId}
+            {(vistaGlobal === 'historial' || vistaGlobal === 'avaliacao_uc') && (
+              <HistorialView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onIrPara={(v, planoId) => { if (planoId) setPlanoIdAlvo(planoId); setVistaGlobal(v); }} />
             )}
             {vistaGlobal === 'ajuda' && <ManualProfessor />}
@@ -661,8 +666,7 @@ function AppInterno() {
               <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
             )}
-            {vistaGlobal === 'avaliacao_uc' && <AvaliacaoPorUC turmaId={turmaId} />}
-            {vistaGlobal === 'copia_seguranca' && <CopiaSegurancaView />}
+            {/* A cópia de segurança passou para a coordenadora (Dados e segurança). */}
             {vistaGlobal === 'gestao_recuperacoes' && <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
             {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}

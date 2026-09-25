@@ -492,19 +492,18 @@ export function processarIngrediente(
   if (deveExcluirDaRequisicao(produto)) {
     return { produto, qtKg: 0, und: 'kg', isQB, excluir: true, avisos, isDerivado: false, isPreparacao: false, perguntarProfessor: false };
   }
-  // Excluir ingredientes de despensa (sal, especiarias)
-  // EXCEPTO se a quantidade for significativa (>50g) — então deve aparecer
+  // Ingredientes de despensa (sal, especiarias).
+  // Q.b. fica q.b.: sem peso na requisição (regra da escola). Com
+  // quantidade escrita na ficha ("sal 5 g"), vai essa quantidade — antes
+  // tudo abaixo de 50 g ficava a 0, como se fosse q.b.
   if (DESPENSA_EXCLUIR.has(produto.toLowerCase())) {
+    if (isQB) {
+      return { produto, qtKg: 0, und: 'q.b.', isQB: true, excluir: false, avisos: [], isDerivado: false, isPreparacao: false, perguntarProfessor: false };
+    }
     const qtNum2 = parseFloat(String(qtRaw).replace(',', '.')) || 0;
     const undLow2 = (undRaw || '').toLowerCase().trim();
-    const qtGramas = ['g','gr','gramas'].includes(undLow2) ? qtNum2 : qtNum2 * 1000;
-    if (qtGramas < 50 || isQB) {
-      // Q.b. ou quantidade pequena — incluir na requisição com qtKg=0 para o professor definir
-      // Não excluir: extrato de baunilha q.b. pode ser caro e deve aparecer
-      return { produto, qtKg: 0, und: isQB ? 'q.b.' : 'kg', isQB: true, excluir: false, avisos: isQB ? ['⚠️ Quantidade q.b. — define a quantidade necessária'] : ['despensa'], isDerivado: false, isPreparacao: false, perguntarProfessor: isQB };
-    }
-    // Quantidade grande (>50g) — incluir na requisição
-    avisos.push('ℹ️ Quantidade elevada — verificar stock de despensa');
+    const qtGramas = ['g','gr','gramas'].includes(undLow2) ? qtNum2 : undLow2 === 'kg' ? qtNum2 * 1000 : 0;
+    if (qtGramas >= 50) avisos.push('ℹ️ Quantidade elevada — verificar stock de despensa');
   }
 
   // Converter para kg/l base
@@ -527,19 +526,43 @@ export function processarIngrediente(
     else if (['dente', 'dentes'].includes(undLow)) { qtKg = qtNum * 0.006; und = 'kg'; }
     else if (['folha', 'folhas'].includes(undLow)) { qtKg = qtNum * 0.001; und = 'kg'; }
     else if (['ramo', 'ramos'].includes(undLow)) { qtKg = qtNum * 0.015; und = 'kg'; }
+    else {
+      // Antes, qualquer unidade que não estivesse acima passava a QUILOS:
+      // "2 latas" davam 2 kg, "1 chávena" 1 kg, "2 limões" sem unidade 2 kg.
+      const u = undLow.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[.\s]/g, '');
+      if (['cs', 'colherdesopa', 'colheresdesopa', 'colhersopa', 'csopa'].includes(u)) { qtKg = qtNum * 0.015; und = 'kg'; }
+      else if (['cc', 'colherdecha', 'colheresdecha', 'colhercha', 'ccha'].includes(u)) { qtKg = qtNum * 0.005; und = 'kg'; }
+      else if (['chavena', 'chavenas'].includes(u)) { qtKg = qtNum * 0.24; und = 'l'; avisos.push('ℹ️ 1 chávena ≈ 240 ml — confirma a quantidade'); }
+      else if (['copo', 'copos'].includes(u)) { qtKg = qtNum * 0.2; und = 'l'; avisos.push('ℹ️ 1 copo ≈ 200 ml — confirma a quantidade'); }
+      else if (['pitada', 'pitadas'].includes(u)) { qtKg = qtNum * 0.0005; und = 'kg'; }
+      else if (['kgs', 'quilo', 'quilos', 'quilograma', 'quilogramas'].includes(u)) { qtKg = qtNum; und = 'kg'; }
+      else if (['grama', 'grs', 'gramas'].includes(u)) { qtKg = qtNum / 1000; und = 'kg'; }
+      else if (['litro', 'litros', 'lts'].includes(u)) { qtKg = qtNum; und = 'l'; }
+      else if (['mililitro', 'mililitros', 'mls'].includes(u)) { qtKg = qtNum / 1000; und = 'l'; }
+      else {
+        // Sem unidade, ou lata/pacote/molho/embalagem…: conta-se à unidade.
+        qtKg = qtNum; und = 'un';
+        if (u) avisos.push(`⚠️ Unidade "${undRaw}" — ficou em unidades; confirma a quantidade`);
+      }
+    }
   }
 
-  // QB → quantidade mínima
+  // Q.b. fica q.b.: sem peso nem custo na requisição (regra da escola).
+  // Antes inventava-se uma "quantidade mínima" (2 g, 15 ml, 20 g…).
   if (isQB) {
-    const qbMin = qbParaQuantidadeMinima(produto);
-    qtKg = qbMin.qt;
-    und = qbMin.und;
+    return { produto, qtKg: 0, und: 'q.b.', isQB: true, excluir: false, avisos,
+      isDerivado: false, isPreparacao: false, perguntarProfessor: false };
   }
 
   // Verificar se é ovo (manter em unidades)
-  if (/\bovo[s]?\b|\begg[s]?\b/i.test(produto)) {
+  if (/\bovo[s]?\b|\begg[s]?\b/i.test(produto) && !/l[íi]quid|pasteuriz|gema|clara/i.test(produto)) {
+    // Ovos em peso ("300 g de ovos") passam a unidades — antes o número
+    // ficava igual e 0,3 kg de ovos dava 0,3 ovos. Um ovo sem casca ≈ 50 g.
+    if (!isQB && und === 'kg') {
+      qtKg = Math.round(qtKg / 0.05 * 10) / 10;
+      avisos.push(`ℹ️ Ovos em peso passados a unidades (1 ovo ≈ 50 g): ${qtKg} un`);
+    } else if (!isQB) qtKg = qtNum;
     und = 'un';
-    if (!isQB) qtKg = qtNum;
   }
 
   // Verificar ingredientes derivados

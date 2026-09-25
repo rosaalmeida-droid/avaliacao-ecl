@@ -159,6 +159,8 @@ export interface SelecaoAluno {
   atitudes: string[];
   responsabilidades: string[];
   autoavaliacoes: AutoavaliacaoCompetencia[];
+  /** Triagem do Colaborativo e do Criativo (só para os 5 C da pauta). */
+  triagem5c?: import('./triagem5c').Triagem5C;
   comentario?: string;
   fotoUrl?: string;
   criadaEm: string;
@@ -179,6 +181,8 @@ export interface Validacao {
   alunoId: string;
   turmaId: string;
   notas: NotaCompetencia[];
+  /** Triagem do CL e do CR confirmada pelo professor (só para os 5 C). */
+  triagem5c?: import('./triagem5c').Triagem5C;
   comentarioGeral?: string;
   validadoPor: string;
   validadoEm: string;
@@ -547,6 +551,16 @@ export interface RecuperacaoModulo {
   planoIndividualTexto?: string;
   planoIndividualAprovado?: boolean;
   dataAtribuicao: string;
+  // ── Plano de recuperação decidido pelo professor (faltas ≥ 10%) ──
+  /** Exercício prático, teórico, participação numa atividade ou outra estratégia. */
+  modalidade?: 'pratico' | 'teorico' | 'atividade' | 'outra';
+  /** Recuperar já, durante a UC, ou deixar para depois do fim da UC. */
+  quando?: 'ja' | 'depois';
+  /** O que o aluno tem de fazer, nas palavras do professor. */
+  descricaoPlano?: string;
+  /** Resultado da recuperação, 0-20. Substitui o zero das aulas faltadas. */
+  resultadoNota?: number;
+  realizadaEm?: string;
   dataSubmissao?: string;
   dataValidacao?: string;
   criadoEm: string;

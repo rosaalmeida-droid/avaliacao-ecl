@@ -362,13 +362,19 @@ function extrairFicha(texto: string): FichaTecnica {
                     texto.match(/DOSES?:\s*(\d+)/i)?.[1] || '';
     const tPrepIA = extrair('TEMPO DE PREPARAÇÃO');
     const tConfIA = extrair('TEMPO DE CONFEÇÃO');
-    const alergenicosIA = extrair('ALERGÉNICOS');
+    // As IAs escrevem umas vezes ALERGÉNICOS, outras ALERGÉNIOS.
+    const alergenicosIA = extrair('ALERGÉNICOS') || extrair('ALERGÉNIOS') || extrair('ALERGENIOS');
 
     // Ingredientes com separador |
     const secIngIA = texto.match(/INGREDIENTES:\n([\s\S]*?)(?=\nPREPARAÇÃO:|$)/i);
     const ingredientesIA: LinhaIngrediente[] = [];
     if (secIngIA) {
-      const linhasIng = secIngIA[1].split('\n').filter(l => l.trim() && !l.toUpperCase().includes('COMPONENTE') && !l.toUpperCase().startsWith('INGREDIENTE'));
+      // Tabelas em Markdown começam e acabam em "|" e têm uma linha "|---|":
+      // sem tirar isso, tudo ficava uma coluna ao lado (a quantidade ia
+      // para a unidade, a unidade para o produto).
+      const linhasIng = secIngIA[1].split('\n')
+        .map(l => l.trim().replace(/^\|/, '').replace(/\|$/, '').trim())
+        .filter(l => l && !/^[\s|:\-]+$/.test(l) && !l.toUpperCase().includes('COMPONENTE') && !l.toUpperCase().startsWith('INGREDIENTE'));
       for (const linha of linhasIng) {
         // Formato com | (formato preferido)
         if (linha.includes('|')) {
@@ -427,10 +433,14 @@ function extrairFicha(texto: string): FichaTecnica {
     }
 
     // Preparação — aceita formato com ou sem |
-    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|\nEQUIPAMENTO|\nCONSERVAÇÃO:|$)/i);
+    // A preparação acaba no campo seguinte — também nos alergénios e nos
+    // registos: antes, "ALERGÉNIOS: …" ia parar às observações do último passo.
+    const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|\nEQUIPAMENTO|\nCONSERVAÇÃO:|\nALERG|\nREGENERAÇÃO|\nREGISTOS|\nSUBTÉCNICAS|\nAPARELHOS|\n===GUI|$)/i);
     const preparacaoIA: PassoPreparacao[] = [];
     if (secPrepIA) {
-      const linhasRaw = secPrepIA[1].split('\n').filter(l => l.trim());
+      const linhasRaw = secPrepIA[1].split('\n')
+        .map(l => l.trim().replace(/^\|/, '').replace(/\|$/, '').trim())
+        .filter(l => l && !/^[\s|:\-]+$/.test(l));
       const temPipe = linhasRaw.some(l => l.includes('|'));
 
       if (temPipe) {
@@ -464,7 +474,8 @@ function extrairFicha(texto: string): FichaTecnica {
         let passoActual: PassoPreparacao | null = null;
         for (const linha of linhasRaw) {
           if (/^NR\s+DESCRI/i.test(linha)) continue; // cabeçalho
-          const mNum = linha.match(/^(\d+)\s+(.+)/);
+          // "1 Desfiar…", "1. Desfiar…" ou "1) Desfiar…"
+          const mNum = linha.match(/^(\d+)[.)ºº\-]?\s+(.+)/);
           if (mNum) {
             if (passoActual) preparacaoIA.push(passoActual);
             // Extrair PCC/HACCP da linha se presente
@@ -1951,11 +1962,9 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
           ✨ <strong>Prompt unificado</strong> — a IA gera a Ficha Técnica e o Guião de Apoio numa só resposta.
           Cola o resultado na app: primeiro o bloco da Ficha, depois o bloco do Guião (separados por ===GUIÃO===).
         </div>
+        {/* O seletor já tem "Copiar prompt" (é o mesmo prompt): havia um
+            segundo botão, "Copiar prompt unificado", que copiava o mesmo. */}
         <SeletorIA prompt={promptUnificado} corPrincipal="var(--copper)" />
-        <button type="button" className="btn btn-ghost" style={{ width:'100%', fontSize:13 }}
-          onClick={() => copiarTexto(promptUnificado, () => { setCopiadoFicha(true); setTimeout(()=>setCopiadoFicha(false),3000); }, () => {})}>
-          {copiadoFicha ? '✅ Copiado!' : '📋 Copiar prompt unificado'}
-        </button>
         {!nomePrato && (
           <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(90,122,78,0.08)', borderRadius:8, fontSize:13, color:'var(--sage)' }}>
             💡 Preenche o nome do prato acima para activar o Guia de Apoio
@@ -1966,7 +1975,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
       {/* 4. CAIXA RESULTADO */}
       <div style={{ background:'rgba(181,101,29,0.04)', borderRadius:10, padding:'12px 14px', marginBottom:12, border:'1px solid rgba(181,101,29,0.15)' }}>
         <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
-          📥 Passo 3 — Cola aqui o resultado da IA
+          📥 Passo 2 — Cola aqui o resultado da IA
         </div>
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:8 }}>
           Cola o resultado da ficha <strong>ou</strong> do guia — a app detecta automaticamente qual é.
@@ -2191,7 +2200,7 @@ function PassoFichaTecnica({
             )}
           </Field>
 
-          <Field label="Alergénicos">
+          <Field label="Alergénios">
             <input className="input" value={ficha.alergenicos} onChange={e => setF('alergenicos', e.target.value)} />
           </Field>
           <Field label="Nº Porções">
@@ -2406,7 +2415,7 @@ function PassoFichaTecnica({
       {/* Alergénicos */}
       {ficha.alergenicos && (
         <Card>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Alergénicos detetados</div>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Alergénios detetados</div>
           <div style={{ fontSize: 14 }}>{ficha.alergenicos}</div>
           <div className="muted" style={{ fontSize:13, marginTop: 4 }}>
             ⚠️ Verificar sempre — baseado nos ingredientes introduzidos
@@ -2567,18 +2576,32 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
   planoId?: string; ucId?: string; ucNome?: string; nomePratoInicial?: string;
   onAlteracao?: () => void; onGuardado?: () => void;
 }) {
-  // Encontrar a ficha-alvo UMA VEZ ao montar — não recalcula a cada render do pai
-  const [fichaAlvo] = useState<FichaProducao | null>(() => {
-    const fichasDoPlano = planoId
-      ? getFichasProducao().filter(f => (f as any).planoAulaId === planoId)
-      : getFichasProducao();
-    // Ordenar por data de criação real — não confiar na ordem do array
-    const ordenadas = [...fichasDoPlano].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
-    return ordenadas[ordenadas.length - 1] || null;
+  // As fichas do plano são as que o plano tem (fichasIds) — também as
+  // juntadas da biblioteca. Antes só contavam as criadas dentro do plano,
+  // e o guião dizia "Ainda não há nenhuma ficha" num plano com fichas.
+  const [fichasDoPlano] = useState<FichaProducao[]>(() => {
+    const todas = getFichasProducao();
+    if (!planoId) return todas;
+    const ids = new Set(getPlanosAula().find(p => p.id === planoId)?.fichasIds || []);
+    return todas.filter(f => ids.has(f.id) || (f as any).planoAulaId === planoId)
+      .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
   });
-  const nomePrato = nomePratoInicial || fichaAlvo?.nomePrato || '';
+  // A ficha do guião: a pedida pelo nome; senão a primeira ainda sem guião;
+  // senão a última. E o professor pode escolher outra (uma por ficha).
+  const [fichaAlvo, setFichaAlvoEstado] = useState<FichaProducao | null>(() =>
+    fichasDoPlano.find(f => nomePratoInicial && f.nomePrato === nomePratoInicial && !(f as any).textoGuia)
+    || fichasDoPlano.find(f => !(f as any).textoGuia)
+    || fichasDoPlano[fichasDoPlano.length - 1] || null);
+  const nomePrato = fichaAlvo?.nomePrato || nomePratoInicial || '';
   const [textoGuia, setTextoGuia] = useState((fichaAlvo as any)?.textoGuia || '');
   const [modo, setModo] = useState<'colar' | 'ver'>((fichaAlvo as any)?.textoGuia ? 'ver' : 'colar');
+  function escolherFicha(f: FichaProducao) {
+    const atual = getFichasProducao().find(x => x.id === f.id) || f;
+    setFichaAlvoEstado(atual);
+    setTextoGuia((atual as any).textoGuia || '');
+    setModo((atual as any).textoGuia ? 'ver' : 'colar');
+    setGuardadoOk(false);
+  }
   const [guardadoOk, setGuardadoOk] = useState(false);
 
   if (!fichaAlvo) {
@@ -2609,14 +2632,36 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
         <EtiquetaLigacaoPlano planoAulaId={(fichaAlvo as any)?.planoAulaId} fichaId={fichaAlvo?.id} />
       </div>
 
+      {/* Um guião por ficha: com várias fichas, escolhe-se de qual. */}
+      {/* Fora de um plano há todas as fichas: escolhe-se numa lista. */}
+      {!planoId && fichasDoPlano.length > 1 && (
+        <select className="input no-print" value={fichaAlvo.id} style={{ marginBottom: 12 }}
+          onChange={e => { const f = fichasDoPlano.find(x => x.id === e.target.value); if (f) escolherFicha(f); }}>
+          {fichasDoPlano.map(f => <option key={f.id} value={f.id}>{f.nomePrato}{(f as any).textoGuia ? ' ✓' : ''}</option>)}
+        </select>
+      )}
+      {planoId && fichasDoPlano.length > 1 && (
+        <div className="no-print" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          {fichasDoPlano.map(f => {
+            const ativa = f.id === fichaAlvo.id;
+            const temGuia = !!(getFichasProducao().find(x => x.id === f.id) as any)?.textoGuia;
+            return (
+              <button key={f.id} onClick={() => escolherFicha(f)} style={{
+                padding: '7px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+                border: `1.5px solid ${ativa ? 'var(--guia)' : 'rgba(26,23,20,0.15)'}`,
+                background: ativa ? 'var(--guia)' : '#fff', color: ativa ? '#fff' : 'inherit' }}>
+                {temGuia ? '✓ ' : ''}{f.nomePrato}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <Card>
         <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginBottom: 8 }}>1. Gerar com IA</div>
         <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* O seletor já tem "Copiar prompt": havia um segundo botão igual. */}
           <SeletorIA prompt={promptGuiaAtual} corPrincipal="var(--guia)" />
-          <button type="button" className="btn btn-ghost" style={{ fontSize: 13, borderColor: 'var(--sage)', color: 'var(--sage)' }}
-            onClick={() => copiarTexto(promptGuiaAtual, () => {}, () => {})}>
-            📋 Copiar prompt
-          </button>
         </div>
 
         <div className="no-print" style={{ fontWeight: 700, fontSize: 14, color: 'var(--sage)', marginTop: 16, marginBottom: 8 }}>2. Colar o resultado</div>
@@ -2799,6 +2844,13 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         kitchenflow: fichaConfirmada.kitchenflow || '',
         tecnicasSugeridas: fichaConfirmada.tecnicasDetectadas || [],
         ...({ aparelhosDetectados: (fichaConfirmada as any).aparelhosDetectados || [] } as any),
+        // A família (obrigatória para a avaliação), a secundária e as
+        // etiquetas escolhiam-se no formulário mas não eram guardadas.
+        ...({
+          familia1: fichaConfirmada.familia1 || (fichaOriginal as any)?.familia1 || undefined,
+          familia2: fichaConfirmada.familia2 || (fichaOriginal as any)?.familia2 || undefined,
+          etiquetas: Array.isArray(fichaConfirmada.etiquetas) ? fichaConfirmada.etiquetas : ((fichaOriginal as any)?.etiquetas || []),
+        } as any),
         ucsAssociadas: [ucId].filter(Boolean),
         elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',
         // A data da ficha é a da aula a que pertence. Sem plano, é a de
@@ -2971,10 +3023,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         <div style={{ background: 'var(--sage)', borderRadius: 14, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <h2 className="display" style={{ margin: 0, color: 'white' }}>Fichas de Produção</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost" onClick={() => { setModoSelecao(!modoSelecao); setFichasSelecionadasIds(new Set()); }}
-              style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}>
-              {modoSelecao ? '✕ Cancelar' : '☑ Selecionar'}
-            </button>
+            {/* Eliminar fichas para sempre é com a coordenadora (Dados e segurança). */}
             <button className="btn btn-primary" onClick={novaFicha} style={{ background: 'white', color: 'var(--sage)' }}>+ Nova ficha</button>
           </div>
         </div>
@@ -3275,16 +3324,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                 <EtiquetaLigacaoPlano planoAulaId={f.planoAulaId} fichaId={f.id} />
               </div>
               <span className="stamp">Ver / Editar</span>
-              <button onClick={(e) => {
-                e.stopPropagation();
-                if (confirm(`Eliminar definitivamente "${f.nomePrato}"? Apaga a ficha aqui e no arquivo da escola — não pode ser desfeito.`)) {
-                  eliminarFichaProducaoDefinitivamente(f.id);
-                  recarregar();
-                }
-              }} style={{ background: 'none', border: 'none', color: 'rgba(26,23,20,0.3)', fontSize: 16, cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}
-                title="Eliminar definitivamente">
-                🗑️
-              </button>
+
             </div>
           </div>
         ))}

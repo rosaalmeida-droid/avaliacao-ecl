@@ -4,6 +4,8 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
+import type { Triagem5C } from './triagem5c';
+import { notaDaPautaUC } from './pautaUC';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
@@ -14,7 +16,7 @@ import {
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
-import { estadoDosPrecos } from './materiasPrimasBase';
+import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
 
 // ══ SCRIPT ÚNICO ══
 // Um só script guarda tudo: planos, fichas, alunos, avaliações,
@@ -214,11 +216,64 @@ async function lerDoSheets(url: string, params: Record<string, string>): Promise
     const u = new URL(url);
     Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
     const res = await fetch(u.toString());
-    return await res.json();
+    const json = await res.json();
+    if (json?.zeroEm) aplicarComecarDoZero(String(json.zeroEm));
+    return json;
   } catch (e) {
     console.warn('Erro ao ler do Sheets:', e);
     return null;
   }
+}
+
+// ============================================================
+// Começar do zero
+// ============================================================
+// A coordenação corre "comecarDoZero" no script: o Sheets fica só com os
+// alunos e os preços, e passa a dizer em cada resposta a data dessa
+// limpeza (zeroEm). Cada aparelho — computador do professor, telemóvel do
+// aluno — ao ver uma data nova apaga a sua cópia antiga: planos, fichas,
+// requisições, avaliações, presenças… Ficam as turmas, os alunos, os
+// preços e o que já tiver sido criado depois da limpeza.
+
+const KEY_ZERO_VISTO = 'ecl_zero_visto';
+const FICAM_NO_ZERO = new Set([
+  'ecl_turmas', 'ecl_alunos', 'ecl_alunos_eliminados', 'ecl_alunos_externos', 'ecl_telemovel',
+  'ecl_tecnicas_custom', 'ecl_materias_primas_custom', 'ecl_precos_revistos', 'ecl_precos_a_rever',
+  'ecl_email_professor', 'ecl_ultimo_responsavel_compras', 'ecl_ultimo_backup_ts',
+  'ecl_dicionario_criterios_custom', 'ecl_dicionario_sugestoes', 'ecl_atitudes_transicao',
+  'ecl_template_fct', 'ecl_manual_cozinheiro', KEY_ZERO_VISTO,
+]);
+/** Listas em que se guarda o que foi criado depois da limpeza. */
+const LISTAS_COM_DATA = ['ecl_planos', 'ecl_fichas', 'ecl_requisicoes', 'ecl_selecoes', 'ecl_validacoes',
+  'ecl_presencas', 'ecl_historico_avaliacoes', 'ecl_sessoes_aula'];
+
+function dataMaisRecente(x: any): string {
+  return [x?.atualizadoEm, x?.criadoEm, x?.atualizadaEm, x?.criadaEm, x?.validadoEm, x?.abertaEm]
+    .map(v => String(v || '')).sort().pop() || '';
+}
+
+export function aplicarComecarDoZero(zeroEm: string): boolean {
+  try {
+    if (!zeroEm || localStorage.getItem(KEY_ZERO_VISTO) === zeroEm) return false;
+    const depois: Record<string, any[]> = {};
+    LISTAS_COM_DATA.forEach(k => {
+      try {
+        const l = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(l)) depois[k] = l.filter(x => dataMaisRecente(x) > zeroEm);
+      } catch { /* */ }
+    });
+    const apagar: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i) || '';
+      if ((k.startsWith('ecl_') && !FICAM_NO_ZERO.has(k) && !k.startsWith('ecl_manual_aluno_'))
+          || k.startsWith('avaliacao_submetida_')) apagar.push(k);
+    }
+    apagar.forEach(k => localStorage.removeItem(k));
+    Object.entries(depois).forEach(([k, l]) => { if (l.length) localStorage.setItem(k, JSON.stringify(l)); });
+    localStorage.setItem(KEY_ZERO_VISTO, zeroEm);
+    console.log('[começar do zero] cópia local limpa:', apagar.length, 'chaves');
+    return true;
+  } catch { return false; }
 }
 
 // Verifica fichas similares no Sheets de Fichas
@@ -232,6 +287,57 @@ export async function buscarFichasSimilares(nome: string): Promise<Array<{id: st
 
 // ── Sincronização do Sheets para localStorage ─────────────────
 // Chamada na inicialização da app — carrega dados do Sheets se houver URL
+
+// ============================================================
+// O Sheets manda
+// ============================================================
+// A aplicação guarda uma cópia de tudo no aparelho. Ao ler do Sheets,
+// juntava o que vinha de lá ao que já tinha — e nunca tirava nada. As
+// aulas, fichas e requisições apagadas no Sheets continuavam a aparecer.
+//
+// Depois de uma leitura que correu bem (mesmo com a folha vazia):
+//  - o que já esteve no Sheets e deixou de estar foi apagado lá: sai;
+//  - o que nunca lá chegou e é recente, ou está na lista de espera,
+//    fica e volta a ser enviado (é trabalho novo que ainda não chegou);
+//  - o que nunca lá chegou e é antigo é sobra de antes: sai.
+
+const KEY_VISTOS_SHEETS = 'ecl_vistos_no_sheets';
+const DIAS_PARA_CHEGAR = 2;
+
+function vistosNoSheets(colecao: string): Set<string> {
+  try { return new Set((JSON.parse(localStorage.getItem(KEY_VISTOS_SHEETS) || '{}')[colecao]) || []); }
+  catch { return new Set(); }
+}
+function marcarVistosNoSheets(colecao: string, ids: Set<string>): void {
+  try {
+    const todos = JSON.parse(localStorage.getItem(KEY_VISTOS_SHEETS) || '{}');
+    todos[colecao] = [...ids].slice(-5000);
+    localStorage.setItem(KEY_VISTOS_SHEETS, JSON.stringify(todos));
+  } catch { /* */ }
+}
+
+function reconciliarComSheets<T extends { id: string }>(
+  colecao: string, itens: T[], idsNoSheets: Set<string>,
+  abrange: (x: T) => boolean, dataDe: (x: T) => string, reenviarItem: (x: T) => void,
+): T[] {
+  const vistos = vistosNoSheets(colecao);
+  idsNoSheets.forEach(id => vistos.add(id));
+  const emEspera = new Set(espera().map(p => String(p.id)));
+  const limite = new Date(Date.now() - DIAS_PARA_CHEGAR * 86400000).toISOString();
+  const ficam = itens.filter(x => {
+    if (!abrange(x) || idsNoSheets.has(String(x.id))) return true;
+    if (vistos.has(String(x.id))) return false;              // apagado no Sheets
+    const recente = String(dataDe(x) || '') >= limite;
+    if (recente || emEspera.has(String(x.id))) {             // ainda não chegou: reenviar
+      reenviarItem(x);
+      return true;
+    }
+    return false;                                            // sobra antiga
+  });
+  marcarVistosNoSheets(colecao, vistos);
+  return ficam;
+}
+
 export async function sincronizarDoSheets(turmaId: string): Promise<void> {
   try {
     // Sessões e líderes primeiro: são o que o aluno precisa para saber
@@ -244,11 +350,12 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     if (SHEETS_PLANOS_URL) {
       const jsonPlanos = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId });
       marcarLeituraPlanos(!!jsonPlanos?.ok);
-      if (jsonPlanos?.ok && jsonPlanos.dados?.length > 0) {
+      if (jsonPlanos?.ok && Array.isArray(jsonPlanos.dados)) {
         const locais = getPlanosAula();
         const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
-        const merged = [...locais];
+        let merged = [...locais];
         for (const pRaw of jsonPlanos.dados) {
+          if (!pRaw?.id) continue;               // linha sem código (aula fantasma do antigo envio ao calendário)
           if (eliminados.has(pRaw.id)) continue; // já foi eliminado de propósito — não trazer de volta
           // Normalizar — o Sheets pode devolver campos array como string (CSV de uma célula)
           const p: any = {
@@ -288,6 +395,11 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             }
           } else merged.push(p);
         }
+        merged = reconciliarComSheets('planos', merged,
+          new Set(jsonPlanos.dados.map((x: any) => String(x.id))),
+          x => x.turmaId === turmaId,
+          x => String((x as any).atualizadoEm || (x as any).criadoEm || x.data || ''),
+          x => enviar(SHEETS_PLANOS_URL, 'plano', { plano: x }));
         save(KEYS.planos, merged);
       }
     }
@@ -298,11 +410,12 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     // de origem, mas o aluno pode sempre ver/imprimir a versão completa em HTML.
     if (SHEETS_FICHAS_URL) {
       const jsonFichas = await lerDoSheets(SHEETS_FICHAS_URL, { tipo: 'get_fichas' });
-      if (jsonFichas?.ok && jsonFichas.dados?.length > 0) {
+      if (jsonFichas?.ok && Array.isArray(jsonFichas.dados)) {
         const locais = getFichasProducao();
         const eliminadas = new Set(load<string>(KEYS.eliminadosFichas));
-        const merged = [...locais];
+        let merged = [...locais];
         for (const f of jsonFichas.dados) {
+          if (!f?.id) continue;
           if (eliminadas.has(f.id)) continue; // já foi eliminada de propósito — não trazer de volta
           const idx = merged.findIndex((x: FichaProducao) => x.id === f.id);
           if (idx < 0) {
@@ -339,6 +452,11 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
             merged[idx] = atualizado;
           }
         }
+        merged = reconciliarComSheets('fichas', merged,
+          new Set(jsonFichas.dados.map((x: any) => String(x.id))),
+          () => true,
+          x => String((x as any).atualizadoEm || (x as any).criadoEm || ''),
+          x => enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: x }));
         save(KEYS.fichas, merged);
       }
     }
@@ -376,9 +494,9 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
       try {
         const jsonReq = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_requisicoes', turmaId });
         const doSheets = jsonReq?.requisicoes || jsonReq?.dados || [];
-        if (Array.isArray(doSheets) && doSheets.length > 0) {
+        if (jsonReq?.ok && Array.isArray(doSheets)) {
           const locais = getRequisicoes();
-          const merged = [...locais];
+          let merged = [...locais];
           for (const r of doSheets) {
             if (!r?.id) continue;
             const idx = merged.findIndex(x => x.id === r.id);
@@ -393,6 +511,11 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
               };
             }
           }
+          merged = reconciliarComSheets('requisicoes', merged,
+            new Set(doSheets.map((x: any) => String(x.id))),
+            x => x.turmaId === turmaId,
+            x => String(x.atualizadaEm || x.criadaEm || ''),
+            x => enviar(SHEETS_PLANOS_URL, 'requisicao', { requisicao: x }));
           save(KEYS.requisicoes, merged);
         }
       } catch { /* sem rede, fica o que está */ }
@@ -494,7 +617,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     if (SHEETS_HISTORICO_URL) {
       const jsonSel = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId });
       if (jsonSel?.ok && jsonSel.dados?.length > 0) {
-        const locais = getSelecoes();
+        const locais = load<SelecaoAluno>(KEYS.selecoes);
         const merged = [...locais];
         for (const s of jsonSel.dados) {
           const idx = merged.findIndex((x: SelecaoAluno) => x.id === s.id);
@@ -503,6 +626,15 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         }
         save(KEYS.selecoes, merged);
       }
+    }
+
+    // ── Preços revistos (Continente) — iguais para todas as turmas ────
+    if (SHEETS_ECL_URL) {
+      const jsonPrecos = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos' });
+      if (jsonPrecos?.ok && jsonPrecos.dados?.length > 0) juntarPrecosRevistos(jsonPrecos.dados);
+      // Preços que os professores pediram para rever (v14).
+      const jsonARever = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' });
+      if (jsonARever?.ok && jsonARever.dados?.length > 0) juntarPrecosARever(jsonARever.dados);
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -1701,7 +1833,9 @@ async function sincronizarAlunosDaSheetBruto(): Promise<void> {
 }
 
 // ── Planos de Aula ───────────────────────────────────────────
-export function getPlanosAula(): PlanoAula[] { return load<PlanoAula>(KEYS.planos); }
+// Sem as aulas fantasma (sem código) que o antigo envio ao calendário
+// deixou na folha PLANOS e que a sincronização trouxe para o aparelho.
+export function getPlanosAula(): PlanoAula[] { return load<PlanoAula>(KEYS.planos).filter(p => p && p.id); }
 
 export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false): PlanoAula[] {
   return getPlanosAula()
@@ -1817,6 +1951,11 @@ export function getPlanosArquivados(turmaId: string): PlanoAula[] {
 // nunca a data em que o plano foi criado. Não bloqueia nem espera resposta.
 function sincronizarPlanoComCalendario(p: PlanoAula): void {
   if (!SHEETS_CALENDARIO_URL || !p.data) return;
+  // Com o script único, o "calendário" ia para o mesmo endereço, com o tipo
+  // "plano" e sem o código do plano: o script gravava na folha PLANOS uma
+  // aula fantasma, sem código, igual à verdadeira. O script único não tem
+  // calendário — não se envia nada.
+  if (SHEETS_CALENDARIO_URL === SHEETS_ECL_URL) return;
   const fichas = getFichasProducao().filter(f => p.fichasIds.includes(f.id)).map(f => f.nomePrato);
   const temRequisicao = getRequisicoes().some(r => r.planoAulaId === p.id);
   // Um plano é gravado muitas vezes (competências, publicar, fichas…) e
@@ -2187,7 +2326,21 @@ export function updateComanda(c: Comanda): void {
   enviar(SHEETS_HISTORICO_URL, 'comanda', c as unknown as Record<string, unknown>);
 }
 
-export function getSelecoes(): SelecaoAluno[] { return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)); }
+/** A proposta de nota final do aluno viaja como uma autoavaliação especial,
+ *  com este prefixo no plano — assim sincroniza pelo mesmo caminho. Fica fora
+ *  das autoavaliações das aulas (não é "por validar", não conta para a nota). */
+const PREFIXO_FINAL = 'UCFINAL|';
+/** As respostas às perguntas do CL, CR e CO de cada aula (aluno e professor). */
+const PREFIXO_TRIAGEM = 'TRIAGEM|';
+/** A nota final da UC publicada pelo professor, que o aluno vê. */
+const PREFIXO_NOTA = 'UCNOTA|';
+const ehRegistoEspecial = (s: SelecaoAluno) => {
+  const p = String(s.planoAulaId || '');
+  return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA);
+};
+export function getSelecoes(): SelecaoAluno[] {
+  return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
+}
 export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
 
@@ -2233,7 +2386,7 @@ export function registarBalancoAtividade(
 export function getPlanosAulaFn(): PlanoAula[] { return getPlanosAula(); }
 
 export function addOrUpdateSelecao(s: SelecaoAluno): void {
-  const all = getSelecoes();
+  const all = load<SelecaoAluno>(KEYS.selecoes);
   const idx = all.findIndex(x => x.id === s.id);
   if (idx >= 0) all[idx] = s; else all.push(s);
   save(KEYS.selecoes, all);
@@ -2536,15 +2689,23 @@ function aulaJaAconteceu(p: PlanoAula, hoje: string): boolean {
   if (!d) return false;
   if (d < hoje) return true;
   if (d === hoje) {
-    // Hoje conta a partir do momento em que o professor abre a aula.
+    // A aula de hoje só conta quando acaba: o professor fecha-a, ou passa a
+    // hora de fim (com a aula aberta). Antes contava logo que era aberta —
+    // e quem ainda estava a chegar, dentro dos 10 minutos, aparecia com
+    // a aula toda em falta e o módulo "por recuperar".
     const s = getSessaoAula(p.id);
-    return !!(s?.fechadaEm || s?.abertaEm);
+    if (s?.fechadaEm) return true;
+    if (!s?.abertaEm) return false;
+    const fim = String(p.horaFim || '').match(/(\d{1,2}):(\d{2})/);
+    if (!fim) return false;
+    const agora = new Date();
+    return agora.getHours() * 60 + agora.getMinutes() >= Number(fim[1]) * 60 + Number(fim[2]);
   }
   return false;
 }
 
 /** Horas de um plano. Um dia inteiro (08:30–17:30) desconta a hora de almoço. */
-function horasDoPlano(p: PlanoAula): number {
+export function horasDoPlano(p: PlanoAula): number {
   const min = (h?: string) => {
     if (!h) return NaN;
     const s = h.includes('T') ? new Date(h).toTimeString().slice(0, 5) : h.slice(0, 5);
@@ -2573,14 +2734,17 @@ export interface SituacaoRecuperacao {
   motivo: 'faltas' | 'negativa' | null;
   horasPrevistas: number;
   horasFaltadas: number;
+  /** Horas da UC já dadas — é sobre estas que se contam as faltas. */
+  horasDadas: number;
   /** 0–100 */
   presenca: number;
   terminou: boolean;
   nota20: number | null;
 }
 
-export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: string): SituacaoRecuperacao {
-  const hoje = new Date().toISOString().slice(0, 10);
+/** Faltas de um aluno numa UC, em horas, sobre as horas já dadas. */
+export function faltasEmHorasUC(alunoId: string, turmaId: string, ucId: string):
+  { horasPrevistas: number; horasFaltadas: number; horasDadas: number; presenca: number } {
   const mod = modulosDaTurma(turmaId).find(m => m.id === ucId);
 
   const planosDaUC = getPlanosAula().filter(p =>
@@ -2598,25 +2762,36 @@ export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: st
   const horasFaltadas = faltados.reduce((s, p) => s + horasDoPlano(p), 0)
     + horasPerdidasPorAtraso(alunoId, ucId, turmaId, idsFaltados);
 
-  const presenca = horasPrevistas > 0
-    ? Math.max(0, Math.round((1 - horasFaltadas / horasPrevistas) * 100))
+  // As faltas contam-se sobre as horas JÁ DADAS da UC, não sobre as do
+  // módulo inteiro: 4,5 h faltadas em 9 h dadas são 50%, e o aluno está
+  // em atraso logo que chega aos 10%.
+  const horasDadas = horasDadasDaUC(turmaId, ucId);
+  const presenca = horasDadas > 0
+    ? Math.max(0, Math.round((1 - horasFaltadas / horasDadas) * 100))
     : 100;
+  return { horasPrevistas, horasFaltadas, horasDadas, presenca };
+}
 
+export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: string): SituacaoRecuperacao {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mod = modulosDaTurma(turmaId).find(m => m.id === ucId);
+  const { horasPrevistas, horasFaltadas, horasDadas, presenca } = faltasEmHorasUC(alunoId, turmaId, ucId);
   const terminou = !!mod?.dataFim && mod.dataFim < hoje;
 
-  // Nota final da UC — a mesma do ecrã "Notas da UC" (notaFinalUC).
-  const nota20: number | null = notaFinalUC(alunoId, turmaId, ucId).final;
+  // Nota final da UC: a da pauta oficial (a classificação atribuída pelo
+  // professor, ou a sugerida pela pauta). Só interessa quando a UC acabou.
+  const nota20: number | null = terminou ? (notaDaPautaUC(alunoId, turmaId, ucId)?.nota ?? null) : null;
 
-  // 1. Faltas acima de 10% das horas do módulo.
-  if (horasPrevistas > 0 && horasFaltadas > horasPrevistas * 0.10) {
-    return { precisa: true, motivo: 'faltas', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+  // 1. Faltas a partir de 10% das horas dadas.
+  if (horasDadas > 0 && horasFaltadas >= horasDadas * 0.10) {
+    return { precisa: true, motivo: 'faltas', horasPrevistas, horasFaltadas, horasDadas, presenca, terminou, nota20 };
   }
   // 2. Módulo terminado sem positiva. Sem nenhuma avaliação não se decide
   //    por nota — seria pôr em recuperação quem ainda não foi avaliado.
   if (terminou && nota20 !== null && nota20 < 10) {
-    return { precisa: true, motivo: 'negativa', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+    return { precisa: true, motivo: 'negativa', horasPrevistas, horasFaltadas, horasDadas, presenca, terminou, nota20 };
   }
-  return { precisa: false, motivo: null, horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+  return { precisa: false, motivo: null, horasPrevistas, horasFaltadas, horasDadas, presenca, terminou, nota20 };
 }
 
 // ── Recuperação de Módulos ──────────────────────────────────────
@@ -2795,7 +2970,9 @@ export function getEstadoCompetenciasUC(alunoId: string, ucId: string): {
 } {
   const micros = microsPorUC(ucId);
   const total = micros.length;
-  const historico = getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.validadoPor !== 'recuperacao');
+  // Só conta o que o professor validou. Antes contava também o que o aluno
+  // disse na autoavaliação — bastava dizer "consegui" para somar.
+  const historico = getHistoricoAvaliacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.validadoPor === 'professor');
   const demonstradasEmAula = new Set(historico.filter(r => r.nota >= 3).map(r => r.microcompetenciaId)).size;
   const recuperacoesConcluidas = getRecuperacoes().filter(r => r.alunoId === alunoId && r.ucId === ucId && r.estado === 'concluida');
   const competenciasRecuperadas = new Set<string>();
@@ -3011,7 +3188,14 @@ export interface ItemPerfil {
   nivel: 0 | 1 | 2 | 3 | 4 | 5;
   origem: 'aula' | 'recuperacao' | 'evidencia' | 'nao_observado';
   ultimaData?: string;
+  /** Aulas (validadas) com sucesso — nota 3 ou mais em 5. */
+  sucessos?: number;
+  /** Regra da escola: consolidada com 2 sucessos em aulas diferentes. */
+  consolidada?: boolean;
 }
+
+/** Sucessos precisos para uma competência estar consolidada (PARAMETROS_AVALIACAO). */
+export const SUCESSOS_PARA_CONSOLIDAR = 2;
 
 export interface PerfilProfissionalAluno {
   alunoId: string;
@@ -3068,6 +3252,10 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   // mais alto já validado (consolidação não regride — ver ponto 29 do documento
   // pedagógico), mas agora usando sempre a nota resolvida por aula (passo 1).
   const porCompetencia = new Map<string, { nivel: 0 | 1 | 2 | 3 | 4 | 5; origem: ItemPerfil['origem']; data: string }>();
+  // Quantas aulas (validadas) correram bem em cada competência. O nível
+  // guarda o melhor resultado; a consolidação pede 2 sucessos — antes
+  // uma só aula positiva já contava como "consolidada".
+  const sucessos = new Map<string, number>();
 
   porAula.forEach((info, chave) => {
     // A autoavaliação alimenta, mas não valida: uma competência só entra
@@ -3080,6 +3268,7 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
 
     const competenciaId = chave.split('__')[1];
     const nivel = notaParaNivel(info.nota);
+    if (nivel >= 3) sucessos.set(competenciaId, (sucessos.get(competenciaId) || 0) + 1);
     const actual = porCompetencia.get(competenciaId);
     if (!actual || nivel > actual.nivel) {
       porCompetencia.set(competenciaId, {
@@ -3089,6 +3278,7 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   });
 
   evidencias.forEach(e => {
+    if (e.nivel >= 3) sucessos.set(e.competenciaId, (sucessos.get(e.competenciaId) || 0) + 1);
     const actual = porCompetencia.get(e.competenciaId);
     if (!actual || e.nivel > actual.nivel) {
       porCompetencia.set(e.competenciaId, { nivel: e.nivel, origem: 'evidencia', data: e.data });
@@ -3104,6 +3294,8 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
     const item: ItemPerfil = {
       competenciaId, nome: getNomeCompetenciaGenerica(competenciaId),
       nivel: info.nivel, origem: info.origem, ultimaData: info.data,
+      sucessos: sucessos.get(competenciaId) || 0,
+      consolidada: (sucessos.get(competenciaId) || 0) >= SUCESSOS_PARA_CONSOLIDAR,
     };
     if (grupo === 'tecnica') tecnicas.push(item);
     else if (grupo === 'responsabilidade') responsabilidades.push(item);
@@ -3116,7 +3308,8 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
   // esperado ("produtos com cor viva") não serve como ponto forte: o aluno
   // não consegue reconhecer-se nele nem sabe o que treinar.
   const comVerbo = todos.filter(i => !!nomeComVerbo(i.nome, i.competenciaId));
-  const pontosFortes = comVerbo.filter(i => i.nivel >= 3).map(i => i.nome);
+  // Ponto forte só depois de consolidada (2 aulas com sucesso).
+  const pontosFortes = comVerbo.filter(i => i.nivel >= 3 && i.consolidada).map(i => i.nome);
   const areasADesenvolver = comVerbo.filter(i => i.nivel <= 1).map(i => i.nome);
 
   return { alunoId, tecnicas, responsabilidades, atitudes, pontosFortes, areasADesenvolver };
@@ -3792,6 +3985,99 @@ export function rejeitarSugestaoIngrediente(avisoId: string): void {
 // só leitura). O professor nunca edita o ficheiro de código — só esta
 // camada, que cresce organicamente sempre que confirma um preço na
 // Requisição. Entradas aqui têm sempre prioridade sobre as de fábrica.
+/** Os preços revistos pela coordenadora vão para o Sheets (folha PRECOS),
+ *  todos de uma vez, para os outros aparelhos os usarem. */
+export function enviarPrecosRevistos(lista: PrecoRevisto[]): void {
+  if (!lista.length || !SHEETS_ECL_URL) return;
+  enviar(SHEETS_ECL_URL, 'precos', { precos: lista });
+}
+
+// ── Preços a rever — o professor desconfia de um preço ────────────
+// O preço que o professor escreve na requisição vale só nessa requisição:
+// não passa à frente do preço da coordenadora. Fica numa lista a rever
+// (aqui e no Sheets, folha PRECOS_A_REVER) e a coordenadora vê-a no
+// separador Preços; no pedido seguinte à IA, estes produtos vão primeiro.
+
+export interface PrecoARever {
+  /** Um registo por produto: o código da base, ou "novo:<nome>". */
+  id: string;
+  mpId: string;
+  nome: string;
+  /** O nome como estava na ficha. */
+  produto: string;
+  und: string;
+  precoBase: number;
+  precoProfessor: number;
+  professor: string;
+  turmaId: string;
+  sugeridoEm: string;
+  estado: 'pendente' | 'revisto';
+  revistoEm?: string;
+}
+
+const KEY_PRECOS_A_REVER = 'ecl_precos_a_rever';
+
+export function getPrecosARever(): PrecoARever[] {
+  return load<PrecoARever>(KEY_PRECOS_A_REVER);
+}
+
+export function getPrecosAReverPendentes(): PrecoARever[] {
+  return getPrecosARever().filter(p => p.estado === 'pendente')
+    .sort((a, b) => (b.sugeridoEm || '').localeCompare(a.sugeridoEm || ''));
+}
+
+const momentoDe = (p: PrecoARever) => (p.estado === 'revisto' ? p.revistoEm : p.sugeridoEm) || '';
+
+/** Junta registos (do Sheets ou deste aparelho): o mais recente de cada produto ganha. */
+export function juntarPrecosARever(lista: any[]): void {
+  const porId = new Map(getPrecosARever().map(p => [p.id, p]));
+  (lista || []).forEach((x: any) => {
+    if (!x || !x.id) return;
+    const novo: PrecoARever = {
+      ...x, id: String(x.id), precoBase: Number(x.precoBase) || 0, precoProfessor: Number(x.precoProfessor) || 0,
+      estado: x.estado === 'revisto' ? 'revisto' : 'pendente',
+    };
+    const velho = porId.get(novo.id);
+    if (!velho || momentoDe(novo) >= momentoDe(velho)) porId.set(novo.id, novo);
+  });
+  save(KEY_PRECOS_A_REVER, [...porId.values()]);
+}
+
+/** Vai buscar ao Sheets a lista a rever (e os preços do mês), para o ecrã da coordenadora. */
+export async function lerPrecosDoSheets(): Promise<boolean> {
+  if (!SHEETS_ECL_URL) return false;
+  try {
+    const [precos, aRever] = await Promise.all([
+      lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos' }),
+      lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' }),
+    ]);
+    if (precos?.ok && precos.dados?.length > 0) juntarPrecosRevistos(precos.dados);
+    if (aRever?.ok && aRever.dados?.length > 0) juntarPrecosARever(aRever.dados);
+    return !!(precos?.ok || aRever?.ok);
+  } catch { return false; }
+}
+
+/** O professor escreveu um preço diferente: fica a rever pela coordenadora. */
+export function sinalizarPrecoARever(p: Omit<PrecoARever, 'id' | 'sugeridoEm' | 'estado'>): void {
+  const reg: PrecoARever = {
+    ...p, id: p.mpId || `novo:${p.nome.toLowerCase().trim()}`,
+    sugeridoEm: new Date().toISOString(), estado: 'pendente',
+  };
+  juntarPrecosARever([reg]);
+  if (SHEETS_ECL_URL) enviar(SHEETS_ECL_URL, 'precos_a_rever', { precosARever: [reg] });
+}
+
+/** A coordenadora reviu estes produtos (com a IA ou à mão): saem da lista. */
+export function marcarPrecosRevistos(ids: string[]): void {
+  const agora = new Date().toISOString();
+  const revistos = getPrecosARever()
+    .filter(p => p.estado === 'pendente' && ids.includes(p.id))
+    .map(p => ({ ...p, estado: 'revisto' as const, revistoEm: agora }));
+  if (!revistos.length) return;
+  juntarPrecosARever(revistos);
+  if (SHEETS_ECL_URL) enviar(SHEETS_ECL_URL, 'precos_a_rever', { precosARever: revistos });
+}
+
 export function getMateriasPrimasCustom(): MateriaPrimaCustom[] {
   return load<MateriaPrimaCustom>(KEYS.materiasPrimasCustom);
 }
@@ -4356,23 +4642,31 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
   // aulas que ainda não houve. Um aluno na primeira aula aparecia com
   // quatro faltas.
   const hoje = new Date().toISOString().slice(0, 10);
+  // As mesmas regras da recuperação (getPlanosFaltadosPorUC): só aulas que
+  // já aconteceram; uma aula que o professor nunca abriu não conta contra
+  // o aluno; a decisão do professor manda. Antes a aula de hoje contava
+  // como falta antes de começar.
+  const presencas = getPresencas().filter(p => p.alunoId === alunoId);
   const planos = getPlanosAulaPorTurma(turmaId)
     .filter(p => !ucId || (p as any).ucId === ucId)
     .filter(p => p.estado === 'publicado' || p.estado === 'realizada')
-    .filter(p => p.data <= hoje);
-
-  const presencas = getPresencas().filter(p => p.alunoId === alunoId);
+    .filter(p => aulaJaAconteceu(p, hoje))
+    .filter(p => {
+      const dec = (presencas.find(r => r.planoAulaId === p.id) as any)?.decisaoProfessor;
+      if (dec) return true;
+      return (p as any).contaAssiduidade !== false && !!getSessaoAula(p.id)?.abertaEm;
+    });
   const selecoes = getSelecoes().filter(s => s.alunoId === alunoId);
 
   let comPresenca = 0, atrasos = 0, semAuto = 0, comDecisao = 0;
   for (const plano of planos) {
-    const pres = presencas.find(p => p.planoAulaId === plano.id);
-    if (pres?.presente) {
+    const pres: any = presencas.find(p => p.planoAulaId === plano.id);
+    if (pres?.presente || pres?.decisaoProfessor === 'sem_falta') {
       comPresenca++;
       if (pres.atrasado) atrasos++;
       if (!selecoes.some(s => s.planoAulaId === plano.id)) semAuto++;
     }
-    if ((pres as any)?.decisaoProfessor) comDecisao++;
+    if (pres?.decisaoProfessor) comDecisao++;
   }
 
   const faltas = planos.length - comPresenca;
@@ -4384,6 +4678,56 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
     atrasos,
     percentagemPresenca: planos.length ? Math.round((comPresenca / planos.length) * 100) : 100,
     semAutoavaliacao: semAuto,
+  };
+}
+
+// ── Assiduidade em horas ─────────────────────────────────────
+// Na escola as faltas contam-se em horas: cada hora do plano de aula é
+// uma hora de falta, e um atraso conta as horas perdidas. É a mesma conta
+// da recuperação (situacaoRecuperacaoUC), para o perfil e as recuperações
+// dizerem sempre o mesmo ao aluno.
+
+/** Horas da UC que já foram dadas: planos publicados de aulas que já aconteceram. */
+export function horasDadasDaUC(turmaId: string, ucId: string): number {
+  const hoje = new Date().toISOString().slice(0, 10);
+  return getPlanosAula()
+    .filter(p => p.ucId === ucId && p.turmaId === turmaId
+      && (p.estado === 'publicado' || p.estado === 'realizada')
+      && aulaJaAconteceu(p, hoje))
+    .reduce((s, p) => s + horasDoPlano(p), 0);
+}
+
+export interface AssiduidadeHorasUC {
+  ucId: string;
+  horasPrevistas: number;
+  horasDadas: number;
+  horasFaltadas: number;
+  /** 10% das horas previstas — acima disto o aluno fica em recuperação. */
+  limite: number;
+  acimaDoLimite: boolean;
+}
+
+export function assiduidadeEmHoras(alunoId: string, turmaId: string): {
+  horasDadas: number; horasFaltadas: number; presenca: number; porUC: AssiduidadeHorasUC[];
+} {
+  const ucs = [...new Set(getPlanosAulaPorTurma(turmaId).map(p => p.ucId).filter(Boolean))] as string[];
+  const porUC = ucs.map(ucId => {
+    const s = situacaoRecuperacaoUC(alunoId, turmaId, ucId);
+    return {
+      ucId,
+      horasPrevistas: s.horasPrevistas,
+      horasDadas: horasDadasDaUC(turmaId, ucId),
+      horasFaltadas: s.horasFaltadas,
+      // 10% das horas já dadas — a mesma regra do alerta do professor.
+      limite: horasDadasDaUC(turmaId, ucId) * 0.10,
+      acimaDoLimite: s.motivo === 'faltas',
+    };
+  }).filter(u => u.horasDadas > 0 || u.horasFaltadas > 0);
+  const horasDadas = porUC.reduce((t, u) => t + u.horasDadas, 0);
+  const horasFaltadas = porUC.reduce((t, u) => t + u.horasFaltadas, 0);
+  return {
+    horasDadas, horasFaltadas, porUC,
+    presenca: horasDadas > 0 ? Math.max(0, Math.round((1 - horasFaltadas / horasDadas) * 100)) : 100,
   };
 }
 
@@ -4411,7 +4755,7 @@ export function leituraAssiduidade(a: Assiduidade): {
   if (a.faltas > 0) {
     partes.push(`Faltaste a ${a.faltas} de ${a.aulasPrevistas} aulas`);
     // Uma aula sem produção não gera nota: é zero na aula inteira.
-    partes.push(`— essas aulas contam zero, porque não houve trabalho para avaliar`);
+    partes.push(` — essas aulas contam zero, porque não houve trabalho para avaliar`);
     atitudes.push('ATI-001', 'ATI-015');
   }
   if (a.atrasos > 0) {
@@ -5317,7 +5661,30 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
 export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
   const regs = getHistoricoAvaliacoes().filter(r =>
     r.alunoId === alunoId && r.turmaId === turmaId && r.ucId === ucId);
-  return aplicarBonusesUC(notaBaseDeRegistos(regs), alunoId, turmaId, ucId);
+  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regs), regs, alunoId, turmaId, ucId), alunoId, turmaId, ucId);
+}
+
+/** Nota da recuperação concluída desta UC, se houver. */
+export function notaRecuperacaoUC(alunoId: string, ucId: string): number | null {
+  const r = getRecuperacoes().filter(x => x.alunoId === alunoId && x.ucId === ucId
+    && x.estado === 'concluida' && typeof x.resultadoNota === 'number')
+    .sort((a, b) => String(b.realizadaEm || b.atualizadoEm).localeCompare(String(a.realizadaEm || a.atualizadoEm)))[0];
+  return r ? (r.resultadoNota as number) : null;
+}
+
+/**
+ * Uma aula a que o aluno faltou conta zero na avaliação — ou o resultado
+ * da recuperação, quando foi feita. Cada aula pesa o mesmo: a média das
+ * aulas avaliadas entra com as faltas.
+ */
+function baseComFaltas(base: number | null, regs: RegistoAvaliacao[], alunoId: string, turmaId: string, ucId: string): number | null {
+  const faltas = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
+  if (!faltas.length) return base;
+  const idsFaltas = new Set(faltas.map(p => p.id));
+  const avaliadas = new Set(regs.filter(r => r.planoAulaId && !idsFaltas.has(r.planoAulaId)).map(r => r.planoAulaId)).size;
+  const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
+  const soma = (base ?? 0) * avaliadas + recup * faltas.length;
+  return Math.round((soma / (avaliadas + faltas.length)) * 100) / 100;
 }
 
 // ============================================================
@@ -5540,7 +5907,7 @@ export interface DiferencaRequisicao { faltam: string[]; sobram: string[]; }
 /** Fichas do plano que a requisição não tem, e as que tem a mais. Null se está em dia. */
 export function requisicaoDesatualizada(planoId: string): DiferencaRequisicao | null {
   const plano = getPlanosAula().find(p => p.id === planoId);
-  const req = getRequisicoes().find(r => r.planoAulaId === planoId);
+  const req = getRequisicaoPorPlano(planoId); // a mais recente
   if (!plano || !req) return null;
   const doPlano = new Set(plano.fichasIds || []);
   const naReq = new Set(req.fichasIds || []);
@@ -5594,35 +5961,69 @@ export interface ResultadoPublicacao {
   erro?: string;
 }
 
-export async function publicarPlanoParaAlunos(planoId: string): Promise<ResultadoPublicacao> {
+// Estado de cada publicação, partilhado por todos os botões. Carregar
+// duas vezes (ou em dois botões) não envia duas vezes: devolve o mesmo
+// envio que já está a decorrer, e todos os botões mostram o mesmo estado.
+export type FasePublicacao = 'a_enviar' | 'confirmado' | 'falhou';
+export interface EstadoPublicacao { fase: FasePublicacao; erro?: string; em: number; }
+
+const estadosPublicacao = new Map<string, EstadoPublicacao>();
+const publicacoesEmCurso = new Map<string, Promise<ResultadoPublicacao>>();
+const ouvintesPublicacao = new Set<() => void>();
+
+export function estadoPublicacao(planoId: string): EstadoPublicacao | undefined {
+  return estadosPublicacao.get(planoId);
+}
+export function subscreverPublicacao(fn: () => void): () => void {
+  ouvintesPublicacao.add(fn);
+  return () => { ouvintesPublicacao.delete(fn); };
+}
+function marcarPublicacao(planoId: string, e: Omit<EstadoPublicacao, 'em'>) {
+  estadosPublicacao.set(planoId, { ...e, em: Date.now() });
+  ouvintesPublicacao.forEach(f => { try { f(); } catch { /* */ } });
+}
+
+export function publicarPlanoParaAlunos(planoId: string): Promise<ResultadoPublicacao> {
+  const emCurso = publicacoesEmCurso.get(planoId);
+  if (emCurso) return emCurso;
+  marcarPublicacao(planoId, { fase: 'a_enviar' });
+  const p = publicarEConfirmar(planoId)
+    .catch(() => ({ ok: false, erro: 'Não consegui confirmar a publicação.' }) as ResultadoPublicacao)
+    .then(r => {
+      marcarPublicacao(planoId, r.ok ? { fase: 'confirmado' } : { fase: 'falhou', erro: r.erro });
+      return r;
+    })
+    .finally(() => { publicacoesEmCurso.delete(planoId); });
+  publicacoesEmCurso.set(planoId, p);
+  return p;
+}
+
+async function publicarEConfirmar(planoId: string): Promise<ResultadoPublicacao> {
   const plano = getPlanosAula().find(p => p.id === planoId);
   if (!plano) return { ok: false, erro: 'Plano não encontrado.' };
 
   const publicado = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
-  addOrUpdatePlanoAula(publicado);          // grava e envia
+  addOrUpdatePlanoAula(publicado);          // grava e envia (o Sheets substitui pelo id — nunca duplica)
 
-  // Duas tentativas: o Sheets demora um instante a gravar.
-  for (let i = 0; i < 2; i++) {
-    await new Promise(res => setTimeout(res, i === 0 ? 1800 : 3000));
+  // Vai ver ao Sheets logo que possível; normalmente chega em 1–2 s.
+  // Só volta a enviar uma vez, a meio, se ainda não tiver chegado.
+  const esperas = [1000, 1500, 2500, 4000];
+  let ligou = false;
+  for (let i = 0; i < esperas.length; i++) {
+    await new Promise(res => setTimeout(res, esperas[i]));
     try {
       const json: any = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId: plano.turmaId });
-      if (!json?.ok) {
-        if (i === 1) return { ok: false, erro: 'Não consegui ligar-me ao Sheets dos planos. A aula ficou publicada aqui, mas os alunos não a veem enquanto não chegar lá.' };
-        continue;
+      if (json?.ok) {
+        ligou = true;
+        const la: any = (json.dados || []).find((p: any) => p.id === planoId);
+        if (la && String(la.estado) === 'publicado') return { ok: true };
       }
-      const la: any = (json.dados || []).find((p: any) => p.id === planoId);
-      if (la && String(la.estado) === 'publicado') return { ok: true };
-      if (i === 1) {
-        return { ok: false, erro: la
-          ? 'A aula está no Sheets, mas não como publicada. Tenta publicar outra vez.'
-          : 'A aula não chegou ao Sheets. Os alunos não a veem. Tenta outra vez; se continuar, é o Apps Script dos planos que não está a receber.' };
-      }
-      addOrUpdatePlanoAula(publicado);       // segunda tentativa de envio
-    } catch {
-      if (i === 1) return { ok: false, erro: 'Não consegui confirmar a publicação.' };
-    }
+    } catch { /* tenta outra vez */ }
+    if (i === 1) addOrUpdatePlanoAula(publicado);
   }
-  return { ok: false, erro: 'Não consegui confirmar a publicação.' };
+  return { ok: false, erro: ligou
+    ? 'A aula não chegou ao Sheets, por isso os alunos ainda não a veem. Carrega outra vez em «Publicar».'
+    : 'Sem ligação ao Sheets. A aula ficou marcada aqui, mas os alunos só a veem quando chegar lá. Carrega outra vez em «Publicar» quando tiveres rede.' };
 }
 
 // ============================================================
@@ -5902,7 +6303,13 @@ export function ucsPorFechar(turmaId: string): { ucId: string; nome: string; dat
  * escola, numa folha própria; o email leva o link.
  */
 export async function enviarPautaPorEmail(
-  turmaId: string, ucId: string, email: string, professor: string
+  turmaId: string, ucId: string, email: string, professor: string,
+  /** Só estes alunos entram na pauta. Sem lista, entram todos. */
+  alunosIds?: string[],
+  /** As linhas da pauta oficial (modelo da escola), já com a classificação
+   *  atribuída pelo professor. Com elas, o email leva essas notas e não
+   *  outra conta. */
+  linhasOficiais?: Record<string, unknown>[]
 ): Promise<{ ok: boolean; erro?: string }> {
   if (!email || !email.includes('@')) return { ok: false, erro: 'Email inválido.' };
   const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
@@ -5910,7 +6317,7 @@ export async function enviarPautaPorEmail(
     turmaId, ucId, ucNome: mod?.nome || '', email, professor,
     disciplina: mod?.disciplina || '', horasPrevistas: mod?.horasPrevistas || 0,
     dataInicio: mod?.dataInicio || '', dataFim: mod?.dataFim || '',
-    linhas: pautaDaUC(turmaId, ucId),
+    linhas: linhasOficiais || pautaDaUC(turmaId, ucId).filter(l => !alunosIds || alunosIds.includes(l.alunoId)),
     criadaEm: new Date().toISOString(),
   });
   // Dar tempo ao script e confirmar que a pauta ficou registada.
@@ -6034,24 +6441,32 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   const turmas = [...new Set(l.map(x => x.turmaId).filter(Boolean))];
   const tipos = [...new Set(l.map(x => x.tipo))];
   const noSheets = new Map<string, Set<string>>();
+  // Leitura que correu bem, mesmo com a folha vazia. Antes, uma folha sem
+  // nenhuma linha (por exemplo, depois de limpar os dados de teste) era
+  // tomada por "não consegui ler" — e o que estava à espera nunca mais era
+  // reenviado: a aula criada não chegava ao Sheets nem aos alunos.
+  const lidoComSucesso = new Set<string>();
 
   for (const tipo of tipos) {
     const [url, pedido] = LEITURA_POR_TIPO[tipo];
     const ids = new Set<string>();
+    let algumaLeitura = false;
     for (const t of (turmas.length ? turmas : [''])) {
       try {
         const json: any = await lerDoSheets(url, { tipo: pedido, turmaId: t });
+        if (json?.ok) algumaLeitura = true;
         (json?.dados || []).forEach((x: any) => ids.add(String(x.id)));
       } catch { /* sem rede: fica para a próxima */ }
     }
     noSheets.set(tipo, ids);
+    if (algumaLeitura) lidoComSucesso.add(tipo);
   }
 
   const restantes: PorConfirmar[] = [];
   let confirmados = 0;
   for (const p of l) {
     const ids = noSheets.get(p.tipo);
-    if (!ids || !ids.size) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
+    if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id))) { confirmados++; continue; }
     if (p.tentativas < 5) reenviar(p);
     restantes.push({ ...p, tentativas: p.tentativas + 1 });
@@ -6212,4 +6627,225 @@ export async function diagnosticoDetalhado(turmaId: string): Promise<{ linhas: s
   }
 
   return { linhas: L, causa };
+}
+
+
+// ============================================================
+// UC / módulo em atraso — faltas a partir de 10% das horas dadas
+// ============================================================
+// O professor tem de ver, sem procurar aluno a aluno, quem está neste
+// momento com uma UC em atraso e o que falta fazer para recuperar.
+
+export const MODALIDADES_RECUPERACAO: { id: 'pratico' | 'teorico' | 'atividade' | 'outra'; nome: string; sugestao: string }[] = [
+  { id: 'pratico', nome: 'Exercício prático',
+    sugestao: 'Repetir, em aula ou em horário combinado, a produção de um dos planos em falta, avaliada com as mesmas técnicas.' },
+  { id: 'teorico', nome: 'Exercício teórico',
+    sugestao: 'Trabalho escrito ou ficha sobre os conteúdos das aulas em falta: técnicas, fichas técnicas, HACCP.' },
+  { id: 'atividade', nome: 'Participação numa atividade',
+    sugestao: 'Participar num evento ou serviço da escola em que demonstre as competências das aulas em falta.' },
+  { id: 'outra', nome: 'Outra estratégia', sugestao: 'Definida pelo professor.' },
+];
+
+export interface UCEmAtraso {
+  alunoId: string;
+  turmaId: string;
+  numero: number;
+  nome: string;
+  ucId: string;
+  ucNome: string;
+  horasDadas: number;
+  horasFaltadas: number;
+  /** Faltas em % das horas dadas. */
+  percentagem: number;
+  plano: RecuperacaoModulo | null;
+  /** sem_plano: por decidir · adiado: fica para depois da UC · em_curso: plano feito · recuperado */
+  estado: 'sem_plano' | 'adiado' | 'em_curso' | 'recuperado';
+}
+
+/** Todos os alunos da turma com uma UC em atraso por faltas (≥ 10% das horas dadas). */
+export function ucsEmAtraso(turmaId: string): UCEmAtraso[] {
+  const ucs = [...new Set(getPlanosAulaPorTurma(turmaId).map(p => p.ucId).filter(Boolean))] as string[];
+  const mods = modulosDaTurma(turmaId);
+  const out: UCEmAtraso[] = [];
+  for (const a of getAlunos().filter(x => x.turmaId === turmaId && x.ativo !== false)) {
+    for (const ucId of ucs) {
+      const s = situacaoRecuperacaoUC(a.id, turmaId, ucId);
+      if (s.motivo !== 'faltas') continue;
+      const dadas = horasDadasDaUC(turmaId, ucId);
+      const plano = getRecuperacoes().filter(r => r.alunoId === a.id && r.ucId === ucId)
+        .sort((x, y) => String(y.criadoEm).localeCompare(String(x.criadoEm)))[0] || null;
+      out.push({
+        alunoId: a.id, turmaId, numero: a.numero, nome: a.nome || `Aluno ${a.numero}`,
+        ucId, ucNome: (mods.find((m: any) => m.id === ucId) as any)?.nome || '',
+        horasDadas: dadas, horasFaltadas: s.horasFaltadas,
+        percentagem: dadas > 0 ? Math.round((s.horasFaltadas / dadas) * 100) : 0,
+        plano,
+        estado: !plano ? 'sem_plano' : plano.estado === 'concluida' ? 'recuperado'
+          : plano.quando === 'depois' && !plano.modalidade ? 'adiado' : 'em_curso',
+      });
+    }
+  }
+  const ordem = { sem_plano: 0, em_curso: 1, adiado: 2, recuperado: 3 };
+  return out.sort((x, y) => ordem[x.estado] - ordem[y.estado] || x.numero - y.numero || x.ucId.localeCompare(y.ucId));
+}
+
+/** O professor decide o plano de recuperação: modalidade, o que fazer e prazo. */
+export function criarPlanoRecuperacao(
+  alunoId: string, turmaId: string, ucId: string,
+  modalidade: 'pratico' | 'teorico' | 'atividade' | 'outra', descricao: string, prazo?: string
+): RecuperacaoModulo {
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  // Se o professor tinha deixado para depois da UC, o plano é esse mesmo.
+  const adiado = getRecuperacoes().find(r => r.alunoId === alunoId && r.ucId === ucId
+    && r.quando === 'depois' && !r.modalidade && r.estado !== 'concluida');
+  const base = adiado || criarRecuperacaoAutomatica(alunoId, turmaId, ucId, mod?.nome || '');
+  const r: RecuperacaoModulo = {
+    ...base, modalidade, descricaoPlano: descricao, estado: 'em_curso', quando: adiado ? 'depois' : 'ja',
+    atualizadoEm: new Date().toISOString(),
+    dataLimite: prazo ? new Date(prazo + 'T23:59:00').toISOString() : base.dataLimite,
+  };
+  addOrUpdateRecuperacao(r);
+  return r;
+}
+
+/**
+ * O professor deixa a recuperação para depois do fim da UC: o aluno sai do
+ * alerta vermelho, a UC fica com a nota que tiver (com "a)" se for negativa)
+ * e o plano faz-se depois.
+ */
+export function adiarRecuperacaoParaDepoisDaUC(alunoId: string, turmaId: string, ucId: string): RecuperacaoModulo {
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  const r: RecuperacaoModulo = {
+    ...criarRecuperacaoAutomatica(alunoId, turmaId, ucId, mod?.nome || ''),
+    quando: 'depois', estado: 'pendente', atualizadoEm: new Date().toISOString(),
+  };
+  addOrUpdateRecuperacao(r);
+  return r;
+}
+
+/** Regista que a recuperação foi feita e o resultado (0-20). */
+export function registarResultadoRecuperacao(id: string, nota: number, observacao: string, professor?: string): void {
+  const r = getRecuperacoes().find(x => x.id === id);
+  if (!r) return;
+  const agora = new Date().toISOString();
+  addOrUpdateRecuperacao({
+    ...r, estado: 'concluida', resultadoNota: Math.max(0, Math.min(20, nota)),
+    realizadaEm: agora, dataValidacao: agora, comentarioProfessor: observacao || r.comentarioProfessor,
+    professorAvaliador: professor || r.professorAvaliador, atualizadoEm: agora,
+  });
+}
+
+// ============================================================
+// Autoavaliação final da UC — a nota que o aluno propõe
+// ============================================================
+
+export interface PropostaFinalUC {
+  alunoId: string;
+  turmaId: string;
+  ucId: string;
+  nota: number;
+  justificacao: string;
+  criadaEm: string;
+}
+
+export function getPropostaFinalUC(alunoId: string, ucId: string): PropostaFinalUC | null {
+  const s: any = load<any>(KEYS.selecoes).find((x: any) =>
+    x.alunoId === alunoId && x.planoAulaId === PREFIXO_FINAL + ucId);
+  const a = s?.autoavaliacoes?.[0];
+  if (!s || !a) return null;
+  return { alunoId, turmaId: s.turmaId, ucId, nota: Number(a.nota), justificacao: a.justificacao || '', criadaEm: s.criadaEm };
+}
+
+export function guardarPropostaFinalUC(p: Omit<PropostaFinalUC, 'criadaEm'>): void {
+  const agora = new Date().toISOString();
+  addOrUpdateSelecao({
+    id: `final_${p.ucId}_${p.alunoId}`, planoAulaId: PREFIXO_FINAL + p.ucId, comandaId: '', fichaId: '',
+    alunoId: p.alunoId, turmaId: p.turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'PROPOSTA_FINAL', nivel: 'proposta', nota: p.nota, justificacao: p.justificacao }],
+    criadaEm: agora,
+  } as any);
+}
+
+// ============================================================
+// Triagem do CL, CR e CO de cada aula
+// ============================================================
+// Viaja como um registo próprio, com os dados dentro das autoavaliações —
+// o mesmo caminho da proposta final, que o Sheets guarda inteiro. Assim a
+// resposta do aluno e a confirmação do professor chegam a todos os aparelhos.
+
+export interface TriagemDaAula { aluno?: Triagem5C; professor?: Triagem5C }
+
+export function getTriagemDaAula(alunoId: string, planoAulaId: string): TriagemDaAula {
+  const s: any = load<any>(KEYS.selecoes).find((x: any) =>
+    x.alunoId === alunoId && x.planoAulaId === PREFIXO_TRIAGEM + planoAulaId);
+  const a = s?.autoavaliacoes?.[0];
+  if (a) return { aluno: a.aluno || undefined, professor: a.professor || undefined };
+  // Autoavaliações antigas: a triagem vinha dentro da seleção e da validação.
+  const sel: any = load<any>(KEYS.selecoes).find((x: any) => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
+  const val: any = getValidacoes().find((x: any) => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
+  return { aluno: sel?.triagem5c, professor: val?.triagem5c };
+}
+
+export function guardarTriagemDaAula(alunoId: string, turmaId: string, planoAulaId: string,
+  triagem: Triagem5C, deQuem: 'aluno' | 'professor'): void {
+  const atual = getTriagemDaAula(alunoId, planoAulaId);
+  const novo = { ...atual, [deQuem]: triagem };
+  addOrUpdateSelecao({
+    id: `tri_${planoAulaId}_${alunoId}`, planoAulaId: PREFIXO_TRIAGEM + planoAulaId, comandaId: '', fichaId: '',
+    alunoId, turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'TRIAGEM_5C', nivel: 'triagem', nota: 0, ...novo }],
+    criadaEm: new Date().toISOString(),
+  } as any);
+}
+
+// ============================================================
+// Nota final da UC publicada pelo professor
+// ============================================================
+// O professor atualiza a pauta e publica: cada aluno passa a ver a sua
+// nota final da UC. É esta a nota que conta em todo o lado.
+
+export interface NotaFinalPublicada {
+  alunoId: string; turmaId: string; ucId: string;
+  nota: number; resultado: string; cp: number; total: number;
+  professor: string; publicadaEm: string;
+}
+
+export function getNotaFinalPublicadaUC(alunoId: string, ucId: string): NotaFinalPublicada | null {
+  const s: any = load<any>(KEYS.selecoes).find((x: any) =>
+    x.alunoId === alunoId && x.planoAulaId === PREFIXO_NOTA + ucId);
+  const a = s?.autoavaliacoes?.[0];
+  if (!s || !a || typeof a.nota !== 'number') return null;
+  return { alunoId, turmaId: s.turmaId, ucId, nota: a.nota, resultado: a.resultado || '', cp: a.cp,
+    total: a.total, professor: a.professor || '', publicadaEm: a.publicadaEm || s.criadaEm };
+}
+
+/** Todas as notas finais publicadas de um aluno (as UC que já fecharam). */
+export function notasFinaisPublicadasDoAluno(alunoId: string): NotaFinalPublicada[] {
+  return load<any>(KEYS.selecoes)
+    .filter((x: any) => x.alunoId === alunoId && String(x.planoAulaId || '').startsWith(PREFIXO_NOTA))
+    .map((x: any) => getNotaFinalPublicadaUC(alunoId, String(x.planoAulaId).slice(PREFIXO_NOTA.length)))
+    .filter((x): x is NotaFinalPublicada => !!x);
+}
+
+export function publicarNotaFinalUC(n: Omit<NotaFinalPublicada, 'publicadaEm'>): void {
+  const agora = new Date().toISOString();
+  addOrUpdateSelecao({
+    id: `nota_${n.ucId}_${n.alunoId}`, planoAulaId: PREFIXO_NOTA + n.ucId, comandaId: '', fichaId: '',
+    alunoId: n.alunoId, turmaId: n.turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'NOTA_FINAL_UC', nivel: 'nota', nota: n.nota, resultado: n.resultado,
+      cp: n.cp, total: n.total, professor: n.professor, publicadaEm: agora }],
+    criadaEm: agora,
+  } as any);
+}
+
+/** UCs em que o aluno já tem de fazer a autoavaliação final: o módulo acabou
+ *  (ou o professor fechou a UC ou publicou a nota) e ainda não há proposta dele. */
+export function ucsParaAutoavaliacaoFinal(aluno: Aluno): { ucId: string; nome: string; dataFim: string }[] {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const comAulas = new Set(getPlanosAulaPorTurma(aluno.turmaId).map(p => p.ucId).filter(Boolean) as string[]);
+  return modulosDaTurma(aluno.turmaId)
+    .filter((m: any) => comAulas.has(m.id)
+      && ((m.dataFim && m.dataFim <= hoje) || ucJaFechada(aluno.turmaId, m.id) || !!getNotaFinalPublicadaUC(aluno.id, m.id))
+      && !getPropostaFinalUC(aluno.id, m.id))
+    .map((m: any) => ({ ucId: m.id, nome: m.nome, dataFim: m.dataFim }));
 }

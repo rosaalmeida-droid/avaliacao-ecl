@@ -920,3 +920,39 @@ export function conhecimentosDaBiblioteca(familia?: string, dominio?: string): a
   if (dominio) items = items.filter(k => k.dominio === dominio);
   return items;
 }
+
+/**
+ * Técnicas da aula quando as fichas não trazem subtécnicas nem aparelhos.
+ *
+ * O professor (Competências do plano) e o aluno (autoavaliação) faziam
+ * esta conta de maneiras diferentes: o professor via "0 técnicas" e o
+ * aluno avaliava cinco técnicas genéricas que o professor não via nem
+ * podia retirar. Agora é a mesma regra nos dois lados:
+ *   1. as técnicas da família da ficha (ou, sem família, as da UC);
+ *   2. primeiro as que batem com o prato e os ingredientes;
+ *   3. no máximo seis.
+ */
+export function tecnicasDeRecurso(ucId: string | undefined, fichas: any[]): MicroCompetencia[] {
+  const f0 = fichas[0] || {};
+  const fam1: string | undefined = f0.familia1, fam2: string | undefined = f0.familia2;
+  let base: MicroCompetencia[] = [];
+  try { base = (fam1 || fam2) ? microsPorFamilia(fam1, fam2, [], ucId) : []; } catch { base = []; }
+  if (base.length < 3) {
+    const daUC = ucId ? microsPorUC(ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
+    base = [...base, ...daUC.filter(m => !base.some(x => x.id === m.id))];
+  }
+  if (base.length < 3) {
+    base = [...base, ...MICROCOMPETENCIAS.filter(m => m.prioridade === 'A' && !base.some(x => x.id === m.id))];
+  }
+  // Estas duplicam as obrigatórias (higiene, HACCP).
+  const DUPLICAM = new Set(['M0150', 'M0196']);
+  base = base.filter(m => !DUPLICAM.has(m.id));
+  const texto = fichas.map((f: any) =>
+    [f.nomePrato, ...(f.ingredientes || []).map((i: any) => i.produto)].join(' ')).join(' ').toLowerCase();
+  if (texto.length > 10) {
+    const bate = (m: MicroCompetencia) => m.nome.toLowerCase().split(/[\s/]+/)
+      .some(p => p.length > 3 && texto.includes(p));
+    base = [...base.filter(bate), ...base.filter(m => !bate(m))];
+  }
+  return base.slice(0, 6);
+}

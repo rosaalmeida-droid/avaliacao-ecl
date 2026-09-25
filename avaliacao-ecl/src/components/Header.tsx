@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { PainelContextual, ContextoPainel } from './PainelContextual';
+import { turmasDoProfessor } from '../professores';
+import { ContadorUCEmAtraso } from './UCEmAtraso';
 
 // Calcula o ano letivo actual com base na data de hoje.
 // O ano letivo começa em Setembro — antes de Setembro mostra X-1/X, depois X/X+1.
@@ -100,16 +102,16 @@ export const NAV: NavItem[] = [
   { id: 'manual',              label: 'Manual do cozinheiro', icon: Icons.manual,     secao: 'Consultar' },
   { id: 'manuais_aluno',       label: 'Manuais do aluno',     icon: Icons.manual,     secao: 'Consultar' },
   { id: 'cronograma',          label: 'Cronograma',           icon: Icons.cronograma, secao: 'Consultar' },
-  { id: 'guia',                label: 'Guiões',               icon: Icons.guia,       secao: 'Mais' },
+  // Saíram do menu por repetirem outros sítios: "Guiões" (é o Guião de
+  // dentro do plano), "Orçamentos" (a requisição sem plano já faz isso) e
+  // "Historial" (é o mesmo que "Notas da UC").
   { id: 'requisicao',          label: 'Requisições',          icon: Icons.req,        secao: 'Mais' },
-  { id: 'orcamentos',          label: 'Orçamentos',           icon: Icons.req,        secao: 'Mais' },
-  { id: 'historial',           label: 'Historial',            icon: Icons.avaliacao,  secao: 'Mais' },
-  { id: 'copia_seguranca',     label: 'Cópia de segurança',   icon: Icons.backup,     secao: 'Mais' },
   { id: 'ajuda',               label: 'Ajuda',                icon: Icons.ajuda,      secao: 'Mais' },
 ];
 
 // ── Sidebar ────────────────────────────────────────────────────
-function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta, isMobile, onFechar }: {
+function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta, isMobile, onFechar, onMudarTurma }: {
+  onMudarTurma?: (turmaId: string) => void;
   vistaAtiva: VistaProf;
   onNavegar: (v: VistaProf) => void;
   nomeProfessor: string;
@@ -204,7 +206,18 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
             const al = calcularAnoLetivo();
             return (<>
               <div style={{ color: WHITE, fontSize: 13, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Lectivo {al.anoLetivo}</div>
-              {turmaId && <div style={{ color: WHITE, fontSize: 13, fontWeight: 800, marginBottom: 2 }}>🏫 {turmaId}</div>}
+              {turmaId && (() => {
+                // Só as turmas deste professor; com mais de uma, muda-se aqui.
+                const minhas = turmasDoProfessor(nomeProfessor);
+                if (minhas.length > 1 && onMudarTurma) return (
+                  <select value={turmaId} onChange={e => onMudarTurma(e.target.value)} aria-label="Turma"
+                    style={{ width: '100%', margin: '2px 0 4px', padding: '6px 8px', borderRadius: 8, border: 'none',
+                      fontSize: 13.5, fontWeight: 800, fontFamily: 'inherit', background: WHITE, color: '#1a1714', cursor: 'pointer' }}>
+                    {minhas.map(t => <option key={t} value={t}>🏫 {t}</option>)}
+                  </select>
+                );
+                return <div style={{ color: WHITE, fontSize: 13, fontWeight: 800, marginBottom: 2 }}>🏫 {turmaId}</div>;
+              })()}
               <div style={{ color: SIDEBAR_TXT, fontSize: 12.5, marginBottom: 8 }}>{al.semestre}</div>
               <div style={{ height: 5, background: 'rgba(255,255,255,0.15)', borderRadius: 99, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${al.percentagem}%`, background: WHITE, borderRadius: 99, transition: 'width 0.4s' }} />
@@ -254,11 +267,14 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
 }
 
 // ── Topbar ─────────────────────────────────────────────────────
-function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, subtitulo }: {
+function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, onSair, perfil, subtitulo }: {
   nomeProfessor?: string;
   syncStatus?: 'idle' | 'syncing' | 'ok' | 'offline';
   onAtualizar?: () => void;
-  onAbrirMenu: () => void;
+  /** Sem menu lateral (aluno, coordenadora), o ☰ não aparece. */
+  onAbrirMenu?: () => void;
+  /** Sair da sessão — no aluno e na coordenadora fica aqui, no topo. */
+  onSair?: () => void;
   perfil: Perfil;
   subtitulo?: string;
 }) {
@@ -281,9 +297,11 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, s
       boxShadow: '0 1px 4px rgba(91,103,234,0.07)',
       fontFamily: "'Inter', system-ui, sans-serif",
     }}>
-      <button onClick={onAbrirMenu} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-        {Icons.menu}
-      </button>
+      {onAbrirMenu && (
+        <button onClick={onAbrirMenu} aria-label="Menu" style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          {Icons.menu}
+        </button>
+      )}
 
       <img src={logoEcl} alt="ECL" style={{ height: 30, width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
 
@@ -309,6 +327,14 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, perfil, s
           {Icons.sync}
         </button>
       )}
+
+      {onSair && (
+        <button onClick={onSair}
+          style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${BORDER}`, background: CARD_BG, color: FG,
+            fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>
+          Sair
+        </button>
+      )}
     </header>
   );
 }
@@ -323,13 +349,18 @@ export function Header({ perfil, subtitulo, onSair, nomeProfessor, syncStatus, o
   onAtualizar?: () => void;
 }) {
   return (
+    // O ☰ não abria nada e o "Sair" nunca aparecia: o aluno e a
+    // coordenadora não tinham como sair da sessão — num tablet partilhado,
+    // o aluno seguinte ficava na conta do anterior.
     <Topbar perfil={perfil} nomeProfessor={nomeProfessor} syncStatus={syncStatus}
-      onAtualizar={onAtualizar} onAbrirMenu={() => {}} subtitulo={subtitulo} />
+      onAtualizar={onAtualizar} subtitulo={subtitulo}
+      onSair={() => { if (confirm('Sair da sessão?')) onSair(); }} />
   );
 }
 
 // ── Layout completo do professor ────────────────────────────────
-export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, syncStatus, onAtualizar, contextoPainel, children }: {
+export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, syncStatus, onAtualizar, contextoPainel, children, onMudarTurma }: {
+  onMudarTurma?: (turmaId: string) => void;
   vistaAtiva: VistaProf;
   onNavegar: (v: VistaProf) => void;
   nomeProfessor: string;
@@ -363,6 +394,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
         aberta={aberta}
         isMobile={isMobile}
         onFechar={() => setSidebarAberta(false)}
+        onMudarTurma={onMudarTurma}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: isMobile ? 0 : 240, minWidth: 0, transition: 'margin-left 0.22s', background: APP_BG }}>
@@ -411,6 +443,9 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
             <main style={{ flex: 1, padding: isMobile ? '0 16px 96px' : '0 28px 36px', minWidth: 0, background: APP_BG }}>
               {children}
             </main>
+
+            {/* Sempre à vista: alunos com 10% ou mais de faltas numa UC. */}
+            <ContadorUCEmAtraso turmaId={turmaId} nomeProfessor={nomeProfessor} isMobile={isMobile} />
 
             {/* No telemóvel, o que se usa na cozinha fica sempre à mão, sem
                 abrir o menu. O resto continua em Menu. */}

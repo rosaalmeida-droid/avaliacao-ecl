@@ -442,18 +442,26 @@ const SECCOES: Seccao[] = [
           unidade, passam a contar para a nova. As fichas mudam-se no Preparar.
         </P>
 
-        <H>Eliminar um plano</H>
+        <H>Arquivar um plano</H>
         <P>
-          Se a aula ainda não tem trabalho dos alunos, podes arquivá-la ou
-          eliminá-la. Se já tem — entradas, autoavaliações, validações — a
-          aplicação mostra-te tudo o que existe e dá-te duas saídas:
+          O professor arquiva: o plano sai do calendário e fica no Arquivo, de
+          onde o podes repor. Se a aula já tem trabalho dos alunos — entradas,
+          autoavaliações, validações — a aplicação mostra-te o que existe e
+          deixa-te <b>corrigir o plano e manter as avaliações</b> (enganos na
+          ficha, na unidade ou na data) ou arquivá-lo.
         </P>
-        <ul style={{ lineHeight: 1.75, fontSize: 14.5, paddingLeft: 20 }}>
-          <li><b>Corrigir o plano e manter as avaliações</b> — para enganos na ficha, na unidade ou na data.</li>
-          <li><b>Anular a aula e apagar as avaliações</b> — a aula não devia ter contado. Pede uma segunda confirmação e apaga mesmo: as notas, as presenças e os atrasos dessa aula deixam de contar. A requisição fica, fora de plano.</li>
-        </ul>
+        <P>
+          <b>Eliminar para sempre é só com a coordenadora</b> (Dados e
+          segurança): planos arquivados, fichas de produção e a cópia de
+          segurança. Se a aula não devia ter contado, pede-lhe que a anule.
+        </P>
 
         <H>Publicar</H>
+        <P>
+          Ao publicar, a aplicação pergunta para que turma é: só os alunos
+          dessa turma veem a aula. Cada professor entra com o seu PIN e só
+          tem as suas turmas; quem tem várias muda de turma no menu.
+        </P>
         <P>
           <b>Enquanto não publicares, os alunos não veem a aula</b> — nem
           no calendário, nem nas próximas aulas. Podes publicar mesmo sem

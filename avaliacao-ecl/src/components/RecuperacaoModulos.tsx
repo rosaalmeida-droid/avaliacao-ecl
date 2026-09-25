@@ -3,12 +3,12 @@ import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { ModalFullscreen } from './ModalFullscreen';
 import { RecuperacaoFCTAluno } from './RecuperacaoFCT';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
-import { gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript , situacaoRecuperacaoUC } from '../backend';
+import { gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript , situacaoRecuperacaoUC, getNotaFinalPublicadaUC } from '../backend';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import {
   getRecuperacoesPorAluno, addOrUpdateRecuperacao, criarRecuperacaoAutomatica,
-  getPlanosFaltadosPorUC, getPlanosAulaPorTurma, getEstadoCompetenciasUC, getGuiasDaRecuperacao,
+  getPlanosFaltadosPorUC, getPlanosAulaPorTurma, getEstadoCompetenciasUC, getGuiasDaRecuperacao, horasDadasDaUC,
   construirPromptPlanoIndividual,
   gerarPlanoRecuperacaoComIA,
   recuperacaoEstaTrancada, getAlunos,
@@ -84,7 +84,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
       {tab === 'progresso' && (
         <div>
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 12 }}>
-            Estado das tuas competências por Unidade de Competência — combina o que demonstraste em aula com o que recuperaste.
+            Quanto de cada unidade já foi dado, em horas, e o que o professor já validou.
           </div>
           {ucsComPlanos.length === 0 && (
             <div style={{ padding: '20px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>Ainda não há aulas nesta turma.</div>
@@ -92,7 +92,16 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
           {ucsComPlanos.map(ucId => {
             const uc = UCS_COZINHA.find(u => u.id === ucId);
             const estado = getEstadoCompetenciasUC(aluno.id, ucId);
-            const pct = estado.total > 0 ? Math.round(((estado.demonstradasEmAula + estado.recuperadas) / estado.total) * 100) : 0;
+            // A barra é das horas da UC já dadas, do cronograma. Antes era
+            // "competências demonstradas ÷ total", com as duas partes de
+            // listas diferentes e autoavaliações por validar a contar — um
+            // só plano podia dar 80%.
+            const s = situacaoRecuperacaoUC(aluno.id, aluno.turmaId, ucId);
+            const dadas = horasDadasDaUC(aluno.turmaId, ucId);
+            const previstas = s.horasPrevistas;
+            const pct = previstas > 0 ? Math.min(100, Math.round((dadas / previstas) * 100)) : 0;
+            const h = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',');
+            const dada = previstas > 0 && dadas >= previstas;
             return (
               <div key={ucId} className="option-card" style={{ marginBottom: 8, cursor: 'default' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
@@ -101,16 +110,19 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                     <div className="muted" style={{ fontSize: 12.5 }}>{uc?.nome}</div>
                   </div>
                   <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
-                    background: estado.estado === 'completo' ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
-                    color: estado.estado === 'completo' ? 'var(--sage)' : 'var(--copper)' }}>
-                    {estado.estado === 'completo' ? '✓ Completo' : `${pct}%`}
+                    background: dada ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
+                    color: dada ? 'var(--sage)' : 'var(--copper)' }}>
+                    {dada ? '✓ Dada' : `${pct}%`}
                   </span>
                 </div>
                 <div style={{ height: 6, background: 'var(--cream-dark)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: estado.estado === 'completo' ? 'var(--sage)' : 'var(--copper)' }} />
+                  <div style={{ width: `${pct}%`, height: '100%', background: dada ? 'var(--sage)' : 'var(--copper)' }} />
                 </div>
-                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginTop: 4 }}>
-                  {estado.demonstradasEmAula} demonstradas em aula · {estado.recuperadas} recuperadas · {estado.total} no total
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginTop: 4, lineHeight: 1.5 }}>
+                  {previstas > 0 ? `${h(dadas)} h de ${h(previstas)} h dadas` : `${h(dadas)} h dadas`}
+                  {' · '}{estado.demonstradasEmAula} {estado.demonstradasEmAula === 1 ? 'técnica validada' : 'técnicas validadas'} pelo professor
+                  {estado.recuperadas > 0 ? ` · ${estado.recuperadas} recuperadas` : ''}
+                  {s.horasFaltadas > 0 ? ` · ${h(s.horasFaltadas)} h de faltas` : ''}
                 </div>
               </div>
             );
@@ -138,8 +150,12 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                     {/* Porquê — dito de forma que o aluno perceba. */}
                     <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 2 }}>
                       {s.motivo === 'faltas'
-                        ? `Faltaste a ${h(s.horasFaltadas)} h de ${h(s.horasPrevistas)} h — a presença mínima é 90%.`
-                        : `O módulo terminou com ${h(s.nota20 ?? 0)} valores.`}
+                        ? `Faltaste a ${h(s.horasFaltadas)} h de ${h(s.horasDadas)} h dadas — o limite é 10% de faltas.`
+                        : (() => {
+                            // A nota só se mostra depois de publicada pelo professor.
+                            const pub = getNotaFinalPublicadaUC(aluno.id, ucId);
+                            return pub ? `O módulo terminou com ${pub.nota} valores.` : 'O módulo terminou sem positiva.';
+                          })()}
                     </div>
                   </div>
                   <button onClick={() => iniciarRecuperacao(ucId)}

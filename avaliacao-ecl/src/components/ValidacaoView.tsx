@@ -1,4 +1,6 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
+import { getTriagemDaAula, guardarTriagemDaAula } from '../backend';
+import { PERGUNTAS_TRIAGEM, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../types';
@@ -24,7 +26,10 @@ const NIVEIS_PROF = [
 ];
 
 // Label do nível do aluno (vem da autoavaliação)
-function labelNivelAluno(nivel: string): string {
+function labelNivelAluno(nivel: string, nota?: number): string {
+  // A farda é verificada à entrada da aula: dizia só "entrada".
+  if (nivel === 'entrada') return nota && nota >= 5 ? 'Farda completa (verificada à entrada)'
+    : nota ? `Faltava-lhe parte da farda à entrada (${nota}/5)` : 'Verificado à entrada';
   if (nivel === 'mbr' || nivel === 'autonomia' || nivel === 'superei') return 'Faço com muito bom resultado';
   if (nivel === 'fs'  || nivel === 'sozinho'   || nivel === 'atingi')  return 'Faço sozinho/a';
   if (nivel === 'ca'  || nivel === 'ajuda'     || nivel === 'desenvolvimento') return 'Consegui com ajuda';
@@ -33,10 +38,13 @@ function labelNivelAluno(nivel: string): string {
   return nivel;
 }
 
-function corNivelAluno(nivel: string): string {
-  if (nivel === 'autonomia' || nivel === 'superei')          return '#0369a1';
-  if (nivel === 'sozinho'   || nivel === 'atingi')           return 'var(--sage)';
-  if (nivel === 'ajuda'     || nivel === 'desenvolvimento')  return 'var(--copper)';
+function corNivelAluno(nivel: string, nota?: number): string {
+  // A escala nova (mbr, fs, ca, tp) caía toda no vermelho: "Faço sozinho/a"
+  // aparecia como se fosse mau.
+  if (nivel === 'entrada') return nota && nota >= 5 ? 'var(--sage)' : 'var(--copper)';
+  if (nivel === 'mbr' || nivel === 'autonomia' || nivel === 'superei')          return '#0369a1';
+  if (nivel === 'fs'  || nivel === 'sozinho'   || nivel === 'atingi')           return 'var(--sage)';
+  if (nivel === 'ca'  || nivel === 'tp' || nivel === 'ajuda' || nivel === 'desenvolvimento')  return 'var(--copper)';
   return 'var(--danger)';
 }
 
@@ -197,6 +205,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   /** +1 já dados nesta validação — um por atitude, para não somar duas vezes. */
   const [maisUm, setMaisUm] = useState<Record<string, boolean>>({});
   const [aConfirmar, setAConfirmar] = useState(false);
+  /** A confirmar no Sheets. Era o mesmo estado da janela de confirmação —
+   *  e a janela voltava a abrir enquanto a nota seguia. */
+  const [aEnviar, setAEnviar] = useState(false);
   // Pré-preencher com a proposta do aluno — o professor só precisa de clicar
   // onde quer discordar (subir ou descer); o resto fica já seleccionado, pronto
   // a confirmar com um só toque em "Guardar".
@@ -216,6 +227,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   });
   const [comentario, setComentario] = useState('');
   const [guardado, setGuardado] = useState(false);
+  // Triagem do CL e do CR: vem a resposta do aluno; o professor confirma ou muda.
+  const [triagem, setTriagem] = useState<Triagem5C | null>(() => {
+    const t = getTriagemDaAula(selecao.alunoId, selecao.planoAulaId || '');
+    return t.professor || t.aluno || validacaoExistente?.triagem5c || (selecao as any).triagem5c || null;
+  });
 
   // Obter competências da autoavaliação
   const autoavaliacoes = selecao.autoavaliacoes || [];
@@ -304,6 +320,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         nota: n.notaFinal,
         origem: 'professor' as const,
       })),
+      ...(triagem ? { triagem5c: triagem } : {}),
       comentarioGeral: comentario,
       validadoPor: 'professor',
       validadoEm: agora,
@@ -329,6 +346,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     (validacao as any).detalhesNota = detalhes;
     (validacao as any).tipoPlanAulaUsado = tipoPlanAula || 'pratico';
     addOrUpdateValidacao(validacao as any);
+    if (triagem) guardarTriagemDaAula(selecao.alunoId, selecao.turmaId, selecao.planoAulaId || '', triagem, 'professor');
 
     // Substituir — não acrescentar. Se o professor corrigir uma validação
     // já feita, os registos antigos têm de sair, senão o aluno passa a ver
@@ -355,9 +373,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     // aluno e o professor — por isso é dito na hora.
     setGuardado(true);
     const ids = notasFinais.map(n => `registo_${selecao.alunoId}_${selecao.planoAulaId}_${n.competenciaId}`);
-    setAConfirmar(true);
+    setAEnviar(true);
     const r = await confirmarRegistosNoSheets(selecao.turmaId, ids);
-    setAConfirmar(false);
+    setAEnviar(false);
     if (!r.ok) {
       alert(
         'ATENÇÃO — a avaliação ficou gravada aqui, mas NÃO saiu deste computador.\n\n'
@@ -374,7 +392,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
 
   return (
     <div>
-      <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={onVoltar}>← Voltar</button>
+      <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={onVoltar}>← Voltar à lista</button>
 
       {guardado && (
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',
@@ -433,8 +451,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         const notaFinal = notaProf ? calcularNotaFinal(notaProf, notaAluno14) : null;
 
         // Cor e label do nível do aluno — suporta escala nova e antiga
-        const corAluno = corNivelAluno((auto as any).nivel || '');
-        const labelAluno = labelNivelAluno((auto as any).nivel || '');
+        const corAluno = corNivelAluno((auto as any).nivel || '', (auto as any).nota);
+        const labelAluno = labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
 
         return (
           <div key={auto.competenciaId} style={{ marginBottom: 10, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
@@ -483,7 +501,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             )}
 
             {/* Critérios observáveis do Dicionário — ajuda o professor a validar com precisão */}
-            <CriteriosComp compId={auto.competenciaId} cor="var(--sage)" />
+            {/* Só quando a lista de cima não existe: eram os mesmos critérios duas vezes. */}
+            {criterios.length === 0 && <CriteriosComp compId={auto.competenciaId} cor="var(--sage)" />}
 
             {/* Avaliação do professor (1-4) */}
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, marginTop: 12, color: 'rgba(26,23,20,0.5)' }}>
@@ -558,6 +577,42 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           </div>
         );
       })}
+
+      {/* Triagem do Colaborativo e do Criativo — não entra na nota da aula. */}
+      {triagem && (
+        <Card>
+          <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
+            color:'rgba(26,23,20,0.5)', marginBottom:4 }}>Equipa, problemas e reflexão (5 C da pauta)</div>
+          <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>
+            Não conta para a nota desta aula. Entra no Colaborativo e no Criativo da pauta da UC.
+          </div>
+          {PERGUNTAS_TRIAGEM.map(q => {
+            const r = triagem[q.chave];
+            const opcoes: { v: number | 'sem'; txt: string }[] = [
+              ...q.frases.map((f, i) => ({ v: i, txt: f })), { v: 'sem', txt: q.semOcasiao }];
+            return (
+              <div key={q.chave} style={{ marginBottom:10 }}>
+                <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>{q.sigla} · {q.pergunta}</div>
+                {opcoes.map(o => (
+                  <button key={String(o.v)} onClick={() => setTriagem(t => t && ({ ...t, [q.chave]: o.v }))}
+                    style={{ display:'flex', gap:8, alignItems:'center', width:'100%', textAlign:'left',
+                      padding:'7px 10px', marginBottom:4, borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                      fontSize:13.5, border: r === o.v ? '2px solid var(--sage)' : '1px solid var(--border)',
+                      background: r === o.v ? 'rgba(90,122,78,0.1)' : '#fff' }}>
+                    <span style={{ minWidth:18, fontWeight:800, color:'var(--sage)' }}>
+                      {typeof o.v === 'number' ? o.v + 2 : '–'}</span>
+                    <span style={{ flex:1 }}>{o.txt}</span>
+                  </button>
+                ))}
+                {q.chave === 'cr' && triagem.problema && (
+                  <div style={{ fontSize:13, fontStyle:'italic', color:'rgba(26,23,20,0.6)' }}>
+                    Problema, nas palavras do aluno: “{triagem.problema}”</div>
+                )}
+              </div>
+            );
+          })}
+        </Card>
+      )}
 
       {/* Pré-visualização da nota final — mostra SEMPRE a decomposição por
           categoria, para o professor perceber como se chegou ao número, mesmo
@@ -656,9 +711,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           />
         </Field>
         <button className="btn btn-primary" onClick={() => setAConfirmar(true)}
-          disabled={autoavaliacoes.some(a => !notasProf[a.competenciaId])}
+          disabled={aEnviar || autoavaliacoes.some(a => !notasProf[a.competenciaId])}
           style={{ width:'100%', background: 'var(--sage)', marginTop: 8, padding: '14px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: 'none', cursor: 'pointer', opacity: autoavaliacoes.some(a => !notasProf[a.competenciaId]) ? 0.4 : 1 }}>
-          {aConfirmar ? 'A confirmar…' : '✓ Validar e guardar avaliação'}
+          {aEnviar ? 'A confirmar no arquivo da escola…' : '✓ Validar e guardar avaliação'}
         </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
           <div style={{ fontSize:13, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>

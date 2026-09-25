@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, calcularBonusAssiduidadeUC , registosQueContam, aplicarBonusesUC } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC } from '../backend';
+import { notaDaPautaUC } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
 import { calcularNotaPlano } from '../types';
@@ -53,7 +55,13 @@ function datasDoTrimestre(tri: 1 | 2 | 3, ano = 2026): { inicio: string; fim: st
 }
 
 // ── Componente principal ──────────────────────────────────────
-export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?: string }) {
+/** A nota publicada, no mesmo formato da nota da pauta. */
+function notaFinalPublicadaComoPauta(alunoId: string, ucId: string) {
+  const n = getNotaFinalPublicadaUC(alunoId, ucId);
+  return n ? { nota: n.nota, cp: n.cp, total: n.total, resultado: n.resultado, atribuida: true, publicada: true } : null;
+}
+
+export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: string; alunoId?: string; nomeProfessor?: string }) {
   const modulos = modulosDaTurma(turmaId);
   const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
   const todosRegistos = getHistoricoAvaliacoes();
@@ -133,13 +141,15 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
       const { nota20 } = notasComCat.length > 0
         ? calcularNotaPlano(notasComCat, tipoDominante as 'pratico'|'misto'|'teorico')
         : { nota20: 0 };
-      // Os bónus são por UC — só se somam quando se está a ver UMA UC.
-      // O cálculo é o mesmo da recuperação e do resto da aplicação
-      // (aplicarBonusesUC): assiduidade, eventos e teto de 17.
-      const bonus = filtroUC ? calcularBonusAssiduidadeUC(aluno.id, turmaId, filtroUC) : null;
-      const notaUC = filtroUC && notasComCat.length > 0
-        ? aplicarBonusesUC(nota20, aluno.id, turmaId, filtroUC) : null;
-      const nota20ComBonus = notaUC?.final ?? nota20;
+      // Com uma UC escolhida, a nota é a da pauta oficial (a classificação
+      // atribuída, ou a sugerida pela pauta) — a mesma da pauta e da regra
+      // da recuperação. Não há bónus nem outra conta.
+      // O aluno (alunoId) só vê a nota final publicada pelo professor, e só
+      // depois da sua autoavaliação final. Até lá, a média das aulas validadas.
+      const pauta = !filtroUC || notasComCat.length === 0 ? null
+        : !alunoId ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
+        : getPropostaFinalUC(aluno.id, filtroUC) ? notaFinalPublicadaComoPauta(aluno.id, filtroUC) : null;
+      const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
       // deste aluno nesta UC, para o professor perceber SEMPRE como a nota
       // se formou (OBR/SUB/KNW/ATI), não só ver o número final.
@@ -153,11 +163,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
         comps,
         mediaGeral: nota20ComBonus,
         mediaGeralSemBonus: nota20,
-        bonus,
-        notaUC,
+        pauta,
         porCategoriaUltima,
         total: regs.length,
-        consolidadas: comps.filter(c => c.media >= 3).length,
+        // Consolidada: 2 aulas diferentes com nota 3 ou mais (regra da escola).
+        consolidadas: comps.filter(c => new Set(c.todas.filter(r => r.nota >= 3).map(r => r.planoAulaId)).size >= 2).length,
         emRecuperacao: comps.filter(c => c.media < 3 && c.n > 0).length,
       };
     });
@@ -177,6 +187,8 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
   }, [registosFiltrados, filtroUC]);
 
   const ucSelNome = modulos.find(m => m.id === filtroUC)?.nome || '';
+  // A pauta no modelo da escola — a qualquer momento, não só quando o módulo acaba.
+  const [pautaAberta, setPautaAberta] = useState(false);
   const T = {
     copper: '#b5651d', sage: '#5a7a4e', azul: '#0369a1',
     border: 'rgba(26,23,20,0.08)', cream: '#f8f6f2',
@@ -185,7 +197,10 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
   return (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
 
-      {/* Cabeçalho */}
+      {/* Cabeçalho — só na vista do professor. O aluno já tem o título por
+          cima ("O meu historial") e aqui lia "Imprimir turma" e "filtra por
+          aluno", que não são para ele. */}
+      {!alunoId && (
       <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
           <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, fontFamily: 'Nunito, sans-serif' }}>
@@ -199,6 +214,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
           🖨️ Imprimir turma
         </button>
       </div>
+      )}
       <style>{`
         @media print {
           .no-print { display: none !important; }
@@ -206,6 +222,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
           ${imprimirApenas ? `.aluno-card:not([data-aluno-id="${imprimirApenas}"]) { display: none !important; }` : ''}
         }
       `}</style>
+
+      {pautaAberta && filtroUC && (
+        <FecharUC turmaId={turmaId} ucId={filtroUC} ucNome={ucSelNome} nomeProfessor={nomeProfessor}
+          onFechado={() => setPautaAberta(false)} onCancelar={() => setPautaAberta(false)} />
+      )}
 
       {/* Filtros */}
       <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: `1px solid ${T.border}` }}>
@@ -220,6 +241,13 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
               <option value="">Todas</option>
               {modulos.map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome.slice(0, 35)}{m.nome.length > 35 ? '…' : ''}</option>)}
             </select>
+            {!alunoId && filtroUC && (
+              <button onClick={() => setPautaAberta(true)} style={{ marginTop: 8, width: '100%', padding: '9px 10px',
+                borderRadius: 8, border: 'none', background: 'var(--sage, #5a7a4e)', color: '#fff',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Pauta da UC (modelo da escola)
+              </button>
+            )}
           </div>
           {/* Aluno — só visível na vista do professor, não na vista do aluno */}
           {!alunoId && (
@@ -297,7 +325,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
           <div style={{ fontSize: 13, marginTop: 4 }}>Tenta seleccionar uma UC/UFCD diferente ou alargar o período</div>
         </div>
       ) : (
-        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, bonus, notaUC, porCategoriaUltima }) => {
+        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, pauta, porCategoriaUltima }) => {
           const aberto = vistaAluno === aluno.id;
           const { emoji, cor } = labelNota(mediaGeral);
           return (
@@ -326,29 +354,18 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
                 </div>
                 {mediaGeral > 0 && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{mediaGeral.toFixed(1)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1)}</div>
                     <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}
                       title={porCategoriaUltima
                         ? 'Como esta nota foi calculada: ' + Object.entries(porCategoriaUltima).map(([c,n]) => `${c} ${n}/20`).join(' · ')
                         : 'Sem decomposição disponível — aguarda a próxima validação do professor'}>
                       /20 {porCategoriaUltima ? 'ⓘ' : ''}
                     </div>
-                    {bonus && bonus.total > 0 && (
-                      <div style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 700, marginTop: 2 }}
-                        title={`Pontualidade +${bonus.pontualidade} · Assiduidade +${bonus.assiduidade} · Farda +${bonus.fardamento} (${bonus.detalhe.faltas} faltas, ${bonus.detalhe.atrasos} atrasos, ${bonus.detalhe.fardaIncompleta} farda incompleta)`}>
-                        +{bonus.total} assiduidade
-                      </div>
-                    )}
-                    {notaUC && notaUC.bonusParticipacao > 0 && (
-                      <div style={{ fontSize: 12, color: '#7d4f8c', fontWeight: 700 }}
-                        title={`${notaUC.participacoes} participação(ões) em eventos — +0,75 cada, até 3`}>
-                        +{notaUC.bonusParticipacao.toFixed(2).replace('.', ',')} eventos
-                      </div>
-                    )}
-                    {notaUC?.limitadaPorTeto && (
-                      <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 700 }}
-                        title="Sem participação em eventos, a nota não passa de 17">
-                        teto 17
+                    {pauta && (
+                      <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2,
+                        color: pauta.resultado === 'Módulo em atraso' ? '#c0392b' : 'var(--sage)' }}
+                        title={`Da pauta oficial: Competente ${pauta.cp} · TOTAL ${String(Math.round(pauta.total * 100) / 100).replace('.', ',')} · ${pauta.atribuida ? 'classificação atribuída pelo professor' : 'sugestão da pauta'}`}>
+                        {pauta.resultado}{pauta.atribuida ? '' : ' · sugestão'}
                       </div>
                     )}
                   </div>

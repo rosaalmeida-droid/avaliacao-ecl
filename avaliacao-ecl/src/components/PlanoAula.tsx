@@ -38,7 +38,8 @@ const NUM_UC: Record<string, number> = {
 import { PlanoAula as TPlanoAula } from '../types';
 import { Card } from './ui';
 import ProfessorView from './ProfessorView';
-import { ModalPauta } from './ModalPauta';
+import { FecharUC } from './FecharUC';
+import { modulosDaTurma as modulosParaPauta } from '../cronograma';
 
 const TIPOS_ATIVIDADE = [
   'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
@@ -319,23 +320,15 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                 </span>
                 <button onClick={() => {
                   if (planosSelecionadosCal.size === 0) return;
-                  // Em lote só se eliminam aulas sem trabalho dos alunos. As que
-                  // têm avaliações eliminam-se uma a uma, para se ver o que se perde.
-                  const comTrabalho = [...planosSelecionadosCal].filter(id => resumoDoPlano(id).temAvaliacoes);
-                  if (comTrabalho.length) {
-                    alert(`${comTrabalho.length} dos planos escolhidos já têm entradas ou avaliações de alunos.\n\n`
-                      + 'Esses eliminam-se um a um, no caixote de cada plano — para veres o que vai desaparecer.');
-                    return;
-                  }
-                  if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosCal.size} plano(s)?`)) {
-                    planosSelecionadosCal.forEach(id => anularPlanoAula(id));
+                  if (confirm(`Arquivar ${planosSelecionadosCal.size} plano(s)? Saem do calendário; podes repô-los no Arquivo.`)) {
+                    planosSelecionadosCal.forEach(id => arquivarPlanoAula(id));
                     setPlanosSelecionadosCal(new Set());
                     setModoSelecaoCal(false);
                     onPlanoEliminado?.();
                   }
                 }} disabled={planosSelecionadosCal.size === 0}
                   style={{ padding: '5px 12px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 12.5, cursor: planosSelecionadosCal.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosCal.size === 0 ? 0.4 : 1 }}>
-                  🗑️ Eliminar
+                  🗄️ Arquivar
                 </button>
               </div>
             )}
@@ -535,6 +528,8 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
 
 export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoIdInicial, onPlanoIdInicialUsado }: {
   turmaId: string; nomeProfessor?: string;
+  /** Muda quando chegam dados novos: re-desenha sem perder a vista. */
+  versao?: number;
   onAlteracao?: (guardar?: () => void) => void;
   onGuardado?: (plano?: TPlanoAula) => void;
   planoIdInicial?: string;
@@ -559,6 +554,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   const [refreshKey, setRefreshKey] = useState(0);
   const [modoSelecaoPlanos, setModoSelecaoPlanos] = useState(false);
   const [mostrarModalPauta, setMostrarModalPauta] = useState(false);
+  const [ucPauta, setUcPauta] = useState<{ id: string; nome: string } | null>(null);
   const [planosSelecionadosIds, setPlanosSelecionadosIds] = useState<Set<string>>(new Set());
   /** Ver também as aulas dos outros professores. */
   const [verDeTodos, setVerDeTodos] = useState(false);
@@ -688,7 +684,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                   {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
                 </div>
                 <button onClick={() => { desarquivarPlanoAula(p.id); setRefreshKey(k => k + 1); }} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>↩️ Restaurar</button>
-                <button onClick={() => setArquivadoAEliminar(p)} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--danger)', background: '#fff', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>🗑️ Eliminar</button>
+
               </div>
             </div>
           );
@@ -727,19 +723,13 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{planosSelecionadosIds.size} plano(s) selecionado(s)</span>
           <button onClick={() => {
             if (planosSelecionadosIds.size === 0) return;
-            const comTrabalho = [...planosSelecionadosIds].filter(id => resumoDoPlano(id).temAvaliacoes);
-            if (comTrabalho.length) {
-              alert(`${comTrabalho.length} dos planos escolhidos já têm entradas ou avaliações de alunos.\n\n`
-                + 'Esses eliminam-se um a um — para veres o que vai desaparecer.');
-              return;
-            }
-            if (confirm(`Eliminar DEFINITIVAMENTE ${planosSelecionadosIds.size} plano(s)?`)) {
-              planosSelecionadosIds.forEach(id => anularPlanoAula(id));
+            if (confirm(`Arquivar ${planosSelecionadosIds.size} plano(s)? Saem da lista; podes repô-los no Arquivo.`)) {
+              planosSelecionadosIds.forEach(id => arquivarPlanoAula(id));
               setPlanosSelecionadosIds(new Set()); setModoSelecaoPlanos(false); setRefreshKey(k => k + 1);
             }
           }} disabled={planosSelecionadosIds.size === 0}
             style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', color: 'white', fontWeight: 700, fontSize: 13, cursor: planosSelecionadosIds.size === 0 ? 'default' : 'pointer', opacity: planosSelecionadosIds.size === 0 ? 0.4 : 1 }}>
-            🗑️ Eliminar Selecionados
+            🗄️ Arquivar selecionados
           </button>
         </div>
       )}
@@ -801,12 +791,40 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           </div>
         );
       })}
-      {mostrarModalPauta && (
-        <ModalPauta
-          turmaId={turmaId}
-          nomeProfessor={nomeProfessor || 'Professor'}
-          onFechar={() => setMostrarModalPauta(false)}
-        />
+      {/* A pauta é sempre a do modelo da escola, por UC: escolhe-se a UC e
+          abre-se o mesmo ecrã de "Notas da UC → Pauta da UC". */}
+      {mostrarModalPauta && !ucPauta && (() => {
+        const comPlanos = new Set(planosDaTurma.map(p => p.ucId).filter(Boolean));
+        const ucs = modulosParaPauta(turmaId).filter((m: any) => comPlanos.has(m.id));
+        return (
+          <div onClick={() => setMostrarModalPauta(false)} style={{ position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(26,23,20,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, padding: 20,
+              width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto' }}>
+              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Pauta de que UC?</div>
+              <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', marginBottom: 12 }}>
+                A pauta sai no modelo da escola, com os Planos de Avaliação da UC.
+              </div>
+              {ucs.length === 0 && <div style={{ fontSize: 14 }}>Ainda não há planos de aula com UC nesta turma.</div>}
+              {ucs.map((m: any) => (
+                <button key={m.id} onClick={() => setUcPauta({ id: m.id, nome: m.nome })} style={{ display: 'block',
+                  width: '100%', textAlign: 'left', padding: '11px 12px', marginBottom: 6, borderRadius: 10,
+                  border: '1px solid rgba(26,23,20,0.14)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>
+                  <b>{m.id}</b> — {m.nome}
+                </button>
+              ))}
+              <button onClick={() => setMostrarModalPauta(false)} style={{ marginTop: 6, padding: '9px 14px', borderRadius: 9,
+                border: '1px solid rgba(26,23,20,0.18)', background: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+      {ucPauta && (
+        <FecharUC turmaId={turmaId} ucId={ucPauta.id} ucNome={ucPauta.nome} nomeProfessor={nomeProfessor}
+          onFechado={() => { setUcPauta(null); setMostrarModalPauta(false); }}
+          onCancelar={() => { setUcPauta(null); setMostrarModalPauta(false); }} />
       )}
     </div>
   );
@@ -975,7 +993,14 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
         <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: '1px solid rgba(247,241,230,0.2)', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>← Voltar</button>
         <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>Novo Plano de Aula</div>
-        <div style={{ fontSize: 13, color: 'rgba(247,241,230,0.5)', marginTop: 3 }}>ECL · {turmaId}</div>
+        {/* A turma bem à vista: o plano fica nesta turma e só estes alunos o veem. */}
+        <div style={{ display: 'inline-block', marginTop: 8, padding: '6px 12px', borderRadius: 8,
+          background: 'var(--copper)', color: '#fff', fontSize: 15, fontWeight: 800 }}>
+          Turma: {turmaId}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.6)', marginTop: 4 }}>
+          Só os alunos desta turma veem este plano. Se não é esta a turma, muda-a no menu antes de criar.
+        </div>
       </div>
       <Card>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>

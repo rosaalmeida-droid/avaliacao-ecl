@@ -112,13 +112,12 @@ export function PassoKitchenFlowFase({
   return (
     <div style={{ background: '#fff', borderRadius: 16, padding: 18,
       boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-      <div style={{ fontSize: 19, fontWeight: 700, color: '#1A1A1A' }}>
-        {fase === 'inicial' ? 'Antes de produzir' : 'Antes de fechar a produção'}
-      </div>
-      <div style={{ fontSize: 14.5, color: '#777', marginTop: 4, marginBottom: 16, lineHeight: 1.55 }}>
+      {/* O título ("Antes de produzir") já está no passo, por cima: aqui
+          repetia-se. Fica só o que fazer. */}
+      <div style={{ fontSize: 15, color: '#555', marginBottom: 16, lineHeight: 1.55 }}>
         {fase === 'inicial'
-          ? 'Conclui os registos iniciais obrigatórios desta aula.'
-          : 'A checklist terminou. Faltam os registos finais obrigatórios.'}
+          ? 'Toca em cada registo quando o fizeres. Os obrigatórios têm de estar todos antes de produzir.'
+          : 'Toca em cada registo quando o fizeres. Os obrigatórios têm de estar todos antes da autoavaliação.'}
       </div>
 
       {campos.map(c => (
