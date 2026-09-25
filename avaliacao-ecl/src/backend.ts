@@ -4258,6 +4258,8 @@ export function abrirSessaoAula(
     abertaPor: professor,
     toleranciaMin,
   });
+  // Confere daqui a pouco se chegou; se não, volta a enviar.
+  setTimeout(() => { confirmarSessoesAbertas().catch(() => 0); }, 5000);
   return nova;
 }
 
@@ -6499,7 +6501,37 @@ function reenviar(p: PorConfirmar): void {
 }
 
 /** Confere o que está à espera e reenvia o que não chegou. */
+/**
+ * Aulas abertas neste aparelho que não estão no Sheets voltam a ser
+ * enviadas. O aluno só sabe que a aula abriu pelo Sheets: se o envio da
+ * abertura se perdia, o professor via «aberta» e o aluno nunca a recebia —
+ * e carregar outra vez não servia, porque o aparelho já a tinha como aberta.
+ */
+export async function confirmarSessoesAbertas(): Promise<number> {
+  const umDia = Date.now() - 24 * 3600 * 1000;
+  const locais = getSessoesAula().filter(s =>
+    s.abertaEm && !s.fechadaEm && new Date(s.abertaEm).getTime() > umDia);
+  if (!locais.length) return 0;
+  let json: any;
+  try { json = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId: '' }); }
+  catch { return 0; }
+  if (!json?.ok) return 0;
+  const la = new Set((json.sessoes || json.dados || []).map((x: any) => String(x.planoAulaId)));
+  let reenviadas = 0;
+  for (const s of locais) {
+    if (la.has(String(s.planoAulaId))) continue;
+    const plano = getPlanosAula().find(p => p.id === s.planoAulaId);
+    enviar(SHEETS_HISTORICO_URL, 'sessao', {
+      planoAulaId: s.planoAulaId, turmaId: plano?.turmaId || s.turmaId,
+      abertaEm: s.abertaEm, abertaPor: s.abertaPor, toleranciaMin: s.toleranciaMin,
+    });
+    reenviadas++;
+  }
+  return reenviadas;
+}
+
 export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepetir: number }> {
+  await confirmarSessoesAbertas().catch(() => 0);
   const l = espera();
   if (!l.length) return { confirmados: 0, aRepetir: 0 };
 
