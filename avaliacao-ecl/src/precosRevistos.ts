@@ -45,7 +45,8 @@ REGRAS
 3. Produto fresco a granel (fruta, legumes, carne, peixe): usa o preço por kg.
 4. Nos produtos que "usam-se à unidade" (ovos, limões, alhos, molhos de ervas), diz também o preço de UMA unidade (por exemplo, a caixa de 12 ovos a dividir por 12).
 5. Não inventes. Se não encontrares o produto, responde com "nao_encontrado": true.
-6. Responde APENAS com um bloco JSON (uma lista), sem texto antes nem depois, com este formato para cada produto:
+6. Responde a TODOS os ${lista.length} produtos da lista, do primeiro ao último, sem saltar nenhum. Se a resposta for longa demais, continua na mensagem seguinte até acabar.
+7. Responde APENAS com um bloco JSON (uma lista), sem texto antes nem depois, com este formato para cada produto:
 
 {"id":"a001","produto":"Açúcar Branco Continente 1 kg","marca":"Continente","embalagem":1000,"unidade":"g","preco_embalagem":0.99,"preco_kg":0.99,"preco_unidade":null,"link":"https://www.continente.pt/..."}
 
@@ -85,14 +86,25 @@ const MARCA_BRANCA = /continente|^\s*[ée]\s*$|\bé\b/i;
 /** Tira o JSON da resposta da IA, mesmo com texto ou ``` à volta. */
 function extrairJSON(texto: string): any[] {
   let t = String(texto || '').replace(/```(json)?/gi, '').replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
-  const i = t.indexOf('['), j = t.lastIndexOf(']');
-  if (i < 0 || j < i) throw new Error('Não encontrei a lista (começa com [ e acaba com ]).');
-  t = t.slice(i, j + 1)
+  const limpar = (x: string) => x
     .replace(/,\s*([\]}])/g, '$1')                        // vírgula a mais no fim
     .replace(/(":\s*-?\d+),(\d+)/g, '$1.$2');              // 0,99 → 0.99
-  const v = JSON.parse(t);
-  if (!Array.isArray(v)) throw new Error('A resposta não é uma lista.');
-  return v;
+  const i = t.indexOf('['), j = t.lastIndexOf(']');
+  if (i >= 0 && j > i) {
+    try {
+      const v = JSON.parse(limpar(t.slice(i, j + 1)));
+      if (Array.isArray(v)) return v;
+    } catch { /* a resposta veio em várias partes: lê-se produto a produto */ }
+  }
+  // Várias mensagens coladas seguidas ("[...]" e depois "continuação [...]"),
+  // ou uma lista cortada a meio: cada produto é um {...} sem nada lá dentro
+  // com chavetas, por isso lê-se um a um.
+  const objetos: any[] = [];
+  for (const m of t.match(/\{[^{}]*\}/g) || []) {
+    try { objetos.push(JSON.parse(limpar(m))); } catch { /* ignora o que estiver partido */ }
+  }
+  if (!objetos.length) throw new Error('Não encontrei a lista (começa com [ e acaba com ]).');
+  return objetos;
 }
 
 export function verificarRespostaIA(texto: string, idsPedidos: string[], revistoPor: string): ResultadoVerificacao {
