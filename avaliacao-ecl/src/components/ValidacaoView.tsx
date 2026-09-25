@@ -1,4 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
+import { getTriagemDaAula, guardarTriagemDaAula } from '../backend';
 import { PERGUNTAS_TRIAGEM, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -218,8 +219,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   const [comentario, setComentario] = useState('');
   const [guardado, setGuardado] = useState(false);
   // Triagem do CL e do CR: vem a resposta do aluno; o professor confirma ou muda.
-  const [triagem, setTriagem] = useState<Triagem5C | null>(() =>
-    validacaoExistente?.triagem5c || (selecao as any).triagem5c || null);
+  const [triagem, setTriagem] = useState<Triagem5C | null>(() => {
+    const t = getTriagemDaAula(selecao.alunoId, selecao.planoAulaId || '');
+    return t.professor || t.aluno || validacaoExistente?.triagem5c || (selecao as any).triagem5c || null;
+  });
 
   // Obter competências da autoavaliação
   const autoavaliacoes = selecao.autoavaliacoes || [];
@@ -334,6 +337,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     (validacao as any).detalhesNota = detalhes;
     (validacao as any).tipoPlanAulaUsado = tipoPlanAula || 'pratico';
     addOrUpdateValidacao(validacao as any);
+    if (triagem) guardarTriagemDaAula(selecao.alunoId, selecao.turmaId, selecao.planoAulaId || '', triagem, 'professor');
 
     // Substituir — não acrescentar. Se o professor corrigir uma validação
     // já feita, os registos antigos têm de sair, senão o aluno passa a ver

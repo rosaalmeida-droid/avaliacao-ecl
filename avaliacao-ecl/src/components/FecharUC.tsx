@@ -19,6 +19,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   pautaDaUC, enviarPautaPorEmail, marcarUCFechada, situacaoRecuperacaoUC,
+  publicarNotaFinalUC, getNotaFinalPublicadaUC,
   emailDoProfessor, guardarEmailDoProfessor, getTurmas,
 } from '../backend';
 import { modulosDaTurma } from '../cronograma';
@@ -79,18 +80,39 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
   useEffect(() => { try { localStorage.setItem(chaveClassif, JSON.stringify(classifEscrita)); } catch { /* */ } }, [chaveClassif, classifEscrita]);
   const contas = useMemo(() => Object.fromEntries(linhas.map(l => {
     const c = calculoDoModelo(l, produtos, totalAtividades);
+    // A nota publicada é o ponto de partida; sem publicação, a sugestão.
+    const publicada = getNotaFinalPublicadaUC(l.alunoId, ucId);
     const sugestao = sugestaoClassificacao(l, produtos, c.cp);
     const escrita = classifEscrita[l.alunoId];
     const n = escrita !== undefined && escrita !== '' ? Number(escrita.replace(',', '.')) : NaN;
-    const nota = !isNaN(n) && n >= 0 && n <= 20 ? Math.round(n) : sugestao;
+    const nota = !isNaN(n) && n >= 0 && n <= 20 ? Math.round(n) : publicada ? publicada.nota : sugestao;
     const erro = erroClassificacao(nota, c.cp);
-    return [l.alunoId, { c, sugestao, nota, erro, avisos: [...(erro ? [erro] : []), ...avisosClassificacao(nota, c.total, c.resultado)] }];
+    return [l.alunoId, { c, sugestao, nota, erro, publicada, avisos: [...(erro ? [erro] : []), ...avisosClassificacao(nota, c.total, c.resultado)] }];
   })), [linhas, produtos, totalAtividades, classifEscrita]);
   const classificacoes = Object.fromEntries(escolhidas.map(l => [l.alunoId, contas[l.alunoId]?.nota ?? null]));
   const comAlinea = escolhidas.filter(l => String(classificacaoComNota(contas[l.alunoId].nota)).endsWith('a)'));
   const negativas = comAlinea.length;
   const naoCorrespondem = escolhidas.filter(l => contas[l.alunoId].avisos.length > 0);
   const foraDaFaixa = escolhidas.filter(l => contas[l.alunoId].erro);
+  const [versaoPub, setVersaoPub] = useState(0);
+  void versaoPub;
+  const publicadas = escolhidas.filter(l => {
+    const p = getNotaFinalPublicadaUC(l.alunoId, ucId);
+    return p && p.nota === contas[l.alunoId].nota;
+  }).length;
+
+  /** Publica (ou atualiza) as notas finais: cada aluno passa a ver a sua. */
+  function publicarNotas(perguntar = true): boolean {
+    if (perguntar && !confirmarClassificacoes()) return false;
+    escolhidas.forEach(l => {
+      const { c, nota } = contas[l.alunoId];
+      if (nota === null) return;
+      publicarNotaFinalUC({ alunoId: l.alunoId, turmaId, ucId, nota, resultado: c.resultado, cp: c.cp,
+        total: Math.round(c.total * 100) / 100, professor: nomeProfessor || '' });
+    });
+    setVersaoPub(v => v + 1);
+    return true;
+  }
   const semProposta = escolhidas.filter(l => l.proposta === null);
   const semEvidencia = (Object.keys(MAPA_5C) as Letra5C[])
     .map(c => ({ c, n: escolhidas.filter(l => l.c5[c] === null).length })).filter(x => x.n > 0);
@@ -152,6 +174,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
     if (!email.includes('@')) { alert('Escreve o teu email.'); return; }
     if (!escolhidas.length) { alert('Escolhe pelo menos um aluno.'); return; }
     if (!confirmarClassificacoes()) return;
+    publicarNotas(false);
     guardarEmailDoProfessor(email);
     setAEnviar(true);
     // O que vai por email é a pauta oficial: os mesmos campos de sempre
@@ -460,8 +483,28 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
 
         </>)}
 
-        {/* 5. Email */}
-        <div style={rotulo}>5. Fechar a unidade e enviar</div>
+        {/* 5. Publicar aos alunos */}
+        {!porResponder && (
+          <>
+            <div style={rotulo}>5. Notas finais para os alunos</div>
+            <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginBottom: 8, lineHeight: 1.5 }}>
+              Cada aluno vê a sua nota final da UC (a CLASSIF. ATRIBUÍDA) depois de a publicares.
+              Se mudares uma nota na pauta, publica outra vez e o aluno vê a nota atualizada.
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => { if (publicarNotas()) alert('Notas finais publicadas. Os alunos já as veem na aplicação.'); }}
+                style={{ ...botao(true), flex: '0 1 auto', padding: '12px 18px' }}>
+                {publicadas === 0 ? 'Publicar as notas finais aos alunos' : 'Atualizar as notas publicadas'}
+              </button>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: publicadas === escolhidas.length ? 'var(--sage, #5a7a4e)' : '#8a4a15' }}>
+                {publicadas} de {escolhidas.length} publicada{publicadas === 1 ? '' : 's'} com a nota atual
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* 6. Email */}
+        <div style={rotulo}>6. Fechar a unidade e enviar</div>
         <input value={email} onChange={e => setEmail(e.target.value)}
           placeholder="o.teu.email@eclisboa.net" style={{
             width: '100%', padding: '11px 12px', borderRadius: 10, fontSize: 15,

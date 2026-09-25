@@ -52,9 +52,10 @@ import {
 } from './InicioAluno';
 import { PassoKitchenFlowFase } from './PassosKitchenFlow';
 import { PERGUNTAS_TRIAGEM, notaTriagem, type Triagem5C } from '../triagem5c';
-import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal } from '../backend';
+import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula } from '../backend';
 import { ManuaisAluno } from './ManuaisAluno';
-import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal } from './AutoavaliacaoFinalUC';
+import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
+import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } from './AutoavaliacaoFinalUC';
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
@@ -912,7 +913,11 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
         {/* ── ABA INÍCIO ── */}
         {/* ── INÍCIO: a aula de hoje como ação principal ── */}
         {aba === 'inicio' && !destino && (
-          <CartaoAutoavaliacaoFinal ucs={ucsFinais} onAbrir={setUcFinal} />
+          <>
+            <CartaoAutoavaliacaoFinal ucs={ucsFinais} onAbrir={setUcFinal} />
+            <CartaoNotasFinais key={versaoFinal} aluno={aluno}
+              ucNome={id => (modulosDaTurmaAluno(aluno.turmaId).find((m: any) => m.id === id) as any)?.nome || id} />
+          </>
         )}
         {aba === 'inicio' && !destino && (
           <InicioAluno
@@ -2802,8 +2807,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       : 3;
     if (atitudeApanhar) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeApanhar}_${Date.now()}_ap`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeApanhar,nota:notaApanhar,data:agora,validadoPor:'aluno'});
     // Guardar SelecaoAluno com autoavaliacoes preenchidas para o professor validar
+    // A farda entra sempre na nota do plano (obrigatórias). Não se pergunta:
+    // leva a nota da verificação à entrada, e o professor confirma.
+    const regFarda = getHistoricoAvaliacoes()
+      .filter((r: any) => r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01')
+      .sort((a: any, b: any) => String(b.data).localeCompare(String(a.data)))[0];
+    const contaObrigatorias = !ehAtitudinal || comObrigatorias;
     const todasAutoavaliacoes = [
-      // OBR_01 fica de fora: vem da verificação da farda à entrada.
+      ...(regFarda && contaObrigatorias ? [{ competenciaId: 'OBR_01', nivel: 'entrada', nota: Number(regFarda.nota) || 1, daEntrada: true }] : []),
       // HACCP: sem registo no KitchenFlow, a proposta chega ao professor
       // com 1 — ele decide. Antes o 1 só ia para o histórico, que já não
       // conta para nota nenhuma; a regra perdia-se.
@@ -2817,6 +2828,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         .map(id => ({competenciaId:id,nivel:'sozinho',nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4)})),
     ];
     addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => frasesAula[id] != null)].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,triagem5c:{ ...triagem, problema: (triagem.problema||'').trim() || undefined },criadaEm:agora});
+    guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
+      { ...triagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}
     setSubmetido(true); setModalConfirmar(false); onConcluido();
   }

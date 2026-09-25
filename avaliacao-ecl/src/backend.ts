@@ -4,6 +4,7 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
+import type { Triagem5C } from './triagem5c';
 import { notaDaPautaUC } from './pautaUC';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
@@ -2192,9 +2193,16 @@ export function updateComanda(c: Comanda): void {
  *  com este prefixo no plano — assim sincroniza pelo mesmo caminho. Fica fora
  *  das autoavaliações das aulas (não é "por validar", não conta para a nota). */
 const PREFIXO_FINAL = 'UCFINAL|';
+/** As respostas às perguntas do CL, CR e CO de cada aula (aluno e professor). */
+const PREFIXO_TRIAGEM = 'TRIAGEM|';
+/** A nota final da UC publicada pelo professor, que o aluno vê. */
+const PREFIXO_NOTA = 'UCNOTA|';
+const ehRegistoEspecial = (s: SelecaoAluno) => {
+  const p = String(s.planoAulaId || '');
+  return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA);
+};
 export function getSelecoes(): SelecaoAluno[] {
-  return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes))
-    .filter(s => !String(s.planoAulaId || '').startsWith(PREFIXO_FINAL));
+  return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
 }
 export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
@@ -6459,13 +6467,86 @@ export function guardarPropostaFinalUC(p: Omit<PropostaFinalUC, 'criadaEm'>): vo
   } as any);
 }
 
+// ============================================================
+// Triagem do CL, CR e CO de cada aula
+// ============================================================
+// Viaja como um registo próprio, com os dados dentro das autoavaliações —
+// o mesmo caminho da proposta final, que o Sheets guarda inteiro. Assim a
+// resposta do aluno e a confirmação do professor chegam a todos os aparelhos.
+
+export interface TriagemDaAula { aluno?: Triagem5C; professor?: Triagem5C }
+
+export function getTriagemDaAula(alunoId: string, planoAulaId: string): TriagemDaAula {
+  const s: any = load<any>(KEYS.selecoes).find((x: any) =>
+    x.alunoId === alunoId && x.planoAulaId === PREFIXO_TRIAGEM + planoAulaId);
+  const a = s?.autoavaliacoes?.[0];
+  if (a) return { aluno: a.aluno || undefined, professor: a.professor || undefined };
+  // Autoavaliações antigas: a triagem vinha dentro da seleção e da validação.
+  const sel: any = load<any>(KEYS.selecoes).find((x: any) => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
+  const val: any = getValidacoes().find((x: any) => x.alunoId === alunoId && x.planoAulaId === planoAulaId);
+  return { aluno: sel?.triagem5c, professor: val?.triagem5c };
+}
+
+export function guardarTriagemDaAula(alunoId: string, turmaId: string, planoAulaId: string,
+  triagem: Triagem5C, deQuem: 'aluno' | 'professor'): void {
+  const atual = getTriagemDaAula(alunoId, planoAulaId);
+  const novo = { ...atual, [deQuem]: triagem };
+  addOrUpdateSelecao({
+    id: `tri_${planoAulaId}_${alunoId}`, planoAulaId: PREFIXO_TRIAGEM + planoAulaId, comandaId: '', fichaId: '',
+    alunoId, turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'TRIAGEM_5C', nivel: 'triagem', nota: 0, ...novo }],
+    criadaEm: new Date().toISOString(),
+  } as any);
+}
+
+// ============================================================
+// Nota final da UC publicada pelo professor
+// ============================================================
+// O professor atualiza a pauta e publica: cada aluno passa a ver a sua
+// nota final da UC. É esta a nota que conta em todo o lado.
+
+export interface NotaFinalPublicada {
+  alunoId: string; turmaId: string; ucId: string;
+  nota: number; resultado: string; cp: number; total: number;
+  professor: string; publicadaEm: string;
+}
+
+export function getNotaFinalPublicadaUC(alunoId: string, ucId: string): NotaFinalPublicada | null {
+  const s: any = load<any>(KEYS.selecoes).find((x: any) =>
+    x.alunoId === alunoId && x.planoAulaId === PREFIXO_NOTA + ucId);
+  const a = s?.autoavaliacoes?.[0];
+  if (!s || !a || typeof a.nota !== 'number') return null;
+  return { alunoId, turmaId: s.turmaId, ucId, nota: a.nota, resultado: a.resultado || '', cp: a.cp,
+    total: a.total, professor: a.professor || '', publicadaEm: a.publicadaEm || s.criadaEm };
+}
+
+/** Todas as notas finais publicadas de um aluno (as UC que já fecharam). */
+export function notasFinaisPublicadasDoAluno(alunoId: string): NotaFinalPublicada[] {
+  return load<any>(KEYS.selecoes)
+    .filter((x: any) => x.alunoId === alunoId && String(x.planoAulaId || '').startsWith(PREFIXO_NOTA))
+    .map((x: any) => getNotaFinalPublicadaUC(alunoId, String(x.planoAulaId).slice(PREFIXO_NOTA.length)))
+    .filter((x): x is NotaFinalPublicada => !!x);
+}
+
+export function publicarNotaFinalUC(n: Omit<NotaFinalPublicada, 'publicadaEm'>): void {
+  const agora = new Date().toISOString();
+  addOrUpdateSelecao({
+    id: `nota_${n.ucId}_${n.alunoId}`, planoAulaId: PREFIXO_NOTA + n.ucId, comandaId: '', fichaId: '',
+    alunoId: n.alunoId, turmaId: n.turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'NOTA_FINAL_UC', nivel: 'nota', nota: n.nota, resultado: n.resultado,
+      cp: n.cp, total: n.total, professor: n.professor, publicadaEm: agora }],
+    criadaEm: agora,
+  } as any);
+}
+
 /** UCs em que o aluno já tem de fazer a autoavaliação final: o módulo acabou
- *  (ou o professor fechou a UC) e ainda não há proposta dele. */
+ *  (ou o professor fechou a UC ou publicou a nota) e ainda não há proposta dele. */
 export function ucsParaAutoavaliacaoFinal(aluno: Aluno): { ucId: string; nome: string; dataFim: string }[] {
   const hoje = new Date().toISOString().slice(0, 10);
   const comAulas = new Set(getPlanosAulaPorTurma(aluno.turmaId).map(p => p.ucId).filter(Boolean) as string[]);
   return modulosDaTurma(aluno.turmaId)
-    .filter((m: any) => comAulas.has(m.id) && ((m.dataFim && m.dataFim <= hoje) || ucJaFechada(aluno.turmaId, m.id))
+    .filter((m: any) => comAulas.has(m.id)
+      && ((m.dataFim && m.dataFim <= hoje) || ucJaFechada(aluno.turmaId, m.id) || !!getNotaFinalPublicadaUC(aluno.id, m.id))
       && !getPropostaFinalUC(aluno.id, m.id))
     .map((m: any) => ({ ucId: m.id, nome: m.nome, dataFim: m.dataFim }));
 }

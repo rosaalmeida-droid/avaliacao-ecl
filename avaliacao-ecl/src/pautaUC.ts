@@ -32,7 +32,7 @@ import {
   getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes, getSelecoes, getPresencas,
   getPlanosFaltadosPorUC, getAtividades, faltasEmHorasUC, assiduidadeNaUC,
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
-  kfFaseCompleta, liderKFdoGrupo,
+  kfFaseCompleta, liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
 } from './backend';
 import { calcularNotaPlano } from './types';
 import { modulosDaTurma } from './cronograma';
@@ -43,13 +43,13 @@ import MODELO from './pautaModelo.json';
 export type Letra5C = 'cm' | 'cl' | 'co' | 'cr';
 
 // Os 5 C's saem SÓ de evidências que não contam na nota dos Planos de
-// Avaliação. As atitudes validadas e a higiene e segurança alimentar já
+// Avaliação. As atitudes validadas, a farda e a higiene e segurança alimentar já
 // entram na nota de cada aula (logo no CP); contá-las outra vez aqui era
 // avaliar a mesma evidência duas vezes. Cada evidência entra num só C.
 // Nenhuma destas evidências cria um elemento novo nos planos.
 export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias: string }> = {
   cm: { sigla: 'CM', nome: 'Comprometido',
-    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues, farda completa à entrada' },
+    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
     evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, registos de grupo no KitchenFlow, liderança do grupo' },
   co: { sigla: 'CO', nome: 'Consciente',
@@ -210,16 +210,14 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       junta('cm', `Assiduidade: ${s.presenca}% das horas dadas`, s.presenca / 5, assid.aulasPrevistas || nVeio);
       junta('cm', `Pontualidade: ${assid.atrasos} atraso${assid.atrasos === 1 ? '' : 's'}`,
         assid.presencas > 0 ? (1 - assid.atrasos / assid.presencas) * 20 : null, assid.presencas);
-      const comFarda = presencas.filter(x => (x as any).fardamentoOk).length;
       const selecoes = getSelecoes().filter(x => x.alunoId === a.id && idsVeio.has(x.planoAulaId as string));
       junta('cm', `Autoavaliações entregues: ${selecoes.length} de ${nVeio} aulas`, pct(selecoes.length, nVeio), nVeio);
-      junta('cm', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
 
       // Triagem das aulas (CL, CR e CO): a resposta do aluno em cada autoavaliação,
       // ou a do professor quando a confirmou ou mudou na validação.
       const triagens = selecoes.map(sel => {
-        const v: any = getValidacoes().find((x: any) => x.selecaoId === sel.id || (x.planoAulaId === sel.planoAulaId && x.alunoId === a.id));
-        return { t: v?.triagem5c || sel.triagem5c, prof: !!v?.triagem5c };
+        const t = getTriagemDaAula(a.id, sel.planoAulaId || '');
+        return { t: t.professor || t.aluno, prof: !!t.professor };
       }).filter(x => x.t);
       const juntaTriagem = (c: 'cl' | 'cr' | 'co') => {
         const q = PERGUNTAS_TRIAGEM.find(x => x.chave === c)!;
@@ -387,7 +385,10 @@ export const chaveClassificacoes = (turmaId: string, ucId: string) => `ecl_class
  * UC", recuperação por negativa) — não há outra conta.
  */
 export function notaDaPautaUC(alunoId: string, turmaId: string, ucId: string):
-  { nota: number | null; cp: number; total: number; resultado: string; atribuida: boolean } | null {
+  { nota: number | null; cp: number; total: number; resultado: string; atribuida: boolean; publicada: boolean } | null {
+  // A nota publicada pelo professor é a que conta, em todos os aparelhos.
+  const pub = getNotaFinalPublicadaUC(alunoId, ucId);
+  if (pub) return { nota: pub.nota, cp: pub.cp, total: pub.total, resultado: pub.resultado, atribuida: true, publicada: true };
   const produtos = produtosDaUC(turmaId, ucId);
   if (!produtos.length) return null;
   const l = linhasDaPautaUC(turmaId, ucId, produtos, alunoId)[0];
@@ -400,7 +401,7 @@ export function notaDaPautaUC(alunoId: string, turmaId: string, ucId: string):
     if (!isNaN(n) && n >= 0 && n <= 20 && !erroClassificacao(Math.round(n), c.cp)) escrita = Math.round(n);
   } catch { /* */ }
   return { nota: escrita ?? sugestaoClassificacao(l, produtos, c.cp), cp: c.cp, total: c.total,
-    resultado: c.resultado, atribuida: escrita !== null };
+    resultado: c.resultado, atribuida: escrita !== null, publicada: false };
 }
 
 // ── Cabeçalho ────────────────────────────────────────────────

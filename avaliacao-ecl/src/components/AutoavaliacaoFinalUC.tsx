@@ -10,6 +10,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Aluno } from '../types';
 import {
+  notasFinaisPublicadasDoAluno, getPropostaFinalUC,
   getPlanosAulaPorTurma, getPlanosFaltadosPorUC, situacaoRecuperacaoUC, guardarPropostaFinalUC, horasDadasDaUC,
 } from '../backend';
 import { linhasDaPautaUC, produtosDaUC, notaDoPlano, MAPA_5C, type Letra5C } from '../pautaUC';
@@ -57,6 +58,40 @@ export function CartaoAutoavaliacaoFinal({ ucs, onAbrir }: {
           {u.nome || u.ucId} →
         </button>
       ))}
+    </div>
+  );
+}
+
+/** As notas finais das UC que o professor publicou. Só se veem depois da
+ *  autoavaliação final dessa UC — primeiro o aluno reflete, depois vê a nota. */
+export function CartaoNotasFinais({ aluno, ucNome }: { aluno: Aluno; ucNome: (ucId: string) => string }) {
+  const notas = notasFinaisPublicadasDoAluno(aluno.id).sort((a, b) => b.publicadaEm.localeCompare(a.publicadaEm));
+  if (!notas.length) return null;
+  return (
+    <div style={{ marginBottom: 18, padding: '14px 16px', borderRadius: 16, background: '#fff', border: `1px solid ${BORDA}` }}>
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: V, marginBottom: 6 }}>
+        Notas finais das UC
+      </div>
+      {notas.map(n => {
+        const fezAutoavaliacao = !!getPropostaFinalUC(aluno.id, n.ucId);
+        const neg = n.nota < 10;
+        return (
+          <div key={n.ucId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: `1px solid ${BORDA}` }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700 }}>{ucNome(n.ucId) || n.ucId}</div>
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>
+                {fezAutoavaliacao ? `${n.resultado} · publicada em ${new Date(n.publicadaEm).toLocaleDateString('pt-PT')}`
+                  : 'Faz primeiro a autoavaliação final desta UC para veres a nota.'}
+              </div>
+            </div>
+            {fezAutoavaliacao && (
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 900, color: neg ? '#c0392b' : V }}>
+                {n.nota}{neg ? ' a)' : ''}<span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(26,23,20,0.45)' }}>/20</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
