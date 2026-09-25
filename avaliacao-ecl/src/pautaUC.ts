@@ -8,13 +8,14 @@
 // resto do modelo fica como está. O PDF é desenhado a partir da mesma
 // grelha (src/pautaModelo.json) com os mesmos valores.
 //
-// Duas correções às fórmulas do modelo, sem mudar o formato:
-//   - o TOTAL lia a coluna U (vazia) em vez do CP (T): o CP não contava;
+// Duas correções ao modelo, sem mudar o formato nem a fórmula do TOTAL:
+//   - a coluna 60% do CP (U), que o TOTAL lê, estava vazia: passa a ter o
+//     CP (=T, o nível N); sem isto o Competente não chegava ao TOTAL;
 //   - o CR não tinha peso (X14 vazio): os 5 C's somavam 90%.
 //
 // O que a aplicação calcula:
-//   - PRODUTOS: os planos de aula da UC efetivamente avaliados (até 7
-//     colunas, como no modelo; com mais planos, juntam-se por ordem).
+//   - PRODUTOS: um Plano de Avaliação por coluna (7 no modelo; com mais
+//     planos, a pauta ganha colunas).
 //     Uma aula a que o aluno faltou conta 0 (ou a nota da recuperação).
 //   - PONDERAÇÃO (linha 9): cada produto pesa pelo número de elementos
 //     (competências) efetivamente avaliados nele. Um produto sem
@@ -500,16 +501,18 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
       if (d.produtos[j]) f(lv(c + 1), `IF(${e}=0,"0",IF(${e}<9.5,"2",IF(${e}<14,"4",IF(${e}<17,"5","6"))))`);
       else set(lv(c + 1), null);
     }
-    // As fórmulas do modelo, só com as colunas no sítio novo. Corrigidos os
-    // dois erros do original (autorizado): o TOTAL lê o CP em T (e não U,
-    // que está vazia) e o CR pesa 10% (X14 estava vazia).
+    // As fórmulas do modelo, só com as colunas no sítio novo. O CP tem duas
+    // colunas: N (o nível, em T) e 60% (em U), que é a que o TOTAL lê. No
+    // original a U ficava vazia e o CP não chegava ao TOTAL: passa a ter o
+    // CP (=T). O TOTAL fica com a fórmula original. O CR pesa 10% (X14 vazia).
     f(lm(COL.T), Array.from({ length: nProd }, (_, j) => `(${LETRA(colNota(j) + 1)}${R}*$${LETRA(colPeso(j))}$9)`).join('+'));
     set(lm(COL.S), l.c5.cm);
     set(lm(COL.V), l.c5.cl);
     set(lm(COL.W), l.c5.co);
     set(lm(COL.X), l.c5.cr);
     const $ = (c: number) => `$${L(c)}$14`;
-    f(lm(COL.Y), `(${lm(COL.S)}*${$(COL.S)})+(${lm(COL.T)}*${$(COL.U)})+(${lm(COL.V)}*${$(COL.V)})+(${lm(COL.W)}*${$(COL.W)})+(${lm(COL.X)}*${$(COL.X)})`);
+    f(lm(COL.U), lm(COL.T));
+    f(lm(COL.Y), `(${lm(COL.S)}*${$(COL.S)})+(${lm(COL.U)}*${$(COL.U)})+(${lm(COL.V)}*${$(COL.V)})+(${lm(COL.W)}*${$(COL.W)})+(${lm(COL.X)}*${$(COL.X)})`);
     f(lm(COL.Z), `IF(${lm(COL.Y)}<3.5,"Módulo em atraso",IF(${lm(COL.Y)}<4.5,"Suficiente",IF(${lm(COL.Y)}<5.5,"Bom","Muito bom")))`);
     set(lm(COL.AE), l.proposta);
     // CLASSIF. ATRIBUÍDA: a nota que o professor atribuiu (sem fórmula, como no modelo).
@@ -629,6 +632,7 @@ export function htmlDaPauta(d: DadosPauta): string {
       if (d.produtos[j]) val(r, colNota(j), calc.niveis[j]);
     }
     val(r, X0(COL.S), l.c5.cm ?? ''); val(r, X0(COL.T), Math.round(calc.cp * 100) / 100);
+    val(r, X0(COL.U), Math.round(calc.cp * 100) / 100);
     val(r, X0(COL.V), l.c5.cl ?? ''); val(r, X0(COL.W), l.c5.co ?? ''); val(r, X0(COL.X), l.c5.cr ?? '');
     val(r, X0(COL.Y), Math.round(calc.total * 100) / 100);
     val(r, X0(COL.Z), calc.resultado);
