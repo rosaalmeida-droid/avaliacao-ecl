@@ -216,11 +216,64 @@ async function lerDoSheets(url: string, params: Record<string, string>): Promise
     const u = new URL(url);
     Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
     const res = await fetch(u.toString());
-    return await res.json();
+    const json = await res.json();
+    if (json?.zeroEm) aplicarComecarDoZero(String(json.zeroEm));
+    return json;
   } catch (e) {
     console.warn('Erro ao ler do Sheets:', e);
     return null;
   }
+}
+
+// ============================================================
+// Começar do zero
+// ============================================================
+// A coordenação corre "comecarDoZero" no script: o Sheets fica só com os
+// alunos e os preços, e passa a dizer em cada resposta a data dessa
+// limpeza (zeroEm). Cada aparelho — computador do professor, telemóvel do
+// aluno — ao ver uma data nova apaga a sua cópia antiga: planos, fichas,
+// requisições, avaliações, presenças… Ficam as turmas, os alunos, os
+// preços e o que já tiver sido criado depois da limpeza.
+
+const KEY_ZERO_VISTO = 'ecl_zero_visto';
+const FICAM_NO_ZERO = new Set([
+  'ecl_turmas', 'ecl_alunos', 'ecl_alunos_eliminados', 'ecl_alunos_externos', 'ecl_telemovel',
+  'ecl_tecnicas_custom', 'ecl_materias_primas_custom', 'ecl_precos_revistos', 'ecl_precos_a_rever',
+  'ecl_email_professor', 'ecl_ultimo_responsavel_compras', 'ecl_ultimo_backup_ts',
+  'ecl_dicionario_criterios_custom', 'ecl_dicionario_sugestoes', 'ecl_atitudes_transicao',
+  'ecl_template_fct', 'ecl_manual_cozinheiro', KEY_ZERO_VISTO,
+]);
+/** Listas em que se guarda o que foi criado depois da limpeza. */
+const LISTAS_COM_DATA = ['ecl_planos', 'ecl_fichas', 'ecl_requisicoes', 'ecl_selecoes', 'ecl_validacoes',
+  'ecl_presencas', 'ecl_historico_avaliacoes', 'ecl_sessoes_aula'];
+
+function dataMaisRecente(x: any): string {
+  return [x?.atualizadoEm, x?.criadoEm, x?.atualizadaEm, x?.criadaEm, x?.validadoEm, x?.abertaEm]
+    .map(v => String(v || '')).sort().pop() || '';
+}
+
+export function aplicarComecarDoZero(zeroEm: string): boolean {
+  try {
+    if (!zeroEm || localStorage.getItem(KEY_ZERO_VISTO) === zeroEm) return false;
+    const depois: Record<string, any[]> = {};
+    LISTAS_COM_DATA.forEach(k => {
+      try {
+        const l = JSON.parse(localStorage.getItem(k) || '[]');
+        if (Array.isArray(l)) depois[k] = l.filter(x => dataMaisRecente(x) > zeroEm);
+      } catch { /* */ }
+    });
+    const apagar: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i) || '';
+      if ((k.startsWith('ecl_') && !FICAM_NO_ZERO.has(k) && !k.startsWith('ecl_manual_aluno_'))
+          || k.startsWith('avaliacao_submetida_')) apagar.push(k);
+    }
+    apagar.forEach(k => localStorage.removeItem(k));
+    Object.entries(depois).forEach(([k, l]) => { if (l.length) localStorage.setItem(k, JSON.stringify(l)); });
+    localStorage.setItem(KEY_ZERO_VISTO, zeroEm);
+    console.log('[começar do zero] cópia local limpa:', apagar.length, 'chaves');
+    return true;
+  } catch { return false; }
 }
 
 // Verifica fichas similares no Sheets de Fichas
