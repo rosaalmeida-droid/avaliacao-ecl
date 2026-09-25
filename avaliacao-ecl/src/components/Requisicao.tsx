@@ -124,7 +124,7 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
       }
       const qt1pax = paxBase > 0 ? qtReceitaBase / paxBase : 0;
       const qtEncomenda = qt1pax * paxPedido;
-      const undChave = proc.isQB ? (proc.und === 'un' ? 'un' : 'kg') : proc.und;
+      const undChave = proc.isQB ? 'qb' : proc.und;
       const chave = `${produtoChave}__${undChave}`;
 
       // Verificar se existe uma linha normal (não QB) com este produto
@@ -193,7 +193,17 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
         avisos.push(`⚠️ "${proc.produto}" ficou em unidades — verificar se é correcto`);
       }
 
-      const chaveUsada = mapa.has(chaveNormal) ? chaveNormal : chave;
+      // Q.b. e quantidade real do mesmo produto: fica a quantidade real.
+      let chaveUsada = mapa.has(chaveNormal) ? chaveNormal : chave;
+      if (proc.isQB) {
+        const real = ['kg', 'l', 'un'].map(u => `${produtoChave}__${u}`).find(k => mapa.has(k));
+        if (real) chaveUsada = real;
+      } else if (mapa.has(`${produtoChave}__qb`)) {
+        const qb = mapa.get(`${produtoChave}__qb`)!;
+        mapa.delete(`${produtoChave}__qb`);
+        mapa.set(chaveUsada, { ...qb, id: chaveUsada, und: proc.und, isQB: false, precoUnitario: '',
+          qtReceita: 0, qt1pax: 0, qtEncomenda: 0, precoReceita: 0, preco1pax: 0, precoEncomenda: 0 });
+      }
 
       if (mapa.has(chaveUsada)) {
         const l = mapa.get(chaveUsada)!;
@@ -214,7 +224,7 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
         mapa.set(chaveUsada, {
           id: chaveUsada,
           produto: proc.produto,
-          und: proc.isQB ? (proc.und === 'un' ? 'un' : 'kg') : proc.und,
+          und: proc.isQB ? 'q.b.' : proc.und,
           qt1pax,
           qtReceita: qtReceitaBase,
           qtEncomenda,
@@ -540,7 +550,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           und: l.und,
           // Normalizar preço: vírgula → ponto (formato pt-PT → número universal)
           // O Apps Script e o Google Sheets esperam sempre ponto decimal.
-          preco: precoNum(l.precoUnitario),
+          // Q.b. vai sem peso e sem preço: fica só a indicação "q.b.".
+          preco: l.isQB ? 0 : precoNum(l.precoUnitario),
         })),
       };
       // PROXY VERCEL — em vez de enviar directamente para o Apps Script
@@ -1533,7 +1544,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       {/* QB */}
       {linhasQB.length > 0 && (
         <div style={S.card}>
-          <label style={S.lbl}>Ingredientes q.b. — quantidade minima estimada</label>
+          <label style={S.lbl}>Ingredientes q.b. — vão na requisição como q.b., sem peso nem custo</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
             {linhasQB.map(l => (
               <div key={l.id} style={{ padding: '5px 10px', borderRadius: 8, background: 'var(--cream-dark)', border: '1px solid var(--border)', fontSize:13 }}>
