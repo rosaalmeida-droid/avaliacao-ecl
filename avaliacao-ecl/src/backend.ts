@@ -4266,7 +4266,10 @@ export function abrirSessaoAula(
  * O aluno chama isto ao abrir o plano, e vai repetindo enquanto espera.
  */
 export async function sincronizarSessoes(turmaId: string): Promise<void> {
-  const json = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId });
+  // Todas as sessões, não só as da turma: a sessão encontra-se pelo plano.
+  // Uma aula aberta com a turma errada (a do menu do professor, e não a do
+  // plano) nunca chegava aos alunos. A folha é pequena — uma linha por aula.
+  const json = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId: '' });
   if (!json?.sessoes?.length) return;
 
   const locais = getSessoesAula();
