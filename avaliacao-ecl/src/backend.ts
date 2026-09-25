@@ -6329,6 +6329,7 @@ export const MODALIDADES_RECUPERACAO: { id: 'pratico' | 'teorico' | 'atividade' 
 
 export interface UCEmAtraso {
   alunoId: string;
+  turmaId: string;
   numero: number;
   nome: string;
   ucId: string;
@@ -6354,7 +6355,7 @@ export function ucsEmAtraso(turmaId: string): UCEmAtraso[] {
       const plano = getRecuperacoes().filter(r => r.alunoId === a.id && r.ucId === ucId)
         .sort((x, y) => String(y.criadoEm).localeCompare(String(x.criadoEm)))[0] || null;
       out.push({
-        alunoId: a.id, numero: a.numero, nome: a.nome || `Aluno ${a.numero}`,
+        alunoId: a.id, turmaId, numero: a.numero, nome: a.nome || `Aluno ${a.numero}`,
         ucId, ucNome: (mods.find((m: any) => m.id === ucId) as any)?.nome || '',
         horasDadas: dadas, horasFaltadas: s.horasFaltadas,
         percentagem: dadas > 0 ? Math.round((s.horasFaltadas / dadas) * 100) : 0,

@@ -202,13 +202,23 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
             padding: '11px 13px', fontSize: 13.5, lineHeight: 1.55, marginBottom: 10 }}>
             {semEvidencia.map(x => (
               <div key={x.c}>{MAPA_5C[x.c].sigla} ({MAPA_5C[x.c].nome}): {x.n} aluno{x.n === 1 ? '' : 's'} sem
-                nenhuma atitude observada — fica vazio e conta 0 no TOTAL.</div>
+                nenhuma evidência (não vieram a nenhuma aula desta UC) — conta 0 (N.R.).</div>
             ))}
             {semProposta.length > 0 && (
               <div>Ainda sem a autoavaliação final: {semProposta.map(l => l.numero).join(', ')}.</div>
             )}
           </div>
         )}
+        <details style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)', marginBottom: 8 }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 700 }}>De onde saem os 5 C's</summary>
+          <div style={{ padding: '6px 0 0 4px', lineHeight: 1.6 }}>
+            {(Object.keys(MAPA_5C) as Letra5C[]).map(k => (
+              <div key={k}><b>{MAPA_5C[k].sigla} {MAPA_5C[k].nome}</b>: {MAPA_5C[k].evidencias}; e as atitudes validadas
+                que as regras do ano e do trimestre permitem avaliar.</div>
+            ))}
+            <div><b>CP Competente</b>: os produtos (planos de aula), com a ponderação acima.</div>
+          </div>
+        </details>
         <div style={{ overflowX: 'auto', border: '1px solid rgba(0,128,128,0.4)', borderRadius: 8 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 900 }}>
             <thead>
@@ -249,7 +259,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
                                   {MAPA_5C[k].sigla} · {MAPA_5C[k].nome}: {l.c5[k] ?? 'sem evidências'}
                                 </div>
                                 {l.evidencias[k].length === 0 ? (
-                                  <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>Nenhuma atitude deste C foi observada nesta UC.</div>
+                                  <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>Sem evidências: não veio a nenhuma aula desta UC.</div>
                                 ) : l.evidencias[k].map((e, i) => (
                                   <div key={i} style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.75)' }}>
                                     {e.rotulo}: {n1(e.nota20)} val. ({e.vezes}×)

@@ -27,9 +27,10 @@
 //   - CLASSIF. ATRIBUÍDA: a nota final da UC; negativas levam "a)".
 // ============================================================
 import {
-  getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes,
+  getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes, getSelecoes, getPresencas,
   getPlanosFaltadosPorUC, getAtividades, situacaoRecuperacaoUC, assiduidadeNaUC,
   notaFinalUC, participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
+  kfFaseCompleta, liderKFdoGrupo,
 } from './backend';
 import { calcularNotaPlano } from './types';
 import { modulosDaTurma } from './cronograma';
@@ -40,15 +41,24 @@ import MODELO from './pautaModelo.json';
 
 export type Letra5C = 'cm' | 'cl' | 'co' | 'cr';
 
-export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; atitudes: string[]; tambem?: string }> = {
-  cm: { sigla: 'CM', nome: 'Comprometido', tambem: 'assiduidade e pontualidade',
-    atitudes: ['ATI-001', 'ATI-010', 'ATI-013', 'ATI-020', 'ATI-003', 'ATI-011'] },
+// Cada C junta as atitudes validadas pelo professor (as que as regras do
+// ano e do trimestre permitem avaliar) com evidências que existem em
+// TODAS as aulas, desde o 1.º ano. Assim nenhum C fica sem avaliação:
+// no 1.º ano, quando ainda não há atitudes de colaboração ou de resolução
+// de problemas, o C sai das evidências das aulas.
+export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; atitudes: string[]; evidencias: string }> = {
+  cm: { sigla: 'CM', nome: 'Comprometido',
+    atitudes: ['ATI-001', 'ATI-003', 'ATI-011', 'ATI-013', 'ATI-002', 'ATI-020'],
+    evidencias: 'assiduidade (horas), pontualidade, farda completa à entrada, autoavaliações entregues' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
-    atitudes: ['ATI-009', 'ATI-008', 'ATI-007', 'ATI-018', 'ATI-022', 'ATI-006'] },
-  co: { sigla: 'CO', nome: 'Consciente', tambem: 'higiene e segurança (obrigatórias)',
-    atitudes: ['ATI-015', 'ATI-016', 'ATI-017', 'ATI-014', 'ATI-005'] },
+    atitudes: ['ATI-009', 'ATI-008', 'ATI-007', 'ATI-018', 'ATI-022', 'ATI-006'],
+    evidencias: 'participação em eventos e atividades extra, registos de grupo no KitchenFlow, liderança do grupo' },
+  co: { sigla: 'CO', nome: 'Consciente',
+    atitudes: ['ATI-015', 'ATI-016', 'ATI-017', 'ATI-005', 'ATI-014'],
+    evidencias: 'higiene pessoal e segurança alimentar (obrigatórias, em todas as aulas práticas)' },
   cr: { sigla: 'CR', nome: 'Criativo',
-    atitudes: ['ATI-004', 'ATI-021', 'ATI-012', 'ATI-019', 'ATI-002'] },
+    atitudes: ['ATI-010', 'ATI-012', 'ATI-004', 'ATI-021', 'ATI-019'],
+    evidencias: 'resolução de problemas: problemas que detetou e registou, sentido crítico na autoavaliação' },
 };
 
 const nomeAtitude = (id: string) => (ATITUDES as any[]).find(a => a.id === id)?.nome || id;
@@ -157,6 +167,7 @@ export interface LinhaPautaUC {
 
 export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: ProdutoPauta[]): LinhaPautaUC[] {
   const planos = getPlanosAulaPorTurma(turmaId);
+  const totalAtiv = atividadesDoModulo(turmaId, ucId);
   const tipoDe = (id: string) => (planos.find(p => p.id === id) as any)?.tipoPlanAula || 'pratico';
   const validados = getHistoricoAvaliacoes().filter(r =>
     r.turmaId === turmaId && r.ucId === ucId && r.validadoPor === 'professor');
@@ -183,22 +194,67 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
 
       // 5 C's a partir das evidências
       const evidencias: Record<Letra5C, Evidencia5C[]> = { cm: [], cl: [], co: [], cr: [] };
+      const junta = (c: Letra5C, rotulo: string, nota20: number | null, vezes: number) => {
+        if (nota20 !== null && !isNaN(nota20) && vezes > 0) evidencias[c].push({ rotulo, nota20: Math.max(0, Math.min(20, nota20)), vezes });
+      };
+      // As atitudes validadas pelo professor
       (Object.keys(MAPA_5C) as Letra5C[]).forEach(c => {
         MAPA_5C[c].atitudes.forEach(id => {
           const ns = regs.filter(r => r.microcompetenciaId === id).map(r => r.nota * 4);
-          if (ns.length) evidencias[c].push({ rotulo: nomeAtitude(id), nota20: media(ns)!, vezes: ns.length });
+          junta(c, nomeAtitude(id), media(ns), ns.length);
         });
       });
+
+      // As aulas desta UC a que o aluno veio
+      const planosUC = planos.filter(p => p.ucId === ucId && String(p.data).slice(0, 10) <= hojeISO()
+        && (p.estado === 'publicado' || (p.estado as string) === 'realizada'));
+      const presencas = getPresencas().filter(x => x.alunoId === a.id && planosUC.some(p => p.id === x.planoAulaId) && x.presente);
+      const idsVeio = new Set(presencas.map(x => x.planoAulaId));
+      const nVeio = idsVeio.size;
+      const pct = (n: number, de: number) => de > 0 ? (n / de) * 20 : null;
+
+      // CM — compromisso
       const s = situacaoRecuperacaoUC(a.id, turmaId, ucId);
       const assid = assiduidadeNaUC(a.id, turmaId, ucId);
-      if (assid.aulasPrevistas > 0) {
-        evidencias.cm.push({ rotulo: `Assiduidade (${s.presenca}% das horas dadas)`, nota20: s.presenca / 5, vezes: assid.aulasPrevistas });
-        if (assid.presencas > 0) evidencias.cm.push({
-          rotulo: `Pontualidade (${assid.atrasos} atraso${assid.atrasos === 1 ? '' : 's'})`,
-          nota20: (1 - assid.atrasos / assid.presencas) * 20, vezes: assid.presencas });
+      junta('cm', `Assiduidade: ${s.presenca}% das horas dadas`, s.presenca / 5, assid.aulasPrevistas || nVeio);
+      junta('cm', `Pontualidade: ${assid.atrasos} atraso${assid.atrasos === 1 ? '' : 's'}`,
+        assid.presencas > 0 ? (1 - assid.atrasos / assid.presencas) * 20 : null, assid.presencas);
+      const comFarda = presencas.filter(x => (x as any).fardamentoOk).length;
+      junta('cm', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
+      const selecoes = getSelecoes().filter(x => x.alunoId === a.id && idsVeio.has(x.planoAulaId as string));
+      junta('cm', `Autoavaliações entregues: ${selecoes.length} de ${nVeio} aulas`, pct(selecoes.length, nVeio), nVeio);
+
+      // CL — colaboração: eventos e atividades extra, trabalho de grupo
+      if (totalAtiv > 0) {
+        const part = participacoesDoAlunoNaUC(a.id, turmaId, ucId);
+        junta('cl', `Eventos e atividades extra: ${part} de ${totalAtiv}`, pct(Math.min(part, totalAtiv), totalAtiv), totalAtiv);
       }
+      const kfGrupo = [...idsVeio].filter(id => kfFaseCompleta(a.id, id, 'inicial') && kfFaseCompleta(a.id, id, 'final')).length;
+      junta('cl', `Registos de grupo no KitchenFlow cumpridos: ${kfGrupo} de ${nVeio} aulas`, pct(kfGrupo, nVeio), nVeio);
+      const liderou = [...idsVeio].filter(id => liderKFdoGrupo(id) === a.id).length;
+      if (liderou > 0) junta('cl', `Liderou o grupo em ${liderou} aula${liderou === 1 ? '' : 's'}`, 20, liderou);
+
+      // CO — consciência: higiene e segurança (obrigatórias)
       const obr = regs.filter(r => r.microcompetenciaId.startsWith('OBR_')).map(r => r.nota * 4);
-      if (obr.length) evidencias.co.push({ rotulo: 'Higiene e segurança (obrigatórias)', nota20: media(obr)!, vezes: obr.length });
+      junta('co', 'Higiene pessoal e segurança alimentar (validadas)', media(obr), obr.length);
+      if (!obr.length) junta('co', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
+
+      // CR — resolução de problemas
+      const ncs = (() => { try { return JSON.parse(localStorage.getItem('ecl_nao_conformidades') || '[]'); } catch { return []; } })()
+        .filter((n: any) => n.perfilRegistou === 'aluno' && n.alunoId === a.id && idsVeio.size > 0);
+      if (ncs.length) junta('cr', `Problemas que detetou e registou: ${ncs.length}`, Math.min(20, 14 + 2 * ncs.length), ncs.length);
+      // Sentido crítico: quão perto a autoavaliação ficou do que o professor validou
+      const difs: number[] = [];
+      selecoes.forEach(sel => {
+        const v: any = getValidacoes().find((x: any) => x.selecaoId === sel.id || (x.planoAulaId === sel.planoAulaId && x.alunoId === a.id));
+        (sel.autoavaliacoes || []).forEach((au: any) => {
+          const n = v?.notas?.find((x: any) => x.competenciaId === au.competenciaId);
+          if (n && Number(au.nota)) difs.push(Math.abs(Number(au.nota) - Number(n.nota)));
+        });
+      });
+      junta('cr', `Sentido crítico na autoavaliação (diferença média para o professor: ${difs.length ? (Math.round((media(difs) as number) * 10) / 10).toString().replace('.', ',') : '—'})`,
+        difs.length ? 20 - 5 * (media(difs) as number) : null, difs.length);
+
       const c5 = Object.fromEntries((Object.keys(evidencias) as Letra5C[]).map(c => {
         const m = media(evidencias[c].map(e => e.nota20));
         return [c, m === null ? null : nivelPauta(m)];
