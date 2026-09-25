@@ -2533,8 +2533,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const ehAtitudinal = String(tipoPlanAula || '').startsWith('atitudinal');
   // O professor pode ter incluído a higiene e a farda nesta dinâmica.
   const comObrigatorias = tipoPlanAula === 'atitudinal_obr';
-  const atitudesDaAula: string[] = ehAtitudinal
-    ? ((plano as any).compAdicionadas || []).filter((id: string) => id.startsWith('ATI-')) : [];
+  // Sem as que o professor tirou, sem repetidas, e só as que têm frases:
+  // uma atitude sem frases não se podia responder e prendia o «Enviar».
+  const temFrases = (id: string) => !!FRASES_ATITUDES.find(f => f.competenciaId === id);
+  const marcadasNoPlano = [...new Set(((plano as any).compAdicionadas || []) as string[])]
+    .filter((id: string) => id.startsWith('ATI-') && !compRemovidas.includes(id) && temFrases(id));
+  // Se o professor não marcou nenhuma, contam as do trimestre — as mesmas
+  // que ele vê em «Do trimestre». Antes o aluno ficava sem nenhuma atitude
+  // e o «Enviar ao professor» nunca desbloqueava.
+  const atitudesDaAula: string[] = !ehAtitudinal ? []
+    : marcadasNoPlano.length ? marcadasNoPlano
+    : atitudesDoTrimestre((aluno.ano ?? 1) as 1|2|3, trimestreAtual(new Date(plano.data + 'T00:00:00')))
+        .map((x: any) => x.id as string).filter(id => !compRemovidas.includes(id) && temFrases(id));
   const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
   // Triagem do Colaborativo e do Criativo: responde-se sempre, em todas as aulas.
   const [triagem, setTriagem] = useState<Triagem5C>({ cl: null, cr: null, co: null, problema: '' });
@@ -2854,8 +2864,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     : idsDoTrimestre.includes(id) ? 'A do trimestre'
     : atitudesDoPlano.includes(id) ? 'Desta aula' : 'Proposta tua';
 
-  const faltamApanhar = ehTurmaTransicao(aluno.turmaId)
-    ? atitudesQueFaltam(aluno).filter(x => x.id !== atitudeEscolhida) : [];
+  // O passo «Atitude do ano anterior» (atitudes do 1.º e 2.º ano) saiu:
+  // baralhava a autoavaliação e não interessa à professora.
+  const faltamApanhar: { id: string; nome: string; ano: number }[] = [];
 
   type Passo = { id: string; tipo: 'comp' | 'haccp' | 'atiAula' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
     comp?: typeof itensComp[number]; atiId?: string };
@@ -3234,14 +3245,30 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             A nota só aparece depois de enviares. Responde pelo que fizeste, não pela nota.
           </div>
 
+          {/* O que falta, pelo nome, e um toque leva lá. Antes dizia só
+              «escolhe uma frase em cada atitude» — e se o professor tinha
+              acrescentado uma atitude a meio, o aluno não sabia qual era. */}
           {!prontoParaSubmeter && (
             <div style={{ marginTop:12, padding:'10px 12px', background:T.copperP, borderRadius:10,
               fontSize:13.5, color:T.copper }}>
-              {!triagemCompleta
-                ? 'Responde às três perguntas sobre a aula para poderes enviar.'
-                : ehAtitudinal
-                ? 'Escolhe uma frase em cada atitude desta aula para poderes enviar.'
-                : 'Responde à Higiene e Segurança Alimentar para poderes enviar.'}
+              <div style={{ fontWeight:700, marginBottom:6 }}>Para poderes enviar, falta responder:</div>
+              {passos.map((p, i) => {
+                const falta = (p.tipo === 'atiAula' && frasesAula[p.atiId!] == null)
+                  || (p.tipo === 'haccp' && nivelHaccp === null)
+                  || (p.tipo === 'triagem' && !triagemCompleta);
+                if (!falta) return null;
+                const nome = p.tipo === 'atiAula'
+                  ? (ATITUDES.find(x => x.id === p.atiId)?.nome || p.atiId)
+                  : tituloPasso(p);
+                return (
+                  <button key={p.id} onClick={() => irPara(i)} style={{ display:'block', width:'100%',
+                    textAlign:'left', padding:'9px 12px', marginTop:6, borderRadius:9, cursor:'pointer',
+                    border:`1.5px solid ${T.copper}`, background:'#fff', color:T.copper,
+                    fontSize:14, fontWeight:700, fontFamily:'inherit' }}>
+                    {nome} — responder →
+                  </button>
+                );
+              })}
             </div>
           )}
 
