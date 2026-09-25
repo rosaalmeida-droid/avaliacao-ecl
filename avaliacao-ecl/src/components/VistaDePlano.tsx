@@ -10,6 +10,7 @@ import {
   definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
+import { BotaoPublicar } from './BotaoPublicar';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC, encontrarAparelho, encontrarSubtecnica,
@@ -89,43 +90,11 @@ function EventoAssociador({ plano, turmaId, onPlanoActualizado }: {
 }
 
 // ── Cabeçalho do Plano ────────────────────────────────────────
-function CabecalhoPlano({ plano, onVoltar, modulo, setModulo }: { plano: PlanoAula; onVoltar: () => void; modulo?: Modulo; setModulo?: (m: Modulo) => void }) {
-  // Só o que não está no menu da esquerda. Tinha aqui os mesmos atalhos
-  // (Fichas, Guião, Requisição, Competências) e ainda uma segunda fila de
-  // separadores — três navegações para os mesmos sítios.
-  if (plano.estado === 'publicado') return null;
-  return (
-    <div style={{ background: 'var(--charcoal)', borderRadius: 16, padding: '14px 16px',
-      marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-      <div style={{ flex: 1, minWidth: 180 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 700, color: '#faf7f2' }}>
-          Esta aula ainda não está publicada
-        </div>
-        <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.65)', marginTop: 2 }}>
-          Os alunos do {plano.turmaId} só a veem depois de publicares.
-        </div>
-      </div>
-      <button onClick={() => {
-        if (!confirmarTurmaAoPublicar(plano.turmaId, plano.titulo)) return;
-        const semFicha = (plano.fichasIds?.length || 0) === 0;
-        if (semFicha && !confirm(
-          'Este plano ainda não tem ficha técnica.\n\n'
-          + 'Publicar assim mesmo? O aluno passa a ver a aula no calendário '
-          + 'e podes associar a ficha mais tarde.'
-        )) return;
-        publicarPlanoParaAlunos(plano.id).then(r => {
-          alert(r.ok
-            ? 'Publicado. Os alunos já veem esta aula.'
-            : 'ATENÇÃO — os alunos ainda NÃO veem esta aula.\n\n' + (r.erro || ''));
-        });
-      }}
-        style={{ padding: '10px 16px', borderRadius: 10, border: 'none',
-          background: 'var(--sage)', color: '#fff', cursor: 'pointer',
-          fontSize: 14, fontWeight: 700, fontFamily: 'inherit' }}>
-        ✓ Publicar aula
-      </button>
-    </div>
-  );
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function CabecalhoPlano(_: { plano: PlanoAula; onVoltar: () => void; modulo?: Modulo; setModulo?: (m: Modulo) => void }) {
+  // Tinha o aviso "ainda não publicada" com outro botão de publicar —
+  // repetia o do menu da esquerda. Há um só botão, sempre no mesmo sítio.
+  return null;
 }
 
 /** A unidade está no menu da esquerda; esta barra repetia-a em cada módulo. */
@@ -420,8 +389,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   function toggleComp(id: string) { setCompAberta(prev => prev === id ? null : id); }
 
   // Estado do botão de publicar atualização
-  const [aPublicarAtualizacao, setAPublicarAtualizacao] = useState(false);
-  const [atualizacaoPublicada, setAtualizacaoPublicada] = useState(false);
 
   const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
@@ -543,21 +510,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return 'pendente';
   }
 
-  const [aPublicar, setAPublicar] = useState(false);
-
-  /** Publica e confirma no Sheets — é de lá que o aluno lê. */
-  async function publicar() {
-    if (!confirmarTurmaAoPublicar(plano.turmaId, plano.titulo)) return;
-    setAPublicar(true);
-    try {
-      const r = await publicarPlanoParaAlunos(plano.id);
-      const p = planoFresco();
-      onPlanoActualizado({ ...p, ultimaAlteracao: undefined } as any);
-      if (r.ok) alert('Publicado. Os alunos já veem esta aula.');
-      else alert('Atenção: ' + r.erro);
-    } finally { setAPublicar(false); }
-  }
-
   /** Regista uma alteração num plano já publicado e propaga ao AlunoView */
   /**
    * O plano tal como está GUARDADO, não a cópia que a vista tem em
@@ -584,41 +536,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     };
     addOrUpdatePlanoAula(p);
     onPlanoActualizado(p);
-  }
-
-  /** Botão "Publicar atualização" — envia para Sheets + Classroom */
-  async function publicarAtualizacao() {
-    setAPublicarAtualizacao(true);
-    const agora = new Date().toISOString();
-    // 1. Atualizar o plano com ultimaAlteracao → Sheets (via addOrUpdatePlanoAula)
-    const p = {
-      ...plano,
-      atualizadoEm: agora,
-      ultimaAlteracao: {
-        tipo: 'geral' as const,
-        descricao: 'Plano de aula atualizado pelo professor',
-        em: agora,
-      },
-    };
-    addOrUpdatePlanoAula(p);
-    onPlanoActualizado(p);
-
-    // 2. Publicar no Classroom com mensagem de atualização
-    const fichasActuais = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
-    const requisicao = getRequisicaoPorPlano(plano.id);
-    try {
-      await publicarNoClassroom('plano', turmaId, {
-        plano: p,
-        fichas: fichasActuais,
-        requisicao,
-        isAtualizacao: true,
-        mensagemAtualizacao: `⚠️ O professor atualizou o plano de aula "${plano.titulo}". Por favor refresca a app para ver as alterações.`,
-      });
-    } catch {}
-
-    setAPublicarAtualizacao(false);
-    setAtualizacaoPublicada(true);
-    setTimeout(() => setAtualizacaoPublicada(false), 4000);
   }
 
   const [modalClassroom, setModalClassroom] = React.useState<{tipo: string; conteudo: any} | null>(null);
@@ -780,33 +697,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         )}
         <Requisicao nomeProfessor={nomeProfessor} planoIdFixo={plano.id} turmaId={turmaId}
           fichasIniciais={fichasParaRequisicao.length ? fichasParaRequisicao : undefined}
-          onGuardado={() => { registarAlteracaoPublicado('requisicao', 'Requisição atualizada pelo professor'); setModalProximo('apos_requisicao'); }} />
-        {modalProximo === 'apos_requisicao' && (
-          <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
-            <div style={{ background:'#fff', borderRadius:20, padding:28, maxWidth:360, width:'100%', textAlign:'center' }}>
-              <div style={{ fontSize:36, marginBottom:8 }}>🚀</div>
-              <div style={{ fontWeight:700, fontSize:18, marginBottom:8 }}>Requisição guardada!</div>
-              <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:24 }}>Quer publicar agora este plano de aula para os alunos?</div>
-              <div style={{ background:'var(--cream-dark)', borderRadius:10, padding:'10px 14px', marginBottom:20, fontSize:13, color:'rgba(26,23,20,0.6)', textAlign:'left' }}>
-                Os alunos poderão ver as fichas, fazer a autoavaliação e registar a presença.
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <button onClick={() => { publicar(); setModalProximo(null); setModulo('inicio'); }}
-                  style={{ padding:'14px', borderRadius:12, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:15, cursor:'pointer' }}>
-                  ✓ Sim — publicar para os alunos
-                </button>
-                <button onClick={() => { setModalProximo(null); setModulo('competencias'); }}
-                  style={{ padding:'12px', borderRadius:12, border:'1.5px solid var(--copper)', background:'var(--copper-pale)', color:'var(--copper)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
-                  🎯 Antes, rever as Competências
-                </button>
-                <button onClick={() => { setModalProximo(null); setModulo('inicio'); }}
-                  style={{ padding:'12px', borderRadius:12, border:'1px solid var(--border)', background:'#fff', color:'rgba(26,23,20,0.6)', fontWeight:600, fontSize:14, cursor:'pointer' }}>
-                  Guardar para mais tarde
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+          onGuardado={() => { registarAlteracaoPublicado('requisicao', 'Requisição atualizada pelo professor'); }} />
       </div>
     );
   }
@@ -1045,12 +936,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ padding:'12px 14px', background:'var(--cream-dark)', borderRadius:10, textAlign:'center', marginBottom:16 }}>
           <div style={{ fontWeight:700, fontSize:16 }}>Total: {totalComp} competências</div>
         </div>
-        {!publicado && (
-          <button onClick={() => { publicar(); setModulo('inicio'); }}
-            style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:15, cursor:'pointer' }}>
-            🚀 Publicar para os alunos
-          </button>
-        )}
       </div>
     );
   }
@@ -2129,31 +2014,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               <div style={{ padding:'8px 12px', borderRadius:8, background:'rgba(90,122,78,0.15)', fontSize:13, color:'var(--sage)', fontWeight:600, textAlign:'center' }}>
                 ✓ Visível para os alunos
               </div>
-              <button
-                onClick={publicarAtualizacao}
-                disabled={aPublicarAtualizacao}
-                style={{
-                  width: '100%', padding: '10px 14px', borderRadius: 9, border: 'none',
-                  background: atualizacaoPublicada ? 'var(--sage)' : '#1A5C7A',
-                  color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                  opacity: aPublicarAtualizacao ? 0.6 : 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}
-              >
-                {aPublicarAtualizacao ? '⏳ A publicar...'
-                  : atualizacaoPublicada ? '✓ Atualização publicada!'
-                  : '🔄 Publicar atualização para alunos e Classroom'}
-              </button>
-              {atualizacaoPublicada && (
-                <div style={{ fontSize: 12.5, color: 'var(--sage)', textAlign: 'center' }}>
-                  Guardado e publicado no Classroom · Os alunos veem o aviso na aplicação
-                </div>
-              )}
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', textAlign: 'center' }}>
+                O que mudares aqui chega aos alunos sozinho — não há nada para carregar.
+              </div>
             </div>
           ) : (
-            <button onClick={publicar} disabled={aPublicar} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background:'var(--copper)', color:'white', fontWeight:700, fontSize:14, cursor: aPublicar ? 'default' : 'pointer', opacity: aPublicar ? 0.6 : 1 }}>
-              {aPublicar ? 'A publicar e a confirmar…' : '🚀 Publicar esta aula para os alunos'}
-            </button>
+            <BotaoPublicar planoId={plano.id}
+              antesDePublicar={() => confirmarTurmaAoPublicar(plano.turmaId, plano.titulo)}
+              depoisDePublicar={() => onPlanoActualizado({ ...planoFresco(), ultimaAlteracao: undefined } as any)} />
           )}
         </div>
         {/* Evento pedagógico — um almoço, uma mostra. */}

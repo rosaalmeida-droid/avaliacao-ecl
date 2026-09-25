@@ -8,8 +8,10 @@
 // Aqui vê tudo: qual é o plano, o que tem, o que falta, e a saída.
 // ============================================================
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { PlanoAula, FichaProducao } from '../types';
+import { BotaoPublicar } from './BotaoPublicar';
+import { estadoPublicacao, subscreverPublicacao } from '../backend';
 
 export type ModuloPlano =
   | 'inicio' | 'ficha' | 'guia' | 'requisicao'
@@ -55,7 +57,7 @@ function Linha({
 
 export function MenuDoPlano({
   plano, fichas, temRequisicao, numeroRequisicao, totalCompetencias,
-  posicao, totalPlanos, moduloActivo, aoIrPara, aoSair, aoPublicar,
+  posicao, totalPlanos, moduloActivo, aoIrPara, aoSair, aoPublicar, depoisDePublicar,
   alunosNaAula, porValidar, autoavaliacoes, aviso, disciplina, requisicaoDesatualizada,
 }: {
   plano: PlanoAula;
@@ -69,7 +71,9 @@ export function MenuDoPlano({
   moduloActivo: ModuloPlano;
   aoIrPara: (m: ModuloPlano) => void;
   aoSair: () => void;
-  aoPublicar?: () => void;
+  /** Pergunta antes de publicar (turma certa). Devolve false para não publicar. */
+  aoPublicar?: () => boolean;
+  depoisDePublicar?: (ok: boolean) => void;
   /** "12/18" quando a aula está aberta; nada antes disso. */
   alunosNaAula?: string;
   /** Autoavaliações deste plano à espera de validação. */
@@ -84,6 +88,9 @@ export function MenuDoPlano({
   requisicaoDesatualizada?: boolean;
 }) {
   const comGuiao = fichas.filter(f => !!(f as any).textoGuia).length;
+  // O bloco de publicar continua à vista enquanto envia e depois confirma.
+  const [, setV] = useState(0);
+  useEffect(() => subscreverPublicacao(() => setV(v => v + 1)), []);
   const publicado = plano.estado === 'publicado';
 
   const diaSemana = (() => {
@@ -181,7 +188,7 @@ export function MenuDoPlano({
 
       {/* Publicar — em cima e em grande enquanto for rascunho, com o que
           ainda falta. Estava no fundo, pequeno, ao lado de "Editar". */}
-      {!publicado && aoPublicar && (() => {
+      {aoPublicar && (!publicado || estadoPublicacao(plano.id)) && (() => {
         const falta = [
           fichas.length === 0 && 'as fichas',
           (!temRequisicao || requisicaoDesatualizada) && 'a requisição',
@@ -189,19 +196,16 @@ export function MenuDoPlano({
         ].filter(Boolean) as string[];
         return (
           <div style={{ padding: '14px 14px 6px' }}>
-            <button onClick={aoPublicar} style={{
-              width: '100%', minHeight: 46, borderRadius: 10, border: 'none',
-              background: BRANCO_FORTE, color: '#7B2233',
-              fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
-            }}>
-              Publicar a aula
-            </button>
-            <div style={{ fontSize: 12, color: BRANCO_MEIO, marginTop: 7, lineHeight: 1.45 }}>
-              Só depois disto os alunos veem a aula.
-              {falta.length > 0
-                ? ` Ainda falta${falta.length > 1 ? 'm' : ''}: ${falta.join(', ')}.`
-                : ' Está tudo pronto.'}
-            </div>
+            <BotaoPublicar claro planoId={plano.id}
+              antesDePublicar={aoPublicar} depoisDePublicar={depoisDePublicar} />
+            {!publicado && (
+              <div style={{ fontSize: 12, color: BRANCO_MEIO, marginTop: 7, lineHeight: 1.45 }}>
+                Só depois disto os alunos veem a aula.
+                {falta.length > 0
+                  ? ` Ainda falta${falta.length > 1 ? 'm' : ''}: ${falta.join(', ')}.`
+                  : ' Está tudo pronto.'}
+              </div>
+            )}
           </div>
         );
       })()}

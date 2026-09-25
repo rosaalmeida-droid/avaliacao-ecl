@@ -5961,35 +5961,69 @@ export interface ResultadoPublicacao {
   erro?: string;
 }
 
-export async function publicarPlanoParaAlunos(planoId: string): Promise<ResultadoPublicacao> {
+// Estado de cada publicação, partilhado por todos os botões. Carregar
+// duas vezes (ou em dois botões) não envia duas vezes: devolve o mesmo
+// envio que já está a decorrer, e todos os botões mostram o mesmo estado.
+export type FasePublicacao = 'a_enviar' | 'confirmado' | 'falhou';
+export interface EstadoPublicacao { fase: FasePublicacao; erro?: string; em: number; }
+
+const estadosPublicacao = new Map<string, EstadoPublicacao>();
+const publicacoesEmCurso = new Map<string, Promise<ResultadoPublicacao>>();
+const ouvintesPublicacao = new Set<() => void>();
+
+export function estadoPublicacao(planoId: string): EstadoPublicacao | undefined {
+  return estadosPublicacao.get(planoId);
+}
+export function subscreverPublicacao(fn: () => void): () => void {
+  ouvintesPublicacao.add(fn);
+  return () => { ouvintesPublicacao.delete(fn); };
+}
+function marcarPublicacao(planoId: string, e: Omit<EstadoPublicacao, 'em'>) {
+  estadosPublicacao.set(planoId, { ...e, em: Date.now() });
+  ouvintesPublicacao.forEach(f => { try { f(); } catch { /* */ } });
+}
+
+export function publicarPlanoParaAlunos(planoId: string): Promise<ResultadoPublicacao> {
+  const emCurso = publicacoesEmCurso.get(planoId);
+  if (emCurso) return emCurso;
+  marcarPublicacao(planoId, { fase: 'a_enviar' });
+  const p = publicarEConfirmar(planoId)
+    .catch(() => ({ ok: false, erro: 'Não consegui confirmar a publicação.' }) as ResultadoPublicacao)
+    .then(r => {
+      marcarPublicacao(planoId, r.ok ? { fase: 'confirmado' } : { fase: 'falhou', erro: r.erro });
+      return r;
+    })
+    .finally(() => { publicacoesEmCurso.delete(planoId); });
+  publicacoesEmCurso.set(planoId, p);
+  return p;
+}
+
+async function publicarEConfirmar(planoId: string): Promise<ResultadoPublicacao> {
   const plano = getPlanosAula().find(p => p.id === planoId);
   if (!plano) return { ok: false, erro: 'Plano não encontrado.' };
 
   const publicado = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
-  addOrUpdatePlanoAula(publicado);          // grava e envia
+  addOrUpdatePlanoAula(publicado);          // grava e envia (o Sheets substitui pelo id — nunca duplica)
 
-  // Duas tentativas: o Sheets demora um instante a gravar.
-  for (let i = 0; i < 2; i++) {
-    await new Promise(res => setTimeout(res, i === 0 ? 1800 : 3000));
+  // Vai ver ao Sheets logo que possível; normalmente chega em 1–2 s.
+  // Só volta a enviar uma vez, a meio, se ainda não tiver chegado.
+  const esperas = [1000, 1500, 2500, 4000];
+  let ligou = false;
+  for (let i = 0; i < esperas.length; i++) {
+    await new Promise(res => setTimeout(res, esperas[i]));
     try {
       const json: any = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId: plano.turmaId });
-      if (!json?.ok) {
-        if (i === 1) return { ok: false, erro: 'Não consegui ligar-me ao Sheets dos planos. A aula ficou publicada aqui, mas os alunos não a veem enquanto não chegar lá.' };
-        continue;
+      if (json?.ok) {
+        ligou = true;
+        const la: any = (json.dados || []).find((p: any) => p.id === planoId);
+        if (la && String(la.estado) === 'publicado') return { ok: true };
       }
-      const la: any = (json.dados || []).find((p: any) => p.id === planoId);
-      if (la && String(la.estado) === 'publicado') return { ok: true };
-      if (i === 1) {
-        return { ok: false, erro: la
-          ? 'A aula está no Sheets, mas não como publicada. Tenta publicar outra vez.'
-          : 'A aula não chegou ao Sheets. Os alunos não a veem. Tenta outra vez; se continuar, é o Apps Script dos planos que não está a receber.' };
-      }
-      addOrUpdatePlanoAula(publicado);       // segunda tentativa de envio
-    } catch {
-      if (i === 1) return { ok: false, erro: 'Não consegui confirmar a publicação.' };
-    }
+    } catch { /* tenta outra vez */ }
+    if (i === 1) addOrUpdatePlanoAula(publicado);
   }
-  return { ok: false, erro: 'Não consegui confirmar a publicação.' };
+  return { ok: false, erro: ligou
+    ? 'A aula não chegou ao Sheets, por isso os alunos ainda não a veem. Carrega outra vez em «Publicar».'
+    : 'Sem ligação ao Sheets. A aula ficou marcada aqui, mas os alunos só a veem quando chegar lá. Carrega outra vez em «Publicar» quando tiveres rede.' };
 }
 
 // ============================================================

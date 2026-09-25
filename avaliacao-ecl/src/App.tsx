@@ -413,23 +413,15 @@ function AppInterno() {
                     return getSelecoes().filter((s: any) =>
                       s.planoAulaId === planoAberto.id && !vals.has(s.id)).length;
                   })()}
-                  aoPublicar={planoAberto.estado !== 'publicado' ? () => {
-                    if (!confirmarTurmaAoPublicar(planoAberto.turmaId, planoAberto.titulo)) return;
-                    const p = { ...planoAberto, estado: 'publicado' as const,
-                      atualizadoEm: new Date().toISOString() };
+                  aoPublicar={() => confirmarTurmaAoPublicar(planoAberto.turmaId, planoAberto.titulo)}
+                  depoisDePublicar={(ok) => {
+                    // O botão já mostra se chegou. Aqui só se actualiza o
+                    // plano aberto e, se chegou, oferece-se o Classroom.
+                    const p = getPlanosAula().find(x => x.id === planoAberto.id) || planoAberto;
                     setPlanoAberto(p);
-                    // Publica e vai confirmar ao Sheets — é de lá que o
-                    // aluno lê. Sem confirmação, a aula podia nunca chegar.
-                    publicarPlanoParaAlunos(planoAberto.id).then(r => {
-                      if (r.ok) alert('Publicado. Os alunos já veem esta aula.');
-                      else alert('Atenção: ' + r.erro);
-                    });
-
-                    // O Classroom só agora faz sentido: o plano está
-                    // pronto, com as fichas e o guião que tiver. Antes
-                    // perguntava-se ao criar o plano, ainda vazio.
+                    if (!ok) return;
                     if (window.confirm(
-                      'Plano publicado para os alunos.\n\n'
+                      'Os alunos já veem a aula.\n\n'
                       + 'Publicar também no Google Classroom?'
                     )) {
                       const fichas = getFichasProducao()
@@ -445,7 +437,7 @@ function AppInterno() {
                         else alert('Não foi possível publicar no Classroom: ' + (res.erro || 'erro desconhecido'));
                       });
                     }
-                  } : undefined}
+                  }}
                 />
               }
             >
