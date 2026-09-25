@@ -109,7 +109,7 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
           </div>
           {ucsAcima.map(u => (
             <div key={u.ucId} style={{ fontSize:14, fontWeight:700, color:'var(--danger)', marginBottom:8, lineHeight:1.5 }}>
-              {u.ucId}: {fmtH(u.horasFaltadas)} h de faltas — passa o limite de 10% ({fmtH(u.limite)} h de {fmtH(u.horasPrevistas)} h).
+              {u.ucId}: {fmtH(u.horasFaltadas)} h de faltas em {fmtH(u.horasDadas)} h dadas — chegaste aos 10% ({fmtH(u.limite)} h).
               Tens de fazer a recuperação deste módulo.
             </div>
           ))}

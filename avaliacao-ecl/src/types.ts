@@ -547,6 +547,14 @@ export interface RecuperacaoModulo {
   planoIndividualTexto?: string;
   planoIndividualAprovado?: boolean;
   dataAtribuicao: string;
+  // ── Plano de recuperação decidido pelo professor (faltas ≥ 10%) ──
+  /** Exercício prático, teórico, participação numa atividade ou outra estratégia. */
+  modalidade?: 'pratico' | 'teorico' | 'atividade' | 'outra';
+  /** O que o aluno tem de fazer, nas palavras do professor. */
+  descricaoPlano?: string;
+  /** Resultado da recuperação, 0-20. Substitui o zero das aulas faltadas. */
+  resultadoNota?: number;
+  realizadaEm?: string;
   dataSubmissao?: string;
   dataValidacao?: string;
   criadoEm: string;

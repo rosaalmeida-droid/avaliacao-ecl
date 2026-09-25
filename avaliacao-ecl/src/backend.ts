@@ -494,7 +494,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     if (SHEETS_HISTORICO_URL) {
       const jsonSel = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId });
       if (jsonSel?.ok && jsonSel.dados?.length > 0) {
-        const locais = getSelecoes();
+        const locais = load<SelecaoAluno>(KEYS.selecoes);
         const merged = [...locais];
         for (const s of jsonSel.dados) {
           const idx = merged.findIndex((x: SelecaoAluno) => x.id === s.id);
@@ -2187,7 +2187,14 @@ export function updateComanda(c: Comanda): void {
   enviar(SHEETS_HISTORICO_URL, 'comanda', c as unknown as Record<string, unknown>);
 }
 
-export function getSelecoes(): SelecaoAluno[] { return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)); }
+/** A proposta de nota final do aluno viaja como uma autoavaliação especial,
+ *  com este prefixo no plano — assim sincroniza pelo mesmo caminho. Fica fora
+ *  das autoavaliações das aulas (não é "por validar", não conta para a nota). */
+const PREFIXO_FINAL = 'UCFINAL|';
+export function getSelecoes(): SelecaoAluno[] {
+  return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes))
+    .filter(s => !String(s.planoAulaId || '').startsWith(PREFIXO_FINAL));
+}
 export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
 
@@ -2233,7 +2240,7 @@ export function registarBalancoAtividade(
 export function getPlanosAulaFn(): PlanoAula[] { return getPlanosAula(); }
 
 export function addOrUpdateSelecao(s: SelecaoAluno): void {
-  const all = getSelecoes();
+  const all = load<SelecaoAluno>(KEYS.selecoes);
   const idx = all.findIndex(x => x.id === s.id);
   if (idx >= 0) all[idx] = s; else all.push(s);
   save(KEYS.selecoes, all);
@@ -2598,8 +2605,12 @@ export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: st
   const horasFaltadas = faltados.reduce((s, p) => s + horasDoPlano(p), 0)
     + horasPerdidasPorAtraso(alunoId, ucId, turmaId, idsFaltados);
 
-  const presenca = horasPrevistas > 0
-    ? Math.max(0, Math.round((1 - horasFaltadas / horasPrevistas) * 100))
+  // As faltas contam-se sobre as horas JÁ DADAS da UC, não sobre as do
+  // módulo inteiro: 4,5 h faltadas em 9 h dadas são 50%, e o aluno está
+  // em atraso logo que chega aos 10%.
+  const horasDadas = horasDadasDaUC(turmaId, ucId);
+  const presenca = horasDadas > 0
+    ? Math.max(0, Math.round((1 - horasFaltadas / horasDadas) * 100))
     : 100;
 
   const terminou = !!mod?.dataFim && mod.dataFim < hoje;
@@ -2607,8 +2618,8 @@ export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: st
   // Nota final da UC — a mesma do ecrã "Notas da UC" (notaFinalUC).
   const nota20: number | null = notaFinalUC(alunoId, turmaId, ucId).final;
 
-  // 1. Faltas acima de 10% das horas do módulo.
-  if (horasPrevistas > 0 && horasFaltadas > horasPrevistas * 0.10) {
+  // 1. Faltas a partir de 10% das horas dadas.
+  if (horasDadas > 0 && horasFaltadas >= horasDadas * 0.10) {
     return { precisa: true, motivo: 'faltas', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
   }
   // 2. Módulo terminado sem positiva. Sem nenhuma avaliação não se decide
@@ -4434,8 +4445,9 @@ export function assiduidadeEmHoras(alunoId: string, turmaId: string): {
       horasPrevistas: s.horasPrevistas,
       horasDadas: horasDadasDaUC(turmaId, ucId),
       horasFaltadas: s.horasFaltadas,
-      limite: s.horasPrevistas * 0.10,
-      acimaDoLimite: s.horasPrevistas > 0 && s.horasFaltadas > s.horasPrevistas * 0.10,
+      // 10% das horas já dadas — a mesma regra do alerta do professor.
+      limite: horasDadasDaUC(turmaId, ucId) * 0.10,
+      acimaDoLimite: s.motivo === 'faltas',
     };
   }).filter(u => u.horasDadas > 0 || u.horasFaltadas > 0);
   const horasDadas = porUC.reduce((t, u) => t + u.horasDadas, 0);
@@ -5376,7 +5388,30 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
 export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
   const regs = getHistoricoAvaliacoes().filter(r =>
     r.alunoId === alunoId && r.turmaId === turmaId && r.ucId === ucId);
-  return aplicarBonusesUC(notaBaseDeRegistos(regs), alunoId, turmaId, ucId);
+  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regs), regs, alunoId, turmaId, ucId), alunoId, turmaId, ucId);
+}
+
+/** Nota da recuperação concluída desta UC, se houver. */
+export function notaRecuperacaoUC(alunoId: string, ucId: string): number | null {
+  const r = getRecuperacoes().filter(x => x.alunoId === alunoId && x.ucId === ucId
+    && x.estado === 'concluida' && typeof x.resultadoNota === 'number')
+    .sort((a, b) => String(b.realizadaEm || b.atualizadoEm).localeCompare(String(a.realizadaEm || a.atualizadoEm)))[0];
+  return r ? (r.resultadoNota as number) : null;
+}
+
+/**
+ * Uma aula a que o aluno faltou conta zero na avaliação — ou o resultado
+ * da recuperação, quando foi feita. Cada aula pesa o mesmo: a média das
+ * aulas avaliadas entra com as faltas.
+ */
+function baseComFaltas(base: number | null, regs: RegistoAvaliacao[], alunoId: string, turmaId: string, ucId: string): number | null {
+  const faltas = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
+  if (!faltas.length) return base;
+  const idsFaltas = new Set(faltas.map(p => p.id));
+  const avaliadas = new Set(regs.filter(r => r.planoAulaId && !idsFaltas.has(r.planoAulaId)).map(r => r.planoAulaId)).size;
+  const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
+  const soma = (base ?? 0) * avaliadas + recup * faltas.length;
+  return Math.round((soma / (avaliadas + faltas.length)) * 100) / 100;
 }
 
 // ============================================================
@@ -6273,4 +6308,129 @@ export async function diagnosticoDetalhado(turmaId: string): Promise<{ linhas: s
   }
 
   return { linhas: L, causa };
+}
+
+
+// ============================================================
+// UC / módulo em atraso — faltas a partir de 10% das horas dadas
+// ============================================================
+// O professor tem de ver, sem procurar aluno a aluno, quem está neste
+// momento com uma UC em atraso e o que falta fazer para recuperar.
+
+export const MODALIDADES_RECUPERACAO: { id: 'pratico' | 'teorico' | 'atividade' | 'outra'; nome: string; sugestao: string }[] = [
+  { id: 'pratico', nome: 'Exercício prático',
+    sugestao: 'Repetir, em aula ou em horário combinado, a produção de um dos planos em falta, avaliada com as mesmas técnicas.' },
+  { id: 'teorico', nome: 'Exercício teórico',
+    sugestao: 'Trabalho escrito ou ficha sobre os conteúdos das aulas em falta: técnicas, fichas técnicas, HACCP.' },
+  { id: 'atividade', nome: 'Participação numa atividade',
+    sugestao: 'Participar num evento ou serviço da escola em que demonstre as competências das aulas em falta.' },
+  { id: 'outra', nome: 'Outra estratégia', sugestao: 'Definida pelo professor.' },
+];
+
+export interface UCEmAtraso {
+  alunoId: string;
+  numero: number;
+  nome: string;
+  ucId: string;
+  ucNome: string;
+  horasDadas: number;
+  horasFaltadas: number;
+  /** Faltas em % das horas dadas. */
+  percentagem: number;
+  plano: RecuperacaoModulo | null;
+  estado: 'sem_plano' | 'em_curso' | 'recuperado';
+}
+
+/** Todos os alunos da turma com uma UC em atraso por faltas (≥ 10% das horas dadas). */
+export function ucsEmAtraso(turmaId: string): UCEmAtraso[] {
+  const ucs = [...new Set(getPlanosAulaPorTurma(turmaId).map(p => p.ucId).filter(Boolean))] as string[];
+  const mods = modulosDaTurma(turmaId);
+  const out: UCEmAtraso[] = [];
+  for (const a of getAlunos().filter(x => x.turmaId === turmaId && x.ativo !== false)) {
+    for (const ucId of ucs) {
+      const s = situacaoRecuperacaoUC(a.id, turmaId, ucId);
+      if (s.motivo !== 'faltas') continue;
+      const dadas = horasDadasDaUC(turmaId, ucId);
+      const plano = getRecuperacoes().filter(r => r.alunoId === a.id && r.ucId === ucId)
+        .sort((x, y) => String(y.criadoEm).localeCompare(String(x.criadoEm)))[0] || null;
+      out.push({
+        alunoId: a.id, numero: a.numero, nome: a.nome || `Aluno ${a.numero}`,
+        ucId, ucNome: (mods.find((m: any) => m.id === ucId) as any)?.nome || '',
+        horasDadas: dadas, horasFaltadas: s.horasFaltadas,
+        percentagem: dadas > 0 ? Math.round((s.horasFaltadas / dadas) * 100) : 0,
+        plano,
+        estado: !plano ? 'sem_plano' : plano.estado === 'concluida' ? 'recuperado' : 'em_curso',
+      });
+    }
+  }
+  return out.sort((x, y) => x.numero - y.numero || x.ucId.localeCompare(y.ucId));
+}
+
+/** O professor decide o plano de recuperação: modalidade, o que fazer e prazo. */
+export function criarPlanoRecuperacao(
+  alunoId: string, turmaId: string, ucId: string,
+  modalidade: 'pratico' | 'teorico' | 'atividade' | 'outra', descricao: string, prazo?: string
+): RecuperacaoModulo {
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  const base = criarRecuperacaoAutomatica(alunoId, turmaId, ucId, mod?.nome || '');
+  const r: RecuperacaoModulo = {
+    ...base, modalidade, descricaoPlano: descricao, estado: 'em_curso',
+    dataLimite: prazo ? new Date(prazo + 'T23:59:00').toISOString() : base.dataLimite,
+  };
+  addOrUpdateRecuperacao(r);
+  return r;
+}
+
+/** Regista que a recuperação foi feita e o resultado (0-20). */
+export function registarResultadoRecuperacao(id: string, nota: number, observacao: string, professor?: string): void {
+  const r = getRecuperacoes().find(x => x.id === id);
+  if (!r) return;
+  const agora = new Date().toISOString();
+  addOrUpdateRecuperacao({
+    ...r, estado: 'concluida', resultadoNota: Math.max(0, Math.min(20, nota)),
+    realizadaEm: agora, dataValidacao: agora, comentarioProfessor: observacao || r.comentarioProfessor,
+    professorAvaliador: professor || r.professorAvaliador, atualizadoEm: agora,
+  });
+}
+
+// ============================================================
+// Autoavaliação final da UC — a nota que o aluno propõe
+// ============================================================
+
+export interface PropostaFinalUC {
+  alunoId: string;
+  turmaId: string;
+  ucId: string;
+  nota: number;
+  justificacao: string;
+  criadaEm: string;
+}
+
+export function getPropostaFinalUC(alunoId: string, ucId: string): PropostaFinalUC | null {
+  const s: any = load<any>(KEYS.selecoes).find((x: any) =>
+    x.alunoId === alunoId && x.planoAulaId === PREFIXO_FINAL + ucId);
+  const a = s?.autoavaliacoes?.[0];
+  if (!s || !a) return null;
+  return { alunoId, turmaId: s.turmaId, ucId, nota: Number(a.nota), justificacao: a.justificacao || '', criadaEm: s.criadaEm };
+}
+
+export function guardarPropostaFinalUC(p: Omit<PropostaFinalUC, 'criadaEm'>): void {
+  const agora = new Date().toISOString();
+  addOrUpdateSelecao({
+    id: `final_${p.ucId}_${p.alunoId}`, planoAulaId: PREFIXO_FINAL + p.ucId, comandaId: '', fichaId: '',
+    alunoId: p.alunoId, turmaId: p.turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'PROPOSTA_FINAL', nivel: 'proposta', nota: p.nota, justificacao: p.justificacao }],
+    criadaEm: agora,
+  } as any);
+}
+
+/** UCs em que o aluno já tem de fazer a autoavaliação final: o módulo acabou
+ *  (ou o professor fechou a UC) e ainda não há proposta dele. */
+export function ucsParaAutoavaliacaoFinal(aluno: Aluno): { ucId: string; nome: string; dataFim: string }[] {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const comAulas = new Set(getPlanosAulaPorTurma(aluno.turmaId).map(p => p.ucId).filter(Boolean) as string[]);
+  return modulosDaTurma(aluno.turmaId)
+    .filter((m: any) => comAulas.has(m.id) && ((m.dataFim && m.dataFim <= hoje) || ucJaFechada(aluno.turmaId, m.id))
+      && !getPropostaFinalUC(aluno.id, m.id))
+    .map((m: any) => ({ ucId: m.id, nome: m.nome, dataFim: m.dataFim }));
 }
