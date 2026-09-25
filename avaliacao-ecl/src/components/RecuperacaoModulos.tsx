@@ -3,7 +3,7 @@ import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { ModalFullscreen } from './ModalFullscreen';
 import { RecuperacaoFCTAluno } from './RecuperacaoFCT';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
-import { gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript , situacaoRecuperacaoUC } from '../backend';
+import { gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript , situacaoRecuperacaoUC, getNotaFinalPublicadaUC } from '../backend';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Aluno } from '../types';
 import {
@@ -150,8 +150,12 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                     {/* Porquê — dito de forma que o aluno perceba. */}
                     <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 2 }}>
                       {s.motivo === 'faltas'
-                        ? `Faltaste a ${h(s.horasFaltadas)} h de ${h(s.horasPrevistas)} h — a presença mínima é 90%.`
-                        : `O módulo terminou com ${h(s.nota20 ?? 0)} valores.`}
+                        ? `Faltaste a ${h(s.horasFaltadas)} h de ${h(s.horasDadas)} h dadas — o limite é 10% de faltas.`
+                        : (() => {
+                            // A nota só se mostra depois de publicada pelo professor.
+                            const pub = getNotaFinalPublicadaUC(aluno.id, ucId);
+                            return pub ? `O módulo terminou com ${pub.nota} valores.` : 'O módulo terminou sem positiva.';
+                          })()}
                     </div>
                   </div>
                   <button onClick={() => iniciarRecuperacao(ucId)}

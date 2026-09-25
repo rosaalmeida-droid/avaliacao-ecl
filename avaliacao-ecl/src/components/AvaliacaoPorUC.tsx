@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC } from '../backend';
 import { notaDaPautaUC } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
@@ -55,7 +55,13 @@ function datasDoTrimestre(tri: 1 | 2 | 3, ano = 2026): { inicio: string; fim: st
 }
 
 // ── Componente principal ──────────────────────────────────────
-export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?: string }) {
+/** A nota publicada, no mesmo formato da nota da pauta. */
+function notaFinalPublicadaComoPauta(alunoId: string, ucId: string) {
+  const n = getNotaFinalPublicadaUC(alunoId, ucId);
+  return n ? { nota: n.nota, cp: n.cp, total: n.total, resultado: n.resultado, atribuida: true, publicada: true } : null;
+}
+
+export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: string; alunoId?: string; nomeProfessor?: string }) {
   const modulos = modulosDaTurma(turmaId);
   const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
   const todosRegistos = getHistoricoAvaliacoes();
@@ -138,7 +144,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
       // Com uma UC escolhida, a nota é a da pauta oficial (a classificação
       // atribuída, ou a sugerida pela pauta) — a mesma da pauta e da regra
       // da recuperação. Não há bónus nem outra conta.
-      const pauta = filtroUC && notasComCat.length > 0 ? notaDaPautaUC(aluno.id, turmaId, filtroUC) : null;
+      // O aluno (alunoId) só vê a nota final publicada pelo professor, e só
+      // depois da sua autoavaliação final. Até lá, a média das aulas validadas.
+      const pauta = !filtroUC || notasComCat.length === 0 ? null
+        : !alunoId ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
+        : getPropostaFinalUC(aluno.id, filtroUC) ? notaFinalPublicadaComoPauta(aluno.id, filtroUC) : null;
       const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
       // deste aluno nesta UC, para o professor perceber SEMPRE como a nota
@@ -209,7 +219,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
       `}</style>
 
       {pautaAberta && filtroUC && (
-        <FecharUC turmaId={turmaId} ucId={filtroUC} ucNome={ucSelNome}
+        <FecharUC turmaId={turmaId} ucId={filtroUC} ucNome={ucSelNome} nomeProfessor={nomeProfessor}
           onFechado={() => setPautaAberta(false)} onCancelar={() => setPautaAberta(false)} />
       )}
 

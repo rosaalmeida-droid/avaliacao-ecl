@@ -670,7 +670,7 @@ function AppInterno() {
               <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
             )}
-            {vistaGlobal === 'avaliacao_uc' && <AvaliacaoPorUC turmaId={turmaId} />}
+            {vistaGlobal === 'avaliacao_uc' && <AvaliacaoPorUC turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {/* A cópia de segurança passou para a coordenadora (Dados e segurança). */}
             {vistaGlobal === 'gestao_recuperacoes' && <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}

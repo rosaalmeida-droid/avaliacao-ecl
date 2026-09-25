@@ -2589,6 +2589,8 @@ export interface SituacaoRecuperacao {
   motivo: 'faltas' | 'negativa' | null;
   horasPrevistas: number;
   horasFaltadas: number;
+  /** Horas da UC já dadas — é sobre estas que se contam as faltas. */
+  horasDadas: number;
   /** 0–100 */
   presenca: number;
   terminou: boolean;
@@ -2637,14 +2639,14 @@ export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: st
 
   // 1. Faltas a partir de 10% das horas dadas.
   if (horasDadas > 0 && horasFaltadas >= horasDadas * 0.10) {
-    return { precisa: true, motivo: 'faltas', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+    return { precisa: true, motivo: 'faltas', horasPrevistas, horasFaltadas, horasDadas, presenca, terminou, nota20 };
   }
   // 2. Módulo terminado sem positiva. Sem nenhuma avaliação não se decide
   //    por nota — seria pôr em recuperação quem ainda não foi avaliado.
   if (terminou && nota20 !== null && nota20 < 10) {
-    return { precisa: true, motivo: 'negativa', horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+    return { precisa: true, motivo: 'negativa', horasPrevistas, horasFaltadas, horasDadas, presenca, terminou, nota20 };
   }
-  return { precisa: false, motivo: null, horasPrevistas, horasFaltadas, presenca, terminou, nota20 };
+  return { precisa: false, motivo: null, horasPrevistas, horasFaltadas, horasDadas, presenca, terminou, nota20 };
 }
 
 // ── Recuperação de Módulos ──────────────────────────────────────
