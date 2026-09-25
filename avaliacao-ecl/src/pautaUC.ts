@@ -35,7 +35,7 @@ import {
 } from './backend';
 import { calcularNotaPlano } from './types';
 import { modulosDaTurma } from './cronograma';
-import { ATITUDES } from './compatECL';
+import { ATITUDES, getAtitudeDetalhada } from './compatECL';
 import MODELO from './pautaModelo.json';
 
 // ── Os 5 C's: que atitudes contribuem para cada um ───────────
@@ -62,7 +62,7 @@ export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; atitudes: s
     evidencias: 'resolução de problemas: pergunta de cada aula «resolveste algum problema?», problemas que detetou e registou, sentido crítico na autoavaliação' },
 };
 
-const nomeAtitude = (id: string) => (ATITUDES as any[]).find(a => a.id === id)?.nome || id;
+const nomeAtitude = (id: string) => getAtitudeDetalhada(id)?.nome || (ATITUDES as any[]).find(a => a.id === id)?.nome || id;
 
 /** Nível do modelo: 0 N.R./N.O. · 2 Insuficiente · 4 Suficiente · 5 Bom · 6 Muito bom
  *  (as mesmas fronteiras das fórmulas do modelo). */
@@ -96,7 +96,7 @@ const categoria = (id: string) => id?.startsWith('OBR_') ? 'OBR'
   : id?.startsWith('KNW-') ? 'KNW' : id?.startsWith('INI-') ? 'INI' : 'ATI';
 
 /** Nota 0-20 de um aluno num plano: a validação do professor. */
-function notaDoPlano(alunoId: string, planoId: string, tipo: string): number | null {
+export function notaDoPlano(alunoId: string, planoId: string, tipo: string): number | null {
   const v: any = getValidacoes().find((x: any) => x.planoAulaId === planoId && x.alunoId === alunoId);
   if (!v) return null;
   if (typeof v.notaMedia20 === 'number') return v.notaMedia20;
@@ -408,7 +408,8 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
       const v = l.produtos[j];
       set(lv(c), v === null ? null : v);
       const e = lv(c);
-      f(lv(c + 1), `IF(${e}=0,"0",IF(${e}<9.5,"2",IF(${e}<14,"4",IF(${e}<17,"5","6"))))`);
+      if (d.produtos[j]) f(lv(c + 1), `IF(${e}=0,"0",IF(${e}<9.5,"2",IF(${e}<14,"4",IF(${e}<17,"5","6"))))`);
+      else set(lv(c + 1), null);
     });
     f(lv(COL.T), COL_PROD.map((c, j) => `(${LETRA(c + 1)}${R}*$${LETRA(COL_PESO[j])}$9)`).join('+'));
     set(lv(COL.S), l.c5.cm);
@@ -491,7 +492,8 @@ export function htmlDaPauta(d: DadosPauta): string {
     val(r, 0, l.numero); val(r, 1, l.nome); val(r, 2, l.atividades); val(r, 3, calc.nAtiv);
     COL_PROD.forEach((c, j) => {
       if (l.produtos[j] !== null) val(r, c0(c), l.produtos[j] as number);
-      val(r, c0(c + 1), calc.niveis[j]);
+      // Colunas sem produto ficam em branco (não 0).
+      if (d.produtos[j]) val(r, c0(c + 1), calc.niveis[j]);
     });
     val(r, 18, l.c5.cm ?? ''); val(r, 19, Math.round(calc.cp * 100) / 100);
     val(r, 21, l.c5.cl ?? ''); val(r, 22, l.c5.co ?? ''); val(r, 23, l.c5.cr ?? '');

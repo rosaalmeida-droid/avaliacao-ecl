@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PainelContextual, ContextoPainel } from './PainelContextual';
+import { ContadorUCEmAtraso } from './UCEmAtraso';
 
 // Calcula o ano letivo actual com base na data de hoje.
 // O ano letivo começa em Setembro — antes de Setembro mostra X-1/X, depois X/X+1.
@@ -411,6 +412,9 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
             <main style={{ flex: 1, padding: isMobile ? '0 16px 96px' : '0 28px 36px', minWidth: 0, background: APP_BG }}>
               {children}
             </main>
+
+            {/* Sempre à vista: alunos com 10% ou mais de faltas numa UC. */}
+            <ContadorUCEmAtraso turmaId={turmaId} nomeProfessor={nomeProfessor} isMobile={isMobile} />
 
             {/* No telemóvel, o que se usa na cozinha fica sempre à mão, sem
                 abrir o menu. O resto continua em Menu. */}

@@ -52,8 +52,9 @@ import {
 } from './InicioAluno';
 import { PassoKitchenFlowFase } from './PassosKitchenFlow';
 import { PERGUNTAS_TRIAGEM, notaTriagem, type Triagem5C } from '../triagem5c';
-import { kfFaseCompleta, getHistoricoAvaliacoes } from '../backend';
+import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal } from '../backend';
 import { ManuaisAluno } from './ManuaisAluno';
+import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal } from './AutoavaliacaoFinalUC';
 import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
@@ -487,6 +488,11 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 
   const [falhouLigacao, setFalhouLigacao] = useState(false);
   const [aLigar, setALigar] = useState(false);
+  // Autoavaliação final: obrigatória em cada UC que terminou.
+  const [ucFinal, setUcFinal] = useState<string | null>(null);
+  const [versaoFinal, setVersaoFinal] = useState(0);
+  const ucsFinais = React.useMemo(() => { try { return ucsParaAutoavaliacaoFinal(aluno); } catch { return []; } },
+    [aluno.id, aluno.turmaId, planos, versaoFinal]);
 
   function irBuscarAulas() {
     setALigar(true);
@@ -826,6 +832,15 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
         </ModalFullscreen>
       )}
 
+      {ucFinal && (
+        <ModalFullscreen titulo="Autoavaliação final da UC" subtitulo={aluno.turmaId} onFechar={() => setUcFinal(null)}>
+          <AutoavaliacaoFinalUC aluno={aluno} ucId={ucFinal}
+            ucNome={ucsFinais.find(u => u.ucId === ucFinal)?.nome || ucFinal}
+            onFechar={() => setUcFinal(null)}
+            onFeito={() => { setUcFinal(null); setVersaoFinal(v => v + 1); }} />
+        </ModalFullscreen>
+      )}
+
       {/* ── CABEÇALHO ─────────────────────────────────────── */}
       <div style={{ background:'#6d28d9', padding:'20px 20px 0' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
@@ -896,6 +911,9 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
 
         {/* ── ABA INÍCIO ── */}
         {/* ── INÍCIO: a aula de hoje como ação principal ── */}
+        {aba === 'inicio' && !destino && (
+          <CartaoAutoavaliacaoFinal ucs={ucsFinais} onAbrir={setUcFinal} />
+        )}
         {aba === 'inicio' && !destino && (
           <InicioAluno
             nomeAluno={aluno.nome || `Aluno ${aluno.numero}`}
