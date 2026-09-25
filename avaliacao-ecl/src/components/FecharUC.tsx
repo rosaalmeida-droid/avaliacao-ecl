@@ -25,7 +25,7 @@ import { modulosDaTurma } from '../cronograma';
 import {
   produtosDaUC, linhasDaPautaUC, atividadesDoModulo, gerarPautaXLSX, gerarPautaPDF, nomeFicheiroPauta,
   calculoDoModelo, classificacaoComNota, descarregar, MAPA_5C, colunasDeProdutos,
-  planosRealizadosDaUC, sugestaoClassificacao, avisosClassificacao, erroClassificacao, notaDoCompetente,
+  planosRealizadosDaUC, sugestaoClassificacao, chaveClassificacoes, avisosClassificacao, erroClassificacao, notaDoCompetente,
   type CabecalhoPauta, type DadosPauta, type Letra5C,
 } from '../pautaUC';
 
@@ -72,7 +72,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
 
   // CLASSIF. ATRIBUÍDA: começa na sugestão; o professor muda o que quiser.
   // Fica guardada neste aparelho para não se perder ao fechar o ecrã.
-  const chaveClassif = `ecl_classif_${turmaId}_${ucId}`;
+  const chaveClassif = chaveClassificacoes(turmaId, ucId);
   const [classifEscrita, setClassifEscrita] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem(chaveClassif) || '{}'); } catch { return {}; }
   });

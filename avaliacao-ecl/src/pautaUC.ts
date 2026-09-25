@@ -30,7 +30,7 @@
 import { PERGUNTAS_TRIAGEM, notaTriagem } from './triagem5c';
 import {
   getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes, getSelecoes, getPresencas,
-  getPlanosFaltadosPorUC, getAtividades, situacaoRecuperacaoUC, assiduidadeNaUC,
+  getPlanosFaltadosPorUC, getAtividades, faltasEmHorasUC, assiduidadeNaUC,
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
   kfFaseCompleta, liderKFdoGrupo,
 } from './backend';
@@ -49,13 +49,13 @@ export type Letra5C = 'cm' | 'cl' | 'co' | 'cr';
 // Nenhuma destas evidências cria um elemento novo nos planos.
 export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias: string }> = {
   cm: { sigla: 'CM', nome: 'Comprometido',
-    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues' },
+    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues, farda completa à entrada' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
     evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, registos de grupo no KitchenFlow, liderança do grupo' },
   co: { sigla: 'CO', nome: 'Consciente',
-    evidencias: 'higiene pessoal: farda completa à entrada de cada aula' },
+    evidencias: 'consciência das suas atitudes: pergunta de cada aula «o que fizeste diferente hoje?», sentido crítico na autoavaliação (perto do que o professor valida), melhoria depois de ficar abaixo de 3 numa atitude' },
   cr: { sigla: 'CR', nome: 'Criativo',
-    evidencias: 'resolução de problemas: pergunta de cada aula «resolveste algum problema?», problemas que detetou e registou, sentido crítico na autoavaliação' },
+    evidencias: 'resolução de problemas: pergunta de cada aula «resolveste algum problema?», problemas que detetou e registou' },
 };
 
 
@@ -163,7 +163,7 @@ export interface LinhaPautaUC {
   justificacao: string;
 }
 
-export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: ProdutoPauta[]): LinhaPautaUC[] {
+export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: ProdutoPauta[], soAluno?: string): LinhaPautaUC[] {
   const planos = getPlanosAulaPorTurma(turmaId);
   const totalAtiv = atividadesDoModulo(turmaId, ucId);
   const tipoDe = (id: string) => (planos.find(p => p.id === id) as any)?.tipoPlanAula || 'pratico';
@@ -171,7 +171,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
     r.turmaId === turmaId && r.ucId === ucId && r.validadoPor === 'professor');
 
   return getAlunos()
-    .filter(a => a.turmaId === turmaId && a.ativo !== false)
+    .filter(a => a.turmaId === turmaId && a.ativo !== false && (!soAluno || a.id === soAluno))
     .sort((a, b) => a.numero - b.numero)
     .map(a => {
       const faltou = new Set(getPlanosFaltadosPorUC(a.id, ucId, turmaId).map(p => p.id));
@@ -205,7 +205,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       const pct = (n: number, de: number) => de > 0 ? (n / de) * 20 : null;
 
       // CM — compromisso
-      const s = situacaoRecuperacaoUC(a.id, turmaId, ucId);
+      const s = faltasEmHorasUC(a.id, turmaId, ucId);
       const assid = assiduidadeNaUC(a.id, turmaId, ucId);
       junta('cm', `Assiduidade: ${s.presenca}% das horas dadas`, s.presenca / 5, assid.aulasPrevistas || nVeio);
       junta('cm', `Pontualidade: ${assid.atrasos} atraso${assid.atrasos === 1 ? '' : 's'}`,
@@ -213,14 +213,15 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       const comFarda = presencas.filter(x => (x as any).fardamentoOk).length;
       const selecoes = getSelecoes().filter(x => x.alunoId === a.id && idsVeio.has(x.planoAulaId as string));
       junta('cm', `Autoavaliações entregues: ${selecoes.length} de ${nVeio} aulas`, pct(selecoes.length, nVeio), nVeio);
+      junta('cm', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
 
-      // Triagem das aulas (CL e CR): a resposta do aluno em cada autoavaliação,
+      // Triagem das aulas (CL, CR e CO): a resposta do aluno em cada autoavaliação,
       // ou a do professor quando a confirmou ou mudou na validação.
       const triagens = selecoes.map(sel => {
         const v: any = getValidacoes().find((x: any) => x.selecaoId === sel.id || (x.planoAulaId === sel.planoAulaId && x.alunoId === a.id));
         return { t: v?.triagem5c || sel.triagem5c, prof: !!v?.triagem5c };
       }).filter(x => x.t);
-      const juntaTriagem = (c: 'cl' | 'cr') => {
+      const juntaTriagem = (c: 'cl' | 'cr' | 'co') => {
         const q = PERGUNTAS_TRIAGEM.find(x => x.chave === c)!;
         const ns = triagens.map(x => notaTriagem(x.t![c])).filter((n): n is number => n !== null);
         const conf = triagens.filter(x => x.prof && notaTriagem(x.t![c]) !== null).length;
@@ -239,15 +240,8 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       const liderou = [...idsVeio].filter(id => liderKFdoGrupo(id) === a.id).length;
       if (liderou > 0) junta('cl', `Liderou o grupo em ${liderou} aula${liderou === 1 ? '' : 's'}`, 20, liderou);
 
-      // CO — consciência: higiene pessoal à entrada (não entra na nota da aula;
-      // a higiene e segurança alimentar, que entra, fica só nos planos).
-      junta('co', `Farda completa à entrada: ${comFarda} de ${nVeio} aulas`, pct(comFarda, nVeio), nVeio);
-
-      // CR — resolução de problemas
-      juntaTriagem('cr');
-      const ncs = (() => { try { return JSON.parse(localStorage.getItem('ecl_nao_conformidades') || '[]'); } catch { return []; } })()
-        .filter((n: any) => n.perfilRegistou === 'aluno' && n.alunoId === a.id && idsVeio.size > 0);
-      if (ncs.length) junta('cr', `Problemas que detetou e registou: ${ncs.length}`, Math.min(20, 14 + 2 * ncs.length), ncs.length);
+      // CO — consciência: tem consciência das suas atitudes, reflete e melhora.
+      juntaTriagem('co');
       // Sentido crítico: quão perto a autoavaliação ficou do que o professor validou
       const difs: number[] = [];
       selecoes.forEach(sel => {
@@ -257,8 +251,30 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
           if (n && Number(au.nota)) difs.push(Math.abs(Number(au.nota) - Number(n.nota)));
         });
       });
-      junta('cr', `Sentido crítico na autoavaliação (diferença média para o professor: ${difs.length ? (Math.round((media(difs) as number) * 10) / 10).toString().replace('.', ',') : '—'})`,
+      junta('co', `Sentido crítico na autoavaliação (diferença média para o professor: ${difs.length ? (Math.round((media(difs) as number) * 10) / 10).toString().replace('.', ',') : '—'})`,
         difs.length ? 20 - 5 * (media(difs) as number) : null, difs.length);
+
+      // Melhoria depois do aviso: numa atitude em que ficou abaixo de 3, voltou
+      // a subir numa aula seguinte? Não conta a nota da atitude (essa está nos
+      // planos), só se melhorou.
+      const porAtitude = new Map<string, number[]>();
+      [...regs].filter(r => r.microcompetenciaId.startsWith('ATI-'))
+        .sort((x, y) => String(x.data).localeCompare(String(y.data)))
+        .forEach(r => porAtitude.set(r.microcompetenciaId, [...(porAtitude.get(r.microcompetenciaId) || []), Number(r.nota)]));
+      let avisos = 0, melhorou = 0;
+      porAtitude.forEach(ns => ns.forEach((n, k) => {
+        if (n >= 3 || k === ns.length - 1) return;       // só conta um aviso com aula depois
+        avisos++;
+        if (ns.slice(k + 1).some(m => m > n)) melhorou++;
+      }));
+      if (avisos) junta('co', `Melhorou depois do aviso: ${melhorou} de ${avisos} vez${avisos === 1 ? '' : 'es'} que ficou abaixo de 3 numa atitude`,
+        pct(melhorou, avisos), avisos);
+
+      // CR — resolução de problemas
+      juntaTriagem('cr');
+      const ncs = (() => { try { return JSON.parse(localStorage.getItem('ecl_nao_conformidades') || '[]'); } catch { return []; } })()
+        .filter((n: any) => n.perfilRegistou === 'aluno' && n.alunoId === a.id && idsVeio.size > 0);
+      if (ncs.length) junta('cr', `Problemas que detetou e registou: ${ncs.length}`, Math.min(20, 14 + 2 * ncs.length), ncs.length);
 
       const c5 = Object.fromEntries((Object.keys(evidencias) as Letra5C[]).map(c => {
         const m = media(evidencias[c].map(e => e.nota20));
@@ -360,6 +376,32 @@ export const classificacaoComNota = (nota: number | null) => {
   const f = Math.round(nota);
   return f < 10 ? `${f} a)` : f;
 };
+
+/** Onde fica a CLASSIF. ATRIBUÍDA que o professor escreveu na pauta. */
+export const chaveClassificacoes = (turmaId: string, ucId: string) => `ecl_classif_${turmaId}_${ucId}`;
+
+/**
+ * A nota final da UC de um aluno, segundo a pauta oficial: a classificação
+ * atribuída pelo professor (se estiver na faixa do Competente) ou, se não,
+ * a sugerida pela pauta. É esta que o resto da aplicação usa ("Notas da
+ * UC", recuperação por negativa) — não há outra conta.
+ */
+export function notaDaPautaUC(alunoId: string, turmaId: string, ucId: string):
+  { nota: number | null; cp: number; total: number; resultado: string; atribuida: boolean } | null {
+  const produtos = produtosDaUC(turmaId, ucId);
+  if (!produtos.length) return null;
+  const l = linhasDaPautaUC(turmaId, ucId, produtos, alunoId)[0];
+  if (!l) return null;
+  const c = calculoDoModelo(l, produtos, atividadesDoModulo(turmaId, ucId));
+  let escrita: number | null = null;
+  try {
+    const v = JSON.parse(localStorage.getItem(chaveClassificacoes(turmaId, ucId)) || '{}')[alunoId];
+    const n = v === undefined || v === '' ? NaN : Number(String(v).replace(',', '.'));
+    if (!isNaN(n) && n >= 0 && n <= 20 && !erroClassificacao(Math.round(n), c.cp)) escrita = Math.round(n);
+  } catch { /* */ }
+  return { nota: escrita ?? sugestaoClassificacao(l, produtos, c.cp), cp: c.cp, total: c.total,
+    resultado: c.resultado, atribuida: escrita !== null };
+}
 
 // ── Cabeçalho ────────────────────────────────────────────────
 

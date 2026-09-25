@@ -4,6 +4,7 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
+import { notaDaPautaUC } from './pautaUC';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
@@ -2586,8 +2587,9 @@ export interface SituacaoRecuperacao {
   nota20: number | null;
 }
 
-export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: string): SituacaoRecuperacao {
-  const hoje = new Date().toISOString().slice(0, 10);
+/** Faltas de um aluno numa UC, em horas, sobre as horas já dadas. */
+export function faltasEmHorasUC(alunoId: string, turmaId: string, ucId: string):
+  { horasPrevistas: number; horasFaltadas: number; horasDadas: number; presenca: number } {
   const mod = modulosDaTurma(turmaId).find(m => m.id === ucId);
 
   const planosDaUC = getPlanosAula().filter(p =>
@@ -2612,11 +2614,18 @@ export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: st
   const presenca = horasDadas > 0
     ? Math.max(0, Math.round((1 - horasFaltadas / horasDadas) * 100))
     : 100;
+  return { horasPrevistas, horasFaltadas, horasDadas, presenca };
+}
 
+export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: string): SituacaoRecuperacao {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mod = modulosDaTurma(turmaId).find(m => m.id === ucId);
+  const { horasPrevistas, horasFaltadas, horasDadas, presenca } = faltasEmHorasUC(alunoId, turmaId, ucId);
   const terminou = !!mod?.dataFim && mod.dataFim < hoje;
 
-  // Nota final da UC — a mesma do ecrã "Notas da UC" (notaFinalUC).
-  const nota20: number | null = notaFinalUC(alunoId, turmaId, ucId).final;
+  // Nota final da UC: a da pauta oficial (a classificação atribuída pelo
+  // professor, ou a sugerida pela pauta). Só interessa quando a UC acabou.
+  const nota20: number | null = terminou ? (notaDaPautaUC(alunoId, turmaId, ucId)?.nota ?? null) : null;
 
   // 1. Faltas a partir de 10% das horas dadas.
   if (horasDadas > 0 && horasFaltadas >= horasDadas * 0.10) {
@@ -6343,7 +6352,8 @@ export interface UCEmAtraso {
   /** Faltas em % das horas dadas. */
   percentagem: number;
   plano: RecuperacaoModulo | null;
-  estado: 'sem_plano' | 'em_curso' | 'recuperado';
+  /** sem_plano: por decidir · adiado: fica para depois da UC · em_curso: plano feito · recuperado */
+  estado: 'sem_plano' | 'adiado' | 'em_curso' | 'recuperado';
 }
 
 /** Todos os alunos da turma com uma UC em atraso por faltas (≥ 10% das horas dadas). */
@@ -6364,11 +6374,13 @@ export function ucsEmAtraso(turmaId: string): UCEmAtraso[] {
         horasDadas: dadas, horasFaltadas: s.horasFaltadas,
         percentagem: dadas > 0 ? Math.round((s.horasFaltadas / dadas) * 100) : 0,
         plano,
-        estado: !plano ? 'sem_plano' : plano.estado === 'concluida' ? 'recuperado' : 'em_curso',
+        estado: !plano ? 'sem_plano' : plano.estado === 'concluida' ? 'recuperado'
+          : plano.quando === 'depois' && !plano.modalidade ? 'adiado' : 'em_curso',
       });
     }
   }
-  return out.sort((x, y) => x.numero - y.numero || x.ucId.localeCompare(y.ucId));
+  const ordem = { sem_plano: 0, em_curso: 1, adiado: 2, recuperado: 3 };
+  return out.sort((x, y) => ordem[x.estado] - ordem[y.estado] || x.numero - y.numero || x.ucId.localeCompare(y.ucId));
 }
 
 /** O professor decide o plano de recuperação: modalidade, o que fazer e prazo. */
@@ -6377,10 +6389,28 @@ export function criarPlanoRecuperacao(
   modalidade: 'pratico' | 'teorico' | 'atividade' | 'outra', descricao: string, prazo?: string
 ): RecuperacaoModulo {
   const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
-  const base = criarRecuperacaoAutomatica(alunoId, turmaId, ucId, mod?.nome || '');
+  // Se o professor tinha deixado para depois da UC, o plano é esse mesmo.
+  const adiado = getRecuperacoes().find(r => r.alunoId === alunoId && r.ucId === ucId
+    && r.quando === 'depois' && !r.modalidade && r.estado !== 'concluida');
+  const base = adiado || criarRecuperacaoAutomatica(alunoId, turmaId, ucId, mod?.nome || '');
   const r: RecuperacaoModulo = {
-    ...base, modalidade, descricaoPlano: descricao, estado: 'em_curso',
+    ...base, modalidade, descricaoPlano: descricao, estado: 'em_curso', quando: adiado ? 'depois' : 'ja',
     dataLimite: prazo ? new Date(prazo + 'T23:59:00').toISOString() : base.dataLimite,
+  };
+  addOrUpdateRecuperacao(r);
+  return r;
+}
+
+/**
+ * O professor deixa a recuperação para depois do fim da UC: o aluno sai do
+ * alerta vermelho, a UC fica com a nota que tiver (com "a)" se for negativa)
+ * e o plano faz-se depois.
+ */
+export function adiarRecuperacaoParaDepoisDaUC(alunoId: string, turmaId: string, ucId: string): RecuperacaoModulo {
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  const r: RecuperacaoModulo = {
+    ...criarRecuperacaoAutomatica(alunoId, turmaId, ucId, mod?.nome || ''),
+    quando: 'depois', estado: 'pendente', atualizadoEm: new Date().toISOString(),
   };
   addOrUpdateRecuperacao(r);
   return r;

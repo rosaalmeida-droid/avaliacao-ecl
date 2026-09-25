@@ -568,7 +568,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       {triagem && (
         <Card>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
-            color:'rgba(26,23,20,0.5)', marginBottom:4 }}>Equipa e problemas (5 C da pauta)</div>
+            color:'rgba(26,23,20,0.5)', marginBottom:4 }}>Equipa, problemas e reflexão (5 C da pauta)</div>
           <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>
             Não conta para a nota desta aula. Entra no Colaborativo e no Criativo da pauta da UC.
           </div>

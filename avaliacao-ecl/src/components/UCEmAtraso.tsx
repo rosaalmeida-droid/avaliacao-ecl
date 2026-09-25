@@ -10,6 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ucsEmAtraso, criarPlanoRecuperacao, registarResultadoRecuperacao, MODALIDADES_RECUPERACAO,
+  adiarRecuperacaoParaDepoisDaUC,
   type UCEmAtraso,
 } from '../backend';
 
@@ -34,8 +35,11 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
   }, [turmaId, versao]);
 
   if (!turmaId) return null;
-  const porRecuperar = lista.filter(l => l.estado !== 'recuperado');
+  // No alerta entram os que ainda pedem ação agora: por decidir ou com o
+  // plano em curso. Os que ficaram para depois da UC já estão decididos.
+  const porRecuperar = lista.filter(l => l.estado === 'sem_plano' || l.estado === 'em_curso');
   const alunos = new Set(porRecuperar.map(l => l.alunoId)).size;
+  const adiados = new Set(lista.filter(l => l.estado === 'adiado').map(l => l.alunoId)).size;
 
   return (
     <>
@@ -47,6 +51,7 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
         fontSize: 14, fontWeight: 800, boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
       }}>
         Alunos com UC/módulo em atraso: {alunos}
+        {adiados > 0 && <span style={{ fontWeight: 600, fontSize: 12.5 }}> · {adiados} para depois da UC</span>}
       </button>
       {aberto && (
         <PainelUCEmAtraso lista={lista} nomeProfessor={nomeProfessor}
@@ -74,7 +79,8 @@ function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
         </div>
         <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '4px 0 14px', lineHeight: 1.5 }}>
           Uma UC fica em atraso quando as faltas chegam a 10% das horas já dadas. Cada aula faltada conta 0
-          até o aluno fazer a recuperação.
+          até o aluno fazer a recuperação. Podes recuperar já, em aula, ou deixar a UC seguir (com a nota que
+          tiver, e «a)» se for negativa) e recuperar depois.
         </div>
 
         {lista.length === 0 ? (
@@ -83,7 +89,7 @@ function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
           </div>
         ) : lista.map(l => (
           <div key={chave(l)} style={{ border: '1px solid rgba(26,23,20,0.12)', borderRadius: 12, padding: '12px 14px',
-            marginBottom: 8, background: l.estado === 'recuperado' ? '#f4f8f1' : '#fff' }}>
+            marginBottom: 8, background: l.estado === 'recuperado' ? '#f4f8f1' : l.estado === 'adiado' ? '#f7f5f2' : '#fff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 15 }}>{l.numero}. {l.nome}</div>
@@ -98,6 +104,10 @@ function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
             {/* A situação e o que falta fazer */}
             <div style={{ marginTop: 8, fontSize: 13.5, lineHeight: 1.5 }}>
               {l.estado === 'sem_plano' && <span style={{ color: '#8e2418', fontWeight: 700 }}>Sem plano de recuperação — decide agora.</span>}
+              {l.estado === 'adiado' && (
+                <span><b>Fica para depois da UC.</b> Na pauta, a UC fica com a nota que tiver (com «a)» se for negativa).
+                  Quando quiseres, cria o plano de recuperação.</span>
+              )}
               {l.estado === 'em_curso' && l.plano && (
                 <span><b>Plano em curso:</b> {MODALIDADES_RECUPERACAO.find(m => m.id === l.plano!.modalidade)?.nome || 'recuperação'}
                   {l.plano.descricaoPlano ? ` — ${l.plano.descricaoPlano}` : ''}
@@ -110,13 +120,25 @@ function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
             </div>
 
             {l.estado !== 'recuperado' && aEditar !== chave(l) && (
-              <button onClick={() => setAEditar(chave(l))} style={{ marginTop: 8, padding: '8px 14px', borderRadius: 9,
-                border: 'none', background: l.estado === 'sem_plano' ? '#c0392b' : 'var(--sage, #5a7a4e)', color: '#fff',
-                fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {l.estado === 'sem_plano' ? 'Criar plano de recuperação' : 'Registar realização e resultado'}
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <button onClick={() => setAEditar(chave(l))} style={{ padding: '8px 14px', borderRadius: 9,
+                  border: 'none', background: l.estado === 'sem_plano' ? '#c0392b' : 'var(--sage, #5a7a4e)', color: '#fff',
+                  fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {l.estado === 'sem_plano' ? 'Recuperar já, em aula'
+                    : l.estado === 'adiado' ? 'Criar plano de recuperação' : 'Registar realização e resultado'}
+                </button>
+                {l.estado === 'sem_plano' && (
+                  <button onClick={() => {
+                    if (!confirm(`Deixar a recuperação de ${l.nome} para depois da UC?\n\nAs aulas faltadas continuam a contar 0 e a UC fica com a nota que tiver (com «a)» se for negativa).`)) return;
+                    adiarRecuperacaoParaDepoisDaUC(l.alunoId, l.turmaId, l.ucId); onMudou();
+                  }} style={{ padding: '8px 14px', borderRadius: 9, border: '1px solid rgba(26,23,20,0.25)',
+                    background: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Deixar para depois da UC
+                  </button>
+                )}
+              </div>
             )}
-            {aEditar === chave(l) && (l.estado === 'sem_plano'
+            {aEditar === chave(l) && (l.estado === 'sem_plano' || l.estado === 'adiado'
               ? <FormPlano l={l} onFeito={() => { setAEditar(null); onMudou(); }} onCancelar={() => setAEditar(null)} />
               : <FormResultado l={l} nomeProfessor={nomeProfessor} onFeito={() => { setAEditar(null); onMudou(); }} onCancelar={() => setAEditar(null)} />)}
           </div>

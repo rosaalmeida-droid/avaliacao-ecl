@@ -1,18 +1,19 @@
 // ════════════════════════════════════════════════════════════
-// TRIAGEM DOS 5 C — duas perguntas no fim de cada autoavaliação
+// TRIAGEM DOS 5 C — três perguntas no fim de cada autoavaliação
 // ════════════════════════════════════════════════════════════
-// No 1.º ano nenhuma das atitudes do referencial alimenta o Colaborativo
-// nem o Criativo. Estas duas perguntas garantem que há sempre evidência:
-// o aluno responde em todas as aulas e o professor confirma na validação.
-// Seguem o nível do 1.º ano da ATI-009 (Cooperação com a equipa) e da
-// ATI-010 (Empenho e persistência na resolução de problemas).
+// Garantem que o Colaborativo, o Criativo e o Consciente têm sempre
+// evidência, desde o 1.º ano: o aluno responde em todas as aulas e o
+// professor confirma na validação. CL e CR seguem o nível do 1.º ano da
+// ATI-009 (Cooperação com a equipa) e da ATI-010 (Empenho e persistência
+// na resolução de problemas). CO: se tem consciência do que fez, reflete
+// e melhora de uma aula para a outra.
 // Só contam para os 5 C da pauta, não para a nota da aula.
 
-export type ChaveTriagem = 'cl' | 'cr';
+export type ChaveTriagem = 'cl' | 'cr' | 'co';
 
 export interface PerguntaTriagem {
   chave: ChaveTriagem;
-  sigla: 'CL' | 'CR';
+  sigla: 'CL' | 'CR' | 'CO';
   titulo: string;
   pergunta: string;
   /** Resposta que diz "hoje não houve ocasião" — não conta. */
@@ -44,6 +45,17 @@ export const PERGUNTAS_TRIAGEM: PerguntaTriagem[] = [
       'Resolvi sozinho/a e expliquei aos colegas como fiz.',
     ],
   },
+  {
+    chave: 'co', sigla: 'CO', titulo: 'Refletir e melhorar',
+    pergunta: 'Pensa na última aula: o que fizeste diferente hoje?',
+    semOcasiao: 'É a minha primeira aula desta UC.',
+    frases: [
+      'Nada, fiz igual.',
+      'Lembrei-me do que correu mal, mas não mudei.',
+      'Mudei uma coisa que tinha corrido mal.',
+      'Mudei e expliquei ao professor o que melhorei.',
+    ],
+  },
 ];
 
 /** Resposta: índice da frase (0-3), 'sem' (não houve ocasião) ou null (por responder). */
@@ -52,6 +64,8 @@ export type RespostaTriagem = number | 'sem' | null;
 export interface Triagem5C {
   cl: RespostaTriagem;
   cr: RespostaTriagem;
+  /** Aparece a partir desta versão; nas autoavaliações antigas não existe. */
+  co?: RespostaTriagem;
   /** O problema que o aluno resolveu, nas palavras dele (opcional). */
   problema?: string;
 }

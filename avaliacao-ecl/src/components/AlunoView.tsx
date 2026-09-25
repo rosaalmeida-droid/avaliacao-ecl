@@ -2740,8 +2740,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     ? ((plano as any).compAdicionadas || []).filter((id: string) => id.startsWith('ATI-')) : [];
   const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
   // Triagem do Colaborativo e do Criativo: responde-se sempre, em todas as aulas.
-  const [triagem, setTriagem] = useState<Triagem5C>({ cl: null, cr: null, problema: '' });
-  const triagemCompleta = triagem.cl !== null && triagem.cr !== null;
+  const [triagem, setTriagem] = useState<Triagem5C>({ cl: null, cr: null, co: null, problema: '' });
+  const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null;
   const prontoParaSubmeter = triagemCompleta && (ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null)
       && (!comObrigatorias || nivelHaccp !== null)
@@ -3077,7 +3077,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     : p.tipo === 'haccp' ? 'Higiene e segurança alimentar'
     : p.tipo === 'atiAula' || p.tipo === 'atitude' ? 'Atitude'
     : p.tipo === 'apanhar' ? 'Atitude do ano anterior'
-    : p.tipo === 'triagem' ? 'Equipa e problemas' : 'Rever e enviar';
+    : p.tipo === 'triagem' ? 'Equipa, problemas e reflexão' : 'Rever e enviar';
 
   const estiloOpcao = (sel: boolean): React.CSSProperties => ({
     width:'100%', display:'flex', alignItems:'center', gap:12, textAlign:'left',
@@ -3165,7 +3165,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         nota: id && f != null ? Math.round(NOTAS_FRASES[f] / 4) : null, passo: i });
     } else if (p.tipo === 'triagem') {
       PERGUNTAS_TRIAGEM.forEach(q => {
-        const r = triagem[q.chave];
+        const r = triagem[q.chave] ?? null;
         linhasRever.push({ nome: q.titulo,
           resposta: r === null ? 'Por responder' : r === 'sem' ? q.semOcasiao : q.frases[r],
           nota: notaTriagem(r), passo: i });
@@ -3341,18 +3341,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         );
       })()}
 
-      {/* ── Equipa e problemas: a triagem do CL e do CR ── */}
+      {/* ── Equipa, problemas e reflexão: a triagem do CL, CR e CO ── */}
       {/* Sem números: o aluno escolhe a frase que o descreve. */}
       {passo.tipo === 'triagem' && (
         <div>
           <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.25 }}>
-            Duas perguntas sobre a aula
+            Três perguntas sobre a aula
           </div>
           <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', margin:'4px 0 4px', lineHeight:1.5 }}>
             Respondes sempre, em todas as aulas. O professor confirma.
           </div>
           {PERGUNTAS_TRIAGEM.map(q => {
-            const r = triagem[q.chave];
+            const r = triagem[q.chave] ?? null;
             const escolher = (v: number | 'sem') => setTriagem(t => ({ ...t, [q.chave]: t[q.chave] === v ? null : v }));
             return (
               <div key={q.chave}>
@@ -3421,7 +3421,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             <div style={{ marginTop:12, padding:'10px 12px', background:T.copperP, borderRadius:10,
               fontSize:13.5, color:T.copper }}>
               {!triagemCompleta
-                ? 'Responde às duas perguntas sobre a equipa e os problemas para poderes enviar.'
+                ? 'Responde às três perguntas sobre a aula para poderes enviar.'
                 : ehAtitudinal
                 ? 'Escolhe uma frase em cada atitude desta aula para poderes enviar.'
                 : 'Responde à Higiene e Segurança Alimentar para poderes enviar.'}

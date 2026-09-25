@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, calcularBonusAssiduidadeUC , registosQueContam, aplicarBonusesUC } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam } from '../backend';
+import { notaDaPautaUC } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
 import { calcularNotaPlano } from '../types';
@@ -134,13 +135,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
       const { nota20 } = notasComCat.length > 0
         ? calcularNotaPlano(notasComCat, tipoDominante as 'pratico'|'misto'|'teorico')
         : { nota20: 0 };
-      // Os bónus são por UC — só se somam quando se está a ver UMA UC.
-      // O cálculo é o mesmo da recuperação e do resto da aplicação
-      // (aplicarBonusesUC): assiduidade, eventos e teto de 17.
-      const bonus = filtroUC ? calcularBonusAssiduidadeUC(aluno.id, turmaId, filtroUC) : null;
-      const notaUC = filtroUC && notasComCat.length > 0
-        ? aplicarBonusesUC(nota20, aluno.id, turmaId, filtroUC) : null;
-      const nota20ComBonus = notaUC?.final ?? nota20;
+      // Com uma UC escolhida, a nota é a da pauta oficial (a classificação
+      // atribuída, ou a sugerida pela pauta) — a mesma da pauta e da regra
+      // da recuperação. Não há bónus nem outra conta.
+      const pauta = filtroUC && notasComCat.length > 0 ? notaDaPautaUC(aluno.id, turmaId, filtroUC) : null;
+      const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
       // deste aluno nesta UC, para o professor perceber SEMPRE como a nota
       // se formou (OBR/SUB/KNW/ATI), não só ver o número final.
@@ -154,8 +153,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
         comps,
         mediaGeral: nota20ComBonus,
         mediaGeralSemBonus: nota20,
-        bonus,
-        notaUC,
+        pauta,
         porCategoriaUltima,
         total: regs.length,
         consolidadas: comps.filter(c => c.media >= 3).length,
@@ -312,7 +310,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
           <div style={{ fontSize: 13, marginTop: 4 }}>Tenta seleccionar uma UC/UFCD diferente ou alargar o período</div>
         </div>
       ) : (
-        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, bonus, notaUC, porCategoriaUltima }) => {
+        dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, pauta, porCategoriaUltima }) => {
           const aberto = vistaAluno === aluno.id;
           const { emoji, cor } = labelNota(mediaGeral);
           return (
@@ -341,29 +339,18 @@ export function AvaliacaoPorUC({ turmaId, alunoId }: { turmaId: string; alunoId?
                 </div>
                 {mediaGeral > 0 && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{mediaGeral.toFixed(1)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1)}</div>
                     <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}
                       title={porCategoriaUltima
                         ? 'Como esta nota foi calculada: ' + Object.entries(porCategoriaUltima).map(([c,n]) => `${c} ${n}/20`).join(' · ')
                         : 'Sem decomposição disponível — aguarda a próxima validação do professor'}>
                       /20 {porCategoriaUltima ? 'ⓘ' : ''}
                     </div>
-                    {bonus && bonus.total > 0 && (
-                      <div style={{ fontSize: 12, color: 'var(--sage)', fontWeight: 700, marginTop: 2 }}
-                        title={`Pontualidade +${bonus.pontualidade} · Assiduidade +${bonus.assiduidade} · Farda +${bonus.fardamento} (${bonus.detalhe.faltas} faltas, ${bonus.detalhe.atrasos} atrasos, ${bonus.detalhe.fardaIncompleta} farda incompleta)`}>
-                        +{bonus.total} assiduidade
-                      </div>
-                    )}
-                    {notaUC && notaUC.bonusParticipacao > 0 && (
-                      <div style={{ fontSize: 12, color: '#7d4f8c', fontWeight: 700 }}
-                        title={`${notaUC.participacoes} participação(ões) em eventos — +0,75 cada, até 3`}>
-                        +{notaUC.bonusParticipacao.toFixed(2).replace('.', ',')} eventos
-                      </div>
-                    )}
-                    {notaUC?.limitadaPorTeto && (
-                      <div style={{ fontSize: 12, color: 'var(--copper)', fontWeight: 700 }}
-                        title="Sem participação em eventos, a nota não passa de 17">
-                        teto 17
+                    {pauta && (
+                      <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2,
+                        color: pauta.resultado === 'Módulo em atraso' ? '#c0392b' : 'var(--sage)' }}
+                        title={`Da pauta oficial: Competente ${pauta.cp} · TOTAL ${String(Math.round(pauta.total * 100) / 100).replace('.', ',')} · ${pauta.atribuida ? 'classificação atribuída pelo professor' : 'sugestão da pauta'}`}>
+                        {pauta.resultado}{pauta.atribuida ? '' : ' · sugestão'}
                       </div>
                     )}
                   </div>
