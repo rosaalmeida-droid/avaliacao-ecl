@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getRequisicaoPorPlano, SHEETS_REQUISICAO_URL, getMateriasPrimasCustom, addOrUpdateMateriaPrimaCustom, addAviso, resolverAvisosDoIngrediente, addSugestaoIngrediente, sinalizarPrecoARever } from '../backend';
 import { PlanoAula, FichaProducao } from '../types';
-import { loadEventos } from './EventosWizard';
+import { eventosParaPlanos } from '../eventos/modelo';
 import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
 import { converterUnidadeParaPeso } from '../pesosMedios';
 import {
@@ -48,7 +48,7 @@ function precoNum(v: unknown): number {
 /** Nº de pessoas do evento ligado ao plano, nesse dia (ou null). */
 function paxDoEventoDoPlano(p: PlanoAula): number | null {
   if (!p?.eventoId) return null;
-  const evento = loadEventos().find((e: any) => e.id === p.eventoId);
+  const evento = eventosParaPlanos().find((e: any) => e.id === p.eventoId);
   const dia = evento?.dias?.find((d: any) => d.data === p.data);
   const total = (dia?.momentos || []).reduce((s: number, m: any) => s + (m.numPessoas || 0), 0);
   return total > 0 ? total : null;

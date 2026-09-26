@@ -293,7 +293,7 @@ const FICAM_NO_ZERO = new Set([
 ]);
 /** Listas em que se guarda o que foi criado depois da limpeza. */
 const LISTAS_COM_DATA = ['ecl_planos', 'ecl_fichas', 'ecl_requisicoes', 'ecl_selecoes', 'ecl_validacoes',
-  'ecl_presencas', 'ecl_historico_avaliacoes', 'ecl_sessoes_aula'];
+  'ecl_presencas', 'ecl_historico_avaliacoes', 'ecl_sessoes_aula', 'ecl_eventos_v4'];
 
 function dataMaisRecente(x: any): string {
   return [x?.atualizadoEm, x?.criadoEm, x?.atualizadaEm, x?.criadaEm, x?.validadoEm, x?.abertaEm]
@@ -1956,7 +1956,8 @@ export function proximoNumeroFicha(): number {
 
 export function proximoNumeroEvento(): number {
   try {
-    const todos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]');
+    const todos = [...JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]'),
+      ...JSON.parse(localStorage.getItem('ecl_eventos_v4') || '[]')];
     const maior = todos.reduce((m: number, e: any) => Math.max(m, e.numero || 0), 0);
     return Math.max(maior + 1, PISO_NUMERACAO);
   } catch { return PISO_NUMERACAO; }
@@ -2718,22 +2719,48 @@ export function addRegistoPresenca(dados: {
   if (idx >= 0) all[idx] = registo; else all.push(registo);
   save(KEYS.presencas, all);
 
+  enviarPresenca(registo, aluno, plano);
+}
+
+/** A presença que vai para o Sheets. Ia sem o aluno e sem a aula (alunoId e
+ *  planoAulaId): o Sheets identifica cada presença por esses dois campos,
+ *  por isso todas caíam na mesma linha, umas por cima das outras, e o
+ *  professor via «0 alunos entraram» mesmo com alunos lá dentro. */
+function enviarPresenca(registo: any, aluno?: any, plano?: any): void {
+  aluno = aluno || getAlunos().find(a => a.id === registo.alunoId);
+  plano = plano || getPlanosAula().find(p => p.id === registo.planoAulaId);
   enviar(SHEETS_HISTORICO_URL, 'presenca', {
-    tipo: 'presenca',
+    id: registo.id,
+    alunoId: registo.alunoId,
+    planoAulaId: registo.planoAulaId || '',
     nomeAluno: aluno?.nome || ('Aluno ' + (aluno?.numero || 0)),
     numero: aluno?.numero || 0,
-    turmaId: dados.turmaId,
+    turmaId: registo.turmaId,
     planoTitulo: plano?.titulo || '',
-    ucId: plano?.ucId || '',
-    presente: dados.presente,
-    atrasado: dados.atrasado || false,
-    atrasadoMins: dados.atrasadoMins || 0,
-    horaEntrada: registo.horaEntrada,
-    fardamentoOk: dados.fardamentoOk ?? true,
-    observacao: dados.observacao || '',
-    data: registo.data,
+    ucId: registo.ucId || plano?.ucId || '',
+    presente: !!registo.presente,
+    atrasado: !!registo.atrasado,
+    atrasadoMins: registo.atrasadoMins || 0,
+    horaEntrada: registo.horaEntrada || '',
+    fardamentoOk: registo.fardamentoOk ?? true,
+    observacao: registo.observacao || '',
+    data: registo.data || '',
+    ...(registo.decisaoProfessor ? { decisaoProfessor: registo.decisaoProfessor, decididoPor: registo.decididoPor || '' } : {}),
+    ...(registo.horasPresentes ? { horasPresentes: registo.horasPresentes } : {}),
   });
 }
+
+/** Uma vez por aparelho: volta a enviar as presenças guardadas aqui, agora
+ *  com o aluno e a aula — as que foram antes da correção chegaram vazias. */
+export function reenviarPresencasAntigas(): void {
+  const CHAVE = 'ecl_presencas_reenviadas_v1';
+  try { if (localStorage.getItem(CHAVE)) return; localStorage.setItem(CHAVE, new Date().toISOString()); } catch { return; }
+  const limite = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+  load<any>(KEYS.presencas)
+    .filter(r => r.alunoId && r.planoAulaId && String(r.data || '9999') >= limite)
+    .forEach(r => enviarPresenca(r));
+}
+
 
 // Lê todas as presenças guardadas localmente
 export function getPresencas(): RegistoPresenca[] {
@@ -7029,4 +7056,48 @@ export function ucsParaAutoavaliacaoFinal(aluno: Aluno): { ucId: string; nome: s
       && ((m.dataFim && m.dataFim <= hoje) || ucJaFechada(aluno.turmaId, m.id) || !!getNotaFinalPublicadaUC(aluno.id, m.id))
       && !getPropostaFinalUC(aluno.id, m.id))
     .map((m: any) => ({ ucId: m.id, nome: m.nome, dataFim: m.dataFim }));
+}
+
+
+// ============================================================
+// Eventos (v4) — no Sheets, na folha EVENTOS (script v17)
+// ============================================================
+// Os eventos ficavam só no aparelho onde eram criados. Agora vão para o
+// Sheets e cada aparelho junta o que lá está: ganha o mais recente.
+
+const KEY_EVENTOS_V4 = 'ecl_eventos_v4';
+
+export function lerEventosLocais<T = any>(): T[] {
+  try { return JSON.parse(localStorage.getItem(KEY_EVENTOS_V4) || '[]'); } catch { return []; }
+}
+
+export function gravarEvento(ev: any): void {
+  const todos = lerEventosLocais();
+  const i = todos.findIndex((x: any) => x.id === ev.id);
+  if (i >= 0) todos[i] = ev; else todos.push(ev);
+  try { localStorage.setItem(KEY_EVENTOS_V4, JSON.stringify(todos)); } catch { /* */ }
+  enviar(SHEETS_ECL_URL, 'evento', { evento: ev });
+}
+
+export function apagarEvento(id: string): void {
+  const todos = lerEventosLocais().filter((x: any) => x.id !== id);
+  try { localStorage.setItem(KEY_EVENTOS_V4, JSON.stringify(todos)); } catch { /* */ }
+  enviar(SHEETS_ECL_URL, 'eliminar_evento', { id });
+}
+
+/** Junta os eventos do Sheets aos do aparelho. Devolve true se leu. */
+export async function sincronizarEventos(): Promise<boolean> {
+  const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_eventos' });
+  if (!json?.ok) return false;
+  const remotos: any[] = (json.eventos || json.dados || []).filter((e: any) => e?.id && e.versao === 4);
+  const porId = new Map<string, any>(lerEventosLocais().map((e: any) => [e.id, e]));
+  for (const r of remotos) {
+    const l = porId.get(r.id);
+    if (!l || String(r.atualizadoEm || '') > String(l.atualizadoEm || '')) porId.set(r.id, r);
+  }
+  try { localStorage.setItem(KEY_EVENTOS_V4, JSON.stringify([...porId.values()])); } catch { /* */ }
+  // Os que só existem aqui (criados sem rede) sobem agora.
+  const noSheets = new Set(remotos.map(r => r.id));
+  [...porId.values()].filter((e: any) => !noSheets.has(e.id)).forEach((e: any) => enviar(SHEETS_ECL_URL, 'evento', { evento: e }));
+  return true;
 }

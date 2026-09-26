@@ -125,7 +125,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes } from './backend';
+  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -171,6 +171,10 @@ function AppInterno() {
       sincronizarDoSheets(turmaId).then(() => setRefreshKey(k => k + 1)).catch(() => {});
     });
   }, [turmaId, perfil]);
+
+  // As presenças enviadas antes da correção chegaram ao Sheets sem o aluno e
+  // sem a aula. Cada aparelho reenvia uma vez as que tem guardadas.
+  useEffect(() => { const t = setTimeout(reenviarPresencasAntigas, 4000); return () => clearTimeout(t); }, []);
 
   // Também no aparelho do aluno: a autoavaliação que não chegou ao Sheets
   // volta a ser enviada. Antes só o professor reenviava — o que se perdia

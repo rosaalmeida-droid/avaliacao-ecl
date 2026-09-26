@@ -948,6 +948,15 @@ export function AlunoView({ aluno }: { aluno: Aluno }) {
             notaProgressiva={notaProgressiva}
             recuperacoesPendentes={recuperacoesPendentes}
             atividadesAbertas={atividadesAbertas}
+            ultimaAula={(() => {
+              const limite = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+              const u = aulasPassadas.find(p => String(p.data || '').slice(0, 10) >= limite);
+              if (!u) return null;
+              const sel = getSelecoes().find(s => s.alunoId === aluno.id && s.planoAulaId === u.id);
+              const validada = !!sel && getValidacoes().some((v: any) => v.selecaoId === sel.id);
+              return { titulo: u.titulo, data: u.data, estado: validada ? 'validada' : sel ? 'enviada' : 'por_avaliar', podeAvaliar: true };
+            })()}
+            onAbrirUltimaAula={() => { if (aulasPassadas[0]) setPlanoAtivo(aulasPassadas[0]); }}
             onAbrir={(d: DestinoAluno) => {
               if (d === 'entrar' || d === 'consultar_plano' || d === 'fichas'
                   || d === 'guiao' || d === 'requisicao') {
