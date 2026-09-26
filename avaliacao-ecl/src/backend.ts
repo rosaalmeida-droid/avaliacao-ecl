@@ -224,21 +224,29 @@ async function postar(url: string, corpo: Record<string, unknown>): Promise<void
 // (abrir a aula, apagar) passa à frente.
 const filaUrgente: (() => Promise<void>)[] = [];
 const filaNormal: (() => Promise<void>)[] = [];
+/** Reenvios automáticos do que ficou por confirmar: vão por último, para
+ *  nunca atrasarem o que o professor ou o aluno está a fazer agora. */
+const filaFundo: (() => Promise<void>)[] = [];
+export type Prioridade = 'urgente' | 'normal' | 'fundo';
+let modoFundo = 0;
+/** Tudo o que for enviado dentro de fn vai para o fim da fila. */
+function emSegundoPlano(fn: () => void): void { modoFundo++; try { fn(); } finally { modoFundo--; } }
 let filaATrabalhar = false;
 async function correrFila(): Promise<void> {
   if (filaATrabalhar) return;
   filaATrabalhar = true;
   try {
-    while (filaUrgente.length || filaNormal.length) {
-      const tarefa = (filaUrgente.shift() || filaNormal.shift())!;
+    while (filaUrgente.length || filaNormal.length || filaFundo.length) {
+      const tarefa = (filaUrgente.shift() || filaNormal.shift() || filaFundo.shift())!;
       await tarefa();
     }
   } finally { filaATrabalhar = false; }
 }
-function enviarAgora(url: string, corpo: Record<string, unknown>, urgente = false): Promise<void> {
+function enviarAgora(url: string, corpo: Record<string, unknown>, prio: boolean | Prioridade = 'normal'): Promise<void> {
   if (url !== SHEETS_ECL_URL) return postar(url, corpo);
+  const p: Prioridade = prio === true ? 'urgente' : prio === false ? 'normal' : prio;
   return new Promise<void>(resolve => {
-    (urgente ? filaUrgente : filaNormal).push(() => postar(url, corpo).then(resolve, resolve));
+    (p === 'urgente' ? filaUrgente : p === 'fundo' ? filaFundo : filaNormal).push(() => postar(url, corpo).then(resolve, resolve));
     correrFila();
   });
 }
@@ -266,9 +274,10 @@ function verSeHaLote(): Promise<void> {
 // Sabe-se logo ao abrir a aplicação, para a primeira autoavaliação já ir junta.
 if (typeof window !== 'undefined') setTimeout(() => { verSeHaLote(); }, 800);
 const filas = new Map<string, { itens: Record<string, unknown>[]; resolver: (() => void)[]; t: any }>();
-function despejarFila(url: string) {
-  const f = filas.get(url);
-  filas.delete(url);
+function despejarFila(chave: string) {
+  const f = filas.get(chave);
+  filas.delete(chave);
+  const [url, prio] = chave.split('|') as [string, Prioridade];
   if (!f) return;
   const fim = () => f.resolver.forEach(r => r());
   // Pacotes pequenos (10) e UM DE CADA VEZ. Eram pacotes de 40, todos ao
@@ -278,7 +287,7 @@ function despejarFila(url: string) {
   const partes: Record<string, unknown>[][] = [];
   for (let i = 0; i < f.itens.length; i += 10) partes.push(f.itens.slice(i, i + 10));
   (async () => {
-    for (const p of partes) await (p.length === 1 ? enviarAgora(url, p[0]) : enviarAgora(url, { tipo: 'lote', itens: p }));
+    for (const p of partes) await (p.length === 1 ? enviarAgora(url, p[0], prio) : enviarAgora(url, { tipo: 'lote', itens: p }, prio));
   })().then(fim, fim);
 }
 
@@ -291,11 +300,12 @@ async function enviar(url: string, tipo: string, dados: Record<string, unknown>)
   const corpo = { tipo, ...dados };
   if (url !== SHEETS_ECL_URL || loteSuportado !== true || URGENTES.has(tipo)) {
     if (url === SHEETS_ECL_URL && loteSuportado === null) verSeHaLote();
-    return enviarAgora(url, corpo, URGENTES.has(tipo));
+    return enviarAgora(url, corpo, URGENTES.has(tipo) ? 'urgente' : modoFundo ? 'fundo' : 'normal');
   }
+  const chave = url + '|' + (modoFundo ? 'fundo' : 'normal');
   return new Promise<void>(resolve => {
-    let f = filas.get(url);
-    if (!f) { f = { itens: [], resolver: [], t: setTimeout(() => despejarFila(url), 300) }; filas.set(url, f); }
+    let f = filas.get(chave);
+    if (!f) { f = { itens: [], resolver: [], t: setTimeout(() => despejarFila(chave), 300) }; filas.set(chave, f); }
     f.itens.push(corpo);
     f.resolver.push(resolve);
   });
@@ -357,9 +367,11 @@ export function aplicarComecarDoZero(zeroEm: string): boolean {
         const planos = load<any>(KEYS.planos).filter(p => p?.id);
         const fichas = load<any>(KEYS.fichas).filter(f => f?.id);
         const reqs = load<any>(KEYS.requisicoes).filter(r => r?.id);
-        planos.forEach(p => enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }));
-        fichas.forEach(f => enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f }));
-        reqs.forEach(r => enviar(SHEETS_PLANOS_URL, 'requisicao', { requisicao: r }));
+        emSegundoPlano(() => {
+          planos.forEach(p => enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }));
+          fichas.forEach(f => enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f }));
+          reqs.forEach(r => enviar(SHEETS_PLANOS_URL, 'requisicao', { requisicao: r }));
+        });
         console.warn('[começar do zero] segundo pedido ignorado; devolvidos ao Sheets:', planos.length, 'planos');
       }, 0);
       return false;
@@ -451,7 +463,7 @@ function reconciliarComSheets<T extends { id: string }>(
   // os outros aparelhos sincronizar outra vez: a fila do script não
   // esvaziava e as gravações novas perdiam-se.
   const reenviarItemAntes = reenviarItem;
-  reenviarItem = (x: T) => { if (podeReenviar(colecao + '|' + x.id)) reenviarItemAntes(x); };
+  reenviarItem = (x: T) => { if (podeReenviar(colecao + '|' + x.id)) emSegundoPlano(() => reenviarItemAntes(x)); };
   const emEspera = new Set(espera().map(p => String(p.id)));
   const limite = new Date(Date.now() - DIAS_PARA_CHEGAR * 86400000).toISOString();
   const ficam = itens.filter(x => {
@@ -2861,7 +2873,7 @@ export function reenviarPresencasAntigas(): void {
   const limite = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
   load<any>(KEYS.presencas)
     .filter(r => r.alunoId && r.planoAulaId && String(r.data || '9999') >= limite)
-    .forEach(r => enviarPresenca(r));
+    .forEach(r => emSegundoPlano(() => enviarPresenca(r)));
 }
 
 
@@ -6323,7 +6335,8 @@ async function publicarEConfirmar(planoId: string): Promise<ResultadoPublicacao>
 
   // Vai ver ao Sheets logo que possível; normalmente chega em 1–2 s.
   // Só volta a enviar uma vez, a meio, se ainda não tiver chegado.
-  const esperas = [1000, 1500, 2500, 4000];
+  // Até ~25 s: pode haver uma gravação a meio no script.
+  const esperas = [1000, 1500, 2500, 4000, 6000, 10000];
   let ligou = false;
   for (let i = 0; i < esperas.length; i++) {
     await new Promise(res => setTimeout(res, esperas[i]));
@@ -6822,7 +6835,7 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
     const ids = noSheets.get(p.tipo);
     if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id))) { confirmados++; continue; }
-    if (p.tentativas < 5) reenviar(p);
+    if (p.tentativas < 5) emSegundoPlano(() => reenviar(p));
     restantes.push({ ...p, tentativas: p.tentativas + 1 });
   }
   guardarEspera(restantes);
