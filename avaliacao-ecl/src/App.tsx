@@ -116,6 +116,7 @@ import { MapaCompetencias } from './components/MapaCompetencias';
 import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventosWizard } from './components/EventosWizard';
+import { AbrirAulas } from './components/AbrirAulas';
 import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
 import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
@@ -686,6 +687,7 @@ function AppInterno() {
             {vistaGlobal === 'gestao_recuperacoes' && <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
             {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}
+            {vistaGlobal === 'abrir_aula' && <AbrirAulas turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'cronograma' && <CronogramaTab turmaId={turmaId} />}
             {/* Dicionário movido para o ecrã do aluno */}
           </>

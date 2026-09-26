@@ -55,7 +55,7 @@ const WHITE        = '#ffffff';
 
 // ── Tipo de vistas ─────────────────────────────────────────────
 // 'inicio' é o painel de blocos — o ecrã de entrada do professor.
-export type VistaProf = 'inicio' | 'planos' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda';
+export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda';
 
 // ── Ícones SVG inline ─────────────────────────────────────────
 const Icons = {
@@ -93,6 +93,7 @@ export const NAV: NavItem[] = [
   // ficava-se lá, sem caminho de regresso.
   { id: 'inicio',              label: 'Início',               icon: Icons.inicio,     secao: 'Dia a dia' },
   { id: 'planos',              label: 'Planos de aula',       icon: Icons.planos,     secao: 'Dia a dia' },
+  { id: 'abrir_aula',          label: 'Abrir a aula',         icon: Icons.inicio,     secao: 'Dia a dia' },
   { id: 'eventos',             label: 'Eventos',              icon: Icons.eventos,    secao: 'Dia a dia' },
   { id: 'validacao',           label: 'Validar',              icon: Icons.validacao,  secao: 'Avaliar' },
   { id: 'avaliacao_uc',        label: 'Notas da UC',          icon: Icons.avaliacao,  secao: 'Avaliar' },
