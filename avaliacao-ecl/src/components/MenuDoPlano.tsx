@@ -8,6 +8,7 @@
 // Aqui vê tudo: qual é o plano, o que tem, o que falta, e a saída.
 // ============================================================
 
+import { gruposDaAula } from '../backend';
 import React, { useEffect, useState } from 'react';
 import type { PlanoAula, FichaProducao } from '../types';
 import { BotaoPublicar } from './BotaoPublicar';
@@ -15,7 +16,7 @@ import { estadoPublicacao, subscreverPublicacao } from '../backend';
 
 export type ModuloPlano =
   | 'inicio' | 'ficha' | 'guia' | 'requisicao'
-  | 'competencias' | 'turma' | 'validacao' | 'registos' | 'editar';
+  | 'competencias' | 'turma' | 'validacao' | 'registos' | 'editar' | 'grupos';
 
 const BRANCO_FORTE = '#ffffff';
 const BRANCO_MEIO = 'rgba(255,255,255,0.82)';
@@ -266,6 +267,14 @@ export function MenuDoPlano({
             activo={moduloActivo === 'turma'}
             aoClicar={() => aoIrPara('turma')} />
         )}
+
+        {/* Grupos: os alunos formam-nos e o professor valida. */}
+        <Linha
+          marca="neutro"
+          texto="Grupos"
+          contador={(plano as any).gruposAlunos?.ativo ? (gruposDaAula(plano.id).length || '0') : '—'}
+          activo={moduloActivo === 'grupos'}
+          aoClicar={() => aoIrPara('grupos')} />
       </div>
 
       {/* Autoavaliações por validar. Enquanto não forem validadas não
