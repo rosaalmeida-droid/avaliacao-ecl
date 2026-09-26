@@ -172,8 +172,11 @@ function AppInterno() {
     });
   }, [turmaId, perfil]);
 
+  // Também no aparelho do aluno: a autoavaliação que não chegou ao Sheets
+  // volta a ser enviada. Antes só o professor reenviava — o que se perdia
+  // no telemóvel do aluno perdia-se de vez.
   useEffect(() => {
-    if (perfil !== 'professor' && perfil !== 'coordenadora') return;
+    if (perfil !== 'professor' && perfil !== 'coordenadora' && perfil !== 'aluno') return;
     let vivo = true;
     const correr = () => {
       confirmarEReenviar()
