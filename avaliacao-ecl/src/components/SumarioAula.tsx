@@ -41,8 +41,22 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
     && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
   const limparRelogios = () => { relogios.current.forEach(clearTimeout); relogios.current = []; };
-  const parar = () => { limparRelogios(); try { reconhecedor.current?.abort(); } catch { /* */ } reconhecedor.current = null; setFase(''); setParcial(''); };
-  useEffect(() => () => parar(), []);
+  /** O professor quer continuar a ouvir? Só o «Parar» (ou sair) põe isto a falso. */
+  const querOuvir = useRef(false);
+  /** O texto provisório, que o Chrome ainda não deu por final. */
+  const provisorio = useRef('');
+  const juntar = (tx: string) => { if (tx.trim()) setTexto(t => (t ? t.trimEnd() + ' ' : '') + tx.trim()); };
+  /** Não deita fora o que já se ouviu: passa o provisório para a caixa. */
+  const salvarProvisorio = () => { juntar(provisorio.current); provisorio.current = ''; setParcial(''); };
+  const parar = () => {
+    querOuvir.current = false;
+    limparRelogios();
+    // stop() (e não abort()): o Chrome entrega o que ouviu antes de desligar.
+    try { reconhecedor.current?.stop(); } catch { /* */ }
+    setTimeout(salvarProvisorio, 600);
+    reconhecedor.current = null; setFase('');
+  };
+  useEffect(() => () => { querOuvir.current = false; try { reconhecedor.current?.abort(); } catch { /* */ } }, []);
 
   // Guarda sozinho, pouco depois de parar de escrever ou de ditar. Antes só
   // guardava com o botão — e se a página prendia, perdia-se tudo.
@@ -55,37 +69,55 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
   function ditar() {
     if (!SR) { setAviso('Este navegador não deixa ditar. Use o Chrome, ou o microfone do teclado do telemóvel (🎤 no teclado).'); return; }
     if (fase) { parar(); return; }
-    const r = new SR();
-    // Uma frase de cada vez: para sozinho quando se deixa de falar. O modo
-    // contínuo podia ficar ligado sem fim e prender a página.
-    r.lang = 'pt-PT'; r.continuous = false; r.interimResults = true; r.maxAlternatives = 1;
-    r.onstart = () => setFase('a_ouvir');
-    r.onresult = (ev: any) => {
-      let final = '', meio = '';
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const tx = ev.results[i][0].transcript;
-        if (ev.results[i].isFinal) final += tx; else meio += tx;
-      }
-      setParcial(meio);
-      if (final.trim()) setTexto(t => (t ? t.trimEnd() + ' ' : '') + final.trim());
-    };
-    r.onerror = (ev: any) => {
-      const e = ev?.error;
-      setAviso(e === 'not-allowed' || e === 'service-not-allowed'
-        ? 'O navegador não deixou usar o microfone. Carregue no cadeado 🔒 ao lado do endereço e permita o microfone.'
-        : e === 'no-speech' ? 'Não ouvi nada. Carregue em «Ditar» e fale logo a seguir.'
-        : e === 'network' ? 'O ditado precisa de internet. Tente outra vez.'
-        : e === 'aborted' ? '' : 'O ditado parou. Pode carregar outra vez em «Ditar».');
-    };
-    r.onend = () => { limparRelogios(); reconhecedor.current = null; setFase(''); setParcial(''); };
-    reconhecedor.current = r;
+    querOuvir.current = true;
     setAviso(''); setFase('a_pedir');
     // Se o microfone não arrancar (aviso do navegador por responder), desiste.
     relogios.current.push(setTimeout(() => {
-      if (reconhecedor.current === r) { parar(); setAviso('O microfone não arrancou. Se apareceu um aviso do navegador a pedir o microfone, carregue em «Permitir» e tente outra vez.'); }
+      if (querOuvir.current && !arrancou.current) { parar(); setAviso('O microfone não arrancou. Se apareceu um aviso do navegador a pedir o microfone, carregue em «Permitir» e tente outra vez.'); }
     }, 10000));
-    // Nunca fica a gravar mais de um minuto.
-    relogios.current.push(setTimeout(() => { if (reconhecedor.current === r) { try { r.stop(); } catch { /* */ } } }, 60000));
+    // Limite de segurança: 10 minutos.
+    relogios.current.push(setTimeout(() => { if (querOuvir.current) { parar(); setAviso('O ditado parou ao fim de 10 minutos. Carregue outra vez para continuar.'); } }, 600000));
+    arrancou.current = false;
+    ouvir();
+  }
+
+  const arrancou = useRef(false);
+  /** Liga o reconhecimento. Fica ligado até ao «Parar»: se o Chrome o
+   *  desligar numa pausa, volta a ligar-se sozinho. */
+  function ouvir() {
+    const r = new SR();
+    r.lang = 'pt-PT'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    r.onstart = () => { arrancou.current = true; setFase('a_ouvir'); };
+    r.onresult = (ev: any) => {
+      let meio = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const tx = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) juntar(tx); else meio += tx;
+      }
+      provisorio.current = meio;
+      setParcial(meio);
+    };
+    r.onerror = (ev: any) => {
+      const e = ev?.error;
+      if (e === 'not-allowed' || e === 'service-not-allowed') {
+        querOuvir.current = false;
+        setAviso('O navegador não deixou usar o microfone. Carregue no cadeado 🔒 ao lado do endereço e permita o microfone.');
+      } else if (e === 'network') {
+        querOuvir.current = false;
+        setAviso('O ditado precisa de internet. Tente outra vez.');
+      }
+      // 'no-speech' e 'aborted': não é erro — continua a ouvir.
+    };
+    r.onend = () => {
+      salvarProvisorio();
+      if (querOuvir.current && reconhecedor.current === r) {
+        // O Chrome desligou numa pausa: volta a ligar.
+        setTimeout(() => { if (querOuvir.current) { try { ouvir(); } catch { parar(); } } }, 250);
+      } else if (reconhecedor.current === r || !querOuvir.current) {
+        limparRelogios(); reconhecedor.current = null; setFase('');
+      }
+    };
+    reconhecedor.current = r;
     try { r.start(); } catch { parar(); setAviso('Não consegui ligar o microfone. Tente outra vez.'); }
   }
 
@@ -135,7 +167,7 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
             </div>
             <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
               {fase === 'a_ouvir'
-                ? (parcial || 'Quando parar de falar, o texto aparece em baixo e fica guardado.')
+                ? (parcial || 'Fale à vontade. Só pára quando carregar em «Parar». O texto fica na caixa e guarda-se sozinho.')
                 : 'Se o navegador perguntar, carregue em «Permitir».'}
             </div>
           </div>
