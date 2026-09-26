@@ -1582,6 +1582,16 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
         </button>
       )}
 
+      {/* O sumário que o professor escreveu ou ditou. */}
+      {(plano as any).sumario && (
+        <div style={{ background:'#F0EBF7', borderRadius:16, padding:'14px 18px', marginBottom:12,
+          border:'1px solid #D9CCEB' }}>
+          <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase',
+            color:'#6B3FA0', marginBottom:5 }}>Sumário da aula</div>
+          <div style={{ fontSize:15, lineHeight:1.55, color:'#2A1745', whiteSpace:'pre-wrap' }}>{(plano as any).sumario}</div>
+        </div>
+      )}
+
       {/* O que vais fazer — é isto que interessa. */}
       <div style={{ background:'#fff', borderRadius:16, padding:18, marginBottom:12,
         boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
@@ -2995,6 +3005,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
 
   return (
     <div ref={topoRef} style={{ scrollMarginTop: 12 }}>
+      {/* De que aula se trata — numa aula que já passou, o aluno lembra-se. */}
+      {idx === 0 && (
+        <div style={{ background:'#F0EBF7', borderRadius:12, padding:'10px 14px', marginBottom:14,
+          fontSize:13.5, lineHeight:1.5, color:'#2A1745' }}>
+          <b>{plano.titulo}</b>{' · '}{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')}
+          {(plano as any).sumario && <div style={{ marginTop:4, whiteSpace:'pre-wrap' }}>{(plano as any).sumario}</div>}
+        </div>
+      )}
       {/* Onde estou */}
       <div style={{ marginBottom:16 }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:8 }}>

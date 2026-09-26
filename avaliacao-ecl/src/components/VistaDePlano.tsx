@@ -11,6 +11,7 @@ import {
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { BotaoPublicar } from './BotaoPublicar';
+import { SumarioAula } from './SumarioAula';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC, encontrarAparelho, encontrarSubtecnica,
@@ -1377,6 +1378,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {/* TAB PREPARAR — era o Resumo. Recebeu da Orientação o que não
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
+      <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Requisição feita antes de mudar as fichas — o pedido ao economato
           já não corresponde à aula. */}
       {(() => {

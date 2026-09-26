@@ -458,6 +458,9 @@ export interface PlanoAula {
   horaFim: string;
   titulo: string;
   observacoes: string;
+  /** Sumário da aula, escrito ou ditado pelo professor. O aluno vê-o na
+   *  aula e na autoavaliação — numa aula que já passou, lembra-se dela. */
+  sumario?: string;
   fichasIds: string[];
   /** Nem toda a aula prática exige farda: prova de produtos, visita,
    *  aula teórico-prática na sala. O professor marca aqui e as
