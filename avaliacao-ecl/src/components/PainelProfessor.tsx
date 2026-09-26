@@ -35,6 +35,7 @@ const svg = (d: React.ReactNode, t = 38) => (
 );
 
 const I = {
+  abrir: () => svg(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.5-2" /></>),
   plano: () => svg(<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4M8 15h8" /></>),
   ficha: () => svg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></>),
   guia: () => svg(<><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M9 7h6M9 11h6" /></>),
@@ -74,6 +75,7 @@ function grupos(pendentes: { validar: number; recuperacoes: number }): Grupo[] {
       titulo: 'Dia a dia',
       destinos: [
         { id: 'planos',  label: 'Planos de aula', icone: I.plano },
+        { id: 'abrir_aula', label: 'Abrir a aula', icone: I.abrir },
         { id: 'eventos', label: 'Eventos', icone: I.eventos },
       ],
     },

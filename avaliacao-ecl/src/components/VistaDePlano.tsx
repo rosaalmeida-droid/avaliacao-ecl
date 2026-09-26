@@ -1084,10 +1084,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           return (
             <div style={{ background:'var(--cream-dark)', borderRadius:14, padding:'12px 16px', fontSize:13.5,
               color:'rgba(26,23,20,0.7)', lineHeight:1.5 }}>
-              <b>Esta aula já passou.</b> Marca as faltas de cada aluno na lista abaixo
+              <b>Esta aula já passou.</b> Marca as faltas de cada aluno na lista da turma
               {tabInicio !== 'turma' && <> — <button onClick={() => setTabInicio('turma')} style={{ background:'none', border:'none',
                 padding:0, color:'var(--copper)', fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', fontSize:13.5 }}>
                 abrir a lista da turma</button></>}.
+              {/* Uma aula passada também se abre: é assim que os alunos que não
+                  se autoavaliaram o podem fazer agora. */}
+              <button onClick={() => { abrirSessaoAula(plano.id, plano.turmaId || turmaId, nomeProfessor || 'professor'); onPlanoActualizado?.({ ...plano }); }}
+                style={{ display:'block', width:'100%', marginTop:10, padding:12, borderRadius:10, border:'none', background:'var(--copper)',
+                  color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                Abrir para os alunos se autoavaliarem
+              </button>
             </div>
           );
         }

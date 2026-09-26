@@ -7119,3 +7119,17 @@ export async function sincronizarEventos(): Promise<boolean> {
   [...porId.values()].filter((e: any) => !noSheets.has(e.id)).forEach((e: any) => enviar(SHEETS_ECL_URL, 'evento', { evento: e }));
   return true;
 }
+
+/** Confirma que a abertura da aula chegou ao Sheets (é de lá que o aluno a
+ *  lê). Se não chegou, volta a enviar e confere outra vez. */
+export async function confirmarAberturaNoSheets(planoAulaId: string): Promise<boolean> {
+  for (const espera of [2500, 4000, 7000]) {
+    await new Promise(r => setTimeout(r, espera));
+    try {
+      const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId: '' });
+      if (json?.ok && (json.sessoes || json.dados || []).some((s: any) => String(s.planoAulaId) === planoAulaId && s.abertaEm)) return true;
+    } catch { /* tenta outra vez */ }
+    await confirmarSessoesAbertas().catch(() => 0);
+  }
+  return false;
+}
