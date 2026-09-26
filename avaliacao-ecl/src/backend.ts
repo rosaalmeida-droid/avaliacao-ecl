@@ -6331,24 +6331,35 @@ async function publicarEConfirmar(planoId: string): Promise<ResultadoPublicacao>
   if (!plano) return { ok: false, erro: 'Plano não encontrado.' };
 
   const publicado = { ...plano, estado: 'publicado' as const, atualizadoEm: new Date().toISOString() };
-  addOrUpdatePlanoAula(publicado);          // grava e envia (o Sheets substitui pelo id — nunca duplica)
-
-  // Vai ver ao Sheets logo que possível; normalmente chega em 1–2 s.
-  // Só volta a enviar uma vez, a meio, se ainda não tiver chegado.
-  // Até ~25 s: pode haver uma gravação a meio no script.
-  const esperas = [1000, 1500, 2500, 4000, 6000, 10000];
-  let ligou = false;
-  for (let i = 0; i < esperas.length; i++) {
-    await new Promise(res => setTimeout(res, esperas[i]));
+  // Grava no aparelho e envia À FRENTE de tudo o resto. Antes ia para a
+  // fila normal e a aplicação só esperava uns segundos: se o script
+  // estivesse a meio de outra gravação, dizia «falhou» — e a aula
+  // chegava depois. Agora espera que a gravação termine mesmo, e só
+  // depois confere no Sheets.
+  const todos = getPlanosAula();
+  const iP = todos.findIndex(x => x.id === planoId);
+  if (iP >= 0) todos[iP] = publicado; else todos.push(publicado);
+  save(KEYS.planos, todos);
+  registarEnvio(publicado.id, 'plano', publicado.titulo || `Plano de ${publicado.data}`);
+  porConfirmar('plano', publicado.id, publicado.titulo || `Plano de ${publicado.data}`, publicado.turmaId);
+  const esperar = (ms: number) => new Promise(res => setTimeout(res, ms));
+  const estaLa = async (): Promise<boolean | null> => {
     try {
       const json: any = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId: plano.turmaId });
-      if (json?.ok) {
-        ligou = true;
-        const la: any = (json.dados || []).find((p: any) => p.id === planoId);
-        if (la && String(la.estado) === 'publicado') return { ok: true };
-      }
-    } catch { /* tenta outra vez */ }
-    if (i === 1) addOrUpdatePlanoAula(publicado);
+      if (!json?.ok) return null;
+      const la: any = (json.dados || []).find((p: any) => p.id === planoId);
+      return !!la && String(la.estado) === 'publicado';
+    } catch { return null; }
+  };
+  let ligou = false;
+  for (let volta = 0; volta < 2; volta++) {
+    await Promise.race([enviarAgora(SHEETS_PLANOS_URL, { tipo: 'plano', plano: publicado }, 'urgente'), esperar(120000)]);
+    for (const ms of [300, 1500, 3000, 5000]) {
+      await esperar(ms);
+      const r = await estaLa();
+      if (r !== null) ligou = true;
+      if (r) return { ok: true };
+    }
   }
   return { ok: false, erro: ligou
     ? 'A aula não chegou ao Sheets, por isso os alunos ainda não a veem. Carrega outra vez em «Publicar».'
