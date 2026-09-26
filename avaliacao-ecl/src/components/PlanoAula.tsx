@@ -806,6 +806,11 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                 <div className="muted" style={{ fontSize:13 }}>
                   {p.data ? fmtDataCurta(p.data) + ' · ' : ''}{horaI && horaF ? horaI+'-'+horaF+' ' : ''}{p.turmaId}{(p.fichasIds?.length||0) > 0 ? ' - '+p.fichasIds.length+' ficha'+(p.fichasIds.length!==1?'s':'') : ''}
                 </div>
+                {(p as any).criadoEm && (
+                  <div className="muted" style={{ fontSize:12, marginTop:2 }}>
+                    Criado a {new Date((p as any).criadoEm).toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                  </div>
+                )}
               </div>
               <AvisoPorValidar planoId={p.id} />
               <span style={{ fontSize:13, padding:'3px 10px', borderRadius:20, fontWeight:700, flexShrink:0,

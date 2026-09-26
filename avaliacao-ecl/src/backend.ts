@@ -531,7 +531,12 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         let merged = [...locais];
         for (const pRaw of jsonPlanos.dados) {
           if (!pRaw?.id) continue;               // linha sem código (aula fantasma do antigo envio ao calendário)
-          if (eliminados.has(pRaw.id)) continue; // já foi eliminado de propósito — não trazer de volta
+          if (eliminados.has(pRaw.id)) {        // já foi eliminado de propósito — não trazer de volta
+            // Mas continua no Sheets: o pedido de apagar perdeu-se. Volta a
+            // ser pedido (no máximo de 10 em 10 minutos), à frente da fila.
+            if (podeReenviar('eliminar_plano|' + pRaw.id)) enviar(SHEETS_PLANOS_URL, 'eliminar_plano', { planoId: pRaw.id });
+            continue;
+          }
           // Normalizar — o Sheets pode devolver campos array como string (CSV de uma célula)
           const p: any = {
             ...pRaw,
