@@ -82,6 +82,13 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   const validacoes = getValidacoes();
 
   const pendentes = selecoes.filter(s => !selecaoJaValidada(s, validacoes));
+  // Uma por aluno e aula: a mesma autoavaliação pode ter chegado duas vezes.
+  const unicas = [...new Map([...selecoes]
+    .sort((a, b) => Number(selecaoJaValidada(a, validacoes)) - Number(selecaoJaValidada(b, validacoes)) || String(a.criadaEm || '').localeCompare(String(b.criadaEm || '')))
+    .map(s => [`${s.alunoId}|${s.planoAulaId}`, s] as const)).values()];
+  const porValidarLista = unicas.filter(s => !selecaoJaValidada(s, validacoes));
+  const validadasLista = unicas.filter(s => selecaoJaValidada(s, validacoes))
+    .sort((a, b) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')));
 
   const [ativa, setAtiva] = useState<SelecaoAluno | null>(null);
   const [, redesenhar] = useState(0);
@@ -133,7 +140,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   return (
     <div>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
-        Validações pendentes
+        Validar autoavaliações
       </div>
       <button onClick={procurar} disabled={aProcurar} style={{
         padding: '9px 14px', borderRadius: 9, marginBottom: 12,
@@ -144,50 +151,62 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         {aProcurar ? 'A procurar…' : 'Procurar autoavaliações agora'}
       </button>
 
-      {selecoes.length === 0 && (
+      {/* Primeiro o que falta; o que já está validado fica por baixo, à
+          parte. Antes vinha tudo junto debaixo de «pendentes». */}
+      <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
+        color: 'var(--copper)', margin: '6px 2px 8px' }}>Por validar ({porValidarLista.length})</div>
+      {porValidarLista.length === 0 && (
         <Card>
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
+          <div style={{ textAlign: 'center', padding: '14px 0' }}>
             <div style={{ fontWeight: 700, fontSize: 15.5, marginBottom: 6 }}>
-              Ainda não há nada para validar
+              {selecoes.length ? '✓ Não há nada por validar' : 'Ainda não há nada para validar'}
             </div>
             <div className="muted" style={{ lineHeight: 1.6 }}>
-              A validação só aparece depois de os alunos submeterem a
-              autoavaliação. Se a aula já acabou e não aparece ninguém,
-              confirma que abriste a aula e que eles chegaram ao último passo.
+              {selecoes.length
+                ? 'Todas as autoavaliações que chegaram já estão validadas.'
+                : 'A validação só aparece depois de os alunos submeterem a autoavaliação. Se a aula já acabou e não aparece ninguém, confirma que abriste a aula e que eles chegaram ao último passo.'}
             </div>
           </div>
         </Card>
       )}
+      {porValidarLista.map(s => cartao(s, false))}
 
-      {selecoes.map(s => {
-        const plano = planos.find(p => p.id === s.planoAulaId);
-        const nMicros = s.autoavaliacoes?.length || 0;
-        const jaValidada = selecaoJaValidada(s, validacoes);
-        return (
-          <div key={s.id} className="option-card" onClick={() => setAtiva(s)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>
-                {nomeDoAluno(s.alunoId)} — {plano?.titulo || s.planoAulaId}
-              </div>
-              <div className="muted" style={{ fontSize: 13 }}>
-                {plano?.ucId ? `${plano.ucId} · ` : ''}
-                {jaValidada
-                  ? '✓ Validado — tocar para alterar'
-                  : `${nMicros} competência${nMicros !== 1 ? 's' : ''} a validar`}
-              </div>
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-              background: jaValidada ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.15)',
-              color: jaValidada ? 'var(--sage)' : 'var(--copper)' }}>
-              {jaValidada ? 'Validado' : 'Pendente'}
-            </span>
-          </div>
-        );
-      })}
+      {validadasLista.length > 0 && (
+        <>
+          <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
+            color: 'var(--sage)', margin: '18px 2px 8px' }}>Já validadas ({validadasLista.length}) — tocar para alterar</div>
+          {validadasLista.map(s => cartao(s, true))}
+        </>
+      )}
     </div>
   );
+
+  function cartao(s: SelecaoAluno, jaValidada: boolean) {
+    const plano = planos.find(p => p.id === s.planoAulaId) || getPlanosAula().find(p => p.id === s.planoAulaId);
+    const nMicros = s.autoavaliacoes?.length || 0;
+    const dia = String((plano as any)?.data || s.criadaEm || '').slice(0, 10).split('-').reverse().join('/');
+    return (
+      <div key={s.id} className="option-card" onClick={() => setAtiva(s)}
+        style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>
+            {nomeDoAluno(s.alunoId)} — {plano?.titulo || `Aula de ${dia} (o plano não está neste computador)`}
+          </div>
+          <div className="muted" style={{ fontSize: 13 }}>
+            {plano?.ucId ? `${plano.ucId} · ` : ''}
+            {jaValidada
+              ? '✓ Validado — tocar para alterar'
+              : `${nMicros} competência${nMicros !== 1 ? 's' : ''} a validar`}
+          </div>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 700, padding: '3px 9px', borderRadius: 20,
+          background: jaValidada ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.15)',
+          color: jaValidada ? 'var(--sage)' : 'var(--copper)' }}>
+          {jaValidada ? 'Validado' : 'Por validar'}
+        </span>
+      </div>
+    );
+  }
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────
