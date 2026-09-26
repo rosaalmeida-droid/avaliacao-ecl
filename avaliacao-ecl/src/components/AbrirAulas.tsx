@@ -35,7 +35,7 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
   // As que ainda não foram abertas, e as que se abriram hoje (para se ver
   // que ficaram abertas e que chegaram aos alunos).
   const abertaHoje = (p: PlanoAula) => String(getSessaoAula(p.id)?.abertaEm || '').slice(0, 10) === new Date().toISOString().slice(0, 10);
-  const passadas = planos.filter(p => dia(p) < hoje && dia(p) >= limite && p.estado === 'publicado' && (!getSessaoAula(p.id)?.abertaEm || abertaHoje(p)))
+  const passadas = planos.filter(p => dia(p) < hoje && dia(p) >= limite && (!getSessaoAula(p.id)?.abertaEm || abertaHoje(p)))
     .sort((a, b) => dia(b).localeCompare(dia(a)));
   const nAlunos = getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).length;
 
