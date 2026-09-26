@@ -133,6 +133,12 @@ export function MenuDoPlano({
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)' }}>
           {plano.turmaId}
         </div>
+        {/* Quando o plano foi criado — diferente do dia da aula. */}
+        {(plano as any).criadoEm && (
+          <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)', marginTop: 3 }}>
+            Criado a {new Date((plano as any).criadoEm).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </div>
+        )}
 
         {/* A unidade, com o nome por extenso. */}
         {plano.ucId ? (
