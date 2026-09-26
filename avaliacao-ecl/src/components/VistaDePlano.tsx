@@ -12,6 +12,7 @@ import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { BotaoPublicar } from './BotaoPublicar';
 import { SumarioAula } from './SumarioAula';
+import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC, encontrarAparelho, encontrarSubtecnica,
@@ -53,8 +54,7 @@ function EventoAssociador({ plano, turmaId, onPlanoActualizado }: {
 
   let eventos: any[] = [];
   try {
-    eventos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]')
-      .filter((e: any) => e.turmaId === turmaId);
+    eventos = eventosParaPlanos(turmaId);
   } catch {}
   const eventoAssociado = eventos.find((e: any) => e.id === plano.eventoId);
   return (

@@ -1,3 +1,5 @@
+import { eventosParaPlanos } from '../eventos/modelo';
+import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes } from '../backend';
 import React, { useState, useEffect } from 'react';
 import { DialogoEliminarPlano } from './DialogoEliminarPlano';
 import {
@@ -95,12 +97,27 @@ function limparHora(h?: string): string {
     : h.substring(0, 5);
 }
 
+/** Autoavaliações deste plano que o professor ainda não validou. */
+function porValidarDoPlano(planoId: string): number {
+  const validadas = new Set(_getValidacoes().map((v: any) => v.selecaoId));
+  return _getSelecoes().filter((x: any) => x.planoAulaId === planoId && !validadas.has(x.id)).length;
+}
+
+/** O aviso no cartão do plano: vê-se logo, no calendário e na lista. */
+function AvisoPorValidar({ planoId }: { planoId: string }) {
+  const n = porValidarDoPlano(planoId);
+  if (!n) return null;
+  return (
+    <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, fontWeight: 800, flexShrink: 0,
+      background: '#7B2233', color: '#fff', whiteSpace: 'nowrap' }}>
+      {n} por validar
+    </span>
+  );
+}
+
 // ── ALTERAÇÃO 1: Helper para ler eventos do EventosWizard ─────────────────
 function getEventosDaTurma(turmaId: string) {
-  try {
-    const todos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]');
-    return todos.filter((e: any) => e.turmaId === turmaId);
-  } catch { return []; }
+  return eventosParaPlanos(turmaId);
 }
 
 // ── Calendário mensal ─────────────────────────────────────────────────────
@@ -196,6 +213,15 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
           padding: 1, position: 'relative', fontSize: 12.5,
         }}>
         <span style={{ fontSize: 12.5, fontWeight: ehHoje || selecionado ? 700 : 500 }}>{data.getDate()}</span>
+        {/* Autoavaliações por validar neste dia: um número no canto. */}
+        {(() => {
+          const n = planosNesteDia.reduce((t: number, p: any) => t + porValidarDoPlano(p.id), 0);
+          return n > 0 ? (
+            <span title={`${n} autoavaliação(ões) por validar`} style={{ position: 'absolute', top: -6, right: -6,
+              minWidth: 16, height: 16, borderRadius: 8, background: '#7B2233', color: '#fff', fontSize: 10.5,
+              fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>{n}</span>
+          ) : null;
+        })()}
         {planosNesteDia.length > 0 && (
           <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
             {planosNesteDia.slice(0, 3).map((_, idx) => (
@@ -418,6 +444,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                       <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
                       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
                       {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
+                      {porValidarDoPlano(p.id) > 0 && <div style={{ marginTop: 6 }}><AvisoPorValidar planoId={p.id} /></div>}
                     </div>
                     <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
                       background: p.estado === 'publicado' ? 'rgba(90,122,78,0.15)' : 'rgba(181,101,29,0.12)',
@@ -780,6 +807,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                   {p.data ? fmtDataCurta(p.data) + ' · ' : ''}{horaI && horaF ? horaI+'-'+horaF+' ' : ''}{p.turmaId}{(p.fichasIds?.length||0) > 0 ? ' - '+p.fichasIds.length+' ficha'+(p.fichasIds.length!==1?'s':'') : ''}
                 </div>
               </div>
+              <AvisoPorValidar planoId={p.id} />
               <span style={{ fontSize:13, padding:'3px 10px', borderRadius:20, fontWeight:700, flexShrink:0,
                 background:p.estado==='publicado'?'rgba(90,122,78,0.15)':'rgba(181,101,29,0.12)',
                 color:p.estado==='publicado'?'var(--sage)':'var(--copper)',

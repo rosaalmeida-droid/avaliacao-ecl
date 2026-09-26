@@ -214,6 +214,9 @@ interface Props {
   onAbrir: (destino: DestinoAluno) => void;
   /** Já enviou a autoavaliação desta aula. */
   jaAvaliou?: boolean;
+  /** A última aula que já passou (até 7 dias), com o estado da autoavaliação. */
+  ultimaAula?: { titulo: string; data: string; estado: 'por_avaliar' | 'enviada' | 'validada'; podeAvaliar: boolean } | null;
+  onAbrirUltimaAula?: () => void;
 }
 
 export function InicioAluno({
@@ -224,7 +227,7 @@ export function InicioAluno({
   fichasAtribuidas = 0, notaProgressiva = null,
   recuperacoesPendentes = 0, atividadesAbertas = 0,
   onTentarOutraVez, aLigar = false, mensagemAula = null,
-  onAbrir,
+  onAbrir, ultimaAula = null, onAbrirUltimaAula,
 }: Props) {
   // Antes da ativação o botão diz Consultar plano; depois, Iniciar aula.
   const acao = !planoHoje ? null
@@ -319,6 +322,25 @@ export function InicioAluno({
               Ver o calendário
             </button>
           </div>
+        )}
+
+        {/* A última aula não desaparece quando o dia acaba: o aluno vê se a
+            autoavaliação foi enviada e validada, e pode voltar a ela. */}
+        {ultimaAula && onAbrirUltimaAula && (
+          <button onClick={onAbrirUltimaAula} style={{ width: '100%', textAlign: 'left', background: C.branco,
+            borderRadius: 16, padding: '14px 16px', marginBottom: 16, boxShadow: C.sombra, cursor: 'pointer',
+            fontFamily: 'inherit', border: ultimaAula.estado === 'por_avaliar' && ultimaAula.podeAvaliar ? `2px solid ${C.violeta}` : 'none' }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.suave }}>
+              A última aula · {ultimaAula.data.slice(0, 10).split('-').reverse().slice(0, 2).join('/')}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.tinta, marginTop: 3 }}>{ultimaAula.titulo}</div>
+            <div style={{ fontSize: 14, marginTop: 4, fontWeight: 600,
+              color: ultimaAula.estado === 'validada' ? '#3E7A31' : ultimaAula.estado === 'enviada' ? C.violeta : '#B5651D' }}>
+              {ultimaAula.estado === 'validada' ? '✓ Autoavaliação validada pelo professor'
+                : ultimaAula.estado === 'enviada' ? '✓ Autoavaliação enviada · à espera do professor'
+                : ultimaAula.podeAvaliar ? 'Ainda não te autoavaliaste — toca para fazer' : 'Sem autoavaliação'}
+            </div>
+          </button>
         )}
 
         {/* ── AVISOS: só quando exigem uma ação ── */}
