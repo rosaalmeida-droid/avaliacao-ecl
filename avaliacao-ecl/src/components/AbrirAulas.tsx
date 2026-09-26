@@ -45,8 +45,9 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
     try {
       if (p.estado !== 'publicado') {
         if (!confirmarTurmaAoPublicar(p.turmaId, p.titulo)) return;
-        const r = await publicarPlanoParaAlunos(p.id);
-        if (!r.ok) { alert('A aula não chegou aos alunos: ' + (r.erro || '')); return; }
+        // Não se espera: a publicação e a abertura seguem juntas, à frente
+        // de tudo, e o ecrã mostra quando chegaram.
+        publicarPlanoParaAlunos(p.id);
       }
       abrirSessaoAula(p.id, p.turmaId || turmaId, nomeProfessor || 'professor');
       redesenhar(n => n + 1);
