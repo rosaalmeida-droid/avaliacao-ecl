@@ -303,6 +303,24 @@ function dataMaisRecente(x: any): string {
 export function aplicarComecarDoZero(zeroEm: string): boolean {
   try {
     if (!zeroEm || localStorage.getItem(KEY_ZERO_VISTO) === zeroEm) return false;
+    // PROTEÇÃO: o «começar do zero» faz-se uma vez. Se aparecer outro (por
+    // exemplo, o «Executar» do editor carregado sem querer), este aparelho
+    // NÃO apaga nada: devolve ao Sheets os planos, fichas e requisições que
+    // ainda tem, para se recuperarem.
+    if (localStorage.getItem(KEY_ZERO_VISTO)) {
+      localStorage.setItem(KEY_ZERO_VISTO, zeroEm);
+      localStorage.removeItem(KEY_VISTOS_SHEETS);
+      setTimeout(() => {
+        const planos = load<any>(KEYS.planos).filter(p => p?.id);
+        const fichas = load<any>(KEYS.fichas).filter(f => f?.id);
+        const reqs = load<any>(KEYS.requisicoes).filter(r => r?.id);
+        planos.forEach(p => enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }));
+        fichas.forEach(f => enviar(SHEETS_FICHAS_URL, 'ficha', { ficha: f }));
+        reqs.forEach(r => enviar(SHEETS_PLANOS_URL, 'requisicao', { requisicao: r }));
+        console.warn('[começar do zero] segundo pedido ignorado; devolvidos ao Sheets:', planos.length, 'planos');
+      }, 0);
+      return false;
+    }
     const depois: Record<string, any[]> = {};
     LISTAS_COM_DATA.forEach(k => {
       try {

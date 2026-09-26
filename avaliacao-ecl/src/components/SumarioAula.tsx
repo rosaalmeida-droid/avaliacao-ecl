@@ -29,34 +29,64 @@ ${notas.trim() || '(sem notas)'}`;
 
 export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardado?: (p: PlanoAula) => void }) {
   const [texto, setTexto] = useState<string>(plano.sumario || '');
-  const [aOuvir, setAOuvir] = useState(false);
+  /** '' parado · 'a_pedir' à espera do microfone · 'a_ouvir' a gravar */
+  const [fase, setFase] = useState<'' | 'a_pedir' | 'a_ouvir'>('');
+  const [parcial, setParcial] = useState('');
   const [aviso, setAviso] = useState('');
   const reconhecedor = useRef<any>(null);
-  const guardado = (getPlanosAula().find(p => p.id === plano.id)?.sumario || '') === texto;
+  const relogios = useRef<any[]>([]);
+  const guardado = (getPlanosAula().find(p => p.id === plano.id)?.sumario || '') === texto.trim();
 
   const SR: any = typeof window !== 'undefined'
     && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
-  useEffect(() => () => { try { reconhecedor.current?.stop(); } catch { /* */ } }, []);
+  const limparRelogios = () => { relogios.current.forEach(clearTimeout); relogios.current = []; };
+  const parar = () => { limparRelogios(); try { reconhecedor.current?.abort(); } catch { /* */ } reconhecedor.current = null; setFase(''); setParcial(''); };
+  useEffect(() => () => parar(), []);
+
+  // Guarda sozinho, pouco depois de parar de escrever ou de ditar. Antes só
+  // guardava com o botão — e se a página prendia, perdia-se tudo.
+  useEffect(() => {
+    if (guardado) return;
+    const t = setTimeout(() => guardar(true), 1500);
+    return () => clearTimeout(t);
+  }, [texto]);
 
   function ditar() {
-    if (!SR) { setAviso('Este navegador não deixa ditar. Usa o Chrome, ou o microfone do teclado do telemóvel.'); return; }
-    if (aOuvir) { try { reconhecedor.current?.stop(); } catch { /* */ } return; }
+    if (!SR) { setAviso('Este navegador não deixa ditar. Use o Chrome, ou o microfone do teclado do telemóvel (🎤 no teclado).'); return; }
+    if (fase) { parar(); return; }
     const r = new SR();
-    r.lang = 'pt-PT'; r.continuous = true; r.interimResults = false;
+    // Uma frase de cada vez: para sozinho quando se deixa de falar. O modo
+    // contínuo podia ficar ligado sem fim e prender a página.
+    r.lang = 'pt-PT'; r.continuous = false; r.interimResults = true; r.maxAlternatives = 1;
+    r.onstart = () => setFase('a_ouvir');
     r.onresult = (ev: any) => {
-      let novo = '';
-      for (let i = ev.resultIndex; i < ev.results.length; i++)
-        if (ev.results[i].isFinal) novo += ev.results[i][0].transcript;
-      if (novo.trim()) setTexto(t => (t ? t.trimEnd() + ' ' : '') + novo.trim());
+      let final = '', meio = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const tx = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) final += tx; else meio += tx;
+      }
+      setParcial(meio);
+      if (final.trim()) setTexto(t => (t ? t.trimEnd() + ' ' : '') + final.trim());
     };
-    r.onerror = (ev: any) => setAviso(ev?.error === 'not-allowed'
-      ? 'O navegador não deixou usar o microfone. Carrega no cadeado ao lado do endereço e permite o microfone.'
-      : 'O ditado parou. Carrega outra vez em «Ditar».');
-    r.onend = () => setAOuvir(false);
+    r.onerror = (ev: any) => {
+      const e = ev?.error;
+      setAviso(e === 'not-allowed' || e === 'service-not-allowed'
+        ? 'O navegador não deixou usar o microfone. Carregue no cadeado 🔒 ao lado do endereço e permita o microfone.'
+        : e === 'no-speech' ? 'Não ouvi nada. Carregue em «Ditar» e fale logo a seguir.'
+        : e === 'network' ? 'O ditado precisa de internet. Tente outra vez.'
+        : e === 'aborted' ? '' : 'O ditado parou. Pode carregar outra vez em «Ditar».');
+    };
+    r.onend = () => { limparRelogios(); reconhecedor.current = null; setFase(''); setParcial(''); };
     reconhecedor.current = r;
-    setAviso(''); setAOuvir(true);
-    try { r.start(); } catch { setAOuvir(false); }
+    setAviso(''); setFase('a_pedir');
+    // Se o microfone não arrancar (aviso do navegador por responder), desiste.
+    relogios.current.push(setTimeout(() => {
+      if (reconhecedor.current === r) { parar(); setAviso('O microfone não arrancou. Se apareceu um aviso do navegador a pedir o microfone, carregue em «Permitir» e tente outra vez.'); }
+    }, 10000));
+    // Nunca fica a gravar mais de um minuto.
+    relogios.current.push(setTimeout(() => { if (reconhecedor.current === r) { try { r.stop(); } catch { /* */ } } }, 60000));
+    try { r.start(); } catch { parar(); setAviso('Não consegui ligar o microfone. Tente outra vez.'); }
   }
 
   async function copiar(): Promise<boolean> {
@@ -74,12 +104,13 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
       : 'Não consegui copiar sozinho. Escreve as notas no Gemini e pede o sumário.');
   }
 
-  function guardar() {
+  function guardar(sozinho = false) {
     const atual = getPlanosAula().find(p => p.id === plano.id) || plano;
+    if ((atual.sumario || '') === texto.trim()) return;
     const p = { ...atual, sumario: texto.trim(), atualizadoEm: new Date().toISOString() };
     addOrUpdatePlanoAula(p);
     onGuardado?.(p);
-    setAviso('Sumário guardado. Os alunos veem-no na aula.');
+    if (!sozinho) setAviso('Sumário guardado. Os alunos veem-no na aula.');
   }
 
   const botao = (cor?: string): React.CSSProperties => ({
@@ -93,23 +124,40 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', margin: '3px 0 10px', lineHeight: 1.5 }}>
         Diz o que se vai fazer. Podes ditar e, se quiseres, pedir a uma IA que o ponha bonito. Os alunos veem-no na aula e quando se avaliam.
       </div>
+      {/* Enquanto grava: um aviso grande, que não se confunde com nada. */}
+      {fase && (
+        <div style={{ background: fase === 'a_ouvir' ? '#c0392b' : '#8a4a15', color: '#fff', borderRadius: 12,
+          padding: '14px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 26 }}>{fase === 'a_ouvir' ? '🔴' : '⏳'}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>
+              {fase === 'a_ouvir' ? 'A ouvir… fale agora' : 'A ligar o microfone…'}
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
+              {fase === 'a_ouvir'
+                ? (parcial || 'Quando parar de falar, o texto aparece em baixo e fica guardado.')
+                : 'Se o navegador perguntar, carregue em «Permitir».'}
+            </div>
+          </div>
+          <button onClick={parar} style={{ padding: '9px 14px', borderRadius: 9, border: 'none', background: '#fff',
+            color: '#c0392b', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>■ Parar</button>
+        </div>
+      )}
       <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={4}
         placeholder="Ex.: Dinâmica de grupo. Preparação do almoço pedagógico: divisão de tarefas, compras e orçamento."
         style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, fontSize: 14.5,
-          fontFamily: 'inherit', lineHeight: 1.5, border: `1.5px solid ${aOuvir ? '#c0392b' : 'rgba(26,23,20,0.15)'}`, resize: 'vertical' }} />
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-        <button onClick={ditar} style={botao(aOuvir ? '#c0392b' : undefined)}>
-          {aOuvir ? '■ Parar de ditar' : '🎤 Ditar'}
+          fontFamily: 'inherit', lineHeight: 1.5, border: `1.5px solid ${fase ? '#c0392b' : 'rgba(26,23,20,0.15)'}`, resize: 'vertical' }} />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+        <button onClick={ditar} style={botao(fase ? '#c0392b' : undefined)}>
+          {fase ? '■ Parar' : texto ? '🎤 Ditar mais' : '🎤 Ditar'}
         </button>
         <button onClick={abrirChatGPT} style={botao()}>✨ Melhorar no ChatGPT</button>
         <button onClick={abrirGemini} style={botao()}>✨ Melhorar no Gemini</button>
         <div style={{ flex: 1 }} />
-        <button onClick={guardar} disabled={guardado} style={{ ...botao(guardado ? 'rgba(26,23,20,0.25)' : 'var(--sage)'),
-          cursor: guardado ? 'default' : 'pointer' }}>
-          {guardado && texto ? '✓ Guardado' : 'Guardar sumário'}
-        </button>
+        <span style={{ fontSize: 13, fontWeight: 700, color: guardado ? '#3E7A31' : 'rgba(26,23,20,0.5)' }}>
+          {!texto.trim() ? '' : guardado ? '✓ Guardado' : 'A guardar…'}
+        </span>
       </div>
-      {aOuvir && <div style={{ fontSize: 13, color: '#c0392b', marginTop: 8, fontWeight: 600 }}>● A ouvir… fala normalmente.</div>}
       {aviso && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)', marginTop: 8, lineHeight: 1.5 }}>{aviso}</div>}
     </div>
   );

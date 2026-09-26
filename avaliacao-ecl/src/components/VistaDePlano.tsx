@@ -311,6 +311,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   aoMudarModulo?: (m: string) => void;
   /** O pai pede para ir a um módulo — é assim que o menu navega. */
   moduloPedido?: string | null;
+  /** Muda quando chegam dados novos: redesenha sem recriar. */
+  versaoDados?: number;
 }) {
   const [modulo, setModulo] = useState<Modulo>('inicio');
 

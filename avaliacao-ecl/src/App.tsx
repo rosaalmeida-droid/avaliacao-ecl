@@ -195,6 +195,10 @@ function AppInterno() {
   /** Unidade que o professor está a fechar (pauta). */
   const [ucAFechar, setUcAFechar] = useState<{ ucId: string; nome: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  // Dados novos do Sheets: o plano aberto passa a ser o que está guardado.
+  useEffect(() => {
+    setPlanoAberto(p => p ? (getPlanosAula().find(x => x.id === p.id) || p) : p);
+  }, [refreshKey]);
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   // 'inicio' é o painel de blocos; os outros valores são os destinos.
   const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('inicio');
@@ -448,8 +452,13 @@ function AppInterno() {
                 />
               }
             >
+              {/* Sem key={refreshKey}: com dados novos o plano redesenha-se, mas
+                  não se recria do zero. Recriar cortava o ditado do sumário (o
+                  microfone ficava ligado sem se poder desligar) e perdia o que
+                  estava a meio. */}
               <VistaDePlano
-                key={refreshKey}
+                key={planoAberto.id}
+                versaoDados={refreshKey}
                 plano={planoAberto}
                 turmaId={turmaId}
                 nomeProfessor={nomeProfessor}
@@ -702,7 +711,8 @@ function AppInterno() {
       <div className="no-print">
         <Header perfil={perfil} onSair={sair} nomeProfessor={nomeProfessor} syncStatus={syncStatus} onAtualizar={atualizarDados} />
       </div>
-      {perfil === 'aluno' && aluno && <AlunoView key={refreshKey} aluno={aluno} />}
+      {/* Idem: uma autoavaliação a meio não se perde quando chegam dados novos. */}
+      {perfil === 'aluno' && aluno && <AlunoView key={aluno.id} versaoDados={refreshKey} aluno={aluno} />}
       {perfil === 'coordenadora' && <CoordenadoraView />}
     </div>
   );

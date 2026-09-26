@@ -476,7 +476,8 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
   );
 }
 
-export function AlunoView({ aluno }: { aluno: Aluno }) {
+/** versaoDados muda quando chegam dados novos: redesenha sem recriar. */
+export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
   // Cinco separadores, como a especificação: Início, Aula, Percurso,
   // Recursos, Perfil. A navegação é a mesma dentro e fora da aula.
