@@ -307,6 +307,20 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
 }
 
 // ════════════════════════════════════════════════════════════════
+/** O aluno responde sempre a 3 perguntas curtas para os 5 C's, além das
+ *  competências escolhidas. Sem este aviso o professor via mais
+ *  competências do que as que escolheu e ficava sem perceber porquê. */
+function Aviso5C() {
+  return (
+    <div style={{ marginTop: 10, marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#f3eef6',
+      border: '1px solid rgba(125,79,140,0.3)', fontSize: 13.5, lineHeight: 1.55, color: 'rgba(26,23,20,0.75)' }}>
+      <b style={{ color: '#7d4f8c' }}>ℹ️ Além destas, há 3 perguntas para os 5 C's.</b> No fim da autoavaliação, o aluno
+      responde sempre a 3 perguntas curtas — <b>Colaborativo</b>, <b>Criativo</b> e <b>Consciente</b>. <b>Não contam
+      para a nota desta aula</b>: juntam-se ao longo do curso e entram na pauta, no fim de cada unidade.
+    </div>
+  );
+}
+
 export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoActualizado, onAlteracao, onGuardado, aoMudarModulo, moduloPedido }: Props & {
   /** Avisa o pai de onde estamos, para o menu do plano se marcar. */
   aoMudarModulo?: (m: string) => void;
@@ -493,8 +507,15 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // ── Subtécnicas (fallback) ──────────────────────────────────
   const compSubtecnicas: any[] = [];
 
-  const totalComp = compObrigatorias.length + compSub.length + compApp.length
-    + compConhecimentos.length + compTecnicas.length + compAtitudes.length + compAdicionadas.length;
+  // Numa dinâmica de grupo, o aluno avalia-se SÓ nas atitudes que o
+  // professor marcou (ou, sem nenhuma marcada, nas do trimestre). Antes
+  // somavam-se as duas listas: 4 escolhidas davam «8 competências».
+  const atitudesMarcadas = compAdicionadas.filter(x => x.startsWith('ATI-'));
+  const nAtitudesDaAula = ehAtitudinal ? (atitudesMarcadas.length || compAtitudes.length) : compAtitudes.length;
+  const totalComp = ehAtitudinal
+    ? compObrigatorias.length + nAtitudesDaAula + compAdicionadas.filter(x => !x.startsWith('ATI-')).length
+    : compObrigatorias.length + compSub.length + compApp.length
+      + compConhecimentos.length + compTecnicas.length + compAtitudes.length + compAdicionadas.length;
 
   function guardarCompetencias(removidas: string[], adicionadas: string[]) {
     setCompRemovidas(removidas);
@@ -1236,9 +1257,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 </span>
               </div>
               <div>
-                <b>{compAtitudes.length}</b> atitudes
+                <b>{nAtitudesDaAula}</b> atitudes
                 <span style={{ color: 'rgba(26,23,20,0.5)' }}>
-                  {' '}— em qualquer aula, com ou sem produção.
+                  {' '}— {ehAtitudinal ? 'as que escolheu para esta aula.' : 'em qualquer aula, com ou sem produção.'}
                 </span>
               </div>
               <div>
@@ -1254,6 +1275,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 </span>
               </div>
             </div>
+
+            <Aviso5C />
 
             {!temFichas && (
               <div style={{ marginTop: 11, paddingTop: 11,
@@ -1362,8 +1385,26 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
           )}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>💡 Atitudes — sugeridas para esta aula</div>
-            {ATITUDES.filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente') && !IDS_ATITUDES_DUPLICAM.has(a.id)).slice(0, 5).map(a => {
+            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8e44ad', marginBottom: 8 }}>
+              {ehAtitudinal ? '💡 Atitudes desta aula — as que escolheu' : '💡 Atitudes — sugeridas para esta aula'}</div>
+            {/* Dinâmica de grupo: as atitudes em que o aluno se avalia são as
+                marcadas em «O que se trabalha nesta aula». Mostravam-se aqui
+                as sugeridas por defeito, que não eram as escolhidas. */}
+            {ehAtitudinal && (
+              <>
+                {ATITUDES.filter((a: any) => (atitudesMarcadas.length ? atitudesMarcadas : compAtitudes.map((x: any) => x.id)).includes(a.id)).map((a: any) => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(142,68,173,0.06)', marginBottom: 6, border: '1px solid rgba(142,68,173,0.15)' }}>
+                    <span style={{ fontSize: 14 }}>●</span>
+                    <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{a.nome}</div>
+                  </div>
+                ))}
+                <button onClick={() => setTabInicio('resumo')} style={{ marginTop: 4, padding: '7px 12px', borderRadius: 8, border: '1px solid #8e44ad',
+                  background: '#fff', color: '#8e44ad', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Mudar as atitudes
+                </button>
+              </>
+            )}
+            {!ehAtitudinal && ATITUDES.filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente') && !IDS_ATITUDES_DUPLICAM.has(a.id)).slice(0, 5).map(a => {
               const removida = compRemovidas.includes(a.id);
               return (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'rgba(142,68,173,0.06)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(142,68,173,0.15)'}`, opacity: removida ? 0.5 : 1 }}>
@@ -1379,7 +1420,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
           <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 13, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
-            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{compAtitudes.length} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
+            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{nAtitudesDaAula} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
             {totalComp > 7 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
             {totalComp <= 5 && <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>✓ Número adequado para uma aula.</div>}
           </div>
@@ -1450,6 +1491,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               Dinâmica de grupo: sem técnicas nem KitchenFlow. As atitudes do trimestre
               aparecem primeiro; podes tirá-las e escolher quaisquer outras do ano.
             </div>
+            <Aviso5C />
 
             <button onClick={() => setObrigatoriasPendentes(!obrigatoriasPendentes)}
               style={{ width:'100%', padding:'11px 13px', borderRadius:10, marginBottom:14,
