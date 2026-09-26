@@ -4388,15 +4388,62 @@ export function abrirSessaoAula(
   };
   save(KEY_SESSOES as any, [...getSessoesAula().filter(s => s.planoAulaId !== planoAulaId), nova]);
 
-  enviar(SHEETS_HISTORICO_URL, 'sessao', {
-    planoAulaId, turmaId,
-    abertaEm: nova.abertaEm,
-    abertaPor: professor,
-    toleranciaMin,
-  });
-  // Confere daqui a pouco se chegou; se não, volta a enviar.
-  setTimeout(() => { confirmarSessoesAbertas().catch(() => 0); }, 5000);
+  enviarAberturaJa(nova);
+  // Confere se chegou; se não, volta a enviar de 10 em 10 segundos.
+  vigiarAbertura(planoAulaId);
   return nova;
+}
+
+/** A abertura vai sozinha e logo, fora dos pacotes: um pacote grande
+ *  (fichas, avaliações) prendia-a na fila do script. */
+function enviarAberturaJa(s: SessaoAula): Promise<void> {
+  const plano = getPlanosAula().find(p => p.id === s.planoAulaId);
+  return enviarAgora(SHEETS_HISTORICO_URL, {
+    tipo: 'sessao', planoAulaId: s.planoAulaId, turmaId: plano?.turmaId || s.turmaId,
+    abertaEm: s.abertaEm, abertaPor: s.abertaPor, toleranciaMin: s.toleranciaMin,
+  });
+}
+
+// ── A abertura chegou aos alunos? ─────────────────────────────
+// Antes confirmava-se três vezes em 15 segundos e depois só de minuto a
+// minuto, sem dizer nada: o professor ficava 4 minutos à espera sem saber.
+// Agora tenta-se de 10 em 10 segundos durante 3 minutos, e o ecrã mostra
+// o que se passa: «a enviar», «chegou», ou um aviso a vermelho.
+export interface EstadoAbertura { estado: 'a_enviar' | 'atrasada' | 'chegou' | 'nao_chegou'; tentativas: number }
+const aberturas = new Map<string, EstadoAbertura>();
+const aVigiarAbertura = new Map<string, Promise<boolean>>();
+const ouvintesAbertura = new Set<() => void>();
+export function estadoAbertura(planoAulaId: string): EstadoAbertura | undefined { return aberturas.get(planoAulaId); }
+export function subscreverAbertura(fn: () => void): () => void { ouvintesAbertura.add(fn); return () => { ouvintesAbertura.delete(fn); }; }
+function mudarAbertura(id: string, e: EstadoAbertura) { aberturas.set(id, e); ouvintesAbertura.forEach(f => { try { f(); } catch { /* */ } }); }
+
+async function aberturaEstaNoSheets(planoAulaId: string): Promise<boolean | null> {
+  const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId: '' });
+  if (!json?.ok) return null;
+  return (json.sessoes || json.dados || []).some((x: any) => String(x.planoAulaId) === planoAulaId && x.abertaEm);
+}
+
+export function vigiarAbertura(planoAulaId: string): Promise<boolean> {
+  const jaVigia = aVigiarAbertura.get(planoAulaId);
+  if (jaVigia) return jaVigia;
+  const p = (async () => {
+    const ESPERAS = [3000, 5000, ...Array(17).fill(10000)];   // ~3 minutos
+    for (let i = 0; i < ESPERAS.length; i++) {
+      mudarAbertura(planoAulaId, { estado: i < 3 ? 'a_enviar' : 'atrasada', tentativas: i + 1 });
+      await new Promise(r => setTimeout(r, ESPERAS[i]));
+      const s = getSessaoAula(planoAulaId);
+      if (!s?.abertaEm) { aberturas.delete(planoAulaId); return false; }   // anulada entretanto
+      let la: boolean | null = null;
+      try { la = await aberturaEstaNoSheets(planoAulaId); } catch { la = null; }
+      if (la) { mudarAbertura(planoAulaId, { estado: 'chegou', tentativas: i + 1 }); return true; }
+      await enviarAberturaJa(s);
+    }
+    mudarAbertura(planoAulaId, { estado: 'nao_chegou', tentativas: ESPERAS.length });
+    return false;
+  })();
+  aVigiarAbertura.set(planoAulaId, p);
+  p.finally(() => aVigiarAbertura.delete(planoAulaId));
+  return p;
 }
 
 /**
@@ -6660,11 +6707,7 @@ export async function confirmarSessoesAbertas(): Promise<number> {
   let reenviadas = 0;
   for (const s of locais) {
     if (la.has(String(s.planoAulaId))) continue;
-    const plano = getPlanosAula().find(p => p.id === s.planoAulaId);
-    enviar(SHEETS_HISTORICO_URL, 'sessao', {
-      planoAulaId: s.planoAulaId, turmaId: plano?.turmaId || s.turmaId,
-      abertaEm: s.abertaEm, abertaPor: s.abertaPor, toleranciaMin: s.toleranciaMin,
-    });
+    enviarAberturaJa(s);
     reenviadas++;
   }
   return reenviadas;
@@ -7134,13 +7177,8 @@ export async function sincronizarEventos(): Promise<boolean> {
 /** Confirma que a abertura da aula chegou ao Sheets (é de lá que o aluno a
  *  lê). Se não chegou, volta a enviar e confere outra vez. */
 export async function confirmarAberturaNoSheets(planoAulaId: string): Promise<boolean> {
-  for (const espera of [2500, 4000, 7000]) {
-    await new Promise(r => setTimeout(r, espera));
-    try {
-      const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId: '' });
-      if (json?.ok && (json.sessoes || json.dados || []).some((s: any) => String(s.planoAulaId) === planoAulaId && s.abertaEm)) return true;
-    } catch { /* tenta outra vez */ }
-    await confirmarSessoesAbertas().catch(() => 0);
-  }
-  return false;
+  const s = getSessaoAula(planoAulaId);
+  // «Tentar outra vez»: envia já, sem esperar pela próxima volta.
+  if (s?.abertaEm) await enviarAberturaJa(s);
+  return vigiarAbertura(planoAulaId);
 }

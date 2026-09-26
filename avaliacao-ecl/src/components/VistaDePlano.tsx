@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { EstadoAberturaAula } from './EstadoAberturaAula';
 import { confirmarTurmaAoPublicar } from '../professores';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { PlanoAula, FichaProducao } from '../types';
@@ -1150,7 +1151,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 display:'flex', alignItems:'center', gap:10 }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
                   strokeWidth={3} strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
-                Aula aberta. Os alunos já podem entrar.
+                Aula aberta. A enviar aos alunos…
               </div>
             )}
             <div style={{ background:'var(--sage-pale, #eef4eb)', border:'1px solid var(--sage)',
@@ -1169,6 +1170,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   </div>
                 </div>
               </div>
+              <EstadoAberturaAula planoAulaId={plano.id} />
             </div>
 
             {/* A aplicação regista a hora, não decide a falta. Quem entrou

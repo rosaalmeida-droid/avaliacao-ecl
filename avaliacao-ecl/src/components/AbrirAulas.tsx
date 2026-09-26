@@ -9,10 +9,11 @@
 import React, { useState } from 'react';
 import type { PlanoAula } from '../types';
 import {
-  getPlanosAulaPorTurma, getSessaoAula, abrirSessaoAula, fecharSessaoAula, confirmarAberturaNoSheets,
+  getPlanosAulaPorTurma, getSessaoAula, abrirSessaoAula, fecharSessaoAula,
   publicarPlanoParaAlunos, getPresencas, getAlunos,
 } from '../backend';
 import { confirmarTurmaAoPublicar } from '../professores';
+import { EstadoAberturaAula } from './EstadoAberturaAula';
 
 const C = {
   fundo: '#F5F2F3', branco: '#fff', bordeaux: '#7B2233', bordeauxSuave: '#F6ECEE', bordeauxClaro: '#EBCDD3',
@@ -23,11 +24,8 @@ const hojeLocal = () => { const d = new Date(); return `${d.getFullYear()}-${Str
 const dataPT = (iso: string) => iso ? new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
 const hora = (iso: string) => iso ? new Date(iso).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : '';
 
-type Chegou = 'a_confirmar' | 'sim' | 'nao';
-
 export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomeProfessor?: string }) {
   const [, redesenhar] = useState(0);
-  const [chegou, setChegou] = useState<Record<string, Chegou>>({});
   const [aTratar, setATratar] = useState<string | null>(null);
   const hoje = hojeLocal();
   const limite = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
@@ -41,12 +39,6 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
     .sort((a, b) => dia(b).localeCompare(dia(a)));
   const nAlunos = getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).length;
 
-  async function confirmar(p: PlanoAula) {
-    setChegou(c => ({ ...c, [p.id]: 'a_confirmar' }));
-    const ok = await confirmarAberturaNoSheets(p.id);
-    setChegou(c => ({ ...c, [p.id]: ok ? 'sim' : 'nao' }));
-  }
-
   async function abrir(p: PlanoAula) {
     if (aTratar) return;
     setATratar(p.id);
@@ -58,7 +50,6 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
       }
       abrirSessaoAula(p.id, p.turmaId || turmaId, nomeProfessor || 'professor');
       redesenhar(n => n + 1);
-      await confirmar(p);
     } finally { setATratar(null); redesenhar(n => n + 1); }
   }
 
@@ -67,7 +58,6 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
     const aberta = !!s?.abertaEm && !s?.fechadaEm;
     const fechada = !!s?.fechadaEm;
     const entraram = getPresencas().filter(r => r.planoAulaId === p.id && r.presente).length;
-    const estado = chegou[p.id];
     const ocupado = aTratar === p.id;
     return (
       <div style={{ background: C.branco, borderRadius: 18, padding: 18, marginBottom: 12, boxShadow: C.sombra,
@@ -98,19 +88,8 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
           <div style={{ marginTop: 14, background: C.verdeSuave, borderRadius: 14, padding: '12px 14px' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: C.verde }}>✓ Aula aberta às {hora(s?.abertaEm || "")}</div>
             <div style={{ fontSize: 14, color: C.texto, marginTop: 3 }}>{entraram} de {nAlunos} alunos entraram</div>
-            <div style={{ fontSize: 13.5, marginTop: 6, fontWeight: 700,
-              color: estado === 'nao' ? C.vermelho : estado === 'sim' ? C.verde : C.suave }}>
-              {estado === 'a_confirmar' ? '⏳ A confirmar que chegou aos alunos…'
-                : estado === 'sim' ? '✓ Os alunos já a veem aberta'
-                : estado === 'nao' ? '⚠ Ainda não chegou aos alunos'
-                : ''}
-            </div>
+            <EstadoAberturaAula planoAulaId={p.id} />
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              {estado !== 'sim' && estado !== 'a_confirmar' && (
-                <button onClick={() => confirmar(p)} style={{ minHeight: 44, padding: '8px 14px', borderRadius: 12, border: `1.5px solid ${C.verde}`,
-                  background: '#fff', color: C.verde, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5 }}>
-                  {estado === 'nao' ? 'Tentar outra vez' : 'Confirmar que chegou'}</button>
-              )}
               <button onClick={() => { if (confirm('Fechar a aula? Os alunos deixam de poder entrar.')) { fecharSessaoAula(p.id, nomeProfessor || 'professor'); redesenhar(n => n + 1); } }}
                 style={{ minHeight: 44, padding: '8px 14px', borderRadius: 12, border: '1.5px solid #E4DDE0', background: '#fff', color: C.texto,
                   fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14.5 }}>Fechar a aula</button>
