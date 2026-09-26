@@ -27,7 +27,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -435,7 +435,7 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
   const validacoes = getValidacoes().filter(v => v.alunoId === aluno.id);
   const linhas = planos.map(p => {
     const sel = selecoes.find(s => s.planoAulaId === p.id);
-    const val = sel ? validacoes.find(v => (v as any).selecaoId === sel.id) : undefined;
+    const val = sel ? validacaoDaSelecao(sel, validacoes as any) : undefined;
     const estado = val ? 'validado' : (sel ? 'aguarda' : 'por_avaliar');
     const nota20 = val ? ((val as any).notaMedia20 != null ? (val as any).notaMedia20 : null) : null;
     return { p, estado, nota20 };
@@ -698,7 +698,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const validacoesAluno = getSelecoes()
     .filter(s => s.alunoId === aluno.id)
     .map(s => {
-      const v = getValidacoes().find(x => (x as any).selecaoId === s.id);
+      const v = validacaoDaSelecao(s);
       const plano = planos.find(p => p.id === s.planoAulaId);
       return { plano, nota20: v ? ((v as any).notaMedia20 ?? null) : null, validada: !!v };
     })
@@ -823,7 +823,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         >
           {(() => {
             const sel = getSelecoes().find(s => s.alunoId === aluno.id && s.planoAulaId === planoAtivo.id);
-            const val = sel ? getValidacoes().find(v => (v as any).selecaoId === sel.id) : undefined;
+            const val = sel ? validacaoDaSelecao(sel) : undefined;
             const nota20 = val ? ((val as any).notaMedia20 ?? null) : null;
             if (nota20 == null) return null;
             const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
@@ -954,7 +954,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               const u = aulasPassadas.find(p => String(p.data || '').slice(0, 10) >= limite);
               if (!u) return null;
               const sel = getSelecoes().find(s => s.alunoId === aluno.id && s.planoAulaId === u.id);
-              const validada = !!sel && getValidacoes().some((v: any) => v.selecaoId === sel.id);
+              const validada = !!sel && selecaoJaValidada(sel);
               return { titulo: u.titulo, data: u.data, estado: validada ? 'validada' : sel ? 'enviada' : 'por_avaliar', podeAvaliar: true };
             })()}
             onAbrirUltimaAula={() => { if (aulasPassadas[0]) setPlanoAtivo(aulasPassadas[0]); }}
