@@ -385,6 +385,8 @@ function marcarVistosNoSheets(colecao: string, ids: Set<string>): void {
 function reconciliarComSheets<T extends { id: string }>(
   colecao: string, itens: T[], idsNoSheets: Set<string>,
   abrange: (x: T) => boolean, dataDe: (x: T) => string, reenviarItem: (x: T) => void,
+  /** Ids que o Sheets diz terem sido eliminados de propósito (se souber dizer). */
+  eliminadosNoSheets?: Set<string>,
 ): T[] {
   const vistos = vistosNoSheets(colecao);
   idsNoSheets.forEach(id => vistos.add(id));
@@ -392,7 +394,15 @@ function reconciliarComSheets<T extends { id: string }>(
   const limite = new Date(Date.now() - DIAS_PARA_CHEGAR * 86400000).toISOString();
   const ficam = itens.filter(x => {
     if (!abrange(x) || idsNoSheets.has(String(x.id))) return true;
-    if (vistos.has(String(x.id))) return false;              // apagado no Sheets
+    if (eliminadosNoSheets?.has(String(x.id))) return false; // eliminado de propósito
+    // Já esteve no Sheets e deixou de estar. Antes saía também do aparelho —
+    // e uma aula que desaparecesse do Sheets (linha escrita por cima,
+    // folha mexida à mão) perdia-se em todo o lado. Agora só sai se o
+    // Sheets disser que foi eliminada; senão, volta a ser enviada.
+    if (vistos.has(String(x.id))) {
+      if (colecao === 'planos') { reenviarItem(x); return true; }
+      return false;
+    }
     const recente = String(dataDe(x) || '') >= limite;
     if (recente || emEspera.has(String(x.id))) {             // ainda não chegou: reenviar
       reenviarItem(x);
@@ -490,7 +500,8 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
           new Set(jsonPlanos.dados.map((x: any) => String(x.id))),
           x => x.turmaId === turmaId,
           x => String((x as any).atualizadoEm || (x as any).criadoEm || x.data || ''),
-          x => enviar(SHEETS_PLANOS_URL, 'plano', { plano: x }));
+          x => enviar(SHEETS_PLANOS_URL, 'plano', { plano: x }),
+          Array.isArray(jsonPlanos.eliminados) ? new Set(jsonPlanos.eliminados.map(String)) : undefined);
         save(KEYS.planos, merged);
       }
     }
