@@ -1,5 +1,5 @@
 import { eventosParaPlanos } from '../eventos/modelo';
-import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes } from '../backend';
+import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada } from '../backend';
 import React, { useState, useEffect } from 'react';
 import { DialogoEliminarPlano } from './DialogoEliminarPlano';
 import {
@@ -99,8 +99,8 @@ function limparHora(h?: string): string {
 
 /** Autoavaliações deste plano que o professor ainda não validou. */
 function porValidarDoPlano(planoId: string): number {
-  const validadas = new Set(_getValidacoes().map((v: any) => v.selecaoId));
-  return _getSelecoes().filter((x: any) => x.planoAulaId === planoId && !validadas.has(x.id)).length;
+  const validacoes = _getValidacoes();
+  return _getSelecoes().filter((x: any) => x.planoAulaId === planoId && !selecaoJaValidada(x, validacoes as any)).length;
 }
 
 /** O aviso no cartão do plano: vê-se logo, no calendário e na lista. */

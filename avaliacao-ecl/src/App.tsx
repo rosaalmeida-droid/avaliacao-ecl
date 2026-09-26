@@ -122,7 +122,7 @@ import { HistorialPorUC } from './components/HistorialPorUC';
 import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
 import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   migrarTurmaAntiga,
-  getPlanosAulaPorTurma, getSelecoes, getValidacoes,
+  getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
@@ -421,9 +421,9 @@ function AppInterno() {
                   })()}
                   autoavaliacoes={getSelecoes().filter((s: any) => s.planoAulaId === planoAberto.id).length}
                   porValidar={(() => {
-                    const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
+                    const vals = getValidacoes();
                     return getSelecoes().filter((s: any) =>
-                      s.planoAulaId === planoAberto.id && !vals.has(s.id)).length;
+                      s.planoAulaId === planoAberto.id && !selecaoJaValidada(s, vals)).length;
                   })()}
                   aoPublicar={() => confirmarTurmaAoPublicar(planoAberto.turmaId, planoAberto.titulo)}
                   depoisDePublicar={(ok) => {
@@ -594,9 +594,9 @@ function AppInterno() {
                 proximasAulas={planos.filter((p: any) => p.data > hojeISO).length}
                 porValidar={(() => {
                   // Autoavaliações submetidas que ainda não têm validação.
-                  const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
+                  const vals = getValidacoes();
                   return getSelecoes().filter((s: any) =>
-                    s.turmaId === turmaId && !vals.has(s.id)).length;
+                    s.turmaId === turmaId && !selecaoJaValidada(s, vals)).length;
                 })()}
                 onAbrir={(v) => setVistaGlobal(v)}
                 // O calendário ao lado dos cartões apertava o ecrã no
@@ -608,9 +608,9 @@ function AppInterno() {
                   if (!p) return null;
                   const nFichas = (p.fichasIds || []).length;
                   const sessao = getSessaoAula(p.id);
-                  const vals = new Set(getValidacoes().map((v: any) => v.selecaoId));
+                  const vals = getValidacoes();
                   const porValidarHoje = getSelecoes().filter((x: any) =>
-                    x.planoAulaId === p.id && !vals.has(x.id)).length;
+                    x.planoAulaId === p.id && !selecaoJaValidada(x, vals)).length;
                   const est = sessao?.abertaEm ? estadoDaTurmaNaAula(p.id, turmaId) : [];
                   const etapa = porValidarHoje > 0 ? 'validar'
                     : sessao?.abertaEm ? 'turma'

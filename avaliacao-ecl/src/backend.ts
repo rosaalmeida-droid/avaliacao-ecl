@@ -2450,6 +2450,18 @@ export function getSelecoes(): SelecaoAluno[] {
   return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
 }
 export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
+
+/** A validação desta autoavaliação. Procura pelo código e também pelo
+ *  aluno e pela aula: a mesma autoavaliação pode chegar duas vezes (do
+ *  telemóvel e do Sheets, ou com um código antigo). Sem isto, a cópia que
+ *  chegava depois aparecia por corrigir e o professor corrigia duas vezes. */
+export function validacaoDaSelecao(s: { id: string; alunoId?: string; planoAulaId?: string }, validacoes: Validacao[] = getValidacoes()): Validacao | undefined {
+  return validacoes.find((v: any) => v.selecaoId === s.id)
+    || validacoes.find((v: any) => !!s.alunoId && !!s.planoAulaId && v.alunoId === s.alunoId && v.planoAulaId === s.planoAulaId);
+}
+export function selecaoJaValidada(s: { id: string; alunoId?: string; planoAulaId?: string }, validacoes: Validacao[] = getValidacoes()): boolean {
+  return !!validacaoDaSelecao(s, validacoes);
+}
 export function getAtividades(): Atividade[] { return load<Atividade>(KEYS.atividades); }
 
 /** Inscreve ou retira o aluno de uma atividade. Inscrever não é
@@ -5209,7 +5221,7 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
   return alunos.map(a => {
     const pres = presencas.find(p => p.alunoId === a.id);
     const sel = selecoes.find(s => s.alunoId === a.id);
-    const val = sel ? validacoes.find(v => (v as any).selecaoId === sel.id) : undefined;
+    const val = sel ? validacaoDaSelecao(sel, validacoes) : undefined;
 
     // Os itens em falta ficam na observação da presença.
     const obs = pres?.observacao || '';
@@ -5619,14 +5631,14 @@ export interface PorValidar {
 
 /** Autoavaliações submetidas sem validação, por plano. */
 export function autoavaliacoesPorValidar(turmaId: string): PorValidar[] {
-  const validados = new Set(getValidacoes().map((v: any) => v.selecaoId));
+  const validacoes = getValidacoes();
   const planos = getPlanosAula();
   const alunos = getAlunos();
 
   const porPlano = new Map<string, { nomes: string[] }>();
 
   getSelecoes()
-    .filter((s: any) => s.turmaId === turmaId && !validados.has(s.id))
+    .filter((s: any) => s.turmaId === turmaId && !selecaoJaValidada(s, validacoes))
     .forEach((s: any) => {
       const atual = porPlano.get(s.planoAulaId) || { nomes: [] };
       const aluno = alunos.find(a => a.id === s.alunoId);

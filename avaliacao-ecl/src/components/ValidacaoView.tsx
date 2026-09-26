@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao } from '../backend';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
@@ -81,7 +81,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   const selecoes = getSelecoes().filter(s => (!turmaId || s.turmaId === turmaId) && (!planoId || s.planoAulaId === planoId));
   const validacoes = getValidacoes();
 
-  const pendentes = selecoes.filter(s => !validacoes.some(v => v.selecaoId === s.id));
+  const pendentes = selecoes.filter(s => !selecaoJaValidada(s, validacoes));
 
   const [ativa, setAtiva] = useState<SelecaoAluno | null>(null);
   const [, redesenhar] = useState(0);
@@ -108,7 +108,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   if (ativa) {
     const plano = planos.find(p => p.id === ativa.planoAulaId);
     const fichas = getFichasProducao().filter(f => plano?.fichasIds?.includes(f.id));
-    const valExistente = validacoes.find(v => v.selecaoId === ativa.id) || null;
+    const valExistente = validacaoDaSelecao(ativa, validacoes) || null;
     return (
       <ValidarSelecao key={ativa.id}
         selecao={ativa}
@@ -123,7 +123,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         onSeguinte={() => {
           const prox = getSelecoes().filter(s => (!turmaId || s.turmaId === turmaId)
             && (!planoId || s.planoAulaId === planoId) && s.id !== ativa.id
-            && !getValidacoes().some(v => v.selecaoId === s.id))[0];
+            && !selecaoJaValidada(s))[0];
           setAtiva(prox || null);
         }}
       />
@@ -163,7 +163,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
       {selecoes.map(s => {
         const plano = planos.find(p => p.id === s.planoAulaId);
         const nMicros = s.autoavaliacoes?.length || 0;
-        const jaValidada = validacoes.some(v => v.selecaoId === s.id);
+        const jaValidada = selecaoJaValidada(s, validacoes);
         return (
           <div key={s.id} className="option-card" onClick={() => setAtiva(s)}
             style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

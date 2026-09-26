@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import {
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
-  getFichasProducao, getAlunos,
+  getFichasProducao, getAlunos, validacaoDaSelecao, selecaoJaValidada,
 } from '../backend';
 import { getReferencialUC } from '../referencial811RA144';
 import { modulosDaTurma } from '../cronograma';
@@ -63,7 +63,7 @@ function montar(turmaId: string): UCResumo[] {
   for (const p of planos) {
     const uc = (p as any).ucId || '(sem unidade)';
     const sels = selecoes.filter(s => s.planoAulaId === p.id);
-    const vals = sels.filter(s => validacoes.some(v => (v as any).selecaoId === s.id));
+    const vals = sels.filter(s => selecaoJaValidada(s, validacoes as any));
     const resumo: PlanoResumo = {
       id: p.id,
       titulo: p.titulo || 'Aula',

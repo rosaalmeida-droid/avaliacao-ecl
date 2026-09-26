@@ -1,5 +1,5 @@
 import React from 'react';
-import { getPlanosAulaPorTurma, getSelecoes, getValidacoes } from '../backend';
+import { getPlanosAulaPorTurma, getSelecoes, getValidacoes , validacaoDaSelecao, selecaoJaValidada } from '../backend';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Data "20-07 · quarta" curta
@@ -34,7 +34,7 @@ export function PercursoUC({ aluno, ucId }: { aluno: { id: string; turmaId: stri
 
   const linhas = planos.map(p => {
     const sel = selecoes.find(s => s.planoAulaId === p.id);
-    const val = sel ? validacoes.find(v => (v as any).selecaoId === sel.id) : undefined;
+    const val = sel ? validacaoDaSelecao(sel, validacoes as any) : undefined;
     let estado: Estado = 'por_avaliar';
     if (val) estado = 'validado';
     else if (sel) estado = 'aguarda';
