@@ -199,14 +199,48 @@ export function save<T>(key: string, data: T[]): void {
   catch (e) { console.error('Erro ao guardar', key, e); }
 }
 
-async function enviarAgora(url: string, corpo: Record<string, unknown>): Promise<void> {
+async function postar(url: string, corpo: Record<string, unknown>): Promise<void> {
+  // Nunca fica preso para sempre: ao fim de 90 s desiste (volta a ser
+  // enviado pela lista de espera).
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const t = ctl ? setTimeout(() => ctl.abort(), 90000) : null;
   try {
     await fetch(url, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(corpo),
+      signal: ctl?.signal,
     });
   } catch (e) { console.error('Erro Sheets:', e); }
+  finally { if (t) clearTimeout(t); }
+}
+
+// ── Uma gravação de cada vez ───────────────────────────────────
+// O script grava uma coisa de cada vez: quem chega enquanto outra está a
+// gravar espera no máximo 30 s e depois desiste, sem dar erro. A
+// aplicação mandava tudo ao mesmo tempo (35 autoavaliações = 35 pedidos
+// em simultâneo) e perdiam-se gravações — a abertura da aula, o apagar
+// de um plano. Agora vai tudo numa fila, um de cada vez; o urgente
+// (abrir a aula, apagar) passa à frente.
+const filaUrgente: (() => Promise<void>)[] = [];
+const filaNormal: (() => Promise<void>)[] = [];
+let filaATrabalhar = false;
+async function correrFila(): Promise<void> {
+  if (filaATrabalhar) return;
+  filaATrabalhar = true;
+  try {
+    while (filaUrgente.length || filaNormal.length) {
+      const tarefa = (filaUrgente.shift() || filaNormal.shift())!;
+      await tarefa();
+    }
+  } finally { filaATrabalhar = false; }
+}
+function enviarAgora(url: string, corpo: Record<string, unknown>, urgente = false): Promise<void> {
+  if (url !== SHEETS_ECL_URL) return postar(url, corpo);
+  return new Promise<void>(resolve => {
+    (urgente ? filaUrgente : filaNormal).push(() => postar(url, corpo).then(resolve, resolve));
+    correrFila();
+  });
 }
 
 // ── Envios em pacote (script v16) ──────────────────────────────
@@ -237,18 +271,27 @@ function despejarFila(url: string) {
   filas.delete(url);
   if (!f) return;
   const fim = () => f.resolver.forEach(r => r());
+  // Pacotes pequenos (10) e UM DE CADA VEZ. Eram pacotes de 40, todos ao
+  // mesmo tempo: o script grava um de cada vez, um pacote ocupava-o mais
+  // de um minuto e os outros desistiam ao fim de 30 segundos («Ocupado»)
+  // — e perdia-se tudo o que chegasse entretanto, até a abertura da aula.
   const partes: Record<string, unknown>[][] = [];
-  for (let i = 0; i < f.itens.length; i += 40) partes.push(f.itens.slice(i, i + 40));
-  Promise.all(partes.map(p => p.length === 1 ? enviarAgora(url, p[0]) : enviarAgora(url, { tipo: 'lote', itens: p })))
-    .then(fim, fim);
+  for (let i = 0; i < f.itens.length; i += 10) partes.push(f.itens.slice(i, i + 10));
+  (async () => {
+    for (const p of partes) await (p.length === 1 ? enviarAgora(url, p[0]) : enviarAgora(url, { tipo: 'lote', itens: p }));
+  })().then(fim, fim);
 }
+
+/** Pedidos pequenos e urgentes: vão logo, sozinhos, sem esperar por pacotes. */
+const URGENTES = new Set(['sessao', 'fechar_sessao', 'eliminar_plano', 'eliminar_do_plano', 'eliminar_ficha',
+  'eliminar_requisicao', 'eliminar_aluno', 'eliminar_evento']);
 
 async function enviar(url: string, tipo: string, dados: Record<string, unknown>): Promise<void> {
   if (!url) return;
   const corpo = { tipo, ...dados };
-  if (url !== SHEETS_ECL_URL || loteSuportado !== true) {
+  if (url !== SHEETS_ECL_URL || loteSuportado !== true || URGENTES.has(tipo)) {
     if (url === SHEETS_ECL_URL && loteSuportado === null) verSeHaLote();
-    return enviarAgora(url, corpo);
+    return enviarAgora(url, corpo, URGENTES.has(tipo));
   }
   return new Promise<void>(resolve => {
     let f = filas.get(url);
@@ -382,6 +425,19 @@ function marcarVistosNoSheets(colecao: string, ids: Set<string>): void {
   } catch { /* */ }
 }
 
+const KEY_REENVIOS = 'ecl_ultimos_reenvios';
+function podeReenviar(chave: string): boolean {
+  try {
+    const m: Record<string, number> = JSON.parse(localStorage.getItem(KEY_REENVIOS) || '{}');
+    const agora = Date.now();
+    if (m[chave] && agora - m[chave] < 10 * 60000) return false;
+    m[chave] = agora;
+    for (const k of Object.keys(m)) if (agora - m[k] > 86400000) delete m[k];
+    localStorage.setItem(KEY_REENVIOS, JSON.stringify(m));
+  } catch { /* */ }
+  return true;
+}
+
 function reconciliarComSheets<T extends { id: string }>(
   colecao: string, itens: T[], idsNoSheets: Set<string>,
   abrange: (x: T) => boolean, dataDe: (x: T) => string, reenviarItem: (x: T) => void,
@@ -390,6 +446,12 @@ function reconciliarComSheets<T extends { id: string }>(
 ): T[] {
   const vistos = vistosNoSheets(colecao);
   idsNoSheets.forEach(id => vistos.add(id));
+  // O mesmo registo volta a ser enviado no máximo de 10 em 10 minutos.
+  // Cada sincronização reenviava tudo o que faltava — e cada envio fazia
+  // os outros aparelhos sincronizar outra vez: a fila do script não
+  // esvaziava e as gravações novas perdiam-se.
+  const reenviarItemAntes = reenviarItem;
+  reenviarItem = (x: T) => { if (podeReenviar(colecao + '|' + x.id)) reenviarItemAntes(x); };
   const emEspera = new Set(espera().map(p => String(p.id)));
   const limite = new Date(Date.now() - DIAS_PARA_CHEGAR * 86400000).toISOString();
   const ficam = itens.filter(x => {
@@ -4413,7 +4475,7 @@ function enviarAberturaJa(s: SessaoAula): Promise<void> {
   return enviarAgora(SHEETS_HISTORICO_URL, {
     tipo: 'sessao', planoAulaId: s.planoAulaId, turmaId: plano?.turmaId || s.turmaId,
     abertaEm: s.abertaEm, abertaPor: s.abertaPor, toleranciaMin: s.toleranciaMin,
-  });
+  }, true);
 }
 
 // ── A abertura chegou aos alunos? ─────────────────────────────
