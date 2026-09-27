@@ -122,7 +122,7 @@ import { HistorialPorUC } from './components/HistorialPorUC';
 import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
 import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   migrarTurmaAntiga,
-  getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada,
+  getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada, definirPerfilDoAparelho,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
@@ -214,7 +214,7 @@ function AppInterno() {
   function atualizarDados() {
     if (!turmaId) return;
     setSyncStatus('syncing');
-    sincronizarDoSheets(turmaId)
+    sincronizarDoSheets(turmaId, { forcar: true })
       .then(() => { setSyncStatus('ok'); setRefreshKey(k => k + 1); })
       .catch(() => setSyncStatus('offline'));
   }
@@ -284,6 +284,7 @@ function AppInterno() {
   }
 
   function handleLogin(perfilRecebido: Perfil, alunoId?: string, turmaIdRecebida?: string, nomeUser?: string) {
+    definirPerfilDoAparelho(perfilRecebido);
     setPerfil(perfilRecebido);
     if (turmaIdRecebida) {
       setTurmaId(turmaIdRecebida);

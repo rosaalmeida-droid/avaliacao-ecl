@@ -295,8 +295,16 @@ function despejarFila(chave: string) {
 const URGENTES = new Set(['sessao', 'fechar_sessao', 'eliminar_plano', 'eliminar_do_plano', 'eliminar_ficha',
   'eliminar_requisicao', 'eliminar_aluno', 'eliminar_evento']);
 
-async function enviar(url: string, tipo: string, dados: Record<string, unknown>): Promise<void> {
+// As gravações dos alunos vão uma segunda vez, 10 a 15 s depois: se o
+// Google recusar a primeira num pico (limite de pedidos ao mesmo tempo),
+// a segunda chega. As repetições juntam-se no script (a mais recente manda).
+const VAO_DUAS_VEZES = new Set(['presenca', 'selecao', 'avaliacao', 'grupo_membro', 'avaliacao_par']);
+
+async function enviar(url: string, tipo: string, dados: Record<string, unknown>, repetida = false): Promise<void> {
   if (!url) return;
+  if (!repetida && url === SHEETS_ECL_URL && VAO_DUAS_VEZES.has(tipo)) {
+    setTimeout(() => { emSegundoPlano(() => { enviar(url, tipo, dados, true); }); }, 10000 + Math.random() * 5000);
+  }
   const corpo = { tipo, ...dados };
   if (url !== SHEETS_ECL_URL || loteSuportado !== true || URGENTES.has(tipo)) {
     if (url === SHEETS_ECL_URL && loteSuportado === null) verSeHaLote();
@@ -311,8 +319,30 @@ async function enviar(url: string, tipo: string, dados: Record<string, unknown>)
   });
 }
 
+// No máximo 4 leituras ao mesmo tempo por aparelho. O Google aceita
+// cerca de 30 pedidos simultâneos para a turma toda: com 14 de cada vez
+// por telemóvel, três alunos a entrar no mesmo segundo passavam o limite
+// e o Google recusava o resto (incluindo o que o professor gravava).
+let leiturasAtivas = 0;
+const leiturasEmEspera: (() => void)[] = [];
+async function vezDeLer(): Promise<void> {
+  if (leiturasAtivas < 4) { leiturasAtivas++; return; }
+  await new Promise<void>(r => leiturasEmEspera.push(r));
+  leiturasAtivas++;
+}
+function acabouDeLer(): void {
+  leiturasAtivas--;
+  const proxima = leiturasEmEspera.shift();
+  if (proxima) proxima();
+}
+
 async function lerDoSheets(url: string, params: Record<string, string>): Promise<any> {
   if (!url) return null;
+  await vezDeLer();
+  try { return await lerDoSheetsAgora(url, params); } finally { acabouDeLer(); }
+}
+
+async function lerDoSheetsAgora(url: string, params: Record<string, string>): Promise<any> {
   try {
     const u = new URL(url);
     Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
@@ -346,7 +376,8 @@ const FICAM_NO_ZERO = new Set([
 ]);
 /** Listas em que se guarda o que foi criado depois da limpeza. */
 const LISTAS_COM_DATA = ['ecl_planos', 'ecl_fichas', 'ecl_requisicoes', 'ecl_selecoes', 'ecl_validacoes',
-  'ecl_presencas', 'ecl_historico_avaliacoes', 'ecl_sessoes_aula', 'ecl_eventos_v4'];
+  'ecl_presencas', 'ecl_historico_avaliacoes', 'ecl_sessoes_aula', 'ecl_eventos_v4',
+  'ecl_grupos_membros', 'ecl_grupos_info', 'ecl_avaliacoes_pares'];
 
 function dataMaisRecente(x: any): string {
   return [x?.atualizadoEm, x?.criadoEm, x?.atualizadaEm, x?.criadaEm, x?.validadoEm, x?.abertaEm]
@@ -360,7 +391,9 @@ export function aplicarComecarDoZero(zeroEm: string): boolean {
     // exemplo, o «Executar» do editor carregado sem querer), este aparelho
     // NÃO apaga nada: devolve ao Sheets os planos, fichas e requisições que
     // ainda tem, para se recuperarem.
-    if (localStorage.getItem(KEY_ZERO_VISTO)) {
+    // Um «começar do zero» pedido pela coordenação («#confirmado») limpa
+    // sempre, mesmo num aparelho que já tinha visto outro.
+    if (localStorage.getItem(KEY_ZERO_VISTO) && !String(zeroEm).endsWith('#confirmado')) {
       localStorage.setItem(KEY_ZERO_VISTO, zeroEm);
       localStorage.removeItem(KEY_VISTOS_SHEETS);
       setTimeout(() => {
@@ -488,7 +521,29 @@ function reconciliarComSheets<T extends { id: string }>(
   return ficam;
 }
 
-export async function sincronizarDoSheets(turmaId: string): Promise<void> {
+// Chamadas repetidas juntam-se numa só: a entrada do aluno chamava a
+// sincronização completa em três sítios ao mesmo tempo (14 pedidos cada),
+// e o teste de carga mostrou 8 por telemóvel em pouco mais de um minuto.
+const syncEmCurso = new Map<string, Promise<void>>();
+const syncFeitaEm = new Map<string, number>();
+export function sincronizarDoSheets(turmaId: string, opcoes?: { leve?: boolean; forcar?: boolean }): Promise<void> {
+  const chave = turmaId + '|' + (opcoes?.leve ? 'leve' : 'tudo');
+  const aDecorrer = syncEmCurso.get(chave) || (!opcoes?.leve ? syncEmCurso.get(turmaId + '|tudo') : undefined);
+  if (aDecorrer) return aDecorrer;
+  const feita = Math.max(syncFeitaEm.get(chave) || 0, syncFeitaEm.get(turmaId + '|tudo') || 0);
+  if (!opcoes?.forcar && Date.now() - feita < 20000) return Promise.resolve();
+  const p = sincronizarDoSheetsAgora(turmaId, opcoes)
+    .finally(() => { syncEmCurso.delete(chave); syncFeitaEm.set(chave, Date.now()); });
+  syncEmCurso.set(chave, p);
+  return p;
+}
+
+async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boolean }): Promise<void> {
+  // «Leve»: só os planos. É o que o telemóvel do aluno pede quando há
+  // novidades — eram 14 pedidos por telemóvel, e com a turma toda davam
+  // mais de 300 em segundos: o Google recusava o que passava do limite,
+  // e perdiam-se a aula, a abertura e as gravações do professor.
+  const leve = !!opcoes?.leve;
   // Todos os pedidos ao Sheets partem ao mesmo tempo. Eram 15, um depois do
   // outro, e cada um leva 1 a 3 segundos no Google: «Atualizar» chegava a
   // demorar meio minuto. Agora demora o tempo do pedido mais lento.
@@ -511,12 +566,16 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
     [SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId }],
     [SHEETS_ECL_URL, { tipo: 'get_precos' }],
     [SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' }],
-  ].forEach(([url, params]) => { if (url) ler(url as string, params as Record<string, string>); });
+  ].forEach(([url, params]) => {
+    if (!url) return;
+    if (leve && (params as any).tipo !== 'get_planos' && (params as any).tipo !== 'get_fichas') return;
+    ler(url as string, params as Record<string, string>);
+  });
   try {
     // Sessões e líderes primeiro: são o que o aluno precisa para saber
     // se pode entrar na aula. Falham em silêncio se o script ainda não
     // souber responder a estes tipos.
-    await Promise.all([
+    if (!leve) await Promise.all([
       sincronizarSessoes(turmaId).catch(() => {}),
       sincronizarLideresKF(turmaId).catch(() => {}),
     ]);
@@ -641,6 +700,7 @@ export async function sincronizarDoSheets(turmaId: string): Promise<void> {
         save(KEYS.fichas, merged);
       }
     }
+    if (leve) return;   // «leve»: só planos e fichas
 
     // Carregar Recuperações e Evidências do Sheets dedicado — merge por ID,
     // a versão mais recente (atualizadoEm) ganha em caso de conflito.
@@ -1293,8 +1353,25 @@ export function seedAlunosReais(): void {
   }
 
   if (mudou) save(KEYS.alunos, merged);
-  alunos.forEach((a: Aluno) => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a }));
+  // Enviava a lista oficial inteira (≈80 alunos, um a um) em CADA
+  // sincronização, de CADA aparelho — e cada envio fazia os outros
+  // aparelhos sincronizar outra vez. O script nunca descansava. Agora só o
+  // aparelho do professor ou da coordenação envia, e só o aluno que mudou.
+  if (perfilDoAparelho !== 'professor' && perfilDoAparelho !== 'coordenadora') return;
+  let enviados: Record<string, string> = {};
+  try { enviados = JSON.parse(localStorage.getItem(KEY_ALUNOS_ENVIADOS) || '{}'); } catch { enviados = {}; }
+  const assinatura = (a: any) => JSON.stringify([a.nome, a.turmaId, a.numero, a.pin, a.ativo !== false]);
+  const mudaram = alunos.filter((a: any) => enviados[a.id] !== assinatura(a));
+  if (!mudaram.length) return;
+  emSegundoPlano(() => mudaram.forEach((a: Aluno) => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a })));
+  mudaram.forEach((a: any) => { enviados[a.id] = assinatura(a); });
+  try { localStorage.setItem(KEY_ALUNOS_ENVIADOS, JSON.stringify(enviados)); } catch { /* */ }
 }
+
+const KEY_ALUNOS_ENVIADOS = 'ecl_alunos_enviados';
+let perfilDoAparelho: string | null = null;
+/** Quem está a usar este aparelho (professor, coordenadora, aluno). */
+export function definirPerfilDoAparelho(p: string | null): void { perfilDoAparelho = p; }
 
 
 // ════════════════════════════════════════════════════════════════
@@ -2488,6 +2565,18 @@ export function addOrUpdateRequisicao(r: RequisicaoAula): void {
 
 // Elimina a requisição DEFINITIVAMENTE — local e a linha correspondente no
 // histórico de Requisições do Sheets de Planos.
+/** Tira do aparelho as requisições que cumprem a condição (e regista-as
+ *  como eliminadas, para não voltarem do Sheets). Não envia nada: quem
+ *  chama já pediu ao script para apagar (com o plano ou com o evento). */
+function apagarRequisicoesLocais(condicao: (r: RequisicaoAula) => boolean): void {
+  const todas = getRequisicoes();
+  const fora = todas.filter(condicao).map(r => r.id);
+  if (!fora.length) return;
+  save(KEYS.requisicoes, todas.filter(r => !fora.includes(r.id)));
+  const eliminados = load<string>(KEYS.eliminadosRequisicoes);
+  save(KEYS.eliminadosRequisicoes, [...new Set([...eliminados, ...fora])]);
+}
+
 export function eliminarRequisicaoDefinitivamente(requisicaoId: string): void {
   save(KEYS.requisicoes, getRequisicoes().filter(r => r.id !== requisicaoId));
   const eliminados = load<string>(KEYS.eliminadosRequisicoes);
@@ -4509,6 +4598,11 @@ export function subscreverAbertura(fn: () => void): () => void { ouvintesAbertur
 function mudarAbertura(id: string, e: EstadoAbertura) { aberturas.set(id, e); ouvintesAbertura.forEach(f => { try { f(); } catch { /* */ } }); }
 
 async function aberturaEstaNoSheets(planoAulaId: string): Promise<boolean | null> {
+  // Com o script v19, confere-se na aula que os telemóveis leem (rápido).
+  const s = getSessaoAula(planoAulaId);
+  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+  const naAula = await aberturaNaAula(plano?.turmaId || s?.turmaId || '', planoAulaId).catch(() => null);
+  if (naAula !== null) return naAula;
   const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId: '' });
   if (!json?.ok) return null;
   return (json.sessoes || json.dados || []).some((x: any) => String(x.planoAulaId) === planoAulaId && x.abertaEm);
@@ -6199,9 +6293,22 @@ export function resumoDoPlano(planoId: string): ResumoPlano {
  * solta, fora de plano.
  */
 export function anularPlanoAula(planoId: string): void {
-  getRequisicoes().filter(r => r.planoAulaId === planoId).forEach(r =>
-    addOrUpdateRequisicao({ ...r, planoAulaId: '' } as any));
+  const turmaDoPlano = getPlanosAula().find(p => p.id === planoId)?.turmaId || '';
+  // A requisição desta aula sai também (a cópia da aplicação; o
+  // documento oficial do economato não é tocado).
+  apagarRequisicoesLocais(r => r.planoAulaId === planoId);
+  // As fichas técnicas (e o guião, que vai dentro da ficha) FICAM na
+  // biblioteca e no Sheets: só deixam de estar ligadas a esta aula.
+  getFichasProducao().filter(f => (f as any).planoAulaId === planoId)
+    .forEach(f => addOrUpdateFichaProducao({ ...f, planoAulaId: '', atualizadoEm: new Date().toISOString() } as any));
   eliminarPlanoAulaDefinitivamente(planoId);
+  // E no Sheets sai tudo o que era desta aula (autoavaliações, presenças,
+  // validações, abertura, grupos…), não só o plano. Fica registado nos
+  // ELIMINADOS: não volta.
+  enviar(SHEETS_PLANOS_URL, 'eliminar_do_plano', { planoId, turmaId: turmaDoPlano });
+  save(KEY_MEMBROS, load<any>(KEY_MEMBROS).filter(m => m.planoAulaId !== planoId));
+  save(KEY_INFO_GRUPOS, load<any>(KEY_INFO_GRUPOS).filter(g => g.planoAulaId !== planoId));
+  save(KEY_PARES, load<any>(KEY_PARES).filter(x => x.planoAulaId !== planoId));
   // Limpar já do aparelho — as leituras já os escondem, isto só arruma.
   save(KEY_HIST, load<RegistoAvaliacao>(KEY_HIST).filter(r => r.planoAulaId !== planoId));
   save(KEYS.selecoes, load<any>(KEYS.selecoes).filter(s => s.planoAulaId !== planoId));
@@ -6349,6 +6456,11 @@ async function publicarEConfirmar(planoId: string): Promise<ResultadoPublicacao>
   porConfirmar('plano', publicado.id, publicado.titulo || `Plano de ${publicado.data}`, publicado.turmaId);
   const esperar = (ms: number) => new Promise(res => setTimeout(res, ms));
   const estaLa = async (): Promise<boolean | null> => {
+    // Script v19: a aula que os telemóveis leem já tem o plano publicado?
+    try {
+      const json: any = aulaNaoSuportada ? null : await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId: plano.turmaId });
+      if (json?.ok && Array.isArray(json.planos) && json.planos.some((p: any) => p.id === planoId)) return true;
+    } catch { /* confere pela folha */ }
     try {
       const json: any = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId: plano.turmaId });
       if (!json?.ok) return null;
@@ -6898,6 +7010,8 @@ export function vigiarAlteracoes(
 
   async function espreitar() {
     if (parado) return;
+    // Com a aula rápida a ser lida, o número de alterações já vem nela.
+    if (aulaJaLida && !aulaNaoSuportada) return;
     const v = await lerVersaoDaTurma(turmaId);
     if (parado || !v) return;
     if (ultima && v !== ultima) {
@@ -7255,6 +7369,9 @@ export function gravarEvento(ev: any): void {
 }
 
 export function apagarEvento(id: string): void {
+  // Os orçamentos do evento (as requisições feitas para ele) saem também;
+  // no Sheets, o script apaga-os com o evento.
+  apagarRequisicoesLocais(r => (r as any).eventoId === id);
   const todos = lerEventosLocais().filter((x: any) => x.id !== id);
   try { localStorage.setItem(KEY_EVENTOS_V4, JSON.stringify(todos)); } catch { /* */ }
   enviar(SHEETS_ECL_URL, 'eliminar_evento', { id });
@@ -7284,4 +7401,206 @@ export async function confirmarAberturaNoSheets(planoAulaId: string): Promise<bo
   // «Tentar outra vez»: envia já, sem esperar pela próxima volta.
   if (s?.abertaEm) await enviarAberturaJa(s);
   return vigiarAbertura(planoAulaId);
+}
+
+// ============================================================
+// Grupos formados pelos alunos (com validação do professor)
+// ============================================================
+// Cada aluno grava só a SUA linha («estou no grupo X»): assim, dois
+// alunos a entrar no mesmo grupo ao mesmo tempo não se apagam um ao
+// outro. Os grupos saem da junção dessas linhas. O professor pode mudar
+// alunos de grupo (grava a linha desse aluno), dar uma ficha a cada grupo
+// e validar. A autoavaliação continua individual e igual.
+
+export interface MembroGrupo {
+  id: string;            // mg_<plano>_<aluno>
+  planoAulaId: string;
+  turmaId: string;
+  alunoId: string;
+  nomeAluno?: string;
+  grupoId: string;
+  grupoNome: string;
+  definidoPor: 'aluno' | 'professor';
+  atualizadoEm: string;
+}
+export interface InfoGrupo {
+  id: string;            // o grupoId
+  planoAulaId: string;
+  turmaId: string;
+  grupoNome: string;
+  fichaId?: string;
+  validado?: boolean;
+  atualizadoEm: string;
+}
+/** O que um aluno diz de um colega do grupo. Só o professor vê. Não conta para nota nenhuma. */
+export interface AvaliacaoPar {
+  id: string;            // par_<plano>_<avaliador>_<avaliado>
+  planoAulaId: string;
+  turmaId: string;
+  grupoId: string;
+  avaliadorId: string;
+  avaliadoId: string;
+  nomeAvaliado?: string;
+  /** 1 pouco · 2 às vezes · 3 muito. No «conflito», 1 = criou conflitos, 3 = ajudou a resolver. */
+  colabora: number; ouve: number; flexivel: number; conflito: number;
+  comentario?: string;
+  criadoEm: string;
+}
+
+const KEY_MEMBROS = 'ecl_grupos_membros';
+const KEY_INFO_GRUPOS = 'ecl_grupos_info';
+const KEY_PARES = 'ecl_avaliacoes_pares';
+
+export function getMembrosGrupo(planoAulaId: string): MembroGrupo[] {
+  return load<MembroGrupo>(KEY_MEMBROS).filter(m => m.planoAulaId === planoAulaId);
+}
+export function getInfoGrupos(planoAulaId: string): InfoGrupo[] {
+  return load<InfoGrupo>(KEY_INFO_GRUPOS).filter(g => g.planoAulaId === planoAulaId);
+}
+export function getAvaliacoesPares(planoAulaId?: string): AvaliacaoPar[] {
+  return load<AvaliacaoPar>(KEY_PARES).filter(p => !planoAulaId || p.planoAulaId === planoAulaId);
+}
+
+function juntarPorId<T extends { id: string; atualizadoEm?: string; criadoEm?: string }>(chave: string, novos: T[]): void {
+  const m = new Map(load<T>(chave).map(x => [x.id, x]));
+  for (const n of novos) {
+    if (!n?.id) continue;
+    const velho = m.get(n.id);
+    const d = (x: any) => String(x?.atualizadoEm || x?.criadoEm || '');
+    if (!velho || d(n) >= d(velho)) m.set(n.id, n);
+  }
+  save(chave, [...m.values()]);
+}
+
+export function entrarNoGrupo(m: Omit<MembroGrupo, 'id' | 'atualizadoEm'>): MembroGrupo {
+  const reg: MembroGrupo = { ...m, id: `mg_${m.planoAulaId}_${m.alunoId}`, atualizadoEm: new Date().toISOString() };
+  juntarPorId(KEY_MEMBROS, [reg]);
+  enviar(SHEETS_ECL_URL, 'grupo_membro', reg as any);
+  return reg;
+}
+export function guardarInfoGrupo(g: Omit<InfoGrupo, 'atualizadoEm'>): void {
+  const reg: InfoGrupo = { ...g, atualizadoEm: new Date().toISOString() };
+  juntarPorId(KEY_INFO_GRUPOS, [reg]);
+  enviar(SHEETS_ECL_URL, 'grupo_info', reg as any);
+}
+export function guardarAvaliacaoPar(p: Omit<AvaliacaoPar, 'id' | 'criadoEm'>): void {
+  const reg: AvaliacaoPar = { ...p, id: `par_${p.planoAulaId}_${p.avaliadorId}_${p.avaliadoId}`, criadoEm: new Date().toISOString() };
+  juntarPorId(KEY_PARES, [reg]);
+  enviar(SHEETS_ECL_URL, 'avaliacao_par', reg as any);
+}
+
+/** Vai buscar ao Sheets os grupos (e, para o professor, as avaliações entre colegas). */
+export async function sincronizarGrupos(turmaId: string, comPares = false): Promise<void> {
+  const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_grupos', turmaId });
+  if (json?.ok) {
+    juntarPorId(KEY_MEMBROS, (json.membros || []) as MembroGrupo[]);
+    juntarPorId(KEY_INFO_GRUPOS, (json.info || []).map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
+  }
+  if (comPares) {
+    const jp: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_pares', turmaId });
+    if (jp?.ok) juntarPorId(KEY_PARES, (jp.dados || []).map((p: any) => ({ ...p,
+      colabora: Number(p.colabora) || 0, ouve: Number(p.ouve) || 0, flexivel: Number(p.flexivel) || 0, conflito: Number(p.conflito) || 0 })) as AvaliacaoPar[]);
+  }
+}
+
+export interface GrupoDaAula { id: string; nome: string; membros: MembroGrupo[]; fichaId?: string; validado: boolean }
+
+/** Os grupos da aula, a partir das linhas de cada aluno. */
+export function gruposDaAula(planoAulaId: string): GrupoDaAula[] {
+  const info = new Map(getInfoGrupos(planoAulaId).map(g => [g.id, g]));
+  const mapa = new Map<string, GrupoDaAula>();
+  for (const m of getMembrosGrupo(planoAulaId)) {
+    if (!m.grupoId) continue;
+    const g = mapa.get(m.grupoId) || { id: m.grupoId, nome: info.get(m.grupoId)?.grupoNome || m.grupoNome, membros: [],
+      fichaId: info.get(m.grupoId)?.fichaId, validado: !!info.get(m.grupoId)?.validado };
+    g.membros.push(m);
+    mapa.set(m.grupoId, g);
+  }
+  return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { numeric: true }));
+}
+export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula | undefined {
+  return gruposDaAula(planoAulaId).find(g => g.membros.some(m => m.alunoId === alunoId));
+}
+
+// ============================================================
+// A aula num só pedido (script v19): plano, fichas, abertura e grupos
+// ============================================================
+// O telemóvel do aluno pergunta isto de 3 em 3 segundos. O script
+// responde da memória, sem abrir as folhas: é rápido e não entope,
+// mesmo com a turma toda. Com um script antigo (sem «get_aula»),
+// devolve false e a aplicação faz como antes.
+let aulaNaoSuportada = false;
+let aulaJaLida = false;
+const contadorDaAula = new Map<string, string>();
+/** O número de alterações da turma, que veio com a aula rápida. */
+export function contadorDaTurma(turmaId: string): string { return contadorDaAula.get(turmaId) || ''; }
+/** O script responde a «get_aula» (v19)? */
+export function aulaRapidaDisponivel(): boolean { return !aulaNaoSuportada; }
+export async function lerAula(turmaId: string): Promise<boolean> {
+  if (!turmaId || aulaNaoSuportada) return false;
+  const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId });
+  if (!json?.ok || !Array.isArray(json.planos)) {
+    if (json && json.ok === false && /tipo|desconhecido/i.test(String(json.mensagem || ''))) aulaNaoSuportada = true;
+    if (json && json.ok && !Array.isArray(json.planos)) aulaNaoSuportada = true;
+    return false;
+  }
+  // Planos (os eliminados neste aparelho não voltam)
+  const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
+  const planos = getPlanosAula();
+  let mudou = false;
+  for (const pRaw of json.planos) {
+    if (!pRaw?.id || eliminados.has(pRaw.id)) continue;
+    const p: any = { ...pRaw,
+      fichasIds: Array.isArray(pRaw.fichasIds) ? pRaw.fichasIds
+        : (typeof pRaw.fichasIds === 'string' && pRaw.fichasIds ? pRaw.fichasIds.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean) : []),
+      data: dataSoDia(pRaw.data),
+      compRemovidas: Array.isArray(pRaw.compRemovidas) ? pRaw.compRemovidas : [],
+      compAdicionadas: Array.isArray(pRaw.compAdicionadas) ? pRaw.compAdicionadas : [] };
+    const i = planos.findIndex(x => x.id === p.id);
+    if (i < 0) { planos.push(p); mudou = true; }
+    else if (String(p.atualizadoEm || '') > String((planos[i] as any).atualizadoEm || '')) {
+      if (!p.fichasIds?.length && planos[i].fichasIds?.length) p.fichasIds = planos[i].fichasIds;
+      planos[i] = { ...planos[i], ...p }; mudou = true;
+    }
+  }
+  if (mudou) save(KEYS.planos, planos);
+  // Fichas: as que faltam entram; as que existem ficam com o que tiverem a mais
+  const eliminadas = new Set(load<string>(KEYS.eliminadosFichas));
+  const fichas = getFichasProducao();
+  let mudouF = false;
+  for (const f of (json.fichas || [])) {
+    if (!f?.id || eliminadas.has(f.id)) continue;
+    const i = fichas.findIndex(x => x.id === f.id);
+    const nova: any = { ...f, ingredientes: Array.isArray(f.ingredientes) ? f.ingredientes : [],
+      preparacao: Array.isArray(f.preparacao) ? f.preparacao : [] };
+    if (i < 0) { fichas.push(nova); mudouF = true; }
+    else if (!(fichas[i].ingredientes?.length) && nova.ingredientes.length) { fichas[i] = { ...fichas[i], ...nova }; mudouF = true; }
+  }
+  if (mudouF) save(KEYS.fichas, fichas);
+  // Aberturas: a mais antiga ganha; o fecho junta-se
+  const sess = new Map(getSessoesAula().map(s => [s.planoAulaId, s]));
+  for (const r of (json.sessoes || [])) {
+    if (!r?.planoAulaId) continue;
+    const ex = sess.get(r.planoAulaId);
+    if (!ex?.abertaEm || (r.abertaEm && r.abertaEm < ex.abertaEm) || (r.fechadaEm && !ex.fechadaEm)) {
+      sess.set(r.planoAulaId, { planoAulaId: r.planoAulaId, turmaId: r.turmaId || turmaId,
+        abertaEm: ex?.abertaEm && ex.abertaEm < r.abertaEm ? ex.abertaEm : r.abertaEm, abertaPor: r.abertaPor,
+        toleranciaMin: Number(r.toleranciaMin) || TOLERANCIA_PADRAO_MIN, fechadaEm: r.fechadaEm || ex?.fechadaEm });
+    }
+  }
+  save(KEY_SESSOES as any, [...sess.values()]);
+  if (json.contador) contadorDaAula.set(turmaId, String(json.contador));
+  aulaJaLida = true;
+  // Grupos
+  juntarPorId(KEY_MEMBROS, (json.grupos?.membros || []) as MembroGrupo[]);
+  juntarPorId(KEY_INFO_GRUPOS, (json.grupos?.info || []).map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
+  return true;
+}
+
+/** Esta abertura já está na aula que os telemóveis leem? (script v19; null = não sei) */
+export async function aberturaNaAula(turmaId: string, planoAulaId: string): Promise<boolean | null> {
+  if (aulaNaoSuportada) return null;
+  const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId });
+  if (!json?.ok || !Array.isArray(json.sessoes)) return null;
+  return json.sessoes.some((s: any) => String(s.planoAulaId) === planoAulaId && s.abertaEm);
 }

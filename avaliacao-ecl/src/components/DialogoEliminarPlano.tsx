@@ -144,7 +144,7 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir, pod
               {linhas.map(l => <div key={l} style={{ fontSize: 14 }}>· {l}</div>)}
               <div style={{ fontSize: 14, marginTop: 8 }}>
                 As notas destes alunos na UC vão mudar, e as faltas e atrasos desta aula deixam de contar.
-                {r.requisicoes > 0 && ' A requisição não se apaga: fica fora de plano.'}
+                {r.requisicoes > 0 && ' A requisição desta aula também se apaga (o documento oficial enviado ao economato não é tocado).'}
               </div>
             </div>
             <Botao cor={VERMELHO} texto="#fff" borda={VERMELHO}

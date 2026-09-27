@@ -1,4 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { lerAula, aulaRapidaDisponivel, contadorDaTurma } from '../backend';
+import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
+import { grupoDoAluno } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano } from '../rotuloPlano';
@@ -532,7 +535,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     setALigar(true);
     setMensagemAula(null);
     try {
-      await sincronizarDoSheets(aluno.turmaId);
+      await sincronizarDoSheets(aluno.turmaId, { forcar: true });
       const ps = getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado');
       setPlanos(ps);
       setFalhouLigacao(leituraDePlanosFalhou());
@@ -555,14 +558,51 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // A abertura da aula vem primeiro e mostra-se logo: ir buscar tudo o
   // resto (fichas, avaliações, presenças…) leva meio minuto, e o aluno
   // ficava esse tempo todo sem saber que a aula já estava aberta.
+  const ultimaCompleta = React.useRef(0);
+  // A aula (plano, fichas, abertura, grupos) num só pedido leve, de 3 em
+  // 3 segundos, enquanto a aplicação está à vista (script v19).
+  useEffect(() => {
+    let vivo = true;
+    const mostrar = () => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
+    let contadorVisto = '';
+    const tique = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (!aulaRapidaDisponivel()) return;
+      lerAula(aluno.turmaId).then(ok => {
+        if (!vivo || !ok) return;
+        mostrar();
+        // Houve alterações (notas, validações…): o resto vem no máximo de
+        // 2 em 2 minutos, e cada telemóvel num momento diferente.
+        const c = contadorDaTurma(aluno.turmaId);
+        if (c && contadorVisto && c !== contadorVisto && Date.now() - ultimaCompleta.current > 120000) {
+          ultimaCompleta.current = Date.now();
+          setTimeout(() => { sincronizarDoSheets(aluno.turmaId).then(mostrar).catch(() => {}); }, Math.random() * 15000);
+        }
+        if (c) contadorVisto = c;
+      }).catch(() => {});
+    };
+    tique();
+    const t = setInterval(tique, 3000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [aluno.turmaId]);
+
+  // O resto (notas, validações…) quando há novidades — no máximo de
+  // minuto e meio em minuto e meio, e cada telemóvel num momento
+  // diferente. Eram 14 pedidos por telemóvel a cada novidade, e a turma
+  // toda entupia o script. Com um script antigo (sem a aula rápida), a
+  // abertura, os planos e as fichas continuam a vir logo.
   useEffect(() => vigiarAlteracoes(aluno.turmaId, () => {
     const mostrar = () => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
-    sincronizarSessoes(aluno.turmaId)
-      .then(mostrar)
-      .catch(() => {})
-      .then(() => sincronizarDoSheets(aluno.turmaId))
-      .then(mostrar)
-      .catch(() => {});
+    const completa = Date.now() - ultimaCompleta.current > 90000;
+    if (completa) ultimaCompleta.current = Date.now();
+    if (!completa && aulaRapidaDisponivel()) return;
+    setTimeout(() => {
+      (aulaRapidaDisponivel() ? Promise.resolve() : sincronizarSessoes(aluno.turmaId).then(mostrar))
+        .catch(() => {})
+        .then(() => sincronizarDoSheets(aluno.turmaId, { leve: !completa }))
+        .then(mostrar)
+        .catch(() => {});
+    }, Math.random() * (completa ? 8000 : 2000));
   }, 10), [aluno.turmaId]);
 
   const historicoAluno = getHistoricoAluno(aluno.id);
@@ -1299,8 +1339,14 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
   });
 
-  const fichas = getFichasPorPlano(plano.id);
+  // Em grupo, com ficha dada pelo professor: o aluno vê a ficha do seu grupo.
+  const comGrupos = configGrupos(plano).ativo;
+  const fichaDoGrupo = comGrupos ? grupoDoAluno(plano.id, aluno.id)?.fichaId : undefined;
+  const fichasTodas = getFichasPorPlano(plano.id);
+  const fichas = fichaDoGrupo && fichasTodas.some((f: any) => f.id === fichaDoGrupo)
+    ? fichasTodas.filter((f: any) => f.id === fichaDoGrupo) : fichasTodas;
   const requisicao = getRequisicaoPorPlano(plano.id);
+  const [temGrupo, setTemGrupo] = React.useState(() => !!grupoDoAluno(plano.id, aluno.id));
 
   // Os passos falam com o aluno: "Entrei na aula", não "Entrada e Higiene".
   // O `agora` é o que ele lê em grande quando o passo está ativo.
@@ -1312,10 +1358,12 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   const PASSOS = String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [
     { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
     { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
+    ...(comGrupos ? [{ id:'grupo', label:'Estou num grupo', agora:'O meu grupo', cor:V }] : []),
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ] : [
     { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
     { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
+    ...(comGrupos ? [{ id:'grupo', label:'Estou num grupo', agora:'O meu grupo', cor:V }] : []),
     { id:'kf_inicial', label:'Registos iniciais',          agora:'Antes de produzir',cor:V },
     { id:'ficha',      label:'Produzi',                    agora:'Produzir',         cor:V },
     ...(fichas.some((f:any) => f.textoGuia)
@@ -1330,6 +1378,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   const estadoPasso = (id: string): 'concluido'|'ativo'|'pendente' => {
     if (id==='orientacao' && orientacaoConcluida) return 'concluido';
     if (id==='entrada' && entradaConcluida) return 'concluido';
+    if (id==='grupo' && temGrupo && secAberta !== 'grupo') return 'concluido';
     if (id==='kf_inicial' && kfInicialConcluido) return 'concluido';
     if (id==='ficha' && fichaConcluida) return 'concluido';
     if (id==='guia' && guiaoConcluido) return 'concluido';
@@ -1429,6 +1478,11 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
                 onConcluido={() => { setEntradaConcluida(true); _save('entrada');
+                  setSecAberta(comGrupos ? 'grupo' : String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : 'kf_inicial'); }} />
+            )}
+            {secAberta==='grupo' && (
+              <PassoGrupo aluno={aluno} plano={plano}
+                onConcluido={() => { setTemGrupo(true);
                   setSecAberta(String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : 'kf_inicial'); }} />
             )}
             {secAberta==='kf_inicial' && (
@@ -2687,6 +2741,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               : 'O professor vai confirmar o teu registo.'}
           </div>
         </div>
+
+        {/* Em grupo: avaliar os colegas (só o professor vê; não conta para nota). */}
+        <AvaliarColegas aluno={aluno} plano={plano} />
 
         {/* Mostrar o que foi submetido */}
         {autoavsSubmetidas.length > 0 && (

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
 import { confirmarTurmaAoPublicar } from '../professores';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -353,6 +354,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     if (!moduloPedido) return;
     if (moduloPedido === 'turma') { setModulo('inicio'); setTabInicio('turma'); }
     else if (moduloPedido === 'competencias') { setModulo('inicio'); setTabInicio('competencias'); }
+    else if (moduloPedido === 'grupos') { setModulo('inicio'); setTabInicio('grupos'); }
     else if (moduloPedido === 'inicio') { setModulo('inicio'); setTabInicio('resumo'); }
     else setModulo(moduloPedido as Modulo);
   }, [moduloPedido]);
@@ -390,7 +392,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // Eram quatro, e dois deles — Orientação e Resumo — mostravam a mesma
   // coisa com arranjos diferentes. Sobra de termos construído o novo sem
   // apagar o velho.
-  const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma'>('resumo');
+  const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma' | 'grupos'>('resumo');
   /** Conhecimentos marcados para retirar/incluir, à espera de confirmação. */
   const [knwPendentes, setKnwPendentes] = useState<Set<string>>(new Set());
   const [compRemovidas, setCompRemovidas] = useState<string[]>(
@@ -1216,6 +1218,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         );
       })()}
 
+
+      {/* Grupos: formados pelos alunos, validados pelo professor. */}
+      {tabInicio === 'grupos' && (
+        <GruposProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      )}
 
       {/* TAB ORIENTAÇÃO */}
       {tabInicio === 'turma' && (
