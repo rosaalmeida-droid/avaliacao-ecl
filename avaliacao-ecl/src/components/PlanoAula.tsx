@@ -124,7 +124,7 @@ function AvisoPorValidar({ planoId }: { planoId: string }) {
   );
 }
 
-// ── ALTERAÇÃO 1: Helper para ler eventos do EventosWizard ─────────────────
+// ── Eventos da turma, para associar ao plano ─────────────────
 function getEventosDaTurma(turmaId: string) {
   return eventosParaPlanos(turmaId);
 }

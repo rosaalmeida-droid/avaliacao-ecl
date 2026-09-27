@@ -249,6 +249,15 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
   });
 }
 
+/** Custo estimado de uma ficha para N pessoas, com os mesmos cálculos e
+ *  preços da requisição. Serve a folha de orçamento dos eventos. */
+export function custoDaFicha(f: FichaProducao, pessoas: number): { total: number; semPreco: number } {
+  const linhas = agregarIngredientes([f], { [f.id]: pessoas > 0 ? pessoas : porcoesDe(f) });
+  let total = 0, semPreco = 0;
+  linhas.forEach(l => { if (l.isQB) return; if (precoNum(l.precoUnitario) > 0) total += l.precoEncomenda; else semPreco++; });
+  return { total, semPreco };
+}
+
 // ── Formatadores ──────────────────────────────────────────────
 // Usa vírgula como separador decimal (formato pt-PT) para display
 const ptPT = (n: number, dec: number) => n.toFixed(dec).replace('.', ',');
@@ -312,7 +321,20 @@ const S = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1', fichasIniciais, onGuardado }: { nomeProfessor?: string; planoIdFixo?: string; turmaId?: string; fichasIniciais?: string[]; onGuardado?: () => void }) {
+/** Requisição de um orçamento de um evento: sem plano, com a data e as
+ *  pessoas do evento, e sempre com o mesmo id (para se poder corrigir). */
+export interface RequisicaoDeEvento {
+  eventoId: string;
+  orcamentoId: string;
+  requisicaoId: string;
+  nome: string;
+  data: string;
+  pessoas: number;
+  turmaId?: string;
+  onGuardada?: (requisicaoId: string, custo: number) => void;
+}
+
+export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1', fichasIniciais, onGuardado, evento }: { nomeProfessor?: string; planoIdFixo?: string; turmaId?: string; fichasIniciais?: string[]; onGuardado?: () => void; evento?: RequisicaoDeEvento }) {
   const planos = getPlanosAulaPorTurma(turmaId)
     .sort((a, b) => (b.data || '').localeCompare(a.data || '')); // mais recentes primeiro
   // Planos recentes = últimos 60 dias + planos com fichas associadas
@@ -339,7 +361,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     // Se o plano está associado a um evento, usar a capacitação (nº pessoas)
     // desse evento como ponto de partida das doses — em vez do nº de porções
     // "de receita" da ficha, que é só uma referência genérica.
-    const paxDoEvento = planoInicial ? paxDoEventoDoPlano(planoInicial) : null;
+    const paxDoEvento = evento?.pessoas || (planoInicial ? paxDoEventoDoPlano(planoInicial) : null);
     fichasSelInicial.forEach(fid => {
       const f = getFichasProducao().find(x => x.id === fid);
       if (f) r[fid] = paxDoEvento || porcoesDe(f);
@@ -361,7 +383,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   });
   const [atividade, setAtividade] = useState(() => {
     // Auto-preencher com o título do plano (já inclui tipo de actividade + data)
-    return planoInicial?.titulo || '';
+    return evento ? evento.nome : planoInicial?.titulo || '';
   });
   const [familia, setFamilia] = useState(() => {
     // Pré-preencher com a classificação da primeira ficha seleccionada
@@ -549,8 +571,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         nomeReceita, familia,
         paxTotal: paxEncTotal,   // H7 — Encomendas
         paxReceita: paxBaseTotal, // M7 — Receita para
-        turma: planoSel?.turmaId || turmaId || '',
-        dataAula: planoSel?.data || '',
+        turma: planoSel?.turmaId || evento?.turmaId || turmaId || '',
+        dataAula: planoSel?.data || evento?.data || '',
         formador: nomeProfessor || planoSel?.professor || '',
         responsavel,  // N42
         atividade,    // K70
@@ -1212,7 +1234,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '18px', marginBottom: 12 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--cream)', marginBottom: 8 }}>{nomeReceita}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-          {[['Familia', familia || '—'], ['Encomendas', `${paxEncTotal} doses`], ['Receita para', `${paxBaseTotal} doses`], ['Turma', planoSel?.turmaId || '—'], ['Data aula', planoSel?.data || '—'], ['Formador', planoSel?.professor || '—']].map(([l, v]) => (
+          {[['Familia', familia || '—'], ['Encomendas', `${paxEncTotal} doses`], ['Receita para', `${paxBaseTotal} doses`], ['Turma', planoSel?.turmaId || '—'], ['Data aula', planoSel?.data || evento?.data || '—'], ['Formador', planoSel?.professor || '—']].map(([l, v]) => (
             <div key={l}><div style={{ fontSize:13, color: 'rgba(247,241,230,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</div><div style={{ fontSize: 13, color: 'var(--cream)', fontWeight: 500 }}>{v}</div></div>
           ))}
         </div>
@@ -1528,14 +1550,17 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           const agoraISO = new Date().toISOString();
           const reqExistente = planoSel ? getRequisicaoPorPlano(planoSel.id) : undefined;
           if (!reqAvulsaId.current) reqAvulsaId.current = `req_avulsa_${Date.now()}`;
+          const idReq = planoSel ? (reqExistente?.id || `req_${planoSel.id}`) : evento ? evento.requisicaoId : reqAvulsaId.current;
           addOrUpdateRequisicao({
-            id: planoSel ? (reqExistente?.id || `req_${planoSel.id}`) : reqAvulsaId.current,
-            planoAulaId: planoSel?.id || '', turmaId: planoSel?.turmaId || turmaId,
-            dataAula: planoSel?.data || '', professor: planoSel?.professor || nomeProfessor || '', fichasIds: fichasSel,
+            id: idReq,
+            ...(evento ? { eventoId: evento.eventoId, orcamentoId: evento.orcamentoId } : {}),
+            planoAulaId: planoSel?.id || '', turmaId: planoSel?.turmaId || evento?.turmaId || turmaId,
+            dataAula: planoSel?.data || evento?.data || '', professor: planoSel?.professor || nomeProfessor || '', fichasIds: fichasSel,
             linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: precoNum(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
             custoTotal: crTotal, estado: chegou ? 'enviada' : 'rascunho',
             criadaEm: reqExistente?.criadaEm || agoraISO, atualizadaEm: agoraISO,
           });
+          evento?.onGuardada?.(idReq, crTotal);
           if (chegou) onGuardado?.();
           } finally { setAEnviarReq(false); }
         }}>{aEnviarReq ? 'A enviar…' : '✓ Guardar e enviar a requisição'}</button>
