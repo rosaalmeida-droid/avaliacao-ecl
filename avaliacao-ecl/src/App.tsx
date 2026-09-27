@@ -640,11 +640,11 @@ function AppInterno() {
               </>
             );
           })()}
-          {vistaGlobal === 'planos' && (
+          {(vistaGlobal === 'planos' || vistaGlobal === 'avaliar_evento') && (
             // Sem key: dados novos só re-desenham o ecrã. Com key={refreshKey}
             // o ecrã recriava-se a cada sincronização e voltava ao calendário
             // (perdia a Lista, o Arquivo e até um plano a meio de criar).
-            <PlanoAula versao={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
+            <PlanoAula key={vistaGlobal} criarEvento={vistaGlobal === 'avaliar_evento'} versao={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
               onAlteracao={registarAlteracao}
               onGuardado={(p?: TPlanoAula) => {
                 limparAlteracoes();

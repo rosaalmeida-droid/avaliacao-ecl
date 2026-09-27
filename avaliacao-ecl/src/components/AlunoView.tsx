@@ -57,7 +57,7 @@ import {
 import { PassoKitchenFlowFase } from './PassosKitchenFlow';
 import { PERGUNTAS_TRIAGEM, notaTriagem, type Triagem5C } from '../triagem5c';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula } from '../backend';
-import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO } from '../eventosAvaliacao';
+import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { ManuaisAluno } from './ManuaisAluno';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
 import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } from './AutoavaliacaoFinalUC';
@@ -2616,7 +2616,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // Se o professor não marcou nenhuma, contam as do trimestre — as mesmas
   // que ele vê em «Do trimestre». Antes o aluno ficava sem nenhuma atitude
   // e o «Enviar ao professor» nunca desbloqueava.
-  const atitudesDaAula: string[] = !ehAtitudinal ? []
+  // Aula prática com evento ou concurso: avaliam-se também as 3 atitudes fixas dos eventos.
+  const atitudesDaAula: string[] = !ehAtitudinal
+      ? ((plano as any).tipoEvento ? ATITUDES_FIXAS_EVENTO.filter(id => !compRemovidas.includes(id) && temFrases(id)) : [])
     : marcadasNoPlano.length ? marcadasNoPlano
     : atitudesDoTrimestre((aluno.ano ?? 1) as 1|2|3, trimestreAtual(new Date(plano.data + 'T00:00:00')))
         .map((x: any) => x.id as string).filter(id => !compRemovidas.includes(id) && temFrases(id));
@@ -2632,7 +2634,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const prontoParaSubmeter = triagemCompleta && (ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null)
       && (!comObrigatorias || nivelHaccp !== null) && tecEventoFeito
-    : nivelHaccp !== null);
+    : nivelHaccp !== null && atitudesDaAula.every(id => frasesAula[id] != null) && tecEventoFeito);
 
   const fmtN = (x: number) => (Math.round(x * 10) / 10).toString().replace('.', ',');
 
@@ -2960,7 +2962,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     ...((!ehAtitudinal || comObrigatorias) ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
     ...(ehAtitudinal
       ? atitudesDaAula.map(id => ({ id: 'a_' + id, tipo: 'atiAula' as const, atiId: id }))
-      : opcoesAtitude.length > 0 ? [{ id: 'atitude', tipo: 'atitude' as const }] : []),
+      : [...atitudesDaAula.map(id => ({ id: 'a_' + id, tipo: 'atiAula' as const, atiId: id })),
+         ...(opcoesAtitude.length > 0 ? [{ id: 'atitude', tipo: 'atitude' as const }] : [])]),
     ...(ehEvento ? [{ id: 'tecEvento', tipo: 'tecEvento' as const }] : []),
     ...(faltamApanhar.length > 0 ? [{ id: 'apanhar', tipo: 'apanhar' as const }] : []),
     { id: 'triagem', tipo: 'triagem' as const },
