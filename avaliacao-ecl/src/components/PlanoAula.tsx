@@ -46,7 +46,7 @@ import { modulosDaTurma as modulosParaPauta } from '../cronograma';
 const TIPOS_ATIVIDADE = [
   'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
   'Pequeno-almoço','Coffee break','Serviço real à carta','Catering',
-  'Buffet','Evento externo','Outro',
+  'Buffet','Evento externo','Concurso','Atividade fora da escola','Outro',
 ];
 
 // COMP_PERM e COMP_OPC removidos — sistema de avaliação antigo substituído por OBR/SUB/APP/KNW/ATI

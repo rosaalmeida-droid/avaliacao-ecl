@@ -5992,7 +5992,7 @@ export function somarUmAtitude(
 //      simulação o aluno fraco (7,3 na aula) aparecia com 11,7 na UC.
 //   2. O bónus de assiduidade, pontualidade e farda (até +2) mantém-se
 //      como está.
-//   3. O bónus de eventos passa a ser aplicado, como no modelo: +0,75 por
+//   3. O bónus de eventos passa a ser aplicado, como no modelo: +0,5 por
 //      atividade em que o aluno participou, até 3; só com nota base de 10
 //      ou mais; sem nenhuma participação, a nota não passa de 17. Estava
 //      escrito (BONUS_PARTICIPACAO) mas não era chamado em lado nenhum.

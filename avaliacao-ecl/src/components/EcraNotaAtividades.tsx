@@ -253,7 +253,7 @@ export function EcraAtividades({
         <div style={{ ...painel, padding: 15, marginBottom: 16, fontSize: 14.5,
           color: C.texto, lineHeight: 1.6 }}>
           Participar não é obrigatório, mas conta para a tua nota. Cada
-          atividade que fizeres pode subir-te até 0,75 valores.
+          atividade que fizeres pode subir-te 0,5 valores.
         </div>
 
         {/* Por fechar primeiro: é o que exige ação. */}
