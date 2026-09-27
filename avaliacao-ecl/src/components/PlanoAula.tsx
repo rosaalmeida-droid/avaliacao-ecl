@@ -16,6 +16,14 @@ import {
 import { fmtDataCurta, fmtData } from '../datas';
 import { modulosDaTurma, modulosAtivos, disciplinasAtivas,
   modulosAtivosDaDisciplina, disciplinaUnica } from '../cronograma';
+/** Evento fora do período de uma UC: conta na mais próxima — a que começa
+ *  a seguir ou, se já não houver, a última que acabou. */
+function ucMaisProxima(turmaId: string, data: string): string {
+  const mods = modulosDaTurma(turmaId).filter((m: any) => m.dataInicio && m.dataFim);
+  const seguinte = mods.filter((m: any) => m.dataInicio >= data).sort((a: any, b: any) => a.dataInicio.localeCompare(b.dataInicio))[0];
+  const anterior = mods.filter((m: any) => m.dataFim < data).sort((a: any, b: any) => b.dataFim.localeCompare(a.dataFim))[0];
+  return (seguinte || anterior)?.id || '';
+}
 import { avisoDoDia, temCozinha, horasSugeridas, proximoDiaDeAula, horarioEmTexto } from '../horarios';
 import { tipoEventoDe, atitudesSugeridasEvento } from '../eventosAvaliacao';
 import { rotuloPlano } from '../rotuloPlano';
@@ -962,6 +970,12 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   // Preencher a unidade na abertura do formulário.
   useEffect(() => {
     if (trocarUC || !dados.data) return;
+    // Evento num dia sem UC a decorrer: conta na mais próxima.
+    if (tipoEventoDe(dados.tipoAtividade) && modulosAtivos(turmaId, dados.data).length === 0) {
+      const sug = ucMaisProxima(turmaId, dados.data);
+      if (sug && !dados.ucId) setDados(p => ({ ...p, ucId: sug }));
+      return;
+    }
     // Sem disciplina escolhida não se adivinha o módulo: com duas a
     // decorrer, seria meio a meio acertar.
     if (!dados.disciplina) return;
@@ -971,7 +985,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       setDados(p => ({ ...p, ucId: doCrono.id }));
     }
     if (!doCrono && dados.ucId) setDados(p => ({ ...p, ucId: '' }));
-  }, [dados.data, turmaId, trocarUC]);
+  }, [dados.data, dados.tipoAtividade, turmaId, trocarUC]);
 
   function guardar(forcar = false) {
     // Um clique, um plano. Sem isto, cliques repetidos criavam cópias.
@@ -1000,7 +1014,10 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     // podem não ser dos alunos — pergunta-se, não se assume.
     let contaAssiduidade = true;
     const hojeISO = new Date().toISOString().slice(0, 10);
-    if (dados.data && dados.data < hojeISO) {
+    // Evento fora do horário: faltas e atrasos não contam para a assiduidade
+    // (a pontualidade no evento avalia-se na atitude).
+    if (tipoEventoDe(dados.tipoAtividade)) contaAssiduidade = false;
+    else if (dados.data && dados.data < hojeISO) {
       contaAssiduidade = confirm(
         'Esta aula já passou.\n\n'
         + 'Queres que as faltas e os atrasos desta aula contem para a assiduidade?\n\n'
@@ -1086,15 +1103,15 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             <input type="date" className="input" value={dados.data} onChange={e => setD('data', e.target.value)} style={{ border: !dados.data ? '2px solid var(--danger)' : undefined, fontSize: 14 }} />
           </div>
           <div className="field">
-            <label className="field-label">Início</label>
+            <label className="field-label">{tipoEventoDe(dados.tipoAtividade) ? 'Entrada no evento' : 'Início'}</label>
             <input type="time" className="input" value={dados.horaInicio} onChange={e => setD('horaInicio', e.target.value)} />
           </div>
           <div className="field">
-            <label className="field-label">Fim</label>
+            <label className="field-label">{tipoEventoDe(dados.tipoAtividade) ? 'Saída' : 'Fim'}</label>
             <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
           </div>
         </div>
-        {horarioEmTexto(turmaId) && (() => {
+        {horarioEmTexto(turmaId) && !tipoEventoDe(dados.tipoAtividade) && (() => {
           const h = horasSugeridas(turmaId, dados.data);
           const diferente = h && (h.inicio !== dados.horaInicio || h.fim !== dados.horaFim);
           return (
@@ -1185,6 +1202,17 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
               );
             }
 
+            if (!doCronograma && tipoEventoDe(dados.tipoAtividade) && modulosAtivos(turmaId, dados.data).length === 0) {
+              return (<>
+                <div style={{ fontSize: 13, color: 'var(--copper)', marginBottom: 6, lineHeight: 1.5 }}>
+                  Não há {label} a decorrer em {dados.data}. O evento conta na {label} mais próxima — podes escolher outra.
+                </div>
+                <select className="input" value={dados.ucId} onChange={e => setD('ucId', e.target.value)} style={{ fontSize: 14 }}>
+                  <option value="">— Selecciona a {label} —</option>
+                  {modulos.map((m: any) => <option key={m.id} value={m.id}>{m.id} — {m.nome}</option>)}
+                </select>
+              </>);
+            }
             if (!doCronograma) {
               return (
                 <div style={{ padding: '13px 15px', borderRadius: 10,
@@ -1245,7 +1273,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             </>);
           })()}
         </div>
-        <div className="field" style={{ marginBottom: 14 }}>
+        <div className="field" style={{ marginBottom: 14, display: tipoEventoDe(dados.tipoAtividade) ? 'none' : undefined }}>
           <label className="field-label" style={{ fontSize: 13, fontWeight: 700 }}>Tipo de aula</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {([

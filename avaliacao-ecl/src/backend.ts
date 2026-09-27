@@ -6059,15 +6059,16 @@ export function atividadesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: st
   const diasRegistados = new Set(registadas.map(a => String(a.data || '').slice(0, 10)));
   const dosPlanos: Atividade[] = getPlanosAula()
     .filter((p: any) => p.turmaId === turmaId && p.tipoEvento && p.estado !== 'arquivado' && validados.has(p.id)
-      && !diasRegistados.has(String(p.data || '').slice(0, 10)))
+      && p.ucId === ucId && !diasRegistados.has(String(p.data || '').slice(0, 10)))
     .map((p: any) => ({ id: p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: p.data,
       participantesIds: [alunoId], criadaEm: p.criadoEm || '' }));
-  const atividades = [...registadas, ...dosPlanos];
-  if (!mod?.dataInicio || !mod?.dataFim) return atividades;
-  return atividades.filter(a => {
+  // Os planos de evento contam na UC do próprio plano (um evento fora do
+  // período de uma UC conta na mais próxima, escolhida ao criar).
+  if (!mod?.dataInicio || !mod?.dataFim) return [...registadas, ...dosPlanos];
+  return [...dosPlanos, ...registadas.filter(a => {
     const d = String(a.data || '').slice(0, 10);
     return d >= mod.dataInicio && d <= mod.dataFim;
-  });
+  })];
 }
 
 export function participacoesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: string): number {
