@@ -6297,6 +6297,10 @@ export function anularPlanoAula(planoId: string): void {
   // A requisição desta aula sai também (a cópia da aplicação; o
   // documento oficial do economato não é tocado).
   apagarRequisicoesLocais(r => r.planoAulaId === planoId);
+  // As fichas técnicas (e o guião, que vai dentro da ficha) FICAM na
+  // biblioteca e no Sheets: só deixam de estar ligadas a esta aula.
+  getFichasProducao().filter(f => (f as any).planoAulaId === planoId)
+    .forEach(f => addOrUpdateFichaProducao({ ...f, planoAulaId: '', atualizadoEm: new Date().toISOString() } as any));
   eliminarPlanoAulaDefinitivamente(planoId);
   // E no Sheets sai tudo o que era desta aula (autoavaliações, presenças,
   // validações, abertura, grupos…), não só o plano. Fica registado nos
