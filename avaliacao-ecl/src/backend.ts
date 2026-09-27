@@ -6281,9 +6281,17 @@ export function resumoDoPlano(planoId: string): ResumoPlano {
  * solta, fora de plano.
  */
 export function anularPlanoAula(planoId: string): void {
+  const turmaDoPlano = getPlanosAula().find(p => p.id === planoId)?.turmaId || '';
   getRequisicoes().filter(r => r.planoAulaId === planoId).forEach(r =>
     addOrUpdateRequisicao({ ...r, planoAulaId: '' } as any));
   eliminarPlanoAulaDefinitivamente(planoId);
+  // E no Sheets sai tudo o que era desta aula (autoavaliações, presenças,
+  // validações, abertura, grupos…), não só o plano. Fica registado nos
+  // ELIMINADOS: não volta.
+  enviar(SHEETS_PLANOS_URL, 'eliminar_do_plano', { planoId, turmaId: turmaDoPlano });
+  save(KEY_MEMBROS, load<any>(KEY_MEMBROS).filter(m => m.planoAulaId !== planoId));
+  save(KEY_INFO_GRUPOS, load<any>(KEY_INFO_GRUPOS).filter(g => g.planoAulaId !== planoId));
+  save(KEY_PARES, load<any>(KEY_PARES).filter(x => x.planoAulaId !== planoId));
   // Limpar já do aparelho — as leituras já os escondem, isto só arruma.
   save(KEY_HIST, load<RegistoAvaliacao>(KEY_HIST).filter(r => r.planoAulaId !== planoId));
   save(KEYS.selecoes, load<any>(KEYS.selecoes).filter(s => s.planoAulaId !== planoId));
