@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import type { PlanoAula } from '../types';
 import {
   gruposDaAula, entrarNoGrupo, guardarInfoGrupo, sincronizarGrupos, getAvaliacoesPares, getAlunos,
-  getFichasProducao, addOrUpdatePlanoAula, getMembrosGrupo, type AvaliacaoPar,
+  getFichasProducao, addOrUpdatePlanoAula, getMembrosGrupo, type AvaliacaoPar, lerAula, aulaRapidaDisponivel,
 } from '../backend';
 import { configGrupos } from './GruposAluno';
 
@@ -27,10 +27,14 @@ export function GruposProfessor({ plano, onPlanoActualizado }: { plano: PlanoAul
 
   useEffect(() => {
     let vivo = true;
-    const ver = () => sincronizarGrupos(turmaId, true).catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
-    ver();
-    const t = setInterval(ver, 5000);
-    return () => { vivo = false; clearInterval(t); };
+    // Os grupos vêm na aula rápida (3 s); o que os colegas disseram, de 15 em 15 s.
+    const ver = () => (aulaRapidaDisponivel() ? lerAula(turmaId).then(ok => { if (!ok) return sincronizarGrupos(turmaId); }) : sincronizarGrupos(turmaId))
+      .catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
+    const verPares = () => sincronizarGrupos(turmaId, true).catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
+    ver(); verPares();
+    const t = setInterval(ver, 3000);
+    const t2 = setInterval(verPares, 15000);
+    return () => { vivo = false; clearInterval(t); clearInterval(t2); };
   }, [turmaId, plano.id]);
 
   function mudarConfig(x: Partial<{ ativo: boolean; tamanho: number }>) {

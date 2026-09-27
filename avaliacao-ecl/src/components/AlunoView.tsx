@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { lerAula, aulaRapidaDisponivel } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
 import { grupoDoAluno } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
@@ -557,23 +558,39 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // A abertura da aula vem primeiro e mostra-se logo: ir buscar tudo o
   // resto (fichas, avaliações, presenças…) leva meio minuto, e o aluno
   // ficava esse tempo todo sem saber que a aula já estava aberta.
-  // Com novidades: só a abertura e os planos (2 pedidos), um pouco
-  // desfasado de telemóvel para telemóvel. O resto (notas, fichas…) no
-  // máximo de 5 em 5 minutos. Antes eram 14 pedidos por telemóvel a cada
-  // novidade — a turma toda entupia o script.
-  const ultimaCompleta = React.useRef(Date.now());
+  // A aula (plano, fichas, abertura, grupos) num só pedido leve, de 3 em
+  // 3 segundos, enquanto a aplicação está à vista (script v19).
+  useEffect(() => {
+    let vivo = true;
+    const mostrar = () => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
+    const tique = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (!aulaRapidaDisponivel()) return;
+      lerAula(aluno.turmaId).then(ok => { if (vivo && ok) mostrar(); }).catch(() => {});
+    };
+    tique();
+    const t = setInterval(tique, 3000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [aluno.turmaId]);
+
+  // O resto (notas, validações…) quando há novidades — no máximo de
+  // minuto e meio em minuto e meio, e cada telemóvel num momento
+  // diferente. Eram 14 pedidos por telemóvel a cada novidade, e a turma
+  // toda entupia o script. Com um script antigo (sem a aula rápida), a
+  // abertura, os planos e as fichas continuam a vir logo.
+  const ultimaCompleta = React.useRef(0);
   useEffect(() => vigiarAlteracoes(aluno.turmaId, () => {
     const mostrar = () => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
-    const completa = Date.now() - ultimaCompleta.current > 5 * 60000;
+    const completa = Date.now() - ultimaCompleta.current > 90000;
     if (completa) ultimaCompleta.current = Date.now();
+    if (!completa && aulaRapidaDisponivel()) return;
     setTimeout(() => {
-      sincronizarSessoes(aluno.turmaId)
-        .then(mostrar)
+      (aulaRapidaDisponivel() ? Promise.resolve() : sincronizarSessoes(aluno.turmaId).then(mostrar))
         .catch(() => {})
         .then(() => sincronizarDoSheets(aluno.turmaId, { leve: !completa }))
         .then(mostrar)
         .catch(() => {});
-    }, Math.random() * 3000);
+    }, Math.random() * (completa ? 8000 : 2000));
   }, 10), [aluno.turmaId]);
 
   const historicoAluno = getHistoricoAluno(aluno.id);

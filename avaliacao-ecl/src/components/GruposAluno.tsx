@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import type { Aluno, PlanoAula } from '../types';
 import {
   gruposDaAula, grupoDoAluno, entrarNoGrupo, sincronizarGrupos, guardarAvaliacaoPar, getAvaliacoesPares,
-  getAlunos, getFichasProducao,
+  getAlunos, getFichasProducao, lerAula, aulaRapidaDisponivel,
 } from '../backend';
 
 const V = '#6B3FA0';
@@ -33,9 +33,11 @@ export function PassoGrupo({ aluno, plano, onConcluido }: { aluno: Aluno; plano:
 
   useEffect(() => {
     let vivo = true;
-    const ver = () => sincronizarGrupos(aluno.turmaId).catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
+    // Script v19: a aula rápida já traz os grupos; senão, pede os grupos.
+    const ver = () => (aulaRapidaDisponivel() ? lerAula(aluno.turmaId).then(ok => { if (!ok) return sincronizarGrupos(aluno.turmaId); }) : sincronizarGrupos(aluno.turmaId))
+      .catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
     ver();
-    const t = setInterval(ver, 5000);
+    const t = setInterval(ver, 3000);
     return () => { vivo = false; clearInterval(t); };
   }, [aluno.turmaId, plano.id]);
 

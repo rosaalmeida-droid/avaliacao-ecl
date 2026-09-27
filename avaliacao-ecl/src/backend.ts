@@ -519,7 +519,7 @@ export async function sincronizarDoSheets(turmaId: string, opcoes?: { leve?: boo
     [SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' }],
   ].forEach(([url, params]) => {
     if (!url) return;
-    if (leve && (params as any).tipo !== 'get_planos') return;
+    if (leve && (params as any).tipo !== 'get_planos' && (params as any).tipo !== 'get_fichas') return;
     ler(url as string, params as Record<string, string>);
   });
   try {
@@ -594,7 +594,6 @@ export async function sincronizarDoSheets(turmaId: string, opcoes?: { leve?: boo
         save(KEYS.planos, merged);
       }
     }
-    if (leve) return;
 
     // Carregar índice de fichas do Sheets de Fichas
     // O índice agora também traz htmlCompleto (ficha formatada pronta a mostrar) —
@@ -652,6 +651,7 @@ export async function sincronizarDoSheets(turmaId: string, opcoes?: { leve?: boo
         save(KEYS.fichas, merged);
       }
     }
+    if (leve) return;   // «leve»: só planos e fichas
 
     // Carregar Recuperações e Evidências do Sheets dedicado — merge por ID,
     // a versão mais recente (atualizadoEm) ganha em caso de conflito.
@@ -4537,6 +4537,11 @@ export function subscreverAbertura(fn: () => void): () => void { ouvintesAbertur
 function mudarAbertura(id: string, e: EstadoAbertura) { aberturas.set(id, e); ouvintesAbertura.forEach(f => { try { f(); } catch { /* */ } }); }
 
 async function aberturaEstaNoSheets(planoAulaId: string): Promise<boolean | null> {
+  // Com o script v19, confere-se na aula que os telemóveis leem (rápido).
+  const s = getSessaoAula(planoAulaId);
+  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+  const naAula = await aberturaNaAula(plano?.turmaId || s?.turmaId || '', planoAulaId).catch(() => null);
+  if (naAula !== null) return naAula;
   const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_sessoes', turmaId: '' });
   if (!json?.ok) return null;
   return (json.sessoes || json.dados || []).some((x: any) => String(x.planoAulaId) === planoAulaId && x.abertaEm);
@@ -6377,6 +6382,11 @@ async function publicarEConfirmar(planoId: string): Promise<ResultadoPublicacao>
   porConfirmar('plano', publicado.id, publicado.titulo || `Plano de ${publicado.data}`, publicado.turmaId);
   const esperar = (ms: number) => new Promise(res => setTimeout(res, ms));
   const estaLa = async (): Promise<boolean | null> => {
+    // Script v19: a aula que os telemóveis leem já tem o plano publicado?
+    try {
+      const json: any = aulaNaoSuportada ? null : await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId: plano.turmaId });
+      if (json?.ok && Array.isArray(json.planos) && json.planos.some((p: any) => p.id === planoId)) return true;
+    } catch { /* confere pela folha */ }
     try {
       const json: any = await lerDoSheets(SHEETS_PLANOS_URL, { tipo: 'get_planos', turmaId: plano.turmaId });
       if (!json?.ok) return null;
@@ -7431,4 +7441,81 @@ export function gruposDaAula(planoAulaId: string): GrupoDaAula[] {
 }
 export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula | undefined {
   return gruposDaAula(planoAulaId).find(g => g.membros.some(m => m.alunoId === alunoId));
+}
+
+// ============================================================
+// A aula num só pedido (script v19): plano, fichas, abertura e grupos
+// ============================================================
+// O telemóvel do aluno pergunta isto de 3 em 3 segundos. O script
+// responde da memória, sem abrir as folhas: é rápido e não entope,
+// mesmo com a turma toda. Com um script antigo (sem «get_aula»),
+// devolve false e a aplicação faz como antes.
+let aulaNaoSuportada = false;
+/** O script responde a «get_aula» (v19)? */
+export function aulaRapidaDisponivel(): boolean { return !aulaNaoSuportada; }
+export async function lerAula(turmaId: string): Promise<boolean> {
+  if (!turmaId || aulaNaoSuportada) return false;
+  const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId });
+  if (!json?.ok || !Array.isArray(json.planos)) {
+    if (json && json.ok === false && /tipo|desconhecido/i.test(String(json.mensagem || ''))) aulaNaoSuportada = true;
+    if (json && json.ok && !Array.isArray(json.planos)) aulaNaoSuportada = true;
+    return false;
+  }
+  // Planos (os eliminados neste aparelho não voltam)
+  const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
+  const planos = getPlanosAula();
+  let mudou = false;
+  for (const pRaw of json.planos) {
+    if (!pRaw?.id || eliminados.has(pRaw.id)) continue;
+    const p: any = { ...pRaw,
+      fichasIds: Array.isArray(pRaw.fichasIds) ? pRaw.fichasIds
+        : (typeof pRaw.fichasIds === 'string' && pRaw.fichasIds ? pRaw.fichasIds.split(/[;,]/).map((s: string) => s.trim()).filter(Boolean) : []),
+      data: dataSoDia(pRaw.data),
+      compRemovidas: Array.isArray(pRaw.compRemovidas) ? pRaw.compRemovidas : [],
+      compAdicionadas: Array.isArray(pRaw.compAdicionadas) ? pRaw.compAdicionadas : [] };
+    const i = planos.findIndex(x => x.id === p.id);
+    if (i < 0) { planos.push(p); mudou = true; }
+    else if (String(p.atualizadoEm || '') > String((planos[i] as any).atualizadoEm || '')) {
+      if (!p.fichasIds?.length && planos[i].fichasIds?.length) p.fichasIds = planos[i].fichasIds;
+      planos[i] = { ...planos[i], ...p }; mudou = true;
+    }
+  }
+  if (mudou) save(KEYS.planos, planos);
+  // Fichas: as que faltam entram; as que existem ficam com o que tiverem a mais
+  const eliminadas = new Set(load<string>(KEYS.eliminadosFichas));
+  const fichas = getFichasProducao();
+  let mudouF = false;
+  for (const f of (json.fichas || [])) {
+    if (!f?.id || eliminadas.has(f.id)) continue;
+    const i = fichas.findIndex(x => x.id === f.id);
+    const nova: any = { ...f, ingredientes: Array.isArray(f.ingredientes) ? f.ingredientes : [],
+      preparacao: Array.isArray(f.preparacao) ? f.preparacao : [] };
+    if (i < 0) { fichas.push(nova); mudouF = true; }
+    else if (!(fichas[i].ingredientes?.length) && nova.ingredientes.length) { fichas[i] = { ...fichas[i], ...nova }; mudouF = true; }
+  }
+  if (mudouF) save(KEYS.fichas, fichas);
+  // Aberturas: a mais antiga ganha; o fecho junta-se
+  const sess = new Map(getSessoesAula().map(s => [s.planoAulaId, s]));
+  for (const r of (json.sessoes || [])) {
+    if (!r?.planoAulaId) continue;
+    const ex = sess.get(r.planoAulaId);
+    if (!ex?.abertaEm || (r.abertaEm && r.abertaEm < ex.abertaEm) || (r.fechadaEm && !ex.fechadaEm)) {
+      sess.set(r.planoAulaId, { planoAulaId: r.planoAulaId, turmaId: r.turmaId || turmaId,
+        abertaEm: ex?.abertaEm && ex.abertaEm < r.abertaEm ? ex.abertaEm : r.abertaEm, abertaPor: r.abertaPor,
+        toleranciaMin: Number(r.toleranciaMin) || TOLERANCIA_PADRAO_MIN, fechadaEm: r.fechadaEm || ex?.fechadaEm });
+    }
+  }
+  save(KEY_SESSOES as any, [...sess.values()]);
+  // Grupos
+  juntarPorId(KEY_MEMBROS, (json.grupos?.membros || []) as MembroGrupo[]);
+  juntarPorId(KEY_INFO_GRUPOS, (json.grupos?.info || []).map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
+  return true;
+}
+
+/** Esta abertura já está na aula que os telemóveis leem? (script v19; null = não sei) */
+export async function aberturaNaAula(turmaId: string, planoAulaId: string): Promise<boolean | null> {
+  if (aulaNaoSuportada) return null;
+  const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId });
+  if (!json?.ok || !Array.isArray(json.sessoes)) return null;
+  return json.sessoes.some((s: any) => String(s.planoAulaId) === planoAulaId && s.abertaEm);
 }
