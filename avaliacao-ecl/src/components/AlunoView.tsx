@@ -57,6 +57,7 @@ import {
 import { PassoKitchenFlowFase } from './PassosKitchenFlow';
 import { PERGUNTAS_TRIAGEM, notaTriagem, type Triagem5C } from '../triagem5c';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula } from '../backend';
+import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO } from '../eventosAvaliacao';
 import { ManuaisAluno } from './ManuaisAluno';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
 import { AutoavaliacaoFinalUC, CartaoAutoavaliacaoFinal, CartaoNotasFinais } from './AutoavaliacaoFinalUC';
@@ -2620,12 +2621,17 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     : atitudesDoTrimestre((aluno.ano ?? 1) as 1|2|3, trimestreAtual(new Date(plano.data + 'T00:00:00')))
         .map((x: any) => x.id as string).filter(id => !compRemovidas.includes(id) && temFrases(id));
   const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
+  // Evento: uma pergunta de técnica geral e o que correu menos bem.
+  const ehEvento = (plano as any).tipoEvento === 'evento';
+  const [tecEvento, setTecEvento] = useState<number | null>(null);
+  const [tecMenosBem, setTecMenosBem] = useState('');
+  const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
   // Triagem do Colaborativo e do Criativo: responde-se sempre, em todas as aulas.
   const [triagem, setTriagem] = useState<Triagem5C>({ cl: null, cr: null, co: null, problema: '' });
   const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null;
   const prontoParaSubmeter = triagemCompleta && (ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null)
-      && (!comObrigatorias || nivelHaccp !== null)
+      && (!comObrigatorias || nivelHaccp !== null) && tecEventoFeito
     : nivelHaccp !== null);
 
   const fmtN = (x: number) => (Math.round(x * 10) / 10).toString().replace('.', ',');
@@ -2702,6 +2708,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       ...(atitudeApanhar?[{competenciaId:atitudeApanhar,nivel:'sozinho',nota:notaApanhar}]:[]),
       ...atitudesDaAula.filter(id => frasesAula[id] != null)
         .map(id => ({competenciaId:id,nivel:'sozinho',nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4)})),
+      ...(ehEvento && tecEvento !== null ? [{ competenciaId: TEC_EVENTO, nivel: 'evento', nota: tecEvento,
+        texto: OPCOES_TEC_EVENTO.find(o => o.nota === tecEvento)?.texto, comentario: tecMenosBem.trim() }] : []),
     ];
     addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => frasesAula[id] != null)].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,triagem5c:{ ...triagem, problema: (triagem.problema||'').trim() || undefined },criadaEm:agora});
     guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
@@ -2945,7 +2953,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // baralhava a autoavaliação e não interessa à professora.
   const faltamApanhar: { id: string; nome: string; ano: number }[] = [];
 
-  type Passo = { id: string; tipo: 'comp' | 'haccp' | 'atiAula' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
+  type Passo = { id: string; tipo: 'comp' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
     comp?: typeof itensComp[number]; atiId?: string };
   const passos: Passo[] = [
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
@@ -2953,6 +2961,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     ...(ehAtitudinal
       ? atitudesDaAula.map(id => ({ id: 'a_' + id, tipo: 'atiAula' as const, atiId: id }))
       : opcoesAtitude.length > 0 ? [{ id: 'atitude', tipo: 'atitude' as const }] : []),
+    ...(ehEvento ? [{ id: 'tecEvento', tipo: 'tecEvento' as const }] : []),
     ...(faltamApanhar.length > 0 ? [{ id: 'apanhar', tipo: 'apanhar' as const }] : []),
     { id: 'triagem', tipo: 'triagem' as const },
     { id: 'rever', tipo: 'rever' as const },
@@ -2964,6 +2973,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
     : passo.tipo === 'haccp' ? nivelHaccp !== null
     : passo.tipo === 'atiAula' ? frasesAula[passo.atiId!] != null
+    : passo.tipo === 'tecEvento' ? tecEventoFeito
     : passo.tipo === 'atitude' ? (!atitudeEscolhida || nivelAtitudeFrase !== null)
     : passo.tipo === 'apanhar' ? (!atitudeApanhar || nivelApanharFrase !== null)
     : passo.tipo === 'triagem' ? triagemCompleta
@@ -2973,6 +2983,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     p.tipo === 'comp' ? p.comp!.rotulo
     : p.tipo === 'haccp' ? 'Higiene e segurança alimentar'
     : p.tipo === 'atiAula' || p.tipo === 'atitude' ? 'Atitude'
+    : p.tipo === 'tecEvento' ? 'Técnica no evento'
     : p.tipo === 'apanhar' ? 'Atitude do ano anterior'
     : p.tipo === 'triagem' ? 'Equipa, problemas e reflexão' : 'Rever e enviar';
 
@@ -3053,6 +3064,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       linhasRever.push({ nome: ATITUDES.find(x => x.id === p.atiId)?.nome ?? 'Atitude',
         resposta: f == null ? 'Por responder' : FRASES_ATITUDES.find(x => x.competenciaId === p.atiId)?.frases[f] || '',
         nota: f == null ? null : Math.round(NOTAS_FRASES[f] / 4), passo: i });
+    } else if (p.tipo === 'tecEvento') {
+      linhasRever.push({ nome: NOME_TEC_EVENTO,
+        resposta: tecEvento === null ? 'Por responder' : OPCOES_TEC_EVENTO.find(o => o.nota === tecEvento)?.texto || '',
+        nota: tecEvento, passo: i });
     } else if (p.tipo === 'atitude' || p.tipo === 'apanhar') {
       const id = p.tipo === 'atitude' ? atitudeEscolhida : atitudeApanhar;
       const f = p.tipo === 'atitude' ? nivelAtitudeFrase : nivelApanharFrase;
@@ -3198,6 +3213,34 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         );
       })()}
 
+      {/* ── Evento: técnica geral. Um cenário concreto, e o aluno sabe que
+          o chef também responde — assim não se dá 5 a si próprio de caras. ── */}
+      {passo.tipo === 'tecEvento' && (
+        <div>
+          <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:V }}>
+            Técnica no evento
+          </div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:21, fontWeight:800, lineHeight:1.3, marginTop:4 }}>
+            Se amanhã o chef te pusesse sozinho/a a fazer exatamente o mesmo que fizeste no evento, sem ninguém para ajudar, o que acontecia?
+          </div>
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 10px' }}>
+            O chef também responde a esta pergunta sobre ti.
+          </div>
+          {OPCOES_TEC_EVENTO.map(o => (
+            <button key={o.nota} onClick={() => setTecEvento(o.nota)} style={estiloOpcao(tecEvento === o.nota)}>
+              <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
+                border: tecEvento === o.nota ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
+              {o.texto}
+            </button>
+          ))}
+          {rotuloSecao('O que é que correu menos bem na tua parte?')}
+          <textarea value={tecMenosBem} onChange={e => setTecMenosBem(e.target.value)} rows={3}
+            placeholder="Há sempre alguma coisa. Escreve o que farias diferente."
+            style={{ width:'100%', boxSizing:'border-box', padding:10, borderRadius:10, border:`1.5px solid ${T.border}`,
+              fontSize:14.5, fontFamily:'inherit' }} />
+        </div>
+      )}
+
       {/* ── A atitude que o aluno se propõe ── */}
       {passo.tipo === 'atitude' && (
         <div>
@@ -3339,6 +3382,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               <div style={{ fontWeight:700, marginBottom:6 }}>Para poderes enviar, falta responder:</div>
               {passos.map((p, i) => {
                 const falta = (p.tipo === 'atiAula' && frasesAula[p.atiId!] == null)
+                  || (p.tipo === 'tecEvento' && !tecEventoFeito)
                   || (p.tipo === 'haccp' && nivelHaccp === null)
                   || (p.tipo === 'triagem' && !triagemCompleta);
                 if (!falta) return null;

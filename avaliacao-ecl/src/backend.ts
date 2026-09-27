@@ -6,6 +6,7 @@
 
 import type { Triagem5C } from './triagem5c';
 import { notaDaPautaUC } from './pautaUC';
+import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
@@ -6041,15 +6042,46 @@ export function participacoesDoAluno(alunoId: string): number {
  * evento feito em novembro ajuda a nota do módulo que estava a decorrer
  * em novembro, e não todos os módulos do ano.
  */
-export function participacoesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: string): number {
+/** As actividades (eventos e concursos) do aluno no período deste módulo. */
+export function atividadesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: string): Atividade[] {
   const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
   const atividades = getAtividades().filter(a =>
     (a.participantesIds || []).includes(alunoId) && a.turmaId === turmaId);
-  if (!mod?.dataInicio || !mod?.dataFim) return atividades.length;
+  if (!mod?.dataInicio || !mod?.dataFim) return atividades;
   return atividades.filter(a => {
     const d = String(a.data || '').slice(0, 10);
     return d >= mod.dataInicio && d <= mod.dataFim;
-  }).length;
+  });
+}
+
+export function participacoesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: string): number {
+  return atividadesDoAlunoNaUC(alunoId, turmaId, ucId).length;
+}
+
+/**
+ * Esta participação dá bónus? Vê-se no plano do evento (mesma turma e dia):
+ * farda à entrada, e as notas finais do professor em "Muito bom" (5) —
+ * no evento todas as atitudes e a técnica; no concurso as 3 fixas.
+ */
+export function participacaoContaParaBonus(a: Atividade, alunoId: string): { conta: boolean; motivo: string } {
+  const dia = String(a.data || '').slice(0, 10);
+  const doDia = getPlanosAula().filter(p => p.turmaId === a.turmaId && String(p.data || '').slice(0, 10) === dia && p.estado !== 'arquivado');
+  const deEvento = doDia.filter((p: any) => !!p.tipoEvento);
+  const planos = deEvento.length ? deEvento : doDia;
+  if (!planos.length) return { conta: false, motivo: 'Não há plano de avaliação deste evento.' };
+  const ids = new Set(planos.map(p => p.id));
+  if (getPresencas().some(r => r.alunoId === alunoId && ids.has(r.planoAulaId) && r.fardamentoOk === false))
+    return { conta: false, motivo: 'Foi sem farda.' };
+  const val = getValidacoes().filter(v => v.alunoId === alunoId && ids.has(v.planoAulaId || ''))
+    .sort((x, y) => String(y.validadoEm).localeCompare(String(x.validadoEm)))[0];
+  if (!val) return { conta: false, motivo: 'Ainda não foi validado pelo professor.' };
+  const nota = new Map(val.notas.map(n => [n.competenciaId, Number(n.nota)]));
+  const exigidas = a.tipo === 'concurso'
+    ? ATITUDES_FIXAS_EVENTO
+    : [...new Set([...ATITUDES_FIXAS_EVENTO, ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('ATI-')), TEC_EVENTO])];
+  const falham = exigidas.filter(id => nota.get(id) !== 5);
+  if (falham.length) return { conta: false, motivo: 'Nem tudo ficou em "Muito bom".' };
+  return { conta: true, motivo: '' };
 }
 
 export interface NotaUC {
@@ -6068,18 +6100,23 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
   if (base === null) {
     return { base, bonusAssiduidade: 0, bonusParticipacao: 0, participacoes, limitadaPorTeto: false, final: null };
   }
-  const B = BONUS_PARTICIPACAO;
+  const B = BONUS_EVENTOS;
   const bonusAssiduidade = calcularBonusAssiduidadeUC(alunoId, turmaId, ucId)?.total || 0;
   let nota = base + bonusAssiduidade;
 
-  const n = Math.min(participacoes, B.maxAtividades);
-  let bonusParticipacao = 0, limitadaPorTeto = false;
-  if (n === 0) {
-    if (nota > B.tetoSemParticipacao) { nota = B.tetoSemParticipacao; limitadaPorTeto = true; }
-  } else if (base >= B.notaBaseMinima) {
-    bonusParticipacao = n * B.porAtividade;
-    nota += bonusParticipacao;
-  }
+  // Eventos contam para todos (ajudam quem tem negativa a subir); concursos
+  // só com 10 ou mais. Cada um só conta se a avaliação do evento o permitir.
+  const atividades = atividadesDoAlunoNaUC(alunoId, turmaId, ucId);
+  const contam = atividades.filter(a => (a.tipo !== 'concurso' || base >= B.notaMinimaConcurso)
+    && participacaoContaParaBonus(a, alunoId).conta);
+  const temConcurso = contam.some(a => a.tipo === 'concurso');
+  const bruto = contam.reduce((s, a) => s + (a.tipo === 'concurso' ? B.porConcurso : B.porEvento), 0);
+  const bonusParticipacao = Math.min(B.maximo, bruto);
+  nota += bonusParticipacao;
+  // Tetos: sem participar, 17; só eventos, 18; o 20 só com concurso.
+  const teto = contam.length === 0 ? B.tetoSemParticipacao : temConcurso ? 20 : B.tetoSoEventos;
+  let limitadaPorTeto = false;
+  if (nota > teto) { nota = teto; limitadaPorTeto = true; }
   const final = Math.min(20, Math.round(nota * 10) / 10);
   return { base, bonusAssiduidade, bonusParticipacao, participacoes, limitadaPorTeto, final };
 }

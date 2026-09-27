@@ -253,7 +253,9 @@ export function EcraAtividades({
         <div style={{ ...painel, padding: 15, marginBottom: 16, fontSize: 14.5,
           color: C.texto, lineHeight: 1.6 }}>
           Participar não é obrigatório, mas conta para a tua nota. Cada
-          atividade que fizeres pode subir-te 0,5 valores.
+          evento pode subir-te 0,5 valores e cada concurso 0,75 — mesmo que
+          não ganhes. Para contar, tens de ir de farda e dar tudo. Sem ires
+          a um concurso, a nota não passa de 18.
         </div>
 
         {/* Por fechar primeiro: é o que exige ação. */}
