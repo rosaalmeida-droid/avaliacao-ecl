@@ -2114,10 +2114,16 @@ export function addOrUpdatePlanoAula(p: PlanoAula): void {
   const idx = all.findIndex(x => x.id === p.id);
   if (idx >= 0) all[idx] = p; else all.push(p);
   save(KEYS.planos, all);
-  enviar(SHEETS_PLANOS_URL, 'plano', { plano: p });
-  registarEnvio(p.id, 'plano', p.titulo || `Plano de ${p.data}`);
-  porConfirmar('plano', p.id, p.titulo || `Plano de ${p.data}`, p.turmaId);
-  sincronizarPlanoComCalendario(p);
+  // O envio vem depois de gravar, e um erro aqui (memória do aparelho
+  // cheia, por exemplo) não pode parar quem chamou: o botão «Criar plano»
+  // ficava parado em «A criar o plano…» com o plano já gravado.
+  const passos: (() => void)[] = [
+    () => enviar(SHEETS_PLANOS_URL, 'plano', { plano: p }),
+    () => registarEnvio(p.id, 'plano', p.titulo || `Plano de ${p.data}`),
+    () => porConfirmar('plano', p.id, p.titulo || `Plano de ${p.data}`, p.turmaId),
+    () => sincronizarPlanoComCalendario(p),
+  ];
+  passos.forEach(f => { try { f(); } catch (e) { console.error('Plano gravado, mas o envio falhou:', e); } });
 }
 
 // Numeração sequencial robusta — baseada no MAIOR número já usado, nunca em

@@ -621,7 +621,8 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
     onConcluido={p => {
       // O formulário sai logo: ficava por baixo do plano aberto, com o botão
       // em "A criar o plano…", e parecia que o plano nunca mais era criado.
-      setDataNovoPlano(''); setTipoNovoPlano(''); setVista('calendario'); onGuardado?.(p);
+      setDataNovoPlano(''); setTipoNovoPlano(''); setVista('calendario');
+      try { onGuardado?.(p); } catch (e) { console.error(e); }
     }}
     onVoltar={()=>{ setDataNovoPlano(''); setTipoNovoPlano(''); setVista('calendario'); }}
     onAlteracao={onAlteracao} onGuardado={onGuardado} />;
@@ -912,6 +913,13 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   /** O plano já está a ser criado — o botão fica bloqueado. */
   const aCriar = React.useRef(false);
   const [estadoCriar, setEstadoCriar] = useState(false);
+  // Rede de segurança: se ao fim de 6 s o formulário ainda cá está, o plano
+  // já foi gravado — sai para os planos em vez de ficar parado para sempre.
+  useEffect(() => {
+    if (!estadoCriar) return;
+    const t = setTimeout(() => { aCriar.current = false; setEstadoCriar(false); onVoltar(); }, 6000);
+    return () => clearTimeout(t);
+  }, [estadoCriar]);
 
   /** O professor mexeu nas horas — já não se trocam sozinhas. */
   const horasMexidas = React.useRef(false);
@@ -1042,8 +1050,10 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     if (contaAssiduidade && dados.data < hojeISO) {
       try { sessionStorage.setItem('ecl_abrir_turma', p.id); } catch { /* */ }
     }
-    addOrUpdatePlanoAula(p);
-    onGuardado?.();
+    // Aconteça o que acontecer ao envio, o plano abre: antes, um erro
+    // depois de gravar deixava o botão em «A criar o plano…» para sempre.
+    try { addOrUpdatePlanoAula(p); } catch (e) { console.error('Criar plano:', e); }
+    try { onGuardado?.(); } catch (e) { console.error(e); }
     // O Classroom fica para quando o plano for publicado, não agora.
     //
     // Perguntava-se aqui, logo a seguir a criar o plano — antes de haver
