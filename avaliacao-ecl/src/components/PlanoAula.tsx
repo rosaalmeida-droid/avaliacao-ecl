@@ -16,7 +16,7 @@ import {
 import { fmtDataCurta, fmtData } from '../datas';
 import { modulosDaTurma, modulosAtivos, disciplinasAtivas,
   modulosAtivosDaDisciplina, disciplinaUnica } from '../cronograma';
-import { avisoDoDia, temCozinha, horasSugeridas } from '../horarios';
+import { avisoDoDia, temCozinha, horasSugeridas, proximoDiaDeAula, horarioEmTexto } from '../horarios';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Data no formato "20-07-2026 · quarta-feira"
@@ -870,7 +870,11 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   dataInicial?: string;
 }) {
   const [dados, setDados] = useState(() => {
-    const data = dataInicial || new Date().toISOString().split('T')[0];
+    // Sem data do calendário, começa no próximo dia de aula da turma
+    // (hoje, se hoje houver cozinha). O professor pode sempre mudar.
+    const hoje = new Date();
+    const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    const data = dataInicial || proximoDiaDeAula(turmaId, hojeISO) || hojeISO;
     // As horas saem do horário da turma. Eram 08:30–17:30 fixas, o dia
     // inteiro, mesmo quando a turma só tem cozinha das 10 às 13.
     const h = horasSugeridas(turmaId, data);
@@ -898,9 +902,18 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
   const aCriar = React.useRef(false);
   const [estadoCriar, setEstadoCriar] = useState(false);
 
+  /** O professor mexeu nas horas — já não se trocam sozinhas. */
+  const horasMexidas = React.useRef(false);
+
   function setD(k: string, v: string) {
+    if (k === 'horaInicio' || k === 'horaFim') horasMexidas.current = true;
     setDados(p => {
       const novo: any = { ...p, [k]: v };
+      // Ao mudar a data, as horas acompanham o horário da turma.
+      if (k === 'data' && !horasMexidas.current) {
+        const h = horasSugeridas(turmaId, v);
+        if (h) { novo.horaInicio = h.inicio; novo.horaFim = h.fim; }
+      }
       // Ao mudar a data, a unidade acompanha o cronograma — a não ser
       // que o professor tenha escolhido trocar à mão.
       if (k === 'data' && !trocarUC) {
@@ -1050,6 +1063,21 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             <input type="time" className="input" value={dados.horaFim} onChange={e => setD('horaFim', e.target.value)} />
           </div>
         </div>
+        {horarioEmTexto(turmaId) && (() => {
+          const h = horasSugeridas(turmaId, dados.data);
+          const diferente = h && (h.inicio !== dados.horaInicio || h.fim !== dados.horaFim);
+          return (
+            <div style={{ fontSize: 13, color: 'var(--muted, #777)', margin: '-8px 0 14px', lineHeight: 1.5 }}>
+              🕘 Horário da turma: {horarioEmTexto(turmaId)}
+              {diferente && (
+                <button type="button" onClick={() => { horasMexidas.current = false; setDados(p => ({ ...p, horaInicio: h!.inicio, horaFim: h!.fim })); }}
+                  style={{ marginLeft: 8, background: 'none', border: 'none', color: 'var(--copper)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: 13, padding: 0 }}>
+                  Repor {h!.inicio}–{h!.fim}
+                </button>
+              )}
+            </div>
+          );
+        })()}
         <div className="field" style={{ marginBottom: 16 }}>
           <label className="field-label" style={{ fontSize: 14, fontWeight: 700, color: 'var(--copper)', marginBottom: 6, display: 'block' }}>
             {modulosDaTurma(turmaId).some(m => m.tipo === 'UFCD') ? 'UFCD' : 'Unidade de Competência'} <span style={{ color: 'var(--danger)' }}>*</span>
