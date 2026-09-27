@@ -55,7 +55,7 @@ const WHITE        = '#ffffff';
 
 // ── Tipo de vistas ─────────────────────────────────────────────
 // 'inicio' é o painel de blocos — o ecrã de entrada do professor.
-export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda';
+export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'avaliar_evento' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda';
 
 // ── Ícones SVG inline ─────────────────────────────────────────
 const Icons = {
@@ -95,6 +95,7 @@ export const NAV: NavItem[] = [
   { id: 'planos',              label: 'Planos de aula',       icon: Icons.planos,     secao: 'Dia a dia' },
   { id: 'abrir_aula',          label: 'Abrir a aula',         icon: Icons.inicio,     secao: 'Dia a dia' },
   { id: 'eventos',             label: 'Eventos',              icon: Icons.eventos,    secao: 'Dia a dia' },
+  { id: 'avaliar_evento',      label: 'Avaliar evento fora do horário', icon: Icons.eventos, secao: 'Avaliar' },
   { id: 'validacao',           label: 'Validar',              icon: Icons.validacao,  secao: 'Avaliar' },
   { id: 'avaliacao_uc',        label: 'Notas da UC',          icon: Icons.avaliacao,  secao: 'Avaliar' },
   { id: 'mapa_competencias',   label: 'Mapa da turma',        icon: Icons.mapa,       secao: 'Avaliar' },

@@ -554,7 +554,9 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
   );
 }
 
-export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoIdInicial, onPlanoIdInicialUsado }: {
+export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoIdInicial, onPlanoIdInicialUsado, criarEvento }: {
+  /** Menu «Avaliar evento fora do horário»: abre logo o formulário de evento. */
+  criarEvento?: boolean;
   turmaId: string; nomeProfessor?: string;
   /** Muda quando chegam dados novos: re-desenha sem perder a vista. */
   versao?: number;
@@ -563,9 +565,10 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   planoIdInicial?: string;
   onPlanoIdInicialUsado?: () => void;
 }) {
-  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>('calendario');
+  const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>(criarEvento ? 'criar' : 'calendario');
   /** Data escolhida no calendário — entra já preenchida no formulário. */
   const [dataNovoPlano, setDataNovoPlano] = useState<string>('');
+  const [tipoNovoPlano, setTipoNovoPlano] = useState<string>(criarEvento ? 'Evento externo' : '');
   /** Plano do Arquivo a eliminar de vez — passa pelo aviso. */
   const [arquivadoAEliminar, setArquivadoAEliminar] = useState<TPlanoAula | null>(null);
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);
@@ -614,12 +617,13 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
 
   if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor}
     dataInicial={dataNovoPlano || undefined}
+    tipoInicial={tipoNovoPlano || undefined}
     onConcluido={p => {
       // O formulário sai logo: ficava por baixo do plano aberto, com o botão
       // em "A criar o plano…", e parecia que o plano nunca mais era criado.
-      setDataNovoPlano(''); setVista('calendario'); onGuardado?.(p);
+      setDataNovoPlano(''); setTipoNovoPlano(''); setVista('calendario'); onGuardado?.(p);
     }}
-    onVoltar={()=>{ setDataNovoPlano(''); setVista('calendario'); }}
+    onVoltar={()=>{ setDataNovoPlano(''); setTipoNovoPlano(''); setVista('calendario'); }}
     onAlteracao={onAlteracao} onGuardado={onGuardado} />;
 
   // DetalhePlano unificado — usar VistaDePlano via onGuardado
@@ -868,11 +872,13 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   );
 }
 
-function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado, dataInicial }: {
+function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado, dataInicial, tipoInicial }: {
   turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void;
   onVoltar:()=>void; onAlteracao?:(guardar?:()=>void)=>void; onGuardado?:()=>void;
   /** Data vinda do calendário. Sem ela, começa em hoje. */
   dataInicial?: string;
+  /** Vem do botão «Avaliar evento ou concurso». */
+  tipoInicial?: string;
 }) {
   const [dados, setDados] = useState(() => {
     // Sem data do calendário, começa no próximo dia de aula da turma
@@ -893,7 +899,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     disciplina: disciplinaUnica(turmaId, data),
     titulo: '',
     professor: nomeProfessor || '',
-    tipoAtividade: 'Aula prática',
+    tipoAtividade: tipoInicial || 'Aula prática',
     tipoPlanAula: 'pratico' as 'pratico' | 'teorico' | 'misto' | 'atitudinal',
     };
   });
@@ -1053,7 +1059,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     <div>
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
         <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: '1px solid rgba(247,241,230,0.2)', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>← Voltar</button>
-        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>Novo Plano de Aula</div>
+        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>{tipoEventoDe(dados.tipoAtividade) ? '🏅 Avaliar evento ou concurso' : 'Novo Plano de Aula'}</div>
         {/* A turma bem à vista: o plano fica nesta turma e só estes alunos o veem. */}
         <div style={{ display: 'inline-block', marginTop: 8, padding: '6px 12px', borderRadius: 8,
           background: 'var(--copper)', color: '#fff', fontSize: 15, fontWeight: 800 }}>

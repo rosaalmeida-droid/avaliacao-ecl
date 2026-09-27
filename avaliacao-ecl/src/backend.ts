@@ -6045,8 +6045,18 @@ export function participacoesDoAluno(alunoId: string): number {
 /** As actividades (eventos e concursos) do aluno no período deste módulo. */
 export function atividadesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: string): Atividade[] {
   const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
-  const atividades = getAtividades().filter(a =>
+  const registadas = getAtividades().filter(a =>
     (a.participantesIds || []).includes(alunoId) && a.turmaId === turmaId);
+  // O plano do evento é o registo da participação: quem foi validado nesse
+  // plano participou. Não há outro sítio onde registar quem foi.
+  const validados = new Set(getValidacoes().filter(v => v.alunoId === alunoId).map(v => v.planoAulaId || ''));
+  const diasRegistados = new Set(registadas.map(a => String(a.data || '').slice(0, 10)));
+  const dosPlanos: Atividade[] = getPlanosAula()
+    .filter((p: any) => p.turmaId === turmaId && p.tipoEvento && p.estado !== 'arquivado' && validados.has(p.id)
+      && !diasRegistados.has(String(p.data || '').slice(0, 10)))
+    .map((p: any) => ({ id: p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: p.data,
+      participantesIds: [alunoId], criadaEm: p.criadoEm || '' }));
+  const atividades = [...registadas, ...dosPlanos];
   if (!mod?.dataInicio || !mod?.dataFim) return atividades;
   return atividades.filter(a => {
     const d = String(a.data || '').slice(0, 10);

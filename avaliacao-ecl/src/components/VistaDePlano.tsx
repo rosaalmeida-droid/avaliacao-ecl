@@ -1,3 +1,4 @@
+import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
@@ -1284,6 +1285,39 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
 
             <Aviso5C />
+
+            {/* Evento ou concurso no horário letivo: entra neste plano. Os de
+                fora do horário avaliam-se no menu «Avaliar evento fora do horário». */}
+            {(() => {
+              const atual = (plano as any).tipoEvento as ('evento' | 'concurso' | undefined);
+              const escolher = (t?: 'evento' | 'concurso') => {
+                const f: any = planoFresco();
+                const comp = [...new Set([...(f.compAdicionadas || []), ...(t ? ATITUDES_FIXAS_EVENTO : [])])];
+                const p = { ...f, tipoEvento: t, compAdicionadas: comp, atualizadoEm: new Date().toISOString() } as any;
+                if (t) setCompAdicionadas(comp);
+                addOrUpdatePlanoAula(p);
+                onPlanoActualizado(p);
+              };
+              const bt = (sel: boolean): React.CSSProperties => ({ padding: '7px 12px', borderRadius: 8, fontSize: 13.5, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${sel ? 'var(--copper)' : 'rgba(26,23,20,0.15)'}`,
+                background: sel ? 'var(--copper)' : '#fff', color: sel ? '#fff' : 'rgba(26,23,20,0.75)' });
+              return (
+                <div style={{ marginTop: 11, paddingTop: 11, borderTop: '1px solid rgba(181,101,29,0.25)', fontSize: 13.5 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>🏅 Esta aula inclui um evento ou concurso?</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button style={bt(!atual)} onClick={() => escolher(undefined)}>Não</button>
+                    <button style={bt(atual === 'evento')} onClick={() => escolher('evento')}>Evento (+0,5)</button>
+                    <button style={bt(atual === 'concurso')} onClick={() => escolher('concurso')}>Concurso (+0,75)</button>
+                  </div>
+                  {atual && (
+                    <div style={{ marginTop: 6, color: 'rgba(26,23,20,0.6)', lineHeight: 1.5 }}>
+                      Os alunos avaliam também a hora, ficar até ao fim e a farda{atual === 'evento' ? ', e respondem à pergunta de técnica geral' : ''}.
+                      O bónus conta com tudo em "Muito bom" e farda.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {!temFichas && (
               <div style={{ marginTop: 11, paddingTop: 11,
