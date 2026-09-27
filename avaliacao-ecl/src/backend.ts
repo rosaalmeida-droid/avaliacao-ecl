@@ -2565,6 +2565,18 @@ export function addOrUpdateRequisicao(r: RequisicaoAula): void {
 
 // Elimina a requisição DEFINITIVAMENTE — local e a linha correspondente no
 // histórico de Requisições do Sheets de Planos.
+/** Tira do aparelho as requisições que cumprem a condição (e regista-as
+ *  como eliminadas, para não voltarem do Sheets). Não envia nada: quem
+ *  chama já pediu ao script para apagar (com o plano ou com o evento). */
+function apagarRequisicoesLocais(condicao: (r: RequisicaoAula) => boolean): void {
+  const todas = getRequisicoes();
+  const fora = todas.filter(condicao).map(r => r.id);
+  if (!fora.length) return;
+  save(KEYS.requisicoes, todas.filter(r => !fora.includes(r.id)));
+  const eliminados = load<string>(KEYS.eliminadosRequisicoes);
+  save(KEYS.eliminadosRequisicoes, [...new Set([...eliminados, ...fora])]);
+}
+
 export function eliminarRequisicaoDefinitivamente(requisicaoId: string): void {
   save(KEYS.requisicoes, getRequisicoes().filter(r => r.id !== requisicaoId));
   const eliminados = load<string>(KEYS.eliminadosRequisicoes);
@@ -6282,8 +6294,9 @@ export function resumoDoPlano(planoId: string): ResumoPlano {
  */
 export function anularPlanoAula(planoId: string): void {
   const turmaDoPlano = getPlanosAula().find(p => p.id === planoId)?.turmaId || '';
-  getRequisicoes().filter(r => r.planoAulaId === planoId).forEach(r =>
-    addOrUpdateRequisicao({ ...r, planoAulaId: '' } as any));
+  // A requisição desta aula sai também (a cópia da aplicação; o
+  // documento oficial do economato não é tocado).
+  apagarRequisicoesLocais(r => r.planoAulaId === planoId);
   eliminarPlanoAulaDefinitivamente(planoId);
   // E no Sheets sai tudo o que era desta aula (autoavaliações, presenças,
   // validações, abertura, grupos…), não só o plano. Fica registado nos
@@ -7352,6 +7365,9 @@ export function gravarEvento(ev: any): void {
 }
 
 export function apagarEvento(id: string): void {
+  // Os orçamentos do evento (as requisições feitas para ele) saem também;
+  // no Sheets, o script apaga-os com o evento.
+  apagarRequisicoesLocais(r => (r as any).eventoId === id);
   const todos = lerEventosLocais().filter((x: any) => x.id !== id);
   try { localStorage.setItem(KEY_EVENTOS_V4, JSON.stringify(todos)); } catch { /* */ }
   enviar(SHEETS_ECL_URL, 'eliminar_evento', { id });
