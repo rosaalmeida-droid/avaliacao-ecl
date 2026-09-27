@@ -7,14 +7,14 @@
 // parte, o que acontece quando um aluno falta.
 //
 // Os números deste manual vêm do código, não de memória:
-//   PESOS_AULA e BONUS_PARTICIPACAO em types.ts
+//   PESOS_AULA em types.ts; o bónus de eventos em eventosAvaliacao.ts
 //   OBRIGATORIAS em compatECL.ts
 //   nivelConsolidado em motorAvaliacao.ts
 // Se esses valores mudarem, este manual tem de mudar com eles.
 // ============================================================
 
 import React, { useState } from 'react';
-import { PESOS_AULA, BONUS_PARTICIPACAO } from '../types';
+import { PESOS_AULA } from '../types';
 import { DESCONTO_POR_ATRASO, DESCONTO_POR_FALTA, DESCONTO_POR_FARDA_INCOMPLETA } from '../backend';
 
 const C = {
@@ -185,7 +185,7 @@ const SECCOES: Seccao[] = [
   {
     id: 'bonus',
     titulo: 'Os dois bónus da nota da UC',
-    resumo: `Assiduidade até +2 · eventos até +${(BONUS_PARTICIPACAO.porAtividade * BONUS_PARTICIPACAO.maxAtividades).toFixed(2).replace('.', ',')}. Sem eventos, o teto é ${BONUS_PARTICIPACAO.tetoSemParticipacao}.`,
+    resumo: 'Assiduidade até +2 · eventos e concursos até +2. Tetos: 17 sem participar, 18 só com eventos, 20 com concurso.',
     conteudo: (
       <>
         <H>1. Assiduidade, pontualidade e farda — até +2</H>
@@ -205,66 +205,43 @@ const SECCOES: Seccao[] = [
           É por isso que a farda não entra na nota da aula: conta aqui.
         </P>
 
-        <H>2. Eventos e concursos</H>
+        <H>2. Eventos e concursos — até +2</H>
         <P>
-          A participação em eventos e concursos <b>não é uma componente
-          ponderada</b>. É um acréscimo à nota já calculada. Conta quem
-          participou mesmo, não quem se inscreveu.
+          Não é uma componente ponderada: é um acréscimo à nota. O evento ou
+          concurso avalia-se num <b>plano de aula próprio</b> — no "Tipo de
+          actividade" escolhe Evento externo, Concurso, Catering, Buffet ou
+          Atividade fora da escola. As atitudes já vêm marcadas; o aluno
+          autoavalia-se e tu ajustas, como numa aula.
         </P>
-        <P>
-          Foi desenhado assim de propósito: quem participa <b>sobe</b>, em
-          vez de quem não participa <b>descer</b> por razões que muitas
-          vezes não dependem dele — trabalha, mora longe, toma conta de
-          irmãos.
-        </P>
-
         <Tabela
-          cabecalho={['', 'Valor']}
+          cabecalho={['', 'Evento', 'Concurso']}
           linhas={[
-            ['Por atividade concluída', `+${BONUS_PARTICIPACAO.porAtividade.toFixed(2).replace('.', ',')} valores`],
-            ['Máximo de atividades contadas', `${BONUS_PARTICIPACAO.maxAtividades}`],
-            ['Acréscimo máximo', `+${(BONUS_PARTICIPACAO.porAtividade * BONUS_PARTICIPACAO.maxAtividades).toFixed(2).replace('.', ',')} valores`],
-            ['Nota mínima para o bónus contar', `${BONUS_PARTICIPACAO.notaBaseMinima} valores`],
-            ['Teto sem qualquer participação', `${BONUS_PARTICIPACAO.tetoSemParticipacao} valores`],
+            ['Bónus', '+0,5', '+0,75'],
+            ['Sempre avaliado', 'Chegar à hora, ficar até ao fim, farda', 'Chegar à hora, ficar até ao fim, farda'],
+            ['Sugerido pelo tipo', 'Cooperação, higiene, postura… e a técnica geral', 'Autoconfiança, autocontrolo, iniciativa'],
+            ['Para dar o bónus', 'Tudo em "Muito bom" (5), técnica incluída', 'As 3 fixas em "Muito bom"; técnica e resultado não contam'],
+            ['Sem farda', 'Não conta', 'Não conta'],
+            ['Aluno com menos de 10', 'Conta — ajuda a subir', 'Não vai a concurso'],
           ]}
         />
-
-        <H>Porquê a nota mínima de {BONUS_PARTICIPACAO.notaBaseMinima}</H>
+        <Tabela
+          cabecalho={['Participou em', 'Nota máxima']}
+          linhas={[['Nada', '17'], ['Só eventos', '18'], ['Pelo menos um concurso', '20']]}
+        />
         <P>
-          Não se leva a concurso quem tem negativa. Um aluno com
-          dificuldades pode e deve concorrer — mas tem de estar acima do
-          mínimo, senão o concurso serve para tapar o que falta em vez de
-          premiar o que já se conquistou.
+          Porque o concurso vale mais: é expor-se, ser julgado por estranhos.
+          Premeia-se a coragem de ir, não ganhar. Porque os tetos: o 20 exige
+          mostrar o trabalho fora da sala, e ir a concurso.
         </P>
-
-        <H>Porquê o teto de {BONUS_PARTICIPACAO.tetoSemParticipacao}</H>
-        <P>
-          Um {BONUS_PARTICIPACAO.tetoSemParticipacao + 1} ou mais exige
-          mostrar o trabalho fora da sala. Quem nunca participou em nada
-          chega no máximo a {BONUS_PARTICIPACAO.tetoSemParticipacao}.
-        </P>
-
         <H>A ordem das contas</H>
         <P>
-          Primeiro a nota das competências; depois soma-se o bónus de
-          assiduidade; por fim o de eventos — ou o teto de{' '}
-          {BONUS_PARTICIPACAO.tetoSemParticipacao}, se o aluno não participou
-          em nada. O mínimo de {BONUS_PARTICIPACAO.notaBaseMinima} para o bónus
-          de eventos olha para a nota das competências, antes de qualquer bónus.
+          Nota das competências → + bónus de assiduidade → + bónus de eventos
+          e concursos (até +2) → teto (17, 18 ou 20).
         </P>
-
         <Destaque cor="verde">
-          <b>Exemplo.</b> Aluno com 15 nas competências, sem faltas nem
-          atrasos, farda sempre completa, participou em duas atividades:
-          15 + 2 + (2 × {BONUS_PARTICIPACAO.porAtividade.toFixed(2).replace('.', ',')})
-          = <b>{Math.min(20, 15 + 2 + 2 * BONUS_PARTICIPACAO.porAtividade).toFixed(1).replace('.', ',')} valores</b>.
-          <br /><br />
-          Aluno com 16 nas competências, bónus de assiduidade completo, nenhuma
-          participação: 16 + 2 = 18, mas fica em <b>{BONUS_PARTICIPACAO.tetoSemParticipacao}</b>.
-          <br /><br />
-          Aluno com 8 nas competências e bónus de assiduidade completo: fica
-          em 10. Participou em três eventos, mas não recebe esse bónus, porque
-          a nota das competências está abaixo de {BONUS_PARTICIPACAO.notaBaseMinima}.
+          <b>Exemplos.</b> 17 + 1 concurso + 3 eventos = <b>19</b>. 17 + 3 eventos = 18,5 → teto <b>18</b>.
+          20 sem participar = <b>17</b>. 20 com 3 eventos = <b>18</b>. 18 + 1 concurso + 3 eventos = <b>20</b>.
+          8 + 2 eventos = <b>9</b>.
         </Destaque>
       </>
     ),

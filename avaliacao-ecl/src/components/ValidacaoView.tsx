@@ -6,6 +6,7 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao } from '../backend';
+import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
@@ -257,6 +258,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   const autoavaliacoes = selecao.autoavaliacoes || [];
 
   function getNomeComp(id: string): string {
+    if (id === TEC_EVENTO) return NOME_TEC_EVENTO;
     if (id.startsWith('OBR_')) {
       const obrs: Record<string,string> = {
         'OBR_01': 'Higiene pessoal', 'OBR_02': 'Higiene e Segurança Alimentar', 'OBR_03': 'Assiduidade',
@@ -346,7 +348,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       validadoEm: agora,
     };
     // Calcular nota ponderada com pesos por categoria
-    const notasComCat = notasFinais.map(n => {
+    // A técnica geral do evento só serve para o bónus de eventos: não entra
+    // na nota do plano nem nos registos das competências.
+    const paraNota = notasFinais.filter(n => n.competenciaId !== TEC_EVENTO);
+    const notasComCat = paraNota.map(n => {
       const cat = n.competenciaId?.startsWith('OBR_') ? 'OBR'
         : n.competenciaId?.startsWith('SUB-') || n.competenciaId?.startsWith('APP-') ? 'SUB'
         : n.competenciaId?.startsWith('KNW-') ? 'KNW'
@@ -355,8 +360,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.notaFinal };
     });
     const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
-    const notaMedia = notasFinais.length
-      ? notasFinais.reduce((s, n) => s + n.notaFinal, 0) / notasFinais.length
+    const notaMedia = paraNota.length
+      ? paraNota.reduce((s, n) => s + n.notaFinal, 0) / paraNota.length
       : 0;
     (validacao as any).notaMedia = Math.round(notaMedia * 10) / 10;
     (validacao as any).notaMedia20 = nota20; // usa pesos por categoria, não média simples
@@ -374,7 +379,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     substituirRegistosDoProfessor(
       selecao.alunoId,
       selecao.planoAulaId || '',
-      notasFinais.map(n => ({
+      paraNota.map(n => ({
         // Identificador estável: se corrigires a validação, a linha do
         // Sheets é a mesma — não fica uma nota velha ao lado da nova.
         id: `registo_${selecao.alunoId}_${selecao.planoAulaId}_${n.competenciaId}`,
@@ -396,7 +401,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     // professor ficava parado à espera de todas. Agora grava, diz logo que
     // está guardado, e pode passar ao aluno seguinte. Só avisa se, ao fim
     // de meio minuto, as notas ainda não tiverem chegado.
-    const ids = notasFinais.map(n => `registo_${selecao.alunoId}_${selecao.planoAulaId}_${n.competenciaId}`);
+    const ids = paraNota.map(n => `registo_${selecao.alunoId}_${selecao.planoAulaId}_${n.competenciaId}`);
     setAEnviar(true);
     const nome = getAlunos().find(a => a.id === selecao.alunoId)?.nome || 'este aluno';
     confirmarRegistosNoSheets(selecao.turmaId, ids).then(r => {
@@ -485,7 +490,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
 
         // Cor e label do nível do aluno — suporta escala nova e antiga
         const corAluno = corNivelAluno((auto as any).nivel || '', (auto as any).nota);
-        const labelAluno = labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
+        const labelAluno = (auto as any).nivel === 'evento'
+          ? `${(auto as any).texto || ''}${(auto as any).comentario ? ` — correu menos bem: «${(auto as any).comentario}»` : ''}`
+          : labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
 
         return (
           <div key={auto.competenciaId} style={{ marginBottom: 10, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>

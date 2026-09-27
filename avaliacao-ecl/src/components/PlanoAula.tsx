@@ -17,6 +17,7 @@ import { fmtDataCurta, fmtData } from '../datas';
 import { modulosDaTurma, modulosAtivos, disciplinasAtivas,
   modulosAtivosDaDisciplina, disciplinaUnica } from '../cronograma';
 import { avisoDoDia, temCozinha, horasSugeridas, proximoDiaDeAula, horarioEmTexto } from '../horarios';
+import { tipoEventoDe, atitudesSugeridasEvento } from '../eventosAvaliacao';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Data no formato "20-07-2026 · quarta-feira"
@@ -46,7 +47,7 @@ import { modulosDaTurma as modulosParaPauta } from '../cronograma';
 const TIPOS_ATIVIDADE = [
   'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
   'Pequeno-almoço','Coffee break','Serviço real à carta','Catering',
-  'Buffet','Evento externo','Outro',
+  'Buffet','Evento externo','Concurso','Atividade fora da escola','Outro',
 ];
 
 // COMP_PERM e COMP_OPC removidos — sistema de avaliação antigo substituído por OBR/SUB/APP/KNW/ATI
@@ -1019,6 +1020,16 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     } as TPlanoAula;
     // Guardar tipoPlanAula no plano
     (p as any).tipoPlanAula = dados.tipoPlanAula;
+    (p as any).tipoAtividade = dados.tipoAtividade;
+    // Evento ou concurso: avalia-se com as atitudes dos eventos (as 3 fixas
+    // e as do tipo de evento) e, no evento, uma pergunta de técnica geral.
+    // O professor pode mudar as atitudes no plano.
+    const tipoEvento = tipoEventoDe(dados.tipoAtividade);
+    if (tipoEvento) {
+      (p as any).tipoEvento = tipoEvento;
+      (p as any).tipoPlanAula = 'atitudinal';
+      (p as any).compAdicionadas = atitudesSugeridasEvento(dados.tipoAtividade);
+    }
     (p as any).contaAssiduidade = contaAssiduidade;
     // Se as faltas contam numa aula que já passou, o professor tem de as
     // marcar agora — a aplicação leva-o direito à turma.
@@ -1247,6 +1258,14 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
           <select className="input" value={dados.tipoAtividade} onChange={e => setD('tipoAtividade', e.target.value)}>
             {TIPOS_ATIVIDADE.map(t => <option key={t}>{t}</option>)}
           </select>
+          {tipoEventoDe(dados.tipoAtividade) && (
+            <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 6, lineHeight: 1.5 }}>
+              {tipoEventoDe(dados.tipoAtividade) === 'concurso'
+                ? '🏆 Concurso: avalia-se a hora, ficar até ao fim e a farda (+ autoconfiança, autocontrolo, iniciativa). Dá +0,75 com as 3 primeiras em "Muito bom" e farda. Só alunos com 10 ou mais.'
+                : '🎪 Evento: avalia-se a hora, ficar até ao fim, a farda, mais atitudes do tipo de evento e uma pergunta de técnica geral. Dá +0,5 com tudo em "Muito bom" e farda.'}
+              {' '}Podes mudar as atitudes no plano.
+            </div>
+          )}
         </div>
         <div className="field" style={{ marginBottom: 20 }}>
           <label className="field-label">Título (opcional)</label>

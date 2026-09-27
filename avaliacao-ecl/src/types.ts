@@ -868,8 +868,8 @@ export const PESOS_KNW = { escrito: 0.5, oral: 0.5 } as const;
 // razões que muitas vezes não dependem dele (trabalha, mora longe,
 // toma conta de irmãos).
 export const BONUS_PARTICIPACAO = {
-  porAtividade: 0.75,
-  maxAtividades: 3,          // até +2,25 valores
+  porAtividade: 0.5,        // era 0,75 — demasiado com vários eventos no mês (Rosa, set/2026)
+  maxAtividades: 3,          // até +1,5 valores
   // Mínimo 10: não se leva a concurso quem tem negativa. Um aluno com
   // dificuldades pode e deve concorrer — mas tem de estar acima do
   // mínimo, senão o concurso serve para tapar o que falta em vez de
