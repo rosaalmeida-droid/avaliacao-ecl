@@ -214,7 +214,7 @@ function AppInterno() {
   function atualizarDados() {
     if (!turmaId) return;
     setSyncStatus('syncing');
-    sincronizarDoSheets(turmaId)
+    sincronizarDoSheets(turmaId, { forcar: true })
       .then(() => { setSyncStatus('ok'); setRefreshKey(k => k + 1); })
       .catch(() => setSyncStatus('offline'));
   }

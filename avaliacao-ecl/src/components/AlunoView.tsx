@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { lerAula, aulaRapidaDisponivel } from '../backend';
+import { lerAula, aulaRapidaDisponivel, contadorDaTurma } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
 import { grupoDoAluno } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
@@ -535,7 +535,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     setALigar(true);
     setMensagemAula(null);
     try {
-      await sincronizarDoSheets(aluno.turmaId);
+      await sincronizarDoSheets(aluno.turmaId, { forcar: true });
       const ps = getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado');
       setPlanos(ps);
       setFalhouLigacao(leituraDePlanosFalhou());
@@ -558,15 +558,28 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // A abertura da aula vem primeiro e mostra-se logo: ir buscar tudo o
   // resto (fichas, avaliações, presenças…) leva meio minuto, e o aluno
   // ficava esse tempo todo sem saber que a aula já estava aberta.
+  const ultimaCompleta = React.useRef(0);
   // A aula (plano, fichas, abertura, grupos) num só pedido leve, de 3 em
   // 3 segundos, enquanto a aplicação está à vista (script v19).
   useEffect(() => {
     let vivo = true;
     const mostrar = () => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
+    let contadorVisto = '';
     const tique = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       if (!aulaRapidaDisponivel()) return;
-      lerAula(aluno.turmaId).then(ok => { if (vivo && ok) mostrar(); }).catch(() => {});
+      lerAula(aluno.turmaId).then(ok => {
+        if (!vivo || !ok) return;
+        mostrar();
+        // Houve alterações (notas, validações…): o resto vem no máximo de
+        // 2 em 2 minutos, e cada telemóvel num momento diferente.
+        const c = contadorDaTurma(aluno.turmaId);
+        if (c && contadorVisto && c !== contadorVisto && Date.now() - ultimaCompleta.current > 120000) {
+          ultimaCompleta.current = Date.now();
+          setTimeout(() => { sincronizarDoSheets(aluno.turmaId).then(mostrar).catch(() => {}); }, Math.random() * 15000);
+        }
+        if (c) contadorVisto = c;
+      }).catch(() => {});
     };
     tique();
     const t = setInterval(tique, 3000);
@@ -578,7 +591,6 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // diferente. Eram 14 pedidos por telemóvel a cada novidade, e a turma
   // toda entupia o script. Com um script antigo (sem a aula rápida), a
   // abertura, os planos e as fichas continuam a vir logo.
-  const ultimaCompleta = React.useRef(0);
   useEffect(() => vigiarAlteracoes(aluno.turmaId, () => {
     const mostrar = () => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado'));
     const completa = Date.now() - ultimaCompleta.current > 90000;

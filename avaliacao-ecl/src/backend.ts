@@ -295,8 +295,16 @@ function despejarFila(chave: string) {
 const URGENTES = new Set(['sessao', 'fechar_sessao', 'eliminar_plano', 'eliminar_do_plano', 'eliminar_ficha',
   'eliminar_requisicao', 'eliminar_aluno', 'eliminar_evento']);
 
-async function enviar(url: string, tipo: string, dados: Record<string, unknown>): Promise<void> {
+// As gravações dos alunos vão uma segunda vez, 10 a 15 s depois: se o
+// Google recusar a primeira num pico (limite de pedidos ao mesmo tempo),
+// a segunda chega. As repetições juntam-se no script (a mais recente manda).
+const VAO_DUAS_VEZES = new Set(['presenca', 'selecao', 'avaliacao', 'grupo_membro', 'avaliacao_par']);
+
+async function enviar(url: string, tipo: string, dados: Record<string, unknown>, repetida = false): Promise<void> {
   if (!url) return;
+  if (!repetida && url === SHEETS_ECL_URL && VAO_DUAS_VEZES.has(tipo)) {
+    setTimeout(() => { emSegundoPlano(() => { enviar(url, tipo, dados, true); }); }, 10000 + Math.random() * 5000);
+  }
   const corpo = { tipo, ...dados };
   if (url !== SHEETS_ECL_URL || loteSuportado !== true || URGENTES.has(tipo)) {
     if (url === SHEETS_ECL_URL && loteSuportado === null) verSeHaLote();
@@ -311,8 +319,30 @@ async function enviar(url: string, tipo: string, dados: Record<string, unknown>)
   });
 }
 
+// No máximo 4 leituras ao mesmo tempo por aparelho. O Google aceita
+// cerca de 30 pedidos simultâneos para a turma toda: com 14 de cada vez
+// por telemóvel, três alunos a entrar no mesmo segundo passavam o limite
+// e o Google recusava o resto (incluindo o que o professor gravava).
+let leiturasAtivas = 0;
+const leiturasEmEspera: (() => void)[] = [];
+async function vezDeLer(): Promise<void> {
+  if (leiturasAtivas < 4) { leiturasAtivas++; return; }
+  await new Promise<void>(r => leiturasEmEspera.push(r));
+  leiturasAtivas++;
+}
+function acabouDeLer(): void {
+  leiturasAtivas--;
+  const proxima = leiturasEmEspera.shift();
+  if (proxima) proxima();
+}
+
 async function lerDoSheets(url: string, params: Record<string, string>): Promise<any> {
   if (!url) return null;
+  await vezDeLer();
+  try { return await lerDoSheetsAgora(url, params); } finally { acabouDeLer(); }
+}
+
+async function lerDoSheetsAgora(url: string, params: Record<string, string>): Promise<any> {
   try {
     const u = new URL(url);
     Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
@@ -489,7 +519,24 @@ function reconciliarComSheets<T extends { id: string }>(
   return ficam;
 }
 
-export async function sincronizarDoSheets(turmaId: string, opcoes?: { leve?: boolean }): Promise<void> {
+// Chamadas repetidas juntam-se numa só: a entrada do aluno chamava a
+// sincronização completa em três sítios ao mesmo tempo (14 pedidos cada),
+// e o teste de carga mostrou 8 por telemóvel em pouco mais de um minuto.
+const syncEmCurso = new Map<string, Promise<void>>();
+const syncFeitaEm = new Map<string, number>();
+export function sincronizarDoSheets(turmaId: string, opcoes?: { leve?: boolean; forcar?: boolean }): Promise<void> {
+  const chave = turmaId + '|' + (opcoes?.leve ? 'leve' : 'tudo');
+  const aDecorrer = syncEmCurso.get(chave) || (!opcoes?.leve ? syncEmCurso.get(turmaId + '|tudo') : undefined);
+  if (aDecorrer) return aDecorrer;
+  const feita = Math.max(syncFeitaEm.get(chave) || 0, syncFeitaEm.get(turmaId + '|tudo') || 0);
+  if (!opcoes?.forcar && Date.now() - feita < 20000) return Promise.resolve();
+  const p = sincronizarDoSheetsAgora(turmaId, opcoes)
+    .finally(() => { syncEmCurso.delete(chave); syncFeitaEm.set(chave, Date.now()); });
+  syncEmCurso.set(chave, p);
+  return p;
+}
+
+async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boolean }): Promise<void> {
   // «Leve»: só os planos. É o que o telemóvel do aluno pede quando há
   // novidades — eram 14 pedidos por telemóvel, e com a turma toda davam
   // mais de 300 em segundos: o Google recusava o que passava do limite,
@@ -6936,6 +6983,8 @@ export function vigiarAlteracoes(
 
   async function espreitar() {
     if (parado) return;
+    // Com a aula rápida a ser lida, o número de alterações já vem nela.
+    if (aulaJaLida && !aulaNaoSuportada) return;
     const v = await lerVersaoDaTurma(turmaId);
     if (parado || !v) return;
     if (ultima && v !== ultima) {
@@ -7451,6 +7500,10 @@ export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula 
 // mesmo com a turma toda. Com um script antigo (sem «get_aula»),
 // devolve false e a aplicação faz como antes.
 let aulaNaoSuportada = false;
+let aulaJaLida = false;
+const contadorDaAula = new Map<string, string>();
+/** O número de alterações da turma, que veio com a aula rápida. */
+export function contadorDaTurma(turmaId: string): string { return contadorDaAula.get(turmaId) || ''; }
 /** O script responde a «get_aula» (v19)? */
 export function aulaRapidaDisponivel(): boolean { return !aulaNaoSuportada; }
 export async function lerAula(turmaId: string): Promise<boolean> {
@@ -7506,6 +7559,8 @@ export async function lerAula(turmaId: string): Promise<boolean> {
     }
   }
   save(KEY_SESSOES as any, [...sess.values()]);
+  if (json.contador) contadorDaAula.set(turmaId, String(json.contador));
+  aulaJaLida = true;
   // Grupos
   juntarPorId(KEY_MEMBROS, (json.grupos?.membros || []) as MembroGrupo[]);
   juntarPorId(KEY_INFO_GRUPOS, (json.grupos?.info || []).map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
