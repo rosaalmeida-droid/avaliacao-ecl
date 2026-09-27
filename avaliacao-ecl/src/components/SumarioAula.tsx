@@ -152,7 +152,7 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: 16, marginBottom: 14, border: '1px solid rgba(26,23,20,0.1)' }}>
-      <div style={{ fontSize: 15.5, fontWeight: 700 }}>Sumário da aula <span style={{ fontWeight: 500, fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>(opcional)</span></div>
+      <div style={{ fontSize: 15.5, fontWeight: 700 }}>{(plano as any).tipoEvento ? 'Sumário do evento' : 'Sumário da aula'} <span style={{ fontWeight: 500, fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>{(plano as any).tipoEvento ? '(o que foi, onde, para quem, o que se serviu)' : '(opcional)'}</span></div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', margin: '3px 0 10px', lineHeight: 1.5 }}>
         Diz o que se vai fazer. Podes ditar e, se quiseres, pedir a uma IA que o ponha bonito. Os alunos veem-no na aula e quando se avaliam.
       </div>
