@@ -613,7 +613,11 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
 
   if (vista==='criar') return <CriarPlano turmaId={turmaId} nomeProfessor={nomeProfessor}
     dataInicial={dataNovoPlano || undefined}
-    onConcluido={p => { setDataNovoPlano(''); onGuardado?.(p); }}
+    onConcluido={p => {
+      // O formulário sai logo: ficava por baixo do plano aberto, com o botão
+      // em "A criar o plano…", e parecia que o plano nunca mais era criado.
+      setDataNovoPlano(''); setVista('calendario'); onGuardado?.(p);
+    }}
     onVoltar={()=>{ setDataNovoPlano(''); setVista('calendario'); }}
     onAlteracao={onAlteracao} onGuardado={onGuardado} />;
 
