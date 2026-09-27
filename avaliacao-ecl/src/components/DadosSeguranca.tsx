@@ -3,14 +3,14 @@
 // ============================================================
 // O que apaga ou substitui dados deixou de estar do lado do professor:
 //   - a cópia de segurança (descarregar e restaurar);
-//   - eliminar planos de aula para sempre (só os já arquivados — o
-//     professor arquiva, a coordenadora elimina);
+//   - anular planos de aula para sempre (qualquer plano de qualquer
+//     turma — o professor arquiva, a coordenadora anula);
 //   - eliminar fichas de produção para sempre.
 // E os PINs dos professores, que é a coordenadora quem entrega.
 // ============================================================
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  getTurmas, getPlanosAulaPorTurma, getFichasProducao, eliminarFichaProducaoDefinitivamente,
+  getTurmas, getPlanosAulaPorTurma, getFichasProducao, eliminarFichaProducaoDefinitivamente, sincronizarDoSheets,
 } from '../backend';
 import type { PlanoAula } from '../types';
 import { DialogoEliminarPlano } from './DialogoEliminarPlano';
@@ -30,8 +30,34 @@ export function DadosSeguranca() {
   const [pesquisa, setPesquisa] = useState('');
   const [aEliminar, setAEliminar] = useState<PlanoAula | null>(null);
 
-  const arquivados = useMemo(() => getTurmas().flatMap(t =>
-    getPlanosAulaPorTurma(t.id, true).filter(p => p.estado === 'arquivado')), [versao]);
+  const [pesquisaPlano, setPesquisaPlano] = useState('');
+  const [aCarregar, setACarregar] = useState(true);
+  const [aAbrir, setAAbrir] = useState('');
+
+  // Este aparelho não tem os planos das outras turmas: vai buscá-los todos.
+  useEffect(() => {
+    let vivo = true;
+    Promise.allSettled(getTurmas().map(t => sincronizarDoSheets(t.id, { leve: true, forcar: true })))
+      .finally(() => { if (vivo) { setACarregar(false); setVersao(v => v + 1); } });
+    return () => { vivo = false; };
+  }, []);
+
+  // Os arquivados primeiro (foi o professor que pediu), depois os outros, do mais recente.
+  const planos = useMemo(() => {
+    const q = pesquisaPlano.trim().toLowerCase();
+    return getTurmas().flatMap(t => getPlanosAulaPorTurma(t.id, true))
+      .filter(p => !q || [p.turmaId, p.titulo, p.data, fmtDataCurta(p.data)].some(x => String(x || '').toLowerCase().includes(q)))
+      .sort((a, b) => (a.estado === 'arquivado' ? 0 : 1) - (b.estado === 'arquivado' ? 0 : 1)
+        || String(b.data || '').localeCompare(String(a.data || '')));
+  }, [versao, pesquisaPlano]);
+
+  // Antes de mostrar o aviso, traz as presenças e avaliações da turma,
+  // para o aviso dizer tudo o que se vai apagar.
+  function pedirAnular(p: PlanoAula) {
+    setAAbrir(p.id);
+    sincronizarDoSheets(p.turmaId, { forcar: true }).catch(() => {})
+      .finally(() => { setAAbrir(''); setAEliminar(p); });
+  }
   const fichas = useMemo(() => {
     const q = pesquisa.trim().toLowerCase();
     return getFichasProducao().filter(f => !q || (f.nomePrato || '').toLowerCase().includes(q))
@@ -65,21 +91,32 @@ export function DadosSeguranca() {
       </div>
 
       <div style={caixa}>
-        <div style={titulo}>Eliminar planos de aula</div>
+        <div style={titulo}>Anular planos de aula</div>
         <div style={nota}>
-          O professor arquiva os planos que já não quer. Aqui eliminam-se para sempre (aqui e no arquivo da escola).
-          Só aparecem os planos arquivados.
+          Anula o plano para sempre — aqui e no arquivo da escola — com tudo o que é dele (presenças, avaliações,
+          grupos, requisição). As fichas técnicas e os guiões ficam, só saem do plano. Os arquivados pelo professor aparecem primeiro.
         </div>
-        {arquivados.length === 0 && <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.5)' }}>Não há planos arquivados.</div>}
-        {arquivados.map(p => (
-          <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 0',
-            borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
-            <span style={{ minWidth: 60, color: 'rgba(26,23,20,0.55)' }}>{p.turmaId}</span>
-            <span style={{ minWidth: 50, color: 'rgba(26,23,20,0.55)' }}>{fmtDataCurta(p.data)}</span>
-            <span style={{ flex: 1, minWidth: 0 }}>{p.titulo || '(sem título)'}</span>
-            <button style={botaoApagar} onClick={() => setAEliminar(p)}>Eliminar</button>
-          </div>
-        ))}
+        <input value={pesquisaPlano} onChange={e => setPesquisaPlano(e.target.value)} placeholder="Pesquisar por turma, título ou data…"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8,
+            border: '1px solid rgba(26,23,20,0.15)', fontSize: 14, marginBottom: 8 }} />
+        {aCarregar && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 6 }}>A buscar os planos de todas as turmas…</div>}
+        {!aCarregar && planos.length === 0 && <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.5)' }}>Não há planos.</div>}
+        <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+          {planos.map(p => (
+            <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 0',
+              borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
+              <span style={{ minWidth: 60, color: 'rgba(26,23,20,0.55)' }}>{p.turmaId}</span>
+              <span style={{ minWidth: 50, color: 'rgba(26,23,20,0.55)' }}>{fmtDataCurta(p.data)}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {p.titulo || '(sem título)'}
+                {p.estado === 'arquivado' && <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--danger, #c0392b)', fontWeight: 700 }}>arquivado</span>}
+              </span>
+              <button style={{ ...botaoApagar, opacity: aAbrir ? 0.5 : 1 }} disabled={!!aAbrir} onClick={() => pedirAnular(p)}>
+                {aAbrir === p.id ? 'A ver…' : 'Anular'}
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={caixa}>

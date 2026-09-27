@@ -132,3 +132,24 @@ export function horasSugeridas(turmaId: string, dataISO: string):
   // conjunto de horas seguidas que se dá no mesmo dia.
   return { inicio: blocos[0].inicio, fim: blocos[blocos.length - 1].fim };
 }
+
+/** O dia de aula de cozinha mais próximo, a contar de hoje (inclusive). */
+export function proximoDiaDeAula(turmaId: string, desdeISO: string): string | undefined {
+  const h = horarioDaTurma(turmaId);
+  if (!h) return undefined;
+  const d = new Date((desdeISO < h.inicioAulas ? h.inicioAulas : desdeISO) + 'T00:00:00');
+  if (isNaN(d.getTime())) return undefined;
+  for (let i = 0; i < 7; i++) {
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (temCozinha(turmaId, iso)) return iso;
+    d.setDate(d.getDate() + 1);
+  }
+  return undefined;
+}
+
+/** O horário da turma numa linha: "segunda 08:30–09:30 · sexta 08:30–16:00". */
+export function horarioEmTexto(turmaId: string): string {
+  const h = horarioDaTurma(turmaId);
+  if (!h) return '';
+  return h.blocos.map(b => `${DIAS[b.dia]} ${b.inicio}–${b.fim}`).join(' · ');
+}
