@@ -391,7 +391,9 @@ export function aplicarComecarDoZero(zeroEm: string): boolean {
     // exemplo, o «Executar» do editor carregado sem querer), este aparelho
     // NÃO apaga nada: devolve ao Sheets os planos, fichas e requisições que
     // ainda tem, para se recuperarem.
-    if (localStorage.getItem(KEY_ZERO_VISTO)) {
+    // Um «começar do zero» pedido pela coordenação («#confirmado») limpa
+    // sempre, mesmo num aparelho que já tinha visto outro.
+    if (localStorage.getItem(KEY_ZERO_VISTO) && !String(zeroEm).endsWith('#confirmado')) {
       localStorage.setItem(KEY_ZERO_VISTO, zeroEm);
       localStorage.removeItem(KEY_VISTOS_SHEETS);
       setTimeout(() => {
