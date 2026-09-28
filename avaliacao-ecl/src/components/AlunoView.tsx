@@ -2610,6 +2610,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
       return { id, nome: knw?.nome || id, definicao: knw?.definicao || '', motivo };
     }) : [];
+  // Conhecimentos escritos pelo professor para esta aula (qualquer tipo de
+  // aula, menos a atitudinal): o aluno autoavalia-se em cada um.
+  if (!String(tipoPlanAula || '').startsWith('atitudinal')) {
+    for (const k of (((plano as any).conhecimentosProf || []) as { id: string; texto: string }[])) {
+      if (!compRemovidas.includes(k.id) && !conhecimentosSug.some(c => c.id === k.id))
+        conhecimentosSug.push({ id: k.id, nome: k.texto, definicao: '', motivo: '' });
+    }
+  }
 
   const [nivelHigiene, setNivelHigiene] = useState<string|null>(null);
   const [nivelHaccp, setNivelHaccp] = useState<string|null>(null);

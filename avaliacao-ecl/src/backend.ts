@@ -14,7 +14,7 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
 , SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
@@ -3886,6 +3886,7 @@ export async function gerarPautaFCTViaScript(dados: {
 }
 
 function getNomeCompetenciaGenerica(id: string): string {
+  if (id.startsWith('KNW-P')) return nomeConhecimentoProf(id) || 'Conhecimento';
   if (id.startsWith('OBR_')) {
     const o = OBRIGATORIAS.find(x => x.id === id);
     return o?.nome || id;

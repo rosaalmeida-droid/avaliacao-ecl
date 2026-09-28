@@ -1,4 +1,6 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
+import { getReferencialUC } from '../referencial811RA144';
+import { ucsEquivalentes as ucsEquivalentesKnw } from '../cronograma';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv } from '../backend';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
@@ -805,6 +807,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
           ))}
         </div>
+        {/* ── Conhecimentos definidos pelo professor, com sugestões do referencial ── */}
+        <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
         {/* ── Subtécnicas da ficha (SUB-xxx) ── */}
         {compSub.length > 0 && (
           <div style={{ marginBottom:14 }}>
@@ -1342,6 +1346,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </div>
             )}
           </div>
+          {!ehAtitudinal && <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>🔒 Obrigatórias — sempre presentes</div>
             {compObrigatorias.map(c => (
@@ -2204,6 +2209,54 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             );
           })}
         </>
+      )}
+    </div>
+  );
+}
+
+
+// ── Conhecimentos: o professor define o que avalia ─────────────
+// Enquanto o catálogo de conhecimentos não está afinado, o professor
+// escreve os parâmetros desta aula. A aplicação sugere os conhecimentos
+// do referencial da UC (pela equivalência UFCD → UC). O aluno
+// autoavalia-se em cada um e o professor valida, como nas técnicas.
+function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
+  const [texto, setTexto] = React.useState('');
+  const lista: { id: string; texto: string }[] = plano.conhecimentosProf || [];
+  const ucs = [plano.ucId, ...ucsEquivalentesKnw(plano.ucId || '')].filter(Boolean);
+  const sugestoes = [...new Set(ucs.flatMap((u: string) => getReferencialUC(u)?.conhecimentos || []))]
+    .filter(t => !lista.some(l => l.texto === t));
+  const gravar = (nova: { id: string; texto: string }[]) => {
+    const p = { ...plano, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
+    addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+  };
+  const juntar = (t: string) => { const tt = t.trim(); if (!tt) return; gravar([...lista, { id: 'KNW-P' + Date.now(), texto: tt }]); setTexto(''); };
+  return (
+    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8', marginBottom: 6 }}>📚 Conhecimentos a avaliar nesta aula</div>
+      {lista.length === 0 && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 6 }}>Nenhum ainda. Escolhe das sugestões do referencial ou escreve o teu.</div>}
+      {lista.map(k => (
+        <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 13.5 }}>
+          <span style={{ flex: 1 }}>● {k.texto}</span>
+          <button onClick={() => gravar(lista.filter(x => x.id !== k.id))} style={{ fontSize: 12.5, padding: '3px 9px', borderRadius: 7,
+            border: '1px solid rgba(26,23,20,0.2)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>Tirar</button>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') juntar(texto); }}
+          placeholder="Escreve um conhecimento (ex.: Identificar os cortes do porco)" className="input" style={{ flex: 1, fontSize: 13.5 }} />
+        <button onClick={() => juntar(texto)} className="btn btn-primary" style={{ fontSize: 13.5 }}>+ Juntar</button>
+      </div>
+      {sugestoes.length > 0 && (
+        <details style={{ marginTop: 8 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>Sugestões do referencial ({sugestoes.length})</summary>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            {sugestoes.map(t => (
+              <button key={t} onClick={() => juntar(t)} style={{ textAlign: 'left', fontSize: 12.5, padding: '5px 9px', borderRadius: 8,
+                border: '1px solid rgba(37,99,235,0.3)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>+ {t}</button>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );

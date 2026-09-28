@@ -867,7 +867,21 @@ export function encontrarAptidao(id: string): {
 }
 
 // ── Nome de qualquer ID ───────────────────────────────────────
+/** Conhecimento escrito pelo professor num plano (KNW-P…): o texto está no plano. */
+export function nomeConhecimentoProf(id: string): string | undefined {
+  if (!id.startsWith('KNW-P')) return undefined;
+  try {
+    const planos = JSON.parse(localStorage.getItem('ecl_planos') || '[]');
+    for (const p of planos) {
+      const k = (p?.conhecimentosProf || []).find((x: any) => x.id === id);
+      if (k) return k.texto;
+    }
+  } catch { /* */ }
+  return undefined;
+}
+
 export function nomeCompetencia(id: string): string {
+  if (id.startsWith('KNW-P')) return nomeConhecimentoProf(id) || 'Conhecimento';
   if (id.startsWith('SUB-')) return encontrarSubtecnica(id)?.nome || id;
   if (id.startsWith('APP-')) return encontrarAparelho(id)?.nome || id;
   if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;
