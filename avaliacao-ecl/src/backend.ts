@@ -13,7 +13,7 @@ import {
   Turma, Aluno, PlanoAula, FichaProducao,
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
-, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO } from './types';
+, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO, notaPara20, nivelDe20 } from './types';
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
@@ -2723,14 +2723,14 @@ export function addOrUpdateValidacao(v: Validacao): void {
     ? v.notas.reduce((s, n) => s + n.nota, 0) / v.notas.length : 0;
   const nota20Final = typeof notaPonderada === 'number'
     ? Math.round(notaPonderada * 10) / 10
-    : Math.min(20, Math.round(notaMediaVal * 4));
+    : notaPara20(notaMediaVal);
 
   const aluno_val = getAlunos().find(a => a.id === v.alunoId);
   enviar(SHEETS_HISTORICO_URL, 'validacao', {
     ...(v as unknown as Record<string, unknown>),
     nomeAluno: aluno_val?.nome || ('Aluno ' + (aluno_val?.numero || 0)),
     turma: v.turmaId,
-    nota_media_1_5: Math.round((nota20Final / 4) * 10) / 10,
+    nota_media_1_5: Math.round(nivelDe20(nota20Final) * 10) / 10,
     nota_media_0_20: nota20Final,
   });
 }
@@ -2873,7 +2873,7 @@ export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
     1: 'Ainda não fiz', 2: 'Preciso de mais prática',
     3: 'Consegui com ajuda', 4: 'Faço sozinho/a', 5: 'Faço com muito bom resultado',
   };
-  const nota20 = Math.min(20, Math.round(r.nota * 4));
+  const nota20 = notaPara20(r.nota);
 
   porConfirmar('avaliacao', r.id, `${aluno?.nome || 'aluno'} · ${r.microcompetenciaId}`, r.turmaId);
   enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
@@ -6005,7 +6005,7 @@ export function somarUmAtitude(
     id: reg.id, alunoId, turmaId, turma: turmaId, planoAulaId,
     nomeAluno: aluno?.nome || '', numero: aluno?.numero || 0, ano: aluno?.ano || 1,
     ucId: 'TRANSICAO', microcompetencia: atitudeId, microcompetenciaId: atitudeId,
-    nota: nivel, nota_1_5: nivel, nota_0_20: nivel * 4,
+    nota: nivel, nota_1_5: nivel, nota_0_20: notaPara20(nivel),
     data: reg.data, validadoPor: 'transicao',
     observacoes: '+1 — atitude do referencial anterior',
   });
@@ -6171,17 +6171,17 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
 export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
   const regs = getHistoricoAvaliacoes().filter(r =>
     r.alunoId === alunoId && r.turmaId === turmaId && r.ucId === ucId);
-  // Aulas sem farda: o que o aluno fez fica no percurso (os registos), mas a
-  // nota dessa aula é 0 — entra como uma aula a zero, sem ser falta.
+  // Aulas sem farda: as técnicas ficam no percurso com a nota dada, mas na
+  // nota contam 0 (nível 1). As atitudes e o resto contam normalmente.
   const semFarda = planosSemFarda(alunoId);
-  const regsNota = regs.filter(r => !semFarda.has(r.planoAulaId || ''));
-  const zeros = new Set(regs.filter(r => semFarda.has(r.planoAulaId || '')).map(r => r.planoAulaId)).size;
-  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regsNota), regsNota, alunoId, turmaId, ucId, zeros), alunoId, turmaId, ucId);
+  const regsNota = regs.map(r => semFarda.has(r.planoAulaId || '') && categoriaDe(r.microcompetenciaId) === 'SUB'
+    ? { ...r, nota: 1 } : r);
+  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regsNota), regsNota, alunoId, turmaId, ucId), alunoId, turmaId, ucId);
 }
 
 /**
  * Aulas em que o aluno não tinha a farda completa (validação com
- * «semFarda»): a prática avalia-se e fica no percurso, mas a nota da aula é 0.
+ * «semFarda»): a prática avalia-se e fica no percurso, mas as técnicas contam 0.
  */
 export function planosSemFarda(alunoId: string): Set<string> {
   return new Set(getValidacoes().filter((v: any) => v.alunoId === alunoId && v.semFarda)
@@ -6201,16 +6201,14 @@ export function notaRecuperacaoUC(alunoId: string, ucId: string): number | null 
  * da recuperação, quando foi feita. Cada aula pesa o mesmo: a média das
  * aulas avaliadas entra com as faltas.
  */
-function baseComFaltas(base: number | null, regs: RegistoAvaliacao[], alunoId: string, turmaId: string, ucId: string,
-  aulasAZero = 0): number | null {
+function baseComFaltas(base: number | null, regs: RegistoAvaliacao[], alunoId: string, turmaId: string, ucId: string): number | null {
   const faltas = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
-  if (!faltas.length && !aulasAZero) return base;
+  if (!faltas.length) return base;
   const idsFaltas = new Set(faltas.map(p => p.id));
   const avaliadas = new Set(regs.filter(r => r.planoAulaId && !idsFaltas.has(r.planoAulaId)).map(r => r.planoAulaId)).size;
   const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
-  // As aulas sem farda contam 0 (não são faltas, não têm recuperação).
   const soma = (base ?? 0) * avaliadas + recup * faltas.length;
-  return Math.round((soma / (avaliadas + faltas.length + aulasAZero)) * 100) / 100;
+  return Math.round((soma / (avaliadas + faltas.length)) * 100) / 100;
 }
 
 // ============================================================

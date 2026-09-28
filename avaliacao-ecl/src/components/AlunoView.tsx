@@ -20,7 +20,7 @@ function ucAncora(ucId?: string, ucNome?: string): string {
   if (!ucId) return ucNome || '';
   return (NUM_UC_AL[ucId] ? NUM_UC_AL[ucId] + ' · ' : '') + ucId + (ucNome ? ' — ' + ucNome : '');
 }
-import { Aluno, PlanoAula, FichaProducao, calcularNotaPlano, PESOS_AULA, classificacao20 } from '../types';
+import { Aluno, PlanoAula, FichaProducao, calcularNotaPlano, PESOS_AULA, classificacao20, notaPara20, nivelPara20, nivelDe20 } from '../types';
 import { atitudesAnteriores, idsAtitudesAnteriores, atitudesQueFaltam, ehTurmaTransicao } from '../transicaoReferencial';
 import {
   getPlanosAulaPorTurma, getFichasPorPlano, getRequisicaoPorPlano,
@@ -1895,6 +1895,9 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
 
   const V = '#6B3FA0', VS = '#F0EBF7';
   const emFalta = ITENS_FARDA.filter(i => !ok[i.id]);
+  // Sem farda completa, o aluno assume o erro: três perguntas (Rosa, set/2026).
+  const [refl, setRefl] = useState<{ porque: string; resolver: string; evitar: string }>({ porque: '', resolver: '', evitar: '' });
+  const reflexaoFeita = !!refl.porque && !!refl.resolver && refl.evitar.trim().length >= 5;
   const impedido = emFalta.some(i => IMPEDEM.includes(i.id));
 
   function entrar() {
@@ -1920,6 +1923,10 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       data: agora, validadoPor: 'aluno',
     });
     reg('farda', 'OBR_01', impedido ? 1 : Math.max(1, 5 - nomes.length));
+    // A reflexão sobre a farda chega ao professor na validação (vai com a autoavaliação).
+    if (nomes.length) {
+      try { localStorage.setItem(`ecl_farda_reflexao_${plano.id}_${aluno.id}`, JSON.stringify({ ...refl, emFalta: nomes })); } catch { /* */ }
+    }
     if (nomes.length) reg('resp', 'ATI-001', 3);
 
     registarHigieneKitchenFlow(
@@ -2113,17 +2120,43 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           }}>
             {impedido
               ? <>Sem {emFalta.filter(i=>IMPEDEM.includes(i.id)).map(i=>i.label.toLowerCase()).join(', ')} não
-                  podes entrar na cozinha. Hoje não há nota nas técnicas — não é zero, é que
-                  não houve como avaliar. Fala com o professor.</>
-              : <>Assumir os próprios erros é uma das atitudes que estás a desenvolver —
-                  responsabilidade pelas tuas ações. Ao dizeres o que falta, é essa
-                  competência que estás a mostrar.</>}
+                  podes entrar na cozinha. </>
+              : null}
+            Sem a farda completa, <b>as técnicas de hoje contam 0</b>. Se conseguires resolver
+            (alguém te trazer a farda, ou emprestada), fala com o professor. As atitudes contam
+            na mesma — incluindo a forma como ajudas na aula. Assumir o que aconteceu é ser profissional.
           </div>
         )}
 
-        <button onClick={() => gravarFarda()} style={{
+        {emFalta.length > 0 && (
+          <div style={{ background:'#fff', border:'1px solid #E4E1E8', borderRadius:12, padding:14, marginBottom:14 }}>
+            {([
+              ['porque', 'O que aconteceu?', ['Esqueci-me', 'Não preparei a farda na véspera', 'A farda estava suja ou estragada', 'Outra razão']],
+              ['resolver', 'O que fizeste para resolver?', ['Pedi para ma trazerem', 'Pedi emprestado', 'Não consegui resolver hoje']],
+            ] as const).map(([k, pergunta, ops]) => (
+              <div key={k} style={{ marginBottom:12 }}>
+                <div style={{ fontSize:14.5, fontWeight:700, marginBottom:6 }}>{pergunta}</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                  {ops.map(o => (
+                    <button key={o} onClick={() => setRefl(r => ({ ...r, [k]: o }))} style={{
+                      padding:'8px 12px', borderRadius:10, fontSize:14, cursor:'pointer', fontFamily:'inherit',
+                      border:`1.5px solid ${refl[k] === o ? V : '#DDD'}`, background: refl[k] === o ? VS : '#fff',
+                      color: refl[k] === o ? V : '#444', fontWeight: refl[k] === o ? 700 : 500 }}>{o}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div style={{ fontSize:14.5, fontWeight:700, marginBottom:6 }}>O que vais fazer para não voltar a acontecer?</div>
+            <input value={refl.evitar} onChange={e => setRefl(r => ({ ...r, evitar: e.target.value }))}
+              placeholder="Uma frase" style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10,
+                border:'1.5px solid #DDD', fontSize:15, fontFamily:'inherit' }} />
+          </div>
+        )}
+
+        <button onClick={() => gravarFarda()} disabled={emFalta.length > 0 && !reflexaoFeita} style={{
           width:'100%', background:V, color:'#fff', border:'none', borderRadius:12,
           padding:17, fontSize:18, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+          opacity: emFalta.length > 0 && !reflexaoFeita ? 0.45 : 1,
         }}>
           {emFalta.length === 0
             ? 'Confirmar — está tudo'
@@ -2685,8 +2718,15 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // que ele vê em «Do trimestre». Antes o aluno ficava sem nenhuma atitude
   // e o «Enviar ao professor» nunca desbloqueava.
   // Aula prática com evento ou concurso: avaliam-se também as 3 atitudes fixas dos eventos.
+  // Sem farda completa à entrada: «Cuidado com a apresentação pessoal» é
+  // obrigatória nesta aula — o aluno assume e o professor avalia.
+  const fardaIncompletaHoje = !ehAtitudinal && getHistoricoAvaliacoes().some((r: any) =>
+    r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01' && Number(r.nota) < 5);
   const atitudesDaAula: string[] = !ehAtitudinal
-      ? ((plano as any).tipoEvento ? ATITUDES_FIXAS_EVENTO.filter(id => !compRemovidas.includes(id) && temFrases(id)) : [])
+      ? [...new Set([
+          ...((plano as any).tipoEvento ? ATITUDES_FIXAS_EVENTO.filter(id => !compRemovidas.includes(id) && temFrases(id)) : []),
+          ...(fardaIncompletaHoje && temFrases('ATI-003') ? ['ATI-003'] : []),
+        ])]
     : marcadasNoPlano.length ? marcadasNoPlano
     : atitudesDoTrimestre((aluno.ano ?? 1) as 1|2|3, trimestreAtual(new Date(plano.data + 'T00:00:00')))
         .map((x: any) => x.id as string).filter(id => !compRemovidas.includes(id) && temFrases(id));
@@ -2732,8 +2772,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       if (v==='nf'  || v==='nao'       || v==='nao_atingi') return 1;
       return 0;
     };
-    // Converter nota 1-5 para /20 (×4)
-    const para20 = (n: number): number => Math.min(20, Math.round(n * 4));
+    // Converter nota 1-5 para /20 (0-5-10-15-20)
+    const para20 = (n: number): number => notaPara20(n);
     // Guardar OBR com escala 1-4
     // A higiene pessoal (OBR_01) NÃO se grava aqui. Já foi avaliada à
     // entrada da aula, com os nove itens da farda à frente — que é o
@@ -2749,22 +2789,23 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_hac_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:'OBR_02',nota:notaFinalHaccp,data:agora,validadoPor:'aluno'});
     }
     // Guardar todas as competências com escala 1-4
-    Object.entries(notasMicro).forEach(([mId,v])=>{if(v)addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${mId}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:mId,nota:paraNota(v as string),data:agora,validadoPor:'aluno'});});
+    // «Não tive oportunidade» não se grava como nota: fica por avaliar.
+    Object.entries(notasMicro).forEach(([mId,v])=>{if(v && v !== 'nop')addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${mId}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:mId,nota:paraNota(v as string),data:agora,validadoPor:'aluno'});});
     // Guardar atitude escolhida
     // A nota da atitude vem da frase que o aluno escolheu, não de um valor
     // fixo: NOTAS_FRASES é 5/10/15/20 em escala /20, aqui converte-se para 1-5.
     const notaDaAtitude = nivelAtitudeFrase != null
-      ? Math.round(NOTAS_FRASES[nivelAtitudeFrase] / 4)
+      ? nivelDe20(NOTAS_FRASES[nivelAtitudeFrase])
       : 3;
     if (atitudeEscolhida) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeEscolhida}_${Date.now()}`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeEscolhida,nota:notaDaAtitude,data:agora,validadoPor:'aluno'});
     // Aula atitudinal: uma autoavaliação por atitude marcada pelo professor.
     atitudesDaAula.forEach(id => {
       if (frasesAula[id] == null) return;
-      addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${id}_${Date.now()}_aula`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:id,nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4),data:agora,validadoPor:'aluno'});
+      addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${id}_${Date.now()}_aula`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:id,nota:nivelDe20(NOTAS_FRASES[frasesAula[id]]),data:agora,validadoPor:'aluno'});
     });
     // Turmas ACP: a segunda atitude, do ano anterior.
     const notaApanhar = nivelApanharFrase != null
-      ? Math.round(NOTAS_FRASES[nivelApanharFrase] / 4)
+      ? nivelDe20(NOTAS_FRASES[nivelApanharFrase])
       : 3;
     if (atitudeApanhar) addRegistoAvaliacao({id:`${plano.id}_${aluno.id}_${atitudeApanhar}_${Date.now()}_ap`,alunoId:aluno.id,turmaId:aluno.turmaId,planoAulaId:plano.id,fichaId:'',ucId,microcompetenciaId:atitudeApanhar,nota:notaApanhar,data:agora,validadoPor:'aluno'});
     // Guardar SelecaoAluno com autoavaliacoes preenchidas para o professor validar
@@ -2775,18 +2816,22 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       .sort((a: any, b: any) => String(b.data).localeCompare(String(a.data)))[0];
     const contaObrigatorias = (!ehAtitudinal || comObrigatorias) && !compRemovidas.includes('OBR_01');
     const todasAutoavaliacoes = [
-      ...(regFarda && contaObrigatorias ? [{ competenciaId: 'OBR_01', nivel: 'entrada', nota: Number(regFarda.nota) || 1, daEntrada: true }] : []),
+      ...(regFarda && contaObrigatorias ? [{ competenciaId: 'OBR_01', nivel: 'entrada', nota: Number(regFarda.nota) || 1, daEntrada: true,
+        reflexaoFarda: (() => { try { return JSON.parse(localStorage.getItem(`ecl_farda_reflexao_${plano.id}_${aluno.id}`) || 'null') || undefined; } catch { return undefined; } })() }] : []),
       // HACCP: sem registo no KitchenFlow, a proposta chega ao professor
       // com 1 — ele decide. Antes o 1 só ia para o histórico, que já não
       // conta para nota nenhuma; a regra perdia-se.
       ...(nivelHaccp?[{competenciaId:'OBR_02',nivel:nivelHaccp as string,
         nota: !hsaSemRegisto() ? paraNota(nivelHaccp) : 1,
         semRegistoKF: hsaSemRegisto()}]:[]),
-      ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
+      ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>(v === 'nop'
+        // Não teve oportunidade: vai ao professor para confirmar; sem nota.
+        ? {competenciaId:mId,nivel:'nop',nota:0,semOportunidade:true}
+        : {competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
       ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude,exemplo:(exemplos[atitudeEscolhida]||'').trim()||undefined}]:[]),
       ...(atitudeApanhar?[{competenciaId:atitudeApanhar,nivel:'sozinho',nota:notaApanhar}]:[]),
       ...atitudesDaAula.filter(id => frasesAula[id] != null)
-        .map(id => ({competenciaId:id,nivel:'sozinho',nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4),exemplo:(exemplos[id]||'').trim()||undefined})),
+        .map(id => ({competenciaId:id,nivel:'sozinho',nota:nivelDe20(NOTAS_FRASES[frasesAula[id]]),exemplo:(exemplos[id]||'').trim()||undefined})),
       ...(ehEvento && tecEvento !== null ? [{ competenciaId: TEC_EVENTO, nivel: 'evento', nota: tecEvento,
         texto: OPCOES_TEC_EVENTO.find(o => o.nota === tecEvento)?.texto, comentario: tecMenosBem.trim() }] : []),
     ];
@@ -2962,7 +3007,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           );
           if (!historico.length) return null;
           const media = historico.reduce((s: number, r: any) => s + r.nota, 0) / historico.length;
-          const nota20 = Math.round(media * 4 * 10) / 10;
+          const nota20 = Math.round(nivelPara20(media) * 10) / 10;
           return (
             <div style={{ background:'#6B3FA0', borderRadius:14, padding:16, marginTop:12 }}>
               <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.06em',
@@ -3022,7 +3067,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // Numa aula prática sem atitudes marcadas pelo professor, a atitude que o
   // aluno escolhe é a única avaliada. Era opcional: dava para enviar com
   // «Nenhuma escolhida» e a aula ficava sem atitudes (25% da nota iam para o resto).
-  const atitudeObrigatoria = !ehAtitudinal && atitudesDaAula.length === 0 && opcoesAtitude.length > 0;
+  const atitudeObrigatoria = !ehAtitudinal && atitudesDaAula.filter(id => id !== 'ATI-003').length === 0 && opcoesAtitude.length > 0;
   const atitudeRespondida = !!atitudeEscolhida && nivelAtitudeFrase !== null && exemploOk(atitudeEscolhida, nivelAtitudeFrase);
   const prontoParaSubmeter = prontoBase && (!atitudeObrigatoria || atitudeRespondida);
   const porqueAtitude = (id: string) =>
@@ -3150,6 +3195,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       const v = notasMicro[p.comp!.id];
       const fi = NIVEIS_FRASES.indexOf(v as string);
       const resposta = !v ? 'Por responder'
+        : v === 'nop' ? 'Não tive oportunidade hoje (o professor confirma)'
+        : v === 'nf' ? 'Não fiz'
         : p.comp!.frases && fi >= 0 ? getFrasesParaCompetencia(p.comp!.id, p.comp!.nome, aluno.nivelMedidas)[fi]
         : OPCOES.find(o => o.v === v)?.label || '';
       linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
@@ -3163,7 +3210,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       const f = frasesAula[p.atiId!];
       linhasRever.push({ nome: ATITUDES.find(x => x.id === p.atiId)?.nome ?? 'Atitude',
         resposta: f == null ? 'Por responder' : frasesDaAtitude(p.atiId!, aluno.nivelMedidas)?.[f] || '',
-        nota: f == null ? null : Math.round(NOTAS_FRASES[f] / 4), passo: i });
+        nota: f == null ? null : nivelDe20(NOTAS_FRASES[f]), passo: i });
     } else if (p.tipo === 'tecEvento') {
       linhasRever.push({ nome: NOME_TEC_EVENTO,
         resposta: tecEvento === null ? 'Por responder' : OPCOES_TEC_EVENTO.find(o => o.nota === tecEvento)?.texto || '',
@@ -3174,7 +3221,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       linhasRever.push({ nome: id ? (ATITUDES.find(x => x.id === id)?.nome ?? 'Atitude') : tituloPasso(p),
         resposta: !id ? 'Nenhuma escolhida' : f == null ? 'Por responder'
           : frasesDaAtitude(id, aluno.nivelMedidas)?.[f] || '',
-        nota: id && f != null ? Math.round(NOTAS_FRASES[f] / 4) : null, passo: i });
+        nota: id && f != null ? nivelDe20(NOTAS_FRASES[f]) : null, passo: i });
     } else if (p.tipo === 'triagem') {
       PERGUNTAS_TRIAGEM.forEach(q => {
         const r = triagem[q.chave] ?? null;
@@ -3246,12 +3293,24 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 <span>{frases ? frases[i] : OPCOES.find(o => o.v === nivel)?.label}</span>
               </button>
             ))}
-            <button onClick={() => escolher('nf')} style={{ ...estiloOpcao(v === 'nf'),
-              ...(v === 'nf' ? {} : { border:'none', background:'transparent', textDecoration:'underline',
-                color:'rgba(26,23,20,0.6)', fontWeight:600, width:'auto', padding:'10px 4px' }) }}>
-              {v === 'nf' && radio(true)}
-              Ainda não fiz esta
-            </button>
+            {/* Duas coisas diferentes (Rosa): não ter tido oportunidade não
+                conta para a nota (o professor confirma); não ter feito vale 0. */}
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
+              {([['nop', simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
+                 ['nf', 'Não fiz']] as const).map(([nv, texto]) => (
+                <button key={nv} onClick={() => escolher(nv)} style={{ ...estiloOpcao(v === nv),
+                  ...(v === nv ? {} : { border:'none', background:'transparent', textDecoration:'underline',
+                    color:'rgba(26,23,20,0.6)', fontWeight:600, width:'auto', padding:'10px 4px' }) }}>
+                  {v === nv && radio(true)}
+                  {texto}
+                </button>
+              ))}
+            </div>
+            {v === 'nop' && (
+              <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', lineHeight:1.5, marginTop:2 }}>
+                Esta não conta para a nota de hoje e volta noutra aula. O professor confirma.
+              </div>
+            )}
           </div>
         );
       })()}

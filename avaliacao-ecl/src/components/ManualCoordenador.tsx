@@ -191,7 +191,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
             {/* 4. NOTA FINAL */}
             <Secção titulo="4. Cálculo da Nota Final" icone="🧮" cor={T.sage}>
               <p style={{ margin: '0 0 12px', lineHeight: 1.6 }}>
-                A nota de cada aula é a média ponderada das componentes (1 a 5), multiplicada por 4 (0 a 20):
+                A nota de cada aula é a média ponderada das componentes; cada nível vale 0, 5, 10, 15 ou 20 (sem conhecimentos, as técnicas passam a 60%):
               </p>
               <Tabela
                 headers={['Componente', 'Prática', 'Mista', 'Teórica']}
@@ -208,7 +208,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
               </p>
               <p style={{ margin: '0 0 8px', lineHeight: 1.6 }}>
                 Não há bónus de assiduidade (a falta já conta 0, e a assiduidade pesa no Comprometido).
-                Sem farda completa, a aula conta 0. Depois soma-se o bónus de
+                Sem farda completa, as técnicas da aula contam 0 (as atitudes contam). Depois soma-se o bónus de
                 <strong> eventos e concursos</strong> (evento +{String(BONUS_EVENTOS.porEvento).replace('.', ',')},
                 concurso +{String(BONUS_EVENTOS.porConcurso).replace('.', ',')}, até +{BONUS_EVENTOS.maximo}).
                 Tetos: {BONUS_EVENTOS.tetoSemParticipacao} sem participar, {BONUS_EVENTOS.tetoSoEventos} só com

@@ -140,8 +140,17 @@ export const NIVEL_AUTO_NOTA: Record<NivelAuto, number> = {
   superei:      5,
 };
 
-// Converter nota 1-5 para /20
-export function notaPara20(n: number): number { return Math.min(20, Math.round(n * 4)); }
+// Converter nível 1-5 para /20. Começa no zero (decisão da Rosa, set/2026):
+// «Não fiz» 0 · «Tentei» 5 · «Com ajuda» 10 · «Sozinho» 15 · «Muito bom» 20.
+// Antes multiplicava por 4 e quem não fez nada ficava com 4 valores.
+export function nivelPara20(n: number): number {
+  if (!(n > 0)) return 0;
+  return Math.max(0, Math.min(20, (n - 1) * 5));
+}
+/** O mesmo, arredondado às unidades. */
+export function notaPara20(n: number): number { return Math.round(nivelPara20(n)); }
+/** O contrário: uma nota /20 no nível 1-5. */
+export function nivelDe20(n20: number): number { return 1 + Math.max(0, Math.min(20, n20)) / 5; }
 
 export interface AutoavaliacaoCompetencia {
   competenciaId: string;
@@ -932,11 +941,17 @@ export function calcularNotaPlano(
   notas: { categoria: 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI'; nota: number }[],
   tipoPlan: 'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr'
 ): { nota20: number; porCategoria: Record<string, number>; detalhes: string } {
-  const pesos = PESOS_AULA[tipoPlan];
   const porCat: Record<string, number[]> = { OBR: [], SUB: [], KNW: [], ATI: [], INI: [] };
 
   for (const n of notas) {
     if (porCat[n.categoria]) porCat[n.categoria].push(n.nota);
+  }
+  // Numa aula prática ou mista sem conhecimentos avaliados, o peso deles
+  // passa para as técnicas (é uma aula de prática). Antes era repartido por
+  // tudo, e as atitudes e as obrigatórias pesavam demais.
+  const pesos: Record<string, number> = { ...PESOS_AULA[tipoPlan] };
+  if ((tipoPlan === 'pratico' || tipoPlan === 'misto') && !porCat.KNW.length && porCat.SUB.length) {
+    pesos.SUB += pesos.KNW; pesos.KNW = 0;
   }
 
   const media = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
@@ -951,13 +966,13 @@ export function calcularNotaPlano(
     if (m !== null) {
       soma += m * peso;
       pesoTotal += peso;
-      porCategoria[cat] = Math.round(m * 4 * 10) / 10; // em /20
+      porCategoria[cat] = Math.round(nivelPara20(m) * 10) / 10; // em /20
     }
   }
 
   // Normalizar se alguma categoria não foi avaliada
   const nota14 = pesoTotal > 0 ? soma / pesoTotal : 0;
-  const nota20 = Math.min(20, Math.round(nota14 * 4 * 10) / 10);
+  const nota20 = Math.min(20, Math.round(nivelPara20(nota14) * 10) / 10);
 
   const detalhes = Object.entries(porCategoria)
     .map(([cat, n]) => `${cat}: ${n}/20`)

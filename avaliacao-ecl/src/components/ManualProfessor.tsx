@@ -113,7 +113,10 @@ const SECCOES: Seccao[] = [
       <>
         <P>
           Cada competência é avaliada numa escala de <b>1 a 5</b>. No fim,
-          a média ponderada é multiplicada por 4 para dar a nota de <b>0 a 20</b>.
+          cada nível vale 0, 5, 10, 15 ou 20 (Não fiz · Tentei · Com ajuda · Sozinho · Muito bom),
+          e a média ponderada dá a nota de <b>0 a 20</b>. «Não tive oportunidade» não conta:
+          chega-te para confirmares; se não for verdade, passa a «Não fiz» (0).
+          Numa aula prática sem conhecimentos, o peso deles passa para as técnicas (60%).
         </P>
 
         <H>Pesos por tipo de aula</H>
@@ -158,7 +161,7 @@ const SECCOES: Seccao[] = [
         </P>
         <ul style={{ lineHeight: 1.75, fontSize: 14.5, paddingLeft: 20 }}>
           <li><b>HACCP e registos</b> — o KitchenFlow preenchido. É esta que entra na nota da aula.</li>
-          <li><b>Higiene pessoal</b> — farda completa, sem adornos, mãos lavadas. Verificada à entrada. <b>Sem farda completa, a prática avalia-se na mesma (fica no percurso do aluno), mas a nota dessa aula é 0.</b> Não conta como falta.</li>
+          <li><b>Higiene pessoal</b> — farda completa, sem adornos, mãos lavadas. Verificada à entrada. <b>Sem farda completa, avalia-se tudo (fica no percurso do aluno), mas as técnicas contam 0 na nota da aula.</b> As atitudes contam, com «Cuidado com a apresentação pessoal» sempre avaliada, e o aluno responde a três perguntas sobre o que aconteceu. Não conta como falta.</li>
           <li><b>Assiduidade e pontualidade</b> — contam no Comprometido da pauta. A aula faltada conta 0.</li>
         </ul>
         <P>
@@ -192,7 +195,7 @@ const SECCOES: Seccao[] = [
           Quem cumpre não ganha pontos extra, e quem falha é penalizado uma só vez,
           sem contar a mesma coisa duas vezes: a aula faltada conta 0, os atrasos e
           as faltas pesam no Comprometido da pauta, e com 10% de faltas o aluno vai
-          para recuperação. Sem farda completa, a aula conta 0 (mas não é falta).
+          para recuperação. Sem farda completa, as técnicas da aula contam 0 (não é falta).
         </P>
 
         <H>Eventos e concursos — até +2</H>

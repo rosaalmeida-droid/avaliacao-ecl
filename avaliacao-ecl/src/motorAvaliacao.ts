@@ -23,6 +23,7 @@ import { Nivel } from './avaliacaoModelo';
 import {
   Aluno, SubmissaoTrabalho, TrabalhoConhecimento,
   TipoTrabalho, LABEL_TRABALHO, MODALIDADE_TRABALHO,
+  nivelPara20,
 } from './types';
 
 
@@ -752,7 +753,7 @@ export function construirRelatorioAluno(
   const com = submissao.comentarioProfessor || submissao.propostaIA?.comentario || '';
   const l = [`# ${trabalho.titulo}`, '', `**${nomeAluno}**`, ''];
 
-  if (nota != null) l.push(`Nível atingido: ${nota}/5 (${Math.round(nota * 4)}/20)`, '');
+  if (nota != null) l.push(`Nível atingido: ${nota}/5 (${Math.round(nivelPara20(nota))}/20)`, '');
   if (com) l.push(com, '');
 
   const pf = submissao.propostaIA?.pontosFortes ?? [];
@@ -1504,7 +1505,7 @@ export function notaAulaSemProducao(
   const soma = usados.OBR * obr + usados.ATI * ati + (knw != null ? usados.KNW * knw : 0);
 
   return {
-    nota20: Math.round((soma / total) * 4 * 100) / 100,
+    nota20: Math.round(nivelPara20(soma / total) * 100) / 100,
     pesos: Object.fromEntries(
       Object.entries(usados).map(([k, v]) => [k, Math.round((v / total) * 100)])
     ),
