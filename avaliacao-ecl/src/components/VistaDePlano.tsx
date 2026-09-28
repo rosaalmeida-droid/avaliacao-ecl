@@ -738,7 +738,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <div style={{ padding:'10px 14px', background:'var(--copper-pale)', borderRadius:10, fontSize:13, color:'var(--copper)', marginBottom:14, border:'1px solid rgba(181,101,29,0.2)' }}>
-          <strong>{totalComp} competências</strong> para esta aula. As obrigatórias não podem ser removidas.
+          <strong>{totalComp} competências</strong> para esta aula. As obrigatórias contam sempre — só se tiram desta aula se houver razão (ex.: os alunos não foram avisados da farda).
         </div>
         {/* ── Toggle SUB/APP ── */}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'10px 12px',
@@ -780,7 +780,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <span>✓</span>
                 <div style={{ flex:1, fontSize:13, fontWeight:600 }}>{c.nome}</div>
-                <span style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>SEMPRE</span>
+                {(() => {
+                  // Obrigatória, mas o professor pode tirá-la desta aula (farda sem
+                  // aviso aos alunos, registos que ainda não se fazem…).
+                  const tirada = compRemovidas.includes(c.id);
+                  return (
+                    <button onClick={() => guardarCompetencias(tirada ? compRemovidas.filter(x => x !== c.id) : [...compRemovidas, c.id], compAdicionadas)}
+                      style={{ fontSize:12.5, fontWeight:700, padding:'4px 10px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                        border:`1px solid ${tirada ? 'var(--copper)' : 'rgba(90,122,78,0.4)'}`, background:'#fff',
+                        color: tirada ? 'var(--copper)' : 'var(--sage)' }}>
+                      {tirada ? 'Fora desta aula · repor' : 'Obrigatória · tirar desta aula'}
+                    </button>
+                  );
+                })()}
               </div>
               {Array.isArray((c as any).criterios) && (c as any).criterios.length > 0 && (
                 <ul style={{ margin:'6px 0 0 28px', padding:0 }}>
@@ -1336,7 +1348,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <span style={{ fontSize: 14 }}>✓</span>
                   <div style={{ flex:1, fontSize:13, fontWeight:600 }}>{c.nome}</div>
-                  <span style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>SEMPRE</span>
+                  {(() => {
+                  // Obrigatória, mas o professor pode tirá-la desta aula (farda sem
+                  // aviso aos alunos, registos que ainda não se fazem…).
+                  const tirada = compRemovidas.includes(c.id);
+                  return (
+                    <button onClick={() => guardarCompetencias(tirada ? compRemovidas.filter(x => x !== c.id) : [...compRemovidas, c.id], compAdicionadas)}
+                      style={{ fontSize:12.5, fontWeight:700, padding:'4px 10px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                        border:`1px solid ${tirada ? 'var(--copper)' : 'rgba(90,122,78,0.4)'}`, background:'#fff',
+                        color: tirada ? 'var(--copper)' : 'var(--sage)' }}>
+                      {tirada ? 'Fora desta aula · repor' : 'Obrigatória · tirar desta aula'}
+                    </button>
+                  );
+                })()}
                 </div>
                 {Array.isArray((c as any).criterios) && (c as any).criterios.length > 0 && (
                   <ul style={{ margin:'6px 0 0 28px', padding:0 }}>

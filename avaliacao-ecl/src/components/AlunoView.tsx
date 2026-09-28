@@ -1381,14 +1381,15 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
     { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
     ...(comGrupos ? [{ id:'grupo', label:'Estou num grupo', agora:'O meu grupo', cor:V }] : []),
-    { id:'kf_inicial', label:'Registos iniciais',          agora:'Antes de produzir',cor:V },
+    // Sem registos quando o professor os tirou desta aula.
+    ...(((plano as any).compRemovidas || []).includes('OBR_02') ? [] : [{ id:'kf_inicial', label:'Registos iniciais', agora:'Antes de produzir', cor:V }]),
     { id:'ficha',      label:'Produzi',                    agora:'Produzir',         cor:V },
     ...(fichas.some((f:any) => f.textoGuia)
       ? [{ id:'guia', label:'Consultei o guião', agora:'Ver o guião', cor:V }] : []),
     // A requisição é do professor: o aluno só a consulta, e só se existir.
     // Antes o passo aparecia sempre, com "Nenhuma requisição criada".
     ...(requisicao ? [{ id:'requisicao', label:'Vi a requisição', agora:'Ver a requisição', cor:V }] : []),
-    { id:'kf_final',   label:'Registos finais',            agora:'Antes de fechar',  cor:V },
+    ...(((plano as any).compRemovidas || []).includes('OBR_02') ? [] : [{ id:'kf_final', label:'Registos finais', agora:'Antes de fechar', cor:V }]),
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ];
 
@@ -1495,12 +1496,12 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
                 onConcluido={() => { setEntradaConcluida(true); _save('entrada');
-                  setSecAberta(comGrupos ? 'grupo' : String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : 'kf_inicial'); }} />
+                  setSecAberta(comGrupos ? 'grupo' : String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : (((plano as any).compRemovidas || []).includes('OBR_02') ? 'ficha' : 'kf_inicial')); }} />
             )}
             {secAberta==='grupo' && (
               <PassoGrupo aluno={aluno} plano={plano}
                 onConcluido={() => { setTemGrupo(true);
-                  setSecAberta(String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : 'kf_inicial'); }} />
+                  setSecAberta(String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : (((plano as any).compRemovidas || []).includes('OBR_02') ? 'ficha' : 'kf_inicial')); }} />
             )}
             {secAberta==='kf_inicial' && (
               <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="inicial"
@@ -1531,7 +1532,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             )}
             {secAberta==='requisicao' && (
               <SecaoRequisicao requisicao={requisicao}
-                onConcluido={() => setSecAberta('kf_final')} />
+                onConcluido={() => setSecAberta(((plano as any).compRemovidas || []).includes('OBR_02') ? 'avaliacao' : 'kf_final')} />
             )}
             {secAberta==='kf_final' && (
               <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="final"
@@ -1880,7 +1881,9 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       setEntrada(r);
       // Aula atitudinal: conta a presença e a hora de entrada, mas não há
       // farda nem registos do KitchenFlow.
-      if (String((plano as any).tipoPlanAula || '').startsWith('atitudinal')) onConcluido();
+      // O mesmo quando o professor tirou a farda desta aula.
+      if (String((plano as any).tipoPlanAula || '').startsWith('atitudinal')
+        || ((plano as any).compRemovidas || []).includes('OBR_01')) onConcluido();
     }
   }
 
@@ -2641,6 +2644,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
   // Evento: uma pergunta de técnica geral e o que correu menos bem.
   const ehEvento = (plano as any).tipoEvento === 'evento';
+  // O professor tirou os registos (HACCP/KitchenFlow) desta aula: não se pergunta.
+  const semRegistos = compRemovidas.includes('OBR_02');
   const [tecEvento, setTecEvento] = useState<number | null>(null);
   const [tecMenosBem, setTecMenosBem] = useState('');
   const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
@@ -2649,8 +2654,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null;
   const prontoParaSubmeter = triagemCompleta && (ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null)
-      && (!comObrigatorias || nivelHaccp !== null) && tecEventoFeito
-    : nivelHaccp !== null && atitudesDaAula.every(id => frasesAula[id] != null) && tecEventoFeito);
+      && (!comObrigatorias || semRegistos || nivelHaccp !== null) && tecEventoFeito
+    : (semRegistos || nivelHaccp !== null) && atitudesDaAula.every(id => frasesAula[id] != null) && tecEventoFeito);
 
   const fmtN = (x: number) => (Math.round(x * 10) / 10).toString().replace('.', ',');
 
@@ -2712,7 +2717,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     const regFarda = getHistoricoAvaliacoes()
       .filter((r: any) => r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01')
       .sort((a: any, b: any) => String(b.data).localeCompare(String(a.data)))[0];
-    const contaObrigatorias = !ehAtitudinal || comObrigatorias;
+    const contaObrigatorias = (!ehAtitudinal || comObrigatorias) && !compRemovidas.includes('OBR_01');
     const todasAutoavaliacoes = [
       ...(regFarda && contaObrigatorias ? [{ competenciaId: 'OBR_01', nivel: 'entrada', nota: Number(regFarda.nota) || 1, daEntrada: true }] : []),
       // HACCP: sem registo no KitchenFlow, a proposta chega ao professor
@@ -2975,7 +2980,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     comp?: typeof itensComp[number]; atiId?: string };
   const passos: Passo[] = [
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
-    ...((!ehAtitudinal || comObrigatorias) ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
+    ...((!ehAtitudinal || comObrigatorias) && !semRegistos ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
     ...(ehAtitudinal
       ? atitudesDaAula.map(id => ({ id: 'a_' + id, tipo: 'atiAula' as const, atiId: id }))
       : [...atitudesDaAula.map(id => ({ id: 'a_' + id, tipo: 'atiAula' as const, atiId: id })),
