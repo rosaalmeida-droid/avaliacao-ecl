@@ -7,7 +7,7 @@ import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
-import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf } from '../compatECL';
+import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
 import { CriteriosComp } from './CriteriosComp';
@@ -296,11 +296,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       );
       const nProf = notaProf || 2;
       const notaFinal = calcularNotaFinal(nProf, notaAluno);
-      const cat = auto.competenciaId?.startsWith('OBR_') ? 'OBR'
-        : auto.competenciaId?.startsWith('SUB-') || auto.competenciaId?.startsWith('APP-') ? 'SUB'
-        : auto.competenciaId?.startsWith('KNW-') ? 'KNW'
-        : auto.competenciaId?.startsWith('INI-') ? 'INI'
-        : 'ATI';
+      const cat = categoriaDaNota(auto.competenciaId);
       return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: notaFinal };
     });
     return calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
@@ -353,11 +349,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     // na nota do plano nem nos registos das competências.
     const paraNota = notasFinais.filter(n => n.competenciaId !== TEC_EVENTO);
     const notasComCat = paraNota.map(n => {
-      const cat = n.competenciaId?.startsWith('OBR_') ? 'OBR'
-        : n.competenciaId?.startsWith('SUB-') || n.competenciaId?.startsWith('APP-') ? 'SUB'
-        : n.competenciaId?.startsWith('KNW-') ? 'KNW'
-        : n.competenciaId?.startsWith('INI-') ? 'INI'
-        : 'ATI';
+      const cat = categoriaDaNota(n.competenciaId);
       return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.notaFinal };
     });
     const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');

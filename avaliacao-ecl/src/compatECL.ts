@@ -212,11 +212,32 @@ export function getCompetencia(id: string): Competencia | undefined {
   return TODAS_COMPETENCIAS.find(c => c.id === id);
 }
 
+/** A UC e as UCs do referencial equivalentes (UFCD 16 → UC03586). O
+ *  catálogo só conhece os códigos UC. */
+function ucsDoCatalogo(ucId: string): string[] {
+  return [ucId, ...ucsEquivalentes(ucId)];
+}
+
 export function microsPorUC(ucId: string): MicroCompetencia[] {
   if (!ucId) return MICROCOMPETENCIAS;
+  const ucs = ucsDoCatalogo(ucId);
   return MICROCOMPETENCIAS.filter(m =>
-    m.ucPrincipal === ucId || m.ucsRelacionadas.includes(ucId)
+    ucs.includes(m.ucPrincipal) || m.ucsRelacionadas.some(u => ucs.includes(u))
   );
+}
+
+/** Em que parte da nota conta uma competência: prática (SUB), conhecimentos,
+ *  atitudes, obrigatórias. As técnicas do catálogo (PERF-…) são prática —
+ *  antes caíam em «atitudes» por não terem o prefixo SUB-. */
+export function categoriaDaNota(id: string): 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI' {
+  if (!id) return 'ATI';
+  if (id.startsWith('OBR_')) return 'OBR';
+  if (id.startsWith('SUB-') || id.startsWith('APP-') || id.startsWith('PERF-') || id.startsWith('TEC-')) return 'SUB';
+  if (id.startsWith('KNW-')) return 'KNW';
+  if (id.startsWith('INI-')) return 'INI';
+  if (id.startsWith('ATI-') || id.startsWith('ATT_') || id.startsWith('RESP')) return 'ATI';
+  const m = MICROCOMPETENCIAS.find(x => x.id === id);
+  return m?.categoria === 'TECNICAS' ? 'SUB' : 'ATI';
 }
 
 export function microsPorFamilia(
@@ -230,9 +251,10 @@ export function microsPorFamilia(
   return lib.perfis
     .filter(p => {
       if (ucId && !p.uc_list?.includes(ucId)) return false;
-      if (familia1 && p.familia_tecnica !== familia1 && p.familia_referencial !== familia1) {
-        if (familia2 && p.familia_tecnica !== familia2 && p.familia_referencial !== familia2) return false;
-      }
+      // Tem de bater com uma das famílias da ficha. Antes, com só uma
+      // família (o normal), não filtrava nada e vinha o catálogo inteiro.
+      const bate = (f?: string) => !!f && (p.familia_tecnica === f || p.familia_referencial === f);
+      if ((familia1 || familia2) && !bate(familia1) && !bate(familia2)) return false;
       return true;
     })
     .map(p => perfilParaMicro(p, critMap[p.id] || []));
@@ -979,14 +1001,17 @@ export function tecnicasDeRecurso(ucId: string | undefined, fichas: any[]): Micr
   const f0 = fichas[0] || {};
   const fam1: string | undefined = f0.familia1, fam2: string | undefined = f0.familia2;
   let base: MicroCompetencia[] = [];
-  try { base = (fam1 || fam2) ? microsPorFamilia(fam1, fam2, [], ucId) : []; } catch { base = []; }
+  // As técnicas vêm das FICHAS, mesmo que a ficha seja de outra área da UC
+  // (pastelaria numa aula de cozinha, por causa dos eventos): o aluno é
+  // avaliado no que fez. Antes filtrava-se pela UC e perdiam-se.
+  if (!fichas.length) return [];
+  try { base = (fam1 || fam2) ? microsPorFamilia(fam1, fam2, [], undefined) : []; } catch { base = []; }
   if (base.length < 3) {
     const daUC = ucId ? microsPorUC(ucId) : MICROCOMPETENCIAS.filter(m => m.prioridade === 'A');
     base = [...base, ...daUC.filter(m => !base.some(x => x.id === m.id))];
   }
-  if (base.length < 3) {
-    base = [...base, ...MICROCOMPETENCIAS.filter(m => m.prioridade === 'A' && !base.some(x => x.id === m.id))];
-  }
+  // Nunca técnicas «prioritárias» do curso inteiro (davam pastelaria numa
+  // aula de carnes sem relação com as fichas).
   // Estas duplicam as obrigatórias (higiene, HACCP).
   const DUPLICAM = new Set(['M0150', 'M0196']);
   base = base.filter(m => !DUPLICAM.has(m.id));

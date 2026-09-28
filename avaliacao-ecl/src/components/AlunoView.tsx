@@ -1,3 +1,4 @@
+import { categoriaDaNota } from '../compatECL';
 import { conhecimentosDaAula } from '../compatECL';
 import { notaDaPautaUC } from '../pautaUC';
 import React, { useState, useRef, useEffect } from 'react';
@@ -2847,11 +2848,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           if (val && val.notaMedia) {
             // Calcular nota com pesos por categoria
             const notasComCat = (val.notas || []).map((n: any) => {
-              const cat = n.competenciaId?.startsWith('OBR_') ? 'OBR'
-                : n.competenciaId?.startsWith('SUB-') || n.competenciaId?.startsWith('APP-') ? 'SUB'
-                : n.competenciaId?.startsWith('KNW-') ? 'KNW'
-                : n.competenciaId?.startsWith('INI-') ? 'INI'
-                : 'ATI';
+              const cat = categoriaDaNota(n.competenciaId);
               return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.nota };
             });
             const tipoPlano = (plano as any).tipoPlanAula || 'pratico';

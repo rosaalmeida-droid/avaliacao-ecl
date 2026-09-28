@@ -14,7 +14,7 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
 , SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf } from './compatECL';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
@@ -6026,9 +6026,7 @@ export function registosQueContam(r: RegistoAvaliacao): boolean {
 }
 
 function categoriaDe(id: string): 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI' {
-  return id?.startsWith('OBR_') ? 'OBR'
-    : (id?.startsWith('SUB-') || id?.startsWith('APP-')) ? 'SUB'
-    : id?.startsWith('KNW-') ? 'KNW' : id?.startsWith('INI-') ? 'INI' : 'ATI';
+  return categoriaDaNota(id);
 }
 
 /** Tipo de aula mais comum entre os registos (prática/mista/teórica). */

@@ -27,6 +27,7 @@
 //   - PROPOSTA ALUNO: a nota que o aluno propôs na autoavaliação final.
 //   - CLASSIF. ATRIBUÍDA: a nota final da UC; negativas levam "a)".
 // ============================================================
+import { categoriaDaNota } from './compatECL';
 import { PERGUNTAS_TRIAGEM, notaTriagem } from './triagem5c';
 import {
   getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes, getSelecoes, getPresencas,
@@ -86,9 +87,8 @@ export interface ProdutoPauta {
   peso: number;
 }
 
-const categoria = (id: string) => id?.startsWith('OBR_') ? 'OBR'
-  : id?.startsWith('SUB-') || id?.startsWith('APP-') ? 'SUB'
-  : id?.startsWith('KNW-') ? 'KNW' : id?.startsWith('INI-') ? 'INI' : 'ATI';
+// As técnicas do catálogo (PERF-…) contam como prática, não como atitudes.
+const categoria = (id: string) => categoriaDaNota(id);
 
 /** Nota 0-20 de um aluno num plano: a validação do professor. */
 export function notaDoPlano(alunoId: string, planoId: string, tipo: string): number | null {

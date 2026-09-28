@@ -1,3 +1,4 @@
+import { categoriaDaNota } from '../compatECL';
 import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -123,11 +124,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       // Calcular nota ponderada usando calcularNotaPlano com pesos por categoria
       const planos = getPlanosAula();
       const notasComCat = regs.map(r => {
-        const cat = r.microcompetenciaId?.startsWith('OBR_') ? 'OBR'
-          : r.microcompetenciaId?.startsWith('SUB-') || r.microcompetenciaId?.startsWith('APP-') ? 'SUB'
-          : r.microcompetenciaId?.startsWith('KNW-') ? 'KNW'
-          : r.microcompetenciaId?.startsWith('INI-') ? 'INI'
-          : 'ATI';
+        const cat = categoriaDaNota(r.microcompetenciaId);
         return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: r.nota };
       });
       // Tipo de plano mais comum nas avaliações deste aluno
