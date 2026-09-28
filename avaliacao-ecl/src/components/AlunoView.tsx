@@ -61,6 +61,7 @@ import {
 import { PassoKitchenFlowFase } from './PassosKitchenFlow';
 import { perguntasDaAula, notaTriagem, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
+import { LavarMaos } from './QuadroMaos';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, perguntaCODaAula, perguntaCRDaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { ManuaisAluno } from './ManuaisAluno';
@@ -1875,6 +1876,8 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   // falta é que abre a lista dos nove itens.
   const [fardaModo, setFardaModo] = useState<'perguntar' | 'detalhe'>('perguntar');
   const [fardaSub, setFardaSub] = useState(0);
+  // Depois da farda: lavar bem as mãos antes de começar (com o quadro dos passos).
+  const [lavarMaos, setLavarMaos] = useState(false);
   // Vazios: confirmar a farda tem de ser um ato do aluno. Quem diz que
   // está tudo completo marca-os todos de uma vez, mas é uma escolha
   // sua — não o estado por omissão.
@@ -1926,8 +1929,9 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       // Aula atitudinal: conta a presença e a hora de entrada, mas não há
       // farda nem registos do KitchenFlow.
       // O mesmo quando o professor tirou a farda desta aula.
-      if (String((plano as any).tipoPlanAula || '').startsWith('atitudinal')
-        || ((plano as any).compRemovidas || []).includes('OBR_01')) onConcluido();
+      // Sem farda nesta aula, as mãos lavam-se na mesma antes de começar.
+      if (String((plano as any).tipoPlanAula || '').startsWith('atitudinal')) onConcluido();
+      else if (((plano as any).compRemovidas || []).includes('OBR_01')) setLavarMaos(true);
     }
   }
 
@@ -1951,8 +1955,11 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
     registarHigieneKitchenFlow(
       aluno.turmaId, aluno.id, aluno.nome || `Aluno ${aluno.numero}`, nomes.length === 0
     ).catch(() => {});
-    onConcluido();
+    setLavarMaos(true);
   }
+
+  // ── Depois da farda: lavar as mãos ──
+  if (lavarMaos) return <LavarMaos onFeito={onConcluido} />;
 
   // ── Antes de o professor abrir ──
   if (!t.aberta) {
