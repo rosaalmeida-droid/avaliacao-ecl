@@ -1,7 +1,7 @@
 // ============================================================
 // Alunos com UC / módulo em atraso — sempre à vista do professor
 // ============================================================
-// Assim que um aluno chega aos 10% de faltas (sobre as horas já dadas
+// Assim que um aluno chega aos 10% de faltas (sobre o total de horas da UC
 // numa UC), a UC fica em atraso. O professor tem de ver isto sem ir
 // procurar aluno a aluno: fica um contador num canto do ecrã, em todos
 // os ecrãs. Ao tocar, vê quem está em atraso, em que UC, a percentagem
@@ -78,7 +78,7 @@ function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
             fontWeight: 700, cursor: 'pointer', color: 'rgba(26,23,20,0.6)', fontFamily: 'inherit' }}>Fechar</button>
         </div>
         <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '4px 0 14px', lineHeight: 1.5 }}>
-          Uma UC fica em atraso quando as faltas chegam a 10% das horas já dadas. Cada aula faltada conta 0
+          Uma UC fica em atraso quando as faltas chegam a 10% do total de horas da UC. Cada aula faltada conta 0
           até o aluno fazer a recuperação. Podes recuperar já, em aula, ou deixar a UC seguir (com a nota que
           tiver, e «a)» se for negativa) e recuperar depois.
         </div>
