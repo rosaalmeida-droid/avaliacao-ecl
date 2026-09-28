@@ -3886,7 +3886,7 @@ export async function gerarPautaFCTViaScript(dados: {
 }
 
 function getNomeCompetenciaGenerica(id: string): string {
-  if (id.startsWith('KNW-P')) return nomeConhecimentoProf(id) || 'Conhecimento';
+  if (id.startsWith('KNW-P') || id.startsWith('KNW-R-')) return nomeConhecimentoProf(id) || 'Conhecimento';
   if (id.startsWith('OBR_')) {
     const o = OBRIGATORIAS.find(x => x.id === id);
     return o?.nome || id;

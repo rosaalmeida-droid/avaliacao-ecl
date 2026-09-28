@@ -1,3 +1,4 @@
+import { conhecimentosDaAula } from '../compatECL';
 import { notaDaPautaUC } from '../pautaUC';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma } from '../backend';
@@ -2583,7 +2584,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // Fallback — se não há SUB/APP da ficha, usar sistema antigo
   const usarFallback = subsSug.length === 0 && aparelhosSug.length === 0;
   // A mesma regra que o professor vê nas Competências do plano.
-  const microsDaUC = usarFallback ? tecnicasDeRecurso(ucId, fichas as any[]) : [];
+  // Sem fichas não há técnicas: numa aula de conhecimentos apareciam
+  // técnicas «de recurso» da UC (massa folhada…) sem razão nenhuma.
+  const microsDaUC = usarFallback && (fichas as any[]).length > 0 ? tecnicasDeRecurso(ucId, fichas as any[]) : [];
   const microsSug = String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? []
     : usarFallback ? microsDaUC
     .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
@@ -2613,7 +2616,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // Conhecimentos escritos pelo professor para esta aula (qualquer tipo de
   // aula, menos a atitudinal): o aluno autoavalia-se em cada um.
   if (!String(tipoPlanAula || '').startsWith('atitudinal')) {
-    for (const k of (((plano as any).conhecimentosProf || []) as { id: string; texto: string }[])) {
+    for (const k of conhecimentosDaAula(plano)) {
       if (!compRemovidas.includes(k.id) && !conhecimentosSug.some(c => c.id === k.id))
         conhecimentosSug.push({ id: k.id, nome: k.texto, definicao: '', motivo: '' });
     }

@@ -1,6 +1,5 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
-import { getReferencialUC } from '../referencial811RA144';
-import { ucsEquivalentes as ucsEquivalentesKnw } from '../cronograma';
+import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv } from '../backend';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
@@ -470,13 +469,18 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // filtro de retirados vinha primeiro: retirar um fazia entrar outro no
   // lugar, sem aviso, e o retirado desaparecia da lista — não havia como
   // o voltar a incluir.
-  const conhecimentosSugeridos = !ehAtitudinal && tipoPlanAula !== 'pratico' && plano.ucId && lib
-    ? (lib.conhecimentos as any[])
+  // Os conhecimentos vêm agora do referencial da UC (ou do professor), no
+  // cartão «Conhecimentos a avaliar nesta aula». A biblioteca dava os seis
+  // primeiros de TODAS as UCs — nada a ver com a aula.
+  const conhecimentosSugeridos = false && !ehAtitudinal && tipoPlanAula !== 'pratico' && plano.ucId && lib
+    ? (lib!.conhecimentos as any[])
         .filter((k: any) => !IDS_JA_USADOS.has(k.id))
         .slice(0, 6)
         .map((k: any) => ({ id: k.id, nome: k.nome, definicao: k.definicao, criterios: [] as any[] }))
     : [];
-  const compConhecimentos = conhecimentosSugeridos.filter(k => !compRemovidas.includes(k.id));
+  // Os conhecimentos desta aula: os do professor, ou os do referencial da UC.
+  const compConhecimentos = [...conhecimentosSugeridos, ...(ehAtitudinal ? [] : conhecimentosDaAula(plano)
+    .map(k => ({ id: k.id, nome: k.texto, definicao: '', criterios: [] as any[] })))].filter(k => !compRemovidas.includes(k.id));
   compConhecimentos.forEach(k => IDS_JA_USADOS.add(k.id));
 
   // ── Fallback: sistema antigo (microsPorUC) se não há SUB/APP ─
@@ -2222,10 +2226,9 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
 // autoavalia-se em cada um e o professor valida, como nas técnicas.
 function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
   const [texto, setTexto] = React.useState('');
-  const lista: { id: string; texto: string }[] = plano.conhecimentosProf || [];
-  const ucs = [plano.ucId, ...ucsEquivalentesKnw(plano.ucId || '')].filter(Boolean);
-  const sugestoes = [...new Set(ucs.flatMap((u: string) => getReferencialUC(u)?.conhecimentos || []))]
-    .filter(t => !lista.some(l => l.texto === t));
+  // Aula teórica ou mista sem escolha do professor: os do referencial da UC.
+  const lista: { id: string; texto: string }[] = conhecimentosDaAula(plano);
+  const sugestoes = conhecimentosDoReferencial(plano.ucId).filter(t => !lista.some(l => l.texto === t));
   const gravar = (nova: { id: string; texto: string }[]) => {
     const p = { ...plano, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
     addOrUpdatePlanoAula(p); onPlanoActualizado(p);

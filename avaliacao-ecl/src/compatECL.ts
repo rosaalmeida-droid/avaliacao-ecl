@@ -15,6 +15,8 @@
 // ============================================================
 
 import { getLibrary } from './libraryService';
+import { getReferencialUC } from './referencial811RA144';
+import { ucsEquivalentes } from './cronograma';
 import type { PerfilTecnico, CriterioObservavel } from './library.types';
 import type { Competencia, Categoria } from './types';
 
@@ -867,8 +869,35 @@ export function encontrarAptidao(id: string): {
 }
 
 // ── Nome de qualquer ID ───────────────────────────────────────
-/** Conhecimento escrito pelo professor num plano (KNW-P…): o texto está no plano. */
+/** Os conhecimentos do referencial para uma UC ou UFCD (pela equivalência UFCD → UC). */
+export function conhecimentosDoReferencial(ucId?: string): string[] {
+  if (!ucId) return [];
+  const ucs = [ucId, ...ucsEquivalentes(ucId)];
+  return [...new Set(ucs.flatMap(u => getReferencialUC(u)?.conhecimentos || []))];
+}
+
+/**
+ * Os conhecimentos que se avaliam nesta aula.
+ * - Se o professor escolheu (conhecimentosProf), são esses.
+ * - Senão, numa aula teórica ou mista, os do referencial da UC.
+ * - Numa aula prática ou atitudinal, nenhuns (só se o professor os juntar).
+ * Antes vinham os seis primeiros da biblioteca inteira, sem relação com a
+ * UC («a massa folhada está crocante» numa aula de conhecimentos).
+ */
+export function conhecimentosDaAula(plano: any): { id: string; texto: string }[] {
+  if (Array.isArray(plano?.conhecimentosProf)) return plano.conhecimentosProf;
+  const tipo = plano?.tipoPlanAula || ((plano?.fichasIds || []).length ? 'pratico' : 'teorico');
+  if (tipo !== 'teorico' && tipo !== 'misto') return [];
+  const uc = String(plano?.ucId || '');
+  return conhecimentosDoReferencial(uc).map((t, i) => ({ id: `KNW-R-${uc.replace(/\s+/g, '_')}-${i}`, texto: t }));
+}
+
+/** Conhecimento escrito pelo professor (KNW-P…) ou do referencial (KNW-R…). */
 export function nomeConhecimentoProf(id: string): string | undefined {
+  if (id.startsWith('KNW-R-')) {
+    const resto = id.slice(6), j = resto.lastIndexOf('-');
+    return conhecimentosDoReferencial(resto.slice(0, j).replace(/_/g, ' '))[Number(resto.slice(j + 1))];
+  }
   if (!id.startsWith('KNW-P')) return undefined;
   try {
     const planos = JSON.parse(localStorage.getItem('ecl_planos') || '[]');
@@ -881,7 +910,7 @@ export function nomeConhecimentoProf(id: string): string | undefined {
 }
 
 export function nomeCompetencia(id: string): string {
-  if (id.startsWith('KNW-P')) return nomeConhecimentoProf(id) || 'Conhecimento';
+  if (id.startsWith('KNW-P') || id.startsWith('KNW-R-')) return nomeConhecimentoProf(id) || 'Conhecimento';
   if (id.startsWith('SUB-')) return encontrarSubtecnica(id)?.nome || id;
   if (id.startsWith('APP-')) return encontrarAparelho(id)?.nome || id;
   if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;
