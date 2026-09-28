@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { Triagem5C } from './triagem5c';
-import { BANCO_CO, perguntaCODoCiclo } from './triagem5c';
+import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { notaDaPautaUC } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
@@ -7420,28 +7420,33 @@ export function guardarTriagemDaAula(alunoId: string, turmaId: string, planoAula
   } as any);
 }
 
-/** A pergunta do Consciente desta aula: a que o professor escolheu, ou a
- *  seguinte na rotação. A mesma para a turma toda, porque se conta pelas
- *  aulas da turma (os eventos não contam), da mais antiga para a mais recente. */
-export function perguntaCODaAula(planoAulaId: string): string {
+/** A pergunta do Consciente (ou do Criativo) desta aula: a que o professor
+ *  escolheu, ou a seguinte na rotação. A mesma para a turma toda, porque se
+ *  conta pelas aulas da turma (os eventos não contam), da mais antiga para a
+ *  mais recente. */
+export function perguntaDaAula(chave: 'co' | 'cr', planoAulaId: string): string {
   const plano: any = getPlanosAula().find(p => p.id === planoAulaId);
-  if (plano?.perguntaCO && BANCO_CO.some(q => q.id === plano.perguntaCO)) return plano.perguntaCO;
-  if (!plano) return perguntaCODoCiclo(0).id;
-  const chave = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
+  const escolhida = plano?.[chave === 'co' ? 'perguntaCO' : 'perguntaCR'];
+  if (escolhida && bancoDe(chave).banco.some(q => q.id === escolhida)) return escolhida;
+  if (!plano) return perguntaDoCiclo(chave, 0).id;
+  const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
   const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
-    .sort((a, b) => chave(a).localeCompare(chave(b)));
-  return perguntaCODoCiclo(Math.max(0, aulas.findIndex(p => p.id === planoAulaId))).id;
+    .sort((a, b) => ordem(a).localeCompare(ordem(b)));
+  return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === planoAulaId))).id;
 }
+export const perguntaCODaAula = (planoAulaId: string) => perguntaDaAula('co', planoAulaId);
+export const perguntaCRDaAula = (planoAulaId: string) => perguntaDaAula('cr', planoAulaId);
 
-/** Colegas que, na mesma aula e à mesma pergunta do Consciente, disseram
- *  que a situação aconteceu (reparou, fez alguma coisa). Serve para avisar
- *  o professor quando um aluno responde «Hoje não aconteceu». */
-export function colegasQueViramCO(alunoId: string, planoAulaId: string, coId: string): number {
+/** Colegas que, na mesma aula e à mesma pergunta, disseram que a situação
+ *  aconteceu (reparou, fez alguma coisa). Serve para avisar o professor
+ *  quando um aluno responde «Hoje não aconteceu». */
+export function colegasQueViram(chave: 'co' | 'cr', alunoId: string, planoAulaId: string, perguntaId: string): number {
   return load<any>(KEYS.selecoes).filter((x: any) =>
     x.planoAulaId === PREFIXO_TRIAGEM + planoAulaId && x.alunoId !== alunoId)
     .filter((x: any) => {
       const t = x.autoavaliacoes?.[0]; const r = (t?.professor || t?.aluno) as Triagem5C | undefined;
-      return r?.coId === coId && typeof r.co === 'number' && r.co >= 1;
+      const resposta = r?.[chave];
+      return r?.[chave === 'co' ? 'coId' : 'crId'] === perguntaId && typeof resposta === 'number' && resposta >= 1;
     }).length;
 }
 

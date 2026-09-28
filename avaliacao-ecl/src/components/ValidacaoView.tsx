@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViramCO } from '../backend';
+import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram } from '../backend';
 import { perguntasDaAula, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -737,14 +737,15 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>
             Não conta para a nota desta aula. Entra no Colaborativo, no Criativo e no Consciente da pauta da UC.
           </div>
-          {perguntasDaAula(triagem.coId).map(q => {
+          {perguntasDaAula(triagem.coId, triagem.crId).map(q => {
             const r = triagem[q.chave];
             const opcoes: { v: number | 'sem'; txt: string }[] = [
               ...q.frases.map((f, i) => ({ v: i, txt: f })), ...(q.semOcasiao ? [{ v: 'sem' as const, txt: q.semOcasiao }] : [])];
-            // A turma toda respondeu à mesma pergunta do Consciente: se este aluno
-            // diz que não aconteceu e vários colegas dizem que sim, avisa-se.
-            const viram = q.chave === 'co' && r === 'sem' && triagem.coId
-              ? colegasQueViramCO(selecao.alunoId, selecao.planoAulaId || '', triagem.coId) : 0;
+            // A turma toda respondeu à mesma pergunta do Consciente e do Criativo:
+            // se este aluno diz que não aconteceu e vários colegas dizem que sim, avisa-se.
+            const idPergunta = q.chave === 'co' ? triagem.coId : q.chave === 'cr' ? triagem.crId : undefined;
+            const viram = q.chave !== 'cl' && r === 'sem' && idPergunta
+              ? colegasQueViram(q.chave, selecao.alunoId, selecao.planoAulaId || '', idPergunta) : 0;
             return (
               <div key={q.chave} style={{ marginBottom:10 }}>
                 <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>{q.sigla} · {q.pergunta}</div>

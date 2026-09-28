@@ -60,7 +60,7 @@ import {
 } from './InicioAluno';
 import { PassoKitchenFlowFase } from './PassosKitchenFlow';
 import { perguntasDaAula, notaTriagem, type Triagem5C } from '../triagem5c';
-import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, perguntaCODaAula } from '../backend';
+import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, perguntaCODaAula, perguntaCRDaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { ManuaisAluno } from './ManuaisAluno';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
@@ -2734,9 +2734,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [tecMenosBem, setTecMenosBem] = useState('');
   const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
   // Triagem do Colaborativo e do Criativo: responde-se sempre, em todas as aulas.
-  // O Consciente tem uma pergunta do dia, igual para a turma toda.
-  const [triagem, setTriagem] = useState<Triagem5C>(() => ({ cl: null, cr: null, co: null, problema: '', coId: perguntaCODaAula(plano.id) }));
-  const perguntasTriagem = perguntasDaAula(triagem.coId);
+  // O Consciente e o Criativo têm uma pergunta do dia, igual para a turma toda.
+  const [triagem, setTriagem] = useState<Triagem5C>(() => ({ cl: null, cr: null, co: null, problema: '',
+    coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
+  const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId);
   // «O que foi mais difícil hoje» é obrigatório: há sempre alguma coisa.
   const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null
     && (triagem.problema || '').trim().length >= 5;

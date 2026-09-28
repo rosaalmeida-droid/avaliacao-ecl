@@ -57,7 +57,7 @@ export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias:
   co: { sigla: 'CO', nome: 'Consciente',
     evidencias: 'consciente dos outros, de si próprio e do esforço do professor: pergunta do dia (a mesma para a turma, vai rodando), sentido crítico na autoavaliação (perto do que o professor valida), melhoria depois de ficar abaixo de 3 numa atitude' },
   cr: { sigla: 'CR', nome: 'Criativo',
-    evidencias: 'resolução de problemas: pergunta de cada aula «resolveste algum problema?», problemas que detetou e registou' },
+    evidencias: 'resolver imprevistos, ter ideias e experimentar, melhorar o que já existe: pergunta do dia (a mesma para a turma, vai rodando), problemas que detetou e registou' },
 };
 
 
@@ -220,7 +220,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         return { t: t.professor || t.aluno, prof: !!t.professor };
       }).filter(x => x.t);
       const juntaTriagem = (c: 'cl' | 'cr' | 'co') => {
-        const q = c === 'co' ? { titulo: 'Consciente' } : PERGUNTAS_TRIAGEM.find(x => x.chave === c)!;
+        const q = c === 'co' ? { titulo: 'Consciente' } : c === 'cr' ? { titulo: 'Criativo' } : PERGUNTAS_TRIAGEM.find(x => x.chave === c)!;
         const ns = triagens.map(x => notaTriagem(x.t![c])).filter((n): n is number => n !== null);
         const conf = triagens.filter(x => x.prof && notaTriagem(x.t![c]) !== null).length;
         junta(c, `${q.titulo} (pergunta de cada aula): respondeu em ${ns.length} aula${ns.length === 1 ? '' : 's'}, ${conf} confirmada${conf === 1 ? '' : 's'} pelo professor`,

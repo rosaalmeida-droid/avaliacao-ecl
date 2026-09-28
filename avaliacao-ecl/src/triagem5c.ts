@@ -5,9 +5,9 @@
 // evidência, desde o 1.º ano: o aluno responde em todas as aulas e o
 // professor confirma na validação. CL e CR seguem o nível do 1.º ano da
 // ATI-009 (Cooperação com a equipa) e da ATI-010 (Empenho e persistência
-// na resolução de problemas). CO: uma pergunta do dia, tirada do banco
-// BANCO_CO (consciente dos outros, de si próprio e do esforço do
-// professor), igual para toda a turma nessa aula.
+// na resolução de problemas). CO e CR: uma pergunta do dia de cada, tirada do banco
+// banco (BANCO_CO: os outros, o próprio e o esforço do professor;
+// BANCO_CR: resolver, ter ideias e melhorar), igual para toda a turma.
 // Só contam para os 5 C da pauta, não para a nota da aula.
 
 export type ChaveTriagem = 'cl' | 'cr' | 'co';
@@ -102,6 +102,9 @@ export interface Triagem5C {
   /** A pergunta do Consciente a que respondeu (BANCO_CO). Sem ela, é a
    *  pergunta antiga «o que fizeste diferente hoje?». */
   coId?: string;
+  /** A pergunta do Criativo a que respondeu (BANCO_CR). Sem ela, é a
+   *  pergunta antiga «alguma coisa não correu como esperavas?». */
+  crId?: string;
   /** O problema que o aluno resolveu, nas palavras dele (opcional). */
   problema?: string;
 }
@@ -120,7 +123,7 @@ export function notaTriagem(r: RespostaTriagem | undefined): number | null {
 // resposta não bate com a dos colegas. As respostas vão sempre do menor
 // para o maior cuidado; «Hoje não aconteceu» não conta.
 
-export type LadoCO = 'outros' | 'si' | 'professor';
+export type LadoCO = 'outros' | 'si' | 'professor' | 'resolver' | 'ideias' | 'melhorar';
 export const LADOS_CO: { lado: LadoCO; nome: string }[] = [
   { lado: 'outros', nome: 'Os outros' },
   { lado: 'si', nome: 'Eu próprio' },
@@ -129,9 +132,11 @@ export const LADOS_CO: { lado: LadoCO; nome: string }[] = [
 
 export interface PerguntaCO extends PerguntaTriagem { id: string; lado: LadoCO }
 
-const co = (id: string, lado: LadoCO, titulo: string, pergunta: string, frases: string[], semOcasiao: string,
+const pq = (chave: 'co' | 'cr') => (id: string, lado: LadoCO, titulo: string, pergunta: string, frases: string[], semOcasiao: string,
   perguntaSimples: string, frasesSimples: string[], semOcasiaoSimples: string): PerguntaCO =>
-  ({ id, lado, chave: 'co', sigla: 'CO', titulo, pergunta, frases, semOcasiao, perguntaSimples, frasesSimples, semOcasiaoSimples });
+  ({ id, lado, chave, sigla: chave === 'co' ? 'CO' : 'CR', titulo, pergunta, frases, semOcasiao, perguntaSimples, frasesSimples, semOcasiaoSimples });
+const co = pq('co');
+const cr = pq('cr');
 
 export const BANCO_CO: PerguntaCO[] = [
   // ── Os outros ──
@@ -271,17 +276,132 @@ export const BANCO_CO: PerguntaCO[] = [
     ['Interrompi muitas vezes.', 'Às vezes.', 'Quase sempre.', 'Sim, e ajudei um colega.'], ''),
 ];
 
-/** A k-ésima pergunta do ciclo: os três lados alternam (outros → eu →
- *  professor → outros…), e dentro de cada lado as perguntas vão rodando. */
-export function perguntaCODoCiclo(k: number): PerguntaCO {
-  const lado = LADOS_CO[((k % 3) + 3) % 3].lado;
-  const doLado = BANCO_CO.filter(q => q.lado === lado);
+// ════════════════════════════════════════════════════════════
+// CRIATIVO — banco de perguntas que vão rodando
+// ════════════════════════════════════════════════════════════
+// Numa cozinha, ser criativo é resolver imprevistos, ter ideias e
+// experimentar, e melhorar o que já existe — sempre com autorização do
+// professor, nunca a desrespeitar a ficha técnica. Funciona como o
+// Consciente: a mesma pergunta para a turma, a rodar pelos três lados.
+
+export const LADOS_CR: { lado: LadoCO; nome: string }[] = [
+  { lado: 'resolver', nome: 'Resolver imprevistos' },
+  { lado: 'ideias', nome: 'Ter ideias e experimentar' },
+  { lado: 'melhorar', nome: 'Melhorar o que já existe' },
+];
+
+export const BANCO_CR: PerguntaCO[] = [
+  // ── Resolver imprevistos ──
+  cr('cr01', 'resolver', 'Faltou alguma coisa',
+    'Hoje faltou um ingrediente ou material. Arranjaste uma solução?',
+    ['Parei e fiquei à espera.', 'Pedi logo ao professor.', 'Pensei numa alternativa e perguntei ao professor.', 'Arranjei uma alternativa, o professor aceitou e resultou.'],
+    'Hoje não faltou nada (o professor confirma).',
+    'Hoje faltou alguma coisa. O que fizeste?',
+    ['Fiquei à espera.', 'Pedi ao professor.', 'Pensei noutra coisa e perguntei.', 'Arranjei outra coisa e resultou.'], 'Hoje não faltou nada.'),
+  cr('cr02', 'resolver', 'Correu mal',
+    'Hoje uma preparação correu mal (talhou, queimou, ficou mole). Arranjaste uma solução?',
+    ['Deitei fora ou desisti.', 'Pedi logo ajuda.', 'Tentei perceber porquê e tentei salvar.', 'Salvei ou refiz, e percebi o que tinha corrido mal.'],
+    'Hoje não correu nada mal (o professor confirma).',
+    'Hoje uma coisa correu mal. O que fizeste?',
+    ['Desisti.', 'Pedi ajuda.', 'Tentei salvar.', 'Salvei ou refiz.'], 'Hoje nada correu mal.'),
+  cr('cr03', 'resolver', 'O tempo',
+    'Hoje o tempo não chegava para tudo. Arranjaste uma solução?',
+    ['Não acabei.', 'Fiz à pressa e ficou pior.', 'Reorganizei o que faltava.', 'Reorganizei, combinei com o grupo e acabámos a tempo.'],
+    'Hoje o tempo chegou bem (o professor confirma).',
+    'Hoje o tempo não chegava. O que fizeste?',
+    ['Não acabei.', 'Fiz à pressa.', 'Mudei a ordem das coisas.', 'Combinei com o grupo e acabámos.'], 'Hoje o tempo chegou.'),
+  cr('cr04', 'resolver', 'Uma dúvida',
+    'Hoje tiveste uma dúvida sobre como fazer. Como a resolveste?',
+    ['Fiquei parado.', 'Perguntei logo.', 'Procurei primeiro na ficha ou no guia.', 'Procurei, experimentei e confirmei com o professor.'],
+    'Hoje não tive dúvidas.',
+    'Hoje tiveste uma dúvida. O que fizeste?',
+    ['Fiquei parado.', 'Perguntei logo.', 'Vi primeiro na ficha.', 'Vi na ficha, experimentei e confirmei.'], 'Hoje não.'),
+  cr('cr05', 'resolver', 'O equipamento',
+    'Hoje um equipamento não funcionou ou estava ocupado. Arranjaste uma solução?',
+    ['Fiquei à espera.', 'Avisei o professor.', 'Encontrei outra maneira de fazer.', 'Encontrei outra maneira e o resultado ficou bem.'],
+    'Hoje não aconteceu (o professor confirma).',
+    'Hoje uma máquina não dava. O que fizeste?',
+    ['Fiquei à espera.', 'Avisei o professor.', 'Fiz de outra maneira.', 'Fiz de outra maneira e ficou bem.'], 'Hoje não.'),
+  // ── Ter ideias e experimentar ──
+  cr('cr06', 'ideias', 'Empratamento',
+    'Hoje pensaste numa forma diferente de apresentar o prato?',
+    ['Não pensei nisso.', 'Pensei, mas não disse.', 'Sugeri ao professor.', 'Sugeri e fiz, com autorização do professor.'],
+    'Hoje não houve prato para apresentar.',
+    'Hoje pensaste noutra forma de pôr o prato?',
+    ['Não.', 'Pensei, mas não disse.', 'Disse ao professor.', 'Disse e fiz.'], 'Hoje não houve prato.'),
+  cr('cr07', 'ideias', 'Sabor',
+    'Hoje provaste e pensaste em como melhorar o sabor?',
+    ['Não provei.', 'Provei, mas não mudei nada.', 'Provei e corrigi o tempero.', 'Provei, corrigi e expliquei porquê.'],
+    'Hoje não houve nada para provar.',
+    'Hoje provaste o que fizeste?',
+    ['Não provei.', 'Provei e não mudei.', 'Provei e corrigi.', 'Provei, corrigi e expliquei.'], 'Hoje não havia nada para provar.'),
+  cr('cr08', 'ideias', 'E se…?',
+    'Hoje perguntaste «e se fizéssemos de outra maneira?»',
+    ['Não.', 'Pensei, mas não perguntei.', 'Perguntei ao professor.', 'Perguntei e experimentámos.'],
+    '',
+    'Hoje pensaste noutra maneira de fazer?',
+    ['Não.', 'Pensei, mas não disse.', 'Perguntei ao professor.', 'Perguntei e experimentámos.'], ''),
+  cr('cr09', 'ideias', 'O que já sabes',
+    'Hoje ligaste esta aula a outra coisa que já sabes fazer?',
+    ['Não.', 'Lembrei-me, mas não usei.', 'Usei uma coisa que aprendi antes.', 'Usei e expliquei a um colega.'],
+    '',
+    'Hoje usaste uma coisa que já sabias?',
+    ['Não.', 'Lembrei-me, mas não usei.', 'Sim, usei.', 'Usei e expliquei a um colega.'], ''),
+  cr('cr10', 'ideias', 'Curiosidade',
+    'Hoje quiseste saber mais sobre alguma coisa (de onde vem, porque se faz assim)?',
+    ['Não.', 'Pensei nisso, mas não perguntei.', 'Perguntei.', 'Perguntei e fui procurar mais.'],
+    '',
+    'Hoje quiseste saber mais sobre alguma coisa?',
+    ['Não.', 'Pensei, mas não perguntei.', 'Perguntei.', 'Perguntei e procurei mais.'], ''),
+  // ── Melhorar o que já existe ──
+  cr('cr11', 'melhorar', 'Organização',
+    'Hoje encontraste uma maneira de trabalhar mais organizada ou mais rápida?',
+    ['Não pensei nisso.', 'Reparei, mas não mudei.', 'Mudei a minha maneira de trabalhar.', 'Mudei e partilhei com o grupo.'],
+    '',
+    'Hoje arranjaste uma maneira mais fácil de trabalhar?',
+    ['Não.', 'Pensei, mas não mudei.', 'Sim, mudei.', 'Mudei e disse ao grupo.'], ''),
+  cr('cr12', 'melhorar', 'Aproveitamento',
+    'Hoje sobraram aparas ou restos. Arranjaste uma forma de os aproveitar?',
+    ['Deitei fora.', 'Guardei sem saber para quê.', 'Sugeri como aproveitar.', 'Aproveitei, com autorização do professor.'],
+    'Hoje não sobrou nada.',
+    'Hoje sobrou comida. O que fizeste?',
+    ['Deitei fora.', 'Guardei.', 'Disse como aproveitar.', 'Aproveitei.'], 'Hoje não sobrou nada.'),
+  cr('cr13', 'melhorar', 'Para a próxima',
+    'Se fizesses este prato outra vez, o que mudavas?',
+    ['Não sei.', 'Mudava, mas não sei o quê.', 'Sei o que mudava.', 'Sei o que mudava e disse ao professor.'],
+    '',
+    'Se fizesses outra vez, mudavas alguma coisa?',
+    ['Não sei.', 'Sim, mas não sei o quê.', 'Sei o que mudava.', 'Sei e disse ao professor.'], ''),
+  cr('cr14', 'melhorar', 'Um erro de outra aula',
+    'Hoje evitaste um erro que já tinhas feito antes?',
+    ['Voltei a errar.', 'Lembrei-me tarde demais.', 'Lembrei-me e evitei.', 'Evitei e ajudei um colega a não errar.'],
+    'Não tinha nenhum erro de outras aulas para evitar.',
+    'Hoje não repetiste um erro antigo?',
+    ['Voltei a errar.', 'Lembrei-me tarde.', 'Lembrei-me e não errei.', 'Não errei e ajudei um colega.'], 'Não tinha erros antigos.'),
+  cr('cr15', 'melhorar', 'Ideia para a turma',
+    'Hoje tiveste uma ideia útil para a turma ou para a cozinha?',
+    ['Não.', 'Tive, mas guardei para mim.', 'Disse a um colega.', 'Disse ao professor e foi usada.'],
+    '',
+    'Hoje tiveste uma boa ideia?',
+    ['Não.', 'Tive, mas não disse.', 'Disse a um colega.', 'Disse ao professor e foi usada.'], ''),
+];
+
+const BANCOS = { co: { lados: LADOS_CO, banco: BANCO_CO }, cr: { lados: LADOS_CR, banco: BANCO_CR } };
+export const bancoDe = (chave: 'co' | 'cr') => BANCOS[chave];
+
+/** A k-ésima pergunta do ciclo: os três lados alternam, e dentro de cada
+ *  lado as perguntas vão rodando. */
+export function perguntaDoCiclo(chave: 'co' | 'cr', k: number): PerguntaCO {
+  const { lados, banco } = BANCOS[chave];
+  const lado = lados[((k % 3) + 3) % 3].lado;
+  const doLado = banco.filter(q => q.lado === lado);
   return doLado[Math.floor(k / 3) % doLado.length];
 }
 
-/** As três perguntas da aula, com a do Consciente certa. Sem `coId`
- *  (autoavaliações antigas) fica a pergunta antiga. */
-export function perguntasDaAula(coId?: string): PerguntaTriagem[] {
-  const q = coId ? BANCO_CO.find(x => x.id === coId) : undefined;
-  return PERGUNTAS_TRIAGEM.map(p => p.chave === 'co' && q ? q : p);
+/** As três perguntas da aula, com as do Consciente e do Criativo certas.
+ *  Sem id (autoavaliações antigas) fica a pergunta antiga. */
+export function perguntasDaAula(coId?: string, crId?: string): PerguntaTriagem[] {
+  const qco = coId ? BANCO_CO.find(x => x.id === coId) : undefined;
+  const qcr = crId ? BANCO_CR.find(x => x.id === crId) : undefined;
+  return PERGUNTAS_TRIAGEM.map(p => p.chave === 'co' && qco ? qco : p.chave === 'cr' && qcr ? qcr : p);
 }

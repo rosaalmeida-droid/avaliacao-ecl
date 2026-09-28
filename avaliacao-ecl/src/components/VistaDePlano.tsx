@@ -1,8 +1,8 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaCODaAula } from '../backend';
-import { BANCO_CO, LADOS_CO } from '../triagem5c';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
+import { bancoDe } from '../triagem5c';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
@@ -317,40 +317,51 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
 /** O aluno responde sempre a 3 perguntas curtas para os 5 C's, além das
  *  competências escolhidas. Sem este aviso o professor via mais
  *  competências do que as que escolheu e ficava sem perceber porquê.
- *  Mostra também a pergunta do Consciente desta aula, que o professor
- *  pode trocar (por exemplo, depois de um conflito que quer trabalhar). */
+ *  Mostra também as perguntas do Criativo e do Consciente desta aula, que
+ *  o professor pode trocar (por exemplo, depois de um conflito que quer trabalhar). */
 function Aviso5C({ plano, aoMudar }: { plano: PlanoAula; aoMudar: (p: PlanoAula) => void }) {
-  const coId = perguntaCODaAula(plano.id);
-  const escolhida = !!(plano as any).perguntaCO;
-  const mudar = (id: string) => {
-    const p = { ...plano, perguntaCO: id || undefined, atualizadoEm: new Date().toISOString() } as PlanoAula;
-    addOrUpdatePlanoAula(p);
-    aoMudar(p);
-  };
   return (
     <div style={{ marginTop: 10, marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#f3eef6',
       border: '1px solid rgba(125,79,140,0.3)', fontSize: 13.5, lineHeight: 1.55, color: 'rgba(26,23,20,0.75)' }}>
       <b style={{ color: '#7d4f8c' }}>ℹ️ Além destas, há 3 perguntas para os 5 C's.</b> No fim da autoavaliação, o aluno
       responde sempre a 3 perguntas curtas — <b>Colaborativo</b>, <b>Criativo</b> e <b>Consciente</b>. <b>Não contam
       para a nota desta aula</b>: juntam-se ao longo do curso e entram na pauta, no fim de cada unidade.
-      <div style={{ marginTop: 8 }}>
-        <b>Pergunta do Consciente nesta aula</b> (a mesma para a turma toda{escolhida ? ', escolhida por ti' : ', vai rodando'}):
-        <select value={coId} onChange={e => mudar(e.target.value)}
-          style={{ display: 'block', width: '100%', marginTop: 4, padding: '7px 8px', borderRadius: 8,
-            border: '1px solid var(--border)', fontSize: 13.5, fontFamily: 'inherit', background: '#fff' }}>
-          {LADOS_CO.map(l => (
-            <optgroup key={l.lado} label={l.nome}>
-              {BANCO_CO.filter(q => q.lado === l.lado).map(q => <option key={q.id} value={q.id}>{q.titulo}</option>)}
-            </optgroup>
-          ))}
-        </select>
-        <div style={{ fontStyle: 'italic', marginTop: 4 }}>«{BANCO_CO.find(q => q.id === coId)?.pergunta}»</div>
-        {escolhida && (
-          <button onClick={() => mudar('')} style={{ marginTop: 4, padding: 0, border: 'none', background: 'none',
-            color: '#7d4f8c', textDecoration: 'underline', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            Voltar à pergunta da rotação</button>
-        )}
-      </div>
+      <PerguntaDoDia chave="cr" nome="Criativo" plano={plano} aoMudar={aoMudar} />
+      <PerguntaDoDia chave="co" nome="Consciente" plano={plano} aoMudar={aoMudar} />
+    </div>
+  );
+}
+
+/** A pergunta do dia do Criativo ou do Consciente: vai rodando, e o
+ *  professor pode trocá-la nesta aula. */
+function PerguntaDoDia({ chave, nome, plano, aoMudar }: { chave: 'co' | 'cr'; nome: string; plano: PlanoAula; aoMudar: (p: PlanoAula) => void }) {
+  const campo = chave === 'co' ? 'perguntaCO' : 'perguntaCR';
+  const { lados, banco } = bancoDe(chave);
+  const id = perguntaDaAula(chave, plano.id);
+  const escolhida = !!(plano as any)[campo];
+  const mudar = (v: string) => {
+    const p = { ...plano, [campo]: v || undefined, atualizadoEm: new Date().toISOString() } as PlanoAula;
+    addOrUpdatePlanoAula(p);
+    aoMudar(p);
+  };
+  return (
+    <div style={{ marginTop: 8 }}>
+      <b>Pergunta do {nome} nesta aula</b> (a mesma para a turma toda{escolhida ? ', escolhida por ti' : ', vai rodando'}):
+      <select value={id} onChange={e => mudar(e.target.value)}
+        style={{ display: 'block', width: '100%', marginTop: 4, padding: '7px 8px', borderRadius: 8,
+          border: '1px solid var(--border)', fontSize: 13.5, fontFamily: 'inherit', background: '#fff' }}>
+        {lados.map(l => (
+          <optgroup key={l.lado} label={l.nome}>
+            {banco.filter(q => q.lado === l.lado).map(q => <option key={q.id} value={q.id}>{q.titulo}</option>)}
+          </optgroup>
+        ))}
+      </select>
+      <div style={{ fontStyle: 'italic', marginTop: 4 }}>«{banco.find(q => q.id === id)?.pergunta}»</div>
+      {escolhida && (
+        <button onClick={() => mudar('')} style={{ marginTop: 4, padding: 0, border: 'none', background: 'none',
+          color: '#7d4f8c', textDecoration: 'underline', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+          Voltar à pergunta da rotação</button>
+      )}
     </div>
   );
 }

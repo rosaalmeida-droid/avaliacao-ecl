@@ -494,6 +494,8 @@ export interface PlanoAula {
   /** Pergunta do Consciente escolhida pelo professor para esta aula
    *  (BANCO_CO). Sem ela, a app escolhe pela rotação. */
   perguntaCO?: string;
+  /** O mesmo para o Criativo (BANCO_CR). */
+  perguntaCR?: string;
   realizadaEm?: string;     // ISO timestamp — quando o professor marcou como realizada
   // Registo de alterações após publicação — visível ao aluno como aviso
   ultimaAlteracao?: {
