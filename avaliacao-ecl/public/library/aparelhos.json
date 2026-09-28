@@ -860,5 +860,194 @@
     "nivel": 2,
     "aliases": "calda concentrada; xarope 32",
     "fontes": "SRC-001; SRC-003; SRC-004; SRC-005; SRC-006"
+  },
+  {
+    "id": "APP-0094",
+    "nome": "Creme inglês",
+    "categoria": "Cremes",
+    "definicao": "Creme de leite, gemas e açúcar cozido a 82–84 °C sem ferver, até napar a colher.",
+    "ambito_profissional": "Molho de sobremesa, base de gelados e bavaroises",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0095",
+    "nome": "Sabayon",
+    "categoria": "Cremes",
+    "definicao": "Gemas, açúcar e vinho batidos em banho-maria até espumosos e firmes.",
+    "ambito_profissional": "Sobremesas, gratinados de fruta, molhos",
+    "nivel": 2,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0096",
+    "nome": "Marinada de vinha-d'alhos",
+    "categoria": "Aparelhos salgados",
+    "definicao": "Vinho branco, alho, louro, colorau, sal e pimenta para marinar carne de porco.",
+    "ambito_profissional": "Carne de porco à alentejana, rojões, febras",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0097",
+    "nome": "Escabeche",
+    "categoria": "Molhos",
+    "definicao": "Molho de azeite, vinagre, cebola, alho e louro, cozinhado, para conservar e temperar peixe ou carne.",
+    "ambito_profissional": "Peixe frito ou grelhado de escabeche, coelho",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0098",
+    "nome": "Cebolada",
+    "categoria": "Molhos",
+    "definicao": "Cebola cortada em meias-luas cozinhada lentamente em azeite, com alho e louro, até macia.",
+    "ambito_profissional": "Bifes, fígado, atum, peixe",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0099",
+    "nome": "Molho de natas",
+    "categoria": "Molhos",
+    "definicao": "Natas reduzidas com fundo ou vinho e temperos até napar.",
+    "ambito_profissional": "Carnes, massas, peixe",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0100",
+    "nome": "Molho de caril",
+    "categoria": "Molhos",
+    "definicao": "Base de cebola, especiarias de caril e leite de coco ou natas, cozinhada e ligada.",
+    "ambito_profissional": "Caris de frango, camarão, legumes",
+    "nivel": 2,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0101",
+    "nome": "Molho cocktail",
+    "categoria": "Emulsões frias",
+    "definicao": "Maionese com ketchup, brandy e picante.",
+    "ambito_profissional": "Cocktail de marisco",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0102",
+    "nome": "Molho tártaro",
+    "categoria": "Emulsões frias",
+    "definicao": "Maionese com pickles, alcaparras, cebola e ervas picados.",
+    "ambito_profissional": "Peixe frito e panado",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0103",
+    "nome": "Coulis de frutos",
+    "categoria": "Aparelhos doces",
+    "definicao": "Puré de fruta com açúcar, passado e sem sementes.",
+    "ambito_profissional": "Sobremesas, decoração de pratos",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0104",
+    "nome": "Massa de crepes",
+    "categoria": "Massas batidas",
+    "definicao": "Massa líquida de farinha, ovos e leite, repousada.",
+    "ambito_profissional": "Crepes doces e salgados",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0105",
+    "nome": "Massa de panquecas",
+    "categoria": "Massas batidas",
+    "definicao": "Massa espessa de farinha, ovos, leite e fermento.",
+    "ambito_profissional": "Panquecas, pequenos-almoços",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0106",
+    "nome": "Massa areada",
+    "categoria": "Massas base",
+    "definicao": "Massa de farinha areada com manteiga, açúcar e ovo, estaladiça.",
+    "ambito_profissional": "Bolachas, tarteletes, fundos de tarte",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0107",
+    "nome": "Massa folhada rápida",
+    "categoria": "Massas laminadas",
+    "definicao": "Massa folhada com a manteiga em pedaços na própria massa, com menos dobras.",
+    "ambito_profissional": "Folhados rápidos, pastéis",
+    "nivel": 2,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0108",
+    "nome": "Massa levedada doce",
+    "categoria": "Massas batidas/enriquecidas",
+    "definicao": "Massa com fermento, açúcar, ovos e manteiga (tipo bola de Berlim, pão doce).",
+    "ambito_profissional": "Bolas de Berlim, pão doce, folar",
+    "nivel": 2,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0109",
+    "nome": "Fundo branco de vitela",
+    "categoria": "Fundos",
+    "definicao": "Fundo claro de ossos de vitela e legumes, fervura lenta.",
+    "ambito_profissional": "Veloutés, molhos brancos, sopas",
+    "nivel": 2,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0110",
+    "nome": "Caldo verde (base)",
+    "categoria": "Bases salgadas",
+    "definicao": "Puré de batata e cebola em caldo, onde se junta a couve cortada fina.",
+    "ambito_profissional": "Caldo verde",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0111",
+    "nome": "Creme de ovos",
+    "categoria": "Cremes",
+    "definicao": "Gemas e açúcar em ponto de pérola, cozinhados até cremosos.",
+    "ambito_profissional": "Doçaria conventual, recheios",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0112",
+    "nome": "Doce de ovos",
+    "categoria": "Recheios doces",
+    "definicao": "Calda de açúcar com gemas, cozinhada até espessar (ovos-moles).",
+    "ambito_profissional": "Recheios de doçaria portuguesa",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0113",
+    "nome": "Fios de ovos",
+    "categoria": "Aparelhos doces",
+    "definicao": "Gemas passadas em fio para calda de açúcar em ponto.",
+    "ambito_profissional": "Decoração e doçaria conventual",
+    "nivel": 2,
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "APP-0114",
+    "nome": "Massa de tempura / polme",
+    "categoria": "Massas fritas",
+    "definicao": "Massa líquida fria para envolver e fritar.",
+    "ambito_profissional": "Peixinhos da horta, pataniscas, tempura",
+    "nivel": 1,
+    "fontes": "ECL — revisão 2026"
   }
 ]

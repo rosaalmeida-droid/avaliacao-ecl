@@ -1,3 +1,4 @@
+import { getLibrary } from '../libraryService';
 import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
@@ -714,6 +715,49 @@ function extrairFicha(texto: string): FichaTecnica {
 // Prompt para extração de receita via IA externa
 // Formato exato da ficha de produção ECL
 // ============================================================
+
+// A lista que vai para a IA sai da biblioteca da escola, agrupada por
+// técnica: a IA escolhe do que existe (e vê a técnica de cada subtécnica),
+// e o que se acrescenta à biblioteca passa logo a poder ser avaliado.
+// Antes era uma lista escrita à mão, com só parte do catálogo.
+export function listaCompetenciasParaPrompt(): string {
+  let lib: any = null;
+  try { lib = getLibrary(); } catch { lib = null; }
+  if (!lib?.tecnicas?.length) return 'LISTA DE SUBTÉCNICAS E APARELHOS: (biblioteca ainda a carregar — usa nomes em português)';
+  const subsPorTec = new Map<string, any[]>();
+  for (const s of (lib.subtecnicas || [])) {
+    const l = subsPorTec.get(s.tecnica_id) || []; l.push(s); subsPorTec.set(s.tecnica_id, l);
+  }
+  const porCat = new Map<string, any[]>();
+  for (const t of lib.tecnicas) { const l = porCat.get(t.categoria) || []; l.push(t); porCat.set(t.categoria, l); }
+  const linhas: string[] = [
+    '─────────────────────────────────────────────────',
+    'LISTA DE SUBTÉCNICAS — usa o ID exato; cada uma pertence à TÉCNICA indicada',
+    '─────────────────────────────────────────────────',
+  ];
+  for (const [cat, tecs] of porCat) {
+    linhas.push('', cat.toUpperCase() + ':');
+    for (const t of tecs) {
+      const subs = subsPorTec.get(t.id) || [];
+      if (!subs.length) continue;
+      linhas.push(`  TÉCNICA ${t.nome}:`);
+      for (const s of subs) linhas.push(`    ${s.id} — ${s.nome}`);
+    }
+  }
+  const nivel: Record<number, string> = { 1: 'NÍVEL 1 — Essencial (todos os alunos)', 2: 'NÍVEL 2 — Desenvolvimento (regulares e seletivas)', 3: 'NÍVEL 3 — Especialização (só alunos regulares sem medidas)' };
+  linhas.push('', '─────────────────────────────────────────────────',
+    'LISTA DE APARELHOS — usa ID exacto + nível',
+    '(só listar se o aluno PRODUZ o aparelho nesta receita — cozinha ou pastelaria: bechamel, fundos, massas, cremes, marinadas…)',
+    '─────────────────────────────────────────────────');
+  for (const n of [1, 2, 3]) {
+    const aps = (lib.aparelhos || []).filter((a: any) => (a.nivel || 1) === n);
+    if (!aps.length) continue;
+    linhas.push('', nivel[n] + ':');
+    for (const a of aps) linhas.push(`  ${a.id} — ${a.nome}`);
+  }
+  return linhas.join('\n');
+}
+
 function gerarPrompt(linkReceita: string, ucId?: string, ucNome?: string, modoProf?: boolean): string {
   const ucContexto = ucId
     ? `\nCONTEXTO PEDAGÓGICO: Esta ficha pertence à UC ${ucId} — ${ucNome || ''}.\nAs técnicas, famílias e competências devem ser específicas desta UC.`
@@ -933,225 +977,7 @@ REGRA CRÍTICA: Não confundir os dois.
   - Caramelo seco (APP-0033) = o aparelho resultante usado noutras preparações
   Incluir AMBOS quando aplicável.
 
-─────────────────────────────────────────────────
-LISTA DE SUBTÉCNICAS — usa ID exacto
-─────────────────────────────────────────────────
-
-CORTES E PREPARAÇÕES BASE (COR-030):
-  SUB-COR-030-001 — Juliana
-  SUB-COR-030-002 — Brunoise
-  SUB-COR-030-003 — Mirepoix
-  SUB-COR-030-004 — Paysanne
-  SUB-COR-030-005 — Chiffonade
-  SUB-COR-030-006 — Bâtonnet
-  SUB-COR-030-007 — Jardineira
-  SUB-COR-030-008 — Macedónia
-  SUB-COR-030-009 — Rodelas
-  SUB-COR-030-010 — Meias-luas
-  SUB-COR-030-011 — Gomos
-  SUB-COR-030-012 — Cubos pequenos
-  SUB-COR-030-013 — Cubos médios
-  SUB-COR-030-019 — Concassé de tomate
-  SUB-COR-030-020 — Ciselar cebola
-  SUB-COR-030-021 — Escalopes
-  SUB-COR-030-022 — Medalhões
-  SUB-COR-030-023 — Supremos
-
-COZEDURA HÚMIDA (CHU-041 a 046):
-  SUB-CHU-041-003 — Fervura suave
-  SUB-CHU-041-004 — Fervura controlada
-  SUB-CHU-041-006 — Cozer por absorção
-  SUB-CHU-041-007 — Cozer massa al dente
-  SUB-CHU-041-008 — Cozer arroz solto
-  SUB-CHU-041-009 — Cozer arroz cremoso
-  SUB-CHU-041-010 — Cozer leguminosas após demolha
-  SUB-CHU-041-011 — Cozer tubérculos para puré
-  SUB-CHU-041-013 — Cozer crustáceos
-  SUB-CHU-041-014 — Cozer moluscos
-  SUB-CHU-041-016 — Cozer caldo/fundo
-  SUB-CHU-042-001 — Escaldar
-  SUB-CHU-043-001 — Branquear
-  SUB-CHU-044-001 — Escalfar
-  SUB-CHU-045-001 — Cozer a vapor
-  SUB-CHU-046-001 — Cozer em banho-maria
-
-CALOR SECO — ASSAR E GRELHAR (CSE-047 a 053):
-  SUB-CSE-047-001 — Assar peça bovina
-  SUB-CSE-047-002 — Assar peça suína
-  SUB-CSE-047-003 — Assar ave inteira
-  SUB-CSE-047-004 — Assar peças de ave
-  SUB-CSE-047-005 — Assar borrego/cabrito
-  SUB-CSE-047-006 — Assar peixe inteiro
-  SUB-CSE-047-007 — Assar filetes de peixe
-  SUB-CSE-047-008 — Assar hortícolas
-  SUB-CSE-047-009 — Assar tubérculos
-  SUB-CSE-047-010 — Assar bolo amanteigado
-  SUB-CSE-047-011 — Assar pão-de-ló
-  SUB-CSE-047-012 — Assar massa quebrada
-  SUB-CSE-047-013 — Assar massa folhada
-  SUB-CSE-047-014 — Assar massa choux
-  SUB-CSE-048-001 — Grelhar bife bovino fino
-  SUB-CSE-048-002 — Grelhar bife bovino espesso
-  SUB-CSE-048-006 — Grelhar peito de frango
-  SUB-CSE-048-008 — Grelhar peixe inteiro
-  SUB-CSE-048-009 — Grelhar filete de peixe com pele
-  SUB-CSE-048-011 — Grelhar legumes firmes
-  SUB-CSE-051-001 — Gratinar
-
-GORDURA E CALOR MISTO — FRITURA (GCM-055):
-  SUB-GCM-055-001 — Fritura profunda
-  SUB-GCM-055-002 — Fritura rasa
-  SUB-GCM-055-003 — Dupla fritura
-  SUB-GCM-055-006 — Fritura de peixe panado
-  SUB-GCM-055-007 — Fritura de peixe em polme
-  SUB-GCM-055-009 — Fritura de carne panada
-  SUB-GCM-055-010 — Fritura de legumes
-  SUB-GCM-055-013 — Fritura de pastelaria
-
-MOLHOS, FUNDOS E LIGAÇÕES (MOL-067 a 073):
-  SUB-MOL-067-001 — Roux branco
-  SUB-MOL-067-002 — Roux louro
-  SUB-MOL-067-003 — Roux escuro
-  SUB-MOL-067-005 — Amido disperso a frio
-  SUB-MOL-067-007 — Ligação com gema
-  SUB-MOL-067-008 — Ligação com natas
-  SUB-MOL-067-010 — Ligação por redução
-  SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro
-  SUB-MOL-067-015 — Ligação de velouté
-  SUB-MOL-067-016 — Ligação de béchamel
-  SUB-MOL-068-002 — Maionese
-  SUB-MOL-068-004 — Molho holandês
-  SUB-MOL-068-007 — Ganache
-
-PASTELARIA — BATER E MONTAR (PAP-075 a 076):
-  SUB-PAP-075-001 — Bater ovos inteiros
-  SUB-PAP-075-002 — Bater gemas com açúcar
-  SUB-PAP-075-003 — Montar claras em espuma mole
-  SUB-PAP-075-004 — Montar claras em espuma firme
-  SUB-PAP-075-005 — Montar natas macias
-  SUB-PAP-075-006 — Montar natas firmes
-  SUB-PAP-075-007 — Bater massa de bolo amanteigado
-  SUB-PAP-075-008 — Bater pão-de-ló quente
-  SUB-PAP-075-009 — Bater pão-de-ló frio
-  SUB-PAP-076-001 — Cremagem manteiga-açúcar para bolo
-
-PASTELARIA — MASSAS E LAMINAÇÃO (PAP-078 a 081):
-  SUB-PAP-078-001 — Amassadura curta de massa quebrada
-  SUB-PAP-078-005 — Amassadura direta de pão
-  SUB-PAP-078-008 — Amassadura de brioche
-  SUB-PAP-079-005 — Dobra de massa folhada simples
-  SUB-PAP-079-006 — Dobra de massa folhada dupla
-  SUB-PAP-080-001 — Abrir massa quebrada
-  SUB-PAP-080-004 — Laminar massa folhada clássica
-  SUB-PAP-080-008 — Laminar massa filo
-  SUB-PAP-081-001 — Massa choux clássica
-
-PASTELARIA — CARAMELO E CHOCOLATE (PAP-086 a 087):
-  SUB-PAP-086-001 — Caramelo seco
-  SUB-PAP-086-002 — Caramelo húmido
-  SUB-PAP-086-003 — Caramelo claro
-  SUB-PAP-086-004 — Caramelo âmbar
-  SUB-PAP-086-008 — Caramelização superficial com maçarico
-  SUB-PAP-087-001 — Temperagem por tablage
-  SUB-PAP-087-002 — Temperagem por semeadura
-
-PANIFICAÇÃO — FERMENTAÇÃO E MOLDAGEM (PAP-082 a 083):
-  SUB-PAP-082-001 — Fermentação direta
-  SUB-PAP-082-002 — Fermentação com poolish
-  SUB-PAP-082-005 — Fermentação com levain
-  SUB-PAP-083-001 — Modelar baguete
-  SUB-PAP-083-003 — Modelar boule
-  SUB-PAP-083-006 — Modelar croissant
-
-─────────────────────────────────────────────────
-LISTA DE APARELHOS — usa ID exacto + nível
-(só listar se o aluno PRODUZ o aparelho nesta receita)
-─────────────────────────────────────────────────
-
-NÍVEL 1 — Essencial (todos os alunos):
-  APP-0001 — Aparelho de quiche
-  APP-0002 — Aparelho de crème prise
-  APP-0006 — Merengue francês
-  APP-0009 — Creme pasteleiro
-  APP-0013 — Creme de amêndoa
-  APP-0015 — Ganache clássica
-  APP-0018 — Buttercream americano
-  APP-0021 — Pâte brisée
-  APP-0022 — Pâte sucrée
-  APP-0025 — Massa choux
-  APP-0026 — Roux branco
-  APP-0027 — Roux louro
-  APP-0029 — Fundo branco de aves
-  APP-0032 — Calda de açúcar 1:1
-  APP-0033 — Caramelo seco
-  APP-0034 — Caramelo húmido
-  APP-0035 — Aparelho de flan salgado
-  APP-0041 — Manteiga maître d'hôtel
-  APP-0042 — Manteiga de alho
-  APP-0045 — Puré de batata base
-  APP-0046 — Puré de leguminosas
-  APP-0047 — Molho béchamel
-  APP-0048 — Molho velouté
-  APP-0053 — Maionese
-  APP-0054 — Vinagrete
-  APP-0058 — Aparelho de arroz doce
-  APP-0059 — Aparelho de leite-creme
-  APP-0060 — Aparelho de pudim de ovos
-  APP-0062 — Massa de filhoses
-  APP-0069 — Molho Mornay
-  APP-0077 — Fundo de legumes
-  APP-0079 — Molho de tomate base
-  APP-0080 — Concassé de tomate
-  APP-0082 — Manteiga de ervas
-  APP-0084 — Duxelles seca
-  APP-0086 — Creme de limão
-  APP-0090 — Massa de pizza
-
-NÍVEL 2 — Desenvolvimento (regular + seletivas):
-  APP-0003 — Aparelho de soufflé salgado
-  APP-0004 — Aparelho de soufflé doce
-  APP-0007 — Merengue suíço
-  APP-0010 — Creme diplomata
-  APP-0011 — Creme mousseline
-  APP-0014 — Frangipane
-  APP-0016 — Ganache montada
-  APP-0019 — Buttercream suíço
-  APP-0023 — Pâte sablée
-  APP-0024 — Massa folhada clássica
-  APP-0028 — Roux escuro
-  APP-0030 — Fundo escuro de carne
-  APP-0031 — Fumet de peixe
-  APP-0036 — Aparelho de terrina
-  APP-0037 — Aparelho de recheio de ave
-  APP-0040 — Duxelles de cogumelos
-  APP-0043 — Beurre manié
-  APP-0049 — Molho espanhol
-  APP-0051 — Molho holandês
-  APP-0055 — Caldo de cozedura de polvo
-  APP-0056 — Caldo de marisco
-  APP-0057 — Caldo de carne para cozido
-  APP-0061 — Aparelho de pão de ló
-  APP-0064 — Massa de pastéis de massa tenra
-  APP-0068 — Aparelho de bolo de mel
-  APP-0078 — Jus de rôti
-  APP-0081 — Coulis de tomate
-  APP-0085 — Farce fine de carne
-  APP-0089 — Massa brioche
-  APP-0091 — Massa filo
-
-NÍVEL 3 — Especialização (só alunos regulares sem medidas):
-  APP-0005 — Pâte à bombe
-  APP-0008 — Merengue italiano
-  APP-0012 — Creme chiboust
-  APP-0017 — Ganache de corte
-  APP-0020 — Buttercream italiano
-  APP-0038 — Farce mousseline de peixe
-  APP-0039 — Farce mousseline de ave
-  APP-0050 — Demi-glace
-  APP-0052 — Molho béarnaise
-  APP-0065 — Recheio de ovos-moles
-  APP-0066 — Recheio de amêndoa conventual
-  APP-0076 — Glace de viande
+${listaCompetenciasParaPrompt()}
 
 ═══════════════════════════════════════════════════
 FORMATO DE RESPOSTA (manter exactamente)
