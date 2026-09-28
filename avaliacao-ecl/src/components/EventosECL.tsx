@@ -108,7 +108,13 @@ export function EventosECL({ turmaId, nomeProfessor }: { turmaId?: string; nomeP
   const [verAntigos, setVerAntigos] = useState(false);
   const antigos = useMemo(() => { try { return JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]').length as number; } catch { return 0; } }, []);
   const eventos = useMemo(() => lerEventosLocais<EventoECL>().filter(e => e.versao === 4)
-    .map(e => ({ ...e, fichasIds: e.fichasIds || [], orcamentos: e.orcamentos || [] }))
+    // Um evento gravado por uma versão anterior pode não ter todos os campos
+    // (listas, perguntas, fecho…): completa-se com os de um evento novo.
+    .map(e => { const base = eventoNovo(e.numero || 0, ''); return { ...base, ...e,
+      local: { ...base.local, ...(e.local || {}) }, fecho: e.fecho || {}, perguntas: e.perguntas || {}, tarefas: e.tarefas || {},
+      alteracoes: e.alteracoes || [], momentos: e.momentos || [], turmasIds: e.turmasIds || [], outrasAreas: e.outrasAreas || [],
+      estilos: e.estilos || [], publico: e.publico || [], necessidadesQuais: e.necessidadesQuais || [],
+      fichasIds: e.fichasIds || [], orcamentos: e.orcamentos || [] }; })
     .sort((a, b) => (a.data || '9999').localeCompare(b.data || '9999')), [versao]);
 
   useEffect(() => { sincronizarEventos().then(ok => { if (ok) setVersao(v => v + 1); }); }, []);
@@ -1045,7 +1051,7 @@ function Fecho({ e, mudar }: { e: EventoECL; mudar: (x: Partial<EventoECL>) => v
       + `<p>Custo previsto: ${e.custoPrevisto || '—'} € · Valor proposto: ${e.precoProposto || '—'} €</p>`
       + `<h2>Fecho</h2><p>Correu conforme planeado: ${f.conforme || '—'} · Faltas/quebras: ${f.faltas || '—'} · Desperdício relevante: ${f.desperdicio || '—'}</p>`
       + `<p>Feedback do cliente: ${f.feedback || '—'}</p><p>Ocorrências: ${f.ocorrencias || '—'}</p>`
-      + (e.alteracoes.length ? `<h2>Alterações</h2><ul>${e.alteracoes.map(a => `<li>${a.oQue} — ${a.pedidoPor} — ${a.impacto}</li>`).join('')}</ul>` : '')
+      + ((e.alteracoes || []).length ? `<h2>Alterações</h2><ul>${(e.alteracoes || []).map(a => `<li>${a.oQue} — ${a.pedidoPor} — ${a.impacto}</li>`).join('')}</ul>` : '')
       + `<h2>Tarefas</h2><table>${linhas}</table></body></html>`);
     w.document.close(); w.print();
   }
@@ -1103,11 +1109,13 @@ function FolhaOrcamento({ e, o, custo, mudarOrc }: { e: EventoECL; o: OrcamentoE
     const fichas = getFichasProducao().filter(f => o.fichasIds.includes(f.id));
     const linhasMenu = fichas.map(f => {
       const c = custoDaFicha(f, pessoas).total;
-      return `<tr><td>${f.nomePrato}</td><td class="n">${o.semCustoPorPrato ? '' : euros(c)}</td></tr>`;
+      return `<tr><td>${f.nomePrato}</td><td class="n">${o.semCustoPorPrato || !c ? '' : euros(c)}</td></tr>`;
     }).join('');
     const linhasExtras = extras.filter(x => valorExtra(x, pessoas) > 0)
       .map(x => `<tr><td>${x.nome}${x.modo === 'pessoa' ? ` (${x.valor} €/pessoa)` : ''}</td><td class="n">${euros(valorExtra(x, pessoas))}</td></tr>`).join('');
-    const valorFinal = valorPessoa ? valorPessoa : porPessoa;
+    // Sem valor da Direção, a folha não pode mostrar o custo como se fosse o
+    // preço ao cliente: mostra o custo como custo e diz que o valor está por definir.
+    const valorFinal = valorPessoa;
     w.document.write(`<html><head><title>Orçamento — ${e.nome}</title><style>
       body{font-family:Arial,sans-serif;padding:32px;color:#1a1714;max-width:760px;margin:auto}
       header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #7B2233;padding-bottom:14px;margin-bottom:18px}
@@ -1122,7 +1130,9 @@ function FolhaOrcamento({ e, o, custo, mudarOrc }: { e: EventoECL; o: OrcamentoE
       ${o.semCustoPorPrato ? '' : `<h2>Custos</h2><table>
         <tr><td>Matérias-primas (requisição)</td><td class="n">${euros(custo)}</td></tr>${linhasExtras}
         <tr class="tot"><td>Custo total</td><td class="n">${euros(total)}</td></tr></table>`}
-      <div class="dest"><b>Valor por pessoa: ${euros(valorFinal)}</b> · Total para ${pessoas} pessoas: <b>${euros(valorFinal * pessoas)}</b></div>
+      <div class="dest">${valorFinal
+        ? `<b>Valor por pessoa: ${euros(valorFinal)}</b> · Total para ${pessoas} pessoas: <b>${euros(valorFinal * pessoas)}</b>`
+        : `Custo por pessoa: <b>${euros(porPessoa)}</b> · <i>valor a propor ainda por definir pela Direção</i>`}</div>
       <div class="pe">Proposta válida por 15 dias. Escola de Comércio de Lisboa.</div>
       </body></html>`);
     w.document.close(); setTimeout(() => w.print(), 400);

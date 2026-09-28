@@ -275,7 +275,13 @@ export function tarefasDoEvento(e: EventoECL): Tarefa[] {
   const t: Tarefa[] = [];
   const add = (x: Tarefa) => t.push(x);
   const fora = eFora(e);
-  const primeira = [...e.momentos].sort((a, b) => a.hora.localeCompare(b.hora))[0]?.hora || e.horaInicio || '';
+  // A hora a que tudo tem de estar pronto: a chegada dos convidados (início
+  // do evento) ou o primeiro serviço, a que vier primeiro. Antes contava só
+  // o primeiro serviço: num almoço às 13:00 com o evento a começar às 12:00,
+  // a montagem ficava marcada para a hora a que os convidados chegavam.
+  const primeira = [[...e.momentos].sort((a, b) => a.hora.localeCompare(b.hora))[0]?.hora, e.horaInicio]
+    .filter((h): h is string => !!h && /^\d{1,2}:\d{2}/.test(h))
+    .sort((a, b) => a.padStart(5, '0').localeCompare(b.padStart(5, '0')))[0] || '';
   const menos = (h: string, min: number) => {
     const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); if (!m) return '';
     const x = Math.max(0, Number(m[1]) * 60 + Number(m[2]) - min);
@@ -301,8 +307,10 @@ export function tarefasDoEvento(e: EventoECL): Tarefa[] {
 
   // Material — só o que este evento usa
   const M = (id: string, texto: string) => add({ id: 'mat_' + id, fase: 'Material', d: -1, quem: 'Sala/Logística', texto });
-  if (temCafe(e)) { M('cafe_maquina', 'Máquina de café'); M('cafe', 'Café, chá e leite'); M('chavenas', 'Chávenas e pires'); M('acucar', 'Açúcar, adoçante e mexedores'); }
-  if (temAlcool(e)) { M('copos_vinho', 'Copos de vinho / flutes'); M('saca_rolhas', 'Saca-rolhas'); M('gelo', 'Gelo e frapés'); }
+  // O cliente disse que não quer (pergunta respondida «não» ou «não se aplica»): não entra.
+  const disseQueNao = (id: string) => { const r = e.perguntas?.[id]; return !!r && (!!r.naoAplica || /^\s*n[ãa]o\b/i.test(r.resposta || '')); };
+  if (temCafe(e) && !disseQueNao('cafe')) { M('cafe_maquina', 'Máquina de café'); M('cafe', 'Café, chá e leite'); M('chavenas', 'Chávenas e pires'); M('acucar', 'Açúcar, adoçante e mexedores'); }
+  if (temAlcool(e) && !disseQueNao('alcool')) { M('copos_vinho', 'Copos de vinho / flutes'); M('saca_rolhas', 'Saca-rolhas'); M('gelo', 'Gelo e frapés'); }
   M('agua_copos', 'Copos de água e jarros');
   M('guardanapos', 'Guardanapos');
   if (e.servico === 'buffet' || e.servico === 'misto') { M('toalhas_buffet', 'Toalhas e saias para o buffet'); M('travessas', 'Travessas, pinças e colheres de serviço'); M('rechauds', 'Réchauds (se houver quente)'); }
