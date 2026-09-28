@@ -272,6 +272,7 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
           const temAula = !!planosPorData[isoDate];
           const eHoje = isHoje(isoDate);
           const aulas = planosPorData[isoDate] || [];
+          const temEvento = aulas.some((p: any) => p.tipoEvento);
 
           return (
             <div key={dia}
@@ -280,12 +281,12 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
                 position:'relative', aspectRatio:'1', display:'flex', flexDirection:'column',
                 alignItems:'center', justifyContent:'center', borderRadius:12,
                 cursor: temAula ? 'pointer' : 'default',
-                background: eHoje ? T.copper : temAula ? T.sageP : 'transparent',
-                border: eHoje ? `2px solid ${T.copper}` : temAula ? `1.5px solid ${T.sage}40` : 'none',
+                background: eHoje ? T.copper : temEvento ? '#6B3FA0' : temAula ? T.sageP : 'transparent',
+                border: eHoje ? `2px solid ${T.copper}` : temEvento ? '2px solid #6B3FA0' : temAula ? `1.5px solid ${T.sage}40` : 'none',
                 transition:'all 0.15s',
               }}>
               <span style={{ fontSize:15, fontWeight: eHoje||temAula ? 700 : 400,
-                color: eHoje ? '#fff' : temAula ? T.sage : 'rgba(26,23,20,0.5)' }}>
+                color: eHoje || temEvento ? '#fff' : temAula ? T.sage : 'rgba(26,23,20,0.5)' }}>
                 {dia}
               </span>
               {temAula && (
@@ -307,6 +308,10 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
           <span style={{ width:10, height:10, borderRadius:'50%', background:T.sage, display:'inline-block' }}/>
           Aula
         </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'rgba(26,23,20,0.5)' }}>
+          <span style={{ width:10, height:10, borderRadius:'50%', background:'#6B3FA0', display:'inline-block' }}/>
+          Evento — autoavalia-te
+        </div>
       </div>
     </div>
   );
@@ -324,14 +329,17 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
   const futuro = isFuturo(plano.data);
   const dias = diasParaData(plano.data);
   const d = parseDataSegura(plano.data) || new Date();
+  // Evento ou concurso: roxo e bem destacado — o aluno também se autoavalia.
+  const evento = !!(plano as any).tipoEvento;
+  const ROXO = '#6B3FA0';
 
   // Card de aula passada — compacto
   if (!hoje && !futuro) {
     return (
       <div onClick={onAbrir} style={{
         display:'flex', alignItems:'center', gap:12, padding:'12px 14px',
-        borderRadius:14, background:'#fff',
-        border:'1px solid rgba(26,23,20,0.08)',
+        borderRadius:14, background: evento ? '#F3ECFA' : '#fff',
+        border: evento ? `2px solid ${ROXO}` : '1px solid rgba(26,23,20,0.08)',
         cursor:'pointer', marginBottom:8,
       }}>
         <div style={{ background:'rgba(26,23,20,0.06)', borderRadius:10,
@@ -353,14 +361,16 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
             <div style={{ fontSize:12.5, color:T.copper, fontWeight:700, marginTop:2 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
           )}
         </div>
-        <ChipEstado texto="Passada" cor="rgba(26,23,20,0.4)" bg="rgba(26,23,20,0.06)" />
+        {evento
+          ? <ChipEstado texto="🏅 Evento · autoavalia-te" cor="#fff" bg={ROXO} />
+          : <ChipEstado texto="Passada" cor="rgba(26,23,20,0.4)" bg="rgba(26,23,20,0.06)" />}
         <span style={{ fontSize:18, color:'rgba(26,23,20,0.2)', flexShrink:0 }}>›</span>
       </div>
     );
   }
 
   // Card de aula de hoje ou futura — grande e colorido
-  const corFundo = hoje ? T.copper : '#2563eb';
+  const corFundo = evento ? '#6B3FA0' : hoje ? T.copper : '#2563eb';
   const diasLabel = dias === 1 ? 'AMANHÃ' : dias <= 7 ? `em ${dias} dias` : '';
 
   return (
@@ -371,7 +381,13 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
       {/* Faixa colorida */}
       <div style={{ background:`linear-gradient(135deg, ${corFundo}, ${corFundo}dd)`,
         padding:'16px 18px' }}>
-        {hoje && (
+        {evento && (
+          <div style={{ fontSize:12.5, fontWeight:800, color:'#fff', textTransform:'uppercase',
+            letterSpacing:'0.1em', marginBottom:4 }}>
+            🏅 {(plano as any).tipoEvento === 'concurso' ? 'Concurso' : 'Evento'} — também te autoavalias
+          </div>
+        )}
+        {hoje && !evento && (
           <div style={{ fontSize:12.5, fontWeight:800, color:'rgba(255,255,255,0.65)',
             textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:4 }}>
             🔥 Aula de hoje

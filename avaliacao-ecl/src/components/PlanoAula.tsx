@@ -206,6 +206,8 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
     // Dias em que a turma tem cozinha — os únicos em que faz sentido
     // marcar uma aula prática.
     const diaDeCozinha = turmaId ? temCozinha(turmaId, chave) : false;
+    // Evento ou concurso neste dia: cor própria (roxo), para não se confundir com as aulas.
+    const temEvento = planosNesteDia.some((p: any) => p.tipoEvento);
     return (
       <button onClick={() => setDiaSelecionado(selecionado ? null : data)}
         title={diaDeCozinha ? 'Dia de cozinha' : undefined}
@@ -215,6 +217,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
             : diaDeCozinha ? '1.5px solid var(--sage)'
             : '1px solid var(--border)',
           background: selecionado ? 'var(--copper)'
+            : temEvento ? '#EDE3F6'
             : (planosNesteDia.length > 0 ? 'var(--copper-pale)'
             : diaDeCozinha ? 'rgba(90,122,78,0.08)' : '#fff'),
           color: selecionado ? 'white' : (ehHoje ? 'var(--copper)' : 'var(--charcoal)'),
@@ -233,8 +236,9 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
         })()}
         {planosNesteDia.length > 0 && (
           <div style={{ display: 'flex', gap: 1, marginTop: 1 }}>
-            {planosNesteDia.slice(0, 3).map((_, idx) => (
-              <div key={idx} style={{ width: 3, height: 3, borderRadius: '50%', background: selecionado ? 'white' : 'var(--copper)' }} />
+            {planosNesteDia.slice(0, 3).map((pl: any, idx) => (
+              <div key={idx} style={{ width: pl.tipoEvento ? 5 : 3, height: pl.tipoEvento ? 5 : 3, borderRadius: '50%',
+                background: selecionado ? 'white' : pl.tipoEvento ? '#6B3FA0' : 'var(--copper)' }} />
             ))}
           </div>
         )}
@@ -446,7 +450,8 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                         {planosSelecionadosCal.has(p.id) && '✓'}
                       </div>
                     )}
-                    <div style={{ background: 'var(--copper)', borderRadius: 8, padding: '6px 10px', textAlign: 'center', minWidth: 50 }}>
+                    <div style={{ background: (p as any).tipoEvento ? '#6B3FA0' : 'var(--copper)', borderRadius: 8, padding: '6px 10px', textAlign: 'center', minWidth: 50 }}>
+                      {(p as any).tipoEvento && <div style={{ fontSize: 14 }}>🏅</div>}
                       <div style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>{horaI || '--:--'}</div>
                     </div>
                     <div style={{ flex: 1 }}>
@@ -808,7 +813,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                   {planosSelecionadosIds.has(p.id) && '✓'}
                 </div>
               )}
-              <div style={{ background:'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
+              <div style={{ background:(p as any).tipoEvento ? '#6B3FA0' : 'var(--copper)', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:48 }}>
                 <div style={{ fontFamily:'Fraunces,serif', fontSize:22, fontWeight:700, color:'white', lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
                 <div style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.85)', textTransform:'uppercase' }}>{d.toLocaleDateString('pt-PT',{month:'short'})}</div>
                 <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)' }}>{d.getFullYear()}</div>
