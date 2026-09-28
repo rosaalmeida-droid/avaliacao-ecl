@@ -493,8 +493,8 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
   { titulo: '5. A minha nota', texto: [
     'Contam as notas que o professor dá em todas as aulas da UC.',
     'Uma falta conta zero nessa aula. Faltar a mais de 10% das horas da UC leva a recuperação.',
-    'Chegar a horas, não faltar e ter a farda completa dá até +2 valores.',
-    'Participar em eventos e concursos dá mais: até +2.',
+    'Sem farda completa não fazes a prática a contar para a nota: essa aula fica com 0.',
+    'Participar em eventos e concursos dá até +2 (0,5 por evento).',
   ] },
   { titulo: '6. Eventos e concursos', texto: [
     'Vê em «Atividades». Podes inscrever-te; o professor aceita.',

@@ -15,7 +15,6 @@
 
 import React, { useState } from 'react';
 import { PESOS_AULA } from '../types';
-import { DESCONTO_POR_ATRASO, DESCONTO_POR_FALTA, DESCONTO_POR_FARDA_INCOMPLETA } from '../backend';
 
 const C = {
   bordeaux: '#7B2233', bordeauxSuave: '#F6ECEE',
@@ -148,8 +147,8 @@ const SECCOES: Seccao[] = [
         </P>
         <P>
           A nota da UC junta as tuas validações de todas as aulas dessa UC,
-          com os mesmos pesos, e depois soma os dois bónus: o de
-          assiduidade e o de eventos.
+          com os mesmos pesos, e depois soma o bónus dos eventos e concursos.
+          Não há bónus de assiduidade: quem falta já é penalizado (a aula conta 0).
         </P>
 
         <H>As competências obrigatórias</H>
@@ -159,8 +158,8 @@ const SECCOES: Seccao[] = [
         </P>
         <ul style={{ lineHeight: 1.75, fontSize: 14.5, paddingLeft: 20 }}>
           <li><b>HACCP e registos</b> — o KitchenFlow preenchido. É esta que entra na nota da aula.</li>
-          <li><b>Higiene pessoal</b> — farda completa, sem adornos, mãos lavadas. Verificada à entrada; conta no bónus de assiduidade da UC.</li>
-          <li><b>Assiduidade e pontualidade</b> — contam também no bónus de assiduidade.</li>
+          <li><b>Higiene pessoal</b> — farda completa, sem adornos, mãos lavadas. Verificada à entrada. <b>Sem farda completa, a prática avalia-se na mesma (fica no percurso do aluno), mas a nota dessa aula é 0.</b> Não conta como falta.</li>
+          <li><b>Assiduidade e pontualidade</b> — contam no Comprometido da pauta. A aula faltada conta 0.</li>
         </ul>
         <P>
           Se o aluno não tiver registos no KitchenFlow, o HACCP que ele se
@@ -184,28 +183,19 @@ const SECCOES: Seccao[] = [
   // ── 2 ────────────────────────────────────────────────────
   {
     id: 'bonus',
-    titulo: 'Os dois bónus da nota da UC',
-    resumo: 'Assiduidade até +2 · eventos e concursos até +2. Tetos: 17 sem participar, 18 só com eventos, 20 com concurso.',
+    titulo: 'O bónus dos eventos e os tetos',
+    resumo: 'Eventos e concursos até +2. Tetos: 17 sem participar, 18 só com eventos, 20 com concurso. Sem bónus de assiduidade.',
     conteudo: (
       <>
-        <H>1. Assiduidade, pontualidade e farda — até +2</H>
+        <H>Sem bónus de assiduidade</H>
         <P>
-          Cada aluno começa com os 2 valores e perde uma parte por cada falha,
-          ao longo de todas as aulas da UC:
-        </P>
-        <Tabela
-          cabecalho={['', 'Parte do bónus', 'Desconto por falha']}
-          linhas={[
-            ['Pontualidade', '0,5', `−${String(DESCONTO_POR_ATRASO).replace('.', ',')} por atraso`],
-            ['Assiduidade', '0,5', `−${String(DESCONTO_POR_FALTA).replace('.', ',')} por falta`],
-            ['Farda', '1,0', `−${String(DESCONTO_POR_FARDA_INCOMPLETA).replace('.', ',')} por aula com farda incompleta`],
-          ]}
-        />
-        <P>
-          É por isso que a farda não entra na nota da aula: conta aqui.
+          Quem cumpre não ganha pontos extra, e quem falha é penalizado uma só vez,
+          sem contar a mesma coisa duas vezes: a aula faltada conta 0, os atrasos e
+          as faltas pesam no Comprometido da pauta, e com 10% de faltas o aluno vai
+          para recuperação. Sem farda completa, a aula conta 0 (mas não é falta).
         </P>
 
-        <H>2. Eventos e concursos — até +2</H>
+        <H>Eventos e concursos — até +2</H>
         <P>
           Não é uma componente ponderada: é um acréscimo à nota. O evento ou
           concurso avalia-se num <b>plano próprio</b>, criado em <b>Avaliar evento
@@ -236,8 +226,8 @@ const SECCOES: Seccao[] = [
         </P>
         <H>A ordem das contas</H>
         <P>
-          Nota das competências → + bónus de assiduidade → + bónus de eventos
-          e concursos (até +2) → teto (17, 18 ou 20).
+          Nota das competências (aulas faltadas ou sem farda a 0) → + bónus de
+          eventos e concursos (até +2) → teto (17, 18 ou 20).
         </P>
         <Destaque cor="verde">
           <b>Exemplos.</b> 17 + 1 concurso + 3 eventos = <b>19</b>. 17 + 3 eventos = 18,5 → teto <b>18</b>.
@@ -662,7 +652,7 @@ const SECCOES: Seccao[] = [
         />
         <P>
           Só os participantes se autoavaliam e só eles contam para o bónus
-          (ver «Os dois bónus da nota da UC»).
+          (ver «O bónus dos eventos e os tetos»).
         </P>
       </>
     ),

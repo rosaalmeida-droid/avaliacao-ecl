@@ -207,7 +207,8 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                 professor em todas as aulas da UC; uma falta conta zero (ou a nota da recuperação).
               </p>
               <p style={{ margin: '0 0 8px', lineHeight: 1.6 }}>
-                Depois somam-se dois bónus: <strong>assiduidade, pontualidade e farda</strong> (até +2) e
+                Não há bónus de assiduidade (a falta já conta 0, e a assiduidade pesa no Comprometido).
+                Sem farda completa, a aula conta 0. Depois soma-se o bónus de
                 <strong> eventos e concursos</strong> (evento +{String(BONUS_EVENTOS.porEvento).replace('.', ',')},
                 concurso +{String(BONUS_EVENTOS.porConcurso).replace('.', ',')}, até +{BONUS_EVENTOS.maximo}).
                 Tetos: {BONUS_EVENTOS.tetoSemParticipacao} sem participar, {BONUS_EVENTOS.tetoSoEventos} só com

@@ -6143,8 +6143,12 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
     return { base, bonusAssiduidade: 0, bonusParticipacao: 0, participacoes, limitadaPorTeto: false, final: null };
   }
   const B = BONUS_EVENTOS;
-  const bonusAssiduidade = calcularBonusAssiduidadeUC(alunoId, turmaId, ucId)?.total || 0;
-  let nota = base + bonusAssiduidade;
+  // Sem bónus de assiduidade (decisão da Rosa, set/2026): quem falta já é
+  // penalizado — a aula conta 0, perde no Comprometido da pauta e, com 10%,
+  // vai para recuperação. Dar +2 a quem cumpre subia a turma inteira e
+  // contava a mesma coisa duas vezes. A farda conta na aula (sem farda, 0).
+  const bonusAssiduidade = 0;
+  let nota = base;
 
   // Eventos contam para todos (ajudam quem tem negativa a subir); concursos
   // só com 10 ou mais. Cada um só conta se a avaliação do evento o permitir.
@@ -6167,7 +6171,21 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
 export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
   const regs = getHistoricoAvaliacoes().filter(r =>
     r.alunoId === alunoId && r.turmaId === turmaId && r.ucId === ucId);
-  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regs), regs, alunoId, turmaId, ucId), alunoId, turmaId, ucId);
+  // Aulas sem farda: o que o aluno fez fica no percurso (os registos), mas a
+  // nota dessa aula é 0 — entra como uma aula a zero, sem ser falta.
+  const semFarda = planosSemFarda(alunoId);
+  const regsNota = regs.filter(r => !semFarda.has(r.planoAulaId || ''));
+  const zeros = new Set(regs.filter(r => semFarda.has(r.planoAulaId || '')).map(r => r.planoAulaId)).size;
+  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regsNota), regsNota, alunoId, turmaId, ucId, zeros), alunoId, turmaId, ucId);
+}
+
+/**
+ * Aulas em que o aluno não tinha a farda completa (validação com
+ * «semFarda»): a prática avalia-se e fica no percurso, mas a nota da aula é 0.
+ */
+export function planosSemFarda(alunoId: string): Set<string> {
+  return new Set(getValidacoes().filter((v: any) => v.alunoId === alunoId && v.semFarda)
+    .map(v => v.planoAulaId || ''));
 }
 
 /** Nota da recuperação concluída desta UC, se houver. */
@@ -6183,14 +6201,16 @@ export function notaRecuperacaoUC(alunoId: string, ucId: string): number | null 
  * da recuperação, quando foi feita. Cada aula pesa o mesmo: a média das
  * aulas avaliadas entra com as faltas.
  */
-function baseComFaltas(base: number | null, regs: RegistoAvaliacao[], alunoId: string, turmaId: string, ucId: string): number | null {
+function baseComFaltas(base: number | null, regs: RegistoAvaliacao[], alunoId: string, turmaId: string, ucId: string,
+  aulasAZero = 0): number | null {
   const faltas = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
-  if (!faltas.length) return base;
+  if (!faltas.length && !aulasAZero) return base;
   const idsFaltas = new Set(faltas.map(p => p.id));
   const avaliadas = new Set(regs.filter(r => r.planoAulaId && !idsFaltas.has(r.planoAulaId)).map(r => r.planoAulaId)).size;
   const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
+  // As aulas sem farda contam 0 (não são faltas, não têm recuperação).
   const soma = (base ?? 0) * avaliadas + recup * faltas.length;
-  return Math.round((soma / (avaliadas + faltas.length)) * 100) / 100;
+  return Math.round((soma / (avaliadas + faltas.length + aulasAZero)) * 100) / 100;
 }
 
 // ============================================================

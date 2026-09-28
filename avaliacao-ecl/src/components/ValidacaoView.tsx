@@ -253,6 +253,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // O aluno declarou a farda completa e não era verdade: a farda fica a 1 e
   // a atitude «Responsabilidade pelas suas ações» (ATI-001) também.
   const [faltouVerdade, setFaltouVerdade] = useState(false);
+  // Sem farda completa (declarado à entrada, ou «Não era verdade»): avalia-se
+  // tudo e fica no percurso, mas a nota desta aula é 0. O professor pode desfazer.
+  const fardaDaEntrada = (selecao.autoavaliacoes || []).find((a: any) => a.competenciaId === 'OBR_01' && a.daEntrada);
+  const [semFarda, setSemFarda] = useState<boolean>(() => validacaoExistente
+    ? !!validacaoExistente.semFarda
+    : !!fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5);
   const [guardado, setGuardado] = useState(false);
   // Triagem do CL e do CR: vem a resposta do aluno; o professor confirma ou muda.
   const [triagem, setTriagem] = useState<Triagem5C | null>(() => {
@@ -368,7 +374,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       ? paraNota.reduce((s, n) => s + n.notaFinal, 0) / paraNota.length
       : 0;
     (validacao as any).notaMedia = Math.round(notaMedia * 10) / 10;
-    (validacao as any).notaMedia20 = nota20; // usa pesos por categoria, não média simples
+    (validacao as any).notaMedia20 = semFarda ? 0 : nota20; // usa pesos por categoria, não média simples
+    // Sem farda: as notas ficam (percurso), a aula conta 0 na UC e na pauta.
+    if (semFarda) { (validacao as any).semFarda = true; (validacao as any).notaSemFarda20 = nota20; }
     // Guardar a decomposição por categoria para o professor perceber sempre
     // como a nota foi calculada (antes ficava só o número, sem explicação).
     (validacao as any).porCategoria = porCategoria;
@@ -470,6 +478,26 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         </div>
       </div>
 
+      {/* Sem farda completa: avalia-se tudo (fica no percurso), a aula conta 0. */}
+      {(semFarda || fardaDaEntrada) && tipoPlanAula !== 'teorico' && (
+        <div style={{ marginBottom: 12, padding: '12px 14px', borderRadius: 12,
+          background: semFarda ? '#fdf0ef' : '#f5f7f2', border: `1.5px solid ${semFarda ? '#c0392b' : 'rgba(26,23,20,0.12)'}` }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: semFarda ? '#8e2418' : 'rgba(26,23,20,0.7)' }}>
+            {semFarda ? 'Sem farda completa: a nota desta aula é 0' : 'Farda completa'}
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.5, color: 'rgba(26,23,20,0.7)', marginTop: 4 }}>
+            {semFarda
+              ? 'Avalia normalmente: as técnicas e as atitudes ficam no percurso do aluno. Não conta como falta.'
+              : 'O aluno declarou a farda completa à entrada.'}
+          </div>
+          <button onClick={() => setSemFarda(!semFarda)} style={{ marginTop: 8, fontSize: 13, fontWeight: 700,
+            padding: '5px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+            border: '1px solid rgba(26,23,20,0.25)', background: '#fff', color: 'rgba(26,23,20,0.75)' }}>
+            {semFarda ? 'Desfazer: tinha a farda completa' : 'Não tinha a farda completa'}
+          </button>
+        </div>
+      )}
+
       {autoavaliacoes.length === 0 && (
         <Card>
           <div className="muted">Sem competências para validar nesta autoavaliação.</div>
@@ -516,7 +544,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                   </span>
                   <button onClick={() => {
                       const v = !faltouVerdade; setFaltouVerdade(v);
-                      if (v) setNotasProf(p => ({ ...p, OBR_01: 1 }));
+                      if (v) { setNotasProf(p => ({ ...p, OBR_01: 1 })); setSemFarda(true); }
                     }}
                     style={{ fontSize:12.5, fontWeight:700, padding:'3px 9px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
                       border:'1px solid #7B2233', background: faltouVerdade ? '#7B2233' : '#fff', color: faltouVerdade ? '#fff' : '#7B2233' }}>

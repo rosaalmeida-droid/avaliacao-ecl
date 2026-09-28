@@ -94,6 +94,8 @@ const categoria = (id: string) => categoriaDaNota(id);
 export function notaDoPlano(alunoId: string, planoId: string, tipo: string): number | null {
   const v: any = getValidacoes().find((x: any) => x.planoAulaId === planoId && x.alunoId === alunoId);
   if (!v) return null;
+  // Sem farda completa: a prática fica no percurso, mas a aula conta 0.
+  if (v.semFarda) return 0;
   if (typeof v.notaMedia20 === 'number') return v.notaMedia20;
   const notas = (v.notas || []).map((n: any) => ({ categoria: categoria(n.competenciaId) as any, nota: Number(n.nota) || 0 }));
   return notas.length ? calcularNotaPlano(notas, (tipo || 'pratico') as any).nota20 : null;
