@@ -107,8 +107,10 @@ export function NavegacaoAluno({ ativo, onNavegar }: {
   onNavegar: (s: SeparadorAluno) => void;
 }) {
   return (
+    // Fixa ao fundo do ecrã: «sticky» deixava-a a meio do ecrã quando a
+    // página era curta. O conteúdo tem espaço em baixo para ela (AlunoView).
     <nav style={{
-      position: 'sticky', bottom: 0, background: C.branco,
+      position: 'fixed', bottom: 0, left: 0, right: 0, background: C.branco,
       borderTop: `1px solid ${C.border}`, display: 'flex',
       paddingBottom: 'env(safe-area-inset-bottom, 0)', zIndex: 50,
     }}>

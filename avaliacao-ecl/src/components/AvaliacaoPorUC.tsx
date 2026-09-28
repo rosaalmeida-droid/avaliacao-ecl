@@ -331,15 +331,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
           return (
             <div key={aluno.id} className="aluno-card" data-aluno-id={aluno.id}
               style={{ marginBottom: 8, borderRadius: 12, overflow: 'hidden', border: `1px solid ${T.border}` }}>
-              {/* Cabeçalho do aluno */}
-              <button className="no-print" onClick={(e) => { e.stopPropagation(); imprimirAluno(aluno.id); }}
-                title="Imprimir situação deste aluno" style={{
-                  float: 'right', margin: '10px 10px 0 0', background: 'transparent', border: 'none',
-                  cursor: 'pointer', fontSize: 16, opacity: 0.5 }}>
-                🖨️
-              </button>
+              {/* Cabeçalho do aluno. A impressora fica na mesma linha (antes, em
+                  «float», criava uma faixa vazia por cima de cada aluno). */}
+              <div style={{ display: 'flex', alignItems: 'stretch', background: aberto ? 'rgba(181,101,29,0.06)' : '#fff' }}>
               <button onClick={() => setVistaAluno(aberto ? null : aluno.id)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
                   background: aberto ? 'rgba(181,101,29,0.06)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: T.copper, color: '#fff',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
@@ -372,6 +368,13 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                 )}
                 <span style={{ fontSize: 14, color: 'rgba(26,23,20,0.3)' }}>{aberto ? '▲' : '▼'}</span>
               </button>
+              <button className="no-print" onClick={(e) => { e.stopPropagation(); imprimirAluno(aluno.id); }}
+                title="Imprimir situação deste aluno" style={{
+                  background: 'transparent', border: 'none', borderLeft: `1px solid ${T.border}`,
+                  padding: '0 14px', cursor: 'pointer', fontSize: 16, opacity: 0.55 }}>
+                🖨️
+              </button>
+              </div>
 
               {/* Detalhe por competência — abre em modal quase-fullscreen,
                   em vez de empurrar o resto da lista de alunos para baixo. */}

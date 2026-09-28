@@ -39,7 +39,16 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
                 {a.numero}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 13 }}>{a.nome || `Aluno ${a.numero}`}</div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>
+                  {a.nome || `Aluno ${a.numero}`}
+                  {/* Quem tem medidas vê-se logo na lista, sem abrir o aluno. */}
+                  {(a.nivelMedidas || 1) > 1 && (
+                    <span style={{ marginLeft: 8, fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+                      background: a.nivelMedidas === 3 ? '#fdecea' : '#fdf0e6', color: a.nivelMedidas === 3 ? '#a93226' : '#b5651d' }}>
+                      {a.nivelMedidas === 3 ? 'Adicionais' : 'Seletivas'}
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>{consolidadas}/{total} competências consolidadas</div>
               </div>
               <span style={{ fontSize: 13, color: 'var(--copper)' }}>{aberto ? '▲' : '▼'}</span>

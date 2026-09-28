@@ -894,7 +894,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     }));
 
   return (
-    <div style={{ minHeight:'100vh', background:T.cream }}>
+    <div style={{ minHeight:'100vh', background:T.cream, paddingBottom:72 }}>
 
       {/* Plano de aula aberto — mostra-se num modal quase-fullscreen por
           cima do ecrã do aluno, em vez de o substituir por completo. */}
@@ -936,9 +936,11 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       )}
 
       {/* ── CABEÇALHO ─────────────────────────────────────── */}
-      <div style={{ background:'#6d28d9', padding:'20px 20px 0' }}>
+      {/* A margem de baixo «fugia» da faixa roxa (sem padding em baixo) e a
+          linha «3º ano · Nº 2» ficava cortada na orla. */}
+      <div style={{ background:'#6d28d9', padding:'18px 20px 18px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)', fontWeight:600,
                 textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
