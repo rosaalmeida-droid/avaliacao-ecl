@@ -1,7 +1,8 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaCODaAula } from '../backend';
+import { BANCO_CO, LADOS_CO } from '../triagem5c';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
@@ -315,14 +316,41 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
 // ════════════════════════════════════════════════════════════════
 /** O aluno responde sempre a 3 perguntas curtas para os 5 C's, além das
  *  competências escolhidas. Sem este aviso o professor via mais
- *  competências do que as que escolheu e ficava sem perceber porquê. */
-function Aviso5C() {
+ *  competências do que as que escolheu e ficava sem perceber porquê.
+ *  Mostra também a pergunta do Consciente desta aula, que o professor
+ *  pode trocar (por exemplo, depois de um conflito que quer trabalhar). */
+function Aviso5C({ plano, aoMudar }: { plano: PlanoAula; aoMudar: (p: PlanoAula) => void }) {
+  const coId = perguntaCODaAula(plano.id);
+  const escolhida = !!(plano as any).perguntaCO;
+  const mudar = (id: string) => {
+    const p = { ...plano, perguntaCO: id || undefined, atualizadoEm: new Date().toISOString() } as PlanoAula;
+    addOrUpdatePlanoAula(p);
+    aoMudar(p);
+  };
   return (
     <div style={{ marginTop: 10, marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#f3eef6',
       border: '1px solid rgba(125,79,140,0.3)', fontSize: 13.5, lineHeight: 1.55, color: 'rgba(26,23,20,0.75)' }}>
       <b style={{ color: '#7d4f8c' }}>ℹ️ Além destas, há 3 perguntas para os 5 C's.</b> No fim da autoavaliação, o aluno
       responde sempre a 3 perguntas curtas — <b>Colaborativo</b>, <b>Criativo</b> e <b>Consciente</b>. <b>Não contam
       para a nota desta aula</b>: juntam-se ao longo do curso e entram na pauta, no fim de cada unidade.
+      <div style={{ marginTop: 8 }}>
+        <b>Pergunta do Consciente nesta aula</b> (a mesma para a turma toda{escolhida ? ', escolhida por ti' : ', vai rodando'}):
+        <select value={coId} onChange={e => mudar(e.target.value)}
+          style={{ display: 'block', width: '100%', marginTop: 4, padding: '7px 8px', borderRadius: 8,
+            border: '1px solid var(--border)', fontSize: 13.5, fontFamily: 'inherit', background: '#fff' }}>
+          {LADOS_CO.map(l => (
+            <optgroup key={l.lado} label={l.nome}>
+              {BANCO_CO.filter(q => q.lado === l.lado).map(q => <option key={q.id} value={q.id}>{q.titulo}</option>)}
+            </optgroup>
+          ))}
+        </select>
+        <div style={{ fontStyle: 'italic', marginTop: 4 }}>«{BANCO_CO.find(q => q.id === coId)?.pergunta}»</div>
+        {escolhida && (
+          <button onClick={() => mudar('')} style={{ marginTop: 4, padding: 0, border: 'none', background: 'none',
+            color: '#7d4f8c', textDecoration: 'underline', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+            Voltar à pergunta da rotação</button>
+        )}
+      </div>
     </div>
   );
 }
@@ -1319,7 +1347,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </div>
             </div>
 
-            <Aviso5C />
+            <Aviso5C plano={plano} aoMudar={onPlanoActualizado} />
 
             {/* Evento ou concurso no horário letivo: entra neste plano. Os de
                 fora do horário avaliam-se no menu «Avaliar evento fora do horário». */}
@@ -1589,7 +1617,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               Dinâmica de grupo: sem técnicas nem KitchenFlow. As atitudes do trimestre
               aparecem primeiro; podes tirá-las e escolher quaisquer outras do ano.
             </div>
-            <Aviso5C />
+            <Aviso5C plano={plano} aoMudar={onPlanoActualizado} />
 
             <button onClick={() => setObrigatoriasPendentes(!obrigatoriasPendentes)}
               style={{ width:'100%', padding:'11px 13px', borderRadius:10, marginBottom:14,

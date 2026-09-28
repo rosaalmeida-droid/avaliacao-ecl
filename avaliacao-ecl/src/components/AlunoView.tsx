@@ -59,8 +59,8 @@ import {
   IconesFarda, CORES, type DestinoAluno, type SeparadorAluno, type AvisoAluno,
 } from './InicioAluno';
 import { PassoKitchenFlowFase } from './PassosKitchenFlow';
-import { PERGUNTAS_TRIAGEM, notaTriagem, type Triagem5C } from '../triagem5c';
-import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula } from '../backend';
+import { perguntasDaAula, notaTriagem, type Triagem5C } from '../triagem5c';
+import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, perguntaCODaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { ManuaisAluno } from './ManuaisAluno';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
@@ -2734,7 +2734,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [tecMenosBem, setTecMenosBem] = useState('');
   const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
   // Triagem do Colaborativo e do Criativo: responde-se sempre, em todas as aulas.
-  const [triagem, setTriagem] = useState<Triagem5C>({ cl: null, cr: null, co: null, problema: '' });
+  // O Consciente tem uma pergunta do dia, igual para a turma toda.
+  const [triagem, setTriagem] = useState<Triagem5C>(() => ({ cl: null, cr: null, co: null, problema: '', coId: perguntaCODaAula(plano.id) }));
+  const perguntasTriagem = perguntasDaAula(triagem.coId);
   // «O que foi mais difícil hoje» é obrigatório: há sempre alguma coisa.
   const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null
     && (triagem.problema || '').trim().length >= 5;
@@ -3213,11 +3215,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           : frasesDaAtitude(id, aluno.nivelMedidas)?.[f] || '',
         nota: id && f != null ? nivelDe20(NOTAS_FRASES[f]) : null, passo: i });
     } else if (p.tipo === 'triagem') {
-      PERGUNTAS_TRIAGEM.forEach(q => {
+      perguntasTriagem.forEach(q => {
         const r = triagem[q.chave] ?? null;
         linhasRever.push({ nome: q.titulo,
           resposta: r === null ? 'Por responder' : r === 'sem' ? (simples ? q.semOcasiaoSimples : q.semOcasiao) : (simples ? q.frasesSimples : q.frases)[r],
-          nota: notaTriagem(r), passo: i });
+          // «Não houve ocasião» também é uma resposta: aparece como respondida.
+          nota: r === 'sem' ? 0 : notaTriagem(r), passo: i });
       });
     }
   });
@@ -3466,7 +3469,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', margin:'4px 0 4px', lineHeight:1.5 }}>
             Respondes sempre, em todas as aulas. O professor confirma.
           </div>
-          {PERGUNTAS_TRIAGEM.map(q => {
+          {perguntasTriagem.map(q => {
             const r = triagem[q.chave] ?? null;
             const escolher = (v: number | 'sem') => setTriagem(t => ({ ...t, [q.chave]: t[q.chave] === v ? null : v }));
             return (

@@ -1,6 +1,6 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula } from '../backend';
-import { PERGUNTAS_TRIAGEM, type Triagem5C } from '../triagem5c';
+import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViramCO } from '../backend';
+import { perguntasDaAula, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
@@ -735,15 +735,25 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
             color:'rgba(26,23,20,0.5)', marginBottom:4 }}>Equipa, problemas e reflexão (5 C da pauta)</div>
           <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>
-            Não conta para a nota desta aula. Entra no Colaborativo e no Criativo da pauta da UC.
+            Não conta para a nota desta aula. Entra no Colaborativo, no Criativo e no Consciente da pauta da UC.
           </div>
-          {PERGUNTAS_TRIAGEM.map(q => {
+          {perguntasDaAula(triagem.coId).map(q => {
             const r = triagem[q.chave];
             const opcoes: { v: number | 'sem'; txt: string }[] = [
-              ...q.frases.map((f, i) => ({ v: i, txt: f })), { v: 'sem', txt: q.semOcasiao }];
+              ...q.frases.map((f, i) => ({ v: i, txt: f })), ...(q.semOcasiao ? [{ v: 'sem' as const, txt: q.semOcasiao }] : [])];
+            // A turma toda respondeu à mesma pergunta do Consciente: se este aluno
+            // diz que não aconteceu e vários colegas dizem que sim, avisa-se.
+            const viram = q.chave === 'co' && r === 'sem' && triagem.coId
+              ? colegasQueViramCO(selecao.alunoId, selecao.planoAulaId || '', triagem.coId) : 0;
             return (
               <div key={q.chave} style={{ marginBottom:10 }}>
                 <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>{q.sigla} · {q.pergunta}</div>
+                {viram >= 2 && (
+                  <div style={{ fontSize:13, padding:'7px 10px', marginBottom:6, borderRadius:8,
+                    background:'rgba(184,115,51,0.12)', color:'#8a4a15', lineHeight:1.45 }}>
+                    ⚠️ Este aluno diz que hoje não aconteceu, mas <b>{viram} colegas</b> disseram que sim. Confirma.
+                  </div>
+                )}
                 {opcoes.map(o => (
                   <button key={String(o.v)} onClick={() => setTriagem(t => t && ({ ...t, [q.chave]: o.v }))}
                     style={{ display:'flex', gap:8, alignItems:'center', width:'100%', textAlign:'left',

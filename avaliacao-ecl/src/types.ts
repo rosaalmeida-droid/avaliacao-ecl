@@ -491,6 +491,9 @@ export interface PlanoAula {
    *  A partir daqui, CriteriosComp lê daqui em vez do código atual.
    *  Formato: { [competenciaId]: { criterio: string; como?: string }[] } */
   criteriosCongelados?: Record<string, { criterio: string; como?: string }[]>;
+  /** Pergunta do Consciente escolhida pelo professor para esta aula
+   *  (BANCO_CO). Sem ela, a app escolhe pela rotação. */
+  perguntaCO?: string;
   realizadaEm?: string;     // ISO timestamp — quando o professor marcou como realizada
   // Registo de alterações após publicação — visível ao aluno como aviso
   ultimaAlteracao?: {

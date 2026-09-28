@@ -5,8 +5,9 @@
 // evidência, desde o 1.º ano: o aluno responde em todas as aulas e o
 // professor confirma na validação. CL e CR seguem o nível do 1.º ano da
 // ATI-009 (Cooperação com a equipa) e da ATI-010 (Empenho e persistência
-// na resolução de problemas). CO: se tem consciência do que fez, reflete
-// e melhora de uma aula para a outra.
+// na resolução de problemas). CO: uma pergunta do dia, tirada do banco
+// BANCO_CO (consciente dos outros, de si próprio e do esforço do
+// professor), igual para toda a turma nessa aula.
 // Só contam para os 5 C da pauta, não para a nota da aula.
 
 export type ChaveTriagem = 'cl' | 'cr' | 'co';
@@ -98,6 +99,9 @@ export interface Triagem5C {
   cr: RespostaTriagem;
   /** Aparece a partir desta versão; nas autoavaliações antigas não existe. */
   co?: RespostaTriagem;
+  /** A pergunta do Consciente a que respondeu (BANCO_CO). Sem ela, é a
+   *  pergunta antiga «o que fizeste diferente hoje?». */
+  coId?: string;
   /** O problema que o aluno resolveu, nas palavras dele (opcional). */
   problema?: string;
 }
@@ -105,4 +109,179 @@ export interface Triagem5C {
 /** Nota 1-5 de uma resposta; null quando não houve ocasião. */
 export function notaTriagem(r: RespostaTriagem | undefined): number | null {
   return typeof r === 'number' ? r + 2 : null;
+}
+
+// ════════════════════════════════════════════════════════════
+// CONSCIENTE — banco de perguntas que vão rodando
+// ════════════════════════════════════════════════════════════
+// Três lados: os outros (colegas, espaço, quem vai comer), o próprio
+// (limitações e capacidades) e o esforço do professor. Em cada aula a
+// turma toda responde à MESMA pergunta — assim o professor vê quando uma
+// resposta não bate com a dos colegas. As respostas vão sempre do menor
+// para o maior cuidado; «Hoje não aconteceu» não conta.
+
+export type LadoCO = 'outros' | 'si' | 'professor';
+export const LADOS_CO: { lado: LadoCO; nome: string }[] = [
+  { lado: 'outros', nome: 'Os outros' },
+  { lado: 'si', nome: 'Eu próprio' },
+  { lado: 'professor', nome: 'O esforço do professor' },
+];
+
+export interface PerguntaCO extends PerguntaTriagem { id: string; lado: LadoCO }
+
+const co = (id: string, lado: LadoCO, titulo: string, pergunta: string, frases: string[], semOcasiao: string,
+  perguntaSimples: string, frasesSimples: string[], semOcasiaoSimples: string): PerguntaCO =>
+  ({ id, lado, chave: 'co', sigla: 'CO', titulo, pergunta, frases, semOcasiao, perguntaSimples, frasesSimples, semOcasiaoSimples });
+
+export const BANCO_CO: PerguntaCO[] = [
+  // ── Os outros ──
+  co('co01', 'outros', 'Colega em baixo',
+    'Hoje sentiste que um colega estava com dificuldades ou em baixo? O que fizeste?',
+    ['Não reparei ou não fiz nada.', 'Reparei, mas não fiz nada.', 'Perguntei-lhe se estava bem ou se precisava de ajuda.', 'Ajudei-o e fiz com que se sentisse melhor.'],
+    'Hoje nenhum colega esteve com dificuldades ou em baixo (o professor confirma).',
+    'Hoje um colega precisou de ti?',
+    ['Não fiz nada.', 'Vi, mas não fiz nada.', 'Perguntei se estava bem.', 'Ajudei e ele ficou melhor.'], 'Hoje ninguém precisou.'),
+  co('co02', 'outros', 'Colega irritado',
+    'Hoje percebeste que um colega estava irritado ou nervoso? O que fizeste?',
+    ['Não reparei ou respondi-lhe mal.', 'Reparei, mas não fiz nada.', 'Não lhe respondi mal nem piorei a situação.', 'Tentei acalmá-lo e a situação ficou mais calma.'],
+    'Hoje nenhum colega esteve irritado ou nervoso (o professor confirma).',
+    'Hoje um colega ficou zangado?',
+    ['Não reparei ou piorei.', 'Vi, mas não fiz nada.', 'Fiquei calmo com ele.', 'Ajudei-o a acalmar.'], 'Hoje ninguém ficou zangado.'),
+  co('co03', 'outros', 'Colega sozinho',
+    'Hoje algum colega ficou de parte ou sozinho? O que fizeste?',
+    ['Não reparei ou não fiz nada.', 'Reparei, mas não fiz nada.', 'Falei com ele.', 'Chamei-o para o meu grupo ou para a conversa.'],
+    'Hoje ninguém ficou de parte (o professor confirma).',
+    'Hoje um colega ficou sozinho?',
+    ['Não fiz nada.', 'Vi, mas não fiz nada.', 'Falei com ele.', 'Chamei-o para junto de nós.'], 'Hoje ninguém ficou sozinho.'),
+  co('co04', 'outros', 'Colega gozado',
+    'Hoje alguém gozou ou fez um comentário desagradável a um colega? O que fizeste?',
+    ['Ri-me ou entrei na brincadeira.', 'Vi, mas não fiz nada.', 'Não me ri nem entrei na brincadeira.', 'Disse que não estava certo ou avisei o professor.'],
+    'Hoje ninguém gozou com ninguém (o professor confirma).',
+    'Hoje gozaram com um colega?',
+    ['Ri-me também.', 'Vi e não fiz nada.', 'Não me ri.', 'Disse que não estava certo.'], 'Hoje ninguém gozou.'),
+  co('co05', 'outros', 'Erro de um colega',
+    'Hoje um colega enganou-se ou estragou alguma coisa? O que fizeste?',
+    ['Gozei ou critiquei.', 'Vi, mas não fiz nada.', 'Não gozei nem critiquei.', 'Ajudei-o a corrigir sem o deixar envergonhado.'],
+    'Hoje nenhum colega se enganou (o professor confirma).',
+    'Hoje um colega enganou-se?',
+    ['Gozei com ele.', 'Vi e não fiz nada.', 'Não gozei.', 'Ajudei-o a corrigir.'], 'Hoje ninguém se enganou.'),
+  co('co06', 'outros', 'Colega que faltou ou é novo',
+    'Hoje havia um colega que faltou à última aula ou é novo na turma? O que fizeste?',
+    ['Não reparei ou não fiz nada.', 'Reparei, mas não fiz nada.', 'Disse-lhe onde estavam as coisas.', 'Expliquei-lhe o que tinha acontecido e ajudei-o a acompanhar.'],
+    'Hoje não havia nenhum colega nesta situação (o professor confirma).',
+    'Hoje veio um colega que faltou ou é novo?',
+    ['Não fiz nada.', 'Vi e não fiz nada.', 'Mostrei onde estão as coisas.', 'Expliquei e ajudei.'], 'Hoje não.'),
+  co('co07', 'outros', 'Maneiras diferentes',
+    'Hoje um colega fez as coisas de maneira diferente de ti (ritmo, língua, cultura)? O que fizeste?',
+    ['Critiquei ou fiquei impaciente.', 'Reparei, mas não fiz nada.', 'Respeitei e não critiquei.', 'Tive paciência e ajudei-o a sentir-se à vontade.'],
+    'Hoje não aconteceu (o professor confirma).',
+    'Hoje um colega fez as coisas de outra maneira?',
+    ['Critiquei.', 'Não fiz nada.', 'Respeitei.', 'Tive paciência e ajudei.'], 'Hoje não aconteceu.'),
+  co('co08', 'outros', 'Quem vem a seguir',
+    'Hoje pensaste em quem vem usar a cozinha depois de ti?',
+    ['Deixei o meu lugar sujo ou desarrumado.', 'Deixei o meu lugar mais ou menos.', 'Limpei e arrumei o meu lugar.', 'Limpei o meu lugar e ajudei a arrumar a zona comum.'],
+    '',
+    'Hoje deixaste a cozinha arrumada?',
+    ['Não, ficou sujo.', 'Mais ou menos.', 'Limpei o meu lugar.', 'Limpei o meu lugar e ajudei no resto.'], ''),
+  co('co09', 'outros', 'Perigo para os outros',
+    'Hoje viste alguma coisa perigosa para os colegas (chão molhado, faca fora do sítio, tacho quente)? O que fizeste?',
+    ['Não reparei ou deixei ficar.', 'Afastei-me, mas não disse nada.', 'Avisei os colegas.', 'Resolvi logo (sequei, arrumei, sinalizei) e avisei.'],
+    'Hoje não vi nada perigoso (o professor confirma).',
+    'Hoje viste um perigo (chão molhado, faca, tacho quente)?',
+    ['Não fiz nada.', 'Afastei-me.', 'Avisei os colegas.', 'Resolvi e avisei.'], 'Hoje não vi perigo.'),
+  co('co10', 'outros', 'Quem trabalha connosco',
+    'Hoje reconheceste o trabalho de alguém (auxiliar, colega, professor)?',
+    ['Não pensei nisso.', 'Reparei no trabalho, mas não disse nada.', 'Agradeci.', 'Agradeci e ajudei no trabalho dessa pessoa (loiça, arrumação).'],
+    '',
+    'Hoje agradeceste a alguém?',
+    ['Não.', 'Pensei, mas não disse.', 'Sim, agradeci.', 'Agradeci e ajudei.'], ''),
+  co('co11', 'outros', 'Quem vai comer',
+    'Hoje pensaste em quem vai comer o que fizeste (alergias, higiene, apresentação)?',
+    ['Não pensei nisso.', 'Pensei, mas não mudei nada.', 'Tive cuidado com a higiene e a apresentação.', 'Verifiquei alergénios ou registos e avisei se havia algum problema.'],
+    'Hoje não fiz comida para ninguém comer (o professor confirma).',
+    'Hoje pensaste em quem vai comer?',
+    ['Não.', 'Pensei, mas não fiz nada.', 'Tive cuidado com a higiene.', 'Vi os alergénios e avisei.'], 'Hoje ninguém ia comer.'),
+  co('co12', 'outros', 'Desperdício',
+    'Hoje viste comida ou material a ser desperdiçado? O que fizeste?',
+    ['Desperdicei ou deixei desperdiçar.', 'Vi, mas não fiz nada.', 'Não desperdicei.', 'Aproveitei ou sugeri como aproveitar.'],
+    'Hoje não houve desperdício (o professor confirma).',
+    'Hoje viste comida a ir para o lixo?',
+    ['Deitei fora.', 'Vi e não fiz nada.', 'Não deitei fora.', 'Aproveitei ou disse como aproveitar.'], 'Hoje não.'),
+  // ── Eu próprio: limitações e capacidades ──
+  co('co13', 'si', 'Uma dificuldade',
+    'Hoje houve uma coisa que ainda não fazes bem? O que fizeste?',
+    ['Não reparei.', 'Reparei, mas escondi.', 'Disse ao professor ou a um colega.', 'Disse e pedi para treinar, ou treinei.'],
+    'Hoje correu tudo bem (o professor confirma).',
+    'Hoje houve uma coisa difícil para ti?',
+    ['Não reparei.', 'Sim, mas escondi.', 'Disse ao professor.', 'Disse e treinei.'], 'Hoje não.'),
+  co('co14', 'si', 'Uma capacidade',
+    'Hoje houve uma coisa que fazes bem? O que fizeste com isso?',
+    ['Não pensei nisso.', 'Sei que faço bem, mas fiquei calado.', 'Ofereci-me para fazer essa parte.', 'Ofereci-me e ensinei um colega.'],
+    'Hoje não houve ocasião (o professor confirma).',
+    'Hoje fizeste uma coisa que sabes fazer bem?',
+    ['Não pensei nisso.', 'Sim, mas não disse.', 'Ofereci-me para fazer.', 'Fiz e ensinei um colega.'], 'Hoje não.'),
+  co('co15', 'si', 'Cansaço ou nervos',
+    'Hoje sentiste-te cansado, nervoso ou irritado? O que fizeste?',
+    ['Descarreguei nos outros.', 'Fiquei calado, mas trabalhei pior.', 'Disse ao professor ou respirei fundo.', 'Reconheci, pedi ajuda e voltei ao trabalho calmo.'],
+    'Hoje senti-me bem.',
+    'Hoje ficaste cansado ou nervoso?',
+    ['Fui mal-educado com os outros.', 'Fiquei calado e trabalhei pior.', 'Disse ao professor ou respirei fundo.', 'Pedi ajuda e acalmei.'], 'Hoje senti-me bem.'),
+  co('co16', 'si', 'Antes de avançar',
+    'Hoje tiveste dúvidas antes de começar uma tarefa? O que fizeste?',
+    ['Avancei sem perguntar e correu mal.', 'Avancei sem perguntar.', 'Perguntei antes de começar.', 'Perguntei antes e confirmei no fim.'],
+    'Hoje não tive dúvidas.',
+    'Hoje tiveste dúvidas?',
+    ['Fiz sem perguntar e correu mal.', 'Fiz sem perguntar.', 'Perguntei antes.', 'Perguntei antes e no fim.'], 'Hoje não.'),
+  co('co17', 'si', 'Um elogio ou uma crítica',
+    'Hoje o professor ou um colega disse-te alguma coisa sobre o teu trabalho (bom ou menos bom)? O que fizeste?',
+    ['Ignorei ou fiquei chateado.', 'Ouvi, mas não mudei nada.', 'Ouvi e agradeci.', 'Ouvi e usei isso para fazer melhor.'],
+    'Hoje ninguém me disse nada sobre o meu trabalho.',
+    'Hoje disseram-te alguma coisa sobre o teu trabalho?',
+    ['Fiquei chateado.', 'Ouvi e não mudei.', 'Ouvi e agradeci.', 'Ouvi e fiz melhor.'], 'Hoje não.'),
+  // ── O esforço do professor ──
+  co('co18', 'professor', 'Explicou outra vez',
+    'Hoje o professor explicou uma coisa mais do que uma vez, ou de outra maneira, para te ajudar? O que fizeste?',
+    ['Não prestei atenção.', 'Ouvi, mas não experimentei.', 'Experimentei como ele explicou.', 'Experimentei e mostrei-lhe o resultado.'],
+    'Hoje não foi preciso.',
+    'Hoje o professor explicou outra vez para ti?',
+    ['Não prestei atenção.', 'Ouvi e não fiz.', 'Fiz como ele explicou.', 'Fiz e mostrei-lhe.'], 'Hoje não.'),
+  co('co19', 'professor', 'Uma correção',
+    'Hoje o professor corrigiu-te alguma coisa? O que fizeste?',
+    ['Fiquei chateado ou ignorei.', 'Aceitei, mas não mudei.', 'Corrigi logo.', 'Corrigi e percebi porque estava errado.'],
+    'Hoje o professor não me corrigiu nada.',
+    'Hoje o professor corrigiu-te?',
+    ['Fiquei chateado.', 'Não mudei.', 'Corrigi logo.', 'Corrigi e percebi porquê.'], 'Hoje não.'),
+  co('co20', 'professor', 'Vir preparado',
+    'Hoje vieste preparado para a aula que o professor preparou (leste a ficha, trouxeste o material)?',
+    ['Não, e atrasei o trabalho.', 'Não, mas desenrasquei-me.', 'Sim, em parte.', 'Sim, li a ficha e trouxe tudo.'],
+    '',
+    'Hoje vieste preparado?',
+    ['Não, e atrasei.', 'Não, mas desenrasquei-me.', 'Mais ou menos.', 'Sim, li a ficha e trouxe tudo.'], ''),
+  co('co21', 'professor', 'Uma oportunidade extra',
+    'O professor deu-te uma oportunidade extra (recuperar, repetir, treinar)? O que fizeste?',
+    ['Não aproveitei.', 'Aproveitei só um bocado.', 'Aproveitei.', 'Aproveitei e agradeci.'],
+    'Não tive nenhuma oportunidade extra.',
+    'O professor deu-te mais uma oportunidade?',
+    ['Não aproveitei.', 'Aproveitei um bocado.', 'Aproveitei.', 'Aproveitei e agradeci.'], 'Não.'),
+  co('co22', 'professor', 'O tempo do professor',
+    'Hoje ajudaste o professor a ter tempo para todos (esperaste a tua vez, não interrompeste, resolveste o que já sabias)?',
+    ['Interrompi muitas vezes.', 'Às vezes.', 'Quase sempre.', 'Sim, e ajudei um colega para o professor poder ajudar outro.'],
+    '',
+    'Hoje deixaste o professor ajudar todos?',
+    ['Interrompi muitas vezes.', 'Às vezes.', 'Quase sempre.', 'Sim, e ajudei um colega.'], ''),
+];
+
+/** A k-ésima pergunta do ciclo: os três lados alternam (outros → eu →
+ *  professor → outros…), e dentro de cada lado as perguntas vão rodando. */
+export function perguntaCODoCiclo(k: number): PerguntaCO {
+  const lado = LADOS_CO[((k % 3) + 3) % 3].lado;
+  const doLado = BANCO_CO.filter(q => q.lado === lado);
+  return doLado[Math.floor(k / 3) % doLado.length];
+}
+
+/** As três perguntas da aula, com a do Consciente certa. Sem `coId`
+ *  (autoavaliações antigas) fica a pergunta antiga. */
+export function perguntasDaAula(coId?: string): PerguntaTriagem[] {
+  const q = coId ? BANCO_CO.find(x => x.id === coId) : undefined;
+  return PERGUNTAS_TRIAGEM.map(p => p.chave === 'co' && q ? q : p);
 }
