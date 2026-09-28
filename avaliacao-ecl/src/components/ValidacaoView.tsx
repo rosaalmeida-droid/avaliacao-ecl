@@ -7,7 +7,7 @@ import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
-import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota } from '../compatECL';
+import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
 import { CriteriosComp } from './CriteriosComp';
@@ -123,6 +123,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         planoTitulo={plano?.titulo || ''}
         ucId={plano?.ucId || ''}
         fichasNomes={fichas.map(f => f.nomePrato)}
+        fichas={fichas}
         tipoPlanAula={(plano as any)?.tipoPlanAula || 'pratico'}
         validacaoExistente={valExistente}
         onVoltar={() => setAtiva(null)}
@@ -211,13 +212,15 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────
-function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula, validacaoExistente, onVoltar, seguintes = 0, onSeguinte }: {
+function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], tipoPlanAula, validacaoExistente, onVoltar, seguintes = 0, onSeguinte }: {
   seguintes?: number;
   onSeguinte?: () => void;
   selecao: SelecaoAluno;
   planoTitulo: string;
   ucId: string;
   fichasNomes: string[];
+  /** As fichas do plano — para mostrar o ramo (prato → aparelho → técnica). */
+  fichas?: any[];
   tipoPlanAula?: 'pratico' | 'misto' | 'teorico';
   validacaoExistente?: any;
   onVoltar: () => void;
@@ -495,8 +498,14 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           ? `${(auto as any).texto || ''}${(auto as any).comentario ? ` — correu menos bem: «${(auto as any).comentario}»` : ''}`
           : labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
 
+        // O ramo: prato → aparelho → técnica, para o professor saber de que
+        // roux/corte se trata, e o que se vê quando está bem feito.
+        const _ramo = (_isSub || _isApp) ? ramoDaCompetencia(auto.competenciaId, fichas) : null;
+        const _caminho = _ramo ? (_isApp ? (_ramo.prato || '') : caminhoDoRamo(_ramo)) : '';
+
         return (
           <div key={auto.competenciaId} style={{ marginBottom: 10, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+            {_caminho && <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)', marginBottom:2 }}>{_caminho}</div>}
             {/* Nome da competência */}
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{nome}</span>
@@ -535,6 +544,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
                 <span style={{ fontSize:12.5, color:'#0369a1', fontStyle:'italic', fontWeight:600 }}>conhecimento</span>
               )}
             </div>
+            {_ramo?.resultado && (
+              <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.6)', margin:'-4px 0 8px' }}>Bem feito é: {_ramo.resultado}</div>
+            )}
 
             {/* Autoavaliação do aluno */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 10px', background: 'var(--cream-dark)', borderRadius: 8 }}>

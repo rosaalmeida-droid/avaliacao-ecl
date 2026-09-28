@@ -491,7 +491,8 @@ export function gerarHTML(ficha: FichaTecnicaExport): string {
     ${ficha.tecnicasSugeridas && ficha.tecnicasSugeridas.length > 0 ? `
     <div style="font-weight:bold;color:#5B67EA;font-size:7pt;margin-bottom:4px">SUBTÉCNICAS DETECTADAS:</div>
     <div style="font-size:7pt;color:#333;margin-bottom:3px">${ficha.tecnicasSugeridas.map((s: string) => {
-      const partes = s.split(' — ');
+      // «SUB-… — Nome | APP-… | componente»: no papel basta o código e o nome.
+      const partes = s.split('|')[0].trim().split(' — ');
       return partes.length > 1 ? `${partes[0]} — <b>${partes[1]}</b>` : s;
     }).join(' · ')}</div>
     ` : ''}

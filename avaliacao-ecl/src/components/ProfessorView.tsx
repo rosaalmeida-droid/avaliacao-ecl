@@ -1039,7 +1039,9 @@ REGISTO: NãoConformidades | INGREDIENTE: todos | MOTIVO: registar qualquer desv
 
 SUBTÉCNICAS DETECTADAS:
 [máx 6 subtécnicas da REGRA 9, coerentes com a FAMÍLIA — operações concretas executadas]
-[formato: ID — Nome, uma por linha | ex: SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro]
+[formato: ID — Nome | APP-XXXX do aparelho onde se faz (ou "-") | COMPONENTE da tabela de ingredientes]
+[uma por linha | ex: SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro | APP-0009 | Creme de nata]
+[o aparelho tem de estar também em APARELHOS DETECTADOS; se a operação não é feita dentro de um aparelho, escreve "-"]
 [ou "nenhuma"]
 
 APARELHOS DETECTADOS:
@@ -1103,9 +1105,8 @@ Conservação de Produtos — produto com ovos e leite: refrigerar a 0-4°C, con
 Não Conformidades — registar qualquer desvio detetado
 
 SUBTÉCNICAS DETECTADAS:
-SUB-PAP-086-001 — Caramelo seco
-SUB-CHU-046-001 — Cozer em banho-maria
-SUB-CSE-047-010 — Assar bolo amanteigado
+SUB-PAP-086-001 — Caramelo seco | APP-0033 | Caramelo
+SUB-CHU-046-002 — Cozer em banho-maria no forno | APP-0060 | Pudim
 
 APARELHOS DETECTADOS:
 APP-0060 — Aparelho de pudim de ovos (Nível 1)
@@ -1175,10 +1176,10 @@ Conservação de Produtos — creme de nata não utilizado: refrigerar a 0-4°C,
 Não Conformidades — registar qualquer desvio detetado
 
 SUBTÉCNICAS DETECTADAS:
-SUB-PAP-079-005 — Dobra de massa folhada simples
-SUB-PAP-080-004 — Laminar massa folhada clássica
-SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro
-SUB-CSE-047-013 — Assar massa folhada
+SUB-PAP-079-005 — Dobra de massa folhada simples | APP-0024 | Massa folhada
+SUB-PAP-080-004 — Laminar massa folhada clássica | APP-0024 | Massa folhada
+SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro | APP-0009 | Creme de nata
+SUB-CSE-047-013 — Assar massa folhada | - | Massa folhada
 
 APARELHOS DETECTADOS:
 APP-0024 — Massa folhada clássica (Nível 2)

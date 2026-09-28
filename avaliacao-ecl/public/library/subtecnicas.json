@@ -3359,32 +3359,32 @@
  {
   "id": "SUB-CHU-046-001",
   "tecnica_id": "TEC-CHU-046",
-  "nome": "Fundir/aquecer em banho-maria",
-  "definicao": "Aquecimento indirecto através de banho-maria — usado para fundir chocolate, manteiga, ou aquecer preparados delicados sem contacto directo com o calor.",
+  "nome": "Fundir em banho-maria",
+  "definicao": "Fundir chocolate ou manteiga sobre água quente, sem a água tocar na taça nem entrar no preparado.",
   "ambito": "Aplicável quando a ficha técnica identifica esta operação.",
-  "resultado_esperado": "Produto fundido ou aquecido uniformemente sem queimar, com temperatura controlada (chocolate: 45-50°C; creme: até 82°C).",
+  "resultado_esperado": "Fundido liso e brilhante, sem grumos nem queimado; chocolate a 45–50 °C.",
   "fontes": "SRC-001; SRC-002; SRC-003",
-  "nome_fr": "Fondre/chauffer au bain-marie"
+  "nome_fr": "Fondre au bain-marie"
  },
  {
   "id": "SUB-CHU-046-002",
   "tecnica_id": "TEC-CHU-046",
-  "nome": "Fundir/aquecer em banho-maria",
-  "definicao": "Aquecimento indirecto através de banho-maria — usado para fundir chocolate, manteiga, ou aquecer preparados delicados sem contacto directo com o calor.",
-  "ambito": "Aplicável quando a ficha técnica identifica esta operação.",
-  "resultado_esperado": "Produto fundido ou aquecido uniformemente sem queimar, com temperatura controlada (chocolate: 45-50°C; creme: até 82°C).",
+  "nome": "Cozer em banho-maria no forno",
+  "definicao": "Cozer um creme ou pudim dentro de um tabuleiro com água quente, no forno, para coagular devagar.",
+  "ambito": "Pudins, leite-creme de forno, terrinas, flans.",
+  "resultado_esperado": "Coagulado por igual, liso por dentro, sem bolhas nem furos, e a tremer ligeiramente ao centro.",
   "fontes": "SRC-001; SRC-002; SRC-003",
-  "nome_fr": "Fondre/chauffer au bain-marie"
+  "nome_fr": "Cuire au bain-marie au four"
  },
  {
   "id": "SUB-CHU-046-003",
   "tecnica_id": "TEC-CHU-046",
-  "nome": "Fundir/aquecer em banho-maria",
-  "definicao": "Aquecimento indirecto através de banho-maria — usado para fundir chocolate, manteiga, ou aquecer preparados delicados sem contacto directo com o calor.",
-  "ambito": "Aplicável quando a ficha técnica identifica esta operação.",
-  "resultado_esperado": "Produto fundido ou aquecido uniformemente sem queimar, com temperatura controlada (chocolate: 45-50°C; creme: até 82°C).",
+  "nome": "Manter quente em banho-maria",
+  "definicao": "Guardar molhos ou cremes quentes sobre água quente até ao serviço, sem ferverem.",
+  "ambito": "Molhos emulsionados (holandês, béarnaise), cremes, purés.",
+  "resultado_esperado": "Molho quente, sem cortar nem criar película; temperatura acima de 65 °C.",
   "fontes": "SRC-001; SRC-002; SRC-003",
-  "nome_fr": "Fondre/chauffer au bain-marie"
+  "nome_fr": "Maintenir au chaud au bain-marie"
  },
  {
   "id": "SUB-CSE-049-001",

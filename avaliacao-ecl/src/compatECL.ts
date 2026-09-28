@@ -863,7 +863,8 @@ export function encontrarAparelho(id: string): {
   id: string; nome: string; categoria: string; nivel: number;
   definicao?: string; ambito_profissional?: string;
 } | undefined {
-  try { return (getLibrary().aparelhos as any[]).find(a => a.id === id); } catch { return undefined; }
+  const cod = codigoDaLinha(id);
+  try { return (getLibrary().aparelhos as any[]).find(a => a.id === cod); } catch { return undefined; }
 }
 
 // ── Subtécnicas (SUB-xxx-xxx-xxx) ────────────────────────────
@@ -871,7 +872,104 @@ export function encontrarSubtecnica(id: string): {
   id: string; nome: string; tecnica_id?: string;
   definicao?: string; resultado_esperado?: string;
 } | undefined {
-  try { return (getLibrary().subtecnicas as any[]).find(s => s.id === id) as any; } catch { return undefined; }
+  const cod = codigoDaLinha(id);
+  try { return (getLibrary().subtecnicas as any[]).find(s => s.id === cod) as any; } catch { return undefined; }
+}
+
+// ── O ramo completo de uma competência prática ──────────────
+// A ficha guarda cada linha como a IA a devolve:
+//   «SUB-MOL-067-001 — Roux branco | APP-0047 | Lasanha»
+// (código — nome | aparelho onde se faz | componente da ficha; os dois
+// últimos só nas fichas novas). Procurar pela linha inteira não
+// encontrava nada: o aluno via a subtécnica sem técnica-mãe nem explicação.
+
+/** O código de uma linha da ficha («SUB-… — Nome | …» → «SUB-…»). */
+export function codigoDaLinha(linha: string): string {
+  const t = String(linha || '').trim();
+  const m = t.match(/^(SUB-[A-Z]+-\d+-\d+|APP-\d+|TEC-[A-Z]+-\d+)/);
+  return m ? m[1] : t;
+}
+
+export interface LinhaDaFicha { id: string; nome?: string; aparelhoId?: string; onde?: string }
+
+/** Lê uma linha de «SUBTÉCNICAS/APARELHOS DETECTADOS». */
+export function lerLinhaDaFicha(linha: string): LinhaDaFicha {
+  // «-» quer dizer «não se faz dentro de um aparelho».
+  const partes = String(linha || '').split('|').map(p => p.trim()).filter((p, i) => p && (i === 0 || !/^[-–—]$/.test(p)));
+  const primeira = partes.shift() || '';
+  const id = codigoDaLinha(primeira);
+  const nome = primeira.split(/\s+[—–-]\s+/).slice(1).join(' — ').replace(/\(n[ií]vel \d\)/i, '').trim() || undefined;
+  let aparelhoId: string | undefined; let onde: string | undefined;
+  for (const p of partes) {
+    const app = p.match(/APP-\d+/);
+    if (app && !aparelhoId && !id.startsWith('APP-')) aparelhoId = app[0];
+    else if (!app && !onde) onde = p.replace(/^(em|para|componente|prato)\s*:\s*/i, '').trim() || undefined;
+  }
+  return { id, nome, aparelhoId, onde };
+}
+
+/** Os códigos (sem nomes) de uma lista de linhas da ficha, sem repetidos. */
+export function codigosDasLinhas(linhas: string[] | undefined, prefixo: 'SUB-' | 'APP-'): string[] {
+  return [...new Set((linhas || []).map(codigoDaLinha).filter(c => c.startsWith(prefixo)))];
+}
+
+export interface RamoPratico {
+  id: string;
+  /** Prato da ficha (e componente, se a ficha o disser): «Lasanha · Molho». */
+  prato?: string;
+  /** Aparelho onde a técnica se faz: «Molho béchamel». */
+  aparelho?: string;
+  /** Técnica-mãe: «Ligar». */
+  tecnica?: string;
+  /** A subtécnica (ou o aparelho, quando a competência é o aparelho). */
+  nome: string;
+  /** O que se vê quando está bem feito. */
+  resultado?: string;
+}
+
+/**
+ * O ramo completo de uma competência prática nesta aula:
+ * prato → aparelho → técnica → subtécnica observável.
+ * O aluno e o professor veem sempre o contexto: o roux DAQUELE béchamel,
+ * e não «roux branco» solto.
+ */
+export function ramoDaCompetencia(id: string, fichas: any[]): RamoPratico {
+  const cod = codigoDaLinha(id);
+  let linha: LinhaDaFicha | undefined; let ficha: any;
+  for (const f of fichas || []) {
+    const linhas = [...((f?.tecnicasSugeridas || f?.tecnicasDetectadas || []) as string[]),
+      ...((f?.aparelhosDetectados || []) as string[])];
+    const l = linhas.find(x => codigoDaLinha(x) === cod);
+    if (l) { linha = lerLinhaDaFicha(l); ficha = f; break; }
+  }
+  const prato = [ficha?.nomePrato, linha?.onde].filter(Boolean)
+    .filter((x, i, a) => a.findIndex(y => String(y).toLowerCase() === String(x).toLowerCase()) === i)
+    .join(' · ') || undefined;
+  if (cod.startsWith('APP-')) {
+    const app = encontrarAparelho(cod);
+    return { id: cod, prato, nome: app?.nome || linha?.nome || 'Preparação base', resultado: undefined };
+  }
+  const sub = encontrarSubtecnica(cod);
+  let tecnica: string | undefined;
+  try {
+    const tid = sub?.tecnica_id || (cod.match(/^SUB-([A-Z]+-\d+)/) ? `TEC-${cod.match(/^SUB-([A-Z]+-\d+)/)![1]}` : '');
+    tecnica = (getLibrary().tecnicas as any[]).find(t => t.id === tid)?.nome;
+  } catch { tecnica = undefined; }
+  const aparelho = linha?.aparelhoId ? encontrarAparelho(linha.aparelhoId)?.nome : undefined;
+  // «Pudim → Caramelo → Caramelo seco»: se o componente é o próprio aparelho, não o repetir.
+  const igual = (a?: string, b?: string) => !!a && !!b && a.toLowerCase().includes(b.toLowerCase());
+  const pratoSemRepetir = aparelho && (igual(aparelho, linha?.onde) || igual(linha?.onde, aparelho))
+    ? (ficha?.nomePrato || prato) : prato;
+  return {
+    id: cod, prato: pratoSemRepetir, aparelho, tecnica,
+    nome: sub?.nome || linha?.nome || tecnica || 'Técnica',
+    resultado: sub?.resultado_esperado,
+  };
+}
+
+/** «Lasanha → Molho béchamel → Ligar» — o caminho até à subtécnica. */
+export function caminhoDoRamo(r: RamoPratico): string {
+  return [r.prato, r.aparelho, r.tecnica].filter(Boolean).join(' → ');
 }
 
 // ── Conhecimentos (KNW-xxxxx) ─────────────────────────────────

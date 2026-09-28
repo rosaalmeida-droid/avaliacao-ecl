@@ -38,6 +38,7 @@ import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
   encontrarAparelho, encontrarSubtecnica, aparelhosPermitidos,
+  codigoDaLinha, codigosDasLinhas, ramoDaCompetencia, caminhoDoRamo,
   nomeCompetencia, encontrarConhecimento, dicaRecuperacaoAtitude,
   nivelComplexidadeAtitude, getAtitudeDetalhada, atitudesDoTrimestre,
   tecnicasDeRecurso,
@@ -1549,11 +1550,14 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             {secAberta==='ficha' && (
               <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
                 onConcluido={() => { setFichaConcluida(true); _save('ficha');
-                  setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : requisicao ? 'requisicao' : 'kf_final'); }} />
+                  // Sem registos (retirados pelo professor), vai direto à autoavaliação.
+                  setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : requisicao ? 'requisicao'
+                    : ((plano as any).compRemovidas || []).includes('OBR_02') ? 'avaliacao' : 'kf_final'); }} />
             )}
             {secAberta==='guia' && (
               <SecaoGuiao fichas={fichas} plano={plano}
-                onConcluido={() => { setGuiaoConcluido(true); _save('guia'); setSecAberta(requisicao ? 'requisicao' : 'kf_final'); }} />
+                onConcluido={() => { setGuiaoConcluido(true); _save('guia'); setSecAberta(requisicao ? 'requisicao'
+                  : ((plano as any).compRemovidas || []).includes('OBR_02') ? 'avaliacao' : 'kf_final'); }} />
             )}
             {secAberta==='requisicao' && (
               <SecaoRequisicao requisicao={requisicao}
@@ -2504,13 +2508,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   }
 
   // SUB-xxx: subtécnicas da biblioteca
-  const subIdsRaw = fichas.flatMap((f: any) => (f.tecnicasSugeridas || []).filter((id: string) => id.startsWith('SUB-')));
-  const subIdsFiltrados = [...new Set(subIdsRaw)].filter((id: string) => !compRemovidas.includes(id));
+  // As linhas da ficha trazem o nome e o ramo («SUB-… — Nome | APP-… | componente»):
+  // conta só o código. Um retirado pelo professor com a linha inteira também sai.
+  const retirada = (id: string) => compRemovidas.some((r: string) => codigoDaLinha(r) === id);
+  const subIdsRaw = fichas.flatMap((f: any) => codigosDasLinhas(f.tecnicasSugeridas, 'SUB-'));
+  const subIdsFiltrados = [...new Set(subIdsRaw)].filter((id: string) => !retirada(id));
 
   // APP-xxx: aparelhos filtrados pelo nível de medidas
-  const appIdsRaw = fichas.flatMap((f: any) => ((f as any).aparelhosDetectados || []).filter((id: string) => id.startsWith('APP-')));
+  const appIdsRaw = fichas.flatMap((f: any) => codigosDasLinhas((f as any).aparelhosDetectados, 'APP-'));
   const appIdsFiltrados = [...new Set(appIdsRaw)].filter((id: string) => {
-    if (compRemovidas.includes(id)) return false;
+    if (retirada(id)) return false;
     const app = encontrarAparelho(id);
     return app ? _nivelPermitido(app.nivel) : true;
   });
@@ -2545,11 +2552,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     const emReg = estaEmRegressao(avs);
     const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliada' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidada';
 
-    // Técnica-mãe: SUB-COR-030-001 → TEC-COR-030
-    const mm = id.match(/^SUB-([A-Z]+)-(\d+)/);
-    const tecMae = mm ? encontrarSubtecnica(`TEC-${mm[1]}-${mm[2]}`) : null;
-    const nomeSub = sub?.nome || '';
-    const produto = nomeSub ? produtoPara(nomeSub) : undefined;
+    // O ramo completo: prato → aparelho → técnica-mãe → esta subtécnica.
+    // (Antes procurava-se a técnica-mãe entre as subtécnicas — nunca a achava.)
+    const ramo = ramoDaCompetencia(id, fichas as any[]);
+    const tecMae = ramo.tecnica ? { nome: ramo.tecnica } : null;
+    const nomeSub = sub?.nome || ramo.nome || '';
+    // Sem prato na ficha, pelo menos a matéria-prima: «Cortar · cenoura».
+    const produto = !ramo.prato && nomeSub ? produtoPara(nomeSub) : undefined;
 
     return {
       id,
@@ -2558,7 +2567,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       // Onde esta técnica se encaixa e sobre o quê.
       // Se não houver técnica-mãe identificada, diz-se pelo menos que é
       // uma técnica — "Rodelas" solto não diz ao aluno o que avaliar.
-      contexto: [tecMae?.nome || 'Técnica', produto].filter(Boolean).join(' · '),
+      contexto: caminhoDoRamo(ramo) ? [caminhoDoRamo(ramo), produto].filter(Boolean).join(' · ')
+        : [tecMae?.nome || 'Técnica', produto].filter(Boolean).join(' · '),
       // Por ordem: a definição da subtécnica, depois a da técnica-mãe,
       // e só em último a dos dados — que é circular em 63% dos casos
       // ("Variante profissional de cozer: Cozer massa al dente").
@@ -2566,6 +2576,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         || definicaoDaTecnica(tecMae?.nome || '')?.definicao
         || (sub as any)?.definicao || '',
       resultadoEsperado: definicaoDaSubtecnica(id)?.resultado
+        || ramo.resultado
         || definicaoDaTecnica(tecMae?.nome || '')?.resultado || '',
       motivo: estado,
     };
@@ -2582,7 +2593,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     return {
       id,
       nome: app?.nome || 'Preparação',
-      contexto: ['Preparação base', (app as any)?.categoria].filter(Boolean).join(' · '),
+      // «Lasanha → preparação base» — o aparelho deste prato, não um qualquer.
+      contexto: [ramoDaCompetencia(id, fichas as any[]).prato, 'Preparação base'].filter(Boolean).join(' → '),
       descricao: definicaoDaTecnica(app?.nome || '')?.definicao || (app as any)?.definicao || '',
       nivel: app?.nivel || 1,
       categoria: app?.categoria || '',
@@ -3070,6 +3082,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       {conteudo}
     </span>
   );
+  /** Bolinha de escolha, sem número: o aluno escolhe o que fez, não a nota. */
+  const radio = (sel: boolean) => (
+    <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
+      border: sel ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
+  );
   const rotuloSecao = (texto: string) => (
     <div style={{ fontSize:15, fontWeight:700, margin:'16px 0 10px' }}>{texto}</div>
   );
@@ -3230,8 +3247,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             <button onClick={() => escolher('nf')} style={{ ...estiloOpcao(v === 'nf'),
               ...(v === 'nf' ? {} : { border:'none', background:'transparent', textDecoration:'underline',
                 color:'rgba(26,23,20,0.6)', fontWeight:600, width:'auto', padding:'10px 4px' }) }}>
-              {v === 'nf' && circulo(1, true)}
-              {v === 'nf' ? 'Ainda não fiz esta' : '1 · Ainda não fiz esta'}
+              {v === 'nf' && radio(true)}
+              Ainda não fiz esta
             </button>
           </div>
         );
@@ -3247,25 +3264,25 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             Registos no KitchenFlow, temperaturas, contaminações. É obrigatória.
           </div>
           {rotuloSecao('Como correu hoje?')}
-          {/* A mesma ordem das técnicas (2 → 5, e o 1 à parte): aqui estava
-              ao contrário, de 5 para 1, e o aluno trocava as respostas. */}
+          {/* A mesma ordem das técnicas (do mais fraco ao melhor, e o «não fiz»
+              à parte), sem números: o aluno escolhe o que fez, não a nota. */}
           {OPCOES.filter(op => op.v !== 'nf').map(op => (
             <button key={op.v} onClick={() => setNivelHaccp(op.v)} style={estiloOpcao(nivelHaccp === op.v)}>
-              {circulo(op.nota, nivelHaccp === op.v)}
+              {radio(nivelHaccp === op.v)}
               <span>{op.label}</span>
             </button>
           ))}
           <button onClick={() => setNivelHaccp('nf')} style={{ ...estiloOpcao(nivelHaccp === 'nf'),
             ...(nivelHaccp === 'nf' ? {} : { border:'none', background:'transparent', textDecoration:'underline',
               color:'rgba(26,23,20,0.6)', fontWeight:600, width:'auto', padding:'10px 4px' }) }}>
-            {nivelHaccp === 'nf' && circulo(1, true)}
-            {nivelHaccp === 'nf' ? 'Ainda não fiz' : '1 · Ainda não fiz'}
+            {nivelHaccp === 'nf' && radio(true)}
+            Ainda não fiz
           </button>
           {nivelHaccp && hsaSemRegisto() && (
             <div style={{ marginTop:4, padding:'10px 12px', borderRadius:10, fontSize:13.5, lineHeight:1.5,
               background:T.copperP, color:'#8a4a15' }}>
               Não encontrei registo teu no KitchenFlow para esta aula. Mesmo que tenhas feito
-              tudo bem, fica a 1 até haver registo. O professor decide.
+              tudo bem, fica no nível mais baixo até haver registo. O professor decide.
             </div>
           )}
         </div>
