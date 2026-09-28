@@ -13,7 +13,7 @@ import { GuiaProducao } from './GuiaProducao';
 import { CronogramaTab } from './CronogramaTab';
 import { DicionarioComp } from './DicionarioComp';
 import { coresDaTurma } from '../cores';
-import { EventosWizard } from './EventosWizard';
+import { EventosECL } from './EventosECL';
 import { ManualCoordenador } from './ManualCoordenador';
 import { GestaoAlunosExternos } from './AlunosExternos';
 import { DadosSeguranca } from './DadosSeguranca';
@@ -96,19 +96,7 @@ export function CoordenadoraView() {
       {tab === 'manual' && <ManualCoordenador turmaId={getTurmas()[0]?.id || '1º ACP'} />}
       {tab === 'externos' && <GestaoAlunosExternos />}
       {tab === 'ranking' && <RankingTab />}
-      {tab === 'atividades' && (
-        <div>
-          {getTurmas().map((t: any) => (
-            <div key={t.id} style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: '0.06em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>
-                {t.nome}
-              </div>
-              <EventosWizard turmaId={t.id} />
-            </div>
-          ))}
-        </div>
-      )}
+      {tab === 'atividades' && <EventosECL nomeProfessor="Coordenadora" />}
       {tab === 'pedagogico' && <VisaoPedagogicaTab />}
       {tab === 'alunos' && <GestaoAlunosTab />}
       {tab === 'config' && <ConfigTab />}

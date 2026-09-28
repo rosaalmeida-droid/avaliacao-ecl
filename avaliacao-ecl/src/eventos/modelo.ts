@@ -25,6 +25,27 @@ export interface AlteracaoEvento {
   impacto: string;
 }
 
+export interface OrcamentoEvento {
+  id: string;
+  nome: string;
+  fichasIds: string[];
+  pessoas: number;
+  /** A requisição (no formato da aplicação) feita para este orçamento. */
+  requisicaoId: string;
+  custo?: number;
+  escolhido?: boolean;
+  /** Folha de orçamento: outros custos (bebidas, descartáveis, transporte…). */
+  extras?: ExtraOrcamento[];
+  /** Valor por pessoa proposto ao cliente (decisão da Direção). Vazio: mostra o custo. */
+  valorPessoa?: string;
+  /** Esconder o custo de cada prato na folha que vai para o cliente. */
+  semCustoPorPrato?: boolean;
+  validadeDias?: number;
+  notas?: string;
+}
+
+export interface ExtraOrcamento { id: string; nome: string; valor: string; modo: 'pessoa' | 'total' }
+
 export interface EstadoItem { feito?: boolean; naoAplica?: boolean; resposta?: string; responsavel?: string }
 
 export type EstadoEvento = 'pedido' | 'proposta' | 'confirmado' | 'realizado' | 'fechado' | 'cancelado';
@@ -69,6 +90,10 @@ export interface EventoECL {
   local: { conhecemos?: Resp3; apoio?: Resp3; aguaLuz?: Resp3; carga?: Resp3 };
   salaECL: string;
   // 4. Menu e orçamento
+  /** Fichas técnicas afixadas ao evento. */
+  fichasIds: string[];
+  /** Orçamentos: cada um com as fichas que engloba e a sua requisição. */
+  orcamentos: OrcamentoEvento[];
   menu: string;
   custoPrevisto: string;
   precoProposto: string;
@@ -132,7 +157,7 @@ export function eventoNovo(numero: number, professor: string): EventoECL {
     necessidades: '', necessidadesQuais: [], protocolo: '', orcamento: '', orcamentoValor: '',
     prazoProposta: '', clienteSabe: '', exigencias: '',
     turmasIds: [], outrasAreas: [], turmaResponsavel: '', professorResponsavel: professor,
-    local: {}, salaECL: '', menu: '', custoPrevisto: '', precoProposto: '',
+    local: {}, salaECL: '', fichasIds: [], orcamentos: [], menu: '', custoPrevisto: '', precoProposto: '',
     viavel: '', estado: 'pedido', perguntas: {}, tarefas: {}, alteracoes: [], fecho: {},
     criadoPor: professor, criadoEm: agora, atualizadoEm: agora,
   };
@@ -169,7 +194,7 @@ export function classificar(e: EventoECL): { nivel: 'Simples' | 'Intermédia' | 
   if (e.necessidades === 'sim') { p += 1; razoes.push('necessidades alimentares'); }
   if (e.turmasIds.length + e.outrasAreas.length > 1) { p += 1; razoes.push('várias turmas/áreas'); }
   if (precisaVisita(e)) { p += 1; razoes.push('espaço por conhecer'); }
-  const nivel = p >= 7 ? 'Especial' : p >= 4 ? 'Complexa' : p >= 2 ? 'Intermédia' : 'Simples';
+  const nivel = p >= 10 ? 'Especial' : p >= 6 ? 'Complexa' : p >= 3 ? 'Intermédia' : 'Simples';
   if (!razoes.length) razoes.push('na ECL, um momento, sem requisitos especiais');
   return { nivel, razoes };
 }
@@ -367,7 +392,8 @@ export function preparacao(e: EventoECL): { feitas: number; total: number; pct: 
 
 export function passos(e: EventoECL): Passo[] {
   const p1 = faltaNoPedido(e), p2 = faltaNoServico(e), p3 = pendenciasDoLocal(e);
-  const menuOk = !!e.menu.trim(), custoOk = !!e.custoPrevisto.trim();
+  const menuOk = !!e.menu.trim() || (e.fichasIds || []).length > 0;
+  const custoOk = !!e.custoPrevisto.trim() || (e.orcamentos || []).some(o => (o.custo || 0) > 0);
   const prep = preparacao(e);
   const fechado = !!e.fecho.conforme;
   return [
@@ -382,26 +408,44 @@ export function passos(e: EventoECL): Passo[] {
   ];
 }
 
-export interface Acao { texto: string; onde: string; prazo?: string; atrasada?: boolean }
+export interface Acao {
+  texto: string;
+  onde: string;
+  prazo?: string;
+  atrasada?: boolean;
+  /** O tipo de resposta, para se responder no próprio cartão «Agora». */
+  tipo: 'triagem' | 'go' | 'pergunta' | 'local' | 'visita' | 'tarefa' | 'fecho';
+  /** O id da pergunta, da tarefa, ou a chave do local. */
+  ref?: string;
+  quem?: string;
+}
 
 /** O que fazer agora. O professor não procura o que falta: a aplicação diz. */
 export function proximaAcao(e: EventoECL): Acao | null {
   const p1 = faltaNoPedido(e);
-  if (p1.length) return { texto: `Completar o pedido: ${p1[0]}`, onde: 'triagem' };
+  if (p1.length) return { tipo: 'triagem', texto: `Completar o pedido: falta ${p1[0]}`, onde: 'triagem' };
   const p2 = faltaNoServico(e);
-  if (p2.length) return { texto: `Completar o serviço: ${p2[0]}`, onde: 'triagem' };
-  if (!e.viavel) return { texto: 'Decidir se o evento é viável (GO / NO GO)', onde: 'resumo', prazo: dataDaTarefa(e, -21) };
+  if (p2.length) return { tipo: 'triagem', texto: `Completar o serviço: falta ${p2[0]}`, onde: 'triagem' };
+  if (!e.viavel) return { tipo: 'go', texto: 'Este evento é viável?', onde: 'resumo', prazo: dataDaTarefa(e, -21), ref: 'go' };
   if (e.viavel === 'nao') return null;
   const pc = perguntasEmFalta(e);
-  if (pc.length) return { texto: `Perguntar ao cliente: ${pc[0].texto}`, onde: 'perguntas', prazo: dataDaTarefa(e, -21) };
-  const pl = pendenciasDoLocal(e);
-  if (pl.length) return { texto: pl[0], onde: 'local' };
-  const ordem = tarefasEmFalta(e).filter(t => t.fase !== 'Fechar' || e.estado === 'realizado')
+  if (pc.length) return { tipo: 'pergunta', texto: pc[0].texto, onde: 'perguntas', ref: pc[0].id, prazo: dataDaTarefa(e, -21) };
+  if (precisaVisita(e) && !e.tarefas.visita?.feito) return { tipo: 'visita', texto: 'Fazer a visita técnica ao espaço', onde: 'local', ref: 'visita', prazo: dataDaTarefa(e, -18) };
+  if (eFora(e)) {
+    const nomes: Record<string, string> = { conhecemos: 'Já conhecemos o espaço?', apoio: 'O espaço tem zona de apoio ao catering?', aguaLuz: 'Há água e eletricidade junto ao serviço?', carga: 'A carrinha pode parar junto à entrada?' };
+    const k = Object.keys(nomes).find(x => (e.local as any)[x] !== 'sim');
+    if (k) return { tipo: 'local', texto: nomes[k], onde: 'local', ref: k };
+  } else if (e.onde === 'ecl' && !e.salaECL) {
+    return { tipo: 'local', texto: 'Em que sala ou espaço da escola?', onde: 'local', ref: 'sala' };
+  }
+  const ordem = tarefasEmFalta(e).filter(t => (t.fase !== 'Fechar' || e.estado === 'realizado') && t.id !== 'go' && t.id !== 'perguntas' && t.id !== 'visita')
     .sort((a, b) => a.d - b.d || (a.hora || '').localeCompare(b.hora || ''));
-  const t = ordem.find(x => x.id !== 'go' && x.id !== 'perguntas');
-  if (!t) return e.fecho.conforme ? null : { texto: 'Fechar o evento', onde: 'fecho' };
+  const t = ordem[0];
+  if (!t) return e.fecho.conforme ? null : { tipo: 'fecho', texto: 'Fechar o evento: como correu?', onde: 'fecho' };
   const prazo = dataDaTarefa(e, t.d);
-  return { texto: t.texto, onde: t.fase === 'Dia do evento' ? 'dia' : 'preparacao', prazo, atrasada: !!prazo && prazo < hojeISO() };
+  return { tipo: 'tarefa', texto: t.texto, ref: t.id, quem: t.quem,
+    onde: t.fase === 'Dia do evento' ? 'dia' : t.fase === 'Material' ? 'material' : ['menu', 'quantidades', 'requisicao', 'proposta'].includes(t.id) ? 'menu' : 'preparacao',
+    prazo, atrasada: !!prazo && prazo < hojeISO() };
 }
 
 /** Evento «pronto»: nada crítico por fazer até à véspera. */
@@ -448,13 +492,10 @@ export function comoEventoAntigo(e: EventoECL, turmaId: string): any {
   };
 }
 
-/** Eventos antigos (v3) e novos (v4), na forma antiga — para os planos. */
+/** Os eventos, na forma que os planos e a requisição já conhecem. */
 export function eventosParaPlanos(turmaId?: string): any[] {
-  let antigos: any[] = [], novos: EventoECL[] = [];
-  try { antigos = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]'); } catch { /* */ }
+  let novos: EventoECL[] = [];
   try { novos = JSON.parse(localStorage.getItem('ecl_eventos_v4') || '[]'); } catch { /* */ }
-  const a = turmaId ? antigos.filter((e: any) => e.turmaId === turmaId) : antigos;
-  const n = novos.filter(e => e.estado !== 'cancelado' && (!turmaId || e.turmasIds.includes(turmaId)))
+  return novos.filter(e => e.estado !== 'cancelado' && (!turmaId || e.turmasIds.includes(turmaId)))
     .map(e => comoEventoAntigo(e, turmaId || e.turmasIds[0] || ''));
-  return [...a, ...n];
 }

@@ -115,7 +115,7 @@ import { GestaoRecuperacoes } from './components/GestaoRecuperacoes';
 import { MapaCompetencias } from './components/MapaCompetencias';
 import { CentroAvisos } from './components/CentroAvisos';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { EventosWizard } from './components/EventosWizard';
+import { EventosECL } from './components/EventosECL';
 import { AbrirAulas } from './components/AbrirAulas';
 import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
@@ -687,7 +687,7 @@ function AppInterno() {
             {/* A cópia de segurança passou para a coordenadora (Dados e segurança). */}
             {vistaGlobal === 'gestao_recuperacoes' && <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
-            {vistaGlobal === 'eventos' && <EventosWizard turmaId={turmaId} nomeProfessor={nomeProfessor} />}
+            {vistaGlobal === 'eventos' && <EventosECL turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'abrir_aula' && <AbrirAulas turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'cronograma' && <CronogramaTab turmaId={turmaId} />}
             {/* Dicionário movido para o ecrã do aluno */}

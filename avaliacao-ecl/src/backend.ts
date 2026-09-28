@@ -6,7 +6,7 @@
 
 import type { Triagem5C } from './triagem5c';
 import { notaDaPautaUC } from './pautaUC';
-import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO } from './eventosAvaliacao';
+import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
@@ -14,7 +14,7 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
 , SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro } from './compatECL';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
@@ -3039,6 +3039,14 @@ function aulaJaAconteceu(p: PlanoAula, hoje: string): boolean {
 }
 
 /** Horas de um plano. Um dia inteiro (08:30–17:30) desconta a hora de almoço. */
+/** Há hora de almoço (13h–14h) a descontar? Só nos planos que começam de
+ *  manhã e acabam de tarde. Antes descontava-se em qualquer plano que
+ *  passasse pelas 13h–14h: um plano de 2 h (12:30–14:30) ficava com 1 h,
+ *  em dois blocos de meia hora, e faltar a um deles contava 0,5 h. */
+function temAlmoco(ini: number, fim: number): boolean {
+  return ini < 12 * 60 && fim > 14 * 60;
+}
+
 export function horasDoPlano(p: PlanoAula): number {
   const min = (h?: string) => {
     if (!h) return NaN;
@@ -3049,7 +3057,7 @@ export function horasDoPlano(p: PlanoAula): number {
   const ini = min(p.horaInicio), fim = min(p.horaFim);
   if (isNaN(ini) || isNaN(fim) || fim <= ini) return 0;
   let m = fim - ini;
-  if (ini <= 13 * 60 && fim >= 14 * 60) m -= 60;   // almoço
+  if (temAlmoco(ini, fim)) m -= 60;   // almoço
   return m / 60;
 }
 
@@ -3096,12 +3104,13 @@ export function faltasEmHorasUC(alunoId: string, turmaId: string, ucId: string):
   const horasFaltadas = faltados.reduce((s, p) => s + horasDoPlano(p), 0)
     + horasPerdidasPorAtraso(alunoId, ucId, turmaId, idsFaltados);
 
-  // As faltas contam-se sobre as horas JÁ DADAS da UC, não sobre as do
-  // módulo inteiro: 4,5 h faltadas em 9 h dadas são 50%, e o aluno está
-  // em atraso logo que chega aos 10%.
+  // Os 10% contam-se sobre o TOTAL de horas da UC (as do cronograma), não
+  // sobre as horas já dadas (decisão da Rosa, set/2026). Sem cronograma,
+  // usam-se as horas dadas.
   const horasDadas = horasDadasDaUC(turmaId, ucId);
-  const presenca = horasDadas > 0
-    ? Math.max(0, Math.round((1 - horasFaltadas / horasDadas) * 100))
+  const base = horasPrevistas > 0 ? horasPrevistas : horasDadas;
+  const presenca = base > 0
+    ? Math.max(0, Math.round((1 - horasFaltadas / base) * 100))
     : 100;
   return { horasPrevistas, horasFaltadas, horasDadas, presenca };
 }
@@ -3116,8 +3125,9 @@ export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: st
   // professor, ou a sugerida pela pauta). Só interessa quando a UC acabou.
   const nota20: number | null = terminou ? (notaDaPautaUC(alunoId, turmaId, ucId)?.nota ?? null) : null;
 
-  // 1. Faltas a partir de 10% das horas dadas.
-  if (horasDadas > 0 && horasFaltadas >= horasDadas * 0.10) {
+  // 1. Faltas a partir de 10% do total de horas da UC.
+  const baseFaltas = horasPrevistas > 0 ? horasPrevistas : horasDadas;
+  if (baseFaltas > 0 && horasFaltadas >= baseFaltas * 0.10) {
     return { precisa: true, motivo: 'faltas', horasPrevistas, horasFaltadas, horasDadas, presenca, terminou, nota20 };
   }
   // 2. Módulo terminado sem positiva. Sem nenhuma avaliação não se decide
@@ -3876,6 +3886,7 @@ export async function gerarPautaFCTViaScript(dados: {
 }
 
 function getNomeCompetenciaGenerica(id: string): string {
+  if (id.startsWith('KNW-P') || id.startsWith('KNW-R-')) return nomeConhecimentoProf(id) || 'Conhecimento';
   if (id.startsWith('OBR_')) {
     const o = OBRIGATORIAS.find(x => x.id === id);
     return o?.nome || id;
@@ -4776,7 +4787,7 @@ export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string
   const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   const ini = min(p.horaInicio), fim = min(p.horaFim);
   if (isNaN(ini) || isNaN(fim) || fim <= ini) return [];
-  const almoco = ini <= 13 * 60 && fim >= 14 * 60;
+  const almoco = temAlmoco(ini, fim);
   const blocos: { inicio: string; fim: string }[] = [];
   for (let m = ini; m < fim; ) {
     if (almoco && m >= 13 * 60 && m < 14 * 60) { m = 14 * 60; continue; }
@@ -5152,8 +5163,8 @@ export function assiduidadeEmHoras(alunoId: string, turmaId: string): {
       horasPrevistas: s.horasPrevistas,
       horasDadas: horasDadasDaUC(turmaId, ucId),
       horasFaltadas: s.horasFaltadas,
-      // 10% das horas já dadas — a mesma regra do alerta do professor.
-      limite: horasDadasDaUC(turmaId, ucId) * 0.10,
+      // 10% do total de horas da UC — a mesma regra do alerta do professor.
+      limite: (s.horasPrevistas > 0 ? s.horasPrevistas : horasDadasDaUC(turmaId, ucId)) * 0.10,
       acimaDoLimite: s.motivo === 'faltas',
     };
   }).filter(u => u.horasDadas > 0 || u.horasFaltadas > 0);
@@ -6059,7 +6070,9 @@ export function atividadesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: st
   const diasRegistados = new Set(registadas.map(a => String(a.data || '').slice(0, 10)));
   const dosPlanos: Atividade[] = getPlanosAula()
     .filter((p: any) => p.turmaId === turmaId && p.tipoEvento && p.estado !== 'arquivado' && validados.has(p.id)
-      && p.ucId === ucId && !diasRegistados.has(String(p.data || '').slice(0, 10)))
+      && p.ucId === ucId && !diasRegistados.has(String(p.data || '').slice(0, 10))
+      // Evento fora do horário: só quem vai (a turma toda, ou os aceites).
+      && (!eventoForaDoHorario(p) || participantesDoEvento(p).includes(alunoId)))
     .map((p: any) => ({ id: p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: p.data,
       participantesIds: [alunoId], criadaEm: p.criadoEm || '' }));
   // Os planos de evento contam na UC do próprio plano (um evento fora do
@@ -7206,14 +7219,14 @@ export interface UCEmAtraso {
   ucNome: string;
   horasDadas: number;
   horasFaltadas: number;
-  /** Faltas em % das horas dadas. */
+  /** Faltas em % do total de horas da UC. */
   percentagem: number;
   plano: RecuperacaoModulo | null;
   /** sem_plano: por decidir · adiado: fica para depois da UC · em_curso: plano feito · recuperado */
   estado: 'sem_plano' | 'adiado' | 'em_curso' | 'recuperado';
 }
 
-/** Todos os alunos da turma com uma UC em atraso por faltas (≥ 10% das horas dadas). */
+/** Todos os alunos da turma com uma UC em atraso por faltas (≥ 10% do total de horas da UC). */
 export function ucsEmAtraso(turmaId: string): UCEmAtraso[] {
   const ucs = [...new Set(getPlanosAulaPorTurma(turmaId).map(p => p.ucId).filter(Boolean))] as string[];
   const mods = modulosDaTurma(turmaId);
@@ -7229,7 +7242,8 @@ export function ucsEmAtraso(turmaId: string): UCEmAtraso[] {
         alunoId: a.id, turmaId, numero: a.numero, nome: a.nome || `Aluno ${a.numero}`,
         ucId, ucNome: (mods.find((m: any) => m.id === ucId) as any)?.nome || '',
         horasDadas: dadas, horasFaltadas: s.horasFaltadas,
-        percentagem: dadas > 0 ? Math.round((s.horasFaltadas / dadas) * 100) : 0,
+        // Em % do total de horas da UC (o mesmo total dos 10%).
+        percentagem: (s.horasPrevistas || dadas) > 0 ? Math.round((s.horasFaltadas / (s.horasPrevistas || dadas)) * 100) : 0,
         plano,
         estado: !plano ? 'sem_plano' : plano.estado === 'concluida' ? 'recuperado'
           : plano.quando === 'depois' && !plano.modalidade ? 'adiado' : 'em_curso',
@@ -7574,6 +7588,42 @@ export function gruposDaAula(planoAulaId: string): GrupoDaAula[] {
 }
 export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula | undefined {
   return gruposDaAula(planoAulaId).find(g => g.membros.some(m => m.alunoId === alunoId));
+}
+
+// ============================================================
+// Eventos fora do horário nas «Atividades e concursos»
+// ============================================================
+// O plano do evento é a atividade. O professor escolhe: a turma toda vai
+// (obrigatório) ou os alunos inscrevem-se e ele aceita quem vai. A
+// inscrição do aluno segue pelo mesmo caminho rápido dos grupos (sem
+// mexer no script), com o «plano» insc_<id>. Quem o professor aceita
+// fica no próprio plano (participantesIds). Não há faltas: é extra.
+export type ModoParticipacao = 'turma' | 'inscricao';
+export function modoParticipacao(p: any): ModoParticipacao { return p?.modoParticipacao === 'inscricao' ? 'inscricao' : 'turma'; }
+const idInscricao = (planoId: string) => 'insc_' + planoId;
+export function eventoForaDoHorario(p: any): boolean { return !!p?.tipoEvento && TIPOS_EVENTO_PLANO.includes(p?.tipoAtividade); }
+
+export function inscreverNoEvento(plano: PlanoAula, aluno: { id: string; nome?: string }, sim: boolean): void {
+  entrarNoGrupo({ planoAulaId: idInscricao(plano.id), turmaId: plano.turmaId, alunoId: aluno.id, nomeAluno: aluno.nome,
+    grupoId: sim ? 'inscrito' : 'retirado', grupoNome: sim ? 'Inscrito' : 'Retirado', definidoPor: 'aluno' });
+}
+export function inscritosNoEvento(planoId: string): string[] {
+  return getMembrosGrupo(idInscricao(planoId)).filter(m => m.grupoId === 'inscrito').map(m => m.alunoId);
+}
+export function participantesDoEvento(p: PlanoAula): string[] {
+  return modoParticipacao(p) === 'turma'
+    ? getAlunos().filter(a => a.turmaId === p.turmaId && a.ativo !== false).map(a => a.id)
+    : ((p as any).participantesIds || []);
+}
+/** Os eventos da turma, no formato das atividades que o aluno vê. */
+export function eventosComoAtividades(turmaId: string): Atividade[] {
+  return getPlanosAula().filter((p: any) => p.turmaId === turmaId && eventoForaDoHorario(p) && p.estado !== 'arquivado')
+    .map((p: any) => ({
+      id: 'ev_' + p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: String(p.data || '').slice(0, 10),
+      horaInicio: p.horaInicio, horaFim: p.horaFim, descricao: p.sumario || p.observacoes || '',
+      participantesIds: participantesDoEvento(p), inscritosIds: inscritosNoEvento(p.id), criadaEm: p.criadoEm || '',
+      doPlano: true, modo: modoParticipacao(p), planoId: p.id,
+    } as any));
 }
 
 // ============================================================

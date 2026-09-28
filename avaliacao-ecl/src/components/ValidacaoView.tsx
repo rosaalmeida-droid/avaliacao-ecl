@@ -7,7 +7,7 @@ import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
-import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
+import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
 import { CriteriosComp } from './CriteriosComp';
@@ -268,6 +268,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     if (id.startsWith('SUB-')) return encontrarSubtecnica(id)?.nome || id;
     if (id.startsWith('APP-')) return encontrarAparelho(id)?.nome || id;
     if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;
+    if (id.startsWith('KNW-P') || id.startsWith('KNW-R-')) return nomeConhecimentoProf(id) || 'Conhecimento';
     if (id.startsWith('KNW-')) {
       const lib = getLibrary();
       return (lib.conhecimentos as any[]).find(k => k.id === id)?.nome || id;

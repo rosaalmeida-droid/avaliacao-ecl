@@ -2,6 +2,7 @@
 //  N = posição do plano dentro da sua UC (ordenado por data).
 //  M = dias de cozinha da turma entre início e fim da UC (horários.ts);
 //      para as outras disciplinas, semanas.
+import { TIPOS_EVENTO } from './eventosAvaliacao';
 import { getPlanosAula } from './backend';
 import { CRONOGRAMA_2026_2027, modulosDaTurma } from './cronograma';
 import { horarioDaTurma, temCozinha } from './horarios';
@@ -60,9 +61,36 @@ export function totalAulasUC(plano: PlanoAula): number {
   return Math.floor((fim.getTime() - ini.getTime()) / (7 * DIA)) + 1;
 }
 
+/** Evento ou concurso fora do horário: não é uma aula, não entra na
+ *  numeração dos planos («Plano 1 de 17»). Tem numeração própria. */
+export function ehEventoForaDoHorario(p: PlanoAula): boolean {
+  return !!(p as any).tipoEvento && TIPOS_EVENTO.includes((p as any).tipoAtividade);
+}
+
+/** Numeração dos eventos da escola, por ano: E-2026-001, E-2026-002…
+ *  Conta todos os eventos e concursos (fora ou dentro do horário), pela data. */
+export function codigoEvento(plano: PlanoAula): string {
+  if (!(plano as any).tipoEvento) return '';
+  const ano = String(plano.data || '').slice(0, 4) || String(new Date().getFullYear());
+  const doAno = getPlanosAula()
+    .filter((p: any) => p.tipoEvento && p.estado !== 'arquivado' && String(p.data || '').startsWith(ano))
+    .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || String(a.criadoEm || '').localeCompare(String(b.criadoEm || '')));
+  const i = doAno.findIndex(p => p.id === plano.id);
+  const n = i >= 0 ? i + 1 : doAno.length + 1;
+  return `E-${ano}-${String(n).padStart(3, '0')}`;
+}
+
+/** «Evento externo · E-2026-001» / «Concurso · E-2026-002». */
+export function rotuloEvento(plano: PlanoAula): string {
+  const tipo = (plano as any).tipoAtividade && TIPOS_EVENTO.includes((plano as any).tipoAtividade)
+    ? (plano as any).tipoAtividade : ((plano as any).tipoEvento === 'concurso' ? 'Concurso' : 'Evento');
+  return `${tipo} · ${codigoEvento(plano)}`;
+}
+
 export function posicaoNaUC(plano: PlanoAula): number {
+  if (ehEventoForaDoHorario(plano)) return 0;
   const daUC = getPlanosAula()
-    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.estado !== 'arquivado')
+    .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p))
     .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || (a.numeroPlan || 0) - (b.numeroPlan || 0));
   const idx = daUC.findIndex(p => p.id === plano.id);
   return idx >= 0 ? idx + 1 : (plano.numeroPlan || 1);
@@ -70,6 +98,7 @@ export function posicaoNaUC(plano: PlanoAula): number {
 
 export function rotuloPlano(plano: PlanoAula): string {
   if (!plano) return 'Plano de aula';
+  if (ehEventoForaDoHorario(plano)) return rotuloEvento(plano);
   const n = posicaoNaUC(plano);
   const m = totalAulasUC(plano);
 

@@ -1,3 +1,5 @@
+import { conhecimentosDaAula } from '../compatECL';
+import { notaDaPautaUC } from '../pautaUC';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
@@ -30,7 +32,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -272,6 +274,7 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
           const temAula = !!planosPorData[isoDate];
           const eHoje = isHoje(isoDate);
           const aulas = planosPorData[isoDate] || [];
+          const temEvento = aulas.some((p: any) => p.tipoEvento);
 
           return (
             <div key={dia}
@@ -280,12 +283,12 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
                 position:'relative', aspectRatio:'1', display:'flex', flexDirection:'column',
                 alignItems:'center', justifyContent:'center', borderRadius:12,
                 cursor: temAula ? 'pointer' : 'default',
-                background: eHoje ? T.copper : temAula ? T.sageP : 'transparent',
-                border: eHoje ? `2px solid ${T.copper}` : temAula ? `1.5px solid ${T.sage}40` : 'none',
+                background: eHoje ? T.copper : temEvento ? '#6B3FA0' : temAula ? T.sageP : 'transparent',
+                border: eHoje ? `2px solid ${T.copper}` : temEvento ? '2px solid #6B3FA0' : temAula ? `1.5px solid ${T.sage}40` : 'none',
                 transition:'all 0.15s',
               }}>
               <span style={{ fontSize:15, fontWeight: eHoje||temAula ? 700 : 400,
-                color: eHoje ? '#fff' : temAula ? T.sage : 'rgba(26,23,20,0.5)' }}>
+                color: eHoje || temEvento ? '#fff' : temAula ? T.sage : 'rgba(26,23,20,0.5)' }}>
                 {dia}
               </span>
               {temAula && (
@@ -307,6 +310,10 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
           <span style={{ width:10, height:10, borderRadius:'50%', background:T.sage, display:'inline-block' }}/>
           Aula
         </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'rgba(26,23,20,0.5)' }}>
+          <span style={{ width:10, height:10, borderRadius:'50%', background:'#6B3FA0', display:'inline-block' }}/>
+          Evento — autoavalia-te
+        </div>
       </div>
     </div>
   );
@@ -324,14 +331,17 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
   const futuro = isFuturo(plano.data);
   const dias = diasParaData(plano.data);
   const d = parseDataSegura(plano.data) || new Date();
+  // Evento ou concurso: roxo e bem destacado — o aluno também se autoavalia.
+  const evento = !!(plano as any).tipoEvento;
+  const ROXO = '#6B3FA0';
 
   // Card de aula passada — compacto
   if (!hoje && !futuro) {
     return (
       <div onClick={onAbrir} style={{
         display:'flex', alignItems:'center', gap:12, padding:'12px 14px',
-        borderRadius:14, background:'#fff',
-        border:'1px solid rgba(26,23,20,0.08)',
+        borderRadius:14, background: evento ? '#F3ECFA' : '#fff',
+        border: evento ? `2px solid ${ROXO}` : '1px solid rgba(26,23,20,0.08)',
         cursor:'pointer', marginBottom:8,
       }}>
         <div style={{ background:'rgba(26,23,20,0.06)', borderRadius:10,
@@ -353,14 +363,16 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
             <div style={{ fontSize:12.5, color:T.copper, fontWeight:700, marginTop:2 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
           )}
         </div>
-        <ChipEstado texto="Passada" cor="rgba(26,23,20,0.4)" bg="rgba(26,23,20,0.06)" />
+        {evento
+          ? <ChipEstado texto="🏅 Evento · autoavalia-te" cor="#fff" bg={ROXO} />
+          : <ChipEstado texto="Passada" cor="rgba(26,23,20,0.4)" bg="rgba(26,23,20,0.06)" />}
         <span style={{ fontSize:18, color:'rgba(26,23,20,0.2)', flexShrink:0 }}>›</span>
       </div>
     );
   }
 
   // Card de aula de hoje ou futura — grande e colorido
-  const corFundo = hoje ? T.copper : '#2563eb';
+  const corFundo = evento ? '#6B3FA0' : hoje ? T.copper : '#2563eb';
   const diasLabel = dias === 1 ? 'AMANHÃ' : dias <= 7 ? `em ${dias} dias` : '';
 
   return (
@@ -371,7 +383,13 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
       {/* Faixa colorida */}
       <div style={{ background:`linear-gradient(135deg, ${corFundo}, ${corFundo}dd)`,
         padding:'16px 18px' }}>
-        {hoje && (
+        {evento && (
+          <div style={{ fontSize:12.5, fontWeight:800, color:'#fff', textTransform:'uppercase',
+            letterSpacing:'0.1em', marginBottom:4 }}>
+            🏅 {(plano as any).tipoEvento === 'concurso' ? 'Concurso' : 'Evento'} — também te autoavalias
+          </div>
+        )}
+        {hoje && !evento && (
           <div style={{ fontSize:12.5, fontWeight:800, color:'rgba(255,255,255,0.65)',
             textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:4 }}>
             🔥 Aula de hoje
@@ -489,9 +507,12 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [destino, setDestino] = useState<DestinoAluno | null>(null);
   const [mesVisivel, setMesVisivel] = useState(new Date().getMonth());
   const [anoVisivel, setAnoVisivel] = useState(new Date().getFullYear());
-  const [planos, setPlanos] = useState<PlanoAula[]>(() =>
+  const [planosBrutos, setPlanos] = useState<PlanoAula[]>(() =>
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
+  // Evento fora do horário com inscrição: só aparece a quem o professor aceitou.
+  const planos = planosBrutos.filter(p => !eventoForaDoHorario(p) || modoParticipacao(p) === 'turma'
+    || participantesDoEvento(p).includes(aluno.id));
 
   const [falhouLigacao, setFalhouLigacao] = useState(false);
   const [aLigar, setALigar] = useState(false);
@@ -714,9 +735,16 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
   const [refreshAtiv, setRefreshAtiv] = useState(0);
   const atividades = React.useMemo(
-    () => getAtividades().filter(x => x.turmaId === aluno.turmaId),
-    [aluno.turmaId, refreshAtiv]
+    () => [...getAtividades().filter(x => x.turmaId === aluno.turmaId), ...eventosComoAtividades(aluno.turmaId)],
+    [aluno.turmaId, refreshAtiv, planosBrutos]
   );
+  // Evento do plano: a inscrição segue para o professor; atividade antiga: fica como estava.
+  function inscreverOuEvento(id: string, sim: boolean) {
+    if (id.startsWith('ev_')) {
+      const pl = planosBrutos.find(x => x.id === id.slice(3)) || getPlanosAulaPorTurma(aluno.turmaId, true).find(x => x.id === id.slice(3));
+      if (pl) inscreverNoEvento(pl, aluno, sim);
+    } else inscreverEmAtividade(id, aluno.id, sim);
+  }
   const atividadesAbertas = atividades.filter(
     x => !x.fechada && x.data >= new Date().toISOString().slice(0, 10)
   ).length;
@@ -745,10 +773,21 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     })
     .filter(x => x.plano);
 
-  const notasValidas = validacoesAluno.map(v => v.nota20).filter((n): n is number => n != null);
-  const notaProgressiva = notasValidas.length
-    ? Math.round((notasValidas.reduce((s, n) => s + n, 0) / notasValidas.length) * 10) / 10
-    : null;
+  // A nota que o aluno vê é UMA só, em todos os ecrãs: a da UC em curso,
+  // calculada como nas «Notas da UC» do professor (e na pauta). Antes o
+  // início mostrava a média das aulas de TODAS as UCs misturadas (9,3) e
+  // outro ecrã a nota da UC com bónus (11).
+  // Primeiro a da pauta (a que o professor vê em «Notas da UC»); sem pauta,
+  // a nota final da UC calculada pelos registos.
+  const pautaDaUC = ucAtual ? notaDaPautaUC(aluno.id, aluno.turmaId, ucAtual) : null;
+  const notaDaUC = pautaDaUC?.nota != null ? { final: pautaDaUC.nota }
+    : ucAtual ? notaFinalUC(aluno.id, aluno.turmaId, ucAtual) : null;
+  const notasValidas = validacoesAluno.filter(v => !ucAtual || v.plano!.ucId === ucAtual)
+    .map(v => v.nota20).filter((n): n is number => n != null);
+  const notaProgressiva = notaDaUC?.final != null ? Math.round(notaDaUC.final * 10) / 10
+    : notasValidas.length
+      ? Math.round((notasValidas.reduce((s, n) => s + n, 0) / notasValidas.length) * 10) / 10
+      : null;
 
   // Módulos a recuperar — só pelos dois critérios: faltas acima de 10%
   // das horas do módulo, ou módulo terminado sem positiva. Antes contava
@@ -1077,7 +1116,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                     nota20: h.nota20 as number,
                   }))}
                 competenciasPorAvaliar={porAvaliar}
-                notaPossivel={notaProgressiva != null ? Math.min(20, notaProgressiva + 2) : null}
+                notaPossivel={null}
               />
             )}
 
@@ -1085,8 +1124,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               <EcraAtividades
                 atividades={atividades}
                 alunoId={aluno.id}
-                onInscrever={(id) => { inscreverEmAtividade(id, aluno.id, true); setRefreshAtiv(n => n + 1); }}
-                onCancelar={(id) => { inscreverEmAtividade(id, aluno.id, false); setRefreshAtiv(n => n + 1); }}
+                onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
+                onCancelar={(id) => { inscreverOuEvento(id, false); setRefreshAtiv(n => n + 1); }}
                 onBalanco={(id, participou, resultado) => {
                   registarBalancoAtividade(id, aluno.id, participou, resultado);
                   setRefreshAtiv(n => n + 1);
@@ -1230,14 +1269,14 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo,
                     data: h.data, nota20: h.nota20 as number }))}
                 competenciasPorAvaliar={porAvaliar}
-                notaPossivel={notaProgressiva != null ? Math.min(20, notaProgressiva + 2) : null} />
+                notaPossivel={null} />
             )}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
             {destino === 'manual' && <ManuaisAluno soLeitura />}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
-                onInscrever={(id) => { inscreverEmAtividade(id, aluno.id, true); setRefreshAtiv(n => n + 1); }}
-                onCancelar={(id) => { inscreverEmAtividade(id, aluno.id, false); setRefreshAtiv(n => n + 1); }}
+                onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
+                onCancelar={(id) => { inscreverOuEvento(id, false); setRefreshAtiv(n => n + 1); }}
                 onBalanco={(id, p, r) => { registarBalancoAtividade(id, aluno.id, p, r); setRefreshAtiv(n => n + 1); }} />
             )}
             {(destino === 'fichas' || destino === 'guiao' || destino === 'kitchenflow') && (
@@ -1365,14 +1404,15 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
     { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
     ...(comGrupos ? [{ id:'grupo', label:'Estou num grupo', agora:'O meu grupo', cor:V }] : []),
-    { id:'kf_inicial', label:'Registos iniciais',          agora:'Antes de produzir',cor:V },
+    // Sem registos quando o professor os tirou desta aula.
+    ...(((plano as any).compRemovidas || []).includes('OBR_02') ? [] : [{ id:'kf_inicial', label:'Registos iniciais', agora:'Antes de produzir', cor:V }]),
     { id:'ficha',      label:'Produzi',                    agora:'Produzir',         cor:V },
     ...(fichas.some((f:any) => f.textoGuia)
       ? [{ id:'guia', label:'Consultei o guião', agora:'Ver o guião', cor:V }] : []),
     // A requisição é do professor: o aluno só a consulta, e só se existir.
     // Antes o passo aparecia sempre, com "Nenhuma requisição criada".
     ...(requisicao ? [{ id:'requisicao', label:'Vi a requisição', agora:'Ver a requisição', cor:V }] : []),
-    { id:'kf_final',   label:'Registos finais',            agora:'Antes de fechar',  cor:V },
+    ...(((plano as any).compRemovidas || []).includes('OBR_02') ? [] : [{ id:'kf_final', label:'Registos finais', agora:'Antes de fechar', cor:V }]),
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ];
 
@@ -1479,12 +1519,12 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
                 onConcluido={() => { setEntradaConcluida(true); _save('entrada');
-                  setSecAberta(comGrupos ? 'grupo' : String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : 'kf_inicial'); }} />
+                  setSecAberta(comGrupos ? 'grupo' : String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : (((plano as any).compRemovidas || []).includes('OBR_02') ? 'ficha' : 'kf_inicial')); }} />
             )}
             {secAberta==='grupo' && (
               <PassoGrupo aluno={aluno} plano={plano}
                 onConcluido={() => { setTemGrupo(true);
-                  setSecAberta(String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : 'kf_inicial'); }} />
+                  setSecAberta(String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : (((plano as any).compRemovidas || []).includes('OBR_02') ? 'ficha' : 'kf_inicial')); }} />
             )}
             {secAberta==='kf_inicial' && (
               <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="inicial"
@@ -1515,7 +1555,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             )}
             {secAberta==='requisicao' && (
               <SecaoRequisicao requisicao={requisicao}
-                onConcluido={() => setSecAberta('kf_final')} />
+                onConcluido={() => setSecAberta(((plano as any).compRemovidas || []).includes('OBR_02') ? 'avaliacao' : 'kf_final')} />
             )}
             {secAberta==='kf_final' && (
               <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="final"
@@ -1864,7 +1904,9 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
       setEntrada(r);
       // Aula atitudinal: conta a presença e a hora de entrada, mas não há
       // farda nem registos do KitchenFlow.
-      if (String((plano as any).tipoPlanAula || '').startsWith('atitudinal')) onConcluido();
+      // O mesmo quando o professor tirou a farda desta aula.
+      if (String((plano as any).tipoPlanAula || '').startsWith('atitudinal')
+        || ((plano as any).compRemovidas || []).includes('OBR_01')) onConcluido();
     }
   }
 
@@ -2542,7 +2584,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // Fallback — se não há SUB/APP da ficha, usar sistema antigo
   const usarFallback = subsSug.length === 0 && aparelhosSug.length === 0;
   // A mesma regra que o professor vê nas Competências do plano.
-  const microsDaUC = usarFallback ? tecnicasDeRecurso(ucId, fichas as any[]) : [];
+  // Sem fichas não há técnicas: numa aula de conhecimentos apareciam
+  // técnicas «de recurso» da UC (massa folhada…) sem razão nenhuma.
+  const microsDaUC = usarFallback && (fichas as any[]).length > 0 ? tecnicasDeRecurso(ucId, fichas as any[]) : [];
   const microsSug = String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? []
     : usarFallback ? microsDaUC
     .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
@@ -2569,6 +2613,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
       return { id, nome: knw?.nome || id, definicao: knw?.definicao || '', motivo };
     }) : [];
+  // Conhecimentos escritos pelo professor para esta aula (qualquer tipo de
+  // aula, menos a atitudinal): o aluno autoavalia-se em cada um.
+  if (!String(tipoPlanAula || '').startsWith('atitudinal')) {
+    for (const k of conhecimentosDaAula(plano)) {
+      if (!compRemovidas.includes(k.id) && !conhecimentosSug.some(c => c.id === k.id))
+        conhecimentosSug.push({ id: k.id, nome: k.texto, definicao: '', motivo: '' });
+    }
+  }
 
   const [nivelHigiene, setNivelHigiene] = useState<string|null>(null);
   const [nivelHaccp, setNivelHaccp] = useState<string|null>(null);
@@ -2625,6 +2677,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
   // Evento: uma pergunta de técnica geral e o que correu menos bem.
   const ehEvento = (plano as any).tipoEvento === 'evento';
+  // O professor tirou os registos (HACCP/KitchenFlow) desta aula: não se pergunta.
+  const semRegistos = compRemovidas.includes('OBR_02');
   const [tecEvento, setTecEvento] = useState<number | null>(null);
   const [tecMenosBem, setTecMenosBem] = useState('');
   const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
@@ -2633,8 +2687,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null;
   const prontoParaSubmeter = triagemCompleta && (ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null)
-      && (!comObrigatorias || nivelHaccp !== null) && tecEventoFeito
-    : nivelHaccp !== null && atitudesDaAula.every(id => frasesAula[id] != null) && tecEventoFeito);
+      && (!comObrigatorias || semRegistos || nivelHaccp !== null) && tecEventoFeito
+    : (semRegistos || nivelHaccp !== null) && atitudesDaAula.every(id => frasesAula[id] != null) && tecEventoFeito);
 
   const fmtN = (x: number) => (Math.round(x * 10) / 10).toString().replace('.', ',');
 
@@ -2696,7 +2750,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     const regFarda = getHistoricoAvaliacoes()
       .filter((r: any) => r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01')
       .sort((a: any, b: any) => String(b.data).localeCompare(String(a.data)))[0];
-    const contaObrigatorias = !ehAtitudinal || comObrigatorias;
+    const contaObrigatorias = (!ehAtitudinal || comObrigatorias) && !compRemovidas.includes('OBR_01');
     const todasAutoavaliacoes = [
       ...(regFarda && contaObrigatorias ? [{ competenciaId: 'OBR_01', nivel: 'entrada', nota: Number(regFarda.nota) || 1, daEntrada: true }] : []),
       // HACCP: sem registo no KitchenFlow, a proposta chega ao professor
@@ -2959,7 +3013,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     comp?: typeof itensComp[number]; atiId?: string };
   const passos: Passo[] = [
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
-    ...((!ehAtitudinal || comObrigatorias) ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
+    ...((!ehAtitudinal || comObrigatorias) && !semRegistos ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
     ...(ehAtitudinal
       ? atitudesDaAula.map(id => ({ id: 'a_' + id, tipo: 'atiAula' as const, atiId: id }))
       : [...atitudesDaAula.map(id => ({ id: 'a_' + id, tipo: 'atiAula' as const, atiId: id })),

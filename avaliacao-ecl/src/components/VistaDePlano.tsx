@@ -1,4 +1,6 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
+import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv } from '../backend';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
@@ -467,13 +469,18 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // filtro de retirados vinha primeiro: retirar um fazia entrar outro no
   // lugar, sem aviso, e o retirado desaparecia da lista — não havia como
   // o voltar a incluir.
-  const conhecimentosSugeridos = !ehAtitudinal && tipoPlanAula !== 'pratico' && plano.ucId && lib
-    ? (lib.conhecimentos as any[])
+  // Os conhecimentos vêm agora do referencial da UC (ou do professor), no
+  // cartão «Conhecimentos a avaliar nesta aula». A biblioteca dava os seis
+  // primeiros de TODAS as UCs — nada a ver com a aula.
+  const conhecimentosSugeridos = false && !ehAtitudinal && tipoPlanAula !== 'pratico' && plano.ucId && lib
+    ? (lib!.conhecimentos as any[])
         .filter((k: any) => !IDS_JA_USADOS.has(k.id))
         .slice(0, 6)
         .map((k: any) => ({ id: k.id, nome: k.nome, definicao: k.definicao, criterios: [] as any[] }))
     : [];
-  const compConhecimentos = conhecimentosSugeridos.filter(k => !compRemovidas.includes(k.id));
+  // Os conhecimentos desta aula: os do professor, ou os do referencial da UC.
+  const compConhecimentos = [...conhecimentosSugeridos, ...(ehAtitudinal ? [] : conhecimentosDaAula(plano)
+    .map(k => ({ id: k.id, nome: k.texto, definicao: '', criterios: [] as any[] })))].filter(k => !compRemovidas.includes(k.id));
   compConhecimentos.forEach(k => IDS_JA_USADOS.add(k.id));
 
   // ── Fallback: sistema antigo (microsPorUC) se não há SUB/APP ─
@@ -738,7 +745,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <div style={{ padding:'10px 14px', background:'var(--copper-pale)', borderRadius:10, fontSize:13, color:'var(--copper)', marginBottom:14, border:'1px solid rgba(181,101,29,0.2)' }}>
-          <strong>{totalComp} competências</strong> para esta aula. As obrigatórias não podem ser removidas.
+          <strong>{totalComp} competências</strong> para esta aula. As obrigatórias contam sempre — só se tiram desta aula se houver razão (ex.: os alunos não foram avisados da farda).
         </div>
         {/* ── Toggle SUB/APP ── */}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'10px 12px',
@@ -780,7 +787,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <span>✓</span>
                 <div style={{ flex:1, fontSize:13, fontWeight:600 }}>{c.nome}</div>
-                <span style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>SEMPRE</span>
+                {(() => {
+                  // Obrigatória, mas o professor pode tirá-la desta aula (farda sem
+                  // aviso aos alunos, registos que ainda não se fazem…).
+                  const tirada = compRemovidas.includes(c.id);
+                  return (
+                    <button onClick={() => guardarCompetencias(tirada ? compRemovidas.filter(x => x !== c.id) : [...compRemovidas, c.id], compAdicionadas)}
+                      style={{ fontSize:12.5, fontWeight:700, padding:'4px 10px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                        border:`1px solid ${tirada ? 'var(--copper)' : 'rgba(90,122,78,0.4)'}`, background:'#fff',
+                        color: tirada ? 'var(--copper)' : 'var(--sage)' }}>
+                      {tirada ? 'Fora desta aula · repor' : 'Obrigatória · tirar desta aula'}
+                    </button>
+                  );
+                })()}
               </div>
               {Array.isArray((c as any).criterios) && (c as any).criterios.length > 0 && (
                 <ul style={{ margin:'6px 0 0 28px', padding:0 }}>
@@ -792,6 +811,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
           ))}
         </div>
+        {/* ── Conhecimentos definidos pelo professor, com sugestões do referencial ── */}
+        <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
         {/* ── Subtécnicas da ficha (SUB-xxx) ── */}
         {compSub.length > 0 && (
           <div style={{ marginBottom:14 }}>
@@ -1288,7 +1309,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
             {/* Evento ou concurso no horário letivo: entra neste plano. Os de
                 fora do horário avaliam-se no menu «Avaliar evento fora do horário». */}
-            {(() => {
+            {!eventoForaDoHorario(plano) && (() => {
               const atual = (plano as any).tipoEvento as ('evento' | 'concurso' | undefined);
               const escolher = (t?: 'evento' | 'concurso') => {
                 const f: any = planoFresco();
@@ -1329,6 +1350,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </div>
             )}
           </div>
+          {!ehAtitudinal && <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />}
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sage)', marginBottom: 8 }}>🔒 Obrigatórias — sempre presentes</div>
             {compObrigatorias.map(c => (
@@ -1336,7 +1358,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <span style={{ fontSize: 14 }}>✓</span>
                   <div style={{ flex:1, fontSize:13, fontWeight:600 }}>{c.nome}</div>
-                  <span style={{ fontSize:13, color:'var(--sage)', fontWeight:600 }}>SEMPRE</span>
+                  {(() => {
+                  // Obrigatória, mas o professor pode tirá-la desta aula (farda sem
+                  // aviso aos alunos, registos que ainda não se fazem…).
+                  const tirada = compRemovidas.includes(c.id);
+                  return (
+                    <button onClick={() => guardarCompetencias(tirada ? compRemovidas.filter(x => x !== c.id) : [...compRemovidas, c.id], compAdicionadas)}
+                      style={{ fontSize:12.5, fontWeight:700, padding:'4px 10px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                        border:`1px solid ${tirada ? 'var(--copper)' : 'rgba(90,122,78,0.4)'}`, background:'#fff',
+                        color: tirada ? 'var(--copper)' : 'var(--sage)' }}>
+                      {tirada ? 'Fora desta aula · repor' : 'Obrigatória · tirar desta aula'}
+                    </button>
+                  );
+                })()}
                 </div>
                 {Array.isArray((c as any).criterios) && (c as any).criterios.length > 0 && (
                   <ul style={{ margin:'6px 0 0 28px', padding:0 }}>
@@ -1472,6 +1506,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      {eventoForaDoHorario(plano) && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
+          <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
+        </div>
+      )}
       {/* Requisição feita antes de mudar as fichas — o pedido ao economato
           já não corresponde à aula. */}
       {(() => {
@@ -2122,3 +2161,106 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 }
 
 export default VistaDePlano;
+
+
+// ── Evento fora do horário: quem participa ─────────────────────
+// A turma toda (obrigatório) ou quem se inscreve nas «Atividades e
+// concursos» e o professor aceita. Só os participantes contam para o bónus.
+function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
+  const [, redesenhar] = React.useState(0);
+  React.useEffect(() => {
+    let vivo = true;
+    const ver = () => sincronizarGrupos(plano.turmaId).catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
+    ver(); const t = setInterval(ver, 20000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [plano.id]);
+  const modo = modoParticipacao(plano);
+  const aceites: string[] = plano.participantesIds || [];
+  const inscritos = inscritosNoEvento(plano.id);
+  const alunos = getAlunosEv().filter(a => a.turmaId === plano.turmaId && a.ativo !== false);
+  const nome = (id: string) => alunos.find(a => a.id === id)?.nome || id;
+  const gravar = (patch: any) => {
+    const p = { ...plano, ...patch, atualizadoEm: new Date().toISOString() };
+    addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+  };
+  const bt = (sel: boolean): React.CSSProperties => ({ padding: '7px 12px', borderRadius: 8, fontSize: 13.5, fontWeight: 700,
+    cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${sel ? '#6B3FA0' : 'rgba(26,23,20,0.15)'}`,
+    background: sel ? '#6B3FA0' : '#fff', color: sel ? '#fff' : 'rgba(26,23,20,0.75)' });
+  const lista = [...new Set([...inscritos, ...aceites])];
+  return (
+    <div style={{ marginTop: 11, paddingTop: 11, borderTop: '1px solid rgba(181,101,29,0.25)', fontSize: 13.5 }}>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>🏅 Quem participa neste evento?</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+        <button style={bt(modo === 'turma')} onClick={() => gravar({ modoParticipacao: 'turma' })}>A turma toda (obrigatório)</button>
+        <button style={bt(modo === 'inscricao')} onClick={() => gravar({ modoParticipacao: 'inscricao' })}>Quem se inscrever</button>
+      </div>
+      {modo === 'turma' ? (
+        <div style={{ color: 'rgba(26,23,20,0.6)' }}>Os {alunos.length} alunos da turma vão. Não conta falta de aula.</div>
+      ) : (
+        <>
+          <div style={{ color: 'rgba(26,23,20,0.6)', marginBottom: 6 }}>
+            {inscritos.length} inscrito{inscritos.length === 1 ? '' : 's'} · {aceites.length} aceite{aceites.length === 1 ? '' : 's'}. Os alunos inscrevem-se em «Atividades e concursos».
+          </div>
+          {lista.length === 0 && <div style={{ color: 'rgba(26,23,20,0.5)' }}>Ainda ninguém se inscreveu.</div>}
+          {lista.map(id => {
+            const ok = aceites.includes(id);
+            return (
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: '1px solid rgba(26,23,20,0.06)' }}>
+                <span style={{ flex: 1 }}>{nome(id)}{!inscritos.includes(id) && <span style={{ color: 'rgba(26,23,20,0.45)' }}> (retirou-se)</span>}</span>
+                <button style={bt(ok)} onClick={() => gravar({ participantesIds: ok ? aceites.filter(x => x !== id) : [...aceites, id] })}>
+                  {ok ? '✓ Aceite' : 'Aceitar'}</button>
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
+
+
+// ── Conhecimentos: o professor define o que avalia ─────────────
+// Enquanto o catálogo de conhecimentos não está afinado, o professor
+// escreve os parâmetros desta aula. A aplicação sugere os conhecimentos
+// do referencial da UC (pela equivalência UFCD → UC). O aluno
+// autoavalia-se em cada um e o professor valida, como nas técnicas.
+function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
+  const [texto, setTexto] = React.useState('');
+  // Aula teórica ou mista sem escolha do professor: os do referencial da UC.
+  const lista: { id: string; texto: string }[] = conhecimentosDaAula(plano);
+  const sugestoes = conhecimentosDoReferencial(plano.ucId).filter(t => !lista.some(l => l.texto === t));
+  const gravar = (nova: { id: string; texto: string }[]) => {
+    const p = { ...plano, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
+    addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+  };
+  const juntar = (t: string) => { const tt = t.trim(); if (!tt) return; gravar([...lista, { id: 'KNW-P' + Date.now(), texto: tt }]); setTexto(''); };
+  return (
+    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8', marginBottom: 6 }}>📚 Conhecimentos a avaliar nesta aula</div>
+      {lista.length === 0 && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 6 }}>Nenhum ainda. Escolhe das sugestões do referencial ou escreve o teu.</div>}
+      {lista.map(k => (
+        <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 13.5 }}>
+          <span style={{ flex: 1 }}>● {k.texto}</span>
+          <button onClick={() => gravar(lista.filter(x => x.id !== k.id))} style={{ fontSize: 12.5, padding: '3px 9px', borderRadius: 7,
+            border: '1px solid rgba(26,23,20,0.2)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>Tirar</button>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') juntar(texto); }}
+          placeholder="Escreve um conhecimento (ex.: Identificar os cortes do porco)" className="input" style={{ flex: 1, fontSize: 13.5 }} />
+        <button onClick={() => juntar(texto)} className="btn btn-primary" style={{ fontSize: 13.5 }}>+ Juntar</button>
+      </div>
+      {sugestoes.length > 0 && (
+        <details style={{ marginTop: 8 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>Sugestões do referencial ({sugestoes.length})</summary>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            {sugestoes.map(t => (
+              <button key={t} onClick={() => juntar(t)} style={{ textAlign: 'left', fontSize: 12.5, padding: '5px 9px', borderRadius: 8,
+                border: '1px solid rgba(37,99,235,0.3)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>+ {t}</button>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
