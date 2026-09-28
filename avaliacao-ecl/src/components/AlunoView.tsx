@@ -60,6 +60,7 @@ import {
 } from './InicioAluno';
 import { PassoKitchenFlowFase } from './PassosKitchenFlow';
 import { perguntasDaAula, notaTriagem, type Triagem5C } from '../triagem5c';
+import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, perguntaCODaAula, perguntaCRDaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { ManuaisAluno } from './ManuaisAluno';
@@ -927,12 +928,11 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       )}
 
       {ucFinal && (
-        <ModalFullscreen titulo="Autoavaliação final da UC" subtitulo={aluno.turmaId} onFechar={() => setUcFinal(null)}>
-          <AutoavaliacaoFinalUC aluno={aluno} ucId={ucFinal}
-            ucNome={ucsFinais.find(u => u.ucId === ucFinal)?.nome || ucFinal}
-            onFechar={() => setUcFinal(null)}
-            onFeito={() => { setUcFinal(null); setVersaoFinal(v => v + 1); }} />
-        </ModalFullscreen>
+        // Abre no seu próprio ecrã cheio, uma coisa de cada vez.
+        <AutoavaliacaoFinalUC aluno={aluno} ucId={ucFinal}
+          ucNome={ucsFinais.find(u => u.ucId === ucFinal)?.nome || ucFinal}
+          onFechar={() => setUcFinal(null)}
+          onFeito={() => { setUcFinal(null); setVersaoFinal(v => v + 1); }} />
       )}
 
       {/* ── CABEÇALHO ─────────────────────────────────────── */}
@@ -1351,6 +1351,10 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
 }) {
   const [secAberta, setSecAberta] = React.useState<string>('orientacao');
+  /** O passo abre num ecrã cheio, por cima da aula; ao acabar, segue para o próximo. */
+  const [ecra, setEcra] = React.useState(false);
+  // Chegou à autoavaliação vindo do ecrã cheio: ela abre o seu próprio ecrã.
+  React.useEffect(() => { if (secAberta === 'avaliacao' && ecra) setEcra(false); }, [secAberta, ecra]);
   // Estados persistentes — sobrevivem a saídas e reentradas do aluno no plano
   const _key = (s: string) => `ecl_passo_${plano.id}_${aluno.id}_${s}`;
   const _load = (s: string) => { try { return !!localStorage.getItem(_key(s)); } catch { return false; } };
@@ -1503,11 +1507,23 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
                 </div>
               </div>
 
-              {/* A lista "As tuas fichas" saiu: as fichas aparecem logo a
-                  seguir, uma a uma, com ingredientes e passos. */}
+              {/* O passo abre num ecrã só dele. A autoavaliação tem o seu próprio botão, em baixo. */}
+              {secAberta !== 'avaliacao' && (
+                <button onClick={() => setEcra(true)} style={{ width:'100%', marginTop:14, minHeight:54,
+                  borderRadius:12, border:'none', background:'#6B3FA0', color:'#fff', fontSize:17,
+                  fontWeight:700, fontFamily:'inherit', cursor:'pointer' }}>
+                  Abrir →
+                </button>
+              )}
             </div>
           )}
 
+            {ecra && secAberta !== 'avaliacao' && passoActivo && (
+              <EcraCheio titulo={`Passo ${PASSOS.findIndex(p => p.id === secAberta) + 1} de ${totalPassos} · ${passoActivo.label}`}
+                onSair={() => setEcra(false)}>
+                <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, marginBottom:12 }}>
+                  {(passoActivo as any).agora || passoActivo.label}
+                </div>
             {secAberta==='orientacao' && (
               <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno}
                 onContinuar={() => { setOrientacaoConcluida(true); _save('orientacao'); setSecAberta('entrada'); }} />
@@ -1574,8 +1590,10 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
                 } as any)}
                 onConcluido={() => { setKfFinalConcluido(true); _save('kf_final'); setSecAberta('avaliacao'); }} />
             )}
+              </EcraCheio>
+            )}
             {secAberta==='avaliacao' && (
-              <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno}
+              <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno} abrirLogo={ecra}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
             )}
 
@@ -1593,7 +1611,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               const podeIr = est === 'concluido' || ativo;
               return (
                 <button key={p.id}
-                  onClick={() => podeIr && setSecAberta(p.id)}
+                  onClick={() => { if (!podeIr) return; setSecAberta(p.id); setEcra(p.id !== 'avaliacao'); }}
                   disabled={!podeIr}
                   style={{ display:'flex', alignItems:'center', gap:11, width:'100%',
                     padding: ativo ? '9px 0' : '7px 0', background:'transparent', border:'none',
@@ -1856,6 +1874,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
   // A farda em dois tempos: primeiro a pergunta, e só quem tem algo em
   // falta é que abre a lista dos nove itens.
   const [fardaModo, setFardaModo] = useState<'perguntar' | 'detalhe'>('perguntar');
+  const [fardaSub, setFardaSub] = useState(0);
   // Vazios: confirmar a farda tem de ser um ato do aluno. Quem diz que
   // está tudo completo marca-os todos de uma vez, mas é uma escolha
   // sua — não o estado por omissão.
@@ -2074,6 +2093,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
               // entrar na cozinha" aparecia logo, antes de tocar em nada.
               onClick={() => {
                 setOk(Object.fromEntries(ITENS_FARDA.map(i => [i.id, true])));
+                setFardaSub(0);
                 setFardaModo('detalhe');
               }}
               style={{ width:'100%', background:'transparent', border:`2px solid ${V}`,
@@ -2082,12 +2102,29 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
               Tenho algo em falta
             </button>
           </>
-        ) : (
+        ) : (() => {
+          // Uma coisa de cada vez: o que falta, depois uma pergunta por ecrã.
+          const OPC_REFL = {
+            porque: ['Esqueci-me', 'Não preparei a farda na véspera', 'A farda estava suja ou estragada', 'Outra razão'],
+            resolver: ['Pedi para ma trazerem', 'Pedi emprestado', 'Não consegui resolver hoje'],
+          } as const;
+          const total = emFalta.length ? 4 : 1;
+          const nomes = ['O que te falta', 'O que aconteceu?', 'O que fizeste para resolver?', 'Para não voltar a acontecer'];
+          const opcao = (k: 'porque' | 'resolver', o: string) => (
+            <button key={o} onClick={() => setRefl(r => ({ ...r, [k]: o }))} style={{ width:'100%', display:'block',
+              textAlign:'left', padding:'13px 14px', marginBottom:8, borderRadius:12, fontSize:15, cursor:'pointer',
+              fontFamily:'inherit', border:`2px solid ${refl[k] === o ? V : '#E4E1E8'}`,
+              background: refl[k] === o ? VS : '#fff', color: refl[k] === o ? V : '#333',
+              fontWeight: refl[k] === o ? 700 : 500 }}>{o}</button>
+          );
+          return (
+        <>
+        <ProgressoSlides nome={nomes[fardaSub]} idx={fardaSub} total={total} />
+        {fardaSub === 0 && (
         <>
         <div style={{ fontSize:14, color:'#777', marginTop:4, marginBottom:15 }}>
           Toca no que te falta (fica a cinzento).
         </div>
-
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:9,
           marginBottom:16 }}>
           {ITENS_FARDA.map(it => {
@@ -2128,42 +2165,32 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           </div>
         )}
 
-        {emFalta.length > 0 && (
-          <div style={{ background:'#fff', border:'1px solid #E4E1E8', borderRadius:12, padding:14, marginBottom:14 }}>
-            {([
-              ['porque', 'O que aconteceu?', ['Esqueci-me', 'Não preparei a farda na véspera', 'A farda estava suja ou estragada', 'Outra razão']],
-              ['resolver', 'O que fizeste para resolver?', ['Pedi para ma trazerem', 'Pedi emprestado', 'Não consegui resolver hoje']],
-            ] as const).map(([k, pergunta, ops]) => (
-              <div key={k} style={{ marginBottom:12 }}>
-                <div style={{ fontSize:14.5, fontWeight:700, marginBottom:6 }}>{pergunta}</div>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                  {ops.map(o => (
-                    <button key={o} onClick={() => setRefl(r => ({ ...r, [k]: o }))} style={{
-                      padding:'8px 12px', borderRadius:10, fontSize:14, cursor:'pointer', fontFamily:'inherit',
-                      border:`1.5px solid ${refl[k] === o ? V : '#DDD'}`, background: refl[k] === o ? VS : '#fff',
-                      color: refl[k] === o ? V : '#444', fontWeight: refl[k] === o ? 700 : 500 }}>{o}</button>
-                  ))}
-                </div>
-              </div>
-            ))}
-            <div style={{ fontSize:14.5, fontWeight:700, marginBottom:6 }}>O que vais fazer para não voltar a acontecer?</div>
-            <input value={refl.evitar} onChange={e => setRefl(r => ({ ...r, evitar: e.target.value }))}
-              placeholder="Uma frase" style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10,
-                border:'1.5px solid #DDD', fontSize:15, fontFamily:'inherit' }} />
-          </div>
-        )}
-
-        <button onClick={() => gravarFarda()} disabled={emFalta.length > 0 && !reflexaoFeita} style={{
-          width:'100%', background:V, color:'#fff', border:'none', borderRadius:12,
-          padding:17, fontSize:18, fontWeight:600, cursor:'pointer', fontFamily:'inherit',
-          opacity: emFalta.length > 0 && !reflexaoFeita ? 0.45 : 1,
-        }}>
-          {emFalta.length === 0
-            ? 'Confirmar — está tudo'
-            : `Confirmar — falta-me ${emFalta.length}`}
-        </button>
         </>
         )}
+        {fardaSub === 1 && <>
+          <div style={{ fontSize:20, fontWeight:800, marginBottom:12 }}>O que aconteceu?</div>
+          {OPC_REFL.porque.map(o => opcao('porque', o))}
+        </>}
+        {fardaSub === 2 && <>
+          <div style={{ fontSize:20, fontWeight:800, marginBottom:12 }}>O que fizeste para resolver?</div>
+          {OPC_REFL.resolver.map(o => opcao('resolver', o))}
+        </>}
+        {fardaSub === 3 && <>
+          <div style={{ fontSize:20, fontWeight:800, marginBottom:12 }}>O que vais fazer para não voltar a acontecer?</div>
+          <input value={refl.evitar} onChange={e => setRefl(r => ({ ...r, evitar: e.target.value }))}
+            placeholder="Uma frase" style={{ width:'100%', boxSizing:'border-box', padding:'12px 14px', borderRadius:12,
+              border:'1.5px solid #DDD', fontSize:15.5, fontFamily:'inherit' }} />
+        </>}
+        <NavSlides
+          onAnterior={() => fardaSub === 0 ? setFardaModo('perguntar') : setFardaSub(n => n - 1)}
+          pode={fardaSub === 0 ? true : fardaSub === 1 ? !!refl.porque : fardaSub === 2 ? !!refl.resolver : reflexaoFeita}
+          textoSeguinte={emFalta.length === 0 ? 'Confirmar — está tudo'
+            : fardaSub < 3 ? 'Seguinte' : `Confirmar — falta-me ${emFalta.length}`}
+          onSeguinte={() => emFalta.length === 0 || fardaSub === 3 ? gravarFarda() : setFardaSub(n => n + 1)}
+          fundo="#fff" />
+        </>
+          );
+        })()}
       </div>
     </div>
   );
@@ -2461,7 +2488,8 @@ function SecaoRequisicao({ requisicao, onConcluido }: { requisicao: any; onConcl
 // ─────────────────────────────────────────────────────────────
 // SECÇÃO 4 — Autoavaliação (mantida da versão anterior)
 // ─────────────────────────────────────────────────────────────
-function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
+function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
+  abrirLogo?: boolean;
   plano: PlanoAula; aluno: Aluno; fichas: FichaProducao[]; onConcluido: () => void;
 }) {
   const ucId = plano.ucId||'';
@@ -2678,14 +2706,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [modalConfirmar, setModalConfirmar] = useState(false);
   /** Em que passo da autoavaliação está o aluno. */
   const [passoIdx, setPassoIdx] = useState(0);
-  /** A autoavaliação abre num ecrã só dela, por cima da aula: uma pergunta de cada vez. */
-  const [aberto, setAberto] = useState(false);
-  useEffect(() => {
-    if (!aberto) return;
-    const antes = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = antes; };
-  }, [aberto]);
+  /** A autoavaliação abre num ecrã só dela, por cima da aula: uma pergunta de cada vez.
+   *  Abre logo quando o aluno vem do passo anterior no ecrã cheio. */
+  const [aberto, setAberto] = useState(!!abrirLogo);
   const topoRef = React.useRef<HTMLDivElement>(null);
   useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [passoIdx]);
   /** Trava de submissão — protege de dois toques seguidos. */
@@ -3252,19 +3275,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   );
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Autoavaliação" style={{ position:'fixed', inset:0, zIndex:2000,
-      background:'#E2D8EE', display:'flex', flexDirection:'column' }}>
-      <div style={{ background:V, color:'#fff', padding:'10px 16px', display:'flex', alignItems:'center', gap:12,
-        paddingTop:'max(10px, env(safe-area-inset-top))' }}>
-        <button onClick={() => setAberto(false)} style={{ padding:'8px 12px', borderRadius:10,
-          border:'1px solid rgba(255,255,255,0.5)', background:'transparent', color:'#fff', fontSize:14,
-          fontWeight:600, fontFamily:'inherit', cursor:'pointer' }}>✕ Sair</button>
-        <div style={{ flex:1, minWidth:0, fontSize:14.5, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-          Autoavaliação · {plano.titulo}
-        </div>
-      </div>
-      <div style={{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch' }}>
-    <div ref={topoRef} style={{ maxWidth:560, margin:'0 auto', padding:'16px 16px 40px' }}>
+    <EcraCheio titulo={`Autoavaliação · ${plano.titulo}`} onSair={() => setAberto(false)}>
+    <div ref={topoRef}>
       {/* De que aula se trata — numa aula que já passou, o aluno lembra-se. */}
       {idx === 0 && (
         <div style={{ background:'#F0EBF7', borderRadius:12, padding:'10px 14px', marginBottom:14,
@@ -3622,7 +3634,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       {/* Anterior / Seguinte — sempre à vista, em baixo do ecrã. */}
       {passo.tipo !== 'rever' && (
         <div style={{ display:'flex', gap:10, marginTop:18, position:'sticky', bottom:0,
-          background:'#E2D8EE', padding:'10px 0 max(10px, env(safe-area-inset-bottom))' }}>
+          background:FUNDO_ECRA, padding:'10px 0 max(10px, env(safe-area-inset-bottom))' }}>
           {idx > 0 && (
             <button onClick={() => irPara(idx - 1)} style={{ minHeight:52, padding:'0 18px', borderRadius:12,
               border:`1px solid ${T.border}`, background:'#fff', color:'rgba(26,23,20,0.7)',
@@ -3639,7 +3651,6 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         </div>
       )}
     </div>
-      </div>
-    </div>
+    </EcraCheio>
   );
 }
