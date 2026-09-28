@@ -1,7 +1,9 @@
+import { AvisoCoberturaUC } from './AvisoCoberturaUC';
+import { categoriaDaNota } from '../compatECL';
 import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula } from '../backend';
 import { notaDaPautaUC } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
@@ -122,12 +124,8 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       }));
       // Calcular nota ponderada usando calcularNotaPlano com pesos por categoria
       const planos = getPlanosAula();
-      const notasComCat = regs.map(r => {
-        const cat = r.microcompetenciaId?.startsWith('OBR_') ? 'OBR'
-          : r.microcompetenciaId?.startsWith('SUB-') || r.microcompetenciaId?.startsWith('APP-') ? 'SUB'
-          : r.microcompetenciaId?.startsWith('KNW-') ? 'KNW'
-          : r.microcompetenciaId?.startsWith('INI-') ? 'INI'
-          : 'ATI';
+      const notasComCat = regs.filter(r => contaNaNotaDaAula(r.microcompetenciaId)).map(r => {
+        const cat = categoriaDaNota(r.microcompetenciaId);
         return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: r.nota };
       });
       // Tipo de plano mais comum nas avaliações deste aluno
@@ -196,6 +194,8 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
 
   return (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* O que falta avaliar na UC escolhida (só para o professor). */}
+      {!alunoId && filtroUC && <AvisoCoberturaUC turmaId={turmaId} ucId={filtroUC} />}
 
       {/* Cabeçalho — só na vista do professor. O aluno já tem o título por
           cima ("O meu historial") e aqui lia "Imprimir turma" e "filtra por
@@ -331,15 +331,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
           return (
             <div key={aluno.id} className="aluno-card" data-aluno-id={aluno.id}
               style={{ marginBottom: 8, borderRadius: 12, overflow: 'hidden', border: `1px solid ${T.border}` }}>
-              {/* Cabeçalho do aluno */}
-              <button className="no-print" onClick={(e) => { e.stopPropagation(); imprimirAluno(aluno.id); }}
-                title="Imprimir situação deste aluno" style={{
-                  float: 'right', margin: '10px 10px 0 0', background: 'transparent', border: 'none',
-                  cursor: 'pointer', fontSize: 16, opacity: 0.5 }}>
-                🖨️
-              </button>
+              {/* Cabeçalho do aluno. A impressora fica na mesma linha (antes, em
+                  «float», criava uma faixa vazia por cima de cada aluno). */}
+              <div style={{ display: 'flex', alignItems: 'stretch', background: aberto ? 'rgba(181,101,29,0.06)' : '#fff' }}>
               <button onClick={() => setVistaAluno(aberto ? null : aluno.id)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
                   background: aberto ? 'rgba(181,101,29,0.06)' : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: T.copper, color: '#fff',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, flexShrink: 0 }}>
@@ -372,6 +368,13 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                 )}
                 <span style={{ fontSize: 14, color: 'rgba(26,23,20,0.3)' }}>{aberto ? '▲' : '▼'}</span>
               </button>
+              <button className="no-print" onClick={(e) => { e.stopPropagation(); imprimirAluno(aluno.id); }}
+                title="Imprimir situação deste aluno" style={{
+                  background: 'transparent', border: 'none', borderLeft: `1px solid ${T.border}`,
+                  padding: '0 14px', cursor: 'pointer', fontSize: 16, opacity: 0.55 }}>
+                🖨️
+              </button>
+              </div>
 
               {/* Detalhe por competência — abre em modal quase-fullscreen,
                   em vez de empurrar o resto da lista de alunos para baixo. */}

@@ -3,6 +3,7 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { getAlunos, getHistoricoAvaliacoes, getPlanosAulaPorTurma } from '../backend';
 import { OBRIGATORIAS, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
+import { notaPara20 } from '../types';
 
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
@@ -22,7 +23,7 @@ function corNota(n: number): string {
 }
 
 // Converter nota interna 1-4 para escala 0-20 (×5)
-function para20(n: number): number { return Math.min(20, Math.round(n * 4)); }
+function para20(n: number): number { return notaPara20(n); }
 
 export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
   const modulos = modulosDaTurma(turmaId);

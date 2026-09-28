@@ -5,6 +5,7 @@
 // ============================================================
 
 import type { Triagem5C } from './triagem5c';
+import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { notaDaPautaUC } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
@@ -13,8 +14,8 @@ import {
   Turma, Aluno, PlanoAula, FichaProducao,
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
-, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf } from './compatECL';
+, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO, notaPara20, nivelDe20 } from './types';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
@@ -1361,7 +1362,7 @@ export function seedAlunosReais(): void {
   if (perfilDoAparelho !== 'professor' && perfilDoAparelho !== 'coordenadora') return;
   let enviados: Record<string, string> = {};
   try { enviados = JSON.parse(localStorage.getItem(KEY_ALUNOS_ENVIADOS) || '{}'); } catch { enviados = {}; }
-  const assinatura = (a: any) => JSON.stringify([a.nome, a.turmaId, a.numero, a.pin, a.ativo !== false]);
+  const assinatura = (a: any) => JSON.stringify([a.nome, a.turmaId, a.numero, a.pin, a.ativo !== false, a.nivelMedidas || 1]);
   const mudaram = alunos.filter((a: any) => enviados[a.id] !== assinatura(a));
   if (!mudaram.length) return;
   emSegundoPlano(() => mudaram.forEach((a: Aluno) => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a })));
@@ -2723,14 +2724,14 @@ export function addOrUpdateValidacao(v: Validacao): void {
     ? v.notas.reduce((s, n) => s + n.nota, 0) / v.notas.length : 0;
   const nota20Final = typeof notaPonderada === 'number'
     ? Math.round(notaPonderada * 10) / 10
-    : Math.min(20, Math.round(notaMediaVal * 4));
+    : notaPara20(notaMediaVal);
 
   const aluno_val = getAlunos().find(a => a.id === v.alunoId);
   enviar(SHEETS_HISTORICO_URL, 'validacao', {
     ...(v as unknown as Record<string, unknown>),
     nomeAluno: aluno_val?.nome || ('Aluno ' + (aluno_val?.numero || 0)),
     turma: v.turmaId,
-    nota_media_1_5: Math.round((nota20Final / 4) * 10) / 10,
+    nota_media_1_5: Math.round(nivelDe20(nota20Final) * 10) / 10,
     nota_media_0_20: nota20Final,
   });
 }
@@ -2873,7 +2874,7 @@ export function addRegistoAvaliacao(r: RegistoAvaliacao): void {
     1: 'Ainda não fiz', 2: 'Preciso de mais prática',
     3: 'Consegui com ajuda', 4: 'Faço sozinho/a', 5: 'Faço com muito bom resultado',
   };
-  const nota20 = Math.min(20, Math.round(r.nota * 4));
+  const nota20 = notaPara20(r.nota);
 
   porConfirmar('avaliacao', r.id, `${aluno?.nome || 'aluno'} · ${r.microcompetenciaId}`, r.turmaId);
   enviar(SHEETS_HISTORICO_URL, 'avaliacao', {
@@ -2964,6 +2965,43 @@ function enviarPresenca(registo: any, aluno?: any, plano?: any): void {
     ...(registo.decisaoProfessor ? { decisaoProfessor: registo.decisaoProfessor, decididoPor: registo.decididoPor || '' } : {}),
     ...(registo.horasPresentes ? { horasPresentes: registo.horasPresentes } : {}),
   });
+}
+
+// ── Mãos lavadas à entrada ──────────────────────────────────
+// Fica na observação da presença (é o que chega ao Sheets e aos outros
+// aparelhos do professor), à frente do resto: «Mãos lavadas às 09:05 (52 s)».
+const MARCA_MAOS = /Mãos lavadas às [^|]*(\|\s*)?/;
+
+export function registarMaosLavadas(alunoId: string, planoAulaId: string, segundos: number): void {
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  const i = all.findIndex(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId);
+  if (i < 0) return;
+  const hora = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const marca = `Mãos lavadas às ${hora} (${segundos} s)`;
+  const resto = (all[i].observacao || '').replace(MARCA_MAOS, '').trim();
+  all[i] = { ...all[i], observacao: resto ? `${marca} | ${resto}` : marca };
+  save(KEYS.presencas, all);
+  enviarPresenca(all[i]);
+}
+
+/** A farda declarada à entrada vai para a presença: o professor vê no
+ *  «Turma na aula» quem tem farda incompleta e o que falta. Antes só ia
+ *  para a autoavaliação, e a presença dizia sempre «farda completa». */
+export function registarFardaNaPresenca(alunoId: string, planoAulaId: string, emFalta: string[]): void {
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  const i = all.findIndex(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId);
+  if (i < 0) return;
+  const semFalta = (all[i].observacao || '').replace(/\|?\s*em falta:.*$/, '').trim();
+  const obs = emFalta.length ? [semFalta, `em falta: ${emFalta.join(', ')}`].filter(Boolean).join(' | ') : semFalta;
+  all[i] = { ...all[i], fardamentoOk: emFalta.length === 0, observacao: obs };
+  save(KEYS.presencas, all);
+  enviarPresenca(all[i]);
+}
+
+/** «às 09:05 (52 s)», ou '' se não confirmou. */
+export function maosLavadasDaPresenca(observacao?: string): string {
+  const m = (observacao || '').match(/Mãos lavadas (às [^|]*)/);
+  return m ? m[1].trim() : '';
 }
 
 /** Uma vez por aparelho: volta a enviar as presenças guardadas aqui, agora
@@ -5392,6 +5430,8 @@ export interface EstadoAlunoNaAula {
   decisaoFalta?: string;
   fardamentoOk: boolean;
   itensEmFalta: string;
+  /** «às 09:05 (52 s)» quando confirmou que lavou as mãos; '' se não. */
+  maosLavadas: string;
   kfInicial: boolean;
   kfFinal: boolean;
   ehLider: boolean;
@@ -5414,8 +5454,8 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
     const sel = selecoes.find(s => s.alunoId === a.id);
     const val = sel ? validacaoDaSelecao(sel, validacoes) : undefined;
 
-    // Os itens em falta ficam na observação da presença.
-    const obs = pres?.observacao || '';
+    // Os itens em falta ficam na observação da presença (sem a marca das mãos).
+    const obs = (pres?.observacao || '').replace(MARCA_MAOS, '');
     const emFalta = obs.includes('em falta:')
       ? obs.split('em falta:')[1].trim()
       : '';
@@ -5431,6 +5471,7 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
       decisaoFalta: (pres as any)?.decisaoProfessor,
       fardamentoOk: !!pres?.fardamentoOk,
       itensEmFalta: emFalta,
+      maosLavadas: maosLavadasDaPresenca(pres?.observacao),
       kfInicial: kfFaseCompleta(a.id, planoAulaId, 'inicial'),
       kfFinal: kfFaseCompleta(a.id, planoAulaId, 'final'),
       ehLider: liderId === a.id,
@@ -5907,6 +5948,20 @@ export function migrarTurmaAntiga(enviarAoSheets = false): number {
 // as autoavaliações, que continuam a fazer falta na pauta e no arquivo.
 // O aluno deixa de aparecer nas listas da turma e deixa de conseguir
 // entrar; a coordenação pode repô-lo.
+/**
+ * Muda o nível de medidas de um aluno (1 universais, 2 seletivas, 3 adicionais)
+ * e envia-o ao Sheets — senão ficava só no computador do professor e o
+ * telemóvel do aluno continuava a mostrar as perguntas normais.
+ */
+export function definirNivelMedidas(alunoId: string, nivel: 1 | 2 | 3): void {
+  const todos = getAlunos();
+  const a = todos.find(x => x.id === alunoId);
+  if (!a) return;
+  a.nivelMedidas = nivel;
+  save(KEYS.alunos, todos);
+  enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a });
+}
+
 export function removerAlunoDaTurma(alunoId: string, por: string): void {
   const todos = getAlunos();
   const a = todos.find(x => x.id === alunoId);
@@ -5991,7 +6046,7 @@ export function somarUmAtitude(
     id: reg.id, alunoId, turmaId, turma: turmaId, planoAulaId,
     nomeAluno: aluno?.nome || '', numero: aluno?.numero || 0, ano: aluno?.ano || 1,
     ucId: 'TRANSICAO', microcompetencia: atitudeId, microcompetenciaId: atitudeId,
-    nota: nivel, nota_1_5: nivel, nota_0_20: nivel * 4,
+    nota: nivel, nota_1_5: nivel, nota_0_20: notaPara20(nivel),
     data: reg.data, validadoPor: 'transicao',
     observacoes: '+1 — atitude do referencial anterior',
   });
@@ -6026,9 +6081,7 @@ export function registosQueContam(r: RegistoAvaliacao): boolean {
 }
 
 function categoriaDe(id: string): 'OBR' | 'SUB' | 'KNW' | 'ATI' | 'INI' {
-  return id?.startsWith('OBR_') ? 'OBR'
-    : (id?.startsWith('SUB-') || id?.startsWith('APP-')) ? 'SUB'
-    : id?.startsWith('KNW-') ? 'KNW' : id?.startsWith('INI-') ? 'INI' : 'ATI';
+  return categoriaDaNota(id);
 }
 
 /** Tipo de aula mais comum entre os registos (prática/mista/teórica). */
@@ -6040,9 +6093,35 @@ function tipoDominante(regs: RegistoAvaliacao[]): 'pratico' | 'misto' | 'teorico
   return 'pratico';
 }
 
+/**
+ * O que entra na nota da aula. A farda (OBR_01) não entra (decisão da Rosa,
+ * set/2026): verifica-se à entrada e conta nas atitudes («Cuidado com a
+ * apresentação pessoal») e nas técnicas a 0 quando falta. A técnica geral do
+ * evento só serve para o bónus.
+ */
+export function contaNaNotaDaAula(id: string): boolean {
+  return id !== 'OBR_01' && id !== TEC_EVENTO;
+}
+
+/**
+ * A nota 0-20 de uma aula validada, sempre calculada com as regras de agora
+ * (escala, pesos, farda) a partir das notas dadas — não a guardada no dia,
+ * que pode ter sido feita com regras antigas.
+ */
+export function notaDaAulaValidada(v: any): number | null {
+  if (!v) return null;
+  const plano: any = getPlanosAula().find(p => p.id === v.planoAulaId);
+  const tipo = (v.tipoPlanAulaUsado || plano?.tipoPlanAula || 'pratico') as any;
+  const notas = (v.notas || []).filter((n: any) => contaNaNotaDaAula(n.competenciaId)).map((n: any) => {
+    const categoria = categoriaDe(n.competenciaId);
+    return { categoria, nota: v.semFarda && categoria === 'SUB' ? 1 : (Number(n.nota) || 0) };
+  });
+  return notas.length ? calcularNotaPlano(notas, tipo).nota20 : null;
+}
+
 /** Nota das competências (0–20) a partir de registos já filtrados. */
 export function notaBaseDeRegistos(regs: RegistoAvaliacao[]): number | null {
-  const validos = regs.filter(registosQueContam);
+  const validos = regs.filter(registosQueContam).filter(r => contaNaNotaDaAula(r.microcompetenciaId));
   if (!validos.length) return null;
   return calcularNotaPlano(
     validos.map(r => ({ categoria: categoriaDe(r.microcompetenciaId), nota: r.nota })),
@@ -6131,8 +6210,12 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
     return { base, bonusAssiduidade: 0, bonusParticipacao: 0, participacoes, limitadaPorTeto: false, final: null };
   }
   const B = BONUS_EVENTOS;
-  const bonusAssiduidade = calcularBonusAssiduidadeUC(alunoId, turmaId, ucId)?.total || 0;
-  let nota = base + bonusAssiduidade;
+  // Sem bónus de assiduidade (decisão da Rosa, set/2026): quem falta já é
+  // penalizado — a aula conta 0, perde no Comprometido da pauta e, com 10%,
+  // vai para recuperação. Dar +2 a quem cumpre subia a turma inteira e
+  // contava a mesma coisa duas vezes. A farda conta na aula (sem farda, 0).
+  const bonusAssiduidade = 0;
+  let nota = base;
 
   // Eventos contam para todos (ajudam quem tem negativa a subir); concursos
   // só com 10 ou mais. Cada um só conta se a avaliação do evento o permitir.
@@ -6155,7 +6238,21 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
 export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
   const regs = getHistoricoAvaliacoes().filter(r =>
     r.alunoId === alunoId && r.turmaId === turmaId && r.ucId === ucId);
-  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regs), regs, alunoId, turmaId, ucId), alunoId, turmaId, ucId);
+  // Aulas sem farda: as técnicas ficam no percurso com a nota dada, mas na
+  // nota contam 0 (nível 1). As atitudes e o resto contam normalmente.
+  const semFarda = planosSemFarda(alunoId);
+  const regsNota = regs.map(r => semFarda.has(r.planoAulaId || '') && categoriaDe(r.microcompetenciaId) === 'SUB'
+    ? { ...r, nota: 1 } : r);
+  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regsNota), regsNota, alunoId, turmaId, ucId), alunoId, turmaId, ucId);
+}
+
+/**
+ * Aulas em que o aluno não tinha a farda completa (validação com
+ * «semFarda»): a prática avalia-se e fica no percurso, mas as técnicas contam 0.
+ */
+export function planosSemFarda(alunoId: string): Set<string> {
+  return new Set(getValidacoes().filter((v: any) => v.alunoId === alunoId && v.semFarda)
+    .map(v => v.planoAulaId || ''));
 }
 
 /** Nota da recuperação concluída desta UC, se houver. */
@@ -6284,7 +6381,7 @@ export function previsaoNota(
   autos: { competenciaId: string; nota: number }[],
   tipo: 'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr' = 'pratico'
 ): NotaPrevista | null {
-  const validas = autos.filter(a => a.nota > 0);
+  const validas = autos.filter(a => a.nota > 0 && contaNaNotaDaAula(a.competenciaId));
   if (!validas.length) return null;
   const nota = calcularNotaPlano(
     validas.map(a => ({ categoria: categoriaDe(a.competenciaId), nota: a.nota })), tipo).nota20;
@@ -7363,6 +7460,36 @@ export function guardarTriagemDaAula(alunoId: string, turmaId: string, planoAula
   } as any);
 }
 
+/** A pergunta do Consciente (ou do Criativo) desta aula: a que o professor
+ *  escolheu, ou a seguinte na rotação. A mesma para a turma toda, porque se
+ *  conta pelas aulas da turma (os eventos não contam), da mais antiga para a
+ *  mais recente. */
+export function perguntaDaAula(chave: 'co' | 'cr', planoAulaId: string): string {
+  const plano: any = getPlanosAula().find(p => p.id === planoAulaId);
+  const escolhida = plano?.[chave === 'co' ? 'perguntaCO' : 'perguntaCR'];
+  if (escolhida && bancoDe(chave).banco.some(q => q.id === escolhida)) return escolhida;
+  if (!plano) return perguntaDoCiclo(chave, 0).id;
+  const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
+  const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
+    .sort((a, b) => ordem(a).localeCompare(ordem(b)));
+  return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === planoAulaId))).id;
+}
+export const perguntaCODaAula = (planoAulaId: string) => perguntaDaAula('co', planoAulaId);
+export const perguntaCRDaAula = (planoAulaId: string) => perguntaDaAula('cr', planoAulaId);
+
+/** Colegas que, na mesma aula e à mesma pergunta, disseram que a situação
+ *  aconteceu (reparou, fez alguma coisa). Serve para avisar o professor
+ *  quando um aluno responde «Hoje não aconteceu». */
+export function colegasQueViram(chave: 'co' | 'cr', alunoId: string, planoAulaId: string, perguntaId: string): number {
+  return load<any>(KEYS.selecoes).filter((x: any) =>
+    x.planoAulaId === PREFIXO_TRIAGEM + planoAulaId && x.alunoId !== alunoId)
+    .filter((x: any) => {
+      const t = x.autoavaliacoes?.[0]; const r = (t?.professor || t?.aluno) as Triagem5C | undefined;
+      const resposta = r?.[chave];
+      return r?.[chave === 'co' ? 'coId' : 'crId'] === perguntaId && typeof resposta === 'number' && resposta >= 1;
+    }).length;
+}
+
 // ============================================================
 // Nota final da UC publicada pelo professor
 // ============================================================
@@ -7707,4 +7834,40 @@ export async function aberturaNaAula(turmaId: string, planoAulaId: string): Prom
   const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId });
   if (!json?.ok || !Array.isArray(json.sessoes)) return null;
   return json.sessoes.some((s: any) => String(s.planoAulaId) === planoAulaId && s.abertaEm);
+}
+
+// ============================================================
+// O que falta avaliar numa UC — aviso ao professor
+// ============================================================
+// Cada UC tem a sua prática, os seus conhecimentos e as suas atitudes.
+// Muitas aulas usam fichas de outra área (eventos): o aluno é avaliado no
+// que fez, mas a UC continua com coisas por avaliar. O professor tem de
+// saber o que falta, sobretudo perto do fim da UC.
+export interface CoberturaUC {
+  ucId: string;
+  diasParaFim: number | null;
+  pratica: { total: number; avaliadas: number; faltam: string[] };
+  conhecimentos: { total: number; avaliados: number; faltam: string[] };
+  atitudes: { avaliadas: number };
+}
+
+export function coberturaDaUC(turmaId: string, ucId: string): CoberturaUC {
+  const regs = getHistoricoAvaliacoes().filter(r => r.turmaId === turmaId && r.ucId === ucId && r.validadoPor === 'professor');
+  const ids = new Set(regs.map(r => r.microcompetenciaId));
+  // Prática: técnicas da UC no catálogo (pela equivalência UFCD → UC).
+  const tecUC = microsPorUC(ucId).filter(m => m.categoria === 'TECNICAS');
+  const tecFaltam = tecUC.filter(m => !ids.has(m.id));
+  // Conhecimentos: os do referencial. Conta como avaliado se houve registo
+  // KNW-R desse índice, ou um conhecimento do professor com o mesmo texto.
+  const refs = conhecimentosDoReferencial(ucId);
+  const textosAvaliados = new Set([...ids].filter(i => i.startsWith('KNW-')).map(i => nomeConhecimentoProf(i) || ''));
+  const knwFaltam = refs.filter(t => !textosAvaliados.has(t));
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  const dias = mod?.dataFim ? Math.ceil((new Date(mod.dataFim + 'T00:00:00').getTime() - Date.now()) / 86400000) : null;
+  return {
+    ucId, diasParaFim: dias,
+    pratica: { total: tecUC.length, avaliadas: tecUC.length - tecFaltam.length, faltam: tecFaltam.map(m => m.nome) },
+    conhecimentos: { total: refs.length, avaliados: refs.length - knwFaltam.length, faltam: knwFaltam },
+    atitudes: { avaliadas: [...ids].filter(i => categoriaDaNota(i) === 'ATI').length },
+  };
 }

@@ -3,728 +3,847 @@
     "id": "TEC-PLA-001",
     "nome": "Interpretar ficha técnica",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de interpretar ficha técnica, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Ler a ficha técnica do princípio ao fim antes de começar: ingredientes, quantidades, sequência, temperaturas, tempos e pontos críticos, e tirar dúvidas antes de produzir.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-002",
     "nome": "Planear sequência de produção",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de planear sequência de produção, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Ordenar as tarefas da produção de forma lógica: primeiro o que demora mais ou tem de arrefecer, e em paralelo o que pode avançar ao mesmo tempo, para tudo ficar pronto à hora.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-003",
     "nome": "Dimensionar produção",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de dimensionar produção, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Ajustar as quantidades da ficha técnica ao número de doses pedidas, mantendo as proporções e prevendo as perdas.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-004",
     "nome": "Calcular capitação",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de calcular capitação, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Calcular a quantidade de cada produto por pessoa (capitação) e o total a encomendar, tendo em conta o rendimento e as perdas de preparação.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-005",
     "nome": "Organizar mise en place",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de organizar mise en place, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Preparar e organizar antes do serviço tudo o que vai ser usado: produtos pesados, cortados e arrumados, utensílios e equipamentos à mão, bancada limpa.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-006",
     "nome": "Distribuir tarefas",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de distribuir tarefas, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dividir o trabalho pela equipa com funções claras, de acordo com a sequência de produção e o que cada um sabe fazer.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-007",
     "nome": "Controlar tempo",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de controlar tempo, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cumprir os tempos da ficha técnica e do serviço: marcar o início, vigiar os pontos de cozedura e acabar dentro do tempo previsto.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-008",
     "nome": "Controlar temperatura",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de controlar temperatura, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Medir e manter as temperaturas certas (confeção, conservação, arrefecimento e serviço) com termómetro, corrigindo quando saem do intervalo.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-009",
     "nome": "Registar controlo",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de registar controlo, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Anotar no registo próprio (papel ou KitchenFlow) as temperaturas, tempos, lotes e não conformidades, na hora em que acontecem.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PLA-010",
     "nome": "Provar e avaliar sensorialmente",
     "categoria": "Planeamento e controlo",
-    "definicao": "Operação profissional de provar e avaliar sensorialmente, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Provar e observar a preparação ao longo do processo (sabor, tempero, textura, cor, aroma) e corrigir antes de servir.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-011",
     "nome": "Selecionar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de selecionar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Escolher os produtos pela qualidade, frescura, calibre e estado, rejeitando o que não está conforme.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-012",
     "nome": "Lavar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de lavar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Lavar os produtos em água corrente para retirar terra, areia e sujidade, sem os danificar nem deixar de molho mais do que o necessário.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-013",
     "nome": "Higienizar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de higienizar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Desinfetar hortícolas e frutas a consumir crus (solução desinfetante, tempo de contacto e enxaguamento) e higienizar superfícies e utensílios.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-014",
     "nome": "Descascar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de descascar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar a casca ou pele de hortícolas, frutas e tubérculos com o utensílio certo, tirando o mínimo de polpa.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-015",
     "nome": "Aparar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de aparar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar gorduras, nervos, peles, pontas e partes estragadas para deixar o produto limpo e regular, aproveitando as aparas quando possível.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-016",
     "nome": "Descaroçar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de descaroçar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar caroços e sementes de frutas e hortícolas sem desfazer a polpa.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-017",
     "nome": "Eviscerar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de eviscerar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar as vísceras de aves e peixes de forma limpa, sem rebentar o fel ou as vísceras, e lavar a cavidade.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-018",
     "nome": "Amanhar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de amanhar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Preparar o peixe para confeção: escamar, retirar barbatanas, eviscerar, lavar e, se preciso, cortar a cabeça.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-019",
     "nome": "Desossar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de desossar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Separar a carne dos ossos seguindo a anatomia da peça, com o mínimo de carne presa ao osso e sem rasgar os músculos.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-020",
     "nome": "Filetar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de filetar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Separar os lombos do peixe da espinha central, obtendo filetes inteiros, limpos e sem espinhas.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-021",
     "nome": "Porcionar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de porcionar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dividir o produto em porções iguais de peso ou tamanho definidos, para cozerem por igual e o custo ficar controlado.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-022",
     "nome": "Pesar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de pesar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Pesar com rigor cada ingrediente na balança, com tara, na unidade da ficha técnica.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-023",
     "nome": "Medir",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de medir, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Medir volumes e dimensões com o utensílio adequado (copo medidor, colheres, régua), sem estimar a olho.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-024",
     "nome": "Demolhar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de demolhar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Hidratar produtos secos (leguminosas, cogumelos secos, frutos secos) em água fria, com o tempo e a proporção de água corretos.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-025",
     "nome": "Dessalgar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de dessalgar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar o excesso de sal ao bacalhau e outros salgados em água fria, com mudas de água, no frio, até ao ponto de sal pretendido.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-026",
     "nome": "Marinar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de marinar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Deixar o produto em contacto com uma mistura de temperos (seca ou líquida, com ou sem ácido) durante um tempo definido, no frio, para ganhar sabor e, por vezes, amaciar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-027",
     "nome": "Temperar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de temperar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dar sabor ao produto com sal, pimenta, ervas e especiarias, na quantidade e no momento certos.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-028",
     "nome": "Enfarinhar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de enfarinhar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Passar o produto por farinha e sacudir o excesso, para criar uma película fina que dá cor e ajuda a selar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PRE-029",
     "nome": "Panar",
     "categoria": "Preparação de matérias-primas",
-    "definicao": "Operação profissional de panar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Revestir o produto em três passos (farinha, ovo batido, pão ralado) para uma crosta regular e estaladiça depois de frita ou assada.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-030",
     "nome": "Cortar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de cortar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cortar produtos em formas e medidas padronizadas (juliana, brunesa, macedónia…) com a faca certa e técnica segura, para cozerem por igual e ficarem bem apresentados.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-031",
     "nome": "Picar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de picar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Reduzir o produto a pedaços muito pequenos e irregulares com faca ou picadora (ervas, alho, carne).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-032",
     "nome": "Ralar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de ralar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Reduzir o produto a fios ou pó com ralador (queijo, casca de citrinos, cenoura), sem incluir partes indesejadas como a parte branca do citrino.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-033",
     "nome": "Fatiar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de fatiar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cortar o produto em fatias de espessura regular com faca ou fatiadora (carne assada, pão, queijo, enchidos).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-034",
     "nome": "Laminar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de laminar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cortar o produto em lâminas finas e regulares com faca, mandolina ou fatiadora.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-035",
     "nome": "Tornear",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de tornear, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dar forma regular e arredondada a legumes e tubérculos com faca de tornear (7 faces, tamanho igual).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-036",
     "nome": "Esmagar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de esmagar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Esmagar o produto com a lâmina da faca, almofariz ou esmagador (alho, batata, especiarias) para libertar aroma ou fazer puré grosseiro.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-037",
     "nome": "Moer",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de moer, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Passar carne, peixe ou outros produtos pela máquina de picar, com o disco certo e o produto frio.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-038",
     "nome": "Triturar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de triturar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Reduzir o produto a puré ou creme com varinha, liquidificadora ou robot, até à textura pretendida.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-039",
     "nome": "Passar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de passar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Fazer passar uma preparação por passe-vite, chinês ou coador para obter puré ou líquido liso, sem pedaços nem fibras.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-COR-040",
     "nome": "Peneirar",
     "categoria": "Cortes e redução",
-    "definicao": "Operação profissional de peneirar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Passar ingredientes secos (farinha, açúcar em pó, cacau) pela peneira para retirar grumos e arejar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CHU-041",
     "nome": "Cozer em líquido",
     "categoria": "Calor húmido",
-    "definicao": "Operação profissional de cozer em líquido, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar o produto mergulhado em líquido (água, caldo, leite) à temperatura e tempo certos, desde a fervura suave à fervura forte.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CHU-042",
     "nome": "Escaldar",
     "categoria": "Calor húmido",
-    "definicao": "Operação profissional de escaldar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Mergulhar o produto em água a ferver por pouco tempo para soltar a pele (tomate, pêssego) ou limpar, arrefecendo logo a seguir.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CHU-043",
     "nome": "Branquear",
     "categoria": "Calor húmido",
-    "definicao": "Operação profissional de branquear, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozer rapidamente o produto em água a ferver com sal e arrefecer logo em água com gelo, para fixar a cor, amaciar ou pré-cozinhar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CHU-044",
     "nome": "Escalfar",
     "categoria": "Calor húmido",
-    "definicao": "Operação profissional de escalfar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozer o produto em líquido quente sem ferver (70–90 °C), para não o desfazer (ovos, peixe, fruta).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CHU-045",
     "nome": "Cozer a vapor",
     "categoria": "Calor húmido",
-    "definicao": "Operação profissional de cozer a vapor, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozer o produto com o vapor de água, sem contacto com o líquido, para manter forma, cor e nutrientes.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CHU-046",
     "nome": "Cozer em banho-maria",
     "categoria": "Calor húmido",
-    "definicao": "Operação profissional de cozer em banho-maria, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar dentro de um recipiente mergulhado em água quente, com calor suave e regular (pudins, cremes, chocolate derretido).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CSE-047",
     "nome": "Assar",
     "categoria": "Calor seco",
-    "definicao": "Operação profissional de assar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar no forno, com calor seco, até ao ponto de cozedura e à cor pretendidos, regando ou virando quando necessário.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CSE-048",
     "nome": "Grelhar",
     "categoria": "Calor seco",
-    "definicao": "Operação profissional de grelhar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar na grelha com calor forte e direto, marcando o produto e controlando o ponto, sem o queimar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CSE-049",
     "nome": "Chapar",
     "categoria": "Calor seco",
-    "definicao": "Operação profissional de chapar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar em chapa quente com pouca gordura, dourando os dois lados.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CSE-050",
     "nome": "Tostar",
     "categoria": "Calor seco",
-    "definicao": "Operação profissional de tostar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dourar a superfície com calor seco (pão, frutos secos, especiarias) para dar cor e aroma, sem queimar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CSE-051",
     "nome": "Gratinar",
     "categoria": "Calor seco",
-    "definicao": "Operação profissional de gratinar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dourar a superfície de uma preparação no forno ou salamandra, normalmente com queijo, pão ralado ou molho, formando uma crosta.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CSE-052",
     "nome": "Desidratar",
     "categoria": "Calor seco",
-    "definicao": "Operação profissional de desidratar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar a água do produto com calor baixo e prolongado (forno, desidratador) até ficar seco ou estaladiço.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-CSE-053",
     "nome": "Defumar",
     "categoria": "Calor seco",
-    "definicao": "Operação profissional de defumar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Expor o produto ao fumo de madeira ou ervas, a quente ou a frio, para dar sabor e ajudar a conservar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-GCM-054",
     "nome": "Saltear",
     "categoria": "Gordura e calor misto",
-    "definicao": "Operação profissional de saltear, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar rapidamente em pouca gordura muito quente, com a frigideira em movimento, para dourar sem cozer demais.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-GCM-055",
     "nome": "Fritar",
     "categoria": "Gordura e calor misto",
-    "definicao": "Operação profissional de fritar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar o produto em gordura quente (por imersão ou em frigideira), com a temperatura certa, até ficar dourado por fora e cozinhado por dentro, sem absorver gordura.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-GCM-056",
     "nome": "Confitar em gordura",
     "categoria": "Gordura e calor misto",
-    "definicao": "Operação profissional de confitar em gordura, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar lentamente o produto mergulhado em gordura a baixa temperatura (60–90 °C), até ficar macio.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-GCM-057",
     "nome": "Refogar",
     "categoria": "Gordura e calor misto",
-    "definicao": "Operação profissional de refogar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar lentamente cebola, alho e outros aromáticos em gordura, até amolecerem e alourarem, como base de sabor (refogado).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-GCM-058",
     "nome": "Suar",
     "categoria": "Gordura e calor misto",
-    "definicao": "Operação profissional de suar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar hortícolas em pouca gordura, em lume brando e com tampa, para libertarem os sucos sem ganharem cor.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-GCM-059",
     "nome": "Estufar",
     "categoria": "Gordura e calor misto",
-    "definicao": "Operação profissional de estufar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozinhar o produto em lume brando, em recipiente tapado, no seu próprio suco com pouca gordura e pouco líquido.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-GCM-060",
     "nome": "Brasear",
     "categoria": "Gordura e calor misto",
-    "definicao": "Operação profissional de brasear, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Alourar uma peça grande e depois cozê-la lentamente, tapada, com pouco líquido aromático, no forno ou no fogão, até ficar muito macia.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-GCM-061",
     "nome": "Guisar",
     "categoria": "Gordura e calor misto",
-    "definicao": "Operação profissional de guisar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Alourar pedaços de carne ou peixe e cozinhá-los lentamente num molho, até ficarem macios e o molho encorpado.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-062",
     "nome": "Extrair",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de extrair, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar sabor, cor e nutrientes de ossos, carnes, peixes ou legumes por cozedura lenta em líquido (fundos, caldos, infusões).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-063",
     "nome": "Escumar",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de escumar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar a espuma e as impurezas que sobem à superfície de fundos, caldos e compotas durante a cozedura.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-064",
     "nome": "Clarificar",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de clarificar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Tornar um líquido transparente (consommé, manteiga clarificada, geleia), retirando as partículas em suspensão.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-065",
     "nome": "Reduzir",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de reduzir, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Evaporar parte do líquido por fervura para concentrar o sabor e engrossar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-066",
     "nome": "Deglacear",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de deglacear, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Juntar líquido (vinho, fundo, água) ao recipiente quente para soltar os sucos caramelizados do fundo e aproveitá-los no molho.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-067",
     "nome": "Ligar",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de ligar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dar corpo a um líquido com um agente de ligação (roux, amido, gema, natas, puré), sem grumos.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-068",
     "nome": "Emulsionar",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de emulsionar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Juntar gordura e líquido que não se misturam numa preparação estável e homogénea (maionese, holandês, vinagrete).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-069",
     "nome": "Montar com gordura",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de montar com gordura, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Incorporar manteiga fria em pedaços num molho quente, fora do lume forte, para dar brilho, corpo e sabor.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-070",
     "nome": "Espumar",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de espumar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Introduzir ar num líquido para criar espuma leve e estável (sifão, varinha, batedor).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-071",
     "nome": "Gelificar",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de gelificar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Transformar um líquido em gel com gelatina, ágar ou outro gelificante, na dose e temperatura certas.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-072",
     "nome": "Engrossar",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de engrossar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Aumentar a espessura de uma preparação com farinha, amido, fécula ou redução.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-MOL-073",
     "nome": "Ajustar consistência",
     "categoria": "Fundos, molhos e texturas",
-    "definicao": "Operação profissional de ajustar consistência, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Corrigir a textura de uma preparação (mais líquida ou mais espessa) antes de servir, juntando líquido ou reduzindo.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-074",
     "nome": "Misturar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de misturar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Juntar ingredientes até a mistura ficar homogénea, sem trabalhar a massa mais do que o necessário.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-075",
     "nome": "Bater",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de bater, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Agitar vigorosamente com vara ou batedeira para incorporar ar ou emulsionar (ovos, claras, natas).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-076",
     "nome": "Cremar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de cremar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Bater gordura amolecida com açúcar até ficar clara e fofa, incorporando ar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-077",
     "nome": "Envolver",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de envolver, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Juntar uma preparação leve (claras, natas) a outra mais pesada com movimentos suaves de baixo para cima, sem perder o ar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-078",
     "nome": "Amassar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de amassar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Trabalhar a massa à mão ou na amassadeira para desenvolver (ou evitar desenvolver, nas massas quebradas) a rede de glúten.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-079",
     "nome": "Dobrar massa",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de dobrar massa, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dobrar a massa sobre si mesma para ganhar força (pão) ou criar camadas (massa folhada).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-080",
     "nome": "Laminar massa",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de laminar massa, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Estender a massa com rolo ou laminadora até à espessura pretendida, regular e sem rasgar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-081",
     "nome": "Escaldar massa",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de escaldar massa, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cozer farinha num líquido a ferver com gordura (panada) e secá-la ao lume, antes de juntar os ovos (massa choux).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-082",
     "nome": "Fermentar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de fermentar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Deixar a massa com fermento repousar em condições controladas (temperatura e humidade) para desenvolver volume, estrutura e sabor.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-083",
     "nome": "Modelar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de modelar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dar forma à massa (bola, baguete, croissant) com tensão e peso iguais entre peças.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-084",
     "nome": "Golpear",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de golpear, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Fazer cortes na superfície da massa antes de ir ao forno, para controlar a abertura e decorar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-085",
     "nome": "Levedar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de levedar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Deixar a massa já moldada crescer até ao ponto certo antes de cozer (prova final).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-086",
     "nome": "Caramelizar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de caramelizar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Aquecer açúcar (seco ou com água) até ganhar cor e sabor de caramelo, ou dourar a superfície de um produto com açúcar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-087",
     "nome": "Temperar chocolate",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de temperar chocolate, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Derreter, arrefecer e reaquecer o chocolate a temperaturas precisas para ficar brilhante, estaladiço e sem manchas.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-088",
     "nome": "Cristalizar açúcar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de cristalizar açúcar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Controlar a cristalização do açúcar em xaropes, fondant ou frutas cristalizadas, evitando que açucare quando não se quer.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-089",
     "nome": "Montar creme",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de montar creme, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Bater um creme até ganhar volume e textura firme para rechear ou decorar (chantilly, buttercream, creme diplomata).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-PAP-090",
     "nome": "Arejar",
     "categoria": "Pastelaria e panificação",
-    "definicao": "Operação profissional de arejar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Incorporar ar numa massa ou creme para a tornar leve (bater, envolver, peneirar).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-091",
     "nome": "Retificar tempero",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de retificar tempero, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Provar no fim e acertar sal, acidez, doçura, picante ou aromas antes de servir.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-092",
     "nome": "Empratar",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de empratar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Colocar a comida no prato com ordem, proporção, limpeza e temperatura corretas, segundo o modelo definido.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-093",
     "nome": "Decorar",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de decorar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Acrescentar elementos decorativos comestíveis que valorizam o prato sem o sobrecarregar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-094",
     "nome": "Glacear",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de glacear, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Cobrir a superfície com uma camada brilhante (glacê, calda, gelatina, redução) regular e sem escorrer.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-095",
     "nome": "Abrilhantar",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de abrilhantar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Dar brilho à superfície com gelatina, geleia, manteiga ou calda, para melhorar o aspeto e proteger.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-096",
     "nome": "Arrefecer rapidamente",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de arrefecer rapidamente, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Baixar a temperatura dos alimentos cozinhados de 65 °C para menos de 10 °C em menos de 2 horas (abatedor, gelo, recipientes rasos).",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-097",
     "nome": "Acondicionar",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de acondicionar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Guardar os alimentos em recipientes próprios, tapados e protegidos, adequados à conservação e ao transporte.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-098",
     "nome": "Etiquetar",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de etiquetar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Identificar cada produto guardado com nome, data de produção, validade, lote e alergénios.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-099",
     "nome": "Conservar",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de conservar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Guardar os alimentos na temperatura e no local certos (frio positivo, negativo, seco), respeitando validades e a regra FIFO.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-100",
     "nome": "Regenerar",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de regenerar, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Voltar a aquecer um alimento já cozinhado até pelo menos 75 °C no centro, mantendo a qualidade.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-101",
     "nome": "Servir",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de servir, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Levar o prato ao cliente à temperatura certa, com apresentação cuidada e no tempo certo.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-102",
     "nome": "Repor",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de repor, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Repor produtos no buffet ou na linha de serviço antes de acabarem, mantendo a apresentação e a segurança alimentar.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-103",
     "nome": "Montar buffet",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de montar buffet, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Organizar e montar mesas de buffet ou coffee break: disposição, circulação, identificação dos produtos e alergénios.",
     "fontes": "SRC-001; SRC-002; SRC-003"
   },
   {
     "id": "TEC-FCS-104",
     "nome": "Desmontar serviço",
     "categoria": "Finalização, conservação e serviço",
-    "definicao": "Operação profissional de desmontar serviço, aplicada com controlo do produto, do processo e do resultado.",
+    "definicao": "Retirar, separar e limpar o material de serviço no fim, tratando das sobras e resíduos segundo as regras.",
     "fontes": "SRC-001; SRC-002; SRC-003"
+  },
+  {
+    "id": "TEC-FCS-105",
+    "nome": "Flamejar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Pegar fogo a uma bebida alcoólica junto à preparação quente para queimar o álcool e deixar o aroma, com segurança (exaustor desligado, afastado de materiais inflamáveis).",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PRE-106",
+    "nome": "Rechear",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Introduzir um recheio numa peça (ave, carne, peixe, legume, massa) na quantidade certa, fechando bem para não sair na cozedura.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PRE-107",
+    "nome": "Atar e bridar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Prender com fio de cozinha uma ave ou peça de carne para manter a forma durante a cozedura e cozer por igual.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PRE-108",
+    "nome": "Lardear e albardar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Proteger carnes magras da secura: lardear é introduzir tiras de toucinho na carne; albardar é cobri-la com fatias de toucinho ou bacon.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PRE-109",
+    "nome": "Espalmar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Bater a carne com o batedor entre película para a tornar fina e de espessura igual (bifes, escalopes).",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PRE-110",
+    "nome": "Escamar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Retirar as escamas do peixe com escamador ou costas da faca, do rabo para a cabeça, sem ferir a pele.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PRE-111",
+    "nome": "Descongelar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Passar um alimento congelado ao estado refrigerado de forma segura, no frigorífico (0–4 °C), nunca à temperatura ambiente.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PAP-112",
+    "nome": "Forrar formas",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Revestir formas com massa, papel ou gordura e farinha para a preparação não agarrar e ficar com a forma certa.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PAP-113",
+    "nome": "Pincelar e dourar",
+    "categoria": "Pastelaria e panificação",
+    "definicao": "Aplicar com pincel ovo batido, leite, manteiga ou calda na superfície para dar cor e brilho no forno.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-COR-114",
+    "nome": "Coar",
+    "categoria": "Cortes e redução",
+    "definicao": "Passar um líquido por coador, chinês ou pano para retirar partículas, espumas e grumos.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-CHU-115",
+    "nome": "Cozinhar em papelote",
+    "categoria": "Calor húmido",
+    "definicao": "Cozinhar o produto fechado em papel vegetal ou alumínio, no forno, no vapor dos próprios sucos e aromas.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PRE-116",
+    "nome": "Curar",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Conservar e dar sabor ao produto com sal (seco ou salmoura), açúcar e especiarias, durante um tempo controlado no frio.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-PRE-117",
+    "nome": "Envolver em polme",
+    "categoria": "Preparação de matérias-primas",
+    "definicao": "Passar o produto por uma massa líquida (polme de farinha, ovo, líquido) antes de fritar (pataniscas, peixinhos da horta, tempura).",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-FCS-118",
+    "nome": "Polvilhar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Espalhar por cima uma camada fina de açúcar em pó, cacau, canela, ervas ou pão ralado, com peneira ou à mão.",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-MOL-119",
+    "nome": "Temperar ovos",
+    "categoria": "Fundos, molhos e texturas",
+    "definicao": "Juntar aos poucos um líquido quente às gemas batidas, mexendo sempre, para as aquecer sem coalhar (cremes, molhos, ligações).",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-FCS-120",
+    "nome": "Napar",
+    "categoria": "Finalização, conservação e serviço",
+    "definicao": "Cobrir um alimento com molho ou creme numa camada lisa que o envolve (ou verificar que o molho «napa» a colher).",
+    "fontes": "ECL — revisão 2026"
+  },
+  {
+    "id": "TEC-CHU-121",
+    "nome": "Abrir bivalves",
+    "categoria": "Calor húmido",
+    "definicao": "Abrir amêijoas, mexilhões, berbigão e outros bivalves com calor e pouco líquido, tapado, depois de os purgar da areia.",
+    "fontes": "ECL — revisão 2026"
   }
 ]

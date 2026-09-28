@@ -40,7 +40,9 @@ const I = {
   ficha: () => svg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></>),
   guia: () => svg(<><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M9 7h6M9 11h6" /></>),
   requisicao: () => svg(<><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z" /><path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2" /><path d="M9 12l1.8 1.8L15 10" /></>),
-  eventos: () => svg(<><path d="M5 21V8l7-5 7 5v13" /><path d="M9 21v-6h6v6M3 21h18" /></>),
+  // A estrela, como no menu (era uma casa, confundia-se com a escola).
+  eventos: () => svg(<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" />),
+  avaliarEvento: () => svg(<><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /><path d="M9 12l2 2 4-4" /></>),
   validar: () => svg(<><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>),
   notas: () => svg(<><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 3v18M14 13l2 2 4-4" /></>),
   mapa: () => svg(<><path d="M4 20V6l6-3 4 3 6-3v14l-6 3-4-3-6 3z" /><path d="M10 3v15M14 6v15" /></>),
@@ -77,7 +79,7 @@ function grupos(pendentes: { validar: number; recuperacoes: number }): Grupo[] {
         { id: 'planos',  label: 'Planos de aula', icone: I.plano },
         { id: 'abrir_aula', label: 'Abrir a aula', icone: I.abrir },
         { id: 'eventos', label: 'Eventos', icone: I.eventos },
-        { id: 'avaliar_evento', label: 'Avaliar evento fora do horário', icone: I.eventos },
+        { id: 'avaliar_evento', label: 'Avaliar evento fora do horário', icone: I.avaliarEvento },
       ],
     },
     {

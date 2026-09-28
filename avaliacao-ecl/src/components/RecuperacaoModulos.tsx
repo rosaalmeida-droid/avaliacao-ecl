@@ -66,17 +66,18 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
         Aulas que faltaste podem ser recuperadas aqui — sem teres de repetir tudo do zero.
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button onClick={() => setTab('progresso')} className={`tab-btn${tab === 'progresso' ? ' active' : ''}`} style={{ flex: 1 }}>
+      {/* Quatro separadores em grelha 2×2: no telemóvel partiam-se em três linhas desiguais. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 16 }}>
+        <button onClick={() => setTab('progresso')} className={`tab-btn${tab === 'progresso' ? ' active' : ''}`} style={{ minWidth: 0, padding: '8px 6px', fontSize: 13, whiteSpace: 'nowrap' }}>
           📊 Progresso
         </button>
-        <button onClick={() => setTab('porConcluir')} className={`tab-btn${tab === 'porConcluir' ? ' active' : ''}`} style={{ flex: 1 }}>
+        <button onClick={() => setTab('porConcluir')} className={`tab-btn${tab === 'porConcluir' ? ' active' : ''}`} style={{ minWidth: 0, padding: '8px 6px', fontSize: 13, whiteSpace: 'nowrap' }}>
           Por concluir ({ucsPorConcluir.length})
         </button>
-        <button onClick={() => setTab('emRecuperacao')} className={`tab-btn${tab === 'emRecuperacao' ? ' active' : ''}`} style={{ flex: 1 }}>
+        <button onClick={() => setTab('emRecuperacao')} className={`tab-btn${tab === 'emRecuperacao' ? ' active' : ''}`} style={{ minWidth: 0, padding: '8px 6px', fontSize: 13, whiteSpace: 'nowrap' }}>
           Em recuperação ({emRecuperacao.length})
         </button>
-        <button onClick={() => setTab('recuperados')} className={`tab-btn${tab === 'recuperados' ? ' active' : ''}`} style={{ flex: 1 }}>
+        <button onClick={() => setTab('recuperados')} className={`tab-btn${tab === 'recuperados' ? ' active' : ''}`} style={{ minWidth: 0, padding: '8px 6px', fontSize: 13, whiteSpace: 'nowrap' }}>
           Recuperados ({recuperados.length})
         </button>
       </div>

@@ -9,6 +9,7 @@
 
 import React, { useState } from 'react';
 import { CampoKF, PassoChecklistFicha, camposKFIniciais, camposKFFinais } from '../types';
+import { ProgressoSlides, NavSlides } from './EcraCheio';
 import {
   getRegistoKFFase, guardarKFFase,
   getChecklistFicha, marcarPassoChecklist,
@@ -38,6 +39,8 @@ export function PassoKitchenFlowFase({
     const existente = getRegistoKFFase(alunoId, planoAulaId, fase);
     return existente?.campos ?? (fase === 'inicial' ? camposKFIniciais() : camposKFFinais());
   });
+
+  const [slide, setSlide] = useState(0);
 
   function alternar(id: string) {
     const novos = campos.map(c => c.id === id ? { ...c, feito: !c.feito } : c);
@@ -109,85 +112,77 @@ export function PassoKitchenFlowFase({
     );
   }
 
+  // Um registo de cada vez; no fim, o resumo e «Concluir».
+  const total = campos.length + 1;
+  const noResumo = slide >= campos.length;
+  const c = campos[Math.min(slide, campos.length - 1)];
+  const botaoKF = onAbrirKitchenFlow && (
+    <button onClick={onAbrirKitchenFlow} style={{
+      width: '100%', marginTop: 14, background: 'rgba(14,116,144,0.08)',
+      border: '1px solid rgba(14,116,144,0.35)', borderRadius: 12,
+      padding: 14, fontSize: 15, fontWeight: 700, color: '#0e7490',
+      cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
+    }}>
+      Abrir o KitchenFlow para registar
+    </button>
+  );
+
   return (
-    <div style={{ background: '#fff', borderRadius: 16, padding: 18,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-      {/* O título ("Antes de produzir") já está no passo, por cima: aqui
-          repetia-se. Fica só o que fazer. */}
-      <div style={{ fontSize: 15, color: '#555', marginBottom: 16, lineHeight: 1.55 }}>
-        {fase === 'inicial'
-          ? 'Toca em cada registo quando o fizeres. Os obrigatórios têm de estar todos antes de produzir.'
-          : 'Toca em cada registo quando o fizeres. Os obrigatórios têm de estar todos antes da autoavaliação.'}
-      </div>
-
-      {campos.map(c => (
-        <button key={c.id} onClick={() => alternar(c.id)} style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-          padding: '13px 0', borderBottom: '1px solid #EEE',
-          background: 'transparent', border: 'none', borderBottomWidth: 1,
-          borderBottomStyle: 'solid', borderBottomColor: '#EEE',
-          textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
-        }}>
-          <span style={{
-            width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-            border: `2px solid ${c.feito ? V : '#DDD'}`,
-            background: c.feito ? V : 'transparent', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+    <div>
+      <ProgressoSlides nome={noResumo ? 'Resumo' : `Registo ${slide + 1} de ${campos.length}`} idx={slide} total={total} />
+      {!noResumo ? (
+        <div style={{ background: '#fff', borderRadius: 16, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A', lineHeight: 1.3 }}>{c.label}</div>
+          {/* O que é para registar. Sem isto, "temperatura final" não dizia de quê nem quando. */}
+          {c.ajuda && <div style={{ fontSize: 14.5, color: '#666', marginTop: 6, lineHeight: 1.5 }}>{c.ajuda}</div>}
+          <div style={{ fontSize: 13, marginTop: 6, color: c.obrigatorio ? '#B5651D' : '#888', fontWeight: 600 }}>
+            {c.obrigatorio ? 'Obrigatório' : 'Só se for o caso'}
+          </div>
+          {/* Os registos são feitos no KitchenFlow; aqui o aluno marca para não se esquecer de nenhum. */}
+          {botaoKF}
+          <button onClick={() => alternar(c.id)} style={{
+            width: '100%', marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 14px',
+            borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15.5, fontWeight: 700,
+            border: `2px solid ${c.feito ? V : '#DDD'}`, background: c.feito ? '#F0EBF7' : '#fff',
+            color: c.feito ? V : '#444', textAlign: 'left',
           }}>
-            {c.feito && icoCheck()}
-          </span>
-          <span style={{ flex: 1 }}>
-            <span style={{ display: 'block', fontSize: 15.5, fontWeight: 600, color: '#1A1A1A' }}>
-              {c.label}
+            <span style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+              border: `2px solid ${c.feito ? V : '#CCC'}`, background: c.feito ? V : 'transparent', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {c.feito && icoCheck()}
             </span>
-            {/* O que é para registar. Sem isto, "temperatura final" não
-                dizia de quê nem quando. */}
-            {c.ajuda && (
-              <span style={{ display: 'block', fontSize: 13.5, color: '#777',
-                marginTop: 2, lineHeight: 1.45 }}>
-                {c.ajuda}
+            {c.feito ? 'Já registei' : 'Toca aqui quando tiveres registado'}
+          </button>
+        </div>
+      ) : (
+        <div style={{ background: '#fff', borderRadius: 16, padding: 18, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          {campos.map((x, k) => (
+            <button key={x.id} onClick={() => setSlide(k)} style={{ width: '100%', display: 'flex', alignItems: 'center',
+              gap: 10, padding: '11px 0', background: 'transparent', border: 'none', borderBottom: '1px solid #EEE',
+              textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}>
+              <span style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+                background: x.feito ? '#3E7A31' : '#EEE', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{x.feito && icoCheck()}</span>
+              <span style={{ flex: 1, fontSize: 14.5, color: '#1A1A1A' }}>{x.label}</span>
+              <span style={{ fontSize: 12.5, color: x.feito ? '#3E7A31' : x.obrigatorio ? '#B5651D' : '#AAA', fontWeight: 600 }}>
+                {x.feito ? 'Registado' : x.obrigatorio ? 'Por registar' : 'Só se for o caso'}
               </span>
-            )}
-            <span style={{ display: 'block', fontSize: 12.5, marginTop: 3,
-              color: c.feito ? '#3E7A31' : c.obrigatorio ? '#B5651D' : '#AAA',
-              fontWeight: c.feito ? 700 : 400 }}>
-              {c.feito ? 'Registado' : c.obrigatorio ? 'Por registar' : 'Só se for o caso'}
-            </span>
-          </span>
-        </button>
-      ))}
-
-      {/* Um botão para o KitchenFlow, onde os registos são mesmo feitos.
-          A checklist aqui serve para o aluno não se esquecer de nenhum;
-          os valores entram no KitchenFlow. */}
-      {onAbrirKitchenFlow && (
-        <button onClick={onAbrirKitchenFlow} style={{
-          width: '100%', marginTop: 14, background: 'rgba(14,116,144,0.08)',
-          border: '1px solid rgba(14,116,144,0.35)', borderRadius: 12,
-          padding: 14, fontSize: 15, fontWeight: 700, color: '#0e7490',
-          cursor: 'pointer', fontFamily: 'inherit', minHeight: 44,
-        }}>
-          Abrir o KitchenFlow para registar
-        </button>
-      )}
-
-      {!pronto && (
-        <div style={{ background: '#FDF0E8', border: '1px solid #B5651D', borderRadius: 12,
-          padding: 14, marginTop: 16, fontSize: 14.5, color: '#8A4E15', lineHeight: 1.55 }}>
-          <b>Falta{faltam > 1 ? 'm' : ''} {faltam} registo{faltam > 1 ? 's' : ''} obrigatório{faltam > 1 ? 's' : ''}.</b>{' '}
-          {fase === 'inicial'
-            ? 'A produção ainda não pode ser iniciada.'
-            : 'Faltam antes da autoavaliação.'}
+            </button>
+          ))}
+          {!pronto && (
+            <div style={{ background: '#FDF0E8', border: '1px solid #B5651D', borderRadius: 12,
+              padding: 14, marginTop: 16, fontSize: 14.5, color: '#8A4E15', lineHeight: 1.55 }}>
+              <b>Falta{faltam > 1 ? 'm' : ''} {faltam} registo{faltam > 1 ? 's' : ''} obrigatório{faltam > 1 ? 's' : ''}.</b>{' '}
+              {fase === 'inicial' ? 'A produção ainda não pode ser iniciada.' : 'Faltam antes da autoavaliação.'}
+            </div>
+          )}
         </div>
       )}
-
-      <button onClick={onConcluido} disabled={!pronto} style={{
-        width: '100%', marginTop: 16, minHeight: 52, borderRadius: 12, border: 'none',
-        background: pronto ? V : '#DDD', color: '#fff', fontSize: 17, fontWeight: 600,
-        cursor: pronto ? 'pointer' : 'default', fontFamily: 'inherit',
-      }}>
-        {fase === 'inicial' ? 'Concluir registos' : 'Concluir KitchenFlow'}
-      </button>
+      <NavSlides
+        onAnterior={slide > 0 ? () => setSlide(n => n - 1) : undefined}
+        pode={noResumo ? pronto : true}
+        textoSeguinte={noResumo ? (fase === 'inicial' ? 'Concluir registos' : 'Concluir KitchenFlow') : 'Seguinte'}
+        onSeguinte={() => noResumo ? onConcluido() : setSlide(n => n + 1)} />
     </div>
   );
 }

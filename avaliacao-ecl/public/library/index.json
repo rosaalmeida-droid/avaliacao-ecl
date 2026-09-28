@@ -1,6 +1,6 @@
 {
-  "version": "10.0",
-  "gerado_em": "2026-07-12T19:45:53.186093",
+  "version": "10.1",
+  "gerado_em": "2026-09-28",
   "fonte": "Biblioteca_Tecnica_Profissional_V10_Consolidada.xlsx",
   "escola": "Escola de Comércio de Lisboa",
   "curso": "Técnico/a de Cozinha e Restauração",
@@ -10,11 +10,11 @@
   ],
   "ficheiros": {
     "tecnicas": {
-      "registos": 104,
+      "registos": 121,
       "descricao": "Técnicas culinárias base"
     },
     "subtecnicas": {
-      "registos": 533,
+      "registos": 489,
       "descricao": "Subtécnicas observáveis"
     },
     "perfis": {
@@ -34,7 +34,7 @@
       "descricao": "Aptidões observáveis"
     },
     "aparelhos": {
-      "registos": 93,
+      "registos": 114,
       "descricao": "Aparelhos, bases, molhos, fundos"
     },
     "produtos": {
@@ -175,5 +175,6 @@
     },
     "nota_minima_sucesso_0_20": 12,
     "escala": "1-5 (×4 = 0-20)"
-  }
+  },
+  "revisao_2026_09": "Definições reais das técnicas, subtécnicas com «bem feito é» observável, 17 técnicas e 21 aparelhos novos. Nota: o índice original indicava 533 subtécnicas; o ficheiro tinha 452."
 }

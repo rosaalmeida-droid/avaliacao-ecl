@@ -73,7 +73,7 @@ export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = f
         }}
       >
         <span style={{ fontSize: 12.5, transform: aberta ? 'rotate(90deg)' : 'none', transition: '0.15s', display: 'inline-block' }}>▶</span>
-        {aberta ? 'Esconder' : criterios.length > 0 ? `Ver ${criterios.length} critérios observáveis` : 'Ver descrição'}
+        {aberta ? 'Esconder' : criterios.length > 0 ? (criterios.length === 1 ? 'Ver o critério observável' : `Ver ${criterios.length} critérios observáveis`) : 'Ver descrição'}
       </button>
 
       {aberta && (

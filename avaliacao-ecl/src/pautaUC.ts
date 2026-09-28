@@ -27,14 +27,16 @@
 //   - PROPOSTA ALUNO: a nota que o aluno propôs na autoavaliação final.
 //   - CLASSIF. ATRIBUÍDA: a nota final da UC; negativas levam "a)".
 // ============================================================
+import { categoriaDaNota } from './compatECL';
 import { PERGUNTAS_TRIAGEM, notaTriagem } from './triagem5c';
 import {
   getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes, getSelecoes, getPresencas,
   getPlanosFaltadosPorUC, getAtividades, faltasEmHorasUC, assiduidadeNaUC,
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
-  kfFaseCompleta, liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
+  liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
+  notaDaAulaValidada,
 } from './backend';
-import { calcularNotaPlano } from './types';
+import { calcularNotaPlano, nivelPara20 } from './types';
 import { modulosDaTurma } from './cronograma';
 import MODELO from './pautaModelo.json';
 
@@ -51,11 +53,11 @@ export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias:
   cm: { sigla: 'CM', nome: 'Comprometido',
     evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
-    evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, registos de grupo no KitchenFlow, liderança do grupo' },
+    evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, liderança do grupo' },
   co: { sigla: 'CO', nome: 'Consciente',
-    evidencias: 'consciência das suas atitudes: pergunta de cada aula «o que fizeste diferente hoje?», sentido crítico na autoavaliação (perto do que o professor valida), melhoria depois de ficar abaixo de 3 numa atitude' },
+    evidencias: 'consciente dos outros, de si próprio e do esforço do professor: pergunta do dia (a mesma para a turma, vai rodando), sentido crítico na autoavaliação (perto do que o professor valida), melhoria depois de ficar abaixo de 3 numa atitude' },
   cr: { sigla: 'CR', nome: 'Criativo',
-    evidencias: 'resolução de problemas: pergunta de cada aula «resolveste algum problema?», problemas que detetou e registou' },
+    evidencias: 'resolver imprevistos, ter ideias e experimentar, melhorar o que já existe: pergunta do dia (a mesma para a turma, vai rodando), problemas que detetou e registou' },
 };
 
 
@@ -86,17 +88,15 @@ export interface ProdutoPauta {
   peso: number;
 }
 
-const categoria = (id: string) => id?.startsWith('OBR_') ? 'OBR'
-  : id?.startsWith('SUB-') || id?.startsWith('APP-') ? 'SUB'
-  : id?.startsWith('KNW-') ? 'KNW' : id?.startsWith('INI-') ? 'INI' : 'ATI';
+// As técnicas do catálogo (PERF-…) contam como prática, não como atitudes.
+const categoria = (id: string) => categoriaDaNota(id);
 
 /** Nota 0-20 de um aluno num plano: a validação do professor. */
 export function notaDoPlano(alunoId: string, planoId: string, tipo: string): number | null {
   const v: any = getValidacoes().find((x: any) => x.planoAulaId === planoId && x.alunoId === alunoId);
-  if (!v) return null;
-  if (typeof v.notaMedia20 === 'number') return v.notaMedia20;
-  const notas = (v.notas || []).map((n: any) => ({ categoria: categoria(n.competenciaId) as any, nota: Number(n.nota) || 0 }));
-  return notas.length ? calcularNotaPlano(notas, (tipo || 'pratico') as any).nota20 : null;
+  void tipo;
+  // Sempre com as regras de agora (escala, pesos, farda), não a nota guardada no dia.
+  return notaDaAulaValidada(v);
 }
 
 export interface PlanoRealizado { id: string; titulo: string; data: string; avaliado: boolean }
@@ -220,11 +220,11 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         return { t: t.professor || t.aluno, prof: !!t.professor };
       }).filter(x => x.t);
       const juntaTriagem = (c: 'cl' | 'cr' | 'co') => {
-        const q = PERGUNTAS_TRIAGEM.find(x => x.chave === c)!;
+        const q = c === 'co' ? { titulo: 'Consciente' } : c === 'cr' ? { titulo: 'Criativo' } : PERGUNTAS_TRIAGEM.find(x => x.chave === c)!;
         const ns = triagens.map(x => notaTriagem(x.t![c])).filter((n): n is number => n !== null);
         const conf = triagens.filter(x => x.prof && notaTriagem(x.t![c]) !== null).length;
         junta(c, `${q.titulo} (pergunta de cada aula): respondeu em ${ns.length} aula${ns.length === 1 ? '' : 's'}, ${conf} confirmada${conf === 1 ? '' : 's'} pelo professor`,
-          media(ns.map(n => n * 4)), ns.length);
+          media(ns.map(n => nivelPara20(n))), ns.length);
       };
 
       // CL — colaboração: eventos e atividades extra, trabalho de grupo
@@ -233,8 +233,8 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         const part = participacoesDoAlunoNaUC(a.id, turmaId, ucId);
         junta('cl', `Eventos e atividades extra: ${part} de ${totalAtiv}`, pct(Math.min(part, totalAtiv), totalAtiv), totalAtiv);
       }
-      const kfGrupo = [...idsVeio].filter(id => kfFaseCompleta(a.id, id, 'inicial') && kfFaseCompleta(a.id, id, 'final')).length;
-      junta('cl', `Registos de grupo no KitchenFlow cumpridos: ${kfGrupo} de ${nVeio} aulas`, pct(kfGrupo, nVeio), nVeio);
+      // Os registos do KitchenFlow saíram daqui: a lista ficava só no telemóvel
+      // do aluno e o professor via sempre «0 de N aulas» (baixava o CL a todos).
       const liderou = [...idsVeio].filter(id => liderKFdoGrupo(id) === a.id).length;
       if (liderou > 0) junta('cl', `Liderou o grupo em ${liderou} aula${liderou === 1 ? '' : 's'}`, 20, liderou);
 

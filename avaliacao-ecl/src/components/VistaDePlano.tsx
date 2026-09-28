@@ -1,6 +1,10 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
+import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
+import { bancoDe } from '../triagem5c';
+import { garantirOrganizacao, temOrganizacao, organizacaoDe } from '../organizacaoAula';
+import { QuadroOrganizacional } from './PlanoOrganizacional';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
@@ -21,6 +25,7 @@ import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
   microsPorUC, encontrarAparelho, encontrarSubtecnica,
+  codigoDaLinha, codigosDasLinhas, ramoDaCompetencia, caminhoDoRamo,
   nomeCompetencia, aparelhosPermitidos,
   ATITUDES_DETALHADAS, atitudesDoTrimestre, todasAtitudesAteAno,
   dicaRecuperacaoAtitude, nivelComplexidadeAtitude, getAtitudeDetalhada,
@@ -313,14 +318,52 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
 // ════════════════════════════════════════════════════════════════
 /** O aluno responde sempre a 3 perguntas curtas para os 5 C's, além das
  *  competências escolhidas. Sem este aviso o professor via mais
- *  competências do que as que escolheu e ficava sem perceber porquê. */
-function Aviso5C() {
+ *  competências do que as que escolheu e ficava sem perceber porquê.
+ *  Mostra também as perguntas do Criativo e do Consciente desta aula, que
+ *  o professor pode trocar (por exemplo, depois de um conflito que quer trabalhar). */
+function Aviso5C({ plano, aoMudar }: { plano: PlanoAula; aoMudar: (p: PlanoAula) => void }) {
   return (
     <div style={{ marginTop: 10, marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#f3eef6',
       border: '1px solid rgba(125,79,140,0.3)', fontSize: 13.5, lineHeight: 1.55, color: 'rgba(26,23,20,0.75)' }}>
       <b style={{ color: '#7d4f8c' }}>ℹ️ Além destas, há 3 perguntas para os 5 C's.</b> No fim da autoavaliação, o aluno
       responde sempre a 3 perguntas curtas — <b>Colaborativo</b>, <b>Criativo</b> e <b>Consciente</b>. <b>Não contam
       para a nota desta aula</b>: juntam-se ao longo do curso e entram na pauta, no fim de cada unidade.
+      <PerguntaDoDia chave="cr" nome="Criativo" plano={plano} aoMudar={aoMudar} />
+      <PerguntaDoDia chave="co" nome="Consciente" plano={plano} aoMudar={aoMudar} />
+    </div>
+  );
+}
+
+/** A pergunta do dia do Criativo ou do Consciente: vai rodando, e o
+ *  professor pode trocá-la nesta aula. */
+function PerguntaDoDia({ chave, nome, plano, aoMudar }: { chave: 'co' | 'cr'; nome: string; plano: PlanoAula; aoMudar: (p: PlanoAula) => void }) {
+  const campo = chave === 'co' ? 'perguntaCO' : 'perguntaCR';
+  const { lados, banco } = bancoDe(chave);
+  const id = perguntaDaAula(chave, plano.id);
+  const escolhida = !!(plano as any)[campo];
+  const mudar = (v: string) => {
+    const p = { ...plano, [campo]: v || undefined, atualizadoEm: new Date().toISOString() } as PlanoAula;
+    addOrUpdatePlanoAula(p);
+    aoMudar(p);
+  };
+  return (
+    <div style={{ marginTop: 8 }}>
+      <b>Pergunta do {nome} nesta aula</b> (a mesma para a turma toda{escolhida ? ', escolhida por ti' : ', vai rodando'}):
+      <select value={id} onChange={e => mudar(e.target.value)}
+        style={{ display: 'block', width: '100%', marginTop: 4, padding: '7px 8px', borderRadius: 8,
+          border: '1px solid var(--border)', fontSize: 13.5, fontFamily: 'inherit', background: '#fff' }}>
+        {lados.map(l => (
+          <optgroup key={l.lado} label={l.nome}>
+            {banco.filter(q => q.lado === l.lado).map(q => <option key={q.id} value={q.id}>{q.titulo}</option>)}
+          </optgroup>
+        ))}
+      </select>
+      <div style={{ fontStyle: 'italic', marginTop: 4 }}>«{banco.find(q => q.id === id)?.pergunta}»</div>
+      {escolhida && (
+        <button onClick={() => mudar('')} style={{ marginTop: 4, padding: 0, border: 'none', background: 'none',
+          color: '#7d4f8c', textDecoration: 'underline', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+          Voltar à pergunta da rotação</button>
+      )}
     </div>
   );
 }
@@ -396,6 +439,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // coisa com arranjos diferentes. Sobra de termos construído o novo sem
   // apagar o velho.
   const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma' | 'grupos'>('resumo');
+  // Plano publicado de uma aula prática: as funções de cada aluno distribuem-se
+  // logo, para os alunos as verem antes da aula (plano organizacional).
+  React.useEffect(() => {
+    const p = garantirOrganizacao(plano);
+    if (p !== plano) onPlanoActualizado(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plano.id, plano.estado]);
   /** Conhecimentos marcados para retirar/incluir, à espera de confirmação. */
   const [knwPendentes, setKnwPendentes] = useState<Set<string>>(new Set());
   const [compRemovidas, setCompRemovidas] = useState<string[]>(
@@ -440,26 +490,33 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const tipoPlanAula = (plano as any).tipoPlanAula || (temFichas ? 'pratico' : 'teorico');
 
   // ── SUB-xxx: subtécnicas da ficha (plano prático) ──────────
-  const subIdsRaw = incluirSubApp ? fichasDoPlano.flatMap(f => (f.tecnicasSugeridas || []).filter((id: string) => id.startsWith('SUB-'))) : [];
-  const compSub = ehAtitudinal ? [] : [...new Set(subIdsRaw)]
-    .filter(id => !compRemovidas.includes(id) && !IDS_JA_USADOS.has(id))
+  // As linhas da ficha trazem nome e ramo («SUB-… — Nome | APP-… | componente»):
+  // conta só o código. Os retirados continuam na lista (riscados) para se
+  // poderem voltar a incluir — antes desapareciam de vez.
+  const retirada = (id: string) => compRemovidas.some(r => codigoDaLinha(r) === id);
+  const subIdsRaw = incluirSubApp ? fichasDoPlano.flatMap(f => codigosDasLinhas(f.tecnicasSugeridas, 'SUB-')) : [];
+  const compSubTodas = ehAtitudinal ? [] : [...new Set(subIdsRaw)]
+    .filter(id => !IDS_JA_USADOS.has(id))
     .slice(0, 6)
     .map(id => {
-      const sub = encontrarSubtecnica(id);
-      return { id, nome: sub?.nome || id, criterios: [] as any[] };
+      const ramo = ramoDaCompetencia(id, fichasDoPlano);
+      return { id, nome: ramo.nome, caminho: caminhoDoRamo(ramo), resultado: ramo.resultado || '', criterios: [] as any[] };
     });
-  compSub.forEach(s => IDS_JA_USADOS.add(s.id));
+  const compSub = compSubTodas.filter(m => !retirada(m.id));
+  compSubTodas.forEach(s => IDS_JA_USADOS.add(s.id));
 
   // ── APP-xxx: aparelhos da ficha (plano prático) ────────────
-  const appIdsRaw = incluirSubApp ? fichasDoPlano.flatMap(f => ((f as any).aparelhosDetectados || []).filter((id: string) => id.startsWith('APP-'))) : [];
-  const compApp = ehAtitudinal ? [] : [...new Set(appIdsRaw)]
-    .filter(id => !compRemovidas.includes(id) && !IDS_JA_USADOS.has(id))
+  const appIdsRaw = incluirSubApp ? fichasDoPlano.flatMap(f => codigosDasLinhas((f as any).aparelhosDetectados, 'APP-')) : [];
+  const compAppTodas = ehAtitudinal ? [] : [...new Set(appIdsRaw)]
+    .filter(id => !IDS_JA_USADOS.has(id))
     .slice(0, 4)
     .map(id => {
       const app = encontrarAparelho(id);
-      return { id, nome: app?.nome || id, nivel: app?.nivel || 1, categoria: app?.categoria || '', criterios: [] as any[] };
+      const ramo = ramoDaCompetencia(id, fichasDoPlano);
+      return { id, nome: app?.nome || ramo.nome, caminho: ramo.prato || '', resultado: '', nivel: app?.nivel || 1, categoria: app?.categoria || '', criterios: [] as any[] };
     });
-  compApp.forEach(a => IDS_JA_USADOS.add(a.id));
+  const compApp = compAppTodas.filter(m => !retirada(m.id));
+  compAppTodas.forEach(a => IDS_JA_USADOS.add(a.id));
 
   // ── KNW-xxx: conhecimentos da UC (plano teórico ou misto) ──
   // Biblioteca pode ainda não estar carregada — proteger com try/catch
@@ -817,13 +874,18 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {compSub.length > 0 && (
           <div style={{ marginBottom:14 }}>
             <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas desta aula</div>
-            {compSub.map(m => {
-              const removida = compRemovidas.includes(m.id);
+            {compSubTodas.map(m => {
+              const removida = retirada(m.id);
               return (
                 <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
                   <span>{removida ? '○' : '●'}</span>
-                  <div style={{ flex:1, fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
-                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
+                  <div style={{ flex:1 }}>
+                    {/* O ramo: prato → aparelho → técnica, e o que se vê quando está bem. */}
+                    {m.caminho && <div style={{ fontSize:12, color:'rgba(26,23,20,0.55)' }}>{m.caminho}</div>}
+                    <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
+                    {m.resultado && !removida && <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.6)' }}>Bem feito é: {m.resultado}</div>}
+                  </div>
+                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => codigoDaLinha(x) !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
                     style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
@@ -837,19 +899,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {compApp.length > 0 && (
           <div style={{ marginBottom:14 }}>
             <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'#5B67EA', marginBottom:8 }}>🧪 Preparações base</div>
-            {compApp.map(m => {
-              const removida = compRemovidas.includes(m.id);
+            {compAppTodas.map(m => {
+              const removida = retirada(m.id);
               return (
                 <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'rgba(91,103,234,0.06)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
                   <span>{removida ? '○' : '●'}</span>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
                     <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.45)' }}>
-                      {m.categoria} ·
+                      {m.caminho && `${m.caminho} · `}{m.categoria} ·
                       <span style={{ fontWeight:700, marginLeft:4, color: m.nivel===1?'#5a7a4e':m.nivel===2?'#b5651d':'#c0392b' }}>N{m.nivel}</span>
                     </div>
                   </div>
-                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
+                  <button onClick={() => guardarCompetencias(removida ? compRemovidas.filter(x => codigoDaLinha(x) !== m.id) : [...compRemovidas, m.id], compAdicionadas)}
                     style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:`1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.3)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.5)', cursor:'pointer', fontWeight:600 }}>
                     {removida ? '+ Incluir' : '− Remover'}
                   </button>
@@ -1254,6 +1316,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             Quem entrou, o estado da farda, os registos e as autoavaliações.
             As decisões de falta fazem-se aqui.
           </div>
+          {temOrganizacao(plano) && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
+                color:'#6B3FA0', marginBottom:8 }}>Plano organizacional da aula</div>
+              <QuadroOrganizacional plano={plano} modo="professor" onPlanoMudou={onPlanoActualizado} />
+            </div>
+          )}
           <TurmaNaAula
             planoAulaId={plano.id}
             turmaId={plano.turmaId}
@@ -1305,7 +1374,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </div>
             </div>
 
-            <Aviso5C />
+            <Aviso5C plano={plano} aoMudar={onPlanoActualizado} />
 
             {/* Evento ou concurso no horário letivo: entra neste plano. Os de
                 fora do horário avaliam-se no menu «Avaliar evento fora do horário». */}
@@ -1384,22 +1453,25 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Competências desta aula</div>
-            {[...compSub, ...compApp, ...compConhecimentos, ...compTecnicas].slice(0, 8).map(m => {
-              const removida = compRemovidas.includes(m.id);
+            {[...compSubTodas, ...compAppTodas, ...compConhecimentos, ...compTecnicas].slice(0, 8).map(m => {
+              const removida = retirada(m.id) || compRemovidas.includes(m.id);
               const aberta = compAberta === m.id;
               return (
                 <div key={m.id} style={{ borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(181,101,29,0.2)'}`, opacity: removida ? 0.5 : 1, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }}>
                     <span style={{ fontSize: 14 }}>{removida ? '○' : '●'}</span>
                     <div style={{ flex: 1, cursor: (m as any).criterios?.length > 0 ? 'pointer' : 'default' }} onClick={() => (m as any).criterios?.length > 0 && toggleComp(m.id)}>
+                      {/* O ramo: prato → aparelho → técnica, e o que se vê quando está bem. */}
+                      {(m as any).caminho && <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.55)' }}>{(m as any).caminho}</div>}
                       <div style={{ fontSize: 13, fontWeight: removida ? 400 : 500, textDecoration: removida ? 'line-through' : 'none' }}>{m.nome}</div>
+                      {(m as any).resultado && !removida && <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>Bem feito é: {(m as any).resultado}</div>}
                       {(m as any).criterios?.length > 0 && (
                         <div style={{ fontSize: 13, color: 'rgba(181,101,29,0.7)', display: 'flex', alignItems: 'center', gap: 4 }}>
                           {(m as any).criterios?.length} critérios observáveis <span style={{ fontSize: 12.5 }}>{aberta ? '▲' : '▼'}</span>
                         </div>
                       )}
                     </div>
-                    <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== m.id) : [...compRemovidas, m.id]; guardarCompetencias(novas, compAdicionadas); }}
+                    <button onClick={() => { const novas = removida ? compRemovidas.filter(x => x !== m.id && codigoDaLinha(x) !== m.id) : [...compRemovidas, m.id]; guardarCompetencias(novas, compAdicionadas); }}
                       style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${removida ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: removida ? 'var(--sage)' : 'transparent', color: removida ? 'white' : 'rgba(26,23,20,0.4)', cursor: 'pointer', fontWeight: 600 }}>
                       {removida ? '+ Incluir' : '− Remover'}
                     </button>
@@ -1495,7 +1567,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
           <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 13, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
-            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compTecnicas.length} técnicas · {compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{nAtitudesDaAula} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
+            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compSub.length + compApp.length + compTecnicas.length} técnicas · {compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{nAtitudesDaAula} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
             {totalComp > 7 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
             {totalComp <= 5 && <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>✓ Número adequado para uma aula.</div>}
           </div>
@@ -1506,6 +1578,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      {temOrganizacao(plano) && (
+        <button onClick={() => setTabInicio('turma')} style={{ display:'block', width:'100%', textAlign:'left',
+          background:'#fff', border:'1px solid rgba(107,63,160,0.35)', borderRadius:14, padding:'12px 16px',
+          margin:'0 0 14px', cursor:'pointer', fontFamily:'inherit' }}>
+          <span style={{ fontSize:15, fontWeight:700, color:'#6B3FA0' }}>Plano organizacional da aula</span>
+          <span style={{ display:'block', fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:3 }}>
+            {organizacaoDe(plano)
+              ? 'Cada aluno já tem a sua função. Toca para ver quem faz o quê e para substituir quem faltar.'
+              : plano.estado === 'publicado' ? 'Toca para distribuir as funções.' : 'As funções distribuem-se quando publicares o plano.'}
+          </span>
+        </button>
+      )}
+      <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />
       {eventoForaDoHorario(plano) && (
         <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
           <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
@@ -1571,7 +1656,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               Dinâmica de grupo: sem técnicas nem KitchenFlow. As atitudes do trimestre
               aparecem primeiro; podes tirá-las e escolher quaisquer outras do ano.
             </div>
-            <Aviso5C />
+            <Aviso5C plano={plano} aoMudar={onPlanoActualizado} />
 
             <button onClick={() => setObrigatoriasPendentes(!obrigatoriasPendentes)}
               style={{ width:'100%', padding:'11px 13px', borderRadius:10, marginBottom:14,
@@ -1925,7 +2010,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                       </div>
                     )}
                     <div>
-                      <b>{compTecnicas.length + compSubtecnicas.length}</b> técnicas
+                      <b>{compSub.length + compApp.length + compTecnicas.length + compSubtecnicas.length}</b> técnicas
                       <span style={{ color:'rgba(26,23,20,0.45)' }}>
                         {temFicha ? ' — das fichas' : ' — escolhidas por ti'}
                       </span>

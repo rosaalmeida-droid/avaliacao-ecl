@@ -14,6 +14,7 @@ import {
   getPlanosAulaPorTurma, getPlanosFaltadosPorUC, situacaoRecuperacaoUC, guardarPropostaFinalUC, horasDadasDaUC,
 } from '../backend';
 import { linhasDaPautaUC, produtosDaUC, notaDoPlano, MAPA_5C, type Letra5C } from '../pautaUC';
+import { EcraCheio, ProgressoSlides, NavSlides } from './EcraCheio';
 
 const V = '#6B3FA0';
 const BORDA = 'rgba(26,23,20,0.12)';
@@ -102,6 +103,7 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
   const [nota, setNota] = useState<number | null>(null);
   const [justificacao, setJustificacao] = useState('');
   const [confirmar, setConfirmar] = useState(false);
+  const [slide, setSlide] = useState(0);
 
   const dados = useMemo(() => {
     const hoje = new Date().toISOString().slice(0, 10);
@@ -142,27 +144,21 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
     onFeito();
   }
 
-  const secao = (t: string) => (
-    <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
-      color: 'rgba(26,23,20,0.5)', margin: '20px 0 8px' }}>{t}</div>
-  );
   const caixa: React.CSSProperties = { background: '#fff', borderRadius: 14, border: `1px solid ${BORDA}`, padding: '12px 14px' };
   const maxBarra = 20;
 
+  // Uma coisa de cada vez, como na autoavaliação das aulas.
+  const NOMES = ['As tuas aulas', 'Como evoluíste', 'Assiduidade', 'O que ficou registado sobre ti', 'A tua nota', 'Porquê esta nota?'];
+  const podeSeguir = slide === 4 ? nota !== null : true;
+
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', padding: '4px 16px 40px' }}>
-      <button onClick={onFechar} style={{ background: 'transparent', border: 'none', color: V, fontWeight: 700,
-        fontSize: 15, padding: '10px 0', cursor: 'pointer', fontFamily: 'inherit' }}>← Voltar</button>
-      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: V }}>
-        Autoavaliação final
-      </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, lineHeight: 1.2 }}>{ucNome || ucId}</div>
-      <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.65)', marginTop: 4, lineHeight: 1.5 }}>
+    <EcraCheio titulo={`Autoavaliação final · ${ucNome || ucId}`} onSair={onFechar}>
+      <ProgressoSlides nome={NOMES[slide]} idx={slide} total={NOMES.length} />
+      {slide === 0 && <>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, lineHeight: 1.25, marginBottom: 12 }}>As tuas aulas</div>
+      <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.65)', marginBottom: 12, lineHeight: 1.5 }}>
         Antes de propores a tua nota, olha com calma para o que fizeste nesta UC.
       </div>
-
-      {/* 1. As aulas */}
-      {secao('1. As tuas aulas')}
       <div style={caixa}>
         {dados.aulas.length === 0 && <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.6)' }}>Sem aulas registadas.</div>}
         {dados.aulas.map(a => (
@@ -186,12 +182,13 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
         )}
       </div>
 
-      {/* 2. Evolução */}
-      {secao('2. Como evoluíste')}
+      </>}
+      {slide === 1 && <>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, lineHeight: 1.25, marginBottom: 12 }}>Como evoluíste</div>
       <div style={{ ...caixa, fontSize: 14.5, lineHeight: 1.5 }}>{evolucao}</div>
-
-      {/* 3. Assiduidade */}
-      {secao('3. Assiduidade')}
+      </>}
+      {slide === 2 && <>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, lineHeight: 1.25, marginBottom: 12 }}>Assiduidade</div>
       <div style={{ ...caixa, fontSize: 14.5, lineHeight: 1.5 }}>
         Faltaste a <b>{h1(dados.sit.horasFaltadas)} h</b> de {h1(dados.dadas)} h dadas nesta UC
         {dados.dadas > 0 && <> (<b>{h1(dados.sit.horasFaltadas / dados.dadas * 100)}%</b> de faltas)</>}.
@@ -202,8 +199,9 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
         )}
       </div>
 
-      {/* 4. Evidências dos 5 C */}
-      {secao('4. O que ficou registado sobre ti')}
+      </>}
+      {slide === 3 && <>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, lineHeight: 1.25, marginBottom: 12 }}>O que ficou registado sobre ti</div>
       <div style={caixa}>
         {(Object.keys(MAPA_5C) as Letra5C[]).map(c => {
           const ev = dados.evidencias?.[c] || [];
@@ -217,15 +215,16 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
           );
         })}
         <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginTop: 6 }}>
-          Competente: são as tuas aulas, na secção 1.
+          Competente: são as tuas aulas, no primeiro ecrã.
         </div>
       </div>
 
-      {/* 5. A proposta */}
-      {secao('5. A tua proposta de nota final')}
+      </>}
+      {slide === 4 && <>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, lineHeight: 1.25, marginBottom: 12 }}>A tua proposta de nota final</div>
       <div style={caixa}>
         <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.7)', lineHeight: 1.5, marginBottom: 10 }}>
-          Escolhe a nota que achas justa, de 0 a 20. Pensa no que viste acima, não no que gostavas de ter.
+          Escolhe a nota que achas justa, de 0 a 20. Pensa no que viste antes, não no que gostavas de ter.
         </div>
         {ESCALA.map(e => (
           <div key={e.nome} style={{ marginBottom: 8 }}>
@@ -243,7 +242,11 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
           </div>
         ))}
 
-        <div style={{ fontSize: 14, fontWeight: 700, margin: '14px 0 4px' }}>Porquê esta nota?</div>
+      </div>
+      </>}
+      {slide === 5 && <>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, lineHeight: 1.25, marginBottom: 12 }}>Porquê {nota ?? ''} valores?</div>
+      <div style={caixa}>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', lineHeight: 1.5, marginBottom: 6 }}>
           Podes responder a estas perguntas:
           {PERGUNTAS_REFLEXAO.map(p => <div key={p}>· {p}</div>)}
@@ -259,14 +262,8 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
         )}
       </div>
 
-      {!confirmar ? (
-        <button disabled={!pronto} onClick={() => setConfirmar(true)} style={{ width: '100%', marginTop: 16,
-          minHeight: 54, borderRadius: 12, border: 'none', fontSize: 17, fontWeight: 700, fontFamily: 'inherit',
-          background: pronto ? V : 'rgba(26,23,20,0.08)', color: pronto ? '#fff' : 'rgba(26,23,20,0.3)',
-          cursor: pronto ? 'pointer' : 'not-allowed' }}>
-          {nota === null ? 'Escolhe a tua nota' : !justOk ? 'Escreve a justificação' : 'Enviar a proposta'}
-        </button>
-      ) : (
+      </>}
+      {slide === 5 && confirmar ? (
         <div style={{ marginTop: 16, padding: 14, borderRadius: 12, background: '#F0EBF7', border: `1.5px solid ${V}` }}>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
             Propões {nota} valores. Depois de enviar já não podes mudar. Confirmas?
@@ -282,7 +279,12 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
             </button>
           </div>
         </div>
+      ) : (
+        <NavSlides onAnterior={slide > 0 ? () => { setConfirmar(false); setSlide(n => n - 1); } : undefined}
+          pode={slide === 5 ? pronto : podeSeguir}
+          textoSeguinte={slide === 5 ? (!justOk ? 'Escreve a justificação' : 'Enviar a proposta') : 'Seguinte'}
+          onSeguinte={() => slide === 5 ? setConfirmar(true) : setSlide(n => n + 1)} />
       )}
-    </div>
+    </EcraCheio>
   );
 }

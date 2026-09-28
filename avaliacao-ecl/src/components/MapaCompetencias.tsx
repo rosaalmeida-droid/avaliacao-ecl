@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getAlunos, getPerfilProfissionalAluno, addAluno } from '../backend';
+import { getAlunos, getPerfilProfissionalAluno, definirNivelMedidas } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 
 export function MapaCompetencias({ turmaId }: { turmaId: string }) {
@@ -39,7 +39,16 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
                 {a.numero}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 13 }}>{a.nome || `Aluno ${a.numero}`}</div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>
+                  {a.nome || `Aluno ${a.numero}`}
+                  {/* Quem tem medidas vê-se logo na lista, sem abrir o aluno. */}
+                  {(a.nivelMedidas || 1) > 1 && (
+                    <span style={{ marginLeft: 8, fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+                      background: a.nivelMedidas === 3 ? '#fdecea' : '#fdf0e6', color: a.nivelMedidas === 3 ? '#a93226' : '#b5651d' }}>
+                      {a.nivelMedidas === 3 ? 'Adicionais' : 'Seletivas'}
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>{consolidadas}/{total} competências consolidadas</div>
               </div>
               <span style={{ fontSize: 13, color: 'var(--copper)' }}>{aberto ? '▲' : '▼'}</span>
@@ -53,18 +62,18 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
               >
                 <div style={{ marginBottom: 12, padding: 10, background: 'var(--cream-dark)', borderRadius: 8 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.6)', textTransform: 'uppercase', marginBottom: 6 }}>
-                    Nível de Medidas Educativas — adapta os planos de recuperação gerados por IA
+                    Medidas educativas — muda as perguntas da autoavaliação e os planos de recuperação
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {[1, 2, 3].map(n => (
-                      <button key={n} onClick={() => { addAluno({ ...a, nivelMedidas: n as 1|2|3 }); setRefresh(k => k + 1); }}
+                      <button key={n} onClick={() => { definirNivelMedidas(a.id, n as 1|2|3); setRefresh(k => k + 1); }}
                         style={{
                           flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                           border: (a.nivelMedidas || 1) === n ? 'none' : '1px solid var(--border)',
                           background: (a.nivelMedidas || 1) === n ? 'var(--copper)' : '#fff',
                           color: (a.nivelMedidas || 1) === n ? 'white' : 'rgba(26,23,20,0.6)',
                         }}>
-                        Nível {n}
+                        {n === 1 ? 'Universais' : n === 2 ? 'Seletivas' : 'Adicionais'}
                       </button>
                     ))}
                   </div>

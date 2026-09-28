@@ -1,13 +1,13 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula } from '../backend';
-import { PERGUNTAS_TRIAGEM, type Triagem5C } from '../triagem5c';
+import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram } from '../backend';
+import { perguntasDaAula, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20 } from '../types';
+import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
-import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf } from '../compatECL';
+import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
 import { Card, Button, Field } from './ui';
 import { CriteriosComp } from './CriteriosComp';
@@ -56,12 +56,12 @@ function calcularNotaFinal(notaProf: number, notaAluno: number): number {
   return notaProf;
 }
 
-// Conversão 1-5 → 0-20 (×4)
-function para20(n: number): number { return n > 0 ? Math.min(20, Math.round(n * 4)) : 0; }
+// Conversão 1-5 → 0-20 (0-5-10-15-20)
+function para20(n: number): number { return notaPara20(n); }
 
 /** Nota 1-5 → a mesma classificação que o aluno vê, em /20. */
 function labelNotaFinal(nota: number): string {
-  return classificacao20(nota * 4);
+  return classificacao20(notaPara20(nota));
 }
 
 function corNotaFinal(nota: number): string {
@@ -123,6 +123,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         planoTitulo={plano?.titulo || ''}
         ucId={plano?.ucId || ''}
         fichasNomes={fichas.map(f => f.nomePrato)}
+        fichas={fichas}
         tipoPlanAula={(plano as any)?.tipoPlanAula || 'pratico'}
         validacaoExistente={valExistente}
         onVoltar={() => setAtiva(null)}
@@ -211,13 +212,15 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────
-function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula, validacaoExistente, onVoltar, seguintes = 0, onSeguinte }: {
+function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], tipoPlanAula, validacaoExistente, onVoltar, seguintes = 0, onSeguinte }: {
   seguintes?: number;
   onSeguinte?: () => void;
   selecao: SelecaoAluno;
   planoTitulo: string;
   ucId: string;
   fichasNomes: string[];
+  /** As fichas do plano — para mostrar o ramo (prato → aparelho → técnica). */
+  fichas?: any[];
   tipoPlanAula?: 'pratico' | 'misto' | 'teorico';
   validacaoExistente?: any;
   onVoltar: () => void;
@@ -247,6 +250,15 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     return inicial;
   });
   const [comentario, setComentario] = useState('');
+  // O aluno declarou a farda completa e não era verdade: a farda fica a 1 e
+  // a atitude «Responsabilidade pelas suas ações» (ATI-001) também.
+  const [faltouVerdade, setFaltouVerdade] = useState(false);
+  // Sem farda completa (declarado à entrada, ou «Não era verdade»): avalia-se
+  // tudo e fica no percurso, mas as técnicas contam 0 na nota. O professor pode desfazer.
+  const fardaDaEntrada = (selecao.autoavaliacoes || []).find((a: any) => a.competenciaId === 'OBR_01' && a.daEntrada);
+  const [semFarda, setSemFarda] = useState<boolean>(() => validacaoExistente
+    ? !!validacaoExistente.semFarda
+    : !!fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5);
   const [guardado, setGuardado] = useState(false);
   // Triagem do CL e do CR: vem a resposta do aluno; o professor confirma ou muda.
   const [triagem, setTriagem] = useState<Triagem5C | null>(() => {
@@ -255,7 +267,19 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   });
 
   // Obter competências da autoavaliação
-  const autoavaliacoes = selecao.autoavaliacoes || [];
+  const autoavaliacoesAluno = selecao.autoavaliacoes || [];
+  // Sem farda completa: «Cuidado com a apresentação pessoal» avalia-se sempre
+  // nesta aula (mesmo que o aluno não a tenha na autoavaliação).
+  const autoavaliacoes: any[] = semFarda && !autoavaliacoesAluno.some((a: any) => a.competenciaId === 'ATI-003')
+    ? [...autoavaliacoesAluno, { competenciaId: 'ATI-003', nivel: 'professor', nota: 1, doProfessor: true }]
+    : autoavaliacoesAluno;
+  // «Não tive oportunidade» (técnicas): o professor confirma — confirmado, não conta.
+  const [semOport, setSemOport] = useState<Record<string, boolean>>(() => Object.fromEntries(
+    autoavaliacoesAluno.filter((a: any) => a.semOportunidade || a.nivel === 'nop')
+      .map((a: any) => [a.competenciaId, !(validacaoExistente?.notas || []).some((n: any) => n.competenciaId === a.competenciaId)])));
+  const contaParaNota = (id: string) => !semOport[id];
+  // Sem farda, as técnicas contam 0 (nível 1) na nota da aula; ficam no percurso com a nota dada.
+  const notaParaAula = (id: string, nota: number) => semFarda && categoriaDaNota(id) === 'SUB' ? 1 : nota;
 
   function getNomeComp(id: string): string {
     if (id === TEC_EVENTO) return NOME_TEC_EVENTO;
@@ -286,8 +310,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
   // professor dá, para não haver surpresas: o professor vê SEMPRE a decomposição
   // por categoria antes de confirmar, não só o número final.
   const previsaoNota = useMemo(() => {
-    const notasComCat = autoavaliacoes.map((auto: any) => {
-      const notaProf = notasProf[auto.competenciaId];
+    const notasComCat = autoavaliacoes.filter((a: any) => contaParaNota(a.competenciaId) && contaNaNotaDaAula(a.competenciaId)).map((auto: any) => {
+      const notaProf = notasProf[auto.competenciaId] ?? (auto.doProfessor ? auto.nota : undefined);
       const notaAluno = (auto as any).nota || (
         auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
         auto.nivel === 'fs'  || auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 4 :
@@ -296,15 +320,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       );
       const nProf = notaProf || 2;
       const notaFinal = calcularNotaFinal(nProf, notaAluno);
-      const cat = auto.competenciaId?.startsWith('OBR_') ? 'OBR'
-        : auto.competenciaId?.startsWith('SUB-') || auto.competenciaId?.startsWith('APP-') ? 'SUB'
-        : auto.competenciaId?.startsWith('KNW-') ? 'KNW'
-        : auto.competenciaId?.startsWith('INI-') ? 'INI'
-        : 'ATI';
-      return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: notaFinal };
+      const cat = categoriaDaNota(auto.competenciaId);
+      return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: notaParaAula(auto.competenciaId, notaFinal) };
     });
     return calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
-  }, [notasProf, autoavaliacoes, tipoPlanAula]);
+  }, [notasProf, autoavaliacoes, tipoPlanAula, semOport, semFarda]);
 
   const LABEL_CAT: Record<string,string> = {
     OBR: 'Obrigatórias (higiene, HACCP, pontualidade)',
@@ -316,8 +336,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
 
   async function guardar() {
     const agora = new Date().toISOString();
-    const notasFinais = autoavaliacoes.map((auto: any) => {
-      const notaProf = notasProf[auto.competenciaId] || 2;
+    const notasFinais = autoavaliacoes.filter((a: any) => contaParaNota(a.competenciaId)).map((auto: any) => {
+      const notaProf = notasProf[auto.competenciaId] ?? (auto.doProfessor ? auto.nota : undefined) ?? 2;
       // Nota do aluno em escala 1-5
       const notaAluno = (auto as any).nota || (
         auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
@@ -328,6 +348,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       const notaFinal = calcularNotaFinal(notaProf, notaAluno);
       return { competenciaId: auto.competenciaId, notaProf, notaAluno, notaFinal };
     });
+    if (faltouVerdade) {
+      const r = notasFinais.find(n => n.competenciaId === 'ATI-001');
+      if (r) { r.notaProf = 1; r.notaFinal = 1; }
+      else notasFinais.push({ competenciaId: 'ATI-001', notaProf: 1, notaAluno: 0, notaFinal: 1 });
+    }
 
     // Guardar validação
     const validacao: Validacao = {
@@ -352,13 +377,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     // A técnica geral do evento só serve para o bónus de eventos: não entra
     // na nota do plano nem nos registos das competências.
     const paraNota = notasFinais.filter(n => n.competenciaId !== TEC_EVENTO);
-    const notasComCat = paraNota.map(n => {
-      const cat = n.competenciaId?.startsWith('OBR_') ? 'OBR'
-        : n.competenciaId?.startsWith('SUB-') || n.competenciaId?.startsWith('APP-') ? 'SUB'
-        : n.competenciaId?.startsWith('KNW-') ? 'KNW'
-        : n.competenciaId?.startsWith('INI-') ? 'INI'
-        : 'ATI';
-      return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.notaFinal };
+    const paraNotaDaAula = paraNota.filter(n => contaNaNotaDaAula(n.competenciaId));
+    const notasComCat = paraNotaDaAula.map(n => {
+      const cat = categoriaDaNota(n.competenciaId);
+      return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: notaParaAula(n.competenciaId, n.notaFinal) };
     });
     const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
     const notaMedia = paraNota.length
@@ -366,6 +388,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       : 0;
     (validacao as any).notaMedia = Math.round(notaMedia * 10) / 10;
     (validacao as any).notaMedia20 = nota20; // usa pesos por categoria, não média simples
+    // Sem farda: as técnicas ficam no percurso com a nota dada, mas contam 0 na nota da aula.
+    if (semFarda) (validacao as any).semFarda = true;
     // Guardar a decomposição por categoria para o professor perceber sempre
     // como a nota foi calculada (antes ficava só o número, sem explicação).
     (validacao as any).porCategoria = porCategoria;
@@ -467,6 +491,38 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
         </div>
       </div>
 
+      {/* Sem farda completa: avalia-se tudo (fica no percurso), as técnicas contam 0. */}
+      {(semFarda || fardaDaEntrada) && tipoPlanAula !== 'teorico' && (
+        <div style={{ marginBottom: 12, padding: '12px 14px', borderRadius: 12,
+          background: semFarda ? '#fdf0ef' : '#f5f7f2', border: `1.5px solid ${semFarda ? '#c0392b' : 'rgba(26,23,20,0.12)'}` }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: semFarda ? '#8e2418' : 'rgba(26,23,20,0.7)' }}>
+            {semFarda ? 'Sem farda completa: as técnicas contam 0 nesta aula' : 'Farda completa'}
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.5, color: 'rgba(26,23,20,0.7)', marginTop: 4 }}>
+            {semFarda
+              ? 'Avalia tudo normalmente: as técnicas ficam no percurso do aluno. As atitudes contam — incluindo «Cuidado com a apresentação pessoal» e a forma como ajudou na aula. Não é falta.'
+              : 'O aluno declarou a farda completa à entrada.'}
+          </div>
+          {(() => {
+            const r = (fardaDaEntrada as any)?.reflexaoFarda;
+            if (!r) return null;
+            return (
+              <div style={{ fontSize: 13, lineHeight: 1.55, marginTop: 8, padding: '8px 10px', background: '#fff', borderRadius: 8 }}>
+                {r.emFalta?.length ? <div><b>Faltava:</b> {r.emFalta.join(', ')}</div> : null}
+                <div><b>O que aconteceu:</b> {r.porque || '—'}</div>
+                <div><b>O que fez para resolver:</b> {r.resolver || '—'}</div>
+                <div><b>Para não voltar a acontecer:</b> {r.evitar || '—'}</div>
+              </div>
+            );
+          })()}
+          <button onClick={() => setSemFarda(!semFarda)} style={{ marginTop: 8, fontSize: 13, fontWeight: 700,
+            padding: '5px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+            border: '1px solid rgba(26,23,20,0.25)', background: '#fff', color: 'rgba(26,23,20,0.75)' }}>
+            {semFarda ? 'Desfazer: tinha a farda completa' : 'Não tinha a farda completa'}
+          </button>
+        </div>
+      )}
+
       {autoavaliacoes.length === 0 && (
         <Card>
           <div className="muted">Sem competências para validar nesta autoavaliação.</div>
@@ -495,11 +551,32 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           ? `${(auto as any).texto || ''}${(auto as any).comentario ? ` — correu menos bem: «${(auto as any).comentario}»` : ''}`
           : labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
 
+        // O ramo: prato → aparelho → técnica, para o professor saber de que
+        // roux/corte se trata, e o que se vê quando está bem feito.
+        const _ramo = (_isSub || _isApp) ? ramoDaCompetencia(auto.competenciaId, fichas) : null;
+        const _caminho = _ramo ? (_isApp ? (_ramo.prato || '') : caminhoDoRamo(_ramo)) : '';
+
         return (
           <div key={auto.competenciaId} style={{ marginBottom: 10, background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+            {_caminho && <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)', marginBottom:2 }}>{_caminho}</div>}
             {/* Nome da competência */}
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{nome}</span>
+              {auto.competenciaId === 'OBR_01' && (auto as any).daEntrada && (
+                <span style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100, background:'#fdf0e6', color:'#b5651d' }}>
+                    Declarado pelo aluno — confirma
+                  </span>
+                  <button onClick={() => {
+                      const v = !faltouVerdade; setFaltouVerdade(v);
+                      if (v) { setNotasProf(p => ({ ...p, OBR_01: 1 })); setSemFarda(true); }
+                    }}
+                    style={{ fontSize:12.5, fontWeight:700, padding:'3px 9px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                      border:'1px solid #7B2233', background: faltouVerdade ? '#7B2233' : '#fff', color: faltouVerdade ? '#fff' : '#7B2233' }}>
+                    {faltouVerdade ? '✓ Não era verdade (farda e Responsabilidade a 1)' : 'Não era verdade'}
+                  </button>
+                </span>
+              )}
               {(auto as any).semRegistoKF && (
                 <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100,
                   background:'#fdf0e6', color:'#b5651d' }}>
@@ -520,6 +597,39 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
                 <span style={{ fontSize:12.5, color:'#0369a1', fontStyle:'italic', fontWeight:600 }}>conhecimento</span>
               )}
             </div>
+            {_ramo?.resultado && (
+              <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.6)', margin:'-4px 0 8px' }}>Bem feito é: {_ramo.resultado}</div>
+            )}
+
+            {/* «Não tive oportunidade»: o professor confirma (não conta) ou não (não fez = 0). */}
+            {auto.competenciaId in semOport && (
+              <div style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 10, background: '#fdf6e8', border: '1px solid #e8c98f' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#8a5a12' }}>
+                  O aluno diz que não teve oportunidade de fazer esta hoje. Confirmas?
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                  {[[true, 'Confirmo: não conta para a nota'], [false, 'Não é verdade: não fez (0)']].map(([v, t]) => (
+                    <button key={String(v)} onClick={() => {
+                        setSemOport(p => ({ ...p, [auto.competenciaId]: v as boolean }));
+                        if (!v) setNotasProf(p => ({ ...p, [auto.competenciaId]: 1 }));
+                      }}
+                      style={{ fontSize: 13, fontWeight: 700, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                        border: '1px solid #b5651d', background: semOport[auto.competenciaId] === v ? '#b5651d' : '#fff',
+                        color: semOport[auto.competenciaId] === v ? '#fff' : '#b5651d' }}>{t as string}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {auto.competenciaId === 'OBR_01' && (
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+                Confirma a farda. Não conta como obrigatória na nota: quando falta, conta em «Cuidado com a apresentação pessoal» e nas técnicas (a 0).
+              </div>
+            )}
+            {semFarda && categoriaDaNota(auto.competenciaId) === 'SUB' && (
+              <div style={{ fontSize: 12.5, color: '#8e2418', marginBottom: 8 }}>
+                Sem farda: fica no percurso com a nota que deres, mas conta 0 na nota desta aula.
+              </div>
+            )}
 
             {/* Autoavaliação do aluno */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 10px', background: 'var(--cream-dark)', borderRadius: 8 }}>
@@ -625,15 +735,26 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
             color:'rgba(26,23,20,0.5)', marginBottom:4 }}>Equipa, problemas e reflexão (5 C da pauta)</div>
           <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.5)', marginBottom:8 }}>
-            Não conta para a nota desta aula. Entra no Colaborativo e no Criativo da pauta da UC.
+            Não conta para a nota desta aula. Entra no Colaborativo, no Criativo e no Consciente da pauta da UC.
           </div>
-          {PERGUNTAS_TRIAGEM.map(q => {
+          {perguntasDaAula(triagem.coId, triagem.crId).map(q => {
             const r = triagem[q.chave];
             const opcoes: { v: number | 'sem'; txt: string }[] = [
-              ...q.frases.map((f, i) => ({ v: i, txt: f })), { v: 'sem', txt: q.semOcasiao }];
+              ...q.frases.map((f, i) => ({ v: i, txt: f })), ...(q.semOcasiao ? [{ v: 'sem' as const, txt: q.semOcasiao }] : [])];
+            // A turma toda respondeu à mesma pergunta do Consciente e do Criativo:
+            // se este aluno diz que não aconteceu e vários colegas dizem que sim, avisa-se.
+            const idPergunta = q.chave === 'co' ? triagem.coId : q.chave === 'cr' ? triagem.crId : undefined;
+            const viram = q.chave !== 'cl' && r === 'sem' && idPergunta
+              ? colegasQueViram(q.chave, selecao.alunoId, selecao.planoAulaId || '', idPergunta) : 0;
             return (
               <div key={q.chave} style={{ marginBottom:10 }}>
                 <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>{q.sigla} · {q.pergunta}</div>
+                {viram >= 2 && (
+                  <div style={{ fontSize:13, padding:'7px 10px', marginBottom:6, borderRadius:8,
+                    background:'rgba(184,115,51,0.12)', color:'#8a4a15', lineHeight:1.45 }}>
+                    ⚠️ Este aluno diz que hoje não aconteceu, mas <b>{viram} colegas</b> disseram que sim. Confirma.
+                  </div>
+                )}
                 {opcoes.map(o => (
                   <button key={String(o.v)} onClick={() => setTriagem(t => t && ({ ...t, [q.chave]: o.v }))}
                     style={{ display:'flex', gap:8, alignItems:'center', width:'100%', textAlign:'left',
