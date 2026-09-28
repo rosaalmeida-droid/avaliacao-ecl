@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { getHistoricoAvaliacoes, getAlunos } from '../backend';
+import { PESOS_AULA } from '../types';
+import { BONUS_EVENTOS } from '../eventosAvaliacao';
 import {
   ATITUDES_DETALHADAS, calcularNotaPlano, atitudesDoTrimestre,
   getAtitudeDetalhada, nomeCompetencia,
@@ -150,61 +152,70 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
             </Secção>
 
             {/* 2. ESCALA */}
-            <Secção titulo="2. Escala de Avaliação (1 a 4)" icone="📏" cor={T.copper}>
+            <Secção titulo="2. Escala de Avaliação (1 a 5)" icone="📏" cor={T.copper}>
               <Tabela
-                headers={['Nível', 'Descrição', 'Significado pedagógico']}
+                headers={['Nível', 'O que o aluno escolhe', 'Significado pedagógico']}
                 rows={[
-                  [<Badge texto="1" cor="#c0392b" />, 'Ainda não fiz', 'Competência não demonstrada — necessita de recuperação obrigatória.'],
-                  [<Badge texto="2" cor="#b5651d" />, 'Consegui com ajuda', 'Em desenvolvimento — competência parcialmente demonstrada.'],
-                  [<Badge texto="3" cor={T.sage} />, '✅ Consegui', 'Adquirido — competência demonstrada de forma independente.'],
-                  [<Badge texto="4" cor={T.azul} />, 'Faço com muito bom resultado', 'Consolidado — demonstra excelência e apoia colegas.'],
+                  [<Badge texto="1" cor="#c0392b" />, 'Ainda não fiz', 'Competência não demonstrada.'],
+                  [<Badge texto="2" cor="#b5651d" />, 'Tentei mas ainda preciso de mais prática', 'Em desenvolvimento.'],
+                  [<Badge texto="3" cor="#b5651d" />, 'Consegui com ajuda', 'Parcialmente demonstrada.'],
+                  [<Badge texto="4" cor={T.sage} />, 'Faço sozinho/a', 'Adquirida — demonstrada de forma autónoma.'],
+                  [<Badge texto="5" cor={T.azul} />, 'Faço com muito bom resultado', 'Consolidada — com qualidade.'],
                 ]}
               />
               <p style={{ margin: '12px 0 0', fontSize: 13, color: T.textLight }}>
-                Níveis 1 e 2 geram recuperação. Nível 3 considera a competência adquirida.
-                Nível 4 regista a excelência no portfólio do aluno.
+                O aluno não vê números enquanto se avalia: escolhe frases. A nota que conta é sempre a do professor.
+                Alunos com medidas seletivas ou adicionais têm frases mais simples, com os mesmos níveis.
               </p>
             </Secção>
 
             {/* 3. COMPONENTES POR PLANO */}
             <Secção titulo="3. Componentes Avaliadas por Plano de Aula" icone="🔬" cor={T.sage}>
               <Tabela
-                headers={['Componente', 'Origem', 'Quantidade', 'Quem gere']}
+                headers={['Componente', 'De onde vem', 'Quem gere']}
                 rows={[
-                  ['🔒 Obrigatórias (OBR)', 'Sempre — fixas', '2', 'App — automáticas'],
-                  ['🔬 Subtécnicas (SUB)', 'Ficha técnica', '4-6', 'Auto + professor remove/acrescenta'],
-                  ['🧪 Aparelhos (APP)', 'Ficha técnica', '2-4', 'Auto + professor remove/acrescenta'],
-                  ['📚 Conhecimentos (KNW)', 'UC activa', '4-6', 'Auto + professor remove/acrescenta'],
-                  ['💡 Atitude do trimestre', 'UC/ano/trimestre', '1', 'App — automática'],
-                  ['🔁 Atitude em recuperação', 'Histórico', '0 ou 1', 'App — obrigatória'],
+                  ['🔒 Obrigatórias', 'Farda/higiene, HACCP e registos, assiduidade', 'App — o professor pode tirá-las de uma aula'],
+                  ['🔬 Técnicas (subtécnicas e aparelhos)', 'Fichas técnicas do plano, escolhidas pela IA da lista da escola', 'Professor remove ou volta a incluir'],
+                  ['📚 Conhecimentos', 'Escritos pelo professor, com sugestões do referencial da UC', 'Professor'],
+                  ['💡 Atitudes', 'Do trimestre, ou marcadas pelo professor', 'App + professor'],
                 ]}
               />
               <div style={{ background: T.copperP, borderRadius: 8, padding: '10px 14px', fontSize: 13 }}>
-                <strong>Nota sobre ficha fora da UC:</strong> quando a ficha técnica não corresponde à UC activa
-                (ex: Arroz de Pato numa UC de Pastelaria), as subtécnicas e aparelhos vêm da ficha e os
-                conhecimentos vêm da UC. Este é o funcionamento normal — a app não emite aviso.
+                <strong>Ramo completo:</strong> cada técnica aparece com o seu contexto — prato → aparelho →
+                técnica → subtécnica (ex.: Lasanha → Molho béchamel → Ligar · Roux branco, «bem feito é: cor de
+                marfim, sem grumos»). Técnicas de outra área (ex.: pastelaria numa UC de cozinha) avaliam-se na
+                mesma: vêm da ficha. Os conhecimentos vêm da UC.
               </div>
             </Secção>
 
             {/* 4. NOTA FINAL */}
             <Secção titulo="4. Cálculo da Nota Final" icone="🧮" cor={T.sage}>
               <p style={{ margin: '0 0 12px', lineHeight: 1.6 }}>
-                A nota de cada plano de aula é a <strong>média das 5 componentes</strong>, cada uma de 1 a 4:
+                A nota de cada aula é a média ponderada das componentes (1 a 5), multiplicada por 4 (0 a 20):
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
-                {[['OBR', T.copper], ['SUB', T.sage], ['APP', T.azul], ['KNW', T.roxo], ['ATI', '#e67e22']].map(([nome, cor]) => (
-                  <div key={nome} style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 8,
-                    background: cor + '15', border: `1px solid ${cor}40` }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: cor }}>{nome}</div>
-                    <div style={{ fontSize: 12.5, color: T.textLight, marginTop: 4 }}>peso igual</div>
-                  </div>
-                ))}
-              </div>
+              <Tabela
+                headers={['Componente', 'Prática', 'Mista', 'Teórica']}
+                rows={[
+                  ['Obrigatórias', `${PESOS_AULA.pratico.OBR * 100}%`, `${PESOS_AULA.misto.OBR * 100}%`, `${PESOS_AULA.teorico.OBR * 100}%`],
+                  ['Técnicas', `${PESOS_AULA.pratico.SUB * 100}%`, `${PESOS_AULA.misto.SUB * 100}%`, '—'],
+                  ['Conhecimentos', `${PESOS_AULA.pratico.KNW * 100}%`, `${PESOS_AULA.misto.KNW * 100}%`, `${PESOS_AULA.teorico.KNW * 100}%`],
+                  ['Atitudes', `${PESOS_AULA.pratico.ATI * 100}%`, `${PESOS_AULA.misto.ATI * 100}%`, `${PESOS_AULA.teorico.ATI * 100}%`],
+                ]}
+              />
               <p style={{ margin: '0 0 8px', lineHeight: 1.6 }}>
-                <strong>Nota da UC</strong> = média de todos os planos de aula realizados na UC.
+                Uma parte não avaliada passa o peso às outras. <strong>Nota da UC</strong> = as validações do
+                professor em todas as aulas da UC; uma falta conta zero (ou a nota da recuperação).
+              </p>
+              <p style={{ margin: '0 0 8px', lineHeight: 1.6 }}>
+                Depois somam-se dois bónus: <strong>assiduidade, pontualidade e farda</strong> (até +2) e
+                <strong> eventos e concursos</strong> (evento +{String(BONUS_EVENTOS.porEvento).replace('.', ',')},
+                concurso +{String(BONUS_EVENTOS.porConcurso).replace('.', ',')}, até +{BONUS_EVENTOS.maximo}).
+                Tetos: {BONUS_EVENTOS.tetoSemParticipacao} sem participar, {BONUS_EVENTOS.tetoSoEventos} só com
+                eventos, 20 com pelo menos um concurso. Concursos só com nota {BONUS_EVENTOS.notaMinimaConcurso} ou mais.
               </p>
               <p style={{ margin: 0, fontSize: 13, color: T.textLight }}>
-                Componentes sem avaliação num plano (ex: sem ficha técnica = sem SUB/APP) não entram no cálculo.
+                Faltas: acima de 10% do total de horas da UC (no cronograma), o aluno fica em recuperação.
+                Faltar a parte de uma aula conta só as horas faltadas.
               </p>
             </Secção>
 
@@ -298,7 +309,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                   ['Criar plano', 'Define UC, ficha técnica e tipo de aula. A app gera automaticamente as competências.'],
                   ['Ajustar competências', 'Pode remover ou acrescentar subtécnicas, aparelhos ou conhecimentos. Pode acrescentar atitudes extra.'],
                   ['Publicar', 'Ao publicar, recebe avisos de recuperação pendente por aluno.'],
-                  ['Validar autoavaliação', 'Confirma ou corrige a autoavaliação do aluno. Regista nota do professor (1-4).'],
+                  ['Validar autoavaliação', 'Confirma ou corrige a autoavaliação do aluno. Regista a nota do professor (1-5).'],
                   ['Adicionar comentário', 'Pode adicionar nota qualitativa que gera dica personalizada na próxima avaliação.'],
                 ]}
               />
@@ -310,7 +321,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                 headers={['Acção', 'Descrição']}
                 rows={[
                   ['Ver competências', 'Antes da aula, o aluno vê o que vai ser avaliado e o que significa cada competência.'],
-                  ['Autoavaliar', 'No final da aula, avalia-se nos 5 níveis para cada competência.'],
+                  ['Autoavaliar', 'No final da aula, escolhe a frase que diz o que fez em cada competência (5 níveis, sem números).'],
                   ['Escolher atitude', 'Para as atitudes, o aluno escolhe o nível que acha que atingiu.'],
                   ['Ver recuperação', 'Se tiver recuperação pendente, vê aviso claro com dica antes de autoavaliar.'],
                   ['Portfólio', 'Acesso ao historial completo das suas competências avaliadas ao longo do curso.'],
@@ -322,12 +333,13 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
             <Secção titulo="10. Regras de Avaliação — Coordenação" icone="📌" cor={T.copper}>
               <div style={{ lineHeight: 1.7, fontSize: 14 }}>
                 <p><strong>Periodicidade:</strong> a avaliação ocorre em cada plano de aula prático ou teórico. Não existem momentos de avaliação exclusivos.</p>
-                <p><strong>Ponderação UC:</strong> a nota final da UC é a média simples de todos os planos realizados dentro dessa UC, ponderada pelas 5 componentes (OBR, SUB, APP, KNW, ATI) com peso igual.</p>
+                <p><strong>Ponderação UC:</strong> a nota da UC junta as validações do professor em todas as aulas da UC, com os pesos da secção 4, mais os bónus e os tetos.</p>
                 <p><strong>Progressão de ano:</strong> o nível de exigência de cada competência aumenta de ano para ano. Uma atitude avaliada no 1º ano com nível 3 é reavaliada no 2º ano com critérios mais exigentes.</p>
                 <p><strong>Recuperação obrigatória:</strong> qualquer competência com nível 1 ou 2 gera recuperação. As atitudes voltam obrigatoriamente no plano seguinte. Subtécnicas e conhecimentos voltam quando a próxima ficha ou UC os incluir.</p>
                 <p><strong>Competências extra:</strong> o professor pode introduzir atitudes, subtécnicas ou conhecimentos não previstos automaticamente. Ficam marcadas como "extra" no portfólio.</p>
                 <p><strong>Historial:</strong> todas as avaliações ficam registadas no portfólio do aluno, ligadas à UC. O professor vê o historial de qualquer competência de qualquer aluno em qualquer momento.</p>
-                <p><strong>Eventos extra-lectivos:</strong> a ser definido — avaliação de colaboração voluntária (pendente).</p>
+                <p><strong>Eventos e concursos:</strong> organizam-se em <em>Atividades</em> (pedido, perguntas ao cliente, fichas, orçamentos, folha para o cliente, preparação, dia do evento e fecho). Avaliam-se num plano de evento (código E-2026-001), com a turma toda ou só com os inscritos que o professor aceita. Não há faltas: quem não vai não recebe bónus.</p>
+                <p><strong>Medidas educativas:</strong> universais, seletivas ou adicionais, escolhidas por aluno (no Mapa da turma, ou na lista de alunos da coordenação). Os resultados são os mesmos; as perguntas da autoavaliação ficam mais simples. As medidas adicionais que alteram o currículo ainda não estão na aplicação.</p>
               </div>
             </Secção>
           </>

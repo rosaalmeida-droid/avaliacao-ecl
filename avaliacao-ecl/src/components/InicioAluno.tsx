@@ -237,6 +237,9 @@ export function InicioAluno({
     : jaEntrou ? { texto: 'Continuar a aula', destino: 'entrar' as DestinoAluno }
     : sessaoAberta ? { texto: 'Iniciar aula', destino: 'entrar' as DestinoAluno }
     : { texto: 'Consultar plano', destino: 'consultar_plano' as DestinoAluno };
+  const [verGuia, setVerGuia] = React.useState(false);
+
+  if (verGuia) return <GuiaDoAluno onFechar={() => setVerGuia(false)} />;
 
   return (
     <div style={{ background: C.fundo, minHeight: '100%', padding: '16px 14px 24px' }}>
@@ -453,7 +456,67 @@ export function InicioAluno({
             <span style={{ fontSize: 14, fontWeight: 600, color: C.tinta }}>Calendário</span>
           </button>
         </div>
+        <button onClick={() => setVerGuia(true)} style={{ ...cartaoBranco, width: '100%', minHeight: 56, marginTop: 11,
+          flexDirection: 'row', fontSize: 14, fontWeight: 600, color: C.tinta }}>
+          ❔ Como funciona a aplicação
+        </button>
 
+      </div>
+    </div>
+  );
+}
+
+// ── Como funciona: o guia do aluno, em frases curtas ──────────
+const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
+  { titulo: '1. Entrar na aula', texto: [
+    'O professor abre a aula. Só depois consegues entrar.',
+    'Carrega em «Iniciar aula». A hora de entrada fica registada.',
+    'Tens 10 minutos de tolerância, a contar de quando o professor abre a aula.',
+  ] },
+  { titulo: '2. A farda', texto: [
+    'Diz se tens a farda completa. Tem de ser verdade: o professor confirma.',
+    'Se não for verdade, a farda e a Responsabilidade ficam com a nota mais baixa.',
+  ] },
+  { titulo: '3. Trabalhar', texto: [
+    'Segue a ficha técnica e faz os registos no KitchenFlow.',
+    'Antes de começar, já podes ver o que vai ser avaliado.',
+  ] },
+  { titulo: '4. Avaliar-me', texto: [
+    'No fim, escolhe a frase que diz o que fizeste em cada coisa.',
+    'Cada técnica mostra de onde vem (o prato e a preparação) e como fica quando está bem feita.',
+    'Não há números: escolhe o que fizeste, não a nota que queres.',
+    'Se escolheres uma das frases de cima, escreve uma coisa concreta que fizeste. O professor lê.',
+    'Depois de enviares, vês a nota que a tua proposta dá. Quem decide é o professor.',
+  ] },
+  { titulo: '5. A minha nota', texto: [
+    'Contam as notas que o professor dá em todas as aulas da UC.',
+    'Uma falta conta zero nessa aula. Faltar a mais de 10% das horas da UC leva a recuperação.',
+    'Chegar a horas, não faltar e ter a farda completa dá até +2 valores.',
+    'Participar em eventos e concursos dá mais: até +2.',
+  ] },
+  { titulo: '6. Eventos e concursos', texto: [
+    'Vê em «Atividades». Podes inscrever-te; o professor aceita.',
+    'No evento: chega a horas, fica até ao fim e leva a farda. Sem farda não conta.',
+    'Sem participar, a nota máxima é 17; só com eventos, 18; o 20 só com um concurso.',
+  ] },
+];
+
+function GuiaDoAluno({ onFechar }: { onFechar: () => void }) {
+  return (
+    <div style={{ background: C.fundo, minHeight: '100%', padding: '16px 14px 24px' }}>
+      <div style={{ maxWidth: 620, margin: '0 auto' }}>
+        <button onClick={onFechar} style={{ ...cartaoBranco, minHeight: 44, padding: '8px 14px', flexDirection: 'row',
+          display: 'inline-flex', fontSize: 14, fontWeight: 600, color: C.violeta, marginBottom: 14 }}>← Voltar</button>
+        <div style={{ fontSize: 22, fontWeight: 800, color: C.tinta, marginBottom: 12 }}>Como funciona a aplicação</div>
+        {PASSOS_GUIA.map(p => (
+          <div key={p.titulo} style={{ background: C.branco, borderRadius: 14, padding: '14px 16px', marginBottom: 10,
+            border: '1.5px solid #D8D3E0' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.violeta, marginBottom: 6 }}>{p.titulo}</div>
+            {p.texto.map((t, i) => (
+              <div key={i} style={{ fontSize: 15, lineHeight: 1.5, color: C.tinta, margin: '4px 0' }}>• {t}</div>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );

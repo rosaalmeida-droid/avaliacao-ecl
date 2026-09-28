@@ -208,8 +208,9 @@ const SECCOES: Seccao[] = [
         <H>2. Eventos e concursos — até +2</H>
         <P>
           Não é uma componente ponderada: é um acréscimo à nota. O evento ou
-          concurso avalia-se num <b>plano de aula próprio</b> — no "Tipo de
-          actividade" escolhe Evento externo, Concurso, Catering, Buffet ou
+          concurso avalia-se num <b>plano próprio</b>, criado em <b>Avaliar evento
+          fora do horário</b> (ou, dentro do horário, marcando o plano como
+          evento) — escolhe Evento externo, Concurso, Catering, Buffet ou
           Atividade fora da escola. As atitudes já vêm marcadas; o aluno
           autoavalia-se e tu ajustas, como numa aula.
         </P>
@@ -287,6 +288,22 @@ const SECCOES: Seccao[] = [
           falta.
         </Destaque>
 
+        <H>O limite dos 10%</H>
+        <P>
+          Os 10% contam-se sobre o <b>total de horas da UC</b> no cronograma,
+          e não sobre as horas já dadas. Acima disso o aluno fica em
+          recuperação; o alerta aparece-te sempre que se aproxima.
+        </P>
+        <P>
+          <b>Faltar a parte de uma aula conta as horas faltadas.</b> Num plano
+          de 2 horas, faltar 1 hora conta 1 hora. O almoço só se desconta nos
+          planos que vão de manhã à tarde.
+        </P>
+        <P>
+          Nos eventos e concursos fora do horário <b>não há faltas</b>: quem
+          não vai simplesmente não recebe o bónus.
+        </P>
+
         <H>Falha de ligação nunca gera falta</H>
         <P>
           Se a aplicação não conseguir sincronizar, o aluno não é
@@ -360,12 +377,23 @@ const SECCOES: Seccao[] = [
           para a nota, nem para o banco de competências.
         </Destaque>
 
-        <H>A nota prevista</H>
+        <H>O aluno não vê números enquanto se avalia</H>
         <P>
-          Enquanto se autoavalia, o aluno vê a nota que a proposta dele dá
-          nessa aula, com uma margem de 2 valores para cima e para baixo — por
-          exemplo, "14, deve ficar entre 12 e 16". A aplicação diz-lhe sempre
-          que és tu quem confirma.
+          Nas opções não há números nem notas: o aluno escolhe a frase que diz
+          o que fez, não o número que quer ter. Nas opções de cima pede-se-lhe
+          um exemplo concreto do que fez — aparece-te na validação.
+        </P>
+        <P>
+          <b>Só depois de enviar</b> vê a nota que a proposta dele dá nessa
+          aula, com uma margem de 2 valores — por exemplo, "14, deve ficar
+          entre 12 e 16" — e a indicação de que és tu quem confirma.
+        </P>
+
+        <H>A farda: «Não era verdade»</H>
+        <P>
+          A farda é declarada pelo aluno à entrada, com um aviso de que tem de
+          ser verdade. Na validação confirmas: se não era verdade, carrega em
+          <b> Não era verdade</b> — a farda e a Responsabilidade ficam a 1.
         </P>
 
         <H>Porquê pedir a autoavaliação</H>
@@ -395,6 +423,14 @@ const SECCOES: Seccao[] = [
             ['Competências', 'Sim', 'Sem fichas, escolhes tu quais avaliar'],
           ]}
         />
+
+        <H>Farda/higiene e registos: tirar de uma aula</H>
+        <P>
+          São obrigatórias em todas as aulas práticas, mas há aulas onde não
+          fazem sentido. Ao criar o plano, ou depois em <b>Competências</b>
+          (<b>Obrigatória · tirar desta aula</b>), podes tirá-las. O aluno
+          deixa de ter esses passos nessa aula.
+        </P>
 
         <Destaque>
           <b>Sem ficha técnica</b>, a aula continua a funcionar: as
@@ -500,6 +536,133 @@ const SECCOES: Seccao[] = [
         <P>
           Num grupo, os registos de HACCP fazem-se uma vez. Escolhes quem
           é o líder e podes trocar se ele faltar.
+        </P>
+      </>
+    ),
+  },
+
+
+  // ── Técnicas ─────────────────────────────────────────────
+  {
+    id: 'tecnicas',
+    titulo: 'As técnicas da aula: o ramo completo',
+    resumo: 'Da ficha técnica ao que se vê: prato → aparelho → técnica → subtécnica.',
+    conteudo: (
+      <>
+        <P>
+          As técnicas a avaliar <b>vêm das fichas técnicas</b> do plano. Quando
+          crias a ficha com a IA, ela escolhe da lista da escola o que o aluno
+          faz naquela receita — mesmo que seja de outra área (um evento de
+          pastelaria numa UC de cozinha, por exemplo).
+        </P>
+        <Tabela
+          cabecalho={['Nível', 'O que é', 'Exemplo']}
+          linhas={[
+            ['Prato', 'A ficha técnica', 'Lasanha'],
+            ['Aparelho', 'Uma preparação base, de cozinha ou pastelaria', 'Molho béchamel'],
+            ['Técnica', 'O que se faz', 'Ligar'],
+            ['Subtécnica', 'O que se vê quando está bem feito', 'Roux branco: cor de marfim, sem grumos'],
+          ]}
+        />
+        <P>
+          O aluno, as <b>Competências</b> do plano e a <b>Validação</b> mostram
+          sempre o ramo: «Lasanha → Molho béchamel → Ligar · Roux branco ·
+          Bem feito é: …». Nunca «roux branco» solto.
+        </P>
+        <Destaque>
+          As fichas feitas antes desta mudança mostram só «Prato → Técnica»,
+          porque não sabem o aparelho. Para o ramo completo, gera a ficha de
+          novo com a IA.
+        </Destaque>
+        <H>Tirar ou voltar a incluir</H>
+        <P>
+          Em <b>Competências</b>, <b>− Remover</b> tira uma técnica desta aula.
+          Fica riscada, com <b>+ Incluir</b> para a repor.
+        </P>
+        <H>O que falta na UC</H>
+        <P>
+          O aviso de cobertura mostra o que a UC pede e ainda não foi avaliado
+          — prática, conhecimentos e atitudes. Fica vermelho nas duas últimas
+          semanas da UC.
+        </P>
+        <H>Conhecimentos</H>
+        <P>
+          Em cada aula escreves os conhecimentos a avaliar, com sugestões do
+          referencial da UC. O aluno autoavalia-se em cada um e tu validas.
+        </P>
+      </>
+    ),
+  },
+
+  // ── Medidas ──────────────────────────────────────────────
+  {
+    id: 'medidas',
+    titulo: 'Alunos com medidas educativas',
+    resumo: 'Universais, seletivas ou adicionais: os mesmos resultados, perguntas mais fáceis.',
+    conteudo: (
+      <>
+        <H>Onde se escolhe</H>
+        <Passos itens={[
+          <>No menu, <b>Mapa da turma</b>.</>,
+          <>Abre o aluno.</>,
+          <>Em <b>Medidas educativas</b>, escolhe <b>Universais</b>, <b>Seletivas</b> ou <b>Adicionais</b>.</>,
+        ]} />
+        <P>
+          O nível fica guardado no arquivo da escola e chega ao telemóvel do
+          aluno na próxima vez que ele entrar ou carregar em Atualizar.
+        </P>
+        <H>O que muda para o aluno</H>
+        <Tabela
+          cabecalho={['', 'Universais', 'Seletivas e adicionais']}
+          linhas={[
+            ['Frases das atitudes', 'As normais', 'Curtas, uma ideia de cada vez'],
+            ['Opções das técnicas', 'As normais', '«Fiz com ajuda», «Fiz sozinho/a»…'],
+            ['Exemplo pedido', 'Uma coisa concreta que fez', 'Uma frase'],
+            ['Aparelhos', 'Todos', 'Seletivas: níveis 1 e 2 · Adicionais: só nível 1'],
+          ]}
+        />
+        <Destaque cor="verde">
+          Os resultados a atingir são os mesmos. Muda o caminho: perguntas mais
+          fáceis de ler, sobre o que se vê. As medidas adicionais que alteram
+          o currículo ainda não estão na aplicação.
+        </Destaque>
+      </>
+    ),
+  },
+
+  // ── Eventos ──────────────────────────────────────────────
+  {
+    id: 'eventos',
+    titulo: 'Eventos: organizar e avaliar',
+    resumo: 'O ecrã Eventos organiza; «Avaliar evento fora do horário» avalia os alunos.',
+    conteudo: (
+      <>
+        <H>1. Organizar — menu Eventos</H>
+        <Passos itens={[
+          <><b>Novo evento</b>: perguntas rápidas, uma de cada vez (cliente, data, local, pessoas, serviço…). O que não souberes, salta.</>,
+          <>No evento, o cartão <b>Agora</b> diz a próxima coisa a fazer, e os cartões mostram o que falta em cada parte.</>,
+          <><b>Perguntas ao cliente</b>: só as que se aplicam; podes copiá-las para email ou imprimir.</>,
+          <><b>Fichas e orçamentos</b>: juntas as fichas, crias um ou mais orçamentos e fazes a requisição de cada um.</>,
+          <><b>Folha de orçamento</b>: juntas bebidas, descartáveis, transporte…, a Direção põe o valor por pessoa, e imprimes a folha para o cliente, com o logótipo. Sem valor da Direção, a folha diz «valor por definir».</>,
+          <><b>Preparação</b>, <b>Material</b> e <b>Dia do evento</b> (hora a hora): listas que se vão marcando.</>,
+          <><b>Fechar</b>: cinco perguntas e o relatório.</>,
+        ]} />
+        <H>2. Avaliar os alunos — «Avaliar evento fora do horário»</H>
+        <P>
+          Cria um plano de evento. Tem numeração própria (E-2026-001), não
+          conta no «Plano 1 de 17» e aparece a roxo no calendário do professor
+          e do aluno.
+        </P>
+        <Tabela
+          cabecalho={['Participação', 'Como funciona']}
+          linhas={[
+            ['A turma toda (obrigatório)', 'Todos os alunos da turma participam'],
+            ['Quem se inscrever', 'O aluno inscreve-se em «Atividades e concursos»; tu aceitas no plano do evento'],
+          ]}
+        />
+        <P>
+          Só os participantes se autoavaliam e só eles contam para o bónus
+          (ver «Os dois bónus da nota da UC»).
         </P>
       </>
     ),
