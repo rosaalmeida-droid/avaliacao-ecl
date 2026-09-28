@@ -2048,6 +2048,13 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
               Casaco e calças, avental, sapatos de segurança, touca, cabelo
               preso, sem adornos, unhas curtas, mãos lavadas.
             </div>
+            {/* Honestidade: o aluno declara, o professor verifica sempre. */}
+            <div style={{ background:'#FDF0E8', border:'1px solid #E8C9A8', borderRadius:12,
+              padding:'11px 13px', marginBottom:14, fontSize:14, color:'#7A4515', lineHeight:1.5 }}>
+              <b>Olha para ti antes de responder.</b> O professor confirma sempre a farda de cada aluno.
+              Ser verdadeiro e assumir quando falta alguma coisa é uma competência profissional
+              que também é avaliada — dizer que está completa quando não está conta contra ti.
+            </div>
             <button
               // Um toque só: antes pedia outra vez "Confirmar — está tudo".
               onClick={() => gravarFarda([])}

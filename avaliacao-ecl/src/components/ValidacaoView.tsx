@@ -247,6 +247,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
     return inicial;
   });
   const [comentario, setComentario] = useState('');
+  // O aluno declarou a farda completa e não era verdade: a farda fica a 1 e
+  // a atitude «Responsabilidade pelas suas ações» (ATI-001) também.
+  const [faltouVerdade, setFaltouVerdade] = useState(false);
   const [guardado, setGuardado] = useState(false);
   // Triagem do CL e do CR: vem a resposta do aluno; o professor confirma ou muda.
   const [triagem, setTriagem] = useState<Triagem5C | null>(() => {
@@ -324,6 +327,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
       const notaFinal = calcularNotaFinal(notaProf, notaAluno);
       return { competenciaId: auto.competenciaId, notaProf, notaAluno, notaFinal };
     });
+    if (faltouVerdade) {
+      const r = notasFinais.find(n => n.competenciaId === 'ATI-001');
+      if (r) { r.notaProf = 1; r.notaFinal = 1; }
+      else notasFinais.push({ competenciaId: 'ATI-001', notaProf: 1, notaAluno: 0, notaFinal: 1 });
+    }
 
     // Guardar validação
     const validacao: Validacao = {
@@ -492,6 +500,21 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, tipoPlanAula,
             {/* Nome da competência */}
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom: 8 }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{nome}</span>
+              {auto.competenciaId === 'OBR_01' && (auto as any).daEntrada && (
+                <span style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                  <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100, background:'#fdf0e6', color:'#b5651d' }}>
+                    Declarado pelo aluno — confirma
+                  </span>
+                  <button onClick={() => {
+                      const v = !faltouVerdade; setFaltouVerdade(v);
+                      if (v) setNotasProf(p => ({ ...p, OBR_01: 1 }));
+                    }}
+                    style={{ fontSize:12.5, fontWeight:700, padding:'3px 9px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                      border:'1px solid #7B2233', background: faltouVerdade ? '#7B2233' : '#fff', color: faltouVerdade ? '#fff' : '#7B2233' }}>
+                    {faltouVerdade ? '✓ Não era verdade (farda e Responsabilidade a 1)' : 'Não era verdade'}
+                  </button>
+                </span>
+              )}
               {(auto as any).semRegistoKF && (
                 <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100,
                   background:'#fdf0e6', color:'#b5651d' }}>
