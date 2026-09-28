@@ -130,6 +130,11 @@ export function TurmaNaAula({
                     cor={C.cobre} fundo={C.cobreSuave} />
                 )}
 
+                {/* Mãos lavadas: o aluno confirma à entrada, depois dos passos. */}
+                {e.entrou && !!e.horaEntrada && !String((plano as any)?.tipoPlanAula || '').startsWith('atitudinal') && (e.maosLavadas
+                  ? <Pastilha texto={`mãos lavadas ${e.maosLavadas.replace(/^às /, '')}`} cor={C.verde} fundo={C.verdeSuave} />
+                  : <Pastilha texto="mãos por lavar" cor={C.cobre} fundo={C.cobreSuave} />)}
+
                 {e.entrou && e.kfInicial && !e.kfFinal && (
                   <Pastilha texto="KF por fechar" cor={C.suave} fundo="#F5F5F5" />
                 )}

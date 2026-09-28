@@ -2967,6 +2967,43 @@ function enviarPresenca(registo: any, aluno?: any, plano?: any): void {
   });
 }
 
+// ── Mãos lavadas à entrada ──────────────────────────────────
+// Fica na observação da presença (é o que chega ao Sheets e aos outros
+// aparelhos do professor), à frente do resto: «Mãos lavadas às 09:05 (52 s)».
+const MARCA_MAOS = /Mãos lavadas às [^|]*(\|\s*)?/;
+
+export function registarMaosLavadas(alunoId: string, planoAulaId: string, segundos: number): void {
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  const i = all.findIndex(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId);
+  if (i < 0) return;
+  const hora = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  const marca = `Mãos lavadas às ${hora} (${segundos} s)`;
+  const resto = (all[i].observacao || '').replace(MARCA_MAOS, '').trim();
+  all[i] = { ...all[i], observacao: resto ? `${marca} | ${resto}` : marca };
+  save(KEYS.presencas, all);
+  enviarPresenca(all[i]);
+}
+
+/** A farda declarada à entrada vai para a presença: o professor vê no
+ *  «Turma na aula» quem tem farda incompleta e o que falta. Antes só ia
+ *  para a autoavaliação, e a presença dizia sempre «farda completa». */
+export function registarFardaNaPresenca(alunoId: string, planoAulaId: string, emFalta: string[]): void {
+  const all = load<RegistoPresenca>(KEYS.presencas);
+  const i = all.findIndex(r => r.alunoId === alunoId && r.planoAulaId === planoAulaId);
+  if (i < 0) return;
+  const semFalta = (all[i].observacao || '').replace(/\|?\s*em falta:.*$/, '').trim();
+  const obs = emFalta.length ? [semFalta, `em falta: ${emFalta.join(', ')}`].filter(Boolean).join(' | ') : semFalta;
+  all[i] = { ...all[i], fardamentoOk: emFalta.length === 0, observacao: obs };
+  save(KEYS.presencas, all);
+  enviarPresenca(all[i]);
+}
+
+/** «às 09:05 (52 s)», ou '' se não confirmou. */
+export function maosLavadasDaPresenca(observacao?: string): string {
+  const m = (observacao || '').match(/Mãos lavadas (às [^|]*)/);
+  return m ? m[1].trim() : '';
+}
+
 /** Uma vez por aparelho: volta a enviar as presenças guardadas aqui, agora
  *  com o aluno e a aula — as que foram antes da correção chegaram vazias. */
 export function reenviarPresencasAntigas(): void {
@@ -5393,6 +5430,8 @@ export interface EstadoAlunoNaAula {
   decisaoFalta?: string;
   fardamentoOk: boolean;
   itensEmFalta: string;
+  /** «às 09:05 (52 s)» quando confirmou que lavou as mãos; '' se não. */
+  maosLavadas: string;
   kfInicial: boolean;
   kfFinal: boolean;
   ehLider: boolean;
@@ -5415,8 +5454,8 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
     const sel = selecoes.find(s => s.alunoId === a.id);
     const val = sel ? validacaoDaSelecao(sel, validacoes) : undefined;
 
-    // Os itens em falta ficam na observação da presença.
-    const obs = pres?.observacao || '';
+    // Os itens em falta ficam na observação da presença (sem a marca das mãos).
+    const obs = (pres?.observacao || '').replace(MARCA_MAOS, '');
     const emFalta = obs.includes('em falta:')
       ? obs.split('em falta:')[1].trim()
       : '';
@@ -5432,6 +5471,7 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
       decisaoFalta: (pres as any)?.decisaoProfessor,
       fardamentoOk: !!pres?.fardamentoOk,
       itensEmFalta: emFalta,
+      maosLavadas: maosLavadasDaPresenca(pres?.observacao),
       kfInicial: kfFaseCompleta(a.id, planoAulaId, 'inicial'),
       kfFinal: kfFaseCompleta(a.id, planoAulaId, 'final'),
       ehLider: liderId === a.id,

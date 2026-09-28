@@ -62,7 +62,7 @@ import { PassoKitchenFlowFase } from './PassosKitchenFlow';
 import { perguntasDaAula, notaTriagem, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
-import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, perguntaCODaAula, perguntaCRDaAula } from '../backend';
+import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO, OPCOES_TEC_EVENTO, ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { ManuaisAluno } from './ManuaisAluno';
 import { modulosDaTurma as modulosDaTurmaAluno } from '../cronograma';
@@ -1955,11 +1955,13 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
     registarHigieneKitchenFlow(
       aluno.turmaId, aluno.id, aluno.nome || `Aluno ${aluno.numero}`, nomes.length === 0
     ).catch(() => {});
+    registarFardaNaPresenca(aluno.id, plano.id, nomes);
     setLavarMaos(true);
   }
 
   // ── Depois da farda: lavar as mãos ──
-  if (lavarMaos) return <LavarMaos onFeito={onConcluido} />;
+  if (lavarMaos) return <LavarMaos simples={(aluno.nivelMedidas || 1) >= 2}
+    onFeito={seg => { registarMaosLavadas(aluno.id, plano.id, seg); onConcluido(); }} />;
 
   // ── Antes de o professor abrir ──
   if (!t.aberta) {
