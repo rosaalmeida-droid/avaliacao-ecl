@@ -1361,7 +1361,7 @@ export function seedAlunosReais(): void {
   if (perfilDoAparelho !== 'professor' && perfilDoAparelho !== 'coordenadora') return;
   let enviados: Record<string, string> = {};
   try { enviados = JSON.parse(localStorage.getItem(KEY_ALUNOS_ENVIADOS) || '{}'); } catch { enviados = {}; }
-  const assinatura = (a: any) => JSON.stringify([a.nome, a.turmaId, a.numero, a.pin, a.ativo !== false]);
+  const assinatura = (a: any) => JSON.stringify([a.nome, a.turmaId, a.numero, a.pin, a.ativo !== false, a.nivelMedidas || 1]);
   const mudaram = alunos.filter((a: any) => enviados[a.id] !== assinatura(a));
   if (!mudaram.length) return;
   emSegundoPlano(() => mudaram.forEach((a: Aluno) => enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a })));
@@ -5907,6 +5907,20 @@ export function migrarTurmaAntiga(enviarAoSheets = false): number {
 // as autoavaliações, que continuam a fazer falta na pauta e no arquivo.
 // O aluno deixa de aparecer nas listas da turma e deixa de conseguir
 // entrar; a coordenação pode repô-lo.
+/**
+ * Muda o nível de medidas de um aluno (1 universais, 2 seletivas, 3 adicionais)
+ * e envia-o ao Sheets — senão ficava só no computador do professor e o
+ * telemóvel do aluno continuava a mostrar as perguntas normais.
+ */
+export function definirNivelMedidas(alunoId: string, nivel: 1 | 2 | 3): void {
+  const todos = getAlunos();
+  const a = todos.find(x => x.id === alunoId);
+  if (!a) return;
+  a.nivelMedidas = nivel;
+  save(KEYS.alunos, todos);
+  enviar(SHEETS_ALUNOS_URL, 'upsert_aluno', { aluno: a });
+}
+
 export function removerAlunoDaTurma(alunoId: string, por: string): void {
   const todos = getAlunos();
   const a = todos.find(x => x.id === alunoId);

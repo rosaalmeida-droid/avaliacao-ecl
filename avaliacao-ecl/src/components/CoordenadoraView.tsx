@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets, getHistoricoAvaliacoes, diagnostico } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, definirNivelMedidas, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets, getHistoricoAvaliacoes, diagnostico } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -607,8 +607,7 @@ function GestaoAlunosTab() {
     const alvo = todos.find(x => x.id === a.id);
     if (!alvo) return;
     const proximo = ((alvo.nivelMedidas || 1) % 3 + 1) as 1|2|3;
-    alvo.nivelMedidas = proximo;
-    save('ecl_alunos', todos);
+    definirNivelMedidas(alvo.id, proximo);
     setRefresh(r => r + 1);
   }
 
