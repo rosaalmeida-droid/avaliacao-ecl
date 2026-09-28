@@ -969,7 +969,7 @@ Tens DUAS categorias a detectar — são conceitos distintos:
     Ex: o aluno faz creme pasteleiro (APP-0009) para rechear um éclair;
         faz massa folhada (APP-0024) antes de montar o pastel de nata;
         faz fundo branco de aves (APP-0029) antes de fazer a sopa.
-    Cada aparelho tem NÍVEL (1=todos, 2=regular+seletivas, 3=só regular).
+    Cada aparelho tem NÍVEL de dificuldade (1 a 3).
     Máximo 4. Só incluir se o aluno PRODUZ o aparelho nesta receita.
 
 REGRA CRÍTICA: Não confundir os dois.

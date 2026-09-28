@@ -34,8 +34,9 @@ import {
   getPlanosFaltadosPorUC, getAtividades, faltasEmHorasUC, assiduidadeNaUC,
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
   kfFaseCompleta, liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
+  notaDaAulaValidada,
 } from './backend';
-import { calcularNotaPlano } from './types';
+import { calcularNotaPlano, nivelPara20 } from './types';
 import { modulosDaTurma } from './cronograma';
 import MODELO from './pautaModelo.json';
 
@@ -93,12 +94,9 @@ const categoria = (id: string) => categoriaDaNota(id);
 /** Nota 0-20 de um aluno num plano: a validação do professor. */
 export function notaDoPlano(alunoId: string, planoId: string, tipo: string): number | null {
   const v: any = getValidacoes().find((x: any) => x.planoAulaId === planoId && x.alunoId === alunoId);
-  if (!v) return null;
-  if (typeof v.notaMedia20 === 'number') return v.notaMedia20;
-  // Sem farda completa: as técnicas contam 0 (nível 1) na nota da aula.
-  const notas = (v.notas || []).map((n: any) => ({ categoria: categoria(n.competenciaId) as any,
-    nota: v.semFarda && categoria(n.competenciaId) === 'SUB' ? 1 : (Number(n.nota) || 0) }));
-  return notas.length ? calcularNotaPlano(notas, (tipo || 'pratico') as any).nota20 : null;
+  void tipo;
+  // Sempre com as regras de agora (escala, pesos, farda), não a nota guardada no dia.
+  return notaDaAulaValidada(v);
 }
 
 export interface PlanoRealizado { id: string; titulo: string; data: string; avaliado: boolean }
@@ -226,7 +224,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         const ns = triagens.map(x => notaTriagem(x.t![c])).filter((n): n is number => n !== null);
         const conf = triagens.filter(x => x.prof && notaTriagem(x.t![c]) !== null).length;
         junta(c, `${q.titulo} (pergunta de cada aula): respondeu em ${ns.length} aula${ns.length === 1 ? '' : 's'}, ${conf} confirmada${conf === 1 ? '' : 's'} pelo professor`,
-          media(ns.map(n => n * 4)), ns.length);
+          media(ns.map(n => nivelPara20(n))), ns.length);
       };
 
       // CL — colaboração: eventos e atividades extra, trabalho de grupo

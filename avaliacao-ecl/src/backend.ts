@@ -6052,9 +6052,35 @@ function tipoDominante(regs: RegistoAvaliacao[]): 'pratico' | 'misto' | 'teorico
   return 'pratico';
 }
 
+/**
+ * O que entra na nota da aula. A farda (OBR_01) não entra (decisão da Rosa,
+ * set/2026): verifica-se à entrada e conta nas atitudes («Cuidado com a
+ * apresentação pessoal») e nas técnicas a 0 quando falta. A técnica geral do
+ * evento só serve para o bónus.
+ */
+export function contaNaNotaDaAula(id: string): boolean {
+  return id !== 'OBR_01' && id !== TEC_EVENTO;
+}
+
+/**
+ * A nota 0-20 de uma aula validada, sempre calculada com as regras de agora
+ * (escala, pesos, farda) a partir das notas dadas — não a guardada no dia,
+ * que pode ter sido feita com regras antigas.
+ */
+export function notaDaAulaValidada(v: any): number | null {
+  if (!v) return null;
+  const plano: any = getPlanosAula().find(p => p.id === v.planoAulaId);
+  const tipo = (v.tipoPlanAulaUsado || plano?.tipoPlanAula || 'pratico') as any;
+  const notas = (v.notas || []).filter((n: any) => contaNaNotaDaAula(n.competenciaId)).map((n: any) => {
+    const categoria = categoriaDe(n.competenciaId);
+    return { categoria, nota: v.semFarda && categoria === 'SUB' ? 1 : (Number(n.nota) || 0) };
+  });
+  return notas.length ? calcularNotaPlano(notas, tipo).nota20 : null;
+}
+
 /** Nota das competências (0–20) a partir de registos já filtrados. */
 export function notaBaseDeRegistos(regs: RegistoAvaliacao[]): number | null {
-  const validos = regs.filter(registosQueContam);
+  const validos = regs.filter(registosQueContam).filter(r => contaNaNotaDaAula(r.microcompetenciaId));
   if (!validos.length) return null;
   return calcularNotaPlano(
     validos.map(r => ({ categoria: categoriaDe(r.microcompetenciaId), nota: r.nota })),
@@ -6314,7 +6340,7 @@ export function previsaoNota(
   autos: { competenciaId: string; nota: number }[],
   tipo: 'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr' = 'pratico'
 ): NotaPrevista | null {
-  const validas = autos.filter(a => a.nota > 0);
+  const validas = autos.filter(a => a.nota > 0 && contaNaNotaDaAula(a.competenciaId));
   if (!validas.length) return null;
   const nota = calcularNotaPlano(
     validas.map(a => ({ categoria: categoriaDe(a.competenciaId), nota: a.nota })), tipo).nota20;

@@ -611,7 +611,7 @@ const SECCOES: Seccao[] = [
             ['Frases das atitudes', 'As normais', 'Curtas, uma ideia de cada vez'],
             ['Opções das técnicas', 'As normais', '«Fiz com ajuda», «Fiz sozinho/a»…'],
             ['Exemplo pedido', 'Uma coisa concreta que fez', 'Uma frase'],
-            ['Aparelhos', 'Todos', 'Seletivas: níveis 1 e 2 · Adicionais: só nível 1'],
+            ['Preparações base (aparelhos)', 'Todas', 'Todas, com «O que é» e uma frase simples a explicar'],
           ]}
         />
         <Destaque cor="verde">

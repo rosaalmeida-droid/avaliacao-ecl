@@ -33,7 +33,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -462,7 +462,7 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
     const sel = selecoes.find(s => s.planoAulaId === p.id);
     const val = sel ? validacaoDaSelecao(sel, validacoes as any) : undefined;
     const estado = val ? 'validado' : (sel ? 'aguarda' : 'por_avaliar');
-    const nota20 = val ? ((val as any).notaMedia20 != null ? (val as any).notaMedia20 : null) : null;
+    const nota20 = val ? notaDaAulaValidada(val) : null;
     return { p, estado, nota20 };
   });
   const validados = linhas.filter(l => l.estado === 'validado').length;
@@ -772,7 +772,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     .map(s => {
       const v = validacaoDaSelecao(s);
       const plano = planos.find(p => p.id === s.planoAulaId);
-      return { plano, nota20: v ? ((v as any).notaMedia20 ?? null) : null, validada: !!v };
+      return { plano, nota20: v ? notaDaAulaValidada(v) : null, validada: !!v };
     })
     .filter(x => x.plano);
 
@@ -907,7 +907,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           {(() => {
             const sel = getSelecoes().find(s => s.alunoId === aluno.id && s.planoAulaId === planoAtivo.id);
             const val = sel ? validacaoDaSelecao(sel) : undefined;
-            const nota20 = val ? ((val as any).notaMedia20 ?? null) : null;
+            const nota20 = val ? notaDaAulaValidada(val) : null;
             if (nota20 == null) return null;
             const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             return (
@@ -2526,13 +2526,6 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   };
 
   // ── Competências desta aula — usa SUB-xxx e APP-xxx da ficha ─
-  function _nivelPermitido(nivel: number): boolean {
-    if (!aluno.nivelMedidas || aluno.nivelMedidas === 1) return true;
-    if (aluno.nivelMedidas === 2) return nivel <= 2;
-    if (aluno.nivelMedidas === 3) return nivel === 1;
-    return true;
-  }
-
   // SUB-xxx: subtécnicas da biblioteca
   // As linhas da ficha trazem o nome e o ramo («SUB-… — Nome | APP-… | componente»):
   // conta só o código. Um retirado pelo professor com a linha inteira também sai.
@@ -2540,13 +2533,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const subIdsRaw = fichas.flatMap((f: any) => codigosDasLinhas(f.tecnicasSugeridas, 'SUB-'));
   const subIdsFiltrados = [...new Set(subIdsRaw)].filter((id: string) => !retirada(id));
 
-  // APP-xxx: aparelhos filtrados pelo nível de medidas
+  // APP-xxx: aparelhos da ficha. Nada sai para os alunos com medidas (Rosa,
+  // set/2026): avaliam o mesmo, com uma explicação simples do que é cada um.
   const appIdsRaw = fichas.flatMap((f: any) => codigosDasLinhas((f as any).aparelhosDetectados, 'APP-'));
-  const appIdsFiltrados = [...new Set(appIdsRaw)].filter((id: string) => {
-    if (retirada(id)) return false;
-    const app = encontrarAparelho(id);
-    return app ? _nivelPermitido(app.nivel) : true;
-  });
+  const appIdsFiltrados = [...new Set(appIdsRaw)].filter((id: string) => !retirada(id));
 
   // O aluno nunca vê códigos. "SUB-COR-030-001" não lhe diz nada, e
   // "Rodelas" sozinho também não — rodelas de quê? A pergunta tem de
@@ -2914,9 +2904,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           const val = vals.find((v: any) => v.planoAulaId === plano.id && v.alunoId === aluno.id);
           if (val && val.notaMedia) {
             // Calcular nota com pesos por categoria
-            const notasComCat = (val.notas || []).map((n: any) => {
+            const notasComCat = (val.notas || []).filter((n: any) => contaNaNotaDaAula(n.competenciaId)).map((n: any) => {
               const cat = categoriaDaNota(n.competenciaId);
-              return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: n.nota };
+              return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: val.semFarda && cat === 'SUB' ? 1 : n.nota };
             });
             const tipoPlano = (plano as any).tipoPlanAula || 'pratico';
             const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlano);
@@ -3273,7 +3263,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             )}
             <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800, marginTop:2 }}>{c.nome}</div>
             {c.descricao && (
-              <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>{c.descricao}</div>
+              <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>
+                {/* Numa preparação base (aparelho) diz-se sempre o que é: o sabayon,
+                    o béchamel… Com medidas, mais uma frase a explicar a ideia. */}
+                {c.rotulo === 'Preparação base' && <b>O que é: </b>}{c.descricao}
+                {c.rotulo === 'Preparação base' && simples && (
+                  <div style={{ marginTop:4 }}>É uma preparação que fazes primeiro e que depois entra no prato.</div>
+                )}
+              </div>
             )}
             {c.resultado && (
               <div style={{ marginTop:12, padding:'11px 13px', borderRadius:12, background:'#fff',

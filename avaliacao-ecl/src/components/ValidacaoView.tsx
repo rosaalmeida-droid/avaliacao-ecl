@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
@@ -310,7 +310,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // professor dá, para não haver surpresas: o professor vê SEMPRE a decomposição
   // por categoria antes de confirmar, não só o número final.
   const previsaoNota = useMemo(() => {
-    const notasComCat = autoavaliacoes.filter((a: any) => contaParaNota(a.competenciaId) && a.competenciaId !== TEC_EVENTO).map((auto: any) => {
+    const notasComCat = autoavaliacoes.filter((a: any) => contaParaNota(a.competenciaId) && contaNaNotaDaAula(a.competenciaId)).map((auto: any) => {
       const notaProf = notasProf[auto.competenciaId] ?? (auto.doProfessor ? auto.nota : undefined);
       const notaAluno = (auto as any).nota || (
         auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
@@ -377,7 +377,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     // A técnica geral do evento só serve para o bónus de eventos: não entra
     // na nota do plano nem nos registos das competências.
     const paraNota = notasFinais.filter(n => n.competenciaId !== TEC_EVENTO);
-    const notasComCat = paraNota.map(n => {
+    const paraNotaDaAula = paraNota.filter(n => contaNaNotaDaAula(n.competenciaId));
+    const notasComCat = paraNotaDaAula.map(n => {
       const cat = categoriaDaNota(n.competenciaId);
       return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: notaParaAula(n.competenciaId, n.notaFinal) };
     });
@@ -617,6 +618,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                         color: semOport[auto.competenciaId] === v ? '#fff' : '#b5651d' }}>{t as string}</button>
                   ))}
                 </div>
+              </div>
+            )}
+            {auto.competenciaId === 'OBR_01' && (
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+                Confirma a farda. Não conta como obrigatória na nota: quando falta, conta em «Cuidado com a apresentação pessoal» e nas técnicas (a 0).
               </div>
             )}
             {semFarda && categoriaDaNota(auto.competenciaId) === 'SUB' && (
