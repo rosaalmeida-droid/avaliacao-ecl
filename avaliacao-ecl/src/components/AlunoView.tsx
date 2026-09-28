@@ -68,6 +68,7 @@ import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
 import { FRASES_ATITUDES, NOTAS_FRASES } from '../frases_atitudes';
+import { frasesDaAtitude, pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { DicionarioComp } from './DicionarioComp';
 import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
@@ -2661,7 +2662,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     { v:'ca',  nota:3, label:'Consegui com ajuda',                       cor:'#647a8a', corTxt:'#ffffff' },
     { v:'fs',  nota:4, label:'Faço sozinho/a',                           cor:'#3d5a6e', corTxt:'#ffffff' },
     { v:'mbr', nota:5, label:'Faço com muito bom resultado',             cor:'#1e3a4a', corTxt:'#ffffff' },
-  ];
+  ].map(o => (aluno.nivelMedidas || 1) >= 2 ? { ...o, label: OPCOES_SIMPLES[o.v] || o.label } : o);
 
   // Só o HACCP: a higiene pessoal vem da entrada na aula.
   // Aula atitudinal: o aluno avalia-se nas atitudes que o professor marcou.
@@ -2683,6 +2684,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     : atitudesDoTrimestre((aluno.ano ?? 1) as 1|2|3, trimestreAtual(new Date(plano.data + 'T00:00:00')))
         .map((x: any) => x.id as string).filter(id => !compRemovidas.includes(id) && temFrases(id));
   const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
+  // Medidas seletivas (2) ou adicionais (3): as mesmas perguntas, mais fáceis de ler.
+  const simples = (aluno.nivelMedidas || 1) >= 2;
+  // Um exemplo concreto de hoje, obrigatório nos níveis de cima (já consigo / já domino).
+  const [exemplos, setExemplos] = useState<Record<string, string>>({});
+  const exemploOk = (id: string, idx: number | null | undefined) => idx == null || idx < 2 || (exemplos[id] || '').trim().length >= 5;
   // Evento: uma pergunta de técnica geral e o que correu menos bem.
   const ehEvento = (plano as any).tipoEvento === 'evento';
   // O professor tirou os registos (HACCP/KitchenFlow) desta aula: não se pergunta.
@@ -2692,9 +2698,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
   // Triagem do Colaborativo e do Criativo: responde-se sempre, em todas as aulas.
   const [triagem, setTriagem] = useState<Triagem5C>({ cl: null, cr: null, co: null, problema: '' });
-  const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null;
+  // «O que foi mais difícil hoje» é obrigatório: há sempre alguma coisa.
+  const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null
+    && (triagem.problema || '').trim().length >= 5;
   const prontoParaSubmeter = triagemCompleta && (ehAtitudinal
-    ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null)
+    ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null && exemploOk(id, frasesAula[id]))
       && (!comObrigatorias || semRegistos || nivelHaccp !== null) && tecEventoFeito
     : (semRegistos || nivelHaccp !== null) && atitudesDaAula.every(id => frasesAula[id] != null) && tecEventoFeito);
 
@@ -2768,10 +2776,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         nota: !hsaSemRegisto() ? paraNota(nivelHaccp) : 1,
         semRegistoKF: hsaSemRegisto()}]:[]),
       ...Object.entries(notasMicro).filter(([,v])=>v).map(([mId,v])=>({competenciaId:mId,nivel:v as string,nota:paraNota(v as string)})),
-      ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude}]:[]),
+      ...(atitudeEscolhida?[{competenciaId:atitudeEscolhida,nivel:'sozinho',nota:notaDaAtitude,exemplo:(exemplos[atitudeEscolhida]||'').trim()||undefined}]:[]),
       ...(atitudeApanhar?[{competenciaId:atitudeApanhar,nivel:'sozinho',nota:notaApanhar}]:[]),
       ...atitudesDaAula.filter(id => frasesAula[id] != null)
-        .map(id => ({competenciaId:id,nivel:'sozinho',nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4)})),
+        .map(id => ({competenciaId:id,nivel:'sozinho',nota:Math.round(NOTAS_FRASES[frasesAula[id]] / 4),exemplo:(exemplos[id]||'').trim()||undefined})),
       ...(ehEvento && tecEvento !== null ? [{ competenciaId: TEC_EVENTO, nivel: 'evento', nota: tecEvento,
         texto: OPCOES_TEC_EVENTO.find(o => o.nota === tecEvento)?.texto, comentario: tecMenosBem.trim() }] : []),
     ];
@@ -3033,9 +3041,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const podeAvancar =
     passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
     : passo.tipo === 'haccp' ? nivelHaccp !== null
-    : passo.tipo === 'atiAula' ? frasesAula[passo.atiId!] != null
+    : passo.tipo === 'atiAula' ? frasesAula[passo.atiId!] != null && exemploOk(passo.atiId!, frasesAula[passo.atiId!])
     : passo.tipo === 'tecEvento' ? tecEventoFeito
-    : passo.tipo === 'atitude' ? (!atitudeEscolhida || nivelAtitudeFrase !== null)
+    : passo.tipo === 'atitude' ? (!atitudeEscolhida || (nivelAtitudeFrase !== null && exemploOk(atitudeEscolhida, nivelAtitudeFrase)))
     : passo.tipo === 'apanhar' ? (!atitudeApanhar || nivelApanharFrase !== null)
     : passo.tipo === 'triagem' ? triagemCompleta
     : true;
@@ -3066,13 +3074,24 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     <div style={{ fontSize:15, fontWeight:700, margin:'16px 0 10px' }}>{texto}</div>
   );
 
+  /** O exemplo concreto de hoje — pedido nos níveis de cima. O professor vê-o na validação. */
+  const campoExemplo = (id: string, idx: number | null | undefined) => (idx != null && idx >= 2) ? (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#8a4a15', marginBottom: 4 }}>{pedidoDeExemplo(aluno.nivelMedidas)}</div>
+      <textarea value={exemplos[id] || ''} maxLength={200} rows={2}
+        onChange={e => setExemplos(x => ({ ...x, [id]: e.target.value }))}
+        style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10,
+          border:`1.5px solid ${exemploOk(id, idx) ? T.border : '#E8C9A8'}`, fontSize:14, fontFamily:'inherit' }} />
+    </div>
+  ) : null;
+
   /** Escolher atitude + frase — o mesmo ecrã para a atitude e para a do ano anterior. */
   const blocoAtitude = (
     lista: { id: string; nome: string; etiqueta: string }[],
     escolhida: string | null, escolher: (id: string | null) => void,
     frase: number | null, escolherFrase: (i: number | null) => void,
   ) => {
-    const frases = escolhida ? FRASES_ATITUDES.find(f => f.competenciaId === escolhida)?.frases : undefined;
+    const frases = escolhida ? frasesDaAtitude(escolhida, aluno.nivelMedidas) : undefined;
     return (
       <>
         {lista.map(a => {
@@ -3098,6 +3117,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 {fr}
               </button>
             ))}
+            {escolhida && campoExemplo(escolhida, frase)}
           </>
         )}
       </>
@@ -3123,7 +3143,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     } else if (p.tipo === 'atiAula') {
       const f = frasesAula[p.atiId!];
       linhasRever.push({ nome: ATITUDES.find(x => x.id === p.atiId)?.nome ?? 'Atitude',
-        resposta: f == null ? 'Por responder' : FRASES_ATITUDES.find(x => x.competenciaId === p.atiId)?.frases[f] || '',
+        resposta: f == null ? 'Por responder' : frasesDaAtitude(p.atiId!, aluno.nivelMedidas)?.[f] || '',
         nota: f == null ? null : Math.round(NOTAS_FRASES[f] / 4), passo: i });
     } else if (p.tipo === 'tecEvento') {
       linhasRever.push({ nome: NOME_TEC_EVENTO,
@@ -3134,13 +3154,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       const f = p.tipo === 'atitude' ? nivelAtitudeFrase : nivelApanharFrase;
       linhasRever.push({ nome: id ? (ATITUDES.find(x => x.id === id)?.nome ?? 'Atitude') : tituloPasso(p),
         resposta: !id ? 'Nenhuma escolhida' : f == null ? 'Por responder'
-          : FRASES_ATITUDES.find(x => x.competenciaId === id)?.frases[f] || '',
+          : frasesDaAtitude(id, aluno.nivelMedidas)?.[f] || '',
         nota: id && f != null ? Math.round(NOTAS_FRASES[f] / 4) : null, passo: i });
     } else if (p.tipo === 'triagem') {
       PERGUNTAS_TRIAGEM.forEach(q => {
         const r = triagem[q.chave] ?? null;
         linhasRever.push({ nome: q.titulo,
-          resposta: r === null ? 'Por responder' : r === 'sem' ? q.semOcasiao : q.frases[r],
+          resposta: r === null ? 'Por responder' : r === 'sem' ? (simples ? q.semOcasiaoSimples : q.semOcasiao) : (simples ? q.frasesSimples : q.frases)[r],
           nota: notaTriagem(r), passo: i });
       });
     }
@@ -3201,7 +3221,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             {rotuloSecao(frases ? 'Qual destas frases diz o que fizeste hoje?' : 'Como correu hoje?')}
             {NIVEIS_FRASES.map((nivel, i) => (
               <button key={nivel} onClick={() => escolher(nivel)} style={estiloOpcao(v === nivel)}>
-                {circulo(notaDoNivel(nivel), v === nivel)}
+                {/* Sem números: o aluno escolhia o número, não o que fez. */}
+                <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
+                  border: v === nivel ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
                 <span>{frases ? frases[i] : OPCOES.find(o => o.v === nivel)?.label}</span>
               </button>
             ))}
@@ -3252,7 +3274,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       {/* ── Aula atitudinal: uma atitude marcada pelo professor ── */}
       {passo.tipo === 'atiAula' && (() => {
         const id = passo.atiId!;
-        const frases = FRASES_ATITUDES.find(f => f.competenciaId === id)?.frases
+        const frases = frasesDaAtitude(id, aluno.nivelMedidas)
           || ['Ainda não', 'Às vezes', 'Quase sempre', 'Sempre'];
         return (
           <div>
@@ -3270,6 +3292,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                 {fr}
               </button>
             ))}
+            {campoExemplo(id, frasesAula[id])}
           </div>
         );
       })()}
@@ -3373,23 +3396,25 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
             const escolher = (v: number | 'sem') => setTriagem(t => ({ ...t, [q.chave]: t[q.chave] === v ? null : v }));
             return (
               <div key={q.chave}>
-                {rotuloSecao(q.pergunta)}
-                {q.frases.map((fr, i) => (
+                {rotuloSecao(simples ? q.perguntaSimples : q.pergunta)}
+                {(simples ? q.frasesSimples : q.frases).map((fr, i) => (
                   <button key={i} onClick={() => escolher(i)} style={estiloOpcao(r === i)}>
                     <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
                       border: r === i ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
                     {fr}
                   </button>
                 ))}
+                {q.semOcasiao && (
                 <button onClick={() => escolher('sem')} style={{ ...estiloOpcao(r === 'sem'), fontStyle:'italic' }}>
                   <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
                     border: r === 'sem' ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
-                  {q.semOcasiao}
+                  {simples ? q.semOcasiaoSimples : q.semOcasiao}
                 </button>
-                {q.chave === 'cr' && typeof r === 'number' && (
+                )}
+                {q.chave === 'cr' && (
                   <textarea value={triagem.problema || ''} maxLength={200} rows={2}
                     onChange={e => setTriagem(t => ({ ...t, problema: e.target.value }))}
-                    placeholder="Que problema foi? (opcional)"
+                    placeholder={simples ? 'O que foi mais difícil hoje? (obrigatório)' : 'O que foi mais difícil hoje e o que fizeste? (obrigatório — há sempre alguma coisa)'}
                     style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10,
                       border:`1.5px solid ${T.border}`, fontSize:14, fontFamily:'inherit', resize:'vertical' }} />
                 )}
@@ -3414,7 +3439,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   <span style={{ display:'block', fontSize:14.5, fontWeight:700 }}>{l.nome}</span>
                   <span style={{ display:'block', fontSize:12.5, color:'rgba(26,23,20,0.6)', marginTop:1 }}>{l.resposta}</span>
                 </span>
-                {circulo(l.nota ?? '—', false)}
+                {/* Sem números durante a autoavaliação: só se está respondido. */}
+                {circulo(l.nota != null ? '✓' : '—', false)}
               </button>
             ))}
           </div>

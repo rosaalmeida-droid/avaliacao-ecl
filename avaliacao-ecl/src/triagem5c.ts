@@ -16,33 +16,57 @@ export interface PerguntaTriagem {
   sigla: 'CL' | 'CR' | 'CO';
   titulo: string;
   pergunta: string;
-  /** Resposta que diz "hoje não houve ocasião" — não conta. */
+  /** Resposta «não houve ocasião» — não conta. Só existe onde o professor
+   *  a pode confirmar (tarefa individual, primeira aula da UC). */
   semOcasiao: string;
   /** Do mais fraco para o mais forte. Valem 2, 3, 4 e 5 (escala 1-5). */
   frases: string[];
+  /** Mesma pergunta, mais fácil de ler (medidas seletivas e adicionais). */
+  perguntaSimples: string;
+  semOcasiaoSimples: string;
+  frasesSimples: string[];
 }
 
+// Perguntas sobre o que se viu fazer HOJE, não sobre como o aluno é: não
+// há «hoje não houve problema nenhum» (há sempre alguma coisa mais
+// difícil), e o professor responde às mesmas perguntas na validação.
 export const PERGUNTAS_TRIAGEM: PerguntaTriagem[] = [
   {
     chave: 'cl', sigla: 'CL', titulo: 'Trabalho com os colegas',
-    pergunta: 'Nesta aula, como trabalhaste com os colegas?',
-    semOcasiao: 'Hoje a tarefa era só individual.',
+    pergunta: 'Hoje, o que fizeste com os colegas? Escolhe o que o professor te viu fazer.',
+    semOcasiao: 'A tarefa de hoje era individual (o professor confirma).',
     frases: [
       'Trabalhei sozinho/a, sem ajudar nem pedir ajuda.',
       'Ajudei um colega quando me pediram.',
       'Partilhei material e ajudei colegas sem ninguém me pedir.',
       'Combinei tarefas com a equipa e ajudei a que todos acabassem.',
     ],
+    perguntaSimples: 'Hoje, o que fizeste com os colegas?',
+    semOcasiaoSimples: 'Hoje trabalhei sozinho/a porque era para ser assim.',
+    frasesSimples: [
+      'Não ajudei ninguém.',
+      'Ajudei quando me pediram.',
+      'Ajudei sem me pedirem.',
+      'Combinei com o grupo e ajudei todos a acabar.',
+    ],
   },
   {
     chave: 'cr', sigla: 'CR', titulo: 'Resolução de problemas',
-    pergunta: 'Nesta aula, resolveste algum problema?',
-    semOcasiao: 'Hoje não apareceu nenhum problema.',
+    pergunta: 'Hoje, alguma coisa não correu como esperavas (um corte, uma cozedura, o tempo, falta de material, uma dúvida). O que fizeste?',
+    semOcasiao: '',
     frases: [
-      'Apareceu um problema e pedi logo ajuda.',
+      'Parei e pedi logo ajuda.',
       'Tentei uma vez e depois pedi ajuda.',
-      'Tentei pelo menos duas vezes antes de pedir ajuda.',
-      'Resolvi sozinho/a e expliquei aos colegas como fiz.',
+      'Tentei pelo menos duas maneiras antes de pedir ajuda.',
+      'Resolvi sozinho/a e expliquei a um colega como fiz.',
+    ],
+    perguntaSimples: 'Hoje, uma coisa foi mais difícil. O que fizeste?',
+    semOcasiaoSimples: '',
+    frasesSimples: [
+      'Pedi logo ajuda.',
+      'Tentei uma vez e pedi ajuda.',
+      'Tentei duas vezes antes de pedir ajuda.',
+      'Resolvi sozinho/a e expliquei a um colega.',
     ],
   },
   {
@@ -54,6 +78,14 @@ export const PERGUNTAS_TRIAGEM: PerguntaTriagem[] = [
       'Lembrei-me do que correu mal, mas não mudei.',
       'Mudei uma coisa que tinha corrido mal.',
       'Mudei e expliquei ao professor o que melhorei.',
+    ],
+    perguntaSimples: 'Hoje fizeste alguma coisa melhor do que na última aula?',
+    semOcasiaoSimples: 'É a minha primeira aula desta UC.',
+    frasesSimples: [
+      'Não, fiz igual.',
+      'Lembrei-me, mas não mudei.',
+      'Sim, mudei uma coisa.',
+      'Sim, mudei e disse ao professor.',
     ],
   },
 ];
