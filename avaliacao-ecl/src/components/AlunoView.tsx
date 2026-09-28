@@ -2678,6 +2678,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const [modalConfirmar, setModalConfirmar] = useState(false);
   /** Em que passo da autoavaliação está o aluno. */
   const [passoIdx, setPassoIdx] = useState(0);
+  /** A autoavaliação abre num ecrã só dela, por cima da aula: uma pergunta de cada vez. */
+  const [aberto, setAberto] = useState(false);
+  useEffect(() => {
+    if (!aberto) return;
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = antes; };
+  }, [aberto]);
   const topoRef = React.useRef<HTMLDivElement>(null);
   useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, [passoIdx]);
   /** Trava de submissão — protege de dois toques seguidos. */
@@ -2739,8 +2747,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
   const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId);
   // «O que foi mais difícil hoje» é obrigatório: há sempre alguma coisa.
-  const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null
-    && (triagem.problema || '').trim().length >= 5;
+  const triagemFeita = (chave: 'cl' | 'cr' | 'co') => triagem[chave] != null
+    && (chave !== 'cr' || (triagem.problema || '').trim().length >= 5);
+  const triagemCompleta = triagemFeita('cl') && triagemFeita('cr') && triagemFeita('co');
   const prontoBase = triagemCompleta && (ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null && exemploOk(id, frasesAula[id]))
       && (!comObrigatorias || semRegistos || nivelHaccp !== null) && tecEventoFeito
@@ -3073,7 +3082,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const faltamApanhar: { id: string; nome: string; ano: number }[] = [];
 
   type Passo = { id: string; tipo: 'comp' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
-    comp?: typeof itensComp[number]; atiId?: string };
+    comp?: typeof itensComp[number]; atiId?: string; chave?: 'cl' | 'cr' | 'co' };
   const passos: Passo[] = [
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
     ...((!ehAtitudinal || comObrigatorias) && !semRegistos ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
@@ -3083,7 +3092,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
          ...(opcoesAtitude.length > 0 ? [{ id: 'atitude', tipo: 'atitude' as const }] : [])]),
     ...(ehEvento ? [{ id: 'tecEvento', tipo: 'tecEvento' as const }] : []),
     ...(faltamApanhar.length > 0 ? [{ id: 'apanhar', tipo: 'apanhar' as const }] : []),
-    { id: 'triagem', tipo: 'triagem' as const },
+    // Uma pergunta por ecrã: Colaborativo, Criativo e Consciente.
+    ...(['cl', 'cr', 'co'] as const).map(chave => ({ id: 'tri_' + chave, tipo: 'triagem' as const, chave })),
     { id: 'rever', tipo: 'rever' as const },
   ];
   const idx = Math.min(passoIdx, passos.length - 1);
@@ -3097,7 +3107,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     : passo.tipo === 'atitude' ? (atitudeObrigatoria ? atitudeRespondida
       : (!atitudeEscolhida || (nivelAtitudeFrase !== null && exemploOk(atitudeEscolhida, nivelAtitudeFrase))))
     : passo.tipo === 'apanhar' ? (!atitudeApanhar || nivelApanharFrase !== null)
-    : passo.tipo === 'triagem' ? triagemCompleta
+    : passo.tipo === 'triagem' ? triagemFeita(passo.chave!)
     : true;
   const irPara = (i: number) => setPassoIdx(Math.max(0, Math.min(i, passos.length - 1)));
   const tituloPasso = (p: Passo) =>
@@ -3106,7 +3116,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     : p.tipo === 'atiAula' || p.tipo === 'atitude' ? 'Atitude'
     : p.tipo === 'tecEvento' ? 'Técnica no evento'
     : p.tipo === 'apanhar' ? 'Atitude do ano anterior'
-    : p.tipo === 'triagem' ? 'Equipa, problemas e reflexão' : 'Rever e enviar';
+    : p.tipo === 'triagem' ? (p.chave === 'cl' ? 'Trabalho com os colegas' : p.chave === 'cr' ? 'Criativo' : 'Consciente')
+    : 'Rever e enviar';
 
   const estiloOpcao = (sel: boolean): React.CSSProperties => ({
     width:'100%', display:'flex', alignItems:'center', gap:12, textAlign:'left',
@@ -3216,7 +3227,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           : frasesDaAtitude(id, aluno.nivelMedidas)?.[f] || '',
         nota: id && f != null ? nivelDe20(NOTAS_FRASES[f]) : null, passo: i });
     } else if (p.tipo === 'triagem') {
-      perguntasTriagem.forEach(q => {
+      perguntasTriagem.filter(q => q.chave === p.chave).forEach(q => {
         const r = triagem[q.chave] ?? null;
         linhasRever.push({ nome: q.titulo,
           resposta: r === null ? 'Por responder' : r === 'sem' ? (simples ? q.semOcasiaoSimples : q.semOcasiao) : (simples ? q.frasesSimples : q.frases)[r],
@@ -3226,8 +3237,34 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     }
   });
 
+  // Fechada: só o botão para abrir. Ao sair a meio, as respostas ficam.
+  if (!aberto) return (
+    <div style={{ background:'#fff', borderRadius:14, border:`1px solid ${T.border}`, padding:'16px 16px 18px' }}>
+      <div style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:800 }}>Autoavaliação desta aula</div>
+      <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', margin:'4px 0 14px', lineHeight:1.5 }}>
+        {nPerguntas} perguntas, uma de cada vez. Responde pelo que fizeste hoje.
+      </div>
+      <button onClick={() => setAberto(true)} style={{ width:'100%', minHeight:54, borderRadius:12, border:'none',
+        background:V, color:'#fff', fontSize:17, fontWeight:700, fontFamily:'inherit', cursor:'pointer' }}>
+        {passoIdx > 0 ? 'Continuar a autoavaliação' : 'Começar a autoavaliação'}
+      </button>
+    </div>
+  );
+
   return (
-    <div ref={topoRef} style={{ scrollMarginTop: 12 }}>
+    <div role="dialog" aria-modal="true" aria-label="Autoavaliação" style={{ position:'fixed', inset:0, zIndex:2000,
+      background:'#E2D8EE', display:'flex', flexDirection:'column' }}>
+      <div style={{ background:V, color:'#fff', padding:'10px 16px', display:'flex', alignItems:'center', gap:12,
+        paddingTop:'max(10px, env(safe-area-inset-top))' }}>
+        <button onClick={() => setAberto(false)} style={{ padding:'8px 12px', borderRadius:10,
+          border:'1px solid rgba(255,255,255,0.5)', background:'transparent', color:'#fff', fontSize:14,
+          fontWeight:600, fontFamily:'inherit', cursor:'pointer' }}>✕ Sair</button>
+        <div style={{ flex:1, minWidth:0, fontSize:14.5, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          Autoavaliação · {plano.titulo}
+        </div>
+      </div>
+      <div style={{ flex:1, overflowY:'auto', WebkitOverflowScrolling:'touch' }}>
+    <div ref={topoRef} style={{ maxWidth:560, margin:'0 auto', padding:'16px 16px 40px' }}>
       {/* De que aula se trata — numa aula que já passou, o aluno lembra-se. */}
       {idx === 0 && (
         <div style={{ background:'#F0EBF7', borderRadius:12, padding:'10px 14px', marginBottom:14,
@@ -3460,48 +3497,45 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         );
       })()}
 
-      {/* ── Equipa, problemas e reflexão: a triagem do CL, CR e CO ── */}
+      {/* ── Colaborativo, Criativo e Consciente: uma pergunta por ecrã ── */}
       {/* Sem números: o aluno escolhe a frase que o descreve. */}
-      {passo.tipo === 'triagem' && (
-        <div>
-          <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.25 }}>
-            Três perguntas sobre a aula
+      {passo.tipo === 'triagem' && (() => {
+        const q = perguntasTriagem.find(x => x.chave === passo.chave)!;
+        const r = triagem[q.chave] ?? null;
+        const escolher = (v: number | 'sem') => setTriagem(t => ({ ...t, [q.chave]: t[q.chave] === v ? null : v }));
+        return (
+          <div>
+            <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.3 }}>
+              {simples ? q.perguntaSimples : q.pergunta}
+            </div>
+            <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 14px', lineHeight:1.5 }}>
+              Escolhe o que fizeste hoje. O professor confirma.
+            </div>
+            {(simples ? q.frasesSimples : q.frases).map((fr, i) => (
+              <button key={i} onClick={() => escolher(i)} style={estiloOpcao(r === i)}>
+                {radio(r === i)}
+                {fr}
+              </button>
+            ))}
+            {(simples ? q.semOcasiaoSimples : q.semOcasiao) && (
+              <button onClick={() => escolher('sem')} style={{ ...estiloOpcao(r === 'sem'), fontStyle:'italic' }}>
+                {radio(r === 'sem')}
+                {simples ? q.semOcasiaoSimples : q.semOcasiao}
+              </button>
+            )}
+            {q.chave === 'cr' && (
+              <>
+                {rotuloSecao(simples ? 'O que foi mais difícil hoje?' : 'O que foi mais difícil hoje e o que fizeste?')}
+                <textarea value={triagem.problema || ''} maxLength={200} rows={3}
+                  onChange={e => setTriagem(t => ({ ...t, problema: e.target.value }))}
+                  placeholder={simples ? 'Escreve aqui (obrigatório)' : 'Escreve aqui (obrigatório — há sempre alguma coisa)'}
+                  style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10,
+                    border:`1.5px solid ${T.border}`, fontSize:14.5, fontFamily:'inherit', resize:'vertical', background:'#fff' }} />
+              </>
+            )}
           </div>
-          <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', margin:'4px 0 4px', lineHeight:1.5 }}>
-            Respondes sempre, em todas as aulas. O professor confirma.
-          </div>
-          {perguntasTriagem.map(q => {
-            const r = triagem[q.chave] ?? null;
-            const escolher = (v: number | 'sem') => setTriagem(t => ({ ...t, [q.chave]: t[q.chave] === v ? null : v }));
-            return (
-              <div key={q.chave}>
-                {rotuloSecao(simples ? q.perguntaSimples : q.pergunta)}
-                {(simples ? q.frasesSimples : q.frases).map((fr, i) => (
-                  <button key={i} onClick={() => escolher(i)} style={estiloOpcao(r === i)}>
-                    <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
-                      border: r === i ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
-                    {fr}
-                  </button>
-                ))}
-                {q.semOcasiao && (
-                <button onClick={() => escolher('sem')} style={{ ...estiloOpcao(r === 'sem'), fontStyle:'italic' }}>
-                  <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
-                    border: r === 'sem' ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
-                  {simples ? q.semOcasiaoSimples : q.semOcasiao}
-                </button>
-                )}
-                {q.chave === 'cr' && (
-                  <textarea value={triagem.problema || ''} maxLength={200} rows={2}
-                    onChange={e => setTriagem(t => ({ ...t, problema: e.target.value }))}
-                    placeholder={simples ? 'O que foi mais difícil hoje? (obrigatório)' : 'O que foi mais difícil hoje e o que fizeste? (obrigatório — há sempre alguma coisa)'}
-                    style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10,
-                      border:`1.5px solid ${T.border}`, fontSize:14, fontFamily:'inherit', resize:'vertical' }} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Rever e enviar ── */}
       {passo.tipo === 'rever' && (
@@ -3551,7 +3585,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
                   || (p.tipo === 'atitude' && atitudeObrigatoria && !atitudeRespondida)
                   || (p.tipo === 'tecEvento' && !tecEventoFeito)
                   || (p.tipo === 'haccp' && nivelHaccp === null)
-                  || (p.tipo === 'triagem' && !triagemCompleta);
+                  || (p.tipo === 'triagem' && !triagemFeita(p.chave!));
                 if (!falta) return null;
                 const nome = p.tipo === 'atiAula'
                   ? (ATITUDES.find(x => x.id === p.atiId)?.nome || p.atiId)
@@ -3585,9 +3619,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
         </div>
       )}
 
-      {/* Anterior / Seguinte */}
+      {/* Anterior / Seguinte — sempre à vista, em baixo do ecrã. */}
       {passo.tipo !== 'rever' && (
-        <div style={{ display:'flex', gap:10, marginTop:18 }}>
+        <div style={{ display:'flex', gap:10, marginTop:18, position:'sticky', bottom:0,
+          background:'#E2D8EE', padding:'10px 0 max(10px, env(safe-area-inset-bottom))' }}>
           {idx > 0 && (
             <button onClick={() => irPara(idx - 1)} style={{ minHeight:52, padding:'0 18px', borderRadius:12,
               border:`1px solid ${T.border}`, background:'#fff', color:'rgba(26,23,20,0.7)',
@@ -3603,6 +3638,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
           </button>
         </div>
       )}
+    </div>
+      </div>
     </div>
   );
 }
