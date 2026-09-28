@@ -14,7 +14,7 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
 , SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota } from './compatECL';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
@@ -7705,4 +7705,40 @@ export async function aberturaNaAula(turmaId: string, planoAulaId: string): Prom
   const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId });
   if (!json?.ok || !Array.isArray(json.sessoes)) return null;
   return json.sessoes.some((s: any) => String(s.planoAulaId) === planoAulaId && s.abertaEm);
+}
+
+// ============================================================
+// O que falta avaliar numa UC — aviso ao professor
+// ============================================================
+// Cada UC tem a sua prática, os seus conhecimentos e as suas atitudes.
+// Muitas aulas usam fichas de outra área (eventos): o aluno é avaliado no
+// que fez, mas a UC continua com coisas por avaliar. O professor tem de
+// saber o que falta, sobretudo perto do fim da UC.
+export interface CoberturaUC {
+  ucId: string;
+  diasParaFim: number | null;
+  pratica: { total: number; avaliadas: number; faltam: string[] };
+  conhecimentos: { total: number; avaliados: number; faltam: string[] };
+  atitudes: { avaliadas: number };
+}
+
+export function coberturaDaUC(turmaId: string, ucId: string): CoberturaUC {
+  const regs = getHistoricoAvaliacoes().filter(r => r.turmaId === turmaId && r.ucId === ucId && r.validadoPor === 'professor');
+  const ids = new Set(regs.map(r => r.microcompetenciaId));
+  // Prática: técnicas da UC no catálogo (pela equivalência UFCD → UC).
+  const tecUC = microsPorUC(ucId).filter(m => m.categoria === 'TECNICAS');
+  const tecFaltam = tecUC.filter(m => !ids.has(m.id));
+  // Conhecimentos: os do referencial. Conta como avaliado se houve registo
+  // KNW-R desse índice, ou um conhecimento do professor com o mesmo texto.
+  const refs = conhecimentosDoReferencial(ucId);
+  const textosAvaliados = new Set([...ids].filter(i => i.startsWith('KNW-')).map(i => nomeConhecimentoProf(i) || ''));
+  const knwFaltam = refs.filter(t => !textosAvaliados.has(t));
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  const dias = mod?.dataFim ? Math.ceil((new Date(mod.dataFim + 'T00:00:00').getTime() - Date.now()) / 86400000) : null;
+  return {
+    ucId, diasParaFim: dias,
+    pratica: { total: tecUC.length, avaliadas: tecUC.length - tecFaltam.length, faltam: tecFaltam.map(m => m.nome) },
+    conhecimentos: { total: refs.length, avaliados: refs.length - knwFaltam.length, faltam: knwFaltam },
+    atitudes: { avaliadas: [...ids].filter(i => categoriaDaNota(i) === 'ATI').length },
+  };
 }

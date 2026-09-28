@@ -1,3 +1,4 @@
+import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { categoriaDaNota } from '../compatECL';
 import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
@@ -193,6 +194,8 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
 
   return (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* O que falta avaliar na UC escolhida (só para o professor). */}
+      {!alunoId && filtroUC && <AvisoCoberturaUC turmaId={turmaId} ucId={filtroUC} />}
 
       {/* Cabeçalho — só na vista do professor. O aluno já tem o título por
           cima ("O meu historial") e aqui lia "Imprimir turma" e "filtra por

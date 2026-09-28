@@ -1,4 +1,5 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
+import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv } from '../backend';
 import React, { useState } from 'react';
@@ -1506,6 +1507,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />
       {eventoForaDoHorario(plano) && (
         <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
           <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
