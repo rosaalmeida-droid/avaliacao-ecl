@@ -2618,10 +2618,28 @@ const PREFIXO_FINAL = 'UCFINAL|';
 const PREFIXO_TRIAGEM = 'TRIAGEM|';
 /** A nota final da UC publicada pelo professor, que o aluno vê. */
 const PREFIXO_NOTA = 'UCNOTA|';
+/** Quem não teve função no plano organizacional e ajudou os colegas: o que fez. */
+const PREFIXO_COLAB = 'COLAB|';
 const ehRegistoEspecial = (s: SelecaoAluno) => {
   const p = String(s.planoAulaId || '');
-  return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA);
+  return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA) || p.startsWith(PREFIXO_COLAB);
 };
+
+/** O aluno sem função nesta aula diz como ajudou os colegas (chega ao professor). */
+export function guardarColaboracao(alunoId: string, turmaId: string, planoAulaId: string, texto: string): void {
+  addOrUpdateSelecao({
+    id: `colab_${planoAulaId}_${alunoId}`, planoAulaId: PREFIXO_COLAB + planoAulaId, comandaId: '', fichaId: '',
+    alunoId, turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'COLABOROU', nivel: 'colaboracao', nota: 0, texto } as any],
+    criadaEm: new Date().toISOString(),
+  } as any);
+}
+
+export function colaboracoesDaAula(planoAulaId: string): { alunoId: string; texto: string }[] {
+  return load<any>(KEYS.selecoes).filter((s: any) => s.planoAulaId === PREFIXO_COLAB + planoAulaId)
+    .map((s: any) => ({ alunoId: s.alunoId, texto: String(s.autoavaliacoes?.[0]?.texto || '') }))
+    .filter(x => x.texto.trim());
+}
 export function getSelecoes(): SelecaoAluno[] {
   return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
 }

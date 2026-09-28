@@ -1428,8 +1428,11 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     // A requisição é do professor: o aluno só a consulta, e só se existir.
     // Antes o passo aparecia sempre, com "Nenhuma requisição criada".
     ...(requisicao ? [{ id:'requisicao', label:'Vi a requisição', agora:'Ver a requisição', cor:V }] : []),
-    // E antes da autoavaliação: a função tem de ficar completa.
-    ...(minhasFuncoes.length ? [{ id:'funcao_fim', label:'Fiz a minha função (fim)', agora:'A tua função: fim', cor:V }] : []),
+    // E antes da autoavaliação: a função tem de ficar completa. Quem não tem
+    // função pode dizer como ajudou os colegas.
+    ...(orgAula ? [minhasFuncoes.length
+      ? { id:'funcao_fim', label:'Fiz a minha função (fim)', agora:'A tua função: fim', cor:V }
+      : { id:'funcao_fim', label:'Ajudei os colegas', agora:'Ajudaste os colegas?', cor:V }] : []),
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ];
 
