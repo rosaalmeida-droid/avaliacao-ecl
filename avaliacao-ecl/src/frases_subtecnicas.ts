@@ -10,14 +10,25 @@ export interface FrasesCompetencia {
 }
 
 // ── Frases genéricas (fallback para qualquer SUB/APP sem frase específica) ──
+// O nome da técnica é um nome («Fritura de batata crua»), não um verbo:
+// «Consegui fritura de batata crua» ficava errado. Diz-se «a técnica».
 export function frasesGenericas(nomeTecnica: string): FrasesCompetencia['frases'] {
+  const t = `«${nomeTecnica.charAt(0).toLowerCase()}${nomeTecnica.slice(1)}»`;
   return [
-    `Não consegui ${nomeTecnica.toLowerCase()} de forma correta, precisei de ajuda constante.`,
-    `Consegui ${nomeTecnica.toLowerCase()}, mas com algumas dificuldades ou erros que precisaram de correção.`,
-    `Consegui ${nomeTecnica.toLowerCase()} corretamente, sem erros relevantes.`,
-    `Consegui ${nomeTecnica.toLowerCase()} com autonomia e rigor, e ainda ajudei colegas que tiveram dificuldades.`,
+    `Não consegui fazer ${t} de forma correta, precisei de ajuda constante.`,
+    `Fiz ${t}, mas com algumas dificuldades ou erros que precisaram de correção.`,
+    `Fiz ${t} corretamente, sem erros relevantes.`,
+    `Fiz ${t} com autonomia e rigor, e ainda ajudei colegas que tiveram dificuldades.`,
   ];
 }
+
+/** As mesmas quatro, em frases simples (medidas seletivas e adicionais). */
+export const FRASES_TECNICA_SIMPLES: FrasesCompetencia['frases'] = [
+  'Tentei, mas ainda não sei fazer. Precisei de muita ajuda.',
+  'Fiz, mas o professor teve de me corrigir.',
+  'Fiz bem e sozinho/a.',
+  'Fiz bem e sozinho/a, e ajudei um colega.',
+];
 
 // ── Mapeamento SUB-xxx → 4 frases de autoavaliação ──────────
 export const FRASES_SUBTECNICAS: FrasesCompetencia[] = [
@@ -164,10 +175,10 @@ export const FRASES_SUBTECNICAS: FrasesCompetencia[] = [
     'Consegui cozer a vapor com autonomia e rigor, e ainda ajudei colegas que tiveram dificuldades.',
   ]},
   { competenciaId: 'SUB-CHU-046-001', frases: [
-    'Não consegui cozer em banho-maria de forma correta, precisei de ajuda constante.',
-    'Consegui cozer em banho-maria, mas com algumas dificuldades ou erros que precisaram de correção.',
-    'Consegui cozer em banho-maria corretamente, sem erros relevantes.',
-    'Consegui cozer em banho-maria com autonomia e rigor, e ainda ajudei colegas que tiveram dificuldades.',
+    'Não consegui fundir em banho-maria de forma correta, precisei de ajuda constante.',
+    'Consegui fundir em banho-maria, mas com algumas dificuldades ou erros que precisaram de correção.',
+    'Consegui fundir em banho-maria corretamente, sem erros relevantes.',
+    'Consegui fundir em banho-maria com autonomia e rigor, e ainda ajudei colegas que tiveram dificuldades.',
   ]},
 
   // ── CALOR SECO — ASSAR E GRELHAR (CSE) ──────────────────────
@@ -427,7 +438,11 @@ const _FRASES_MAP = new Map<string, FrasesCompetencia['frases']>(
 
 export function getFrasesParaCompetencia(
   id: string,
-  nomeFallback: string
+  nomeFallback: string,
+  nivelMedidas?: number
 ): FrasesCompetencia['frases'] {
+  // Medidas seletivas/adicionais: o mesmo nível, em frases curtas (a técnica
+  // já está escrita por cima, com o prato e o «bem feito é»).
+  if ((nivelMedidas || 1) >= 2) return FRASES_TECNICA_SIMPLES;
   return _FRASES_MAP.get(id) ?? frasesGenericas(nomeFallback);
 }

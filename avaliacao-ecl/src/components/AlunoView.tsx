@@ -968,18 +968,9 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   </div>
                 );
               })()}
-              {aluno.nivelMedidas && aluno.nivelMedidas > 1 && (
-                <div style={{ marginTop:8, display:'inline-flex', alignItems:'center', gap:6,
-                  padding:'4px 12px', borderRadius:100,
-                  background: aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.25)' : 'rgba(181,101,29,0.25)',
-                  border: `1px solid ${aluno.nivelMedidas === 3 ? 'rgba(192,57,43,0.5)' : 'rgba(181,101,29,0.5)'}` }}>
-                  <span style={{ fontSize:14 }}>{aluno.nivelMedidas === 3 ? '🔴' : '🟡'}</span>
-                  <span style={{ fontSize:13, fontWeight:700,
-                    color: aluno.nivelMedidas === 3 ? '#ff9a9a' : '#ffd0a0' }}>
-                    {aluno.nivelMedidas === 3 ? 'Medidas Adicionais (Nível 3)' : 'Medidas Seletivas (Nível 2)'}
-                  </span>
-                </div>
-              )}
+              {/* O aluno nunca é identificado com as medidas (decisão da escola):
+                  as medidas mudam o trabalho do professor, não o que o aluno vê
+                  sobre si. Havia aqui um letreiro «Medidas Seletivas (Nível 2)». */}
             </div>
             {/* Resumo rápido */}
             <div style={{ display:'flex', gap:10 }}>
@@ -2717,7 +2708,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   // «O que foi mais difícil hoje» é obrigatório: há sempre alguma coisa.
   const triagemCompleta = triagem.cl !== null && triagem.cr !== null && triagem.co !== null
     && (triagem.problema || '').trim().length >= 5;
-  const prontoParaSubmeter = triagemCompleta && (ehAtitudinal
+  const prontoBase = triagemCompleta && (ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null && exemploOk(id, frasesAula[id]))
       && (!comObrigatorias || semRegistos || nivelHaccp !== null) && tecEventoFeito
     : (semRegistos || nivelHaccp !== null) && atitudesDaAula.every(id => frasesAula[id] != null) && tecEventoFeito);
@@ -3028,6 +3019,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
   const opcoesAtitude = ATITUDES.filter(a =>
     (verTodasAtitudes ? atitudesPermitidas.includes(a.id) : atitudesSugeridas.includes(a.id))
     && !compRemovidas.includes(a.id));
+  // Numa aula prática sem atitudes marcadas pelo professor, a atitude que o
+  // aluno escolhe é a única avaliada. Era opcional: dava para enviar com
+  // «Nenhuma escolhida» e a aula ficava sem atitudes (25% da nota iam para o resto).
+  const atitudeObrigatoria = !ehAtitudinal && atitudesDaAula.length === 0 && opcoesAtitude.length > 0;
+  const atitudeRespondida = !!atitudeEscolhida && nivelAtitudeFrase !== null && exemploOk(atitudeEscolhida, nivelAtitudeFrase);
+  const prontoParaSubmeter = prontoBase && (!atitudeObrigatoria || atitudeRespondida);
   const porqueAtitude = (id: string) =>
     atitudesEmRecup.includes(id) ? 'Para melhorar'
     : idsDoTrimestre.includes(id) ? 'A do trimestre'
@@ -3059,7 +3056,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
     : passo.tipo === 'haccp' ? nivelHaccp !== null
     : passo.tipo === 'atiAula' ? frasesAula[passo.atiId!] != null && exemploOk(passo.atiId!, frasesAula[passo.atiId!])
     : passo.tipo === 'tecEvento' ? tecEventoFeito
-    : passo.tipo === 'atitude' ? (!atitudeEscolhida || (nivelAtitudeFrase !== null && exemploOk(atitudeEscolhida, nivelAtitudeFrase)))
+    : passo.tipo === 'atitude' ? (atitudeObrigatoria ? atitudeRespondida
+      : (!atitudeEscolhida || (nivelAtitudeFrase !== null && exemploOk(atitudeEscolhida, nivelAtitudeFrase))))
     : passo.tipo === 'apanhar' ? (!atitudeApanhar || nivelApanharFrase !== null)
     : passo.tipo === 'triagem' ? triagemCompleta
     : true;
@@ -3152,7 +3150,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       const v = notasMicro[p.comp!.id];
       const fi = NIVEIS_FRASES.indexOf(v as string);
       const resposta = !v ? 'Por responder'
-        : p.comp!.frases && fi >= 0 ? getFrasesParaCompetencia(p.comp!.id, p.comp!.nome)[fi]
+        : p.comp!.frases && fi >= 0 ? getFrasesParaCompetencia(p.comp!.id, p.comp!.nome, aluno.nivelMedidas)[fi]
         : OPCOES.find(o => o.v === v)?.label || '';
       linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
     } else if (p.tipo === 'haccp') {
@@ -3217,7 +3215,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       {passo.tipo === 'comp' && (() => {
         const c = passo.comp!;
         const v = notasMicro[c.id];
-        const frases = c.frases ? getFrasesParaCompetencia(c.id, c.nome) : null;
+        const frases = c.frases ? getFrasesParaCompetencia(c.id, c.nome, aluno.nivelMedidas) : null;
         const escolher = (nivel: string) => setNotasMicro(p => ({ ...p, [c.id]: nivel }));
         return (
           <div>
@@ -3490,6 +3488,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
               <div style={{ fontWeight:700, marginBottom:6 }}>Para poderes enviar, falta responder:</div>
               {passos.map((p, i) => {
                 const falta = (p.tipo === 'atiAula' && frasesAula[p.atiId!] == null)
+                  || (p.tipo === 'atitude' && atitudeObrigatoria && !atitudeRespondida)
                   || (p.tipo === 'tecEvento' && !tecEventoFeito)
                   || (p.tipo === 'haccp' && nivelHaccp === null)
                   || (p.tipo === 'triagem' && !triagemCompleta);
