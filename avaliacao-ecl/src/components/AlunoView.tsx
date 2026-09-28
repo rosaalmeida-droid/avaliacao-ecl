@@ -1,3 +1,4 @@
+import { notaDaPautaUC } from '../pautaUC';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
@@ -30,7 +31,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -761,10 +762,21 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     })
     .filter(x => x.plano);
 
-  const notasValidas = validacoesAluno.map(v => v.nota20).filter((n): n is number => n != null);
-  const notaProgressiva = notasValidas.length
-    ? Math.round((notasValidas.reduce((s, n) => s + n, 0) / notasValidas.length) * 10) / 10
-    : null;
+  // A nota que o aluno vê é UMA só, em todos os ecrãs: a da UC em curso,
+  // calculada como nas «Notas da UC» do professor (e na pauta). Antes o
+  // início mostrava a média das aulas de TODAS as UCs misturadas (9,3) e
+  // outro ecrã a nota da UC com bónus (11).
+  // Primeiro a da pauta (a que o professor vê em «Notas da UC»); sem pauta,
+  // a nota final da UC calculada pelos registos.
+  const pautaDaUC = ucAtual ? notaDaPautaUC(aluno.id, aluno.turmaId, ucAtual) : null;
+  const notaDaUC = pautaDaUC?.nota != null ? { final: pautaDaUC.nota }
+    : ucAtual ? notaFinalUC(aluno.id, aluno.turmaId, ucAtual) : null;
+  const notasValidas = validacoesAluno.filter(v => !ucAtual || v.plano!.ucId === ucAtual)
+    .map(v => v.nota20).filter((n): n is number => n != null);
+  const notaProgressiva = notaDaUC?.final != null ? Math.round(notaDaUC.final * 10) / 10
+    : notasValidas.length
+      ? Math.round((notasValidas.reduce((s, n) => s + n, 0) / notasValidas.length) * 10) / 10
+      : null;
 
   // Módulos a recuperar — só pelos dois critérios: faltas acima de 10%
   // das horas do módulo, ou módulo terminado sem positiva. Antes contava
@@ -1093,7 +1105,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                     nota20: h.nota20 as number,
                   }))}
                 competenciasPorAvaliar={porAvaliar}
-                notaPossivel={notaProgressiva != null ? Math.min(20, notaProgressiva + 2) : null}
+                notaPossivel={null}
               />
             )}
 
@@ -1246,7 +1258,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo,
                     data: h.data, nota20: h.nota20 as number }))}
                 competenciasPorAvaliar={porAvaliar}
-                notaPossivel={notaProgressiva != null ? Math.min(20, notaProgressiva + 2) : null} />
+                notaPossivel={null} />
             )}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
             {destino === 'manual' && <ManuaisAluno soLeitura />}
