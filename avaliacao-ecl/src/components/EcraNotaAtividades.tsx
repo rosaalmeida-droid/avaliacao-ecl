@@ -208,9 +208,12 @@ export function EcraAtividades({
   const jaDeuBalanco = (a: Atividade) => (a.balancos ?? []).some(b => b.alunoId === alunoId);
   const participou = (a: Atividade) => a.participantesIds.includes(alunoId);
 
+  // Eventos que vêm do plano do professor: quem vai decide-o o professor
+  // (a turma toda, ou os inscritos que ele aceita). Não há «como correu».
+  const doPlano = (a: Atividade) => !!(a as any).doPlano;
   const abertas = atividades.filter(a => !a.fechada && a.data >= hoje);
-  const porFechar = atividades.filter(a => a.data < hoje && inscrito(a) && !jaDeuBalanco(a));
-  const feitas = atividades.filter(a => participou(a) || jaDeuBalanco(a));
+  const porFechar = atividades.filter(a => !doPlano(a) && a.data < hoje && inscrito(a) && !jaDeuBalanco(a));
+  const feitas = atividades.filter(a => (doPlano(a) ? a.data < hoje && participou(a) : participou(a) || jaDeuBalanco(a)));
 
   const cartao = (a: Atividade, corpo: React.ReactNode) => (
     <div key={a.id} style={{ ...painel, padding: 16, marginBottom: 11 }}>
@@ -306,6 +309,19 @@ export function EcraAtividades({
               Podes inscrever-te
             </div>
             {abertas.map(a => {
+              if (doPlano(a)) {
+                const turma = (a as any).modo === 'turma';
+                const aceite = participou(a);
+                const aviso = (txt: string, cor: string, fundo: string) => (
+                  <div style={{ marginTop: 13, padding: '12px 14px', borderRadius: 11, background: fundo, color: cor, fontSize: 15, fontWeight: 600 }}>{txt}</div>);
+                return cartao(a, turma
+                  ? aviso('Vai a turma toda — é obrigatório. Não conta como falta de aula; também te autoavalias.', C.violeta, C.violetaSuave)
+                  : aceite
+                    ? aviso('✓ O professor aceitou-te. No dia, também te autoavalias.', C.verde, C.verdeSuave)
+                    : inscrito(a)
+                      ? <>{aviso('Inscrito — o professor vai confirmar.', C.cobre, C.cobreSuave)}{botao('Já não vou', () => onCancelar(a.id), false)}</>
+                      : botao('Quero participar', () => onInscrever(a.id)));
+              }
               const vagasRestantes = a.vagas != null
                 ? a.vagas - (a.inscritosIds?.length ?? 0) : null;
               const cheio = vagasRestantes != null && vagasRestantes <= 0 && !inscrito(a);

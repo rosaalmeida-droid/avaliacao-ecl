@@ -6,7 +6,7 @@
 
 import type { Triagem5C } from './triagem5c';
 import { notaDaPautaUC } from './pautaUC';
-import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO } from './eventosAvaliacao';
+import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
@@ -6069,7 +6069,9 @@ export function atividadesDoAlunoNaUC(alunoId: string, turmaId: string, ucId: st
   const diasRegistados = new Set(registadas.map(a => String(a.data || '').slice(0, 10)));
   const dosPlanos: Atividade[] = getPlanosAula()
     .filter((p: any) => p.turmaId === turmaId && p.tipoEvento && p.estado !== 'arquivado' && validados.has(p.id)
-      && p.ucId === ucId && !diasRegistados.has(String(p.data || '').slice(0, 10)))
+      && p.ucId === ucId && !diasRegistados.has(String(p.data || '').slice(0, 10))
+      // Evento fora do horário: só quem vai (a turma toda, ou os aceites).
+      && (!eventoForaDoHorario(p) || participantesDoEvento(p).includes(alunoId)))
     .map((p: any) => ({ id: p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: p.data,
       participantesIds: [alunoId], criadaEm: p.criadoEm || '' }));
   // Os planos de evento contam na UC do próprio plano (um evento fora do
@@ -7585,6 +7587,42 @@ export function gruposDaAula(planoAulaId: string): GrupoDaAula[] {
 }
 export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula | undefined {
   return gruposDaAula(planoAulaId).find(g => g.membros.some(m => m.alunoId === alunoId));
+}
+
+// ============================================================
+// Eventos fora do horário nas «Atividades e concursos»
+// ============================================================
+// O plano do evento é a atividade. O professor escolhe: a turma toda vai
+// (obrigatório) ou os alunos inscrevem-se e ele aceita quem vai. A
+// inscrição do aluno segue pelo mesmo caminho rápido dos grupos (sem
+// mexer no script), com o «plano» insc_<id>. Quem o professor aceita
+// fica no próprio plano (participantesIds). Não há faltas: é extra.
+export type ModoParticipacao = 'turma' | 'inscricao';
+export function modoParticipacao(p: any): ModoParticipacao { return p?.modoParticipacao === 'inscricao' ? 'inscricao' : 'turma'; }
+const idInscricao = (planoId: string) => 'insc_' + planoId;
+export function eventoForaDoHorario(p: any): boolean { return !!p?.tipoEvento && TIPOS_EVENTO_PLANO.includes(p?.tipoAtividade); }
+
+export function inscreverNoEvento(plano: PlanoAula, aluno: { id: string; nome?: string }, sim: boolean): void {
+  entrarNoGrupo({ planoAulaId: idInscricao(plano.id), turmaId: plano.turmaId, alunoId: aluno.id, nomeAluno: aluno.nome,
+    grupoId: sim ? 'inscrito' : 'retirado', grupoNome: sim ? 'Inscrito' : 'Retirado', definidoPor: 'aluno' });
+}
+export function inscritosNoEvento(planoId: string): string[] {
+  return getMembrosGrupo(idInscricao(planoId)).filter(m => m.grupoId === 'inscrito').map(m => m.alunoId);
+}
+export function participantesDoEvento(p: PlanoAula): string[] {
+  return modoParticipacao(p) === 'turma'
+    ? getAlunos().filter(a => a.turmaId === p.turmaId && a.ativo !== false).map(a => a.id)
+    : ((p as any).participantesIds || []);
+}
+/** Os eventos da turma, no formato das atividades que o aluno vê. */
+export function eventosComoAtividades(turmaId: string): Atividade[] {
+  return getPlanosAula().filter((p: any) => p.turmaId === turmaId && eventoForaDoHorario(p) && p.estado !== 'arquivado')
+    .map((p: any) => ({
+      id: 'ev_' + p.id, turmaId, tipo: p.tipoEvento, titulo: p.titulo || 'Evento', data: String(p.data || '').slice(0, 10),
+      horaInicio: p.horaInicio, horaFim: p.horaFim, descricao: p.sumario || p.observacoes || '',
+      participantesIds: participantesDoEvento(p), inscritosIds: inscritosNoEvento(p.id), criadaEm: p.criadoEm || '',
+      doPlano: true, modo: modoParticipacao(p), planoId: p.id,
+    } as any));
 }
 
 // ============================================================

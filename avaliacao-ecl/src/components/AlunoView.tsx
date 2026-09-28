@@ -31,7 +31,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC } from '../backend';
+  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -506,9 +506,12 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [destino, setDestino] = useState<DestinoAluno | null>(null);
   const [mesVisivel, setMesVisivel] = useState(new Date().getMonth());
   const [anoVisivel, setAnoVisivel] = useState(new Date().getFullYear());
-  const [planos, setPlanos] = useState<PlanoAula[]>(() =>
+  const [planosBrutos, setPlanos] = useState<PlanoAula[]>(() =>
     getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')
   );
+  // Evento fora do horário com inscrição: só aparece a quem o professor aceitou.
+  const planos = planosBrutos.filter(p => !eventoForaDoHorario(p) || modoParticipacao(p) === 'turma'
+    || participantesDoEvento(p).includes(aluno.id));
 
   const [falhouLigacao, setFalhouLigacao] = useState(false);
   const [aLigar, setALigar] = useState(false);
@@ -731,9 +734,16 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
   const [refreshAtiv, setRefreshAtiv] = useState(0);
   const atividades = React.useMemo(
-    () => getAtividades().filter(x => x.turmaId === aluno.turmaId),
-    [aluno.turmaId, refreshAtiv]
+    () => [...getAtividades().filter(x => x.turmaId === aluno.turmaId), ...eventosComoAtividades(aluno.turmaId)],
+    [aluno.turmaId, refreshAtiv, planosBrutos]
   );
+  // Evento do plano: a inscrição segue para o professor; atividade antiga: fica como estava.
+  function inscreverOuEvento(id: string, sim: boolean) {
+    if (id.startsWith('ev_')) {
+      const pl = planosBrutos.find(x => x.id === id.slice(3)) || getPlanosAulaPorTurma(aluno.turmaId, true).find(x => x.id === id.slice(3));
+      if (pl) inscreverNoEvento(pl, aluno, sim);
+    } else inscreverEmAtividade(id, aluno.id, sim);
+  }
   const atividadesAbertas = atividades.filter(
     x => !x.fechada && x.data >= new Date().toISOString().slice(0, 10)
   ).length;
@@ -1113,8 +1123,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               <EcraAtividades
                 atividades={atividades}
                 alunoId={aluno.id}
-                onInscrever={(id) => { inscreverEmAtividade(id, aluno.id, true); setRefreshAtiv(n => n + 1); }}
-                onCancelar={(id) => { inscreverEmAtividade(id, aluno.id, false); setRefreshAtiv(n => n + 1); }}
+                onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
+                onCancelar={(id) => { inscreverOuEvento(id, false); setRefreshAtiv(n => n + 1); }}
                 onBalanco={(id, participou, resultado) => {
                   registarBalancoAtividade(id, aluno.id, participou, resultado);
                   setRefreshAtiv(n => n + 1);
@@ -1264,8 +1274,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             {destino === 'manual' && <ManuaisAluno soLeitura />}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
-                onInscrever={(id) => { inscreverEmAtividade(id, aluno.id, true); setRefreshAtiv(n => n + 1); }}
-                onCancelar={(id) => { inscreverEmAtividade(id, aluno.id, false); setRefreshAtiv(n => n + 1); }}
+                onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
+                onCancelar={(id) => { inscreverOuEvento(id, false); setRefreshAtiv(n => n + 1); }}
                 onBalanco={(id, p, r) => { registarBalancoAtividade(id, aluno.id, p, r); setRefreshAtiv(n => n + 1); }} />
             )}
             {(destino === 'fichas' || destino === 'guiao' || destino === 'kitchenflow') && (

@@ -1,4 +1,5 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv } from '../backend';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
@@ -1300,7 +1301,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
             {/* Evento ou concurso no horário letivo: entra neste plano. Os de
                 fora do horário avaliam-se no menu «Avaliar evento fora do horário». */}
-            {(() => {
+            {!eventoForaDoHorario(plano) && (() => {
               const atual = (plano as any).tipoEvento as ('evento' | 'concurso' | undefined);
               const escolher = (t?: 'evento' | 'concurso') => {
                 const f: any = planoFresco();
@@ -1496,6 +1497,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      {eventoForaDoHorario(plano) && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
+          <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
+        </div>
+      )}
       {/* Requisição feita antes de mudar as fichas — o pedido ao economato
           já não corresponde à aula. */}
       {(() => {
@@ -2146,3 +2152,59 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 }
 
 export default VistaDePlano;
+
+
+// ── Evento fora do horário: quem participa ─────────────────────
+// A turma toda (obrigatório) ou quem se inscreve nas «Atividades e
+// concursos» e o professor aceita. Só os participantes contam para o bónus.
+function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
+  const [, redesenhar] = React.useState(0);
+  React.useEffect(() => {
+    let vivo = true;
+    const ver = () => sincronizarGrupos(plano.turmaId).catch(() => {}).finally(() => { if (vivo) redesenhar(n => n + 1); });
+    ver(); const t = setInterval(ver, 20000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [plano.id]);
+  const modo = modoParticipacao(plano);
+  const aceites: string[] = plano.participantesIds || [];
+  const inscritos = inscritosNoEvento(plano.id);
+  const alunos = getAlunosEv().filter(a => a.turmaId === plano.turmaId && a.ativo !== false);
+  const nome = (id: string) => alunos.find(a => a.id === id)?.nome || id;
+  const gravar = (patch: any) => {
+    const p = { ...plano, ...patch, atualizadoEm: new Date().toISOString() };
+    addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+  };
+  const bt = (sel: boolean): React.CSSProperties => ({ padding: '7px 12px', borderRadius: 8, fontSize: 13.5, fontWeight: 700,
+    cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${sel ? '#6B3FA0' : 'rgba(26,23,20,0.15)'}`,
+    background: sel ? '#6B3FA0' : '#fff', color: sel ? '#fff' : 'rgba(26,23,20,0.75)' });
+  const lista = [...new Set([...inscritos, ...aceites])];
+  return (
+    <div style={{ marginTop: 11, paddingTop: 11, borderTop: '1px solid rgba(181,101,29,0.25)', fontSize: 13.5 }}>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>🏅 Quem participa neste evento?</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+        <button style={bt(modo === 'turma')} onClick={() => gravar({ modoParticipacao: 'turma' })}>A turma toda (obrigatório)</button>
+        <button style={bt(modo === 'inscricao')} onClick={() => gravar({ modoParticipacao: 'inscricao' })}>Quem se inscrever</button>
+      </div>
+      {modo === 'turma' ? (
+        <div style={{ color: 'rgba(26,23,20,0.6)' }}>Os {alunos.length} alunos da turma vão. Não conta falta de aula.</div>
+      ) : (
+        <>
+          <div style={{ color: 'rgba(26,23,20,0.6)', marginBottom: 6 }}>
+            {inscritos.length} inscrito{inscritos.length === 1 ? '' : 's'} · {aceites.length} aceite{aceites.length === 1 ? '' : 's'}. Os alunos inscrevem-se em «Atividades e concursos».
+          </div>
+          {lista.length === 0 && <div style={{ color: 'rgba(26,23,20,0.5)' }}>Ainda ninguém se inscreveu.</div>}
+          {lista.map(id => {
+            const ok = aceites.includes(id);
+            return (
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: '1px solid rgba(26,23,20,0.06)' }}>
+                <span style={{ flex: 1 }}>{nome(id)}{!inscritos.includes(id) && <span style={{ color: 'rgba(26,23,20,0.45)' }}> (retirou-se)</span>}</span>
+                <button style={bt(ok)} onClick={() => gravar({ participantesIds: ok ? aceites.filter(x => x !== id) : [...aceites, id] })}>
+                  {ok ? '✓ Aceite' : 'Aceitar'}</button>
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}

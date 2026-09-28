@@ -914,6 +914,11 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     titulo: '',
     professor: nomeProfessor || '',
     tipoAtividade: tipoInicial || 'Aula prática',
+    // Evento: vai a turma toda (obrigatório) ou os alunos inscrevem-se e o professor aceita.
+    modoParticipacao: 'turma' as 'turma' | 'inscricao',
+    // Obrigatórias, mas o professor pode tirá-las desta aula.
+    comFarda: true,
+    comRegistos: true,
     tipoPlanAula: 'pratico' as 'pratico' | 'teorico' | 'misto' | 'atitudinal',
     };
   });
@@ -1057,6 +1062,8 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     // Guardar tipoPlanAula no plano
     (p as any).tipoPlanAula = dados.tipoPlanAula;
     (p as any).tipoAtividade = dados.tipoAtividade;
+    const tiradas = [...(dados.comFarda ? [] : ['OBR_01']), ...(dados.comRegistos ? [] : ['OBR_02'])];
+    if (tiradas.length) (p as any).compRemovidas = tiradas;
     // Evento ou concurso: avalia-se com as atitudes dos eventos (as 3 fixas
     // e as do tipo de evento) e, no evento, uma pergunta de técnica geral.
     // O professor pode mudar as atitudes no plano.
@@ -1065,6 +1072,7 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       (p as any).tipoEvento = tipoEvento;
       (p as any).tipoPlanAula = 'atitudinal';
       (p as any).compAdicionadas = atitudesSugeridasEvento(dados.tipoAtividade);
+      (p as any).modoParticipacao = dados.modoParticipacao;
     }
     (p as any).contaAssiduidade = contaAssiduidade;
     // Se as faltas contam numa aula que já passou, o professor tem de as
@@ -1313,6 +1321,33 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
                 ? '🏆 Concurso: avalia-se a hora, ficar até ao fim e a farda (+ autoconfiança, autocontrolo, iniciativa). Dá +0,75 com as 3 primeiras em "Muito bom" e farda. Só alunos com 10 ou mais.'
                 : '🎪 Evento: avalia-se a hora, ficar até ao fim, a farda, mais atitudes do tipo de evento e uma pergunta de técnica geral. Dá +0,5 com tudo em "Muito bom" e farda.'}
               {' '}Podes mudar as atitudes no plano.
+            </div>
+          )}
+          <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {([['comFarda', 'Farda e higiene pessoal'], ['comRegistos', 'Registos (KitchenFlow / HACCP)']] as const).map(([k, t]) => (
+              <label key={k} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: 10,
+                border: '1px solid rgba(26,23,20,0.12)', fontSize: 13.5, cursor: 'pointer', background: (dados as any)[k] ? '#fff' : '#fdf0e6' }}>
+                <input type="checkbox" checked={(dados as any)[k]} onChange={e => setDados(p => ({ ...p, [k]: e.target.checked }))} />
+                <span><b>{t}</b><br /><span style={{ color: 'rgba(26,23,20,0.6)' }}>
+                  {(dados as any)[k] ? 'Obrigatório — conta nesta aula' : 'Fora desta aula — o aluno não é confrontado com isto'}</span></span>
+              </label>
+            ))}
+          </div>
+          {tipoEventoDe(dados.tipoAtividade) && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Quem participa?</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {([['turma', 'A turma toda', 'Obrigatório. Não conta falta de aula.'],
+                   ['inscricao', 'Quem se inscrever', 'Os alunos inscrevem-se nas «Atividades e concursos» e tu aceitas.']] as const).map(([v, t, d]) => (
+                  <button key={v} type="button" onClick={() => setDados(p => ({ ...p, modoParticipacao: v }))}
+                    style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                      border: `2px solid ${dados.modoParticipacao === v ? 'var(--copper)' : 'rgba(26,23,20,0.12)'}`,
+                      background: dados.modoParticipacao === v ? 'var(--copper-pale, #fdf0e6)' : '#fff' }}>
+                    <div style={{ fontWeight: 800, fontSize: 14 }}>{t}</div>
+                    <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{d}</div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
