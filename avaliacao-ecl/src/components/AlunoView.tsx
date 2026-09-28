@@ -2,7 +2,7 @@ import { categoriaDaNota } from '../compatECL';
 import { conhecimentosDaAula } from '../compatECL';
 import { notaDaPautaUC } from '../pautaUC';
 import React, { useState, useRef, useEffect } from 'react';
-import { lerAula, aulaRapidaDisponivel, contadorDaTurma } from '../backend';
+import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
 import { grupoDoAluno } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
@@ -58,7 +58,8 @@ import {
   InicioAluno, NavegacaoAluno, CabecalhoAluno, CabecalhoEcra,
   IconesFarda, CORES, type DestinoAluno, type SeparadorAluno, type AvisoAluno,
 } from './InicioAluno';
-import { PassoKitchenFlowFase } from './PassosKitchenFlow';
+import { temOrganizacao, organizacaoDe, funcoesDoAluno } from '../organizacaoAula';
+import { QuadroOrganizacional, CartaoMinhaFuncao, PassoMinhaFuncao } from './PlanoOrganizacional';
 import { perguntasDaAula, notaTriagem, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
@@ -1011,6 +1012,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             planoHoje={planoHoje}
             numeroPlano={numeroPlanoHoje}
             sessaoAberta={!!planoHoje && !!getSessaoAula(planoHoje.id)?.abertaEm}
+            minhaFuncao={planoHoje && temOrganizacao(planoHoje)
+              ? funcoesDoAluno(organizacaoDe(planoHoje), aluno.id).map(f => f.nome).join(' + ') || undefined : undefined}
             jaEntrou={!!planoHoje && getPresencas().some(
               p => p.alunoId === aluno.id && p.planoAulaId === planoHoje.id
             )}
@@ -1368,12 +1371,15 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     const jaEntrou = presencas.some(p => p.alunoId === aluno.id && p.planoAulaId === plano.id);
     return _load('entrada') || jaEntrou;
   });
-  const [kfInicialConcluido, setKfInicialConcluido] = React.useState(
-    () => _load('kf_inicial') || kfFaseCompleta(aluno.id, plano.id, 'inicial')
-  );
-  const [kfFinalConcluido, setKfFinalConcluido] = React.useState(
-    () => _load('kf_final') || kfFaseCompleta(aluno.id, plano.id, 'final')
-  );
+  // A função de cada um nesta aula (plano organizacional). Lê-se o plano
+  // guardado, que o telemóvel atualiza de poucos em poucos segundos: uma
+  // substituição feita pelo professor aparece logo.
+  const planoVivo = getPlanosAula().find(p => p.id === plano.id) || plano;
+  const orgAula = temOrganizacao(planoVivo) ? organizacaoDe(planoVivo) : null;
+  const minhasFuncoes = funcoesDoAluno(orgAula, aluno.id);
+  const [funcaoInicioFeita, setFuncaoInicioFeita] = React.useState(() => _load('funcao_inicio'));
+  const [funcaoFimFeita, setFuncaoFimFeita] = React.useState(() => _load('funcao_fim'));
+  const [verQuadro, setVerQuadro] = React.useState(false);
   const [fichaConcluida, setFichaConcluida] = React.useState(() => _load('ficha'));
   const [guiaoConcluido, setGuiaoConcluido] = React.useState(() => _load('guia'));
   const [avaliacaoConcluida, setAvaliacaoConcluida] = React.useState(() => {
@@ -1388,6 +1394,15 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     ? fichasTodas.filter((f: any) => f.id === fichaDoGrupo) : fichasTodas;
   const requisicao = getRequisicaoPorPlano(plano.id);
   const [temGrupo, setTemGrupo] = React.useState(() => !!grupoDoAluno(plano.id, aluno.id));
+
+  // O KitchenFlow abre já com o aluno e a aula (é lá que se registam as funções).
+  const abrirKF = () => abrirKitchenFlow(undefined, {
+    turma: aluno.turmaId, numero: aluno.numero, pin: aluno.pin,
+    tipo: 'aluno', ucId: plano.ucId, ucNome: plano.ucNome,
+    pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
+    planoData: plano.data, planoHoraInicio: plano.horaInicio,
+    planoHoraFim: plano.horaFim,
+  } as any);
 
   // Os passos falam com o aluno: "Entrei na aula", não "Entrada e Higiene".
   // O `agora` é o que ele lê em grande quando o passo está ativo.
@@ -1405,15 +1420,16 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
     { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
     ...(comGrupos ? [{ id:'grupo', label:'Estou num grupo', agora:'O meu grupo', cor:V }] : []),
-    // Sem registos quando o professor os tirou desta aula.
-    ...(((plano as any).compRemovidas || []).includes('OBR_02') ? [] : [{ id:'kf_inicial', label:'Registos iniciais', agora:'Antes de produzir', cor:V }]),
+    // A função de cada um (plano organizacional): o que fazer antes de produzir.
+    ...(minhasFuncoes.some(f => f.inicio.length) ? [{ id:'funcao_inicio', label:'Fiz a minha função (início)', agora:'A tua função: início', cor:V }] : []),
     { id:'ficha',      label:'Produzi',                    agora:'Produzir',         cor:V },
     ...(fichas.some((f:any) => f.textoGuia)
       ? [{ id:'guia', label:'Consultei o guião', agora:'Ver o guião', cor:V }] : []),
     // A requisição é do professor: o aluno só a consulta, e só se existir.
     // Antes o passo aparecia sempre, com "Nenhuma requisição criada".
     ...(requisicao ? [{ id:'requisicao', label:'Vi a requisição', agora:'Ver a requisição', cor:V }] : []),
-    ...(((plano as any).compRemovidas || []).includes('OBR_02') ? [] : [{ id:'kf_final', label:'Registos finais', agora:'Antes de fechar', cor:V }]),
+    // E antes da autoavaliação: a função tem de ficar completa.
+    ...(minhasFuncoes.length ? [{ id:'funcao_fim', label:'Fiz a minha função (fim)', agora:'A tua função: fim', cor:V }] : []),
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ];
 
@@ -1421,15 +1437,21 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     if (id==='orientacao' && orientacaoConcluida) return 'concluido';
     if (id==='entrada' && entradaConcluida) return 'concluido';
     if (id==='grupo' && temGrupo && secAberta !== 'grupo') return 'concluido';
-    if (id==='kf_inicial' && kfInicialConcluido) return 'concluido';
+    if (id==='funcao_inicio' && funcaoInicioFeita) return 'concluido';
     if (id==='ficha' && fichaConcluida) return 'concluido';
     if (id==='guia' && guiaoConcluido) return 'concluido';
     if (id==='requisicao' && requisicao) return 'concluido';
-    if (id==='kf_final' && kfFinalConcluido) return 'concluido';
+    if (id==='funcao_fim' && funcaoFimFeita) return 'concluido';
     if (id==='avaliacao' && avaliacaoConcluida) return 'concluido';
     if (id===secAberta) return 'ativo';
     return 'pendente';
   };
+
+  // Depois da entrada (e do grupo): a função de início, se houver; senão, produzir.
+  const depoisDaEntrada = () => String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao'
+    : PASSOS.some(p => p.id === 'funcao_inicio') ? 'funcao_inicio' : 'ficha';
+  // Depois de produzir: a função de fim, se houver; senão, a autoavaliação.
+  const antesDaAvaliacao = () => PASSOS.some(p => p.id === 'funcao_fim') ? 'funcao_fim' : 'avaliacao';
 
   const totalPassos = PASSOS.length;
   const passosConcluidos = PASSOS.filter(p => estadoPasso(p.id) === 'concluido').length;
@@ -1463,6 +1485,9 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
           lista dos passos em baixo para saber onde está. */}
       <div style={{ background:'#F3F2F5' }}>
         <div style={{ padding:14, maxWidth:640, margin:'0 auto' }}>
+
+          {/* A função de hoje: a primeira coisa que o aluno vê ao abrir a aula. */}
+          {orgAula && <CartaoMinhaFuncao plano={planoVivo} alunoId={aluno.id} onVerQuadro={() => setVerQuadro(true)} />}
 
           {/* Barra de progresso: vê-se em meio segundo quantos faltam. */}
           <div style={{ background:'#6B3FA0', borderRadius:16, padding:'15px 17px', marginBottom:14 }}>
@@ -1532,64 +1557,40 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
                 onConcluido={() => { setEntradaConcluida(true); _save('entrada');
-                  setSecAberta(comGrupos ? 'grupo' : String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : (((plano as any).compRemovidas || []).includes('OBR_02') ? 'ficha' : 'kf_inicial')); }} />
+                  setSecAberta(comGrupos ? 'grupo' : depoisDaEntrada()); }} />
             )}
             {secAberta==='grupo' && (
               <PassoGrupo aluno={aluno} plano={plano}
                 onConcluido={() => { setTemGrupo(true);
-                  setSecAberta(String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? 'avaliacao' : (((plano as any).compRemovidas || []).includes('OBR_02') ? 'ficha' : 'kf_inicial')); }} />
+                  setSecAberta(depoisDaEntrada()); }} />
             )}
-            {secAberta==='kf_inicial' && (
-              <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="inicial"
-                ehLider={ehLiderKF(aluno.id, plano.id)}
-                nomeLider={(() => {
-                  const id = liderKFdoGrupo(plano.id);
-                  if (!id || id === aluno.id) return undefined;
-                  const l = getAlunos().find(x => x.id === id);
-                  return l?.nome || (l ? `o colega nº ${l.numero}` : undefined);
-                })()}
-                onAbrirKitchenFlow={() => abrirKitchenFlow(undefined, {
-                  turma: aluno.turmaId, numero: aluno.numero, pin: aluno.pin,
-                  tipo: 'aluno', ucId: plano.ucId, ucNome: plano.ucNome,
-                  pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
-                  planoData: plano.data, planoHoraInicio: plano.horaInicio,
-                  planoHoraFim: plano.horaFim,
-                } as any)}
-                onConcluido={() => { setKfInicialConcluido(true); _save('kf_inicial'); setSecAberta('ficha'); }} />
+            {secAberta==='funcao_inicio' && (
+              <PassoMinhaFuncao plano={planoVivo} alunoId={aluno.id} momento="inicio"
+                onVerQuadro={() => setVerQuadro(true)}
+                onAbrirKitchenFlow={abrirKF}
+                onConcluido={() => { setFuncaoInicioFeita(true); _save('funcao_inicio'); setSecAberta('ficha'); }} />
             )}
             {secAberta==='ficha' && (
               <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
                 onConcluido={() => { setFichaConcluida(true); _save('ficha');
                   // Sem registos (retirados pelo professor), vai direto à autoavaliação.
                   setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : requisicao ? 'requisicao'
-                    : ((plano as any).compRemovidas || []).includes('OBR_02') ? 'avaliacao' : 'kf_final'); }} />
+                    : antesDaAvaliacao()); }} />
             )}
             {secAberta==='guia' && (
               <SecaoGuiao fichas={fichas} plano={plano}
                 onConcluido={() => { setGuiaoConcluido(true); _save('guia'); setSecAberta(requisicao ? 'requisicao'
-                  : ((plano as any).compRemovidas || []).includes('OBR_02') ? 'avaliacao' : 'kf_final'); }} />
+                  : antesDaAvaliacao()); }} />
             )}
             {secAberta==='requisicao' && (
               <SecaoRequisicao requisicao={requisicao}
-                onConcluido={() => setSecAberta(((plano as any).compRemovidas || []).includes('OBR_02') ? 'avaliacao' : 'kf_final')} />
+                onConcluido={() => setSecAberta(antesDaAvaliacao())} />
             )}
-            {secAberta==='kf_final' && (
-              <PassoKitchenFlowFase alunoId={aluno.id} planoAulaId={plano.id} fase="final"
-                ehLider={ehLiderKF(aluno.id, plano.id)}
-                nomeLider={(() => {
-                  const id = liderKFdoGrupo(plano.id);
-                  if (!id || id === aluno.id) return undefined;
-                  const l = getAlunos().find(x => x.id === id);
-                  return l?.nome || (l ? `o colega nº ${l.numero}` : undefined);
-                })()}
-                onAbrirKitchenFlow={() => abrirKitchenFlow(undefined, {
-                  turma: aluno.turmaId, numero: aluno.numero, pin: aluno.pin,
-                  tipo: 'aluno', ucId: plano.ucId, ucNome: plano.ucNome,
-                  pratos: fichas.map((f: any) => f.nomePrato).filter(Boolean),
-                  planoData: plano.data, planoHoraInicio: plano.horaInicio,
-                  planoHoraFim: plano.horaFim,
-                } as any)}
-                onConcluido={() => { setKfFinalConcluido(true); _save('kf_final'); setSecAberta('avaliacao'); }} />
+            {secAberta==='funcao_fim' && (
+              <PassoMinhaFuncao plano={planoVivo} alunoId={aluno.id} momento="fim"
+                onVerQuadro={() => setVerQuadro(true)}
+                onAbrirKitchenFlow={abrirKF}
+                onConcluido={() => { setFuncaoFimFeita(true); _save('funcao_fim'); setSecAberta('avaliacao'); }} />
             )}
               </EcraCheio>
             )}
@@ -1643,6 +1644,12 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
           </div>
         </div>
       </div>
+      {verQuadro && (
+        <EcraCheio titulo={`Plano organizacional · ${plano.titulo || 'aula'}`} onSair={() => setVerQuadro(false)}>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, marginBottom:10 }}>Quem faz o quê hoje</div>
+          <QuadroOrganizacional plano={planoVivo} alunoId={aluno.id} modo="aluno" />
+        </EcraCheio>
+      )}
     </div>
   );
 }
@@ -2535,9 +2542,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
    * registo obrigatório a procurar. O professor confirma na validação.
    */
   function hsaSemRegisto(): boolean {
-    if (!kfHaTipos) return false;
-    if (!ehLiderKF(aluno.id, plano.id)) return false;
-    return !temEvidenciaKF('OBR_02');
+    // A nota já não sai do KitchenFlow (decisão da Rosa, set/2026): os
+    // registos são de quem tem a função no plano organizacional, e a
+    // higiene e segurança alimentar vai ter uma avaliação nova. Até lá,
+    // conta o que o aluno responde e o professor confirma.
+    return false;
   }
 
   // Badge KF — mostra ao aluno que os seus registos do KitchenFlow foram verificados

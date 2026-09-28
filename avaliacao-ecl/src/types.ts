@@ -496,6 +496,8 @@ export interface PlanoAula {
   perguntaCO?: string;
   /** O mesmo para o Criativo (BANCO_CR). */
   perguntaCR?: string;
+  /** Plano organizacional: a função de cada aluno nesta aula (organizacaoAula.ts). */
+  organizacao?: import('./organizacaoAula').OrganizacaoAula;
   realizadaEm?: string;     // ISO timestamp — quando o professor marcou como realizada
   // Registo de alterações após publicação — visível ao aluno como aviso
   ultimaAlteracao?: {

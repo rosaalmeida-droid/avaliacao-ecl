@@ -3,6 +3,8 @@ import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
+import { garantirOrganizacao, temOrganizacao, organizacaoDe } from '../organizacaoAula';
+import { QuadroOrganizacional } from './PlanoOrganizacional';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
@@ -437,6 +439,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // coisa com arranjos diferentes. Sobra de termos construído o novo sem
   // apagar o velho.
   const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma' | 'grupos'>('resumo');
+  // Plano publicado de uma aula prática: as funções de cada aluno distribuem-se
+  // logo, para os alunos as verem antes da aula (plano organizacional).
+  React.useEffect(() => {
+    const p = garantirOrganizacao(plano);
+    if (p !== plano) onPlanoActualizado(p);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plano.id, plano.estado]);
   /** Conhecimentos marcados para retirar/incluir, à espera de confirmação. */
   const [knwPendentes, setKnwPendentes] = useState<Set<string>>(new Set());
   const [compRemovidas, setCompRemovidas] = useState<string[]>(
@@ -1307,6 +1316,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             Quem entrou, o estado da farda, os registos e as autoavaliações.
             As decisões de falta fazem-se aqui.
           </div>
+          {temOrganizacao(plano) && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
+                color:'#6B3FA0', marginBottom:8 }}>Plano organizacional da aula</div>
+              <QuadroOrganizacional plano={plano} modo="professor" onPlanoMudou={onPlanoActualizado} />
+            </div>
+          )}
           <TurmaNaAula
             planoAulaId={plano.id}
             turmaId={plano.turmaId}
@@ -1562,6 +1578,18 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      {temOrganizacao(plano) && (
+        <button onClick={() => setTabInicio('turma')} style={{ display:'block', width:'100%', textAlign:'left',
+          background:'#fff', border:'1px solid rgba(107,63,160,0.35)', borderRadius:14, padding:'12px 16px',
+          margin:'0 0 14px', cursor:'pointer', fontFamily:'inherit' }}>
+          <span style={{ fontSize:15, fontWeight:700, color:'#6B3FA0' }}>Plano organizacional da aula</span>
+          <span style={{ display:'block', fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:3 }}>
+            {organizacaoDe(plano)
+              ? 'Cada aluno já tem a sua função. Toca para ver quem faz o quê e para substituir quem faltar.'
+              : plano.estado === 'publicado' ? 'Toca para distribuir as funções.' : 'As funções distribuem-se quando publicares o plano.'}
+          </span>
+        </button>
+      )}
       <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />
       {eventoForaDoHorario(plano) && (
         <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>

@@ -200,6 +200,8 @@ interface Props {
   numeroPlano?: number;
   /** true depois de o professor abrir a sessão. */
   sessaoAberta?: boolean;
+  /** A função do aluno nesta aula (plano organizacional), se já foi distribuída. */
+  minhaFuncao?: string;
   /** true depois de o aluno ter marcado presença. */
   jaEntrou?: boolean;
   proximasAulas?: number;
@@ -224,7 +226,7 @@ interface Props {
 export function InicioAluno({
   nomeAluno, turmaId,
   ucId, ucNome, planoHoje, numeroPlano,
-  sessaoAberta = false, jaEntrou = false, jaAvaliou = false,
+  sessaoAberta = false, jaEntrou = false, jaAvaliou = false, minhaFuncao,
   proximasAulas = 0, avisos = [],
   fichasAtribuidas = 0, notaProgressiva = null,
   recuperacoesPendentes = 0, atividadesAbertas = 0,
@@ -278,6 +280,16 @@ export function InicioAluno({
                 {numeroPlano ? `Plano de aula ${String(numeroPlano).padStart(2, '0')}` : planoHoje.titulo}
                 {planoHoje.titulo && numeroPlano ? ` · ${planoHoje.titulo}` : ''}
               </div>
+
+              {/* A função de hoje: os alunos querem saber logo o que lhes calhou. */}
+              {minhaFuncao && (
+                <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.14)',
+                  color: '#fff', fontSize: 15, lineHeight: 1.4 }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 800, letterSpacing: '0.05em',
+                    textTransform: 'uppercase', color: C.violetaClaro }}>A tua função hoje</span>
+                  <b>{minhaFuncao}</b>
+                </div>
+              )}
 
               {!sessaoAberta && (
                 <div style={{ fontSize: 13.5, color: C.violetaClaro, marginTop: 12,

@@ -33,7 +33,7 @@ import {
   getAlunos, getPlanosAulaPorTurma, getValidacoes, getHistoricoAvaliacoes, getSelecoes, getPresencas,
   getPlanosFaltadosPorUC, getAtividades, faltasEmHorasUC, assiduidadeNaUC,
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
-  kfFaseCompleta, liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
+  liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
   notaDaAulaValidada,
 } from './backend';
 import { calcularNotaPlano, nivelPara20 } from './types';
@@ -53,7 +53,7 @@ export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias:
   cm: { sigla: 'CM', nome: 'Comprometido',
     evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
-    evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, registos de grupo no KitchenFlow, liderança do grupo' },
+    evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, liderança do grupo' },
   co: { sigla: 'CO', nome: 'Consciente',
     evidencias: 'consciente dos outros, de si próprio e do esforço do professor: pergunta do dia (a mesma para a turma, vai rodando), sentido crítico na autoavaliação (perto do que o professor valida), melhoria depois de ficar abaixo de 3 numa atitude' },
   cr: { sigla: 'CR', nome: 'Criativo',
@@ -233,8 +233,8 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         const part = participacoesDoAlunoNaUC(a.id, turmaId, ucId);
         junta('cl', `Eventos e atividades extra: ${part} de ${totalAtiv}`, pct(Math.min(part, totalAtiv), totalAtiv), totalAtiv);
       }
-      const kfGrupo = [...idsVeio].filter(id => kfFaseCompleta(a.id, id, 'inicial') && kfFaseCompleta(a.id, id, 'final')).length;
-      junta('cl', `Registos de grupo no KitchenFlow cumpridos: ${kfGrupo} de ${nVeio} aulas`, pct(kfGrupo, nVeio), nVeio);
+      // Os registos do KitchenFlow saíram daqui: a lista ficava só no telemóvel
+      // do aluno e o professor via sempre «0 de N aulas» (baixava o CL a todos).
       const liderou = [...idsVeio].filter(id => liderKFdoGrupo(id) === a.id).length;
       if (liderou > 0) junta('cl', `Liderou o grupo em ${liderou} aula${liderou === 1 ? '' : 's'}`, 20, liderou);
 
