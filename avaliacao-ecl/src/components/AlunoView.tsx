@@ -2575,8 +2575,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido }: {
       descricao: definicaoDaSubtecnica(id)?.definicao
         || definicaoDaTecnica(tecMae?.nome || '')?.definicao
         || (sub as any)?.definicao || '',
-      resultadoEsperado: definicaoDaSubtecnica(id)?.resultado
-        || ramo.resultado
+      // «Bem feito é»: a mesma frase que o professor vê (a da lista da escola),
+      // para o aluno não se avaliar por uma frase e ser avaliado por outra.
+      resultadoEsperado: ramo.resultado
+        || definicaoDaSubtecnica(id)?.resultado
         || definicaoDaTecnica(tecMae?.nome || '')?.resultado || '',
       motivo: estado,
     };
