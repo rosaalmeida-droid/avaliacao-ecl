@@ -107,6 +107,8 @@ export interface Triagem5C {
   crId?: string;
   /** O problema que o aluno resolveu, nas palavras dele (opcional). */
   problema?: string;
+  /** Disse «não houve ocasião», mas o professor viu que aconteceu: fica na resposta mais baixa. */
+  naoReparou?: ('cl' | 'cr' | 'co')[];
 }
 
 /** Nota 1-5 de uma resposta; null quando não houve ocasião. */

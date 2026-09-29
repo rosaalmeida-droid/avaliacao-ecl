@@ -4,6 +4,7 @@ import { perguntasDaAula, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
+import { PERGUNTAS_ATITUDES, NAO_ACONTECEU, nivelDaAtitude } from '../perguntas_atitudes';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
@@ -296,6 +297,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     autoavaliacoesAluno.filter((a: any) => a.semOportunidade || a.nivel === 'nop')
       .map((a: any) => [a.competenciaId, !(validacaoExistente?.notas || []).some((n: any) => n.competenciaId === a.competenciaId)])));
   const contaParaNota = (id: string) => !semOport[id];
+  // Atitudes: o aluno disse «não aconteceu» e o professor viu que aconteceu.
+  // Essa pergunta passa a contar no nível mais baixo, e o aluno é avisado.
+  const [aconteceu, setAconteceu] = useState<Record<string, boolean>>(() => Object.fromEntries(
+    ((validacaoExistente as any)?.naoReparou || []).map((x: any) => [`${x.competenciaId}|${x.q}`, true])));
   // Sem farda, as técnicas contam 0 (nível 1) na nota da aula; ficam no percurso com a nota dada.
   const notaParaAula = (id: string, nota: number) => semFarda && categoriaDaNota(id) === 'SUB' ? 1 : nota;
 
@@ -367,6 +372,14 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       const notaFinal = calcularNotaFinal(notaProf, notaAluno);
       return { competenciaId: auto.competenciaId, notaProf, notaAluno, notaFinal };
     });
+    const naoReparou: any[] = autoavaliacoesAluno.flatMap((a: any) => (a.respIdx || []).map((v: any, q: number) =>
+      v === NAO_ACONTECEU && aconteceu[`${a.competenciaId}|${q}`]
+        ? { competenciaId: a.competenciaId, q, pergunta: PERGUNTAS_ATITUDES[a.competenciaId]?.[q]?.pergunta || '',
+            proxima: PERGUNTAS_ATITUDES[a.competenciaId]?.[q]?.respostas[2] || '' } : null).filter(Boolean));
+    // O mesmo nas perguntas dos 5 C.
+    if (triagem) for (const q of perguntasDaAula(triagem.coId, triagem.crId))
+      if ((triagem.naoReparou || []).includes(q.chave))
+        naoReparou.push({ competenciaId: q.chave, q: 0, pergunta: q.pergunta, proxima: q.frases[2] || '' });
     if (faltouVerdade) {
       const r = notasFinais.find(n => n.competenciaId === 'ATI-001');
       if (r) { r.notaProf = 1; r.notaFinal = 1; }
@@ -388,6 +401,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         origem: 'professor' as const,
       })),
       ...(triagem ? { triagem5c: triagem } : {}),
+      ...(naoReparou.length ? { naoReparou } : {}),
       comentarioGeral: comentario,
       validadoPor: 'professor',
       validadoEm: agora,
@@ -593,6 +607,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         // Cor e label do nível do aluno — suporta escala nova e antiga
         const corAluno = corNivelAluno((auto as any).nivel || '', (auto as any).nota);
         const labelAluno = (auto as any).nivel === 'outra' ? `«${(auto as any).texto || ''}» — dá tu a nota`
+          : Array.isArray((auto as any).respostas) && (auto as any).respostas.length
+            ? `${String(Math.round(para20Dec(Number((auto as any).nota) || 1) * 10) / 10).replace('.', ',')}/20 pelas respostas abaixo`
           : (auto as any).nivel === 'evento'
           ? `${(auto as any).texto || ''}${(auto as any).comentario ? ` — correu menos bem: «${(auto as any).comentario}»` : ''}`
           : labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
@@ -686,12 +702,50 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             {/* Atitudes: as duas perguntas e o que o aluno respondeu a cada uma. */}
             {Array.isArray((auto as any).respostas) && (auto as any).respostas.length > 0 && (
               <div style={{ marginBottom: 10 }}>
-                {(auto as any).respostas.map((r: any, i: number) => (
-                  <div key={i} style={{ fontSize: 13, padding: '5px 0', borderBottom: '1px solid var(--border)', lineHeight: 1.45 }}>
-                    <div style={{ color: 'rgba(26,23,20,0.55)' }}>{i + 1}. {r.pergunta}</div>
-                    <div style={{ fontWeight: 600 }}>{r.resposta}</div>
-                  </div>
-                ))}
+                {(auto as any).respostas.map((r: any, i: number) => {
+                  const disseNao = (auto as any).respIdx?.[i] === NAO_ACONTECEU;
+                  const chave = `${auto.competenciaId}|${i}`;
+                  // Os colegas da mesma aula que responderam a esta pergunta (não disseram «não aconteceu»).
+                  const col = disseNao ? getSelecoes().filter((s: any) => s.planoAulaId === selecao.planoAulaId && s.alunoId !== selecao.alunoId)
+                    .map((s: any) => (s.autoavaliacoes || []).find((x: any) => x.competenciaId === auto.competenciaId)?.respIdx?.[i])
+                    .filter((v: any) => v != null) : [];
+                  const viram = col.filter((v: any) => v >= 0).length;
+                  return (
+                    <div key={i} style={{ fontSize: 13, padding: '5px 0', borderBottom: '1px solid var(--border)', lineHeight: 1.45 }}>
+                      <div style={{ color: 'rgba(26,23,20,0.55)' }}>{i + 1}. {r.pergunta}</div>
+                      <div style={{ fontWeight: 600 }}>{r.resposta}</div>
+                      {disseNao && (
+                        <div style={{ marginTop: 6, padding: '8px 10px', borderRadius: 8, background: '#fdf6e8', border: '1px solid #e8c98f' }}>
+                          {col.length > 0 && (
+                            <div style={{ fontSize: 12.5, color: '#8a5a12', marginBottom: 6 }}>
+                              {viram} de {col.length} colegas disseram que isto aconteceu nesta aula.
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {([[false, 'Não aconteceu: não conta'], [true, 'Aconteceu e não reparou: conta 5/20']] as const).map(([v, t]) => (
+                              <button key={String(v)} onClick={() => {
+                                  setAconteceu(p => ({ ...p, [chave]: v }));
+                                  const idx = ((auto as any).respIdx || []).map((x: any, q: number) =>
+                                    q === i ? (v ? 0 : NAO_ACONTECEU)
+                                    : x === NAO_ACONTECEU && aconteceu[`${auto.competenciaId}|${q}`] ? 0 : x);
+                                  const n = nivelDaAtitude(idx);
+                                  if (n != null) setNotasProf(p => ({ ...p, [auto.competenciaId]: n }));
+                                }}
+                                style={{ fontSize: 12.5, fontWeight: 700, padding: '5px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                                  border: '1px solid #b5651d', background: !!aconteceu[chave] === v ? '#b5651d' : '#fff',
+                                  color: !!aconteceu[chave] === v ? '#fff' : '#b5651d' }}>{t}</button>
+                            ))}
+                          </div>
+                          {aconteceu[chave] && (
+                            <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 4 }}>
+                              O aluno vai ver: «Aconteceu hoje e não reparaste» e o que fazer para a próxima.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -810,14 +864,29 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             return (
               <div key={q.chave} style={{ marginBottom:10 }}>
                 <div style={{ fontSize:14, fontWeight:700, marginBottom:4 }}>{q.sigla} · {q.pergunta}</div>
-                {viram >= 2 && (
+                {(r === 'sem' || (triagem.naoReparou || []).includes(q.chave)) && (
                   <div style={{ fontSize:13, padding:'7px 10px', marginBottom:6, borderRadius:8,
                     background:'rgba(184,115,51,0.12)', color:'#8a4a15', lineHeight:1.45 }}>
-                    ⚠️ Este aluno diz que hoje não aconteceu, mas <b>{viram} colegas</b> disseram que sim. Confirma.
+                    {viram >= 1
+                      ? <>⚠️ Este aluno diz que hoje não aconteceu, mas <b>{viram} colega{viram === 1 ? '' : 's'}</b> disse{viram === 1 ? '' : 'ram'} que sim.</>
+                      : <>O aluno diz que hoje não aconteceu.</>}
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
+                      {([[false, 'Não aconteceu: não conta'], [true, 'Aconteceu e não reparou: fica na mais baixa']] as const).map(([v, t]) => {
+                        const on = (triagem.naoReparou || []).includes(q.chave) === v;
+                        return (
+                          <button key={String(v)} onClick={() => setTriagem(tr => tr && ({ ...tr,
+                              [q.chave]: v ? 0 : 'sem',
+                              naoReparou: v ? [...new Set([...(tr.naoReparou || []), q.chave])] : (tr.naoReparou || []).filter(x => x !== q.chave) }))}
+                            style={{ fontSize:12.5, fontWeight:700, padding:'5px 10px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
+                              border:'1px solid #b5651d', background: on ? '#b5651d' : '#fff', color: on ? '#fff' : '#b5651d' }}>{t}</button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
                 {opcoes.map(o => (
-                  <button key={String(o.v)} onClick={() => setTriagem(t => t && ({ ...t, [q.chave]: o.v }))}
+                  <button key={String(o.v)} onClick={() => setTriagem(t => t && ({ ...t, [q.chave]: o.v,
+                      naoReparou: (t.naoReparou || []).filter(x => x !== q.chave) }))}
                     style={{ display:'flex', gap:8, alignItems:'center', width:'100%', textAlign:'left',
                       padding:'7px 10px', marginBottom:4, borderRadius:8, cursor:'pointer', fontFamily:'inherit',
                       fontSize:13.5, border: r === o.v ? '2px solid var(--sage)' : '1px solid var(--border)',
