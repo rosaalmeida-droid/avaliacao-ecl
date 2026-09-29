@@ -3,7 +3,7 @@ import { categoriaDaNota } from '../compatECL';
 import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula, ucJaFechada, notaFinalUC } from '../backend';
 import { notaDaPautaUC } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
@@ -145,7 +145,10 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       // O aluno (alunoId) só vê a nota final publicada pelo professor, e só
       // depois da sua autoavaliação final. Até lá, a média das aulas validadas.
       const pauta = !filtroUC || notasComCat.length === 0 ? null
-        : !alunoId ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
+        // Professor: a nota da pauta (níveis 2 a 6 e 5 C) só depois de fechar a UC;
+        // até lá, a média das aulas em /20, como o aluno vê.
+        : !alunoId ? (ucJaFechada(turmaId, filtroUC) ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
+          : { nota: notaFinalUC(aluno.id, turmaId, filtroUC).final } as any)
         : getPropostaFinalUC(aluno.id, filtroUC) ? notaFinalPublicadaComoPauta(aluno.id, filtroUC) : null;
       const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada

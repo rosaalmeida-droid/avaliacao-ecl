@@ -1,6 +1,5 @@
 import { categoriaDaNota } from '../compatECL';
 import { conhecimentosDaAula } from '../compatECL';
-import { notaDaPautaUC } from '../pautaUC';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
@@ -33,7 +32,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -785,8 +784,11 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // outro ecrã a nota da UC com bónus (11).
   // Primeiro a da pauta (a que o professor vê em «Notas da UC»); sem pauta,
   // a nota final da UC calculada pelos registos.
-  const pautaDaUC = ucAtual ? notaDaPautaUC(aluno.id, aluno.turmaId, ucAtual) : null;
-  const notaDaUC = pautaDaUC?.nota != null ? { final: pautaDaUC.nota }
+  // Durante a UC, só a média das aulas em /20 (com as faltas a 0). Os níveis
+  // da pauta (2 a 6) e os 5 C só entram no fecho, na pauta (Rosa, set/2026);
+  // depois de publicada, conta a nota final publicada.
+  const publicadaDaUC = ucAtual ? getNotaFinalPublicadaUC(aluno.id, ucAtual) : null;
+  const notaDaUC = publicadaDaUC ? { final: publicadaDaUC.nota }
     : ucAtual ? notaFinalUC(aluno.id, aluno.turmaId, ucAtual) : null;
   const notasValidas = validacoesAluno.filter(v => !ucAtual || v.plano!.ucId === ucAtual)
     .map(v => v.nota20).filter((n): n is number => n != null);
