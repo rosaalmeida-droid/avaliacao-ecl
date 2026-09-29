@@ -58,4 +58,6 @@ export const BONUS_EVENTOS = {
   notaMinimaConcurso: 10,   // abaixo disto não vai a concurso
   tetoSemParticipacao: 17,   // não foi a nada
   tetoSoEventos: 18,         // o 20 só com pelo menos um concurso
+  /** Concursos por pontos (Rosa, set/2026): no máximo 1 valor; a vitória vale o que falta para 1. */
+  concurso: { candidatura: 0.2, participacao: 0.2, fase: 0.2, maximo: 1 },
 } as const;

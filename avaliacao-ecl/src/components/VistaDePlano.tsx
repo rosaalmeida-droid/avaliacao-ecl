@@ -2359,7 +2359,7 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
   const lista = [...new Set([...inscritos, ...aceites])];
   return (
     <div style={{ marginTop: 11, paddingTop: 11, borderTop: '1px solid rgba(181,101,29,0.25)', fontSize: 13.5 }}>
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>🏅 Quem participa neste evento?</div>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>{plano.tipoEvento === 'concurso' ? '🏆 Quem participa neste concurso?' : '🏅 Quem participa neste evento?'}</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
         <button style={bt(modo === 'turma')} onClick={() => gravar({ modoParticipacao: 'turma' })}>A turma toda (obrigatório)</button>
         <button style={bt(modo === 'inscricao')} onClick={() => gravar({ modoParticipacao: 'inscricao' })}>Quem se inscrever</button>
@@ -2384,6 +2384,46 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
           })}
         </>
       )}
+      {plano.tipoEvento === 'concurso' && <ResultadosConcurso plano={plano} alunos={alunos}
+        participantes={modo === 'turma' ? alunos.map(a => a.id) : aceites} gravar={gravar} bt={bt} />}
+    </div>
+  );
+}
+
+// ── Concurso: fases e vencedor (os pontos saem daqui) ──────────
+// Candidatura 0,2 · participação 0,2 · cada fase 0,2 · vitória: o que
+// falta para 1 valor (Rosa, set/2026). O professor marca o que aconteceu.
+function ResultadosConcurso({ plano, alunos, participantes, gravar, bt }: {
+  plano: any; alunos: { id: string; nome?: string; numero: number }[]; participantes: string[];
+  gravar: (patch: any) => void; bt: (sel: boolean) => React.CSSProperties;
+}) {
+  const nFases = Math.max(0, Math.min(2, Number(plano.fasesConcurso) || 0));
+  const res: Record<string, { fase1?: boolean; fase2?: boolean; ganhou?: boolean }> = plano.resultadosConcurso || {};
+  const marcar = (id: string, k: 'fase1' | 'fase2' | 'ganhou') =>
+    gravar({ resultadosConcurso: { ...res, [id]: { ...(res[id] || {}), [k]: !(res[id] || {})[k] } } });
+  const vitoria = Math.round(Math.max(0, 1 - 0.2 - 0.2 - 0.2 * nFases) * 10) / 10;
+  return (
+    <div style={{ marginTop: 12, paddingTop: 11, borderTop: '1px solid rgba(181,101,29,0.25)' }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>🏆 Resultados do concurso</div>
+      <div style={{ color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.5 }}>
+        Candidatura 0,2 · participação 0,2{nFases ? ` · cada fase 0,2` : ''} · vitória {String(vitoria).replace('.', ',')}. Quem ganha fica com 1 valor.
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+        {[0, 1, 2].map(n => <button key={n} style={bt(nFases === n)} onClick={() => gravar({ fasesConcurso: n })}>
+          {n === 0 ? 'Sem fases' : n === 1 ? '1 fase' : '2 fases'}</button>)}
+      </div>
+      {participantes.length === 0 && <div style={{ color: 'rgba(26,23,20,0.5)' }}>Ainda não há participantes.</div>}
+      {participantes.map(id => {
+        const a = alunos.find(x => x.id === id); const r = res[id] || {};
+        return (
+          <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '5px 0', borderTop: '1px solid rgba(26,23,20,0.06)' }}>
+            <span style={{ flex: '1 1 140px' }}>{a ? `${a.numero}. ${a.nome || ''}` : id}</span>
+            {nFases >= 1 && <button style={bt(!!r.fase1)} onClick={() => marcar(id, 'fase1')}>{r.fase1 ? '✓ ' : ''}Passou a 1.ª fase</button>}
+            {nFases >= 2 && <button style={bt(!!r.fase2)} onClick={() => marcar(id, 'fase2')}>{r.fase2 ? '✓ ' : ''}Passou a 2.ª fase</button>}
+            <button style={bt(!!r.ganhou)} onClick={() => marcar(id, 'ganhou')}>{r.ganhou ? '✓ ' : ''}Ganhou</button>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -834,6 +834,13 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       }
 
       // ── Sincronizar Presenças ───────────────────────────────────────
+      // A decisão local ganha se for mais recente do que a do Sheets; sem data
+      // no Sheets, ganha durante 15 minutos (o tempo de o Sheets a receber).
+      const decisaoLocalMaisRecente = (local: any, s: any): boolean => {
+        if (!local?.decididoEm) return false;
+        if (s?.decididoEm) return String(local.decididoEm) > String(s.decididoEm);
+        return Date.now() - Date.parse(local.decididoEm) < 15 * 60 * 1000;
+      };
       const jsonPres = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId });
       if (jsonPres?.ok && jsonPres.dados?.length > 0) {
         // As linhas do Sheets não trazem identificador: comparar pelo id
@@ -852,6 +859,11 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
           const local = porChave.get(k);
           if (!local) {
             porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
+          } else if (decisaoLocalMaisRecente(local, s)) {
+            // A decisão tomada neste aparelho ainda não chegou ao Sheets (ou
+            // é mais recente): não se volta atrás. Antes a sincronização
+            // repunha a decisão antiga e parecia que a falta não ficava.
+            continue;
           } else if (s.decisaoProfessor && s.decisaoProfessor !== local.decisaoProfessor) {
             porChave.set(k, { ...local, decisaoProfessor: s.decisaoProfessor,
               horasPresentes: s.horasPresentes || undefined,
@@ -5099,10 +5111,24 @@ export function decidirFalta(
     planoTitulo: plano?.titulo || '', ucId: reg.ucId,
     presente: reg.presente, atrasado: !!reg.atrasado, atrasadoMins: reg.atrasadoMins || 0,
     horaEntrada: reg.horaEntrada || '', fardamentoOk: !!reg.fardamentoOk,
-    data: reg.data || '', decisaoProfessor: decisao, decididoPor: professor,
+    data: reg.data || '', decisaoProfessor: decisao, decididoPor: professor, decididoEm: reg.decididoEm,
     horasPresentes: reg.horasPresentes || null,
     observacao: reg.observacao || '',
   });
+}
+
+/**
+ * «Confirmar as presenças»: volta a enviar para o Sheets todas as decisões
+ * desta aula e guarda no plano quem confirmou e quando. Antes não havia
+ * forma de fechar esta parte, e a professora marcava as faltas várias vezes
+ * sem saber se tinham ficado (Rosa, set/2026).
+ */
+export function confirmarPresencasDaAula(planoAulaId: string, professor: string): number {
+  const regs = load<any>(KEYS.presencas).filter(r => r.planoAulaId === planoAulaId && r.decisaoProfessor);
+  regs.forEach(r => decidirFalta(r.alunoId, planoAulaId, r.decisaoProfessor, r.decididoPor || professor, undefined, r.horasPresentes));
+  const plano: any = getPlanosAula().find(p => p.id === planoAulaId);
+  if (plano) addOrUpdatePlanoAula({ ...plano, presencasConfirmadasEm: new Date().toISOString(), presencasConfirmadasPor: professor, atualizadoEm: new Date().toISOString() });
+  return regs.length;
 }
 
 // ── Líder do KitchenFlow ──────────────────────────────────────
@@ -5622,6 +5648,8 @@ export interface EstadoAlunoNaAula {
   foraDeTempo: boolean;
   minutosAposAbertura: number;
   decisaoFalta?: string;
+  /** Quando o professor tomou a decisão (para mostrar «gravado às…»). */
+  decididoEm?: string;
   fardamentoOk: boolean;
   itensEmFalta: string;
   /** «às 09:05 (52 s)» quando confirmou que lavou as mãos; '' se não. */
@@ -5663,6 +5691,7 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
       foraDeTempo: !!pres?.atrasado,
       minutosAposAbertura: pres?.atrasadoMins || 0,
       decisaoFalta: (pres as any)?.decisaoProfessor,
+      decididoEm: (pres as any)?.decididoEm as string | undefined,
       fardamentoOk: !!pres?.fardamentoOk,
       itensEmFalta: emFalta,
       maosLavadas: maosLavadasDaPresenca(pres?.observacao),
@@ -6430,6 +6459,62 @@ export interface NotaUC {
   participacoes: number;
   limitadaPorTeto: boolean;
   final: number | null;
+  /** Até onde pode ir a nota e porquê (para o aluno perceber). */
+  teto?: number;
+  motivoTeto?: string;
+}
+
+/**
+ * As oportunidades de participar que o aluno teve nesta UC, e o que fez com
+ * elas. O limite (17 / 18 / 20) só castiga quem teve a oportunidade e não a
+ * aproveitou (Rosa, set/2026):
+ *  • sem atividades na UC → sem limite;
+ *  • candidatou-se e não foi escolhido → mostrou atitude (não ganha bónus);
+ *  • faltou a uma obrigatória, ou não se candidatou → limite 17;
+ *  • o 20 só pede concurso se houve um concurso a que se pudesse candidatar.
+ * Só conta o que está registado na aplicação e já aconteceu — o que não
+ * está registado conta a favor do aluno.
+ */
+export function oportunidadesNaUC(alunoId: string, turmaId: string, ucId: string) {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
+  const noModulo = (d: string) => !mod?.dataInicio || !mod?.dataFim || (d >= mod.dataInicio && d <= mod.dataFim);
+  const ops: { titulo: string; concurso: boolean; obrigatoria: boolean; participou: boolean; candidatou: boolean }[] = [];
+  const participadas = new Set(atividadesDoAlunoNaUC(alunoId, turmaId, ucId).map(a => a.id));
+  const planosEv = getPlanosAula().filter((p: any) => p.turmaId === turmaId && p.tipoEvento && p.ucId === ucId
+    && p.estado !== 'arquivado' && String(p.data || '').slice(0, 10) <= hoje);
+  const dias = new Set<string>();
+  for (const p of planosEv as any[]) {
+    dias.add(String(p.data || '').slice(0, 10));
+    const obrigatoria = modoParticipacao(p) === 'turma';
+    ops.push({ titulo: p.titulo || 'Atividade', concurso: p.tipoEvento === 'concurso', obrigatoria,
+      participou: participadas.has(p.id),
+      candidatou: !obrigatoria && (inscritosNoEvento(p.id).includes(alunoId) || participantesDoEvento(p).includes(alunoId)) });
+  }
+  for (const a of getAtividades().filter(a => a.turmaId === turmaId)) {
+    const d = String(a.data || '').slice(0, 10);
+    if (d > hoje || !noModulo(d) || dias.has(d)) continue;
+    ops.push({ titulo: a.titulo || 'Atividade', concurso: a.tipo === 'concurso', obrigatoria: false,
+      participou: (a.participantesIds || []).includes(alunoId),
+      candidatou: (a.inscritosIds || []).includes(alunoId) || (a.participantesIds || []).includes(alunoId) });
+  }
+  return ops;
+}
+
+export function tetoDaNotaUC(alunoId: string, turmaId: string, ucId: string): { teto: number; motivo: string } {
+  const ops = oportunidadesNaUC(alunoId, turmaId, ucId);
+  if (!ops.length) return { teto: 20, motivo: '' };
+  const mostrou = ops.some(o => o.participou || o.candidatou);
+  if (!mostrou) {
+    const faltadas = ops.map(o => o.titulo);
+    return { teto: BONUS_EVENTOS.tetoSemParticipacao,
+      motivo: `Tiveste oportunidade de participar (${faltadas.join(', ')}) e não participaste nem te candidataste. Por isso a tua nota vai até ${BONUS_EVENTOS.tetoSemParticipacao}.` };
+  }
+  const concursos = ops.filter(o => o.concurso);
+  if (concursos.length && !concursos.some(o => o.participou || o.candidatou))
+    return { teto: BONUS_EVENTOS.tetoSoEventos,
+      motivo: `Houve um concurso (${concursos.map(o => o.titulo).join(', ')}) e não te candidataste. O 20 fica para quem se candidata a um concurso; a tua nota vai até ${BONUS_EVENTOS.tetoSoEventos}.` };
+  return { teto: 20, motivo: '' };
 }
 
 /** Aplica os dois bónus e o teto a uma nota base de UC. */
@@ -6447,24 +6532,17 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
   const bonusAssiduidade = 0;
   let nota = base;
 
-  // Eventos contam para todos (ajudam quem tem negativa a subir); concursos
-  // só com 10 ou mais. Cada um só conta se a avaliação do evento o permitir.
-  const atividades = atividadesDoAlunoNaUC(alunoId, turmaId, ucId);
-  const avaliadas = atividades.filter(a => a.tipo !== 'concurso' || base >= B.notaMinimaConcurso)
-    .map(a => ({ a, r: participacaoContaParaBonus(a, alunoId) }));
-  const contam = avaliadas.filter(x => x.r.conta).map(x => x.a);
-  const temConcurso = contam.some(a => a.tipo === 'concurso');
-  // Proporcional à nota do evento: 20 dá o bónus todo, 16 dá 80%, 10 dá metade.
-  const bruto = avaliadas.filter(x => x.r.conta)
-    .reduce((s, x) => s + (x.a.tipo === 'concurso' ? B.porConcurso : B.porEvento) * x.r.fator, 0);
+  // O bónus de cada atividade (eventos proporcionais à nota do evento;
+  // concursos por pontos: candidatura, participação, fases, vitória).
+  const bruto = bonusPorAtividade(alunoId, turmaId, ucId, base).reduce((t, b) => t + b.valor, 0);
   const bonusParticipacao = Math.round(Math.min(B.maximo, bruto) * 100) / 100;
   nota += bonusParticipacao;
-  // Tetos: sem participar, 17; só eventos, 18; o 20 só com concurso.
-  const teto = contam.length === 0 ? B.tetoSemParticipacao : temConcurso ? 20 : B.tetoSoEventos;
+  // Tetos: só para quem teve a oportunidade e não a aproveitou (tetoDaNotaUC).
+  const { teto, motivo: motivoTeto } = tetoDaNotaUC(alunoId, turmaId, ucId);
   let limitadaPorTeto = false;
   if (nota > teto) { nota = teto; limitadaPorTeto = true; }
   const final = Math.min(20, Math.round(nota * 10) / 10);
-  return { base, bonusAssiduidade, bonusParticipacao, participacoes, limitadaPorTeto, final };
+  return { base, bonusAssiduidade, bonusParticipacao, participacoes, limitadaPorTeto, final, teto, motivoTeto };
 }
 
 /** O bónus de cada atividade (evento/concurso) do aluno na UC, para o aluno
@@ -6472,12 +6550,59 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
 export interface BonusDaAtividade { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }
 export function bonusPorAtividade(alunoId: string, turmaId: string, ucId: string, base: number | null): BonusDaAtividade[] {
   const B = BONUS_EVENTOS;
-  return atividadesDoAlunoNaUC(alunoId, turmaId, ucId).map(a => {
+  // Concursos com plano: por pontos (pontosDoConcurso). Contam também para
+  // quem se candidatou e não foi escolhido.
+  const concursos = getPlanosAula().filter((p: any) => p.turmaId === turmaId && p.tipoEvento === 'concurso'
+    && p.ucId === ucId && p.estado !== 'arquivado');
+  const idsConcurso = new Set(concursos.map(p => p.id));
+  const doConcurso = concursos.map((p: any) => {
+    const r = pontosDoConcurso(p, alunoId, base);
+    return r.candidatou ? { id: p.id, titulo: p.titulo || 'Concurso', data: String(p.data || '').slice(0, 10), tipo: 'concurso',
+      conta: r.valor > 0, motivo: r.explicacao, valor: r.valor } : null;
+  }).filter((x): x is BonusDaAtividade => !!x);
+  const outras = atividadesDoAlunoNaUC(alunoId, turmaId, ucId).filter(a => !idsConcurso.has(a.id)).map(a => {
     const semNota = a.tipo === 'concurso' && (base ?? 0) < B.notaMinimaConcurso;
     const r = semNota ? { conta: false, motivo: `Os concursos contam a partir de ${B.notaMinimaConcurso} valores.`, fator: 0 } : participacaoContaParaBonus(a, alunoId);
     const valor = r.conta ? Math.round((a.tipo === 'concurso' ? B.porConcurso : B.porEvento) * r.fator * 100) / 100 : 0;
     return { id: a.id, titulo: a.titulo || 'Atividade', data: String(a.data || '').slice(0, 10), tipo: a.tipo, conta: r.conta, motivo: r.motivo, valor };
-  }).sort((x, y) => x.data.localeCompare(y.data));
+  });
+  return [...outras, ...doConcurso].sort((x, y) => x.data.localeCompare(y.data));
+}
+
+/**
+ * Pontos de um concurso, por factos (Rosa, set/2026) — até 1 valor:
+ *   candidatou-se 0,2 (mesmo sem ser escolhido) · participou 0,2 ·
+ *   cada fase passada 0,2 · ganhou: o que falta para 1.
+ * Quem foi escolhido e depois não foi perde tudo (também a candidatura).
+ */
+export function pontosDoConcurso(p: any, alunoId: string, base: number | null):
+  { candidatou: boolean; valor: number; explicacao: string } {
+  const C = BONUS_EVENTOS.concurso;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const obrigatorio = modoParticipacao(p) === 'turma';
+  const escolhido = participantesDoEvento(p).includes(alunoId);
+  const candidatou = obrigatorio || escolhido || inscritosNoEvento(p.id).includes(alunoId);
+  if (!candidatou) return { candidatou: false, valor: 0, explicacao: '' };
+  if (base !== null && base < BONUS_EVENTOS.notaMinimaConcurso)
+    return { candidatou, valor: 0, explicacao: `Os concursos contam a partir de ${BONUS_EVENTOS.notaMinimaConcurso} valores.` };
+  const participou = getValidacoes().some(v => v.alunoId === alunoId && v.planoAulaId === p.id);
+  const passou = String(p.data || '').slice(0, 10) < hoje;
+  if (escolhido && passou && !participou) return { candidatou, valor: 0, explicacao: 'Foste escolhido e não participaste.' };
+  const nFases = Math.max(0, Math.min(2, Number(p.fasesConcurso) || 0));
+  const res = (p.resultadosConcurso || {})[alunoId] || {};
+  const partes: string[] = [];
+  let v = 0;
+  const f = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
+  v += C.candidatura; partes.push(`${obrigatorio ? 'inscrição' : 'candidatura'} ${f(C.candidatura)}`);
+  if (participou) { v += C.participacao; partes.push(`participação ${f(C.participacao)}`); }
+  if (participou && nFases >= 1 && res.fase1) { v += C.fase; partes.push(`1.ª fase ${f(C.fase)}`); }
+  if (participou && nFases >= 2 && res.fase2) { v += C.fase; partes.push(`2.ª fase ${f(C.fase)}`); }
+  if (participou && res.ganhou) {
+    const vit = Math.max(0, C.maximo - C.candidatura - C.participacao - C.fase * nFases);
+    v += vit; partes.push(`vitória ${f(vit)}`);
+  }
+  v = Math.min(C.maximo, Math.round(v * 100) / 100);
+  return { candidatou, valor: v, explicacao: partes.length ? partes.join(' + ') : 'À espera do concurso.' };
 }
 
 /**
