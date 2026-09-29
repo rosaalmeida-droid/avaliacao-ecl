@@ -1,4 +1,5 @@
 import { categoriaDaNota } from '../compatECL';
+import { BotaoPCC } from './BotaoPCC';
 import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
@@ -2508,12 +2509,26 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                           <strong>{p.num}.</strong> {p.descricao}
                           {p.temperatura&&<span style={{ color:'#2980b9', marginLeft:6, fontSize:13 }}>🌡 {p.temperatura}</span>}
                           {p.haccp&&<div style={{ color:T.danger, fontSize:13, marginTop:2 }}>⚠️ {p.haccp}</div>}
+                          {p.haccp && <BotaoPCC texto={p.haccp} prato={f.nomePrato || ''} aluno={aluno} plano={plano} />}
                         </div>
                       </label>
                     );
                   })}
                 </div>
               )}
+
+              {/* No fim de cada ficha, bem à vista: a amostra testemunho (procedimento do KitchenFlow). */}
+              <div style={{ marginTop:14, padding:'14px 15px', borderRadius:12, background:'#fdecea',
+                border:'2px solid #c0392b', color:'#7a1f14', lineHeight:1.55 }}>
+                <div style={{ fontSize:15.5, fontWeight:800 }}>⚠️ Não te esqueças da amostra testemunho</div>
+                <div style={{ fontSize:14, marginTop:4 }}>
+                  <b>Quantidade:</b> mínimo 150 g de cada prato servido.<br />
+                  <b>Onde:</b> no frigorífico dedicado, de 0 °C a 3 °C.<br />
+                  <b>Quanto tempo:</b> guarda-se 72 horas depois do serviço; depois destrói-se.<br />
+                  Serve para analisar a comida se houver suspeita de intoxicação alimentar.
+                </div>
+                <BotaoPCC texto="" forcar="testemunho" prato={f.nomePrato || ''} aluno={aluno} plano={plano} />
+              </div>
 
               {/* O guião NÃO aparece aqui. Tem passo próprio, e mostrá-lo
                   dentro da ficha punha o aluno a ler o mesmo texto duas
