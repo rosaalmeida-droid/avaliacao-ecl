@@ -32,7 +32,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -998,6 +998,13 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
         {/* ── ABA INÍCIO ── */}
         {/* ── INÍCIO: a aula de hoje como ação principal ── */}
+        {aba === 'inicio' && !destino && aparelhoSemEspaco() && (
+          <div style={{ margin: '0 0 12px', padding: '12px 14px', borderRadius: 12, background: '#fdf0ef', border: '1.5px solid #c0392b',
+            color: '#8e2418', fontSize: 14, lineHeight: 1.5 }}>
+            <b>Este telemóvel não tem espaço para guardar a aplicação.</b> Consegues ver as aulas agora, mas ao fechar a
+            aplicação voltam a ser descarregadas. Liberta espaço no telemóvel (fotografias, vídeos, aplicações) ou usa outro navegador.
+          </div>
+        )}
         {aba === 'inicio' && !destino && (
           <>
             <CartaoAutoavaliacaoFinal ucs={ucsFinais} onAbrir={setUcFinal} />
