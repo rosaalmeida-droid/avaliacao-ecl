@@ -16,6 +16,8 @@ export const idEventoDoPlano = (planoId: string) => 'ev_plano_' + planoId;
 /** Cria em Eventos o evento de um plano de evento (se ainda não existir) e liga-os. */
 export function garantirEventoDoPlano(plano: any, professor = ''): string | null {
   if (!plano || plano.tipoEvento !== 'evento') return null;
+  // «Outra atividade» (visita, feira…) não tem catering: fica só o plano.
+  if (plano.tipoAtividade === 'Atividade fora da escola') return null;
   const existentes = lerEventosLocais<any>();
   if (plano.eventoId && existentes.some(e => e.id === plano.eventoId)) return plano.eventoId;
   const id = plano.eventoId || idEventoDoPlano(plano.id);
@@ -39,7 +41,7 @@ export function eventosDosPlanosEmFalta(): number {
   for (const p of getPlanosAula() as any[]) {
     // Só os que não têm evento nenhum: um plano ligado a um evento que ainda
     // não chegou a este aparelho não se mexe (senão criava-se um por cima).
-    if (p.tipoEvento !== 'evento' || p.estado === 'arquivado' || p.eventoId) continue;
+    if (p.tipoEvento !== 'evento' || p.estado === 'arquivado' || p.eventoId || p.tipoAtividade === 'Atividade fora da escola') continue;
     const id = garantirEventoDoPlano(p);
     if (id && p.eventoId !== id) addOrUpdatePlanoAula({ ...p, eventoId: id, atualizadoEm: new Date().toISOString() });
     n++;

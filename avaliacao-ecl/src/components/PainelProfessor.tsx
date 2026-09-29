@@ -78,8 +78,7 @@ function grupos(pendentes: { validar: number; recuperacoes: number }): Grupo[] {
       destinos: [
         { id: 'planos',  label: 'Planos de aula', icone: I.plano },
         { id: 'abrir_aula', label: 'Abrir a aula', icone: I.abrir },
-        { id: 'eventos', label: 'Eventos', icone: I.eventos },
-        { id: 'avaliar_evento', label: 'Avaliar evento fora do horário', icone: I.avaliarEvento },
+        { id: 'eventos', label: 'Atividades e concursos', icone: I.eventos },
       ],
     },
     {

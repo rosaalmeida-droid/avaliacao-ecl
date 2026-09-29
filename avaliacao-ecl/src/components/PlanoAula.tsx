@@ -570,7 +570,8 @@ function Acc({ num, icon, title, desc, status, open, locked, onToggle, children 
 
 export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoIdInicial, onPlanoIdInicialUsado, criarEvento }: {
   /** Menu «Avaliar evento fora do horário»: abre logo o formulário de evento. */
-  criarEvento?: boolean;
+  /** true: evento externo; ou o tipo de atividade (ex.: 'Concurso'). */
+  criarEvento?: boolean | string;
   turmaId: string; nomeProfessor?: string;
   /** Muda quando chegam dados novos: re-desenha sem perder a vista. */
   versao?: number;
@@ -582,7 +583,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   const [vista, setVista] = useState<'lista'|'criar'|'detalhe'|'calendario'|'arquivo'>(criarEvento ? 'criar' : 'calendario');
   /** Data escolhida no calendário — entra já preenchida no formulário. */
   const [dataNovoPlano, setDataNovoPlano] = useState<string>('');
-  const [tipoNovoPlano, setTipoNovoPlano] = useState<string>(criarEvento ? 'Evento externo' : '');
+  const [tipoNovoPlano, setTipoNovoPlano] = useState<string>(criarEvento ? (typeof criarEvento === 'string' ? criarEvento : 'Evento externo') : '');
   /** Plano do Arquivo a eliminar de vez — passa pelo aviso. */
   const [arquivadoAEliminar, setArquivadoAEliminar] = useState<TPlanoAula | null>(null);
   const [planoAtivo, setPlanoAtivo] = useState<TPlanoAula|null>(null);

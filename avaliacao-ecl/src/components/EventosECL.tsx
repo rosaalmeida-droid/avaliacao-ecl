@@ -15,7 +15,7 @@ import { EventosWizard } from './EventosWizard';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   getTurmas, gravarEvento, apagarEvento, lerEventosLocais, sincronizarEventos, proximoNumeroEvento,
-  getFichasProducao, getRequisicoes,
+  getFichasProducao, getRequisicoes, getPlanosAula, eventoForaDoHorario, modoParticipacao, inscritosNoEvento, participantesDoEvento,
 } from '../backend';
 import Requisicao, { custoDaFicha } from './Requisicao';
 import { LOGO_ECL } from '../logo_ecl';
@@ -101,7 +101,13 @@ const grelha = (min = 150): React.CSSProperties => ({ display: 'grid', gridTempl
 // 1. A LISTA
 // ══════════════════════════════════════════════════════════════
 
-export function EventosECL({ turmaId, nomeProfessor }: { turmaId?: string; nomeProfessor?: string }) {
+export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano }: {
+  turmaId?: string; nomeProfessor?: string;
+  /** Concurso ou outra atividade: cria-se o plano de avaliação (tipo de atividade). */
+  onNovoPlano?: (tipoAtividade: string) => void;
+  onAbrirPlano?: (plano: any) => void;
+}) {
+  const [escolherTipo, setEscolherTipo] = useState(false);
   const [versao, setVersao] = useState(0);
   const [aberto, setAberto] = useState<string | null>(null);
   const [emTriagem, setEmTriagem] = useState<EventoECL | null>(null);
@@ -136,6 +142,23 @@ export function EventosECL({ turmaId, nomeProfessor }: { turmaId?: string; nomeP
       <EventosWizard turmaId={turmaId || ''} nomeProfessor={nomeProfessor} />
     </>);
   }
+  if (escolherTipo) {
+    const novoEvento = (onde: 'ecl' | 'fora') => { setEscolherTipo(false); setEmTriagem({ ...eventoNovo(proximoNumeroEvento(), nomeProfessor || ''), onde }); };
+    const OPCOES: { icone: string; nome: string; sub: string; ir: () => void }[] = [
+      { icone: '🚐', nome: 'Evento externo', sub: 'para fora da escola ou para uma entidade: catering e serviço', ir: () => novoEvento('fora') },
+      { icone: '🏫', nome: 'Evento interno', sub: 'na ECL: catering e serviço', ir: () => novoEvento('ecl') },
+      { icone: '🏆', nome: 'Concurso', sub: 'avalia-se a participação dos alunos', ir: () => { setEscolherTipo(false); onNovoPlano?.('Concurso'); } },
+      { icone: '✳️', nome: 'Outra atividade', sub: 'visita, feira, atividade fora da escola…', ir: () => { setEscolherTipo(false); onNovoPlano?.('Atividade fora da escola'); } },
+    ];
+    return fundo(<>
+      <button onClick={() => setEscolherTipo(false)} style={{ ...botao(), minHeight: 40, padding: '8px 14px', fontSize: 14, marginBottom: 12 }}>← Voltar</button>
+      <div style={{ fontSize: 24, fontWeight: 800, color: C.tinta, margin: '0 2px 6px' }}>O que é?</div>
+      <div style={{ fontSize: 14.5, color: C.texto, margin: '0 2px 14px' }}>A seguir escolhes quem vai: a turma toda (obrigatório) ou os alunos candidatam-se e tu aceitas.</div>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {OPCOES.filter(o => o.nome.startsWith('Evento') || onNovoPlano).map(o => <Opcao key={o.nome} ativo={false} icone={o.icone} sub={o.sub} onClick={o.ir}>{o.nome}</Opcao>)}
+      </div>
+    </>);
+  }
   if (emTriagem) {
     return fundo(<Triagem inicial={emTriagem} onCancelar={() => setEmTriagem(null)}
       onConcluir={(e) => { guardar(e); setEmTriagem(null); setAberto(e.id); }} />);
@@ -150,18 +173,22 @@ export function EventosECL({ turmaId, nomeProfessor }: { turmaId?: string; nomeP
   const daTurma = (e: EventoECL) => !turmaId || e.turmasIds.includes(turmaId) || e.criadoPor === nomeProfessor;
   const ativos = eventos.filter(e => !['fechado', 'cancelado'].includes(e.estado) && (verTodos || daTurma(e)));
   const arquivo = eventos.filter(e => ['fechado', 'cancelado'].includes(e.estado));
+  // Concursos e outras atividades: só o plano de avaliação (sem catering).
+  const outras = (getPlanosAula() as any[]).filter(p => eventoForaDoHorario(p) && p.estado !== 'arquivado' && !p.eventoId
+    && (verTodos || !turmaId || p.turmaId === turmaId))
+    .sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
 
   return fundo(
     <>
-      <button onClick={() => setEmTriagem(eventoNovo(proximoNumeroEvento(), nomeProfessor || ''))} style={{
+      <button onClick={() => setEscolherTipo(true)} style={{
         width: '100%', background: C.bordeaux, color: '#fff', border: 'none', borderRadius: 18, padding: '22px 20px',
         display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
         boxShadow: '0 4px 16px rgba(123,34,51,0.25)' }}>
         <span style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.16)', display: 'flex',
           alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 300 }}>+</span>
         <span>
-          <span style={{ display: 'block', fontSize: 19, fontWeight: 800 }}>Novo evento</span>
-          <span style={{ display: 'block', fontSize: 14, color: C.bordeauxClaro, marginTop: 2 }}>Recebeu um pedido? Perguntas rápidas, uma de cada vez.</span>
+          <span style={{ display: 'block', fontSize: 19, fontWeight: 800 }}>Nova atividade</span>
+          <span style={{ display: 'block', fontSize: 14, color: C.bordeauxClaro, marginTop: 2 }}>Evento externo ou interno, concurso ou outra atividade.</span>
         </span>
       </button>
 
@@ -211,6 +238,26 @@ export function EventosECL({ turmaId, nomeProfessor }: { turmaId?: string; nomeP
           </button>
         );
       })}
+
+      {outras.length > 0 && (<>
+        <div style={rotulo}>Concursos e outras atividades</div>
+        {outras.map(p => {
+          const turma = modoParticipacao(p) === 'turma';
+          const insc = turma ? 0 : inscritosNoEvento(p.id).length, aceites = turma ? 0 : participantesDoEvento(p).length;
+          return (
+            <button key={p.id} onClick={() => onAbrirPlano?.(p)} style={{ ...cartao, width: '100%', textAlign: 'left', cursor: 'pointer',
+              fontFamily: 'inherit', display: 'flex', gap: 14, border: 'none', alignItems: 'center' }}>
+              <BlocoData iso={String(p.data || '').slice(0, 10)} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 17, fontWeight: 800, color: C.tinta }}>{p.tipoEvento === 'concurso' ? '🏆 ' : ''}{p.titulo || 'Atividade'}</span>
+                <span style={{ display: 'block', fontSize: 14, color: C.texto, marginTop: 2 }}>
+                  {[p.tipoAtividade, p.turmaId, turma ? 'Todos (obrigatório)' : `Candidaturas: ${insc} inscrito${insc === 1 ? '' : 's'}, ${aceites} aceite${aceites === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </>)}
 
       {arquivo.length > 0 && (
         <details style={{ marginTop: 18 }}>

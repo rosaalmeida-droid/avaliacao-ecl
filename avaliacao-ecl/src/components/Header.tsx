@@ -94,8 +94,9 @@ export const NAV: NavItem[] = [
   { id: 'inicio',              label: 'Início',               icon: Icons.inicio,     secao: 'Dia a dia' },
   { id: 'planos',              label: 'Planos de aula',       icon: Icons.planos,     secao: 'Dia a dia' },
   { id: 'abrir_aula',          label: 'Abrir a aula',         icon: Icons.inicio,     secao: 'Dia a dia' },
-  { id: 'eventos',             label: 'Eventos',              icon: Icons.eventos,    secao: 'Dia a dia' },
-  { id: 'avaliar_evento',      label: 'Avaliar evento fora do horário', icon: Icons.eventos, secao: 'Avaliar' },
+  // Eventos, concursos e outras atividades num só sítio, com o mesmo nome
+  // que os alunos veem (antes havia «Eventos» e «Avaliar evento fora do horário»).
+  { id: 'eventos',             label: 'Atividades e concursos', icon: Icons.eventos, secao: 'Dia a dia' },
   { id: 'validacao',           label: 'Validar',              icon: Icons.validacao,  secao: 'Avaliar' },
   { id: 'avaliacao_uc',        label: 'Notas da UC',          icon: Icons.avaliacao,  secao: 'Avaliar' },
   { id: 'mapa_competencias',   label: 'Mapa da turma',        icon: Icons.mapa,       secao: 'Avaliar' },
@@ -383,7 +384,8 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
   }, []);
 
   const aberta = isMobile ? sidebarAberta : true;
-  const itemAtivo = NAV.find(n => n.id === vistaAtiva);
+  // Concurso ou outra atividade a ser criada: fica sob «Atividades e concursos».
+  const itemAtivo = NAV.find(n => n.id === (vistaAtiva === 'avaliar_evento' ? 'eventos' : vistaAtiva));
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: APP_BG, fontFamily: "'Inter', system-ui, sans-serif" }}>
