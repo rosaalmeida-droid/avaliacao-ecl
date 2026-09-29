@@ -1,3 +1,4 @@
+import { LOGO_ECL } from '../logo_ecl';
 import React, { useState } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { publicarNoClassroom, getPlanosAulaPorTurma, addOrUpdatePlanoAula, getFichasProducao, getRequisicaoPorPlano } from '../backend';
@@ -328,6 +329,7 @@ table.rod td.dir{text-align:right}
 .pub-sim{background:#d1fae5;color:#059669}.pub-nao{background:#ede9fe;color:#6d28d9}
 @media print{.no-print{display:none}}
 </style></head><body>
+<div style="display:flex;align-items:center;gap:12px;margin:0 0 12px"><img src="${LOGO_ECL}" alt="Escola de Comércio de Lisboa" style="height:50px;width:auto"/></div>
 ${paraClassroom ? '' : `<div class="no-print" style="background:#ede9fe;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:12px">
 💡 Para guardar como PDF: no menu de impressão escolhe <strong>"Guardar como PDF"</strong>.</div>`}
 <div class="cab"><h1>Relatório de Evento Pedagógico</h1>

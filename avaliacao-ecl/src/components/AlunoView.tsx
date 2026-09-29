@@ -1,6 +1,5 @@
 import { categoriaDaNota } from '../compatECL';
 import { conhecimentosDaAula } from '../compatECL';
-import { notaDaPautaUC } from '../pautaUC';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
@@ -33,7 +32,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -785,8 +784,11 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   // outro ecrã a nota da UC com bónus (11).
   // Primeiro a da pauta (a que o professor vê em «Notas da UC»); sem pauta,
   // a nota final da UC calculada pelos registos.
-  const pautaDaUC = ucAtual ? notaDaPautaUC(aluno.id, aluno.turmaId, ucAtual) : null;
-  const notaDaUC = pautaDaUC?.nota != null ? { final: pautaDaUC.nota }
+  // Durante a UC, só a média das aulas em /20 (com as faltas a 0). Os níveis
+  // da pauta (2 a 6) e os 5 C só entram no fecho, na pauta (Rosa, set/2026);
+  // depois de publicada, conta a nota final publicada.
+  const publicadaDaUC = ucAtual ? getNotaFinalPublicadaUC(aluno.id, ucAtual) : null;
+  const notaDaUC = publicadaDaUC ? { final: publicadaDaUC.nota }
     : ucAtual ? notaFinalUC(aluno.id, aluno.turmaId, ucAtual) : null;
   const notasValidas = validacoesAluno.filter(v => !ucAtual || v.plano!.ucId === ucAtual)
     .map(v => v.nota20).filter((n): n is number => n != null);
@@ -1428,8 +1430,11 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
     // A requisição é do professor: o aluno só a consulta, e só se existir.
     // Antes o passo aparecia sempre, com "Nenhuma requisição criada".
     ...(requisicao ? [{ id:'requisicao', label:'Vi a requisição', agora:'Ver a requisição', cor:V }] : []),
-    // E antes da autoavaliação: a função tem de ficar completa.
-    ...(minhasFuncoes.length ? [{ id:'funcao_fim', label:'Fiz a minha função (fim)', agora:'A tua função: fim', cor:V }] : []),
+    // E antes da autoavaliação: a função tem de ficar completa. Quem não tem
+    // função pode dizer como ajudou os colegas.
+    ...(orgAula ? [minhasFuncoes.length
+      ? { id:'funcao_fim', label:'Fiz a minha função (fim)', agora:'A tua função: fim', cor:V }
+      : { id:'funcao_fim', label:'Ajudei os colegas', agora:'Ajudaste os colegas?', cor:V }] : []),
     { id:'avaliacao',  label:'Avaliei-me',                 agora:'Avaliar-me',       cor:V },
   ];
 
@@ -2778,7 +2783,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Evento: uma pergunta de técnica geral e o que correu menos bem.
   const ehEvento = (plano as any).tipoEvento === 'evento';
   // O professor tirou os registos (HACCP/KitchenFlow) desta aula: não se pergunta.
-  const semRegistos = compRemovidas.includes('OBR_02');
+  // A higiene e segurança alimentar só se avalia quando há produção (aulas
+  // práticas e mistas): nas teóricas e nas dinâmicas não conta (Rosa, set/2026).
+  // O aluno já não responde à higiene e segurança alimentar: a farda foi
+  // verificada à entrada e os registos do KitchenFlow marca-os o professor,
+  // pelo relatório do KitchenFlow (Rosa, set/2026).
+  const semRegistos = true;
   const [tecEvento, setTecEvento] = useState<number | null>(null);
   const [tecMenosBem, setTecMenosBem] = useState('');
   const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
@@ -2933,9 +2943,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               const nota = Number(av.nota) || OPCOES.find(o => o.v === av.nivel)?.nota || 0;
               const emoji = nota >= 5 ? '🌟' : nota >= 4 ? '✅' : nota >= 3 ? '🤝' : '📖';
               const ehAtitude = String(av.competenciaId || '').startsWith('ATI-');
-              const label = av.semRegistoKF ? 'Sem registo no KitchenFlow: 1'
-                : ehAtitude ? `Nível ${nota}`
-                : OPCOES.find(o => o.nota === nota)?.label || '';
+              // Sempre em /20, como a nota da aula: níveis soltos (1 a 5) ao lado
+              // de notas em /20 pareciam não bater certo.
+              const label = av.semOportunidade || av.nivel === 'nop' ? 'Não tive oportunidade'
+                : `${classificacao20(notaPara20(nota))} · ${notaPara20(nota)}/20`;
+              void ehAtitude;
               const nomeComp = av.competenciaId?.startsWith('OBR_01') ? 'Higiene pessoal'
                 : av.competenciaId?.startsWith('OBR_02') ? 'Higiene e segurança alimentar'
                 : ATITUDES.find(x => x.id === av.competenciaId)?.nome || nomeCompetencia(av.competenciaId || '');
@@ -3009,7 +3021,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                       {comparacoes.map(c => (
                         <div key={c.competenciaId} style={{ display:'flex', justifyContent:'space-between', fontSize:12.5, padding:'2px 0', color:'rgba(26,23,20,0.4)' }}>
                           <span>{c.competenciaId === 'INI-001' ? 'Iniciativa' : ATITUDES.find(x => x.id === c.competenciaId)?.nome || nomeCompetencia(c.competenciaId)}</span>
-                          <span>Tu: {c.alunoDisse} · Professor: {c.professorValidou}</span>
+                          <span>Tu: {notaPara20(c.alunoDisse)}/20 · Professor: {notaPara20(c.professorValidou as number)}/20</span>
                         </div>
                       ))}
                     </div>

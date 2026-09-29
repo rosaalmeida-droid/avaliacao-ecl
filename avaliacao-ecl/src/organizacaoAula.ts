@@ -4,6 +4,8 @@
 // Em cada aula prática, todos os alunos têm uma função (higienização,
 // arrumação, temperaturas…). Há um líder da aula que não tem outra
 // função: vê o plano de todos, verifica e fecha a aula no KitchenFlow.
+// Com mais alunos do que lugares, os que sobram não têm função: podem
+// ajudar os colegas e registar o que fizeram.
 // O KitchenFlow é só onde se regista; quem faz o quê decide-se aqui.
 //
 // As funções rodam: a aplicação sorteia quando o professor publica o
@@ -15,7 +17,7 @@
 import type { PlanoAula } from './types';
 import { getPlanosAula, getAlunos, getPresencas, addOrUpdatePlanoAula, getSessaoAula } from './backend';
 
-export type IdFuncao = 'lider' | 'temp1' | 'temp2' | 'panos' | 'copa' | 'economato'
+export type IdFuncao = 'lider' | 'temp1' | 'temp2' | 'panos' | 'rececao' | 'copa' | 'economato'
   | 'equipamentos' | 'fogoes_frio' | 'lixo_carrinhos' | 'chao_bancadas';
 
 export interface FuncaoAula {
@@ -29,8 +31,8 @@ export interface FuncaoAula {
   fim: string[];
   /** Onde se regista no KitchenFlow, no início (se houver registo nesse momento). */
   kfInicio?: string;
-  /** Onde se regista no KitchenFlow, no fim. */
-  kfFim: string;
+  /** Onde se regista no KitchenFlow, no fim (se houver registo nesse momento). */
+  kfFim?: string;
   /** O líder, as temperaturas e os panos: rodam primeiro e não se juntam. */
   especial?: boolean;
   /** Para a rotação: as duas metades das temperaturas contam como uma. */
@@ -84,6 +86,14 @@ export const FUNCOES_AULA: FuncaoAula[] = [
     ],
     kfInicio: 'Higienização → Panos e esponjas (início)',
     kfFim: 'Higienização → Panos e esponjas (final) e Equip. Limpeza' },
+  { id: 'rececao', tipo: 'rececao', especial: true, nome: 'Receção de matérias-primas',
+    resumo: 'Recebes as matérias-primas que chegam e registas cada entrega.',
+    inicio: [
+      'Pergunta ao professor se hoje chegam matérias-primas e a que horas.',
+      'Quando chegarem, verifica o estado, a temperatura e a validade, e confere com a requisição.',
+    ],
+    fim: ['Tudo o que chegou ficou guardado no sítio certo (primeiro o que vai para o frio).'],
+    kfInicio: 'Receção Matérias-Primas (uma por cada entrega)' },
   { id: 'copa', tipo: 'copa', nome: 'Copa',
     resumo: 'Tratas da loiça, das máquinas de lavar e da cuba.',
     inicio: ['Prepara a copa: máquinas de lavar prontas e cuba limpa.'],
@@ -139,10 +149,11 @@ export const FUNCOES_AULA: FuncaoAula[] = [
 export const funcaoPorId = (id: string) => FUNCOES_AULA.find(f => f.id === id);
 
 /** Os lugares, pela ordem em que se preenchem quando há poucos alunos. */
-const ORDEM_LUGARES: IdFuncao[] = ['lider', 'temp1', 'temp2', 'panos', 'copa', 'economato', 'equipamentos',
+const ORDEM_LUGARES: IdFuncao[] = ['lider', 'temp1', 'temp2', 'panos', 'rececao', 'copa', 'economato', 'equipamentos',
   'fogoes_frio', 'lixo_carrinhos', 'chao_bancadas', 'copa', 'economato', 'chao_bancadas'];
-/** Com alunos a mais, reforçam as funções mais demoradas, por esta ordem. */
-const REFORCO: IdFuncao[] = ['economato', 'copa', 'chao_bancadas'];
+/** Avarias, faltas e necessidades e não conformidades não são funções:
+ *  regista-as quem as deteta, no momento. */
+export const REGISTAR_QUANDO_DETETAS = 'Se vires uma avaria, uma falta ou uma não conformidade, regista-a logo no KitchenFlow.';
 
 export interface LugarAula {
   /** 'copa-2' */
@@ -160,12 +171,19 @@ export interface OrganizacaoAula {
   lugares: LugarAula[];
 }
 
-/** Aulas com plano organizacional: as práticas e mistas (não os eventos). */
+/** Todas as aulas têm plano organizacional (não os eventos): mesmo nas
+ *  teóricas e nas dinâmicas há um líder e há registos que se fazem sempre. */
 export function temOrganizacao(p: PlanoAula | undefined | null): boolean {
-  if (!p || (p as any).tipoEvento) return false;
-  const t = String((p as any).tipoPlanAula || 'pratico');
+  return !!p && !(p as any).tipoEvento;
+}
+
+/** Aula com produção (prática ou mista): todas as funções. Nas teóricas e
+ *  nas dinâmicas, só as que se fazem sempre: o líder e as temperaturas. */
+export function comProducao(p: PlanoAula | undefined | null): boolean {
+  const t = String((p as any)?.tipoPlanAula || 'pratico');
   return t === 'pratico' || t === 'misto';
 }
+const LUGARES_SEM_PRODUCAO: IdFuncao[] = ['lider', 'temp1', 'temp2'];
 
 export function organizacaoDe(p: PlanoAula | undefined | null): OrganizacaoAula | null {
   const o = (p as any)?.organizacao;
@@ -219,17 +237,18 @@ const vezes = (h: HistoricoFuncoes, tipo: string, aluno: string) => h.porTipo.ge
  * Distribui as funções pelos alunos da turma. Cada lugar vai para quem fez
  * menos vezes aquele tipo de função (e, entre esses, quem teve menos funções);
  * o empate decide-se ao acaso. Com poucos alunos, as últimas funções juntam-se
- * a quem já tem uma (nunca ao líder nem às temperaturas e panos); com alunos
- * a mais, reforçam o economato, a copa e o chão.
+ * a quem já tem uma (nunca ao líder, às temperaturas, aos panos nem à receção);
+ * com alunos a mais, os que sobram ficam sem função e podem ajudar.
  */
-export function sortearOrganizacao(alunosIds: string[], hist: HistoricoFuncoes, semente: string): OrganizacaoAula {
+export function sortearOrganizacao(alunosIds: string[], hist: HistoricoFuncoes, semente: string,
+  soEssenciais = false): OrganizacaoAula {
   const rnd = aleatorio(semente);
   const sorteio = new Map(alunosIds.map(a => [a, rnd()]));
   const n = alunosIds.length;
-  const base = [...ORDEM_LUGARES];
-  const lugaresIds: IdFuncao[] = n >= base.length
-    ? [...base, ...Array.from({ length: n - base.length }, (_, i) => REFORCO[i % REFORCO.length])]
-    : base;
+  const base = soEssenciais ? [...LUGARES_SEM_PRODUCAO] : [...ORDEM_LUGARES];
+  // Com alunos a mais, os que sobram ficam sem função: podem ajudar os
+  // colegas e dizer como ajudaram (decisão da Rosa, set/2026).
+  const lugaresIds: IdFuncao[] = base;
   const contagem = new Map<string, number>();
   const lugares: LugarAula[] = lugaresIds.map(funcaoId => {
     const k = (contagem.get(funcaoId) || 0) + 1; contagem.set(funcaoId, k);
@@ -364,7 +383,7 @@ function guardar(plano: PlanoAula, o: OrganizacaoAula): PlanoAula {
 /** Distribui as funções (de novo, se já estavam distribuídas). */
 export function distribuirFuncoes(plano: PlanoAula): PlanoAula {
   const hist = historicoFuncoes(getPlanosAula(), plano.turmaId, plano.id);
-  return guardar(plano, sortearOrganizacao(alunosDaTurma(plano.turmaId), hist, plano.id + '|' + Date.now()));
+  return guardar(plano, sortearOrganizacao(alunosDaTurma(plano.turmaId), hist, plano.id + '|' + Date.now(), !comProducao(plano)));
 }
 
 /** Plano publicado de uma aula prática ainda sem funções: distribui já. */

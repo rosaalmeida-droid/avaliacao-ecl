@@ -51,7 +51,7 @@ export type Letra5C = 'cm' | 'cl' | 'co' | 'cr';
 // Nenhuma destas evidências cria um elemento novo nos planos.
 export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias: string }> = {
   cm: { sigla: 'CM', nome: 'Comprometido',
-    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues' },
+    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues, farda cuidada e registos do KitchenFlow feitos (aulas práticas)' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
     evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, liderança do grupo' },
   co: { sigla: 'CO', nome: 'Consciente',
@@ -65,6 +65,8 @@ export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias:
  *  (as mesmas fronteiras das fórmulas do modelo). */
 export function nivelPauta(nota20: number | null | undefined): number {
   if (nota20 === null || nota20 === undefined || isNaN(nota20) || nota20 === 0) return 0;
+  // A nota fica com décimas; só a classificação arredonda: 13,6 é Bom, 16,6 é Muito bom.
+  nota20 = Math.round(nota20);
   return nota20 < 9.5 ? 2 : nota20 < 14 ? 4 : nota20 < 17 ? 5 : 6;
 }
 
@@ -131,8 +133,9 @@ export function produtosDaUC(turmaId: string, ucId: string, escolhidos?: string[
   const produtos = planos.map((p, j) => ({
     numero: j + 1, titulo: p.titulo, planosIds: [p.id], elementos: elementosDe(p.id), peso: 0,
   }));
-  const total = produtos.reduce((s, p) => s + p.elementos, 0) || 1;
-  produtos.forEach(p => { p.peso = Math.round((p.elementos / total) * 1000) / 10; });
+  // Todos os planos com o mesmo peso (Rosa, set/2026): a prática já pesa mais
+  // dentro de cada plano. O professor pode mudar os pesos na pauta.
+  produtos.forEach(p => { p.peso = Math.round((100 / produtos.length) * 10) / 10; });
   // Acerto de arredondamento: a soma dá sempre 100%.
   if (produtos.length) {
     const soma = produtos.reduce((s, p) => s + p.peso, 0);
@@ -212,6 +215,18 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         assid.presencas > 0 ? (1 - assid.atrasos / assid.presencas) * 20 : null, assid.presencas);
       const selecoes = getSelecoes().filter(x => x.alunoId === a.id && idsVeio.has(x.planoAulaId as string));
       junta('cm', `Autoavaliações entregues: ${selecoes.length} de ${nVeio} aulas`, pct(selecoes.length, nVeio), nVeio);
+      // Higiene e segurança alimentar nas aulas práticas: o que o professor
+      // confirmou na validação (farda à entrada; registos pelo relatório do KitchenFlow).
+      const validacoesAluno = getValidacoes().filter((v: any) => v.alunoId === a.id && idsVeio.has(v.planoAulaId)
+        && ['pratico', 'misto'].includes(String(v.tipoPlanAulaUsado || tipoDe(v.planoAulaId))));
+      const notasDe = (comp: string) => validacoesAluno
+        .map((v: any) => Number(v.notas?.find((n: any) => n.competenciaId === comp)?.nota))
+        .filter(n => n > 0);
+      const farda = notasDe('OBR_01'), kf = notasDe('OBR_02');
+      junta('cm', `Farda completa e cuidada: ${farda.filter(n => n >= 5).length} de ${farda.length} aulas práticas`,
+        media(farda.map(n => nivelPara20(n))), farda.length);
+      junta('cm', `Registos do KitchenFlow todos feitos: ${kf.filter(n => n >= 5).length} de ${kf.length} aulas práticas`,
+        media(kf.map(n => nivelPara20(n))), kf.length);
 
       // Triagem das aulas (CL, CR e CO): a resposta do aluno em cada autoavaliação,
       // ou a do professor quando a confirmou ou mudou na validação.
@@ -314,7 +329,9 @@ export function calculoDoModelo(l: LinhaPautaUC, produtos: ProdutoPauta[], total
   // Competente arredondado à unidade, que é o que entra no TOTAL.
   const cpN = niveis.reduce((s, n, j) => s + n * ((produtos[j]?.peso || 0) / 100), 0);
   const cp = Math.round(cpN);
-  const total = (l.c5.cm ?? 0) * PESOS_5C.cm + cp * PESOS_5C.cp + (l.c5.cl ?? 0) * PESOS_5C.cl
+  // Na pauta aparece o CP inteiro, mas o TOTAL faz a conta com as décimas
+  // (4,5 e não 5): não se perde nada pelo caminho (Rosa, set/2026).
+  const total = (l.c5.cm ?? 0) * PESOS_5C.cm + cpN * PESOS_5C.cp + (l.c5.cl ?? 0) * PESOS_5C.cl
     + (l.c5.co ?? 0) * PESOS_5C.co + (l.c5.cr ?? 0) * PESOS_5C.cr;
   const resultado = total < 3.5 ? 'Módulo em atraso' : total < 4.5 ? 'Suficiente' : total < 5.5 ? 'Bom' : 'Muito bom';
   return { nAtiv, niveis, cpN, cp, total, resultado };
@@ -547,20 +564,21 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
       const c = colNota(j), v = l.produtos[j];
       set(lv(c), v === null || v === undefined ? null : v);
       const e = lv(c);
-      if (d.produtos[j]) f(lv(c + 1), `IF(${e}=0,"0",IF(${e}<9.5,"2",IF(${e}<14,"4",IF(${e}<17,"5","6"))))`);
+      if (d.produtos[j]) f(lv(c + 1), `IF(${e}=0,"0",IF(${e}<9.5,"2",IF(ROUND(${e},0)<14,"4",IF(ROUND(${e},0)<17,"5","6"))))`);
       else set(lv(c + 1), null);
     }
     // As fórmulas do modelo, só com as colunas no sítio novo. O CP tem duas
     // colunas: N (o nível, em T) e 60% (em U), que é a que o TOTAL lê. No
     // original a U ficava vazia e o CP não chegava ao TOTAL: passa a ter o
-    // CP arredondado à unidade. O TOTAL fica com a fórmula original. O CR pesa 10% (X14 vazia).
+    // CP (à vista inteiro, nas contas com décimas). O TOTAL fica com a fórmula original. O CR pesa 10% (X14 vazia).
     f(lm(COL.T), Array.from({ length: nProd }, (_, j) => `(${LETRA(colNota(j) + 1)}${R}*$${LETRA(colPeso(j))}$9)`).join('+'));
     set(lm(COL.S), l.c5.cm);
     set(lm(COL.V), l.c5.cl);
     set(lm(COL.W), l.c5.co);
     set(lm(COL.X), l.c5.cr);
     const $ = (c: number) => `$${L(c)}$14`;
-    f(lm(COL.U), `ROUND(${lm(COL.T)},0)`);
+    // Mostra-se inteiro (formato «0»), mas o valor tem as décimas: o TOTAL conta com elas.
+    f(lm(COL.U), `${lm(COL.T)}`);
     ws.getCell(lm(COL.U)).numFmt = '0';
     f(lm(COL.Y), `(${lm(COL.S)}*${$(COL.S)})+(${lm(COL.U)}*${$(COL.U)})+(${lm(COL.V)}*${$(COL.V)})+(${lm(COL.W)}*${$(COL.W)})+(${lm(COL.X)}*${$(COL.X)})`);
     f(lm(COL.Z), `IF(${lm(COL.Y)}<3.5,"Módulo em atraso",IF(${lm(COL.Y)}<4.5,"Suficiente",IF(${lm(COL.Y)}<5.5,"Bom","Muito bom")))`);

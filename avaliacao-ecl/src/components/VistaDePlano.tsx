@@ -3,7 +3,7 @@ import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
-import { garantirOrganizacao, temOrganizacao, organizacaoDe } from '../organizacaoAula';
+import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
@@ -19,6 +19,7 @@ import {
   definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
+import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { BotaoPublicar } from './BotaoPublicar';
 import { SumarioAula } from './SumarioAula';
 import { eventosParaPlanos } from '../eventos/modelo';
@@ -1323,6 +1324,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               <QuadroOrganizacional plano={plano} modo="professor" onPlanoMudou={onPlanoActualizado} />
             </div>
           )}
+          {comProducao(plano) && <RegistosKFaoVivo plano={plano} />}
           <TurmaNaAula
             planoAulaId={plano.id}
             turmaId={plano.turmaId}

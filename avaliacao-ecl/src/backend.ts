@@ -2618,10 +2618,28 @@ const PREFIXO_FINAL = 'UCFINAL|';
 const PREFIXO_TRIAGEM = 'TRIAGEM|';
 /** A nota final da UC publicada pelo professor, que o aluno vê. */
 const PREFIXO_NOTA = 'UCNOTA|';
+/** Quem não teve função no plano organizacional e ajudou os colegas: o que fez. */
+const PREFIXO_COLAB = 'COLAB|';
 const ehRegistoEspecial = (s: SelecaoAluno) => {
   const p = String(s.planoAulaId || '');
-  return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA);
+  return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA) || p.startsWith(PREFIXO_COLAB);
 };
+
+/** O aluno sem função nesta aula diz como ajudou os colegas (chega ao professor). */
+export function guardarColaboracao(alunoId: string, turmaId: string, planoAulaId: string, texto: string): void {
+  addOrUpdateSelecao({
+    id: `colab_${planoAulaId}_${alunoId}`, planoAulaId: PREFIXO_COLAB + planoAulaId, comandaId: '', fichaId: '',
+    alunoId, turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'COLABOROU', nivel: 'colaboracao', nota: 0, texto } as any],
+    criadaEm: new Date().toISOString(),
+  } as any);
+}
+
+export function colaboracoesDaAula(planoAulaId: string): { alunoId: string; texto: string }[] {
+  return load<any>(KEYS.selecoes).filter((s: any) => s.planoAulaId === PREFIXO_COLAB + planoAulaId)
+    .map((s: any) => ({ alunoId: s.alunoId, texto: String(s.autoavaliacoes?.[0]?.texto || '') }))
+    .filter(x => x.texto.trim());
+}
 export function getSelecoes(): SelecaoAluno[] {
   return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
 }
@@ -4825,14 +4843,26 @@ export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string
   const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   const ini = min(p.horaInicio), fim = min(p.horaFim);
   if (isNaN(ini) || isNaN(fim) || fim <= ini) return [];
-  const almoco = temAlmoco(ini, fim);
+  // Os tempos da escola são de hora e meia ou de uma hora (Rosa, set/2026):
+  // cada parte da aula (manhã e tarde, se houver almoço) divide-se em tempos
+  // de hora e meia quando dá certo (4h30 = 3 tempos); senão, de uma hora.
+  const partes: [number, number][] = temAlmoco(ini, fim) ? [[ini, 13 * 60], [14 * 60, fim]] : [[ini, fim]];
   const blocos: { inicio: string; fim: string }[] = [];
-  for (let m = ini; m < fim; ) {
-    if (almoco && m >= 13 * 60 && m < 14 * 60) { m = 14 * 60; continue; }
-    let f = Math.min(m + 60, fim);
-    if (almoco && m < 13 * 60 && f > 13 * 60) f = 13 * 60;
-    blocos.push({ inicio: hm(m), fim: hm(f) });
-    m = f;
+  for (const [a, b] of partes) {
+    // O maior número de tempos de hora e meia, e o resto em tempos de uma hora
+    // (3h30 = 1h30 + 1h + 1h). Se nada der certo, tempos de uma hora.
+    const dur = b - a;
+    let n90 = Math.floor(dur / 90);
+    while (n90 > 0 && (dur - n90 * 90) % 60 !== 0) n90--;
+    const tempos = (dur - n90 * 90) % 60 === 0
+      ? [...Array(n90).fill(90), ...Array((dur - n90 * 90) / 60).fill(60)]
+      : Array(Math.ceil(dur / 60)).fill(60);
+    let m = a;
+    for (const t of tempos) {
+      const f = Math.min(m + t, b);
+      blocos.push({ inicio: hm(m), fim: hm(f) });
+      m = f;
+    }
   }
   return blocos;
 }
@@ -4843,8 +4873,13 @@ export function horasDosBlocos(p: PlanoAula, inicios: string[]): number {
     const [h1, m1] = a.split(':').map(Number), [h2, m2] = b.split(':').map(Number);
     return (h2 * 60 + m2) - (h1 * 60 + m1);
   };
-  return blocosDeHoraDoPlano(p).filter(b => inicios.includes(b.inicio))
+  const blocos = blocosDeHoraDoPlano(p);
+  const atuais = blocos.filter(b => inicios.includes(b.inicio))
     .reduce((t, b) => t + mins(b.inicio, b.fim) / 60, 0);
+  // Marcações antigas eram em blocos de uma hora: um início que já não é o
+  // de um tempo conta como a hora que era.
+  const antigos = inicios.filter(i => !blocos.some(b => b.inicio === i)).length;
+  return Math.min(horasDoPlano(p), atuais + antigos);
 }
 
 /** Entradas fora da janela que o professor ainda não decidiu. */
@@ -6094,13 +6129,37 @@ function tipoDominante(regs: RegistoAvaliacao[]): 'pratico' | 'misto' | 'teorico
 }
 
 /**
- * O que entra na nota da aula. A farda (OBR_01) não entra (decisão da Rosa,
- * set/2026): verifica-se à entrada e conta nas atitudes («Cuidado com a
- * apresentação pessoal») e nas técnicas a 0 quando falta. A técnica geral do
- * evento só serve para o bónus.
+ * O que entra na nota da aula. A higiene e segurança alimentar (20% nas aulas
+ * práticas e mistas) é a farda (OBR_01, 10%) e os registos do KitchenFlow
+ * (OBR_02, 10%) — Rosa, set/2026. Sem farda, as técnicas continuam a contar 0.
+ * A técnica geral do evento só serve para o bónus.
  */
 export function contaNaNotaDaAula(id: string): boolean {
-  return id !== 'OBR_01' && id !== TEC_EVENTO;
+  return id !== TEC_EVENTO;
+}
+
+/** Registos do KitchenFlow: o professor vê o relatório e marca. */
+export const NIVEIS_REGISTOS_KF = [
+  { v: 5, texto: 'Todos feitos' },
+  { v: 3, texto: 'Alguns' },
+  { v: 1, texto: 'Nenhum' },
+] as const;
+const KEY_REGISTOS_KF = 'ecl_registos_kf_marca';
+const alvoRegistosKF = (planoId: string, alunoId: string) => {
+  const g = grupoDoAluno(planoId, alunoId);
+  return `${planoId}|${g ? 'g:' + g.id : 'a:' + alunoId}`;
+};
+/** A marca dada ao grupo do aluno nesta aula (ou ao próprio, se não tem grupo).
+ *  Só serve para vir já preenchida nos colegas do grupo: a nota fica na validação. */
+export function marcaRegistosKF(planoId: string, alunoId: string): number | undefined {
+  try { return JSON.parse(localStorage.getItem(KEY_REGISTOS_KF) || '{}')[alvoRegistosKF(planoId, alunoId)]; } catch { return undefined; }
+}
+export function guardarMarcaRegistosKF(planoId: string, alunoId: string, nota: number): void {
+  try {
+    const m = JSON.parse(localStorage.getItem(KEY_REGISTOS_KF) || '{}');
+    m[alvoRegistosKF(planoId, alunoId)] = nota;
+    localStorage.setItem(KEY_REGISTOS_KF, JSON.stringify(m));
+  } catch { /* */ }
 }
 
 /**
@@ -6243,7 +6302,22 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
   const semFarda = planosSemFarda(alunoId);
   const regsNota = regs.map(r => semFarda.has(r.planoAulaId || '') && categoriaDe(r.microcompetenciaId) === 'SUB'
     ? { ...r, nota: 1 } : r);
-  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regsNota), regsNota, alunoId, turmaId, ucId), alunoId, turmaId, ucId);
+  void regsNota;
+  // A média dos planos avaliados, todos com o mesmo peso (Rosa, set/2026).
+  // Antes juntavam-se as competências todas: um plano com o dobro das
+  // competências pesava o dobro.
+  const faltados = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id));
+  const planosUC = new Map(getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento)
+    .map(p => [p.id, p]));
+  const notasAulas = getValidacoes()
+    .filter((v: any) => v.alunoId === alunoId && planosUC.has(v.planoAulaId) && !faltados.has(v.planoAulaId))
+    .map(v => notaDaAulaValidada(v)).filter((n): n is number => n !== null);
+  const base = notasAulas.length ? notasAulas.reduce((s, n) => s + n, 0) / notasAulas.length : null;
+  const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
+  const comFaltas = faltados.size
+    ? Math.round((((base ?? 0) * notasAulas.length + recup * faltados.size) / (notasAulas.length + faltados.size)) * 100) / 100
+    : base === null ? null : Math.round(base * 100) / 100;
+  return aplicarBonusesUC(comFaltas, alunoId, turmaId, ucId);
 }
 
 /**

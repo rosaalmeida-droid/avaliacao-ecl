@@ -1,9 +1,10 @@
+import { LOGO_ECL } from '../logo_ecl';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { categoriaDaNota } from '../compatECL';
 import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula, ucJaFechada, notaFinalUC } from '../backend';
 import { notaDaPautaUC } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
@@ -145,7 +146,10 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       // O aluno (alunoId) só vê a nota final publicada pelo professor, e só
       // depois da sua autoavaliação final. Até lá, a média das aulas validadas.
       const pauta = !filtroUC || notasComCat.length === 0 ? null
-        : !alunoId ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
+        // Professor: a nota da pauta (níveis 2 a 6 e 5 C) só depois de fechar a UC;
+        // até lá, a média das aulas em /20, como o aluno vê.
+        : !alunoId ? (ucJaFechada(turmaId, filtroUC) ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
+          : { nota: notaFinalUC(aluno.id, turmaId, filtroUC).final } as any)
         : getPropostaFinalUC(aluno.id, filtroUC) ? notaFinalPublicadaComoPauta(aluno.id, filtroUC) : null;
       const nota20ComBonus = pauta?.nota ?? nota20;
       // Decomposição por categoria — reaproveita a última validação guardada
@@ -200,6 +204,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       {/* Cabeçalho — só na vista do professor. O aluno já tem o título por
           cima ("O meu historial") e aqui lia "Imprimir turma" e "filtra por
           aluno", que não são para ele. */}
+      {/* Na folha impressa, o logótipo da escola em cima (no ecrã não aparece). */}
+      <div className="so-impressao" style={{ display: 'none', marginBottom: 12 }}>
+        <img src={LOGO_ECL} alt="Escola de Comércio de Lisboa" style={{ height: 50, width: 'auto' }} />
+      </div>
+      <style>{'@media print { .so-impressao { display: block !important; } }'}</style>
       {!alunoId && (
       <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>

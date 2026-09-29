@@ -10,10 +10,11 @@
 //   nada, com o sítio do KitchenFlow onde regista.
 import React, { useState } from 'react';
 import type { PlanoAula } from '../types';
-import { getSessaoAula } from '../backend';
+import { getSessaoAula, guardarColaboracao, colaboracoesDaAula } from '../backend';
 import {
   organizacaoDe, quadroDaAula, funcoesDoAluno, lugaresDoAluno, distribuirFuncoes, substituirAluno,
-  candidatos, entraramNaAula, nomeDoAluno, TAREFA_DE_TODOS, KF_TAREFA_DE_TODOS, type FuncaoAula,
+  candidatos, entraramNaAula, nomeDoAluno, alunosDaTurma, TAREFA_DE_TODOS, KF_TAREFA_DE_TODOS,
+  REGISTAR_QUANDO_DETETAS, type FuncaoAula,
 } from '../organizacaoAula';
 import { NavSlides } from './EcraCheio';
 
@@ -139,6 +140,34 @@ export function QuadroOrganizacional({ plano, alunoId, modo, onPlanoMudou }: {
           })}
         </div>
       ))}
+      {(() => {
+        const comFuncao = new Set(o.lugares.map(l => l.alunoId));
+        const sem = alunosDaTurma(plano.turmaId).filter(a => !comFuncao.has(a));
+        if (!sem.length) return null;
+        const ajudas = new Map(colaboracoesDaAula(plano.id).map(c => [c.alunoId, c.texto]));
+        return (
+          <div style={{ background: '#fff', border: '1px dashed #CFC6DB', borderRadius: 12, padding: '10px 12px', marginBottom: 8 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 800 }}>Sem função hoje</div>
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', lineHeight: 1.45, margin: '2px 0 6px' }}>
+              Podem colaborar e ajudar os colegas, e dizer na aplicação o que fizeram.
+            </div>
+            {sem.map(a => (
+              <div key={a} style={{ padding: '5px 0', borderTop: '1px solid #F1EEF4', fontSize: 14.5,
+                fontWeight: a === alunoId ? 800 : 600, color: a === alunoId ? V : '#1A1A1A' }}>
+                {nomeDoAluno(a)}{a === alunoId ? ' (tu)' : ''}
+                {modo === 'professor' && aberta && (
+                  <span style={{ fontSize: 12.5, fontWeight: 700, marginLeft: 8,
+                    color: entraram.has(a) ? '#3E7A31' : '#B5651D' }}>{entraram.has(a) ? 'entrou' : 'ainda não entrou'}</span>
+                )}
+                {modo === 'professor' && ajudas.get(a) && (
+                  <div style={{ fontSize: 13, fontWeight: 400, fontStyle: 'italic', color: 'rgba(26,23,20,0.7)' }}>
+                    Ajudou: «{ajudas.get(a)}»</div>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -159,7 +188,9 @@ export function CartaoMinhaFuncao({ plano, alunoId, onVerQuadro }: {
         A tua função hoje
       </div>
       {funcoes.length === 0 ? (
-        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 6 }}>Hoje não tens função. Limpa a bancada do teu grupo.</div>
+        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 6, lineHeight: 1.4 }}>
+          Hoje não tens nenhuma função, mas podes colaborar e ajudar os colegas.
+        </div>
       ) : funcoes.map(f => (
         <div key={f.id} style={{ marginTop: 6 }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#1A1A1A', lineHeight: 1.25 }}>{f.nome}</div>
@@ -172,7 +203,7 @@ export function CartaoMinhaFuncao({ plano, alunoId, onVerQuadro }: {
           Hoje substituis {[...new Set(substitui.map(l => nomeDoAluno(l.substituiu!)))].join(' e ')}.
         </div>
       )}
-      {funcoes.length > 0 && !funcoes.some(f => f.id === 'lider') && (
+      {!funcoes.some(f => f.id === 'lider') && (
         <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', marginTop: 8, lineHeight: 1.45 }}>
           E, como todos: {TAREFA_DE_TODOS.charAt(0).toLowerCase() + TAREFA_DE_TODOS.slice(1)}
         </div>
@@ -219,6 +250,42 @@ export function PassoMinhaFuncao({ plano, alunoId, momento, onConcluido, onAbrir
     return n;
   });
   const tudo = itens.length > 0 && itens.every(i => feitos[i.id]);
+  const [ajuda, setAjuda] = useState(() => {
+    try { return localStorage.getItem(chave + '_ajuda') || ''; } catch { return ''; }
+  });
+
+  // Sem função: pode colaborar e dizer como ajudou (não é obrigatório).
+  if (funcoes.length === 0) return (
+    <div>
+      <div style={{ fontSize: 21, fontWeight: 800, lineHeight: 1.3, marginBottom: 8 }}>
+        Hoje não tens nenhuma função, mas podes colaborar e ajudar os colegas.
+      </div>
+      {momento === 'fim' ? (
+        <>
+          <div style={{ fontSize: 15, fontWeight: 700, margin: '10px 0 6px' }}>Queres registar aqui o que fizeste?</div>
+          <textarea value={ajuda} onChange={e => setAjuda(e.target.value)} rows={3} maxLength={300}
+            placeholder="Por exemplo: ajudei a arrumar o economato."
+            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10,
+              border: '1.5px solid #DDD', fontSize: 15, fontFamily: 'inherit', resize: 'vertical', background: '#fff' }} />
+          <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.7)', lineHeight: 1.5, marginTop: 10 }}>
+            {TAREFA_DE_TODOS} {REGISTAR_QUANDO_DETETAS}
+          </div>
+        </>
+      ) : (
+        <div style={{ fontSize: 14.5, color: 'rgba(26,23,20,0.7)', lineHeight: 1.5 }}>{TAREFA_DE_TODOS}</div>
+      )}
+      <button onClick={onVerQuadro} style={{ ...botaoSecundario, marginTop: 12 }}>
+        Ver o plano organizacional (quem faz o quê)
+      </button>
+      <NavSlides pode onSeguinte={() => {
+          const t = ajuda.trim();
+          try { localStorage.setItem(chave + '_ajuda', t); } catch { /* */ }
+          if (momento === 'fim' && t) guardarColaboracao(alunoId, plano.turmaId, plano.id, t);
+          onConcluido();
+        }}
+        textoSeguinte={momento === 'fim' && ajuda.trim() ? 'Guardar e continuar' : 'Continuar'} />
+    </div>
+  );
 
   return (
     <div>
@@ -246,6 +313,10 @@ export function PassoMinhaFuncao({ plano, alunoId, momento, onConcluido, onAbrir
           <span>{i.texto}</span>
         </button>
       ))}
+      {momento === 'fim' && (
+        <div style={{ fontSize: 14, color: '#8A4E15', background: '#FDF0E8', border: '1px solid #E8C9A8', borderRadius: 12,
+          padding: '10px 12px', margin: '4px 0 8px', lineHeight: 1.5 }}>{REGISTAR_QUANDO_DETETAS}</div>
+      )}
       <button onClick={onAbrirKitchenFlow} style={{ width: '100%', marginTop: 6, background: 'rgba(14,116,144,0.08)',
         border: '1px solid rgba(14,116,144,0.35)', borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 700,
         color: '#0e7490', cursor: 'pointer', fontFamily: 'inherit', minHeight: 44 }}>
