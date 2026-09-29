@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getAlunos, alterarPinAluno, libertarTelemovel, temTelemovelLigado } from '../backend';
+import React, { useState, useEffect } from 'react';
+import { getAlunos, alterarPinAluno, libertarTelemovel, temTelemovelLigado, lerTelemoveisDaTurma } from '../backend';
 
 interface Props {
   turmaId: string;
@@ -11,6 +11,9 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
   const [alunoSel, setAlunoSel] = useState<string>('');
   const [pinGerado, setPinGerado] = useState<string>('');
   const [confirmado, setConfirmado] = useState(false);
+  // Os telemóveis ligados vêm da escola (senão só se viam os deste aparelho).
+  const [, setLidos] = useState(0);
+  useEffect(() => { lerTelemoveisDaTurma(turmaId).then(() => setLidos(n => n + 1)); }, [turmaId]);
 
   function gerarPin(): string {
     return String(Math.floor(1000 + Math.random() * 9000));

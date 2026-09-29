@@ -32,7 +32,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -587,6 +587,20 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       texto: 'Tenta atualizar outra vez. Se a aula continuar sem aparecer, avisa o professor.' },
   };
   const [mensagemAula, setMensagemAula] = useState<{ titulo: string; texto: string; avisar: boolean } | null>(null);
+  /** O relatório do último «Não vejo a aula», para ir com o aviso ao professor. */
+  const linhasDiagnostico = React.useRef<string[]>([]);
+  /** O que o telemóvel tem: vai com o pedido de ajuda (o professor não vê o telemóvel do aluno). */
+  const relatorioDoTelemovel = (): string[] => {
+    const locais = getPlanosAulaPorTurma(aluno.turmaId);
+    return [
+      `Aluno: ${aluno.nome} · código ${aluno.id} · turma "${aluno.turmaId}"`,
+      `Planos neste telemóvel: ${locais.length} · publicados ${locais.filter(p => p.estado === 'publicado').length} · de hoje ${locais.filter(p => p.estado === 'publicado' && isHoje(p.data)).length}`,
+      `Hora do telemóvel: ${new Date().toLocaleString('pt-PT')}`,
+      `Espaço no telemóvel: ${aparelhoSemEspaco() ? 'CHEIO (guarda só enquanto a aplicação está aberta)' : 'ok'}`,
+      `Ligação ao arquivo: ${leituraDePlanosFalhou() ? 'FALHOU na última leitura' : 'ok'}`,
+      `Telemóvel/navegador: ${typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 160) : '?'}`,
+    ];
+  };
   async function verificarAula() {
     setALigar(true);
     setMensagemAula(null);
@@ -596,7 +610,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       setPlanos(ps);
       setFalhouLigacao(leituraDePlanosFalhou());
       if (ps.some(p => isHoje(p.data))) return;
-      const { causa } = await diagnosticoDetalhado(aluno.turmaId);
+      const { causa, linhas } = await diagnosticoDetalhado(aluno.turmaId);
+      linhasDiagnostico.current = [`O aluno viu: ${EXPLICA_AULA[causa].titulo}`, ...linhas];
       setMensagemAula(EXPLICA_AULA[causa]);
     } catch {
       setFalhouLigacao(true);
@@ -1083,6 +1098,9 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 return;
               }
               if (d === 'avisar_professor') {
+                // Chega mesmo ao professor, com o relatório do telemóvel.
+                pedirAjudaAoProfessor(aluno, planoHoje ? 'precisa de ajuda na aula' : 'não vê a aula de hoje',
+                  [...relatorioDoTelemovel(), ...linhasDiagnostico.current]);
                 addAviso({
                   tipo: 'outro',
                   titulo: 'Aula sem plano criado',
@@ -1090,7 +1108,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                     + `quis entrar na aula de hoje e não há plano de aula criado.`,
                   contexto: { tabDestino: 'planos' },
                 } as any);
-                alert('O professor foi avisado de que não há plano de aula para hoje.');
+                alert('O professor foi avisado. Vai receber também o que o teu telemóvel mostra, para perceber o problema.');
                 return;
               }
               if (d === 'kitchenflow') {

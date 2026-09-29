@@ -1,9 +1,9 @@
 import { AvisoEliminarAluno } from './AvisoEliminarAluno';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, definirNivelMedidas, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets, getHistoricoAvaliacoes, diagnostico } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, definirNivelMedidas, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, lerTelemoveisDaTurma, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets, getHistoricoAvaliacoes, diagnostico } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -555,6 +555,8 @@ function GestaoAlunosTab() {
   );
 
   const [aEnviarTudo, setAEnviarTudo] = useState<string | null>(null);
+  // Os telemóveis ligados vêm da escola (senão só se viam os deste aparelho).
+  useEffect(() => { lerTelemoveisDaTurma(turmaSel).then(() => setRefresh(r => r + 1)); }, [turmaSel]);
   const ativos = alunos.filter(a => a.ativo !== false);
   const removidos = alunos.filter(a => a.ativo === false);
 
