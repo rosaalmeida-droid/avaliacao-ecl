@@ -1,5 +1,6 @@
 import { categoriaDaNota } from '../compatECL';
 import { BotaoPCC } from './BotaoPCC';
+import { ManuaisDoAluno, BotaoManualDaUC } from './BibliotecaManuais';
 import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
@@ -1260,7 +1261,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
 
-            {destino === 'manual' && <ManuaisAluno soLeitura />}
+            {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
           </div>
         )}
 
@@ -1388,7 +1389,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 notaPossivel={null} />
             )}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
-            {destino === 'manual' && <ManuaisAluno soLeitura />}
+            {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
                 onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
@@ -1717,6 +1718,9 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno} abrirLogo={ecra}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
             )}
+
+          {/* O manual da UC, à mão durante a aula (Rosa, set/2026). */}
+          <BotaoManualDaUC turmaId={aluno.turmaId} ucId={(plano as any).ucId} />
 
           {/* Onde estou no percurso. Verbos na primeira pessoa, e só se
               volta atrás — não se salta para a frente. */}
