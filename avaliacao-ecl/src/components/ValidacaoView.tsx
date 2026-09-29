@@ -4,7 +4,7 @@ import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
-import { PERGUNTAS_ATITUDES, NAO_ACONTECEU, nivelDaAtitude } from '../perguntas_atitudes';
+import { perguntasDe, NAO_ACONTECEU, nivelDaAtitude } from '../perguntas_atitudes';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
   getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
@@ -397,8 +397,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     });
     const naoReparou: any[] = autoavaliacoesAluno.flatMap((a: any) => (a.respIdx || []).map((v: any, q: number) =>
       v === NAO_ACONTECEU && aconteceu[`${a.competenciaId}|${q}`]
-        ? { competenciaId: a.competenciaId, q, pergunta: PERGUNTAS_ATITUDES[a.competenciaId]?.[q]?.pergunta || '',
-            proxima: PERGUNTAS_ATITUDES[a.competenciaId]?.[q]?.respostas[2] || '' } : null).filter(Boolean));
+        ? { competenciaId: a.competenciaId, q, pergunta: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento)?.[q]?.pergunta || '',
+            proxima: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento)?.[q]?.respostas[2] || '' } : null).filter(Boolean));
     // O mesmo nas perguntas dos 5 C.
     if (triagem) for (const q of perguntasDaAula(triagem.coId, triagem.crId, triagem.clId))
       if ((triagem.naoReparou || []).includes(q.chave)) {

@@ -343,13 +343,68 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   ],
 };
 
+/**
+ * Nos eventos e concursos, as 3 atitudes fixas perguntam o compromisso:
+ * treinar, chegar a horas, farda e material, ficar até ao fim (Rosa,
+ * set/2026). Ir a um evento é trabalho a sério, não só aparecer.
+ */
+export const PERGUNTAS_EVENTO: Record<string, [PerguntaAtitude, PerguntaAtitude]> = {
+  'ATI-001': [ // Responsabilidade
+    P('Antes do evento ou do concurso, quantas vezes treinaste o prato ou a tua tarefa?', [
+      'Não treinei.',
+      'Treinei uma vez, só porque o professor mandou.',
+      'Treinei duas ou três vezes.',
+      'Treinei várias vezes e pedi opinião ao professor ou a um colega.',
+    ]),
+    P('A que horas chegaste?', [
+      'Cheguei atrasado e não avisei.',
+      'Cheguei atrasado, mas avisei.',
+      'Cheguei à hora marcada.',
+      'Cheguei antes da hora e ajudei a preparar.',
+    ]),
+  ],
+  'ATI-003': [ // Apresentação pessoal
+    P('Como vieste vestido?', [
+      'Faltava parte da farda.',
+      'Farda completa, mas suja ou amarrotada.',
+      'Farda completa, limpa e passada.',
+      'Tudo isto, e ajudei um colega a compor a farda.',
+    ]),
+    P('E o material de que precisavas (facas, utensílios, ficha, ingredientes)?', [
+      'Esqueci-me de coisas importantes e tive de pedir.',
+      'Esqueci-me de uma coisa pequena.',
+      'Trouxe tudo o que precisava.',
+      'Trouxe tudo e confirmei antes com uma lista.',
+    ]),
+  ],
+  'ATI-012': [ // Ficar até ao fim / adaptar-se
+    P('Quando alguma coisa mudou ou correu mal no evento, o que fizeste?', [
+      'Reclamei ou parei.',
+      'Continuei, mas a reclamar.',
+      'Adaptei-me e continuei.',
+      'Adaptei-me e ajudei a equipa a resolver.',
+    ], 'Nada mudou nem correu mal.'),
+    P('No fim, o que fizeste?', [
+      'Saí antes do fim.',
+      'Fiquei, mas não ajudei a arrumar.',
+      'Fiquei até ao fim e arrumei a minha parte.',
+      'Fiquei até estar tudo arrumado e ajudei os outros.',
+    ]),
+  ],
+};
+
+/** As perguntas desta atitude: as do evento, num evento ou concurso; senão as de sempre. */
+export function perguntasDe(id: string, evento = false): [PerguntaAtitude, PerguntaAtitude] | undefined {
+  return (evento && PERGUNTAS_EVENTO[id]) || PERGUNTAS_ATITUDES[id];
+}
+
 export function temPerguntas(id: string): boolean {
   return !!PERGUNTAS_ATITUDES[id];
 }
 
 /** Respondida: as duas perguntas têm resposta (uma resposta pode ser «não aconteceu»). */
-export function atitudeRespondida(id: string, r: (number | null | undefined)[] | undefined): boolean {
-  const ps = PERGUNTAS_ATITUDES[id];
+export function atitudeRespondida(id: string, r: (number | null | undefined)[] | undefined, evento = false): boolean {
+  const ps = perguntasDe(id, evento);
   if (!ps || !r) return false;
   return ps.every((p, i) => r[i] != null && (r[i]! >= 0 || (r[i] === NAO_ACONTECEU && !!p.naoAconteceu)));
 }
@@ -362,8 +417,8 @@ export function nivelDaAtitude(r: (number | null | undefined)[] | undefined): nu
 }
 
 /** O que o aluno respondeu, em texto — para o professor ver na validação. */
-export function textoDasRespostas(id: string, r: (number | null | undefined)[] | undefined): { pergunta: string; resposta: string }[] {
-  const ps = PERGUNTAS_ATITUDES[id];
+export function textoDasRespostas(id: string, r: (number | null | undefined)[] | undefined, evento = false): { pergunta: string; resposta: string }[] {
+  const ps = perguntasDe(id, evento);
   if (!ps || !r) return [];
   return ps.map((p, i) => ({
     pergunta: p.pergunta,
