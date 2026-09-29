@@ -2761,6 +2761,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       // no leite»). Sem isso, o nome da lista — nunca o código.
       nome: ramo.fazes || nomeSub || tecMae?.nome || 'Técnica',
       aparelhoId: ramo.aparelhoId,
+      comoDaFicha: !!ramo.como,
       // Onde esta técnica se encaixa e sobre o quê.
       // Se não houver técnica-mãe identificada, diz-se pelo menos que é
       // uma técnica — "Rodelas" solto não diz ao aluno o que avaliar.
@@ -2769,7 +2770,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       // Por ordem: a definição da subtécnica, depois a da técnica-mãe,
       // e só em último a dos dados — que é circular em 63% dos casos
       // ("Variante profissional de cozer: Cozer massa al dente").
-      descricao: definicaoDaSubtecnica(id)?.definicao
+      // Primeiro o «como se faz» da ficha deste prato (curto, com o utensílio:
+      // «mexes com as varas»); só sem ele a definição da lista da escola.
+      descricao: ramo.como || definicaoDaSubtecnica(id)?.definicao
         || definicaoDaTecnica(tecMae?.nome || '')?.definicao
         || (sub as any)?.definicao || '',
       // «Bem feito é»: a mesma frase que o professor vê (a da lista da escola),
@@ -2797,7 +2800,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       contexto: [ramoApp.prato, 'Preparação base'].filter(Boolean).join(' → '),
       // Como fica o aparelho acabado, escrito na ficha deste prato.
       resultado: ramoApp.resultado || '',
-      descricao: definicaoDaTecnica(app?.nome || '')?.definicao || (app as any)?.definicao || '',
+      descricao: ramoApp.como || definicaoDaTecnica(app?.nome || '')?.definicao || (app as any)?.definicao || '',
+      comoDaFicha: !!ramoApp.como,
       nivel: app?.nivel || 1,
       categoria: app?.categoria || '',
       motivo: estado,
@@ -3248,18 +3252,18 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // dela, e no fim como ficou; depois as técnicas feitas no próprio prato
   // (Rosa, set/2026: prato → aparelho → técnicas → o que se vê).
   const itemTec = (m: typeof subsSug[number]) => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
-    resultado: m.resultadoEsperado, rotulo: 'Técnica', frases: true });
+    resultado: m.resultadoEsperado, rotulo: 'Técnica', frases: true, como: m.comoDaFicha });
   const idsApp = new Set(aparelhosSug.map(a => a.id));
   const itensPratica = [
     ...aparelhosSug.flatMap(a => [
       ...subsSug.filter(m => m.aparelhoId === a.id).map(itemTec),
       { id: a.id, nome: a.nome, contexto: a.contexto, descricao: a.descricao,
-        resultado: a.resultado, rotulo: 'Preparação base', frases: !!a.resultado },
+        resultado: a.resultado, rotulo: 'Preparação base', frases: !!a.resultado, como: a.comoDaFicha },
     ]),
     ...subsSug.filter(m => !m.aparelhoId || !idsApp.has(m.aparelhoId)).map(itemTec),
   ];
   const itensComp: { id: string; nome: string; contexto: string; descricao: string;
-    resultado: string; rotulo: string; frases: boolean }[] = [
+    resultado: string; rotulo: string; frases: boolean; como?: boolean }[] = [
     ...itensPratica,
     ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome, contexto: 'Conhecimento', descricao: m.definicao,
       resultado: '', rotulo: 'Conhecimento', frases: false })),
@@ -3570,8 +3574,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>
                 {/* Numa preparação base (aparelho) diz-se sempre o que é: o sabayon,
                     o béchamel… Com medidas, mais uma frase a explicar a ideia. */}
-                {c.rotulo === 'Preparação base' && <b>O que é: </b>}{c.descricao}
-                {c.rotulo === 'Preparação base' && simples && (
+                {(c as any).como ? <b>Como se faz: </b> : c.rotulo === 'Preparação base' && <b>O que é: </b>}{c.descricao}
+                {c.rotulo === 'Preparação base' && !(c as any).como && simples && (
                   <div style={{ marginTop:4 }}>É uma preparação que fazes primeiro e que depois entra no prato.</div>
                 )}
               </div>

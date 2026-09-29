@@ -984,8 +984,14 @@ desse aparelho. Nunca repetir a mesma coisa como técnica e como aparelho.
 
 PARA CADA TÉCNICA escreve também, para ESTE prato (não genérico):
   FAZES: o que o aluno fez, com o produto — «Escalfar o bacalhau no leite»
+  COMO: como se faz, em 1–2 frases curtas que ensinam, com o utensílio certo
+        (nome português e, entre parênteses, o francês quando se usa na cozinha) —
+        «Derretes a manteiga, juntas a farinha de uma vez e mexes com as varas
+        (fouet) em lume brando, 2 a 3 minutos, sem ganhar cor»
   BEM FEITO: o que se vê quando ficou bem — «lascas húmidas, sem pele nem espinhas»
 PARA CADA APARELHO escreve:
+  COMO: como se faz, curto, com o utensílio — «Juntas o leite quente aos poucos
+        ao roux, sempre a bater com as varas (fouet), e cozes 10 minutos em lume brando»
   RESULTADO: como fica o aparelho acabado — «cobre as costas da colher, sem grumos»
 O aluno avalia-se por estas frases: têm de ser observáveis e deste prato.
 
@@ -1051,14 +1057,14 @@ REGISTO: NãoConformidades | INGREDIENTE: todos | MOTIVO: registar qualquer desv
 
 SUBTÉCNICAS DETECTADAS:
 [máx 8 subtécnicas da REGRA 9, pelos passos da preparação — operações concretas executadas]
-[formato: ID — Nome | APP-XXXX do aparelho onde se faz (ou "-") | COMPONENTE da tabela de ingredientes | FAZES: … | BEM FEITO: …]
-[uma por linha | ex: SUB-MOL-067-001 — Roux branco | APP-0047 | Molho béchamel | FAZES: Fazer o roux branco para o béchamel | BEM FEITO: cor de marfim, cheiro a biscoito, sem grumos]
+[formato: ID — Nome | APP-XXXX do aparelho onde se faz (ou "-") | COMPONENTE da tabela de ingredientes | FAZES: … | COMO: … | BEM FEITO: …]
+[uma por linha | ex: SUB-MOL-067-001 — Roux branco | APP-0047 | Molho béchamel | FAZES: Fazer o roux branco para o béchamel | COMO: Derretes a manteiga, juntas a farinha de uma vez e mexes com as varas (fouet) em lume brando, 2 a 3 minutos, sem ganhar cor | BEM FEITO: cor de marfim, cheiro a biscoito, sem grumos]
 [o aparelho tem de estar também em APARELHOS DETECTADOS; se a operação não é feita dentro de um aparelho, escreve "-"]
 [ou "nenhuma"]
 
 APARELHOS DETECTADOS:
 [máx 4 aparelhos da REGRA 9 — só os que o aluno PRODUZ nesta receita, não o prato final]
-[formato: APP-XXXX — Nome (Nível N) | RESULTADO: … | ex: APP-0009 — Creme pasteleiro (Nível 1) | RESULTADO: liso, brilhante, sem sabor a farinha]
+[formato: APP-XXXX — Nome (Nível N) | COMO: … | RESULTADO: … | ex: APP-0009 — Creme pasteleiro (Nível 1) | COMO: Aqueces o leite, bates as gemas com o açúcar e o amido, juntas o leite aos poucos e cozes a bater com as varas (fouet) até engrossar | RESULTADO: liso, brilhante, sem sabor a farinha]
 [ou "nenhum"]
 
 ---
@@ -3225,8 +3231,8 @@ function CriteriosDaFicha({ tecnicas, aparelhos, onMudar }: {
 }) {
   const linhaTec = (l: LinhaDaFicha) =>
     [`${l.id}${l.nome ? ' — ' + l.nome : ''}`, l.aparelhoId || '-', l.onde || '-',
-      `FAZES: ${l.fazes || ''}`, `BEM FEITO: ${l.bemFeito || ''}`].join(' | ');
-  const linhaApp = (l: LinhaDaFicha) => [`${l.id}${l.nome ? ' — ' + l.nome : ''}`, `RESULTADO: ${l.resultado || ''}`].join(' | ');
+      `FAZES: ${l.fazes || ''}`, `COMO: ${l.como || ''}`, `BEM FEITO: ${l.bemFeito || ''}`].join(' | ');
+  const linhaApp = (l: LinhaDaFicha) => [`${l.id}${l.nome ? ' — ' + l.nome : ''}`, `COMO: ${l.como || ''}`, `RESULTADO: ${l.resultado || ''}`].join(' | ');
   const tecs = tecnicas.map(lerLinhaDaFicha);
   const apps = aparelhos.map(lerLinhaDaFicha).filter(a => a.id.startsWith('APP-') && !APARELHOS_QUE_SAO_TECNICAS.has(a.id));
   const mudarTec = (i: number, patch: Partial<LinhaDaFicha>) =>
@@ -3245,6 +3251,9 @@ function CriteriosDaFicha({ tecnicas, aparelhos, onMudar }: {
       <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginTop: 4 }}>O que o aluno faz
         <input style={campo} defaultValue={t.fazes || ''} placeholder="Ex.: Escalfar o bacalhau no leite"
           onBlur={e => e.target.value !== (t.fazes || '') && mudarTec(i, { fazes: e.target.value.trim() })} /></label>
+      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>Como se faz (curto, com o utensílio)
+        <input style={campo} defaultValue={t.como || ''} placeholder="Ex.: mexes com as varas (fouet) em lume brando, sem ganhar cor"
+          onBlur={e => e.target.value !== (t.como || '') && mudarTec(i, { como: e.target.value.trim() })} /></label>
       <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>Bem feito é (neste prato)
         <input style={campo} defaultValue={t.bemFeito || ''} placeholder="Ex.: lascas húmidas, sem pele nem espinhas"
           onBlur={e => e.target.value !== (t.bemFeito || '') && mudarTec(i, { bemFeito: e.target.value.trim() })} /></label>
@@ -3261,7 +3270,10 @@ function CriteriosDaFicha({ tecnicas, aparelhos, onMudar }: {
         <div key={a.id} style={{ borderLeft: '3px solid var(--copper)', paddingLeft: 10, marginBottom: 12 }}>
           <div style={{ fontSize: 14.5, fontWeight: 800 }}>Aparelho · {a.nome || a.id}</div>
           {tecs.map((t, i) => t.aparelhoId === a.id ? <Tec key={i} t={t} i={i} /> : null)}
-          <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>Como fica acabado
+          <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>Como se faz o aparelho
+            <input style={campo} defaultValue={a.como || ''} placeholder="Ex.: juntas o leite quente aos poucos, a bater com as varas (fouet)"
+              onBlur={e => e.target.value !== (a.como || '') && mudarApp(a.id, { como: e.target.value.trim() })} /></label>
+          <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>Como fica acabado
             <input style={campo} defaultValue={a.resultado || ''} placeholder="Ex.: liso, sem grumos, cobre as costas da colher"
               onBlur={e => e.target.value !== (a.resultado || '') && mudarApp(a.id, { resultado: e.target.value.trim() })} /></label>
         </div>

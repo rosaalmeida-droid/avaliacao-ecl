@@ -898,6 +898,8 @@ export interface LinhaDaFicha {
   bemFeito?: string;
   /** Aparelho: como fica o aparelho acabado (escrito na ficha). */
   resultado?: string;
+  /** Como se faz, em 1–2 frases curtas, com o utensílio (ensina o aluno). */
+  como?: string;
 }
 
 /**
@@ -916,12 +918,15 @@ export function lerLinhaDaFicha(linha: string): LinhaDaFicha {
   const id = codigoDaLinha(primeira);
   const nome = primeira.split(/\s+[—–-]\s+/).slice(1).join(' — ').replace(/\(n[ií]vel \d\)/i, '').trim() || undefined;
   let aparelhoId: string | undefined; let onde: string | undefined;
-  let fazes: string | undefined; let bemFeito: string | undefined; let resultado: string | undefined;
+  let fazes: string | undefined; let bemFeito: string | undefined; let resultado: string | undefined; let como: string | undefined;
   for (const p of partes) {
-    const campo = p.match(/^(o que fazes|fazes|bem feito(?: é)?|resultado)\s*:\s*(.+)$/i);
+    // Um campo vazio («COMO: ») não é o componente.
+    if (/^(o que fazes|fazes|bem feito(?: é)?|resultado|como(?: se faz)?)\s*:\s*$/i.test(p)) continue;
+    const campo = p.match(/^(o que fazes|fazes|bem feito(?: é)?|resultado|como(?: se faz)?)\s*:\s*(.+)$/i);
     if (campo) {
       const k = campo[1].toLowerCase();
-      if (k.includes('faz')) fazes = campo[2].trim();
+      if (k.startsWith('como')) como = campo[2].trim();
+      else if (k.includes('faz')) fazes = campo[2].trim();
       else if (k.startsWith('bem')) bemFeito = campo[2].trim();
       else resultado = campo[2].trim();
       continue;
@@ -930,7 +935,7 @@ export function lerLinhaDaFicha(linha: string): LinhaDaFicha {
     if (app && !aparelhoId && !id.startsWith('APP-') && !APARELHOS_QUE_SAO_TECNICAS.has(app[0])) aparelhoId = app[0];
     else if (!app && !onde) onde = p.replace(/^(em|para|componente|prato)\s*:\s*/i, '').trim() || undefined;
   }
-  return { id, nome, aparelhoId, onde, fazes, bemFeito, resultado };
+  return { id, nome, aparelhoId, onde, fazes, bemFeito, resultado, como };
 }
 
 /** Os códigos (sem nomes) de uma lista de linhas da ficha, sem repetidos. */
@@ -952,6 +957,8 @@ export interface RamoPratico {
   resultado?: string;
   /** O que o aluno fez, com o produto (da ficha). */
   fazes?: string;
+  /** Como se faz, curto e com o utensílio (da ficha). */
+  como?: string;
   /** Código do aparelho onde a técnica se faz. */
   aparelhoId?: string;
   /** true: o critério vem da ficha deste prato (não da biblioteca geral). */
@@ -979,7 +986,7 @@ export function ramoDaCompetencia(id: string, fichas: any[]): RamoPratico {
   if (cod.startsWith('APP-')) {
     const app = encontrarAparelho(cod);
     return { id: cod, prato, nome: app?.nome || linha?.nome || 'Aparelho', resultado: linha?.resultado,
-      fazes: linha?.fazes, daFicha: !!linha?.resultado };
+      fazes: linha?.fazes, como: linha?.como, daFicha: !!linha?.resultado };
   }
   const sub = encontrarSubtecnica(cod);
   let tecnica: string | undefined;
@@ -998,7 +1005,7 @@ export function ramoDaCompetencia(id: string, fichas: any[]): RamoPratico {
     id: cod, prato: pratoSemRepetir, aparelho, tecnica,
     nome: sub?.nome || linha?.nome || tecnica || 'Técnica',
     resultado: linha?.bemFeito || sub?.resultado_esperado,
-    fazes: linha?.fazes, aparelhoId: linha?.aparelhoId, daFicha: !!linha?.bemFeito,
+    fazes: linha?.fazes, como: linha?.como, aparelhoId: linha?.aparelhoId, daFicha: !!linha?.bemFeito,
   };
 }
 
