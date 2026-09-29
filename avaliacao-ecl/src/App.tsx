@@ -203,6 +203,8 @@ function AppInterno() {
   const [planoEmPausa, setPlanoEmPausa] = useState<TPlanoAula | null>(null);
   // 'inicio' é o painel de blocos; os outros valores são os destinos.
   const [vistaGlobal, setVistaGlobal] = useState<VistaProf>('inicio');
+  /** Concurso ou outra atividade escolhida em «Atividades e concursos». */
+  const [tipoAtividadeNova, setTipoAtividadeNova] = useState<string>('');
   const [planoIdAlvo, setPlanoIdAlvo] = useState<string | null>(null);
   const [temAlteracoes, setTemAlteracoes] = useState(false);
   const [acaoPendente, setAcaoPendente] = useState<(() => void) | null>(null);
@@ -644,7 +646,7 @@ function AppInterno() {
             // Sem key: dados novos só re-desenham o ecrã. Com key={refreshKey}
             // o ecrã recriava-se a cada sincronização e voltava ao calendário
             // (perdia a Lista, o Arquivo e até um plano a meio de criar).
-            <PlanoAula key={vistaGlobal} criarEvento={vistaGlobal === 'avaliar_evento'} versao={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
+            <PlanoAula key={vistaGlobal} criarEvento={vistaGlobal === 'avaliar_evento' ? (tipoAtividadeNova || true) : false} versao={refreshKey} turmaId={turmaId} nomeProfessor={nomeProfessor}
               onAlteracao={registarAlteracao}
               onGuardado={(p?: TPlanoAula) => {
                 limparAlteracoes();
@@ -687,7 +689,9 @@ function AppInterno() {
             {/* A cópia de segurança passou para a coordenadora (Dados e segurança). */}
             {vistaGlobal === 'gestao_recuperacoes' && <GestaoRecuperacoes turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'mapa_competencias' && <MapaCompetencias turmaId={turmaId} />}
-            {vistaGlobal === 'eventos' && <EventosECL turmaId={turmaId} nomeProfessor={nomeProfessor} />}
+            {vistaGlobal === 'eventos' && <EventosECL turmaId={turmaId} nomeProfessor={nomeProfessor}
+              onNovoPlano={(tipo) => { setTipoAtividadeNova(tipo); setVistaGlobal('avaliar_evento'); }}
+              onAbrirPlano={(p) => abrirPlano(p)} />}
             {vistaGlobal === 'abrir_aula' && <AbrirAulas turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'cronograma' && <CronogramaTab turmaId={turmaId} />}
             {/* Dicionário movido para o ecrã do aluno */}

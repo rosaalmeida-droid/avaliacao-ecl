@@ -190,8 +190,10 @@ export function AutoavaliacaoFinalUC({ aluno, ucId, ucNome, onFeito, onFechar }:
       {slide === 2 && <>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, lineHeight: 1.25, marginBottom: 12 }}>Assiduidade</div>
       <div style={{ ...caixa, fontSize: 14.5, lineHeight: 1.5 }}>
-        Faltaste a <b>{h1(dados.sit.horasFaltadas)} h</b> de {h1(dados.dadas)} h dadas nesta UC
-        {dados.dadas > 0 && <> (<b>{h1(dados.sit.horasFaltadas / dados.dadas * 100)}%</b> de faltas)</>}.
+        {(() => { const total = dados.sit.horasPrevistas || dados.dadas; return <>
+        Faltaste a <b>{h1(dados.sit.horasFaltadas)} h</b>. Esta UC tem {h1(total)} h no total
+        {total > 0 && <> (<b>{h1(dados.sit.horasFaltadas / total * 100)}%</b> de faltas; o limite é 10%, {h1(total * 0.1)} h)</>}.
+        </>; })()}
         {dados.sit.motivo === 'faltas' && (
           <div style={{ marginTop: 6, color: '#8e2418', fontWeight: 600 }}>
             Passaste os 10% de faltas: esta UC está em atraso e tens um plano de recuperação.

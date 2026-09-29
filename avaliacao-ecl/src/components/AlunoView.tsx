@@ -907,6 +907,20 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       });
     }
 
+    // Aceite numa atividade a que se candidatou: parabéns e o compromisso.
+    const hojeAceite = new Date().toISOString().slice(0, 10);
+    getPlanosAula().filter((p: any) => p.turmaId === aluno.turmaId && eventoForaDoHorario(p) && p.estado !== 'arquivado'
+      && modoParticipacao(p) === 'inscricao' && String(p.data || '').slice(0, 10) >= hojeAceite
+      && participantesDoEvento(p).includes(aluno.id))
+      .forEach((p: any) => av.push({
+        id: 'aceite_' + p.id,
+        titulo: `Foste aceite: ${p.titulo || 'atividade'}`,
+        detalhe: `Parabéns! O professor escolheu-te para esta atividade (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)}${p.horaInicio ? `, ${p.horaInicio}` : ''}). `
+          + 'Agora é contigo: assumes o compromisso de estar lá à hora, com a farda impecável, e dar o teu máximo do princípio ao fim. Vais representar a escola.',
+        destino: 'atividades',
+        urgente: false,
+      }));
+
     // Aulas passadas em que esteve e não se autoavaliou.
     const semAuto = planosOrdenados.filter(p =>
       p.data < hojeISO &&

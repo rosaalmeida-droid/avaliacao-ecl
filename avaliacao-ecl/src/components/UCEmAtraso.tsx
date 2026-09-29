@@ -125,7 +125,8 @@ function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
               </div>
               <div style={{ textAlign: 'right', minWidth: 130 }}>
                 <div style={{ fontWeight: 800, fontSize: 16, color: '#c0392b' }}>{l.percentagem}% de faltas</div>
-                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{h1(l.horasFaltadas)} h de {h1(l.horasDadas)} h dadas</div>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{h1(l.horasFaltadas)} h de faltas em {h1(l.horasUC)} h da UC</div>
+                <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>já foram dadas {h1(l.horasDadas)} h · limite {h1(l.horasUC * 0.1)} h</div>
               </div>
             </div>
 
