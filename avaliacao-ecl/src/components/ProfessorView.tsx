@@ -987,7 +987,7 @@ PARA CADA TÉCNICA escreve também, para ESTE prato (não genérico):
   COMO: como se faz, em 1–2 frases curtas que ensinam, com o utensílio certo
         (nome português e, entre parênteses, o francês quando se usa na cozinha) —
         «Derretes a manteiga, juntas a farinha de uma vez e mexes com as varas
-        (fouet) em lume brando, 2 a 3 minutos, sem ganhar cor»
+        (fouet) em lume brando, 1 a 2 minutos, sem ganhar cor»
   BEM FEITO: o que se vê quando ficou bem — «lascas húmidas, sem pele nem espinhas»
 PARA CADA APARELHO escreve:
   COMO: como se faz, curto, com o utensílio — «Juntas o leite quente aos poucos
@@ -1058,7 +1058,7 @@ REGISTO: NãoConformidades | INGREDIENTE: todos | MOTIVO: registar qualquer desv
 SUBTÉCNICAS DETECTADAS:
 [máx 8 subtécnicas da REGRA 9, pelos passos da preparação — operações concretas executadas]
 [formato: ID — Nome | APP-XXXX do aparelho onde se faz (ou "-") | COMPONENTE da tabela de ingredientes | FAZES: … | COMO: … | BEM FEITO: …]
-[uma por linha | ex: SUB-MOL-067-001 — Roux branco | APP-0047 | Molho béchamel | FAZES: Fazer o roux branco para o béchamel | COMO: Derretes a manteiga, juntas a farinha de uma vez e mexes com as varas (fouet) em lume brando, 2 a 3 minutos, sem ganhar cor | BEM FEITO: cor de marfim, cheiro a biscoito, sem grumos]
+[uma por linha | ex: SUB-MOL-067-001 — Roux branco | APP-0047 | Molho béchamel | FAZES: Fazer o roux branco para o béchamel | COMO: Derretes a manteiga, juntas a farinha de uma vez e mexes com as varas (fouet) em lume brando, 1 a 2 minutos, sem ganhar cor | BEM FEITO: praticamente branco, sem sabor a farinha crua, sem grumos]
 [o aparelho tem de estar também em APARELHOS DETECTADOS; se a operação não é feita dentro de um aparelho, escreve "-"]
 [ou "nenhuma"]
 

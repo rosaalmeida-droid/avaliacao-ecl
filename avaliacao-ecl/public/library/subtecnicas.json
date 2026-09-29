@@ -849,28 +849,28 @@
   "id": "SUB-MOL-067-001",
   "tecnica_id": "TEC-MOL-067",
   "nome": "Roux branco",
-  "definicao": "Farinha e manteiga em partes iguais, cozinhadas sem cor.",
+  "definicao": "Farinha e manteiga em partes iguais, em peso, cozinhadas 1 a 2 minutos, só até perder o sabor a farinha crua, sem ganhar cor.",
   "ambito": "Tipo de molho/creme definido",
-  "resultado_esperado": "Roux cor de marfim, cheiro a biscoito, sem grumos.",
-  "fontes": "ECL — revisão 2026"
+  "resultado_esperado": "Praticamente branco, sem sabor a farinha crua, sem grumos.",
+  "fontes": "Manual do Aluno ECL UFCD 11, cap. 9 — O roux: branco, louro e escuro"
  },
  {
   "id": "SUB-MOL-067-002",
   "tecnica_id": "TEC-MOL-067",
   "nome": "Roux louro",
-  "definicao": "Roux cozinhado até louro.",
+  "definicao": "Roux cozinhado mais alguns minutos, até dourar.",
   "ambito": "Tipo de molho/creme definido",
-  "resultado_esperado": "Cor dourada clara, cheiro a avelã.",
-  "fontes": "ECL — revisão 2026"
+  "resultado_esperado": "Cor dourada e aroma ligeiramente tostado, semelhante a biscoito.",
+  "fontes": "Manual do Aluno ECL UFCD 11, cap. 9 — O roux: branco, louro e escuro"
  },
  {
   "id": "SUB-MOL-067-003",
   "tecnica_id": "TEC-MOL-067",
   "nome": "Roux escuro",
-  "definicao": "Roux cozinhado até castanho.",
+  "definicao": "Roux cozinhado ainda mais tempo, até castanho profundo.",
   "ambito": "Tipo de molho/creme definido",
-  "resultado_esperado": "Castanho uniforme, sem queimar nem amargar.",
-  "fontes": "ECL — revisão 2026"
+  "resultado_esperado": "Castanho profundo e aroma tostado, próximo de fruto seco, sem queimar.",
+  "fontes": "Manual do Aluno ECL UFCD 11, cap. 9 — O roux: branco, louro e escuro"
  },
  {
   "id": "SUB-MOL-067-004",
