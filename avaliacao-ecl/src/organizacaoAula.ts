@@ -365,8 +365,8 @@ export function substituirNoLugar(o: OrganizacaoAula, chave: string, novoId: str
 
 /** Os alunos da turma que contam para o sorteio. */
 export function alunosDaTurma(turmaId: string): string[] {
-  // O aluno de teste (n.º 99) nunca entra nas funções da aula (Rosa, set/2026).
-  return getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false && a.numero !== 99)
+  // Os alunos de teste (n.º 99 e 88) nunca entram nas funções da aula (Rosa, set/2026).
+  return getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false && a.numero !== 99 && a.numero !== 88)
     .sort((a, b) => a.numero - b.numero).map(a => a.id);
 }
 
@@ -398,7 +398,7 @@ export function garantirOrganizacao(plano: PlanoAula): PlanoAula {
 
 /** Planos sorteados antes desta regra: o lugar do aluno de teste passa para um colega. */
 function semAlunoTeste(plano: PlanoAula, o: OrganizacaoAula): PlanoAula {
-  const teste = new Set(getAlunos().filter(a => a.turmaId === plano.turmaId && a.numero === 99).map(a => a.id));
+  const teste = new Set(getAlunos().filter(a => a.turmaId === plano.turmaId && (a.numero === 99 || a.numero === 88)).map(a => a.id));
   if (!o.lugares.some(l => teste.has(l.alunoId))) return plano;
   const alunos = alunosDaTurma(plano.turmaId);
   const hist = historicoFuncoes(getPlanosAula(), plano.turmaId, plano.id);

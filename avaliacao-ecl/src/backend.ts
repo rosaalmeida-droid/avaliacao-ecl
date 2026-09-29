@@ -1283,11 +1283,15 @@ export function seedAlunosReais(): void {
     { id: '1º ACR-20', turmaId: '1º ACR', numero: 20, ano: 1 as const, nome: 'Vinicius Oliveira Cabral', pin: '9087', ativo: true, pinCriadoEm: agora },
     { id: '1º ACR-21', turmaId: '1º ACR', numero: 21, ano: 1 as const, nome: 'Yaya Konate', pin: '9936', ativo: true, pinCriadoEm: agora },
     { id: '1º ACR-99', turmaId: '1º ACR', numero: 99, ano: 1 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
+    { id: '1º ACR-88', turmaId: '1º ACR', numero: 88, ano: 1 as const, nome: 'TESTE 88 — aluno de ensaio (sem autoavaliações)', pin: '8888', ativo: true, pinCriadoEm: agora },
     // Um aluno de teste por turma, para o professor experimentar sem
     // mexer no percurso de ninguém. PIN 9999.
     { id: '1º BCR-99', turmaId: '1º BCR', numero: 99, ano: 1 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
+    { id: '1º BCR-88', turmaId: '1º BCR', numero: 88, ano: 1 as const, nome: 'TESTE 88 — aluno de ensaio (sem autoavaliações)', pin: '8888', ativo: true, pinCriadoEm: agora },
     { id: '2º ACP-99', turmaId: '2º ACP', numero: 99, ano: 2 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
+    { id: '2º ACP-88', turmaId: '2º ACP', numero: 88, ano: 2 as const, nome: 'TESTE 88 — aluno de ensaio (sem autoavaliações)', pin: '8888', ativo: true, pinCriadoEm: agora },
     { id: '3º ACP-99', turmaId: '3º ACP', numero: 99, ano: 3 as const, nome: 'TESTE — aluno de ensaio', pin: '9999', ativo: true, pinCriadoEm: agora },
+    { id: '3º ACP-88', turmaId: '3º ACP', numero: 88, ano: 3 as const, nome: 'TESTE 88 — aluno de ensaio (sem autoavaliações)', pin: '8888', ativo: true, pinCriadoEm: agora },
 
     // ── 2º ACP ───────────────────────────────────────────────────
     // 2º ACP — constituição de 2026/27 (eSchooling).
