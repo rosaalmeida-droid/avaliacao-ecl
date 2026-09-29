@@ -1597,6 +1597,27 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           responderam às perguntas antigas. Nada lhes era reenviado. */}
       {(() => {
         const n = respostasAntesDaAlteracao(plano.id);
+        // Sem alteração: pode pedir na mesma (as perguntas não estavam bem, por exemplo).
+        const total = getSelecoes().filter(x => x.planoAulaId === plano.id).length;
+        if (!n && total && plano.estado === 'publicado') return (
+          <div style={{ background:'#fff', border:'1px solid rgba(26,23,20,0.12)', borderRadius:14, padding:'10px 14px', margin:'0 0 14px',
+            display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <div style={{ flex:1, minWidth:200, fontSize:13.5, color:'rgba(26,23,20,0.7)' }}>
+              {total} aluno{total === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.
+              Se as perguntas não estavam bem, podes pedir que respondam outra vez.
+            </div>
+            <button onClick={() => {
+                if (!confirm(`Pedir aos ${total} alunos que respondam outra vez?\n\nA nota que já deste continua a contar até validares a nova.`)) return;
+                pedirNovaAutoavaliacao(plano.id);
+                const p = getPlanosAula().find(x => x.id === plano.id);
+                if (p) onPlanoActualizado(p);
+              }}
+              style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #b5651d', background:'#fff', color:'#b5651d',
+                fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+              Pedir que respondam outra vez
+            </button>
+          </div>
+        );
         if (!n) return null;
         return (
           <div style={{ background:'#fdf0e6', border:'1.5px solid #e8c98f', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>

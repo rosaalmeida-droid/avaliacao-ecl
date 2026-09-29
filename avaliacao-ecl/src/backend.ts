@@ -2008,6 +2008,12 @@ export function libertarTelemovel(alunoId: string, turmaId: string): void {
   enviar(SHEETS_HISTORICO_URL, 'libertar_telemovel', { alunoId, turmaId });
 }
 
+/** O professor vai buscar à escola os telemóveis ligados da turma. Antes o
+ *  aparelho do professor só conhecia os que tinham entrado nele. */
+export function lerTelemoveisDaTurma(turmaId: string): Promise<boolean> {
+  return atualizarLigacoes(turmaId);
+}
+
 /** Tem o PIN ligado a algum telemóvel? (para os ecrãs do professor) */
 export function temTelemovelLigado(alunoId: string): boolean {
   return !!ligacoesLocais()[alunoId];
