@@ -897,8 +897,9 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     if (deNovo.length > 0) {
       av.push({
         id: 'responder_de_novo',
-        titulo: 'O professor pediu que respondas outra vez',
-        detalhe: `As perguntas da autoavaliação mudaram: ${deNovo.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. Até responderes, conta a nota que tinhas.`,
+        titulo: 'O professor quer ouvir-te outra vez',
+        detalhe: `Há perguntas novas, mais claras, na autoavaliação de ${deNovo.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
+          + 'É a tua oportunidade de mostrar o que fizeste bem e o que queres melhorar. Leva 2 minutos. Até responderes, conta a nota que tinhas.',
         // Abre logo a autoavaliação dessa aula (antes ia para o resumo da UC).
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
@@ -915,8 +916,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     if (semAuto.length > 0) {
       av.push({
         id: 'autoavaliacao',
-        titulo: 'Autoavaliação por fazer',
-        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} sem a tua avaliação.`,
+        titulo: 'A tua voz conta: autoavalia-te',
+        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua opinião. Quem se autoavalia mostra ao professor o que fez bem — e o professor tem isso em conta. Leva 2 minutos.`,
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
       });

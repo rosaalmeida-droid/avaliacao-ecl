@@ -1654,8 +1654,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <a href={`https://wa.me/?text=${encodeURIComponent(
               `Olá, ${plano.turmaId}! Mudei as perguntas da autoavaliação da aula «${plano.titulo}» `
               + `(${String(plano.data).slice(8, 10)}/${String(plano.data).slice(5, 7)}). `
-              + 'Abram a aplicação Avaliação ECL e respondam outra vez: aparece logo no Início. '
-              + 'Até responderem, conta a nota que já tinham.')}`}
+              + 'As perguntas agora são mais claras e é a vossa oportunidade de mostrar o que fizeram bem. '
+              + 'Abram a aplicação Avaliação ECL: aparece logo no Início e leva 2 minutos. '
+              + 'Até responderem, conta a nota que já tinham. Obrigada!')}`}
             target="_blank" rel="noopener noreferrer"
             style={{ display:'inline-block', marginTop:8, padding:'9px 14px', borderRadius:10, background:'#25D366',
               color:'#fff', fontSize:13.5, fontWeight:700, textDecoration:'none' }}>
