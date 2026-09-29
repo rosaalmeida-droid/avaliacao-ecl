@@ -2648,10 +2648,36 @@ const PREFIXO_TRIAGEM = 'TRIAGEM|';
 const PREFIXO_NOTA = 'UCNOTA|';
 /** Quem não teve função no plano organizacional e ajudou os colegas: o que fez. */
 const PREFIXO_COLAB = 'COLAB|';
+/** O aluno carregou em «Avisar o professor»: o pedido e o relatório do telemóvel. */
+const PREFIXO_AJUDA = 'AJUDA|';
 const ehRegistoEspecial = (s: SelecaoAluno) => {
   const p = String(s.planoAulaId || '');
-  return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA) || p.startsWith(PREFIXO_COLAB);
+  return p.startsWith(PREFIXO_FINAL) || p.startsWith(PREFIXO_TRIAGEM) || p.startsWith(PREFIXO_NOTA) || p.startsWith(PREFIXO_COLAB)
+    || p.startsWith(PREFIXO_AJUDA);
 };
+
+/**
+ * O aluno pede ajuda ao professor (não vê a aula, por exemplo). Antes o aviso
+ * ficava só no telemóvel do aluno e nunca chegava ao professor. Vai pelo
+ * mesmo caminho das autoavaliações, com o relatório do telemóvel.
+ */
+export function pedirAjudaAoProfessor(aluno: { id: string; turmaId: string }, titulo: string, linhas: string[]): void {
+  const agora = new Date().toISOString();
+  addOrUpdateSelecao({
+    id: `ajuda_${aluno.id}_${agora.slice(0, 16)}`, planoAulaId: PREFIXO_AJUDA + agora.slice(0, 10), comandaId: '', fichaId: '',
+    alunoId: aluno.id, turmaId: aluno.turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
+    autoavaliacoes: [{ competenciaId: 'AJUDA', nivel: 'ajuda', nota: 0, titulo, linhas } as any],
+    criadaEm: agora,
+  } as any);
+}
+
+/** Pedidos de ajuda dos alunos dos últimos 7 dias. */
+export function pedidosDeAjuda(): { id: string; alunoId: string; turmaId: string; em: string; titulo: string; linhas: string[] }[] {
+  const limite = new Date(Date.now() - 7 * 86400000).toISOString();
+  return load<any>(KEYS.selecoes).filter((s: any) => String(s.planoAulaId || '').startsWith(PREFIXO_AJUDA) && String(s.criadaEm || '') >= limite)
+    .map((s: any) => ({ id: s.id, alunoId: s.alunoId, turmaId: s.turmaId, em: s.criadaEm,
+      titulo: String(s.autoavaliacoes?.[0]?.titulo || ''), linhas: s.autoavaliacoes?.[0]?.linhas || [] }));
+}
 
 /** O aluno sem função nesta aula diz como ajudou os colegas (chega ao professor). */
 export function guardarColaboracao(alunoId: string, turmaId: string, planoAulaId: string, texto: string): void {
@@ -4240,6 +4266,19 @@ function calcularAvisosOperacionais(): Aviso[] {
       criadoEm: new Date().toISOString(),
     } as Aviso);
   }
+
+  // Pedidos de ajuda dos alunos, com o relatório do telemóvel deles.
+  pedidosDeAjuda().forEach(a => {
+    const al = getAlunos().find(x => x.id === a.alunoId);
+    avisos.push({
+      id: `op_${a.id}`, tipo: 'outro',
+      titulo: `${al?.nome || a.alunoId} (${a.turmaId}) pede ajuda: ${a.titulo}`,
+      descricao: `Enviado a ${new Date(a.em).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.\n`
+        + a.linhas.join('\n'),
+      contexto: { tabDestino: 'planos' },
+      resolvido: false, criadoEm: a.em,
+    } as Aviso);
+  });
 
   const planos = getPlanosAula().filter(p => p.estado !== 'arquivado');
   const fichas = getFichasProducao();
