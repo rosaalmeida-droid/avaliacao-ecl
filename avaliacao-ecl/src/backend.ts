@@ -191,14 +191,42 @@ const KEYS = {
 };
 
 // ── Utilitários localStorage ─────────────────────────────────
+// Quando o telemóvel não tem espaço (ou o browser não deixa guardar), o que
+// não coube fica na memória enquanto a aplicação estiver aberta. Antes, a
+// gravação falhava em silêncio e o aluno ficava sem ver planos nenhuns.
+const naMemoria: Record<string, string> = {};
+let semEspacoNoAparelho = false;
+/** O telemóvel não conseguiu guardar dados (sem espaço ou guardar bloqueado). */
+export function aparelhoSemEspaco(): boolean { return semEspacoNoAparelho; }
+
 function load<T>(key: string): T[] {
-  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : []; }
-  catch { return []; }
+  try {
+    const r = key in naMemoria ? naMemoria[key] : localStorage.getItem(key);
+    return r ? JSON.parse(r) : [];
+  } catch { return []; }
+}
+
+/** Liberta o que já não serve (cópias antigas) para caberem os dados novos. */
+function libertarEspaco(): void {
+  try {
+    // A cópia de antes do arranque do ano só se apaga no telemóvel de um aluno
+    // (no do professor e no da coordenação é uma cópia de segurança que conta).
+    const velhas = perfilDoAparelho === 'aluno' ? ['ecl_backup_pre_arranque', 'ecl_eventos_v3'] : ['ecl_eventos_v3'];
+    velhas.forEach(k => localStorage.removeItem(k));
+  } catch { /* */ }
 }
 
 export function save<T>(key: string, data: T[]): void {
-  try { localStorage.setItem(key, JSON.stringify(data)); }
-  catch (e) { console.error('Erro ao guardar', key, e); }
+  const texto = JSON.stringify(data);
+  try { localStorage.setItem(key, texto); delete naMemoria[key]; return; }
+  catch { /* sem espaço: tenta libertar */ }
+  libertarEspaco();
+  try { localStorage.setItem(key, texto); delete naMemoria[key]; return; }
+  catch (e) {
+    naMemoria[key] = texto;
+    semEspacoNoAparelho = true;
+    console.error('Sem espaço para guardar', key, e);
+  }
 }
 
 async function postar(url: string, corpo: Record<string, unknown>): Promise<void> {
