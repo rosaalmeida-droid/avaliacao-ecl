@@ -107,7 +107,10 @@ export interface PlanoRealizado { id: string; titulo: string; data: string; aval
 export function planosRealizadosDaUC(turmaId: string, ucId: string): PlanoRealizado[] {
   const validacoes = getValidacoes() as any[];
   return getPlanosAulaPorTurma(turmaId)
-    .filter(p => p.ucId === ucId && (p.estado === 'publicado' || (p.estado as string) === 'realizada')
+    // Só planos de aula: o plano de aula é a matriz oficial de avaliação. Os
+    // eventos e concursos contam à parte, como participação (atividades) e
+    // nas atitudes — nunca como coluna da pauta (Rosa, set/2026).
+    .filter(p => p.ucId === ucId && !(p as any).tipoEvento && (p.estado === 'publicado' || (p.estado as string) === 'realizada')
       && String(p.data).slice(0, 10) <= hojeISO())
     .sort((a, b) => String(a.data).localeCompare(String(b.data))
       || String(a.horaInicio || '').localeCompare(String(b.horaInicio || '')))
@@ -200,7 +203,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       };
 
       // As aulas desta UC a que o aluno veio
-      const planosUC = planos.filter(p => p.ucId === ucId && String(p.data).slice(0, 10) <= hojeISO()
+      const planosUC = planos.filter(p => p.ucId === ucId && !(p as any).tipoEvento && String(p.data).slice(0, 10) <= hojeISO()
         && (p.estado === 'publicado' || (p.estado as string) === 'realizada'));
       const presencas = getPresencas().filter(x => x.alunoId === a.id && planosUC.some(p => p.id === x.planoAulaId) && x.presente);
       const idsVeio = new Set(presencas.map(x => x.planoAulaId));
@@ -210,7 +213,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
       // CM — compromisso
       const s = faltasEmHorasUC(a.id, turmaId, ucId);
       const assid = assiduidadeNaUC(a.id, turmaId, ucId);
-      junta('cm', `Assiduidade: ${s.presenca}% das horas dadas`, s.presenca / 5, assid.aulasPrevistas || nVeio);
+      junta('cm', `Assiduidade: ${s.presenca}% (faltas sobre o total de horas da UC)`, s.presenca / 5, assid.aulasPrevistas || nVeio);
       junta('cm', `Pontualidade: ${assid.atrasos} atraso${assid.atrasos === 1 ? '' : 's'}`,
         assid.presencas > 0 ? (1 - assid.atrasos / assid.presencas) * 20 : null, assid.presencas);
       const selecoes = getSelecoes().filter(x => x.alunoId === a.id && idsVeio.has(x.planoAulaId as string));
@@ -310,11 +313,17 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
 /** Atividades da turma no período do módulo — o "Total Pond" da coluna ATIV. */
 export function atividadesDoModulo(turmaId: string, ucId: string): number {
   const mod: any = modulosDaTurma(turmaId).find((m: any) => m.id === ucId);
-  return getAtividades().filter(a => {
+  const registadas = getAtividades().filter(a => {
     if (a.turmaId !== turmaId) return false;
     const d = String(a.data || '').slice(0, 10);
     return !mod?.dataInicio || !mod?.dataFim || (d >= mod.dataInicio && d <= mod.dataFim);
-  }).length;
+  });
+  // Os eventos e concursos com plano nesta UC (mesmo fora das datas: contam
+  // na UC escolhida ao criar), sem repetir os dias já registados.
+  const dias = new Set(registadas.map(a => String(a.data || '').slice(0, 10)));
+  const dosPlanos = getPlanosAulaPorTurma(turmaId).filter((p: any) => p.tipoEvento && p.ucId === ucId
+    && p.estado !== 'arquivado' && !dias.has(String(p.data || '').slice(0, 10)));
+  return registadas.length + dosPlanos.length;
 }
 
 // ── As contas do modelo (as mesmas das fórmulas) ─────────────
