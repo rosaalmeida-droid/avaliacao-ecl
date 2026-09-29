@@ -2936,9 +2936,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               const nota = Number(av.nota) || OPCOES.find(o => o.v === av.nivel)?.nota || 0;
               const emoji = nota >= 5 ? '🌟' : nota >= 4 ? '✅' : nota >= 3 ? '🤝' : '📖';
               const ehAtitude = String(av.competenciaId || '').startsWith('ATI-');
-              const label = av.semRegistoKF ? 'Sem registo no KitchenFlow: 1'
-                : ehAtitude ? `Nível ${nota}`
-                : OPCOES.find(o => o.nota === nota)?.label || '';
+              // Sempre em /20, como a nota da aula: níveis soltos (1 a 5) ao lado
+              // de notas em /20 pareciam não bater certo.
+              const label = av.semOportunidade || av.nivel === 'nop' ? 'Não tive oportunidade'
+                : `${classificacao20(notaPara20(nota))} · ${notaPara20(nota)}/20`;
+              void ehAtitude;
               const nomeComp = av.competenciaId?.startsWith('OBR_01') ? 'Higiene pessoal'
                 : av.competenciaId?.startsWith('OBR_02') ? 'Higiene e segurança alimentar'
                 : ATITUDES.find(x => x.id === av.competenciaId)?.nome || nomeCompetencia(av.competenciaId || '');
@@ -3012,7 +3014,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                       {comparacoes.map(c => (
                         <div key={c.competenciaId} style={{ display:'flex', justifyContent:'space-between', fontSize:12.5, padding:'2px 0', color:'rgba(26,23,20,0.4)' }}>
                           <span>{c.competenciaId === 'INI-001' ? 'Iniciativa' : ATITUDES.find(x => x.id === c.competenciaId)?.nome || nomeCompetencia(c.competenciaId)}</span>
-                          <span>Tu: {c.alunoDisse} · Professor: {c.professorValidou}</span>
+                          <span>Tu: {notaPara20(c.alunoDisse)}/20 · Professor: {notaPara20(c.professorValidou as number)}/20</span>
                         </div>
                       ))}
                     </div>

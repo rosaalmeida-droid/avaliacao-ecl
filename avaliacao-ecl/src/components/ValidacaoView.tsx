@@ -677,7 +677,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                       cursor: 'pointer', textAlign: 'center', fontFamily: 'inherit',
                       position: 'relative',
                     }}>
-                    <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{n.v}</div>
+                    {/* Em /20, como a nota da aula (os níveis 1 a 5 confundiam). */}
+                    <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{para20(n.v)}</div>
                     <div style={{ fontSize: 11.5, marginTop: 5, fontWeight: escolhido ? 700 : 400 }}>
                       {n.curto}
                     </div>
@@ -762,7 +763,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                       fontSize:13.5, border: r === o.v ? '2px solid var(--sage)' : '1px solid var(--border)',
                       background: r === o.v ? 'rgba(90,122,78,0.1)' : '#fff' }}>
                     <span style={{ minWidth:18, fontWeight:800, color:'var(--sage)' }}>
-                      {typeof o.v === 'number' ? o.v + 2 : '–'}</span>
+                      {typeof o.v === 'number' ? notaPara20(o.v + 2) : '–'}</span>
                     <span style={{ flex:1 }}>{o.txt}</span>
                   </button>
                 ))}
