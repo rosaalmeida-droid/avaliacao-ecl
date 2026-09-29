@@ -107,6 +107,10 @@ export interface Triagem5C {
   crId?: string;
   /** O problema que o aluno resolveu, nas palavras dele (opcional). */
   problema?: string;
+  /** A pergunta do Colaborativo a que respondeu (sem ela, a do trabalho com os colegas). */
+  clId?: string;
+  /** Perguntas a que o aluno disse «não aconteceu» antes de responder à que conta. */
+  semAntes?: { cl?: string[]; cr?: string[]; co?: string[] };
   /** Disse «não houve ocasião», mas o professor viu que aconteceu: fica na resposta mais baixa. */
   naoReparou?: ('cl' | 'cr' | 'co')[];
 }
@@ -404,10 +408,48 @@ export function perguntaDoCiclo(chave: 'co' | 'cr', k: number, soTeoria = false)
   return doLado[Math.floor(k / 3) % doLado.length];
 }
 
+/** Colaborativo, quando a tarefa foi individual: uma situação que acontece sempre. */
+export const CL_SEMPRE: PerguntaCO = {
+  id: 'cl02', lado: 'outros', chave: 'cl' as any, sigla: 'CL' as any, titulo: 'Espaço e material partilhados',
+  pergunta: 'Hoje, com o espaço, o material e a limpeza que partilhas com os colegas, o que fizeste?',
+  semOcasiao: '',
+  frases: [
+    'Usei e deixei para os outros arrumar.',
+    'Arrumei só o que era meu.',
+    'Partilhei o material e arrumei com os colegas o que usámos.',
+    'Combinei com os colegas quem fazia o quê e ficou tudo pronto para todos.',
+  ],
+  perguntaSimples: 'Hoje, com o material e a limpeza, o que fizeste?',
+  semOcasiaoSimples: '',
+  frasesSimples: ['Deixei para os outros arrumar.', 'Arrumei só o meu.', 'Arrumei com os colegas.', 'Combinei com os colegas e ficou tudo pronto.'],
+};
+
+/**
+ * O aluno disse «não aconteceu»: a pergunta seguinte é uma que acontece
+ * sempre (não tem «não aconteceu»), do mesmo C — assim há sempre resposta
+ * e o professor não tem de responder por ele (Rosa, set/2026).
+ */
+export function perguntaSeguinte(chave: ChaveTriagem, jaVistas: string[], soTeoria = false): PerguntaTriagem & { id: string } {
+  if (chave === 'cl') return CL_SEMPRE;
+  const banco = BANCOS[chave].banco.filter(q => !jaVistas.includes(q.id) && (!soTeoria || !SO_AULA_PRATICA.has(q.id)));
+  const sempre = banco.filter(q => !q.semOcasiao);
+  const q = sempre[jaVistas.length % Math.max(1, sempre.length)] || banco[0];
+  // Por segurança: a seguinte nunca tem «não aconteceu».
+  return { ...q, semOcasiao: '', semOcasiaoSimples: '' };
+}
+
 /** As três perguntas da aula, com as do Consciente e do Criativo certas.
  *  Sem id (autoavaliações antigas) fica a pergunta antiga. */
-export function perguntasDaAula(coId?: string, crId?: string): PerguntaTriagem[] {
+export function perguntasDaAula(coId?: string, crId?: string, clId?: string): PerguntaTriagem[] {
   const qco = coId ? BANCO_CO.find(x => x.id === coId) : undefined;
   const qcr = crId ? BANCO_CR.find(x => x.id === crId) : undefined;
-  return PERGUNTAS_TRIAGEM.map(p => p.chave === 'co' && qco ? qco : p.chave === 'cr' && qcr ? qcr : p);
+  return PERGUNTAS_TRIAGEM.map(p => p.chave === 'co' && qco ? qco : p.chave === 'cr' && qcr ? qcr
+    : p.chave === 'cl' && clId === CL_SEMPRE.id ? CL_SEMPRE : p);
+}
+
+/** Uma pergunta pelo id (a do Colaborativo, do Consciente ou do Criativo). */
+export function perguntaPorId(id: string): PerguntaTriagem | undefined {
+  if (id === CL_SEMPRE.id) return CL_SEMPRE;
+  if (id === 'cl01') return PERGUNTAS_TRIAGEM[0];
+  return BANCO_CO.find(x => x.id === id) || BANCO_CR.find(x => x.id === id);
 }
