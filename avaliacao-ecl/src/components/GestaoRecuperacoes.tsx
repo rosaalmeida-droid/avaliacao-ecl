@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getRecuperacoesPorTurma, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript } from '../backend';
+import { getRecuperacoesPorTurma, ucsEmAtraso, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
@@ -9,6 +9,7 @@ import { GuiaProducao } from './GuiaProducao';
 import { SeletorIA } from './SeletorIA';
 import { CriarRecuperacaoFCT, RecuperacaoFCTAluno } from './RecuperacaoFCT';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
+import { PainelUCEmAtraso } from './UCEmAtraso';
 
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
@@ -55,6 +56,10 @@ export function GestaoRecuperacoes({ turmaId, nomeProfessor }: { turmaId: string
           Trabalhos de recuperação submetidos pelos alunos, por validar.
         </div>
       </div>
+
+      {/* Tudo num sítio: primeiro os alunos com a UC em atraso por faltas
+          (os mesmos do aviso vermelho), depois os trabalhos. */}
+      <UCEmAtrasoNaGestao turmaId={turmaId} nomeProfessor={nomeProfessor} onMudou={() => setRefresh(r => r + 1)} />
 
       <div style={{ marginBottom: 14 }}>
         <CriarRecuperacaoFCT turmaId={turmaId} onCriada={() => setRefresh(r => r + 1)} />
@@ -594,6 +599,41 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
           : !defesaOralRealizada ? '🗣️ Confirma a defesa oral primeiro'
           : '✓ Concluir Avaliação'}
       </button>
+    </div>
+  );
+}
+
+/** Os alunos com a UC em atraso por faltas: quem falta decidir, quem está a
+ *  recuperar, quem ficou para depois da UC e quem já recuperou. */
+function UCEmAtrasoNaGestao({ turmaId, nomeProfessor, onMudou }: { turmaId: string; nomeProfessor?: string; onMudou: () => void }) {
+  const [aberto, setAberto] = useState(false);
+  const [, redesenhar] = useState(0);
+  const lista = ucsEmAtraso(turmaId);
+  const ESTADO: Record<string, [string, string]> = {
+    sem_plano: ['Por decidir', '#c0392b'], em_curso: ['A recuperar', '#b5651d'],
+    adiado: ['Depois da UC', 'rgba(26,23,20,0.6)'], recuperado: ['Recuperado', '#3E7A31'],
+  };
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 14, border: lista.some(l => l.estado === 'sem_plano') ? '2px solid #c0392b' : '1px solid rgba(26,23,20,0.1)' }}>
+      <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>UC em atraso por faltas ({lista.length})</div>
+      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
+        Faltas a partir de 10% do total de horas da UC. Decide se recupera já, em aula, ou depois da UC.
+      </div>
+      {lista.length === 0 ? <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.5)' }}>Nenhum aluno com a UC em atraso.</div>
+        : lista.map(l => (
+          <div key={l.alunoId + l.ucId} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '7px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
+            <span style={{ flex: 1, minWidth: 0 }}><b>{l.numero}. {l.nome}</b> · {l.ucId}</span>
+            <span style={{ fontWeight: 700, color: '#c0392b' }}>{l.percentagem}%</span>
+            <span style={{ fontWeight: 700, color: ESTADO[l.estado][1], minWidth: 96, textAlign: 'right' }}>{ESTADO[l.estado][0]}</span>
+          </div>
+        ))}
+      {lista.length > 0 && (
+        <button onClick={() => setAberto(true)} style={{ marginTop: 10, width: '100%', minHeight: 44, borderRadius: 10, border: 'none',
+          background: '#c0392b', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Ver as faltas e decidir</button>
+      )}
+      {aberto && <PainelUCEmAtraso lista={lista} nomeProfessor={nomeProfessor} onFechar={() => setAberto(false)}
+        onMudou={() => { redesenhar(n => n + 1); onMudou(); }} />}
     </div>
   );
 }

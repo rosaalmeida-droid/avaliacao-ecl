@@ -45,8 +45,10 @@ export function ListaFaltasUC({ alunoId, turmaId, ucId }: { alunoId: string; tur
   );
 }
 
-export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
+export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile, onAbrirRecuperacoes }: {
   turmaId?: string; nomeProfessor?: string; isMobile?: boolean;
+  /** Vai ao separador Recuperações (tudo o que há para recuperar num sítio). */
+  onAbrirRecuperacoes?: () => void;
 }) {
   const [lista, setLista] = useState<UCEmAtraso[]>([]);
   const [aberto, setAberto] = useState(false);
@@ -72,11 +74,11 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
   return (
     <>
       {alunos > 0 ? (
-        // Com alunos por decidir: uma barra larga, ao centro, que não passa
+        // Alunos por decidir: uma barra larga, ao centro, que não passa
         // despercebida (Rosa, set/2026: o botão pequeno no canto perdia-se).
         <button onClick={() => setAberto(true)} className="no-print" style={{
           position: 'fixed', zIndex: 160, left: '50%', transform: 'translateX(-50%)', bottom: isMobile ? 82 : 18,
-          width: 'min(720px, calc(100vw - 24px))', display: 'flex', alignItems: 'center', gap: 14,
+          width: 'min(760px, calc(100vw - 24px))', display: 'flex', alignItems: 'center', gap: 14,
           padding: '14px 18px', borderRadius: 16, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
           border: 'none', background: '#c0392b', color: '#fff', boxShadow: '0 8px 24px rgba(192,57,43,0.35)',
         }}>
@@ -85,8 +87,10 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
             <span style={{ display: 'block', fontSize: 17, fontWeight: 800 }}>
               {alunos} aluno{alunos > 1 ? 's' : ''} com a UC em atraso por faltas
             </span>
-            <span style={{ display: 'block', fontSize: 13.5, opacity: 0.9, marginTop: 2 }}>
-              Passaram os 10% de faltas. Decide a recuperação.{adiados > 0 ? ` · ${adiados} para depois da UC` : ''}
+            <span style={{ display: 'block', fontSize: 13.5, opacity: 0.92, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {porRecuperar.slice(0, 3).map(l => `${(l.nome || '').split(' ')[0]} ${l.percentagem}%${l.estado === 'em_curso' ? ' (a recuperar)' : ''}`).join(' · ')}
+              {porRecuperar.length > 3 ? ` · +${porRecuperar.length - 3}` : ''}
+              {adiados > 0 ? ` · ${adiados} para depois da UC` : ''}
             </span>
           </span>
           <span style={{ background: '#fff', color: '#c0392b', borderRadius: 10, padding: '10px 14px', fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap' }}>Ver e decidir</span>
@@ -105,14 +109,16 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
       )}
       {aberto && (
         <PainelUCEmAtraso lista={lista} nomeProfessor={nomeProfessor}
-          onFechar={() => setAberto(false)} onMudou={() => setVersao(v => v + 1)} />
+          onFechar={() => setAberto(false)} onMudou={() => setVersao(v => v + 1)}
+          onAbrirRecuperacoes={onAbrirRecuperacoes ? () => { setAberto(false); onAbrirRecuperacoes(); } : undefined} />
       )}
     </>
   );
 }
 
-function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
+export function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou, onAbrirRecuperacoes }: {
   lista: UCEmAtraso[]; nomeProfessor?: string; onFechar: () => void; onMudou: () => void;
+  onAbrirRecuperacoes?: () => void;
 }) {
   const [aEditar, setAEditar] = useState<string | null>(null);   // chave aluno|uc
   const chave = (l: UCEmAtraso) => `${l.alunoId}|${l.ucId}`;
@@ -124,6 +130,10 @@ function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
         width: '100%', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <div style={{ fontSize: 18, fontWeight: 800, flex: 1 }}>Alunos com UC/módulo em atraso</div>
+          {onAbrirRecuperacoes && (
+            <button onClick={onAbrirRecuperacoes} style={{ border: '1.5px solid #7B2233', background: '#fff', color: '#7B2233', borderRadius: 10,
+              padding: '7px 12px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Todas as recuperações ›</button>
+          )}
           <button onClick={onFechar} style={{ border: 'none', background: 'transparent', fontSize: 14,
             fontWeight: 700, cursor: 'pointer', color: 'rgba(26,23,20,0.6)', fontFamily: 'inherit' }}>Fechar</button>
         </div>
