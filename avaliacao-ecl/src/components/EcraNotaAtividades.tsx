@@ -55,7 +55,7 @@ export function EcraMinhaNota({
     faltas: { titulo: string; data: string }[];
     media: number | null;
     bonus: { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }[];
-    bonusTotal: number; teto: boolean; final: number | null; publicada: boolean;
+    bonusTotal: number; teto: boolean; motivoTeto?: string; final: number | null; publicada: boolean;
   } | null;
   ucId?: string; ucNome?: string;
   nota: number | null;
@@ -182,7 +182,7 @@ export function EcraMinhaNota({
               <div key={b.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 14 }}>
                 <span style={{ flex: 1, minWidth: 0, color: C.texto }}>
                   {b.tipo === 'concurso' ? '🏆' : '🏅'} {b.titulo} <span style={{ color: '#999' }}>· {b.data.split('-').reverse().slice(0, 2).join('/')}</span>
-                  {!b.conta && b.motivo && <span style={{ display: 'block', fontSize: 12.5, color: '#999' }}>{b.motivo}</span>}
+                  {(!b.conta || b.tipo === 'concurso') && b.motivo && <span style={{ display: 'block', fontSize: 12.5, color: '#999' }}>{b.motivo}</span>}
                 </span>
                 <span style={{ fontWeight: 700, color: b.conta ? C.verde : '#999' }}>{b.conta ? `+${fmt2(b.valor)}` : '+0'}</span>
               </div>
@@ -194,7 +194,7 @@ export function EcraMinhaNota({
             )}
             {detalhe.teto && (
               <div style={{ fontSize: 13, color: C.suave, marginTop: 4 }}>
-                A nota ficou no limite: sem participar em atividades vai até 17; só com eventos, até 18; o 20 precisa de um concurso.
+                {detalhe.motivoTeto || 'A nota ficou no limite.'} Participar e candidatar-se também é atitude.
               </div>
             )}
             {detalhe.final != null && (

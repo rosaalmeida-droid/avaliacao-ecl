@@ -991,6 +991,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     bonus: bonusPorAtividade(aluno.id, aluno.turmaId, ucAtual, calcUC.base),
     bonusTotal: calcUC.bonusParticipacao,
     teto: calcUC.limitadaPorTeto,
+    motivoTeto: calcUC.motivoTeto || '',
     final: calcUC.final,
     publicada: !!publicadaDaUC,
   } : null;
