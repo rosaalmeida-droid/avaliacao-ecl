@@ -7,6 +7,7 @@ import { notaPara20 } from '../types';
 
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
+  if (id === 'SUB-OUTRA') return 'Outra tarefa (em vez das técnicas)';
   if (id.startsWith('SUB-')) return encontrarSubtecnica(id)?.nome || id;
   if (id.startsWith('APP-')) return encontrarAparelho(id)?.nome || id;
   if (id.startsWith('KNW-')) return encontrarConhecimento(id)?.nome || id;

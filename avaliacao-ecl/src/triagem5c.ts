@@ -107,6 +107,8 @@ export interface Triagem5C {
   crId?: string;
   /** O problema que o aluno resolveu, nas palavras dele (opcional). */
   problema?: string;
+  /** Disse «não houve ocasião», mas o professor viu que aconteceu: fica na resposta mais baixa. */
+  naoReparou?: ('cl' | 'cr' | 'co')[];
 }
 
 /** Nota 1-5 de uma resposta; null quando não houve ocasião. */
@@ -391,10 +393,14 @@ export const bancoDe = (chave: 'co' | 'cr') => BANCOS[chave];
 
 /** A k-ésima pergunta do ciclo: os três lados alternam, e dentro de cada
  *  lado as perguntas vão rodando. */
-export function perguntaDoCiclo(chave: 'co' | 'cr', k: number): PerguntaCO {
+/** Perguntas que só fazem sentido numa aula com produção (cozinha, pratos,
+ *  ingredientes, equipamento). Nas aulas teóricas e atitudinais não saem. */
+export const SO_AULA_PRATICA = new Set(['co08', 'co09', 'co11', 'co12', 'cr01', 'cr02', 'cr05', 'cr06', 'cr07', 'cr12', 'cr13', 'cr15']);
+
+export function perguntaDoCiclo(chave: 'co' | 'cr', k: number, soTeoria = false): PerguntaCO {
   const { lados, banco } = BANCOS[chave];
   const lado = lados[((k % 3) + 3) % 3].lado;
-  const doLado = banco.filter(q => q.lado === lado);
+  const doLado = banco.filter(q => q.lado === lado && (!soTeoria || !SO_AULA_PRATICA.has(q.id)));
   return doLado[Math.floor(k / 3) % doLado.length];
 }
 

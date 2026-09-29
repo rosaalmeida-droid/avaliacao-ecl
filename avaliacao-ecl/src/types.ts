@@ -873,8 +873,8 @@ export const PESOS_AULA = {
   // Aula atitudinal: só atitudes contam.
   atitudinal: { OBR: 0.00, SUB: 0.00, KNW: 0.00, ATI: 1.00, INI: 0.00 },
   // O professor decidiu incluir a higiene e a farda nesta aula
-  // atitudinal — aí contam, mas as atitudes continuam a mandar.
-  atitudinal_obr: { OBR: 0.00, SUB: 0.00, KNW: 0.00, ATI: 1.00, INI: 0.00 },
+  // atitudinal: contam 20%, como o professor lê no plano (Rosa, set/2026).
+  atitudinal_obr: { OBR: 0.20, SUB: 0.00, KNW: 0.00, ATI: 0.80, INI: 0.00 },
 } as const;
 
 // Repartição interna dos conhecimentos, quando estiverem marcados.

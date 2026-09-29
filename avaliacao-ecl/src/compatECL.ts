@@ -1031,6 +1031,7 @@ export function nomeConhecimentoProf(id: string): string | undefined {
 
 export function nomeCompetencia(id: string): string {
   if (id.startsWith('KNW-P') || id.startsWith('KNW-R-')) return nomeConhecimentoProf(id) || 'Conhecimento';
+  if (id === 'SUB-OUTRA') return 'Outra tarefa (em vez das técnicas)';
   if (id.startsWith('SUB-')) return encontrarSubtecnica(id)?.nome || id;
   if (id.startsWith('APP-')) return encontrarAparelho(id)?.nome || id;
   if (id.startsWith('ATT_')) return encontrarAtitude(id)?.nome || id;

@@ -365,7 +365,8 @@ export function substituirNoLugar(o: OrganizacaoAula, chave: string, novoId: str
 
 /** Os alunos da turma que contam para o sorteio. */
 export function alunosDaTurma(turmaId: string): string[] {
-  return getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false)
+  // O aluno de teste (n.º 99) nunca entra nas funções da aula (Rosa, set/2026).
+  return getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false && a.numero !== 99)
     .sort((a, b) => a.numero - b.numero).map(a => a.id);
 }
 
@@ -388,9 +389,29 @@ export function distribuirFuncoes(plano: PlanoAula): PlanoAula {
 
 /** Plano publicado de uma aula prática ainda sem funções: distribui já. */
 export function garantirOrganizacao(plano: PlanoAula): PlanoAula {
-  if (!temOrganizacao(plano) || plano.estado !== 'publicado' || organizacaoDe(plano)) return plano;
+  const existente = organizacaoDe(plano);
+  if (existente) return semAlunoTeste(plano, existente);
+  if (!temOrganizacao(plano) || plano.estado !== 'publicado') return plano;
   if (alunosDaTurma(plano.turmaId).length === 0) return plano;
   return distribuirFuncoes(plano);
+}
+
+/** Planos sorteados antes desta regra: o lugar do aluno de teste passa para um colega. */
+function semAlunoTeste(plano: PlanoAula, o: OrganizacaoAula): PlanoAula {
+  const teste = new Set(getAlunos().filter(a => a.turmaId === plano.turmaId && a.numero === 99).map(a => a.id));
+  if (!o.lugares.some(l => teste.has(l.alunoId))) return plano;
+  const alunos = alunosDaTurma(plano.turmaId);
+  const hist = historicoFuncoes(getPlanosAula(), plano.turmaId, plano.id);
+  let nova: OrganizacaoAula = o;
+  for (const l of o.lugares.filter(x => teste.has(x.alunoId))) {
+    const outro = candidatosParaLugar(nova, l.chave, alunos, hist, null)[0];
+    nova = outro ? substituirNoLugar(nova, l.chave, outro, alunos, hist, null)
+      : { ...nova, lugares: nova.lugares.filter(x => x.chave !== l.chave) };
+    // Não é uma substituição de verdade: não fica «substituiu o aluno de teste».
+    nova = { ...nova, lugares: nova.lugares.map(x => teste.has(x.substituiu || '')
+      ? { chave: x.chave, funcaoId: x.funcaoId, alunoId: x.alunoId } : x) };
+  }
+  return guardar(plano, nova);
 }
 
 /** Já se pode substituir? Só com a aula aberta (o professor sabe quem está). */
