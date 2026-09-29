@@ -453,7 +453,9 @@ const EST_PU: Record<string, { dot:string; fundo:string; texto:string; etiqueta:
   aguarda:     { dot:'#b0692b', fundo:'rgba(181,101,29,0.10)', texto:'#8a4f1e', etiqueta:'Aguarda validação do professor' },
   validado:    { dot:'#5a7a4e', fundo:'rgba(90,122,78,0.12)', texto:'#4e6a25', etiqueta:'Validado' },
 };
-function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucId: string }) {
+/** semNotas: durante a autoavaliação não se mostram notas — o aluno responderia
+ *  a pensar na nota e não no que fez (Rosa, set/2026). */
+function PercursoUC({ aluno, ucId, semNotas = false }: { aluno: { id:string; turmaId:string }; ucId: string; semNotas?: boolean }) {
   if (!ucId) return null;
   const planos = getPlanosAulaPorTurma(aluno.turmaId)
     .filter(p => p.ucId === ucId && p.estado !== 'arquivado')
@@ -491,7 +493,7 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
                   <span style={{ fontSize:13, fontWeight:600, color:st.texto }}>{st.etiqueta}</span>
-                  {estado === 'validado' && nota20 != null && (
+                  {estado === 'validado' && nota20 != null && !semNotas && (
                     <span style={{ marginLeft:'auto', fontSize:13, fontWeight:800, color:'#4e6a25' }}>{nota20}/20</span>
                   )}
                 </div>
@@ -3887,7 +3889,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           </div>
 
           <div style={{ marginTop:20 }}>
-            <PercursoUC aluno={aluno} ucId={ucId} />
+            <PercursoUC aluno={aluno} ucId={ucId} semNotas />
           </div>
         </div>
       )}
