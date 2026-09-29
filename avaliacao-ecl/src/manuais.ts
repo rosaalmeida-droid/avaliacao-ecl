@@ -14,7 +14,20 @@ export interface Manual {
   ano: 1 | 2 | 3;
   /** Códigos do cronograma a que corresponde. */
   modulos: string[];
+  /** Anexo (fichas técnicas), se houver: ficheiro na mesma pasta. */
+  anexo?: string;
 }
+
+/** As 7 UC práticas do 1.º ano (referencial novo 811RA144). */
+export const MANUAIS_UC_1ANO: Manual[] = [
+  { ficheiro: 'UC03576', titulo: 'Planear e organizar a produção de cozinha', ano: 1, modulos: ['UC03576'], anexo: 'UC03576_Anexo' },
+  { ficheiro: 'UC01999', titulo: 'Preparar e executar confeções de cozinha', ano: 1, modulos: ['UC01999'], anexo: 'UC01999_Anexo' },
+  { ficheiro: 'UC03577', titulo: 'Preparar e confecionar molhos e fundos de cozinha', ano: 1, modulos: ['UC03577'] },
+  { ficheiro: 'UC02002', titulo: 'Preparar e confecionar acepipes, sopas, entradas, ovos e massas', ano: 1, modulos: ['UC02002'] },
+  { ficheiro: 'UC02003', titulo: 'Preparar e confecionar carnes, aves, caça e acompanhamentos', ano: 1, modulos: ['UC02003'] },
+  { ficheiro: 'UC02004', titulo: 'Preparar e confecionar peixes, mariscos e acompanhamentos', ano: 1, modulos: ['UC02004'] },
+  { ficheiro: 'UC02005', titulo: 'Preparar e confecionar massas base, recheios, cremes e molhos de pastelaria', ano: 1, modulos: ['UC02005'] },
+];
 
 export const MANUAIS_UFCD: Manual[] = [
   { ficheiro: 'UFCD01', titulo: 'Planear e organizar a produção de cozinha', ano: 1, modulos: ['UFCD 01', 'UC03576'] },
@@ -56,8 +69,13 @@ export function coorteDaTurma(turmaId: string): Coorte {
 export const urlManual = (m: Manual, coorte: Coorte | 'UC') =>
   `/manuais/${coorte}/${m.ficheiro}.pdf`;
 
+/** O manual de um módulo do cronograma: primeiro o da UC (referencial novo). */
 export const manualDoModulo = (moduloId: string): Manual | undefined =>
-  [...MANUAIS_UFCD, ...MANUAIS_UC].find(m => m.modulos.includes(moduloId));
+  [...MANUAIS_UC_1ANO, ...MANUAIS_UC, ...MANUAIS_UFCD].find(m => m.modulos.includes(moduloId));
+
+/** Os manuais de UC (pasta «UC») — os outros estão na pasta da versão da turma. */
+export const ehManualUC = (m: Manual) => MANUAIS_UC_1ANO.includes(m) || MANUAIS_UC.includes(m);
 
 /** Módulos de cozinha/pastelaria do cronograma sem manual (para dizer à Rosa). */
 export const SEM_MANUAL = ['UC03593', 'UFCD 21.1', 'UFCD 21.2'];
+export { anoDaTurma };
