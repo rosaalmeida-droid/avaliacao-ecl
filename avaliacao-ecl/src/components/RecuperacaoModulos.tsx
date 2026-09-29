@@ -153,7 +153,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                     {/* Porquê — dito de forma que o aluno perceba. */}
                     <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 2 }}>
                       {s.motivo === 'faltas'
-                        ? `Faltaste a ${h(s.horasFaltadas)} h de ${h(s.horasDadas)} h dadas — o limite é 10% de faltas.`
+                        ? `Faltaste a ${h(s.horasFaltadas)} h. A UC tem ${h(s.horasPrevistas || s.horasDadas)} h no total e o limite é 10% (${h((s.horasPrevistas || s.horasDadas) * 0.1)} h).`
                         : (() => {
                             // A nota só se mostra depois de publicada pelo professor.
                             const pub = getNotaFinalPublicadaUC(aluno.id, ucId);

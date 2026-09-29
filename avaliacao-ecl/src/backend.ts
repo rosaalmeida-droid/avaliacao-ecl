@@ -7557,6 +7557,8 @@ export interface UCEmAtraso {
   ucId: string;
   ucNome: string;
   horasDadas: number;
+  /** Total de horas da UC (cronograma: 25, 50…). É sobre este que se contam os 10%. */
+  horasUC: number;
   horasFaltadas: number;
   /** Faltas em % do total de horas da UC. */
   percentagem: number;
@@ -7580,7 +7582,7 @@ export function ucsEmAtraso(turmaId: string): UCEmAtraso[] {
       out.push({
         alunoId: a.id, turmaId, numero: a.numero, nome: a.nome || `Aluno ${a.numero}`,
         ucId, ucNome: (mods.find((m: any) => m.id === ucId) as any)?.nome || '',
-        horasDadas: dadas, horasFaltadas: s.horasFaltadas,
+        horasDadas: dadas, horasUC: s.horasPrevistas || dadas, horasFaltadas: s.horasFaltadas,
         // Em % do total de horas da UC (o mesmo total dos 10%).
         percentagem: (s.horasPrevistas || dadas) > 0 ? Math.round((s.horasFaltadas / (s.horasPrevistas || dadas)) * 100) : 0,
         plano,
