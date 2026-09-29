@@ -58,6 +58,8 @@ function calcularNotaFinal(notaProf: number, notaAluno: number): number {
 
 // Conversão 1-5 → 0-20 (0-5-10-15-20)
 function para20(n: number): number { return notaPara20(n); }
+/** O mesmo, sem arredondar (a média de duas respostas pode dar 17,5). */
+function para20Dec(n: number): number { return Math.max(0, Math.min(20, (n - 1) * 5)); }
 
 /** Nota 1-5 → a mesma classificação que o aluno vê, em /20. */
 function labelNotaFinal(nota: number): string {
@@ -250,6 +252,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     // Registos do KitchenFlow: só o professor marca (o aluno já não responde).
     // Vem a marca já gravada, ou a que deste a um colega do mesmo grupo.
     delete inicial.OBR_02;
+    // O que o aluno fez em vez das técnicas: só o professor dá nota.
+    if (!validacaoExistente?.notas?.some((n: any) => n.competenciaId === 'SUB-OUTRA')) delete inicial['SUB-OUTRA'];
     const kf = validacaoExistente?.notas?.find((n: any) => n.competenciaId === 'OBR_02')?.nota
       ?? marcaRegistosKF(selecao.planoAulaId || '', selecao.alunoId);
     if (kf) inicial.OBR_02 = kf;
@@ -297,6 +301,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
 
   function getNomeComp(id: string): string {
     if (id === TEC_EVENTO) return NOME_TEC_EVENTO;
+    if (id === 'SUB-OUTRA') return 'O que fez em vez das técnicas (conta como a técnica de hoje)';
     if (id.startsWith('OBR_')) {
       const obrs: Record<string,string> = {
         'OBR_01': 'Farda', 'OBR_02': 'Registos do KitchenFlow', 'OBR_03': 'Assiduidade',
@@ -587,7 +592,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
 
         // Cor e label do nível do aluno — suporta escala nova e antiga
         const corAluno = corNivelAluno((auto as any).nivel || '', (auto as any).nota);
-        const labelAluno = (auto as any).nivel === 'evento'
+        const labelAluno = (auto as any).nivel === 'outra' ? `«${(auto as any).texto || ''}» — dá tu a nota`
+          : (auto as any).nivel === 'evento'
           ? `${(auto as any).texto || ''}${(auto as any).comentario ? ` — correu menos bem: «${(auto as any).comentario}»` : ''}`
           : labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
 
@@ -677,6 +683,18 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
               <span style={{ fontWeight: 600, fontSize: 13, color: corAluno }}>{labelAluno}</span>
             </div>
 
+            {/* Atitudes: as duas perguntas e o que o aluno respondeu a cada uma. */}
+            {Array.isArray((auto as any).respostas) && (auto as any).respostas.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                {(auto as any).respostas.map((r: any, i: number) => (
+                  <div key={i} style={{ fontSize: 13, padding: '5px 0', borderBottom: '1px solid var(--border)', lineHeight: 1.45 }}>
+                    <div style={{ color: 'rgba(26,23,20,0.55)' }}>{i + 1}. {r.pergunta}</div>
+                    <div style={{ fontWeight: 600 }}>{r.resposta}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Critérios observáveis */}
             {criterios.length > 0 && (
               <div style={{ marginBottom: 10 }}>
@@ -739,8 +757,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             {notaProf && (
               <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.7)', marginBottom: notaFinal ? 8 : 0,
                 fontStyle: 'italic' }}>
-                "{NIVEIS_PROF.find(n => n.v === notaProf)?.label}"
-                {notaProf !== notaAluno14 && (
+                {Number.isInteger(notaProf)
+                  ? `"${NIVEIS_PROF.find(n => n.v === notaProf)?.label}"`
+                  : `Média das respostas do aluno: ${String(Math.round(para20Dec(notaProf) * 10) / 10).replace('.', ',')}/20. Toca num valor para mudar.`}
+                {Number.isInteger(notaProf) && notaProf !== notaAluno14 && (
                   <span style={{ color: 'var(--copper)', fontWeight: 700, fontStyle: 'normal' }}>
                     {' '}· alteraste o que o aluno tinha posto
                   </span>
@@ -758,7 +778,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                 <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/5</span>
                 <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)', marginLeft: 8 }}>→</span>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: corNotaFinal(notaFinal), marginLeft: 4 }}>
-                  {para20(notaFinal)}
+                  {String(Math.round(para20Dec(notaFinal) * 10) / 10).replace('.', ',')}
                 </span>
                 <span style={{ fontSize:13, color: 'rgba(26,23,20,0.4)' }}>/20</span>
                 <span style={{ fontSize:13, marginLeft: 'auto', color: corNotaFinal(notaFinal), fontWeight: 600 }}>
