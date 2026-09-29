@@ -1,3 +1,4 @@
+import { LOGO_ECL } from '../logo_ecl';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { categoriaDaNota } from '../compatECL';
 import React, { useState, useMemo } from 'react';
@@ -203,6 +204,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       {/* Cabeçalho — só na vista do professor. O aluno já tem o título por
           cima ("O meu historial") e aqui lia "Imprimir turma" e "filtra por
           aluno", que não são para ele. */}
+      {/* Na folha impressa, o logótipo da escola em cima (no ecrã não aparece). */}
+      <div className="so-impressao" style={{ display: 'none', marginBottom: 12 }}>
+        <img src={LOGO_ECL} alt="Escola de Comércio de Lisboa" style={{ height: 50, width: 'auto' }} />
+      </div>
+      <style>{'@media print { .so-impressao { display: block !important; } }'}</style>
       {!alunoId && (
       <div style={{ background: '#1a1714', borderRadius: 14, padding: '16px 18px', marginBottom: 16, color: '#faf7f2', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>

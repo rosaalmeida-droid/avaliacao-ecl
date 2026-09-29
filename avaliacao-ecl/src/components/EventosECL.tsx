@@ -718,7 +718,7 @@ function PerguntasCliente({ e, mudar }: { e: EventoECL; mudar: (x: Partial<Event
   function imprimir() {
     const w = window.open('', '_blank'); if (!w) return;
     w.document.write(`<html><head><title>Perguntas — ${e.nome}</title><style>body{font-family:sans-serif;padding:24px;line-height:1.5}h2{margin-top:22px;font-size:15px;text-transform:uppercase}li{margin:8px 0}.r{border-bottom:1px solid #999;height:22px}</style></head><body>`
-      + `<h1>${e.nome}</h1><p>${e.entidade} · ${dataPT(e.data)} · ${e.pessoas} pessoas</p>`
+      + `<div style="display:flex;align-items:center;gap:12px;margin:0 0 12px"><img src="${LOGO_ECL}" alt="Escola de Comércio de Lisboa" style="height:50px;width:auto"/></div><h1>${e.nome}</h1><p>${e.entidade} · ${dataPT(e.data)} · ${e.pessoas} pessoas</p>`
       + grupos.map(g => `<h2>${g}</h2><ol>` + todas.filter(p => p.grupo === g).map(p => `<li>${p.texto}${e.perguntas[p.id]?.resposta ? `<br><b>${e.perguntas[p.id]!.resposta}</b>` : '<div class="r"></div>'}</li>`).join('') + '</ol>').join('')
       + '</body></html>');
     w.document.close(); w.print();
@@ -1044,7 +1044,7 @@ function Fecho({ e, mudar }: { e: EventoECL; mudar: (x: Partial<EventoECL>) => v
     const todas = getFichasProducao();
     const linhas = tarefasDoEvento(e).map(t => `<tr><td>${t.fase}</td><td>${t.texto}</td><td>${e.tarefas[t.id]?.feito ? '✓' : e.tarefas[t.id]?.naoAplica ? 'n/a' : '—'}</td></tr>`).join('');
     w.document.write(`<html><head><title>Relatório — ${e.nome}</title><style>body{font-family:sans-serif;padding:24px}td{border-bottom:1px solid #ddd;padding:4px 8px;font-size:13px}</style></head><body>`
-      + `<h1>${e.nome}</h1><p>${e.entidade} · ${dataPT(e.data)} · ${e.pessoas} pessoas · ${e.onde === 'ecl' ? 'ECL' : e.morada}</p>`
+      + `<div style="display:flex;align-items:center;gap:12px;margin:0 0 12px"><img src="${LOGO_ECL}" alt="Escola de Comércio de Lisboa" style="height:50px;width:auto"/></div><h1>${e.nome}</h1><p>${e.entidade} · ${dataPT(e.data)} · ${e.pessoas} pessoas · ${e.onde === 'ecl' ? 'ECL' : e.morada}</p>`
       + `<p>Complexidade: ${cl.nivel} · Turmas: ${[...e.turmasIds, ...e.outrasAreas].join(', ')}</p>`
       + `<h2>Fichas</h2><p>${e.fichasIds.map(id => todas.find(x => x.id === id)?.nomePrato).filter(Boolean).join(' · ') || '—'}</p>`
       + `<h2>Orçamentos</h2><ul>${e.orcamentos.map(o => `<li>${o.nome}${o.escolhido ? ' (escolhido)' : ''}: ${o.custo ? euros(o.custo) : '—'} · ${o.pessoas} pessoas</li>`).join('')}</ul>`

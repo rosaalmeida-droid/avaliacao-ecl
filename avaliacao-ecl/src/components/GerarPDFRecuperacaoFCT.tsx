@@ -1,3 +1,4 @@
+import { LOGO_ECL } from '../logo_ecl';
 import { RecuperacaoModulo } from '../types';
 
 // ═══════════════════════════════════════════════════════════════
@@ -55,7 +56,7 @@ export function gerarPDFRecuperacaoFCT(opts: OpcoesPDFRecuperacaoFCT): void {
 </style>
 </head>
 <body>
-
+  <div style="display:flex;align-items:center;gap:12px;margin:0 0 12px"><img src="${LOGO_ECL}" alt="Escola de Comércio de Lisboa" style="height:50px;width:auto"/></div>
   <div class="titulo-principal">PLANO DE RECUPERAÇÃO — VIA FCT</div>
   <div class="subtitulo">Formação em Contexto de Trabalho · Escola de Comércio de Lisboa</div>
 

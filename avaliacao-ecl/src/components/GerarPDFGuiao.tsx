@@ -1,3 +1,4 @@
+import { LOGO_ECL } from '../logo_ecl';
 import { DadosGuia, SecaoGuia } from '../types';
 
 export interface OpcoesPDF {
@@ -172,6 +173,7 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
 </style>
 </head>
 <body>
+  <div style="display:flex;align-items:center;gap:12px;margin:0 0 12px"><img src="${LOGO_ECL}" alt="Escola de Comércio de Lisboa" style="height:50px;width:auto"/></div>
   <!-- Cabeçalho -->
   <div style="background:#1a1714;color:#fff;padding:16px 20px;border-radius:8px;margin-bottom:8px;">
     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;opacity:0.5;margin-bottom:4px;">Guia de Apoio à Produção</div>
