@@ -942,6 +942,7 @@ export const INICIATIVA_FRASES = [
 // professor via um 3 (12/20) como "Bom" e o aluno, com 12, "Suficiente".
 // 0–9 Insuficiente · 10–13 Suficiente · 14–16 Bom · 17–20 Muito Bom.
 export function classificacao20(nota20: number): 'Muito Bom' | 'Bom' | 'Suficiente' | 'Insuficiente' {
+  nota20 = Math.round(nota20); // 13,6 é 14: Bom
   return nota20 >= 17 ? 'Muito Bom' : nota20 >= 14 ? 'Bom' : nota20 >= 10 ? 'Suficiente' : 'Insuficiente';
 }
 

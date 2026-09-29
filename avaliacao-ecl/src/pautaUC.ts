@@ -51,7 +51,7 @@ export type Letra5C = 'cm' | 'cl' | 'co' | 'cr';
 // Nenhuma destas evidências cria um elemento novo nos planos.
 export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias: string }> = {
   cm: { sigla: 'CM', nome: 'Comprometido',
-    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues' },
+    evidencias: 'assiduidade (horas), pontualidade, autoavaliações entregues, farda cuidada e registos do KitchenFlow feitos (aulas práticas)' },
   cl: { sigla: 'CL', nome: 'Colaborativo',
     evidencias: 'pergunta de cada aula sobre o trabalho com os colegas, participação em eventos e atividades extra, liderança do grupo' },
   co: { sigla: 'CO', nome: 'Consciente',
@@ -65,6 +65,8 @@ export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias:
  *  (as mesmas fronteiras das fórmulas do modelo). */
 export function nivelPauta(nota20: number | null | undefined): number {
   if (nota20 === null || nota20 === undefined || isNaN(nota20) || nota20 === 0) return 0;
+  // Arredonda primeiro, como o professor faz: 13,6 é 14, e 14 já é Bom.
+  nota20 = Math.round(nota20);
   return nota20 < 9.5 ? 2 : nota20 < 14 ? 4 : nota20 < 17 ? 5 : 6;
 }
 
@@ -188,7 +190,9 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
           return notaDoPlano(a.id, id, tipoDe(id));
         });
         const m = media(notas);
-        return m === null ? null : Math.round(m * 10) / 10;
+        // Nota inteira, como na pauta: 13,6 passa a 14 (Bom). Com décimas,
+        // a fórmula do modelo (E<14 → 4) dava Suficiente a um 13,6.
+        return m === null ? null : Math.round(m);
       });
 
       // 5 C's a partir das evidências
@@ -213,6 +217,18 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
         assid.presencas > 0 ? (1 - assid.atrasos / assid.presencas) * 20 : null, assid.presencas);
       const selecoes = getSelecoes().filter(x => x.alunoId === a.id && idsVeio.has(x.planoAulaId as string));
       junta('cm', `Autoavaliações entregues: ${selecoes.length} de ${nVeio} aulas`, pct(selecoes.length, nVeio), nVeio);
+      // Higiene e segurança alimentar nas aulas práticas: o que o professor
+      // confirmou na validação (farda à entrada; registos pelo relatório do KitchenFlow).
+      const validacoesAluno = getValidacoes().filter((v: any) => v.alunoId === a.id && idsVeio.has(v.planoAulaId)
+        && ['pratico', 'misto'].includes(String(v.tipoPlanAulaUsado || tipoDe(v.planoAulaId))));
+      const notasDe = (comp: string) => validacoesAluno
+        .map((v: any) => Number(v.notas?.find((n: any) => n.competenciaId === comp)?.nota))
+        .filter(n => n > 0);
+      const farda = notasDe('OBR_01'), kf = notasDe('OBR_02');
+      junta('cm', `Farda completa e cuidada: ${farda.filter(n => n >= 5).length} de ${farda.length} aulas práticas`,
+        media(farda.map(n => nivelPara20(n))), farda.length);
+      junta('cm', `Registos do KitchenFlow todos feitos: ${kf.filter(n => n >= 5).length} de ${kf.length} aulas práticas`,
+        media(kf.map(n => nivelPara20(n))), kf.length);
 
       // Triagem das aulas (CL, CR e CO): a resposta do aluno em cada autoavaliação,
       // ou a do professor quando a confirmou ou mudou na validação.

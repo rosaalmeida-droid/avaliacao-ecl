@@ -6129,13 +6129,37 @@ function tipoDominante(regs: RegistoAvaliacao[]): 'pratico' | 'misto' | 'teorico
 }
 
 /**
- * O que entra na nota da aula. A farda (OBR_01) não entra (decisão da Rosa,
- * set/2026): verifica-se à entrada e conta nas atitudes («Cuidado com a
- * apresentação pessoal») e nas técnicas a 0 quando falta. A técnica geral do
- * evento só serve para o bónus.
+ * O que entra na nota da aula. A higiene e segurança alimentar (20% nas aulas
+ * práticas e mistas) é a farda (OBR_01, 10%) e os registos do KitchenFlow
+ * (OBR_02, 10%) — Rosa, set/2026. Sem farda, as técnicas continuam a contar 0.
+ * A técnica geral do evento só serve para o bónus.
  */
 export function contaNaNotaDaAula(id: string): boolean {
-  return id !== 'OBR_01' && id !== TEC_EVENTO;
+  return id !== TEC_EVENTO;
+}
+
+/** Registos do KitchenFlow: o professor vê o relatório e marca. */
+export const NIVEIS_REGISTOS_KF = [
+  { v: 5, texto: 'Todos feitos' },
+  { v: 3, texto: 'Alguns' },
+  { v: 1, texto: 'Nenhum' },
+] as const;
+const KEY_REGISTOS_KF = 'ecl_registos_kf_marca';
+const alvoRegistosKF = (planoId: string, alunoId: string) => {
+  const g = grupoDoAluno(planoId, alunoId);
+  return `${planoId}|${g ? 'g:' + g.id : 'a:' + alunoId}`;
+};
+/** A marca dada ao grupo do aluno nesta aula (ou ao próprio, se não tem grupo).
+ *  Só serve para vir já preenchida nos colegas do grupo: a nota fica na validação. */
+export function marcaRegistosKF(planoId: string, alunoId: string): number | undefined {
+  try { return JSON.parse(localStorage.getItem(KEY_REGISTOS_KF) || '{}')[alvoRegistosKF(planoId, alunoId)]; } catch { return undefined; }
+}
+export function guardarMarcaRegistosKF(planoId: string, alunoId: string, nota: number): void {
+  try {
+    const m = JSON.parse(localStorage.getItem(KEY_REGISTOS_KF) || '{}');
+    m[alvoRegistosKF(planoId, alunoId)] = nota;
+    localStorage.setItem(KEY_REGISTOS_KF, JSON.stringify(m));
+  } catch { /* */ }
 }
 
 /**

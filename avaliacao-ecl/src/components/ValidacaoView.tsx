@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
@@ -247,6 +247,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       const jaVal = validacaoExistente?.notas?.find((n: any) => n.competenciaId === auto.competenciaId);
       inicial[auto.competenciaId] = jaVal ? jaVal.nota : notaAlunoProposta;
     });
+    // Registos do KitchenFlow: só o professor marca (o aluno já não responde).
+    // Vem a marca já gravada, ou a que deste a um colega do mesmo grupo.
+    delete inicial.OBR_02;
+    const kf = validacaoExistente?.notas?.find((n: any) => n.competenciaId === 'OBR_02')?.nota
+      ?? marcaRegistosKF(selecao.planoAulaId || '', selecao.alunoId);
+    if (kf) inicial.OBR_02 = kf;
     return inicial;
   });
   const [comentario, setComentario] = useState('');
@@ -267,12 +273,20 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   });
 
   // Obter competências da autoavaliação
-  const autoavaliacoesAluno = selecao.autoavaliacoes || [];
+  // A pergunta antiga ao aluno sobre a higiene e segurança alimentar sai:
+  // os registos do KitchenFlow marca-os o professor, pelo relatório.
+  const autoavaliacoesAluno = (selecao.autoavaliacoes || []).filter((a: any) => a.competenciaId !== 'OBR_02');
+  const planoDaSelecao: any = getPlanosAula().find(p => p.id === selecao.planoAulaId);
+  const comRegistosKF = ['pratico', 'misto'].includes(String(tipoPlanAula || planoDaSelecao?.tipoPlanAula || 'pratico'))
+    && !(planoDaSelecao?.compRemovidas || []).includes('OBR_02');
   // Sem farda completa: «Cuidado com a apresentação pessoal» avalia-se sempre
   // nesta aula (mesmo que o aluno não a tenha na autoavaliação).
-  const autoavaliacoes: any[] = semFarda && !autoavaliacoesAluno.some((a: any) => a.competenciaId === 'ATI-003')
-    ? [...autoavaliacoesAluno, { competenciaId: 'ATI-003', nivel: 'professor', nota: 1, doProfessor: true }]
-    : autoavaliacoesAluno;
+  const autoavaliacoes: any[] = [
+    ...(comRegistosKF ? [{ competenciaId: 'OBR_02', nivel: 'professor', nota: 0, doProfessor: true, registosKF: true }] : []),
+    ...autoavaliacoesAluno,
+    ...(semFarda && !autoavaliacoesAluno.some((a: any) => a.competenciaId === 'ATI-003')
+      ? [{ competenciaId: 'ATI-003', nivel: 'professor', nota: 1, doProfessor: true }] : []),
+  ];
   // «Não tive oportunidade» (técnicas): o professor confirma — confirmado, não conta.
   const [semOport, setSemOport] = useState<Record<string, boolean>>(() => Object.fromEntries(
     autoavaliacoesAluno.filter((a: any) => a.semOportunidade || a.nivel === 'nop')
@@ -285,7 +299,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     if (id === TEC_EVENTO) return NOME_TEC_EVENTO;
     if (id.startsWith('OBR_')) {
       const obrs: Record<string,string> = {
-        'OBR_01': 'Higiene pessoal', 'OBR_02': 'Higiene e Segurança Alimentar', 'OBR_03': 'Assiduidade',
+        'OBR_01': 'Farda', 'OBR_02': 'Registos do KitchenFlow', 'OBR_03': 'Assiduidade',
       };
       return obrs[id] || id;
     }
@@ -327,7 +341,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   }, [notasProf, autoavaliacoes, tipoPlanAula, semOport, semFarda]);
 
   const LABEL_CAT: Record<string,string> = {
-    OBR: 'Obrigatórias (higiene, HACCP, pontualidade)',
+    OBR: 'Higiene e segurança alimentar (farda e registos do KitchenFlow)',
     SUB: 'Técnicas/Subtécnicas',
     KNW: 'Conhecimentos',
     ATI: 'Atitude',
@@ -530,6 +544,32 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       )}
 
       {autoavaliacoes.map(auto => {
+        if (auto.registosKF) {
+          const escolha = notasProf.OBR_02;
+          return (
+            <div key="OBR_02" style={{ marginBottom: 10, background: '#fff', border: `1.5px solid ${escolha ? 'var(--border)' : '#b5651d'}`, borderRadius: 12, padding: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>Registos do KitchenFlow</div>
+              <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', margin: '4px 0 10px', lineHeight: 1.5 }}>
+                Vê o relatório do KitchenFlow desta aula. Os registos que a ficha pede foram feitos? Conta 10% na nota da aula.
+                A mesma marca fica já escolhida para os colegas do mesmo grupo.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+                {NIVEIS_REGISTOS_KF.map(n => (
+                  <button key={n.v} onClick={() => {
+                      setNotasProf(p => ({ ...p, OBR_02: n.v }));
+                      guardarMarcaRegistosKF(selecao.planoAulaId || '', selecao.alunoId, n.v);
+                    }}
+                    style={{ padding: '12px 4px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                      border: `2px solid ${escolha === n.v ? 'var(--sage)' : 'var(--border)'}`,
+                      background: escolha === n.v ? 'var(--sage)' : '#fff', color: escolha === n.v ? '#fff' : 'rgba(26,23,20,0.7)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{n.texto}</div>
+                    <div style={{ fontSize: 12, marginTop: 3 }}>{para20(n.v)}/20</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        }
         const nome = getNomeComp(auto.competenciaId);
         const criterios = getCriterios(auto.competenciaId);
         const _isApp = auto.competenciaId.startsWith('APP-');
@@ -622,7 +662,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             )}
             {auto.competenciaId === 'OBR_01' && (
               <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
-                Confirma a farda. Não conta como obrigatória na nota: quando falta, conta em «Cuidado com a apresentação pessoal» e nas técnicas (a 0).
+                Confirma a farda: completa, passada, branca e limpa. Conta 10% na nota da aula. Quando falta, as técnicas contam 0.
               </div>
             )}
             {semFarda && categoriaDaNota(auto.competenciaId) === 'SUB' && (
@@ -889,7 +929,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           professor tem de ver o que está a entregar, e onde discordou
           da proposta dele. */}
       {aConfirmar && (() => {
-        const alterou = autoavaliacoes.filter(auto => {
+        const alterou = autoavaliacoes.filter(auto => !auto.doProfessor).filter(auto => {
           const nAluno = (auto as any).nota || 0;
           return notasProf[auto.competenciaId] !== nAluno;
         });

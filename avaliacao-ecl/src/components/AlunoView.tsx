@@ -2785,8 +2785,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // O professor tirou os registos (HACCP/KitchenFlow) desta aula: não se pergunta.
   // A higiene e segurança alimentar só se avalia quando há produção (aulas
   // práticas e mistas): nas teóricas e nas dinâmicas não conta (Rosa, set/2026).
-  const semRegistos = compRemovidas.includes('OBR_02')
-    || !['pratico', 'misto'].includes(String(tipoPlanAula || 'pratico'));
+  // O aluno já não responde à higiene e segurança alimentar: a farda foi
+  // verificada à entrada e os registos do KitchenFlow marca-os o professor,
+  // pelo relatório do KitchenFlow (Rosa, set/2026).
+  const semRegistos = true;
   const [tecEvento, setTecEvento] = useState<number | null>(null);
   const [tecMenosBem, setTecMenosBem] = useState('');
   const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
