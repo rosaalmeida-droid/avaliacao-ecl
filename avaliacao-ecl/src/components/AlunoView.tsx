@@ -2676,12 +2676,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // As linhas da ficha trazem o nome e o ramo («SUB-… — Nome | APP-… | componente»):
   // conta só o código. Um retirado pelo professor com a linha inteira também sai.
   const retirada = (id: string) => compRemovidas.some((r: string) => codigoDaLinha(r) === id);
-  const subIdsRaw = fichas.flatMap((f: any) => codigosDasLinhas(f.tecnicasSugeridas, 'SUB-'));
+  const subIdsRaw = (plano as any).semSubApp ? [] : fichas.flatMap((f: any) => codigosDasLinhas(f.tecnicasSugeridas, 'SUB-'));
   const subIdsFiltrados = [...new Set(subIdsRaw)].filter((id: string) => !retirada(id));
 
   // APP-xxx: aparelhos da ficha. Nada sai para os alunos com medidas (Rosa,
   // set/2026): avaliam o mesmo, com uma explicação simples do que é cada um.
-  const appIdsRaw = fichas.flatMap((f: any) => codigosDasLinhas((f as any).aparelhosDetectados, 'APP-'));
+  const appIdsRaw = (plano as any).semSubApp ? [] : fichas.flatMap((f: any) => codigosDasLinhas((f as any).aparelhosDetectados, 'APP-'));
   const appIdsFiltrados = [...new Set(appIdsRaw)].filter((id: string) => !retirada(id));
 
   // O aluno nunca vê códigos. "SUB-COR-030-001" não lhe diz nada, e

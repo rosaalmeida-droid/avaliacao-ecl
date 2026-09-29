@@ -414,7 +414,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     window.addEventListener('ecl:abrirRequisicao', abrir);
     return () => window.removeEventListener('ecl:abrirRequisicao', abrir);
   }, [plano.id]);
-  const [incluirSubApp, setIncluirSubApp] = useState(true);
+  // Fica gravado no plano (antes voltava a ligar-se sempre que se abria) e
+  // chega aos alunos: desligado, também não lhes aparecem na autoavaliação.
+  const [incluirSubApp, setIncluirSubAppLocal] = useState(!(plano as any).semSubApp);
+  function setIncluirSubApp(f: (v: boolean) => boolean) {
+    const novo = f(incluirSubApp);
+    setIncluirSubAppLocal(novo);
+    registarAlteracaoPublicado('competencias', novo ? 'Subtécnicas e aparelhos da ficha incluídos' : 'Subtécnicas e aparelhos da ficha retirados');
+    const p = { ...planoFresco(), semSubApp: !novo, atualizadoEm: new Date().toISOString() } as any;
+    addOrUpdatePlanoAula(p);
+    onPlanoActualizado(p);
+  }
   /** Ficha que está a ser editada; null = criar nova. */
   const [fichaEmEdicao, setFichaEmEdicao] = useState<string | null>(null);
   /** Mostra a confirmação durante uns segundos depois de abrir a aula. */
