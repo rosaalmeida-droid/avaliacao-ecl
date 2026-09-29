@@ -2504,7 +2504,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                     return (
                       <label key={i} style={{ display:'flex', alignItems:'center', gap:10,
                         padding:'10px 12px', borderRadius:10, border:`1px solid ${T.border}`,
-                        marginBottom:5, background:marcado?T.sageP:'#fff', cursor:'pointer' }}>
+                        marginBottom:5, background:marcado?T.sageP:(i % 2 ? '#EFEDEA' : '#fff'), cursor:'pointer' }}>
                         <input type="checkbox" checked={marcado} style={{ accentColor:T.sage, width:18, height:18 }}
                           onChange={() => {
                             const cur = checklist[f.id]?.ing||new Set<number>();
@@ -2530,7 +2530,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                     return (
                       <label key={i} style={{ display:'flex', alignItems:'flex-start', gap:10,
                         padding:'10px 12px', borderRadius:10, border:`1px solid ${T.border}`,
-                        marginBottom:5, background:marcado?T.sageP:'#fff', cursor:'pointer' }}>
+                        marginBottom:5, background:marcado?T.sageP:(i % 2 ? '#EFEDEA' : '#fff'), cursor:'pointer' }}>
                         <input type="checkbox" checked={marcado} style={{ accentColor:T.sage, width:18, height:18, marginTop:2, flexShrink:0 }}
                           onChange={() => {
                             const cur = checklist[f.id]?.passo||new Set<number>();
@@ -2740,7 +2740,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Numa aula atitudinal não há técnicas: trabalham-se dinâmicas de grupo
   // e atitudes. As fichas do plano, se as houver, não entram na avaliação.
   const subsSug = (String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [] : subIdsFiltrados)
-    .slice(0, 6).map((id: string) => {
+    .slice(0, 8).map((id: string) => {
     const sub = encontrarSubtecnica(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
     const avs = hist.map(h => ({nota: h.nota, data: h.data}));
@@ -2757,12 +2757,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
 
     return {
       id,
-      // Nunca o código: se não houver nome, é melhor "Técnica" do que "SUB-COR-030-001".
-      nome: nomeSub || tecMae?.nome || 'Técnica',
+      // O que o aluno fez neste prato, escrito na ficha («Escalfar o bacalhau
+      // no leite»). Sem isso, o nome da lista — nunca o código.
+      nome: ramo.fazes || nomeSub || tecMae?.nome || 'Técnica',
+      aparelhoId: ramo.aparelhoId,
       // Onde esta técnica se encaixa e sobre o quê.
       // Se não houver técnica-mãe identificada, diz-se pelo menos que é
       // uma técnica — "Rodelas" solto não diz ao aluno o que avaliar.
-      contexto: caminhoDoRamo(ramo) ? [caminhoDoRamo(ramo), produto].filter(Boolean).join(' · ')
+      contexto: caminhoDoRamo(ramo) ? [caminhoDoRamo(ramo), ramo.fazes ? nomeSub : produto].filter(Boolean).join(' · ')
         : [tecMae?.nome || 'Técnica', produto].filter(Boolean).join(' · '),
       // Por ordem: a definição da subtécnica, depois a da técnica-mãe,
       // e só em último a dos dados — que é circular em 63% dos casos
@@ -2787,11 +2789,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     const avs = hist.map(h => ({nota: h.nota, data: h.data}));
     const emReg = estaEmRegressao(avs);
     const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca preparado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
+    const ramoApp = ramoDaCompetencia(id, fichas as any[]);
     return {
       id,
       nome: app?.nome || 'Preparação',
       // «Lasanha → preparação base» — o aparelho deste prato, não um qualquer.
-      contexto: [ramoDaCompetencia(id, fichas as any[]).prato, 'Preparação base'].filter(Boolean).join(' → '),
+      contexto: [ramoApp.prato, 'Preparação base'].filter(Boolean).join(' → '),
+      // Como fica o aparelho acabado, escrito na ficha deste prato.
+      resultado: ramoApp.resultado || '',
       descricao: definicaoDaTecnica(app?.nome || '')?.definicao || (app as any)?.definicao || '',
       nivel: app?.nivel || 1,
       categoria: app?.categoria || '',
@@ -3239,12 +3244,23 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // "Ainda não fiz" é o nível 1.
   const NIVEIS_FRASES = ['tp', 'ca', 'fs', 'mbr'];
 
+  // Por ordem do prato: cada preparação base com as técnicas feitas dentro
+  // dela, e no fim como ficou; depois as técnicas feitas no próprio prato
+  // (Rosa, set/2026: prato → aparelho → técnicas → o que se vê).
+  const itemTec = (m: typeof subsSug[number]) => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
+    resultado: m.resultadoEsperado, rotulo: 'Técnica', frases: true });
+  const idsApp = new Set(aparelhosSug.map(a => a.id));
+  const itensPratica = [
+    ...aparelhosSug.flatMap(a => [
+      ...subsSug.filter(m => m.aparelhoId === a.id).map(itemTec),
+      { id: a.id, nome: a.nome, contexto: a.contexto, descricao: a.descricao,
+        resultado: a.resultado, rotulo: 'Preparação base', frases: !!a.resultado },
+    ]),
+    ...subsSug.filter(m => !m.aparelhoId || !idsApp.has(m.aparelhoId)).map(itemTec),
+  ];
   const itensComp: { id: string; nome: string; contexto: string; descricao: string;
     resultado: string; rotulo: string; frases: boolean }[] = [
-    ...subsSug.map(m => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
-      resultado: m.resultadoEsperado, rotulo: 'Técnica', frases: true })),
-    ...aparelhosSug.map(m => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
-      resultado: '', rotulo: 'Preparação base', frases: false })),
+    ...itensPratica,
     ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome, contexto: 'Conhecimento', descricao: m.definicao,
       resultado: '', rotulo: 'Conhecimento', frases: false })),
     ...microsSug.map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
