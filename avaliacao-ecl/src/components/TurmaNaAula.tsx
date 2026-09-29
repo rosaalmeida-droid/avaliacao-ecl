@@ -11,7 +11,7 @@
 
 import React, { useState } from 'react';
 import {
-  estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta,
+  estadoDaTurmaNaAula, resumoDaTurmaNaAula, decidirFalta, confirmarPresencasDaAula,
   LABEL_DECISAO, type DecisaoFalta, type EstadoAlunoNaAula,
   getPlanosAula, getPresencas, blocosDeHoraDoPlano,
 } from '../backend';
@@ -86,6 +86,31 @@ export function TurmaNaAula({
         {resumo(r.porAvaliar, 0, 'por avaliar', C.bordeaux)}
         {resumo(r.porValidar, 0, 'por validar', C.bordeaux)}
       </div>
+
+      {/* Fechar esta parte: confirma e volta a enviar todas as decisões. */}
+      {(() => {
+        const porDecidir = estados.filter(e => !e.decisaoFalta && (!e.entrou || e.foraDeTempo)).length;
+        const conf = (plano as any)?.presencasConfirmadasEm as string | undefined;
+        const hora = conf ? new Date(conf).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+        return (
+          <div style={{ background: conf && !porDecidir ? C.verdeSuave : '#fff', border: `1.5px solid ${conf && !porDecidir ? C.verde : C.border}`,
+            borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.tinta }}>
+              {porDecidir ? `Faltam decidir ${porDecidir} aluno${porDecidir > 1 ? 's' : ''} (não entrou ou chegou fora de tempo).`
+                : conf ? `✓ Presenças confirmadas${(plano as any)?.presencasConfirmadasPor ? ` por ${(plano as any).presencasConfirmadasPor}` : ''} em ${hora}.`
+                : 'Todas as faltas decididas. Confirma para ficarem gravadas.'}
+            </div>
+            <div style={{ fontSize: 12.5, color: C.suave, marginTop: 3 }}>
+              Cada decisão grava logo. «Confirmar» volta a enviar todas para a folha e marca esta parte como feita.
+            </div>
+            <button onClick={() => { confirmarPresencasDaAula(planoAulaId, nomeProfessor || 'professor'); redesenhar(n => n + 1); onAtualizar?.(); }}
+              style={{ marginTop: 10, minHeight: 44, width: '100%', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 15, fontWeight: 700, background: C.verde, color: '#fff' }}>
+              {conf ? 'Confirmar outra vez' : 'Confirmar as presenças'}
+            </button>
+          </div>
+        );
+      })()}
 
       {estados.map(e => (
         <div key={e.alunoId} style={{
@@ -210,6 +235,11 @@ export function TurmaNaAula({
                         );
                       })}
                     </div>
+                    {e.decisaoFalta && e.decididoEm && (
+                      <div style={{ fontSize: 12, color: C.verde, marginTop: 5, fontWeight: 600 }}>
+                        ✓ Gravado às {new Date(e.decididoEm).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
                     {verHoras && (
                       <div style={{ marginTop: 8, padding: '8px 10px', background: '#FAFAF7', borderRadius: 8, border: `1px solid ${C.border}` }}>
                         <div style={{ fontSize: 12.5, color: C.suave, marginBottom: 6 }}>

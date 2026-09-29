@@ -834,6 +834,13 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       }
 
       // ── Sincronizar Presenças ───────────────────────────────────────
+      // A decisão local ganha se for mais recente do que a do Sheets; sem data
+      // no Sheets, ganha durante 15 minutos (o tempo de o Sheets a receber).
+      const decisaoLocalMaisRecente = (local: any, s: any): boolean => {
+        if (!local?.decididoEm) return false;
+        if (s?.decididoEm) return String(local.decididoEm) > String(s.decididoEm);
+        return Date.now() - Date.parse(local.decididoEm) < 15 * 60 * 1000;
+      };
       const jsonPres = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId });
       if (jsonPres?.ok && jsonPres.dados?.length > 0) {
         // As linhas do Sheets não trazem identificador: comparar pelo id
@@ -852,6 +859,11 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
           const local = porChave.get(k);
           if (!local) {
             porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
+          } else if (decisaoLocalMaisRecente(local, s)) {
+            // A decisão tomada neste aparelho ainda não chegou ao Sheets (ou
+            // é mais recente): não se volta atrás. Antes a sincronização
+            // repunha a decisão antiga e parecia que a falta não ficava.
+            continue;
           } else if (s.decisaoProfessor && s.decisaoProfessor !== local.decisaoProfessor) {
             porChave.set(k, { ...local, decisaoProfessor: s.decisaoProfessor,
               horasPresentes: s.horasPresentes || undefined,
@@ -5099,10 +5111,24 @@ export function decidirFalta(
     planoTitulo: plano?.titulo || '', ucId: reg.ucId,
     presente: reg.presente, atrasado: !!reg.atrasado, atrasadoMins: reg.atrasadoMins || 0,
     horaEntrada: reg.horaEntrada || '', fardamentoOk: !!reg.fardamentoOk,
-    data: reg.data || '', decisaoProfessor: decisao, decididoPor: professor,
+    data: reg.data || '', decisaoProfessor: decisao, decididoPor: professor, decididoEm: reg.decididoEm,
     horasPresentes: reg.horasPresentes || null,
     observacao: reg.observacao || '',
   });
+}
+
+/**
+ * «Confirmar as presenças»: volta a enviar para o Sheets todas as decisões
+ * desta aula e guarda no plano quem confirmou e quando. Antes não havia
+ * forma de fechar esta parte, e a professora marcava as faltas várias vezes
+ * sem saber se tinham ficado (Rosa, set/2026).
+ */
+export function confirmarPresencasDaAula(planoAulaId: string, professor: string): number {
+  const regs = load<any>(KEYS.presencas).filter(r => r.planoAulaId === planoAulaId && r.decisaoProfessor);
+  regs.forEach(r => decidirFalta(r.alunoId, planoAulaId, r.decisaoProfessor, r.decididoPor || professor, undefined, r.horasPresentes));
+  const plano: any = getPlanosAula().find(p => p.id === planoAulaId);
+  if (plano) addOrUpdatePlanoAula({ ...plano, presencasConfirmadasEm: new Date().toISOString(), presencasConfirmadasPor: professor, atualizadoEm: new Date().toISOString() });
+  return regs.length;
 }
 
 // ── Líder do KitchenFlow ──────────────────────────────────────
@@ -5622,6 +5648,8 @@ export interface EstadoAlunoNaAula {
   foraDeTempo: boolean;
   minutosAposAbertura: number;
   decisaoFalta?: string;
+  /** Quando o professor tomou a decisão (para mostrar «gravado às…»). */
+  decididoEm?: string;
   fardamentoOk: boolean;
   itensEmFalta: string;
   /** «às 09:05 (52 s)» quando confirmou que lavou as mãos; '' se não. */
@@ -5663,6 +5691,7 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
       foraDeTempo: !!pres?.atrasado,
       minutosAposAbertura: pres?.atrasadoMins || 0,
       decisaoFalta: (pres as any)?.decisaoProfessor,
+      decididoEm: (pres as any)?.decididoEm as string | undefined,
       fardamentoOk: !!pres?.fardamentoOk,
       itensEmFalta: emFalta,
       maosLavadas: maosLavadasDaPresenca(pres?.observacao),
