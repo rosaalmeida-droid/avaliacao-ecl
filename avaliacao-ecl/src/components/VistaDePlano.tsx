@@ -1,6 +1,7 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
+import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
@@ -1122,6 +1123,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           }}
           modulo={modulo} setModulo={setModulo} />
 
+        <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} />
+
         {/* Resumo rápido */}
         <div style={{ display:'flex', gap:10, marginBottom:14, flexWrap:'wrap' }}>
           {[
@@ -1590,6 +1593,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {/* TAB PREPARAR — era o Resumo. Recebeu da Orientação o que não
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
+      <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} />
       <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {temOrganizacao(plano) && (
