@@ -10,6 +10,7 @@
 //     orçamentos, Preparação, Material, Dia do evento, Fechar.
 // A lógica está em ../eventos/modelo.ts.
 // ============================================================
+import { eventosDosPlanosEmFalta } from '../eventos/doPlano';
 import { EventosWizard } from './EventosWizard';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -117,7 +118,9 @@ export function EventosECL({ turmaId, nomeProfessor }: { turmaId?: string; nomeP
       fichasIds: e.fichasIds || [], orcamentos: e.orcamentos || [] }; })
     .sort((a, b) => (a.data || '9999').localeCompare(b.data || '9999')), [versao]);
 
-  useEffect(() => { sincronizarEventos().then(ok => { if (ok) setVersao(v => v + 1); }); }, []);
+  // Depois de ler os eventos da escola: os planos de evento sem evento
+  // («Avaliar evento fora do horário») passam a aparecer aqui.
+  useEffect(() => { sincronizarEventos().then(ok => { if (ok) { eventosDosPlanosEmFalta(); setVersao(v => v + 1); } }); }, []);
   const guardar = (e: EventoECL) => { gravarEvento({ ...e, atualizadoEm: new Date().toISOString() }); setVersao(v => v + 1); };
 
   const fundo = (filhos: React.ReactNode) => (

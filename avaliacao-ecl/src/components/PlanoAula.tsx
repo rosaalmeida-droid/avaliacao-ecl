@@ -26,6 +26,7 @@ function ucMaisProxima(turmaId: string, data: string): string {
 }
 import { avisoDoDia, temCozinha, horasSugeridas, proximoDiaDeAula, horarioEmTexto } from '../horarios';
 import { tipoEventoDe, atitudesSugeridasEvento } from '../eventosAvaliacao';
+import { garantirEventoDoPlano } from '../eventos/doPlano';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Data no formato "20-07-2026 · quarta-feira"
@@ -1073,6 +1074,8 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
       (p as any).tipoPlanAula = 'atitudinal';
       (p as any).compAdicionadas = atitudesSugeridasEvento(dados.tipoAtividade);
       (p as any).modoParticipacao = dados.modoParticipacao;
+      // O evento fica também no ecrã Eventos (cliente, orçamento, material…).
+      try { const idEv = garantirEventoDoPlano(p, dados.professor); if (idEv) (p as any).eventoId = idEv; } catch (e) { console.error(e); }
     }
     (p as any).contaAssiduidade = contaAssiduidade;
     // Se as faltas contam numa aula que já passou, o professor tem de as
