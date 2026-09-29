@@ -1,5 +1,6 @@
 import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
+import { EventosNaAula } from './EventosNaAula';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
@@ -1589,6 +1590,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {/* TAB PREPARAR — era o Resumo. Recebeu da Orientação o que não
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
+      <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {temOrganizacao(plano) && (
         <button onClick={() => setTabInicio('turma')} style={{ display:'block', width:'100%', textAlign:'left',

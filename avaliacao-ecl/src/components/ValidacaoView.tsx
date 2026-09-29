@@ -21,7 +21,10 @@ import { CriteriosComp } from './CriteriosComp';
 // largura do ecrã — não se lia nem parecia um botão.
 const NIVEIS_PROF = [
   { v: 5, curto: 'Muito bom', label: 'Faço com muito bom resultado',             txt: '#1e3a4a' },
+  // Valores intermédios (Rosa, set/2026): 17,5 e 12,5.
+  { v: 4.5, curto: 'Entre', label: 'Entre «Faço sozinho/a» e «Muito bom»',       txt: '#2d4a5c' },
   { v: 4, curto: 'Sozinho',   label: 'Faço sozinho/a',                           txt: '#3d5a6e' },
+  { v: 3.5, curto: 'Entre', label: 'Entre «Com ajuda» e «Faço sozinho/a»',       txt: '#52697b' },
   { v: 3, curto: 'Com ajuda', label: 'Consegui com ajuda',                       txt: '#647a8a' },
   { v: 2, curto: 'A treinar', label: 'Tentei mas ainda preciso de mais prática', txt: '#96a4b0' },
   { v: 1, curto: 'Não fez',   label: 'Ainda não fiz',                            txt: '#7B2233' },
@@ -821,7 +824,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)', marginBottom: 8 }}>
               Vem preenchido com o que o aluno se deu. Toca para alterar.
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 6, marginBottom: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 8 }}>
               {NIVEIS_PROF.map(n => {
                 const escolhido = notaProf === n.v;
                 const foiDoAluno = notaAluno14 === n.v;
@@ -829,7 +832,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                   <button key={n.v}
                     onClick={() => setNotasProf(p => ({ ...p, [auto.competenciaId]: n.v }))}
                     style={{
-                      padding: '13px 4px 10px', borderRadius: 10,
+                      padding: '12px 2px 9px', borderRadius: 10, minWidth: 0,
                       border: `2px solid ${escolhido ? n.txt : 'var(--border)'}`,
                       background: escolhido ? n.txt : '#fff',
                       color: escolhido ? '#fff' : 'rgba(26,23,20,0.55)',
@@ -837,7 +840,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                       position: 'relative',
                     }}>
                     {/* Em /20, como a nota da aula (os níveis 1 a 5 confundiam). */}
-                    <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{para20(n.v)}</div>
+                    <div style={{ fontSize: Number.isInteger(n.v) ? 20 : 16, fontWeight: 700, lineHeight: 1 }}>{String(para20Dec(n.v)).replace('.', ',')}</div>
                     <div style={{ fontSize: 11.5, marginTop: 5, fontWeight: escolhido ? 700 : 400 }}>
                       {n.curto}
                     </div>
@@ -858,10 +861,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             {notaProf && (
               <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.7)', marginBottom: notaFinal ? 8 : 0,
                 fontStyle: 'italic' }}>
-                {Number.isInteger(notaProf)
+                {NIVEIS_PROF.some(n => n.v === notaProf)
                   ? `"${NIVEIS_PROF.find(n => n.v === notaProf)?.label}"`
                   : `Média das respostas do aluno: ${String(Math.round(para20Dec(notaProf) * 10) / 10).replace('.', ',')}/20. Toca num valor para mudar.`}
-                {Number.isInteger(notaProf) && notaProf !== notaAluno14 && (
+                {NIVEIS_PROF.some(n => n.v === notaProf) && notaProf !== notaAluno14 && (
                   <span style={{ color: 'var(--copper)', fontWeight: 700, fontStyle: 'normal' }}>
                     {' '}· alteraste o que o aluno tinha posto
                   </span>

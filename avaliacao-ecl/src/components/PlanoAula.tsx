@@ -918,6 +918,8 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     tipoAtividade: tipoInicial || 'Aula prática',
     // Evento: vai a turma toda (obrigatório) ou os alunos inscrevem-se e o professor aceita.
     modoParticipacao: 'turma' as 'turma' | 'inscricao',
+    /** Evento ou atividade: as faltas contam como penalização? Por omissão, não. */
+    faltasContam: false,
     // Obrigatórias, mas o professor pode tirá-las desta aula.
     comFarda: true,
     comRegistos: true,
@@ -1028,7 +1030,8 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     const hojeISO = new Date().toISOString().slice(0, 10);
     // Evento fora do horário: faltas e atrasos não contam para a assiduidade
     // (a pontualidade no evento avalia-se na atitude).
-    if (tipoEventoDe(dados.tipoAtividade)) contaAssiduidade = false;
+    // O professor escolhe se as faltas contam (pergunta no formulário).
+    if (tipoEventoDe(dados.tipoAtividade)) contaAssiduidade = !!(dados as any).faltasContam;
     else if (dados.data && dados.data < hojeISO) {
       contaAssiduidade = confirm(
         'Esta aula já passou.\n\n'
@@ -1341,12 +1344,25 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             <div style={{ marginTop: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Quem participa?</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {([['turma', 'A turma toda', 'Obrigatório. Não conta falta de aula.'],
+                {([['turma', 'A turma toda', 'Obrigatório para todos. Não há candidaturas.'],
                    ['inscricao', 'Quem se inscrever', 'Os alunos inscrevem-se nas «Atividades e concursos» e tu aceitas.']] as const).map(([v, t, d]) => (
                   <button key={v} type="button" onClick={() => setDados(p => ({ ...p, modoParticipacao: v }))}
                     style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
                       border: `2px solid ${dados.modoParticipacao === v ? 'var(--copper)' : 'rgba(26,23,20,0.12)'}`,
                       background: dados.modoParticipacao === v ? 'var(--copper-pale, #fdf0e6)' : '#fff' }}>
+                    <div style={{ fontWeight: 800, fontSize: 14 }}>{t}</div>
+                    <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{d}</div>
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, margin: '12px 0 6px' }}>As faltas contam como penalização?</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {([[false, 'Não', 'A presença, a pontualidade e a farda contam só como atitudes (responsabilidade, apresentação).'],
+                   [true, 'Sim', 'Contam como numa aula: entram nas horas de falta da UC.']] as const).map(([v, t, d]) => (
+                  <button key={t} type="button" onClick={() => setDados(p => ({ ...p, faltasContam: v }))}
+                    style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                      border: `2px solid ${(dados as any).faltasContam === v ? 'var(--copper)' : 'rgba(26,23,20,0.12)'}`,
+                      background: (dados as any).faltasContam === v ? 'var(--copper-pale, #fdf0e6)' : '#fff' }}>
                     <div style={{ fontWeight: 800, fontSize: 14 }}>{t}</div>
                     <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{d}</div>
                   </button>

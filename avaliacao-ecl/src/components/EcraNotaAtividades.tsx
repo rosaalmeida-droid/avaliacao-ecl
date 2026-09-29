@@ -48,8 +48,15 @@ export interface AulaNota {
 }
 
 export function EcraMinhaNota({
-  ucId, ucNome, nota, aulas, competenciasPorAvaliar = 0, notaPossivel,
+  ucId, ucNome, nota, aulas, competenciasPorAvaliar = 0, notaPossivel, detalhe,
 }: {
+  /** Como se chega à nota: faltas, média das aulas, bónus de cada atividade. */
+  detalhe?: {
+    faltas: { titulo: string; data: string }[];
+    media: number | null;
+    bonus: { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }[];
+    bonusTotal: number; teto: boolean; final: number | null; publicada: boolean;
+  } | null;
   ucId?: string; ucNome?: string;
   nota: number | null;
   /** Aulas já avaliadas, por ordem. */
@@ -68,6 +75,8 @@ export function EcraMinhaNota({
     : null;
 
   const fmt = (n: number) => n.toFixed(1).replace('.', ',').replace(',0', '');
+  // O bónus em centésimas (0,45), sem zeros a mais.
+  const fmt2 = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',');
 
   return (
     <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
@@ -145,6 +154,57 @@ export function EcraMinhaNota({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Como chegaste a esta nota: tudo, aula a aula, e o bónus de cada atividade. */}
+        {detalhe && (aulas.length > 0 || detalhe.faltas.length > 0 || detalhe.bonus.length > 0) && (
+          <div style={{ ...painel, padding: 18, marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.tinta, marginBottom: 10 }}>Como chegaste a esta nota</div>
+            {aulas.map(a => (
+              <div key={'a' + a.numero + a.titulo} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Aula {a.numero} · {a.titulo} <span style={{ color: '#999' }}>· {a.data}</span></span>
+                <span style={{ fontWeight: 700, color: a.nota20 < 10 ? C.ambar : C.tinta }}>{fmt(a.nota20)}</span>
+              </div>
+            ))}
+            {detalhe.faltas.map((f, i) => (
+              <div key={'f' + i} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Faltaste · {f.titulo} <span style={{ color: '#999' }}>· {f.data}</span></span>
+                <span style={{ fontWeight: 700, color: C.ambar }}>0</span>
+              </div>
+            ))}
+            {detalhe.media != null && (
+              <div style={{ display: 'flex', gap: 10, padding: '9px 0 6px', fontSize: 15, fontWeight: 700 }}>
+                <span style={{ flex: 1 }}>Média das aulas</span><span>{fmt(detalhe.media)}</span>
+              </div>
+            )}
+            {detalhe.bonus.map(b => (
+              <div key={b.id} style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 14 }}>
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>
+                  {b.tipo === 'concurso' ? '🏆' : '🏅'} {b.titulo} <span style={{ color: '#999' }}>· {b.data.split('-').reverse().slice(0, 2).join('/')}</span>
+                  {!b.conta && b.motivo && <span style={{ display: 'block', fontSize: 12.5, color: '#999' }}>{b.motivo}</span>}
+                </span>
+                <span style={{ fontWeight: 700, color: b.conta ? C.verde : '#999' }}>{b.conta ? `+${fmt2(b.valor)}` : '+0'}</span>
+              </div>
+            ))}
+            {detalhe.bonus.length > 0 && (
+              <div style={{ display: 'flex', gap: 10, padding: '6px 0', fontSize: 14.5, fontWeight: 700, color: C.verde }}>
+                <span style={{ flex: 1 }}>Bónus das atividades (máximo 2)</span><span>+{fmt2(detalhe.bonusTotal)}</span>
+              </div>
+            )}
+            {detalhe.teto && (
+              <div style={{ fontSize: 13, color: C.suave, marginTop: 4 }}>
+                A nota ficou no limite: sem participar em atividades vai até 17; só com eventos, até 18; o 20 precisa de um concurso.
+              </div>
+            )}
+            {detalhe.final != null && (
+              <div style={{ display: 'flex', gap: 10, padding: '10px 0 0', marginTop: 6, borderTop: '2px solid #E6E1EA', fontSize: 16, fontWeight: 800 }}>
+                <span style={{ flex: 1 }}>Nota se a unidade acabasse hoje</span><span>{fmt(detalhe.final)}</span>
+              </div>
+            )}
+            {detalhe.publicada && (
+              <div style={{ fontSize: 13, color: C.suave, marginTop: 6 }}>O professor já publicou a nota final; é essa que aparece em cima.</div>
+            )}
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
-import { grupoDoAluno } from '../backend';
+import { grupoDoAluno, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano } from '../rotuloPlano';
@@ -453,7 +453,9 @@ const EST_PU: Record<string, { dot:string; fundo:string; texto:string; etiqueta:
   aguarda:     { dot:'#b0692b', fundo:'rgba(181,101,29,0.10)', texto:'#8a4f1e', etiqueta:'Aguarda validação do professor' },
   validado:    { dot:'#5a7a4e', fundo:'rgba(90,122,78,0.12)', texto:'#4e6a25', etiqueta:'Validado' },
 };
-function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucId: string }) {
+/** semNotas: durante a autoavaliação não se mostram notas — o aluno responderia
+ *  a pensar na nota e não no que fez (Rosa, set/2026). */
+function PercursoUC({ aluno, ucId, semNotas = false }: { aluno: { id:string; turmaId:string }; ucId: string; semNotas?: boolean }) {
   if (!ucId) return null;
   const planos = getPlanosAulaPorTurma(aluno.turmaId)
     .filter(p => p.ucId === ucId && p.estado !== 'arquivado')
@@ -491,7 +493,7 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
                   <span style={{ fontSize:13, fontWeight:600, color:st.texto }}>{st.etiqueta}</span>
-                  {estado === 'validado' && nota20 != null && (
+                  {estado === 'validado' && nota20 != null && !semNotas && (
                     <span style={{ marginLeft:'auto', fontSize:13, fontWeight:800, color:'#4e6a25' }}>{nota20}/20</span>
                   )}
                 </div>
@@ -976,7 +978,22 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       numeroAula: planosOrdenados.findIndex(p => p.id === v.plano!.id) + 1,
       nota20: v.nota20,
       validada: v.validada,
+      ucId: v.plano!.ucId,
+      evento: !!(v.plano as any).tipoEvento,
     }));
+  // Como se chega à nota da UC: as aulas, as faltas (0), a média e o bónus de
+  // cada atividade — o aluno tem de perceber as notas que foi tendo (Rosa, set/2026).
+  const calcUC = ucAtual ? notaFinalUC(aluno.id, aluno.turmaId, ucAtual) : null;
+  const detalheNota = ucAtual && calcUC ? {
+    faltas: getPlanosFaltadosPorUC(aluno.id, ucAtual, aluno.turmaId)
+      .map(p => ({ titulo: p.titulo || 'Aula', data: fmtDataCurta(p.data) })),
+    media: calcUC.base,
+    bonus: bonusPorAtividade(aluno.id, aluno.turmaId, ucAtual, calcUC.base),
+    bonusTotal: calcUC.bonusParticipacao,
+    teto: calcUC.limitadaPorTeto,
+    final: calcUC.final,
+    publicada: !!publicadaDaUC,
+  } : null;
 
   return (
     <div style={{ minHeight:'100vh', background:T.cream, paddingBottom:72 }}>
@@ -1361,7 +1378,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             )}
             {destino === 'nota' && (
               <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
-                aulas={historialUC.filter(h => h.nota20 != null)
+                detalhe={detalheNota}
+                aulas={historialUC.filter(h => h.nota20 != null && !h.evento && (!ucAtual || h.ucId === ucAtual))
                   .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
                   .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo,
                     data: h.data, nota20: h.nota20 as number }))}
@@ -3887,7 +3905,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           </div>
 
           <div style={{ marginTop:20 }}>
-            <PercursoUC aluno={aluno} ucId={ucId} />
+            <PercursoUC aluno={aluno} ucId={ucId} semNotas />
           </div>
         </div>
       )}

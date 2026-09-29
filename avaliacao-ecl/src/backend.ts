@@ -3147,6 +3147,10 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
     && aulaJaAconteceu(p, hoje));
   const presencas = getPresencas().filter(r => r.alunoId === alunoId);
   return todosPlanosDaUC.filter(plano => {
+    // O professor escolheu que esta atividade não conta faltas: nenhuma
+    // conta, nem uma decisão marcada antes (ex.: aula que passou a evento).
+    // A presença e a farda contam só como atitudes.
+    if ((plano as any).contaAssiduidade === false) return false;
     const registo: any = presencas.find(r => r.planoAulaId === plano.id);
     if (registo?.decisaoProfessor === 'sem_falta') return false;
     if (registo?.decisaoProfessor === 'falta_presenca') return true;
@@ -3159,7 +3163,6 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
     // Aula que o professor nunca abriu não conta contra o aluno: sem a
     // aula aberta ele nem conseguia marcar presença. A responsabilidade é
     // do professor — só uma decisão explícita dele conta como falta.
-    if ((plano as any).contaAssiduidade === false) return false;
     if (!getSessaoAula(plano.id)?.abertaEm) return false;
     // Esteve na aula (mesmo atrasado) → não falta horas.
     if (registo?.presente) return false;
@@ -3307,7 +3310,7 @@ export function faltasDaUC(alunoId: string, turmaId: string, ucId: string): Falt
       if (reg.decisaoProfessor === 'falta_atraso' || minutos > 0 || reg.atrasado) {
         out.push({ ...base, tipo: 'atraso',
           descricao: reg.decisaoProfessor === 'falta_atraso' ? 'Falta de atraso (decisão do professor)' : 'Chegou atrasado',
-          horas: minutos > 0 ? Math.min(Math.floor(minutos / 60), horasDoPlano(p)) : 0,
+          horas: horasDoAtraso(reg, horasDoPlano(p)),
           ...(minutos > 0 ? { minutosAtraso: minutos } : {}) });
       }
     });
@@ -6400,7 +6403,10 @@ export function participacaoContaParaBonus(a: Atividade, alunoId: string): { con
   const planos = deEvento.length ? deEvento : doDia;
   if (!planos.length) return { conta: false, motivo: 'Não há plano de avaliação deste evento.', fator: 0 };
   const ids = new Set(planos.map(p => p.id));
-  if (getPresencas().some(r => r.alunoId === alunoId && ids.has(r.planoAulaId) && r.fardamentoOk === false))
+  // A farda só tira o bónus se a atividade conta faltas; senão conta só como
+  // atitude (apresentação pessoal), escolha do professor ao criar a atividade.
+  const idsOficiais = new Set(planos.filter((p: any) => p.contaAssiduidade !== false).map(p => p.id));
+  if (getPresencas().some(r => r.alunoId === alunoId && idsOficiais.has(r.planoAulaId) && r.fardamentoOk === false))
     return { conta: false, motivo: 'Foi sem farda.', fator: 0 };
   const val = getValidacoes().filter(v => v.alunoId === alunoId && ids.has(v.planoAulaId || ''))
     .sort((x, y) => String(y.validadoEm).localeCompare(String(x.validadoEm)))[0];
@@ -6459,6 +6465,37 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
   if (nota > teto) { nota = teto; limitadaPorTeto = true; }
   const final = Math.min(20, Math.round(nota * 10) / 10);
   return { base, bonusAssiduidade, bonusParticipacao, participacoes, limitadaPorTeto, final };
+}
+
+/** O bónus de cada atividade (evento/concurso) do aluno na UC, para o aluno
+ *  perceber de onde vem (antes do limite total de 2 e dos tetos). */
+export interface BonusDaAtividade { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }
+export function bonusPorAtividade(alunoId: string, turmaId: string, ucId: string, base: number | null): BonusDaAtividade[] {
+  const B = BONUS_EVENTOS;
+  return atividadesDoAlunoNaUC(alunoId, turmaId, ucId).map(a => {
+    const semNota = a.tipo === 'concurso' && (base ?? 0) < B.notaMinimaConcurso;
+    const r = semNota ? { conta: false, motivo: `Os concursos contam a partir de ${B.notaMinimaConcurso} valores.`, fator: 0 } : participacaoContaParaBonus(a, alunoId);
+    const valor = r.conta ? Math.round((a.tipo === 'concurso' ? B.porConcurso : B.porEvento) * r.fator * 100) / 100 : 0;
+    return { id: a.id, titulo: a.titulo || 'Atividade', data: String(a.data || '').slice(0, 10), tipo: a.tipo, conta: r.conta, motivo: r.motivo, valor };
+  }).sort((x, y) => x.data.localeCompare(y.data));
+}
+
+/**
+ * Os eventos que ficam agregados a esta aula: a primeira aula da turma, na
+ * mesma UC, no dia do evento ou depois (Rosa, set/2026). Um evento nas
+ * férias, antes do ano letivo ou fora da UC aparece na aula seguinte, para
+ * o professor o avaliar e o aluno ver o bónus.
+ */
+export function eventosAgregadosAAula(plano: PlanoAula): PlanoAula[] {
+  if (!plano || (plano as any).tipoEvento || !plano.ucId) return [];
+  const daUC = getPlanosAula().filter(p => p.turmaId === plano.turmaId && p.ucId === plano.ucId && p.estado !== 'arquivado');
+  const aulas = daUC.filter(p => !(p as any).tipoEvento)
+    .sort((a, b) => `${String(a.data).slice(0, 10)} ${a.horaInicio || ''}`.localeCompare(`${String(b.data).slice(0, 10)} ${b.horaInicio || ''}`));
+  return daUC.filter(p => (p as any).tipoEvento).filter(ev => {
+    const d = String(ev.data || '').slice(0, 10);
+    const seguinte = aulas.find(a => String(a.data || '').slice(0, 10) >= d);
+    return seguinte?.id === plano.id;
+  });
 }
 
 /** A nota final de um aluno numa UC. */
@@ -7092,14 +7129,21 @@ export function horasPerdidasPorAtraso(
       horas += Math.max(0, horasDoPlano(p) - horasDosBlocos(p, reg.horasPresentes || []));
       continue;
     }
-    // Falta de atraso marcada pelo professor sem hora de entrada (aula
-    // passada, aluno não entrou na aplicação): conta o atraso, não horas.
-    const minutos = Number(reg.atrasadoMins) || 0;
-    if (minutos <= 0) continue;
-    // Horas completas, e nunca mais do que a aula toda.
-    horas += Math.min(Math.floor(minutos / 60), horasDoPlano(p));
+    horas += horasDoAtraso(reg, horasDoPlano(p));
   }
   return horas;
+}
+
+/**
+ * Horas de falta de um atraso. Falta de atraso marcada pelo professor conta
+ * horas (Rosa, set/2026): as horas começadas, no mínimo 1, nunca mais do que
+ * a aula. Um atraso sem essa decisão conta só as horas completas perdidas.
+ */
+export function horasDoAtraso(reg: any, horasAula: number): number {
+  const minutos = Number(reg?.atrasadoMins) || 0;
+  if (reg?.decisaoProfessor === 'falta_atraso') return Math.min(Math.max(1, Math.ceil(minutos / 60)), horasAula);
+  if (minutos <= 0) return 0;
+  return Math.min(Math.floor(minutos / 60), horasAula);
 }
 
 // ============================================================
