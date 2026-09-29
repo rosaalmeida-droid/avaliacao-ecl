@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ListaFaltasUC } from './UCEmAtraso';
 import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { ModalFullscreen } from './ModalFullscreen';
 import { RecuperacaoFCTAluno } from './RecuperacaoFCT';
@@ -125,6 +126,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
                   {estado.recuperadas > 0 ? ` · ${estado.recuperadas} recuperadas` : ''}
                   {s.horasFaltadas > 0 ? ` · ${h(s.horasFaltadas)} h de faltas` : ''}
                 </div>
+                {s.horasFaltadas > 0 && <ListaFaltasUC alunoId={aluno.id} turmaId={aluno.turmaId} ucId={ucId} />}
               </div>
             );
           })}

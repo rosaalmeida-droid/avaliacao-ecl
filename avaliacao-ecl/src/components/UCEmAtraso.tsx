@@ -10,12 +10,40 @@
 import React, { useEffect, useState } from 'react';
 import {
   ucsEmAtraso, criarPlanoRecuperacao, registarResultadoRecuperacao, MODALIDADES_RECUPERACAO,
-  adiarRecuperacaoParaDepoisDaUC,
+  adiarRecuperacaoParaDepoisDaUC, faltasDaUC,
   type UCEmAtraso,
 } from '../backend';
 
 const h1 = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
 const dataPT = (iso?: string) => iso ? new Date(iso).toLocaleDateString('pt-PT') : '';
+
+/** As faltas do aluno na UC, aula a aula: dia, aula, tipo e horas. */
+export function ListaFaltasUC({ alunoId, turmaId, ucId }: { alunoId: string; turmaId: string; ucId: string }) {
+  const faltas = faltasDaUC(alunoId, turmaId, ucId);
+  if (!faltas.length) return null;
+  const total = faltas.reduce((s, f) => s + f.horas, 0);
+  const dia = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+  return (
+    <div style={{ marginTop: 8, border: '1px solid rgba(26,23,20,0.1)', borderRadius: 10, overflow: 'hidden', fontSize: 13 }}>
+      {faltas.map(f => (
+        <div key={f.planoId + f.tipo} style={{ display: 'flex', gap: 8, padding: '6px 10px', borderBottom: '1px solid rgba(26,23,20,0.07)',
+          background: f.tipo === 'falta' ? '#fdf0ef' : f.tipo === 'parcial' ? '#fdf6e8' : '#fff' }}>
+          <span style={{ fontWeight: 700, minWidth: 42 }}>{dia(f.data)}</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            {f.titulo} · <span style={{ color: 'rgba(26,23,20,0.65)' }}>{f.descricao}
+              {f.minutosAtraso ? ` (${f.minutosAtraso} min)` : ''}</span>
+          </span>
+          <span style={{ fontWeight: 700, whiteSpace: 'nowrap', color: f.horas ? '#c0392b' : 'rgba(26,23,20,0.5)' }}>
+            {f.horas ? `${h1(f.horas)} h` : '0 h'}
+          </span>
+        </div>
+      ))}
+      <div style={{ display: 'flex', padding: '6px 10px', fontWeight: 800, background: 'rgba(26,23,20,0.04)' }}>
+        <span style={{ flex: 1 }}>Total</span><span>{h1(total)} h</span>
+      </div>
+    </div>
+  );
+}
 
 export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
   turmaId?: string; nomeProfessor?: string; isMobile?: boolean;
@@ -100,6 +128,9 @@ function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou }: {
                 <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{h1(l.horasFaltadas)} h de {h1(l.horasDadas)} h dadas</div>
               </div>
             </div>
+
+            {/* Em que aulas faltou, de que tipo, e quantas horas. */}
+            <ListaFaltasUC alunoId={l.alunoId} turmaId={l.turmaId} ucId={l.ucId} />
 
             {/* A situação e o que falta fazer */}
             <div style={{ marginTop: 8, fontSize: 13.5, lineHeight: 1.5 }}>

@@ -3261,6 +3261,55 @@ export function faltasEmHorasUC(alunoId: string, turmaId: string, ucId: string):
   return { horasPrevistas, horasFaltadas, horasDadas, presenca };
 }
 
+/** Uma falta de uma UC: em que aula, de que tipo, e quantas horas conta. */
+export interface FaltaDaUC {
+  planoId: string; data: string; titulo: string;
+  tipo: 'falta' | 'parcial' | 'atraso';
+  /** O que o professor decidiu ou o que aconteceu, em palavras. */
+  descricao: string;
+  horas: number;
+  minutosAtraso?: number;
+}
+
+/**
+ * As faltas do aluno numa UC, aula a aula — as mesmas contas da recuperação
+ * (faltasEmHorasUC): a soma das horas é a mesma. Inclui os atrasos, mesmo os
+ * que não chegam a uma hora (esses contam 0 h, mas o professor vê-os).
+ */
+export function faltasDaUC(alunoId: string, turmaId: string, ucId: string): FaltaDaUC[] {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const faltados = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
+  const idsFaltados = new Set(faltados.map(p => p.id));
+  const presencas = getPresencas().filter(r => r.alunoId === alunoId);
+  const out: FaltaDaUC[] = faltados.map(p => {
+    const reg: any = presencas.find(r => r.planoAulaId === p.id);
+    return { planoId: p.id, data: String(p.data || '').slice(0, 10), titulo: p.titulo || 'Aula', tipo: 'falta' as const,
+      descricao: reg?.decisaoProfessor === 'falta_presenca' ? 'Falta de presença (decisão do professor)' : 'Faltou à aula',
+      horas: horasDoPlano(p) };
+  });
+  getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId
+    && (p.estado === 'publicado' || p.estado === 'realizada')
+    && (p as any).contaAssiduidade !== false && !idsFaltados.has(p.id) && aulaJaAconteceu(p, hoje))
+    .forEach(p => {
+      const reg: any = presencas.find(r => r.planoAulaId === p.id);
+      if (!reg || reg.decisaoProfessor === 'sem_falta') return;
+      const base = { planoId: p.id, data: String(p.data || '').slice(0, 10), titulo: p.titulo || 'Aula' };
+      if (reg.decisaoProfessor === 'parcial') {
+        const h = Math.max(0, horasDoPlano(p) - horasDosBlocos(p, reg.horasPresentes || []));
+        if (h > 0) out.push({ ...base, tipo: 'parcial', descricao: 'Esteve só parte da aula', horas: h });
+        return;
+      }
+      const minutos = Number(reg.atrasadoMins) || 0;
+      if (reg.decisaoProfessor === 'falta_atraso' || minutos > 0 || reg.atrasado) {
+        out.push({ ...base, tipo: 'atraso',
+          descricao: reg.decisaoProfessor === 'falta_atraso' ? 'Falta de atraso (decisão do professor)' : 'Chegou atrasado',
+          horas: minutos > 0 ? Math.min(Math.floor(minutos / 60), horasDoPlano(p)) : 0,
+          ...(minutos > 0 ? { minutosAtraso: minutos } : {}) });
+      }
+    });
+  return out.sort((a, b) => a.data.localeCompare(b.data));
+}
+
 export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: string): SituacaoRecuperacao {
   const hoje = new Date().toISOString().slice(0, 10);
   const mod = modulosDaTurma(turmaId).find(m => m.id === ucId);
