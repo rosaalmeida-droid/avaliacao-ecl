@@ -6405,7 +6405,10 @@ export function participacaoContaParaBonus(a: Atividade, alunoId: string): { con
   const exigidas = a.tipo === 'concurso'
     ? ATITUDES_FIXAS_EVENTO
     : [...new Set([...ATITUDES_FIXAS_EVENTO, ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('ATI-')), TEC_EVENTO])];
-  const avaliadas = exigidas.filter(id => nota.has(id)).map(id => nivelPara20(nota.get(id) || 0));
+  // Um plano que passou de aula a evento pode não ter as atitudes do evento:
+  // conta então o que foi avaliado.
+  const aContar = exigidas.some(id => nota.has(id)) ? exigidas.filter(id => nota.has(id)) : [...nota.keys()];
+  const avaliadas = aContar.map(id => nivelPara20(nota.get(id) || 0));
   const fator = avaliadas.length ? avaliadas.reduce((x, y) => x + y, 0) / avaliadas.length / 20 : 0;
   return { conta: true, motivo: '', fator: Math.max(0, Math.min(1, fator)) };
 }
