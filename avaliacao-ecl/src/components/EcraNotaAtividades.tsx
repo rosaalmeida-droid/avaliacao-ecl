@@ -337,7 +337,7 @@ export function EcraAtividades({
                 return cartao(a, turma
                   ? aviso('Vai a turma toda — é obrigatório. Não conta como falta de aula; também te autoavalias.', C.violeta, C.violetaSuave)
                   : aceite
-                    ? aviso('✓ O professor aceitou-te. No dia, também te autoavalias.', C.verde, C.verdeSuave)
+                    ? aviso('✓ Foste aceite! Agora é contigo: assumes o compromisso de estar lá à hora, com a farda impecável, e dar o teu máximo do princípio ao fim. No dia, também te autoavalias.', C.verde, C.verdeSuave)
                     : inscrito(a)
                       ? <>{parabens(a)}{aviso('Inscrito — o professor vai confirmar se vais.', C.cobre, C.cobreSuave)}{botao('Já não vou', () => onCancelar(a.id), false)}</>
                       : querParticipar(a, 'Quero participar'));
