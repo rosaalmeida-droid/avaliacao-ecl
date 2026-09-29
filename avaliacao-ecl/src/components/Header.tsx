@@ -449,7 +449,8 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
             </main>
 
             {/* Sempre à vista: alunos com 10% ou mais de faltas numa UC. */}
-            <ContadorUCEmAtraso turmaId={turmaId} nomeProfessor={nomeProfessor} isMobile={isMobile} />
+            <ContadorUCEmAtraso turmaId={turmaId} nomeProfessor={nomeProfessor} isMobile={isMobile}
+              onAbrirRecuperacoes={() => onNavegar('gestao_recuperacoes')} />
 
             {/* No telemóvel, o que se usa na cozinha fica sempre à mão, sem
                 abrir o menu. O resto continua em Menu. */}
