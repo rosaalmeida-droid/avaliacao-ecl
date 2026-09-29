@@ -6467,6 +6467,37 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
   return { base, bonusAssiduidade, bonusParticipacao, participacoes, limitadaPorTeto, final };
 }
 
+/** O bónus de cada atividade (evento/concurso) do aluno na UC, para o aluno
+ *  perceber de onde vem (antes do limite total de 2 e dos tetos). */
+export interface BonusDaAtividade { id: string; titulo: string; data: string; tipo: string; conta: boolean; motivo: string; valor: number }
+export function bonusPorAtividade(alunoId: string, turmaId: string, ucId: string, base: number | null): BonusDaAtividade[] {
+  const B = BONUS_EVENTOS;
+  return atividadesDoAlunoNaUC(alunoId, turmaId, ucId).map(a => {
+    const semNota = a.tipo === 'concurso' && (base ?? 0) < B.notaMinimaConcurso;
+    const r = semNota ? { conta: false, motivo: `Os concursos contam a partir de ${B.notaMinimaConcurso} valores.`, fator: 0 } : participacaoContaParaBonus(a, alunoId);
+    const valor = r.conta ? Math.round((a.tipo === 'concurso' ? B.porConcurso : B.porEvento) * r.fator * 100) / 100 : 0;
+    return { id: a.id, titulo: a.titulo || 'Atividade', data: String(a.data || '').slice(0, 10), tipo: a.tipo, conta: r.conta, motivo: r.motivo, valor };
+  }).sort((x, y) => x.data.localeCompare(y.data));
+}
+
+/**
+ * Os eventos que ficam agregados a esta aula: a primeira aula da turma, na
+ * mesma UC, no dia do evento ou depois (Rosa, set/2026). Um evento nas
+ * férias, antes do ano letivo ou fora da UC aparece na aula seguinte, para
+ * o professor o avaliar e o aluno ver o bónus.
+ */
+export function eventosAgregadosAAula(plano: PlanoAula): PlanoAula[] {
+  if (!plano || (plano as any).tipoEvento || !plano.ucId) return [];
+  const daUC = getPlanosAula().filter(p => p.turmaId === plano.turmaId && p.ucId === plano.ucId && p.estado !== 'arquivado');
+  const aulas = daUC.filter(p => !(p as any).tipoEvento)
+    .sort((a, b) => `${String(a.data).slice(0, 10)} ${a.horaInicio || ''}`.localeCompare(`${String(b.data).slice(0, 10)} ${b.horaInicio || ''}`));
+  return daUC.filter(p => (p as any).tipoEvento).filter(ev => {
+    const d = String(ev.data || '').slice(0, 10);
+    const seguinte = aulas.find(a => String(a.data || '').slice(0, 10) >= d);
+    return seguinte?.id === plano.id;
+  });
+}
+
 /** A nota final de um aluno numa UC. */
 export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): NotaUC {
   const regs = getHistoricoAvaliacoes().filter(r =>

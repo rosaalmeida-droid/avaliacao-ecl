@@ -4,7 +4,7 @@ import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
-import { grupoDoAluno } from '../backend';
+import { grupoDoAluno, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano } from '../rotuloPlano';
@@ -978,7 +978,22 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       numeroAula: planosOrdenados.findIndex(p => p.id === v.plano!.id) + 1,
       nota20: v.nota20,
       validada: v.validada,
+      ucId: v.plano!.ucId,
+      evento: !!(v.plano as any).tipoEvento,
     }));
+  // Como se chega à nota da UC: as aulas, as faltas (0), a média e o bónus de
+  // cada atividade — o aluno tem de perceber as notas que foi tendo (Rosa, set/2026).
+  const calcUC = ucAtual ? notaFinalUC(aluno.id, aluno.turmaId, ucAtual) : null;
+  const detalheNota = ucAtual && calcUC ? {
+    faltas: getPlanosFaltadosPorUC(aluno.id, ucAtual, aluno.turmaId)
+      .map(p => ({ titulo: p.titulo || 'Aula', data: fmtDataCurta(p.data) })),
+    media: calcUC.base,
+    bonus: bonusPorAtividade(aluno.id, aluno.turmaId, ucAtual, calcUC.base),
+    bonusTotal: calcUC.bonusParticipacao,
+    teto: calcUC.limitadaPorTeto,
+    final: calcUC.final,
+    publicada: !!publicadaDaUC,
+  } : null;
 
   return (
     <div style={{ minHeight:'100vh', background:T.cream, paddingBottom:72 }}>
@@ -1363,7 +1378,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             )}
             {destino === 'nota' && (
               <EcraMinhaNota ucId={ucAtual} ucNome={ucNomeOficial} nota={notaProgressiva}
-                aulas={historialUC.filter(h => h.nota20 != null)
+                detalhe={detalheNota}
+                aulas={historialUC.filter(h => h.nota20 != null && !h.evento && (!ucAtual || h.ucId === ucAtual))
                   .sort((a, b) => (a.numeroAula ?? 0) - (b.numeroAula ?? 0))
                   .map(h => ({ numero: h.numeroAula ?? 0, titulo: h.titulo,
                     data: h.data, nota20: h.nota20 as number }))}
