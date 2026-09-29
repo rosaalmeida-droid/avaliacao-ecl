@@ -2671,14 +2671,14 @@ export function colaboracoesDaAula(planoAulaId: string): { alunoId: string; text
 export function getSelecoes(): SelecaoAluno[] {
   const todas = semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
   // O professor mudou as perguntas e pediu à turma para responder outra vez:
-  // as respostas antigas ainda não validadas deixam de existir para todos
-  // (o aluno volta a ter a autoavaliação por fazer; o professor não as vê).
+  // as respostas antigas deixam de existir para todos, também as já
+  // validadas (Rosa, set/2026). O aluno volta a ter a autoavaliação por
+  // fazer; a nota antiga continua a contar até o professor validar a nova.
   const pedidos = new Map(getPlanosAula().filter((p: any) => p.pedirDeNovoEm).map((p: any) => [p.id, p.pedirDeNovoEm as string]));
   if (!pedidos.size) return todas;
-  const vals = getValidacoes();
   return todas.filter(s => {
     const em = pedidos.get(s.planoAulaId || '');
-    return !em || String(s.criadaEm || '') >= em || selecaoJaValidada(s, vals);
+    return !em || String(s.criadaEm || '') >= em;
   });
 }
 
@@ -2687,12 +2687,10 @@ export function respostasAntesDaAlteracao(planoId: string): number {
   const p: any = getPlanosAula().find(x => x.id === planoId);
   const alterado = String(p?.ultimaAlteracao?.em || '');
   if (!p || !alterado) return 0;
-  const vals = getValidacoes();
-  return getSelecoes().filter(s => s.planoAulaId === planoId && String(s.criadaEm || '') < alterado
-    && !selecaoJaValidada(s, vals)).length;
+  return getSelecoes().filter(s => s.planoAulaId === planoId && String(s.criadaEm || '') < alterado).length;
 }
 
-/** O professor mudou o plano: os alunos que já responderam (sem validação) respondem outra vez. */
+/** O professor mudou o plano: os alunos que já responderam (validados ou não) respondem outra vez. */
 export function pedirNovaAutoavaliacao(planoId: string): void {
   const p = getPlanosAula().find(x => x.id === planoId);
   if (!p) return;
@@ -2704,9 +2702,14 @@ export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<V
  *  aluno e pela aula: a mesma autoavaliação pode chegar duas vezes (do
  *  telemóvel e do Sheets, ou com um código antigo). Sem isto, a cópia que
  *  chegava depois aparecia por corrigir e o professor corrigia duas vezes. */
-export function validacaoDaSelecao(s: { id: string; alunoId?: string; planoAulaId?: string }, validacoes: Validacao[] = getValidacoes()): Validacao | undefined {
-  return validacoes.find((v: any) => v.selecaoId === s.id)
+export function validacaoDaSelecao(s: { id: string; alunoId?: string; planoAulaId?: string; criadaEm?: string }, validacoes: Validacao[] = getValidacoes()): Validacao | undefined {
+  const v = validacoes.find((v: any) => v.selecaoId === s.id)
     || validacoes.find((v: any) => !!s.alunoId && !!s.planoAulaId && v.alunoId === s.alunoId && v.planoAulaId === s.planoAulaId);
+  // Respondeu outra vez depois de o professor pedir: a validação antiga não
+  // é desta resposta (continua a contar para a nota até haver a nova).
+  const pedido = v && s.criadaEm ? (getPlanosAula().find(p => p.id === s.planoAulaId) as any)?.pedirDeNovoEm : undefined;
+  if (v && pedido && String(s.criadaEm) >= pedido && String((v as any).validadoEm || '') < pedido) return undefined;
+  return v;
 }
 export function selecaoJaValidada(s: { id: string; alunoId?: string; planoAulaId?: string }, validacoes: Validacao[] = getValidacoes()): boolean {
   return !!validacaoDaSelecao(s, validacoes);

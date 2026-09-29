@@ -59,7 +59,7 @@ import {
 } from './InicioAluno';
 import { temOrganizacao, organizacaoDe, funcoesDoAluno } from '../organizacaoAula';
 import { QuadroOrganizacional, CartaoMinhaFuncao, PassoMinhaFuncao } from './PlanoOrganizacional';
-import { perguntasDaAula, notaTriagem, type Triagem5C } from '../triagem5c';
+import { perguntasDaAula, notaTriagem, perguntaSeguinte, perguntaPorId, type Triagem5C } from '../triagem5c';
 import { EcraCheio, FUNDO_ECRA, ProgressoSlides, NavSlides } from './EcraCheio';
 import { LavarMaos } from './QuadroMaos';
 import { kfFaseCompleta, getHistoricoAvaliacoes, ucsParaAutoavaliacaoFinal, guardarTriagemDaAula, registarMaosLavadas, registarFardaNaPresenca, perguntaCODaAula, perguntaCRDaAula } from '../backend';
@@ -504,13 +504,31 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
 }
 
 /** versaoDados muda quando chegam dados novos: redesenha sem recriar. */
+/** As 4 respostas de uma técnica ou conhecimento: coisas que se veem
+ *  (Rosa, set/2026). Da mais fraca para a mais forte. */
+function frasesVisiveis(c: { rotulo: string; resultado?: string }): string[] {
+  if (c.rotulo === 'Conhecimento') return [
+    'Sei explicar só uma parte, e com erros.',
+    'Sei explicar, mas a olhar para o caderno ou com a ajuda do professor.',
+    'Sei explicar sozinho, sem olhar.',
+    'Sei explicar sozinho e dar um exemplo da cozinha.',
+  ];
+  const comoNaFicha = c.resultado ? 'ficou como diz o «bem feito é»' : 'ficou como na ficha';
+  return [
+    'Não consegui: o professor ou um colega teve de fazer por mim.',
+    'Fiz, mas o professor teve de me corrigir ou mostrar outra vez.',
+    `Fiz sozinho e ${comoNaFicha}.`,
+    `Fiz sozinho, ${comoNaFicha} à primeira, e ajudei ou expliquei a um colega.`,
+  ];
+}
+
 /** O aluno já enviou a autoavaliação desta aula? Não conta a que foi enviada
  *  antes de o professor mudar as perguntas e pedir para responder outra vez. */
 function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
   try {
     const em = localStorage.getItem(`avaliacao_submetida_${plano.id}_${alunoId}`);
     const pedido = plano?.pedirDeNovoEm;
-    if (em && pedido && em < pedido && !getValidacoes().some(v => v.alunoId === alunoId && v.planoAulaId === plano.id)) return false;
+    if (em && pedido && em < pedido) return false;
     return !!em;
   } catch { return false; }
 }
@@ -2817,7 +2835,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // O Consciente e o Criativo têm uma pergunta do dia, igual para a turma toda.
   const [triagem, setTriagem] = useState<Triagem5C>(() => ({ cl: null, cr: null, co: null, problema: '',
     coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
-  const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId);
+  const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId, triagem.clId);
   // Basta escolher uma resposta; escrever o que foi mais difícil é opcional.
   const triagemFeita = (chave: 'cl' | 'cr' | 'co') => triagem[chave] != null;
   const triagemCompleta = triagemFeita('cl') && triagemFeita('cr') && triagemFeita('co');
@@ -3329,8 +3347,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       const fi = NIVEIS_FRASES.indexOf(v as string);
       const resposta = !v ? 'Por responder'
         : v === 'nop' ? 'Não tive oportunidade hoje (o professor confirma)'
-        : v === 'nf' ? 'Não fiz'
-        : p.comp!.frases && fi >= 0 ? getFrasesParaCompetencia(p.comp!.id, p.comp!.nome, aluno.nivelMedidas)[fi]
+        : v === 'nf' ? (p.comp!.rotulo === 'Conhecimento' ? 'Não sei explicar' : 'Não fiz')
+        : fi >= 0 ? frasesVisiveis(p.comp!)[fi]
         : OPCOES.find(o => o.v === v)?.label || '';
       linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
     } else if (p.tipo === 'outra') {
@@ -3412,7 +3430,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       {passo.tipo === 'comp' && (() => {
         const c = passo.comp!;
         const v = notasMicro[c.id];
-        const frases = c.frases ? getFrasesParaCompetencia(c.id, c.nome, aluno.nivelMedidas) : null;
+        // Frases de coisas que se veem (Rosa, set/2026): quem fez, se o professor
+        // teve de corrigir, se ficou como o «bem feito é», se ajudou alguém.
+        const ehConhecimento = c.rotulo === 'Conhecimento';
+        const frases = frasesVisiveis(c);
+        // Nas aulas teóricas não há «não tive oportunidade» nos conhecimentos:
+        // a matéria foi dada à turma toda (Rosa, set/2026).
+        const semNop = ehConhecimento && String(tipoPlanAula || '') === 'teorico';
         const escolher = (nivel: string) => setNotasMicro(p => ({ ...p, [c.id]: nivel }));
         return (
           <div>
@@ -3441,20 +3465,21 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             <div style={{ marginTop:10 }}>
               <CriteriosComp compId={c.id} cor={V} abertaInicial={false} />
             </div>
-            {rotuloSecao(frases ? 'Qual destas frases diz o que fizeste hoje?' : 'Como correu hoje?')}
+            {rotuloSecao(ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
             {NIVEIS_FRASES.map((nivel, i) => (
               <button key={nivel} onClick={() => escolher(nivel)} style={estiloOpcao(v === nivel)}>
                 {/* Sem números: o aluno escolhia o número, não o que fez. */}
                 <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
                   border: v === nivel ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
-                <span>{frases ? frases[i] : OPCOES.find(o => o.v === nivel)?.label}</span>
+                <span>{frases[i]}</span>
               </button>
             ))}
             {/* Duas coisas diferentes (Rosa): não ter tido oportunidade não
                 conta para a nota (o professor confirma); não ter feito vale 0. */}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
               {([['nop', simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
-                 ['nf', 'Não fiz']] as const).map(([nv, texto]) => (
+                 ['nf', ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
+                .filter(([nv]) => !(semNop && nv === 'nop')).map(([nv, texto]) => (
                 <button key={nv} onClick={() => escolher(nv)} style={{ ...estiloOpcao(v === nv),
                   ...(v === nv ? {} : { border:'none', background:'transparent', textDecoration:'underline',
                     color:'rgba(26,23,20,0.6)', fontWeight:600, width:'auto', padding:'10px 4px' }) }}>
@@ -3630,9 +3655,34 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       {passo.tipo === 'triagem' && (() => {
         const q = perguntasTriagem.find(x => x.chave === passo.chave)!;
         const r = triagem[q.chave] ?? null;
-        const escolher = (v: number | 'sem') => setTriagem(t => ({ ...t, [q.chave]: t[q.chave] === v ? null : v }));
+        const idDe = (chave: string, t: Triagem5C) => chave === 'cl' ? (t.clId || 'cl01') : chave === 'co' ? (t.coId || '') : (t.crId || '');
+        const campoId = q.chave === 'cl' ? 'clId' : q.chave === 'co' ? 'coId' : 'crId';
+        const antes = triagem.semAntes?.[q.chave] || [];
+        // «Não aconteceu»: aparece logo outra pergunta, uma que acontece sempre.
+        const escolher = (v: number | 'sem') => {
+          if (v === 'sem') {
+            const vistas = [...antes, idDe(q.chave, triagem)];
+            const nova = perguntaSeguinte(q.chave, vistas, !['pratico', 'misto'].includes(String(tipoPlanAula || 'pratico')));
+            setTriagem(t => ({ ...t, [q.chave]: null, [campoId]: nova.id, semAntes: { ...(t.semAntes || {}), [q.chave]: vistas } }));
+            return;
+          }
+          setTriagem(t => ({ ...t, [q.chave]: t[q.chave] === v ? null : v }));
+        };
+        const voltarAtras = () => setTriagem(t => ({ ...t, [q.chave]: null, [campoId]: antes[antes.length - 1],
+          semAntes: { ...(t.semAntes || {}), [q.chave]: antes.slice(0, -1) } }));
+        const anterior = antes.length ? perguntaPorId(antes[antes.length - 1]) : undefined;
         return (
           <div>
+            {anterior && (
+              <div style={{ marginBottom:12, padding:'10px 12px', borderRadius:10, background:'#f3f0f7', fontSize:13.5, lineHeight:1.5 }}>
+                Disseste que hoje não aconteceu: «{simples ? anterior.perguntaSimples : anterior.pergunta}»
+                Então responde a esta, que acontece em todas as aulas.
+                <button onClick={voltarAtras} style={{ display:'block', marginTop:4, background:'none', border:'none', padding:0,
+                  color:V, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', fontSize:13.5 }}>
+                  Afinal aconteceu: voltar à pergunta anterior
+                </button>
+              </div>
+            )}
             <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.3 }}>
               {simples ? q.perguntaSimples : q.pergunta}
             </div>

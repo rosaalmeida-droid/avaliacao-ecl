@@ -1605,7 +1605,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
             <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', margin:'4px 0 10px', lineHeight:1.5 }}>
               Responderam às perguntas antigas. Se pedires, a autoavaliação volta a abrir para eles, com as perguntas novas,
-              e as respostas antigas deixam de aparecer para validar. As já validadas ficam como estão.
+              e voltas a validar. Também os que já validaste: a nota que deste continua a contar até validares a nova.
             </div>
             <button onClick={() => {
                 if (!confirm(`Pedir a ${n} aluno${n === 1 ? '' : 's'} que respondam outra vez?`)) return;
