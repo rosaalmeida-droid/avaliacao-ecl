@@ -65,7 +65,7 @@ export const MAPA_5C: Record<Letra5C, { sigla: string; nome: string; evidencias:
  *  (as mesmas fronteiras das fórmulas do modelo). */
 export function nivelPauta(nota20: number | null | undefined): number {
   if (nota20 === null || nota20 === undefined || isNaN(nota20) || nota20 === 0) return 0;
-  // Arredonda primeiro, como o professor faz: 13,6 é 14, e 14 já é Bom.
+  // A nota fica com décimas; só a classificação arredonda: 13,6 é Bom, 16,6 é Muito bom.
   nota20 = Math.round(nota20);
   return nota20 < 9.5 ? 2 : nota20 < 14 ? 4 : nota20 < 17 ? 5 : 6;
 }
@@ -190,9 +190,7 @@ export function linhasDaPautaUC(turmaId: string, ucId: string, produtos: Produto
           return notaDoPlano(a.id, id, tipoDe(id));
         });
         const m = media(notas);
-        // Nota inteira, como na pauta: 13,6 passa a 14 (Bom). Com décimas,
-        // a fórmula do modelo (E<14 → 4) dava Suficiente a um 13,6.
-        return m === null ? null : Math.round(m);
+        return m === null ? null : Math.round(m * 10) / 10;
       });
 
       // 5 C's a partir das evidências
@@ -564,7 +562,7 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
       const c = colNota(j), v = l.produtos[j];
       set(lv(c), v === null || v === undefined ? null : v);
       const e = lv(c);
-      if (d.produtos[j]) f(lv(c + 1), `IF(${e}=0,"0",IF(${e}<9.5,"2",IF(${e}<14,"4",IF(${e}<17,"5","6"))))`);
+      if (d.produtos[j]) f(lv(c + 1), `IF(${e}=0,"0",IF(${e}<9.5,"2",IF(ROUND(${e},0)<14,"4",IF(ROUND(${e},0)<17,"5","6"))))`);
       else set(lv(c + 1), null);
     }
     // As fórmulas do modelo, só com as colunas no sítio novo. O CP tem duas
