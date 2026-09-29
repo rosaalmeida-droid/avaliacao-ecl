@@ -16,7 +16,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
@@ -1593,6 +1593,38 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </button>
       )}
       <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />
+      {/* Mudaste o plano depois de alunos já terem respondido: eles
+          responderam às perguntas antigas. Nada lhes era reenviado. */}
+      {(() => {
+        const n = respostasAntesDaAlteracao(plano.id);
+        if (!n) return null;
+        return (
+          <div style={{ background:'#fdf0e6', border:'1.5px solid #e8c98f', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>
+            <div style={{ fontSize:14.5, fontWeight:700, color:'#8a4a15' }}>
+              Mudaste este plano depois de {n} aluno{n === 1 ? '' : 's'} já ter{n === 1 ? '' : 'em'} respondido à autoavaliação.
+            </div>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', margin:'4px 0 10px', lineHeight:1.5 }}>
+              Responderam às perguntas antigas. Se pedires, a autoavaliação volta a abrir para eles, com as perguntas novas,
+              e as respostas antigas deixam de aparecer para validar. As já validadas ficam como estão.
+            </div>
+            <button onClick={() => {
+                if (!confirm(`Pedir a ${n} aluno${n === 1 ? '' : 's'} que respondam outra vez?`)) return;
+                pedirNovaAutoavaliacao(plano.id);
+                const p = getPlanosAula().find(x => x.id === plano.id);
+                if (p) onPlanoActualizado(p);
+              }}
+              style={{ padding:'10px 16px', borderRadius:10, border:'none', background:'#b5651d', color:'#fff',
+                fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+              Pedir a estes alunos que respondam outra vez
+            </button>
+          </div>
+        );
+      })()}
+      {(plano as any).pedirDeNovoEm && (
+        <div style={{ fontSize:13, color:'#3f5e34', background:'#eef4eb', borderRadius:10, padding:'8px 12px', margin:'0 0 14px' }}>
+          ✓ Pediste aos alunos que respondessem outra vez ({new Date((plano as any).pedirDeNovoEm).toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}). Veem as perguntas novas quando abrirem a aula.
+        </div>
+      )}
       {eventoForaDoHorario(plano) && (
         <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
           <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />

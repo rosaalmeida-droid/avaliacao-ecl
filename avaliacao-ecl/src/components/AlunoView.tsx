@@ -504,6 +504,17 @@ function PercursoUC({ aluno, ucId }: { aluno: { id:string; turmaId:string }; ucI
 }
 
 /** versaoDados muda quando chegam dados novos: redesenha sem recriar. */
+/** O aluno já enviou a autoavaliação desta aula? Não conta a que foi enviada
+ *  antes de o professor mudar as perguntas e pedir para responder outra vez. */
+function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
+  try {
+    const em = localStorage.getItem(`avaliacao_submetida_${plano.id}_${alunoId}`);
+    const pedido = plano?.pedirDeNovoEm;
+    if (em && pedido && em < pedido && !getValidacoes().some(v => v.alunoId === alunoId && v.planoAulaId === plano.id)) return false;
+    return !!em;
+  } catch { return false; }
+}
+
 export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
   // Cinco separadores, como a especificação: Início, Aula, Percurso,
@@ -1392,7 +1403,7 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   const [fichaConcluida, setFichaConcluida] = React.useState(() => _load('ficha'));
   const [guiaoConcluido, setGuiaoConcluido] = React.useState(() => _load('guia'));
   const [avaliacaoConcluida, setAvaliacaoConcluida] = React.useState(() => {
-    try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
+    return jaSubmeteuAutoavaliacao(plano, aluno.id);
   });
 
   // Em grupo, com ficha dada pelo professor: o aluno vê a ficha do seu grupo.
@@ -2746,7 +2757,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   /** Trava de submissão — protege de dois toques seguidos. */
   const aSubmeter = React.useRef(false);
   const [submetido, setSubmetido] = useState(() => {
-    try { return !!localStorage.getItem(`avaliacao_submetida_${plano.id}_${aluno.id}`); } catch { return false; }
+    return jaSubmeteuAutoavaliacao(plano, aluno.id);
   });
 
   const OPCOES = [

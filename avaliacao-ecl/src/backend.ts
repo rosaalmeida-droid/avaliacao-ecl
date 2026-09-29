@@ -2669,7 +2669,34 @@ export function colaboracoesDaAula(planoAulaId: string): { alunoId: string; text
     .filter(x => x.texto.trim());
 }
 export function getSelecoes(): SelecaoAluno[] {
-  return semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
+  const todas = semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
+  // O professor mudou as perguntas e pediu à turma para responder outra vez:
+  // as respostas antigas ainda não validadas deixam de existir para todos
+  // (o aluno volta a ter a autoavaliação por fazer; o professor não as vê).
+  const pedidos = new Map(getPlanosAula().filter((p: any) => p.pedirDeNovoEm).map((p: any) => [p.id, p.pedirDeNovoEm as string]));
+  if (!pedidos.size) return todas;
+  const vals = getValidacoes();
+  return todas.filter(s => {
+    const em = pedidos.get(s.planoAulaId || '');
+    return !em || String(s.criadaEm || '') >= em || selecaoJaValidada(s, vals);
+  });
+}
+
+/** Respostas desta aula dadas antes da última alteração do plano (e ainda não validadas). */
+export function respostasAntesDaAlteracao(planoId: string): number {
+  const p: any = getPlanosAula().find(x => x.id === planoId);
+  const alterado = String(p?.ultimaAlteracao?.em || '');
+  if (!p || !alterado) return 0;
+  const vals = getValidacoes();
+  return getSelecoes().filter(s => s.planoAulaId === planoId && String(s.criadaEm || '') < alterado
+    && !selecaoJaValidada(s, vals)).length;
+}
+
+/** O professor mudou o plano: os alunos que já responderam (sem validação) respondem outra vez. */
+export function pedirNovaAutoavaliacao(planoId: string): void {
+  const p = getPlanosAula().find(x => x.id === planoId);
+  if (!p) return;
+  addOrUpdatePlanoAula({ ...p, pedirDeNovoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString() } as any);
 }
 export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
 
