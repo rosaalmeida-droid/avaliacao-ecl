@@ -198,7 +198,7 @@ export function EditarPlano({ plano, onGuardado, onCancelar, onEliminado }: {
         <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 2, lineHeight: 1.45 }}>
           {contaAssiduidade
             ? 'Como numa aula normal. Toca para deixar de contar.'
-            : 'Para aulas criadas depois de acontecerem. Os alunos avaliam-se, mas as faltas e os atrasos não entram no bónus nem na recuperação.'}
+            : 'As faltas, os atrasos e a farda não entram nas horas de falta nem na recuperação. Contam só como atitudes (responsabilidade, apresentação). Toca para passarem a contar.'}
         </div>
       </button>
 

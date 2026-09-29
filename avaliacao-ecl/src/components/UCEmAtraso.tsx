@@ -71,6 +71,27 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
 
   return (
     <>
+      {alunos > 0 ? (
+        // Com alunos por decidir: uma barra larga, ao centro, que não passa
+        // despercebida (Rosa, set/2026: o botão pequeno no canto perdia-se).
+        <button onClick={() => setAberto(true)} className="no-print" style={{
+          position: 'fixed', zIndex: 160, left: '50%', transform: 'translateX(-50%)', bottom: isMobile ? 82 : 18,
+          width: 'min(720px, calc(100vw - 24px))', display: 'flex', alignItems: 'center', gap: 14,
+          padding: '14px 18px', borderRadius: 16, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+          border: 'none', background: '#c0392b', color: '#fff', boxShadow: '0 8px 24px rgba(192,57,43,0.35)',
+        }}>
+          <span style={{ fontSize: 28 }}>⚠️</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 17, fontWeight: 800 }}>
+              {alunos} aluno{alunos > 1 ? 's' : ''} com a UC em atraso por faltas
+            </span>
+            <span style={{ display: 'block', fontSize: 13.5, opacity: 0.9, marginTop: 2 }}>
+              Passaram os 10% de faltas. Decide a recuperação.{adiados > 0 ? ` · ${adiados} para depois da UC` : ''}
+            </span>
+          </span>
+          <span style={{ background: '#fff', color: '#c0392b', borderRadius: 10, padding: '10px 14px', fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap' }}>Ver e decidir</span>
+        </button>
+      ) : (
       <button onClick={() => setAberto(true)} className="no-print" style={{
         position: 'fixed', zIndex: 160, right: 14, bottom: isMobile ? 86 : 16,
         padding: '10px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
@@ -81,6 +102,7 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile }: {
         Alunos com UC/módulo em atraso: {alunos}
         {adiados > 0 && <span style={{ fontWeight: 600, fontSize: 12.5 }}> · {adiados} para depois da UC</span>}
       </button>
+      )}
       {aberto && (
         <PainelUCEmAtraso lista={lista} nomeProfessor={nomeProfessor}
           onFechar={() => setAberto(false)} onMudou={() => setVersao(v => v + 1)} />

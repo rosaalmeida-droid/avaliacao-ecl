@@ -3147,6 +3147,10 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
     && aulaJaAconteceu(p, hoje));
   const presencas = getPresencas().filter(r => r.alunoId === alunoId);
   return todosPlanosDaUC.filter(plano => {
+    // O professor escolheu que esta atividade não conta faltas: nenhuma
+    // conta, nem uma decisão marcada antes (ex.: aula que passou a evento).
+    // A presença e a farda contam só como atitudes.
+    if ((plano as any).contaAssiduidade === false) return false;
     const registo: any = presencas.find(r => r.planoAulaId === plano.id);
     if (registo?.decisaoProfessor === 'sem_falta') return false;
     if (registo?.decisaoProfessor === 'falta_presenca') return true;
@@ -3159,7 +3163,6 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
     // Aula que o professor nunca abriu não conta contra o aluno: sem a
     // aula aberta ele nem conseguia marcar presença. A responsabilidade é
     // do professor — só uma decisão explícita dele conta como falta.
-    if ((plano as any).contaAssiduidade === false) return false;
     if (!getSessaoAula(plano.id)?.abertaEm) return false;
     // Esteve na aula (mesmo atrasado) → não falta horas.
     if (registo?.presente) return false;
@@ -6400,7 +6403,10 @@ export function participacaoContaParaBonus(a: Atividade, alunoId: string): { con
   const planos = deEvento.length ? deEvento : doDia;
   if (!planos.length) return { conta: false, motivo: 'Não há plano de avaliação deste evento.', fator: 0 };
   const ids = new Set(planos.map(p => p.id));
-  if (getPresencas().some(r => r.alunoId === alunoId && ids.has(r.planoAulaId) && r.fardamentoOk === false))
+  // A farda só tira o bónus se a atividade conta faltas; senão conta só como
+  // atitude (apresentação pessoal), escolha do professor ao criar a atividade.
+  const idsOficiais = new Set(planos.filter((p: any) => p.contaAssiduidade !== false).map(p => p.id));
+  if (getPresencas().some(r => r.alunoId === alunoId && idsOficiais.has(r.planoAulaId) && r.fardamentoOk === false))
     return { conta: false, motivo: 'Foi sem farda.', fator: 0 };
   const val = getValidacoes().filter(v => v.alunoId === alunoId && ids.has(v.planoAulaId || ''))
     .sort((x, y) => String(y.validadoEm).localeCompare(String(x.validadoEm)))[0];
