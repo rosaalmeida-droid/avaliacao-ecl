@@ -528,7 +528,7 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
   try {
     const em = localStorage.getItem(`avaliacao_submetida_${plano.id}_${alunoId}`);
     const pedido = plano?.pedirDeNovoEm;
-    if (em && pedido && em < pedido && !getValidacoes().some(v => v.alunoId === alunoId && v.planoAulaId === plano.id)) return false;
+    if (em && pedido && em < pedido) return false;
     return !!em;
   } catch { return false; }
 }

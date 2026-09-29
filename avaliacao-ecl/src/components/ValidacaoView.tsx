@@ -1,7 +1,7 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
 import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
 import { PERGUNTAS_ATITUDES, NAO_ACONTECEU, nivelDaAtitude } from '../perguntas_atitudes';
@@ -95,6 +95,8 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
     .sort((a, b) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')));
 
   const [ativa, setAtiva] = useState<SelecaoAluno | null>(null);
+  /** O aluno que acabou de ser validado (aviso no ecrã do seguinte). */
+  const [acabou, setAcabou] = useState<string | null>(null);
   const [, redesenhar] = useState(0);
   const [aProcurar, setAProcurar] = useState(false);
 
@@ -129,15 +131,17 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         fichas={fichas}
         tipoPlanAula={(plano as any)?.tipoPlanAula || 'pratico'}
         validacaoExistente={valExistente}
-        onVoltar={() => setAtiva(null)}
+        onVoltar={() => { setAcabou(null); setAtiva(null); }}
         // Depois de guardar, o seguinte por validar — sem voltar à lista.
         seguintes={pendentes.filter(s => s.id !== ativa.id).length}
         onSeguinte={() => {
-          const prox = getSelecoes().filter(s => (!turmaId || s.turmaId === turmaId)
-            && (!planoId || s.planoAulaId === planoId) && s.id !== ativa.id
-            && !selecaoJaValidada(s))[0];
+          const prox = porValidarLista.filter(s => s.id !== ativa.id && !selecaoJaValidada(s))[0];
+          setAcabou(nomeDoAluno(ativa.alunoId));
           setAtiva(prox || null);
         }}
+        acabouDe={acabou}
+        fila={porValidarLista.map(s => ({ id: s.id, nome: nomeDoAluno(s.alunoId), atual: s.id === ativa.id }))}
+        onIr={(id: string) => { setAcabou(null); setAtiva(porValidarLista.find(s => s.id === id) || null); }}
       />
     );
   }
@@ -147,6 +151,19 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 14 }}>
         Validar autoavaliações
       </div>
+      {acabou && (
+        <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)', borderRadius: 12,
+          padding: '10px 14px', marginBottom: 12, fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
+          ✓ Validaste {acabou}. {porValidarLista.length ? '' : 'Não há mais nenhum por validar.'}
+        </div>
+      )}
+      {porValidarLista.length > 0 && (
+        <button onClick={() => { setAcabou(null); setAtiva(porValidarLista[0]); }} style={{
+          display: 'block', width: '100%', padding: '14px', borderRadius: 12, border: 'none', marginBottom: 12,
+          background: 'var(--sage)', color: '#fff', fontSize: 15.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Validar seguidos ({porValidarLista.length}) →
+        </button>
+      )}
       <button onClick={procurar} disabled={aProcurar} style={{
         padding: '9px 14px', borderRadius: 9, marginBottom: 12,
         border: '1px solid rgba(26,23,20,0.18)', background: '#fff',
@@ -215,9 +232,12 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────
-function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], tipoPlanAula, validacaoExistente, onVoltar, seguintes = 0, onSeguinte }: {
+function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], tipoPlanAula, validacaoExistente, onVoltar, seguintes = 0, onSeguinte, acabouDe, fila = [], onIr }: {
   seguintes?: number;
   onSeguinte?: () => void;
+  acabouDe?: string | null;
+  fila?: { id: string; nome: string; atual: boolean }[];
+  onIr?: (id: string) => void;
   selecao: SelecaoAluno;
   planoTitulo: string;
   ucId: string;
@@ -231,6 +251,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   /** +1 já dados nesta validação — um por atitude, para não somar duas vezes. */
   const [maisUm, setMaisUm] = useState<Record<string, boolean>>({});
   const [aConfirmar, setAConfirmar] = useState(false);
+  // Ao passar ao aluno seguinte, começa-se do topo.
+  const topoRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => { topoRef.current?.scrollIntoView({ block: 'start' }); }, []);
   /** A confirmar no Sheets. Era o mesmo estado da janela de confirmação —
    *  e a janela voltava a abrir enquanto a nota seguia. */
   const [aEnviar, setAEnviar] = useState(false);
@@ -485,7 +508,28 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
 
   return (
     <div>
-      <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={onVoltar}>← Voltar à lista</button>
+      <button ref={topoRef} className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={onVoltar}>← Voltar à lista</button>
+
+      {acabouDe && !guardado && (
+        <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)', borderRadius: 12,
+          padding: '10px 14px', marginBottom: 12, fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
+          ✓ Validaste {acabouDe}. Agora: {nomeDoAluno(selecao.alunoId)}.
+        </div>
+      )}
+      {/* Os que faltam: toca num nome para saltar para ele. */}
+      {fila.length > 1 && onIr && (
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6, marginBottom: 12 }}>
+          {fila.map((f, i) => (
+            <button key={f.id} onClick={() => !f.atual && onIr(f.id)} style={{
+              flexShrink: 0, padding: '7px 11px', borderRadius: 100, fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+              cursor: f.atual ? 'default' : 'pointer', whiteSpace: 'nowrap',
+              border: f.atual ? '2px solid var(--copper)' : '1px solid var(--border)',
+              background: f.atual ? 'var(--copper)' : '#fff', color: f.atual ? '#fff' : 'rgba(26,23,20,0.75)' }}>
+              {i + 1}. {f.nome.split(' ')[0]} {f.nome.split(' ').slice(-1)[0] !== f.nome.split(' ')[0] ? f.nome.split(' ').slice(-1)[0] : ''}
+            </button>
+          ))}
+        </div>
+      )}
 
       {guardado && (
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',
@@ -1080,12 +1124,19 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                 </div>
               )}
 
-              <button onClick={() => { setAConfirmar(false); guardar(); }} style={{
+              <button onClick={() => {
+                  setAConfirmar(false); guardar();
+                  // Validar seguidos: passa logo ao próximo por validar.
+                  // No último, volta à lista («não há mais nenhum por validar»).
+                  if (onSeguinte && !validacaoExistente) onSeguinte();
+                }} style={{
                 width:'100%', marginTop:18, padding:16, borderRadius:12, border:'none',
                 background:'var(--sage)', color:'#fff', fontSize:16.5, fontWeight:700,
                 cursor:'pointer', fontFamily:'inherit',
               }}>
-                Confirmar e entregar ao aluno
+                {seguintes > 0 && onSeguinte && !validacaoExistente
+                  ? `Confirmar e passar ao seguinte (faltam ${seguintes})`
+                  : 'Confirmar e entregar ao aluno'}
               </button>
               <button onClick={() => setAConfirmar(false)} style={{
                 width:'100%', marginTop:8, padding:13, background:'transparent',
