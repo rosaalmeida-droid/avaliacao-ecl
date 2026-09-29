@@ -4843,14 +4843,26 @@ export function blocosDeHoraDoPlano(p: PlanoAula): { inicio: string; fim: string
   const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   const ini = min(p.horaInicio), fim = min(p.horaFim);
   if (isNaN(ini) || isNaN(fim) || fim <= ini) return [];
-  const almoco = temAlmoco(ini, fim);
+  // Os tempos da escola são de hora e meia ou de uma hora (Rosa, set/2026):
+  // cada parte da aula (manhã e tarde, se houver almoço) divide-se em tempos
+  // de hora e meia quando dá certo (4h30 = 3 tempos); senão, de uma hora.
+  const partes: [number, number][] = temAlmoco(ini, fim) ? [[ini, 13 * 60], [14 * 60, fim]] : [[ini, fim]];
   const blocos: { inicio: string; fim: string }[] = [];
-  for (let m = ini; m < fim; ) {
-    if (almoco && m >= 13 * 60 && m < 14 * 60) { m = 14 * 60; continue; }
-    let f = Math.min(m + 60, fim);
-    if (almoco && m < 13 * 60 && f > 13 * 60) f = 13 * 60;
-    blocos.push({ inicio: hm(m), fim: hm(f) });
-    m = f;
+  for (const [a, b] of partes) {
+    // O maior número de tempos de hora e meia, e o resto em tempos de uma hora
+    // (3h30 = 1h30 + 1h + 1h). Se nada der certo, tempos de uma hora.
+    const dur = b - a;
+    let n90 = Math.floor(dur / 90);
+    while (n90 > 0 && (dur - n90 * 90) % 60 !== 0) n90--;
+    const tempos = (dur - n90 * 90) % 60 === 0
+      ? [...Array(n90).fill(90), ...Array((dur - n90 * 90) / 60).fill(60)]
+      : Array(Math.ceil(dur / 60)).fill(60);
+    let m = a;
+    for (const t of tempos) {
+      const f = Math.min(m + t, b);
+      blocos.push({ inicio: hm(m), fim: hm(f) });
+      m = f;
+    }
   }
   return blocos;
 }
@@ -4861,8 +4873,13 @@ export function horasDosBlocos(p: PlanoAula, inicios: string[]): number {
     const [h1, m1] = a.split(':').map(Number), [h2, m2] = b.split(':').map(Number);
     return (h2 * 60 + m2) - (h1 * 60 + m1);
   };
-  return blocosDeHoraDoPlano(p).filter(b => inicios.includes(b.inicio))
+  const blocos = blocosDeHoraDoPlano(p);
+  const atuais = blocos.filter(b => inicios.includes(b.inicio))
     .reduce((t, b) => t + mins(b.inicio, b.fim) / 60, 0);
+  // Marcações antigas eram em blocos de uma hora: um início que já não é o
+  // de um tempo conta como a hora que era.
+  const antigos = inicios.filter(i => !blocos.some(b => b.inicio === i)).length;
+  return Math.min(horasDoPlano(p), atuais + antigos);
 }
 
 /** Entradas fora da janela que o professor ainda não decidiu. */
