@@ -510,7 +510,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const subIdsRaw = incluirSubApp ? fichasDoPlano.flatMap(f => codigosDasLinhas(f.tecnicasSugeridas, 'SUB-')) : [];
   const compSubTodas = ehAtitudinal ? [] : [...new Set(subIdsRaw)]
     .filter(id => !IDS_JA_USADOS.has(id))
-    .slice(0, 6)
+    .slice(0, 8)
     .map(id => {
       const ramo = ramoDaCompetencia(id, fichasDoPlano);
       return { id, nome: ramo.nome, caminho: caminhoDoRamo(ramo), resultado: ramo.resultado || '', criterios: [] as any[] };

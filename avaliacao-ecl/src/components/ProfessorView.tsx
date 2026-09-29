@@ -9,7 +9,7 @@ import { SeletorIA } from './SeletorIA';
 import { encontrarMateriaPrima } from '../materiasPrimasBase';
 import { obterComponenteCulinario } from '../compatECL';
 import { GuiaProducao } from './GuiaProducao';
-import { sugerirSubtecnicas } from '../compatECL';
+import { sugerirSubtecnicas, APARELHOS_QUE_SAO_TECNICAS, lerLinhaDaFicha, type LinhaDaFicha } from '../compatECL';
 import { getReferencialUC } from '../referencial811RA144';
 import { exportDOCX, exportPDF, gerarHTML } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
@@ -750,7 +750,8 @@ export function listaCompetenciasParaPrompt(): string {
     '(só listar se o aluno PRODUZ o aparelho nesta receita — cozinha ou pastelaria: bechamel, fundos, massas, cremes, marinadas…)',
     '─────────────────────────────────────────────────');
   for (const n of [1, 2, 3]) {
-    const aps = (lib.aparelhos || []).filter((a: any) => (a.nivel || 1) === n);
+    // O roux é técnica, não aparelho (APARELHOS_QUE_SAO_TECNICAS).
+    const aps = (lib.aparelhos || []).filter((a: any) => (a.nivel || 1) === n && !APARELHOS_QUE_SAO_TECNICAS.has(a.id));
     if (!aps.length) continue;
     linhas.push('', nivel[n] + ':');
     for (const a of aps) linhas.push(`  ${a.id} — ${a.nome}`);
@@ -961,8 +962,10 @@ Esta secção é usada pela aplicação para avaliar o aluno.
 Tens DUAS categorias a detectar — são conceitos distintos:
 
   SUBTÉCNICAS (SUB-xxx) = operações concretas e observáveis que o aluno executa.
-    Ex: cortar em brunoise, laminar massa, caramelizar com maçarico.
-    Máximo 6. Coerente com a FAMÍLIA.
+    Ex: cortar em brunoise, laminar massa, caramelizar com maçarico, fazer um roux.
+    Máximo 8. Escolhe-as pelos PASSOS DA PREPARAÇÃO: cada passo importante do
+    prato tem a sua técnica. O roux (branco, louro, escuro) é SEMPRE uma técnica
+    (ligar), nunca um aparelho.
 
   APARELHOS (APP-xxx) = preparações intermédias/bases que o aluno produz
     mas que NÃO são o prato final — são componentes que entram noutros pratos.
@@ -972,10 +975,25 @@ Tens DUAS categorias a detectar — são conceitos distintos:
     Cada aparelho tem NÍVEL de dificuldade (1 a 3).
     Máximo 4. Só incluir se o aluno PRODUZ o aparelho nesta receita.
 
-REGRA CRÍTICA: Não confundir os dois.
-  - Caramelo seco (SUB-PAP-086-001) = a operação de caramelizar
-  - Caramelo seco (APP-0033) = o aparelho resultante usado noutras preparações
-  Incluir AMBOS quando aplicável.
+REGRA CRÍTICA: Não confundir os dois. A técnica é o que o aluno FAZ; o aparelho
+é o que FICA FEITO. As técnicas feitas dentro de um aparelho levam o código
+desse aparelho. Nunca repetir a mesma coisa como técnica e como aparelho.
+  - Molho béchamel (APP-0047) = o aparelho. Técnicas dentro dele: roux branco
+    (SUB-MOL-067-001, com APP-0047)…
+  - Caramelo seco (SUB-PAP-086-001) = a operação de caramelizar, com APP-0033
+
+PARA CADA TÉCNICA escreve também, para ESTE prato (não genérico):
+  FAZES: o que o aluno fez, com o produto — «Escalfar o bacalhau no leite»
+  COMO: como se faz, em 1–2 frases curtas que ensinam, com o utensílio certo
+        (nome português e, entre parênteses, o francês quando se usa na cozinha) —
+        «Derretes a manteiga, juntas a farinha de uma vez e mexes com as varas
+        (fouet) em lume brando, 1 a 2 minutos, sem ganhar cor»
+  BEM FEITO: o que se vê quando ficou bem — «lascas húmidas, sem pele nem espinhas»
+PARA CADA APARELHO escreve:
+  COMO: como se faz, curto, com o utensílio — «Juntas o leite quente aos poucos
+        ao roux, sempre a bater com as varas (fouet), e cozes 10 minutos em lume brando»
+  RESULTADO: como fica o aparelho acabado — «cobre as costas da colher, sem grumos»
+O aluno avalia-se por estas frases: têm de ser observáveis e deste prato.
 
 ${listaCompetenciasParaPrompt()}
 
@@ -1038,15 +1056,15 @@ REGISTO: Conservação | INGREDIENTE: leite gordo | MOTIVO: produto lácteo aber
 REGISTO: NãoConformidades | INGREDIENTE: todos | MOTIVO: registar qualquer desvio detetado
 
 SUBTÉCNICAS DETECTADAS:
-[máx 6 subtécnicas da REGRA 9, coerentes com a FAMÍLIA — operações concretas executadas]
-[formato: ID — Nome | APP-XXXX do aparelho onde se faz (ou "-") | COMPONENTE da tabela de ingredientes]
-[uma por linha | ex: SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro | APP-0009 | Creme de nata]
+[máx 8 subtécnicas da REGRA 9, pelos passos da preparação — operações concretas executadas]
+[formato: ID — Nome | APP-XXXX do aparelho onde se faz (ou "-") | COMPONENTE da tabela de ingredientes | FAZES: … | COMO: … | BEM FEITO: …]
+[uma por linha | ex: SUB-MOL-067-001 — Roux branco | APP-0047 | Molho béchamel | FAZES: Fazer o roux branco para o béchamel | COMO: Derretes a manteiga, juntas a farinha de uma vez e mexes com as varas (fouet) em lume brando, 1 a 2 minutos, sem ganhar cor | BEM FEITO: praticamente branco, sem sabor a farinha crua, sem grumos]
 [o aparelho tem de estar também em APARELHOS DETECTADOS; se a operação não é feita dentro de um aparelho, escreve "-"]
 [ou "nenhuma"]
 
 APARELHOS DETECTADOS:
 [máx 4 aparelhos da REGRA 9 — só os que o aluno PRODUZ nesta receita, não o prato final]
-[formato: APP-XXXX — Nome (Nível N) | ex: APP-0009 — Creme pasteleiro (Nível 1)]
+[formato: APP-XXXX — Nome (Nível N) | COMO: … | RESULTADO: … | ex: APP-0009 — Creme pasteleiro (Nível 1) | COMO: Aqueces o leite, bates as gemas com o açúcar e o amido, juntas o leite aos poucos e cozes a bater com as varas (fouet) até engrossar | RESULTADO: liso, brilhante, sem sabor a farinha]
 [ou "nenhum"]
 
 ---
@@ -1105,12 +1123,12 @@ Conservação de Produtos — produto com ovos e leite: refrigerar a 0-4°C, con
 Não Conformidades — registar qualquer desvio detetado
 
 SUBTÉCNICAS DETECTADAS:
-SUB-PAP-086-001 — Caramelo seco | APP-0033 | Caramelo
-SUB-CHU-046-002 — Cozer em banho-maria no forno | APP-0060 | Pudim
+SUB-PAP-086-001 — Caramelo seco | APP-0033 | Caramelo | FAZES: Fazer o caramelo para forrar a forma | BEM FEITO: cor âmbar, sem cristalizar nem queimar
+SUB-CHU-046-002 — Cozer em banho-maria no forno | APP-0060 | Pudim | FAZES: Cozer o pudim em banho-maria | BEM FEITO: firme ao toque, sem buracos, a água sem ferver
 
 APARELHOS DETECTADOS:
-APP-0060 — Aparelho de pudim de ovos (Nível 1)
-APP-0033 — Caramelo seco (Nível 1)
+APP-0060 — Aparelho de pudim de ovos (Nível 1) | RESULTADO: liso, sem espuma, coado
+APP-0033 — Caramelo seco (Nível 1) | RESULTADO: âmbar uniforme, espalhado no fundo da forma
 
 ---
 EXEMPLO DE REFERÊNCIA — Pastel de Nata:
@@ -1176,14 +1194,14 @@ Conservação de Produtos — creme de nata não utilizado: refrigerar a 0-4°C,
 Não Conformidades — registar qualquer desvio detetado
 
 SUBTÉCNICAS DETECTADAS:
-SUB-PAP-079-005 — Dobra de massa folhada simples | APP-0024 | Massa folhada
-SUB-PAP-080-004 — Laminar massa folhada clássica | APP-0024 | Massa folhada
-SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro | APP-0009 | Creme de nata
-SUB-CSE-047-013 — Assar massa folhada | - | Massa folhada
+SUB-PAP-079-005 — Dobra de massa folhada simples | APP-0024 | Massa folhada | FAZES: Dar as dobras simples à massa folhada | BEM FEITO: camadas regulares, sem a manteiga romper
+SUB-PAP-080-004 — Laminar massa folhada clássica | APP-0024 | Massa folhada | FAZES: Laminar a massa e enrolar em rolo | BEM FEITO: espessura igual, rolo apertado e sem ar
+SUB-MOL-067-014 — Gelatinização de amido em creme pasteleiro | APP-0009 | Creme de nata | FAZES: Cozer o creme de nata até engrossar | BEM FEITO: engrossa sem grumos, sem sabor a farinha
+SUB-CSE-047-013 — Assar massa folhada | - | Massa folhada | FAZES: Assar os pastéis em forno muito quente | BEM FEITO: massa estaladiça, creme com manchas escuras
 
 APARELHOS DETECTADOS:
-APP-0024 — Massa folhada clássica (Nível 2)
-APP-0009 — Creme pasteleiro (Nível 1)
+APP-0024 — Massa folhada clássica (Nível 2) | RESULTADO: folhas separadas ao cortar, sem manteiga à vista
+APP-0009 — Creme pasteleiro (Nível 1) | RESULTADO: liso, brilhante, cobre a colher
 
 
 ---
@@ -2305,25 +2323,12 @@ function PassoFichaTecnica({
           }}>📄 Word</Button>
         </div>
 
-        {/* TÉCNICAS DETECTADAS — ligar às microcompetências */}
-        {ficha.tecnicasDetectadas && ficha.tecnicasDetectadas.length > 0 && (
-          <div style={{ background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.2)', borderRadius: 12, padding: 16, marginBottom: 10 }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>
-              🎯 Técnicas detectadas — para avaliação
-            </div>
-            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
-              O motor vai sugerir estas competências ao professor quando avaliar esta ficha. Toca para remover as que não se aplicam.
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {ficha.tecnicasDetectadas.map((t, i) => (
-                <button key={i} type="button"
-                  onClick={() => setFicha(f => ({ ...f, tecnicasDetectadas: (f.tecnicasDetectadas || []).filter((_, idx) => idx !== i) }))}
-                  style={{ padding: '4px 10px', borderRadius: 20, background: 'white', border: '1px solid rgba(181,101,29,0.3)', fontSize:13, color: 'var(--copper)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {t} <span style={{ fontSize: 12.5, opacity: 0.6 }}>✕</span>
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* TÉCNICAS E APARELHOS — o que o aluno vai avaliar, com as frases
+            deste prato. O professor corrige antes de a aula abrir. */}
+        {((ficha.tecnicasDetectadas || []).length > 0 || ((ficha as any).aparelhosDetectados || []).length > 0) && (
+          <CriteriosDaFicha
+            tecnicas={ficha.tecnicasDetectadas || []} aparelhos={(ficha as any).aparelhosDetectados || []}
+            onMudar={(tecnicas, aparelhos) => setFicha(f => ({ ...f, tecnicasDetectadas: tecnicas, ...({ aparelhosDetectados: aparelhos } as any) }))} />
         )}
 
         {/* Adicionar técnica manualmente */}
@@ -3216,3 +3221,67 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 }
 
 export default ProfessorView;
+
+// ── As técnicas e os aparelhos da ficha, com as frases deste prato ──
+// Cada técnica: o que o aluno fez («Escalfar o bacalhau no leite») e o
+// «bem feito» deste prato. Cada aparelho: como fica acabado. As técnicas
+// feitas dentro de um aparelho aparecem debaixo dele (Rosa, set/2026).
+function CriteriosDaFicha({ tecnicas, aparelhos, onMudar }: {
+  tecnicas: string[]; aparelhos: string[]; onMudar: (tecnicas: string[], aparelhos: string[]) => void;
+}) {
+  const linhaTec = (l: LinhaDaFicha) =>
+    [`${l.id}${l.nome ? ' — ' + l.nome : ''}`, l.aparelhoId || '-', l.onde || '-',
+      `FAZES: ${l.fazes || ''}`, `COMO: ${l.como || ''}`, `BEM FEITO: ${l.bemFeito || ''}`].join(' | ');
+  const linhaApp = (l: LinhaDaFicha) => [`${l.id}${l.nome ? ' — ' + l.nome : ''}`, `COMO: ${l.como || ''}`, `RESULTADO: ${l.resultado || ''}`].join(' | ');
+  const tecs = tecnicas.map(lerLinhaDaFicha);
+  const apps = aparelhos.map(lerLinhaDaFicha).filter(a => a.id.startsWith('APP-') && !APARELHOS_QUE_SAO_TECNICAS.has(a.id));
+  const mudarTec = (i: number, patch: Partial<LinhaDaFicha>) =>
+    onMudar(tecs.map((t, k) => k === i ? linhaTec({ ...t, ...patch }) : tecnicas[k]), aparelhos);
+  const mudarApp = (id: string, patch: Partial<LinhaDaFicha>) =>
+    onMudar(tecnicas, aparelhos.map(l => { const a = lerLinhaDaFicha(l); return a.id === id ? linhaApp({ ...a, ...patch }) : l; }));
+  const campo: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '7px 9px', borderRadius: 8,
+    border: '1px solid rgba(26,23,20,0.15)', fontSize: 13.5, fontFamily: 'inherit', marginTop: 3 };
+  const Tec = ({ t, i }: { t: LinhaDaFicha; i: number }) => (
+    <div style={{ background: '#fff', borderRadius: 10, padding: '10px 12px', marginBottom: 6, border: '1px solid rgba(181,101,29,0.2)' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+        <span style={{ flex: 1, fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>Técnica · {t.nome || t.id}{t.onde ? ` · ${t.onde}` : ''}</span>
+        <button type="button" onClick={() => onMudar(tecnicas.filter((_, k) => k !== i), aparelhos)}
+          style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>Tirar</button>
+      </div>
+      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginTop: 4 }}>O que o aluno faz
+        <input style={campo} defaultValue={t.fazes || ''} placeholder="Ex.: Escalfar o bacalhau no leite"
+          onBlur={e => e.target.value !== (t.fazes || '') && mudarTec(i, { fazes: e.target.value.trim() })} /></label>
+      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>Como se faz (curto, com o utensílio)
+        <input style={campo} defaultValue={t.como || ''} placeholder="Ex.: mexes com as varas (fouet) em lume brando, sem ganhar cor"
+          onBlur={e => e.target.value !== (t.como || '') && mudarTec(i, { como: e.target.value.trim() })} /></label>
+      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>Bem feito é (neste prato)
+        <input style={campo} defaultValue={t.bemFeito || ''} placeholder="Ex.: lascas húmidas, sem pele nem espinhas"
+          onBlur={e => e.target.value !== (t.bemFeito || '') && mudarTec(i, { bemFeito: e.target.value.trim() })} /></label>
+    </div>
+  );
+  const idsApp = new Set(apps.map(a => a.id));
+  return (
+    <div style={{ background: 'var(--copper-pale)', border: '1px solid rgba(181,101,29,0.2)', borderRadius: 12, padding: 16, marginBottom: 10 }}>
+      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--copper)', marginBottom: 4 }}>🎯 O que o aluno vai avaliar</div>
+      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
+        O aluno avalia-se por estas frases, e tu validas pelas mesmas. Corrige o que não estiver certo para este prato.
+      </div>
+      {apps.map(a => (
+        <div key={a.id} style={{ borderLeft: '3px solid var(--copper)', paddingLeft: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 14.5, fontWeight: 800 }}>Aparelho · {a.nome || a.id}</div>
+          {tecs.map((t, i) => t.aparelhoId === a.id ? <Tec key={i} t={t} i={i} /> : null)}
+          <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700 }}>Como se faz o aparelho
+            <input style={campo} defaultValue={a.como || ''} placeholder="Ex.: juntas o leite quente aos poucos, a bater com as varas (fouet)"
+              onBlur={e => e.target.value !== (a.como || '') && mudarApp(a.id, { como: e.target.value.trim() })} /></label>
+          <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginTop: 6 }}>Como fica acabado
+            <input style={campo} defaultValue={a.resultado || ''} placeholder="Ex.: liso, sem grumos, cobre as costas da colher"
+              onBlur={e => e.target.value !== (a.resultado || '') && mudarApp(a.id, { resultado: e.target.value.trim() })} /></label>
+        </div>
+      ))}
+      {tecs.some(t => !t.aparelhoId || !idsApp.has(t.aparelhoId)) && (
+        <div style={{ fontSize: 14.5, fontWeight: 800, margin: '4px 0 6px' }}>No próprio prato</div>
+      )}
+      {tecs.map((t, i) => (!t.aparelhoId || !idsApp.has(t.aparelhoId)) ? <Tec key={i} t={t} i={i} /> : null)}
+    </div>
+  );
+}

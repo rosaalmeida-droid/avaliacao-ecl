@@ -890,7 +890,25 @@ export function codigoDaLinha(linha: string): string {
   return m ? m[1] : t;
 }
 
-export interface LinhaDaFicha { id: string; nome?: string; aparelhoId?: string; onde?: string }
+export interface LinhaDaFicha {
+  id: string; nome?: string; aparelhoId?: string; onde?: string;
+  /** O que o aluno fez, com o produto: «Escalfar o bacalhau no leite». */
+  fazes?: string;
+  /** Técnica: como se vê que ficou bem NESTE prato (escrito na ficha). */
+  bemFeito?: string;
+  /** Aparelho: como fica o aparelho acabado (escrito na ficha). */
+  resultado?: string;
+  /** Como se faz, em 1–2 frases curtas, com o utensílio (ensina o aluno). */
+  como?: string;
+}
+
+/**
+ * Na biblioteca o roux aparece também como aparelho (APP-0026 a 0028), mas
+ * o roux é uma técnica — ligar — feita dentro de um aparelho como o
+ * béchamel (Rosa, set/2026). Estes códigos não contam como aparelhos:
+ * o aluno avaliava o roux duas vezes.
+ */
+export const APARELHOS_QUE_SAO_TECNICAS = new Set(['APP-0026', 'APP-0027', 'APP-0028']);
 
 /** Lê uma linha de «SUBTÉCNICAS/APARELHOS DETECTADOS». */
 export function lerLinhaDaFicha(linha: string): LinhaDaFicha {
@@ -900,17 +918,29 @@ export function lerLinhaDaFicha(linha: string): LinhaDaFicha {
   const id = codigoDaLinha(primeira);
   const nome = primeira.split(/\s+[—–-]\s+/).slice(1).join(' — ').replace(/\(n[ií]vel \d\)/i, '').trim() || undefined;
   let aparelhoId: string | undefined; let onde: string | undefined;
+  let fazes: string | undefined; let bemFeito: string | undefined; let resultado: string | undefined; let como: string | undefined;
   for (const p of partes) {
+    // Um campo vazio («COMO: ») não é o componente.
+    if (/^(o que fazes|fazes|bem feito(?: é)?|resultado|como(?: se faz)?)\s*:\s*$/i.test(p)) continue;
+    const campo = p.match(/^(o que fazes|fazes|bem feito(?: é)?|resultado|como(?: se faz)?)\s*:\s*(.+)$/i);
+    if (campo) {
+      const k = campo[1].toLowerCase();
+      if (k.startsWith('como')) como = campo[2].trim();
+      else if (k.includes('faz')) fazes = campo[2].trim();
+      else if (k.startsWith('bem')) bemFeito = campo[2].trim();
+      else resultado = campo[2].trim();
+      continue;
+    }
     const app = p.match(/APP-\d+/);
-    if (app && !aparelhoId && !id.startsWith('APP-')) aparelhoId = app[0];
+    if (app && !aparelhoId && !id.startsWith('APP-') && !APARELHOS_QUE_SAO_TECNICAS.has(app[0])) aparelhoId = app[0];
     else if (!app && !onde) onde = p.replace(/^(em|para|componente|prato)\s*:\s*/i, '').trim() || undefined;
   }
-  return { id, nome, aparelhoId, onde };
+  return { id, nome, aparelhoId, onde, fazes, bemFeito, resultado, como };
 }
 
 /** Os códigos (sem nomes) de uma lista de linhas da ficha, sem repetidos. */
 export function codigosDasLinhas(linhas: string[] | undefined, prefixo: 'SUB-' | 'APP-'): string[] {
-  return [...new Set((linhas || []).map(codigoDaLinha).filter(c => c.startsWith(prefixo)))];
+  return [...new Set((linhas || []).map(codigoDaLinha).filter(c => c.startsWith(prefixo) && !APARELHOS_QUE_SAO_TECNICAS.has(c)))];
 }
 
 export interface RamoPratico {
@@ -925,6 +955,14 @@ export interface RamoPratico {
   nome: string;
   /** O que se vê quando está bem feito. */
   resultado?: string;
+  /** O que o aluno fez, com o produto (da ficha). */
+  fazes?: string;
+  /** Como se faz, curto e com o utensílio (da ficha). */
+  como?: string;
+  /** Código do aparelho onde a técnica se faz. */
+  aparelhoId?: string;
+  /** true: o critério vem da ficha deste prato (não da biblioteca geral). */
+  daFicha?: boolean;
 }
 
 /**
@@ -947,7 +985,8 @@ export function ramoDaCompetencia(id: string, fichas: any[]): RamoPratico {
     .join(' · ') || undefined;
   if (cod.startsWith('APP-')) {
     const app = encontrarAparelho(cod);
-    return { id: cod, prato, nome: app?.nome || linha?.nome || 'Preparação base', resultado: undefined };
+    return { id: cod, prato, nome: app?.nome || linha?.nome || 'Aparelho', resultado: linha?.resultado,
+      fazes: linha?.fazes, como: linha?.como, daFicha: !!linha?.resultado };
   }
   const sub = encontrarSubtecnica(cod);
   let tecnica: string | undefined;
@@ -960,10 +999,13 @@ export function ramoDaCompetencia(id: string, fichas: any[]): RamoPratico {
   const igual = (a?: string, b?: string) => !!a && !!b && a.toLowerCase().includes(b.toLowerCase());
   const pratoSemRepetir = aparelho && (igual(aparelho, linha?.onde) || igual(linha?.onde, aparelho))
     ? (ficha?.nomePrato || prato) : prato;
+  // O «bem feito» escrito na ficha para ESTE prato vale mais do que o da
+  // biblioteca geral («peixe em lascas húmidas; fruta inteira» no bacalhau).
   return {
     id: cod, prato: pratoSemRepetir, aparelho, tecnica,
     nome: sub?.nome || linha?.nome || tecnica || 'Técnica',
-    resultado: sub?.resultado_esperado,
+    resultado: linha?.bemFeito || sub?.resultado_esperado,
+    fazes: linha?.fazes, como: linha?.como, aparelhoId: linha?.aparelhoId, daFicha: !!linha?.bemFeito,
   };
 }
 

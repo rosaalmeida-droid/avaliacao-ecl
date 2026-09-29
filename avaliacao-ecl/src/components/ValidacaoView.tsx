@@ -673,7 +673,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             {_caminho && <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)', marginBottom:2 }}>{_caminho}</div>}
             {/* Nome da competência */}
             <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 14 }}>{nome}</span>
+              {/* O que o aluno fez neste prato (da ficha), como o aluno o viu. */}
+              <span style={{ fontWeight: 700, fontSize: 14 }}>{_ramo?.fazes || nome}</span>
+              {_ramo?.fazes && <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>{nome}</span>}
               {auto.competenciaId === 'OBR_01' && (auto as any).daEntrada && (
                 <span style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
                   <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100, background:'#fdf0e6', color:'#b5651d' }}>

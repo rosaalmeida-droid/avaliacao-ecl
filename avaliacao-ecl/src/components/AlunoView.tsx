@@ -1,5 +1,6 @@
 import { categoriaDaNota } from '../compatECL';
 import { BotaoPCC } from './BotaoPCC';
+import { ManuaisDoAluno, BotaoManualDaUC } from './BibliotecaManuais';
 import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
@@ -1260,7 +1261,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
 
-            {destino === 'manual' && <ManuaisAluno soLeitura />}
+            {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
           </div>
         )}
 
@@ -1388,7 +1389,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 notaPossivel={null} />
             )}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
-            {destino === 'manual' && <ManuaisAluno soLeitura />}
+            {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
                 onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
@@ -1717,6 +1718,9 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
               <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno} abrirLogo={ecra}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
             )}
+
+          {/* O manual da UC, à mão durante a aula (Rosa, set/2026). */}
+          <BotaoManualDaUC turmaId={aluno.turmaId} ucId={(plano as any).ucId} />
 
           {/* Onde estou no percurso. Verbos na primeira pessoa, e só se
               volta atrás — não se salta para a frente. */}
@@ -2504,7 +2508,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                     return (
                       <label key={i} style={{ display:'flex', alignItems:'center', gap:10,
                         padding:'10px 12px', borderRadius:10, border:`1px solid ${T.border}`,
-                        marginBottom:5, background:marcado?T.sageP:'#fff', cursor:'pointer' }}>
+                        marginBottom:5, background:marcado?T.sageP:(i % 2 ? '#EFEDEA' : '#fff'), cursor:'pointer' }}>
                         <input type="checkbox" checked={marcado} style={{ accentColor:T.sage, width:18, height:18 }}
                           onChange={() => {
                             const cur = checklist[f.id]?.ing||new Set<number>();
@@ -2530,7 +2534,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                     return (
                       <label key={i} style={{ display:'flex', alignItems:'flex-start', gap:10,
                         padding:'10px 12px', borderRadius:10, border:`1px solid ${T.border}`,
-                        marginBottom:5, background:marcado?T.sageP:'#fff', cursor:'pointer' }}>
+                        marginBottom:5, background:marcado?T.sageP:(i % 2 ? '#EFEDEA' : '#fff'), cursor:'pointer' }}>
                         <input type="checkbox" checked={marcado} style={{ accentColor:T.sage, width:18, height:18, marginTop:2, flexShrink:0 }}
                           onChange={() => {
                             const cur = checklist[f.id]?.passo||new Set<number>();
@@ -2740,7 +2744,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Numa aula atitudinal não há técnicas: trabalham-se dinâmicas de grupo
   // e atitudes. As fichas do plano, se as houver, não entram na avaliação.
   const subsSug = (String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [] : subIdsFiltrados)
-    .slice(0, 6).map((id: string) => {
+    .slice(0, 8).map((id: string) => {
     const sub = encontrarSubtecnica(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
     const avs = hist.map(h => ({nota: h.nota, data: h.data}));
@@ -2757,17 +2761,22 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
 
     return {
       id,
-      // Nunca o código: se não houver nome, é melhor "Técnica" do que "SUB-COR-030-001".
-      nome: nomeSub || tecMae?.nome || 'Técnica',
+      // O que o aluno fez neste prato, escrito na ficha («Escalfar o bacalhau
+      // no leite»). Sem isso, o nome da lista — nunca o código.
+      nome: ramo.fazes || nomeSub || tecMae?.nome || 'Técnica',
+      aparelhoId: ramo.aparelhoId,
+      comoDaFicha: !!ramo.como,
       // Onde esta técnica se encaixa e sobre o quê.
       // Se não houver técnica-mãe identificada, diz-se pelo menos que é
       // uma técnica — "Rodelas" solto não diz ao aluno o que avaliar.
-      contexto: caminhoDoRamo(ramo) ? [caminhoDoRamo(ramo), produto].filter(Boolean).join(' · ')
+      contexto: caminhoDoRamo(ramo) ? [caminhoDoRamo(ramo), ramo.fazes ? nomeSub : produto].filter(Boolean).join(' · ')
         : [tecMae?.nome || 'Técnica', produto].filter(Boolean).join(' · '),
       // Por ordem: a definição da subtécnica, depois a da técnica-mãe,
       // e só em último a dos dados — que é circular em 63% dos casos
       // ("Variante profissional de cozer: Cozer massa al dente").
-      descricao: definicaoDaSubtecnica(id)?.definicao
+      // Primeiro o «como se faz» da ficha deste prato (curto, com o utensílio:
+      // «mexes com as varas»); só sem ele a definição da lista da escola.
+      descricao: ramo.como || definicaoDaSubtecnica(id)?.definicao
         || definicaoDaTecnica(tecMae?.nome || '')?.definicao
         || (sub as any)?.definicao || '',
       // «Bem feito é»: a mesma frase que o professor vê (a da lista da escola),
@@ -2787,12 +2796,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     const avs = hist.map(h => ({nota: h.nota, data: h.data}));
     const emReg = estaEmRegressao(avs);
     const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca preparado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
+    const ramoApp = ramoDaCompetencia(id, fichas as any[]);
     return {
       id,
       nome: app?.nome || 'Preparação',
       // «Lasanha → preparação base» — o aparelho deste prato, não um qualquer.
-      contexto: [ramoDaCompetencia(id, fichas as any[]).prato, 'Preparação base'].filter(Boolean).join(' → '),
-      descricao: definicaoDaTecnica(app?.nome || '')?.definicao || (app as any)?.definicao || '',
+      contexto: [ramoApp.prato, 'Preparação base'].filter(Boolean).join(' → '),
+      // Como fica o aparelho acabado, escrito na ficha deste prato.
+      resultado: ramoApp.resultado || '',
+      descricao: ramoApp.como || definicaoDaTecnica(app?.nome || '')?.definicao || (app as any)?.definicao || '',
+      comoDaFicha: !!ramoApp.como,
       nivel: app?.nivel || 1,
       categoria: app?.categoria || '',
       motivo: estado,
@@ -3239,12 +3252,23 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // "Ainda não fiz" é o nível 1.
   const NIVEIS_FRASES = ['tp', 'ca', 'fs', 'mbr'];
 
+  // Por ordem do prato: cada preparação base com as técnicas feitas dentro
+  // dela, e no fim como ficou; depois as técnicas feitas no próprio prato
+  // (Rosa, set/2026: prato → aparelho → técnicas → o que se vê).
+  const itemTec = (m: typeof subsSug[number]) => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
+    resultado: m.resultadoEsperado, rotulo: 'Técnica', frases: true, como: m.comoDaFicha });
+  const idsApp = new Set(aparelhosSug.map(a => a.id));
+  const itensPratica = [
+    ...aparelhosSug.flatMap(a => [
+      ...subsSug.filter(m => m.aparelhoId === a.id).map(itemTec),
+      { id: a.id, nome: a.nome, contexto: a.contexto, descricao: a.descricao,
+        resultado: a.resultado, rotulo: 'Preparação base', frases: !!a.resultado, como: a.comoDaFicha },
+    ]),
+    ...subsSug.filter(m => !m.aparelhoId || !idsApp.has(m.aparelhoId)).map(itemTec),
+  ];
   const itensComp: { id: string; nome: string; contexto: string; descricao: string;
-    resultado: string; rotulo: string; frases: boolean }[] = [
-    ...subsSug.map(m => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
-      resultado: m.resultadoEsperado, rotulo: 'Técnica', frases: true })),
-    ...aparelhosSug.map(m => ({ id: m.id, nome: m.nome, contexto: m.contexto, descricao: m.descricao,
-      resultado: '', rotulo: 'Preparação base', frases: false })),
+    resultado: string; rotulo: string; frases: boolean; como?: boolean }[] = [
+    ...itensPratica,
     ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome, contexto: 'Conhecimento', descricao: m.definicao,
       resultado: '', rotulo: 'Conhecimento', frases: false })),
     ...microsSug.map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
@@ -3554,8 +3578,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>
                 {/* Numa preparação base (aparelho) diz-se sempre o que é: o sabayon,
                     o béchamel… Com medidas, mais uma frase a explicar a ideia. */}
-                {c.rotulo === 'Preparação base' && <b>O que é: </b>}{c.descricao}
-                {c.rotulo === 'Preparação base' && simples && (
+                {(c as any).como ? <b>Como se faz: </b> : c.rotulo === 'Preparação base' && <b>O que é: </b>}{c.descricao}
+                {c.rotulo === 'Preparação base' && !(c as any).como && simples && (
                   <div style={{ marginTop:4 }}>É uma preparação que fazes primeiro e que depois entra no prato.</div>
                 )}
               </div>

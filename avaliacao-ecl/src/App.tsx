@@ -1,3 +1,4 @@
+import { ManuaisDoProfessor } from './components/BibliotecaManuais';
 import React, { useState, useCallback, useEffect } from 'react';
 import { confirmarTurmaAoPublicar } from './professores';
 import { inicializarCompat } from './compatECL';
@@ -681,7 +682,7 @@ function AppInterno() {
             {vistaGlobal === 'ajuda' && <ManualProfessor />}
             {vistaGlobal === 'validacao' && <ValidacaoView turmaId={turmaId} />}
             {vistaGlobal === 'manual' && <ManualCozinheiro modoProf={true} nomeProfessor={nomeProfessor} />}
-            {vistaGlobal === 'manuais_aluno' && <ManuaisAluno nomeProfessor={nomeProfessor} />}
+            {vistaGlobal === 'manuais_aluno' && <><ManuaisDoProfessor turmaId={turmaId} /><ManuaisAluno nomeProfessor={nomeProfessor} /></>}
             {vistaGlobal === 'biblioteca' && (
               <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor}
                 onAlteracao={registarAlteracao} onGuardado={limparAlteracoes} />
