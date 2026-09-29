@@ -73,29 +73,6 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile, onAbrirRe
 
   return (
     <>
-      {alunos > 0 ? (
-        // Alunos por decidir: uma barra larga, ao centro, que não passa
-        // despercebida (Rosa, set/2026: o botão pequeno no canto perdia-se).
-        <button onClick={() => setAberto(true)} className="no-print" style={{
-          position: 'fixed', zIndex: 160, left: '50%', transform: 'translateX(-50%)', bottom: isMobile ? 82 : 18,
-          width: 'min(760px, calc(100vw - 24px))', display: 'flex', alignItems: 'center', gap: 14,
-          padding: '14px 18px', borderRadius: 16, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-          border: 'none', background: '#c0392b', color: '#fff', boxShadow: '0 8px 24px rgba(192,57,43,0.35)',
-        }}>
-          <span style={{ fontSize: 28 }}>⚠️</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', fontSize: 17, fontWeight: 800 }}>
-              {alunos} aluno{alunos > 1 ? 's' : ''} com a UC em atraso por faltas
-            </span>
-            <span style={{ display: 'block', fontSize: 13.5, opacity: 0.92, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {porRecuperar.slice(0, 3).map(l => `${(l.nome || '').split(' ')[0]} ${l.percentagem}%${l.estado === 'em_curso' ? ' (a recuperar)' : ''}`).join(' · ')}
-              {porRecuperar.length > 3 ? ` · +${porRecuperar.length - 3}` : ''}
-              {adiados > 0 ? ` · ${adiados} para depois da UC` : ''}
-            </span>
-          </span>
-          <span style={{ background: '#fff', color: '#c0392b', borderRadius: 10, padding: '10px 14px', fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap' }}>Ver e decidir</span>
-        </button>
-      ) : (
       <button onClick={() => setAberto(true)} className="no-print" style={{
         position: 'fixed', zIndex: 160, right: 14, bottom: isMobile ? 86 : 16,
         padding: '10px 14px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
@@ -106,7 +83,6 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile, onAbrirRe
         Alunos com UC/módulo em atraso: {alunos}
         {adiados > 0 && <span style={{ fontWeight: 600, fontSize: 12.5 }}> · {adiados} para depois da UC</span>}
       </button>
-      )}
       {aberto && (
         <PainelUCEmAtraso lista={lista} nomeProfessor={nomeProfessor}
           onFechar={() => setAberto(false)} onMudou={() => setVersao(v => v + 1)}
@@ -280,6 +256,49 @@ function FormResultado({ l, nomeProfessor, onFeito, onCancelar }: {
         }} style={{ padding: '9px 14px', borderRadius: 9, border: 'none', background: 'var(--sage, #5a7a4e)', color: '#fff',
           fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Guardar o resultado</button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Dentro do plano (preparar e validar): os alunos desta turma com esta UC em
+ * atraso por faltas, a vermelho, onde o professor está a trabalhar
+ * (Rosa, set/2026). Diz quanto faltou, o estado da recuperação e deixa
+ * decidir ali mesmo.
+ */
+export function UCEmAtrasoNoPlano({ plano, nomeProfessor }: { plano: { turmaId: string; ucId?: string }; nomeProfessor?: string }) {
+  const [aberto, setAberto] = useState(false);
+  const [versao, setVersao] = useState(0);
+  void versao;
+  if (!plano?.turmaId || !plano.ucId) return null;
+  let lista: UCEmAtraso[] = [];
+  try { lista = ucsEmAtraso(plano.turmaId).filter(l => l.ucId === plano.ucId); } catch { lista = []; }
+  if (!lista.length) return null;
+  const ESTADO: Record<string, string> = {
+    sem_plano: 'por decidir', em_curso: 'a recuperar em aula — avalia também a recuperação',
+    adiado: 'recupera depois da UC', recuperado: 'já recuperou',
+  };
+  const porDecidir = lista.filter(l => l.estado === 'sem_plano').length;
+  return (
+    <div className="no-print" style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 14, padding: '14px 16px', margin: '0 0 14px' }}>
+      <div style={{ fontSize: 16, fontWeight: 800, color: '#8e2418' }}>
+        ⚠️ {lista.length} aluno{lista.length > 1 ? 's' : ''} com esta UC em atraso por faltas{porDecidir ? ` · ${porDecidir} por decidir` : ''}
+      </div>
+      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.65)', margin: '3px 0 8px' }}>
+        Faltas a partir de 10% do total de horas da UC. Cada aula faltada conta 0 até recuperar.
+      </div>
+      {lista.map(l => (
+        <div key={l.alunoId} style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '6px 0', borderTop: '1px solid rgba(192,57,43,0.15)', fontSize: 14 }}>
+          <span style={{ flex: '1 1 180px', minWidth: 0 }}><b>{l.numero}. {l.nome}</b></span>
+          <span style={{ fontWeight: 800, color: '#c0392b' }}>{l.percentagem}%</span>
+          <span style={{ color: 'rgba(26,23,20,0.6)', fontSize: 13 }}>{h1(l.horasFaltadas)} h em {h1(l.horasUC)} h</span>
+          <span style={{ fontWeight: 700, color: l.estado === 'sem_plano' ? '#c0392b' : l.estado === 'recuperado' ? '#3E7A31' : '#b5651d', fontSize: 13 }}>{ESTADO[l.estado]}</span>
+        </div>
+      ))}
+      <button onClick={() => setAberto(true)} style={{ marginTop: 10, width: '100%', minHeight: 44, borderRadius: 10, border: 'none',
+        background: '#c0392b', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+        Ver as faltas e decidir</button>
+      {aberto && <PainelUCEmAtraso lista={lista} nomeProfessor={nomeProfessor} onFechar={() => setAberto(false)} onMudou={() => setVersao(v => v + 1)} />}
     </div>
   );
 }
