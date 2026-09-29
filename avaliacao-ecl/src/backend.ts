@@ -14,7 +14,7 @@ import {
   Turma, Aluno, PlanoAula, FichaProducao,
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
-, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO, notaPara20, nivelDe20 } from './types';
+, SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO, notaPara20, nivelDe20, nivelPara20 } from './types';
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
@@ -3261,6 +3261,55 @@ export function faltasEmHorasUC(alunoId: string, turmaId: string, ucId: string):
   return { horasPrevistas, horasFaltadas, horasDadas, presenca };
 }
 
+/** Uma falta de uma UC: em que aula, de que tipo, e quantas horas conta. */
+export interface FaltaDaUC {
+  planoId: string; data: string; titulo: string;
+  tipo: 'falta' | 'parcial' | 'atraso';
+  /** O que o professor decidiu ou o que aconteceu, em palavras. */
+  descricao: string;
+  horas: number;
+  minutosAtraso?: number;
+}
+
+/**
+ * As faltas do aluno numa UC, aula a aula — as mesmas contas da recuperação
+ * (faltasEmHorasUC): a soma das horas é a mesma. Inclui os atrasos, mesmo os
+ * que não chegam a uma hora (esses contam 0 h, mas o professor vê-os).
+ */
+export function faltasDaUC(alunoId: string, turmaId: string, ucId: string): FaltaDaUC[] {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const faltados = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
+  const idsFaltados = new Set(faltados.map(p => p.id));
+  const presencas = getPresencas().filter(r => r.alunoId === alunoId);
+  const out: FaltaDaUC[] = faltados.map(p => {
+    const reg: any = presencas.find(r => r.planoAulaId === p.id);
+    return { planoId: p.id, data: String(p.data || '').slice(0, 10), titulo: p.titulo || 'Aula', tipo: 'falta' as const,
+      descricao: reg?.decisaoProfessor === 'falta_presenca' ? 'Falta de presença (decisão do professor)' : 'Faltou à aula',
+      horas: horasDoPlano(p) };
+  });
+  getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId
+    && (p.estado === 'publicado' || p.estado === 'realizada')
+    && (p as any).contaAssiduidade !== false && !idsFaltados.has(p.id) && aulaJaAconteceu(p, hoje))
+    .forEach(p => {
+      const reg: any = presencas.find(r => r.planoAulaId === p.id);
+      if (!reg || reg.decisaoProfessor === 'sem_falta') return;
+      const base = { planoId: p.id, data: String(p.data || '').slice(0, 10), titulo: p.titulo || 'Aula' };
+      if (reg.decisaoProfessor === 'parcial') {
+        const h = Math.max(0, horasDoPlano(p) - horasDosBlocos(p, reg.horasPresentes || []));
+        if (h > 0) out.push({ ...base, tipo: 'parcial', descricao: 'Esteve só parte da aula', horas: h });
+        return;
+      }
+      const minutos = Number(reg.atrasadoMins) || 0;
+      if (reg.decisaoProfessor === 'falta_atraso' || minutos > 0 || reg.atrasado) {
+        out.push({ ...base, tipo: 'atraso',
+          descricao: reg.decisaoProfessor === 'falta_atraso' ? 'Falta de atraso (decisão do professor)' : 'Chegou atrasado',
+          horas: minutos > 0 ? Math.min(Math.floor(minutos / 60), horasDoPlano(p)) : 0,
+          ...(minutos > 0 ? { minutosAtraso: minutos } : {}) });
+      }
+    });
+  return out.sort((a, b) => a.data.localeCompare(b.data));
+}
+
 export function situacaoRecuperacaoUC(alunoId: string, turmaId: string, ucId: string): SituacaoRecuperacao {
   const hoje = new Date().toISOString().slice(0, 10);
   const mod = modulosDaTurma(turmaId).find(m => m.id === ucId);
@@ -6334,25 +6383,34 @@ export function participacoesDoAlunoNaUC(alunoId: string, turmaId: string, ucId:
  * farda à entrada, e as notas finais do professor em "Muito bom" (5) —
  * no evento todas as atitudes e a técnica; no concurso as 3 fixas.
  */
-export function participacaoContaParaBonus(a: Atividade, alunoId: string): { conta: boolean; motivo: string } {
+/**
+ * A participação conta (validada e com farda) e quanto vale: o bónus é
+ * proporcional à nota do evento — a média das atitudes do evento (e da
+ * técnica geral, no evento) em /20, a dividir por 20. Antes era tudo ou
+ * nada: só com tudo em «Muito bom» (Rosa, set/2026).
+ */
+export function participacaoContaParaBonus(a: Atividade, alunoId: string): { conta: boolean; motivo: string; fator: number } {
   const dia = String(a.data || '').slice(0, 10);
   const doDia = getPlanosAula().filter(p => p.turmaId === a.turmaId && String(p.data || '').slice(0, 10) === dia && p.estado !== 'arquivado');
   const deEvento = doDia.filter((p: any) => !!p.tipoEvento);
   const planos = deEvento.length ? deEvento : doDia;
-  if (!planos.length) return { conta: false, motivo: 'Não há plano de avaliação deste evento.' };
+  if (!planos.length) return { conta: false, motivo: 'Não há plano de avaliação deste evento.', fator: 0 };
   const ids = new Set(planos.map(p => p.id));
   if (getPresencas().some(r => r.alunoId === alunoId && ids.has(r.planoAulaId) && r.fardamentoOk === false))
-    return { conta: false, motivo: 'Foi sem farda.' };
+    return { conta: false, motivo: 'Foi sem farda.', fator: 0 };
   const val = getValidacoes().filter(v => v.alunoId === alunoId && ids.has(v.planoAulaId || ''))
     .sort((x, y) => String(y.validadoEm).localeCompare(String(x.validadoEm)))[0];
-  if (!val) return { conta: false, motivo: 'Ainda não foi validado pelo professor.' };
+  if (!val) return { conta: false, motivo: 'Ainda não foi validado pelo professor.', fator: 0 };
   const nota = new Map(val.notas.map(n => [n.competenciaId, Number(n.nota)]));
   const exigidas = a.tipo === 'concurso'
     ? ATITUDES_FIXAS_EVENTO
     : [...new Set([...ATITUDES_FIXAS_EVENTO, ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('ATI-')), TEC_EVENTO])];
-  const falham = exigidas.filter(id => nota.get(id) !== 5);
-  if (falham.length) return { conta: false, motivo: 'Nem tudo ficou em "Muito bom".' };
-  return { conta: true, motivo: '' };
+  // Um plano que passou de aula a evento pode não ter as atitudes do evento:
+  // conta então o que foi avaliado.
+  const aContar = exigidas.some(id => nota.has(id)) ? exigidas.filter(id => nota.has(id)) : [...nota.keys()];
+  const avaliadas = aContar.map(id => nivelPara20(nota.get(id) || 0));
+  const fator = avaliadas.length ? avaliadas.reduce((x, y) => x + y, 0) / avaliadas.length / 20 : 0;
+  return { conta: true, motivo: '', fator: Math.max(0, Math.min(1, fator)) };
 }
 
 export interface NotaUC {
@@ -6382,11 +6440,14 @@ export function aplicarBonusesUC(base: number | null, alunoId: string, turmaId: 
   // Eventos contam para todos (ajudam quem tem negativa a subir); concursos
   // só com 10 ou mais. Cada um só conta se a avaliação do evento o permitir.
   const atividades = atividadesDoAlunoNaUC(alunoId, turmaId, ucId);
-  const contam = atividades.filter(a => (a.tipo !== 'concurso' || base >= B.notaMinimaConcurso)
-    && participacaoContaParaBonus(a, alunoId).conta);
+  const avaliadas = atividades.filter(a => a.tipo !== 'concurso' || base >= B.notaMinimaConcurso)
+    .map(a => ({ a, r: participacaoContaParaBonus(a, alunoId) }));
+  const contam = avaliadas.filter(x => x.r.conta).map(x => x.a);
   const temConcurso = contam.some(a => a.tipo === 'concurso');
-  const bruto = contam.reduce((s, a) => s + (a.tipo === 'concurso' ? B.porConcurso : B.porEvento), 0);
-  const bonusParticipacao = Math.min(B.maximo, bruto);
+  // Proporcional à nota do evento: 20 dá o bónus todo, 16 dá 80%, 10 dá metade.
+  const bruto = avaliadas.filter(x => x.r.conta)
+    .reduce((s, x) => s + (x.a.tipo === 'concurso' ? B.porConcurso : B.porEvento) * x.r.fator, 0);
+  const bonusParticipacao = Math.round(Math.min(B.maximo, bruto) * 100) / 100;
   nota += bonusParticipacao;
   // Tetos: sem participar, 17; só eventos, 18; o 20 só com concurso.
   const teto = contam.length === 0 ? B.tetoSemParticipacao : temConcurso ? 20 : B.tetoSoEventos;

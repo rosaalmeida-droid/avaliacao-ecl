@@ -1650,6 +1650,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {(plano as any).pedirDeNovoEm && (
         <div style={{ fontSize:13, color:'#3f5e34', background:'#eef4eb', borderRadius:10, padding:'8px 12px', margin:'0 0 14px' }}>
           ✓ Pediste aos alunos que respondessem outra vez ({new Date((plano as any).pedirDeNovoEm).toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}). Veem as perguntas novas quando abrirem a aula.
+          {/* Abre o WhatsApp com a mensagem escrita: o professor escolhe o grupo da turma e envia. */}
+          <a href={`https://wa.me/?text=${encodeURIComponent(
+              `Olá, ${plano.turmaId}! Mudei as perguntas da autoavaliação da aula «${plano.titulo}» `
+              + `(${String(plano.data).slice(8, 10)}/${String(plano.data).slice(5, 7)}). `
+              + 'Abram a aplicação Avaliação ECL e respondam outra vez: aparece logo no Início. '
+              + 'Até responderem, conta a nota que já tinham.')}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{ display:'inline-block', marginTop:8, padding:'9px 14px', borderRadius:10, background:'#25D366',
+              color:'#fff', fontSize:13.5, fontWeight:700, textDecoration:'none' }}>
+            Avisar a turma no WhatsApp
+          </a>
         </div>
       )}
       {eventoForaDoHorario(plano) && (

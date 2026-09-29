@@ -11,6 +11,7 @@
 // "Preparar" do plano (Tirar / Ir buscar à biblioteca).
 // ============================================================
 
+import { garantirEventoDoPlano } from '../eventos/doPlano';
 import React, { useState } from 'react';
 import type { PlanoAula } from '../types';
 import { atualizarPlano, resumoDoPlano } from '../backend';
@@ -46,6 +47,13 @@ export function EditarPlano({ plano, onGuardado, onCancelar, onEliminado }: {
   const [contaAssiduidade, setContaAssiduidade] = useState(
     (plano as any).contaAssiduidade !== false);
   const [aEliminar, setAEliminar] = useState(false);
+  // Aula, evento ou concurso. Enganar-se no tipo acontece: muda-se aqui e
+  // as avaliações ficam (estão presas ao plano, não ao tipo).
+  const tipoAtivAntes: 'aula' | 'evento' | 'concurso' = (plano as any).tipoEvento === 'concurso' ? 'concurso'
+    : (plano as any).tipoEvento ? 'evento' : 'aula';
+  const [atividade, setAtividade] = useState<'aula' | 'evento' | 'concurso'>(tipoAtivAntes);
+  const [modoPart, setModoPart] = useState<'turma' | 'inscricao'>((plano as any).modoParticipacao === 'inscricao' ? 'inscricao' : 'turma');
+  const mudouAtividade = atividade !== tipoAtivAntes;
 
   const modulos = modulosDaTurma(plano.turmaId);
   const disciplinas = [...new Set(modulos.map((m: any) => m.disciplina || 'Outras'))];
@@ -56,11 +64,14 @@ export function EditarPlano({ plano, onGuardado, onCancelar, onEliminado }: {
   const mudouTipo = tipo !== ((plano as any).tipoPlanAula || 'pratico');
 
   function guardar() {
-    if (resumo.temAvaliacoes && (mudouUC || mudouData || mudouTipo)) {
+    if (resumo.temAvaliacoes && (mudouUC || mudouData || mudouTipo || mudouAtividade)) {
       const o: string[] = [];
       if (mudouUC) o.push(`passam a contar para a unidade ${ucId}`);
       if (mudouData) o.push(`ficam com a data ${data}`);
       if (mudouTipo) o.push('a nota da aula passa a ser calculada com os pesos do novo tipo de aula');
+      if (mudouAtividade) o.push(atividade === 'aula'
+        ? 'passa a contar como aula na média da UC'
+        : 'deixa de contar na média das aulas e passa a dar bónus na UC, proporcional à nota de cada aluno');
       if (!confirm(
         'Esta aula já tem avaliações dos alunos. Ficam todas, mas ' + o.join('; ') + '.\n\nGuardar a correção?'
       )) return;
@@ -70,7 +81,18 @@ export function EditarPlano({ plano, onGuardado, onCancelar, onEliminado }: {
       data, horaInicio, horaFim, titulo: titulo.trim() || plano.titulo,
       ucId, ...(m ? { ucNome: m.nome } : {}),
       tipoPlanAula: tipo, contaAssiduidade,
+      ...(atividade === 'aula'
+        ? { tipoEvento: undefined, tipoAtividade: (plano as any).tipoEvento ? 'Aula' : (plano as any).tipoAtividade }
+        : { tipoEvento: atividade, tipoAtividade: atividade === 'concurso' ? 'Concurso' : 'Evento externo',
+            modoParticipacao: modoPart, ...(mudouAtividade ? { contaAssiduidade: false } : {}) }),
     } as any);
+    // Um evento fica também no ecrã Eventos.
+    if (novo && atividade === 'evento') {
+      try {
+        const idEv = garantirEventoDoPlano(novo);
+        if (idEv && (novo as any).eventoId !== idEv) { const n2 = atualizarPlano(novo.id, { eventoId: idEv } as any); if (n2) { onGuardado(n2); return; } }
+      } catch (e) { console.error(e); }
+    }
     if (novo) onGuardado(novo);
   }
 
@@ -124,6 +146,34 @@ export function EditarPlano({ plano, onGuardado, onCancelar, onEliminado }: {
           }}>{t.label}</button>
         ))}
       </div>
+
+      <div style={rotulo}>É uma aula, um evento ou um concurso?</div>
+      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+        {([['aula', '📘 Aula'], ['evento', '🏅 Evento / atividade'], ['concurso', '🏆 Concurso']] as const).map(([v, t]) => (
+          <button key={v} onClick={() => setAtividade(v)} style={{
+            flex: '1 1 110px', padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
+            fontFamily: 'inherit', fontSize: 13.5, fontWeight: atividade === v ? 700 : 500,
+            border: `2px solid ${atividade === v ? '#6B3FA0' : 'rgba(26,23,20,0.15)'}`,
+            background: atividade === v ? '#f3f0f7' : '#fff', color: atividade === v ? '#6B3FA0' : 'rgba(26,23,20,0.6)',
+          }}>{t}</button>
+        ))}
+      </div>
+      {atividade !== 'aula' && (
+        <>
+          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', margin: '6px 2px', lineHeight: 1.45 }}>
+            Não conta na média das aulas: dá bónus na UC, proporcional à nota de cada aluno. As autoavaliações que já existem ficam.
+          </div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            {([['turma', 'A turma toda (obrigatório)'], ['inscricao', 'Só os inscritos que aceitares']] as const).map(([v, t]) => (
+              <button key={v} onClick={() => setModoPart(v)} style={{
+                flex: '1 1 140px', padding: '9px 6px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
+                fontWeight: modoPart === v ? 700 : 500, border: `1.5px solid ${modoPart === v ? '#6B3FA0' : 'rgba(26,23,20,0.15)'}`,
+                background: modoPart === v ? '#f3f0f7' : '#fff', color: modoPart === v ? '#6B3FA0' : 'rgba(26,23,20,0.6)',
+              }}>{t}</button>
+            ))}
+          </div>
+        </>
+      )}
 
       <div style={rotulo}>Unidade</div>
       <select value={ucId} onChange={e => setUcId(e.target.value)} style={campo}>

@@ -202,6 +202,26 @@ export function EcraAtividades({
   onBalanco: (id: string, participou: boolean, resultado?: string) => void;
 }) {
   const [aBalancar, setABalancar] = useState<string | null>(null);
+  // Inscrever-se é um compromisso: pergunta-se antes, e dá-se os parabéns depois.
+  const [aConfirmar, setAConfirmar] = useState<string | null>(null);
+  const [acabouDe, setAcabouDe] = useState<string | null>(null);
+  const querParticipar = (a: Atividade, texto: string) => aConfirmar === a.id ? (
+    <div style={{ marginTop: 13, padding: '13px 14px', borderRadius: 12, background: C.violetaSuave }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: C.tinta }}>Queres mesmo participar?</div>
+      <div style={{ fontSize: 14, color: C.texto, marginTop: 5, lineHeight: 1.55 }}>
+        Participar é um compromisso: treinar antes, chegar a horas, vir com a farda completa e o material,
+        e ficar até ao fim. O professor conta contigo.
+      </div>
+      {botao('Sim, quero participar', () => { onInscrever(a.id); setAConfirmar(null); setAcabouDe(a.id); })}
+      {botao('Agora não', () => setAConfirmar(null), false)}
+    </div>
+  ) : botao(texto, () => setAConfirmar(a.id));
+  const parabens = (a: Atividade) => acabouDe === a.id ? (
+    <div style={{ marginTop: 10, padding: '12px 14px', borderRadius: 11, background: C.verdeSuave, color: C.verde,
+      fontSize: 15, fontWeight: 600, lineHeight: 1.5 }}>
+      🎉 Parabéns por te inscreveres! Querer participar já é uma boa atitude. Prepara-te bem: é assim que se aprende a sério.
+    </div>
+  ) : null;
   const hoje = new Date().toISOString().slice(0, 10);
 
   const inscrito = (a: Atividade) => (a.inscritosIds ?? []).includes(alunoId);
@@ -319,8 +339,8 @@ export function EcraAtividades({
                   : aceite
                     ? aviso('✓ O professor aceitou-te. No dia, também te autoavalias.', C.verde, C.verdeSuave)
                     : inscrito(a)
-                      ? <>{aviso('Inscrito — o professor vai confirmar.', C.cobre, C.cobreSuave)}{botao('Já não vou', () => onCancelar(a.id), false)}</>
-                      : botao('Quero participar', () => onInscrever(a.id)));
+                      ? <>{parabens(a)}{aviso('Inscrito — o professor vai confirmar se vais.', C.cobre, C.cobreSuave)}{botao('Já não vou', () => onCancelar(a.id), false)}</>
+                      : querParticipar(a, 'Quero participar'));
               }
               const vagasRestantes = a.vagas != null
                 ? a.vagas - (a.inscritosIds?.length ?? 0) : null;
@@ -335,6 +355,7 @@ export function EcraAtividades({
                 )}
                 {inscrito(a)
                   ? <>
+                      {parabens(a)}
                       <div style={{ marginTop: 13, padding: '12px 14px', borderRadius: 11,
                         background: C.verdeSuave, color: C.verde, fontSize: 15, fontWeight: 600 }}>
                         Estás inscrito
@@ -346,7 +367,7 @@ export function EcraAtividades({
                         background: '#F5F5F5', color: C.suave, fontSize: 14.5 }}>
                         {foraDePrazo ? 'As inscrições já fecharam' : 'Sem vagas'}
                       </div>
-                    : botao('Quero ir', () => onInscrever(a.id))}
+                    : querParticipar(a, 'Quero ir')}
               </>);
             })}
             <div style={{ height: 18 }} />
