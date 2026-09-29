@@ -2995,6 +2995,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         <div style={{ background:T.sageP, borderRadius:14, padding:'16px', textAlign:'center', marginBottom:16, border:`1px solid rgba(90,122,78,0.2)` }}>
           <div style={{ fontSize:40, marginBottom:8 }}>✅</div>
           <div style={{ fontSize:16, fontWeight:700, color:T.sage }}>Autoavaliação enviada!</div>
+          {/* Uma palavra de reconhecimento: responder com verdade também é trabalho. */}
+          <div style={{ fontSize:14.5, color:'#3f5e34', marginTop:8, lineHeight:1.55, fontWeight:600 }}>
+            {(plano as any).tipoEvento
+              ? 'Obrigado por teres participado! Aqui o que conta é o teu esforço e o teu compromisso — e deste a cara pela escola.'
+              : [
+                  'Obrigado pela tua sinceridade. Olhar para o próprio trabalho com verdade é o primeiro passo para melhorar.',
+                  'Bom trabalho! Cada aula é um passo. Amanhã fazes ainda melhor.',
+                  'Obrigado! Saber o que correu bem e o que falta é o que faz um bom profissional.',
+                ][(aluno.numero + String(plano.id).length) % 3]}
+          </div>
           {dataSubmissao && (
             <div style={{ fontSize:13, color:'rgba(26,23,20,0.45)', marginTop:4 }}>
               {fmtDataHora(dataSubmissao)}
@@ -3598,10 +3608,19 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       {/* ── Aula atitudinal: uma atitude marcada pelo professor ── */}
       {passo.tipo === 'atiAula' && (() => {
         const id = passo.atiId!;
+        const primeira = passos.findIndex(p => p.tipo === 'atiAula') === idx;
         return (
           <div>
+            {/* No evento, o que se avalia é o esforço e o compromisso — diz-se logo no início. */}
+            {ehDeEvento && primeira && (
+              <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:12, background:'#f3f0f7',
+                fontSize:14.5, lineHeight:1.55, color:'#2A1745' }}>
+                <b>Aqui o que conta é o teu esforço e o teu compromisso</b> — se treinaste, se chegaste a horas,
+                se vieste preparado e se ficaste até ao fim. Responde com verdade: o professor também viu.
+              </div>
+            )}
             <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:V }}>
-              Atitude desta aula
+              {ehDeEvento ? 'O teu compromisso no evento' : 'Atitude desta aula'}
             </div>
             <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800, marginTop:2 }}>
               {ATITUDES.find(x => x.id === id)?.nome ?? 'Atitude'}

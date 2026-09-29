@@ -10,7 +10,7 @@
 //     orçamentos, Preparação, Material, Dia do evento, Fechar.
 // A lógica está em ../eventos/modelo.ts.
 // ============================================================
-import { eventosDosPlanosEmFalta } from '../eventos/doPlano';
+import { eventosDosPlanosEmFalta, planosDoEvento, criarAvaliacaoDoEvento } from '../eventos/doPlano';
 import { EventosWizard } from './EventosWizard';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -470,6 +470,48 @@ function Triagem({ inicial, onCancelar, onConcluir }: { inicial: EventoECL; onCa
 
 type Secao = 'pedido' | 'perguntas' | 'local' | 'fichas' | 'preparacao' | 'material' | 'dia' | 'fecho';
 
+/**
+ * O evento organiza-se aqui; a nota dos alunos vem do plano de avaliação.
+ * Sem ele o evento não conta para nada (Rosa, set/2026) — por isso se
+ * cria daqui, ligado ao evento.
+ */
+function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?: string }) {
+  const [, redesenhar] = useState(0);
+  const [turma, setTurma] = useState(e.turmasIds[0] || '');
+  const [modo, setModo] = useState<'turma' | 'inscricao'>('turma');
+  const planos = planosDoEvento(e.id);
+  const semPlano = getTurmas().map(t => t.id).filter(t => !planos.some(p => p.turmaId === t));
+  if (planos.length) return (
+    <div style={{ ...cartao, fontSize: 14.5, lineHeight: 1.5 }}>
+      <b style={{ color: C.verde }}>✓ Avaliação dos alunos criada</b> — {planos.map(p => p.turmaId).join(', ')}
+      {p0Modo(planos[0])}. Os alunos autoavaliam-se no plano do evento, e o bónus conta na UC dessa data.
+    </div>
+  );
+  return (
+    <div style={{ ...cartao, fontSize: 14.5, lineHeight: 1.5 }}>
+      <div style={{ fontWeight: 800, color: C.bordeaux }}>Avaliação dos alunos</div>
+      <div style={{ color: C.suave, margin: '4px 0 10px' }}>
+        Sem ela, o evento não conta para a nota. Os alunos autoavaliam-se (esforço e compromisso) e tu validas.
+      </div>
+      {!e.data && <div style={{ color: '#8e2418', fontWeight: 700 }}>Falta a data do evento.</div>}
+      <select value={turma} onChange={x => setTurma(x.target.value)} style={{ width: '100%', padding: 10, borderRadius: 10, fontSize: 15, marginBottom: 8, fontFamily: 'inherit' }}>
+        <option value="">Escolhe a turma…</option>
+        {semPlano.map(t => <option key={t} value={t}>{t}</option>)}
+      </select>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+        {([['turma', 'A turma toda (obrigatório)'], ['inscricao', 'Só quem se inscrever']] as const).map(([v, t]) => (
+          <button key={v} onClick={() => setModo(v)} style={{ ...botao(modo === v ? 'principal' : 'claro'), flex: '1 1 160px', minHeight: 44, fontSize: 14 }}>{t}</button>
+        ))}
+      </div>
+      <button disabled={!turma || !e.data} onClick={() => { criarAvaliacaoDoEvento(e, turma, modo, nomeProfessor || ''); redesenhar(n => n + 1); }}
+        style={{ ...botao('principal'), width: '100%', opacity: !turma || !e.data ? 0.5 : 1 }}>
+        Criar a avaliação dos alunos
+      </button>
+    </div>
+  );
+}
+const p0Modo = (p: any) => p?.modoParticipacao === 'inscricao' ? ' (só os inscritos que aceitares)' : ' (a turma toda)';
+
 function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomeProfessor }: {
   evento: EventoECL; onVoltar: () => void; onGuardar: (e: EventoECL) => void; onEditar: () => void; onApagar: () => void; nomeProfessor?: string;
 }) {
@@ -553,6 +595,8 @@ function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomePro
             [...e.turmasIds, ...e.outrasAreas].join(', ')].filter(Boolean).join(' · ')}
         </div>
       </div>
+
+      <AvaliacaoDosAlunos e={e} nomeProfessor={nomeProfessor} />
 
       {/* AGORA — uma coisa de cada vez, responde-se aqui */}
       {acao ? <CartaoAgora e={e} acao={acao} mudar={mudar} irPara={irPara} /> : (

@@ -7,7 +7,9 @@
 // set/2026). Agora o plano cria o evento, com um código fixo — o mesmo
 // em todos os aparelhos, para não haver repetidos.
 import { eventoNovo } from './modelo';
-import { gravarEvento, lerEventosLocais, getPlanosAula, addOrUpdatePlanoAula, proximoNumeroEvento } from '../backend';
+import { gravarEvento, lerEventosLocais, getPlanosAula, addOrUpdatePlanoAula, proximoNumeroEvento, proximoNumeroPlano } from '../backend';
+import { modulosAtivos } from '../cronograma';
+import { atitudesSugeridasEvento } from '../eventosAvaliacao';
 
 export const idEventoDoPlano = (planoId: string) => 'ev_plano_' + planoId;
 
@@ -43,4 +45,30 @@ export function eventosDosPlanosEmFalta(): number {
     n++;
   }
   return n;
+}
+
+/** Os planos de avaliação ligados a este evento. */
+export function planosDoEvento(eventoId: string): any[] {
+  return (getPlanosAula() as any[]).filter(p => p.eventoId === eventoId && p.estado !== 'arquivado');
+}
+
+/**
+ * Cria, a partir do evento, o plano onde os alunos se autoavaliam (um por
+ * turma). É o mesmo que «Avaliar evento fora do horário»: atitudes do
+ * evento, sem faltas, e o bónus na UC que estava a decorrer nesse dia.
+ */
+export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' | 'inscricao', professor = ''): any | null {
+  const ucs = modulosAtivos(turmaId, ev.data);
+  const agora = new Date().toISOString();
+  const p: any = {
+    id: `plano_ev_${ev.id}_${turmaId.replace(/\W/g, '')}`, turmaId, professor,
+    data: ev.data, horaInicio: ev.horaInicio || '', horaFim: ev.horaFim || '',
+    titulo: ev.nome || 'Evento', observacoes: '', fichasIds: [], estado: 'publicado',
+    criadoEm: agora, atualizadoEm: agora, ucId: ucs[0]?.id || '', ucNome: ucs[0]?.nome || '',
+    numeroPlan: proximoNumeroPlano(), tipoAtividade: 'Evento externo', tipoEvento: 'evento', tipoPlanAula: 'atitudinal',
+    compAdicionadas: atitudesSugeridasEvento('Evento externo'), modoParticipacao: modo,
+    contaAssiduidade: false, eventoId: ev.id,
+  };
+  addOrUpdatePlanoAula(p);
+  return p;
 }
