@@ -329,7 +329,9 @@ export function calculoDoModelo(l: LinhaPautaUC, produtos: ProdutoPauta[], total
   // Competente arredondado à unidade, que é o que entra no TOTAL.
   const cpN = niveis.reduce((s, n, j) => s + n * ((produtos[j]?.peso || 0) / 100), 0);
   const cp = Math.round(cpN);
-  const total = (l.c5.cm ?? 0) * PESOS_5C.cm + cp * PESOS_5C.cp + (l.c5.cl ?? 0) * PESOS_5C.cl
+  // Na pauta aparece o CP inteiro, mas o TOTAL faz a conta com as décimas
+  // (4,5 e não 5): não se perde nada pelo caminho (Rosa, set/2026).
+  const total = (l.c5.cm ?? 0) * PESOS_5C.cm + cpN * PESOS_5C.cp + (l.c5.cl ?? 0) * PESOS_5C.cl
     + (l.c5.co ?? 0) * PESOS_5C.co + (l.c5.cr ?? 0) * PESOS_5C.cr;
   const resultado = total < 3.5 ? 'Módulo em atraso' : total < 4.5 ? 'Suficiente' : total < 5.5 ? 'Bom' : 'Muito bom';
   return { nAtiv, niveis, cpN, cp, total, resultado };
@@ -568,14 +570,15 @@ export async function gerarPautaXLSX(d: DadosPauta): Promise<Blob> {
     // As fórmulas do modelo, só com as colunas no sítio novo. O CP tem duas
     // colunas: N (o nível, em T) e 60% (em U), que é a que o TOTAL lê. No
     // original a U ficava vazia e o CP não chegava ao TOTAL: passa a ter o
-    // CP arredondado à unidade. O TOTAL fica com a fórmula original. O CR pesa 10% (X14 vazia).
+    // CP (à vista inteiro, nas contas com décimas). O TOTAL fica com a fórmula original. O CR pesa 10% (X14 vazia).
     f(lm(COL.T), Array.from({ length: nProd }, (_, j) => `(${LETRA(colNota(j) + 1)}${R}*$${LETRA(colPeso(j))}$9)`).join('+'));
     set(lm(COL.S), l.c5.cm);
     set(lm(COL.V), l.c5.cl);
     set(lm(COL.W), l.c5.co);
     set(lm(COL.X), l.c5.cr);
     const $ = (c: number) => `$${L(c)}$14`;
-    f(lm(COL.U), `ROUND(${lm(COL.T)},0)`);
+    // Mostra-se inteiro (formato «0»), mas o valor tem as décimas: o TOTAL conta com elas.
+    f(lm(COL.U), `${lm(COL.T)}`);
     ws.getCell(lm(COL.U)).numFmt = '0';
     f(lm(COL.Y), `(${lm(COL.S)}*${$(COL.S)})+(${lm(COL.U)}*${$(COL.U)})+(${lm(COL.V)}*${$(COL.V)})+(${lm(COL.W)}*${$(COL.W)})+(${lm(COL.X)}*${$(COL.X)})`);
     f(lm(COL.Z), `IF(${lm(COL.Y)}<3.5,"Módulo em atraso",IF(${lm(COL.Y)}<4.5,"Suficiente",IF(${lm(COL.Y)}<5.5,"Bom","Muito bom")))`);
