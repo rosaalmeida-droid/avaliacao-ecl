@@ -867,12 +867,14 @@ export interface DadosGuia {
 export const PESOS_AULA = {
   pratico: { OBR: 0.20, SUB: 0.40, KNW: 0.20, ATI: 0.20, INI: 0.00 },
   misto:   { OBR: 0.20, SUB: 0.40, KNW: 0.20, ATI: 0.20, INI: 0.00 },
-  teorico: { OBR: 0.15, SUB: 0.00, KNW: 0.65, ATI: 0.20, INI: 0.00 },
+  // Sem higiene e segurança alimentar nas teóricas e nas dinâmicas (Rosa, set/2026):
+  // só há registos quando há produção. O peso reparte-se pelo resto na mesma proporção.
+  teorico: { OBR: 0.00, SUB: 0.00, KNW: 0.65, ATI: 0.20, INI: 0.00 },
   // Aula atitudinal: só atitudes contam.
   atitudinal: { OBR: 0.00, SUB: 0.00, KNW: 0.00, ATI: 1.00, INI: 0.00 },
   // O professor decidiu incluir a higiene e a farda nesta aula
   // atitudinal — aí contam, mas as atitudes continuam a mandar.
-  atitudinal_obr: { OBR: 0.20, SUB: 0.00, KNW: 0.00, ATI: 0.80, INI: 0.00 },
+  atitudinal_obr: { OBR: 0.00, SUB: 0.00, KNW: 0.00, ATI: 1.00, INI: 0.00 },
 } as const;
 
 // Repartição interna dos conhecimentos, quando estiverem marcados.

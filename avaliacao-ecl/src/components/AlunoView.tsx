@@ -2783,7 +2783,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Evento: uma pergunta de técnica geral e o que correu menos bem.
   const ehEvento = (plano as any).tipoEvento === 'evento';
   // O professor tirou os registos (HACCP/KitchenFlow) desta aula: não se pergunta.
-  const semRegistos = compRemovidas.includes('OBR_02');
+  // A higiene e segurança alimentar só se avalia quando há produção (aulas
+  // práticas e mistas): nas teóricas e nas dinâmicas não conta (Rosa, set/2026).
+  const semRegistos = compRemovidas.includes('OBR_02')
+    || !['pratico', 'misto'].includes(String(tipoPlanAula || 'pratico'));
   const [tecEvento, setTecEvento] = useState<number | null>(null);
   const [tecMenosBem, setTecMenosBem] = useState('');
   const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);

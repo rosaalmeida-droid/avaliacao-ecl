@@ -6278,7 +6278,22 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
   const semFarda = planosSemFarda(alunoId);
   const regsNota = regs.map(r => semFarda.has(r.planoAulaId || '') && categoriaDe(r.microcompetenciaId) === 'SUB'
     ? { ...r, nota: 1 } : r);
-  return aplicarBonusesUC(baseComFaltas(notaBaseDeRegistos(regsNota), regsNota, alunoId, turmaId, ucId), alunoId, turmaId, ucId);
+  void regsNota;
+  // A média dos planos avaliados, todos com o mesmo peso (Rosa, set/2026).
+  // Antes juntavam-se as competências todas: um plano com o dobro das
+  // competências pesava o dobro.
+  const faltados = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id));
+  const planosUC = new Map(getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento)
+    .map(p => [p.id, p]));
+  const notasAulas = getValidacoes()
+    .filter((v: any) => v.alunoId === alunoId && planosUC.has(v.planoAulaId) && !faltados.has(v.planoAulaId))
+    .map(v => notaDaAulaValidada(v)).filter((n): n is number => n !== null);
+  const base = notasAulas.length ? notasAulas.reduce((s, n) => s + n, 0) / notasAulas.length : null;
+  const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
+  const comFaltas = faltados.size
+    ? Math.round((((base ?? 0) * notasAulas.length + recup * faltados.size) / (notasAulas.length + faltados.size)) * 100) / 100
+    : base === null ? null : Math.round(base * 100) / 100;
+  return aplicarBonusesUC(comFaltas, alunoId, turmaId, ucId);
 }
 
 /**

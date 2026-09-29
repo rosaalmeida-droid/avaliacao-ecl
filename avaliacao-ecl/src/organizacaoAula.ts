@@ -171,12 +171,19 @@ export interface OrganizacaoAula {
   lugares: LugarAula[];
 }
 
-/** Aulas com plano organizacional: as práticas e mistas (não os eventos). */
+/** Todas as aulas têm plano organizacional (não os eventos): mesmo nas
+ *  teóricas e nas dinâmicas há um líder e há registos que se fazem sempre. */
 export function temOrganizacao(p: PlanoAula | undefined | null): boolean {
-  if (!p || (p as any).tipoEvento) return false;
-  const t = String((p as any).tipoPlanAula || 'pratico');
+  return !!p && !(p as any).tipoEvento;
+}
+
+/** Aula com produção (prática ou mista): todas as funções. Nas teóricas e
+ *  nas dinâmicas, só as que se fazem sempre: o líder e as temperaturas. */
+export function comProducao(p: PlanoAula | undefined | null): boolean {
+  const t = String((p as any)?.tipoPlanAula || 'pratico');
   return t === 'pratico' || t === 'misto';
 }
+const LUGARES_SEM_PRODUCAO: IdFuncao[] = ['lider', 'temp1', 'temp2'];
 
 export function organizacaoDe(p: PlanoAula | undefined | null): OrganizacaoAula | null {
   const o = (p as any)?.organizacao;
@@ -233,11 +240,12 @@ const vezes = (h: HistoricoFuncoes, tipo: string, aluno: string) => h.porTipo.ge
  * a quem já tem uma (nunca ao líder, às temperaturas, aos panos nem à receção);
  * com alunos a mais, os que sobram ficam sem função e podem ajudar.
  */
-export function sortearOrganizacao(alunosIds: string[], hist: HistoricoFuncoes, semente: string): OrganizacaoAula {
+export function sortearOrganizacao(alunosIds: string[], hist: HistoricoFuncoes, semente: string,
+  soEssenciais = false): OrganizacaoAula {
   const rnd = aleatorio(semente);
   const sorteio = new Map(alunosIds.map(a => [a, rnd()]));
   const n = alunosIds.length;
-  const base = [...ORDEM_LUGARES];
+  const base = soEssenciais ? [...LUGARES_SEM_PRODUCAO] : [...ORDEM_LUGARES];
   // Com alunos a mais, os que sobram ficam sem função: podem ajudar os
   // colegas e dizer como ajudaram (decisão da Rosa, set/2026).
   const lugaresIds: IdFuncao[] = base;
@@ -375,7 +383,7 @@ function guardar(plano: PlanoAula, o: OrganizacaoAula): PlanoAula {
 /** Distribui as funções (de novo, se já estavam distribuídas). */
 export function distribuirFuncoes(plano: PlanoAula): PlanoAula {
   const hist = historicoFuncoes(getPlanosAula(), plano.turmaId, plano.id);
-  return guardar(plano, sortearOrganizacao(alunosDaTurma(plano.turmaId), hist, plano.id + '|' + Date.now()));
+  return guardar(plano, sortearOrganizacao(alunosDaTurma(plano.turmaId), hist, plano.id + '|' + Date.now(), !comProducao(plano)));
 }
 
 /** Plano publicado de uma aula prática ainda sem funções: distribui já. */

@@ -131,8 +131,9 @@ export function produtosDaUC(turmaId: string, ucId: string, escolhidos?: string[
   const produtos = planos.map((p, j) => ({
     numero: j + 1, titulo: p.titulo, planosIds: [p.id], elementos: elementosDe(p.id), peso: 0,
   }));
-  const total = produtos.reduce((s, p) => s + p.elementos, 0) || 1;
-  produtos.forEach(p => { p.peso = Math.round((p.elementos / total) * 1000) / 10; });
+  // Todos os planos com o mesmo peso (Rosa, set/2026): a prática já pesa mais
+  // dentro de cada plano. O professor pode mudar os pesos na pauta.
+  produtos.forEach(p => { p.peso = Math.round((100 / produtos.length) * 10) / 10; });
   // Acerto de arredondamento: a soma dá sempre 100%.
   if (produtos.length) {
     const soma = produtos.reduce((s, p) => s + p.peso, 0);
