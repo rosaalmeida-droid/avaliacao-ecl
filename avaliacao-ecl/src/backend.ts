@@ -3307,7 +3307,7 @@ export function faltasDaUC(alunoId: string, turmaId: string, ucId: string): Falt
       if (reg.decisaoProfessor === 'falta_atraso' || minutos > 0 || reg.atrasado) {
         out.push({ ...base, tipo: 'atraso',
           descricao: reg.decisaoProfessor === 'falta_atraso' ? 'Falta de atraso (decisão do professor)' : 'Chegou atrasado',
-          horas: minutos > 0 ? Math.min(Math.floor(minutos / 60), horasDoPlano(p)) : 0,
+          horas: horasDoAtraso(reg, horasDoPlano(p)),
           ...(minutos > 0 ? { minutosAtraso: minutos } : {}) });
       }
     });
@@ -7092,14 +7092,21 @@ export function horasPerdidasPorAtraso(
       horas += Math.max(0, horasDoPlano(p) - horasDosBlocos(p, reg.horasPresentes || []));
       continue;
     }
-    // Falta de atraso marcada pelo professor sem hora de entrada (aula
-    // passada, aluno não entrou na aplicação): conta o atraso, não horas.
-    const minutos = Number(reg.atrasadoMins) || 0;
-    if (minutos <= 0) continue;
-    // Horas completas, e nunca mais do que a aula toda.
-    horas += Math.min(Math.floor(minutos / 60), horasDoPlano(p));
+    horas += horasDoAtraso(reg, horasDoPlano(p));
   }
   return horas;
+}
+
+/**
+ * Horas de falta de um atraso. Falta de atraso marcada pelo professor conta
+ * horas (Rosa, set/2026): as horas começadas, no mínimo 1, nunca mais do que
+ * a aula. Um atraso sem essa decisão conta só as horas completas perdidas.
+ */
+export function horasDoAtraso(reg: any, horasAula: number): number {
+  const minutos = Number(reg?.atrasadoMins) || 0;
+  if (reg?.decisaoProfessor === 'falta_atraso') return Math.min(Math.max(1, Math.ceil(minutos / 60)), horasAula);
+  if (minutos <= 0) return 0;
+  return Math.min(Math.floor(minutos / 60), horasAula);
 }
 
 // ============================================================
