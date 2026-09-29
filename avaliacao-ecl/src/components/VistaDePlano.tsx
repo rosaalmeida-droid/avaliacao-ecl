@@ -1598,7 +1598,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {(() => {
         const n = respostasAntesDaAlteracao(plano.id);
         // Sem alteração: pode pedir na mesma (as perguntas não estavam bem, por exemplo).
-        const total = getSelecoes().filter(x => x.planoAulaId === plano.id).length;
+        // Quem respondeu ou já foi validado nesta aula (a validação pode estar
+        // neste aparelho sem a autoavaliação que lhe deu origem).
+        const total = new Set([
+          ...getSelecoes().filter(x => x.planoAulaId === plano.id).map(x => x.alunoId),
+          ...getValidacoes().filter(v => v.planoAulaId === plano.id
+            && String((v as any).validadoEm || '') >= String((plano as any).pedirDeNovoEm || '')).map(v => v.alunoId),
+        ]).size;
         if (!n && total && plano.estado === 'publicado') return (
           <div style={{ background:'#fff', border:'1px solid rgba(26,23,20,0.12)', borderRadius:14, padding:'10px 14px', margin:'0 0 14px',
             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>

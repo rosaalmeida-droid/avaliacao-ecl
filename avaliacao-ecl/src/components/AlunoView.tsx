@@ -851,6 +851,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
   // Avisos calculados a partir do estado real — presenças, registos,
   // prazos e inscrições. Nunca texto guardado à mão.
+  /** As aulas cuja autoavaliação falta (para o aviso abrir logo a primeira). */
+  const aulasPorAutoavaliar = React.useRef<PlanoAula[]>([]);
   const avisosCalculados: AvisoAluno[] = (() => {
     const av: AvisoAluno[] = [];
     const hojeISO = new Date().toISOString().slice(0, 10);
@@ -886,18 +888,36 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       }
     }
 
+    // O professor mudou as perguntas e pediu à turma para responder outra vez.
+    const deNovo = planosOrdenados.filter((p: any) => p.pedirDeNovoEm
+      && (getPresencas().some(x => x.alunoId === aluno.id && x.planoAulaId === p.id)
+        || getValidacoes().some(v => v.alunoId === aluno.id && v.planoAulaId === p.id))
+      && !getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === p.id));
+    aulasPorAutoavaliar.current = deNovo;
+    if (deNovo.length > 0) {
+      av.push({
+        id: 'responder_de_novo',
+        titulo: 'O professor pediu que respondas outra vez',
+        detalhe: `As perguntas da autoavaliação mudaram: ${deNovo.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. Até responderes, conta a nota que tinhas.`,
+        // Abre logo a autoavaliação dessa aula (antes ia para o resumo da UC).
+        destino: 'autoavaliar_pendente' as any,
+        urgente: true,
+      });
+    }
+
     // Aulas passadas em que esteve e não se autoavaliou.
     const semAuto = planosOrdenados.filter(p =>
       p.data < hojeISO &&
       getPresencas().some(x => x.alunoId === aluno.id && x.planoAulaId === p.id) &&
       !getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === p.id)
     );
+    aulasPorAutoavaliar.current = [...aulasPorAutoavaliar.current, ...semAuto.filter(p => !aulasPorAutoavaliar.current.includes(p))];
     if (semAuto.length > 0) {
       av.push({
         id: 'autoavaliacao',
         titulo: 'Autoavaliação por fazer',
         detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} sem a tua avaliação.`,
-        destino: 'avaliar',
+        destino: 'autoavaliar_pendente' as any,
         urgente: true,
       });
     }
@@ -1092,6 +1112,11 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             })()}
             onAbrirUltimaAula={() => { if (aulasPassadas[0]) setPlanoAtivo(aulasPassadas[0]); }}
             onAbrir={(d: DestinoAluno) => {
+              if ((d as string) === 'autoavaliar_pendente') {
+                const p = aulasPorAutoavaliar.current[0];
+                if (p) setPlanoAtivo(p);
+                return;
+              }
               if (d === 'entrar' || d === 'consultar_plano' || d === 'fichas'
                   || d === 'guiao' || d === 'requisicao') {
                 if (planoHoje) setPlanoAtivo(planoHoje);
