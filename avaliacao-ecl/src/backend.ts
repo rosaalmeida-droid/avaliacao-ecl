@@ -7574,7 +7574,9 @@ export function perguntaDaAula(chave: 'co' | 'cr', planoAulaId: string): string 
   const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
   const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
     .sort((a, b) => ordem(a).localeCompare(ordem(b)));
-  return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === planoAulaId))).id;
+  // Numa aula teórica ou atitudinal não saem perguntas sobre a cozinha e os pratos.
+  const soTeoria = !['pratico', 'misto'].includes(String(plano.tipoPlanAula || 'pratico'));
+  return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === planoAulaId)), soTeoria).id;
 }
 export const perguntaCODaAula = (planoAulaId: string) => perguntaDaAula('co', planoAulaId);
 export const perguntaCRDaAula = (planoAulaId: string) => perguntaDaAula('cr', planoAulaId);

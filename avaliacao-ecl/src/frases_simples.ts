@@ -52,6 +52,6 @@ export const OPCOES_SIMPLES: Record<string, string> = {
 /** Pede uma prova concreta a quem escolhe os níveis de cima (já consigo / já domino). */
 export function pedidoDeExemplo(nivelMedidas?: number): string {
   return (nivelMedidas || 1) >= 2
-    ? 'Diz uma coisa que fizeste hoje (uma frase).'
-    : 'Diz uma coisa concreta que fizeste hoje que mostra isto. O professor confirma.';
+    ? 'Se quiseres, diz uma coisa que fizeste hoje.'
+    : 'Se quiseres, diz uma coisa concreta que fizeste hoje que mostra isto (opcional).';
 }

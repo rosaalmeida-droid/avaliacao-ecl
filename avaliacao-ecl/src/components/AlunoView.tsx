@@ -2784,9 +2784,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const [frasesAula, setFrasesAula] = useState<Record<string, number>>({});
   // Medidas seletivas (2) ou adicionais (3): as mesmas perguntas, mais fáceis de ler.
   const simples = (aluno.nivelMedidas || 1) >= 2;
-  // Um exemplo concreto de hoje, obrigatório nos níveis de cima (já consigo / já domino).
+  // Um exemplo concreto de hoje (opcional).
   const [exemplos, setExemplos] = useState<Record<string, string>>({});
-  const exemploOk = (id: string, idx: number | null | undefined) => idx == null || idx < 2 || (exemplos[id] || '').trim().length >= 5;
+  // Escrever é opcional (Rosa, set/2026): o aluno escolhe; o exemplo ajuda, mas não obriga.
+  const exemploOk = (_id: string, _idx: number | null | undefined) => true;
   // Evento: uma pergunta de técnica geral e o que correu menos bem.
   const ehEvento = (plano as any).tipoEvento === 'evento';
   // O professor tirou os registos (HACCP/KitchenFlow) desta aula: não se pergunta.
@@ -2798,15 +2799,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const semRegistos = true;
   const [tecEvento, setTecEvento] = useState<number | null>(null);
   const [tecMenosBem, setTecMenosBem] = useState('');
-  const tecEventoFeito = !ehEvento || (tecEvento !== null && tecMenosBem.trim().length >= 3);
+  const tecEventoFeito = !ehEvento || tecEvento !== null;
   // Triagem do Colaborativo e do Criativo: responde-se sempre, em todas as aulas.
   // O Consciente e o Criativo têm uma pergunta do dia, igual para a turma toda.
   const [triagem, setTriagem] = useState<Triagem5C>(() => ({ cl: null, cr: null, co: null, problema: '',
     coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
   const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId);
-  // «O que foi mais difícil hoje» é obrigatório: há sempre alguma coisa.
-  const triagemFeita = (chave: 'cl' | 'cr' | 'co') => triagem[chave] != null
-    && (chave !== 'cr' || (triagem.problema || '').trim().length >= 5);
+  // Basta escolher uma resposta; escrever o que foi mais difícil é opcional.
+  const triagemFeita = (chave: 'cl' | 'cr' | 'co') => triagem[chave] != null;
   const triagemCompleta = triagemFeita('cl') && triagemFeita('cr') && triagemFeita('co');
   const prontoBase = triagemCompleta && (ehAtitudinal
     ? atitudesDaAula.length > 0 && atitudesDaAula.every(id => frasesAula[id] != null && exemploOk(id, frasesAula[id]))
@@ -3209,7 +3209,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       <textarea value={exemplos[id] || ''} maxLength={200} rows={2}
         onChange={e => setExemplos(x => ({ ...x, [id]: e.target.value }))}
         style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10,
-          border:`1.5px solid ${exemploOk(id, idx) ? T.border : '#E8C9A8'}`, fontSize:14, fontFamily:'inherit' }} />
+          border:`1.5px solid ${T.border}`, fontSize:14, fontFamily:'inherit' }} />
     </div>
   ) : null;
 
@@ -3577,7 +3577,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                 {rotuloSecao(simples ? 'O que foi mais difícil hoje?' : 'O que foi mais difícil hoje e o que fizeste?')}
                 <textarea value={triagem.problema || ''} maxLength={200} rows={3}
                   onChange={e => setTriagem(t => ({ ...t, problema: e.target.value }))}
-                  placeholder={simples ? 'Escreve aqui (obrigatório)' : 'Escreve aqui (obrigatório — há sempre alguma coisa)'}
+                  placeholder={simples ? 'Se quiseres, escreve aqui' : 'Se quiseres, escreve aqui (opcional)'}
                   style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10,
                     border:`1.5px solid ${T.border}`, fontSize:14.5, fontFamily:'inherit', resize:'vertical', background:'#fff' }} />
               </>
