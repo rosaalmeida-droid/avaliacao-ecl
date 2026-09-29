@@ -1,4 +1,5 @@
 import { categoriaDaNota } from '../compatECL';
+import { BotaoPCC } from './BotaoPCC';
 import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
@@ -897,8 +898,9 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     if (deNovo.length > 0) {
       av.push({
         id: 'responder_de_novo',
-        titulo: 'O professor pediu que respondas outra vez',
-        detalhe: `As perguntas da autoavaliação mudaram: ${deNovo.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. Até responderes, conta a nota que tinhas.`,
+        titulo: 'O professor quer ouvir-te outra vez',
+        detalhe: `Há perguntas novas, mais claras, na autoavaliação de ${deNovo.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
+          + 'É a tua oportunidade de mostrar o que fizeste bem e o que queres melhorar. Leva 2 minutos. Até responderes, conta a nota que tinhas.',
         // Abre logo a autoavaliação dessa aula (antes ia para o resumo da UC).
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
@@ -915,8 +917,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     if (semAuto.length > 0) {
       av.push({
         id: 'autoavaliacao',
-        titulo: 'Autoavaliação por fazer',
-        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} sem a tua avaliação.`,
+        titulo: 'A tua voz conta: autoavalia-te',
+        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua opinião. Quem se autoavalia mostra ao professor o que fez bem — e o professor tem isso em conta. Leva 2 minutos.`,
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
       });
@@ -2507,12 +2509,26 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
                           <strong>{p.num}.</strong> {p.descricao}
                           {p.temperatura&&<span style={{ color:'#2980b9', marginLeft:6, fontSize:13 }}>🌡 {p.temperatura}</span>}
                           {p.haccp&&<div style={{ color:T.danger, fontSize:13, marginTop:2 }}>⚠️ {p.haccp}</div>}
+                          {p.haccp && <BotaoPCC texto={p.haccp} prato={f.nomePrato || ''} aluno={aluno} plano={plano} />}
                         </div>
                       </label>
                     );
                   })}
                 </div>
               )}
+
+              {/* No fim de cada ficha, bem à vista: a amostra testemunho (procedimento do KitchenFlow). */}
+              <div style={{ marginTop:14, padding:'14px 15px', borderRadius:12, background:'#fdecea',
+                border:'2px solid #c0392b', color:'#7a1f14', lineHeight:1.55 }}>
+                <div style={{ fontSize:15.5, fontWeight:800 }}>⚠️ Não te esqueças da amostra testemunho</div>
+                <div style={{ fontSize:14, marginTop:4 }}>
+                  <b>Quantidade:</b> mínimo 150 g de cada prato servido.<br />
+                  <b>Onde:</b> no frigorífico dedicado, de 0 °C a 3 °C.<br />
+                  <b>Quanto tempo:</b> guarda-se 72 horas depois do serviço; depois destrói-se.<br />
+                  Serve para analisar a comida se houver suspeita de intoxicação alimentar.
+                </div>
+                <BotaoPCC texto="" forcar="testemunho" prato={f.nomePrato || ''} aluno={aluno} plano={plano} />
+              </div>
 
               {/* O guião NÃO aparece aqui. Tem passo próprio, e mostrá-lo
                   dentro da ficha punha o aluno a ler o mesmo texto duas
@@ -2660,12 +2676,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // As linhas da ficha trazem o nome e o ramo («SUB-… — Nome | APP-… | componente»):
   // conta só o código. Um retirado pelo professor com a linha inteira também sai.
   const retirada = (id: string) => compRemovidas.some((r: string) => codigoDaLinha(r) === id);
-  const subIdsRaw = fichas.flatMap((f: any) => codigosDasLinhas(f.tecnicasSugeridas, 'SUB-'));
+  const subIdsRaw = (plano as any).semSubApp ? [] : fichas.flatMap((f: any) => codigosDasLinhas(f.tecnicasSugeridas, 'SUB-'));
   const subIdsFiltrados = [...new Set(subIdsRaw)].filter((id: string) => !retirada(id));
 
   // APP-xxx: aparelhos da ficha. Nada sai para os alunos com medidas (Rosa,
   // set/2026): avaliam o mesmo, com uma explicação simples do que é cada um.
-  const appIdsRaw = fichas.flatMap((f: any) => codigosDasLinhas((f as any).aparelhosDetectados, 'APP-'));
+  const appIdsRaw = (plano as any).semSubApp ? [] : fichas.flatMap((f: any) => codigosDasLinhas((f as any).aparelhosDetectados, 'APP-'));
   const appIdsFiltrados = [...new Set(appIdsRaw)].filter((id: string) => !retirada(id));
 
   // O aluno nunca vê códigos. "SUB-COR-030-001" não lhe diz nada, e

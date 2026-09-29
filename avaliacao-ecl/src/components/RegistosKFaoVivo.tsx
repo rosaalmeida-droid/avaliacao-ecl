@@ -71,6 +71,43 @@ export async function registosKFdaAula(turmaId: string, dataISO: string): Promis
   return { registos, falhou: respostas === 0 };
 }
 
+/** Os PCC da ficha técnica e o registo que lhes corresponde no KitchenFlow.
+ *  A temperatura interna de confeção ainda não tem registo próprio lá. */
+export const PCC_NO_KF: { re: RegExp; modulo: string; tabela: string; nome: string }[] = [
+  { re: /testemunho/i, modulo: 'testemunho', tabela: 'Amostra Testemunho', nome: 'Amostra testemunho' },
+  { re: /regenera|reaquec|cook.?chill/i, modulo: 'regeneracao', tabela: 'Regeneração', nome: 'Regeneração' },
+  { re: /arrefec|refrigera|conserva|congel|abatedor/i, modulo: 'conservacao', tabela: 'Conservação Produtos', nome: 'Conservação' },
+  { re: /servi[çc]o|buffet|manter.{0,12}quente|banho.?maria/i, modulo: 'servico', tabela: 'Temperatura Serviço', nome: 'Temperatura de serviço' },
+  { re: /desinfe|consumo em cru|hort[ií]col/i, modulo: 'desinfecao', tabela: 'Desinfeção', nome: 'Desinfeção' },
+  { re: /[óo]leo|fritura/i, modulo: 'oleos', tabela: 'Controlo Óleos', nome: 'Óleo de fritura' },
+];
+export const pccNoKF = (texto: string) => PCC_NO_KF.find(x => x.re.test(texto || ''));
+
+/**
+ * Alguém do grupo já fez hoje este registo para este prato? (Rosa, set/2026:
+ * quatro alunos na mesma ficha não registam o mesmo PCC quatro vezes.)
+ * Vai à escola no momento, para estar certo.
+ */
+export async function registoPCCjaFeito(tabela: string, turmaId: string, dataISO: string, prato: string, alunosIds: string[]):
+  Promise<{ nome: string; hora: string } | null> {
+  const turma = getTurmas().find(t => t.id === turmaId);
+  const turmas = new Set([norm(turmaId), norm(turma?.nome || '')].filter(Boolean));
+  const ids = new Set(alunosIds.map(norm));
+  const p = norm(prato).slice(0, 12);
+  for (const url of URLS) {
+    try {
+      const j = await (await fetch(`${url}?tabela=${encodeURIComponent(tabela)}`)).json();
+      for (const l of (j?.dados || []) as any[][]) {
+        if (!Array.isArray(l) || dataDaLinha(l[0]) !== dataISO || !turmas.has(norm(l[2]))) continue;
+        if (!ids.has(norm(l[3]))) continue;
+        if (p && !norm(l.slice(5).join(' ')).includes(p)) continue;
+        return { nome: String(l[4] || l[3] || ''), hora: horaDaLinha(l[1]) };
+      }
+    } catch { /* tenta o outro endereço */ }
+  }
+  return null;
+}
+
 const V = '#6B3FA0';
 
 /** Onde fica o registo de cada função no KitchenFlow. «partilhado»: um registo

@@ -8,6 +8,8 @@
 // apenas «o que falta» e «a próxima ação».
 // ============================================================
 
+import type { OpcoesQuantidades } from './capitacoes';
+
 export type Resp3 = 'sim' | 'nao' | 'nao_sei';
 
 export interface MomentoServico {
@@ -103,6 +105,8 @@ export interface EventoECL {
   perguntas: Record<string, EstadoItem>;
   tarefas: Record<string, EstadoItem>;
   alteracoes: AlteracaoEvento[];
+  /** Quantidades por pessoa (capitações): opções escolhidas neste evento. */
+  quantidades?: OpcoesQuantidades;
   fecho: { conforme?: 'sim' | 'nao'; faltas?: 'sim' | 'nao'; desperdicio?: 'sim' | 'nao'; feedback?: string; ocorrencias?: string };
   criadoPor: string;
   criadoEm: string;

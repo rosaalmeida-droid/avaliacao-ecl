@@ -19,6 +19,7 @@ import {
 } from '../backend';
 import Requisicao, { custoDaFicha } from './Requisicao';
 import { LOGO_ECL } from '../logo_ecl';
+import { quantidadesDoMomento, divergenciasPorEscolher, DURACOES, tipoDoMomento, equivalenteAdulto } from '../eventos/capitacoes';
 import {
   type EventoECL, type Resp3, type Tarefa, type OrcamentoEvento, type Acao, type ExtraOrcamento,
   MOMENTOS, nomeMomento, TIPOS_EVENTO, SERVICOS, NIVEIS, ESTILOS, PUBLICOS, NECESSIDADES, OUTRAS_AREAS,
@@ -468,7 +469,7 @@ function Triagem({ inicial, onCancelar, onConcluir }: { inicial: EventoECL; onCa
 // 3. O EVENTO
 // ══════════════════════════════════════════════════════════════
 
-type Secao = 'pedido' | 'perguntas' | 'local' | 'fichas' | 'preparacao' | 'material' | 'dia' | 'fecho';
+type Secao = 'pedido' | 'perguntas' | 'local' | 'quantidades' | 'fichas' | 'preparacao' | 'material' | 'dia' | 'fecho';
 
 /**
  * O evento organiza-se aqui; a nota dos alunos vem do plano de avaliação.
@@ -529,7 +530,7 @@ function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomePro
   };
 
   if (secao) {
-    const titulos: Record<Secao, string> = { pedido: 'O pedido', perguntas: 'Perguntas ao cliente', local: 'O local', fichas: 'Fichas e orçamentos',
+    const titulos: Record<Secao, string> = { pedido: 'O pedido', perguntas: 'Perguntas ao cliente', local: 'O local', quantidades: 'Quantidades por pessoa', fichas: 'Fichas e orçamentos',
       preparacao: 'Preparação', material: 'Material', dia: 'Dia do evento', fecho: 'Fechar o evento' };
     return (
       <>
@@ -538,6 +539,7 @@ function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomePro
         {secao === 'pedido' && <Pedido e={e} mudar={mudar} onEditar={onEditar} onApagar={onApagar} />}
         {secao === 'perguntas' && <PerguntasCliente e={e} mudar={mudar} />}
         {secao === 'local' && <Local e={e} mudar={mudar} onEditar={onEditar} />}
+        {secao === 'quantidades' && <Quantidades e={e} mudar={mudar} />}
         {secao === 'fichas' && <FichasOrcamentos e={e} mudar={mudar} nomeProfessor={nomeProfessor} />}
         {secao === 'preparacao' && <ListaTarefas e={e} mudar={mudar} fases={['Decidir', 'Preparar', 'HACCP']} />}
         {secao === 'material' && <ListaTarefas e={e} mudar={mudar} fases={['Material']} />}
@@ -557,10 +559,14 @@ function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomePro
   const prp = tarefasDe(['Decidir', 'Preparar', 'HACCP']), mat = tarefasDe(['Material']), dia = tarefasDe(['Dia do evento']);
   const custos = e.orcamentos.filter(o => (o.custo || 0) > 0);
   const faltaPedido = faltaNoPedido(e).length + faltaNoServico(e).length;
+  const quantBlocos = e.momentos.map(m => quantidadesDoMomento(m.tipo, e.servico, m.pessoas || e.pessoas, e.quantidades || {}, m.id));
+  const quantFalta = divergenciasPorEscolher(quantBlocos).length;
+  const quantSub = !e.momentos.length ? 'sem momentos de serviço' : quantFalta ? `${quantFalta} escolha${quantFalta > 1 ? 's' : ''} por fazer` : `${e.momentos.length} momento${e.momentos.length > 1 ? 's' : ''}`;
   const CARTOES: { id: Secao; icone: string; nome: string; sub: string; ok: boolean }[] = [
     { id: 'pedido', icone: '📋', nome: 'O pedido', sub: faltaPedido ? `faltam ${faltaPedido} respostas` : `${ESTADOS[e.estado]} · ${classificar(e).nivel}`, ok: !faltaPedido },
     { id: 'perguntas', icone: '💬', nome: 'Perguntas ao cliente', sub: pergFalta ? `${pergFalta} por fazer` : 'todas feitas', ok: !pergFalta },
     { id: 'local', icone: e.onde === 'fora' ? '🚐' : '🏫', nome: 'O local', sub: pendLocal.length ? pendLocal[0] : 'confirmado', ok: !pendLocal.length },
+    { id: 'quantidades', icone: '⚖️', nome: 'Quantidades', sub: quantSub, ok: !quantFalta },
     { id: 'fichas', icone: '🧾', nome: 'Fichas e orçamentos', sub: `${e.fichasIds.length} ficha${e.fichasIds.length === 1 ? '' : 's'} · ${e.orcamentos.length} orçamento${e.orcamentos.length === 1 ? '' : 's'}${custos.length ? ` · ${euros(custos[0].custo)}` : ''}`, ok: e.fichasIds.length > 0 && custos.length > 0 },
     { id: 'preparacao', icone: '🗓️', nome: 'Preparação', sub: `${prp.feitas} de ${prp.total}`, ok: prp.feitas === prp.total },
     { id: 'material', icone: '🍴', nome: 'Material', sub: `${mat.feitas} de ${mat.total}`, ok: mat.feitas === mat.total },
@@ -1216,5 +1222,88 @@ function FolhaOrcamento({ e, o, custo, mudarOrc }: { e: EventoECL; o: OrcamentoE
       </div>
       <button onClick={imprimir} style={{ ...botao(), width: '100%', marginTop: 10 }}>🖨️ Imprimir a folha de orçamento</button>
     </details>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// QUANTIDADES POR PESSOA — só valores dos manuais, com a fonte
+// ══════════════════════════════════════════════════════════════
+function Quantidades({ e, mudar }: { e: EventoECL; mudar: (x: Partial<EventoECL>) => void }) {
+  const q = e.quantidades || {};
+  const mudarQ = (x: Partial<NonNullable<EventoECL['quantidades']>>) => mudar({ quantidades: { ...q, ...x } });
+  const temCriancas = e.publico.includes('Crianças') || e.publico.includes('Público misto') || (q.criancas || 0) > 0;
+  const temBuffet = e.momentos.some(m => tipoDoMomento(m.tipo, e.servico) === 'refeicao') && !['sentado', 'empratado'].includes(e.servico);
+
+  if (!e.momentos.length) return <div style={{ ...cartao, color: C.texto }}>Ainda não há momentos de serviço. Responde primeiro no «O pedido» (welcome drink, coffee break, almoço…).</div>;
+
+  return (
+    <>
+      <div style={{ ...cartao, background: C.bordeauxSuave, boxShadow: 'none', fontSize: 14.5, color: C.tinta, lineHeight: 1.45 }}>
+        Quantidades tiradas de manuais profissionais de catering. <b>✔</b> quer dizer que as fontes batem certo.
+        Quando não batem, aparecem as duas e escolhes uma.
+      </div>
+
+      {temCriancas && (
+        <div style={cartao}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: C.tinta, marginBottom: 8 }}>Quantas das {e.pessoas || '?'} pessoas são crianças?</div>
+          <input type="number" min={0} max={e.pessoas || undefined} value={q.criancas || ''} placeholder="0"
+            onChange={x => mudarQ({ criancas: Math.max(0, Number(x.target.value) || 0) })} style={{ ...campo, maxWidth: 160 }} />
+          <div style={{ fontSize: 13, color: C.suave, marginTop: 6 }}>Cada criança conta 50–60% de um adulto (só os guias americanos dão este valor).</div>
+        </div>
+      )}
+
+      {temBuffet && (
+        <div style={cartao}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: C.tinta, marginBottom: 8 }}>Quantos pratos principais (carne + peixe) no buffet?</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[1, 2, 3].map(n => <Pastilha key={n} ativo={(q.pratos || 2) === n} onClick={() => mudarQ({ pratos: n })}>{n}</Pastilha>)}
+          </div>
+        </div>
+      )}
+
+      {e.momentos.map(m => {
+        const t = tipoDoMomento(m.tipo, e.servico);
+        const pessoas = m.pessoas || e.pessoas;
+        const b = quantidadesDoMomento(m.tipo, e.servico, pessoas, q, m.id);
+        const opDur = t === 'coffee' ? DURACOES.coffee : t === 'cocktail' ? DURACOES.cocktail : null;
+        const durPadrao = t === 'coffee' ? 'curto' : (m.tipo === 'almoco' || m.tipo === 'jantar') ? 'substitui' : 'antes';
+        const eq = equivalenteAdulto(pessoas, q.criancas);
+        return (
+          <div key={m.id} style={cartao}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: C.tinta }}>{ICONE_MOMENTO[m.tipo] || '✳️'} {nomeMomento(m.tipo)}{m.hora ? ` · ${m.hora}` : ''}</div>
+            <div style={{ fontSize: 13.5, color: C.suave, marginBottom: 10 }}>
+              {pessoas} pessoas{q.criancas ? ` (= ${Math.round(eq.min)}–${Math.round(eq.max)} adultos)` : ''}{t === 'refeicao' ? ` · ${SERVICOS.find(s => s.id === e.servico)?.nome || 'buffet'}` : ''}
+            </div>
+            {opDur && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                {opDur.map(d => <Pastilha key={d.id} ativo={(q.duracao?.[m.id] || durPadrao) === d.id}
+                  onClick={() => mudarQ({ duracao: { ...(q.duracao || {}), [m.id]: d.id } })}>{d.nome}</Pastilha>)}
+              </div>
+            )}
+            {b.linhas.map((l, i) => (
+              <div key={i} style={{ padding: '10px 0', borderTop: i ? '1px solid #F0EAEC' : 'none' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                  <div style={{ flex: 1, fontSize: 15, color: C.tinta, fontWeight: 600 }}>{l.oQue}</div>
+                  {!l.divergencia && <div style={{ fontSize: 15.5, fontWeight: 800, color: C.bordeaux, textAlign: 'right' }}>{l.quantidade}</div>}
+                </div>
+                <div style={{ fontSize: 12.5, color: C.suave, marginTop: 2 }}>
+                  {l.acordo && !l.nota ? '✔ ' : ''}{l.base} · {l.fontes.join(' + ')}{l.nota ? ` · ${l.nota}` : ''}
+                </div>
+                {l.divergencia && (
+                  <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                    <div style={{ fontSize: 13, color: C.ambar, fontWeight: 700 }}>As fontes não batem certo — escolhe uma:</div>
+                    {l.divergencia.opcoes.map((op, k) => (
+                      <Opcao key={k} ativo={l.divergencia!.escolhida === k} sub={op.fonte}
+                        onClick={() => mudarQ({ escolha: { ...(q.escolha || {}), [l.divergencia!.id]: k as 0 | 1 } })}>{op.quantidade}</Opcao>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {b.notas.map((n, i) => <div key={i} style={{ fontSize: 13, color: C.texto, marginTop: 6 }}>• {n}</div>)}
+          </div>
+        );
+      })}
+    </>
   );
 }
