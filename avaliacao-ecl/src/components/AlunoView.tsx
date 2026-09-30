@@ -746,7 +746,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       const nivel = Array.isArray(h) && h.length
         ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
         : null;
-      return { id, nome: r.replace(/\.$/, ''), nivel };
+      return { id, nome: r.replace(/\.$/, ''), nivel, consolidada: jaTeveSucesso(h) };
     });
   })();
 
@@ -759,6 +759,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
       : null;
   };
+  // Consolidada só com sucesso em 2 aulas diferentes (regra da escola).
+  const consolidadaDe = (id: string) => jaTeveSucesso(getHistoricoAlunoMicro(aluno.id, id));
 
   const conhecimentosDaUC = (() => {
     const ref = ucAtual ? getReferencialUC(ucAtual) : undefined;
@@ -766,7 +768,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     if (!lista?.length) return [];
     return lista.map((c, i) => {
       const id = `${ucAtual}_C${i + 1}`;
-      return { id, nome: c.replace(/\.$/, ''), nivel: nivelDe(id) };
+      return { id, nome: c.replace(/\.$/, ''), nivel: nivelDe(id), consolidada: consolidadaDe(id) };
     });
   })();
 
@@ -779,7 +781,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const atitudesDaUC = ATITUDES
     .filter(at => opcoesDeEscolhaDoAluno(aluno.ano ?? 1).includes(at.id))
     .filter(at => !anterioresIds.has(at.id))
-    .map(at => ({ id: at.id, nome: at.nome, nivel: nivelDe(at.id) }));
+    .map(at => ({ id: at.id, nome: at.nome, nivel: nivelDe(at.id), consolidada: consolidadaDe(at.id) }));
 
   // Aulas marcadas a partir de hoje — o aluno tem de as ver sem
   // depender do calendário.
@@ -803,8 +805,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   ).length;
 
   const tudoAvaliavel = [...competenciasDaUC, ...conhecimentosDaUC, ...atitudesDaUC];
-  const porAvaliar = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel) === 'por_avaliar').length;
-  const competenciasFracas = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel) === 'desenvolvimento').length;
+  const porAvaliar = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel, c.consolidada) === 'por_avaliar').length;
+  const competenciasFracas = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel, c.consolidada) === 'desenvolvimento').length;
 
   // Que bloco o aluno está a ver no "Avaliar-me"
   const [blocoAvaliar, setBlocoAvaliar] = useState<'realizacoes'|'conhecimentos'|'atitudes'>('realizacoes');
@@ -2786,7 +2788,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     .slice(0, 8).map((id: string) => {
     const sub = encontrarSubtecnica(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
-    const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+    const avs = hist.map(h => ({nota: h.nota, data: h.data, planoAulaId: h.planoAulaId}));
     const emReg = estaEmRegressao(avs);
     const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliada' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidada';
 
@@ -2832,7 +2834,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     .slice(0, 4).map((id: string) => {
     const app = encontrarAparelho(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
-    const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+    const avs = hist.map(h => ({nota: h.nota, data: h.data, planoAulaId: h.planoAulaId}));
     const emReg = estaEmRegressao(avs);
     const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca preparado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
     const ramoApp = ramoDaCompetencia(id, fichas as any[]);
@@ -2862,7 +2864,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
     .map(m => {
       const hist = getHistoricoAlunoMicro(aluno.id, m.id);
-      const avs = hist.map(h=>({nota:h.nota,data:h.data}));
+      const avs = hist.map(h=>({nota:h.nota,data:h.data,planoAulaId:h.planoAulaId}));
       const emReg = estaEmRegressao(avs);
       const motivo = emReg?'⚠️ Em regressão':avs.length===0?'★ Nunca avaliada':!jaTeveSucesso(avs)?'↑ Em desenvolvimento':'✓ Consolidada';
       return {...m, motivo};
@@ -2878,7 +2880,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     .map((id: string) => {
       const knw = encontrarConhecimento(id);
       const hist = getHistoricoAlunoMicro(aluno.id, id);
-      const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+      const avs = hist.map(h => ({nota: h.nota, data: h.data, planoAulaId: h.planoAulaId}));
       const emReg = estaEmRegressao(avs);
       const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
       return { id, nome: knw?.nome || id, definicao: knw?.definicao || '', motivo };

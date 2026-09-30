@@ -327,9 +327,13 @@ export const PARAMETROS_AVALIACAO = {
   mensagemBloqueioAluno: 'O aluno já obteve sucesso nesta competência. Sugere outra em desenvolvimento.',
 };
 
-export function jaTeveSucesso(avaliacoes: { nota: number }[]): boolean {
-  return avaliacoes.filter(a => a.nota >= PARAMETROS_AVALIACAO.notaMinimaSucesso).length
-    >= PARAMETROS_AVALIACAO.nSucessosConsolidada;
+/** Regra da escola: consolidada com sucesso (nota 3 ou mais em 5) em 2
+ *  aulas DIFERENTES. Duas avaliações da mesma aula contam uma vez. */
+export function jaTeveSucesso(avaliacoes: { nota: number; planoAulaId?: string }[]): boolean {
+  const aulas = new Set(avaliacoes
+    .filter(a => a.nota >= PARAMETROS_AVALIACAO.notaMinimaSucesso)
+    .map((a, i) => a.planoAulaId || `sem_aula_${i}`));
+  return aulas.size >= PARAMETROS_AVALIACAO.nSucessosConsolidada;
 }
 
 export function estaEmRegressao(avaliacoes: { nota: number }[]): boolean {

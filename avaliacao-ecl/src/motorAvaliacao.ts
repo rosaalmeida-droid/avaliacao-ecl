@@ -1259,9 +1259,11 @@ export const LABEL_ESTADO: Record<EstadoComp, string> = {
   avancado:        'em nível avançado',
 };
 
-export function estadoDoNivel(nivel?: number | null): EstadoComp {
+/** consolidada: a regra da escola (sucesso em 2 aulas diferentes). Sem ela,
+ *  uma só aula com 3 ou 4 já aparecia como «consolidada». */
+export function estadoDoNivel(nivel?: number | null, consolidada?: boolean): EstadoComp {
   if (nivel == null || nivel === 0) return 'por_avaliar';
-  if (nivel <= 2) return 'desenvolvimento';
+  if (nivel <= 2 || consolidada === false) return 'desenvolvimento';
   if (nivel <= 4) return 'consolidado';
   return 'avancado';
 }
@@ -1281,11 +1283,11 @@ export const ORDEM_ESTADOS: EstadoComp[] = [
 ];
 
 export function agruparPorEstado(
-  comps: { id: string; nome: string; nivel?: number | null }[]
+  comps: { id: string; nome: string; nivel?: number | null; consolidada?: boolean }[]
 ): { estado: EstadoComp; itens: CompComEstado[] }[] {
   const mapa = new Map<EstadoComp, CompComEstado[]>();
   for (const c of comps) {
-    const estado = estadoDoNivel(c.nivel);
+    const estado = estadoDoNivel(c.nivel, c.consolidada);
     if (!mapa.has(estado)) mapa.set(estado, []);
     mapa.get(estado)!.push({ ...c, estado });
   }
@@ -1308,13 +1310,13 @@ export function tituloGrupo(estado: EstadoComp, n: number, substantivo = 'compet
 
 /** Pontos fortes e áreas a desenvolver — o perfil profissional. */
 export function perfilProfissional(
-  comps: { id: string; nome: string; nivel?: number | null }[]
+  comps: { id: string; nome: string; nivel?: number | null; consolidada?: boolean }[]
 ): { fortes: CompComEstado[]; aDesenvolver: CompComEstado[] } {
   const com = comps
     .filter(c => c.nivel != null && c.nivel > 0)
-    .map(c => ({ ...c, estado: estadoDoNivel(c.nivel) }));
+    .map(c => ({ ...c, estado: estadoDoNivel(c.nivel, c.consolidada) }));
   return {
-    fortes: com.filter(c => c.estado === 'avancado' || (c.nivel ?? 0) === 4),
+    fortes: com.filter(c => c.consolidada !== false && (c.estado === 'avancado' || (c.nivel ?? 0) === 4)),
     aDesenvolver: com.filter(c => c.estado === 'desenvolvimento'),
   };
 }
