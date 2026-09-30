@@ -6,7 +6,7 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
 import { perguntasDe, NAO_ACONTECEU, nivelDaAtitude } from '../perguntas_atitudes';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF, getPresencas } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
@@ -176,6 +176,8 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         {aProcurar ? 'A procurar…' : 'Procurar autoavaliações agora'}
       </button>
 
+      {planoId && <QuemFalta planoId={planoId} turmaId={planos[0]?.turmaId || turmaId || ''} selecoes={selecoes} />}
+
       {/* Primeiro o que falta; o que já está validado fica por baixo, à
           parte. Antes vinha tudo junto debaixo de «pendentes». */}
       <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
@@ -232,6 +234,32 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
       </div>
     );
   }
+}
+
+/**
+ * Quantos alunos ainda não enviaram a autoavaliação desta aula, e quem
+ * (Rosa, set/2026). Contam os que entraram na aula; se ninguém tem a
+ * entrada registada, conta a turma toda.
+ */
+function QuemFalta({ planoId, turmaId, selecoes }: { planoId: string; turmaId: string; selecoes: SelecaoAluno[] }) {
+  const daTurma = getAlunos().filter(a => a.turmaId === turmaId && a.numero !== 99 && a.numero !== 88);
+  const entraram = new Set(getPresencas().filter(p => p.planoAulaId === planoId && p.presente).map(p => p.alunoId));
+  const esperados = entraram.size ? daTurma.filter(a => entraram.has(a.id)) : daTurma;
+  if (!esperados.length) return null;
+  const enviaram = new Set(selecoes.filter(s => s.planoAulaId === planoId).map(s => s.alunoId));
+  const faltam = esperados.filter(a => !enviaram.has(a.id)).sort((a, b) => a.numero - b.numero);
+  return (
+    <div style={{ background: faltam.length ? '#FFF4E0' : 'rgba(90,122,78,0.12)', border: `1.5px solid ${faltam.length ? '#E8A33D' : 'var(--sage)'}`,
+      borderRadius: 12, padding: '10px 14px', marginBottom: 12, fontSize: 14.5, lineHeight: 1.5 }}>
+      <b>{esperados.length - faltam.length} de {esperados.length}</b> {entraram.size ? 'alunos que entraram' : 'alunos da turma'} já enviaram a autoavaliação.
+      {faltam.length > 0 && (<>
+        <div style={{ fontWeight: 700, marginTop: 4 }}>Ainda não chegou de: {faltam.map(a => `${a.numero}. ${a.nome}`).join(' · ')}</div>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 4 }}>
+          Se o aluno diz que enviou, pede-lhe para abrir a aplicação com rede: a autoavaliação volta a ser enviada sozinha.
+        </div>
+      </>)}
+    </div>
+  );
 }
 
 // ── Validar autoavaliação de um aluno ────────────────────────
