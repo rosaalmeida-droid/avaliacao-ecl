@@ -120,7 +120,7 @@ export function EcraAvaliarMe({
   triado = false, bloco = 'realizacoes', onMudarBloco, anteriores, blocos,
 }: {
   ucId?: string; ucNome?: string;
-  competencias: { id: string; nome: string; nivel?: number | null }[];
+  competencias: { id: string; nome: string; nivel?: number | null; consolidada?: boolean }[];
   substantivo?: string;
   rotuloConjunto?: string;
   onAvaliar?: (id: string) => void;
@@ -139,7 +139,7 @@ export function EcraAvaliarMe({
   const grupos = agruparPorEstado(competencias);
   const porEstado = new Map(grupos.map(g => [g.estado, g.itens]));
   const total = competencias.length;
-  const trabalhadas = competencias.filter(c => estadoDoNivel(c.nivel) !== 'por_avaliar').length;
+  const trabalhadas = competencias.filter(c => estadoDoNivel(c.nivel, c.consolidada) !== 'por_avaliar').length;
 
   const ordem: EstadoComp[] = ['por_avaliar', 'consolidado', 'avancado', 'desenvolvimento'];
   const barras: [EstadoComp, number][] = [
@@ -420,7 +420,7 @@ export function EcraPerfilProfissional({
   ucId, ucNome, competencias, atitudes,
 }: {
   ucId?: string; ucNome?: string;
-  competencias: { id: string; nome: string; nivel?: number | null }[];
+  competencias: { id: string; nome: string; nivel?: number | null; consolidada?: boolean }[];
   atitudes?: { id: string; nome: string; nivel?: number | null }[];
 }) {
   const tec = perfilProfissional(competencias);

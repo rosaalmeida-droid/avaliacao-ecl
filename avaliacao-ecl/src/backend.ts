@@ -234,11 +234,16 @@ async function postar(url: string, corpo: Record<string, unknown>): Promise<void
   // enviado pela lista de espera).
   const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const t = ctl ? setTimeout(() => ctl.abort(), 90000) : null;
+  const texto = JSON.stringify(corpo);
   try {
     await fetch(url, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(corpo),
+      body: texto,
+      // O aluno envia e fecha logo a aplicação (Rosa, set/2026): com
+      // «keepalive» o envio acaba mesmo com a aplicação fechada. O
+      // navegador só o aceita para envios pequenos (até 64 KB).
+      keepalive: texto.length < 60000,
       signal: ctl?.signal,
     });
   } catch (e) { console.error('Erro Sheets:', e); }
@@ -330,12 +335,18 @@ const URGENTES = new Set(['sessao', 'fechar_sessao', 'eliminar_plano', 'eliminar
 // a segunda chega. As repetições juntam-se no script (a mais recente manda).
 const VAO_DUAS_VEZES = new Set(['presenca', 'selecao', 'avaliacao', 'grupo_membro', 'avaliacao_par']);
 
+// A autoavaliação do aluno sai logo, sem esperar pela fila nem pelo
+// pacote: o aluno submete e fecha a aplicação, e o que estava na fila
+// perdia-se (Rosa, set/2026).
+const SAEM_LOGO = new Set(['selecao', 'avaliacao_par']);
+
 async function enviar(url: string, tipo: string, dados: Record<string, unknown>, repetida = false): Promise<void> {
   if (!url) return;
   if (!repetida && url === SHEETS_ECL_URL && VAO_DUAS_VEZES.has(tipo)) {
     setTimeout(() => { emSegundoPlano(() => { enviar(url, tipo, dados, true); }); }, 10000 + Math.random() * 5000);
   }
   const corpo = { tipo, ...dados };
+  if (!repetida && !modoFundo && SAEM_LOGO.has(tipo)) return postar(url, corpo);
   if (url !== SHEETS_ECL_URL || loteSuportado !== true || URGENTES.has(tipo)) {
     if (url === SHEETS_ECL_URL && loteSuportado === null) verSeHaLote();
     return enviarAgora(url, corpo, URGENTES.has(tipo) ? 'urgente' : modoFundo ? 'fundo' : 'normal');
@@ -2161,6 +2172,10 @@ export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false
 
 export function addOrUpdatePlanoAula(p: PlanoAula): void {
   // O registo fica no fim da função, depois de gravar e enviar.
+  // Toda a gravação leva a hora: é por ela que o telemóvel do aluno aceita a
+  // correção. Antes só algumas gravações a punham, e as outras correções do
+  // professor não chegavam aos alunos (Rosa, set/2026).
+  p = { ...p, atualizadoEm: new Date().toISOString() } as PlanoAula;
   const all = getPlanosAula();
   const idx = all.findIndex(x => x.id === p.id);
   if (idx >= 0) all[idx] = p; else all.push(p);
@@ -2447,6 +2462,8 @@ export function addOrUpdateFichaProducao(f: FichaProducao): void {
     }
   }
 
+  // Data da última alteração: é por ela que o telemóvel do aluno sabe que a ficha mudou.
+  paraGravar = { ...paraGravar, atualizadoEm: new Date().toISOString() } as FichaProducao;
   guardarVersaoAnterior(paraGravar);
   if (idx >= 0) all[idx] = paraGravar; else all.push(paraGravar);
   save(KEYS.fichas, all);
@@ -7477,6 +7494,29 @@ function reenviar(p: PorConfirmar): void {
   }
 }
 
+/** Esta autoavaliação ainda não se sabe se chegou ao professor? */
+export function selecaoPorConfirmar(id: string): boolean {
+  return espera().some(x => x.tipo === 'selecao' && x.id === id);
+}
+
+/** Ao fechar ou esconder a aplicação: a autoavaliação que ainda não se
+ *  sabe se chegou vai outra vez, logo, com «keepalive» (acaba mesmo com a
+ *  aplicação fechada). As repetições juntam-se no script. */
+function enviarAntesDeFechar(): void {
+  const agora = Date.now();
+  for (const p of espera()) {
+    if (p.tipo !== 'selecao' || agora - new Date(p.desde).getTime() > 24 * 3600 * 1000) continue;
+    const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
+    if (sel) postar(SHEETS_HISTORICO_URL, { tipo: 'selecao', ...corpoSelecao(sel) });
+  }
+}
+if (typeof window !== 'undefined') {
+  let ultimo = 0;
+  const aoSair = () => { if (Date.now() - ultimo < 5000) return; ultimo = Date.now(); enviarAntesDeFechar(); };
+  window.addEventListener('pagehide', aoSair);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') aoSair(); });
+}
+
 /** Confere o que está à espera e reenvia o que não chegou. */
 /**
  * Aulas abertas neste aparelho que não estão no Sheets voltam a ser
@@ -7538,7 +7578,9 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
     const ids = noSheets.get(p.tipo);
     if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id))) { confirmados++; continue; }
-    if (p.tentativas < 5) emSegundoPlano(() => reenviar(p));
+    // A autoavaliação do aluno insiste até chegar: sem ela o professor
+    // não a vê para validar.
+    if (p.tentativas < 5 || (p.tipo === 'selecao' && p.tentativas < 60)) emSegundoPlano(() => reenviar(p));
     restantes.push({ ...p, tentativas: p.tentativas + 1 });
   }
   guardarEspera(restantes);
@@ -8220,7 +8262,19 @@ export async function lerAula(turmaId: string): Promise<boolean> {
     const nova: any = { ...f, ingredientes: Array.isArray(f.ingredientes) ? f.ingredientes : [],
       preparacao: Array.isArray(f.preparacao) ? f.preparacao : [] };
     if (i < 0) { fichas.push(nova); mudouF = true; }
-    else if (!(fichas[i].ingredientes?.length) && nova.ingredientes.length) { fichas[i] = { ...fichas[i], ...nova }; mudouF = true; }
+    else {
+      // A ficha que o professor corrigiu depois de o aluno a ter recebido
+      // tem de chegar (Rosa, set/2026): antes só se atualizava se a do aluno
+      // estivesse vazia, e as correções nunca chegavam. Nunca se troca uma
+      // ficha com conteúdo por uma vazia.
+      const loc: any = fichas[i];
+      const vazia = !nova.ingredientes.length && !nova.preparacao.length;
+      const maisRecente = String(nova.atualizadoEm || '') > String(loc.atualizadoEm || '');
+      const diferente = JSON.stringify([nova.ingredientes, nova.preparacao, nova.tecnicasSugeridas, nova.aparelhosDetectados, nova.nomePrato])
+        !== JSON.stringify([loc.ingredientes, loc.preparacao, loc.tecnicasSugeridas, loc.aparelhosDetectados, loc.nomePrato]);
+      if (!loc.ingredientes?.length && nova.ingredientes.length) { fichas[i] = { ...loc, ...nova }; mudouF = true; }
+      else if (!vazia && diferente && (maisRecente || !loc.atualizadoEm)) { fichas[i] = { ...loc, ...nova }; mudouF = true; }
+    }
   }
   if (mudouF) save(KEYS.fichas, fichas);
   // Aberturas: a mais antiga ganha; o fecho junta-se

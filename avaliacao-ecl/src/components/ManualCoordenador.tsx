@@ -99,7 +99,13 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
     const notas = regsAluno.map(r => r.nota).filter(Boolean) as number[];
     const mediaGeral = notas.length > 0 ? notas.reduce((a, b) => a + b, 0) / notas.length : 0;
     const emRecuperacao = regsAluno.filter(r => r.nota !== undefined && r.nota < 3).length;
-    const consolidadas = regsAluno.filter(r => r.nota !== undefined && r.nota >= 3).length;
+    // Competências (não avaliações) com sucesso em 2 aulas diferentes — a regra da escola.
+    const aulasComSucesso = new Map<string, Set<string>>();
+    regsAluno.filter(r => r.nota !== undefined && r.nota >= 3).forEach(r => {
+      if (!aulasComSucesso.has(r.microcompetenciaId)) aulasComSucesso.set(r.microcompetenciaId, new Set());
+      aulasComSucesso.get(r.microcompetenciaId)!.add(r.planoAulaId || r.id);
+    });
+    const consolidadas = [...aulasComSucesso.values()].filter(a => a.size >= 2).length;
     return { aluno, mediaGeral, emRecuperacao, consolidadas, total: regsAluno.length };
   });
 
@@ -292,7 +298,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                 rows={[
                   ['Introdução', '1ª vez que a competência é apresentada (trimestre definido)', 'Aluno conhece e tenta demonstrar pela primeira vez.'],
                   ['Reforço', 'Quando a UC activa uma competência já introduzida', 'Aluno demonstra com maior exigência — nível seguinte.'],
-                  ['Consolidação', 'Quando o aluno atinge nível 3 ou 4 repetidamente', 'Competência marcada como consolidada no portfólio.'],
+                  ['Consolidação', 'Quando o aluno atinge nível 3 ou mais em 2 aulas diferentes', 'Competência marcada como consolidada no portfólio.'],
                   ['Recuperação', 'Quando o aluno obtém nível 1 ou 2', 'Competência volta obrigatória ou com aviso na próxima vez.'],
                 ]}
               />

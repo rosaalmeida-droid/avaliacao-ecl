@@ -34,7 +34,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -746,7 +746,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       const nivel = Array.isArray(h) && h.length
         ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
         : null;
-      return { id, nome: r.replace(/\.$/, ''), nivel };
+      return { id, nome: r.replace(/\.$/, ''), nivel, consolidada: jaTeveSucesso(h) };
     });
   })();
 
@@ -759,6 +759,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       ? Math.max(...h.map((x: any) => x.nivel ?? x.nota ?? 0))
       : null;
   };
+  // Consolidada só com sucesso em 2 aulas diferentes (regra da escola).
+  const consolidadaDe = (id: string) => jaTeveSucesso(getHistoricoAlunoMicro(aluno.id, id));
 
   const conhecimentosDaUC = (() => {
     const ref = ucAtual ? getReferencialUC(ucAtual) : undefined;
@@ -766,7 +768,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     if (!lista?.length) return [];
     return lista.map((c, i) => {
       const id = `${ucAtual}_C${i + 1}`;
-      return { id, nome: c.replace(/\.$/, ''), nivel: nivelDe(id) };
+      return { id, nome: c.replace(/\.$/, ''), nivel: nivelDe(id), consolidada: consolidadaDe(id) };
     });
   })();
 
@@ -779,7 +781,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const atitudesDaUC = ATITUDES
     .filter(at => opcoesDeEscolhaDoAluno(aluno.ano ?? 1).includes(at.id))
     .filter(at => !anterioresIds.has(at.id))
-    .map(at => ({ id: at.id, nome: at.nome, nivel: nivelDe(at.id) }));
+    .map(at => ({ id: at.id, nome: at.nome, nivel: nivelDe(at.id), consolidada: consolidadaDe(at.id) }));
 
   // Aulas marcadas a partir de hoje — o aluno tem de as ver sem
   // depender do calendário.
@@ -803,8 +805,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   ).length;
 
   const tudoAvaliavel = [...competenciasDaUC, ...conhecimentosDaUC, ...atitudesDaUC];
-  const porAvaliar = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel) === 'por_avaliar').length;
-  const competenciasFracas = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel) === 'desenvolvimento').length;
+  const porAvaliar = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel, c.consolidada) === 'por_avaliar').length;
+  const competenciasFracas = tudoAvaliavel.filter(c => estadoDoNivel(c.nivel, c.consolidada) === 'desenvolvimento').length;
 
   // Que bloco o aluno está a ver no "Avaliar-me"
   const [blocoAvaliar, setBlocoAvaliar] = useState<'realizacoes'|'conhecimentos'|'atitudes'>('realizacoes');
@@ -923,6 +925,19 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         destino: 'atividades',
         urgente: false,
       }));
+
+    // Autoavaliação submetida que ainda não se sabe se chegou ao professor
+    // (o aluno fechou a aplicação logo a seguir): vai outra vez sozinha.
+    const aCaminho = getSelecoes().filter(s => s.alunoId === aluno.id && selecaoPorConfirmar(s.id)).length;
+    if (aCaminho > 0) {
+      av.push({
+        id: 'autoavaliacao_a_caminho',
+        titulo: 'A tua autoavaliação ainda está a caminho do professor',
+        detalhe: 'Deixa a aplicação aberta um minuto, com rede: volta a ser enviada sozinha.',
+        destino: 'inicio' as any,
+        urgente: true,
+      });
+    }
 
     // Aulas passadas em que esteve e não se autoavaliou.
     const semAuto = planosOrdenados.filter(p =>
@@ -2641,6 +2656,32 @@ function SecaoRequisicao({ requisicao, onConcluido }: { requisicao: any; onConcl
 // ─────────────────────────────────────────────────────────────
 // SECÇÃO 4 — Autoavaliação (mantida da versão anterior)
 // ─────────────────────────────────────────────────────────────
+/**
+ * O aluno submete e fecha logo a aplicação, e a autoavaliação não chegava
+ * (Rosa, set/2026). Enquanto não se confirma no Sheets que chegou, diz-lhe
+ * para não fechar e vai conferindo; quando chega, diz que chegou.
+ */
+function EstadoDoEnvio({ selecaoId }: { selecaoId: string }) {
+  const [pendente, setPendente] = useState(() => selecaoPorConfirmar(selecaoId));
+  useEffect(() => {
+    if (!pendente) return;
+    let vivo = true;
+    const ver = () => confirmarEReenviar().catch(() => null)
+      .then(() => { if (vivo) setPendente(selecaoPorConfirmar(selecaoId)); });
+    const t0 = setTimeout(ver, 4000);
+    const t = setInterval(ver, 10000);
+    return () => { vivo = false; clearTimeout(t0); clearInterval(t); };
+  }, [selecaoId, pendente]);
+  return pendente ? (
+    <div style={{ marginTop:10, background:'#FFF4E0', border:'1.5px solid #E8A33D', borderRadius:12, padding:'10px 12px',
+      fontSize:14.5, fontWeight:700, color:'#8a5a12', lineHeight:1.45 }}>
+      ⏳ A enviar ao professor… Não feches a aplicação até aparecer «Chegou ao professor».
+    </div>
+  ) : (
+    <div style={{ marginTop:10, fontSize:14.5, fontWeight:800, color:'#3E7A31' }}>✓ Chegou ao professor.</div>
+  );
+}
+
 function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   abrirLogo?: boolean;
   plano: PlanoAula; aluno: Aluno; fichas: FichaProducao[]; onConcluido: () => void;
@@ -2747,7 +2788,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     .slice(0, 8).map((id: string) => {
     const sub = encontrarSubtecnica(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
-    const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+    const avs = hist.map(h => ({nota: h.nota, data: h.data, planoAulaId: h.planoAulaId}));
     const emReg = estaEmRegressao(avs);
     const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliada' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidada';
 
@@ -2793,7 +2834,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     .slice(0, 4).map((id: string) => {
     const app = encontrarAparelho(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
-    const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+    const avs = hist.map(h => ({nota: h.nota, data: h.data, planoAulaId: h.planoAulaId}));
     const emReg = estaEmRegressao(avs);
     const estado = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca preparado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
     const ramoApp = ramoDaCompetencia(id, fichas as any[]);
@@ -2823,7 +2864,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     .filter(m => !compRemovidas.includes(m.id)).slice(0,6)
     .map(m => {
       const hist = getHistoricoAlunoMicro(aluno.id, m.id);
-      const avs = hist.map(h=>({nota:h.nota,data:h.data}));
+      const avs = hist.map(h=>({nota:h.nota,data:h.data,planoAulaId:h.planoAulaId}));
       const emReg = estaEmRegressao(avs);
       const motivo = emReg?'⚠️ Em regressão':avs.length===0?'★ Nunca avaliada':!jaTeveSucesso(avs)?'↑ Em desenvolvimento':'✓ Consolidada';
       return {...m, motivo};
@@ -2839,7 +2880,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     .map((id: string) => {
       const knw = encontrarConhecimento(id);
       const hist = getHistoricoAlunoMicro(aluno.id, id);
-      const avs = hist.map(h => ({nota: h.nota, data: h.data}));
+      const avs = hist.map(h => ({nota: h.nota, data: h.data, planoAulaId: h.planoAulaId}));
       const emReg = estaEmRegressao(avs);
       const motivo = emReg ? '⚠️ Em regressão' : avs.length === 0 ? '★ Nunca avaliado' : !jaTeveSucesso(avs) ? '↑ Em desenvolvimento' : '✓ Consolidado';
       return { id, nome: knw?.nome || id, definicao: knw?.definicao || '', motivo };
@@ -3072,6 +3113,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               {fmtDataHora(dataSubmissao)}
             </div>
           )}
+          <EstadoDoEnvio selecaoId={`sel_${plano.id}_${aluno.id}`} />
           <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:6 }}>
             {getValidacoes().some(v => v.alunoId === aluno.id && v.planoAulaId === plano.id)
               ? 'O professor já validou. A nota desta aula está no topo.'
