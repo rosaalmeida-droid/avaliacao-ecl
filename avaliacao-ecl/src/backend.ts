@@ -2161,6 +2161,10 @@ export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false
 
 export function addOrUpdatePlanoAula(p: PlanoAula): void {
   // O registo fica no fim da função, depois de gravar e enviar.
+  // Toda a gravação leva a hora: é por ela que o telemóvel do aluno aceita a
+  // correção. Antes só algumas gravações a punham, e as outras correções do
+  // professor não chegavam aos alunos (Rosa, set/2026).
+  p = { ...p, atualizadoEm: new Date().toISOString() } as PlanoAula;
   const all = getPlanosAula();
   const idx = all.findIndex(x => x.id === p.id);
   if (idx >= 0) all[idx] = p; else all.push(p);
@@ -2447,6 +2451,8 @@ export function addOrUpdateFichaProducao(f: FichaProducao): void {
     }
   }
 
+  // Data da última alteração: é por ela que o telemóvel do aluno sabe que a ficha mudou.
+  paraGravar = { ...paraGravar, atualizadoEm: new Date().toISOString() } as FichaProducao;
   guardarVersaoAnterior(paraGravar);
   if (idx >= 0) all[idx] = paraGravar; else all.push(paraGravar);
   save(KEYS.fichas, all);
@@ -8220,7 +8226,19 @@ export async function lerAula(turmaId: string): Promise<boolean> {
     const nova: any = { ...f, ingredientes: Array.isArray(f.ingredientes) ? f.ingredientes : [],
       preparacao: Array.isArray(f.preparacao) ? f.preparacao : [] };
     if (i < 0) { fichas.push(nova); mudouF = true; }
-    else if (!(fichas[i].ingredientes?.length) && nova.ingredientes.length) { fichas[i] = { ...fichas[i], ...nova }; mudouF = true; }
+    else {
+      // A ficha que o professor corrigiu depois de o aluno a ter recebido
+      // tem de chegar (Rosa, set/2026): antes só se atualizava se a do aluno
+      // estivesse vazia, e as correções nunca chegavam. Nunca se troca uma
+      // ficha com conteúdo por uma vazia.
+      const loc: any = fichas[i];
+      const vazia = !nova.ingredientes.length && !nova.preparacao.length;
+      const maisRecente = String(nova.atualizadoEm || '') > String(loc.atualizadoEm || '');
+      const diferente = JSON.stringify([nova.ingredientes, nova.preparacao, nova.tecnicasSugeridas, nova.aparelhosDetectados, nova.nomePrato])
+        !== JSON.stringify([loc.ingredientes, loc.preparacao, loc.tecnicasSugeridas, loc.aparelhosDetectados, loc.nomePrato]);
+      if (!loc.ingredientes?.length && nova.ingredientes.length) { fichas[i] = { ...loc, ...nova }; mudouF = true; }
+      else if (!vazia && diferente && (maisRecente || !loc.atualizadoEm)) { fichas[i] = { ...loc, ...nova }; mudouF = true; }
+    }
   }
   if (mudouF) save(KEYS.fichas, fichas);
   // Aberturas: a mais antiga ganha; o fecho junta-se
