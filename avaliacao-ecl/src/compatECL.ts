@@ -17,6 +17,8 @@
 import { getLibrary } from './libraryService';
 import { getReferencialUC } from './referencial811RA144';
 import { ucsEquivalentes } from './cronograma';
+import BANCO_MANUAIS from './bancoManuais.json';
+import { criterioTrabalho } from './criteriosTrabalho';
 import type { PerfilTecnico, CriterioObservavel } from './library.types';
 import type { Competencia, Categoria } from './types';
 
@@ -1058,6 +1060,11 @@ export function conhecimentosDaAula(plano: any): { id: string; texto: string }[]
 /** Aula teórica sem conhecimentos escritos: o aluno avalia o trabalho da aula. */
 export const PREFIXO_TRABALHO_AULA = 'KNW-P-HOJE-';
 
+/** O formato de um trabalho sobre o manual, avaliado como conhecimento. */
+export const NOMES_FORMATO: Record<string, string> = {
+  escrito: 'O trabalho escrito', oral: 'A apresentação oral do tema', digital: 'A apresentação digital', pratico: 'A demonstração prática',
+};
+
 /** Conhecimento escrito pelo professor (KNW-P…) ou do referencial (KNW-R…). */
 export function nomeConhecimentoProf(id: string): string | undefined {
   if (id.startsWith('KNW-R-')) {
@@ -1065,6 +1072,15 @@ export function nomeConhecimentoProf(id: string): string | undefined {
     return conhecimentosDoReferencial(resto.slice(0, j).replace(/_/g, ' '))[Number(resto.slice(j + 1))];
   }
   if (id.startsWith('KNW-P-HOJE-')) return 'O trabalho da aula';
+  // O formato de um trabalho (escrito, oral, digital, prático).
+  if (id.startsWith('KNW-P-F-')) return criterioTrabalho(id)?.nome || NOMES_FORMATO[id.slice(8)] || 'O trabalho';
+  // Indicador do manual (escolhido no plano ou pelo aluno, no tema dele).
+  const mm = /^KNW-P-M-(.+)-(\d+)-(\d+)$/.exec(id);
+  if (mm) {
+    const cap = (BANCO_MANUAIS as any)[mm[1]]?.find((c: any) => c.n === Number(mm[2]));
+    const t = cap ? (cap.objetivos[Number(mm[3])] || cap.titulo) : undefined;
+    if (t) return `${t} (cap. ${cap.n} — ${cap.titulo})`;
+  }
   if (!id.startsWith('KNW-P')) return undefined;
   try {
     const planos = JSON.parse(localStorage.getItem('ecl_planos') || '[]');

@@ -15,11 +15,12 @@ import React, { useState } from 'react';
 import type { PlanoAula } from '../types';
 import {
   addOrUpdatePlanoAula, getPlanosAula, getFichasProducao, getAlunos, getSelecoes, contextoDoPlano,
-  perguntaCODaAula, perguntaCRDaAula, pedirNovaAutoavaliacao, estadoDaTurmaNaAula, anotarNoPlano,
+  perguntaCODaAula, perguntaCRDaAula, pedirNovaAutoavaliacao, estadoDaTurmaNaAula, anotarNoPlano, gruposDaAula,
 } from '../backend';
 import {
   triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem,
-  TEXTO_ONDE, TEXTO_TRABALHO, TEXTO_TIPO, EXPLICA_TIPO, CINCO_C, tipoDe,
+  TEXTO_ONDE, TEXTO_TRABALHO, TEXTO_TIPO, EXPLICA_TIPO, CINCO_C, tipoDe, TEXTO_MODO, TEXTO_FORMATO, escolheTema,
+  type ModoTrabalho, type FormatoTrabalho,
   type TriagemAula, type OndeAula, type TrabalhoAula, type TipoAula,
 } from '../contextoAula';
 import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoDaAula';
@@ -102,6 +103,10 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     // Mudar para cozinhar leva a aula para a cozinha; teórica sai da cozinha.
     if ('tipo' in parcial && nova.cozinham && !('onde' in parcial) && nova.onde === 'sala') nova.onde = 'cozinha';
     if ('tipo' in parcial && nova.tipo === 'teorico' && nova.onde === 'cozinha') nova.onde = 'sala';
+    // O modo do trabalho decide como trabalham (as perguntas de grupo dependem disto).
+    if (parcial.modo === 'grupo') nova.trabalho = 'grupos';
+    if (parcial.modo === 'individual') nova.trabalho = 'individual';
+    if (nova.tipo === 'pratico' || nova.tipo === 'atitudinal') { delete nova.modo; delete nova.formatos; }
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const novo: any = { ...atual, triagemAula: nova };
     // O tipo da aula (os pesos da nota) e a farda e os registos acompanham a
@@ -126,6 +131,8 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
         novo.compRemovidas = [...tiradas];
       }
     }
+    // Trabalho de grupo: os alunos formam os grupos na aplicação.
+    if (nova.modo === 'grupo' && !novo.gruposAlunos?.ativo) novo.gruposAlunos = { ativo: true, tamanho: novo.gruposAlunos?.tamanho || 4 };
     addOrUpdatePlanoAula(novo);
     onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || novo);
   }
@@ -170,6 +177,26 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
           )}
         </div>
       </div>
+      {/* Teórica ou mista: como se trabalha o manual, e o formato do trabalho. */}
+      {(tipo === 'teorico' || tipo === 'misto') && (
+        <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Pergunta titulo="Como se trabalha o manual?">
+            {(['professor', 'grupo', 'individual'] as ModoTrabalho[]).map(m => (
+              <Opcao key={m} ativo={!!definida && (valor.modo || 'professor') === m} onClick={() => gravar({ modo: m })}>{TEXTO_MODO[m]}</Opcao>
+            ))}
+          </Pergunta>
+          {escolheTema(valor) && (
+            <Pergunta titulo="Como se apresenta o trabalho? (podes escolher vários)">
+              {(['escrito', 'oral', 'digital', 'pratico'] as FormatoTrabalho[]).map(f => {
+                const on = (valor.formatos || []).includes(f);
+                return <Opcao key={f} ativo={!!definida && on} onClick={() => gravar({ formatos: on
+                  ? (valor.formatos || []).filter(x => x !== f) : [...(valor.formatos || []), f] })}>{TEXTO_FORMATO[f]}</Opcao>;
+              })}
+            </Pergunta>
+          )}
+          {definida && escolheTema(valor) && <AvisoDoTrabalho plano={plano} triagem={valor} />}
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px 26px' }}>
         <Pergunta titulo="Onde é?">
           {(['cozinha', 'sala', 'fora'] as OndeAula[]).map(o => (
@@ -194,6 +221,33 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
           {fraseDaAula(valor)}
         </div>
       )}
+    </div>
+  );
+}
+
+/** O que é importante num trabalho sobre o manual, logo à vista (Rosa, out/2026). */
+function AvisoDoTrabalho({ plano, triagem }: { plano: PlanoAula; triagem: TriagemAula }) {
+  const alunos = getAlunos().filter(a => a.turmaId === plano.turmaId && a.ativo !== false);
+  const grupos = triagem.modo === 'grupo' ? gruposDaAula(plano.id) : [];
+  const emGrupo = new Set(grupos.flatMap(g => g.membros.map(m => m.alunoId)));
+  const semGrupo = alunos.filter(a => !emGrupo.has(a.id));
+  const linhas: { ok: boolean; texto: string }[] = [];
+  if (triagem.modo === 'grupo') {
+    linhas.push({ ok: grupos.length > 0 && semGrupo.length === 0,
+      texto: grupos.length ? `Grupos: ${grupos.length} formados · ${semGrupo.length ? `${semGrupo.length} alunos ainda sem grupo` : 'todos os alunos têm grupo'}`
+        : 'Grupos: os alunos formam-nos na aplicação (separador «Grupos»)' });
+    linhas.push({ ok: true, texto: 'Tema: cada grupo diz na autoavaliação o conteúdo do manual que investigou' });
+  } else {
+    linhas.push({ ok: true, texto: 'Tema: cada aluno diz na autoavaliação o conteúdo do manual que escolheu para defender' });
+  }
+  const f = triagem.formatos || [];
+  linhas.push({ ok: f.length > 0, texto: f.length ? `Formato: ${f.map(x => TEXTO_FORMATO[x].toLowerCase()).join(', ')} — o aluno avalia-se em cada um`
+    : 'Formato: escolhe acima como se apresenta o trabalho' });
+  return (
+    <div style={{ background: C.azulP, borderRadius: 10, padding: '10px 14px', fontSize: 14, lineHeight: 1.55 }}>
+      {linhas.map((l, i) => (
+        <div key={i}><b style={{ color: l.ok ? C.verde : C.ambar }}>{l.ok ? '✓' : '!'}</b> {l.texto}</div>
+      ))}
     </div>
   );
 }

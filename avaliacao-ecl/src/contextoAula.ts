@@ -29,7 +29,29 @@ export interface TriagemAula {
   servico: boolean;
   /** Trabalham com o manual (aula teórica com o Manual do Aluno)? */
   manual?: boolean;
+  /** Teórica ou mista: como se trabalha o manual. */
+  modo?: ModoTrabalho;
+  /** Num trabalho (de grupo ou individual): como se apresenta. */
+  formatos?: FormatoTrabalho[];
 }
+
+// ── Trabalhos sobre o manual (Rosa, out/2026) ─────────────────
+// Aula dada pelo professor (todos o mesmo conteúdo), trabalho de grupo
+// (cada grupo investiga um tema) ou trabalho individual (cada aluno escolhe
+// um tema do manual para defender). No trabalho, o aluno diz na
+// autoavaliação o tema que escolheu, e avalia-se também no formato.
+export type ModoTrabalho = 'professor' | 'grupo' | 'individual';
+export type FormatoTrabalho = 'escrito' | 'oral' | 'digital' | 'pratico';
+export const TEXTO_MODO: Record<ModoTrabalho, string> = {
+  professor: 'Aula dada por mim (todos o mesmo conteúdo)',
+  grupo: 'Trabalho de grupo (cada grupo um tema)',
+  individual: 'Trabalho individual (cada aluno escolhe o tema)',
+};
+export const TEXTO_FORMATO: Record<FormatoTrabalho, string> = {
+  escrito: 'Escrito', oral: 'Apresentação oral', digital: 'Digital (apresentação, vídeo…)', pratico: 'Prático (demonstração)',
+};
+/** O aluno escolhe o tema (um conteúdo do manual) na autoavaliação. */
+export const escolheTema = (t: TriagemAula | null) => !!t && (t.modo === 'grupo' || t.modo === 'individual');
 
 /** O que uma pergunta precisa que a aula tenha para fazer sentido. */
 export type Requisito = 'cozinha' | 'producao' | 'equipa' | 'colegas';

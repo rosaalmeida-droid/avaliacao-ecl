@@ -57,6 +57,14 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
     linhas.push(atitudes.length ? `Dinâmica de grupo: ${lista(atitudes.map(minuscula))}.` : 'Dinâmica de grupo e trabalho de atitudes.');
   }
 
+  // Trabalho sobre o manual com tema escolhido.
+  if (t && (t.modo === 'individual' || t.modo === 'grupo')) {
+    const formatos = (t.formatos || []).map(f => ({ escrito: 'trabalho escrito', oral: 'apresentação oral', digital: 'apresentação digital', pratico: 'demonstração prática' } as Record<string, string>)[f]);
+    linhas.push(t.modo === 'individual'
+      ? `Trabalho individual: cada aluno escolheu um tema do Manual do Aluno para defender${formatos.length ? ` (${lista(formatos)})` : ''}.`
+      : `Trabalho de investigação em grupo sobre temas do Manual do Aluno${formatos.length ? ` (${lista(formatos)})` : ''}.`);
+    return linhas.join('\n');
+  }
   // Como se trabalhou.
   if (t) {
     const como = t.trabalho === 'grupos' ? 'Trabalho em grupos' : t.trabalho === 'individual' ? 'Trabalho individual' : 'Trabalho com a turma toda';
