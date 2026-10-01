@@ -10,11 +10,18 @@
 
 export type OndeAula = 'cozinha' | 'sala' | 'fora';
 export type TrabalhoAula = 'grupos' | 'individual' | 'turma';
+/** O tipo de aula, que o professor diz primeiro (Rosa, out/2026): é ele que
+ *  decide se há farda e higiene e segurança alimentar, e os pesos da nota. */
+export type TipoAula = 'pratico' | 'misto' | 'teorico' | 'atitudinal';
 
 export interface TriagemAula {
+  /** Prática, mista, teórica ou atitudinal (sem ele, deduz-se de «cozinham»). */
+  tipo?: TipoAula;
+  /** Numa aula atitudinal: avalia-se a farda? (prática e mista: sempre; teórica: nunca). */
+  farda?: boolean;
   /** Onde é a aula: na cozinha da escola, numa sala, ou fora da escola (visita, evento). */
   onde: OndeAula;
-  /** Os alunos cozinham (há fichas e produção)? */
+  /** Os alunos cozinham (prática ou mista)? Acompanha o tipo. */
   cozinham: boolean;
   /** Como trabalham: em grupos (equipas), cada um sozinho, ou a turma toda junta. */
   trabalho: TrabalhoAula;
@@ -41,6 +48,21 @@ export interface ContextoAula {
   definido: boolean;
 }
 
+export const TEXTO_TIPO: Record<TipoAula, string> = {
+  pratico: 'Prática', misto: 'Mista', teorico: 'Teórica', atitudinal: 'Atitudinal',
+};
+export const EXPLICA_TIPO: Record<TipoAula, string> = {
+  pratico: 'Produção na cozinha, com fichas',
+  misto: 'Teoria e produção',
+  teorico: 'Conhecimentos (manual)',
+  atitudinal: 'Dinâmicas e atitudes',
+};
+
+/** O tipo da aula: o que o professor escolheu, ou (triagens antigas) pelo «cozinham». */
+export function tipoDe(t: TriagemAula): TipoAula {
+  return t.tipo || (t.cozinham ? 'pratico' : t.manual ? 'teorico' : 'atitudinal');
+}
+
 export const TEXTO_ONDE: Record<OndeAula, string> = {
   cozinha: 'Cozinha da escola', sala: 'Sala de aula', fora: 'Fora da escola',
 };
@@ -61,7 +83,8 @@ export function triagemDoPlano(plano: any): TriagemAula | null {
 export function contextoDaAula(plano: any, temGrupos = false): ContextoAula {
   const t = triagemDoPlano(plano);
   if (t) {
-    const producao = !!t.cozinham;
+    const tipo = tipoDe(t);
+    const producao = tipo === 'pratico' || tipo === 'misto';
     return {
       // Cozinhar é sempre numa cozinha, mesmo fora da escola (um evento).
       cozinha: t.onde === 'cozinha' || producao,
@@ -96,15 +119,24 @@ export function porqueNao(requisitos: Requisito[] | undefined, ctx: ContextoAula
  *  farda a contar). */
 export function tipoDaTriagem(t: TriagemAula, temConhecimentos: boolean, tipoAtual?: string):
   'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr' {
+  if (t.tipo) {
+    if (t.tipo === 'atitudinal') return obrigatoriasDaTriagem(t).farda ? 'atitudinal_obr' : 'atitudinal';
+    return t.tipo;
+  }
+  // Triagens antigas, sem o tipo.
   if (t.cozinham) return tipoAtual === 'misto' ? 'misto' : 'pratico';
   if (temConhecimentos || t.manual) return 'teorico';
   return t.onde === 'cozinha' ? 'atitudinal_obr' : 'atitudinal';
 }
 
-/** A farda conta quando a aula é na cozinha ou se cozinha; os registos do
- *  KitchenFlow, só quando se cozinha. */
+/** Farda e higiene e segurança alimentar, pelo tipo de aula: na prática e na
+ *  mista avaliam-se as duas; na teórica nenhuma; na atitudinal só a farda,
+ *  se o professor quiser. Os registos do KitchenFlow só quando se cozinha. */
 export function obrigatoriasDaTriagem(t: TriagemAula): { farda: boolean; registos: boolean } {
-  return { farda: t.onde === 'cozinha' || t.cozinham, registos: t.cozinham };
+  const tipo = tipoDe(t);
+  if (tipo === 'pratico' || tipo === 'misto') return { farda: true, registos: true };
+  if (tipo === 'teorico') return { farda: false, registos: false };
+  return { farda: t.farda ?? t.onde === 'cozinha', registos: false };
 }
 
 // ── Peso de cada aula na nota do módulo ───────────────────────

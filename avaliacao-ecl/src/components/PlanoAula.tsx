@@ -54,7 +54,7 @@ import { FecharUC } from './FecharUC';
 import { modulosDaTurma as modulosParaPauta } from '../cronograma';
 
 const TIPOS_ATIVIDADE = [
-  'Aula prática','Almoço pedagógico','Jantar pedagógico','Brunch',
+  'Aula prática','Aula mista','Aula teórica','Dinâmica de grupo — atitudes','Almoço pedagógico','Jantar pedagógico','Brunch',
   'Pequeno-almoço','Coffee break','Serviço real à carta','Catering',
   'Buffet','Evento externo','Concurso','Atividade fora da escola','Outro',
 ];
@@ -1304,7 +1304,10 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
             ] as const).map(opt => (
               <button key={opt.v} type="button" onClick={() => {
                   setD('tipoPlanAula', opt.v);
-                  if (opt.v === 'atitudinal') setD('tipoAtividade', 'Dinâmica de grupo — atitudes');
+                  // O nome da atividade (e o título do plano) acompanha o tipo: uma
+                  // aula teórica chamava-se «Aula prática» (Rosa, out/2026).
+                  const nomes: Record<string, string> = { pratico: 'Aula prática', misto: 'Aula mista', teorico: 'Aula teórica', atitudinal: 'Dinâmica de grupo — atitudes' };
+                  if (Object.values(nomes).includes(dados.tipoAtividade)) setD('tipoAtividade', nomes[opt.v]);
                 }}
                 style={{ flex: '1 1 120px', padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
                   border: `2px solid ${dados.tipoPlanAula === opt.v ? 'var(--copper)' : 'var(--border)'}`,
