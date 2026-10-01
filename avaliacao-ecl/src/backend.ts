@@ -6,7 +6,7 @@
 
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo } from './triagem5c';
-import { contextoDaAula, type ContextoAula } from './contextoAula';
+import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
 import { notaDaPautaUC } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
@@ -6413,15 +6413,17 @@ export function notaDaAulaValidada(v: any): number | null {
 }
 
 /**
- * A nota de um aluno num conjunto de aulas: a média das aulas, todas com o
- * mesmo peso, cada uma com a sua validação mais recente. É a mesma conta da
- * nota do módulo, sem faltas nem bónus.
+ * A nota de um aluno num conjunto de aulas: a média das aulas, cada uma pelo
+ * peso da sua aula (pesoNoModulo) e com a sua validação mais recente. É a
+ * mesma conta da nota do módulo, sem faltas nem bónus.
  */
 export function mediaDasAulasValidadas(alunoId: string, planosIds: Iterable<string>, validacoes: Validacao[] = getValidacoes()): number | null {
+  const planos = new Map(getPlanosAula().map(p => [p.id, p]));
   const notas = [...new Set(planosIds)]
-    .map(id => notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoes)))
-    .filter((n): n is number => n !== null);
-  return notas.length ? Math.round((notas.reduce((s, n) => s + n, 0) / notas.length) * 10) / 10 : null;
+    .map(id => ({ nota: notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoes)), peso: pesoNoModulo(planos.get(id)) }))
+    .filter((x): x is { nota: number; peso: number } => x.nota !== null);
+  const peso = notas.reduce((s, x) => s + x.peso, 0);
+  return peso ? Math.round((notas.reduce((s, x) => s + x.nota * x.peso, 0) / peso) * 10) / 10 : null;
 }
 
 /** Nota das competências (0–20) a partir de registos já filtrados. */
@@ -6691,10 +6693,12 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
   const regsNota = regs.map(r => semFarda.has(r.planoAulaId || '') && categoriaDe(r.microcompetenciaId) === 'SUB'
     ? { ...r, nota: 1 } : r);
   void regsNota;
-  // A média dos planos avaliados, todos com o mesmo peso (Rosa, set/2026).
-  // Antes juntavam-se as competências todas: um plano com o dobro das
-  // competências pesava o dobro.
-  const faltados = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id));
+  // A média dos planos avaliados, cada um pelo peso da sua aula (Rosa,
+  // out/2026): as aulas com técnicas ou conhecimentos contam uma aula
+  // inteira, as só de atitudes meia (pesoNoModulo). Antes juntavam-se as
+  // competências todas: um plano com o dobro das competências pesava o dobro.
+  const faltadosPlanos = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
+  const faltados = new Set(faltadosPlanos.map(p => p.id));
   const planosUC = new Map(getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento)
     .map(p => [p.id, p]));
   // Uma validação por aula: a mais recente. Quem respondeu duas vezes tinha
@@ -6702,12 +6706,14 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
   const validacoesAluno = getValidacoes().filter((v: any) => v.alunoId === alunoId);
   const notasAulas = [...new Set(validacoesAluno.map((v: any) => v.planoAulaId as string))]
     .filter(id => planosUC.has(id) && !faltados.has(id))
-    .map(id => notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoesAluno)))
-    .filter((n): n is number => n !== null);
-  const base = notasAulas.length ? notasAulas.reduce((s, n) => s + n, 0) / notasAulas.length : null;
+    .map(id => ({ nota: notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoesAluno)), peso: pesoNoModulo(planosUC.get(id)) }))
+    .filter((x): x is { nota: number; peso: number } => x.nota !== null);
+  const pesoAulas = notasAulas.reduce((s, x) => s + x.peso, 0);
+  const base = pesoAulas ? notasAulas.reduce((s, x) => s + x.nota * x.peso, 0) / pesoAulas : null;
   const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
+  const pesoFaltas = faltadosPlanos.reduce((s, p) => s + pesoNoModulo(p), 0);
   const comFaltas = faltados.size
-    ? Math.round((((base ?? 0) * notasAulas.length + recup * faltados.size) / (notasAulas.length + faltados.size)) * 100) / 100
+    ? Math.round((((base ?? 0) * pesoAulas + recup * pesoFaltas) / (pesoAulas + pesoFaltas)) * 100) / 100
     : base === null ? null : Math.round(base * 100) / 100;
   return aplicarBonusesUC(comFaltas, alunoId, turmaId, ucId);
 }

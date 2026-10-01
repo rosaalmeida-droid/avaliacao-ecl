@@ -89,12 +89,40 @@ export function porqueNao(requisitos: Requisito[] | undefined, ctx: ContextoAula
     : '';
 }
 
-/** O tipo de aula (pesos da nota) que a triagem pede. Sem cozinhar, há
- *  conhecimentos → teórica; sem nada disso → só atitudes. */
+/** O tipo de aula (pesos da nota) que a triagem pede. Sem cozinhar: com
+ *  conhecimentos → teórica; sem eles → só atitudes (na cozinha, com a
+ *  farda a contar). */
 export function tipoDaTriagem(t: TriagemAula, temConhecimentos: boolean, tipoAtual?: string):
   'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr' {
   if (t.cozinham) return tipoAtual === 'misto' ? 'misto' : 'pratico';
-  return temConhecimentos ? 'teorico' : 'atitudinal';
+  if (temConhecimentos) return 'teorico';
+  return t.onde === 'cozinha' ? 'atitudinal_obr' : 'atitudinal';
+}
+
+/** A farda conta quando a aula é na cozinha ou se cozinha; os registos do
+ *  KitchenFlow, só quando se cozinha. */
+export function obrigatoriasDaTriagem(t: TriagemAula): { farda: boolean; registos: boolean } {
+  return { farda: t.onde === 'cozinha' || t.cozinham, registos: t.cozinham };
+}
+
+// ── Peso de cada aula na nota do módulo ───────────────────────
+// Uma aula técnica vale mais do que uma aula só de atitudes (Rosa,
+// out/2026): as práticas, mistas e teóricas contam uma aula inteira; as
+// que não têm técnicas nem conhecimentos (só atitudes, uma visita) contam
+// meia. O professor pode mudar o peso de cada aula no plano.
+export const PESO_NO_MODULO_POR_TIPO: Record<string, number> = {
+  pratico: 1, misto: 1, teorico: 1, atitudinal: 0.5, atitudinal_obr: 0.5,
+};
+export const OPCOES_PESO_NO_MODULO = [0.5, 1] as const;
+
+export function pesoNoModulo(plano: any): number {
+  const escolhido = Number(plano?.pesoNoModulo);
+  if (escolhido > 0) return escolhido;
+  return PESO_NO_MODULO_POR_TIPO[String(plano?.tipoPlanAula || 'pratico')] ?? 1;
+}
+
+export function textoPeso(p: number): string {
+  return p === 0.5 ? '½ aula' : p === 1 ? '1 aula inteira' : `${String(p).replace('.', ',')} aulas`;
 }
 
 // ── Os 5 C — o que cada pergunta trabalha ─────────────────────
