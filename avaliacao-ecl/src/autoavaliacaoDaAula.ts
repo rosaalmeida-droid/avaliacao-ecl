@@ -10,7 +10,7 @@ import type { PlanoAula, FichaProducao } from './types';
 import { PESOS_AULA } from './types';
 import {
   codigosDasLinhas, codigoDaLinha, tecnicasDeRecurso, conhecimentosDaAula, encontrarConhecimento,
-  atitudesDoTrimestre, ATITUDES, encontrarSubtecnica, encontrarAparelho, ramoDaCompetencia,
+  atitudesDoTrimestre, ATITUDES, encontrarSubtecnica, encontrarAparelho, ramoDaCompetencia, PREFIXO_TRABALHO_AULA,
 } from './compatECL';
 import { trimestreAtual } from './datas';
 import { opcoesDeEscolhaDoAluno } from './motorAvaliacao';
@@ -19,7 +19,7 @@ import {
   temPerguntas, atitudeAplicavel, perguntasAplicaveis, perguntasDe, porqueNaoSeFaz,
 } from './perguntas_atitudes';
 import { perguntasDaAula, CL_SEMPRE } from './triagem5c';
-import { porqueNao, type ContextoAula, type Letra5CAluno } from './contextoAula';
+import { porqueNao, triagemDoPlano, type ContextoAula, type Letra5CAluno } from './contextoAula';
 
 /** Quantas atitudes o aluno vê para escolher, antes de pedir a lista toda. */
 export const MAX_ATITUDES_PARA_ESCOLHER = 3;
@@ -28,6 +28,8 @@ export interface RegrasAutoavaliacao {
   ctx: ContextoAula;
   tipoPlanAula: string;
   ehAtitudinal: boolean;
+  /** Trabalham com o manual: os conhecimentos perguntam pelos exercícios do manual. */
+  manual: boolean;
   /** Subtécnicas e preparações base das fichas (sem as retiradas). */
   subIds: string[];
   appIds: string[];
@@ -82,6 +84,12 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     if (!compRemovidas.includes(k.id) && !conhecimentos.some(c => c.id === k.id))
       conhecimentos.push({ id: k.id, nome: k.texto, definicao: '' });
   }
+  // Aula teórica sem nada escrito pelo professor: avalia-se o trabalho da
+  // aula (com o sumário à frente), e não as linhas do referencial.
+  const manual = !!triagemDoPlano(p)?.manual;
+  if (!ehAtitudinal && (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto') && conhecimentos.length === 0)
+    conhecimentos.push({ id: PREFIXO_TRABALHO_AULA + p.id, nome: manual ? 'O trabalho de hoje no manual' : 'O trabalho de hoje',
+      definicao: String(p.sumario || '') });
 
   const evento = !!p.tipoEvento;
   const aplicavel = (id: string) => atitudeAplicavel(id, ctx, evento);
@@ -105,7 +113,7 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     .slice(0, MAX_ATITUDES_PARA_ESCOLHER);
 
   return {
-    ctx, tipoPlanAula, ehAtitudinal,
+    ctx, tipoPlanAula, ehAtitudinal, manual,
     subIds, appIds, recursoIds, conhecimentos,
     atitudesDaAula, atitudesParaEscolher, atitudesPermitidas,
     escolheAtitude: !ehAtitudinal && atitudesParaEscolher.length > 0,
@@ -186,8 +194,12 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
     for (const s of subs.filter(s => !apps.includes(doApp(s) || '')))
       ecras.push({ tipo: 'tecnica', rotulo: 'Técnica', nome: encontrarSubtecnica(s)?.nome || s, perguntas: [], porque: daFicha(s), c: 'cp' });
     if (R.subIds.length > 8) fora.push({ nome: `${R.subIds.length - 8} técnicas a mais`, motivo: 'o aluno responde no máximo a 8' });
-    for (const k of R.conhecimentos)
-      ecras.push({ tipo: 'conhecimento', rotulo: 'Conhecimento', nome: k.nome, perguntas: [], porque: 'marcado no plano', c: 'cp' });
+    for (const k of R.conhecimentos) {
+      const geral = k.id.startsWith(PREFIXO_TRABALHO_AULA);
+      ecras.push({ tipo: 'conhecimento', rotulo: 'Conhecimento', nome: k.nome, perguntas: [],
+        porque: geral ? 'não escreveste o que se trabalhou: o aluno avalia o trabalho da aula (escreve-o no passo 2)'
+          : 'escrito por ti no passo 2', c: 'cp' });
+    }
     for (const id of R.recursoIds)
       ecras.push({ tipo: 'tecnica', rotulo: 'Técnica', nome: (encontrarSubtecnica(id) as any)?.nome || id, perguntas: [], porque: 'técnica da UC (as fichas não têm técnicas)', c: 'cp' });
   } else if (R.subIds.length || R.appIds.length) {

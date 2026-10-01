@@ -71,10 +71,10 @@ function Pergunta({ titulo, children }: { titulo: string; children: React.ReactN
 
 /** A frase que resume a aula: «Aula prática, em grupos, na cozinha, com serviço». */
 export function fraseDaAula(t: TriagemAula): string {
-  const tipo = t.cozinham ? 'Aula prática' : t.onde === 'fora' ? 'Visita ou atividade fora da escola' : 'Aula sem cozinhar';
+  const tipo = t.cozinham ? 'Aula prática' : t.onde === 'fora' ? 'Visita ou atividade fora da escola' : t.manual ? 'Aula teórica' : 'Aula sem cozinhar';
   const como = t.trabalho === 'grupos' ? 'em grupos' : t.trabalho === 'individual' ? 'cada um sozinho' : 'a turma toda junta';
   const onde = t.onde === 'cozinha' ? 'na cozinha' : t.onde === 'sala' ? 'na sala' : 'fora da escola';
-  return `${tipo}, ${como}${t.onde === 'fora' && !t.cozinham ? '' : `, ${onde}`}${t.servico ? ', com serviço' : ''}.`;
+  return `${tipo}, ${como}${t.onde === 'fora' && !t.cozinham ? '' : `, ${onde}`}${t.manual ? ', com o manual' : ''}${t.servico ? ', com serviço' : ''}.`;
 }
 
 // ── 1. Como é esta aula ───────────────────────────────────────
@@ -99,7 +99,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
       const temKnw = conhecimentosDaAula(atual).length > 0
         || ((atual.compAdicionadas || []) as string[]).some(id => id.startsWith('KNW-'));
       novo.tipoPlanAula = tipoDaTriagem(nova, temKnw, atual.tipoPlanAula);
-      if ('onde' in parcial || 'cozinham' in parcial || !definida) {
+      if ('onde' in parcial || 'cozinham' in parcial || 'manual' in parcial || !definida) {
         const ob = obrigatoriasDaTriagem(nova);
         const tiradas = new Set<string>(atual.compRemovidas || []);
         if (ob.farda) tiradas.delete('OBR_01'); else tiradas.add('OBR_01');
@@ -115,7 +115,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
   return (
     <div style={{ ...cartao, ...(definida ? {} : { border: `2px solid ${C.ambarL}` }) }}>
       <CabecalhoPasso n={1} titulo="Como é esta aula?"
-        sub="Quatro perguntas. O que o aluno responde e o que conta para a nota sai daqui." />
+        sub="Cinco perguntas. O que o aluno responde e o que conta para a nota sai daqui." />
       {!definida && (
         <div style={{ background: C.ambarP, color: '#5C3A08', borderRadius: 10, padding: '10px 14px', fontSize: 14, marginBottom: 14, lineHeight: 1.5 }}>
           <b>Ainda não respondeste.</b> Isto é o que a aplicação deduziu do plano. Confirma ou muda — sem isto
@@ -144,6 +144,10 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
         <Pergunta titulo="Há serviço a clientes?">
           <Opcao ativo={!!definida && valor.servico} onClick={() => gravar({ servico: true })}>Sim (almoço, evento)</Opcao>
           <Opcao ativo={!!definida && !valor.servico} onClick={() => gravar({ servico: false })}>Não</Opcao>
+        </Pergunta>
+        <Pergunta titulo="Trabalham com o manual?">
+          <Opcao ativo={!!definida && !!valor.manual} onClick={() => gravar({ manual: true })}>Sim</Opcao>
+          <Opcao ativo={!!definida && !valor.manual} onClick={() => gravar({ manual: false })}>Não</Opcao>
         </Pergunta>
       </div>
       <div style={{ background: C.fundo, borderRadius: 12, padding: '11px 14px', marginTop: 14, fontSize: 14.5, lineHeight: 1.55,

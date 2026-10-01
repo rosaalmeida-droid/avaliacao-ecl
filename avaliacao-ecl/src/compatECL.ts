@@ -1043,20 +1043,20 @@ export function conhecimentosDoReferencial(ucId?: string): string[] {
 }
 
 /**
- * Os conhecimentos que se avaliam nesta aula.
- * - Se o professor escolheu (conhecimentosProf), são esses.
- * - Senão, numa aula teórica ou mista, os do referencial da UC.
- * - Numa aula prática ou atitudinal, nenhuns (só se o professor os juntar).
- * Antes vinham os seis primeiros da biblioteca inteira, sem relação com a
- * UC («a massa folhada está crocante» numa aula de conhecimentos).
+ * Os conhecimentos que se avaliam nesta aula: os que o professor escreveu
+ * ou escolheu (conhecimentosProf) — o que se trabalhou nesta aula.
+ * Antes, sem escolha do professor, uma aula teórica mandava ao aluno as
+ * linhas TODAS do referencial da UC («Vocabulário técnico.»,
+ * «Receituário.», «Legislação reguladora…»), sem relação com a aula
+ * nem com o manual (Rosa, out/2026). O referencial fica só como sugestão
+ * para o professor.
  */
 export function conhecimentosDaAula(plano: any): { id: string; texto: string }[] {
-  if (Array.isArray(plano?.conhecimentosProf)) return plano.conhecimentosProf;
-  const tipo = plano?.tipoPlanAula || ((plano?.fichasIds || []).length ? 'pratico' : 'teorico');
-  if (tipo !== 'teorico' && tipo !== 'misto') return [];
-  const uc = String(plano?.ucId || '');
-  return conhecimentosDoReferencial(uc).map((t, i) => ({ id: `KNW-R-${uc.replace(/\s+/g, '_')}-${i}`, texto: t }));
+  return Array.isArray(plano?.conhecimentosProf) ? plano.conhecimentosProf : [];
 }
+
+/** Aula teórica sem conhecimentos escritos: o aluno avalia o trabalho da aula. */
+export const PREFIXO_TRABALHO_AULA = 'KNW-P-HOJE-';
 
 /** Conhecimento escrito pelo professor (KNW-P…) ou do referencial (KNW-R…). */
 export function nomeConhecimentoProf(id: string): string | undefined {
@@ -1064,6 +1064,7 @@ export function nomeConhecimentoProf(id: string): string | undefined {
     const resto = id.slice(6), j = resto.lastIndexOf('-');
     return conhecimentosDoReferencial(resto.slice(0, j).replace(/_/g, ' '))[Number(resto.slice(j + 1))];
   }
+  if (id.startsWith('KNW-P-HOJE-')) return 'O trabalho da aula';
   if (!id.startsWith('KNW-P')) return undefined;
   try {
     const planos = JSON.parse(localStorage.getItem('ecl_planos') || '[]');

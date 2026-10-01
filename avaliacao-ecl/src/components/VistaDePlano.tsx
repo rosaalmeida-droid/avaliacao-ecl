@@ -18,7 +18,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
@@ -1640,6 +1640,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <CabecalhoPasso n={2} titulo="O que se faz"
         sub="O sumário e as fichas. As técnicas saem das fichas (em «O que este plano tem», mais abaixo)." />
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
+      {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && (
+        <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      )}
       <PassoOQueSeAvalia plano={plano} />
       <PassoEnviar plano={plano} onPlanoActualizado={onPlanoActualizado} />
       {temOrganizacao(plano) && (
@@ -2488,8 +2492,10 @@ function ResultadosConcurso({ plano, alunos, participantes, gravar, bt }: {
 // autoavalia-se em cada um e o professor valida, como nas técnicas.
 function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
   const [texto, setTexto] = React.useState('');
-  // Aula teórica ou mista sem escolha do professor: os do referencial da UC.
+  // O que o professor escreveu ou escolheu. O referencial é só sugestão:
+  // as linhas dele não dizem ao aluno o que se fez na aula.
   const lista: { id: string; texto: string }[] = conhecimentosDaAula(plano);
+  const comManual = !!(plano as any).triagemAula?.manual;
   const sugestoes = conhecimentosDoReferencial(plano.ucId).filter(t => !lista.some(l => l.texto === t));
   const gravar = (nova: { id: string; texto: string }[]) => {
     const p = { ...plano, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
@@ -2498,8 +2504,12 @@ function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; o
   const juntar = (t: string) => { const tt = t.trim(); if (!tt) return; gravar([...lista, { id: 'KNW-P' + Date.now(), texto: tt }]); setTexto(''); };
   return (
     <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
-      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8', marginBottom: 6 }}>📚 Conhecimentos a avaliar nesta aula</div>
-      {lista.length === 0 && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 6 }}>Nenhum ainda. Escolhe das sugestões do referencial ou escreve o teu.</div>}
+      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8', marginBottom: 6 }}>📚 O que se trabalhou hoje{comManual ? ' no manual' : ''}</div>
+      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 6, lineHeight: 1.45 }}>
+        O aluno autoavalia-se em cada um{comManual ? ', pelos exercícios do manual que fez' : ''}. Escreve como o aluno o reconhece
+        (ex.: «Classificar os fundos de cozinha — manual, cap. 2»).
+      </div>
+      {lista.length === 0 && <div style={{ fontSize: 13, color: '#8a4a15', marginBottom: 6 }}>Nada escrito: o aluno avalia só «o trabalho de hoje», com o sumário à frente.</div>}
       {lista.map(k => (
         <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 13.5 }}>
           <span style={{ flex: 1 }}>● {k.texto}</span>
@@ -2509,7 +2519,8 @@ function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; o
       ))}
       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
         <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') juntar(texto); }}
-          placeholder="Escreve um conhecimento (ex.: Identificar os cortes do porco)" className="input" style={{ flex: 1, fontSize: 13.5 }} />
+          placeholder={comManual ? 'O que trabalharam (ex.: Classificar os fundos — cap. 2)' : 'Escreve um conhecimento (ex.: Identificar os cortes do porco)'}
+          className="input" style={{ flex: 1, fontSize: 13.5 }} />
         <button onClick={() => juntar(texto)} className="btn btn-primary" style={{ fontSize: 13.5 }}>+ Juntar</button>
       </div>
       {sugestoes.length > 0 && (

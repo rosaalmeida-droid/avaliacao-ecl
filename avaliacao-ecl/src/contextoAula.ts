@@ -20,6 +20,8 @@ export interface TriagemAula {
   trabalho: TrabalhoAula;
   /** Há serviço a clientes (almoço pedagógico, evento)? */
   servico: boolean;
+  /** Trabalham com o manual (aula teórica com o Manual do Aluno)? */
+  manual?: boolean;
 }
 
 /** O que uma pergunta precisa que a aula tenha para fazer sentido. */
@@ -95,7 +97,7 @@ export function porqueNao(requisitos: Requisito[] | undefined, ctx: ContextoAula
 export function tipoDaTriagem(t: TriagemAula, temConhecimentos: boolean, tipoAtual?: string):
   'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr' {
   if (t.cozinham) return tipoAtual === 'misto' ? 'misto' : 'pratico';
-  if (temConhecimentos) return 'teorico';
+  if (temConhecimentos || t.manual) return 'teorico';
   return t.onde === 'cozinha' ? 'atitudinal_obr' : 'atitudinal';
 }
 
