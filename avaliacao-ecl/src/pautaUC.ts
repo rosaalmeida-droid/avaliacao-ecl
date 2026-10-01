@@ -35,6 +35,7 @@ import {
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
   liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
   notaDaAulaValidada,
+  validacaoDaAula,
 } from './backend';
 import { calcularNotaPlano, nivelPara20 } from './types';
 import { modulosDaTurma } from './cronograma';
@@ -95,7 +96,7 @@ const categoria = (id: string) => categoriaDaNota(id);
 
 /** Nota 0-20 de um aluno num plano: a validação do professor. */
 export function notaDoPlano(alunoId: string, planoId: string, tipo: string): number | null {
-  const v: any = getValidacoes().find((x: any) => x.planoAulaId === planoId && x.alunoId === alunoId);
+  const v: any = validacaoDaAula(alunoId, planoId);
   void tipo;
   // Sempre com as regras de agora (escala, pesos, farda), não a nota guardada no dia.
   return notaDaAulaValidada(v);

@@ -6,7 +6,7 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { SelecaoAluno, Validacao, calcularNotaPlano, classificacao20, notaPara20 } from '../types';
 import { perguntasDe, NAO_ACONTECEU, nivelDaAtitude } from '../perguntas_atitudes';
 import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
-  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF, getPresencas } from '../backend';
+  getPlanosAula, getFichasProducao, addRegistoAvaliacao, substituirRegistosDoProfessor, getAlunos , nivelConsolidadoAtitude, somarUmAtitude , sincronizarDoSheets, confirmarRegistosNoSheets, selecaoJaValidada, validacaoDaSelecao, contaNaNotaDaAula, calculoDaAulaValidada, NIVEIS_REGISTOS_KF, marcaRegistosKF, guardarMarcaRegistosKF, getPresencas } from '../backend';
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
@@ -317,7 +317,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   const [comentario, setComentario] = useState('');
   // O aluno declarou a farda completa e não era verdade: a farda fica a 1 e
   // a atitude «Responsabilidade pelas suas ações» (ATI-001) também.
-  const [faltouVerdade, setFaltouVerdade] = useState(false);
+  // Fica gravado na validação: ao reabrir, o botão aparece como foi deixado.
+  const [faltouVerdade, setFaltouVerdade] = useState<boolean>(() => !!validacaoExistente?.faltouVerdade);
   // Sem farda completa (declarado à entrada, ou «Não era verdade»): avalia-se
   // tudo e fica no percurso, mas as técnicas contam 0 na nota. O professor pode desfazer.
   const fardaDaEntrada = (selecao.autoavaliacoes || []).find((a: any) => a.competenciaId === 'OBR_01' && a.daEntrada);
@@ -355,8 +356,6 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // Essa pergunta passa a contar no nível mais baixo, e o aluno é avisado.
   const [aconteceu, setAconteceu] = useState<Record<string, boolean>>(() => Object.fromEntries(
     ((validacaoExistente as any)?.naoReparou || []).map((x: any) => [`${x.competenciaId}|${x.q}`, true])));
-  // Sem farda, as técnicas contam 0 (nível 1) na nota da aula; ficam no percurso com a nota dada.
-  const notaParaAula = (id: string, nota: number) => semFarda && categoriaDaNota(id) === 'SUB' ? 1 : nota;
 
   function getNomeComp(id: string): string {
     if (id === TEC_EVENTO) return NOME_TEC_EVENTO;
@@ -384,36 +383,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     return (m?.criterios || []).map((c: any) => c.criterio || c);
   }
 
-  // Pré-visualização em tempo real da nota final — actualiza a cada nota que o
-  // professor dá, para não haver surpresas: o professor vê SEMPRE a decomposição
-  // por categoria antes de confirmar, não só o número final.
-  const previsaoNota = useMemo(() => {
-    const notasComCat = autoavaliacoes.filter((a: any) => contaParaNota(a.competenciaId) && contaNaNotaDaAula(a.competenciaId)).map((auto: any) => {
-      const notaProf = notasProf[auto.competenciaId] ?? (auto.doProfessor ? auto.nota : undefined);
-      const notaAluno = (auto as any).nota || (
-        auto.nivel === 'mbr' || auto.nivel === 'autonomia' || auto.nivel === 'superei' ? 5 :
-        auto.nivel === 'fs'  || auto.nivel === 'sozinho'   || auto.nivel === 'atingi'  ? 4 :
-        auto.nivel === 'ca'  || auto.nivel === 'ajuda'     || auto.nivel === 'desenvolvimento' ? 3 :
-        auto.nivel === 'tp' ? 2 : 1
-      );
-      const nProf = notaProf || 2;
-      const notaFinal = calcularNotaFinal(nProf, notaAluno);
-      const cat = categoriaDaNota(auto.competenciaId);
-      return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: notaParaAula(auto.competenciaId, notaFinal) };
-    });
-    return calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
-  }, [notasProf, autoavaliacoes, tipoPlanAula, semOport, semFarda]);
-
-  const LABEL_CAT: Record<string,string> = {
-    OBR: 'Higiene e segurança alimentar (farda e registos do KitchenFlow)',
-    SUB: 'Técnicas/Subtécnicas',
-    KNW: 'Conhecimentos',
-    ATI: 'Atitude',
-    INI: 'Iniciativa',
-  };
-
-  async function guardar() {
-    const agora = new Date().toISOString();
+  // As notas finais desta validação — as MESMAS na pré-visualização e na
+  // gravação. Antes a pré-visualização tinha uma conta à parte e não via o
+  // «Não era verdade»: o professor via uma nota mais alta do que a gravada.
+  function montarNotasFinais() {
     const notasFinais = autoavaliacoes.filter((a: any) => contaParaNota(a.competenciaId)).map((auto: any) => {
       const notaProf = notasProf[auto.competenciaId] ?? (auto.doProfessor ? auto.nota : undefined) ?? 2;
       // Nota do aluno em escala 1-5
@@ -426,6 +399,37 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       const notaFinal = calcularNotaFinal(notaProf, notaAluno);
       return { competenciaId: auto.competenciaId, notaProf, notaAluno, notaFinal };
     });
+    if (faltouVerdade) {
+      const r = notasFinais.find(n => n.competenciaId === 'ATI-001');
+      if (r) { r.notaProf = 1; r.notaFinal = 1; }
+      else notasFinais.push({ competenciaId: 'ATI-001', notaProf: 1, notaAluno: 0, notaFinal: 1 });
+    }
+    return notasFinais;
+  }
+  /** A nota da aula como fica gravada — pela função única do backend. */
+  function calcularDaAula(notasFinais: { competenciaId: string; notaFinal: number }[]) {
+    return calculoDaAulaValidada({
+      notas: notasFinais.map(n => ({ competenciaId: n.competenciaId, nota: n.notaFinal })),
+      semFarda, faltouVerdade, tipoPlanAulaUsado: tipoPlanAula || 'pratico',
+    }) || { nota20: 0, porCategoria: {} as Record<string, number>, detalhes: '' };
+  }
+
+  // Pré-visualização em tempo real da nota final — actualiza a cada nota que o
+  // professor dá, para não haver surpresas: o professor vê SEMPRE a decomposição
+  // por categoria antes de confirmar, não só o número final.
+  const previsaoNota = calcularDaAula(montarNotasFinais());
+
+  const LABEL_CAT: Record<string,string> = {
+    OBR: 'Higiene e segurança alimentar (farda e registos do KitchenFlow)',
+    SUB: 'Técnicas/Subtécnicas',
+    KNW: 'Conhecimentos',
+    ATI: 'Atitude',
+    INI: 'Iniciativa',
+  };
+
+  async function guardar() {
+    const agora = new Date().toISOString();
+    const notasFinais = montarNotasFinais();
     const naoReparou: any[] = autoavaliacoesAluno.flatMap((a: any) => (a.respIdx || []).map((v: any, q: number) =>
       v === NAO_ACONTECEU && aconteceu[`${a.competenciaId}|${q}`]
         ? { competenciaId: a.competenciaId, q, pergunta: perguntasDe(a.competenciaId, !!planoDaSelecao?.tipoEvento)?.[q]?.pergunta || '',
@@ -437,12 +441,6 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         const p = perguntaPorId((triagem.semAntes?.[q.chave] || [])[0] || '') || q;
         naoReparou.push({ competenciaId: q.chave, q: 0, pergunta: p.pergunta, proxima: p.frases[2] || '' });
       }
-    if (faltouVerdade) {
-      const r = notasFinais.find(n => n.competenciaId === 'ATI-001');
-      if (r) { r.notaProf = 1; r.notaFinal = 1; }
-      else notasFinais.push({ competenciaId: 'ATI-001', notaProf: 1, notaAluno: 0, notaFinal: 1 });
-    }
-
     // Guardar validação
     const validacao: Validacao = {
       id: `val_${selecao.id}`,
@@ -467,12 +465,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     // A técnica geral do evento só serve para o bónus de eventos: não entra
     // na nota do plano nem nos registos das competências.
     const paraNota = notasFinais.filter(n => n.competenciaId !== TEC_EVENTO);
-    const paraNotaDaAula = paraNota.filter(n => contaNaNotaDaAula(n.competenciaId));
-    const notasComCat = paraNotaDaAula.map(n => {
-      const cat = categoriaDaNota(n.competenciaId);
-      return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: notaParaAula(n.competenciaId, n.notaFinal) };
-    });
-    const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlanAula || 'pratico');
+    const { nota20, porCategoria, detalhes } = calcularDaAula(paraNota);
     const notaMedia = paraNota.length
       ? paraNota.reduce((s, n) => s + n.notaFinal, 0) / paraNota.length
       : 0;
@@ -480,6 +473,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     (validacao as any).notaMedia20 = nota20; // usa pesos por categoria, não média simples
     // Sem farda: as técnicas ficam no percurso com a nota dada, mas contam 0 na nota da aula.
     if (semFarda) (validacao as any).semFarda = true;
+    if (faltouVerdade) (validacao as any).faltouVerdade = true;
     // Guardar a decomposição por categoria para o professor perceber sempre
     // como a nota foi calculada (antes ficava só o número, sem explicação).
     (validacao as any).porCategoria = porCategoria;

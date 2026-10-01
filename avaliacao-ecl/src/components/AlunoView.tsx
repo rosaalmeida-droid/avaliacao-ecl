@@ -34,7 +34,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -3159,16 +3159,12 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         {/* Bloquear re-submissão para aulas passadas */}
         {(() => {
           // Ver se o professor já validou
-          const vals = (() => { try { return JSON.parse(localStorage.getItem('ecl_validacoes') || '[]'); } catch { return []; } })();
-          const val = vals.find((v: any) => v.planoAulaId === plano.id && v.alunoId === aluno.id);
-          if (val && val.notaMedia) {
-            // Calcular nota com pesos por categoria
-            const notasComCat = (val.notas || []).filter((n: any) => contaNaNotaDaAula(n.competenciaId)).map((n: any) => {
-              const cat = categoriaDaNota(n.competenciaId);
-              return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: val.semFarda && cat === 'SUB' ? 1 : n.nota };
-            });
-            const tipoPlano = (plano as any).tipoPlanAula || 'pratico';
-            const { nota20, porCategoria, detalhes } = calcularNotaPlano(notasComCat, tipoPlano);
+          // A validação mais recente desta aula, e a mesma conta de todos os
+          // outros ecrãs (e do professor): calculoDaAulaValidada.
+          const val: any = validacaoDaAula(aluno.id, plano.id);
+          const calculo = val ? calculoDaAulaValidada(val) : null;
+          if (val && calculo) {
+            const { nota20, detalhes } = calculo;
             const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             const label = classificacao20(nota20);
 

@@ -4,11 +4,10 @@ import { categoriaDaNota } from '../compatECL';
 import React, { useState, useMemo } from 'react';
 import { FecharUC } from './FecharUC';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula, ucJaFechada, notaFinalUC } from '../backend';
+import { getHistoricoAvaliacoes, getAlunos, getPlanosAulaPorTurma, getPlanosAula, getValidacoes, RegistoAvaliacao, registosQueContam, getNotaFinalPublicadaUC, getPropostaFinalUC, contaNaNotaDaAula, ucJaFechada, notaFinalUC, mediaDasAulasValidadas, calculoDaAulaValidada } from '../backend';
 import { notaDaPautaUC } from '../pautaUC';
 import { OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarSubtecnica, encontrarAparelho, encontrarConhecimento, getAtitudeDetalhada } from '../compatECL';
 import { modulosDaTurma } from '../cronograma';
-import { calcularNotaPlano } from '../types';
 import { ModalFullscreen } from './ModalFullscreen';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -109,6 +108,8 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
 
   // Dados por aluno
   const dadosPorAluno = useMemo(() => {
+    const validacoesTodas = getValidacoes();
+    const planosPorId = new Map(getPlanosAula().map(p => [p.id, p]));
     const alunosVisiveis = filtroAluno === 'todos' ? alunos : alunos.filter(a => a.id === filtroAluno);
     return alunosVisiveis.map(aluno => {
       const regs = registosFiltrados.filter(r => r.alunoId === aluno.id);
@@ -124,29 +125,19 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         ultima: rs.sort((a, b) => b.data.localeCompare(a.data))[0],
         todas: rs.sort((a, b) => b.data.localeCompare(a.data)),
       }));
-      // Calcular nota ponderada usando calcularNotaPlano com pesos por categoria
-      const planos = getPlanosAula();
-      const notasComCat = regs.filter(r => contaNaNotaDaAula(r.microcompetenciaId)).map(r => {
-        const cat = categoriaDaNota(r.microcompetenciaId);
-        return { categoria: cat as 'OBR'|'SUB'|'KNW'|'ATI'|'INI', nota: r.nota };
-      });
-      // Tipo de plano mais comum nas avaliações deste aluno
-      const tiposPlano = regs.map(r => {
-        const p = planos.find(pl => pl.id === r.planoAulaId);
-        return (p as any)?.tipoPlanAula || 'pratico';
-      });
-      const tipoDominante = tiposPlano.filter(t => t === 'teorico').length > tiposPlano.length / 2
-        ? 'teorico' : tiposPlano.filter(t => t === 'misto').length > tiposPlano.length / 2
-        ? 'misto' : 'pratico';
-      const { nota20 } = notasComCat.length > 0
-        ? calcularNotaPlano(notasComCat, tipoDominante as 'pratico'|'misto'|'teorico')
-        : { nota20: 0 };
+      // A média das aulas, cada uma pela sua validação mais recente e com a
+      // mesma conta que o aluno vê (calculoDaAulaValidada). Antes juntavam-se
+      // as competências de todas as aulas numa única conta, e o professor
+      // via um número diferente do do aluno.
+      const planosDosRegs = new Set(regs.filter(r => contaNaNotaDaAula(r.microcompetenciaId)).map(r => r.planoAulaId || ''));
+      const planosComNota = [...planosDosRegs].filter(id => !(planosPorId.get(id) as any)?.tipoEvento);
+      const nota20 = mediaDasAulasValidadas(aluno.id, planosComNota, validacoesTodas) ?? 0;
       // Com uma UC escolhida, a nota é a da pauta oficial (a classificação
       // atribuída, ou a sugerida pela pauta) — a mesma da pauta e da regra
       // da recuperação. Não há bónus nem outra conta.
       // O aluno (alunoId) só vê a nota final publicada pelo professor, e só
       // depois da sua autoavaliação final. Até lá, a média das aulas validadas.
-      const pauta = !filtroUC || notasComCat.length === 0 ? null
+      const pauta = !filtroUC || planosComNota.length === 0 ? null
         // Professor: a nota da pauta (níveis 2 a 6 e 5 C) só depois de fechar a UC;
         // até lá, a média das aulas em /20, como o aluno vê.
         : !alunoId ? (ucJaFechada(turmaId, filtroUC) ? notaDaPautaUC(aluno.id, turmaId, filtroUC)
@@ -156,11 +147,11 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
       // Decomposição por categoria — reaproveita a última validação guardada
       // deste aluno nesta UC, para o professor perceber SEMPRE como a nota
       // se formou (OBR/SUB/KNW/ATI), não só ver o número final.
-      const validacoesAluno = getValidacoes().filter(v => v.alunoId === aluno.id);
-      const ultimaValidacaoComBreakdown = validacoesAluno
-        .filter(v => (v as any).porCategoria)
+      const validacoesAluno = validacoesTodas.filter(v => v.alunoId === aluno.id);
+      const ultimaValidacao = validacoesAluno
         .sort((a, b) => String((b as any).validadoEm||'').localeCompare(String((a as any).validadoEm||'')))[0];
-      const porCategoriaUltima = (ultimaValidacaoComBreakdown as any)?.porCategoria || null;
+      // Recalculada com a mesma conta, não a decomposição guardada no dia.
+      const porCategoriaUltima = calculoDaAulaValidada(ultimaValidacao)?.porCategoria || null;
       return {
         aluno,
         comps,

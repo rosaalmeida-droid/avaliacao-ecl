@@ -6368,19 +6368,59 @@ export function guardarMarcaRegistosKF(planoId: string, alunoId: string, nota: n
 }
 
 /**
- * A nota 0-20 de uma aula validada, sempre calculada com as regras de agora
- * (escala, pesos, farda) a partir das notas dadas — não a guardada no dia,
- * que pode ter sido feita com regras antigas.
+ * A validação que conta numa aula: a mais recente do aluno nesse plano.
+ * Quando o aluno respondeu duas vezes, há duas validações (uma por
+ * resposta) — cada ecrã ficava com a primeira que encontrava, e a antiga
+ * podia aparecer num sítio e a nova noutro.
  */
-export function notaDaAulaValidada(v: any): number | null {
+export function validacaoDaAula(alunoId: string, planoId: string, validacoes: Validacao[] = getValidacoes()): Validacao | undefined {
+  return validacoes
+    .filter((v: any) => v.alunoId === alunoId && v.planoAulaId === planoId)
+    .sort((a: any, b: any) => String(b.validadoEm || '').localeCompare(String(a.validadoEm || '')))[0];
+}
+
+/**
+ * O cálculo da nota de uma aula validada — o ÚNICO na aplicação. O ecrã do
+ * aluno («Professor confirmou»), a pré-visualização do professor, a gravação,
+ * a lista da Avaliação por UC e a nota do módulo usam todos este. Antes
+ * havia quatro contas parecidas mas não iguais, e o aluno e o professor
+ * podiam ver números diferentes para a mesma aula.
+ *
+ * Sempre com as regras de agora (escala, pesos, farda) a partir das notas
+ * dadas, e com o tipo de aula do momento da validação (se o plano for
+ * editado depois, a nota não muda). Sem farda, as técnicas contam 1;
+ * «Não era verdade» põe a Responsabilidade (ATI-001) a 1.
+ */
+export function calculoDaAulaValidada(v: any, tipoSeNaoHouver?: string):
+  { nota20: number; porCategoria: Record<string, number>; detalhes: string } | null {
   if (!v) return null;
-  const plano: any = getPlanosAula().find(p => p.id === v.planoAulaId);
-  const tipo = (v.tipoPlanAulaUsado || plano?.tipoPlanAula || 'pratico') as any;
+  const plano: any = v.tipoPlanAulaUsado ? null : getPlanosAula().find(p => p.id === v.planoAulaId);
+  const tipo = (v.tipoPlanAulaUsado || tipoSeNaoHouver || plano?.tipoPlanAula || 'pratico') as any;
   const notas = (v.notas || []).filter((n: any) => contaNaNotaDaAula(n.competenciaId)).map((n: any) => {
     const categoria = categoriaDe(n.competenciaId);
-    return { categoria, nota: v.semFarda && categoria === 'SUB' ? 1 : (Number(n.nota) || 0) };
+    const nota = v.semFarda && categoria === 'SUB' ? 1
+      : v.faltouVerdade && n.competenciaId === 'ATI-001' ? 1
+      : (Number(n.nota) || 0);
+    return { categoria, nota };
   });
-  return notas.length ? calcularNotaPlano(notas, tipo).nota20 : null;
+  return notas.length ? calcularNotaPlano(notas, tipo) : null;
+}
+
+/** A nota 0-20 de uma aula validada (ver calculoDaAulaValidada). */
+export function notaDaAulaValidada(v: any): number | null {
+  return calculoDaAulaValidada(v)?.nota20 ?? null;
+}
+
+/**
+ * A nota de um aluno num conjunto de aulas: a média das aulas, todas com o
+ * mesmo peso, cada uma com a sua validação mais recente. É a mesma conta da
+ * nota do módulo, sem faltas nem bónus.
+ */
+export function mediaDasAulasValidadas(alunoId: string, planosIds: Iterable<string>, validacoes: Validacao[] = getValidacoes()): number | null {
+  const notas = [...new Set(planosIds)]
+    .map(id => notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoes)))
+    .filter((n): n is number => n !== null);
+  return notas.length ? Math.round((notas.reduce((s, n) => s + n, 0) / notas.length) * 10) / 10 : null;
 }
 
 /** Nota das competências (0–20) a partir de registos já filtrados. */
@@ -6656,9 +6696,13 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
   const faltados = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id));
   const planosUC = new Map(getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento)
     .map(p => [p.id, p]));
-  const notasAulas = getValidacoes()
-    .filter((v: any) => v.alunoId === alunoId && planosUC.has(v.planoAulaId) && !faltados.has(v.planoAulaId))
-    .map(v => notaDaAulaValidada(v)).filter((n): n is number => n !== null);
+  // Uma validação por aula: a mais recente. Quem respondeu duas vezes tinha
+  // a mesma aula a contar duas vezes, com a nota antiga e a nova.
+  const validacoesAluno = getValidacoes().filter((v: any) => v.alunoId === alunoId);
+  const notasAulas = [...new Set(validacoesAluno.map((v: any) => v.planoAulaId as string))]
+    .filter(id => planosUC.has(id) && !faltados.has(id))
+    .map(id => notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoesAluno)))
+    .filter((n): n is number => n !== null);
   const base = notasAulas.length ? notasAulas.reduce((s, n) => s + n, 0) / notasAulas.length : null;
   const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
   const comFaltas = faltados.size
