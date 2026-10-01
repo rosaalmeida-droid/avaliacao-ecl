@@ -24,6 +24,7 @@ import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { BotaoPublicar } from './BotaoPublicar';
 import { SumarioAula } from './SumarioAula';
+import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, CabecalhoPasso } from './PlanoGuiado';
 import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -1633,7 +1634,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {tabInicio === 'resumo' && (<>
       <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} />
       <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />
+      {/* O plano guiado (Rosa, out/2026): 1 como é a aula → 2 o que se faz →
+          3 o que se avalia (o telemóvel do aluno) → 4 enviar aos alunos. */}
+      <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      <CabecalhoPasso n={2} titulo="O que se faz"
+        sub="O sumário e as fichas. As técnicas saem das fichas (em «O que este plano tem», mais abaixo)." />
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      <PassoOQueSeAvalia plano={plano} />
+      <PassoEnviar plano={plano} onPlanoActualizado={onPlanoActualizado} />
       {temOrganizacao(plano) && (
         <button onClick={() => setTabInicio('turma')} style={{ display:'block', width:'100%', textAlign:'left',
           background:'#fff', border:'1px solid rgba(107,63,160,0.35)', borderRadius:14, padding:'12px 16px',
@@ -1678,7 +1686,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </button>
           </div>
         );
-        if (!n) return null;
+        // Com o registo do que os alunos receberam, o passo 4 («Enviar aos
+        // alunos») já mostra o que mudou e pede que respondam outra vez.
+        if (!n || (plano as any).enviadoAosAlunos) return null;
         return (
           <div style={{ background:'#fdf0e6', border:'1.5px solid #e8c98f', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>
             <div style={{ fontSize:14.5, fontWeight:700, color:'#8a4a15' }}>

@@ -7,6 +7,7 @@
 // esta função diz, e o professor vê no plano exatamente o mesmo.
 // ============================================================
 import type { PlanoAula, FichaProducao } from './types';
+import { PESOS_AULA } from './types';
 import {
   codigosDasLinhas, codigoDaLinha, tecnicasDeRecurso, conhecimentosDaAula, encontrarConhecimento,
   atitudesDoTrimestre, ATITUDES, encontrarSubtecnica, encontrarAparelho, ramoDaCompetencia,
@@ -112,6 +113,33 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     clNaoSePergunta: !ctx.colegas && !ctx.cozinha,
     clSempre: !ctx.colegas && ctx.cozinha,
   };
+}
+
+// ── Quanto pesa cada parte na nota desta aula ─────────────────
+// Os pesos do tipo de aula (PESOS_AULA), só com o que esta aula avalia, e
+// repartidos como faz calcularNotaPlano: numa aula prática sem
+// conhecimentos, o peso deles passa para as técnicas.
+export function pesosDaAula(plano: PlanoAula, R: RegrasAutoavaliacao): { cat: 'OBR' | 'SUB' | 'KNW' | 'ATI'; nome: string; pct: number }[] {
+  const tipo = (R.tipoPlanAula in PESOS_AULA ? R.tipoPlanAula : 'pratico') as keyof typeof PESOS_AULA;
+  const p: Record<string, number> = { ...PESOS_AULA[tipo] };
+  const rem: string[] = (plano as any).compRemovidas || [];
+  const temSub = !R.ehAtitudinal && R.subIds.length + R.appIds.length + R.recursoIds.length > 0;
+  const temKnw = R.conhecimentos.length > 0;
+  if ((tipo === 'pratico' || tipo === 'misto') && !temKnw && temSub) { p.SUB += p.KNW; p.KNW = 0; }
+  const farda = !rem.includes('OBR_01'), registos = !rem.includes('OBR_02') && R.ctx.producao;
+  const partes = [
+    { cat: 'SUB' as const, nome: 'Técnicas e preparações', ok: temSub },
+    { cat: 'KNW' as const, nome: 'Conhecimentos', ok: temKnw },
+    { cat: 'OBR' as const, nome: farda && registos ? 'Higiene: farda e registos do KitchenFlow' : farda ? 'Farda' : 'Registos do KitchenFlow', ok: farda || registos },
+    { cat: 'ATI' as const, nome: 'Atitudes', ok: true },
+  ].filter(x => x.ok && p[x.cat] > 0);
+  const soma = partes.reduce((s, x) => s + p[x.cat], 0) || 1;
+  return partes.map(x => ({ cat: x.cat, nome: x.nome, pct: Math.round((100 * p[x.cat]) / soma) }));
+}
+
+/** O que o aluno tem nesta aula, numa linha (para comparar o que mudou). */
+export function resumoParaComparar(ecras: EcraDoAluno[]): string[] {
+  return ecras.map(e => `${e.rotulo}: ${e.nome}`);
 }
 
 // ── O que o professor vê: o telemóvel do aluno, por ordem ─────

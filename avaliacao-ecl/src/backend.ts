@@ -7059,6 +7059,16 @@ function marcarPublicacao(planoId: string, e: Omit<EstadoPublicacao, 'em'>) {
   ouvintesPublicacao.forEach(f => { try { f(); } catch { /* */ } });
 }
 
+/** Anota no plano, só neste aparelho e sem mudar a hora da alteração:
+ *  segue com o próximo envio do plano (a publicação, por exemplo). */
+export function anotarNoPlano(planoId: string, campos: Record<string, unknown>): void {
+  const all = getPlanosAula();
+  const i = all.findIndex(p => p.id === planoId);
+  if (i < 0) return;
+  all[i] = { ...all[i], ...campos } as PlanoAula;
+  save(KEYS.planos, all);
+}
+
 export function publicarPlanoParaAlunos(planoId: string): Promise<ResultadoPublicacao> {
   const emCurso = publicacoesEmCurso.get(planoId);
   if (emCurso) return emCurso;
