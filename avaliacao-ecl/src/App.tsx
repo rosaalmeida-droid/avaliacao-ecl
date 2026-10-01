@@ -127,7 +127,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas } from './backend';
+  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar } from './backend';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -142,6 +142,35 @@ function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
           <button onClick={onGuardar} style={{ padding:'12px', borderRadius:10, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>✓ Guardar antes de sair</button>
           <button onClick={onDescartar} style={{ padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'#fff', color:'var(--danger)', fontWeight:600, fontSize:13, cursor:'pointer' }}>Descartar alterações</button>
           <button onClick={onCancelar} style={{ padding:'10px', borderRadius:10, border:'none', background:'transparent', color:'rgba(26,23,20,0.5)', fontSize:13, cursor:'pointer' }}>Cancelar — ficar aqui</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Sair do plano enquanto ainda não chegou aos alunos: espera aqui, e sai
+ *  sozinho mal chegue (Rosa, out/2026 — como «A enviar… não feches» no aluno). */
+function ModalPlanoAEnviar({ planoId, onSair, onFicar }: { planoId: string; onSair: () => void; onFicar: () => void }) {
+  React.useEffect(() => {
+    let vivo = true;
+    const ver = () => confirmarEReenviar().catch(() => null)
+      .then(() => { if (vivo && !planoPorConfirmar(planoId)) { vivo = false; onSair(); } });
+    ver();
+    const t = setInterval(ver, 5000);
+    return () => { vivo = false; clearInterval(t); };
+  }, [planoId]);
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(26,23,20,0.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999, padding:20 }}>
+      <div style={{ background:'#fff', borderRadius:16, padding:24, maxWidth:360, width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ fontSize:32, textAlign:'center', marginBottom:12 }}>⏳</div>
+        <div style={{ fontWeight:700, fontSize:16, textAlign:'center', marginBottom:8 }}>O plano ainda está a ser enviado</div>
+        <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', textAlign:'center', marginBottom:20, lineHeight:1.5 }}>
+          Espera uns segundos: sais sozinho assim que chegar. Se saíres agora e fechares a aplicação,
+          as alterações podem não chegar aos alunos.
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          <button onClick={onFicar} style={{ padding:'12px', borderRadius:10, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:14, cursor:'pointer' }}>Esperar aqui</button>
+          <button onClick={onSair} style={{ padding:'10px', borderRadius:10, border:'1px solid var(--border)', background:'#fff', color:'var(--danger)', fontWeight:600, fontSize:13, cursor:'pointer' }}>Sair na mesma</button>
         </div>
       </div>
     </div>
@@ -212,6 +241,8 @@ function AppInterno() {
   const [guardarCallback, setGuardarCallback] = useState<(() => void) | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [modalMensagem, setModalMensagem] = useState('');
+  /** Sair do plano à espera de ele chegar ao Sheets. */
+  const [sairAEnviar, setSairAEnviar] = useState<(() => void) | null>(null);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'ok' | 'offline'>('idle');
 
   function atualizarDados() {
@@ -259,6 +290,10 @@ function AppInterno() {
   }, []);
 
   function navegarCom(acao: () => void, mensagem?: string) {
+    if (!temAlteracoes && planoAberto && planoPorConfirmar(planoAberto.id)) {
+      setSairAEnviar(() => acao);
+      return;
+    }
     if (temAlteracoes) {
       setAcaoPendente(() => acao);
       setModalMensagem(mensagem || 'Se saíres agora perdes o que estás a preencher.');
@@ -343,6 +378,11 @@ function AppInterno() {
           ucId: planoAberto?.ucId,
         }}
       >
+        {sairAEnviar && planoAberto && (
+          <ModalPlanoAEnviar planoId={planoAberto.id}
+            onSair={() => { const a = sairAEnviar; setSairAEnviar(null); a(); }}
+            onFicar={() => setSairAEnviar(null)} />
+        )}
         {modalAberto && (
           <ModalGuardar mensagem={modalMensagem}
             onGuardar={() => { setModalAberto(false); if (guardarCallback) guardarCallback(); limparAlteracoes(); if (acaoPendente) acaoPendente(); setAcaoPendente(null); }}

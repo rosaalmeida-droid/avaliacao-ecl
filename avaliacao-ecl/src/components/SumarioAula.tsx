@@ -8,20 +8,27 @@
 // ============================================================
 import React, { useEffect, useRef, useState } from 'react';
 import type { PlanoAula } from '../types';
-import { addOrUpdatePlanoAula, getPlanosAula } from '../backend';
+import { addOrUpdatePlanoAula, getPlanosAula, getFichasProducao } from '../backend';
 
 function pedidoIA(plano: PlanoAula, notas: string): string {
   const data = String(plano.data || '').slice(0, 10).split('-').reverse().join('/');
+  // Os pratos do plano ajudam a IA a escrever os nomes certos.
+  const pratos = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id))
+    .map(f => f.nomePrato).filter(Boolean);
+  const tipo = (plano as any).tipoAtividade || '';
+  // Antes pedia «3 a 6 linhas, frases curtas»: a IA cortava quase tudo o
+  // que o professor escrevia e ficavam duas ou três coisas (Rosa, out/2026).
+  // Agora aproveita tudo e só arruma.
   return `Escreve o sumário de uma aula de um curso profissional de Cozinha/Pastelaria, em português de Portugal, a partir das notas do professor.
-
 Regras:
-- 3 a 6 linhas, frases curtas e simples, como no livro de sumários.
-- Começa pelo tema da aula; depois o que se fez e o que se trabalhou.
+- Aproveita TUDO o que está nas notas: cada atividade, prato, técnica, conteúdo, explicação, forma de trabalho (grupos, funções, individual), local (cozinha, sala, visita de estudo, evento) e serviço. Não deixes nada de fora e não resumas ao ponto de perder informação.
+- Arruma por esta ordem: o tema da aula; o que se fez, pela ordem em que aconteceu; os conteúdos e as técnicas trabalhados.
+- Frases claras e simples, como no livro de sumários. O tamanho é o que as notas pedirem — não cortes para caber num número de linhas.
 - Não inventes nada que não esteja nas notas.
 - Responde só com o sumário, sem títulos nem comentários.
 
-Aula: ${plano.titulo || ''}
-Turma: ${plano.turmaId} · Data: ${data}${plano.ucNome ? ` · ${plano.ucId} ${plano.ucNome}` : ''}
+Aula: ${plano.titulo || ''}${tipo ? ` (${tipo})` : ''}
+Turma: ${plano.turmaId} · Data: ${data}${plano.ucNome ? ` · ${plano.ucId} ${plano.ucNome}` : ''}${pratos.length ? `\nPratos do plano: ${pratos.join(', ')}` : ''}
 
 Notas do professor:
 ${notas.trim() || '(sem notas)'}`;

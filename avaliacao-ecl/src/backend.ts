@@ -7500,7 +7500,9 @@ function guardarEspera(l: PorConfirmar[]): void {
 
 export function porConfirmar(tipo: PorConfirmar['tipo'], id: string, rotulo: string, turmaId: string): void {
   const l = espera();
-  if (l.some(x => x.tipo === tipo && x.id === id)) return;
+  const ja = l.find(x => x.tipo === tipo && x.id === id);
+  // Um plano alterado outra vez é uma versão nova: volta a ter as tentativas todas.
+  if (ja) { if (tipo === 'plano') { ja.tentativas = 0; ja.desde = new Date().toISOString(); guardarEspera(l); } return; }
   l.push({ tipo, id, rotulo, turmaId, desde: new Date().toISOString(), tentativas: 0 });
   guardarEspera(l);
 }
@@ -7543,15 +7545,26 @@ export function selecaoPorConfirmar(id: string): boolean {
   return espera().some(x => x.tipo === 'selecao' && x.id === id);
 }
 
-/** Ao fechar ou esconder a aplicação: a autoavaliação que ainda não se
- *  sabe se chegou vai outra vez, logo, com «keepalive» (acaba mesmo com a
- *  aplicação fechada). As repetições juntam-se no script. */
+/** Este plano (ou a última alteração dele) ainda não se sabe se chegou aos alunos? */
+export function planoPorConfirmar(id: string): boolean {
+  return espera().some(x => x.tipo === 'plano' && x.id === id);
+}
+
+/** Ao fechar ou esconder a aplicação: a autoavaliação ou o plano que ainda
+ *  não se sabe se chegou vai outra vez, logo, com «keepalive» (acaba mesmo
+ *  com a aplicação fechada). As repetições juntam-se no script. */
 function enviarAntesDeFechar(): void {
   const agora = Date.now();
   for (const p of espera()) {
-    if (p.tipo !== 'selecao' || agora - new Date(p.desde).getTime() > 24 * 3600 * 1000) continue;
-    const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
-    if (sel) postar(SHEETS_HISTORICO_URL, { tipo: 'selecao', ...corpoSelecao(sel) });
+    if (agora - new Date(p.desde).getTime() > 24 * 3600 * 1000) continue;
+    if (p.tipo === 'selecao') {
+      const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
+      if (sel) postar(SHEETS_HISTORICO_URL, { tipo: 'selecao', ...corpoSelecao(sel) });
+    } else if (p.tipo === 'plano') {
+      // O professor gravou o plano e saiu logo: as alterações não chegavam aos alunos.
+      const plano = getPlanosAula().find(x => x.id === p.id);
+      if (plano) postar(SHEETS_PLANOS_URL, { tipo: 'plano', plano });
+    }
   }
 }
 if (typeof window !== 'undefined') {
@@ -7595,6 +7608,10 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   const turmas = [...new Set(l.map(x => x.turmaId).filter(Boolean))];
   const tipos = [...new Set(l.map(x => x.tipo))];
   const noSheets = new Map<string, Set<string>>();
+  /** A hora da versão de cada plano no Sheets: uma alteração só chegou
+   *  quando o Sheets tem esta versão ou uma mais recente. Antes bastava o
+   *  plano lá estar — e uma correção que se perdia dava-se por entregue. */
+  const versaoNoSheets = new Map<string, number>();
   // Leitura que correu bem, mesmo com a folha vazia. Antes, uma folha sem
   // nenhuma linha (por exemplo, depois de limpar os dados de teste) era
   // tomada por "não consegui ler" — e o que estava à espera nunca mais era
@@ -7609,19 +7626,29 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
       try {
         const json: any = await lerDoSheets(url, { tipo: pedido, turmaId: t });
         if (json?.ok) algumaLeitura = true;
-        (json?.dados || []).forEach((x: any) => ids.add(String(x.id)));
+        (json?.dados || []).forEach((x: any) => {
+          ids.add(String(x.id));
+          if (tipo === 'plano') versaoNoSheets.set(String(x.id), Date.parse(String(x.atualizadoEm || '')));
+        });
       } catch { /* sem rede: fica para a próxima */ }
     }
     noSheets.set(tipo, ids);
     if (algumaLeitura) lidoComSucesso.add(tipo);
   }
 
+  const versaoChegou = (p: PorConfirmar): boolean => {
+    if (p.tipo !== 'plano') return true;
+    const local = Date.parse(String((getPlanosAula().find(x => x.id === p.id) as any)?.atualizadoEm || ''));
+    const remota = versaoNoSheets.get(String(p.id)) ?? NaN;
+    // Sem hora num dos lados, conta como chegou (como antes).
+    return isNaN(local) || isNaN(remota) || remota >= local - 1000;
+  };
   const restantes: PorConfirmar[] = [];
   let confirmados = 0;
   for (const p of l) {
     const ids = noSheets.get(p.tipo);
     if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
-    if (ids.has(String(p.id))) { confirmados++; continue; }
+    if (ids.has(String(p.id)) && versaoChegou(p)) { confirmados++; continue; }
     // A autoavaliação do aluno insiste até chegar: sem ela o professor
     // não a vê para validar.
     if (p.tentativas < 5 || (p.tipo === 'selecao' && p.tentativas < 60)) emSegundoPlano(() => reenviar(p));
