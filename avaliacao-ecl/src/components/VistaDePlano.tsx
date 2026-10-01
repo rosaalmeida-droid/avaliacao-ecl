@@ -3,7 +3,8 @@ import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
-import { manualDaUC, camposDoCapitulo, idCampoManual } from '../bancoManuais';
+import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
+  capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
@@ -2496,8 +2497,10 @@ function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; o
   const [capAberto, setCapAberto] = React.useState<number | null>(null);
   // O que o professor escolheu: campos do manual ou escritos por ele. O
   // referencial é só sugestão: as linhas dele não dizem ao aluno o que se fez.
-  const lista: { id: string; texto: string; capitulo?: string }[] = conhecimentosDaAula(plano);
+  const lista: { id: string; texto: string; capitulo?: string; tema?: string }[] = conhecimentosDaAula(plano);
   const manual = manualDaUC(plano.ucId);
+  // O próximo conteúdo da UC que a turma ainda não trabalhou (pela ordem do manual).
+  const proximo = proximoConteudo(getPlanosAula(), plano.turmaId, plano.ucId, plano.id);
   const sugestoes = conhecimentosDoReferencial(plano.ucId).filter(t => !lista.some(l => l.texto === t));
   const gravar = (nova: { id: string; texto: string; capitulo?: string }[]) => {
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
@@ -2507,14 +2510,26 @@ function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; o
   const juntar = (t: string) => { const tt = t.trim(); if (!tt) return; gravar([...lista, { id: 'KNW-P' + Date.now(), texto: tt }]); setTexto(''); };
   const escolhido = (id: string) => lista.some(x => x.id === id);
   const alternarCampo = (id: string, textoCampo: string, capitulo: string) =>
-    gravar(escolhido(id) ? lista.filter(x => x.id !== id) : [...lista, { id, texto: textoCampo, capitulo }]);
+    gravar(escolhido(id) ? lista.filter(x => x.id !== id) : [...lista, { id, texto: textoCampo, capitulo, tema: capituloDoCampo(id)?.capitulo.parte }]);
   const azul = '#1d4ed8';
   return (
     <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
       <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: azul, marginBottom: 4 }}>📚 O que se trabalhou hoje</div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.45 }}>
-        O aluno autoavalia-se em cada campo marcado. {manual ? 'Escolhe no índice do manual o capítulo e marca o que se trabalhou.' : ''}
+        {NIVEIS_CONHECIMENTO.tema} › {NIVEIS_CONHECIMENTO.conteudo} › {NIVEIS_CONHECIMENTO.indicador}. O aluno autoavalia-se em cada indicador marcado.
       </div>
+      {proximo && !lista.some(k => k.id.startsWith(`KNW-P-M-${proximo.ficheiro}-${proximo.capitulo.n}-`)) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: `1px solid ${azul}`,
+          borderRadius: 10, padding: '8px 12px', marginBottom: 8 }}>
+          <span style={{ flex: 1, minWidth: 200, fontSize: 13.5 }}>
+            <b>Próximo {NIVEIS_CONHECIMENTO.conteudo.toLowerCase()} da UC:</b> {rotuloConteudo(proximo.capitulo)}
+            <span style={{ color: 'rgba(26,23,20,0.55)' }}> ({proximo.capitulo.parte})</span>
+          </span>
+          <button onClick={() => gravar([...lista, ...indicadoresDoConteudo(proximo.ficheiro, proximo.capitulo).filter(x => !escolhido(x.id))])}
+            style={{ fontSize: 13, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: 'none', background: azul, color: '#fff',
+              cursor: 'pointer', fontFamily: 'inherit' }}>Usar</button>
+        </div>
+      )}
       {lista.length === 0 && <div style={{ fontSize: 13, color: '#8a4a15', marginBottom: 6 }}>Nada escolhido: o aluno avalia só «o trabalho de hoje», com o sumário à frente.</div>}
       {lista.map(k => (
         <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 13.5 }}>
@@ -2530,7 +2545,7 @@ function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; o
           <div style={{ fontSize: 13.5, fontWeight: 700, color: azul, marginBottom: 4 }}>Do manual: {manual.titulo}</div>
           {manual.capitulos.map((c, k) => {
             const campos = camposDoCapitulo(c);
-            const rotulo = `Manual, cap. ${c.n} — ${c.titulo}`;
+            const rotulo = `Manual, ${rotuloConteudo(c)}`;
             const n = campos.filter((_, i) => escolhido(idCampoManual(manual.ficheiro, c.n, i))).length;
             const novaParte = k === 0 || manual.capitulos[k - 1].parte !== c.parte;
             return (
@@ -2558,7 +2573,7 @@ function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; o
                     <button onClick={() => {
                         const faltam = campos.map((t, i) => ({ id: idCampoManual(manual.ficheiro, c.n, i), texto: t, capitulo: rotulo }))
                           .filter(x => !escolhido(x.id));
-                        if (faltam.length) gravar([...lista, ...faltam]);
+                        if (faltam.length) gravar([...lista, ...faltam.map(x => ({ ...x, tema: c.parte }))]);
                       }}
                       style={{ marginTop: 4, fontSize: 12.5, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: `1px solid ${azul}`,
                         background: '#fff', color: azul, cursor: 'pointer', fontFamily: 'inherit' }}>Marcar o capítulo todo</button>

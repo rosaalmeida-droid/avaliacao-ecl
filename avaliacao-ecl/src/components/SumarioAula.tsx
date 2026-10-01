@@ -9,6 +9,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { PlanoAula } from '../types';
 import { addOrUpdatePlanoAula, getPlanosAula, getFichasProducao } from '../backend';
+import { sumarioAutomatico } from '../sumarioAutomatico';
 
 function pedidoIA(plano: PlanoAula, notas: string): string {
   const data = String(plano.data || '').slice(0, 10).split('-').reverse().join('/');
@@ -36,8 +37,12 @@ ${notas.trim() || '(sem notas)'}`;
 
 export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardado?: (p: PlanoAula) => void }) {
   const [texto, setTexto] = useState<string>(plano.sumario || '');
+  // Sem sumário escrito pelo professor, vale o da aplicação (Rosa, out/2026).
+  const [aEscrever, setAEscrever] = useState(false);
+  const automatico = sumarioAutomatico(plano, getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id)));
   /** '' parado · 'a_pedir' à espera do microfone · 'a_ouvir' a gravar */
   const [fase, setFase] = useState<'' | 'a_pedir' | 'a_ouvir'>('');
+  const usaAutomatico = !texto.trim() && !aEscrever && !fase;
   const [parcial, setParcial] = useState('');
   const [aviso, setAviso] = useState('');
   const reconhecedor = useRef<any>(null);
@@ -129,11 +134,11 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
   }
 
   async function copiar(): Promise<boolean> {
-    try { await navigator.clipboard.writeText(pedidoIA(plano, texto)); return true; } catch { return false; }
+    try { await navigator.clipboard.writeText(pedidoIA(plano, texto.trim() || automatico)); return true; } catch { return false; }
   }
   async function abrirChatGPT() {
     await copiar();
-    window.open('https://chatgpt.com/?q=' + encodeURIComponent(pedidoIA(plano, texto)), '_blank', 'noopener');
+    window.open('https://chatgpt.com/?q=' + encodeURIComponent(pedidoIA(plano, texto.trim() || automatico)), '_blank', 'noopener');
     setAviso('Abri o ChatGPT com o pedido. Copia a resposta e cola-a aqui, por cima das notas.');
   }
   async function abrirGemini() {
@@ -159,10 +164,19 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: 16, marginBottom: 14, border: '1px solid rgba(26,23,20,0.1)' }}>
-      <div style={{ fontSize: 15.5, fontWeight: 700 }}>{(plano as any).tipoEvento ? 'Sumário do evento' : 'Sumário da aula'} <span style={{ fontWeight: 500, fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>{(plano as any).tipoEvento ? '(o que foi, onde, para quem, o que se serviu)' : '(opcional)'}</span></div>
+      <div style={{ fontSize: 15.5, fontWeight: 700 }}>{(plano as any).tipoEvento ? 'Sumário do evento' : 'Sumário da aula'}
+        {usaAutomatico && <span style={{ fontWeight: 500, fontSize: 13, color: '#3E7A31' }}> · feito pela aplicação</span>}</div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', margin: '3px 0 10px', lineHeight: 1.5 }}>
-        Diz o que se vai fazer. Podes ditar e, se quiseres, pedir a uma IA que o ponha bonito. Os alunos veem-no na aula e quando se avaliam.
+        {usaAutomatico
+          ? 'Escrito a partir do plano (tipo de aula, conteúdos, fichas). Atualiza-se sozinho quando mudas o plano. Só precisas de mexer se quiseres.'
+          : 'O teu sumário. Os alunos veem-no na aula e quando se avaliam. Apaga o texto para voltar ao da aplicação.'}
       </div>
+      {usaAutomatico && (
+        <div style={{ background: '#F4F8F2', border: '1px solid #CFE0C8', borderRadius: 10, padding: '10px 12px', fontSize: 14.5,
+          lineHeight: 1.55, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
+          {automatico || 'Ainda sem nada para resumir: escolhe o tipo de aula e o que se trabalha.'}
+        </div>
+      )}
       {/* Enquanto grava: um aviso grande, que não se confunde com nada. */}
       {fase && (
         <div style={{ background: fase === 'a_ouvir' ? '#c0392b' : '#8a4a15', color: '#fff', borderRadius: 12,
@@ -182,11 +196,14 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
             color: '#c0392b', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>■ Parar</button>
         </div>
       )}
-      <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={4}
+      {!usaAutomatico && <textarea value={texto} onChange={e => setTexto(e.target.value)} rows={4}
         placeholder="Ex.: Dinâmica de grupo. Preparação do almoço pedagógico: divisão de tarefas, compras e orçamento."
         style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, fontSize: 14.5,
-          fontFamily: 'inherit', lineHeight: 1.5, border: `1.5px solid ${fase ? '#c0392b' : 'rgba(26,23,20,0.15)'}`, resize: 'vertical' }} />
+          fontFamily: 'inherit', lineHeight: 1.5, border: `1.5px solid ${fase ? '#c0392b' : 'rgba(26,23,20,0.15)'}`, resize: 'vertical' }} />}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+        {usaAutomatico && automatico && (
+          <button onClick={() => { setAEscrever(true); setTexto(automatico); }} style={botao()}>✏️ Mudar este sumário</button>
+        )}
         <button onClick={ditar} style={botao(fase ? '#c0392b' : undefined)}>
           {fase ? '■ Parar' : texto ? '🎤 Ditar mais' : '🎤 Ditar'}
         </button>

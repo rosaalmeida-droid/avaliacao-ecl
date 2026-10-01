@@ -13,6 +13,7 @@ import {
   atitudesDoTrimestre, ATITUDES, encontrarSubtecnica, encontrarAparelho, ramoDaCompetencia, PREFIXO_TRABALHO_AULA,
 } from './compatECL';
 import { trimestreAtual } from './datas';
+import { sumarioDoPlano } from './sumarioAutomatico';
 import { opcoesDeEscolhaDoAluno } from './motorAvaliacao';
 import { ATITUDES_FIXAS_EVENTO, NOME_TEC_EVENTO } from './eventosAvaliacao';
 import {
@@ -89,7 +90,7 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   const manual = !!triagemDoPlano(p)?.manual;
   if (!ehAtitudinal && (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto') && conhecimentos.length === 0)
     conhecimentos.push({ id: PREFIXO_TRABALHO_AULA + p.id, nome: manual ? 'O trabalho de hoje no manual' : 'O trabalho de hoje',
-      definicao: String(p.sumario || '') });
+      definicao: sumarioDoPlano(plano, fichas) });
 
   const evento = !!p.tipoEvento;
   const aplicavel = (id: string) => atitudeAplicavel(id, ctx, evento);

@@ -78,6 +78,7 @@ import { perguntasDe, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondi
 import { CINCO_C, triagemDoPlano, type Letra5CAluno } from '../contextoAula';
 import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno } from '../autoavaliacaoDaAula';
 import { fraseDaAula } from './PlanoGuiado';
+import { sumarioDoPlano } from '../sumarioAutomatico';
 import { DicionarioComp } from './DicionarioComp';
 import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
@@ -1914,12 +1915,12 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
       )}
 
       {/* O sumário que o professor escreveu ou ditou. */}
-      {(plano as any).sumario && (
+      {sumarioDoPlano(plano, fichas) && (
         <div style={{ background:'#F0EBF7', borderRadius:16, padding:'14px 18px', marginBottom:12,
           border:'1px solid #D9CCEB' }}>
           <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase',
             color:'#6B3FA0', marginBottom:5 }}>Sumário da aula</div>
-          <div style={{ fontSize:15, lineHeight:1.55, color:'#2A1745', whiteSpace:'pre-wrap' }}>{(plano as any).sumario}</div>
+          <div style={{ fontSize:15, lineHeight:1.55, color:'#2A1745', whiteSpace:'pre-wrap' }}>{sumarioDoPlano(plano, fichas)}</div>
         </div>
       )}
 
@@ -3664,7 +3665,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         <div style={{ background:'#F0EBF7', borderRadius:12, padding:'10px 14px', marginBottom:14,
           fontSize:13.5, lineHeight:1.5, color:'#2A1745' }}>
           <b>{plano.titulo}</b>{' · '}{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')}
-          {(plano as any).sumario && <div style={{ marginTop:4, whiteSpace:'pre-wrap' }}>{(plano as any).sumario}</div>}
+          {sumarioDoPlano(plano, fichas as any) && <div style={{ marginTop:4, whiteSpace:'pre-wrap' }}>{sumarioDoPlano(plano, fichas as any)}</div>}
         </div>
       )}
       {/* Onde estou */}

@@ -1,5 +1,7 @@
 import { eventosParaPlanos } from '../eventos/modelo';
 import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada } from '../backend';
+import { proximoConteudo, indicadoresDoConteudo } from '../bancoManuais';
+import type { TipoAula, TriagemAula } from '../contextoAula';
 import React, { useState, useEffect } from 'react';
 import { DialogoEliminarPlano } from './DialogoEliminarPlano';
 import {
@@ -1069,6 +1071,21 @@ function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao
     (p as any).tipoAtividade = dados.tipoAtividade;
     const tiradas = [...(dados.comFarda ? [] : ['OBR_01']), ...(dados.comRegistos ? [] : ['OBR_02'])];
     if (tiradas.length) (p as any).compRemovidas = tiradas;
+    // O professor já disse o tipo de aula: fica como triagem (o resto pode
+    // mudar no plano). Numa teórica ou mista, o plano traz já o próximo
+    // conteúdo da UC com os seus indicadores — o professor só confirma
+    // (Rosa, out/2026: a aplicação tem de poupar trabalho ao professor).
+    if (!tipoEventoDe(dados.tipoAtividade)) {
+      const tp = dados.tipoPlanAula as TipoAula;
+      const cozinham = tp === 'pratico' || tp === 'misto';
+      (p as any).triagemAula = { tipo: tp, cozinham, onde: cozinham ? 'cozinha' : 'sala',
+        trabalho: tp === 'teorico' ? 'individual' : 'grupos', servico: false } as TriagemAula;
+      if (tp === 'teorico') (p as any).compRemovidas = [...new Set([...((p as any).compRemovidas || []), 'OBR_01', 'OBR_02'])];
+      if (tp === 'teorico' || tp === 'misto') {
+        const prox = proximoConteudo(getPlanosAulaPorTurma(turmaId), turmaId, dados.ucId);
+        if (prox) (p as any).conhecimentosProf = indicadoresDoConteudo(prox.ficheiro, prox.capitulo);
+      }
+    }
     // Evento ou concurso: avalia-se com as atitudes dos eventos (as 3 fixas
     // e as do tipo de evento) e, no evento, uma pergunta de técnica geral.
     // O professor pode mudar as atitudes no plano.
