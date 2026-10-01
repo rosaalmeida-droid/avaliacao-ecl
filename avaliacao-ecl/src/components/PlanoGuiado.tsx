@@ -18,7 +18,7 @@ import {
   perguntaCODaAula, perguntaCRDaAula, pedirNovaAutoavaliacao, estadoDaTurmaNaAula, anotarNoPlano,
 } from '../backend';
 import {
-  triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem, pesoNoModulo, textoPeso, OPCOES_PESO_NO_MODULO,
+  triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem,
   TEXTO_ONDE, TEXTO_TRABALHO, TEXTO_TIPO, EXPLICA_TIPO, CINCO_C, tipoDe,
   type TriagemAula, type OndeAula, type TrabalhoAula, type TipoAula,
 } from '../contextoAula';
@@ -130,19 +130,14 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || novo);
   }
 
-  const peso = pesoNoModulo(p);
   return (
     <div style={{ ...cartao, ...(definida ? {} : { border: `2px solid ${C.ambarL}` }) }}>
       <CabecalhoPasso n={1} titulo="Como é esta aula?"
         sub="Primeiro o tipo de aula. O que o aluno responde e o que conta para a nota sai daqui." />
       {!definida && (
         <div style={{ background: C.ambarP, color: '#5C3A08', borderRadius: 10, padding: '10px 14px', fontSize: 14, marginBottom: 14, lineHeight: 1.5 }}>
-          <b>Ainda não respondeste.</b> Isto é o que a aplicação deduziu do plano. Confirma ou muda — sem isto
-          o aluno pode receber perguntas que não fazem sentido nesta aula.
-          <div style={{ marginTop: 8 }}>
-            <button onClick={() => gravar({})} style={{ fontFamily: 'inherit', fontSize: 14, fontWeight: 700, padding: '8px 14px',
-              borderRadius: 9, border: 'none', background: C.cobre, color: '#fff', cursor: 'pointer' }}>Está certo, confirmar</button>
-          </div>
+          <b>Escolhe o tipo de aula.</b> Sem ele, a aplicação não sabe o que avaliar nem se há farda e higiene e
+          segurança alimentar — e não adivinha.
         </div>
       )}
       {/* O tipo de aula primeiro: decide a farda e a higiene e segurança alimentar. */}
@@ -193,27 +188,12 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
           </Pergunta>
         )}
       </div>
-      <div style={{ background: C.fundo, borderRadius: 12, padding: '11px 14px', marginTop: 14, fontSize: 14.5, lineHeight: 1.55,
-        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 12px' }}>
-        <span style={{ flex: '1 1 260px' }}>
-          <b>{fraseDaAula(valor)}</b> Na nota do módulo conta como <b>{textoPeso(peso)}</b>
-          {p.pesoNoModulo ? ' (escolhido por ti)' : peso < 1 ? ' — não tem técnicas nem conhecimentos' : ''}.
-        </span>
-        <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, color: C.suave }}>Peso:</span>
-          {OPCOES_PESO_NO_MODULO.map(w => (
-            <button key={w} onClick={() => {
-                const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
-                addOrUpdatePlanoAula({ ...atual, pesoNoModulo: w } as any);
-                onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || atual);
-              }}
-              style={{ fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
-                border: `1px solid ${C.cobre}`, background: peso === w ? C.cobre : '#fff', color: peso === w ? '#fff' : C.cobre }}>
-              {w === 0.5 ? '½' : '1'}
-            </button>
-          ))}
-        </span>
-      </div>
+      {/* O peso da aula na nota do módulo decide-se na pauta, não aqui (Rosa, out/2026). */}
+      {definida && (
+        <div style={{ background: C.fundo, borderRadius: 12, padding: '11px 14px', marginTop: 14, fontSize: 14.5, fontWeight: 700 }}>
+          {fraseDaAula(valor)}
+        </div>
+      )}
     </div>
   );
 }
@@ -231,6 +211,13 @@ export function oQueOAlunoVe(plano: PlanoAula) {
 }
 
 export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
+  // Sem o tipo de aula escolhido, não se mostra avaliação nenhuma: era
+  // adivinhada (uma teórica aparecia «só atitudes, 100%»).
+  if (!triagemDoPlano(plano)) return (
+    <div style={cartao}>
+      <CabecalhoPasso n={3} titulo="O que se avalia" sub="Escolhe primeiro, no passo 1, o tipo de aula: é ele que diz o que se avalia." />
+    </div>
+  );
   const { ecras, fora, regras } = oQueOAlunoVe(plano);
   const pesos = pesosDaAula(plano, regras);
   const corCat: Record<string, string> = { SUB: C.cobre, KNW: C.azul, OBR: C.verde, ATI: C.violeta };

@@ -71,8 +71,10 @@ export const TEXTO_TRABALHO: Record<TrabalhoAula, string> = {
 };
 
 export function triagemDoPlano(plano: any): TriagemAula | null {
+  // Sem o tipo de aula escolhido pelo professor não há triagem: a aplicação
+  // não adivinha (deduzia «atitudinal» numa aula teórica — Rosa, out/2026).
   const t = plano?.triagemAula;
-  return t && t.onde && t.trabalho ? t as TriagemAula : null;
+  return t && t.tipo && t.onde && t.trabalho ? t as TriagemAula : null;
 }
 
 /**
