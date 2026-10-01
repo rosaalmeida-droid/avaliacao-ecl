@@ -515,13 +515,14 @@ function PercursoUC({ aluno, ucId, semNotas = false }: { aluno: { id:string; tur
 /** As 4 respostas de uma técnica ou conhecimento: coisas que se veem
  *  (Rosa, set/2026). Da mais fraca para a mais forte. */
 function frasesVisiveis(c: { rotulo: string; resultado?: string; manual?: boolean }): string[] {
-  // Aula com o manual: o que o aluno fez nos exercícios — o professor vê-o
-  // no manual, não é uma impressão (Rosa, out/2026).
+  // Campos do manual («Explicar…», «Executar…», «Identificar…»): o aluno diz
+  // se já o sabe fazer, e com que ajuda (Rosa, out/2026). Sem os exercícios
+  // dos manuais, que não são bons.
   if (c.rotulo === 'Conhecimento' && c.manual) return [
-    'Fiz os exercícios do manual, mas errei a maior parte.',
-    'Fiz, mas precisei da ajuda do professor ou de um colega.',
-    'Fiz sozinho e acertei.',
-    'Fiz sozinho, acertei e sei dar um exemplo da cozinha.',
+    'Ainda não sei: só uma parte, e com erros.',
+    'Sei, mas preciso do manual ou da ajuda do professor.',
+    'Sei sozinho, sem olhar para o manual.',
+    'Sei sozinho e consigo explicar a um colega, com um exemplo da cozinha.',
   ];
   if (c.rotulo === 'Conhecimento') return [
     'Sei explicar só uma parte, e com erros.',
@@ -3359,8 +3360,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const itensComp: { id: string; nome: string; contexto: string; descricao: string;
     resultado: string; rotulo: string; frases: boolean; como?: boolean; manual?: boolean }[] = [
     ...itensPratica,
-    ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome, contexto: regras.manual ? 'Conhecimento · no manual' : 'Conhecimento',
-      descricao: m.definicao, resultado: '', rotulo: 'Conhecimento', frases: false, manual: regras.manual })),
+    // Um campo do manual leva o capítulo por cima («Manual, cap. 21 — O bacalhau: demolha e cozedura»).
+    ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome,
+      contexto: m.capitulo || (regras.manual ? 'Conhecimento · no manual' : 'Conhecimento'),
+      descricao: m.definicao, resultado: '', rotulo: 'Conhecimento', frases: false,
+      manual: regras.manual || m.id.startsWith('KNW-P-M-') })),
     ...microsSug.map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
       descricao: (m as any).descricao || '', resultado: '', rotulo: 'Técnica', frases: false })),
   ];
@@ -3587,7 +3591,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       const fi = NIVEIS_FRASES.indexOf(v as string);
       const resposta = !v ? 'Por responder'
         : v === 'nop' ? 'Não tive oportunidade hoje (o professor confirma)'
-        : v === 'nf' ? (p.comp!.rotulo === 'Conhecimento' ? (p.comp!.manual ? 'Não fiz os exercícios' : 'Não sei explicar') : 'Não fiz')
+        : v === 'nf' ? (p.comp!.rotulo === 'Conhecimento' ? (p.comp!.manual ? 'Não sei' : 'Não sei explicar') : 'Não fiz')
         : fi >= 0 ? frasesVisiveis(p.comp!)[fi]
         : OPCOES.find(o => o.v === v)?.label || '';
       linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
@@ -3722,7 +3726,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             <div style={{ marginTop:10 }}>
               <CriteriosComp compId={c.id} cor={V} abertaInicial={false} />
             </div>
-            {rotuloSecao(ehConhecimento && c.manual ? 'Hoje, nos exercícios do manual sobre isto, o que fizeste?'
+            {rotuloSecao(ehConhecimento && c.manual ? 'Depois da aula de hoje, já sabes isto?'
               : ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
             {NIVEIS_FRASES.map((nivel, i) => (
               <button key={nivel} onClick={() => escolher(nivel)} style={estiloOpcao(v === nivel)}>
@@ -3736,7 +3740,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                 conta para a nota (o professor confirma); não ter feito vale 0. */}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
               {([['nop', simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
-                 ['nf', ehConhecimento && c.manual ? 'Não fiz os exercícios' : ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
+                 ['nf', ehConhecimento && c.manual ? 'Não sei' : ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
                 .filter(([nv]) => !(semNop && nv === 'nop')).map(([nv, texto]) => (
                 <button key={nv} onClick={() => escolher(nv)} style={{ ...estiloOpcao(v === nv),
                   ...(v === nv ? {} : { border:'none', background:'transparent', textDecoration:'underline',

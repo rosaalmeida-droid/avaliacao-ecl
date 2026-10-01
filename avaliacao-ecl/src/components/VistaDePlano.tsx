@@ -3,6 +3,7 @@ import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
+import { manualDaUC, camposDoCapitulo, idCampoManual } from '../bancoManuais';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
@@ -2492,48 +2493,99 @@ function ResultadosConcurso({ plano, alunos, participantes, gravar, bt }: {
 // autoavalia-se em cada um e o professor valida, como nas técnicas.
 function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
   const [texto, setTexto] = React.useState('');
-  // O que o professor escreveu ou escolheu. O referencial é só sugestão:
-  // as linhas dele não dizem ao aluno o que se fez na aula.
-  const lista: { id: string; texto: string }[] = conhecimentosDaAula(plano);
-  const comManual = !!(plano as any).triagemAula?.manual;
+  const [capAberto, setCapAberto] = React.useState<number | null>(null);
+  // O que o professor escolheu: campos do manual ou escritos por ele. O
+  // referencial é só sugestão: as linhas dele não dizem ao aluno o que se fez.
+  const lista: { id: string; texto: string; capitulo?: string }[] = conhecimentosDaAula(plano);
+  const manual = manualDaUC(plano.ucId);
   const sugestoes = conhecimentosDoReferencial(plano.ucId).filter(t => !lista.some(l => l.texto === t));
-  const gravar = (nova: { id: string; texto: string }[]) => {
-    const p = { ...plano, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
+  const gravar = (nova: { id: string; texto: string; capitulo?: string }[]) => {
+    const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+    const p = { ...atual, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
     addOrUpdatePlanoAula(p); onPlanoActualizado(p);
   };
   const juntar = (t: string) => { const tt = t.trim(); if (!tt) return; gravar([...lista, { id: 'KNW-P' + Date.now(), texto: tt }]); setTexto(''); };
+  const escolhido = (id: string) => lista.some(x => x.id === id);
+  const alternarCampo = (id: string, textoCampo: string, capitulo: string) =>
+    gravar(escolhido(id) ? lista.filter(x => x.id !== id) : [...lista, { id, texto: textoCampo, capitulo }]);
+  const azul = '#1d4ed8';
   return (
-    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
-      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8', marginBottom: 6 }}>📚 O que se trabalhou hoje{comManual ? ' no manual' : ''}</div>
-      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 6, lineHeight: 1.45 }}>
-        O aluno autoavalia-se em cada um{comManual ? ', pelos exercícios do manual que fez' : ''}. Escreve como o aluno o reconhece
-        (ex.: «Classificar os fundos de cozinha — manual, cap. 2»).
+    <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: azul, marginBottom: 4 }}>📚 O que se trabalhou hoje</div>
+      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.45 }}>
+        O aluno autoavalia-se em cada campo marcado. {manual ? 'Escolhe no índice do manual o capítulo e marca o que se trabalhou.' : ''}
       </div>
-      {lista.length === 0 && <div style={{ fontSize: 13, color: '#8a4a15', marginBottom: 6 }}>Nada escrito: o aluno avalia só «o trabalho de hoje», com o sumário à frente.</div>}
+      {lista.length === 0 && <div style={{ fontSize: 13, color: '#8a4a15', marginBottom: 6 }}>Nada escolhido: o aluno avalia só «o trabalho de hoje», com o sumário à frente.</div>}
       {lista.map(k => (
         <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 13.5 }}>
-          <span style={{ flex: 1 }}>● {k.texto}</span>
+          <span style={{ flex: 1 }}>● {k.texto}{k.capitulo && <span style={{ color: 'rgba(26,23,20,0.5)' }}> — {k.capitulo}</span>}</span>
           <button onClick={() => gravar(lista.filter(x => x.id !== k.id))} style={{ fontSize: 12.5, padding: '3px 9px', borderRadius: 7,
             border: '1px solid rgba(26,23,20,0.2)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>Tirar</button>
         </div>
       ))}
-      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-        <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') juntar(texto); }}
-          placeholder={comManual ? 'O que trabalharam (ex.: Classificar os fundos — cap. 2)' : 'Escreve um conhecimento (ex.: Identificar os cortes do porco)'}
-          className="input" style={{ flex: 1, fontSize: 13.5 }} />
-        <button onClick={() => juntar(texto)} className="btn btn-primary" style={{ fontSize: 13.5 }}>+ Juntar</button>
-      </div>
-      {sugestoes.length > 0 && (
-        <details style={{ marginTop: 8 }}>
-          <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>Sugestões do referencial ({sugestoes.length})</summary>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+
+      {/* O índice do manual da UC: cada capítulo com os seus campos. */}
+      {manual && (
+        <div style={{ marginTop: 10, background: '#fff', borderRadius: 10, border: '1px solid rgba(37,99,235,0.2)', padding: '8px 10px' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: azul, marginBottom: 4 }}>Do manual: {manual.titulo}</div>
+          {manual.capitulos.map((c, k) => {
+            const campos = camposDoCapitulo(c);
+            const rotulo = `Manual, cap. ${c.n} — ${c.titulo}`;
+            const n = campos.filter((_, i) => escolhido(idCampoManual(manual.ficheiro, c.n, i))).length;
+            const novaParte = k === 0 || manual.capitulos[k - 1].parte !== c.parte;
+            return (
+              <div key={c.n}>
+                {novaParte && c.parte && <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+                  color: 'rgba(26,23,20,0.45)', margin: '8px 0 2px' }}>{c.parte}</div>}
+                <button onClick={() => setCapAberto(capAberto === c.n ? null : c.n)} style={{ display: 'flex', width: '100%', gap: 8, textAlign: 'left',
+                  padding: '6px 4px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5 }}>
+                  <span style={{ color: 'rgba(26,23,20,0.45)', minWidth: 20 }}>{String(c.n).padStart(2, '0')}</span>
+                  <span style={{ flex: 1, fontWeight: n ? 700 : 500 }}>{c.titulo}</span>
+                  {n > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: azul }}>{n} de {campos.length}</span>}
+                  <span style={{ color: 'rgba(26,23,20,0.4)' }}>{capAberto === c.n ? '▾' : '▸'}</span>
+                </button>
+                {capAberto === c.n && (
+                  <div style={{ padding: '2px 0 8px 28px' }}>
+                    {campos.map((t, i) => {
+                      const id = idCampoManual(manual.ficheiro, c.n, i);
+                      return (
+                        <label key={id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13.5, padding: '4px 0', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={escolhido(id)} onChange={() => alternarCampo(id, t, rotulo)} style={{ width: 17, height: 17, marginTop: 1 }} />
+                          <span>{t}</span>
+                        </label>
+                      );
+                    })}
+                    <button onClick={() => {
+                        const faltam = campos.map((t, i) => ({ id: idCampoManual(manual.ficheiro, c.n, i), texto: t, capitulo: rotulo }))
+                          .filter(x => !escolhido(x.id));
+                        if (faltam.length) gravar([...lista, ...faltam]);
+                      }}
+                      style={{ marginTop: 4, fontSize: 12.5, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: `1px solid ${azul}`,
+                        background: '#fff', color: azul, cursor: 'pointer', fontFamily: 'inherit' }}>Marcar o capítulo todo</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <details style={{ marginTop: 10 }}>
+        <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: azul }}>Escrever outro{sugestoes.length ? ' ou usar o referencial' : ''}</summary>
+        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+          <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') juntar(texto); }}
+            placeholder="Escreve o que se trabalhou (ex.: Identificar os cortes do porco)" className="input" style={{ flex: 1, fontSize: 13.5 }} />
+          <button onClick={() => juntar(texto)} className="btn btn-primary" style={{ fontSize: 13.5 }}>+ Juntar</button>
+        </div>
+        {sugestoes.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             {sugestoes.map(t => (
               <button key={t} onClick={() => juntar(t)} style={{ textAlign: 'left', fontSize: 12.5, padding: '5px 9px', borderRadius: 8,
                 border: '1px solid rgba(37,99,235,0.3)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>+ {t}</button>
             ))}
           </div>
-        </details>
-      )}
+        )}
+      </details>
     </div>
   );
 }

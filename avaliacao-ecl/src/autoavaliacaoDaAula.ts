@@ -35,8 +35,8 @@ export interface RegrasAutoavaliacao {
   appIds: string[];
   /** Técnicas de recurso da UC, quando as fichas não têm subtécnicas. */
   recursoIds: string[];
-  /** Conhecimentos a que o aluno responde. */
-  conhecimentos: { id: string; nome: string; definicao: string }[];
+  /** Conhecimentos a que o aluno responde (os do manual com o capítulo). */
+  conhecimentos: { id: string; nome: string; definicao: string; capitulo?: string }[];
   /** Atitudes a que todos respondem (aula atitudinal, evento, farda incompleta). */
   atitudesDaAula: string[];
   /** As atitudes que o aluno pode escolher numa aula prática ou teórica. */
@@ -75,14 +75,14 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   const recursoIds = ehAtitudinal || !usarRecurso || fichas.length === 0 ? []
     : tecnicasDeRecurso(ucId, fichas as any[]).map(m => m.id).filter(id => !compRemovidas.includes(id)).slice(0, 6);
 
-  const conhecimentos: { id: string; nome: string; definicao: string }[] =
+  const conhecimentos: { id: string; nome: string; definicao: string; capitulo?: string }[] =
     (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto')
       ? ((p.compAdicionadas || []) as string[]).filter(id => id.startsWith('KNW-') && !compRemovidas.includes(id)).slice(0, 6)
         .map(id => { const k: any = encontrarConhecimento(id); return { id, nome: k?.nome || id, definicao: k?.definicao || '' }; })
       : [];
   if (!ehAtitudinal) for (const k of conhecimentosDaAula(p)) {
     if (!compRemovidas.includes(k.id) && !conhecimentos.some(c => c.id === k.id))
-      conhecimentos.push({ id: k.id, nome: k.texto, definicao: '' });
+      conhecimentos.push({ id: k.id, nome: k.texto, definicao: '', capitulo: (k as any).capitulo });
   }
   // Aula teórica sem nada escrito pelo professor: avalia-se o trabalho da
   // aula (com o sumário à frente), e não as linhas do referencial.
@@ -197,8 +197,8 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
     for (const k of R.conhecimentos) {
       const geral = k.id.startsWith(PREFIXO_TRABALHO_AULA);
       ecras.push({ tipo: 'conhecimento', rotulo: 'Conhecimento', nome: k.nome, perguntas: [],
-        porque: geral ? 'não escreveste o que se trabalhou: o aluno avalia o trabalho da aula (escreve-o no passo 2)'
-          : 'escrito por ti no passo 2', c: 'cp' });
+        porque: geral ? 'não escolheste o que se trabalhou: o aluno avalia o trabalho da aula (escolhe-o no passo 2)'
+          : k.capitulo || 'escrito por ti no passo 2', c: 'cp' });
     }
     for (const id of R.recursoIds)
       ecras.push({ tipo: 'tecnica', rotulo: 'Técnica', nome: (encontrarSubtecnica(id) as any)?.nome || id, perguntas: [], porque: 'técnica da UC (as fichas não têm técnicas)', c: 'cp' });
