@@ -15,6 +15,7 @@
 // ============================================================
 import { NOTAS_FRASES } from './frases_atitudes';
 import { nivelDe20 } from './types';
+import { cumpre, porqueNao, type ContextoAula, type Requisito } from './contextoAula';
 
 export interface PerguntaAtitude {
   pergunta: string;
@@ -25,6 +26,8 @@ export interface PerguntaAtitude {
 
 /** A resposta «Hoje não aconteceu». */
 export const NAO_ACONTECEU = -1;
+/** A pergunta não se fez: não fazia sentido nesta aula (sem cozinha, sem equipas…). */
+export const NAO_SE_APLICA = -2;
 
 const P = (pergunta: string, respostas: [string, string, string, string], naoAconteceu?: string): PerguntaAtitude =>
   ({ pergunta, respostas, ...(naoAconteceu ? { naoAconteceu } : {}) });
@@ -393,6 +396,51 @@ export const PERGUNTAS_EVENTO: Record<string, [PerguntaAtitude, PerguntaAtitude]
   ],
 };
 
+// ── O que cada pergunta precisa que a aula tenha ───────────────
+// Sem cozinha não se pergunta pela bancada, pela farda ou por arrumar;
+// sem cozinhar, pelas facas, pelos alimentos ou pelo passo seguinte da
+// ficha; sem equipas, pelo trabalho com a equipa (Rosa, out/2026).
+// Sem nada aqui, a pergunta faz sentido em qualquer aula.
+const REQUISITOS: Record<string, [Requisito[], Requisito[]]> = {
+  'ATI-003': [['cozinha'], []],            // como vieste para a cozinha (farda)
+  'ATI-011': [['producao'], []],           // a bancada enquanto trabalhavas
+  'ATI-015': [['cozinha'], []],            // lavar as mãos, circuito do sujo e do limpo
+  'ATI-016': [['producao'], ['producao']], // alimentos; lavar as mãos antes de mexer em comida
+  'ATI-017': [['producao'], ['cozinha']],  // facas e lume; chão e passagens
+  'ATI-002': [['producao'], []],           // o passo seguinte (da ficha)
+  'ATI-008': [['colegas'], []],            // conversa ou discussão em grupo
+  'ATI-009': [['equipa'], ['cozinha']],    // a trabalhar com a equipa; arrumar no fim
+  'ATI-004': [[], ['cozinha']],            // lixo, loiça, material fora do sítio
+  'ATI-014': [['producao'], []],           // produtos, sobras, cascas
+  'ATI-021': [['producao'], []],           // provar o trabalho de um colega
+};
+
+/** Que perguntas desta atitude se fazem nesta aula (uma por posição). Num
+ *  evento ou concurso fazem-se sempre as do evento. */
+export function perguntasAplicaveis(id: string, ctx: ContextoAula | undefined, evento = false): boolean[] {
+  const ps = perguntasDe(id, evento);
+  if (!ps) return [];
+  if (!ctx || (evento && PERGUNTAS_EVENTO[id])) return ps.map(() => true);
+  const req = REQUISITOS[id] || [[], []];
+  return ps.map((_, i) => cumpre(req[i], ctx));
+}
+
+/** A atitude tem pelo menos uma pergunta que faça sentido nesta aula? */
+export function atitudeAplicavel(id: string, ctx: ContextoAula | undefined, evento = false): boolean {
+  return perguntasAplicaveis(id, ctx, evento).some(Boolean);
+}
+
+/** Porque é que esta pergunta não se faz hoje (para o professor ver). */
+export function porqueNaoSeFaz(id: string, i: number, ctx: ContextoAula): string {
+  return porqueNao((REQUISITOS[id] || [[], []])[i], ctx);
+}
+
+/** As respostas com as perguntas que não se fizeram marcadas «não se aplica». */
+export function respostasEfetivas(id: string, r: (number | null | undefined)[] | undefined,
+  ctx: ContextoAula | undefined, evento = false): (number | null)[] {
+  return perguntasAplicaveis(id, ctx, evento).map((a, i) => a ? (r?.[i] ?? null) : NAO_SE_APLICA);
+}
+
 /** As perguntas desta atitude: as do evento, num evento ou concurso; senão as de sempre. */
 export function perguntasDe(id: string, evento = false): [PerguntaAtitude, PerguntaAtitude] | undefined {
   return (evento && PERGUNTAS_EVENTO[id]) || PERGUNTAS_ATITUDES[id];
@@ -402,11 +450,13 @@ export function temPerguntas(id: string): boolean {
   return !!PERGUNTAS_ATITUDES[id];
 }
 
-/** Respondida: as duas perguntas têm resposta (uma resposta pode ser «não aconteceu»). */
+/** Respondida: as duas perguntas têm resposta (uma resposta pode ser «não
+ *  aconteceu», ou a pergunta não se fez nesta aula), e pelo menos uma conta. */
 export function atitudeRespondida(id: string, r: (number | null | undefined)[] | undefined, evento = false): boolean {
   const ps = perguntasDe(id, evento);
   if (!ps || !r) return false;
-  return ps.every((p, i) => r[i] != null && (r[i]! >= 0 || (r[i] === NAO_ACONTECEU && !!p.naoAconteceu)));
+  return ps.every((p, i) => r[i] != null && (r[i]! >= 0 || r[i] === NAO_SE_APLICA || (r[i] === NAO_ACONTECEU && !!p.naoAconteceu)))
+    && r.some(x => x != null && x >= 0);
 }
 
 /** Nível 1-5 da atitude: a média das respostas que contam. As «não aconteceu» saem da conta. */
@@ -422,6 +472,8 @@ export function textoDasRespostas(id: string, r: (number | null | undefined)[] |
   if (!ps || !r) return [];
   return ps.map((p, i) => ({
     pergunta: p.pergunta,
-    resposta: r[i] === NAO_ACONTECEU ? `Não aconteceu: ${p.naoAconteceu}` : r[i] != null ? p.respostas[r[i]!] : 'Por responder',
+    resposta: r[i] === NAO_ACONTECEU ? `Não aconteceu: ${p.naoAconteceu}`
+      : r[i] === NAO_SE_APLICA ? 'Não se perguntou: não fazia sentido nesta aula'
+      : r[i] != null ? p.respostas[r[i]!] : 'Por responder',
   }));
 }

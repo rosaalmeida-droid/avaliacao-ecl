@@ -6,6 +6,7 @@
 
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo } from './triagem5c';
+import { contextoDaAula, type ContextoAula } from './contextoAula';
 import { notaDaPautaUC } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
@@ -7998,9 +7999,16 @@ export function perguntaDaAula(chave: 'co' | 'cr', planoAulaId: string): string 
   const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
   const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
     .sort((a, b) => ordem(a).localeCompare(ordem(b)));
-  // Numa aula teórica ou atitudinal não saem perguntas sobre a cozinha e os pratos.
-  const soTeoria = !['pratico', 'misto'].includes(String(plano.tipoPlanAula || 'pratico'));
+  // Sem cozinhar (aula teórica, atitudinal, visita) não saem perguntas sobre a cozinha e os pratos.
+  const soTeoria = !contextoDoPlano(plano).producao;
   return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === planoAulaId)), soTeoria).id;
+}
+/** Como é esta aula (cozinha, produção, equipas): a triagem do professor,
+ *  ou, sem ela, o que se deduz do plano e dos grupos formados. */
+export function contextoDoPlano(plano: any): ContextoAula {
+  let temGrupos = false;
+  try { temGrupos = !!plano?.id && gruposDaAula(plano.id).length > 0; } catch { /* */ }
+  return contextoDaAula(plano, temGrupos);
 }
 export const perguntaCODaAula = (planoAulaId: string) => perguntaDaAula('co', planoAulaId);
 export const perguntaCRDaAula = (planoAulaId: string) => perguntaDaAula('cr', planoAulaId);

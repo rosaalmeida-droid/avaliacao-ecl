@@ -1,0 +1,112 @@
+// ============================================================
+// Como é esta aula — a triagem que o professor faz no plano
+// ============================================================
+// As perguntas da autoavaliação só fazem sentido se a aula as pedir
+// (Rosa, out/2026): «Hoje, a trabalhar com a tua equipa…» numa aula sem
+// equipas, ou «no fim da aula, arrumei…» numa visita de estudo, fazem o
+// aluno responder para despachar. O professor diz, em quatro perguntas,
+// como é a aula; daqui sai o que se pergunta e o que se avalia.
+// ============================================================
+
+export type OndeAula = 'cozinha' | 'sala' | 'fora';
+export type TrabalhoAula = 'grupos' | 'individual' | 'turma';
+
+export interface TriagemAula {
+  /** Onde é a aula: na cozinha da escola, numa sala, ou fora da escola (visita, evento). */
+  onde: OndeAula;
+  /** Os alunos cozinham (há fichas e produção)? */
+  cozinham: boolean;
+  /** Como trabalham: em grupos (equipas), cada um sozinho, ou a turma toda junta. */
+  trabalho: TrabalhoAula;
+  /** Há serviço a clientes (almoço pedagógico, evento)? */
+  servico: boolean;
+}
+
+/** O que uma pergunta precisa que a aula tenha para fazer sentido. */
+export type Requisito = 'cozinha' | 'producao' | 'equipa' | 'colegas';
+
+export interface ContextoAula {
+  /** Na cozinha da escola (bancada, farda, circuito do sujo e do limpo, arrumar). */
+  cozinha: boolean;
+  /** Cozinham: facas, lume, alimentos, passos de uma ficha. */
+  producao: boolean;
+  /** Trabalham em equipas. */
+  equipa: boolean;
+  /** Trabalham com os colegas (em equipas ou a turma toda junta). */
+  colegas: boolean;
+  servico: boolean;
+  /** O professor respondeu à triagem (sem ela, o contexto é deduzido do plano). */
+  definido: boolean;
+}
+
+export const TEXTO_ONDE: Record<OndeAula, string> = {
+  cozinha: 'Cozinha da escola', sala: 'Sala de aula', fora: 'Fora da escola',
+};
+export const TEXTO_TRABALHO: Record<TrabalhoAula, string> = {
+  grupos: 'Em grupos', individual: 'Cada um sozinho', turma: 'A turma toda junta',
+};
+
+export function triagemDoPlano(plano: any): TriagemAula | null {
+  const t = plano?.triagemAula;
+  return t && t.onde && t.trabalho ? t as TriagemAula : null;
+}
+
+/**
+ * O contexto da aula. Com a triagem do professor, é o que ele disse. Sem
+ * ela (planos antigos), deduz-se do plano: aula prática ou mista → cozinha
+ * e produção; equipas só se houver grupos formados nesta aula.
+ */
+export function contextoDaAula(plano: any, temGrupos = false): ContextoAula {
+  const t = triagemDoPlano(plano);
+  if (t) {
+    const producao = !!t.cozinham;
+    return {
+      // Cozinhar é sempre numa cozinha, mesmo fora da escola (um evento).
+      cozinha: t.onde === 'cozinha' || producao,
+      producao,
+      equipa: t.trabalho === 'grupos',
+      colegas: t.trabalho !== 'individual',
+      servico: !!t.servico,
+      definido: true,
+    };
+  }
+  const pratica = !plano?.tipoEvento && ['pratico', 'misto'].includes(String(plano?.tipoPlanAula || 'pratico'));
+  return { cozinha: pratica, producao: pratica, equipa: temGrupos, colegas: true, servico: false, definido: false };
+}
+
+/** A pergunta faz sentido nesta aula? */
+export function cumpre(requisitos: Requisito[] | undefined, ctx: ContextoAula): boolean {
+  return (requisitos || []).every(r => ctx[r]);
+}
+
+/** O que falta à aula para a pergunta fazer sentido, numa frase para o professor. */
+export function porqueNao(requisitos: Requisito[] | undefined, ctx: ContextoAula): string {
+  const r = (requisitos || []).find(x => !ctx[x]);
+  return r === 'producao' ? 'não cozinham'
+    : r === 'cozinha' ? 'não é na cozinha'
+    : r === 'equipa' ? 'não trabalham em equipas'
+    : r === 'colegas' ? 'cada um trabalha sozinho'
+    : '';
+}
+
+/** O tipo de aula (pesos da nota) que a triagem pede. Sem cozinhar, há
+ *  conhecimentos → teórica; sem nada disso → só atitudes. */
+export function tipoDaTriagem(t: TriagemAula, temConhecimentos: boolean, tipoAtual?: string):
+  'pratico' | 'misto' | 'teorico' | 'atitudinal' | 'atitudinal_obr' {
+  if (t.cozinham) return tipoAtual === 'misto' ? 'misto' : 'pratico';
+  return temConhecimentos ? 'teorico' : 'atitudinal';
+}
+
+// ── Os 5 C — o que cada pergunta trabalha ─────────────────────
+// O aluno tem de saber que as perguntas trabalham os 5 C (Rosa, out/2026).
+// As técnicas, os conhecimentos e as atitudes dão a nota da aula (o
+// Competente); as três perguntas do fim são o Colaborativo, o Criativo e o
+// Consciente; entregar a autoavaliação conta para o Comprometido.
+export type Letra5CAluno = 'cm' | 'cp' | 'cl' | 'co' | 'cr';
+export const CINCO_C: Record<Letra5CAluno, { sigla: string; nome: string; cor: string; fundo: string }> = {
+  cm: { sigla: 'CM', nome: 'Comprometido', cor: '#7A4F0E', fundo: '#FFF2DC' },
+  cp: { sigla: 'CP', nome: 'Competente', cor: '#6E370D', fundo: '#F8EADB' },
+  cl: { sigla: 'CL', nome: 'Colaborativo', cor: '#1F4E79', fundo: '#E6EEF7' },
+  co: { sigla: 'CO', nome: 'Consciente', cor: '#4B2C7A', fundo: '#EEE7F7' },
+  cr: { sigla: 'CR', nome: 'Criativo', cor: '#3F6136', fundo: '#E7F0E2' },
+};
