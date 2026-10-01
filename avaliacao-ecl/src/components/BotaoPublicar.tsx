@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { estadoPublicacao, subscreverPublicacao, publicarPlanoParaAlunos, getPlanosAula } from '../backend';
+import { registarVersaoEnviada } from './PlanoGuiado';
 
 /**
  * O único botão de publicar uma aula. Todos os sítios usam este, e todos
@@ -35,6 +36,8 @@ export function BotaoPublicar({ planoId, antesDePublicar, depoisDePublicar, clar
     try {
       if (antesDePublicar && !antesDePublicar()) return;
     } finally { aPerguntar.current = false; }
+    // O que os alunos recebem fica registado: depois o plano mostra o que mudou.
+    registarVersaoEnviada(planoId);
     publicarPlanoParaAlunos(planoId).then(r => depoisDePublicar?.(r.ok));
   }
 

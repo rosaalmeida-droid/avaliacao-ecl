@@ -13,6 +13,7 @@ import {
   publicarPlanoParaAlunos, getPresencas, getAlunos,
 } from '../backend';
 import { confirmarTurmaAoPublicar } from '../professores';
+import { registarVersaoEnviada } from './PlanoGuiado';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
 
 const C = {
@@ -47,6 +48,7 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
         if (!confirmarTurmaAoPublicar(p.turmaId, p.titulo)) return;
         // Não se espera: a publicação e a abertura seguem juntas, à frente
         // de tudo, e o ecrã mostra quando chegaram.
+        registarVersaoEnviada(p.id);
         publicarPlanoParaAlunos(p.id);
       }
       abrirSessaoAula(p.id, p.turmaId || turmaId, nomeProfessor || 'professor');

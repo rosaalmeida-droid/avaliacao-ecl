@@ -1,5 +1,5 @@
 import React from 'react';
-import { getPlanosAulaPorTurma, getSelecoes, getValidacoes , validacaoDaSelecao, selecaoJaValidada, notaDaAulaValidada } from '../backend';
+import { getPlanosAulaPorTurma, getSelecoes, getValidacoes , validacaoDaSelecao, selecaoJaValidada, notaDaAulaValidada, validacaoDaAula } from '../backend';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Data "20-07 · quarta" curta
@@ -38,7 +38,8 @@ export function PercursoUC({ aluno, ucId }: { aluno: { id: string; turmaId: stri
     let estado: Estado = 'por_avaliar';
     if (val) estado = 'validado';
     else if (sel) estado = 'aguarda';
-    const nota20 = val ? notaDaAulaValidada(val) : null;
+    // A nota da validação mais recente da aula (a mesma do «Professor confirmou»).
+    const nota20 = val ? notaDaAulaValidada(validacaoDaAula(aluno.id, p.id, validacoes as any)) : null;
     return { p, estado, nota20 };
   });
 

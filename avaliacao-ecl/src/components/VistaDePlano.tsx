@@ -18,12 +18,13 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { BotaoPublicar } from './BotaoPublicar';
 import { SumarioAula } from './SumarioAula';
+import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, CabecalhoPasso } from './PlanoGuiado';
 import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -55,6 +56,43 @@ interface Props {
 }
 
 // ── NOVO: Associar plano a evento ────────────────────────────
+/**
+ * O plano gravado ainda não chegou ao arquivo da escola (e aos alunos)?
+ * O professor gravava e saía logo, e as alterações perdiam-se (Rosa,
+ * out/2026). Como no aluno: enquanto não se confirma, diz para esperar.
+ */
+function EstadoEnvioPlano({ plano }: { plano: PlanoAula }) {
+  const [pendente, setPendente] = useState(() => planoPorConfirmar(plano.id));
+  const [chegou, setChegou] = useState(false);
+  // Cada gravação nova volta a pôr o plano à espera.
+  React.useEffect(() => {
+    if (planoPorConfirmar(plano.id)) { setPendente(true); setChegou(false); }
+  }, [plano.id, (plano as any).atualizadoEm]);
+  React.useEffect(() => {
+    if (!pendente) return;
+    let vivo = true;
+    const ver = () => confirmarEReenviar().catch(() => null).then(() => {
+      if (!vivo || planoPorConfirmar(plano.id)) return;
+      setPendente(false); setChegou(true);
+    });
+    const t0 = setTimeout(ver, 3000);
+    const t = setInterval(ver, 8000);
+    return () => { vivo = false; clearTimeout(t0); clearInterval(t); };
+  }, [plano.id, pendente]);
+  if (pendente) return (
+    <div style={{ background:'#FFF4E0', border:'1.5px solid #E8A33D', borderRadius:12, padding:'10px 14px',
+      margin:'0 0 14px', fontSize:14.5, fontWeight:700, color:'#8a5a12', lineHeight:1.45 }}>
+      ⏳ A enviar o plano{plano.estado === 'publicado' ? ' aos alunos' : ''}… Não saias nem feches a aplicação até aparecer «Chegou».
+    </div>
+  );
+  if (chegou) return (
+    <div style={{ margin:'0 0 14px', fontSize:14, fontWeight:800, color:'#3E7A31' }}>
+      ✓ Chegou{plano.estado === 'publicado' ? ' aos alunos' : ' ao arquivo da escola'}. Já podes sair.
+    </div>
+  );
+  return null;
+}
+
 function EventoAssociador({ plano, turmaId, onPlanoActualizado }: {
   plano: PlanoAula; turmaId: string; onPlanoActualizado: (p: PlanoAula) => void;
 }) {
@@ -1187,6 +1225,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // ── INÍCIO ───────────────────────────────────────────────────
   return (
     <div>
+      <EstadoEnvioPlano plano={plano} />
       {/* Enquanto não publicar, o aluno não vê a aula em lado nenhum —
           nem no calendário, nem nas próximas aulas. Isto tem de estar à
           frente, senão o professor marca a aula e ninguém a vê. */}
@@ -1595,7 +1634,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {tabInicio === 'resumo' && (<>
       <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} />
       <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />
+      {/* O plano guiado (Rosa, out/2026): 1 como é a aula → 2 o que se faz →
+          3 o que se avalia (o telemóvel do aluno) → 4 enviar aos alunos. */}
+      <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      <CabecalhoPasso n={2} titulo="O que se faz"
+        sub="O sumário e as fichas. As técnicas saem das fichas (em «O que este plano tem», mais abaixo)." />
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      <PassoOQueSeAvalia plano={plano} />
+      <PassoEnviar plano={plano} onPlanoActualizado={onPlanoActualizado} />
       {temOrganizacao(plano) && (
         <button onClick={() => setTabInicio('turma')} style={{ display:'block', width:'100%', textAlign:'left',
           background:'#fff', border:'1px solid rgba(107,63,160,0.35)', borderRadius:14, padding:'12px 16px',
@@ -1640,7 +1686,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </button>
           </div>
         );
-        if (!n) return null;
+        // Com o registo do que os alunos receberam, o passo 4 («Enviar aos
+        // alunos») já mostra o que mudou e pede que respondam outra vez.
+        if (!n || (plano as any).enviadoAosAlunos) return null;
         return (
           <div style={{ background:'#fdf0e6', border:'1.5px solid #e8c98f', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>
             <div style={{ fontSize:14.5, fontWeight:700, color:'#8a4a15' }}>

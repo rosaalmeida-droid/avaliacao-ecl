@@ -35,8 +35,10 @@ import {
   participacoesDoAlunoNaUC, notaRecuperacaoUC, getPropostaFinalUC,
   liderKFdoGrupo, getTriagemDaAula, getNotaFinalPublicadaUC,
   notaDaAulaValidada,
+  validacaoDaAula,
 } from './backend';
 import { calcularNotaPlano, nivelPara20 } from './types';
+import { pesoNoModulo } from './contextoAula';
 import { modulosDaTurma } from './cronograma';
 import MODELO from './pautaModelo.json';
 
@@ -95,7 +97,7 @@ const categoria = (id: string) => categoriaDaNota(id);
 
 /** Nota 0-20 de um aluno num plano: a validação do professor. */
 export function notaDoPlano(alunoId: string, planoId: string, tipo: string): number | null {
-  const v: any = getValidacoes().find((x: any) => x.planoAulaId === planoId && x.alunoId === alunoId);
+  const v: any = validacaoDaAula(alunoId, planoId);
   void tipo;
   // Sempre com as regras de agora (escala, pesos, farda), não a nota guardada no dia.
   return notaDaAulaValidada(v);
@@ -136,9 +138,13 @@ export function produtosDaUC(turmaId: string, ucId: string, escolhidos?: string[
   const produtos = planos.map((p, j) => ({
     numero: j + 1, titulo: p.titulo, planosIds: [p.id], elementos: elementosDe(p.id), peso: 0,
   }));
-  // Todos os planos com o mesmo peso (Rosa, set/2026): a prática já pesa mais
-  // dentro de cada plano. O professor pode mudar os pesos na pauta.
-  produtos.forEach(p => { p.peso = Math.round((100 / produtos.length) * 10) / 10; });
+  // Cada plano pelo peso da sua aula (Rosa, out/2026): as aulas com técnicas
+  // ou conhecimentos contam uma aula inteira, as só de atitudes meia — o
+  // mesmo peso da nota do módulo. O professor pode mudar os pesos na pauta.
+  const doPlano = new Map(getPlanosAulaPorTurma(turmaId).map(p => [p.id, p]));
+  const pesos = produtos.map(p => pesoNoModulo(doPlano.get(p.planosIds[0])));
+  const somaPesos = pesos.reduce((s, w) => s + w, 0) || 1;
+  produtos.forEach((p, j) => { p.peso = Math.round((100 * pesos[j] / somaPesos) * 10) / 10; });
   // Acerto de arredondamento: a soma dá sempre 100%.
   if (produtos.length) {
     const soma = produtos.reduce((s, p) => s + p.peso, 0);

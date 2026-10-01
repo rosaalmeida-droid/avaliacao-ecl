@@ -6,6 +6,7 @@
 
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo } from './triagem5c';
+import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
 import { notaDaPautaUC } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
@@ -6368,19 +6369,61 @@ export function guardarMarcaRegistosKF(planoId: string, alunoId: string, nota: n
 }
 
 /**
- * A nota 0-20 de uma aula validada, sempre calculada com as regras de agora
- * (escala, pesos, farda) a partir das notas dadas — não a guardada no dia,
- * que pode ter sido feita com regras antigas.
+ * A validação que conta numa aula: a mais recente do aluno nesse plano.
+ * Quando o aluno respondeu duas vezes, há duas validações (uma por
+ * resposta) — cada ecrã ficava com a primeira que encontrava, e a antiga
+ * podia aparecer num sítio e a nova noutro.
  */
-export function notaDaAulaValidada(v: any): number | null {
+export function validacaoDaAula(alunoId: string, planoId: string, validacoes: Validacao[] = getValidacoes()): Validacao | undefined {
+  return validacoes
+    .filter((v: any) => v.alunoId === alunoId && v.planoAulaId === planoId)
+    .sort((a: any, b: any) => String(b.validadoEm || '').localeCompare(String(a.validadoEm || '')))[0];
+}
+
+/**
+ * O cálculo da nota de uma aula validada — o ÚNICO na aplicação. O ecrã do
+ * aluno («Professor confirmou»), a pré-visualização do professor, a gravação,
+ * a lista da Avaliação por UC e a nota do módulo usam todos este. Antes
+ * havia quatro contas parecidas mas não iguais, e o aluno e o professor
+ * podiam ver números diferentes para a mesma aula.
+ *
+ * Sempre com as regras de agora (escala, pesos, farda) a partir das notas
+ * dadas, e com o tipo de aula do momento da validação (se o plano for
+ * editado depois, a nota não muda). Sem farda, as técnicas contam 1;
+ * «Não era verdade» põe a Responsabilidade (ATI-001) a 1.
+ */
+export function calculoDaAulaValidada(v: any, tipoSeNaoHouver?: string):
+  { nota20: number; porCategoria: Record<string, number>; detalhes: string } | null {
   if (!v) return null;
-  const plano: any = getPlanosAula().find(p => p.id === v.planoAulaId);
-  const tipo = (v.tipoPlanAulaUsado || plano?.tipoPlanAula || 'pratico') as any;
+  const plano: any = v.tipoPlanAulaUsado ? null : getPlanosAula().find(p => p.id === v.planoAulaId);
+  const tipo = (v.tipoPlanAulaUsado || tipoSeNaoHouver || plano?.tipoPlanAula || 'pratico') as any;
   const notas = (v.notas || []).filter((n: any) => contaNaNotaDaAula(n.competenciaId)).map((n: any) => {
     const categoria = categoriaDe(n.competenciaId);
-    return { categoria, nota: v.semFarda && categoria === 'SUB' ? 1 : (Number(n.nota) || 0) };
+    const nota = v.semFarda && categoria === 'SUB' ? 1
+      : v.faltouVerdade && n.competenciaId === 'ATI-001' ? 1
+      : (Number(n.nota) || 0);
+    return { categoria, nota };
   });
-  return notas.length ? calcularNotaPlano(notas, tipo).nota20 : null;
+  return notas.length ? calcularNotaPlano(notas, tipo) : null;
+}
+
+/** A nota 0-20 de uma aula validada (ver calculoDaAulaValidada). */
+export function notaDaAulaValidada(v: any): number | null {
+  return calculoDaAulaValidada(v)?.nota20 ?? null;
+}
+
+/**
+ * A nota de um aluno num conjunto de aulas: a média das aulas, cada uma pelo
+ * peso da sua aula (pesoNoModulo) e com a sua validação mais recente. É a
+ * mesma conta da nota do módulo, sem faltas nem bónus.
+ */
+export function mediaDasAulasValidadas(alunoId: string, planosIds: Iterable<string>, validacoes: Validacao[] = getValidacoes()): number | null {
+  const planos = new Map(getPlanosAula().map(p => [p.id, p]));
+  const notas = [...new Set(planosIds)]
+    .map(id => ({ nota: notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoes)), peso: pesoNoModulo(planos.get(id)) }))
+    .filter((x): x is { nota: number; peso: number } => x.nota !== null);
+  const peso = notas.reduce((s, x) => s + x.peso, 0);
+  return peso ? Math.round((notas.reduce((s, x) => s + x.nota * x.peso, 0) / peso) * 10) / 10 : null;
 }
 
 /** Nota das competências (0–20) a partir de registos já filtrados. */
@@ -6650,19 +6693,27 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
   const regsNota = regs.map(r => semFarda.has(r.planoAulaId || '') && categoriaDe(r.microcompetenciaId) === 'SUB'
     ? { ...r, nota: 1 } : r);
   void regsNota;
-  // A média dos planos avaliados, todos com o mesmo peso (Rosa, set/2026).
-  // Antes juntavam-se as competências todas: um plano com o dobro das
-  // competências pesava o dobro.
-  const faltados = new Set(getPlanosFaltadosPorUC(alunoId, ucId, turmaId).map(p => p.id));
+  // A média dos planos avaliados, cada um pelo peso da sua aula (Rosa,
+  // out/2026): as aulas com técnicas ou conhecimentos contam uma aula
+  // inteira, as só de atitudes meia (pesoNoModulo). Antes juntavam-se as
+  // competências todas: um plano com o dobro das competências pesava o dobro.
+  const faltadosPlanos = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
+  const faltados = new Set(faltadosPlanos.map(p => p.id));
   const planosUC = new Map(getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento)
     .map(p => [p.id, p]));
-  const notasAulas = getValidacoes()
-    .filter((v: any) => v.alunoId === alunoId && planosUC.has(v.planoAulaId) && !faltados.has(v.planoAulaId))
-    .map(v => notaDaAulaValidada(v)).filter((n): n is number => n !== null);
-  const base = notasAulas.length ? notasAulas.reduce((s, n) => s + n, 0) / notasAulas.length : null;
+  // Uma validação por aula: a mais recente. Quem respondeu duas vezes tinha
+  // a mesma aula a contar duas vezes, com a nota antiga e a nova.
+  const validacoesAluno = getValidacoes().filter((v: any) => v.alunoId === alunoId);
+  const notasAulas = [...new Set(validacoesAluno.map((v: any) => v.planoAulaId as string))]
+    .filter(id => planosUC.has(id) && !faltados.has(id))
+    .map(id => ({ nota: notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoesAluno)), peso: pesoNoModulo(planosUC.get(id)) }))
+    .filter((x): x is { nota: number; peso: number } => x.nota !== null);
+  const pesoAulas = notasAulas.reduce((s, x) => s + x.peso, 0);
+  const base = pesoAulas ? notasAulas.reduce((s, x) => s + x.nota * x.peso, 0) / pesoAulas : null;
   const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
+  const pesoFaltas = faltadosPlanos.reduce((s, p) => s + pesoNoModulo(p), 0);
   const comFaltas = faltados.size
-    ? Math.round((((base ?? 0) * notasAulas.length + recup * faltados.size) / (notasAulas.length + faltados.size)) * 100) / 100
+    ? Math.round((((base ?? 0) * pesoAulas + recup * pesoFaltas) / (pesoAulas + pesoFaltas)) * 100) / 100
     : base === null ? null : Math.round(base * 100) / 100;
   return aplicarBonusesUC(comFaltas, alunoId, turmaId, ucId);
 }
@@ -7006,6 +7057,16 @@ export function subscreverPublicacao(fn: () => void): () => void {
 function marcarPublicacao(planoId: string, e: Omit<EstadoPublicacao, 'em'>) {
   estadosPublicacao.set(planoId, { ...e, em: Date.now() });
   ouvintesPublicacao.forEach(f => { try { f(); } catch { /* */ } });
+}
+
+/** Anota no plano, só neste aparelho e sem mudar a hora da alteração:
+ *  segue com o próximo envio do plano (a publicação, por exemplo). */
+export function anotarNoPlano(planoId: string, campos: Record<string, unknown>): void {
+  const all = getPlanosAula();
+  const i = all.findIndex(p => p.id === planoId);
+  if (i < 0) return;
+  all[i] = { ...all[i], ...campos } as PlanoAula;
+  save(KEYS.planos, all);
 }
 
 export function publicarPlanoParaAlunos(planoId: string): Promise<ResultadoPublicacao> {
@@ -7456,7 +7517,9 @@ function guardarEspera(l: PorConfirmar[]): void {
 
 export function porConfirmar(tipo: PorConfirmar['tipo'], id: string, rotulo: string, turmaId: string): void {
   const l = espera();
-  if (l.some(x => x.tipo === tipo && x.id === id)) return;
+  const ja = l.find(x => x.tipo === tipo && x.id === id);
+  // Um plano alterado outra vez é uma versão nova: volta a ter as tentativas todas.
+  if (ja) { if (tipo === 'plano') { ja.tentativas = 0; ja.desde = new Date().toISOString(); guardarEspera(l); } return; }
   l.push({ tipo, id, rotulo, turmaId, desde: new Date().toISOString(), tentativas: 0 });
   guardarEspera(l);
 }
@@ -7499,15 +7562,26 @@ export function selecaoPorConfirmar(id: string): boolean {
   return espera().some(x => x.tipo === 'selecao' && x.id === id);
 }
 
-/** Ao fechar ou esconder a aplicação: a autoavaliação que ainda não se
- *  sabe se chegou vai outra vez, logo, com «keepalive» (acaba mesmo com a
- *  aplicação fechada). As repetições juntam-se no script. */
+/** Este plano (ou a última alteração dele) ainda não se sabe se chegou aos alunos? */
+export function planoPorConfirmar(id: string): boolean {
+  return espera().some(x => x.tipo === 'plano' && x.id === id);
+}
+
+/** Ao fechar ou esconder a aplicação: a autoavaliação ou o plano que ainda
+ *  não se sabe se chegou vai outra vez, logo, com «keepalive» (acaba mesmo
+ *  com a aplicação fechada). As repetições juntam-se no script. */
 function enviarAntesDeFechar(): void {
   const agora = Date.now();
   for (const p of espera()) {
-    if (p.tipo !== 'selecao' || agora - new Date(p.desde).getTime() > 24 * 3600 * 1000) continue;
-    const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
-    if (sel) postar(SHEETS_HISTORICO_URL, { tipo: 'selecao', ...corpoSelecao(sel) });
+    if (agora - new Date(p.desde).getTime() > 24 * 3600 * 1000) continue;
+    if (p.tipo === 'selecao') {
+      const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
+      if (sel) postar(SHEETS_HISTORICO_URL, { tipo: 'selecao', ...corpoSelecao(sel) });
+    } else if (p.tipo === 'plano') {
+      // O professor gravou o plano e saiu logo: as alterações não chegavam aos alunos.
+      const plano = getPlanosAula().find(x => x.id === p.id);
+      if (plano) postar(SHEETS_PLANOS_URL, { tipo: 'plano', plano });
+    }
   }
 }
 if (typeof window !== 'undefined') {
@@ -7551,6 +7625,10 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   const turmas = [...new Set(l.map(x => x.turmaId).filter(Boolean))];
   const tipos = [...new Set(l.map(x => x.tipo))];
   const noSheets = new Map<string, Set<string>>();
+  /** A hora da versão de cada plano no Sheets: uma alteração só chegou
+   *  quando o Sheets tem esta versão ou uma mais recente. Antes bastava o
+   *  plano lá estar — e uma correção que se perdia dava-se por entregue. */
+  const versaoNoSheets = new Map<string, number>();
   // Leitura que correu bem, mesmo com a folha vazia. Antes, uma folha sem
   // nenhuma linha (por exemplo, depois de limpar os dados de teste) era
   // tomada por "não consegui ler" — e o que estava à espera nunca mais era
@@ -7565,19 +7643,29 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
       try {
         const json: any = await lerDoSheets(url, { tipo: pedido, turmaId: t });
         if (json?.ok) algumaLeitura = true;
-        (json?.dados || []).forEach((x: any) => ids.add(String(x.id)));
+        (json?.dados || []).forEach((x: any) => {
+          ids.add(String(x.id));
+          if (tipo === 'plano') versaoNoSheets.set(String(x.id), Date.parse(String(x.atualizadoEm || '')));
+        });
       } catch { /* sem rede: fica para a próxima */ }
     }
     noSheets.set(tipo, ids);
     if (algumaLeitura) lidoComSucesso.add(tipo);
   }
 
+  const versaoChegou = (p: PorConfirmar): boolean => {
+    if (p.tipo !== 'plano') return true;
+    const local = Date.parse(String((getPlanosAula().find(x => x.id === p.id) as any)?.atualizadoEm || ''));
+    const remota = versaoNoSheets.get(String(p.id)) ?? NaN;
+    // Sem hora num dos lados, conta como chegou (como antes).
+    return isNaN(local) || isNaN(remota) || remota >= local - 1000;
+  };
   const restantes: PorConfirmar[] = [];
   let confirmados = 0;
   for (const p of l) {
     const ids = noSheets.get(p.tipo);
     if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
-    if (ids.has(String(p.id))) { confirmados++; continue; }
+    if (ids.has(String(p.id)) && versaoChegou(p)) { confirmados++; continue; }
     // A autoavaliação do aluno insiste até chegar: sem ela o professor
     // não a vê para validar.
     if (p.tentativas < 5 || (p.tipo === 'selecao' && p.tentativas < 60)) emSegundoPlano(() => reenviar(p));
@@ -7927,9 +8015,17 @@ export function perguntaDaAula(chave: 'co' | 'cr', planoAulaId: string): string 
   const ordem = (p: any) => `${String(p.data || '').slice(0, 10)} ${p.horaInicio || ''} ${p.id}`;
   const aulas = getPlanosAula().filter((p: any) => p.turmaId === plano.turmaId && !p.tipoEvento)
     .sort((a, b) => ordem(a).localeCompare(ordem(b)));
-  // Numa aula teórica ou atitudinal não saem perguntas sobre a cozinha e os pratos.
-  const soTeoria = !['pratico', 'misto'].includes(String(plano.tipoPlanAula || 'pratico'));
+  // Sem cozinhar (aula teórica, atitudinal, visita) não saem perguntas sobre a cozinha e os pratos.
+  const soTeoria = !contextoDoPlano(plano).producao;
   return perguntaDoCiclo(chave, Math.max(0, aulas.findIndex(p => p.id === planoAulaId)), soTeoria).id;
+}
+/** Como é esta aula (cozinha, produção, equipas): a triagem do professor,
+ *  ou, sem ela, o que se deduz do plano e dos grupos formados. */
+export function contextoDoPlano(plano: any): ContextoAula {
+  // Grupos ligados no plano pelo professor, ou formados pelos alunos nesta aula.
+  let temGrupos = !!plano?.gruposAlunos?.ativo;
+  try { temGrupos = temGrupos || (!!plano?.id && gruposDaAula(plano.id).length > 0); } catch { /* */ }
+  return contextoDaAula(plano, temGrupos);
 }
 export const perguntaCODaAula = (planoAulaId: string) => perguntaDaAula('co', planoAulaId);
 export const perguntaCRDaAula = (planoAulaId: string) => perguntaDaAula('cr', planoAulaId);
