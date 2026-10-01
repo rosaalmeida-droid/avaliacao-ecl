@@ -468,7 +468,7 @@ function PercursoUC({ aluno, ucId, semNotas = false }: { aluno: { id:string; tur
     const sel = selecoes.find(s => s.planoAulaId === p.id);
     const val = sel ? validacaoDaSelecao(sel, validacoes as any) : undefined;
     const estado = val ? 'validado' : (sel ? 'aguarda' : 'por_avaliar');
-    const nota20 = val ? notaDaAulaValidada(val) : null;
+    const nota20 = val ? notaDaAulaValidada(validacaoDaAula(aluno.id, p.id, validacoes as any)) : null;
     return { p, estado, nota20 };
   });
   const validados = linhas.filter(l => l.estado === 'validado').length;
@@ -819,12 +819,15 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                      : atitudesDaUC;
 
   // Nota progressiva: média das aulas já validadas nesta UC
-  const validacoesAluno = getSelecoes()
-    .filter(s => s.alunoId === aluno.id)
-    .map(s => {
-      const v = validacaoDaSelecao(s);
-      const plano = planos.find(p => p.id === s.planoAulaId);
-      return { plano, nota20: v ? notaDaAulaValidada(v) : null, validada: !!v };
+  // Uma linha por aula (não por resposta): quem respondeu duas vezes via a
+  // mesma aula duas vezes, uma delas com a nota antiga. A nota é a da
+  // validação mais recente — a mesma do «Professor confirmou» e da UC.
+  const selecoesDoAluno = getSelecoes().filter(s => s.alunoId === aluno.id);
+  const validacoesAluno = [...new Set(selecoesDoAluno.map(s => s.planoAulaId || ''))]
+    .map(planoId => {
+      const plano = planos.find(p => p.id === planoId);
+      const validada = selecoesDoAluno.some(s => s.planoAulaId === planoId && !!validacaoDaSelecao(s));
+      return { plano, nota20: validada ? notaDaAulaValidada(validacaoDaAula(aluno.id, planoId)) : null, validada };
     })
     .filter(x => x.plano);
 
@@ -1026,7 +1029,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           {(() => {
             const sel = getSelecoes().find(s => s.alunoId === aluno.id && s.planoAulaId === planoAtivo.id);
             const val = sel ? validacaoDaSelecao(sel) : undefined;
-            const nota20 = val ? notaDaAulaValidada(val) : null;
+            const nota20 = val ? notaDaAulaValidada(validacaoDaAula(aluno.id, planoAtivo.id)) : null;
             if (nota20 == null) return null;
             const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             return (
