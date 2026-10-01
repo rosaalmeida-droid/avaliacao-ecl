@@ -654,7 +654,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       return temGuia ? 'concluido' : 'pendente';
     }
     if (m === 'requisicao') return !temFichas ? 'bloqueado' : temRequisicao ? 'concluido' : 'pendente';
-    if (m === 'validacao') return !temFichas ? 'bloqueado' : 'pendente';
+    if (m === 'validacao') return 'pendente';
     return 'pendente';
   }
 
@@ -1640,7 +1640,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           3 o que se avalia (o telemóvel do aluno) → 4 enviar aos alunos. */}
       <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
       <CabecalhoPasso n={2} titulo="O que se faz"
-        sub="O sumário e as fichas. As técnicas saem das fichas (em «O que este plano tem», mais abaixo)." />
+        sub={contextoDoPlano(plano).producao
+          ? 'O sumário e as fichas. As técnicas saem das fichas (em «O que este plano tem», mais abaixo).'
+          : 'O sumário e o que se trabalha do manual.'} />
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
       {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && (
@@ -2062,6 +2064,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             pode juntar. Nada é obrigatório — mas o professor tem de
             perceber o que ganha e o que perde em cada escolha. */}
         {(() => {
+          // Aula sem cozinhar (teórica, atitudinal): fichas, guião e
+          // requisição não fazem sentido — não se mostram.
+          if (!contextoDoPlano(plano).producao) return null;
           const B = '#7B2233', BS = '#F6ECEE';
           const temFicha = fichasDoPlano.length > 0;
           const temGuiao = fichasDoPlano.some((f: any) => f.textoGuia);
@@ -2350,10 +2355,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>Construir esta aula</div>
           <ModuloCard icone="🎯" titulo={`Competências (${totalComp})`} cor="var(--copper)" descricao={`${compObrigatorias.length} obrigatórias · ${compTecnicas.length} técnicas · ${compAtitudes.length} atitudes`} estado="pendente" onClick={() => setModulo('competencias')} />
+          {contextoDoPlano(plano).producao && (<>
           <ModuloCard icone="📄" titulo="Ficha de Produção" cor="var(--copper)" descricao={temFichas ? `${fichasDoPlano.length} ficha${fichasDoPlano.length > 1 ? 's' : ''} criada${fichasDoPlano.length > 1 ? 's' : ''}` : 'Criar ficha com ingredientes, preparação e HACCP'} estado={estadoModulo('ficha') as any} onClick={() => setModulo('ficha')} />
           <ModuloCard icone="📚" titulo="Guia de Apoio à Produção" cor="var(--sage)" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Documento pedagógico com rendimentos, food cost e questões'} estado={estadoModulo('guia') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('guia')} />
           <ModuloCard icone="🛒" titulo="Requisição" cor="#2980b9" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : temRequisicao ? 'Requisição criada — ver ou editar' : 'Consolidar ingredientes para a aula'} estado={estadoModulo('requisicao') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('requisicao')} />
-          <ModuloCard icone="✓" titulo="Validação e Avaliação" cor="#8e44ad" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Validar autoavaliações dos alunos'} estado={estadoModulo('validacao') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('validacao')} />
+          </>)}
+          <ModuloCard icone="✓" titulo="Validação e Avaliação" cor="#8e44ad" descricao="Validar autoavaliações dos alunos" estado={estadoModulo('validacao') as any} onClick={() => setModulo('validacao')} />
           <ModuloCard icone="🔓" titulo="Reabrir Autoavaliação" cor="#16a085" descricao="Aluno enganou-se? Destranca para ele corrigir" estado="pendente" onClick={() => setModulo('registos')} />
         </div>
 
