@@ -8022,8 +8022,9 @@ export function perguntaDaAula(chave: 'co' | 'cr', planoAulaId: string): string 
 /** Como é esta aula (cozinha, produção, equipas): a triagem do professor,
  *  ou, sem ela, o que se deduz do plano e dos grupos formados. */
 export function contextoDoPlano(plano: any): ContextoAula {
-  let temGrupos = false;
-  try { temGrupos = !!plano?.id && gruposDaAula(plano.id).length > 0; } catch { /* */ }
+  // Grupos ligados no plano pelo professor, ou formados pelos alunos nesta aula.
+  let temGrupos = !!plano?.gruposAlunos?.ativo;
+  try { temGrupos = temGrupos || (!!plano?.id && gruposDaAula(plano.id).length > 0); } catch { /* */ }
   return contextoDaAula(plano, temGrupos);
 }
 export const perguntaCODaAula = (planoAulaId: string) => perguntaDaAula('co', planoAulaId);

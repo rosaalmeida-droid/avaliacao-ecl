@@ -75,8 +75,9 @@ import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
-import { CINCO_C, type Letra5CAluno } from '../contextoAula';
-import { regrasDaAutoavaliacao } from '../autoavaliacaoDaAula';
+import { CINCO_C, triagemDoPlano, type Letra5CAluno } from '../contextoAula';
+import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno } from '../autoavaliacaoDaAula';
+import { fraseDaAula } from './PlanoGuiado';
 import { DicionarioComp } from './DicionarioComp';
 import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
@@ -1798,6 +1799,53 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
   );
 }
 
+/**
+ * Ao abrir a aula, o aluno percebe como ela é (onde, se cozinha, se é em
+ * grupo) e a que vai responder no fim — e que cada pergunta trabalha um
+ * dos 5 C (Rosa, out/2026). As perguntas vêm das mesmas regras da
+ * autoavaliação e do plano do professor.
+ */
+function OQueVaisResponder({ plano, fichas, aluno }: { plano: PlanoAula; fichas: any[]; aluno: Aluno }) {
+  const t = triagemDoPlano(plano);
+  let ecras: EcraDoAluno[] = [];
+  try {
+    ecras = ecrasDoAluno(plano, fichas, contextoDoPlano(plano), perguntaCODaAula(plano.id), perguntaCRDaAula(plano.id), aluno.ano ?? 1).ecras;
+  } catch { return null; }
+  if (!ecras.length && !t) return null;
+  const cs = (['cp', 'cl', 'cr', 'co'] as Letra5CAluno[]).filter(c => ecras.some(e => e.c === c));
+  return (
+    <div style={{ background:'#fff', borderRadius:16, padding:'14px 18px', marginBottom:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+      {t && (
+        <div style={{ marginBottom:10 }}>
+          <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'#6B3FA0', marginBottom:4 }}>
+            Como é esta aula
+          </div>
+          <div style={{ fontSize:15.5, fontWeight:700, lineHeight:1.45 }}>{fraseDaAula(t)}</div>
+        </div>
+      )}
+      <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'#6B3FA0', marginBottom:4 }}>
+        No fim, vais responder a {ecras.length} pergunta{ecras.length === 1 ? '' : 's'}
+      </div>
+      <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.65)', marginBottom:8, lineHeight:1.45 }}>
+        Cada uma trabalha um dos teus 5 C: {cs.map(c => `${CINCO_C[c].sigla} ${CINCO_C[c].nome}`).join(' · ')}.
+        Entregar a autoavaliação conta para o {CINCO_C.cm.sigla} {CINCO_C.cm.nome}.
+      </div>
+      {ecras.map((e, i) => (
+        <div key={i} style={{ display:'flex', alignItems:'baseline', gap:8, padding:'6px 0',
+          borderTop: i ? '1px solid rgba(26,23,20,0.08)' : 'none', fontSize:14.5, lineHeight:1.4 }}>
+          <span style={{ color:'rgba(26,23,20,0.5)', minWidth:16 }}>{i + 1}</span>
+          <span style={{ flex:1 }}>
+            <span style={{ color:'rgba(26,23,20,0.6)' }}>{e.rotulo}{e.tipo === 'escolhe' ? ' (escolhes uma)' : ''}: </span>
+            <b>{e.tipo === 'escolhe' ? e.nome.replace(/^Escolhe 1: /, '') : e.nome}</b>
+          </span>
+          <span style={{ fontSize:11.5, fontWeight:800, padding:'2px 8px', borderRadius:100, whiteSpace:'nowrap',
+            background: CINCO_C[e.c].fundo, color: CINCO_C[e.c].cor }}>{CINCO_C[e.c].sigla}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
   plano: PlanoAula; fichas: FichaProducao[]; aluno: Aluno; onContinuar: () => void;
 }) {
@@ -1865,6 +1913,9 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
           <div style={{ fontSize:15, lineHeight:1.55, color:'#2A1745', whiteSpace:'pre-wrap' }}>{(plano as any).sumario}</div>
         </div>
       )}
+
+      {/* Como é a aula e o que vais responder no fim — o mesmo que o professor vê. */}
+      <OQueVaisResponder plano={plano} fichas={fichas} aluno={aluno} />
 
       {/* O que vais fazer — é isto que interessa. */}
       <div style={{ background:'#fff', borderRadius:16, padding:18, marginBottom:12,
