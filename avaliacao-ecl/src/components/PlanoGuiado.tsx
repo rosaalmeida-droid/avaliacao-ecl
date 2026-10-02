@@ -20,12 +20,12 @@ import {
 import {
   triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem,
   TEXTO_ONDE, TEXTO_TRABALHO, TEXTO_TIPO, EXPLICA_TIPO, CINCO_C, tipoDe, TEXTO_MODO, TEXTO_FORMATO, escolheTema,
-  TEXTO_FASE, faseDoTrabalho,
-  type ModoTrabalho, type FormatoTrabalho, type FaseTrabalho,
+  FASES, NOME_FASE, fasesDoTrabalho, faseSeguinte,
   type TriagemAula, type OndeAula, type TrabalhoAula, type TipoAula,
 } from '../contextoAula';
 import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoDaAula';
 import { conhecimentosDaAula } from '../compatECL';
+import { sumarioDoPlano } from '../sumarioAutomatico';
 
 const C = {
   tinta: '#1F1A16', suave: 'rgba(26,23,20,0.62)', linha: 'rgba(26,23,20,0.12)',
@@ -180,10 +180,21 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     // Mudar para cozinhar leva a aula para a cozinha; teórica sai da cozinha.
     if ('tipo' in parcial && nova.cozinham && !('onde' in parcial) && nova.onde === 'sala') nova.onde = 'cozinha';
     if ('tipo' in parcial && nova.tipo === 'teorico' && nova.onde === 'cozinha') nova.onde = 'sala';
+    // O que se deduz (Rosa, out/2026: não perguntar o que já se sabe).
+    // Teórica: na sala; a turma toda se é o professor a dar a matéria.
+    if (('tipo' in parcial || 'modo' in parcial) && nova.tipo === 'teorico') {
+      if (nova.onde === 'cozinha') nova.onde = 'sala';
+      nova.trabalho = nova.modo === 'grupo' ? 'grupos' : nova.modo === 'individual' ? 'individual' : 'turma';
+    }
     // O modo do trabalho decide como trabalham (as perguntas de grupo dependem disto).
     if (parcial.modo === 'grupo') nova.trabalho = 'grupos';
     if (parcial.modo === 'individual') nova.trabalho = 'individual';
-    if (nova.tipo === 'pratico' || nova.tipo === 'atitudinal') { delete nova.modo; delete nova.formatos; delete nova.fase; }
+    if (nova.tipo === 'atitudinal') { delete nova.modo; delete nova.formatos; delete nova.fase; delete nova.fases; delete nova.continuaDe; }
+    if (!escolheTema(nova)) { delete nova.fases; delete nova.continuaDe; }
+    // Um trabalho novo começa pela investigação.
+    else if (!nova.fases?.length && !nova.fase) nova.fases = ['investigacao'];
+    if (nova.fases && !nova.cozinham) nova.fases = nova.fases.filter(f => f !== 'apres_pratico');
+    if (nova.fases && !nova.fases.length) nova.fases = ['investigacao'];
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const novo: any = { ...atual, triagemAula: nova };
     // O tipo da aula (os pesos da nota) e a farda e os registos acompanham a
@@ -214,133 +225,193 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || novo);
   }
 
+  // O trabalho da aula anterior (mesma turma e unidade), para «continua?».
+  const anterior: any = (() => {
+    const dia = (x: any) => String(x.data || '').slice(0, 10);
+    const meu = dia(p) + String(p.criadoEm || '');
+    return getPlanosAula()
+      .filter((x: any) => x.id !== plano.id && x.turmaId === plano.turmaId && x.ucId === p.ucId && x.estado !== 'arquivado'
+        && escolheTema(triagemDoPlano(x)) && dia(x) + String(x.criadoEm || '') < meu)
+      .sort((a: any, b: any) => (dia(b) + String(b.criadoEm || '')).localeCompare(dia(a) + String(a.criadoEm || '')))[0];
+  })();
+  const triAnt = anterior ? triagemDoPlano(anterior) : null;
+  const ehTrabalho = escolheTema(valor);
+  const fases = fasesDoTrabalho(valor);
+  const [outraSituacao, setOutraSituacao] = useState(false);
+  const dataCurta = (iso: string) => `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}`;
+  const fasesPossiveis = FASES.filter(f => !f.so || valor.cozinham);
+  const Q = ({ n, titulo, ajuda, children }: { n: number; titulo: string; ajuda?: string; children: React.ReactNode }) => (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      <span style={{ width: 24, height: 24, borderRadius: '50%', background: C.fundo, color: C.cobre, fontWeight: 800, fontSize: 13,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{n}</span>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <div style={{ fontWeight: 700, fontSize: 15 }}>{titulo}</div>
+        {ajuda && <div style={{ fontSize: 13, color: C.suave, marginTop: -4 }}>{ajuda}</div>}
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>{children}</div>
+      </div>
+    </div>
+  );
+  let n = 1;
+  const ModoOpcoes = ({ semProfessor }: { semProfessor?: boolean }) => (<>
+    {!semProfessor && <Opcao ativo={!!definida && !ehTrabalho} onClick={() => gravar({ modo: 'professor' })}>Dou eu a matéria</Opcao>}
+    {semProfessor && <Opcao ativo={!!definida && !ehTrabalho} onClick={() => gravar({ modo: undefined })}>Não</Opcao>}
+    <Opcao ativo={!!definida && valor.modo === 'grupo'} onClick={() => gravar({ modo: 'grupo' })}>Trabalho de grupo (cada grupo o seu tema)</Opcao>
+    <Opcao ativo={!!definida && valor.modo === 'individual'} onClick={() => gravar({ modo: 'individual' })}>Trabalho individual (cada aluno o seu tema)</Opcao>
+  </>);
+
   return (
     <div style={cart}>
       <CabecalhoPasso n={1} titulo="Como é esta aula?"
-        sub="Primeiro o tipo de aula. O que o aluno responde e o que conta para a nota sai daqui." />
+        sub="Uma pergunta de cada vez: só aparecem as que fazem falta. O resto a aplicação deduz." />
       {!definida && (
         <div style={{ background: C.ambarP, color: '#5C3A08', borderRadius: 10, padding: '10px 14px', fontSize: 14, marginBottom: 14, lineHeight: 1.5 }}>
           <b>Escolhe o tipo de aula.</b> Sem ele, a aplicação não sabe o que avaliar nem se há farda e higiene e
           segurança alimentar — e não adivinha.
         </div>
       )}
-      {/* O tipo de aula primeiro: decide a farda e a higiene e segurança alimentar. */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 7 }}>Que tipo de aula é?</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
-          {(['pratico', 'misto', 'teorico', 'atitudinal'] as TipoAula[]).map(t => {
-            const on = !!definida && tipo === t;
-            return (
-              <button key={t} onClick={() => gravar({ tipo: t })} style={{ fontFamily: 'inherit', textAlign: 'left', padding: '10px 12px',
-                borderRadius: 11, cursor: 'pointer', border: on ? `2px solid ${C.cobre}` : '1px solid rgba(26,23,20,0.22)',
-                background: on ? C.cobre : '#fff', color: on ? '#fff' : C.tinta }}>
-                <div style={{ fontSize: 15, fontWeight: 800 }}>{TEXTO_TIPO[t]}</div>
-                <div style={{ fontSize: 12.5, opacity: 0.85 }}>{EXPLICA_TIPO[t]}</div>
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ fontSize: 13.5, marginTop: 8, color: C.suave, lineHeight: 1.5, display: 'flex', flexWrap: 'wrap', gap: '4px 10px', alignItems: 'center' }}>
-          <span>
-            <b style={{ color: C.tinta }}>Farda:</b> {ob.farda ? 'avalia-se (à entrada)' : 'não se avalia'}
-            {' · '}<b style={{ color: C.tinta }}>Higiene e segurança alimentar (registos do KitchenFlow):</b> {ob.registos ? 'avalia-se' : 'não se avalia'}
-          </span>
-          {tipo === 'atitudinal' && (
-            <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span>Avaliar a farda nesta dinâmica?</span>
-              <Opcao ativo={!!definida && ob.farda} onClick={() => gravar({ farda: true })}>Sim</Opcao>
-              <Opcao ativo={!!definida && !ob.farda} onClick={() => gravar({ farda: false })}>Não</Opcao>
-            </span>
-          )}
-        </div>
-      </div>
-      {/* Teórica ou mista: como se trabalha o manual, e o formato do trabalho. */}
-      {(tipo === 'teorico' || tipo === 'misto') && (
-        <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Pergunta titulo="Como se trabalha o manual?">
-            {(['professor', 'grupo', 'individual'] as ModoTrabalho[]).map(m => (
-              <Opcao key={m} ativo={!!definida && (valor.modo || 'professor') === m} onClick={() => gravar({ modo: m })}>{TEXTO_MODO[m]}</Opcao>
-            ))}
-          </Pergunta>
-          {escolheTema(valor) && (
-            <Pergunta titulo="Em que fase está o trabalho?">
-              {(['preparar', 'apresentar'] as FaseTrabalho[]).map(f => (
-                <Opcao key={f} ativo={!!definida && faseDoTrabalho(valor) === f} onClick={() => gravar({ fase: f })}>{TEXTO_FASE[f]}</Opcao>
-              ))}
-            </Pergunta>
-          )}
-          {escolheTema(valor) && (
-            <Pergunta titulo="Como vai ser apresentado? (podes escolher vários)">
-              {(['escrito', 'oral', 'digital', 'pratico'] as FormatoTrabalho[]).map(f => {
-                const on = (valor.formatos || []).includes(f);
-                return <Opcao key={f} ativo={!!definida && on} onClick={() => gravar({ formatos: on
-                  ? (valor.formatos || []).filter(x => x !== f) : [...(valor.formatos || []), f] })}>{TEXTO_FORMATO[f]}</Opcao>;
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* 1. O tipo de aula: decide a farda e a higiene e segurança alimentar. */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <span style={{ width: 24, height: 24, borderRadius: '50%', background: C.fundo, color: C.cobre, fontWeight: 800, fontSize: 13,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{n++}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 7 }}>Que aula é?</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+              {(['pratico', 'misto', 'teorico', 'atitudinal'] as TipoAula[]).map(t => {
+                const on = !!definida && tipo === t;
+                return (
+                  <button key={t} onClick={() => gravar({ tipo: t })} style={{ fontFamily: 'inherit', textAlign: 'left', padding: '10px 12px',
+                    borderRadius: 11, cursor: 'pointer', border: on ? `2px solid ${C.cobre}` : '1px solid rgba(26,23,20,0.22)',
+                    background: on ? C.cobre : '#fff', color: on ? '#fff' : C.tinta }}>
+                    <div style={{ fontSize: 15, fontWeight: 800 }}>{TEXTO_TIPO[t]}</div>
+                    <div style={{ fontSize: 12.5, opacity: 0.85 }}>{EXPLICA_TIPO[t]}</div>
+                  </button>
+                );
               })}
-            </Pergunta>
-          )}
-          {definida && escolheTema(valor) && <AvisoDoTrabalho plano={plano} triagem={valor} />}
+            </div>
+          </div>
         </div>
-      )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px 26px' }}>
-        <Pergunta titulo="Onde é?">
-          {(['cozinha', 'sala', 'fora'] as OndeAula[]).map(o => (
-            <Opcao key={o} ativo={!!definida && valor.onde === o} onClick={() => gravar({ onde: o })}>{TEXTO_ONDE[o]}</Opcao>
-          ))}
-        </Pergunta>
-        <Pergunta titulo="Como trabalham?">
-          {(['grupos', 'individual', 'turma'] as TrabalhoAula[]).map(t => (
-            <Opcao key={t} ativo={!!definida && valor.trabalho === t} onClick={() => gravar({ trabalho: t })}>{TEXTO_TRABALHO[t]}</Opcao>
-          ))}
-        </Pergunta>
-        {(tipo === 'pratico' || tipo === 'misto') && (
-          <Pergunta titulo="Há serviço a clientes?">
-            <Opcao ativo={!!definida && valor.servico} onClick={() => gravar({ servico: true })}>Sim (almoço, evento)</Opcao>
-            <Opcao ativo={!!definida && !valor.servico} onClick={() => gravar({ servico: false })}>Não</Opcao>
-          </Pergunta>
+
+        {definida && (tipo === 'teorico' || tipo === 'misto') && (
+          <Q n={n++} titulo={tipo === 'misto' ? 'Como se trabalha a parte teórica?' : 'Como se trabalha?'}>
+            <ModoOpcoes />
+          </Q>
+        )}
+        {definida && (tipo === 'pratico' || tipo === 'misto') && (<>
+          <Q n={n++} titulo="Na cozinha, como trabalham?">
+            <Opcao ativo={valor.trabalho === 'grupos'} onClick={() => gravar({ trabalho: 'grupos' })}>Em grupos (brigadas)</Opcao>
+            <Opcao ativo={valor.trabalho === 'individual'} onClick={() => gravar({ trabalho: 'individual' })}>Cada um sozinho</Opcao>
+          </Q>
+          <Q n={n++} titulo="Há serviço a clientes?">
+            <Opcao ativo={valor.servico} onClick={() => gravar({ servico: true })}>Sim (almoço, evento)</Opcao>
+            <Opcao ativo={!valor.servico} onClick={() => gravar({ servico: false })}>Não</Opcao>
+          </Q>
+          {tipo === 'pratico' && (
+            <Q n={n++} titulo="Faz parte de um trabalho com tema (um projeto em várias aulas)?">
+              <ModoOpcoes semProfessor />
+            </Q>
+          )}
+        </>)}
+        {definida && tipo === 'atitudinal' && (<>
+          <Q n={n++} titulo="Onde é?">
+            <Opcao ativo={valor.onde !== 'fora'} onClick={() => gravar({ onde: 'sala' })}>Na escola</Opcao>
+            <Opcao ativo={valor.onde === 'fora'} onClick={() => gravar({ onde: 'fora' })}>Fora da escola (visita, evento)</Opcao>
+          </Q>
+          <Q n={n++} titulo="Avalia-se a farda?">
+            <Opcao ativo={ob.farda} onClick={() => gravar({ farda: true })}>Sim</Opcao>
+            <Opcao ativo={!ob.farda} onClick={() => gravar({ farda: false })}>Não</Opcao>
+          </Q>
+        </>)}
+
+        {/* Um trabalho com tema: continua o da aula anterior? Em que fase está? */}
+        {definida && ehTrabalho && anterior && triAnt && (
+          <Q n={n++} titulo={`Continua o trabalho da aula de ${dataCurta(anterior.data)}?`}
+            ajuda={`Nessa aula: ${fasesDoTrabalho(triAnt).map(f => NOME_FASE[f].replace(/ \(.*\)$/, '').toLowerCase()).join(', ')}.`}>
+            <Opcao ativo={valor.continuaDe === anterior.id} onClick={() => {
+                const seguinte = faseSeguinte(fasesDoTrabalho(triAnt));
+                gravar({ continuaDe: anterior.id, modo: triAnt.modo,
+                  fases: valor.continuaDe === anterior.id ? fases : [seguinte && (!FASES.find(f => f.id === seguinte)?.so || valor.cozinham) ? seguinte : fasesDoTrabalho(triAnt).slice(-1)[0]] });
+              }}>Sim, continua</Opcao>
+            <Opcao ativo={valor.continuaDe === ''} onClick={() => gravar({ continuaDe: '' })}>Não, é um trabalho novo</Opcao>
+          </Q>
+        )}
+        {definida && ehTrabalho && (
+          <Q n={n++} titulo="Em que fase está hoje? (pode ser mais do que uma)"
+            ajuda="O aluno avalia-se só no que faz nesta fase: na investigação não se avalia a apresentação oral.">
+            {fasesPossiveis.map(f => {
+              const on = fases.includes(f.id);
+              return <Opcao key={f.id} ativo={on} onClick={() => {
+                const novas = on ? fases.filter(x => x !== f.id) : [...fases, f.id];
+                if (novas.length) gravar({ fases: FASES.map(x => x.id).filter(x => novas.includes(x)) });
+              }}>{f.nome}</Opcao>;
+            })}
+          </Q>
         )}
       </div>
-      {/* O peso da aula na nota do módulo decide-se na pauta, não aqui (Rosa, out/2026). */}
+
+      {/* O que a aplicação deduziu — muda-se só nas exceções. */}
       {definida && (
-        <div style={{ background: C.fundo, borderRadius: 12, padding: '11px 14px', marginTop: 14, fontSize: 14.5, fontWeight: 700 }}>
-          {fraseDaAula(valor)}
+        <div style={{ marginTop: 14, fontSize: 13.5, color: C.suave, lineHeight: 1.55 }}>
+          <b style={{ color: C.tinta }}>Deduzido:</b> {TEXTO_ONDE[valor.onde].toLowerCase()} · {TEXTO_TRABALHO[valor.trabalho].toLowerCase()}
+          {' · '}farda: {ob.farda ? 'avalia-se' : 'não'} · higiene e segurança alimentar: {ob.registos ? 'avalia-se' : 'não'}
+          {' · '}<button onClick={() => setOutraSituacao(v => !v)} style={{ background: 'none', border: 'none', padding: 0, color: C.cobre,
+            fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', fontSize: 13.5 }}>
+            {outraSituacao ? 'fechar' : 'não é assim? mudar'}</button>
         </div>
       )}
+      {definida && outraSituacao && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px 22px', marginTop: 10,
+          background: C.fundo, borderRadius: 12, padding: '12px 14px' }}>
+          <Pergunta titulo="Onde é?">
+            {(['cozinha', 'sala', 'fora'] as OndeAula[]).map(o => (
+              <Opcao key={o} ativo={valor.onde === o} onClick={() => gravar({ onde: o })}>{TEXTO_ONDE[o]}</Opcao>
+            ))}
+          </Pergunta>
+          <Pergunta titulo="Como trabalham?">
+            {(['grupos', 'individual', 'turma'] as TrabalhoAula[]).map(t => (
+              <Opcao key={t} ativo={valor.trabalho === t} onClick={() => gravar({ trabalho: t })}>{TEXTO_TRABALHO[t]}</Opcao>
+            ))}
+          </Pergunta>
+        </div>
+      )}
+
+      {definida && <ResultadoDaAula plano={plano} triagem={valor} />}
     </div>
   );
 }
 
-/** O que é importante num trabalho sobre o manual, logo à vista (Rosa, out/2026). */
-function AvisoDoTrabalho({ plano, triagem }: { plano: PlanoAula; triagem: TriagemAula }) {
+/** O resultado da triagem, num cartão só (Rosa, out/2026): o professor vê
+ *  logo o sumário, o que o aluno vai responder e como conta para a nota. */
+function ResultadoDaAula({ plano, triagem }: { plano: PlanoAula; triagem: TriagemAula }) {
+  let ecras: { rotulo: string; nome: string }[] = [], pesos: { nome: string; pct: number }[] = [];
+  try {
+    const r = oQueOAlunoVe(plano);
+    ecras = r.ecras;
+    pesos = pesosDaAula(plano, r.regras).filter(x => x.pct > 0);
+  } catch { /* */ }
+  const fichas = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
   const alunos = getAlunos().filter(a => a.turmaId === plano.turmaId && a.ativo !== false);
   const grupos = triagem.modo === 'grupo' ? gruposDaAula(plano.id) : [];
   const emGrupo = new Set(grupos.flatMap(g => g.membros.map(m => m.alunoId)));
-  const semGrupo = alunos.filter(a => !emGrupo.has(a.id));
-  const linhas: { ok: boolean; texto: string }[] = [];
-  if (triagem.modo === 'grupo') {
-    linhas.push({ ok: grupos.length > 0 && semGrupo.length === 0,
-      texto: grupos.length ? `Grupos: ${grupos.length} formados · ${semGrupo.length ? `${semGrupo.length} alunos ainda sem grupo` : 'todos os alunos têm grupo'}`
-        : 'Grupos: os alunos formam-nos na aplicação (separador «Grupos»)' });
-    linhas.push({ ok: true, texto: 'Tema: cada grupo escolhe, na autoavaliação, o seu conteúdo de entre todos os do manual' });
-  } else {
-    linhas.push({ ok: true, texto: 'Tema: cada aluno escolhe, na autoavaliação, o seu conteúdo de entre todos os do manual' });
-  }
-  const f = triagem.formatos || [];
-  if (faseDoTrabalho(triagem) === 'preparar') {
-    linhas.push({ ok: true, texto: 'Hoje é a preparação: o aluno avalia-se no que já sabe do tema, na pesquisa, no material e no tempo da aula — não na apresentação, que ainda não aconteceu' });
-    linhas.push({ ok: f.length > 0, texto: f.length ? `Vai ser apresentado: ${f.map(x => TEXTO_FORMATO[x].toLowerCase()).join(', ')} (avalia-se na aula em que se apresenta)`
-      : 'Escolhe acima como vai ser apresentado' });
-  } else {
-    linhas.push({ ok: f.length > 0, texto: f.length ? `Hoje apresentam: ${f.map(x => TEXTO_FORMATO[x].toLowerCase()).join(', ')} — o aluno avalia-se em cada um${f.includes('oral') ? ', incluindo a defesa do tema' : ''}`
-      : 'Escolhe acima como se apresenta o trabalho' });
-  }
+  const linha = (rot: string, txt: React.ReactNode) => (
+    <div style={{ display: 'flex', gap: 10, fontSize: 14, lineHeight: 1.5 }}>
+      <b style={{ width: 120, flexShrink: 0, color: C.azul }}>{rot}</b><span style={{ flex: 1, minWidth: 0 }}>{txt}</span>
+    </div>
+  );
   return (
-    <div style={{ background: C.azulP, borderRadius: 10, padding: '10px 14px', fontSize: 14, lineHeight: 1.55 }}>
-      {linhas.map((l, i) => (
-        <div key={i}><b style={{ color: l.ok ? C.verde : C.ambar }}>{l.ok ? '✓' : '!'}</b> {l.texto}</div>
-      ))}
+    <div style={{ marginTop: 16, background: C.azulP, borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+      <div style={{ fontWeight: 800, fontSize: 15, color: C.azul }}>Ficou assim</div>
+      {linha('A aula', fraseDaAula(triagem) + (escolheTema(triagem) ? ` ${triagem.modo === 'grupo' ? 'Trabalho de grupo' : 'Trabalho individual'}: ${fasesDoTrabalho(triagem).map(f => NOME_FASE[f].toLowerCase()).join(', ')}.` : ''))}
+      {linha('Sumário', <span style={{ whiteSpace: 'pre-line' }}>{sumarioDoPlano(plano, fichas)}</span>)}
+      {linha(`O aluno responde`, ecras.length ? `${ecras.length}: ${ecras.map(e => e.nome).join(' → ')}` : '—')}
+      {linha('Conta para a nota', pesos.map(x => `${x.nome} ${x.pct}%`).join(' · ') || '—')}
+      {escolheTema(triagem) && linha('Tema', triagem.modo === 'grupo'
+        ? `cada grupo escolhe o seu, na autoavaliação.${grupos.length ? ` Grupos: ${grupos.length}; ${alunos.filter(a => !emGrupo.has(a.id)).length} alunos sem grupo.` : ' Os alunos formam os grupos na aplicação.'}`
+        : 'cada aluno escolhe o seu, na autoavaliação' + (triagem.continuaDe ? ' (vem já escolhido o da aula anterior).' : '.'))}
     </div>
   );
 }
+
 
 // ── 3. O que se avalia — e o telemóvel do aluno ───────────────
 

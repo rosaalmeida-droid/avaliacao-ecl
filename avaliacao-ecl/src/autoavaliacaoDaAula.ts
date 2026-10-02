@@ -14,14 +14,14 @@ import {
 } from './compatECL';
 import { trimestreAtual } from './datas';
 import { sumarioDoPlano } from './sumarioAutomatico';
-import { CRITERIOS_FORMATO } from './criteriosTrabalho';
+import { criteriosDasFases } from './criteriosTrabalho';
 import { opcoesDeEscolhaDoAluno } from './motorAvaliacao';
 import { ATITUDES_FIXAS_EVENTO, NOME_TEC_EVENTO } from './eventosAvaliacao';
 import {
   temPerguntas, atitudeAplicavel, perguntasAplicaveis, perguntasDe, porqueNaoSeFaz,
 } from './perguntas_atitudes';
 import { perguntasDaAula, CL_SEMPRE } from './triagem5c';
-import { porqueNao, triagemDoPlano, escolheTema, faseDoTrabalho, TEXTO_FORMATO, type ContextoAula, type Letra5CAluno, type FormatoTrabalho } from './contextoAula';
+import { porqueNao, triagemDoPlano, escolheTema, fasesDoTrabalho, TEXTO_FORMATO, type ContextoAula, type Letra5CAluno, type FormatoTrabalho } from './contextoAula';
 import { manualDaUC, capituloDoCampo, indicadoresDoConteudo, rotuloConteudo, type CapituloManual } from './bancoManuais';
 
 /** Quantas atitudes o aluno vê para escolher, antes de pedir a lista toda. */
@@ -107,10 +107,10 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   // O aluno escolhe entre TODOS os conteúdos do manual: cada um escolhe o seu
   // (Rosa, out/2026 — o professor só podia marcar um, e todos tinham o mesmo).
   const temasPossiveis = md ? md.capitulos.map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
-  // Os critérios do formato (a oral, a escrita…) só na aula em que se
-  // apresenta; na aula de preparação, os da preparação.
-  const fase = faseDoTrabalho(triagem);
-  const formatos: FormatoTrabalho[] = temTema && fase === 'apresentar' ? (triagem?.formatos || []) : [];
+  // Os critérios são os das fases em que o trabalho está hoje: a oral só na
+  // aula em que se apresenta; na investigação, os da pesquisa.
+  const fases = temTema ? fasesDoTrabalho(triagem) : [];
+  const formatos: FormatoTrabalho[] = fases.filter(f => f.startsWith('apres_')).map(f => f.slice(6) as FormatoTrabalho);
   if (temTema) {
     conhecimentos.length = 0;
     const tema = temasPossiveis.find(t => t.capitulo.n === opts.temaEscolhido);
@@ -118,9 +118,8 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
       conhecimentos.push({ id: k.id, nome: k.texto, definicao: '', capitulo: k.capitulo });
     // Cada formato com os seus critérios (a oral não se avalia como a escrita);
     // no trabalho de grupo, também a parte de cada um.
-    for (const f of [...(fase === 'preparar' ? ['preparar'] : formatos), ...(triagem?.modo === 'grupo' ? ['grupo'] : [])])
-      for (const cr of CRITERIOS_FORMATO[f] || [])
-        conhecimentos.push({ id: cr.id, nome: cr.nome.replace(/^[^:]+: /, ''), definicao: '', capitulo: cr.nome.split(':')[0] });
+    for (const cr of criteriosDasFases(fases, triagem?.modo === 'grupo'))
+      conhecimentos.push({ id: cr.id, nome: cr.nome.replace(/^[^:]+: /, ''), definicao: '', capitulo: cr.nome.split(':')[0] });
   }
   if (!temTema && !ehAtitudinal && (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto') && conhecimentos.length === 0)
     conhecimentos.push({ id: PREFIXO_TRABALHO_AULA + p.id, nome: manual ? 'O trabalho de hoje no manual' : 'O trabalho de hoje',

@@ -10,7 +10,7 @@
 // ============================================================
 import type { PlanoAula, FichaProducao } from './types';
 import { codigosDasLinhas, encontrarSubtecnica, encontrarAparelho, ATITUDES } from './compatECL';
-import { triagemDoPlano, tipoDe, escolheTema, faseDoTrabalho } from './contextoAula';
+import { triagemDoPlano, tipoDe, escolheTema, fasesDoTrabalho, type FaseProjeto } from './contextoAula';
 
 const semPonto = (t: string) => t.trim().replace(/[.;:]+$/, '');
 const minuscula = (t: string) => t ? t[0].toLowerCase() + t.slice(1) : t;
@@ -61,14 +61,16 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
 
   // Trabalho sobre o manual com tema escolhido.
   if (t && (t.modo === 'individual' || t.modo === 'grupo')) {
-    const formatos = (t.formatos || []).map(f => ({ escrito: 'trabalho escrito', oral: 'apresentação oral', digital: 'apresentação digital', pratico: 'demonstração prática' } as Record<string, string>)[f]);
-    const fmt = formatos.length ? ` (${lista(formatos)})` : '';
-    const quem = t.modo === 'individual' ? 'individual' : 'de investigação em grupo';
-    linhas.push(faseDoTrabalho(t) === 'apresentar'
-      ? `Apresentação e defesa dos trabalhos ${quem} sobre temas do Manual do Aluno${fmt}.`
-      : t.modo === 'individual'
-        ? `Preparação do trabalho individual: cada aluno escolheu um tema do Manual do Aluno, pesquisou e preparou o material${fmt ? ` para a apresentação${fmt}` : ''}.`
-        : `Preparação do trabalho de investigação em grupo sobre temas do Manual do Aluno: pesquisa e material${fmt ? ` para a apresentação${fmt}` : ''}.`);
+    const NO_SUMARIO: Record<FaseProjeto, string> = {
+      investigacao: 'investigação sobre o tema', desenvolvimento: 'desenvolvimento do trabalho',
+      receita: 'desenvolvimento da receita e da ficha técnica', menu: 'criação do menu', requisicao: 'elaboração da requisição',
+      apres_escrito: 'entrega do trabalho escrito', apres_oral: 'apresentação oral e defesa do trabalho',
+      apres_digital: 'apresentação digital', apres_pratico: 'apresentação prática (confeção)',
+    };
+    const fases = fasesDoTrabalho(t).map(f => NO_SUMARIO[f]);
+    const quem = t.modo === 'individual' ? 'Trabalho individual (cada aluno com o seu tema do Manual do Aluno)'
+      : 'Trabalho de grupo (cada grupo com o seu tema do Manual do Aluno)';
+    linhas.push(`${quem}${t.continuaDe ? ', em continuação da aula anterior' : ''}: ${lista(fases)}.`);
     return linhas.join('\n');
   }
   // Como se trabalhou.

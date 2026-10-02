@@ -33,8 +33,12 @@ export interface TriagemAula {
   modo?: ModoTrabalho;
   /** Num trabalho (de grupo ou individual): como se apresenta. */
   formatos?: FormatoTrabalho[];
-  /** Num trabalho: hoje preparam-no, ou apresentam-no e defendem-no? */
+  /** (antigo) Num trabalho: hoje preparam-no, ou apresentam-no. Agora: «fases». */
   fase?: FaseTrabalho;
+  /** Num trabalho: em que fase(s) está hoje (pode ser mais do que uma). */
+  fases?: FaseProjeto[];
+  /** Num trabalho que vem de aulas anteriores: o plano da aula anterior. */
+  continuaDe?: string;
 }
 
 // ── Trabalhos sobre o manual (Rosa, out/2026) ─────────────────
@@ -64,6 +68,40 @@ export const TEXTO_FASE: Record<FaseTrabalho, string> = {
   apresentar: 'Hoje apresentam e defendem',
 };
 export const faseDoTrabalho = (t: TriagemAula | null): FaseTrabalho => t?.fase === 'apresentar' ? 'apresentar' : 'preparar';
+
+// ── As fases de um trabalho (Rosa, out/2026) ──────────────────
+// Um trabalho ocupa várias aulas, e cada aula está numa fase: investigar,
+// desenvolver, a receita e a ficha técnica, o menu, a requisição, ou a
+// apresentação (escrita, oral, digital, prática). O que o aluno responde
+// é o da fase em que está: na investigação não se avalia a apresentação
+// oral, que ainda não aconteceu.
+export type FaseProjeto = 'investigacao' | 'desenvolvimento' | 'receita' | 'menu' | 'requisicao'
+  | 'apres_escrito' | 'apres_oral' | 'apres_digital' | 'apres_pratico';
+export const FASES: { id: FaseProjeto; nome: string; so?: 'cozinha' }[] = [
+  { id: 'investigacao', nome: 'Investigação (pesquisa sobre o tema)' },
+  { id: 'desenvolvimento', nome: 'Desenvolvimento (preparar o trabalho)' },
+  { id: 'receita', nome: 'Desenvolvimento da receita e ficha técnica' },
+  { id: 'menu', nome: 'Criação de menu' },
+  { id: 'requisicao', nome: 'Criação da requisição' },
+  { id: 'apres_escrito', nome: 'Entrega do trabalho escrito' },
+  { id: 'apres_oral', nome: 'Apresentação oral e defesa' },
+  { id: 'apres_digital', nome: 'Apresentação digital' },
+  { id: 'apres_pratico', nome: 'Apresentação prática (confeção)', so: 'cozinha' },
+];
+export const NOME_FASE = Object.fromEntries(FASES.map(f => [f.id, f.nome])) as Record<FaseProjeto, string>;
+/** As fases da aula. Os planos de antes só tinham «preparar» ou «apresentar» e os formatos. */
+export function fasesDoTrabalho(t: TriagemAula | null): FaseProjeto[] {
+  if (!t || !escolheTema(t)) return [];
+  if (t.fases?.length) return t.fases;
+  if (t.fase === 'apresentar') return (t.formatos || []).map(f => `apres_${f}` as FaseProjeto);
+  return ['investigacao', 'desenvolvimento'];
+}
+/** A fase que normalmente vem a seguir (para sugerir na aula seguinte). */
+export function faseSeguinte(fases: FaseProjeto[]): FaseProjeto | undefined {
+  const ordem = FASES.map(f => f.id);
+  const ultima = Math.max(-1, ...fases.map(f => ordem.indexOf(f)));
+  return ultima >= 0 && ultima < ordem.length - 1 ? ordem[ultima + 1] : undefined;
+}
 
 /** O que uma pergunta precisa que a aula tenha para fazer sentido. */
 export type Requisito = 'cozinha' | 'producao' | 'equipa' | 'colegas';
