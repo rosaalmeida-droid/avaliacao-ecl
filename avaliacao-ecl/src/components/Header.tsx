@@ -171,7 +171,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
         </div>
 
         {/* Navegação */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
+        <nav style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 10px' }}>
           {secoes.map(secao => (
             <div key={secao} style={{ marginBottom: 10 }}>
               <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '5px 10px 4px' }}>
@@ -270,8 +270,10 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
 }
 
 // ── Topbar ─────────────────────────────────────────────────────
-function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, onSair, perfil, subtitulo }: {
+function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, onAbrirPainel, onSair, perfil, subtitulo }: {
   nomeProfessor?: string;
+  /** Ecrãs estreitos: abre o painel dos avisos, comentário e dicionário. */
+  onAbrirPainel?: () => void;
   syncStatus?: 'idle' | 'syncing' | 'ok' | 'offline';
   onAtualizar?: () => void;
   /** Sem menu lateral (aluno, coordenadora), o ☰ não aparece. */
@@ -312,7 +314,7 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, onSair, p
         <div style={{ fontWeight: 700, fontSize: 15, color: FG, fontFamily: "'Nunito', 'DM Sans', sans-serif", lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {subtitulo || 'Avaliação ECL'}
         </div>
-        <div style={{ fontSize: 12.5, color: MUTED, marginTop: 1 }}>
+        <div style={{ fontSize: 12.5, color: MUTED, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {perfilLabel[perfil]}{nomeProfessor ? ` · ${nomeProfessor}` : ''}
         </div>
       </div>
@@ -322,6 +324,14 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, onSair, p
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: syncInfo.cor, flexShrink: 0 }} />
           <span style={{ fontSize: 12.5, color: syncInfo.cor, fontWeight: 600, whiteSpace: 'nowrap' }}>{syncInfo.txt}</span>
         </div>
+      )}
+
+      {onAbrirPainel && (
+        <button onClick={onAbrirPainel}
+          style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${BORDER}`, background: CARD_BG, color: FG,
+            fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>
+          Avisos
+        </button>
       )}
 
       {onAtualizar && (
@@ -374,16 +384,25 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
   contextoPainel?: ContextoPainel;
   children: React.ReactNode;
 }) {
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  // Larguras (Rosa, out/2026: no iPad ao alto o trabalho ficava numa coluna
+  // de 290 px, entre o menu e o painel da direita quase vazio):
+  //   < 768  telemóvel — menu por cima e barra de baixo;
+  //   < 1100 iPad — o menu abre-se com ☰, por cima do conteúdo;
+  //   < 1200 — o painel da direita abre-se com o botão «Avisos».
+  const [largura, setLargura] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1400);
   const [sidebarAberta, setSidebarAberta] = useState(false);
+  const [painelAberto, setPainelAberto] = useState(false);
 
   React.useEffect(() => {
-    const fn = () => setIsMobile(window.innerWidth < 768);
+    const fn = () => setLargura(window.innerWidth);
     window.addEventListener('resize', fn);
     return () => window.removeEventListener('resize', fn);
   }, []);
 
-  const aberta = isMobile ? sidebarAberta : true;
+  const isMobile = largura < 768;
+  const menuPorCima = largura < 1100;
+  const painelFixo = largura >= 1200;
+  const aberta = menuPorCima ? sidebarAberta : true;
   // Concurso ou outra atividade a ser criada: fica sob «Atividades e concursos».
   const itemAtivo = NAV.find(n => n.id === (vistaAtiva === 'avaliar_evento' ? 'eventos' : vistaAtiva));
 
@@ -396,12 +415,12 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
         turmaId={turmaId}
         onSair={onSair}
         aberta={aberta}
-        isMobile={isMobile}
+        isMobile={menuPorCima}
         onFechar={() => setSidebarAberta(false)}
         onMudarTurma={onMudarTurma}
       />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: isMobile ? 0 : 240, minWidth: 0, transition: 'margin-left 0.22s', background: APP_BG }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: menuPorCima ? 0 : 240, minWidth: 0, transition: 'margin-left 0.22s', background: APP_BG }}>
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           {/* Área principal */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
@@ -410,7 +429,8 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
               nomeProfessor={nomeProfessor}
               syncStatus={syncStatus}
               onAtualizar={onAtualizar}
-              onAbrirMenu={() => setSidebarAberta(s => !s)}
+              onAbrirMenu={menuPorCima ? () => setSidebarAberta(s => !s) : undefined}
+              onAbrirPainel={!painelFixo && contextoPainel ? () => setPainelAberto(true) : undefined}
               subtitulo={itemAtivo?.label}
             />
 
@@ -444,7 +464,7 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
               </div>
             </div>
 
-            <main style={{ flex: 1, padding: isMobile ? '0 16px 96px' : '0 28px 36px', minWidth: 0, background: APP_BG }}>
+            <main style={{ flex: 1, padding: isMobile ? '0 16px 96px' : menuPorCima ? '0 20px 36px' : '0 28px 36px', minWidth: 0, background: APP_BG }}>
               {children}
             </main>
 
@@ -489,9 +509,20 @@ export function LayoutProfessor({ vistaAtiva, onNavegar, nomeProfessor, turmaId,
             )}
           </div>
 
-          {/* Painel contextual fixo à direita — só desktop */}
-          {!isMobile && contextoPainel && (
-            <PainelContextual contexto={contextoPainel} isMobile={isMobile} />
+          {/* Painel contextual fixo à direita — só em ecrãs largos */}
+          {painelFixo && contextoPainel && (
+            <PainelContextual contexto={contextoPainel} isMobile={false} />
+          )}
+          {/* Nos outros, abre-se por cima, com o botão «Avisos» do topo. */}
+          {!painelFixo && painelAberto && contextoPainel && (
+            <>
+              <div onClick={() => setPainelAberto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 205 }} />
+              <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 210, display: 'flex', boxShadow: '-6px 0 20px rgba(0,0,0,0.15)' }}>
+                <button onClick={() => setPainelAberto(false)} aria-label="Fechar" style={{ position: 'absolute', top: 8, left: -44, width: 36, height: 36,
+                  borderRadius: 18, border: 'none', background: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 700 }}>✕</button>
+                <PainelContextual contexto={contextoPainel} isMobile={false} />
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -2023,8 +2023,8 @@ export async function validarLoginAluno(
 // folha TELEMOVEIS), para todos os aparelhos a conhecerem.
 //
 // Se o aluno limpar os dados do browser, usar uma janela anónima ou mudar
-// de browser, o telemóvel parece outro — e é recusado. O professor liberta
-// (PIN temporário ou "Libertar telemóvel"), e a próxima entrada volta a ligar.
+// de browser, o telemóvel parece outro. (out/2026) Já não é recusado: com o
+// PIN certo, o PIN passa para este telemóvel e o professor recebe um aviso.
 
 const KEY_MEU_TELEMOVEL = 'ecl_telemovel';
 const KEY_TELEMOVEIS = 'ecl_telemoveis_ligados';
@@ -2083,11 +2083,24 @@ async function verificarTelemovel(aluno: Aluno): Promise<{ ok: boolean; erro?: s
     return { ok: true, primeiraVez: true };
   }
   if (dono === eu) return { ok: true };
-  return {
-    ok: false,
-    erro: 'Este PIN está ligado a outro telemóvel. Se mudaste de telemóvel ou limpaste '
-      + 'o browser, pede ao professor para libertar o teu PIN.',
-  };
+  // Parece outro telemóvel. Quase sempre é o mesmo: o iPhone apaga a memória
+  // do site ao fim de 7 dias sem o abrir, e abrir o link pelo WhatsApp ou pelo
+  // Instagram conta como outro browser (Rosa, out/2026: «diz que não está
+  // associado quando só usaram esse telemóvel»). O aluno acabou de escrever o
+  // PIN certo: o PIN passa para este telemóvel e o professor fica a saber —
+  // se não foi o próprio aluno, vê-o nos pedidos de ajuda.
+  l[aluno.id] = eu;
+  guardarLigacoes(l);
+  enviar(SHEETS_HISTORICO_URL, 'libertar_telemovel', { alunoId: aluno.id, turmaId: aluno.turmaId });
+  enviar(SHEETS_HISTORICO_URL, 'ligar_telemovel', { alunoId: aluno.id, turmaId: aluno.turmaId, dispositivoId: eu });
+  try {
+    pedirAjudaAoProfessor(aluno, 'Entrou noutro telemóvel (ou noutro browser)', [
+      'O PIN passou para este telemóvel sem precisar de o libertar.',
+      'Se não foi o próprio aluno, mude-lhe o PIN.',
+      `Navegador: ${typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 120) : '—'}`,
+    ]);
+  } catch { /* o aviso não pode impedir a entrada */ }
+  return { ok: true, primeiraVez: true };
 }
 
 /** O professor liberta o PIN — a próxima entrada volta a ligar. */
@@ -4428,7 +4441,9 @@ function calcularAvisosOperacionais(): Aviso[] {
     const al = getAlunos().find(x => x.id === a.alunoId);
     avisos.push({
       id: `op_${a.id}`, tipo: 'outro',
-      titulo: `${al?.nome || a.alunoId} (${a.turmaId}) pede ajuda: ${a.titulo}`,
+      titulo: a.titulo.startsWith('Entrou noutro')
+        ? `${al?.nome || a.alunoId} (${a.turmaId}) entrou noutro telemóvel ou browser`
+        : `${al?.nome || a.alunoId} (${a.turmaId}) pede ajuda: ${a.titulo}`,
       descricao: `Enviado a ${new Date(a.em).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.\n`
         + a.linhas.join('\n'),
       contexto: { tabDestino: 'planos' },

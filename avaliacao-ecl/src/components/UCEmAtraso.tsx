@@ -70,6 +70,8 @@ export function ContadorUCEmAtraso({ turmaId, nomeProfessor, isMobile, onAbrirRe
   const porRecuperar = lista.filter(l => l.estado === 'sem_plano' || l.estado === 'em_curso');
   const alunos = new Set(porRecuperar.map(l => l.alunoId)).size;
   const adiados = new Set(lista.filter(l => l.estado === 'adiado').map(l => l.alunoId)).size;
+  // Sem ninguém em atraso, o botão não aparece: tapava o canto do ecrã com «0».
+  if (alunos === 0 && adiados === 0) return null;
 
   return (
     <>

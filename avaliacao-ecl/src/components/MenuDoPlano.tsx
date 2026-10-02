@@ -90,7 +90,11 @@ export function MenuDoPlano({
   requisicaoDesatualizada?: boolean;
 }) {
   const comGuiao = fichas.filter(f => !!(f as any).textoGuia).length;
-  const producao = contextoDoPlano(plano).producao;
+  // Só não se pede fichas nem requisição quando o professor disse que a aula
+  // não tem cozinha. Mostram-se sempre (Rosa, out/2026: escondê-las tirava a
+  // requisição aos eventos e aos planos antigos).
+  const ctxPlano = contextoDoPlano(plano);
+  const producao = !ctxPlano.definido || ctxPlano.producao;
   // O bloco de publicar continua à vista enquanto envia e depois confirma.
   const [, setV] = useState(0);
   useEffect(() => subscreverPublicacao(() => setV(v => v + 1)), []);
@@ -223,8 +227,6 @@ export function MenuDoPlano({
 
       {/* O que o plano tem */}
       <div style={{ paddingTop: 5 }}>
-        {/* Aulas sem cozinha (teóricas, atitudinais): sem fichas, guião nem requisição. */}
-        {producao && (<>
         <Linha
           marca={fichas.length > 0 ? 'feito' : 'falta'}
           texto="Fichas"
@@ -246,7 +248,7 @@ export function MenuDoPlano({
           activo={moduloActivo === 'requisicao'}
           aoClicar={() => aoIrPara('requisicao')} />
 
-        </>)}
+        
         <Linha
           marca={totalCompetencias > 0 ? 'feito' : 'falta'}
           texto="Competências"

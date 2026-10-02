@@ -9,6 +9,11 @@ import {
   obterRendimento,
 } from '../requisicaoLogica';
 
+/** «3 min», «1 h»: tempo de um passo, não um produto (fichas lidas mal da IA). */
+function produtoEhTempo(produto: string): boolean {
+  return /^\s*\d+([.,]\d+)?\s*(min|minutos?|h|horas?|seg|segundos?)\.?\s*$/i.test(String(produto || ''));
+}
+
 // SHEETS_REQUISICAO_URL agora vem centralizado do backend.ts
 
 // ── Linha da requisição ───────────────────────────────────────
@@ -95,6 +100,8 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
 
     ingredientesDaFicha.forEach(ing => {
       if (!ing || !ing.produto?.trim()) return;
+      // Fichas lidas mal da IA traziam os tempos dos passos como produtos.
+      if (produtoEhTempo(ing.produto)) return;
 
       const proc = processarIngrediente(ing.produto, ing.qt, ing.un, f.nomePrato);
       if (proc.excluir) return;
@@ -480,6 +487,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     // Aviso imediato e visível — antes ficava silencioso e a requisição
     // saía vazia sem o professor perceber porquê.
     const fichasSemIngredientes = fichasSelecionadas.filter(f => !Array.isArray(f.ingredientes) || f.ingredientes.length === 0);
+    const fichasComTempos = fichasSelecionadas.filter(f => (Array.isArray(f.ingredientes) ? f.ingredientes : []).some(i => produtoEhTempo(i?.produto || '')));
+    if (fichasComTempos.length > 0) {
+      alert(`Atenção: a(s) ficha(s) "${fichasComTempos.map(f => f.nomePrato).join('", "')}" têm tempos dos passos (ex.: «3 min») no lugar dos ingredientes. Ficaram de fora da requisição. Abre a ficha e cola outra vez a resposta da IA para corrigir.`);
+    }
     if (fichasSemIngredientes.length > 0) {
       alert(`Atenção: a(s) ficha(s) "${fichasSemIngredientes.map(f => f.nomePrato).join('", "')}" não têm ingredientes guardados. Abre a ficha e confirma que está completa antes de gerar a requisição.`);
     }
