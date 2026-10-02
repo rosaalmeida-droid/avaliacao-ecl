@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v20';
+var VERSAO = 'ECL único v21';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -658,7 +658,8 @@ function extrasDosRapidos(lista) {
 
 function fazerExtra(x) {
   try {
-    if (x.tipo === 'avaliacao') escreverNaFolhaDoAluno(x);
+    // (v21) As folhas por aluno deixaram de se fazer: está tudo no separador da turma.
+    if (x.tipo === 'avaliacao') return;
     else if (x.tipo === 'selecao') {
       if (String(x.planoAulaId || '').indexOf('UCNOTA|') === 0) abrirNotaFinal(x);
       else if (!ehRegistoEspecial(x)) abrirAutoavaliacoes(x);
@@ -1758,15 +1759,15 @@ function instalarTarefas() {
   // volta dos pendentes de 10 em 10 minutos (passou a 5).
   existentes.forEach(function (t) {
     var fn = t.getHandlerFunction();
-    if (fn === 'arrumar' || fn === 'tratarPendentes') ScriptApp.deleteTrigger(t);
+    if (fn === 'arrumar' || fn === 'tratarPendentes' || fn === 'atualizarFolhasDasTurmas') ScriptApp.deleteTrigger(t);
   });
   var tem = function (fn) { return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === fn; }); };
   if (!tem('tratarPendentes')) ScriptApp.newTrigger('tratarPendentes').timeBased().everyMinutes(5).create();
-  if (!tem('atualizarFolhasDasTurmas')) ScriptApp.newTrigger('atualizarFolhasDasTurmas').timeBased().everyHours(1).create();
+  if (!tem('atualizarFolhasDasTurmas')) ScriptApp.newTrigger('atualizarFolhasDasTurmas').timeBased().everyMinutes(10).create();
   if (!tem('arrumacaoDaNoite')) ScriptApp.newTrigger('arrumacaoDaNoite').timeBased().atHour(2).everyDays(1).create();
   criarCopiaAutomatica();
   atualizarFolhasDasTurmas();
-  Logger.log('Tarefas: por arrumar logo a seguir a cada envio (e de 5 em 5 min), folhas das turmas de hora a hora, arrumação às 2h, cópia às 3h.');
+  Logger.log('Tarefas: por arrumar logo a seguir a cada envio (e de 5 em 5 min), separadores das turmas de 10 em 10 min, arrumação às 2h, cópia às 3h.');
 }
 
 /** (compatibilidade) A versão anterior chamava isto no arranque. */
@@ -1774,59 +1775,222 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 
 
 // ══════════════════════════════════════════════════════════════
-// (v20) UMA FOLHA POR TURMA — só para ler
+// (v21) UM SEPARADOR POR TURMA — o que se abre para ler
 // ══════════════════════════════════════════════════════════════
-// As folhas de dados têm as turmas todas misturadas: são para a aplicação.
-// Cada turma tem agora uma folha «TURMA <nome>» com o que é dela — os
-// alunos, as aulas, as presenças, as autoavaliações, as validações e as
-// notas finais — por fórmulas: atualiza-se sozinha e não pesa nas
-// gravações. Não se escreve nela (é refeita).
+// As folhas de dados são para a aplicação: as turmas misturadas, códigos
+// em vez de nomes. Eram dezenas de separadores à vista, mais um por aluno
+// e um por ficha (Rosa, out/2026: «o Sheets continua uma confusão»).
+//
+// Agora, à vista, fica um separador por turma, com o nome da turma
+// («1º BCR», «3º ACP»…), e o LEIA-ME e o PROCURAR. Em cada turma, de
+// cima para baixo:
+//   1. OS ALUNOS — presenças, faltas, atrasos, autoavaliações, validadas,
+//      média das aulas e se têm o telemóvel ligado;
+//   2. AS NOTAS DE CADA UC — um aluno por linha, uma aula por coluna;
+//   3. AS AULAS — dia, horas, UC, tipo, estado e quantos vieram.
+// É refeito pelo script de 10 em 10 minutos, com nomes e não códigos.
+// Não se escreve nele (o que lá se escrever perde-se).
+//
+// As folhas de dados ficam escondidas, não apagadas: a aplicação continua
+// a gravar nelas. Para as ver: menu Ver › Folhas ocultas (ou o ícone ☰
+// em baixo, à esquerda).
 
-var SECCOES_TURMA = [
-  { folha: 'ALUNOS',         titulo: 'ALUNOS',          cols: ['numero', 'nome', 'ativo'] },
-  { folha: 'PLANOS',         titulo: 'AULAS',           cols: ['data', 'titulo', 'tipoPlanAula', 'estado'] },
-  { folha: 'PRESENCAS',      titulo: 'PRESENÇAS',       cols: ['data', 'nomeAluno', 'presente', 'atrasado', 'decisaoProfessor'] },
-  { folha: 'AUTOAVALIACOES', titulo: 'AUTOAVALIAÇÕES',  cols: ['criadaEm', 'nomeAluno', 'competenciaId', 'nota'] },
-  { folha: 'VALIDACOES',     titulo: 'VALIDAÇÕES',      cols: ['validadoEm', 'alunoId', 'planoAulaId', 'notaMedia20'] },
-  { folha: 'NOTAS_FINAIS',   titulo: 'NOTAS FINAIS',    cols: ['ucId', 'nomeAluno', 'nota', 'resultado'] }
-];
+var COR_TURMA = '#7B2233';
+var VISIVEIS_SEMPRE = ['LEIA-ME', 'PROCURAR'];
 
-function letraColuna(n) {
-  var s = '';
-  while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
-  return s;
+function porTurma(lista) {
+  var m = {};
+  lista.forEach(function (x) { var t = String(x.turmaId || ''); if (!t) return; (m[t] = m[t] || []).push(x); });
+  return m;
+}
+
+function diaCurto(s) {
+  var t = String(s || '').slice(0, 10);
+  var p = t.split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] : t;
+}
+
+function horaDe(s) {
+  var t = String(s || '');
+  var m = t.match(/(\d{1,2}):(\d{2})/);
+  return m ? (m[1].length === 1 ? '0' + m[1] : m[1]) + ':' + m[2] : '';
+}
+
+/** Número com vírgula (14,5), como em Portugal. */
+function virgula(n) { return n === '' || n === undefined ? '' : String(n).replace('.', ','); }
+
+var NOME_TIPO_AULA = { pratico: 'Prática', teorico: 'Teórica', misto: 'Mista', atitudinal: 'Atitudinal', atitudinal_obr: 'Atitudinal', evento: 'Evento' };
+var NOME_ESTADO = { publicado: 'Publicado', rascunho: 'Rascunho', arquivado: 'Arquivado' };
+
+function agoraLisboa() {
+  return Utilities.formatDate(new Date(), 'Europe/Lisbon', 'dd/MM/yyyy HH:mm');
+}
+
+/** O nome do separador de uma turma (o Sheets não aceita alguns sinais). */
+function nomeDoSeparador(turma) {
+  return String(turma).replace(/[\[\]\*\?\/\\:]/g, ' ').trim().substring(0, 90) || 'Turma';
 }
 
 function atualizarFolhasDasTurmas() {
   var ss = ficheiro();
-  var cabecalhos = {};
-  SECCOES_TURMA.forEach(function (sc) {
-    var f = folha(ss, sc.folha);
-    cabecalhos[sc.folha] = f.getRange(1, 1, 1, Math.max(1, f.getLastColumn())).getValues()[0];
+  var hoje = hojeLisboa(0);
+  // Cada folha lê-se uma vez para todas as turmas.
+  var alunos = porTurma(ler('ALUNOS', {}));
+  var planos = porTurma(ler('PLANOS', {}));
+  var sessoes = porTurma(ler('SESSOES', {}));
+  var presencas = porTurma(ler('PRESENCAS', {}));
+  var selecoes = porTurma(ler('SELECOES', {}).filter(function (s) { return !ehRegistoEspecial(s); }));
+  var validacoes = porTurma(ler('VALIDACOES', {}));
+  var finais = porTurma(ler('NOTAS_FINAIS', {}));
+  var telemoveis = porTurma(telemoveisLigados(''));
+
+  var turmas = Object.keys(alunos).sort();
+  turmas.forEach(function (turma) {
+    try {
+      escreverSeparadorDaTurma(ss, turma, {
+        alunos: alunos[turma] || [], planos: planos[turma] || [], sessoes: sessoes[turma] || [],
+        presencas: presencas[turma] || [], selecoes: selecoes[turma] || [], validacoes: validacoes[turma] || [],
+        finais: finais[turma] || [], telemoveis: telemoveis[turma] || []
+      }, hoje);
+    } catch (e) { Logger.log('Turma ' + turma + ': ' + e); }
   });
-  turmasConhecidas().forEach(function (turma) {
-    var nome = ('TURMA ' + turma).substring(0, 95);
-    var f = ss.getSheetByName(nome) || ss.insertSheet(nome);
-    f.clear();
-    f.getRange(1, 1).setValue('TURMA ' + turma + ' — só para ler (atualiza-se sozinha)').setFontWeight('bold').setFontSize(13);
-    var col = 1;
-    var tq = String(turma).replace(/"/g, '""');
-    SECCOES_TURMA.forEach(function (sc) {
-      var cab = cabecalhos[sc.folha];
-      var iTurma = cab.indexOf('turmaId');
-      var letras = sc.cols.map(function (c) { var i = cab.indexOf(c); return i >= 0 ? letraColuna(i + 1) : null; });
-      if (iTurma < 0 || letras.some(function (x) { return !x; })) return;
-      var lt = letraColuna(iTurma + 1);
-      f.getRange(3, col).setValue(sc.titulo).setFontWeight('bold');
-      f.getRange(3, col, 1, sc.cols.length).setBackground('#7B2233').setFontColor('#ffffff');
-      f.getRange(4, col, 1, sc.cols.length).setValues([sc.cols]).setFontWeight('bold').setBackground('#f5f0e8');
-      var arr = letras.map(function (l) { return sc.folha + '!' + l + '2:' + l; }).join('\\');
-      f.getRange(5, col).setFormula('=IFERROR(FILTER({' + arr + '};' + sc.folha + '!' + lt + '2:' + lt + '="' + tq + '");"—")');
-      col += sc.cols.length + 1;
+  arrumarSeparadores(ss, turmas.map(nomeDoSeparador));
+}
+
+function escreverSeparadorDaTurma(ss, turma, d, hoje) {
+  var alunos = d.alunos.filter(function (a) { return a.ativo !== false && !a.removidoEm; })
+    .sort(function (a, b) { return (Number(a.numero) || 0) - (Number(b.numero) || 0); });
+  // As aulas que já aconteceram (ou são hoje) e não são rascunho.
+  var aulas = d.planos.filter(function (p) {
+    var dia = String(p.data || '').slice(0, 10);
+    return dia && dia <= hoje && p.estado !== 'rascunho' && !p.eliminado;
+  }).sort(function (a, b) { return String(a.data).localeCompare(String(b.data)) || String(a.horaInicio).localeCompare(String(b.horaInicio)); });
+  var idsAulas = {}; aulas.forEach(function (p) { idsAulas[p.id] = p; });
+
+  // Por aluno e aula: presença, autoavaliação, nota validada.
+  var chave = function (a, p) { return a + '|' + p; };
+  var pres = {}, auto = {}, nota = {};
+  d.presencas.forEach(function (x) { if (idsAulas[x.planoAulaId]) pres[chave(x.alunoId, x.planoAulaId)] = x; });
+  d.selecoes.forEach(function (x) { if (idsAulas[x.planoAulaId]) auto[chave(x.alunoId, x.planoAulaId)] = true; });
+  d.validacoes.slice().sort(function (a, b) { return String(a.validadoEm || '').localeCompare(String(b.validadoEm || '')); })
+    .forEach(function (x) {
+      var n = Number(String(x.notaMedia20 === undefined ? '' : x.notaMedia20).replace(',', '.'));
+      if (idsAulas[x.planoAulaId] && !isNaN(n) && String(x.notaMedia20) !== '') nota[chave(x.alunoId, x.planoAulaId)] = Math.round(n * 10) / 10;
     });
-    f.setFrozenRows(4);
-    try { f.setTabColor('#3E7A31'); } catch (e) {}
+  var ligado = {}; d.telemoveis.forEach(function (t) { ligado[t.alunoId] = true; });
+  var abertas = {}; d.sessoes.forEach(function (s) { if (s.abertaEm) abertas[s.planoAulaId] = true; });
+
+  var linhas = [], formatos = [];
+  var largura = 12;
+  var junta = function (l) { linhas.push(l); return linhas.length; };
+  var titulo = function (texto, cor) { var n = junta([texto]); formatos.push({ tipo: 'titulo', linha: n, cor: cor || COR_TURMA }); };
+  var cabecalho = function (cols) { var n = junta(cols); formatos.push({ tipo: 'cab', linha: n, n: cols.length }); largura = Math.max(largura, cols.length); };
+  var vazia = function () { junta(['']); };
+
+  junta(['TURMA ' + turma + '  ·  atualizado a ' + agoraLisboa() + '  ·  só para ler: é refeito sozinho de 10 em 10 minutos']);
+  formatos.push({ tipo: 'topo', linha: 1 });
+  vazia();
+
+  // 1. Os alunos
+  titulo('OS ALUNOS (' + alunos.length + ')');
+  cabecalho(['Nº', 'Nome', 'Presenças', 'Faltas', 'Atrasos', 'Autoavaliações', 'Validadas', 'Por validar', 'Média das aulas (0-20)', 'Telemóvel ligado']);
+  alunos.forEach(function (a) {
+    var p = 0, f = 0, at = 0, aa = 0, va = 0, soma = 0;
+    aulas.forEach(function (pl) {
+      var k = chave(a.id, pl.id), x = pres[k];
+      if (x) { if (x.presente === false) f++; else p++; if (x.atrasado) at++; }
+      if (auto[k]) aa++;
+      if (nota[k] !== undefined) { va++; soma += nota[k]; }
+    });
+    junta([a.numero || '', a.nome || '', p, f, at, aa, va, Math.max(0, aa - va), va ? virgula(Math.round(soma / va * 10) / 10) : '', ligado[a.id] ? 'Sim' : 'Não']);
   });
+  vazia();
+
+  // 2. As notas de cada UC: um aluno por linha, uma aula por coluna (a UC mais recente primeiro).
+  var ucs = [];
+  aulas.forEach(function (p) { var u = String(p.ucId || 'Sem UC'); if (ucs.indexOf(u) < 0) ucs.push(u); });
+  ucs.reverse();
+  ucs.forEach(function (uc) {
+    var daUC = aulas.filter(function (p) { return String(p.ucId || 'Sem UC') === uc; });
+    var nome = daUC.map(function (p) { return p.ucNome; }).filter(Boolean)[0] || '';
+    titulo('NOTAS — ' + uc + (nome ? ' · ' + nome : '') + ' (' + daUC.length + ' aula' + (daUC.length === 1 ? '' : 's') + ')', '#3E7A31');
+    junta(['Em cada aula: a nota validada (0-20) · AA = autoavaliou-se, falta validar · F = faltou · vazio = sem registo']);
+    formatos.push({ tipo: 'legenda', linha: linhas.length });
+    cabecalho(['Nº', 'Nome'].concat(daUC.map(function (p) { return diaCurto(p.data) + (p.horaInicio ? ' ' + horaDe(p.horaInicio) : ''); }))
+      .concat(['Média', 'Nota final da UC']));
+    alunos.forEach(function (a) {
+      var soma = 0, n = 0;
+      var cel = daUC.map(function (p) {
+        var k = chave(a.id, p.id);
+        if (nota[k] !== undefined) { soma += nota[k]; n++; return virgula(nota[k]); }
+        if (auto[k]) return 'AA';
+        if (pres[k] && pres[k].presente === false) return 'F';
+        return '';
+      });
+      var fin = d.finais.filter(function (x) { return x.alunoId === a.id && String(x.ucId) === uc; }).pop();
+      junta([a.numero || '', a.nome || ''].concat(cel).concat([n ? virgula(Math.round(soma / n * 10) / 10) : '', fin ? (virgula(fin.nota) + (fin.resultado ? ' (' + fin.resultado + ')' : '')) : '']));
+    });
+    vazia();
+  });
+
+  // 3. As aulas (a mais recente primeiro)
+  titulo('AS AULAS (' + aulas.length + ')', '#2F5D8A');
+  cabecalho(['Dia', 'Horas', 'UC', 'Aula', 'Tipo', 'Estado', 'Aberta aos alunos', 'Presentes', 'Faltas', 'Autoavaliações', 'Validadas']);
+  aulas.slice().reverse().forEach(function (p) {
+    var pr = 0, fa = 0, aa = 0, va = 0;
+    alunos.forEach(function (a) {
+      var k = chave(a.id, p.id);
+      if (pres[k]) { if (pres[k].presente === false) fa++; else pr++; }
+      if (auto[k]) aa++;
+      if (nota[k] !== undefined) va++;
+    });
+    junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), horaDe(p.horaInicio) + (p.horaFim ? '–' + horaDe(p.horaFim) : ''),
+      p.ucId || '', p.titulo || '', NOME_TIPO_AULA[p.tipoPlanAula] || p.tipoPlanAula || '', NOME_ESTADO[p.estado] || p.estado || '', abertas[p.id] ? 'Sim' : 'Não', pr, fa, aa, va]);
+  });
+
+  // Escrever tudo de uma vez.
+  var nome = nomeDoSeparador(turma);
+  var f = ss.getSheetByName(nome) || ss.insertSheet(nome);
+  f.clear();
+  try { f.getBandings().forEach(function (b) { b.remove(); }); } catch (e) {}
+  if (f.getMaxColumns() < largura) f.insertColumnsAfter(f.getMaxColumns(), largura - f.getMaxColumns());
+  var grelha = linhas.map(function (l) { var c = l.slice(0, largura); while (c.length < largura) c.push(''); return c; });
+  var r = f.getRange(1, 1, grelha.length, largura);
+  r.setNumberFormat('@');
+  r.setValues(grelha.map(function (l) { return l.map(function (v) { return v === null || v === undefined ? '' : String(v); }); }));
+  r.setFontFamily('Arial').setFontSize(10).setVerticalAlignment('middle');
+  formatos.forEach(function (fm) {
+    if (fm.tipo === 'topo') f.getRange(fm.linha, 1).setFontWeight('bold').setFontSize(12).setFontColor(COR_TURMA);
+    if (fm.tipo === 'titulo') f.getRange(fm.linha, 1, 1, largura).setBackground(fm.cor).setFontColor('#ffffff').setFontWeight('bold').setFontSize(11);
+    if (fm.tipo === 'cab') f.getRange(fm.linha, 1, 1, fm.n).setBackground('#F3ECEE').setFontWeight('bold').setWrap(true);
+    if (fm.tipo === 'legenda') f.getRange(fm.linha, 1).setFontColor('#777777').setFontStyle('italic');
+  });
+  f.setFrozenRows(1);
+  f.setFrozenColumns(2);
+  f.setColumnWidth(1, 44); f.setColumnWidth(2, 230);
+  for (var c = 3; c <= largura; c++) f.setColumnWidth(c, 88);
+  try { f.setTabColor(COR_TURMA); } catch (e) {}
+}
+
+/** Põe as turmas à frente e esconde o resto (não apaga). Os separadores
+ *  «TURMA …» da v20 saem: foram substituídos por estes. */
+function arrumarSeparadores(ss, nomesTurmas) {
+  ss.getSheets().forEach(function (f) {
+    var n = f.getName();
+    if (n.indexOf('TURMA ') === 0 && nomesTurmas.indexOf(n) < 0) { try { ss.deleteSheet(f); } catch (e) {} }
+  });
+  var visiveis = nomesTurmas.concat(VISIVEIS_SEMPRE);
+  var pos = 1;
+  visiveis.forEach(function (n) {
+    var f = ss.getSheetByName(n);
+    if (!f) return;
+    try { f.showSheet(); ss.setActiveSheet(f); ss.moveActiveSheet(pos++); } catch (e) {}
+  });
+  ss.getSheets().forEach(function (f) {
+    if (visiveis.indexOf(f.getName()) < 0 && !f.isSheetHidden()) { try { f.hideSheet(); } catch (e) {} }
+  });
+  var primeira = ss.getSheetByName(nomesTurmas[0] || 'LEIA-ME');
+  if (primeira) try { ss.setActiveSheet(primeira); } catch (e) {}
 }
 
 
@@ -2114,7 +2278,8 @@ var ORDEM_FOLHAS = [
 
 var LEIA_ME = [
   ['Folha', 'O que tem'],
-  ['TURMA …', 'Uma folha por turma, só para ler: alunos, aulas, presenças, autoavaliações, validações e notas finais dessa turma. Atualiza-se sozinha.'],
+  ['1º BCR, 3º ACP, …', 'Um separador por turma, só para ler: os alunos (presenças, faltas, atrasos, autoavaliações, média), as notas de cada UC (um aluno por linha, uma aula por coluna) e as aulas. Refaz-se sozinho de 10 em 10 minutos.'],
+  ['Folhas escondidas', 'As folhas de dados (ALUNOS, PLANOS, PRESENCAS…) e as fichas por extenso ficam escondidas: a aplicação grava nelas. Para as ver: menu Ver › Folhas ocultas. Não apagar.'],
   ['ALUNOS', 'Os alunos de cada turma (nome, número, PIN).'],
   ['PLANOS', 'Os planos de aula: dia da aula, horas, unidade, estado (rascunho/publicado) e quando foram criados.'],
   ['SESSOES', 'As aulas abertas aos alunos: quando abriu e quando fechou.'],
@@ -2135,7 +2300,7 @@ var LEIA_ME = [
   ['ELIMINADOS', 'O que foi apagado pela aplicação — fica aqui guardado e não volta.'],
   ['POR_ARRUMAR', 'O que falta passar para as folhas por extenso. Esvazia-se sozinha logo a seguir a cada envio (e de 5 em 5 minutos).'],
   ['', ''],
-  ['Regras', 'Não ordenar nem filtrar as folhas de dados durante as aulas. Para ver uma turma, usar a folha «TURMA …». As linhas ficam pela ordem em que foram criadas.']
+  ['Regras', 'Não ordenar nem filtrar as folhas de dados durante as aulas. Para ver uma turma, usar o separador com o nome dela. As linhas ficam pela ordem em que foram criadas.']
 ];
 
 function embelezar() {
