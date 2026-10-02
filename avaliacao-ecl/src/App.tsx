@@ -128,6 +128,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
   ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase } from './backend';
 import { ouvirTurmaNaBase } from './baseDeDados';
+import { EventosOrcamentos } from './components/EventosOrcamentos';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -224,7 +225,7 @@ function AppInterno() {
   // volta a ser enviada. Antes só o professor reenviava — o que se perdia
   // no telemóvel do aluno perdia-se de vez.
   useEffect(() => {
-    if (perfil !== 'professor' && perfil !== 'coordenadora' && perfil !== 'aluno') return;
+    if (perfil !== 'professor' && perfil !== 'coordenadora' && perfil !== 'aluno' && perfil !== 'eventos') return;
     let vivo = true;
     const correr = () => {
       confirmarEReenviar()
@@ -343,6 +344,8 @@ function AppInterno() {
       sincronizarDoSheets(turmaIdRecebida).catch(() => {});
     }
     if (nomeUser) setNomeProfessor(nomeUser);
+    // Eventos e orçamentos: sem turma — vêm as fichas, os eventos e as requisições de todas.
+    if (perfilRecebido === 'eventos') sincronizarDoSheets('', { forcar: true }).then(() => setRefreshKey(k => k + 1)).catch(() => {});
     if (perfilRecebido === 'aluno' && alunoId) {
       const partes = alunoId.split('-');
       const numero = parseInt(partes[partes.length - 1], 10) || 0;
@@ -775,6 +778,7 @@ function AppInterno() {
       {/* Idem: uma autoavaliação a meio não se perde quando chegam dados novos. */}
       {perfil === 'aluno' && aluno && <AlunoView key={aluno.id} versaoDados={refreshKey} aluno={aluno} />}
       {perfil === 'coordenadora' && <CoordenadoraView />}
+      {perfil === 'eventos' && <EventosOrcamentos nome={nomeProfessor} />}
     </div>
   );
 }
