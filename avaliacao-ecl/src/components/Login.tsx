@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Perfil } from '../types';
 import { Button, Card, Field } from './ui';
-import { getTurmas, getAlunos, validarLoginAluno } from '../backend';
+import { getTurmas, getAlunos, validarLoginAluno, confirmarCodigo, enviarPinsParaOSheets } from '../backend';
 import { LOGO_ECL as logoEcl } from '../logo_ecl';
 import { PROFESSORES, professorPorNome } from '../professores';
 
@@ -57,25 +57,39 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
     }
   }
 
-  function entrarStaff(perfil: Exclude<Perfil, 'aluno'>) {
+  /** (v22) O código é confirmado pelo Sheets (folha CODIGOS). Enquanto lá
+   *  não houver código novo para esta pessoa, vale o de antes. Devolve o erro, ou ''. */
+  async function codigoCerto(quem: string, deAntes: string): Promise<string> {
+    const r = await confirmarCodigo(quem, pin);
+    if (r === 'entrou') return '';
+    if (r === 'errado') return 'Código incorreto.';
+    if (r === 'bloqueado') return 'Muitas tentativas erradas. Espera 10 minutos.';
+    return pin === deAntes ? '' : 'Código incorreto.';
+  }
+
+  async function entrarStaff(perfil: Exclude<Perfil, 'aluno'>) {
+    if (loading) return;
+    setErro('');
+    // Professor: o seu nome, o seu PIN e só as suas turmas.
+    const turma = turmasDoProf.length === 1 ? turmasDoProf[0]?.id : turmaId;
+    if (perfil === 'professor') {
+      if (!profEscolhido) { setErro('Escolhe o teu nome.'); return; }
+      if (!turma || !profEscolhido.turmas.includes(turma)) { setErro('Escolhe uma das tuas turmas.'); return; }
+    }
+    setLoading(true);
+    const quem = perfil === 'professor' ? profEscolhido!.nome : perfil;
+    const deAntes = perfil === 'eventos' ? CODIGO_EVENTOS : perfil === 'coordenadora' ? PIN_COORDENADORA : profEscolhido!.pin;
+    const erroCodigo = await codigoCerto(quem, deAntes);
+    setLoading(false);
+    if (erroCodigo) { setErro(erroCodigo); return; }
     // Eventos e orçamentos: só o código comum, sem nome (Rosa, out/2026).
     // O que se fizer aqui fica registado como «Eventos e orçamentos».
-    if (perfil === 'eventos') {
-      if (pin !== CODIGO_EVENTOS) { setErro('Código incorreto.'); return; }
-      onLogin('eventos', undefined, undefined, 'Eventos e orçamentos');
-      return;
-    }
-    if (perfil === 'coordenadora') {
-      if (pin !== PIN_COORDENADORA) { setErro('PIN incorreto.'); return; }
-      onLogin('coordenadora');
-      return;
-    }
-    // Professor: o seu nome, o seu PIN e só as suas turmas.
-    if (!profEscolhido) { setErro('Escolhe o teu nome.'); return; }
-    if (pin !== profEscolhido.pin) { setErro('PIN incorreto.'); return; }
-    const turma = turmasDoProf.length === 1 ? turmasDoProf[0].id : turmaId;
-    if (!turma || !profEscolhido.turmas.includes(turma)) { setErro('Escolhe uma das tuas turmas.'); return; }
-    onLogin('professor', undefined, turma, profEscolhido.nome);
+    if (perfil === 'eventos') { onLogin('eventos', undefined, undefined, 'Eventos e orçamentos'); return; }
+    // O aparelho do professor ou da coordenação manda uma vez os PIN dos alunos
+    // para o Sheets, para os PIN poderem sair da aplicação.
+    enviarPinsParaOSheets();
+    if (perfil === 'coordenadora') { onLogin('coordenadora'); return; }
+    onLogin('professor', undefined, turma, profEscolhido!.nome);
   }
 
   /* ── Cabeçalho com logo ── */
@@ -196,7 +210,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
                   onKeyDown={e => e.key === 'Enter' && entrarStaff('professor')} />
               </Field>
               {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
-              <Button block onClick={() => entrarStaff('professor')}>Entrar</Button>
+              <Button block onClick={() => entrarStaff('professor')}>{loading ? 'A confirmar…' : 'Entrar'}</Button>
             </>
           )}
 
@@ -207,7 +221,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
                   onKeyDown={e => e.key === 'Enter' && entrarStaff('coordenadora')} />
               </Field>
               {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
-              <Button block onClick={() => entrarStaff('coordenadora')}>Entrar</Button>
+              <Button block onClick={() => entrarStaff('coordenadora')}>{loading ? 'A confirmar…' : 'Entrar'}</Button>
             </>
           )}
 
@@ -221,7 +235,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
                   onKeyDown={e => e.key === 'Enter' && entrarStaff('eventos')} />
               </Field>
               {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
-              <Button block onClick={() => entrarStaff('eventos')}>Entrar</Button>
+              <Button block onClick={() => entrarStaff('eventos')}>{loading ? 'A confirmar…' : 'Entrar'}</Button>
             </>
           )}
 

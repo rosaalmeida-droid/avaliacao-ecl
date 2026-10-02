@@ -126,7 +126,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase } from './backend';
+  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada } from './backend';
 import { ouvirTurmaNaBase } from './baseDeDados';
 import { EventosOrcamentos } from './components/EventosOrcamentos';
 
@@ -365,6 +365,7 @@ function AppInterno() {
   function sair() {
     navegarCom(() => {
       setPerfil(null); setAluno(null); setNomeProfessor('');
+      esquecerEntrada();   // (v22) a autorização da entrada não fica para o seguinte
       setPlanoAberto(null); setVistaGlobal('planos'); limparAlteracoes();
     }, 'Se saíres agora perdes o que estás a preencher.');
   }
