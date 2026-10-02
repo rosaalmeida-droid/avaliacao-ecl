@@ -1,7 +1,12 @@
 import { eventosParaPlanos } from '../eventos/modelo';
 import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada } from '../backend';
-import { proximoConteudo, indicadoresDoConteudo } from '../bancoManuais';
-import type { TipoAula, TriagemAula } from '../contextoAula';
+import { proximoConteudo, indicadoresDoConteudo, manualDaUC, capituloDoCampo } from '../bancoManuais';
+import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, type TipoAula, type TriagemAula } from '../contextoAula';
+import { PassoComoEAula, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
+import { SumarioAula } from './SumarioAula';
+import { ConhecimentosDoProfessor } from './ConhecimentosDoProfessor';
+import { sumarioDoPlano } from '../sumarioAutomatico';
+import { contextoDoPlano } from '../backend';
 import React, { useState, useEffect } from 'react';
 import { DialogoEliminarPlano } from './DialogoEliminarPlano';
 import {
@@ -954,7 +959,20 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
   const [trocarUC, setTrocarUC] = useState(!!planoExistente);
   const [aEliminar, setAEliminar] = useState(false);
   /** A janela em que se está. A alterar um plano, abre no resumo (tudo à vista). */
-  const [passo, setPasso] = useState(planoExistente ? 4 : 1);
+  const [passo, setPasso] = useState(planoExistente ? 6 : 1);
+  // O plano a ser feito: o que se está a alterar, ou o novo, criado ao passar
+  // da janela 3 (as janelas 4 e 5 — como é a aula, o manual e o sumário —
+  // precisam do plano gravado). Rosa, out/2026: ao criar ou alterar, vê-se tudo.
+  const [planoVivo, setPlanoVivo] = useState<TPlanoAula | null>(planoExistente || null);
+  const alvo: TPlanoAula | null = planoVivo || planoExistente || null;
+  /** O plano mudou nas janelas 4 e 5: o tipo de aula e a farda acompanham (não se desfazem ao guardar). */
+  function aoMudarPlano(np: TPlanoAula) {
+    setPlanoVivo(np);
+    const x: any = np;
+    setDados(d => ({ ...d, tipoPlanAula: String(x.tipoPlanAula || d.tipoPlanAula).replace('_obr', '') as any,
+      tipoAtividade: x.tipoAtividade || d.tipoAtividade, titulo: x.titulo || d.titulo,
+      comFarda: !(x.compRemovidas || []).includes('OBR_01'), comRegistos: !(x.compRemovidas || []).includes('OBR_02') }));
+  }
   /** Planos já existentes na mesma turma, dia e horas — para o aviso. */
   const [duplicados, setDuplicados] = useState<TPlanoAula[] | null>(null);
   /** O plano já está a ser criado — o botão fica bloqueado. */
@@ -1026,7 +1044,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     if (!doCrono && dados.ucId) setDados(p => ({ ...p, ucId: '' }));
   }, [dados.data, dados.tipoAtividade, turmaId, trocarUC]);
 
-  function guardar(forcar = false) {
+  function guardar(forcar = false, continuar = false) {
     // Um clique, um plano. Sem isto, cliques repetidos criavam cópias.
     if (aCriar.current) return;
     // Aviso de plano duplicado: mesma turma, mesmo dia, horas sobrepostas.
@@ -1039,18 +1057,24 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       };
       const i1 = min(dados.horaInicio), f1 = min(dados.horaFim);
       const iguais = getPlanosAulaPorTurma(turmaId).filter((x: any) => {
-        if (x.estado === 'arquivado' || x.id === planoExistente?.id) return false;
+        if (x.estado === 'arquivado' || x.id === planoExistente?.id || x.id === planoVivo?.id) return false;
         if (String(x.data || '').slice(0, 10) !== dados.data) return false;
         const i2 = min(x.horaInicio), f2 = min(x.horaFim);
         // Sem horas num dos lados, conta como sobreposto.
         if ([i1, f1, i2, f2].some(isNaN)) return true;
         return i1 < f2 && i2 < f1;
       });
-      if (iguais.length) { setDuplicados(iguais); return; }
+      if (iguais.length) {
+        // A meio das janelas, pergunta-se logo (o aviso grande está só na última).
+        if (continuar) {
+          if (!confirm(`Já há ${iguais.length === 1 ? 'um plano' : iguais.length + ' planos'} nesta turma, neste dia e a estas horas:\n`
+            + iguais.map((d: any) => '· ' + (d.titulo || 'Plano sem título')).join('\n') + '\n\nContinuar na mesma?')) return;
+        } else { setDuplicados(iguais); return; }
+      }
     }
     // Alterar um plano já criado: só os dados do início; o resto do plano fica.
-    if (planoExistente) {
-      const x: any = getPlanosAulaPorTurma(turmaId).find((y: any) => y.id === planoExistente.id) || planoExistente;
+    if (alvo) {
+      const x: any = getPlanosAulaPorTurma(turmaId).find((y: any) => y.id === alvo.id) || alvo;
       const resumo = resumoDoPlano(x.id);
       const tipoAntes = String(x.tipoPlanAula || 'pratico').replace('_obr', '');
       const mudou = { uc: dados.ucId !== (x.ucId || ''), data: dados.data !== String(x.data || '').slice(0, 10), tipo: dados.tipoPlanAula !== tipoAntes };
@@ -1085,6 +1109,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       }
       const novo = atualizarPlano(x.id, alt);
       try { onGuardado?.(); } catch (e) { console.error(e); }
+      if (novo && continuar) { aoMudarPlano(novo); setPasso(tipoEventoDe(dados.tipoAtividade) ? 6 : 4); return; }
       if (novo) onConcluido(novo);
       return;
     }
@@ -1170,6 +1195,14 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     // Aconteça o que acontecer ao envio, o plano abre: antes, um erro
     // depois de gravar deixava o botão em «A criar o plano…» para sempre.
     try { addOrUpdatePlanoAula(p); } catch (e) { console.error('Criar plano:', e); }
+    // Criado ao passar para «Como é a aula»: continua aqui, nas janelas seguintes.
+    if (continuar) {
+      aCriar.current = false; setEstadoCriar(false);
+      try { onGuardado?.(); } catch (e) { console.error(e); }
+      const gravado = getPlanosAulaPorTurma(turmaId).find((y: any) => y.id === p.id) || p;
+      aoMudarPlano(gravado); setPasso(tipoEventoDe(dados.tipoAtividade) ? 6 : 4);
+      return;
+    }
     try { onGuardado?.(); } catch (e) { console.error(e); }
     // O Classroom fica para quando o plano for publicado, não agora.
     //
@@ -1199,9 +1232,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       <Card>
         {/* Por janelas, uma de cada vez (Rosa, out/2026): no fim vê-se tudo o que fica no plano. */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          {(['Quando', 'Unidade', 'Que aula é', 'Confirmar'] as const).map((t, i) => {
+          {(['Quando', 'Unidade', 'Que aula é', 'Como é a aula', 'Conteúdos e sumário', 'Confirmar'] as const).map((t, i) => {
             const n = i + 1, feito = n < passo, atual = n === passo;
-            const pode = n <= passo || (n <= 4 && !!dados.data && (n <= 2 || !!dados.ucId));
+            const pode = n <= passo || (n <= 3 && !!dados.data && (n <= 2 || !!dados.ucId)) || (n >= 4 && !!alvo);
             return (
               <button key={t} type="button" disabled={!pode} onClick={() => pode && setPasso(n)}
                 style={{ flex: '1 1 110px', padding: '8px 10px', borderRadius: 10, fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700,
@@ -1488,11 +1521,34 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
           {passo > 1 && <button className="btn btn-secondary" onClick={() => setPasso(passo - 1)} style={{ flex: 1 }}>← Anterior</button>}
-          <button className="btn btn-primary" disabled={!(!!dados.ucId)} onClick={() => setPasso(4)}
+          <button className="btn btn-primary" disabled={!(!!dados.ucId)} onClick={() => guardar(false, true)}
             style={{ flex: 2, fontSize: 15, padding: '13px', opacity: (!!dados.ucId) ? 1 : 0.5 }}>Seguinte →</button>
         </div>
         </>)}
-        {passo === 4 && (<>
+        {passo === 4 && alvo && (<>
+          <PassoComoEAula plano={alvo} onPlanoActualizado={aoMudarPlano} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <button className="btn btn-secondary" onClick={() => setPasso(3)} style={{ flex: 1 }}>← Anterior</button>
+            <button className="btn btn-primary" disabled={!triagemDoPlano(alvo)} onClick={() => setPasso(5)}
+              style={{ flex: 2, fontSize: 15, padding: '13px', opacity: triagemDoPlano(alvo) ? 1 : 0.5 }}>Seguinte →</button>
+          </div>
+        </>)}
+        {passo === 5 && alvo && (<>
+          {(!contextoDoPlano(alvo).producao || escolheTema(triagemDoPlano(alvo))) && !(alvo as any).tipoEvento && (
+            <ConhecimentosDoProfessor plano={alvo} onPlanoActualizado={aoMudarPlano} />
+          )}
+          {contextoDoPlano(alvo).producao && (
+            <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.6)', margin: '0 0 12px', lineHeight: 1.5 }}>
+              As fichas, o guião e a requisição juntam-se no plano, no campo «Fichas, guião e requisição».
+            </div>
+          )}
+          <SumarioAula key={alvo.id + String((alvo as any).atualizadoEm || '')} plano={alvo} onGuardado={(np) => aoMudarPlano(np as any)} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button className="btn btn-secondary" onClick={() => setPasso(4)} style={{ flex: 1 }}>← Anterior</button>
+            <button className="btn btn-primary" onClick={() => setPasso(6)} style={{ flex: 2, fontSize: 15, padding: '13px' }}>Seguinte →</button>
+          </div>
+        </>)}
+        {passo === 6 && (<>
         <div style={{ background: '#fbf8f3', border: '1px solid rgba(26,23,20,0.1)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
           <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>O plano fica assim</div>
           {([
@@ -1505,17 +1561,28 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             ['Registos (HACCP)', dados.comRegistos ? 'avaliam-se' : 'não se avaliam', 3],
             ...(tipoEventoDe(dados.tipoAtividade) ? [['Participam', dados.modoParticipacao === 'inscricao' ? 'quem se inscrever' : 'a turma toda', 3],
               ['Faltas contam', (dados as any).faltasContam ? 'sim' : 'não', 3]] : []),
+            ...(alvo && !tipoEventoDe(dados.tipoAtividade) ? (() => {
+              const tri = triagemDoPlano(alvo);
+              const md = manualDaUC(alvo.ucId);
+              const caps = new Set(((alvo as any).conhecimentosProf || []).map((k: any) => capituloDoCampo(String(k.id || ''))?.capitulo.n).filter((n: any) => n != null));
+              let resp = '';
+              try { const e = oQueOAlunoVe(alvo).ecras; resp = e.length ? `${e.length}: ${e.map(x => x.nome).join(' → ')}` : ''; } catch { /* */ }
+              return [
+                ['Como é a aula', tri ? fraseDaAula(tri) + (escolheTema(tri) ? ` ${tri.modo === 'grupo' ? 'Trabalho de grupo' : 'Trabalho individual'}: ${fasesDoTrabalho(tri).map(f => NOME_FASE[f].toLowerCase()).join(', ')}.` : '') : '— (falta responder)', 4],
+                ...(md ? [['Manual', caps.size ? (caps.size === md.capitulos.length ? `todo (${caps.size} conteúdos)` : `${caps.size} de ${md.capitulos.length} conteúdos`) : (tri && escolheTema(tri) ? 'todos (cada aluno escolhe o seu tema)' : 'nada marcado'), 5]] : []),
+                ['Sumário', sumarioDoPlano(alvo, getFichasProducao().filter(f => (alvo.fichasIds || []).includes(f.id))) || '—', 5],
+                ['O aluno responde', resp || '—', 4],
+              ];
+            })() : []),
           ] as [string, string, number][]).map(([r, v, ir]) => (
             <div key={r} style={{ display: 'flex', gap: 10, fontSize: 14.5, lineHeight: 1.5, padding: '3px 0' }}>
               <b style={{ width: 140, flexShrink: 0, color: 'rgba(26,23,20,0.6)' }}>{r}</b>
-              <span style={{ flex: 1, minWidth: 0 }}>{v}</span>
+              <span style={{ flex: 1, minWidth: 0, whiteSpace: 'pre-line' }}>{v}</span>
               {ir > 0 && <button type="button" onClick={() => setPasso(ir)} style={{ background: 'none', border: 'none', padding: 0,
                 color: 'var(--copper)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', fontSize: 13 }}>mudar</button>}
             </div>
           ))}
-          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginTop: 8, lineHeight: 1.5 }}>
-            Depois de {planoExistente ? 'guardar' : 'criar'}, o plano abre e respondes a «Como é a aula» (trabalho, fases…): o sumário e o que o aluno responde saem daí.
-          </div>
+
         </div>
         <div className="field" style={{ marginBottom: 20 }}>
           <label className="field-label">Título (opcional)</label>
@@ -1555,7 +1622,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         )}
 
         <button className="btn btn-primary btn-block" disabled={!podeGuardar || estadoCriar} onClick={() => guardar()} style={{ fontSize: 15, padding: '14px', opacity: podeGuardar && !estadoCriar ? 1 : 0.5 }}>
-          {planoExistente ? (podeGuardar ? 'Guardar as alterações' : 'Selecciona a UC para continuar')
+          {alvo ? (podeGuardar ? (planoExistente ? 'Guardar as alterações' : 'Abrir o plano →') : 'Selecciona a UC para continuar')
             : estadoCriar ? 'A criar o plano…' : podeGuardar ? 'Criar plano e começar →' : 'Selecciona a UC para continuar'}
         </button>
         {planoExistente && (
