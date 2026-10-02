@@ -17,11 +17,15 @@ import type { FirebaseApp } from 'firebase/app';
 import type { Firestore } from 'firebase/firestore';
 
 /** Copiado da consola do Firebase (Definições do projeto → As suas apps → Configuração). */
+// Não é segredo: vai em todas as aplicações web. Quem protege os dados
+// são as regras da base (firestore.rules) e a entrada anónima.
 export const FIREBASE_CONFIG: Record<string, string> = {
-  // apiKey: '...',
-  // authDomain: '...',
-  // projectId: '...',
-  // appId: '...',
+  apiKey: 'AIzaSyA-OIBh5AJiGgmCtVPF9QR84tNhKkH6QhU',
+  authDomain: 'avaliacao-ecl.firebaseapp.com',
+  projectId: 'avaliacao-ecl',
+  storageBucket: 'avaliacao-ecl.firebasestorage.app',
+  messagingSenderId: '685153353060',
+  appId: '1:685153353060:web:fb36f2680bdaf1af12ce71',
 };
 
 export const baseLigada = (): boolean => !!FIREBASE_CONFIG.projectId && !!FIREBASE_CONFIG.apiKey;
