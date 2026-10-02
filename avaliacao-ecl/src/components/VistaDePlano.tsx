@@ -26,7 +26,7 @@ import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { SumarioAula } from './SumarioAula';
 import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, Gaveta, NaColuna, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
-import { triagemDoPlano } from '../contextoAula';
+import { triagemDoPlano, escolheTema } from '../contextoAula';
 import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -1692,8 +1692,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
-      {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && (
+      {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && !escolheTema(triagemDoPlano(plano)) && (
         <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      )}
+      {/* Num trabalho, cada aluno escolhe o seu tema: o professor não marca conteúdos. */}
+      {escolheTema(triagemDoPlano(plano)) && (
+        <div style={{ background:'#E6EEF7', borderRadius:12, padding:'10px 14px', fontSize:14, lineHeight:1.5, marginTop:10 }}>
+          Neste trabalho cada aluno escolhe o seu tema, de entre todos os conteúdos do manual. Não precisas de marcar conteúdos.
+        </div>
       )}
       {/* Aula atitudinal — o professor escolhe o que se trabalha. Cada
           toque marca ou desmarca; nada fica gravado até ele confirmar.

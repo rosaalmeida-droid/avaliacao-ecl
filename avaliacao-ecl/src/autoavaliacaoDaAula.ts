@@ -21,7 +21,7 @@ import {
   temPerguntas, atitudeAplicavel, perguntasAplicaveis, perguntasDe, porqueNaoSeFaz,
 } from './perguntas_atitudes';
 import { perguntasDaAula, CL_SEMPRE } from './triagem5c';
-import { porqueNao, triagemDoPlano, escolheTema, TEXTO_FORMATO, type ContextoAula, type Letra5CAluno, type FormatoTrabalho } from './contextoAula';
+import { porqueNao, triagemDoPlano, escolheTema, faseDoTrabalho, TEXTO_FORMATO, type ContextoAula, type Letra5CAluno, type FormatoTrabalho } from './contextoAula';
 import { manualDaUC, capituloDoCampo, indicadoresDoConteudo, rotuloConteudo, type CapituloManual } from './bancoManuais';
 
 /** Quantas atitudes o aluno vê para escolher, antes de pedir a lista toda. */
@@ -104,9 +104,13 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   // marcado os conteúdos por onde se escolhe (Rosa, out/2026).
   const temTema = !ehAtitudinal && escolheTema(triagem);
   const md = temTema ? manualDaUC(p.ucId) : null;
-  const marcados = new Set(conhecimentos.map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null));
-  const temasPossiveis = md ? md.capitulos.filter(c => !marcados.size || marcados.has(c.n)).map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
-  const formatos: FormatoTrabalho[] = temTema ? (triagem?.formatos || []) : [];
+  // O aluno escolhe entre TODOS os conteúdos do manual: cada um escolhe o seu
+  // (Rosa, out/2026 — o professor só podia marcar um, e todos tinham o mesmo).
+  const temasPossiveis = md ? md.capitulos.map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
+  // Os critérios do formato (a oral, a escrita…) só na aula em que se
+  // apresenta; na aula de preparação, os da preparação.
+  const fase = faseDoTrabalho(triagem);
+  const formatos: FormatoTrabalho[] = temTema && fase === 'apresentar' ? (triagem?.formatos || []) : [];
   if (temTema) {
     conhecimentos.length = 0;
     const tema = temasPossiveis.find(t => t.capitulo.n === opts.temaEscolhido);
@@ -114,7 +118,7 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
       conhecimentos.push({ id: k.id, nome: k.texto, definicao: '', capitulo: k.capitulo });
     // Cada formato com os seus critérios (a oral não se avalia como a escrita);
     // no trabalho de grupo, também a parte de cada um.
-    for (const f of [...formatos, ...(triagem?.modo === 'grupo' ? ['grupo'] : [])])
+    for (const f of [...(fase === 'preparar' ? ['preparar'] : formatos), ...(triagem?.modo === 'grupo' ? ['grupo'] : [])])
       for (const cr of CRITERIOS_FORMATO[f] || [])
         conhecimentos.push({ id: cr.id, nome: cr.nome.replace(/^[^:]+: /, ''), definicao: '', capitulo: cr.nome.split(':')[0] });
   }

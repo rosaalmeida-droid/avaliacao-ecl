@@ -10,7 +10,7 @@
 // ============================================================
 import type { PlanoAula, FichaProducao } from './types';
 import { codigosDasLinhas, encontrarSubtecnica, encontrarAparelho, ATITUDES } from './compatECL';
-import { triagemDoPlano, tipoDe } from './contextoAula';
+import { triagemDoPlano, tipoDe, escolheTema, faseDoTrabalho } from './contextoAula';
 
 const semPonto = (t: string) => t.trim().replace(/[.;:]+$/, '');
 const minuscula = (t: string) => t ? t[0].toLowerCase() + t.slice(1) : t;
@@ -34,6 +34,8 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
       porConteudo.set(titulo, g);
     } else soltos.push(minuscula(semPonto(k.texto)));
   }
+  // Num trabalho, cada aluno tem o seu tema: não se põe no sumário um conteúdo só.
+  if (t && escolheTema(t)) { porConteudo.clear(); soltos.length = 0; }
   const temas = [...new Set([...porConteudo.values()].map(g => g.tema).filter(Boolean))] as string[];
   if (temas.length) linhas.push(`${temas.join('; ')}.`);
   for (const [titulo, g] of porConteudo) linhas.push(`${titulo}: ${lista(g.indicadores)}.`);
@@ -60,9 +62,13 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
   // Trabalho sobre o manual com tema escolhido.
   if (t && (t.modo === 'individual' || t.modo === 'grupo')) {
     const formatos = (t.formatos || []).map(f => ({ escrito: 'trabalho escrito', oral: 'apresentação oral', digital: 'apresentação digital', pratico: 'demonstração prática' } as Record<string, string>)[f]);
-    linhas.push(t.modo === 'individual'
-      ? `Trabalho individual: cada aluno escolheu um tema do Manual do Aluno para defender${formatos.length ? ` (${lista(formatos)})` : ''}.`
-      : `Trabalho de investigação em grupo sobre temas do Manual do Aluno${formatos.length ? ` (${lista(formatos)})` : ''}.`);
+    const fmt = formatos.length ? ` (${lista(formatos)})` : '';
+    const quem = t.modo === 'individual' ? 'individual' : 'de investigação em grupo';
+    linhas.push(faseDoTrabalho(t) === 'apresentar'
+      ? `Apresentação e defesa dos trabalhos ${quem} sobre temas do Manual do Aluno${fmt}.`
+      : t.modo === 'individual'
+        ? `Preparação do trabalho individual: cada aluno escolheu um tema do Manual do Aluno, pesquisou e preparou o material${fmt ? ` para a apresentação${fmt}` : ''}.`
+        : `Preparação do trabalho de investigação em grupo sobre temas do Manual do Aluno: pesquisa e material${fmt ? ` para a apresentação${fmt}` : ''}.`);
     return linhas.join('\n');
   }
   // Como se trabalhou.

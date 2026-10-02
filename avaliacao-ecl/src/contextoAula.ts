@@ -33,6 +33,8 @@ export interface TriagemAula {
   modo?: ModoTrabalho;
   /** Num trabalho (de grupo ou individual): como se apresenta. */
   formatos?: FormatoTrabalho[];
+  /** Num trabalho: hoje preparam-no, ou apresentam-no e defendem-no? */
+  fase?: FaseTrabalho;
 }
 
 // ── Trabalhos sobre o manual (Rosa, out/2026) ─────────────────
@@ -52,6 +54,16 @@ export const TEXTO_FORMATO: Record<FormatoTrabalho, string> = {
 };
 /** O aluno escolhe o tema (um conteúdo do manual) na autoavaliação. */
 export const escolheTema = (t: TriagemAula | null) => !!t && (t.modo === 'grupo' || t.modo === 'individual');
+
+// Um trabalho tem várias aulas: primeiro prepara-se, depois apresenta-se.
+// Numa aula de preparação não se avalia a apresentação oral, que ainda não
+// aconteceu (Rosa, out/2026).
+export type FaseTrabalho = 'preparar' | 'apresentar';
+export const TEXTO_FASE: Record<FaseTrabalho, string> = {
+  preparar: 'Hoje preparam (pesquisa e material)',
+  apresentar: 'Hoje apresentam e defendem',
+};
+export const faseDoTrabalho = (t: TriagemAula | null): FaseTrabalho => t?.fase === 'apresentar' ? 'apresentar' : 'preparar';
 
 /** O que uma pergunta precisa que a aula tenha para fazer sentido. */
 export type Requisito = 'cozinha' | 'producao' | 'equipa' | 'colegas';

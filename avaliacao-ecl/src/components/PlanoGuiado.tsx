@@ -20,7 +20,8 @@ import {
 import {
   triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem,
   TEXTO_ONDE, TEXTO_TRABALHO, TEXTO_TIPO, EXPLICA_TIPO, CINCO_C, tipoDe, TEXTO_MODO, TEXTO_FORMATO, escolheTema,
-  type ModoTrabalho, type FormatoTrabalho,
+  TEXTO_FASE, faseDoTrabalho,
+  type ModoTrabalho, type FormatoTrabalho, type FaseTrabalho,
   type TriagemAula, type OndeAula, type TrabalhoAula, type TipoAula,
 } from '../contextoAula';
 import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoDaAula';
@@ -182,7 +183,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     // O modo do trabalho decide como trabalham (as perguntas de grupo dependem disto).
     if (parcial.modo === 'grupo') nova.trabalho = 'grupos';
     if (parcial.modo === 'individual') nova.trabalho = 'individual';
-    if (nova.tipo === 'pratico' || nova.tipo === 'atitudinal') { delete nova.modo; delete nova.formatos; }
+    if (nova.tipo === 'pratico' || nova.tipo === 'atitudinal') { delete nova.modo; delete nova.formatos; delete nova.fase; }
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const novo: any = { ...atual, triagemAula: nova };
     // O tipo da aula (os pesos da nota) e a farda e os registos acompanham a
@@ -262,7 +263,14 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
             ))}
           </Pergunta>
           {escolheTema(valor) && (
-            <Pergunta titulo="Como se apresenta o trabalho? (podes escolher vários)">
+            <Pergunta titulo="Em que fase está o trabalho?">
+              {(['preparar', 'apresentar'] as FaseTrabalho[]).map(f => (
+                <Opcao key={f} ativo={!!definida && faseDoTrabalho(valor) === f} onClick={() => gravar({ fase: f })}>{TEXTO_FASE[f]}</Opcao>
+              ))}
+            </Pergunta>
+          )}
+          {escolheTema(valor) && (
+            <Pergunta titulo="Como vai ser apresentado? (podes escolher vários)">
               {(['escrito', 'oral', 'digital', 'pratico'] as FormatoTrabalho[]).map(f => {
                 const on = (valor.formatos || []).includes(f);
                 return <Opcao key={f} ativo={!!definida && on} onClick={() => gravar({ formatos: on
@@ -312,13 +320,19 @@ function AvisoDoTrabalho({ plano, triagem }: { plano: PlanoAula; triagem: Triage
     linhas.push({ ok: grupos.length > 0 && semGrupo.length === 0,
       texto: grupos.length ? `Grupos: ${grupos.length} formados · ${semGrupo.length ? `${semGrupo.length} alunos ainda sem grupo` : 'todos os alunos têm grupo'}`
         : 'Grupos: os alunos formam-nos na aplicação (separador «Grupos»)' });
-    linhas.push({ ok: true, texto: 'Tema: cada grupo diz na autoavaliação o conteúdo do manual que investigou' });
+    linhas.push({ ok: true, texto: 'Tema: cada grupo escolhe, na autoavaliação, o seu conteúdo de entre todos os do manual' });
   } else {
-    linhas.push({ ok: true, texto: 'Tema: cada aluno diz na autoavaliação o conteúdo do manual que escolheu para defender' });
+    linhas.push({ ok: true, texto: 'Tema: cada aluno escolhe, na autoavaliação, o seu conteúdo de entre todos os do manual' });
   }
   const f = triagem.formatos || [];
-  linhas.push({ ok: f.length > 0, texto: f.length ? `Formato: ${f.map(x => TEXTO_FORMATO[x].toLowerCase()).join(', ')} — o aluno avalia-se em cada um`
-    : 'Formato: escolhe acima como se apresenta o trabalho' });
+  if (faseDoTrabalho(triagem) === 'preparar') {
+    linhas.push({ ok: true, texto: 'Hoje é a preparação: o aluno avalia-se no que já sabe do tema, na pesquisa, no material e no tempo da aula — não na apresentação, que ainda não aconteceu' });
+    linhas.push({ ok: f.length > 0, texto: f.length ? `Vai ser apresentado: ${f.map(x => TEXTO_FORMATO[x].toLowerCase()).join(', ')} (avalia-se na aula em que se apresenta)`
+      : 'Escolhe acima como vai ser apresentado' });
+  } else {
+    linhas.push({ ok: f.length > 0, texto: f.length ? `Hoje apresentam: ${f.map(x => TEXTO_FORMATO[x].toLowerCase()).join(', ')} — o aluno avalia-se em cada um${f.includes('oral') ? ', incluindo a defesa do tema' : ''}`
+      : 'Escolhe acima como se apresenta o trabalho' });
+  }
   return (
     <div style={{ background: C.azulP, borderRadius: 10, padding: '10px 14px', fontSize: 14, lineHeight: 1.55 }}>
       {linhas.map((l, i) => (

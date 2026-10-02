@@ -68,6 +68,18 @@ export const CRITERIOS_FORMATO: Record<string, CriterioTrabalho[]> = {
       'Falhei regras de higiene ou segurança.', 'Falhei uma regra.',
       'Cumpri as regras.', 'Cumpri as regras e expliquei-as à turma.']),
   ],
+  // A aula em que se prepara o trabalho: o que se vê nessa aula.
+  preparar: [
+    c('preparar', 'pesquisa', 'Preparação: pesquisa sobre o tema', [
+      'Não pesquisei nada sobre o meu tema.', 'Li só uma parte do capítulo do manual.',
+      'Li o capítulo todo e tirei notas.', 'Li o capítulo, tirei notas e procurei noutra fonte.']),
+    c('preparar', 'material', 'Preparação: o material do trabalho', [
+      'Ainda não comecei o material.', 'Comecei, mas fiz pouco.',
+      'Avancei bem e sei o que falta.', 'Avancei bem, sei o que falta e tenho um plano para acabar.']),
+    c('preparar', 'tempo', 'Preparação: aproveitar o tempo da aula', [
+      'Perdi a maior parte do tempo.', 'Trabalhei só parte do tempo.',
+      'Trabalhei o tempo todo.', 'Trabalhei o tempo todo e pedi ajuda quando precisei.']),
+  ],
   grupo: [
     c('grupo', 'parte', 'Trabalho de grupo: a minha parte', [
       'Não fiz a minha parte.', 'Fiz a minha parte, mas com ajuda ou atrasado.',
