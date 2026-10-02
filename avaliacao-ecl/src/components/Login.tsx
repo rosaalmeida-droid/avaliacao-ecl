@@ -58,11 +58,11 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
   }
 
   function entrarStaff(perfil: Exclude<Perfil, 'aluno'>) {
-    // Eventos e orçamentos: o nome de quem entra (fica em cada coisa que fizer) e o código comum.
+    // Eventos e orçamentos: só o código comum, sem nome (Rosa, out/2026).
+    // O que se fizer aqui fica registado como «Eventos e orçamentos».
     if (perfil === 'eventos') {
-      if (!nomeProfessor.trim()) { setErro('Escreve o teu nome.'); return; }
       if (pin !== CODIGO_EVENTOS) { setErro('Código incorreto.'); return; }
-      onLogin('eventos', undefined, undefined, nomeProfessor.trim());
+      onLogin('eventos', undefined, undefined, 'Eventos e orçamentos');
       return;
     }
     if (perfil === 'coordenadora') {
@@ -104,7 +104,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
             <button className="btn btn-ghost btn-block btn-lg" onClick={() => setModo('coordenadora')}>
               Sou Coordenadora
             </button>
-            <button className="btn btn-ghost btn-block btn-lg" onClick={() => { setModo('eventos'); setNomeProfessor(''); }}>
+            <button className="btn btn-ghost btn-block btn-lg" onClick={() => setModo('eventos')}>
               Eventos e orçamentos
             </button>
           </div>
@@ -216,9 +216,6 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
               <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.65)', marginBottom: 12, lineHeight: 1.5 }}>
                 Eventos, orçamentos, fichas técnicas e requisições.
               </div>
-              <Field label="O teu nome">
-                <input className="input" value={nomeProfessor} onChange={e => setNomeProfessor(e.target.value)} placeholder="Ex.: Ana Silva" />
-              </Field>
               <Field label="Código">
                 <input className="input" type="password" inputMode="numeric" value={pin} onChange={e => setPin(e.target.value)} placeholder="••••"
                   onKeyDown={e => e.key === 'Enter' && entrarStaff('eventos')} />

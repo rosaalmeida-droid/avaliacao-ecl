@@ -773,7 +773,7 @@ function AppInterno() {
   return (
     <div className="app-shell">
       <div className="no-print">
-        <Header perfil={perfil} onSair={sair} nomeProfessor={nomeProfessor} syncStatus={syncStatus} onAtualizar={atualizarDados} />
+        <Header perfil={perfil} onSair={sair} nomeProfessor={perfil === 'eventos' ? undefined : nomeProfessor} syncStatus={syncStatus} onAtualizar={atualizarDados} />
       </div>
       {/* Idem: uma autoavaliação a meio não se perde quando chegam dados novos. */}
       {perfil === 'aluno' && aluno && <AlunoView key={aluno.id} versaoDados={refreshKey} aluno={aluno} />}

@@ -29,6 +29,22 @@ const C = {
   quenteSuave: '#FBEFE3',
 };
 
+// Uma saudação divertida, com a hora do dia — muda de cada vez que se entra
+// (Rosa, out/2026: «podemos saudar de forma divertida»).
+const SAUDACOES: Record<'manha' | 'tarde' | 'noite', string[]> = {
+  manha: ['Bom dia! Hoje é dia de pôr tudo em ordem ☀️', 'Bom dia! Pronto(a) para mais um dia em grande? 🚀',
+    'Bom dia! Vamos fazer magia com os números? ✨', 'Bom dia! Que comece a organização 📋'],
+  tarde: ['Boa tarde! Que bom tê-lo(a) por aqui 😊', 'Boa tarde! Vamos organizar coisas bonitas? 🎉',
+    'Boa tarde! Mais uma ideia brilhante a caminho? 💡', 'Boa tarde! Contas certas, eventos felizes 🎈'],
+  noite: ['Boa noite! Ainda por aqui? Que dedicação 🌙', 'Boa noite! Só mais um orçamento e já está ⭐',
+    'Boa noite! Os melhores planos nascem à noite 🌟'],
+};
+function saudacao(): string {
+  const h = new Date().getHours();
+  const lista = SAUDACOES[h >= 6 && h < 13 ? 'manha' : h >= 13 && h < 20 ? 'tarde' : 'noite'];
+  return lista[Math.floor(Math.random() * lista.length)];
+}
+
 type Seccao = 'inicio' | 'eventos' | 'orcamentos' | 'fichas' | 'precos' | 'guia';
 
 const SECCOES: { id: Exclude<Seccao, 'inicio'>; icone: string; titulo: string; frase: string; ajuda: string }[] = [
@@ -52,7 +68,7 @@ const SECCOES: { id: Exclude<Seccao, 'inicio'>; icone: string; titulo: string; f
 export function EventosOrcamentos({ nome }: { nome: string }) {
   const [seccao, setSeccao] = useState<Seccao>('inicio');
   const atual = SECCOES.find(s => s.id === seccao);
-  const primeiroNome = String(nome || '').trim().split(/\s+/)[0] || '';
+  const ola = useMemo(() => saudacao(), []);
 
   return (
     <div style={{ background: C.fundo, minHeight: 'calc(100vh - 58px)', padding: '28px 20px 64px' }}>
@@ -61,7 +77,7 @@ export function EventosOrcamentos({ nome }: { nome: string }) {
         {seccao === 'inicio' ? (
           <>
             <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, color: C.tinta, lineHeight: 1.2 }}>
-              Olá{primeiroNome ? `, ${primeiroNome}` : ''}.
+              {ola}
             </h1>
             <p style={{ margin: '8px 0 28px', fontSize: 19, color: C.suave }}>O que quer fazer hoje?</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: 18 }}>
@@ -219,7 +235,7 @@ function Guia({ irPara }: { irPara: (s: Seccao) => void }) {
 
       <section style={{ background: C.papel, borderRadius: 20, padding: '22px 24px', border: `1px solid ${C.linha}`, fontSize: 17, lineHeight: 1.65, color: C.tinta }}>
         <h2 style={{ margin: '0 0 8px', fontSize: 21, fontWeight: 800 }}>Dúvidas frequentes</h2>
-        <p style={{ margin: '0 0 10px' }}><b>Fechei sem querer. Perdi o que fiz?</b> Não. O que já estava escrito fica guardado; volte a entrar com o seu nome e o código.</p>
+        <p style={{ margin: '0 0 10px' }}><b>Fechei sem querer. Perdi o que fiz?</b> Não. O que já estava escrito fica guardado; volte a entrar com o código.</p>
         <p style={{ margin: '0 0 10px' }}><b>Os outros veem o que eu fiz?</b> Sim. Eventos, fichas e requisições chegam aos outros computadores da escola.</p>
         <p style={{ margin: 0 }}><b>Para sair:</b> carregue em <b>Sair</b>, no canto de cima. Num computador partilhado, saia sempre no fim.</p>
       </section>
