@@ -527,14 +527,32 @@ export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
 
 // ── 4. Enviar aos alunos ──────────────────────────────────────
 
-interface EnvioRegistado { em: string; triagem?: TriagemAula | null; ecras: string[]; fichas: string[] }
+// (out/2026) Também o dia, as horas, a unidade, o título, o tipo de aula, o
+// manual, o sumário, as fases, as competências e as faltas: mudava-se um
+// plano publicado e a aplicação dizia «os alunos têm a versão atual».
+interface EnvioRegistado {
+  em: string; triagem?: TriagemAula | null; ecras: string[]; fichas: string[];
+  quando?: string; ucId?: string; titulo?: string; tipo?: string; manual?: string[]; sumario?: string;
+  competencias?: string[]; faltas?: boolean;
+}
 
 function fotografia(plano: PlanoAula): EnvioRegistado {
+  const p: any = plano;
+  let sumario = '';
+  try { sumario = sumarioDoPlano(plano, getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id))); } catch { /* */ }
   return {
     em: new Date().toISOString(),
     triagem: triagemDoPlano(plano),
     ecras: resumoParaComparar(oQueOAlunoVe(plano).ecras),
     fichas: [...(plano.fichasIds || [])],
+    quando: `${String(plano.data || '').slice(0, 10)} ${p.horaInicio || ''}-${p.horaFim || ''}`,
+    ucId: plano.ucId || '',
+    titulo: plano.titulo || '',
+    tipo: String(p.tipoPlanAula || ''),
+    manual: conhecimentosDaAula(plano).map(k => k.id).sort(),
+    sumario,
+    competencias: [...(p.compRemovidas || []).map((x: string) => '-' + x), ...(p.compAdicionadas || []).map((x: string) => '+' + x)].sort(),
+    faltas: p.contaAssiduidade !== false,
   };
 }
 
@@ -550,7 +568,43 @@ function diferencas(antes: EnvioRegistado, agora: EnvioRegistado): { sinal: '+' 
   antes.fichas.filter(f => !agora.fichas.includes(f)).forEach(f => out.push({ sinal: '−', texto: `Ficha «${nomeFicha(f)}» (tiraste)` }));
   agora.ecras.filter(e => !antes.ecras.includes(e)).forEach(e => out.push({ sinal: '+', texto: `Entra: ${e}` }));
   antes.ecras.filter(e => !agora.ecras.includes(e)).forEach(e => out.push({ sinal: '−', texto: `Sai: ${e}` }));
+  // Só se compara o que o registo antigo já guardava (os de antes de out/2026 não tinham estes campos).
+  const igual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
+  if (antes.quando !== undefined && antes.quando !== agora.quando) out.push({ sinal: '~', texto: `Dia ou horas: «${antes.quando}» → «${agora.quando}»` });
+  if (antes.ucId !== undefined && antes.ucId !== agora.ucId) out.push({ sinal: '~', texto: `Unidade: «${antes.ucId}» → «${agora.ucId}»` });
+  if (antes.titulo !== undefined && antes.titulo !== agora.titulo) out.push({ sinal: '~', texto: `Título: «${agora.titulo}»` });
+  if (antes.tipo !== undefined && antes.tipo !== agora.tipo) out.push({ sinal: '~', texto: 'Tipo de aula' });
+  if (antes.manual !== undefined && !igual(antes.manual, agora.manual)) {
+    const mais = (agora.manual || []).filter(x => !(antes.manual || []).includes(x)).length;
+    const menos = (antes.manual || []).filter(x => !(agora.manual || []).includes(x)).length;
+    out.push({ sinal: '~', texto: `Conteúdos do manual${mais ? ` (+${mais})` : ''}${menos ? ` (−${menos})` : ''}` });
+  }
+  if (antes.sumario !== undefined && antes.sumario !== agora.sumario) out.push({ sinal: '~', texto: 'Sumário' });
+  if (antes.competencias !== undefined && !igual(antes.competencias, agora.competencias)) out.push({ sinal: '~', texto: 'Competências (tiradas ou repostas)' });
+  if (antes.faltas !== undefined && antes.faltas !== agora.faltas) out.push({ sinal: '~', texto: `Faltas e atrasos: ${agora.faltas ? 'contam' : 'não contam'}` });
   return out;
+}
+
+/** Para comparar o plano antes e depois de o mudar (ecrã de editar). */
+export const fotografiaDoPlano = (plano: PlanoAula) => fotografia(plano);
+export const diferencasEntre = (antes: ReturnType<typeof fotografia>, depois: ReturnType<typeof fotografia>) => diferencas(antes, depois);
+
+/** O que mudou num plano publicado desde o último envio aos alunos (vazio se não mudou ou nunca se enviou). */
+export function alteracoesPorEnviar(plano: PlanoAula): { sinal: '+' | '−' | '~'; texto: string }[] {
+  const registado: EnvioRegistado | undefined = (plano as any).enviadoAosAlunos;
+  if (plano.estado !== 'publicado' || !registado) return [];
+  try { return diferencas(registado, fotografia(plano)); } catch { return []; }
+}
+
+/** Envia aos alunos a versão atual do plano; se já havia respostas, pede que respondam outra vez. */
+export function enviarAlteracoesAosAlunos(planoId: string, pedirOutraVez = true, sabeQueMudou = false): PlanoAula | undefined {
+  const atual: any = getPlanosAula().find(x => x.id === planoId);
+  if (!atual) return undefined;
+  const mudou = sabeQueMudou || alteracoesPorEnviar(atual).length > 0;
+  addOrUpdatePlanoAula({ ...atual, enviadoAosAlunos: fotografia(atual) });
+  const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === planoId).map(s => s.alunoId)).size;
+  if (mudou && pedirOutraVez && responderam > 0) pedirNovaAutoavaliacao(planoId);
+  return getPlanosAula().find(x => x.id === planoId);
 }
 
 /** Ao publicar: o que os alunos recebem fica registado, para depois se ver o que mudou. */
@@ -574,10 +628,8 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   const cart = useCartao(mudou.length ? { border: `2px solid ${C.ambarL}` } : {});
 
   function enviar() {
-    const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
-    addOrUpdatePlanoAula({ ...atual, enviadoAosAlunos: fotografia(atual) });
-    if (registado && mudou.length && pedirOutraVez && responderam > 0) pedirNovaAutoavaliacao(plano.id);
-    onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || atual);
+    const novo = enviarAlteracoesAosAlunos(plano.id, !!registado && pedirOutraVez);
+    if (novo) onPlanoActualizado(novo);
     setEnviado(true);
   }
 

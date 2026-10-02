@@ -414,6 +414,8 @@ async function lerDoSheetsAgora(url: string, params: Record<string, string>): Pr
   try {
     const u = new URL(url);
     Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+    // (v22) Os PIN dos alunos só vêm para quem entrou como professor ou coordenação.
+    if (params.tipo === 'get_alunos') { const t = tokenDaEntrada(); if (t) u.searchParams.set('token', t); }
     const res = await fetch(u.toString());
     const json = await res.json();
     if (json?.zeroEm) aplicarComecarDoZero(String(json.zeroEm));
@@ -422,6 +424,54 @@ async function lerDoSheetsAgora(url: string, params: Record<string, string>): Pr
     console.warn('Erro ao ler do Sheets:', e);
     return null;
   }
+}
+
+// ============================================================
+// (v22) Entrar: o código e o PIN confirmados pelo Sheets
+// ============================================================
+// Os códigos e os PIN estavam escritos na aplicação, à vista de quem
+// abrisse o código no navegador. Agora quem confirma é o script do Sheets
+// (folha CODIGOS e folha ALUNOS). Enquanto a folha CODIGOS não tiver o
+// código de alguém, ou o aluno não tiver PIN no Sheets, a aplicação faz
+// como antes — assim ninguém fica sem entrar durante a mudança.
+
+const KEY_TOKEN = 'ecl_token_entrada';
+export function tokenDaEntrada(): string {
+  try { return sessionStorage.getItem(KEY_TOKEN) || ''; } catch { return ''; }
+}
+export function esquecerEntrada(): void { try { sessionStorage.removeItem(KEY_TOKEN); } catch { /* */ } }
+
+export type RespostaEntrada = 'entrou' | 'errado' | 'bloqueado' | 'semCodigo' | 'semRede';
+
+/** O código do professor («Rosa Almeida»), da coordenação («coordenadora») ou dos eventos («eventos»). */
+export async function confirmarCodigo(quem: string, codigo: string): Promise<RespostaEntrada> {
+  const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'entrar', quem, codigo });
+  if (!j?.ok) return 'semRede';
+  if (j.semCodigo || (j.entrou === undefined && !j.bloqueado)) return 'semCodigo';   // script antigo ou sem código novo
+  if (j.bloqueado) return 'bloqueado';
+  if (!j.entrou) return 'errado';
+  try { if (j.token) sessionStorage.setItem(KEY_TOKEN, j.token); } catch { /* */ }
+  return 'entrou';
+}
+
+export async function confirmarPinAluno(alunoId: string, pin: string): Promise<RespostaEntrada> {
+  const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'entrar_aluno', alunoId, pin });
+  if (!j?.ok) return 'semRede';
+  if (j.semPin || (j.entrou === undefined && !j.bloqueado)) return 'semCodigo';
+  if (j.bloqueado) return 'bloqueado';
+  return j.entrou ? 'entrou' : 'errado';
+}
+
+/** Uma vez por aparelho do professor: os PIN dos alunos vão para o Sheets,
+ *  para o Sheets os poder confirmar quando os PIN saírem da aplicação. */
+export function enviarPinsParaOSheets(): void {
+  try {
+    if (localStorage.getItem('ecl_pins_enviados_v22')) return;
+    emSegundoPlano(() => {
+      getAlunos().filter(a => a.pin && a.ativo !== false).forEach(a => { sincronizarAlunoComSheet(a); });
+      localStorage.setItem('ecl_pins_enviados_v22', new Date().toISOString());
+    });
+  } catch { /* */ }
 }
 
 // ============================================================
@@ -703,6 +753,58 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'avaliacao_par') juntarPorId(KEY_PARES, dados as AvaliacaoPar[]);
   else if (tipo === 'lider_kf') juntarLideres(dados);
   else if (tipo === 'materia_prima') juntarMateriasPrimas(dados);
+  else if (tipo === 'requisicao') juntarRequisicoesDaBase(dados);
+  else if (tipo === 'evento') juntarEventosDaBase(dados);
+  else if (tipo === 'recuperacao') juntarRecuperacoesDaBase(dados);
+  else if (tipo === 'evidencia') juntarEvidenciasDaBase(dados);
+}
+
+// (4.ª fase) Requisições, eventos, recuperações e evidências vindos da base.
+// A regra é a mesma do Sheets: fica a versão mais recente, e uma requisição
+// nunca perde as linhas que já tinha.
+function juntarRequisicoesDaBase(dados: any[]): void {
+  const fora = new Set(dados.filter(x => x?.eliminado).map(x => String(x.id)));
+  if (fora.size) save(KEYS.eliminadosRequisicoes, [...new Set([...load<string>(KEYS.eliminadosRequisicoes), ...fora])]);
+  const eliminados = new Set(load<string>(KEYS.eliminadosRequisicoes));
+  const m = new Map(getRequisicoes().map(r => [r.id, r]));
+  for (const r of dados) {
+    if (!r?.id || r.eliminado) continue;
+    const l: any = m.get(r.id);
+    if (!l) m.set(r.id, r);
+    else if (String(r.atualizadaEm || '') > String(l.atualizadaEm || '')) m.set(r.id, { ...r, linhas: (r.linhas?.length ? r.linhas : l.linhas) || [] });
+  }
+  save(KEYS.requisicoes, [...m.values()].filter(r => !eliminados.has(r.id)));
+}
+const KEY_EVENTOS_ELIMINADOS = 'ecl_eventos_eliminados';
+function juntarEventosDaBase(dados: any[]): void {
+  const fora = new Set([...load<string>(KEY_EVENTOS_ELIMINADOS), ...dados.filter(x => x?.eliminado).map(x => String(x.id))]);
+  save(KEY_EVENTOS_ELIMINADOS, [...fora]);
+  const m = new Map<string, any>(lerEventosLocais().map((e: any) => [e.id, e]));
+  for (const e of dados) {
+    if (!e?.id || e.eliminado || e.versao !== 4) continue;
+    const l = m.get(e.id);
+    if (!l || String(e.atualizadoEm || '') > String(l.atualizadoEm || '')) m.set(e.id, e);
+  }
+  try { localStorage.setItem(KEY_EVENTOS_V4, JSON.stringify([...m.values()].filter((e: any) => !fora.has(e.id)))); } catch { /* */ }
+}
+function juntarRecuperacoesDaBase(dados: any[]): void {
+  const m = new Map(getRecuperacoes().map(r => [r.id, r]));
+  for (const r of dados) {
+    if (!r?.id || r.eliminado) continue;
+    const l = m.get(r.id);
+    if (!l || String(r.atualizadoEm || '') > String(l.atualizadoEm || '')) m.set(r.id, r);
+  }
+  save(KEYS.recuperacoes, [...m.values()]);
+}
+function juntarEvidenciasDaBase(dados: any[]): void {
+  const locais = getEvidencias();
+  const ids = new Set(locais.map(e => e.id));
+  const novas: any[] = [];
+  for (const e of dados) {
+    if (!e?.id || e.eliminado || ids.has(e.id)) continue;
+    ids.add(e.id); novas.push(e);
+  }
+  if (novas.length) save(KEYS.evidencias, [...locais, ...novas]);
 }
 
 // Chamadas repetidas juntam-se numa só: a entrada do aluno chamava a
@@ -2010,10 +2112,17 @@ export async function validarLoginAluno(
   if (aluno.ativo === false) {
     return { ok: false, erro: 'Este aluno já não está nesta turma. Fala com o professor.' };
   }
-  if (!aluno.pin) {
-    return { ok: false, erro: 'Ainda não tens PIN. Pede-o ao professor.' };
+  // (v22) Quem confirma o PIN é o Sheets. Só se o Sheets ainda não tiver o
+  // PIN deste aluno (ou não houver rede) se usa o que está neste aparelho.
+  const r = await confirmarPinAluno(aluno.id, pinIntroduzido);
+  if (r === 'errado') return { ok: false, erro: 'PIN incorreto.' };
+  if (r === 'bloqueado') return { ok: false, erro: 'Muitas tentativas erradas. Espera 10 minutos ou pede ajuda ao professor.' };
+  if (r !== 'entrou') {
+    if (!aluno.pin) {
+      return { ok: false, erro: r === 'semRede' ? 'Sem ligação à escola. Confirma a internet e tenta outra vez.' : 'Ainda não tens PIN. Pede-o ao professor.' };
+    }
+    if (aluno.pin !== pinIntroduzido) return { ok: false, erro: 'PIN incorreto.' };
   }
-  if (aluno.pin !== pinIntroduzido) return { ok: false, erro: 'PIN incorreto.' };
 
   // O PIN fica preso ao telemóvel onde o aluno entrou pela primeira vez.
   const tel = await verificarTelemovel(aluno);

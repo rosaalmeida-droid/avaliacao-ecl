@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v21.1';
+var VERSAO = 'ECL único v22';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -833,7 +833,10 @@ function doGet(e) {
     if (tipo === 'get_requisicoes')  return comDados('requisicoes',  ler('REQUISICOES',  { turmaId: turma }));
     if (tipo === 'get_fichas')       return comDados('fichas',       ler('FICHAS',       {}));
     if (tipo === 'buscar_similar')   return comDados('similares',    parecidas(p.nome || ''));
-    if (tipo === 'get_alunos')       return comDados('alunos',       ler('ALUNOS',       { turmaId: turma }));
+    // (v22) Os PIN só vão para quem entrou como professor ou coordenação.
+    if (tipo === 'get_alunos')       return comDados('alunos',       semPinsSemToken(ler('ALUNOS', { turmaId: turma }), p.token));
+    if (tipo === 'entrar')           return respostaDados(entrarPessoal(p.quem, p.codigo));
+    if (tipo === 'entrar_aluno')     return respostaDados(entrarAluno(p.alunoId, p.pin));
     if (tipo === 'get_avaliacoes')   return comDados('avaliacoes',   ler('AVALIACOES',   { turmaId: turma }));
     if (tipo === 'get_presencas')    return comDados('presencas',    ler('PRESENCAS',    { turmaId: turma }));
     if (tipo === 'get_selecoes')     return comDados('selecoes',     ler('SELECOES',     { turmaId: turma }));
@@ -1980,12 +1983,37 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   try { f.setTabColor(COR_TURMA); } catch (e) {}
 }
 
+/**
+ * (v21.2) Corre-se à mão, uma vez: apaga as folhas antigas de cada aluno
+ * («12_Nome…», da v20 para trás) e os separadores «TURMA …» da v20. Estão
+ * agora no separador de cada turma, e os dados continuam nas folhas de dados
+ * (AVALIACOES, PRESENCAS…). ANTES de apagar, faz uma cópia do ficheiro
+ * inteiro na pasta das cópias de segurança (Rosa, out/2026).
+ */
+function apagarFolhasAntigas() {
+  var ss = ficheiro();
+  var pasta = pastaDasCopias();
+  var agora = Utilities.formatDate(new Date(), 'Europe/Lisbon', 'yyyy-MM-dd HH.mm');
+  DriveApp.getFileById(ss.getId()).makeCopy('Avaliação ECL — antes de apagar as folhas antigas — ' + agora, pasta);
+  Logger.log('Cópia de segurança feita na pasta «' + PASTA_COPIAS + '».');
+  var apagadas = [];
+  ss.getSheets().forEach(function (f) {
+    var n = f.getName();
+    if (/^\d+_/.test(n) || n.indexOf('TURMA ') === 0) {
+      try { ss.deleteSheet(f); apagadas.push(n); } catch (e) { Logger.log('Não apaguei ' + n + ': ' + e); }
+    }
+  });
+  Logger.log('Apagadas ' + apagadas.length + ' folhas: ' + apagadas.join(', '));
+  atualizarFolhasDasTurmas();
+  Logger.log('Separadores das turmas refeitos.');
+}
+
 /** Põe as turmas à frente e esconde o resto (não apaga). Os separadores
  *  «TURMA …» da v20 saem: foram substituídos por estes. */
 function arrumarSeparadores(ss, nomesTurmas) {
   ss.getSheets().forEach(function (f) {
     var n = f.getName();
-    if (n.indexOf('TURMA ') === 0 && nomesTurmas.indexOf(n) < 0) { try { ss.deleteSheet(f); } catch (e) {} }
+    if (n.indexOf('TURMA ') === 0 && nomesTurmas.indexOf(n) < 0) { try { ss.deleteSheet(f); } catch (e) { Logger.log('Não apaguei ' + n + ': ' + e); } }
   });
   var visiveis = nomesTurmas.concat(VISIVEIS_SEMPRE);
   var pos = 1;
@@ -1995,10 +2023,103 @@ function arrumarSeparadores(ss, nomesTurmas) {
     try { f.showSheet(); ss.setActiveSheet(f); ss.moveActiveSheet(pos++); } catch (e) {}
   });
   ss.getSheets().forEach(function (f) {
-    if (visiveis.indexOf(f.getName()) < 0 && !f.isSheetHidden()) { try { f.hideSheet(); } catch (e) {} }
+    if (visiveis.indexOf(f.getName()) < 0 && !f.isSheetHidden()) { try { f.hideSheet(); } catch (e) { Logger.log('Não escondi ' + f.getName() + ': ' + e); } }
   });
   var primeira = ss.getSheetByName(nomesTurmas[0] || 'LEIA-ME');
   if (primeira) try { ss.setActiveSheet(primeira); } catch (e) {}
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// (v22) SEGURANÇA — os códigos e os PIN deixam de estar na aplicação
+// ══════════════════════════════════════════════════════════════
+// Os códigos dos professores, da coordenação e da área de eventos ficam na
+// folha CODIGOS (escondida), que só a escola vê. A aplicação pergunta aqui
+// se o código está certo. Os PIN dos alunos ficam na folha ALUNOS e só vão
+// para quem entrou como professor ou coordenação (com o «token» da entrada).
+// Muitas tentativas erradas seguidas bloqueiam 10 minutos.
+
+var FOLHA_CODIGOS = 'CODIGOS';
+var QUEM_TEM_CODIGO = ['Rosa Almeida', 'Mateus Freire', 'coordenadora', 'eventos'];
+
+/** Corre-se uma vez: cria a folha CODIGOS. Depois escreve-se lá o código
+ *  NOVO de cada um (os antigos estiveram à vista no código da aplicação). */
+function criarFolhaCodigos() {
+  var ss = ficheiro();
+  var f = ss.getSheetByName(FOLHA_CODIGOS);
+  if (!f) {
+    f = ss.insertSheet(FOLHA_CODIGOS);
+    f.getRange(1, 1, 1, 2).setValues([['quem', 'codigo']]).setFontWeight('bold');
+    f.getRange(2, 1, QUEM_TEM_CODIGO.length, 1).setValues(QUEM_TEM_CODIGO.map(function (q) { return [q]; }));
+    f.getRange('B:B').setNumberFormat('@');
+    f.setColumnWidth(1, 200); f.setColumnWidth(2, 140);
+  }
+  f.showSheet(); ss.setActiveSheet(f);
+  Logger.log('Folha CODIGOS pronta. Escreve na coluna «codigo» o código NOVO de cada um (4 ou mais algarismos) e depois esconde a folha.');
+}
+
+function lerCodigos() {
+  var f = ficheiro().getSheetByName(FOLHA_CODIGOS);
+  var m = {};
+  if (!f || f.getLastRow() < 2) return m;
+  f.getRange(2, 1, f.getLastRow() - 1, 2).getValues().forEach(function (l) {
+    var q = String(l[0] || '').trim(), c = String(l[1] || '').trim();
+    if (q && c) m[q.toLowerCase()] = c;
+  });
+  return m;
+}
+
+/** Demasiadas tentativas erradas? (10 em 10 minutos, por pessoa) */
+function bloqueado(chave, errou) {
+  var cache = CacheService.getScriptCache();
+  var k = 'tent_' + chave;
+  var n = Number(cache.get(k) || 0);
+  if (errou) { n++; cache.put(k, String(n), 600); }
+  return n >= 10;
+}
+
+function entrarPessoal(quem, codigo) {
+  quem = String(quem || '').trim();
+  var codigos = lerCodigos();
+  var certo = codigos[quem.toLowerCase()];
+  // Ainda sem código novo na folha: a aplicação usa o que já usava.
+  if (!certo) return { semCodigo: true };
+  if (bloqueado('p_' + quem, false)) return { entrou: false, bloqueado: true };
+  if (String(codigo || '').trim() !== certo) { bloqueado('p_' + quem, true); return { entrou: false }; }
+  var token = Utilities.getUuid();
+  CacheService.getScriptCache().put('tok_' + token, quem, 21600);   // 6 horas
+  return { entrou: true, token: token };
+}
+
+function tokenValido(token) {
+  return !!(token && CacheService.getScriptCache().get('tok_' + token));
+}
+
+function semPinsSemToken(lista, token) {
+  if (tokenValido(token)) return lista;
+  return lista.map(function (a) { var c = {}; for (var k in a) if (k !== 'pin') c[k] = a[k]; c.temPin = !!a.pin; return c; });
+}
+
+function entrarAluno(alunoId, pin) {
+  alunoId = String(alunoId || '');
+  var a = ler('ALUNOS', {}).filter(function (x) { return String(x.id) === alunoId; })[0];
+  // Sem o aluno ou sem PIN no Sheets: a aplicação usa o que já usava.
+  if (!a || !a.pin) return { semPin: true };
+  if (bloqueado('a_' + alunoId, false)) return { entrou: false, bloqueado: true };
+  if (String(pin || '').trim() !== String(a.pin).trim()) { bloqueado('a_' + alunoId, true); return { entrou: false }; }
+  return { entrou: true };
+}
+
+/** Correr à mão: quantos alunos têm PIN no Sheets (por turma). */
+function verPins() {
+  var porTurma = {};
+  ler('ALUNOS', {}).forEach(function (a) {
+    if (a.ativo === false) return;
+    var t = a.turmaId || '?';
+    porTurma[t] = porTurma[t] || { com: 0, sem: [] };
+    if (a.pin) porTurma[t].com++; else porTurma[t].sem.push(a.numero + ' ' + (a.nome || ''));
+  });
+  for (var t in porTurma) Logger.log(t + ': ' + porTurma[t].com + ' com PIN' + (porTurma[t].sem.length ? ' · SEM PIN: ' + porTurma[t].sem.join(', ') : ''));
 }
 
 
