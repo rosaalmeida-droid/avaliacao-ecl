@@ -3,6 +3,8 @@ import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
+import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
+  capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
@@ -18,7 +20,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
@@ -652,7 +654,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       return temGuia ? 'concluido' : 'pendente';
     }
     if (m === 'requisicao') return !temFichas ? 'bloqueado' : temRequisicao ? 'concluido' : 'pendente';
-    if (m === 'validacao') return !temFichas ? 'bloqueado' : 'pendente';
+    if (m === 'validacao') return 'pendente';
     return 'pendente';
   }
 
@@ -1638,8 +1640,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           3 o que se avalia (o telemóvel do aluno) → 4 enviar aos alunos. */}
       <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
       <CabecalhoPasso n={2} titulo="O que se faz"
-        sub="O sumário e as fichas. As técnicas saem das fichas (em «O que este plano tem», mais abaixo)." />
+        sub={contextoDoPlano(plano).producao
+          ? 'O sumário e as fichas. As técnicas saem das fichas (em «O que este plano tem», mais abaixo).'
+          : 'O sumário e o que se trabalha do manual.'} />
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
+      {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
+      {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && (
+        <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      )}
       <PassoOQueSeAvalia plano={plano} />
       <PassoEnviar plano={plano} onPlanoActualizado={onPlanoActualizado} />
       {temOrganizacao(plano) && (
@@ -2056,6 +2064,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             pode juntar. Nada é obrigatório — mas o professor tem de
             perceber o que ganha e o que perde em cada escolha. */}
         {(() => {
+          // Aula sem cozinhar (teórica, atitudinal): fichas, guião e
+          // requisição não fazem sentido — não se mostram.
+          if (!contextoDoPlano(plano).producao) return null;
           const B = '#7B2233', BS = '#F6ECEE';
           const temFicha = fichasDoPlano.length > 0;
           const temGuiao = fichasDoPlano.some((f: any) => f.textoGuia);
@@ -2344,10 +2355,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>Construir esta aula</div>
           <ModuloCard icone="🎯" titulo={`Competências (${totalComp})`} cor="var(--copper)" descricao={`${compObrigatorias.length} obrigatórias · ${compTecnicas.length} técnicas · ${compAtitudes.length} atitudes`} estado="pendente" onClick={() => setModulo('competencias')} />
+          {contextoDoPlano(plano).producao && (<>
           <ModuloCard icone="📄" titulo="Ficha de Produção" cor="var(--copper)" descricao={temFichas ? `${fichasDoPlano.length} ficha${fichasDoPlano.length > 1 ? 's' : ''} criada${fichasDoPlano.length > 1 ? 's' : ''}` : 'Criar ficha com ingredientes, preparação e HACCP'} estado={estadoModulo('ficha') as any} onClick={() => setModulo('ficha')} />
           <ModuloCard icone="📚" titulo="Guia de Apoio à Produção" cor="var(--sage)" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Documento pedagógico com rendimentos, food cost e questões'} estado={estadoModulo('guia') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('guia')} />
           <ModuloCard icone="🛒" titulo="Requisição" cor="#2980b9" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : temRequisicao ? 'Requisição criada — ver ou editar' : 'Consolidar ingredientes para a aula'} estado={estadoModulo('requisicao') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('requisicao')} />
-          <ModuloCard icone="✓" titulo="Validação e Avaliação" cor="#8e44ad" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Validar autoavaliações dos alunos'} estado={estadoModulo('validacao') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('validacao')} />
+          </>)}
+          <ModuloCard icone="✓" titulo="Validação e Avaliação" cor="#8e44ad" descricao="Validar autoavaliações dos alunos" estado={estadoModulo('validacao') as any} onClick={() => setModulo('validacao')} />
           <ModuloCard icone="🔓" titulo="Reabrir Autoavaliação" cor="#16a085" descricao="Aluno enganou-se? Destranca para ele corrigir" estado="pendente" onClick={() => setModulo('registos')} />
         </div>
 
@@ -2488,41 +2501,113 @@ function ResultadosConcurso({ plano, alunos, participantes, gravar, bt }: {
 // autoavalia-se em cada um e o professor valida, como nas técnicas.
 function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
   const [texto, setTexto] = React.useState('');
-  // Aula teórica ou mista sem escolha do professor: os do referencial da UC.
-  const lista: { id: string; texto: string }[] = conhecimentosDaAula(plano);
+  const [capAberto, setCapAberto] = React.useState<number | null>(null);
+  // O que o professor escolheu: campos do manual ou escritos por ele. O
+  // referencial é só sugestão: as linhas dele não dizem ao aluno o que se fez.
+  const lista: { id: string; texto: string; capitulo?: string; tema?: string }[] = conhecimentosDaAula(plano);
+  const manual = manualDaUC(plano.ucId);
+  // O próximo conteúdo da UC que a turma ainda não trabalhou (pela ordem do manual).
+  const proximo = proximoConteudo(getPlanosAula(), plano.turmaId, plano.ucId, plano.id);
   const sugestoes = conhecimentosDoReferencial(plano.ucId).filter(t => !lista.some(l => l.texto === t));
-  const gravar = (nova: { id: string; texto: string }[]) => {
-    const p = { ...plano, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
+  const gravar = (nova: { id: string; texto: string; capitulo?: string }[]) => {
+    const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+    const p = { ...atual, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
     addOrUpdatePlanoAula(p); onPlanoActualizado(p);
   };
   const juntar = (t: string) => { const tt = t.trim(); if (!tt) return; gravar([...lista, { id: 'KNW-P' + Date.now(), texto: tt }]); setTexto(''); };
+  const escolhido = (id: string) => lista.some(x => x.id === id);
+  const alternarCampo = (id: string, textoCampo: string, capitulo: string) =>
+    gravar(escolhido(id) ? lista.filter(x => x.id !== id) : [...lista, { id, texto: textoCampo, capitulo, tema: capituloDoCampo(id)?.capitulo.parte }]);
+  const azul = '#1d4ed8';
   return (
-    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
-      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8', marginBottom: 6 }}>📚 Conhecimentos a avaliar nesta aula</div>
-      {lista.length === 0 && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 6 }}>Nenhum ainda. Escolhe das sugestões do referencial ou escreve o teu.</div>}
+    <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: azul, marginBottom: 4 }}>📚 O que se trabalhou hoje</div>
+      <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.45 }}>
+        {NIVEIS_CONHECIMENTO.tema} › {NIVEIS_CONHECIMENTO.conteudo} › {NIVEIS_CONHECIMENTO.indicador}. O aluno autoavalia-se em cada indicador marcado.
+      </div>
+      {proximo && !lista.some(k => k.id.startsWith(`KNW-P-M-${proximo.ficheiro}-${proximo.capitulo.n}-`)) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: `1px solid ${azul}`,
+          borderRadius: 10, padding: '8px 12px', marginBottom: 8 }}>
+          <span style={{ flex: 1, minWidth: 200, fontSize: 13.5 }}>
+            <b>Próximo {NIVEIS_CONHECIMENTO.conteudo.toLowerCase()} da UC:</b> {rotuloConteudo(proximo.capitulo)}
+            <span style={{ color: 'rgba(26,23,20,0.55)' }}> ({proximo.capitulo.parte})</span>
+          </span>
+          <button onClick={() => gravar([...lista, ...indicadoresDoConteudo(proximo.ficheiro, proximo.capitulo).filter(x => !escolhido(x.id))])}
+            style={{ fontSize: 13, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: 'none', background: azul, color: '#fff',
+              cursor: 'pointer', fontFamily: 'inherit' }}>Usar</button>
+        </div>
+      )}
+      {lista.length === 0 && <div style={{ fontSize: 13, color: '#8a4a15', marginBottom: 6 }}>Nada escolhido: o aluno avalia só «o trabalho de hoje», com o sumário à frente.</div>}
       {lista.map(k => (
         <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 13.5 }}>
-          <span style={{ flex: 1 }}>● {k.texto}</span>
+          <span style={{ flex: 1 }}>● {k.texto}{k.capitulo && <span style={{ color: 'rgba(26,23,20,0.5)' }}> — {k.capitulo}</span>}</span>
           <button onClick={() => gravar(lista.filter(x => x.id !== k.id))} style={{ fontSize: 12.5, padding: '3px 9px', borderRadius: 7,
             border: '1px solid rgba(26,23,20,0.2)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>Tirar</button>
         </div>
       ))}
-      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-        <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') juntar(texto); }}
-          placeholder="Escreve um conhecimento (ex.: Identificar os cortes do porco)" className="input" style={{ flex: 1, fontSize: 13.5 }} />
-        <button onClick={() => juntar(texto)} className="btn btn-primary" style={{ fontSize: 13.5 }}>+ Juntar</button>
-      </div>
-      {sugestoes.length > 0 && (
-        <details style={{ marginTop: 8 }}>
-          <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>Sugestões do referencial ({sugestoes.length})</summary>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+
+      {/* O índice do manual da UC: cada capítulo com os seus campos. */}
+      {manual && (
+        <div style={{ marginTop: 10, background: '#fff', borderRadius: 10, border: '1px solid rgba(37,99,235,0.2)', padding: '8px 10px' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: azul, marginBottom: 4 }}>Do manual: {manual.titulo}</div>
+          {manual.capitulos.map((c, k) => {
+            const campos = camposDoCapitulo(c);
+            const rotulo = `Manual, ${rotuloConteudo(c)}`;
+            const n = campos.filter((_, i) => escolhido(idCampoManual(manual.ficheiro, c.n, i))).length;
+            const novaParte = k === 0 || manual.capitulos[k - 1].parte !== c.parte;
+            return (
+              <div key={c.n}>
+                {novaParte && c.parte && <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+                  color: 'rgba(26,23,20,0.45)', margin: '8px 0 2px' }}>{c.parte}</div>}
+                <button onClick={() => setCapAberto(capAberto === c.n ? null : c.n)} style={{ display: 'flex', width: '100%', gap: 8, textAlign: 'left',
+                  padding: '6px 4px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5 }}>
+                  <span style={{ color: 'rgba(26,23,20,0.45)', minWidth: 20 }}>{String(c.n).padStart(2, '0')}</span>
+                  <span style={{ flex: 1, fontWeight: n ? 700 : 500 }}>{c.titulo}</span>
+                  {n > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: azul }}>{n} de {campos.length}</span>}
+                  <span style={{ color: 'rgba(26,23,20,0.4)' }}>{capAberto === c.n ? '▾' : '▸'}</span>
+                </button>
+                {capAberto === c.n && (
+                  <div style={{ padding: '2px 0 8px 28px' }}>
+                    {campos.map((t, i) => {
+                      const id = idCampoManual(manual.ficheiro, c.n, i);
+                      return (
+                        <label key={id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13.5, padding: '4px 0', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={escolhido(id)} onChange={() => alternarCampo(id, t, rotulo)} style={{ width: 17, height: 17, marginTop: 1 }} />
+                          <span>{t}</span>
+                        </label>
+                      );
+                    })}
+                    <button onClick={() => {
+                        const faltam = campos.map((t, i) => ({ id: idCampoManual(manual.ficheiro, c.n, i), texto: t, capitulo: rotulo }))
+                          .filter(x => !escolhido(x.id));
+                        if (faltam.length) gravar([...lista, ...faltam.map(x => ({ ...x, tema: c.parte }))]);
+                      }}
+                      style={{ marginTop: 4, fontSize: 12.5, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: `1px solid ${azul}`,
+                        background: '#fff', color: azul, cursor: 'pointer', fontFamily: 'inherit' }}>Marcar o capítulo todo</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <details style={{ marginTop: 10 }}>
+        <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: azul }}>Escrever outro{sugestoes.length ? ' ou usar o referencial' : ''}</summary>
+        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+          <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') juntar(texto); }}
+            placeholder="Escreve o que se trabalhou (ex.: Identificar os cortes do porco)" className="input" style={{ flex: 1, fontSize: 13.5 }} />
+          <button onClick={() => juntar(texto)} className="btn btn-primary" style={{ fontSize: 13.5 }}>+ Juntar</button>
+        </div>
+        {sugestoes.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             {sugestoes.map(t => (
               <button key={t} onClick={() => juntar(t)} style={{ textAlign: 'left', fontSize: 12.5, padding: '5px 9px', borderRadius: 8,
                 border: '1px solid rgba(37,99,235,0.3)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>+ {t}</button>
             ))}
           </div>
-        </details>
-      )}
+        )}
+      </details>
     </div>
   );
 }

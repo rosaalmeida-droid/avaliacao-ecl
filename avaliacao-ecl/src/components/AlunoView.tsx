@@ -78,6 +78,8 @@ import { perguntasDe, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondi
 import { CINCO_C, triagemDoPlano, type Letra5CAluno } from '../contextoAula';
 import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno } from '../autoavaliacaoDaAula';
 import { fraseDaAula } from './PlanoGuiado';
+import { sumarioDoPlano } from '../sumarioAutomatico';
+import { criterioTrabalho } from '../criteriosTrabalho';
 import { DicionarioComp } from './DicionarioComp';
 import { AvaliacaoPorUC } from './AvaliacaoPorUC';
 
@@ -514,7 +516,31 @@ function PercursoUC({ aluno, ucId, semNotas = false }: { aluno: { id:string; tur
 /** versaoDados muda quando chegam dados novos: redesenha sem recriar. */
 /** As 4 respostas de uma técnica ou conhecimento: coisas que se veem
  *  (Rosa, set/2026). Da mais fraca para a mais forte. */
-function frasesVisiveis(c: { rotulo: string; resultado?: string }): string[] {
+/** O formato de um trabalho sobre o manual: o que se vê na entrega ou na apresentação. */
+const FRASES_FORMATO: Record<string, string[]> = {
+  oral: ['Não apresentei, ou li tudo sem olhar para a turma.', 'Apresentei, mas a ler quase tudo ou com ajuda.',
+    'Apresentei sem ler e expliquei o tema.', 'Apresentei sem ler, expliquei o tema e respondi às perguntas.'],
+  escrito: ['Entreguei incompleto ou copiado.', 'Entreguei completo, mas copiado do manual ou com erros.',
+    'Entreguei completo, com as minhas palavras.', 'Entreguei completo, com as minhas palavras e exemplos da cozinha.'],
+  digital: ['Fiz só com texto copiado.', 'Fiz, mas com muito texto e pouco organizado.',
+    'Fiz claro, com imagens e pouco texto.', 'Fiz claro, com imagens, e usei-o para explicar sem ler.'],
+  pratico: ['Comecei a demonstração, mas não a acabei.', 'Fiz a demonstração, mas precisei de ajuda.',
+    'Fiz a demonstração sozinho e expliquei o que fazia.', 'Fiz sozinho, expliquei o que fazia e respondi às perguntas.'],
+};
+
+function frasesVisiveis(c: { id?: string; rotulo: string; resultado?: string; manual?: boolean }): string[] {
+  const crit = c.id ? criterioTrabalho(c.id) : undefined;
+  if (crit) return crit.frases;
+  if (c.id?.startsWith('KNW-P-F-') && FRASES_FORMATO[c.id.slice(8)]) return FRASES_FORMATO[c.id.slice(8)];
+  // Campos do manual («Explicar…», «Executar…», «Identificar…»): o aluno diz
+  // se já o sabe fazer, e com que ajuda (Rosa, out/2026). Sem os exercícios
+  // dos manuais, que não são bons.
+  if (c.rotulo === 'Conhecimento' && c.manual) return [
+    'Ainda não sei: só uma parte, e com erros.',
+    'Sei, mas preciso do manual ou da ajuda do professor.',
+    'Sei sozinho, sem olhar para o manual.',
+    'Sei sozinho e consigo explicar a um colega, com um exemplo da cozinha.',
+  ];
   if (c.rotulo === 'Conhecimento') return [
     'Sei explicar só uma parte, e com erros.',
     'Sei explicar, mas a olhar para o caderno ou com a ajuda do professor.',
@@ -1905,12 +1931,12 @@ function PainelOrientacao({ plano, fichas, aluno, onContinuar }: {
       )}
 
       {/* O sumário que o professor escreveu ou ditou. */}
-      {(plano as any).sumario && (
+      {sumarioDoPlano(plano, fichas) && (
         <div style={{ background:'#F0EBF7', borderRadius:16, padding:'14px 18px', marginBottom:12,
           border:'1px solid #D9CCEB' }}>
           <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase',
             color:'#6B3FA0', marginBottom:5 }}>Sumário da aula</div>
-          <div style={{ fontSize:15, lineHeight:1.55, color:'#2A1745', whiteSpace:'pre-wrap' }}>{(plano as any).sumario}</div>
+          <div style={{ fontSize:15, lineHeight:1.55, color:'#2A1745', whiteSpace:'pre-wrap' }}>{sumarioDoPlano(plano, fichas)}</div>
         </div>
       )}
 
@@ -2817,7 +2843,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const ctxAula = contextoDoPlano(plano);
   const fardaIncompletaRegisto = getHistoricoAvaliacoes().some((r: any) =>
     r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01' && Number(r.nota) < 5);
-  const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto });
+  // Trabalho sobre o manual: o tema (conteúdo) que o aluno escolheu.
+  const [temaEscolhido, setTemaEscolhido] = useState<number | null>(null);
+  const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido });
   const subIdsFiltrados = regras.subIds;
   // APP-xxx: aparelhos da ficha. Nada sai para os alunos com medidas (Rosa,
   // set/2026): avaliam o mesmo, com uma explicação simples do que é cada um.
@@ -3349,10 +3377,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     ...subsSug.filter(m => !m.aparelhoId || !idsApp.has(m.aparelhoId)).map(itemTec),
   ];
   const itensComp: { id: string; nome: string; contexto: string; descricao: string;
-    resultado: string; rotulo: string; frases: boolean; como?: boolean }[] = [
+    resultado: string; rotulo: string; frases: boolean; como?: boolean; manual?: boolean }[] = [
     ...itensPratica,
-    ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome, contexto: 'Conhecimento', descricao: m.definicao,
-      resultado: '', rotulo: 'Conhecimento', frases: false })),
+    // Um campo do manual leva o capítulo por cima («Manual, cap. 21 — O bacalhau: demolha e cozedura»).
+    ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome,
+      contexto: m.capitulo || (regras.manual ? 'Conhecimento · no manual' : 'Conhecimento'),
+      descricao: m.definicao, resultado: '', rotulo: 'Conhecimento', frases: false,
+      manual: regras.manual || m.id.startsWith('KNW-P-M-') })),
     ...microsSug.map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
       descricao: (m as any).descricao || '', resultado: '', rotulo: 'Técnica', frases: false })),
   ];
@@ -3394,9 +3425,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // baralhava a autoavaliação e não interessa à professora.
   const faltamApanhar: { id: string; nome: string; ano: number }[] = [];
 
-  type Passo = { id: string; tipo: 'comp' | 'outra' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
+  type Passo = { id: string; tipo: 'tema' | 'comp' | 'outra' | 'haccp' | 'atiAula' | 'tecEvento' | 'atitude' | 'apanhar' | 'triagem' | 'rever';
     comp?: typeof itensComp[number]; atiId?: string; chave?: 'cl' | 'cr' | 'co' };
   const passos: Passo[] = [
+    // Trabalho sobre o manual: primeiro o tema; depois os indicadores desse tema.
+    ...(regras.escolheTema ? [{ id: 'tema', tipo: 'tema' as const }] : []),
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
     ...(todasSemOport ? [{ id: 'outra', tipo: 'outra' as const }] : []),
     ...((!ehAtitudinal || comObrigatorias) && !semRegistos ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
@@ -3415,7 +3448,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const passo = passos[idx];
   const nPerguntas = passos.length - 1;
   const podeAvancar =
-    passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
+    passo.tipo === 'tema' ? temaEscolhido != null
+    : passo.tipo === 'comp' ? !!notasMicro[passo.comp!.id]
     : passo.tipo === 'haccp' ? nivelHaccp !== null
     : passo.tipo === 'atiAula' ? atiOk(passo.atiId!)
     : passo.tipo === 'tecEvento' ? tecEventoFeito
@@ -3427,7 +3461,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     : true;
   const irPara = (i: number) => setPassoIdx(Math.max(0, Math.min(i, passos.length - 1)));
   const tituloPasso = (p: Passo) =>
-    p.tipo === 'comp' ? p.comp!.rotulo
+    p.tipo === 'tema' ? 'O teu tema'
+    : p.tipo === 'comp' ? p.comp!.rotulo
     : p.tipo === 'outra' ? 'O que fizeste hoje'
     : p.tipo === 'haccp' ? 'Higiene e segurança alimentar'
     : p.tipo === 'atiAula' || p.tipo === 'atitude' ? 'Atitude'
@@ -3574,12 +3609,15 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   /** Uma linha do ecrã de rever. */
   const linhasRever: { nome: string; resposta: string; nota: number | null; passo: number }[] = [];
   passos.forEach((p, i) => {
-    if (p.tipo === 'comp') {
+    if (p.tipo === 'tema') {
+      const t = regras.temasPossiveis.find(x => x.capitulo.n === temaEscolhido)?.capitulo;
+      linhasRever.push({ nome: 'O teu tema', resposta: t ? `${t.n}. ${t.titulo}` : 'Por escolher', nota: null, passo: i });
+    } else if (p.tipo === 'comp') {
       const v = notasMicro[p.comp!.id];
       const fi = NIVEIS_FRASES.indexOf(v as string);
       const resposta = !v ? 'Por responder'
         : v === 'nop' ? 'Não tive oportunidade hoje (o professor confirma)'
-        : v === 'nf' ? (p.comp!.rotulo === 'Conhecimento' ? 'Não sei explicar' : 'Não fiz')
+        : v === 'nf' ? (p.comp!.rotulo === 'Conhecimento' ? (p.comp!.manual ? 'Não sei' : 'Não sei explicar') : 'Não fiz')
         : fi >= 0 ? frasesVisiveis(p.comp!)[fi]
         : OPCOES.find(o => o.v === v)?.label || '';
       linhasRever.push({ nome: p.comp!.nome, resposta, nota: v ? notaDoNivel(v) : null, passo: i });
@@ -3652,7 +3690,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         <div style={{ background:'#F0EBF7', borderRadius:12, padding:'10px 14px', marginBottom:14,
           fontSize:13.5, lineHeight:1.5, color:'#2A1745' }}>
           <b>{plano.titulo}</b>{' · '}{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')}
-          {(plano as any).sumario && <div style={{ marginTop:4, whiteSpace:'pre-wrap' }}>{(plano as any).sumario}</div>}
+          {sumarioDoPlano(plano, fichas as any) && <div style={{ marginTop:4, whiteSpace:'pre-wrap' }}>{sumarioDoPlano(plano, fichas as any)}</div>}
         </div>
       )}
       {/* Onde estou */}
@@ -3714,7 +3752,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             <div style={{ marginTop:10 }}>
               <CriteriosComp compId={c.id} cor={V} abertaInicial={false} />
             </div>
-            {rotuloSecao(ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
+            {rotuloSecao(c.id.startsWith('KNW-P-F-') ? 'Como correu?'
+              : ehConhecimento && c.manual ? 'Depois da aula de hoje, já sabes isto?'
+              : ehConhecimento ? 'Hoje, o que consegues fazer com isto?' : 'Hoje, o que aconteceu quando fizeste isto?')}
             {NIVEIS_FRASES.map((nivel, i) => (
               <button key={nivel} onClick={() => escolher(nivel)} style={estiloOpcao(v === nivel)}>
                 {/* Sem números: o aluno escolhia o número, não o que fez. */}
@@ -3727,7 +3767,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                 conta para a nota (o professor confirma); não ter feito vale 0. */}
             <div style={{ display:'flex', flexWrap:'wrap', gap:'0 14px' }}>
               {([['nop', simples ? 'Hoje não tive oportunidade' : 'Não tive oportunidade de fazer esta hoje'],
-                 ['nf', ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
+                 ['nf', c.id.startsWith('KNW-P-F-') ? 'Não fiz' : ehConhecimento && c.manual ? 'Não sei' : ehConhecimento ? 'Não sei explicar' : 'Não fiz']] as const)
                 .filter(([nv]) => !(semNop && nv === 'nop')).map(([nv, texto]) => (
                 <button key={nv} onClick={() => escolher(nv)} style={{ ...estiloOpcao(v === nv),
                   ...(v === nv ? {} : { border:'none', background:'transparent', textDecoration:'underline',
@@ -3745,6 +3785,34 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           </div>
         );
       })()}
+
+      {/* ── Trabalho sobre o manual: o tema que o aluno escolheu ── */}
+      {passo.tipo === 'tema' && (
+        <div>
+          <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:800, lineHeight:1.3 }}>
+            Que tema do manual escolheste?
+          </div>
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 12px', lineHeight:1.5 }}>
+            Escolhe o conteúdo que trabalhaste{ctxAula.equipa ? ' com o teu grupo' : ''}. A seguir dizes o que já sabes dele.
+          </div>
+          {regras.temasPossiveis.map(({ capitulo: c }, k) => {
+            const novaParte = k === 0 || regras.temasPossiveis[k - 1].capitulo.parte !== c.parte;
+            return (
+              <React.Fragment key={c.n}>
+                {novaParte && c.parte && (
+                  <div style={{ fontSize:12, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'rgba(26,23,20,0.5)', margin:'12px 0 6px' }}>
+                    {c.parte}
+                  </div>
+                )}
+                <button onClick={() => setTemaEscolhido(temaEscolhido === c.n ? null : c.n)} style={estiloOpcao(temaEscolhido === c.n)}>
+                  {radio(temaEscolhido === c.n)}
+                  <span><span style={{ color:'rgba(26,23,20,0.5)' }}>{c.n}. </span>{c.titulo}</span>
+                </button>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Não teve oportunidade em nenhuma técnica: o que fez, então ── */}
       {passo.tipo === 'outra' && (

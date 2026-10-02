@@ -10,16 +10,19 @@ import type { PlanoAula, FichaProducao } from './types';
 import { PESOS_AULA } from './types';
 import {
   codigosDasLinhas, codigoDaLinha, tecnicasDeRecurso, conhecimentosDaAula, encontrarConhecimento,
-  atitudesDoTrimestre, ATITUDES, encontrarSubtecnica, encontrarAparelho, ramoDaCompetencia,
+  atitudesDoTrimestre, ATITUDES, encontrarSubtecnica, encontrarAparelho, ramoDaCompetencia, PREFIXO_TRABALHO_AULA, NOMES_FORMATO,
 } from './compatECL';
 import { trimestreAtual } from './datas';
+import { sumarioDoPlano } from './sumarioAutomatico';
+import { CRITERIOS_FORMATO } from './criteriosTrabalho';
 import { opcoesDeEscolhaDoAluno } from './motorAvaliacao';
 import { ATITUDES_FIXAS_EVENTO, NOME_TEC_EVENTO } from './eventosAvaliacao';
 import {
   temPerguntas, atitudeAplicavel, perguntasAplicaveis, perguntasDe, porqueNaoSeFaz,
 } from './perguntas_atitudes';
 import { perguntasDaAula, CL_SEMPRE } from './triagem5c';
-import { porqueNao, type ContextoAula, type Letra5CAluno } from './contextoAula';
+import { porqueNao, triagemDoPlano, escolheTema, TEXTO_FORMATO, type ContextoAula, type Letra5CAluno, type FormatoTrabalho } from './contextoAula';
+import { manualDaUC, capituloDoCampo, indicadoresDoConteudo, rotuloConteudo, type CapituloManual } from './bancoManuais';
 
 /** Quantas atitudes o aluno vê para escolher, antes de pedir a lista toda. */
 export const MAX_ATITUDES_PARA_ESCOLHER = 3;
@@ -28,13 +31,15 @@ export interface RegrasAutoavaliacao {
   ctx: ContextoAula;
   tipoPlanAula: string;
   ehAtitudinal: boolean;
+  /** Trabalham com o manual: os conhecimentos perguntam pelos exercícios do manual. */
+  manual: boolean;
   /** Subtécnicas e preparações base das fichas (sem as retiradas). */
   subIds: string[];
   appIds: string[];
   /** Técnicas de recurso da UC, quando as fichas não têm subtécnicas. */
   recursoIds: string[];
-  /** Conhecimentos a que o aluno responde. */
-  conhecimentos: { id: string; nome: string; definicao: string }[];
+  /** Conhecimentos a que o aluno responde (os do manual com o capítulo). */
+  conhecimentos: { id: string; nome: string; definicao: string; capitulo?: string }[];
   /** Atitudes a que todos respondem (aula atitudinal, evento, farda incompleta). */
   atitudesDaAula: string[];
   /** As atitudes que o aluno pode escolher numa aula prática ou teórica. */
@@ -48,10 +53,18 @@ export interface RegrasAutoavaliacao {
   clNaoSePergunta: boolean;
   /** Sozinho na cozinha: pergunta-se pelo espaço e o material partilhados. */
   clSempre: boolean;
+  /** Trabalho sobre o manual: o aluno escolhe o tema (um conteúdo do manual). */
+  escolheTema: boolean;
+  /** Os conteúdos que o aluno pode escolher (os marcados no plano, ou o manual todo). */
+  temasPossiveis: { ficheiro: string; capitulo: CapituloManual }[];
+  /** Os formatos do trabalho (escrito, oral…), cada um avaliado à parte. */
+  formatos: FormatoTrabalho[];
 }
 
 export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[], opts: {
   ctx: ContextoAula; ano?: number; fardaIncompleta?: boolean;
+  /** O conteúdo do manual que o aluno escolheu para o trabalho (n.º do capítulo). */
+  temaEscolhido?: number | null;
 }): RegrasAutoavaliacao {
   const p: any = plano;
   const ctx = opts.ctx;
@@ -73,15 +86,41 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   const recursoIds = ehAtitudinal || !usarRecurso || fichas.length === 0 ? []
     : tecnicasDeRecurso(ucId, fichas as any[]).map(m => m.id).filter(id => !compRemovidas.includes(id)).slice(0, 6);
 
-  const conhecimentos: { id: string; nome: string; definicao: string }[] =
+  const conhecimentos: { id: string; nome: string; definicao: string; capitulo?: string }[] =
     (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto')
       ? ((p.compAdicionadas || []) as string[]).filter(id => id.startsWith('KNW-') && !compRemovidas.includes(id)).slice(0, 6)
         .map(id => { const k: any = encontrarConhecimento(id); return { id, nome: k?.nome || id, definicao: k?.definicao || '' }; })
       : [];
   if (!ehAtitudinal) for (const k of conhecimentosDaAula(p)) {
     if (!compRemovidas.includes(k.id) && !conhecimentos.some(c => c.id === k.id))
-      conhecimentos.push({ id: k.id, nome: k.texto, definicao: '' });
+      conhecimentos.push({ id: k.id, nome: k.texto, definicao: '', capitulo: (k as any).capitulo });
   }
+  // Aula teórica sem nada escrito pelo professor: avalia-se o trabalho da
+  // aula (com o sumário à frente), e não as linhas do referencial.
+  const triagem = triagemDoPlano(p);
+  const manual = !!triagem?.manual;
+  // Trabalho sobre o manual: cada aluno (ou grupo) tem o seu tema. Os
+  // indicadores são os do tema que ele escolhe; o professor pode ter
+  // marcado os conteúdos por onde se escolhe (Rosa, out/2026).
+  const temTema = !ehAtitudinal && escolheTema(triagem);
+  const md = temTema ? manualDaUC(p.ucId) : null;
+  const marcados = new Set(conhecimentos.map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null));
+  const temasPossiveis = md ? md.capitulos.filter(c => !marcados.size || marcados.has(c.n)).map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
+  const formatos: FormatoTrabalho[] = temTema ? (triagem?.formatos || []) : [];
+  if (temTema) {
+    conhecimentos.length = 0;
+    const tema = temasPossiveis.find(t => t.capitulo.n === opts.temaEscolhido);
+    if (tema) for (const k of indicadoresDoConteudo(tema.ficheiro, tema.capitulo))
+      conhecimentos.push({ id: k.id, nome: k.texto, definicao: '', capitulo: k.capitulo });
+    // Cada formato com os seus critérios (a oral não se avalia como a escrita);
+    // no trabalho de grupo, também a parte de cada um.
+    for (const f of [...formatos, ...(triagem?.modo === 'grupo' ? ['grupo'] : [])])
+      for (const cr of CRITERIOS_FORMATO[f] || [])
+        conhecimentos.push({ id: cr.id, nome: cr.nome.replace(/^[^:]+: /, ''), definicao: '', capitulo: cr.nome.split(':')[0] });
+  }
+  if (!temTema && !ehAtitudinal && (tipoPlanAula === 'teorico' || tipoPlanAula === 'misto') && conhecimentos.length === 0)
+    conhecimentos.push({ id: PREFIXO_TRABALHO_AULA + p.id, nome: manual ? 'O trabalho de hoje no manual' : 'O trabalho de hoje',
+      definicao: sumarioDoPlano(plano, fichas) });
 
   const evento = !!p.tipoEvento;
   const aplicavel = (id: string) => atitudeAplicavel(id, ctx, evento);
@@ -105,13 +144,14 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
     .slice(0, MAX_ATITUDES_PARA_ESCOLHER);
 
   return {
-    ctx, tipoPlanAula, ehAtitudinal,
+    ctx, tipoPlanAula, ehAtitudinal, manual,
     subIds, appIds, recursoIds, conhecimentos,
     atitudesDaAula, atitudesParaEscolher, atitudesPermitidas,
     escolheAtitude: !ehAtitudinal && atitudesParaEscolher.length > 0,
     tecEvento: p.tipoEvento === 'evento',
     clNaoSePergunta: !ctx.colegas && !ctx.cozinha,
     clSempre: !ctx.colegas && ctx.cozinha,
+    escolheTema: temTema, temasPossiveis, formatos,
   };
 }
 
@@ -186,8 +226,19 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
     for (const s of subs.filter(s => !apps.includes(doApp(s) || '')))
       ecras.push({ tipo: 'tecnica', rotulo: 'Técnica', nome: encontrarSubtecnica(s)?.nome || s, perguntas: [], porque: daFicha(s), c: 'cp' });
     if (R.subIds.length > 8) fora.push({ nome: `${R.subIds.length - 8} técnicas a mais`, motivo: 'o aluno responde no máximo a 8' });
-    for (const k of R.conhecimentos)
-      ecras.push({ tipo: 'conhecimento', rotulo: 'Conhecimento', nome: k.nome, perguntas: [], porque: 'marcado no plano', c: 'cp' });
+    if (R.escolheTema) {
+      ecras.push({ tipo: 'conhecimento', rotulo: 'O teu tema', nome: 'Escolhe o tema do manual que trabalhaste',
+        perguntas: [], porque: R.temasPossiveis.length < 15 ? R.temasPossiveis.map(t => rotuloConteudo(t.capitulo)).join(' · ')
+          : `qualquer conteúdo do manual (${R.temasPossiveis.length})`, c: 'cp' });
+      ecras.push({ tipo: 'conhecimento', rotulo: 'Conhecimento', nome: 'Os indicadores do tema escolhido (3 a 4)', perguntas: [],
+        porque: 'do «O que vais aprender» do capítulo que o aluno escolher', c: 'cp' });
+    }
+    for (const k of R.conhecimentos) {
+      const geral = k.id.startsWith(PREFIXO_TRABALHO_AULA);
+      ecras.push({ tipo: 'conhecimento', rotulo: 'Conhecimento', nome: k.nome, perguntas: [],
+        porque: geral ? 'não escolheste o que se trabalhou: o aluno avalia o trabalho da aula (escolhe-o no passo 2)'
+          : k.capitulo || 'escrito por ti no passo 2', c: 'cp' });
+    }
     for (const id of R.recursoIds)
       ecras.push({ tipo: 'tecnica', rotulo: 'Técnica', nome: (encontrarSubtecnica(id) as any)?.nome || id, perguntas: [], porque: 'técnica da UC (as fichas não têm técnicas)', c: 'cp' });
   } else if (R.subIds.length || R.appIds.length) {

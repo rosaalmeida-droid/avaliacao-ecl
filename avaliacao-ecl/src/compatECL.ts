@@ -17,6 +17,8 @@
 import { getLibrary } from './libraryService';
 import { getReferencialUC } from './referencial811RA144';
 import { ucsEquivalentes } from './cronograma';
+import BANCO_MANUAIS from './bancoManuais.json';
+import { criterioTrabalho } from './criteriosTrabalho';
 import type { PerfilTecnico, CriterioObservavel } from './library.types';
 import type { Competencia, Categoria } from './types';
 
@@ -1043,26 +1045,41 @@ export function conhecimentosDoReferencial(ucId?: string): string[] {
 }
 
 /**
- * Os conhecimentos que se avaliam nesta aula.
- * - Se o professor escolheu (conhecimentosProf), são esses.
- * - Senão, numa aula teórica ou mista, os do referencial da UC.
- * - Numa aula prática ou atitudinal, nenhuns (só se o professor os juntar).
- * Antes vinham os seis primeiros da biblioteca inteira, sem relação com a
- * UC («a massa folhada está crocante» numa aula de conhecimentos).
+ * Os conhecimentos que se avaliam nesta aula: os que o professor escreveu
+ * ou escolheu (conhecimentosProf) — o que se trabalhou nesta aula.
+ * Antes, sem escolha do professor, uma aula teórica mandava ao aluno as
+ * linhas TODAS do referencial da UC («Vocabulário técnico.»,
+ * «Receituário.», «Legislação reguladora…»), sem relação com a aula
+ * nem com o manual (Rosa, out/2026). O referencial fica só como sugestão
+ * para o professor.
  */
 export function conhecimentosDaAula(plano: any): { id: string; texto: string }[] {
-  if (Array.isArray(plano?.conhecimentosProf)) return plano.conhecimentosProf;
-  const tipo = plano?.tipoPlanAula || ((plano?.fichasIds || []).length ? 'pratico' : 'teorico');
-  if (tipo !== 'teorico' && tipo !== 'misto') return [];
-  const uc = String(plano?.ucId || '');
-  return conhecimentosDoReferencial(uc).map((t, i) => ({ id: `KNW-R-${uc.replace(/\s+/g, '_')}-${i}`, texto: t }));
+  return Array.isArray(plano?.conhecimentosProf) ? plano.conhecimentosProf : [];
 }
+
+/** Aula teórica sem conhecimentos escritos: o aluno avalia o trabalho da aula. */
+export const PREFIXO_TRABALHO_AULA = 'KNW-P-HOJE-';
+
+/** O formato de um trabalho sobre o manual, avaliado como conhecimento. */
+export const NOMES_FORMATO: Record<string, string> = {
+  escrito: 'O trabalho escrito', oral: 'A apresentação oral do tema', digital: 'A apresentação digital', pratico: 'A demonstração prática',
+};
 
 /** Conhecimento escrito pelo professor (KNW-P…) ou do referencial (KNW-R…). */
 export function nomeConhecimentoProf(id: string): string | undefined {
   if (id.startsWith('KNW-R-')) {
     const resto = id.slice(6), j = resto.lastIndexOf('-');
     return conhecimentosDoReferencial(resto.slice(0, j).replace(/_/g, ' '))[Number(resto.slice(j + 1))];
+  }
+  if (id.startsWith('KNW-P-HOJE-')) return 'O trabalho da aula';
+  // O formato de um trabalho (escrito, oral, digital, prático).
+  if (id.startsWith('KNW-P-F-')) return criterioTrabalho(id)?.nome || NOMES_FORMATO[id.slice(8)] || 'O trabalho';
+  // Indicador do manual (escolhido no plano ou pelo aluno, no tema dele).
+  const mm = /^KNW-P-M-(.+)-(\d+)-(\d+)$/.exec(id);
+  if (mm) {
+    const cap = (BANCO_MANUAIS as any)[mm[1]]?.find((c: any) => c.n === Number(mm[2]));
+    const t = cap ? (cap.objetivos[Number(mm[3])] || cap.titulo) : undefined;
+    if (t) return `${t} (cap. ${cap.n} — ${cap.titulo})`;
   }
   if (!id.startsWith('KNW-P')) return undefined;
   try {
