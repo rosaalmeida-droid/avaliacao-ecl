@@ -251,6 +251,20 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
       </div>
     </div>
   );
+  // Recomeçar (Rosa, out/2026): apaga as escolhas e volta à 1.ª pergunta.
+  // Ficam a data, as horas, a turma, a unidade e as fichas.
+  function recomecar() {
+    const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
+    if (!confirm('Recomeçar este plano do zero?\n\nApaga o tipo de aula, a forma de trabalhar, as fases, os conteúdos e o sumário. '
+      + 'Ficam a data, as horas, a turma, a unidade e as fichas.'
+      + (responderam ? `\n\nAtenção: ${responderam} aluno${responderam === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.` : ''))) return;
+    const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+    const novo: any = { ...atual };
+    ['triagemAula', 'sumario', 'conhecimentosProf', 'compAdicionadas', 'compRemovidas', 'perguntaCO', 'perguntaCR', 'trabalhos']
+      .forEach(k => { delete novo[k]; });
+    addOrUpdatePlanoAula(novo);
+    onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || novo);
+  }
   let n = 1;
   const ModoOpcoes = ({ semProfessor }: { semProfessor?: boolean }) => (<>
     {!semProfessor && <Opcao ativo={!!definida && !ehTrabalho} onClick={() => gravar({ modo: 'professor' })}>Dou eu a matéria</Opcao>}
@@ -376,6 +390,14 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
       )}
 
       {definida && <ResultadoDaAula plano={plano} triagem={valor} />}
+      {definida && (
+        <div style={{ marginTop: 12, textAlign: 'right' }}>
+          <button onClick={recomecar} style={{ background: 'none', border: `1px solid ${C.linha}`, borderRadius: 9, padding: '7px 12px',
+            color: C.vinho, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↺ Recomeçar este plano do zero
+          </button>
+        </div>
+      )}
     </div>
   );
 }
