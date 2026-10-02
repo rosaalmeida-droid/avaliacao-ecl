@@ -10,7 +10,8 @@ service cloud.firestore {
     match /turmas/{turma}/{colecao}/{id} {
       allow read, write: if request.auth != null
         && colecao in ['selecoes', 'validacoes', 'avaliacoes', 'presencas', 'planos', 'fichas', 'sessoes',
-                       'grupos', 'gruposinfo', 'pares', 'lideres', 'materiasprimas'];
+                       'grupos', 'gruposinfo', 'pares', 'lideres', 'materiasprimas',
+                       'requisicoes', 'eventos', 'recuperacoes', 'evidencias'];
     }
   }
 }

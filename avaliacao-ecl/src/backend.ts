@@ -703,6 +703,58 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'avaliacao_par') juntarPorId(KEY_PARES, dados as AvaliacaoPar[]);
   else if (tipo === 'lider_kf') juntarLideres(dados);
   else if (tipo === 'materia_prima') juntarMateriasPrimas(dados);
+  else if (tipo === 'requisicao') juntarRequisicoesDaBase(dados);
+  else if (tipo === 'evento') juntarEventosDaBase(dados);
+  else if (tipo === 'recuperacao') juntarRecuperacoesDaBase(dados);
+  else if (tipo === 'evidencia') juntarEvidenciasDaBase(dados);
+}
+
+// (4.ª fase) Requisições, eventos, recuperações e evidências vindos da base.
+// A regra é a mesma do Sheets: fica a versão mais recente, e uma requisição
+// nunca perde as linhas que já tinha.
+function juntarRequisicoesDaBase(dados: any[]): void {
+  const fora = new Set(dados.filter(x => x?.eliminado).map(x => String(x.id)));
+  if (fora.size) save(KEYS.eliminadosRequisicoes, [...new Set([...load<string>(KEYS.eliminadosRequisicoes), ...fora])]);
+  const eliminados = new Set(load<string>(KEYS.eliminadosRequisicoes));
+  const m = new Map(getRequisicoes().map(r => [r.id, r]));
+  for (const r of dados) {
+    if (!r?.id || r.eliminado) continue;
+    const l: any = m.get(r.id);
+    if (!l) m.set(r.id, r);
+    else if (String(r.atualizadaEm || '') > String(l.atualizadaEm || '')) m.set(r.id, { ...r, linhas: (r.linhas?.length ? r.linhas : l.linhas) || [] });
+  }
+  save(KEYS.requisicoes, [...m.values()].filter(r => !eliminados.has(r.id)));
+}
+const KEY_EVENTOS_ELIMINADOS = 'ecl_eventos_eliminados';
+function juntarEventosDaBase(dados: any[]): void {
+  const fora = new Set([...load<string>(KEY_EVENTOS_ELIMINADOS), ...dados.filter(x => x?.eliminado).map(x => String(x.id))]);
+  save(KEY_EVENTOS_ELIMINADOS, [...fora]);
+  const m = new Map<string, any>(lerEventosLocais().map((e: any) => [e.id, e]));
+  for (const e of dados) {
+    if (!e?.id || e.eliminado || e.versao !== 4) continue;
+    const l = m.get(e.id);
+    if (!l || String(e.atualizadoEm || '') > String(l.atualizadoEm || '')) m.set(e.id, e);
+  }
+  try { localStorage.setItem(KEY_EVENTOS_V4, JSON.stringify([...m.values()].filter((e: any) => !fora.has(e.id)))); } catch { /* */ }
+}
+function juntarRecuperacoesDaBase(dados: any[]): void {
+  const m = new Map(getRecuperacoes().map(r => [r.id, r]));
+  for (const r of dados) {
+    if (!r?.id || r.eliminado) continue;
+    const l = m.get(r.id);
+    if (!l || String(r.atualizadoEm || '') > String(l.atualizadoEm || '')) m.set(r.id, r);
+  }
+  save(KEYS.recuperacoes, [...m.values()]);
+}
+function juntarEvidenciasDaBase(dados: any[]): void {
+  const locais = getEvidencias();
+  const ids = new Set(locais.map(e => e.id));
+  const novas: any[] = [];
+  for (const e of dados) {
+    if (!e?.id || e.eliminado || ids.has(e.id)) continue;
+    ids.add(e.id); novas.push(e);
+  }
+  if (novas.length) save(KEYS.evidencias, [...locais, ...novas]);
 }
 
 // Chamadas repetidas juntam-se numa só: a entrada do aluno chamava a
