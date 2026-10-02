@@ -30,13 +30,23 @@ export const FIREBASE_CONFIG: Record<string, string> = {
 
 export const baseLigada = (): boolean => !!FIREBASE_CONFIG.projectId && !!FIREBASE_CONFIG.apiKey;
 
-/** O que vai para a base: o tipo do envio → a coleção. */
+/** O que vai para a base: o tipo do envio → a coleção. (2.ª fase, out/2026:
+ *  também os planos, as fichas e a abertura da aula.) */
 export const COLECAO_DO_TIPO: Record<string, string> = {
   selecao: 'selecoes',
   validacao: 'validacoes',
   avaliacao: 'avaliacoes',
   presenca: 'presencas',
+  plano: 'planos',
+  ficha: 'fichas',
+  sessao: 'sessoes',
 };
+/** As fichas são de todas as turmas: ficam numa «turma» à parte. */
+export const TURMA_DAS_FICHAS = '_todas';
+const turmaDaColecao = (colecao: string, turmaId: string) => colecao === 'fichas' ? TURMA_DAS_FICHAS : turmaId;
+/** O que cada perfil ouve: o professor tudo; o aluno a aula e as notas. */
+export const TIPOS_DO_PROFESSOR = Object.keys(COLECAO_DO_TIPO);
+export const TIPOS_DO_ALUNO = ['plano', 'ficha', 'sessao', 'validacao', 'avaliacao'];
 
 let aLigar: Promise<{ app: FirebaseApp; db: Firestore } | null> | null = null;
 
@@ -84,25 +94,50 @@ function idDoRegisto(tipo: string, dados: Record<string, any>): string {
 // telemóvel: um relógio atrasado fazia o registo passar despercebido.
 // Guarda-se como milissegundos.
 
-/** Grava (ou substitui) um registo. Devolve true quando a base o aceitou. */
-export async function gravarNaBase(tipo: string, dados: Record<string, any>): Promise<boolean> {
+/** Como cada envio vai para a base. Os planos e as fichas vão inteiros num
+ *  texto (json): a base não aceita listas dentro de listas, e assim chegam
+ *  tal e qual. Os eliminados ficam marcados, para sairem dos outros aparelhos. */
+interface ParaBase { colecao: string; turma: string; id: string; obj: Record<string, any>; juntar?: boolean }
+function paraBase(tipo: string, dados: Record<string, any>): ParaBase | null {
+  const inteiro = (o: any) => ({ id: o.id, turmaId: o.turmaId || '', atualizadoEm: o.atualizadoEm || '', json: JSON.stringify(o) });
+  switch (tipo) {
+    case 'plano': { const p = dados.plano || dados; return p?.id && p.turmaId ? { colecao: 'planos', turma: p.turmaId, id: String(p.id), obj: inteiro(p) } : null; }
+    case 'eliminar_plano': return dados.planoId && dados.turmaId ? { colecao: 'planos', turma: dados.turmaId, id: String(dados.planoId),
+      obj: { id: dados.planoId, turmaId: dados.turmaId, eliminado: true } } : null;
+    case 'ficha': { const f = dados.ficha || dados; return f?.id ? { colecao: 'fichas', turma: TURMA_DAS_FICHAS, id: String(f.id), obj: inteiro(f) } : null; }
+    case 'eliminar_ficha': return dados.fichaId ? { colecao: 'fichas', turma: TURMA_DAS_FICHAS, id: String(dados.fichaId),
+      obj: { id: dados.fichaId, eliminado: true } } : null;
+    case 'sessao': case 'fechar_sessao': {
+      const { tipo: _t, ...resto } = dados as any;
+      return dados.planoAulaId && dados.turmaId ? { colecao: 'sessoes', turma: dados.turmaId, id: String(dados.planoAulaId), obj: resto, juntar: true } : null;
+    }
+  }
   const colecao = COLECAO_DO_TIPO[tipo];
-  if (!colecao || !baseLigada()) return false;
   const turma = dados.turmaId || dados.turma;
   const id = idDoRegisto(tipo, dados);
-  if (!turma || !id || id === '_') return false;
+  return colecao && turma && id && id !== '_' ? { colecao, turma, id, obj: dados } : null;
+}
+
+/** Grava (ou substitui) um registo. Devolve true quando a base o aceitou. */
+export async function gravarNaBase(tipo: string, dados: Record<string, any>): Promise<boolean> {
+  if (!baseLigada()) return false;
+  const r = paraBase(tipo, dados);
+  if (!r) return false;
   const l = await ligar();
   if (!l) return false;
   try {
     const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
-    await setDoc(doc(l.db, 'turmas', semBarras(turma), colecao, id),
-      { ...dados, gravadoNaBaseEm: serverTimestamp() });
+    await setDoc(doc(l.db, 'turmas', semBarras(r.turma), r.colecao, semBarras(r.id)),
+      { ...r.obj, gravadoNaBaseEm: serverTimestamp() }, { merge: !!r.juntar });
     return true;
   } catch (e) {
-    console.warn('[base] não gravou', tipo, id, e);
+    console.warn('[base] não gravou', tipo, r.id, e);
     return false;
   }
 }
+
+/** Os tipos de envio que vão para a base. */
+export const VAI_PARA_A_BASE = new Set([...Object.keys(COLECAO_DO_TIPO), 'eliminar_plano', 'eliminar_ficha', 'fechar_sessao']);
 
 // Só se pede o que é novo desde a última leitura neste aparelho: a base
 // gratuita conta cada registo lido, e uma turma junta milhares num ano.
@@ -121,7 +156,9 @@ function registoDe(d: { data: (o?: any) => any }): { dados: any; ms: number } {
   const x = d.data({ serverTimestamps: 'estimate' });
   const t = x?.gravadoNaBaseEm;
   const ms = t && typeof t.toMillis === 'function' ? t.toMillis() : 0;
-  return { dados: { ...x, gravadoNaBaseEm: ms ? new Date(ms).toISOString() : undefined }, ms };
+  let base = x;
+  if (x && typeof x.json === 'string' && !x.eliminado) { try { base = JSON.parse(x.json); } catch { base = x; } }
+  return { dados: { ...base, ...(x?.eliminado ? { eliminado: true } : {}), gravadoNaBaseEm: ms ? new Date(ms).toISOString() : undefined }, ms };
 }
 
 /** O que a base tem de novo de um tipo, para uma turma (no formato do Sheets). */
@@ -132,11 +169,12 @@ export async function lerDaBase(tipo: string, turmaId: string): Promise<any[] | 
   if (!l) return null;
   try {
     const { collection, getDocs, query, where, Timestamp } = await import('firebase/firestore');
-    const desde = lidaAte(turmaId, colecao);
-    const c = collection(l.db, 'turmas', semBarras(turmaId), colecao);
+    const turma = turmaDaColecao(colecao, turmaId);
+    const desde = lidaAte(turma, colecao);
+    const c = collection(l.db, 'turmas', semBarras(turma), colecao);
     const r = await getDocs(desde ? query(c, where('gravadoNaBaseEm', '>', Timestamp.fromMillis(desde))) : c);
     const regs = r.docs.map(registoDe);
-    marcarLida(turmaId, colecao, regs.map(x => x.ms));
+    marcarLida(turma, colecao, regs.map(x => x.ms));
     return regs.map(x => x.dados);
   } catch (e) {
     console.warn('[base] não leu', tipo, turmaId, e);
@@ -145,7 +183,8 @@ export async function lerDaBase(tipo: string, turmaId: string): Promise<any[] | 
 }
 
 /** Fica à escuta da turma: cada alteração chega na hora. Devolve a função que para. */
-export function ouvirTurmaNaBase(turmaId: string, aoMudar: (tipo: string, dados: any[]) => void): () => void {
+export function ouvirTurmaNaBase(turmaId: string, aoMudar: (tipo: string, dados: any[]) => void,
+  tipos: string[] = TIPOS_DO_PROFESSOR): () => void {
   if (!baseLigada() || !turmaId) return () => {};
   let parar: (() => void)[] = [];
   let vivo = true;
@@ -153,16 +192,19 @@ export function ouvirTurmaNaBase(turmaId: string, aoMudar: (tipo: string, dados:
     if (!l || !vivo) return;
     const { collection, onSnapshot, query, where, Timestamp } = await import('firebase/firestore');
     const haUmMinuto = Date.now() - 60000;
-    for (const [tipo, colecao] of Object.entries(COLECAO_DO_TIPO)) {
+    for (const tipo of tipos) {
+      const colecao = COLECAO_DO_TIPO[tipo];
+      if (!colecao) continue;
+      const turma = turmaDaColecao(colecao, turmaId);
       // Só o que chegar a partir de agora (o que havia antes vem com lerDaBase).
-      const desde = lidaAte(turmaId, colecao) || haUmMinuto;
-      const q = query(collection(l.db, 'turmas', semBarras(turmaId), colecao),
+      const desde = lidaAte(turma, colecao) || haUmMinuto;
+      const q = query(collection(l.db, 'turmas', semBarras(turma), colecao),
         where('gravadoNaBaseEm', '>', Timestamp.fromMillis(desde)));
       parar.push(onSnapshot(q, snap => {
         const regs = snap.docChanges().filter(c => c.type !== 'removed').map(c => registoDe(c.doc));
         if (!regs.length) return;
         // As gravações deste aparelho ainda a caminho não contam como lidas.
-        if (!snap.metadata.hasPendingWrites) marcarLida(turmaId, colecao, regs.map(x => x.ms));
+        if (!snap.metadata.hasPendingWrites) marcarLida(turma, colecao, regs.map(x => x.ms));
         aoMudar(tipo, regs.map(x => x.dados));
       }, e => console.warn('[base] escuta', colecao, e)));
     }

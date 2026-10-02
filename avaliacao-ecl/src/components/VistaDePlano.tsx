@@ -19,7 +19,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, subscreverEspera, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
@@ -70,6 +70,10 @@ function EstadoEnvioPlano({ plano }: { plano: PlanoAula }) {
   React.useEffect(() => {
     if (planoPorConfirmar(plano.id)) { setPendente(true); setChegou(false); }
   }, [plano.id, (plano as any).atualizadoEm]);
+  // Chegou à base de dados (e, por ela, aos alunos): «Chegou» logo.
+  React.useEffect(() => subscreverEspera(() => {
+    if (!planoPorConfirmar(plano.id)) { setPendente(false); setChegou(true); }
+  }), [plano.id]);
   React.useEffect(() => {
     if (!pendente) return;
     let vivo = true;
