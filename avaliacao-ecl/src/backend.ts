@@ -4,6 +4,7 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
+import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO } from './baseDeDados';
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
@@ -343,6 +344,9 @@ const SAEM_LOGO = new Set(['selecao', 'avaliacao_par']);
 
 async function enviar(url: string, tipo: string, dados: Record<string, unknown>, repetida = false): Promise<void> {
   if (!url) return;
+  // Autoavaliações, validações, avaliações e presenças vão também para a
+  // base de dados (chegam logo); o Sheets fica como cópia.
+  if (!repetida && COLECAO_DO_TIPO[tipo]) gravarNaBase(tipo, dados as Record<string, any>);
   if (!repetida && url === SHEETS_ECL_URL && VAO_DUAS_VEZES.has(tipo)) {
     setTimeout(() => { emSegundoPlano(() => { enviar(url, tipo, dados, true); }); }, 10000 + Math.random() * 5000);
   }
@@ -561,6 +565,106 @@ function reconciliarComSheets<T extends { id: string }>(
   });
   marcarVistosNoSheets(colecao, vistos);
   return ficam;
+}
+
+// ── Juntar ao que está no aparelho ─────────────────────────────
+// O mesmo para o que vem do Sheets e do que vem da base de dados.
+
+function juntarAvaliacoes(dados: any[]): void {
+  // Os +1 da transição de referencial vão para o registo deles — se
+  // entrassem aqui, contavam para as notas das UCs e para a pauta.
+  const transicao = dados.filter((r: any) => r.validadoPor === 'transicao');
+  const normais = dados.filter((r: any) => r.validadoPor !== 'transicao');
+
+  const locais = getHistoricoAvaliacoes();
+  const idsLocais = new Set(locais.map((r: RegistoAvaliacao) => r.id));
+  const novas = normais.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
+  if (novas.length > 0) save(KEY_HIST, [...locais, ...novas]);
+
+  if (transicao.length > 0) {
+    const jaTem = getRegistosTransicao();
+    const ids = new Set(jaTem.map(t => t.id));
+    const chegados: RegistoTransicao[] = transicao
+      .filter((r: any) => !ids.has(r.id))
+      .map((r: any) => ({
+        id: r.id, alunoId: r.alunoId, turmaId: r.turmaId,
+        atitudeId: r.microcompetenciaId, nivel: Number(r.nota) || 1,
+        data: r.data, planoAulaId: r.planoAulaId || '', professor: '',
+      }));
+    if (chegados.length) save(KEY_TRANSICAO, [...jaTem, ...chegados]);
+  }
+}
+
+function juntarValidacoes(dados: any[]): void {
+  const locais = getValidacoes();
+  const merged = [...locais];
+  for (const v of dados) {
+    const idx = merged.findIndex((x: Validacao) => x.id === v.id);
+    if (idx < 0) merged.push(v);
+    else if ((v.validadoEm || '') > (merged[idx].validadoEm || '')) merged[idx] = v;
+  }
+  save(KEYS.validacoes, merged);
+}
+
+function juntarPresencas(dados: any[]): void {
+  const decisaoLocalMaisRecente = (local: any, s: any): boolean => {
+    if (!local?.decididoEm) return false;
+    if (s?.decididoEm) return String(local.decididoEm) > String(s.decididoEm);
+    return Date.now() - Date.parse(local.decididoEm) < 15 * 60 * 1000;
+  };
+  // As linhas do Sheets não trazem identificador: comparar pelo id
+  // fazia cada sincronização acrescentar tudo outra vez. Agora é uma
+  // presença por aluno e aula — e a decisão do professor que está no
+  // Sheets (a última tomada, em qualquer aparelho) é a que vale.
+  const porChave = new Map<string, any>();
+  for (const p of load<any>(KEYS.presencas)) {
+    const k = p.alunoId + '|' + p.planoAulaId;
+    if (!porChave.has(k)) porChave.set(k, p);          // tira duplicados antigos
+    else if (p.decisaoProfessor && !porChave.get(k).decisaoProfessor) porChave.set(k, { ...porChave.get(k), ...p, id: porChave.get(k).id });
+  }
+  for (const s of dados) {
+    if (!s?.alunoId || !s?.planoAulaId) continue;
+    const k = s.alunoId + '|' + s.planoAulaId;
+    const local = porChave.get(k);
+    if (!local) {
+      porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
+    } else if (decisaoLocalMaisRecente(local, s)) {
+      // A decisão tomada neste aparelho ainda não chegou ao Sheets (ou
+      // é mais recente): não se volta atrás. Antes a sincronização
+      // repunha a decisão antiga e parecia que a falta não ficava.
+      continue;
+    } else if (s.decisaoProfessor && s.decisaoProfessor !== local.decisaoProfessor) {
+      porChave.set(k, { ...local, decisaoProfessor: s.decisaoProfessor,
+        horasPresentes: s.horasPresentes || undefined,
+        presente: s.decisaoProfessor === 'falta_presenca' ? false
+          : s.decisaoProfessor === 'parcial' ? (s.horasPresentes || []).length > 0 : true });
+    } else if (s.decisaoProfessor === 'parcial'
+        && JSON.stringify(s.horasPresentes || []) !== JSON.stringify(local.horasPresentes || [])) {
+      porChave.set(k, { ...local, horasPresentes: s.horasPresentes || [],
+        presente: (s.horasPresentes || []).length > 0 });
+    }
+  }
+  save(KEYS.presencas, [...porChave.values()]);
+}
+
+function juntarSelecoes(dados: any[]): void {
+  const locais = load<SelecaoAluno>(KEYS.selecoes);
+  const merged = [...locais];
+  for (const s of dados) {
+    const idx = merged.findIndex((x: SelecaoAluno) => x.id === s.id);
+    if (idx < 0) merged.push(s);
+    else if ((s.criadaEm || '') > (merged[idx].criadaEm || '')) merged[idx] = s;
+  }
+  save(KEYS.selecoes, merged);
+}
+
+/** O que chega da base de dados (de uma vez ou à escuta), por tipo de envio. */
+export function juntarDaBase(tipo: string, dados: any[]): void {
+  if (!dados.length) return;
+  if (tipo === 'avaliacao') juntarAvaliacoes(dados);
+  else if (tipo === 'validacao') juntarValidacoes(dados);
+  else if (tipo === 'presenca') juntarPresencas(dados);
+  else if (tipo === 'selecao') juntarSelecoes(dados);
 }
 
 // Chamadas repetidas juntam-se numa só: a entrada do aluno chamava a
@@ -807,88 +911,17 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
     // ── Sincronizar Avaliações (historico_avaliacoes) ──────────────────
     if (SHEETS_HISTORICO_URL) {
       const jsonAval = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_avaliacoes', turmaId });
-      if (jsonAval?.ok && jsonAval.dados?.length > 0) {
-        // Os +1 da transição de referencial vão para o registo deles — se
-        // entrassem aqui, contavam para as notas das UCs e para a pauta.
-        const transicao = jsonAval.dados.filter((r: any) => r.validadoPor === 'transicao');
-        const normais = jsonAval.dados.filter((r: any) => r.validadoPor !== 'transicao');
-
-        const locais = getHistoricoAvaliacoes();
-        const idsLocais = new Set(locais.map((r: RegistoAvaliacao) => r.id));
-        const novas = normais.filter((r: RegistoAvaliacao) => !idsLocais.has(r.id));
-        if (novas.length > 0) save(KEY_HIST, [...locais, ...novas]);
-
-        if (transicao.length > 0) {
-          const jaTem = getRegistosTransicao();
-          const ids = new Set(jaTem.map(t => t.id));
-          const chegados: RegistoTransicao[] = transicao
-            .filter((r: any) => !ids.has(r.id))
-            .map((r: any) => ({
-              id: r.id, alunoId: r.alunoId, turmaId: r.turmaId,
-              atitudeId: r.microcompetenciaId, nivel: Number(r.nota) || 1,
-              data: r.data, planoAulaId: r.planoAulaId || '', professor: '',
-            }));
-          if (chegados.length) save(KEY_TRANSICAO, [...jaTem, ...chegados]);
-        }
-      }
+      if (jsonAval?.ok && jsonAval.dados?.length > 0) juntarAvaliacoes(jsonAval.dados);
 
       // ── Sincronizar Validações ──────────────────────────────────────
       const jsonVal = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_validacoes', turmaId });
-      if (jsonVal?.ok && jsonVal.dados?.length > 0) {
-        const locais = getValidacoes();
-        const merged = [...locais];
-        for (const v of jsonVal.dados) {
-          const idx = merged.findIndex((x: Validacao) => x.id === v.id);
-          if (idx < 0) merged.push(v);
-          else if ((v.validadoEm || '') > (merged[idx].validadoEm || '')) merged[idx] = v;
-        }
-        save(KEYS.validacoes, merged);
-      }
+      if (jsonVal?.ok && jsonVal.dados?.length > 0) juntarValidacoes(jsonVal.dados);
 
       // ── Sincronizar Presenças ───────────────────────────────────────
       // A decisão local ganha se for mais recente do que a do Sheets; sem data
       // no Sheets, ganha durante 15 minutos (o tempo de o Sheets a receber).
-      const decisaoLocalMaisRecente = (local: any, s: any): boolean => {
-        if (!local?.decididoEm) return false;
-        if (s?.decididoEm) return String(local.decididoEm) > String(s.decididoEm);
-        return Date.now() - Date.parse(local.decididoEm) < 15 * 60 * 1000;
-      };
       const jsonPres = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_presencas', turmaId });
-      if (jsonPres?.ok && jsonPres.dados?.length > 0) {
-        // As linhas do Sheets não trazem identificador: comparar pelo id
-        // fazia cada sincronização acrescentar tudo outra vez. Agora é uma
-        // presença por aluno e aula — e a decisão do professor que está no
-        // Sheets (a última tomada, em qualquer aparelho) é a que vale.
-        const porChave = new Map<string, any>();
-        for (const p of load<any>(KEYS.presencas)) {
-          const k = p.alunoId + '|' + p.planoAulaId;
-          if (!porChave.has(k)) porChave.set(k, p);          // tira duplicados antigos
-          else if (p.decisaoProfessor && !porChave.get(k).decisaoProfessor) porChave.set(k, { ...porChave.get(k), ...p, id: porChave.get(k).id });
-        }
-        for (const s of jsonPres.dados) {
-          if (!s?.alunoId || !s?.planoAulaId) continue;
-          const k = s.alunoId + '|' + s.planoAulaId;
-          const local = porChave.get(k);
-          if (!local) {
-            porChave.set(k, { ...s, id: `presenca_${s.alunoId}_${s.planoAulaId}_sheets` });
-          } else if (decisaoLocalMaisRecente(local, s)) {
-            // A decisão tomada neste aparelho ainda não chegou ao Sheets (ou
-            // é mais recente): não se volta atrás. Antes a sincronização
-            // repunha a decisão antiga e parecia que a falta não ficava.
-            continue;
-          } else if (s.decisaoProfessor && s.decisaoProfessor !== local.decisaoProfessor) {
-            porChave.set(k, { ...local, decisaoProfessor: s.decisaoProfessor,
-              horasPresentes: s.horasPresentes || undefined,
-              presente: s.decisaoProfessor === 'falta_presenca' ? false
-                : s.decisaoProfessor === 'parcial' ? (s.horasPresentes || []).length > 0 : true });
-          } else if (s.decisaoProfessor === 'parcial'
-              && JSON.stringify(s.horasPresentes || []) !== JSON.stringify(local.horasPresentes || [])) {
-            porChave.set(k, { ...local, horasPresentes: s.horasPresentes || [],
-              presente: (s.horasPresentes || []).length > 0 });
-          }
-        }
-        save(KEYS.presencas, [...porChave.values()]);
-      }
+      if (jsonPres?.ok && jsonPres.dados?.length > 0) juntarPresencas(jsonPres.dados);
     }
 
     // ── Sincronizar Alunos ──────────────────────────────────────────────
@@ -916,16 +949,14 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
     // ── Sincronizar Autoavaliações (Selecoes) ───────────────────────────
     if (SHEETS_HISTORICO_URL) {
       const jsonSel = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_selecoes', turmaId });
-      if (jsonSel?.ok && jsonSel.dados?.length > 0) {
-        const locais = load<SelecaoAluno>(KEYS.selecoes);
-        const merged = [...locais];
-        for (const s of jsonSel.dados) {
-          const idx = merged.findIndex((x: SelecaoAluno) => x.id === s.id);
-          if (idx < 0) merged.push(s);
-          else if ((s.criadaEm || '') > (merged[idx].criadaEm || '')) merged[idx] = s;
-        }
-        save(KEYS.selecoes, merged);
-      }
+      if (jsonSel?.ok && jsonSel.dados?.length > 0) juntarSelecoes(jsonSel.dados);
+    }
+
+    // ── Base de dados (Firebase): o que não chegou ao Sheets está aqui ──
+    if (baseLigada()) {
+      const daBase = await Promise.all(Object.keys(COLECAO_DO_TIPO)
+        .map(async tipo => [tipo, await lerDaBase(tipo, turmaId)] as const));
+      for (const [tipo, dados] of daBase) if (dados) juntarDaBase(tipo, dados);
     }
 
     // ── Preços revistos (Continente) — iguais para todas as turmas ────

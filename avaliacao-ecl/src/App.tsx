@@ -127,7 +127,8 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
-  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar } from './backend';
+  ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase } from './backend';
+import { ouvirTurmaNaBase } from './baseDeDados';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -201,6 +202,19 @@ function AppInterno() {
     return vigiarAlteracoes(turmaId, () => {
       sincronizarDoSheets(turmaId).then(() => setRefreshKey(k => k + 1)).catch(() => {});
     });
+  }, [turmaId, perfil]);
+
+  // Com a base de dados ligada: as autoavaliações, validações e presenças
+  // da turma aparecem no computador do professor no momento em que chegam.
+  useEffect(() => {
+    if (!turmaId || (perfil !== 'professor' && perfil !== 'coordenadora')) return;
+    let t: any = null;
+    const parar = ouvirTurmaNaBase(turmaId, (tipo, dados) => {
+      juntarDaBase(tipo, dados);
+      clearTimeout(t);
+      t = setTimeout(() => setRefreshKey(k => k + 1), 300);
+    });
+    return () => { clearTimeout(t); parar(); };
   }, [turmaId, perfil]);
 
   // As presenças enviadas antes da correção chegaram ao Sheets sem o aluno e
