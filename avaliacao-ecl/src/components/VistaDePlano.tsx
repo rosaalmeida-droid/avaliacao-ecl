@@ -19,7 +19,7 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, subscreverEspera, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, subscreverEspera, atualizarPlano, resumoDoPlano, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
@@ -41,7 +41,8 @@ import { getLibrary } from '../libraryService';
 import ProfessorView from './ProfessorView';
 import Requisicao from './Requisicao';
 import { ValidacaoView } from './ValidacaoView';
-import { EditarPlano } from './EditarPlano';
+import { CriarPlano } from './PlanoAula';
+import { modulosDaTurma } from '../cronograma';
 import { AvisoAvaliacaoAnterior } from './AvisoAvaliacaoAnterior';
 import { PinTemporarioPanel } from './PinTemporarioPanel';
 
@@ -1147,9 +1148,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   if (modulo === 'editar') {
     return (
       <div>
-        <EditarPlano plano={plano}
-          onGuardado={p => { onPlanoActualizado?.(p); setModulo('inicio'); }}
-          onCancelar={() => setModulo('inicio')}
+        {/* O mesmo ecrã de criar o plano, já preenchido (Rosa, out/2026). */}
+        <CriarPlano turmaId={plano.turmaId || turmaId} nomeProfessor={nomeProfessor} planoExistente={plano}
+          onConcluido={p => { onPlanoActualizado?.(p); setModulo('inicio'); }}
+          onVoltar={() => setModulo('inicio')}
           onEliminado={onVoltar} />
       </div>
     );
@@ -1687,12 +1689,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div style={{ minWidth:0 }}>
         <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase',
           color:'rgba(26,23,20,0.45)', margin:'0 0 10px' }}>Preparar a aula</div>
-      <Gaveta id="como" n={1} titulo="Como é a aula"
+      <Gaveta id="quando" n={1} titulo="Data, horas e unidade" feito={!!plano.ucId}
+        resumo={`${fmtDataCurta(plano.data)} · ${String(plano.horaInicio || '').slice(0, 5)}–${String(plano.horaFim || '').slice(0, 5)} · ${plano.ucId || 'sem unidade'}`}>
+        <QuandoEUnidade plano={plano} onPlanoActualizado={onPlanoActualizado} onAbrirCriar={() => setModulo('editar')} />
+      </Gaveta>
+      <Gaveta id="como" n={2} titulo="Como é a aula"
         resumo={triagemDoPlano(plano) ? fraseDaAula(triagemDoPlano(plano)!) : 'Falta escolher o tipo de aula'}
         feito={!!triagemDoPlano(plano)} abertaAoInicio={!triagemDoPlano(plano)}>
       <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
       </Gaveta>
-      <Gaveta id="conteudos" n={2} titulo="Conteúdos e sumário"
+      <Gaveta id="conteudos" n={3} titulo="Conteúdos e sumário"
         resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
@@ -1823,7 +1829,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       })()}
       </Gaveta>
       {contextoDoPlano(plano).producao && (
-      <Gaveta id="fichas" n={3} titulo="Fichas, guião e requisição"
+      <Gaveta id="fichas" n={4} titulo="Fichas, guião e requisição"
         resumo={`${fichasDoPlano.length} ficha${fichasDoPlano.length === 1 ? '' : 's'} · ${fichasDoPlano.some((f: any) => f.textoGuia) ? 'com guião' : 'sem guião'} · ${temRequisicao ? 'requisição feita' : 'sem requisição'}`}
         feito={temFichas}>
       {/* Requisição feita antes de mudar as fichas — o pedido ao economato
@@ -1994,7 +2000,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
       </Gaveta>
       )}
-      <Gaveta id="responde" n={contextoDoPlano(plano).producao ? 4 : 3} titulo="O que o aluno responde"
+      <Gaveta id="responde" n={contextoDoPlano(plano).producao ? 5 : 4} titulo="O que o aluno responde"
         resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolhe primeiro o tipo de aula'; } catch { return ''; } })()}>
       <PassoOQueSeAvalia plano={plano} />
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,
@@ -2127,6 +2133,60 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 }
 
 export default VistaDePlano;
+
+/** Data, horas, título e unidade, mudados no próprio plano (Rosa, out/2026).
+ *  Grava logo; se a aula já tem avaliações e muda a data ou a unidade, pergunta. */
+function QuandoEUnidade({ plano, onPlanoActualizado, onAbrirCriar }: {
+  plano: PlanoAula; onPlanoActualizado: (p: PlanoAula) => void; onAbrirCriar: () => void;
+}) {
+  const hh = (h?: string) => !h ? '' : h.includes('T') ? (isNaN(new Date(h).getTime()) ? '' : new Date(h).toTimeString().slice(0, 5)) : h.slice(0, 5);
+  const [titulo, setTitulo] = useState(plano.titulo || '');
+  React.useEffect(() => { setTitulo(plano.titulo || ''); }, [plano.id, plano.titulo]);
+  const modulos: any[] = modulosDaTurma(plano.turmaId);
+  const gravar = (alt: Partial<PlanoAula>, pergunta?: string) => {
+    if (pergunta && resumoDoPlano(plano.id).temAvaliacoes
+      && !confirm(`Esta aula já tem avaliações dos alunos. Ficam todas, mas ${pergunta}.\n\nMudar?`)) return;
+    const n = atualizarPlano(plano.id, alt);
+    if (n) onPlanoActualizado(n);
+  };
+  const campo: React.CSSProperties = { width: '100%', padding: '10px 11px', borderRadius: 10, fontSize: 15,
+    border: '1px solid rgba(26,23,20,0.2)', fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' };
+  const rot: React.CSSProperties = { fontSize: 12.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+    color: 'rgba(26,23,20,0.55)', margin: '0 0 5px' };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+        <div><div style={rot}>Data</div>
+          <input type="date" style={campo} value={String(plano.data || '').slice(0, 10)}
+            onChange={e => e.target.value && gravar({ data: e.target.value }, `ficam com a data ${e.target.value}`)} /></div>
+        <div><div style={rot}>Início</div>
+          <input type="time" style={campo} value={hh(plano.horaInicio)} onChange={e => gravar({ horaInicio: e.target.value })} /></div>
+        <div><div style={rot}>Fim</div>
+          <input type="time" style={campo} value={hh(plano.horaFim)} onChange={e => gravar({ horaFim: e.target.value })} /></div>
+      </div>
+      <div><div style={rot}>Título</div>
+        <input style={campo} value={titulo} onChange={e => setTitulo(e.target.value)}
+          onBlur={() => { if (titulo.trim() && titulo !== plano.titulo) gravar({ titulo: titulo.trim() }); }} /></div>
+      <div><div style={rot}>Unidade</div>
+        <select style={campo} value={plano.ucId || ''} onChange={e => {
+            const m = modulos.find(x => x.id === e.target.value);
+            gravar({ ucId: e.target.value, ...(m ? { ucNome: m.nome } : {}) } as any, `passam a contar para a unidade ${e.target.value}`);
+          }}>
+          {!plano.ucId && <option value="">Escolhe a unidade</option>}
+          {[...new Set(modulos.map(m => m.disciplina || 'Outras'))].map(d => (
+            <optgroup key={d} label={d}>
+              {modulos.filter(m => (m.disciplina || 'Outras') === d).map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome}</option>)}
+            </optgroup>
+          ))}
+        </select></div>
+      <button onClick={onAbrirCriar} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, color: 'var(--copper)',
+        fontWeight: 700, fontSize: 13.5, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+        Abrir no ecrã de criar o plano (tudo preenchido)
+      </button>
+    </div>
+  );
+}
+
 
 
 // ── Evento fora do horário: quem participa ─────────────────────
