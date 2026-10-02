@@ -379,6 +379,8 @@ function paraABase(tipo: string, dados: Record<string, any>): void {
     d.turmaId = s?.turmaId || getPlanosAula().find(p => p.id === d.planoAulaId)?.turmaId;
   }
   gravarNaBase(tipo, d).then(ok => {
+    // A abertura na base já está nos telemóveis dos alunos.
+    if (ok && tipo === 'sessao' && d.abertaEm && !d.fechadaEm) aberturaNaBase(String(d.planoAulaId));
     if (!ok || tipo !== 'plano') return;
     const p: any = d.plano || d;
     marcarPlanoNaBase(String(p.id), String(p.atualizadoEm || ''));
@@ -696,6 +698,10 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'validacao') juntarValidacoes(dados);
   else if (tipo === 'presenca') juntarPresencas(dados);
   else if (tipo === 'selecao') juntarSelecoes(dados);
+  else if (tipo === 'grupo_membro') juntarPorId(KEY_MEMBROS, dados as MembroGrupo[]);
+  else if (tipo === 'grupo_info') juntarPorId(KEY_INFO_GRUPOS, dados.map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
+  else if (tipo === 'avaliacao_par') juntarPorId(KEY_PARES, dados as AvaliacaoPar[]);
+  else if (tipo === 'lider_kf') juntarLideres(dados);
 }
 
 // Chamadas repetidas juntam-se numa só: a entrada do aluno chamava a
@@ -4940,6 +4946,10 @@ const ouvintesAbertura = new Set<() => void>();
 export function estadoAbertura(planoAulaId: string): EstadoAbertura | undefined { return aberturas.get(planoAulaId); }
 export function subscreverAbertura(fn: () => void): () => void { ouvintesAbertura.add(fn); return () => { ouvintesAbertura.delete(fn); }; }
 function mudarAbertura(id: string, e: EstadoAbertura) { aberturas.set(id, e); ouvintesAbertura.forEach(f => { try { f(); } catch { /* */ } }); }
+/** A abertura chegou à base (Firebase): os alunos já a têm. Antes o aviso só
+ *  confiava no Sheets e podia ficar a vermelho com a aula já nos telemóveis. */
+const aberturasNaBase = new Set<string>();
+function aberturaNaBase(id: string) { aberturasNaBase.add(id); mudarAbertura(id, { estado: 'chegou', tentativas: 1 }); }
 
 async function aberturaEstaNoSheets(planoAulaId: string): Promise<boolean | null> {
   // Com o script v19, confere-se na aula que os telemóveis leem (rápido).
@@ -4958,8 +4968,10 @@ export function vigiarAbertura(planoAulaId: string): Promise<boolean> {
   const p = (async () => {
     const ESPERAS = [3000, 5000, ...Array(17).fill(10000)];   // ~3 minutos
     for (let i = 0; i < ESPERAS.length; i++) {
+      if (aberturasNaBase.has(planoAulaId)) { mudarAbertura(planoAulaId, { estado: 'chegou', tentativas: i + 1 }); return true; }
       mudarAbertura(planoAulaId, { estado: i < 3 ? 'a_enviar' : 'atrasada', tentativas: i + 1 });
       await new Promise(r => setTimeout(r, ESPERAS[i]));
+      if (aberturasNaBase.has(planoAulaId)) { mudarAbertura(planoAulaId, { estado: 'chegou', tentativas: i + 1 }); return true; }
       const s = getSessaoAula(planoAulaId);
       if (!s?.abertaEm) { aberturas.delete(planoAulaId); return false; }   // anulada entretanto
       let la: boolean | null = null;
@@ -5264,32 +5276,34 @@ export function definirLiderKF(
   // O aluno tem de saber que foi escolhido — e os colegas, que não são.
   enviar(SHEETS_HISTORICO_URL, 'lider_kf', {
     planoAulaId, grupoId: grupoId || '', alunoId, definidoPor: professor, definidoEm,
+    // A turma, para a base de dados saber onde o pôr.
+    turmaId: getPlanosAula().find(p => p.id === planoAulaId)?.turmaId || '',
   });
+}
+
+/** Junta líderes vindos do Sheets ou da base: fica o mais recente de cada grupo. */
+function juntarLideres(lista: any[]): void {
+  const locais = load<LiderKitchenFlow>(KEY_LIDERES as any);
+  const chave = (l: any) => `${l.planoAulaId}__${l.grupoId ?? ''}`;
+  const porChave = new Map(locais.map(l => [chave(l), l]));
+  for (const r of lista) {
+    if (!r?.planoAulaId) continue;
+    const k = `${r.planoAulaId}__${r.grupoId || ''}`;
+    const atual = porChave.get(k);
+    // Fica o mais recente: o professor pode ter trocado de líder.
+    if (!atual || (r.definidoEm && r.definidoEm > atual.definidoEm)) {
+      porChave.set(k, { planoAulaId: r.planoAulaId, grupoId: r.grupoId || undefined, alunoId: r.alunoId,
+        definidoPor: r.definidoPor, definidoEm: r.definidoEm });
+    }
+  }
+  save(KEY_LIDERES as any, [...porChave.values()].filter(l => l.alunoId));
 }
 
 /** Lê os líderes do Sheets. Chamado na sincronização geral. */
 export async function sincronizarLideresKF(turmaId: string): Promise<void> {
   const json = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_lideres_kf', turmaId });
   if (!json?.lideres?.length) return;
-
-  const locais = load<LiderKitchenFlow>(KEY_LIDERES as any);
-  const chave = (l: any) => `${l.planoAulaId}__${l.grupoId ?? ''}`;
-  const porChave = new Map(locais.map(l => [chave(l), l]));
-
-  for (const r of json.lideres) {
-    const atual = porChave.get(chave(r));
-    // Fica o mais recente: o professor pode ter trocado de líder.
-    if (!atual || (r.definidoEm && r.definidoEm > atual.definidoEm)) {
-      porChave.set(chave(r), {
-        planoAulaId: r.planoAulaId,
-        grupoId: r.grupoId || undefined,
-        alunoId: r.alunoId,
-        definidoPor: r.definidoPor,
-        definidoEm: r.definidoEm,
-      });
-    }
-  }
-  save(KEY_LIDERES as any, [...porChave.values()].filter(l => l.alunoId));
+  juntarLideres(json.lideres);
 }
 
 /** Este aluno é quem faz os registos do KitchenFlow nesta aula? */
