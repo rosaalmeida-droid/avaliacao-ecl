@@ -104,7 +104,10 @@ var FOLHAS = {
   // (v18) Cada grupo: a ficha que o professor lhe deu e se já validou.
   GRUPOS_INFO:        { chave: ['id'], colunas: ['id', 'planoAulaId', 'turmaId', 'grupoNome', 'fichaId', 'validado', 'atualizadoEm'] },
   // (v18) O que cada aluno disse de cada colega do grupo. Só o professor vê; não conta para nota.
-  AVALIACAO_PARES:    { chave: ['id'], colunas: ['id', 'planoAulaId', 'turmaId', 'grupoId', 'avaliadorId', 'avaliadoId', 'nomeAvaliado', 'colabora', 'ouve', 'flexivel', 'conflito', 'comentario', 'criadoEm'] }
+  AVALIACAO_PARES:    { chave: ['id'], colunas: ['id', 'planoAulaId', 'turmaId', 'grupoId', 'avaliadorId', 'avaliadoId', 'nomeAvaliado', 'colabora', 'ouve', 'flexivel', 'conflito', 'comentario', 'criadoEm'] },
+  // (v21.1) As matérias-primas que os professores acrescentam na requisição.
+  // Iguais para todos os aparelhos (antes ficavam só no aparelho onde foram criadas).
+  MATERIAS_PRIMAS:    { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'aliases', 'criadoEm', 'atualizadoEm'] }
 };
 
 /** Registos especiais que viajam como autoavaliações (v12). */
@@ -798,6 +801,8 @@ function tratar(d) {
 
     // Preços da requisição (todos de uma vez)
     if (tipo === 'precos')               return guardarVarios('PRECOS', d.precos || []);
+    if (tipo === 'materia_prima')          return guardar('MATERIAS_PRIMAS', d.materiaPrima || d);
+    if (tipo === 'eliminar_materia_prima') return eliminar('MATERIAS_PRIMAS', d.id);
     if (tipo === 'precos_a_rever')       return guardarVarios('PRECOS_A_REVER', d.precosARever || []);
 
     // Recuperações
@@ -843,6 +848,7 @@ function doGet(e) {
     if (tipo === 'get_telemoveis')   return comDados('telemoveis',   telemoveisLigados(turma));
     if (tipo === 'get_pautas')       return comDados('pautas',       ler('PAUTAS', { turmaId: turma }));
     if (tipo === 'get_precos')       return comDados('precos',       ler('PRECOS', {}));
+    if (tipo === 'get_materias_primas') return comDados('materiasPrimas', ler('MATERIAS_PRIMAS', {}), { eliminados: eliminadosDe('MATERIAS_PRIMAS') });
     if (tipo === 'get_eventos')      return comDados('eventos',      ler('EVENTOS', {}));
     if (tipo === 'get_precos_a_rever') return comDados('precosARever', ler('PRECOS_A_REVER', {}));
     // A pergunta mais pequena que há: "em que número vais?". Os
@@ -1798,7 +1804,7 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 var COR_TURMA = '#7B2233';
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
 // parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
-var VISIVEIS_SEMPRE = ['PRECOS', 'PRECOS_A_REVER', 'LEIA-ME', 'PROCURAR'];
+var VISIVEIS_SEMPRE = ['PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'LEIA-ME', 'PROCURAR'];
 
 function porTurma(lista) {
   var m = {};
@@ -2282,6 +2288,7 @@ var LEIA_ME = [
   ['Folha', 'O que tem'],
   ['1º BCR, 3º ACP, …', 'Um separador por turma, só para ler: os alunos (presenças, faltas, atrasos, autoavaliações, média), as notas de cada UC (um aluno por linha, uma aula por coluna) e as aulas. Refaz-se sozinho de 10 em 10 minutos.'],
   ['PRECOS / PRECOS_A_REVER', 'As matérias-primas com os preços revistos, e as que os professores pediram para rever. Sempre à vista.'],
+  ['MATERIAS_PRIMAS', 'As matérias-primas que os professores acrescentaram na requisição. Chegam a todos os aparelhos. Sempre à vista.'],
   ['Folhas escondidas', 'As folhas de dados (ALUNOS, PLANOS, PRESENCAS…) e as fichas por extenso ficam escondidas, não apagadas: a aplicação grava nelas. Para as ver: menu Ver › Folhas ocultas. Não apagar.'],
   ['ALUNOS', 'Os alunos de cada turma (nome, número, PIN).'],
   ['PLANOS', 'Os planos de aula: dia da aula, horas, unidade, estado (rascunho/publicado) e quando foram criados.'],

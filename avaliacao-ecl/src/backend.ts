@@ -702,6 +702,7 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'grupo_info') juntarPorId(KEY_INFO_GRUPOS, dados.map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
   else if (tipo === 'avaliacao_par') juntarPorId(KEY_PARES, dados as AvaliacaoPar[]);
   else if (tipo === 'lider_kf') juntarLideres(dados);
+  else if (tipo === 'materia_prima') juntarMateriasPrimas(dados);
 }
 
 // Chamadas repetidas juntam-se numa só: a entrada do aluno chamava a
@@ -1003,6 +1004,10 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       // Preços que os professores pediram para rever (v14).
       const jsonARever = await ler(SHEETS_ECL_URL, { tipo: 'get_precos_a_rever' });
       if (jsonARever?.ok && jsonARever.dados?.length > 0) juntarPrecosARever(jsonARever.dados);
+      // As matérias-primas acrescentadas pelos professores (script v21.1).
+      const jsonMP = await ler(SHEETS_ECL_URL, { tipo: 'get_materias_primas' });
+      if (jsonMP?.ok && Array.isArray(jsonMP.dados)) juntarMateriasPrimas(jsonMP.dados.concat((jsonMP.eliminados || []).map((id: string) => ({ id, eliminado: true }))));
+      partilharMateriasPrimasAntigas();
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -4668,6 +4673,28 @@ export function enviarPrecosRevistos(lista: PrecoRevisto[]): void {
   enviar(SHEETS_ECL_URL, 'precos', { precos: lista });
 }
 
+/** Os preços gravados estão mesmo no Sheets (folha PRECOS)? O envio não traz
+ *  resposta (limitação do Google), por isso vai-se ler a folha e confere-se
+ *  preço a preço, durante cerca de 1 minuto (Rosa, out/2026: «ter a certeza
+ *  que vai para o Sheets»). Devolve os que ainda lá não estão. */
+export async function confirmarPrecosNoSheets(lista: PrecoRevisto[], aoTentar?: (faltam: number) => void): Promise<PrecoRevisto[]> {
+  let faltam = lista.slice();
+  for (const espera of [4000, 6000, 10000, 15000, 20000]) {
+    await new Promise(r => setTimeout(r, espera));
+    const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_precos' }).catch(() => null);
+    if (!json?.ok) continue;
+    const noSheets = new Map<string, any>((json.dados || json.precos || []).map((p: any) => [String(p.id), p]));
+    faltam = faltam.filter(p => {
+      const s = noSheets.get(String(p.id));
+      return !s || String(s.atualizadoEm || '') < String(p.atualizadoEm || '')
+        || Math.abs((Number(s.precoEmbalagem) || 0) - (Number(p.precoEmbalagem) || 0)) > 0.001;
+    });
+    aoTentar?.(faltam.length);
+    if (!faltam.length) break;
+  }
+  return faltam;
+}
+
 // ── Preços a rever — o professor desconfia de um preço ────────────
 // O preço que o professor escreve na requisição vale só nessa requisição:
 // não passa à frente do preço da coordenadora. Fica numa lista a rever
@@ -4773,11 +4800,45 @@ export function addOrUpdateMateriaPrimaCustom(m: Omit<MateriaPrimaCustom, 'id' |
   };
   if (idx >= 0) all[idx] = registo; else all.push(registo);
   save(KEYS.materiasPrimasCustom, all);
+  // Para todos os aparelhos (base de dados) e para o arquivo (Sheets). Antes
+  // ficava só neste aparelho e perdia-se com o browser (Rosa, out/2026).
+  enviar(SHEETS_ECL_URL, 'materia_prima', registo as any);
   return registo;
 }
 
+const KEY_MP_ELIMINADAS = 'ecl_materias_primas_eliminadas';
+const KEY_MP_PARTILHADAS = 'ecl_materias_primas_partilhadas';
+
 export function eliminarMateriaPrimaCustom(id: string): void {
   save(KEYS.materiasPrimasCustom, getMateriasPrimasCustom().filter(m => m.id !== id));
+  save(KEY_MP_ELIMINADAS, [...new Set([...load<string>(KEY_MP_ELIMINADAS), id])]);
+  enviar(SHEETS_ECL_URL, 'eliminar_materia_prima', { id });
+}
+
+/** Junta matérias-primas vindas de outros aparelhos (base ou Sheets): fica a mais recente. */
+export function juntarMateriasPrimas(lista: any[]): void {
+  const fora = new Set(load<string>(KEY_MP_ELIMINADAS));
+  lista.filter(x => x?.eliminado && x.id).forEach(x => fora.add(String(x.id)));
+  save(KEY_MP_ELIMINADAS, [...fora]);
+  const m = new Map(getMateriasPrimasCustom().map(x => [x.id, x]));
+  for (const x of lista) {
+    if (!x?.id || x.eliminado || !x.nome) continue;
+    const velho = m.get(x.id);
+    if (!velho || String(x.atualizadoEm || '') >= String(velho.atualizadoEm || '')) {
+      m.set(x.id, { ...x, precoKg: Number(x.precoKg) || 0, precoUnitario: Number(x.precoUnitario) || 0,
+        aliases: Array.isArray(x.aliases) ? x.aliases : String(x.aliases || '').split('|').filter(Boolean) });
+    }
+  }
+  save(KEYS.materiasPrimasCustom, [...m.values()].filter(x => !fora.has(x.id)));
+}
+
+/** Uma vez por aparelho: as que já cá estavam antes de se partilharem vão para todos. */
+export function partilharMateriasPrimasAntigas(): void {
+  try {
+    if (localStorage.getItem(KEY_MP_PARTILHADAS)) return;
+    getMateriasPrimasCustom().forEach(m => enviar(SHEETS_ECL_URL, 'materia_prima', m as any));
+    localStorage.setItem(KEY_MP_PARTILHADAS, new Date().toISOString());
+  } catch { /* */ }
 }
 
 // ── Técnicas Custom — camada editável por cima das SUBTECNICAS base ────────

@@ -9,8 +9,8 @@
 // O documento oficial da requisição não muda: só os preços que o enchem.
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { getPrecosAReverPendentes, marcarPrecosRevistos, lerPrecosDoSheets } from '../backend';
-import { getMateriaPrimasBase, getPrecosRevistos } from '../materiasPrimasBase';
+import { getPrecosAReverPendentes, marcarPrecosRevistos, lerPrecosDoSheets, confirmarPrecosNoSheets, enviarPrecosRevistos } from '../backend';
+import { getMateriaPrimasBase, getPrecosRevistos, type PrecoRevisto } from '../materiasPrimasBase';
 import {
   gruposDeProdutos, gerarPedidoIA, verificarRespostaIA, confirmarPrecos, linkContinente, porReverEsteMes,
   type ResultadoVerificacao,
@@ -36,6 +36,8 @@ export function PrecosCoordenadora() {
   const [escolhidos, setEscolhidos] = useState<Set<string>>(new Set());
   const [pesquisa, setPesquisa] = useState('');
   const [copiado, setCopiado] = useState(false);
+  // Chegaram ao Sheets? Confere-se lendo a folha PRECOS depois de gravar.
+  const [noSheets, setNoSheets] = useState<{ total: number; aConfirmar: boolean; faltam: PrecoRevisto[] } | null>(null);
 
   const faltam = useMemo(() => porReverEsteMes(), [versao]);
   // Preços de que os professores desconfiaram (escritos à mão na requisição).
@@ -71,7 +73,18 @@ export function PrecosCoordenadora() {
     if (!confirm(`Atualizar ${novos.length} preço(s)?\n\nFicam neste aparelho e vão para o Sheets; os outros aparelhos recebem-nos na próxima sincronização.`)) return;
     confirmarPrecos(novos);
     setRes(null); setResposta(''); setVersao(v => v + 1);
-    alert(`${novos.length} preço(s) atualizados.`);
+    confirmarNoSheets(novos);
+  }
+
+  function confirmarNoSheets(lista: PrecoRevisto[]) {
+    setNoSheets({ total: lista.length, aConfirmar: true, faltam: lista });
+    confirmarPrecosNoSheets(lista).then(faltam => setNoSheets({ total: lista.length, aConfirmar: false, faltam }));
+  }
+
+  function enviarOutraVez() {
+    if (!noSheets?.faltam.length) return;
+    enviarPrecosRevistos(noSheets.faltam);
+    confirmarNoSheets(noSheets.faltam);
   }
 
   const lista = getMateriaPrimasBase().filter(mp => {
@@ -81,6 +94,19 @@ export function PrecosCoordenadora() {
 
   return (
     <div style={{ marginTop: 12 }}>
+      {noSheets && (
+        <div style={{ ...caixa, background: noSheets.aConfirmar ? '#fdf6e3' : noSheets.faltam.length ? '#fdecea' : '#eef4eb' }}>
+          {noSheets.aConfirmar
+            ? <b>A confirmar no Sheets os {noSheets.total} preço(s) gravados… (até 1 minuto)</b>
+            : noSheets.faltam.length === 0
+              ? <b>✓ Os {noSheets.total} preço(s) estão no Sheets (folha PRECOS). Os outros aparelhos recebem-nos ao abrir a aplicação.</b>
+              : <>
+                  <b>⚠️ {noSheets.faltam.length} de {noSheets.total} preço(s) ainda não estão no Sheets.</b>
+                  <div style={{ fontSize: 13.5, margin: '6px 0' }}>Ficaram guardados neste aparelho. Confirma a internet e envia outra vez.</div>
+                  <button onClick={enviarOutraVez} style={botao(true)}>Enviar outra vez</button>
+                </>}
+        </div>
+      )}
       <div style={{ ...caixa, background: faltam.length ? '#fdf0e6' : '#eef4eb' }}>
         <div style={titulo}>Preços de {mesNome}</div>
         <div style={{ fontSize: 14 }}>
