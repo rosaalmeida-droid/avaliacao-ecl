@@ -219,6 +219,10 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
         novo.compRemovidas = [...tiradas];
       }
     }
+    // Passou a trabalho com tema: o conteúdo que vinha marcado sozinho (o
+    // próximo do manual) deixava os alunos com um só tema. Sem nada marcado,
+    // escolhem entre todos; o professor marca, se quiser restringir.
+    if ('modo' in parcial && escolheTema(nova) && !escolheTema(valor)) novo.conhecimentosProf = [];
     // Trabalho de grupo: os alunos formam os grupos na aplicação.
     if (nova.modo === 'grupo' && !novo.gruposAlunos?.ativo) novo.gruposAlunos = { ativo: true, tamanho: novo.gruposAlunos?.tamanho || 4 };
     addOrUpdatePlanoAula(novo);
