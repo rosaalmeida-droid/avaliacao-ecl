@@ -26,15 +26,23 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
   // O próximo conteúdo da UC que a turma ainda não trabalhou (pela ordem do manual).
   const proximo = proximoConteudo(getPlanosAula(), plano.turmaId, plano.ucId, plano.id);
   const sugestoes = conhecimentosDoReferencial(plano.ucId).filter(t => !lista.some(l => l.texto === t));
+  // Marcar um indicador (ou o manual todo) também o repõe, se tinha sido
+  // retirado nas Competências: antes ficava marcado aqui mas retirado lá, e
+  // «o manual não entrava todo» (Rosa, out/2026).
+  const removidas: string[] = Array.isArray(plano.compRemovidas) ? plano.compRemovidas : [];
   const gravar = (nova: { id: string; texto: string; capitulo?: string }[]) => {
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
-    const p = { ...atual, conhecimentosProf: nova, atualizadoEm: new Date().toISOString() };
+    const antes = new Set(((atual.conhecimentosProf || []) as any[]).map(x => x.id));
+    const entram = new Set(nova.map(x => x.id).filter(id => !antes.has(id) || removidas.includes(id)));
+    const p = { ...atual, conhecimentosProf: nova,
+      compRemovidas: ((atual.compRemovidas || []) as string[]).filter(id => !entram.has(id)),
+      atualizadoEm: new Date().toISOString() };
     addOrUpdatePlanoAula(p); onPlanoActualizado(p);
   };
   const juntar = (t: string) => { const tt = t.trim(); if (!tt) return; gravar([...lista, { id: 'KNW-P' + Date.now(), texto: tt }]); setTexto(''); };
-  const escolhido = (id: string) => lista.some(x => x.id === id);
+  const escolhido = (id: string) => lista.some(x => x.id === id) && !removidas.includes(id);
   const alternarCampo = (id: string, textoCampo: string, capitulo: string) =>
-    gravar(escolhido(id) ? lista.filter(x => x.id !== id) : [...lista, { id, texto: textoCampo, capitulo, tema: capituloDoCampo(id)?.capitulo.parte }]);
+    gravar(escolhido(id) ? lista.filter(x => x.id !== id) : [...lista.filter(x => x.id !== id), { id, texto: textoCampo, capitulo, tema: capituloDoCampo(id)?.capitulo.parte }]);
   const azul = '#1d4ed8';
   const trabalho = escolheTema(triagemDoPlano(plano));
   return (
@@ -76,7 +84,10 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
         const nMarcados = (c: any) => campos(c).filter(x => escolhido(x.id)).length;
         const marcar = (caps: any[], on: boolean) => {
           const ids = new Set(caps.flatMap(c => campos(c).map(x => x.id)));
-          gravar(on ? [...lista, ...caps.flatMap(c => campos(c)).filter(x => !escolhido(x.id))] : lista.filter(x => !ids.has(x.id)));
+          // Sem repetir os que já lá estavam (retirados nas Competências): voltam a entrar.
+          const novos = caps.flatMap(c => campos(c)).filter(x => !escolhido(x.id));
+          const idsNovos = new Set(novos.map(x => x.id));
+          gravar(on ? [...lista.filter(x => !idsNovos.has(x.id)), ...novos] : lista.filter(x => !ids.has(x.id)));
         };
         const capsComAlgo = manual.capitulos.filter(c => nMarcados(c) > 0).length;
         const todos = capsComAlgo === manual.capitulos.length;

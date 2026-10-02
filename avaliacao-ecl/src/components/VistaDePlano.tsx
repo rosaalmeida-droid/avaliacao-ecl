@@ -26,7 +26,7 @@ import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { SumarioAula } from './SumarioAula';
 import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, Gaveta, NaColuna, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
-import { triagemDoPlano, escolheTema } from '../contextoAula';
+import { triagemDoPlano, escolheTema, obrigatoriasDaTriagem } from '../contextoAula';
 import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -552,6 +552,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [compAdicionadas, setCompAdicionadas] = useState<string[]>(
     Array.isArray((plano as any).compAdicionadas) ? (plano as any).compAdicionadas : []
   );
+  // O plano mudou noutro sítio (o manual, «Como é a aula», outro aparelho):
+  // as listas acompanham — antes ficavam as antigas e voltavam a ser gravadas.
+  React.useEffect(() => {
+    setCompRemovidas(Array.isArray((plano as any).compRemovidas) ? (plano as any).compRemovidas : []);
+  }, [plano.id, JSON.stringify((plano as any).compRemovidas || [])]);
+  React.useEffect(() => {
+    setCompAdicionadas(Array.isArray((plano as any).compAdicionadas) ? (plano as any).compAdicionadas : []);
+  }, [plano.id, JSON.stringify((plano as any).compAdicionadas || [])]);
   // Accordion — id da competência expandida (null = todas fechadas)
   const [compAberta, setCompAberta] = useState<string | null>(null);
   function toggleComp(id: string) { setCompAberta(prev => prev === id ? null : id); }
@@ -761,6 +769,27 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           );
         })();
 
+  /** Repor as competências da aula (Rosa, out/2026): limpa o que se tirou e o
+   *  que se juntou à mão; volta a lista toda que a aula dá. A farda e os
+   *  registos ficam como o tipo de aula diz. */
+  function reporCompetencias() {
+    const tri = triagemDoPlano(plano);
+    const ob = tri ? obrigatoriasDaTriagem(tri) : { farda: true, registos: true };
+    const tiradas = compRemovidas.filter(x => !/^OBR_0[12]$/.test(x)).length;
+    const juntadas = compAdicionadas.filter(x => !ehAtitudinal || !x.startsWith('ATI-')).length;
+    if (!confirm(`Repor as competências desta aula?\n\n`
+      + `${tiradas ? `Voltam ${tiradas} que tinhas tirado. ` : ''}${juntadas ? `Saem ${juntadas} que tinhas juntado à mão. ` : ''}`
+      + `Fica a lista toda que a aula dá (fichas, manual, atitudes).`)) return;
+    guardarCompetencias([...(ob.farda ? [] : ['OBR_01']), ...(ob.registos ? [] : ['OBR_02'])],
+      ehAtitudinal ? compAdicionadas.filter(x => x.startsWith('ATI-')) : []);
+  }
+  const botaoRepor = (
+    <button onClick={reporCompetencias} style={{ display: 'block', width: '100%', marginBottom: 14, padding: '11px 14px', borderRadius: 10,
+      border: '1.5px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+      ↺ Repor as competências da aula (limpa o que tiraste e juntaste)
+    </button>
+  );
+
   function estadoModulo(m: string) {
     if (m === 'ficha') return temFichas ? 'concluido' : 'pendente';
     if (m === 'guia') {
@@ -969,6 +998,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
+        {botaoRepor}
         <div style={{ padding:'10px 14px', background:'var(--copper-pale)', borderRadius:10, fontSize:13, color:'var(--copper)', marginBottom:14, border:'1px solid rgba(181,101,29,0.2)' }}>
           <strong>{totalComp} competências</strong> para esta aula. As obrigatórias contam sempre — só se tiram desta aula se houver razão (ex.: os alunos não foram avisados da farda).
         </div>
@@ -1515,6 +1545,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {/* TAB COMPETÊNCIAS */}
       {tabInicio === 'competencias' && (
         <div>
+          {botaoRepor}
           {/* De onde vem cada grupo. O ecrã dava só o total — "22
               competências" — e o professor não percebia porque é que
               aparecem tantas num plano ainda sem fichas. */}
