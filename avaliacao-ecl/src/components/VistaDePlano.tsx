@@ -19,14 +19,14 @@ import {
   getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
-  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano } from '../backend';
+  definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano } from '../backend';
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { SumarioAula } from './SumarioAula';
 import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, Gaveta, NaColuna, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
-import { triagemDoPlano } from '../contextoAula';
+import { triagemDoPlano, escolheTema } from '../contextoAula';
 import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -81,12 +81,45 @@ function EstadoEnvioPlano({ plano }: { plano: PlanoAula }) {
     const t = setInterval(ver, 8000);
     return () => { vivo = false; clearTimeout(t0); clearInterval(t); };
   }, [plano.id, pendente]);
-  if (pendente) return (
-    <div style={{ background:'#FFF4E0', border:'1.5px solid #E8A33D', borderRadius:12, padding:'10px 14px',
-      margin:'0 0 14px', fontSize:14.5, fontWeight:700, color:'#8a5a12', lineHeight:1.45 }}>
-      ⏳ A enviar o plano{plano.estado === 'publicado' ? ' aos alunos' : ''}… Não saias nem feches a aplicação até aparecer «Chegou».
-    </div>
-  );
+  // Ao fim de um minuto sem confirmar, diz porquê e deixa tentar outra vez
+  // (Rosa, out/2026: ficava 10 minutos a dizer «A enviar…» com a aula já no Sheets).
+  const [, refazer] = useState(0);
+  React.useEffect(() => {
+    if (!pendente) return;
+    const t = setInterval(() => refazer(n => n + 1), 5000);
+    return () => clearInterval(t);
+  }, [pendente]);
+  if (pendente) {
+    const e = esperaDoPlano(plano.id);
+    const ha = e ? (Date.now() - Date.parse(e.desde)) / 1000 : 0;
+    const hora = (iso?: string) => iso ? new Date(iso).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
+    const porque = !e || ha < 60 ? '' : e.motivo === 'nao_esta' ? 'O Sheets respondeu, mas este plano ainda não está lá.'
+      : e.motivo === 'versao_antiga' ? `O plano está no Sheets, mas com uma versão anterior (lá: ${hora(e.versaoNoSheets)}; aqui: ${hora((plano as any).atualizadoEm)}). A última alteração ainda não chegou.`
+      : e.motivo === 'sem_leitura' ? 'Não consegui ler o Sheets para confirmar (sem rede, ou o Sheets demorou demasiado).'
+      : 'Ainda a confirmar…';
+    return (
+      <div style={{ background:'#FFF4E0', border:'1.5px solid #E8A33D', borderRadius:12, padding:'10px 14px',
+        margin:'0 0 14px', fontSize:14.5, fontWeight:700, color:'#8a5a12', lineHeight:1.45 }}>
+        ⏳ A enviar o plano{plano.estado === 'publicado' ? ' aos alunos' : ''}… Não saias nem feches a aplicação até aparecer «Chegou».
+        {porque && (
+          <div style={{ fontWeight:500, fontSize:13.5, marginTop:6, color:'#6b4510' }}>
+            {porque} Tentativas: {e?.tentativas ?? 0}.
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:8 }}>
+              <button onClick={() => { reenviarPlanoJa(plano.id); refazer(n => n + 1); }}
+                style={{ padding:'8px 14px', borderRadius:9, border:'none', background:'#b5651d', color:'#fff',
+                  fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Enviar outra vez</button>
+              <button onClick={() => {
+                  if (!confirm('Já confirmaste no Sheets que o plano está lá com as últimas alterações?\n\nO aviso desaparece, mas se não estiver os alunos não veem as alterações.')) return;
+                  esquecerEsperaDoPlano(plano.id); setPendente(false);
+                }}
+                style={{ padding:'8px 14px', borderRadius:9, border:'1px solid #b5651d', background:'#fff', color:'#b5651d',
+                  fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Já está no Sheets — tirar o aviso</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
   if (chegou) return (
     <div style={{ margin:'0 0 14px', fontSize:14, fontWeight:800, color:'#3E7A31' }}>
       ✓ Chegou{plano.estado === 'publicado' ? ' aos alunos' : ' ao arquivo da escola'}. Já podes sair.
@@ -1659,8 +1692,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
-      {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && (
+      {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && !escolheTema(triagemDoPlano(plano)) && (
         <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      )}
+      {/* Num trabalho, cada aluno escolhe o seu tema: o professor não marca conteúdos. */}
+      {escolheTema(triagemDoPlano(plano)) && (
+        <div style={{ background:'#E6EEF7', borderRadius:12, padding:'10px 14px', fontSize:14, lineHeight:1.5, marginTop:10 }}>
+          Neste trabalho cada aluno escolhe o seu tema, de entre todos os conteúdos do manual. Não precisas de marcar conteúdos.
+        </div>
       )}
       {/* Aula atitudinal — o professor escolhe o que se trabalha. Cada
           toque marca ou desmarca; nada fica gravado até ele confirmar.

@@ -7537,6 +7537,9 @@ export interface PorConfirmar {
   turmaId: string;
   desde: string;
   tentativas: number;
+  /** (planos) O que a última conferência viu: para o professor saber porque não confirma. */
+  motivo?: 'sem_leitura' | 'nao_esta' | 'versao_antiga';
+  versaoNoSheets?: string;
 }
 
 function espera(): PorConfirmar[] {
@@ -7596,6 +7599,27 @@ export function selecaoPorConfirmar(id: string): boolean {
 /** Este plano (ou a última alteração dele) ainda não se sabe se chegou aos alunos? */
 export function planoPorConfirmar(id: string): boolean {
   return espera().some(x => x.tipo === 'plano' && x.id === id);
+}
+
+/** O que se sabe do envio do plano que ainda não confirmou (para o aviso dizer porquê). */
+export function esperaDoPlano(id: string): PorConfirmar | undefined {
+  return espera().find(x => x.tipo === 'plano' && x.id === id);
+}
+
+/** «Tentar outra vez»: o plano volta a ser enviado já, com as tentativas todas. */
+export function reenviarPlanoJa(id: string): void {
+  const plano = getPlanosAula().find(x => x.id === id);
+  if (!plano) return;
+  const l = espera();
+  const p = l.find(x => x.tipo === 'plano' && x.id === id);
+  if (p) { p.tentativas = 0; p.desde = new Date().toISOString(); guardarEspera(l); }
+  else porConfirmar('plano', id, plano.titulo || `Plano de ${plano.data}`, plano.turmaId);
+  enviarAgora(SHEETS_PLANOS_URL, { tipo: 'plano', plano }, 'urgente');
+}
+
+/** «Já vi que está no Sheets»: deixa de esperar por este plano. */
+export function esquecerEsperaDoPlano(id: string): void {
+  guardarEspera(espera().filter(x => !(x.tipo === 'plano' && x.id === id)));
 }
 
 /** Ao fechar ou esconder a aplicação: a autoavaliação ou o plano que ainda
@@ -7693,15 +7717,23 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   };
   const restantes: PorConfirmar[] = [];
   let confirmados = 0;
-  for (const p of l) {
+  // Entretanto pode ter entrado outra coisa na lista (uma gravação nova).
+  const atual = espera();
+  for (const p0 of l) {
+    const p = atual.find(x => x.tipo === p0.tipo && x.id === p0.id) || p0;
     const ids = noSheets.get(p.tipo);
-    if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push(p); continue; }   // não consegui ler: não conto como falha
+    if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push({ ...p, motivo: 'sem_leitura' }); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id)) && versaoChegou(p)) { confirmados++; continue; }
     // A autoavaliação do aluno insiste até chegar: sem ela o professor
-    // não a vê para validar.
-    if (p.tentativas < 5 || (p.tipo === 'selecao' && p.tentativas < 60)) emSegundoPlano(() => reenviar(p));
-    restantes.push({ ...p, tentativas: p.tentativas + 1 });
+    // não a vê para validar. O plano também (eram 5 vezes, e depois o
+    // aviso «A enviar…» ficava para sempre sem nada a acontecer).
+    if (p.tentativas < 5 || (p.tipo === 'selecao' && p.tentativas < 60) || (p.tipo === 'plano' && p.tentativas < 30)) emSegundoPlano(() => reenviar(p));
+    const v = versaoNoSheets.get(String(p.id));
+    restantes.push({ ...p, tentativas: p.tentativas + 1,
+      ...(p.tipo === 'plano' ? { motivo: ids.has(String(p.id)) ? 'versao_antiga' as const : 'nao_esta' as const,
+        versaoNoSheets: v && !isNaN(v) ? new Date(v).toISOString() : undefined } : {}) });
   }
+  for (const x of atual) if (!l.some(y => y.tipo === x.tipo && y.id === x.id)) restantes.push(x);
   guardarEspera(restantes);
   return { confirmados, aRepetir: restantes.length };
 }

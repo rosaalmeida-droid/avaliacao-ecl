@@ -68,6 +68,48 @@ export const CRITERIOS_FORMATO: Record<string, CriterioTrabalho[]> = {
       'Falhei regras de higiene ou segurança.', 'Falhei uma regra.',
       'Cumpri as regras.', 'Cumpri as regras e expliquei-as à turma.']),
   ],
+  // A aula em que se prepara o trabalho: o que se vê nessa aula.
+  preparar: [
+    c('preparar', 'pesquisa', 'Preparação: pesquisa sobre o tema', [
+      'Não pesquisei nada sobre o meu tema.', 'Li só uma parte do capítulo do manual.',
+      'Li o capítulo todo e tirei notas.', 'Li o capítulo, tirei notas e procurei noutra fonte.']),
+    c('preparar', 'material', 'Preparação: o material do trabalho', [
+      'Ainda não comecei o material.', 'Comecei, mas fiz pouco.',
+      'Avancei bem e sei o que falta.', 'Avancei bem, sei o que falta e tenho um plano para acabar.']),
+    c('preparar', 'tempo', 'Preparação: aproveitar o tempo da aula', [
+      'Perdi a maior parte do tempo.', 'Trabalhei só parte do tempo.',
+      'Trabalhei o tempo todo.', 'Trabalhei o tempo todo e pedi ajuda quando precisei.']),
+  ],
+  receita: [
+    c('receita', 'ingredientes', 'Receita e ficha técnica: ingredientes e quantidades', [
+      'Ainda não tenho os ingredientes.', 'Tenho os ingredientes, mas faltam quantidades.',
+      'Tenho os ingredientes com as quantidades certas para as doses.', 'Tenho tudo certo e calculei a capitação de cada dose.']),
+    c('receita', 'preparacao', 'Receita e ficha técnica: modo de preparação', [
+      'Ainda não escrevi a preparação.', 'Escrevi alguns passos, sem ordem.',
+      'Escrevi os passos por ordem, com as técnicas.', 'Escrevi os passos por ordem, com as técnicas, tempos e temperaturas.']),
+    c('receita', 'custo', 'Receita e ficha técnica: custo', [
+      'Não calculei o custo.', 'Calculei só uma parte.',
+      'Calculei o custo da receita.', 'Calculei o custo da receita e de cada dose.']),
+  ],
+  menu: [
+    c('menu', 'equilibrio', 'Menu: equilíbrio e coerência', [
+      'Os pratos não combinam entre si.', 'Combinam em parte, com repetições.',
+      'Os pratos combinam, sem repetir ingredientes nem técnicas.', 'Combinam e expliquei porquê (época, sabores, cores).']),
+    c('menu', 'adequacao', 'Menu: adequado ao cliente e à época', [
+      'Não pensei no cliente nem na época.', 'Pensei só numa das duas.',
+      'É adequado ao cliente e à época.', 'É adequado e pensei também no preço e nas alergias.']),
+    c('menu', 'escrita', 'Menu: escrever o menu', [
+      'Não escrevi o menu.', 'Escrevi com erros ou nomes pouco claros.',
+      'Escrevi certo, com nomes claros.', 'Escrevi certo, com nomes claros e uma descrição apelativa.']),
+  ],
+  requisicao: [
+    c('requisicao', 'quantidades', 'Requisição: quantidades', [
+      'Não fiz a requisição.', 'Fiz, mas com quantidades a mais ou a menos.',
+      'As quantidades estão certas para as doses.', 'Estão certas e confirmei com a ficha técnica.']),
+    c('requisicao', 'completa', 'Requisição: completa e a tempo', [
+      'Faltam muitos produtos.', 'Falta algum produto.',
+      'Está completa e entreguei a tempo.', 'Está completa, a tempo, e verifiquei o que já havia no economato.']),
+  ],
   grupo: [
     c('grupo', 'parte', 'Trabalho de grupo: a minha parte', [
       'Não fiz a minha parte.', 'Fiz a minha parte, mas com ajuda ou atrasado.',
@@ -76,6 +118,22 @@ export const CRITERIOS_FORMATO: Record<string, CriterioTrabalho[]> = {
 };
 
 const TODOS = Object.values(CRITERIOS_FORMATO).flat();
+
+/** Os critérios de cada fase de um trabalho (contextoAula: FaseProjeto). */
+export function criteriosDasFases(fases: string[], emGrupo: boolean): CriterioTrabalho[] {
+  const de = (k: string, chaves?: string[]) => (CRITERIOS_FORMATO[k] || []).filter(x => !chaves || chaves.some(ch => x.id.endsWith('-' + ch)));
+  const out: CriterioTrabalho[] = [];
+  for (const f of fases) {
+    if (f === 'investigacao') out.push(...de('preparar', ['pesquisa']));
+    else if (f === 'desenvolvimento') out.push(...de('preparar', ['material']));
+    else if (f === 'receita' || f === 'menu' || f === 'requisicao') out.push(...de(f));
+    else if (f.startsWith('apres_')) out.push(...de(f.slice(6)));
+  }
+  // O tempo da aula, nas fases de trabalho (não nas apresentações).
+  if (fases.some(f => !f.startsWith('apres_'))) out.push(...de('preparar', ['tempo']));
+  if (emGrupo) out.push(...de('grupo'));
+  return out.filter((x, i) => out.findIndex(y => y.id === x.id) === i);
+}
 
 /** O critério pelo código. */
 export const criterioTrabalho = (id: string): CriterioTrabalho | undefined => TODOS.find(x => x.id === id);

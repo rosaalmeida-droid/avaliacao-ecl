@@ -76,6 +76,7 @@ import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
 import { perguntasDe, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
 import { CINCO_C, triagemDoPlano, type Letra5CAluno } from '../contextoAula';
+import { capituloDoCampo } from '../bancoManuais';
 import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno } from '../autoavaliacaoDaAula';
 import { fraseDaAula } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
@@ -2844,7 +2845,19 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const fardaIncompletaRegisto = getHistoricoAvaliacoes().some((r: any) =>
     r.alunoId === aluno.id && r.planoAulaId === plano.id && r.microcompetenciaId === 'OBR_01' && Number(r.nota) < 5);
   // Trabalho sobre o manual: o tema (conteúdo) que o aluno escolheu.
-  const [temaEscolhido, setTemaEscolhido] = useState<number | null>(null);
+  // Num trabalho que continua o da aula anterior, vem já escolhido o tema
+  // que o aluno disse nessa aula (Rosa, out/2026); pode sempre mudar.
+  const [temaEscolhido, setTemaEscolhido] = useState<number | null>(() => {
+    const de = (triagemDoPlano(plano) as any)?.continuaDe;
+    if (!de) return null;
+    const sel = getSelecoes().filter(s => s.alunoId === aluno.id && s.planoAulaId === de)
+      .sort((a: any, b: any) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')))[0];
+    for (const a of (sel?.autoavaliacoes || [])) {
+      const cap = capituloDoCampo(a.competenciaId);
+      if (cap) return cap.capitulo.n;
+    }
+    return null;
+  });
   const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido });
   const subIdsFiltrados = regras.subIds;
   // APP-xxx: aparelhos da ficha. Nada sai para os alunos com medidas (Rosa,
