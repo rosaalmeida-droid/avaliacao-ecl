@@ -11,7 +11,7 @@
 // O que o aluno responde vem das mesmas regras que o ecrã do aluno usa
 // (autoavaliacaoDaAula): o professor vê o que o aluno vai ver.
 // ============================================================
-import React, { useState } from 'react';
+import React, { useState, useContext, createContext } from 'react';
 import type { PlanoAula } from '../types';
 import {
   addOrUpdatePlanoAula, getPlanosAula, getFichasProducao, getAlunos, getSelecoes, contextoDoPlano,
@@ -37,7 +37,34 @@ const cartao: React.CSSProperties = {
   background: '#fff', border: `1px solid ${C.linha}`, borderRadius: 16, padding: '18px 20px', margin: '0 0 14px',
 };
 
+// Onde o passo aparece: sozinho (com o número), dentro de uma gaveta do
+// plano em duas colunas (a gaveta já tem o título) ou na coluna «Na aula»
+// (com título, sem número).
+type ModoPasso = 'normal' | 'gaveta' | 'coluna';
+const ModoDoPasso = createContext<ModoPasso>('normal');
+
+/** O cartão do passo: dentro de uma gaveta não tem moldura (a gaveta já tem). */
+function useCartao(extra?: React.CSSProperties): React.CSSProperties {
+  return useContext(ModoDoPasso) === 'gaveta' ? { margin: 0 } : { ...cartao, ...extra };
+}
+
 export function CabecalhoPasso({ n, titulo, sub, direita }: { n: number; titulo: string; sub?: string; direita?: React.ReactNode }) {
+  const modo = useContext(ModoDoPasso);
+  if (modo === 'gaveta') return sub || direita ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '0 0 12px' }}>
+      {sub && <div style={{ flex: 1, fontSize: 13.5, color: C.suave, lineHeight: 1.45 }}>{sub}</div>}
+      {direita}
+    </div>
+  ) : null;
+  if (modo === 'coluna') return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 17, fontWeight: 700 }}>{titulo}</div>
+        {sub && <div style={{ fontSize: 13.5, color: C.suave, lineHeight: 1.45 }}>{sub}</div>}
+      </div>
+      {direita}
+    </div>
+  );
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
       <span style={{ width: 32, height: 32, borderRadius: '50%', background: C.tinta, color: '#fff', fontWeight: 800,
@@ -49,6 +76,54 @@ export function CabecalhoPasso({ n, titulo, sub, direita }: { n: number; titulo:
       {direita}
     </div>
   );
+}
+
+/** Uma parte do plano que abre e fecha (Rosa, out/2026: «campo a campo»).
+ *  Fechada, mostra só o resumo e se está feita ou por fazer. Lembra-se,
+ *  neste aparelho, de como o professor a deixou. */
+export function Gaveta({ id, n, titulo, resumo, feito, abertaAoInicio, children }: {
+  id: string; n: number; titulo: string; resumo?: string; feito?: boolean; abertaAoInicio?: boolean; children: React.ReactNode;
+}) {
+  const chave = `ecl_gaveta_${id}`;
+  const [aberta, setAberta] = useState<boolean>(() => {
+    try { const v = localStorage.getItem(chave); if (v === '1' || v === '0') return v === '1'; } catch { /* */ }
+    return !!abertaAoInicio;
+  });
+  const mudar = () => {
+    const nova = !aberta;
+    setAberta(nova);
+    try { localStorage.setItem(chave, nova ? '1' : '0'); } catch { /* */ }
+  };
+  return (
+    <div style={{ ...cartao, padding: 0, overflow: 'hidden', ...(feito === false ? { border: `2px solid ${C.ambarL}` } : {}) }}>
+      <button onClick={mudar} aria-expanded={aberta} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+        padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: C.tinta }}>
+        <span style={{ width: 30, height: 30, borderRadius: '50%', background: feito ? C.verde : C.tinta, color: '#fff', fontWeight: 800,
+          fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{feito ? '✓' : n}</span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 17, fontWeight: 700 }}>{titulo}</span>
+          {!aberta && resumo && (
+            <span style={{ display: 'block', fontSize: 13.5, color: C.suave, marginTop: 2, lineHeight: 1.4,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resumo}</span>
+          )}
+        </span>
+        {feito === false && <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ambar, background: C.ambarP,
+          borderRadius: 999, padding: '3px 10px', flexShrink: 0 }}>Por fazer</span>}
+        <span aria-hidden style={{ fontSize: 14, color: C.suave, flexShrink: 0, transform: aberta ? 'rotate(180deg)' : 'none' }}>▼</span>
+      </button>
+      {aberta && (
+        <div style={{ padding: '2px 18px 18px', borderTop: `1px solid ${C.linha}` }}>
+          <div style={{ height: 14 }} />
+          <ModoDoPasso.Provider value="gaveta">{children}</ModoDoPasso.Provider>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Os passos da coluna «Na aula»: com título, sem número. */
+export function NaColuna({ children }: { children: React.ReactNode }) {
+  return <ModoDoPasso.Provider value="coluna">{children}</ModoDoPasso.Provider>;
 }
 
 function Opcao({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -96,6 +171,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
   };
   const tipo = tipoDe(valor);
   const ob = obrigatoriasDaTriagem(valor);
+  const cart = useCartao(definida ? {} : { border: `2px solid ${C.ambarL}` });
 
   function gravar(parcial: Partial<TriagemAula>) {
     const nova: TriagemAula = { ...valor, ...parcial };
@@ -138,7 +214,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
   }
 
   return (
-    <div style={{ ...cartao, ...(definida ? {} : { border: `2px solid ${C.ambarL}` }) }}>
+    <div style={cart}>
       <CabecalhoPasso n={1} titulo="Como é esta aula?"
         sub="Primeiro o tipo de aula. O que o aluno responde e o que conta para a nota sai daqui." />
       {!definida && (
@@ -265,10 +341,11 @@ export function oQueOAlunoVe(plano: PlanoAula) {
 }
 
 export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
+  const cart = useCartao();
   // Sem o tipo de aula escolhido, não se mostra avaliação nenhuma: era
   // adivinhada (uma teórica aparecia «só atitudes, 100%»).
   if (!triagemDoPlano(plano)) return (
-    <div style={cartao}>
+    <div style={cart}>
       <CabecalhoPasso n={3} titulo="O que se avalia" sub="Escolhe primeiro, no passo 1, o tipo de aula: é ele que diz o que se avalia." />
     </div>
   );
@@ -276,7 +353,7 @@ export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
   const pesos = pesosDaAula(plano, regras);
   const corCat: Record<string, string> = { SUB: C.cobre, KNW: C.azul, OBR: C.verde, ATI: C.violeta };
   return (
-    <div style={cartao}>
+    <div style={cart}>
       <CabecalhoPasso n={3} titulo="O que se avalia"
         sub="Sai sozinho do 1 e do 2. À direita está o que o aluno vai ver no telemóvel, por esta ordem." />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22, alignItems: 'start' }}>
@@ -383,6 +460,7 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
   const [pedirOutraVez, setPedirOutraVez] = useState(true);
   const [enviado, setEnviado] = useState(false);
+  const cart = useCartao(mudou.length ? { border: `2px solid ${C.ambarL}` } : {});
 
   function enviar() {
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
@@ -393,7 +471,7 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   }
 
   return (
-    <div style={{ ...cartao, ...(mudou.length ? { border: `2px solid ${C.ambarL}` } : {}) }}>
+    <div style={cart}>
       <CabecalhoPasso n={4} titulo="Enviar aos alunos"
         sub={!publicado ? 'Os alunos ainda não veem esta aula: publica-a no botão «Publicar».'
           : registado ? `O que mudou desde o último envio (${hora(registado.em)})` : 'O que os alunos têm'} />

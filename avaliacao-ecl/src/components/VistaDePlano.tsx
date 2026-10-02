@@ -12,7 +12,6 @@ import { QuadroOrganizacional } from './PlanoOrganizacional';
 import React, { useState } from 'react';
 import { GruposProfessor } from './GruposProfessor';
 import { EstadoAberturaAula } from './EstadoAberturaAula';
-import { confirmarTurmaAoPublicar } from '../professores';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { PlanoAula, FichaProducao } from '../types';
 import {
@@ -24,9 +23,10 @@ import {
 import { rotuloPlano, avisoFimUC } from '../rotuloPlano';
 import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
-import { BotaoPublicar } from './BotaoPublicar';
 import { SumarioAula } from './SumarioAula';
-import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, CabecalhoPasso } from './PlanoGuiado';
+import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, Gaveta, NaColuna, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
+import { sumarioDoPlano } from '../sumarioAutomatico';
+import { triagemDoPlano } from '../contextoAula';
 import { eventosParaPlanos } from '../eventos/modelo';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS,
@@ -1224,20 +1224,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     );
   }
 
-  // ── INÍCIO ───────────────────────────────────────────────────
-  return (
-    <div>
-      <EstadoEnvioPlano plano={plano} />
-      {/* Enquanto não publicar, o aluno não vê a aula em lado nenhum —
-          nem no calendário, nem nas próximas aulas. Isto tem de estar à
-          frente, senão o professor marca a aula e ninguém a vê. */}
-
-      {/* O aviso de "por publicar" está agora no painel de estado,
-          em cima — não faz sentido repeti-lo aqui. */}
-
-      {/* Abertura da aula. É daqui que contam os dez minutos de
-          tolerância — não da hora prevista no plano. Enquanto não
-          abrir, os alunos consultam mas não gravam nada. */}
+  // A abertura da aula: na coluna «Na aula» do plano, ou por cima dos outros separadores.
+  const blocoAbertura = (<>
       {plano.estado === 'publicado' && (() => {
         const sessao = getSessaoAula(plano.id);
         const t = estadoTolerancia(plano.id);
@@ -1357,6 +1345,23 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
         );
       })()}
+  </>);
+
+  // ── INÍCIO ───────────────────────────────────────────────────
+  return (
+    <div>
+      <EstadoEnvioPlano plano={plano} />
+      {/* Enquanto não publicar, o aluno não vê a aula em lado nenhum —
+          nem no calendário, nem nas próximas aulas. Isto tem de estar à
+          frente, senão o professor marca a aula e ninguém a vê. */}
+
+      {/* O aviso de "por publicar" está agora no painel de estado,
+          em cima — não faz sentido repeti-lo aqui. */}
+
+      {/* Abertura da aula. É daqui que contam os dez minutos de
+          tolerância — não da hora prevista no plano. Enquanto não
+          abrir, os alunos consultam mas não gravam nada. */}
+      {tabInicio !== 'resumo' && blocoAbertura}
 
 
       {/* Grupos: formados pelos alunos, validados pelo professor. */}
@@ -1636,136 +1641,27 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {tabInicio === 'resumo' && (<>
       <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} />
       <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />
-      {/* O plano guiado (Rosa, out/2026): 1 como é a aula → 2 o que se faz →
-          3 o que se avalia (o telemóvel do aluno) → 4 enviar aos alunos. */}
+      {/* O plano em duas colunas (Rosa, out/2026): à esquerda o que o
+          professor prepara, campo a campo, cada um abre e fecha; à direita
+          o que acontece na aula — publicar, abrir, enviar, quem entrou,
+          quem se avaliou, validar. Cada coisa aparece num sítio só. */}
+      <div style={{ display:'grid', gap:18, alignItems:'start',
+        gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 400px), 1fr))' }}>
+      <div style={{ minWidth:0 }}>
+        <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase',
+          color:'rgba(26,23,20,0.45)', margin:'0 0 10px' }}>Preparar a aula</div>
+      <Gaveta id="como" n={1} titulo="Como é a aula"
+        resumo={triagemDoPlano(plano) ? fraseDaAula(triagemDoPlano(plano)!) : 'Falta escolher o tipo de aula'}
+        feito={!!triagemDoPlano(plano)} abertaAoInicio={!triagemDoPlano(plano)}>
       <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
-      <CabecalhoPasso n={2} titulo="O que se faz"
-        sub={contextoDoPlano(plano).producao
-          ? 'O sumário e as fichas. As técnicas saem das fichas (em «O que este plano tem», mais abaixo).'
-          : 'O sumário e o que se trabalha do manual.'} />
+      </Gaveta>
+      <Gaveta id="conteudos" n={2} titulo="Conteúdos e sumário"
+        resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
       {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && (
         <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
       )}
-      <PassoOQueSeAvalia plano={plano} />
-      <PassoEnviar plano={plano} onPlanoActualizado={onPlanoActualizado} />
-      {temOrganizacao(plano) && (
-        <button onClick={() => setTabInicio('turma')} style={{ display:'block', width:'100%', textAlign:'left',
-          background:'#fff', border:'1px solid rgba(107,63,160,0.35)', borderRadius:14, padding:'12px 16px',
-          margin:'0 0 14px', cursor:'pointer', fontFamily:'inherit' }}>
-          <span style={{ fontSize:15, fontWeight:700, color:'#6B3FA0' }}>Plano organizacional da aula</span>
-          <span style={{ display:'block', fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:3 }}>
-            {organizacaoDe(plano)
-              ? 'Cada aluno já tem a sua função. Toca para ver quem faz o quê e para substituir quem faltar.'
-              : plano.estado === 'publicado' ? 'Toca para distribuir as funções.' : 'As funções distribuem-se quando publicares o plano.'}
-          </span>
-        </button>
-      )}
-      <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />
-      {/* Mudaste o plano depois de alunos já terem respondido: eles
-          responderam às perguntas antigas. Nada lhes era reenviado. */}
-      {(() => {
-        const n = respostasAntesDaAlteracao(plano.id);
-        // Sem alteração: pode pedir na mesma (as perguntas não estavam bem, por exemplo).
-        // Quem respondeu ou já foi validado nesta aula (a validação pode estar
-        // neste aparelho sem a autoavaliação que lhe deu origem).
-        const total = new Set([
-          ...getSelecoes().filter(x => x.planoAulaId === plano.id).map(x => x.alunoId),
-          ...getValidacoes().filter(v => v.planoAulaId === plano.id
-            && String((v as any).validadoEm || '') >= String((plano as any).pedirDeNovoEm || '')).map(v => v.alunoId),
-        ]).size;
-        if (!n && total && plano.estado === 'publicado') return (
-          <div style={{ background:'#fff', border:'1px solid rgba(26,23,20,0.12)', borderRadius:14, padding:'10px 14px', margin:'0 0 14px',
-            display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-            <div style={{ flex:1, minWidth:200, fontSize:13.5, color:'rgba(26,23,20,0.7)' }}>
-              {total} aluno{total === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.
-              Se as perguntas não estavam bem, podes pedir que respondam outra vez.
-            </div>
-            <button onClick={() => {
-                if (!confirm(`Pedir aos ${total} alunos que respondam outra vez?\n\nA nota que já deste continua a contar até validares a nova.`)) return;
-                pedirNovaAutoavaliacao(plano.id);
-                const p = getPlanosAula().find(x => x.id === plano.id);
-                if (p) onPlanoActualizado(p);
-              }}
-              style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #b5651d', background:'#fff', color:'#b5651d',
-                fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-              Pedir que respondam outra vez
-            </button>
-          </div>
-        );
-        // Com o registo do que os alunos receberam, o passo 4 («Enviar aos
-        // alunos») já mostra o que mudou e pede que respondam outra vez.
-        if (!n || (plano as any).enviadoAosAlunos) return null;
-        return (
-          <div style={{ background:'#fdf0e6', border:'1.5px solid #e8c98f', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>
-            <div style={{ fontSize:14.5, fontWeight:700, color:'#8a4a15' }}>
-              Mudaste este plano depois de {n} aluno{n === 1 ? '' : 's'} já ter{n === 1 ? '' : 'em'} respondido à autoavaliação.
-            </div>
-            <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', margin:'4px 0 10px', lineHeight:1.5 }}>
-              Responderam às perguntas antigas. Se pedires, a autoavaliação volta a abrir para eles, com as perguntas novas,
-              e voltas a validar. Também os que já validaste: a nota que deste continua a contar até validares a nova.
-            </div>
-            <button onClick={() => {
-                if (!confirm(`Pedir a ${n} aluno${n === 1 ? '' : 's'} que respondam outra vez?`)) return;
-                pedirNovaAutoavaliacao(plano.id);
-                const p = getPlanosAula().find(x => x.id === plano.id);
-                if (p) onPlanoActualizado(p);
-              }}
-              style={{ padding:'10px 16px', borderRadius:10, border:'none', background:'#b5651d', color:'#fff',
-                fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-              Pedir a estes alunos que respondam outra vez
-            </button>
-          </div>
-        );
-      })()}
-      {(plano as any).pedirDeNovoEm && (
-        <div style={{ fontSize:13, color:'#3f5e34', background:'#eef4eb', borderRadius:10, padding:'8px 12px', margin:'0 0 14px' }}>
-          ✓ Pediste aos alunos que respondessem outra vez ({new Date((plano as any).pedirDeNovoEm).toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}). Veem as perguntas novas quando abrirem a aula.
-          {/* Abre o WhatsApp com a mensagem escrita: o professor escolhe o grupo da turma e envia. */}
-          <a href={`https://wa.me/?text=${encodeURIComponent(
-              `Olá, ${plano.turmaId}! Mudei as perguntas da autoavaliação da aula «${plano.titulo}» `
-              + `(${String(plano.data).slice(8, 10)}/${String(plano.data).slice(5, 7)}). `
-              + 'As perguntas agora são mais claras e é a vossa oportunidade de mostrar o que fizeram bem. '
-              + 'Abram a aplicação Avaliação ECL: aparece logo no Início e leva 2 minutos. '
-              + 'Até responderem, conta a nota que já tinham. Obrigada!')}`}
-            target="_blank" rel="noopener noreferrer"
-            style={{ display:'inline-block', marginTop:8, padding:'9px 14px', borderRadius:10, background:'#25D366',
-              color:'#fff', fontSize:13.5, fontWeight:700, textDecoration:'none' }}>
-            Avisar a turma no WhatsApp
-          </a>
-        </div>
-      )}
-      {eventoForaDoHorario(plano) && (
-        <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
-          <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
-        </div>
-      )}
-      {/* Requisição feita antes de mudar as fichas — o pedido ao economato
-          já não corresponde à aula. */}
-      {(() => {
-        const dif = requisicaoDesatualizada(plano.id);
-        if (!dif) return null;
-        const nome = (id: string) => getFichasProducao().find(f => f.id === id)?.nomePrato || 'ficha';
-        return (
-          <div style={{ background:'#fdf0e6', border:'1.5px solid var(--copper)', borderRadius:12,
-            padding:'14px 16px', marginBottom:14 }}>
-            <div style={{ fontSize:15, fontWeight:700, color:'var(--copper)' }}>
-              A requisição está desatualizada
-            </div>
-            <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', margin:'4px 0 10px', lineHeight:1.55 }}>
-              Mudaste as fichas depois de fazer a requisição.
-              {dif.faltam.length > 0 && <div>· Não tem: {dif.faltam.map(nome).join(', ')}</div>}
-              {dif.sobram.length > 0 && <div>· Tem a mais: {dif.sobram.map(nome).join(', ')}</div>}
-            </div>
-            <button onClick={() => setModulo('requisicao')} style={{ padding:'10px 16px', borderRadius:9,
-              border:'none', background:'var(--copper)', color:'#fff', fontSize:14, fontWeight:700,
-              cursor:'pointer', fontFamily:'inherit' }}>
-              Atualizar a requisição
-            </button>
-          </div>
-        );
-      })()}
       {/* Aula atitudinal — o professor escolhe o que se trabalha. Cada
           toque marca ou desmarca; nada fica gravado até ele confirmar.
           Antes gravava a cada clique, sem forma de desistir. */}
@@ -1882,7 +1778,36 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
         );
       })()}
-
+      </Gaveta>
+      {contextoDoPlano(plano).producao && (
+      <Gaveta id="fichas" n={3} titulo="Fichas, guião e requisição"
+        resumo={`${fichasDoPlano.length} ficha${fichasDoPlano.length === 1 ? '' : 's'} · ${fichasDoPlano.some((f: any) => f.textoGuia) ? 'com guião' : 'sem guião'} · ${temRequisicao ? 'requisição feita' : 'sem requisição'}`}
+        feito={temFichas}>
+      {/* Requisição feita antes de mudar as fichas — o pedido ao economato
+          já não corresponde à aula. */}
+      {(() => {
+        const dif = requisicaoDesatualizada(plano.id);
+        if (!dif) return null;
+        const nome = (id: string) => getFichasProducao().find(f => f.id === id)?.nomePrato || 'ficha';
+        return (
+          <div style={{ background:'#fdf0e6', border:'1.5px solid var(--copper)', borderRadius:12,
+            padding:'14px 16px', marginBottom:14 }}>
+            <div style={{ fontSize:15, fontWeight:700, color:'var(--copper)' }}>
+              A requisição está desatualizada
+            </div>
+            <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', margin:'4px 0 10px', lineHeight:1.55 }}>
+              Mudaste as fichas depois de fazer a requisição.
+              {dif.faltam.length > 0 && <div>· Não tem: {dif.faltam.map(nome).join(', ')}</div>}
+              {dif.sobram.length > 0 && <div>· Tem a mais: {dif.sobram.map(nome).join(', ')}</div>}
+            </div>
+            <button onClick={() => setModulo('requisicao')} style={{ padding:'10px 16px', borderRadius:9,
+              border:'none', background:'var(--copper)', color:'#fff', fontSize:14, fontWeight:700,
+              cursor:'pointer', fontFamily:'inherit' }}>
+              Atualizar a requisição
+            </button>
+          </div>
+        );
+      })()}
       {/* ═══ O QUE ESTE PLANO TEM ═══════════════════════════════
           Duas colunas, para o ecrã de computador onde o professor prepara
           as aulas: à esquerda as fichas, com espaço para as manejar; à
@@ -2013,383 +1938,146 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
         );
       })()}
-
-        {/* Lista de verificação — o que falta antes da aula */}
-        <div style={{ background:'#E6F1FB', borderRadius:14, padding:'14px 16px',
-          border:'1.5px solid #B5D4F4', marginBottom:14 }}>
-          <div style={{ fontSize:13.5, fontWeight:700, color:'#0C447C', marginBottom:10 }}>
-            Antes de começar
-          </div>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {[
-            { ok: temFichas, label: 'Fichas de produção criadas',
-              acao: () => setModulo('ficha'), acaoLabel: 'Criar' },
-            { ok: fichasDoPlano.some((f: any) => f.textoGuia), label: 'Guião de produção',
-              acao: () => setModulo('guia'), acaoLabel: 'Gerar' },
-            { ok: temRequisicao, label: 'Requisição enviada',
-              acao: () => setModulo('requisicao'), acaoLabel: 'Fazer' },
-            { ok: publicado, label: 'Plano publicado para os alunos',
-              acao: null, acaoLabel: '' },
-          ].map((item, i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:10,
-              padding:'10px 12px', borderRadius:9, marginBottom:6,
-              background: item.ok ? '#EAF3DE' : '#fff',
-              border:`1px solid ${item.ok ? '#C0DD97' : 'rgba(14,116,144,0.2)'}` }}>
-              <span style={{ width:20, height:20, borderRadius:6, flexShrink:0,
-                background: item.ok ? 'var(--sage)' : 'transparent',
-                border: item.ok ? 'none' : '2px dashed rgba(26,23,20,0.2)',
-                display:'flex', alignItems:'center', justifyContent:'center' }}>
-                {item.ok && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff"
-                    strokeWidth={3.5} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                )}
-              </span>
-              <span style={{ flex:1, fontSize:14,
-                color: item.ok ? 'rgba(26,23,20,0.75)' : 'rgba(26,23,20,0.55)' }}>
-                {item.label}
-              </span>
-              {!item.ok && item.acao && (
-                <button onClick={item.acao} style={{ padding:'6px 12px', borderRadius:8,
-                  border:'1px solid #0e7490', background:'#fff', color:'#0e7490',
-                  fontSize:12.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                  {item.acaoLabel}
-                </button>
-              )}
-            </div>
+            { t: fichasDoPlano.some((f: any) => f.textoGuia) ? 'Guião de produção ✓' : 'Escrever o guião de produção', ir: 'guia' as Modulo },
+            { t: temRequisicao ? 'Requisição ✓ — ver ou mudar' : 'Fazer a requisição', ir: 'requisicao' as Modulo },
+          ].map(x => (
+            <button key={x.ir} disabled={!temFichas} onClick={() => setModulo(x.ir)}
+              style={{ flex:'1 1 180px', padding:'11px', borderRadius:10, border:'1.5px solid var(--copper)', background:'#fff',
+                color:'var(--copper)', fontSize:14, fontWeight:700, cursor: temFichas ? 'pointer' : 'default',
+                opacity: temFichas ? 1 : 0.45, fontFamily:'inherit' }}>{x.t}</button>
           ))}
         </div>
-
-
-        {/* ═══ O QUE ESTE PLANO TEM ═══════════════════════════
-            Duas colunas: à esquerda o que já está, à direita o que se
-            pode juntar. Nada é obrigatório — mas o professor tem de
-            perceber o que ganha e o que perde em cada escolha. */}
-        {(() => {
-          // Aula sem cozinhar (teórica, atitudinal): fichas, guião e
-          // requisição não fazem sentido — não se mostram.
-          if (!contextoDoPlano(plano).producao) return null;
-          const B = '#7B2233', BS = '#F6ECEE';
-          const temFicha = fichasDoPlano.length > 0;
-          const temGuiao = fichasDoPlano.some((f: any) => f.textoGuia);
-          const temReq = !!getRequisicaoPorPlano(plano.id);
-          const pratico = (plano as any).tipoPlanAula !== 'teorico';
-
-          const linha = (
-            feito: boolean, titulo: string, detalhe: string,
-            accao?: { texto: string; ao: () => void }
-          ) => (
-            <div style={{ display:'flex', alignItems:'flex-start', gap:11,
-              padding:'12px 0', borderBottom:'1px solid rgba(26,23,20,0.07)' }}>
-              <span style={{ width:22, height:22, borderRadius:7, flexShrink:0, marginTop:1,
-                background: feito ? 'var(--sage)' : 'transparent',
-                border: feito ? 'none' : '2px dashed rgba(26,23,20,0.2)',
-                display:'flex', alignItems:'center', justifyContent:'center' }}>
-                {feito && (
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff"
-                    strokeWidth={3.2} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                )}
-              </span>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:14.5, fontWeight:700,
-                  color: feito ? 'var(--charcoal, #1a1714)' : 'rgba(26,23,20,0.55)' }}>
-                  {titulo}
-                </div>
-                <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:2,
-                  lineHeight:1.5 }}>{detalhe}</div>
-              </div>
-              {accao && (
-                <button onClick={accao.ao} style={{
-                  flexShrink:0, padding:'7px 12px', borderRadius:9, fontSize:12.5,
-                  fontWeight:700, cursor:'pointer', fontFamily:'inherit',
-                  border:`1px solid ${feito ? 'rgba(26,23,20,0.15)' : B}`,
-                  background:'#fff', color: feito ? 'rgba(26,23,20,0.6)' : B,
-                }}>{accao.texto}</button>
-              )}
-            </div>
-          );
-
-          return (
-            <div style={{ display:'grid', gap:14, marginBottom:18,
-              gridTemplateColumns:'repeat(auto-fit, minmax(290px, 1fr))' }}>
-
-              {/* ── Coluna 1: o que está no plano ── */}
-              <div style={{ background:'#fff', borderRadius:14, padding:16,
-                border:'1px solid rgba(26,23,20,0.08)' }}>
-                <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em',
-                  textTransform:'uppercase', color:B, marginBottom:10 }}>
-                  O que este plano tem
-                </div>
-
-                {linha(temFicha,
-                  temFicha ? `${fichasDoPlano.length} ficha${fichasDoPlano.length > 1 ? 's' : ''} técnica${fichasDoPlano.length > 1 ? 's' : ''}` : 'Sem ficha técnica',
-                  temFicha
-                    ? fichasDoPlano.map((f: any) => f.nomePrato).join(' · ')
-                    : 'As competências técnicas vêm das fichas. Sem ficha, tens de as escolher à mão.',
-                  { texto: temFicha ? 'Ver' : 'Criar', ao: () => setModulo('ficha') })}
-
-                {linha(temGuiao,
-                  temGuiao ? 'Guião de produção' : 'Sem guião',
-                  temGuiao
-                    ? 'O aluno tem o passo a passo e as explicações.'
-                    : 'Opcional. Sem ele, o aluno segue só a ficha.',
-                  { texto: temGuiao ? 'Ver' : 'Juntar', ao: () => setModulo('guia') })}
-
-                {linha(temReq,
-                  temReq ? 'Requisição feita' : 'Sem requisição',
-                  temReq
-                    ? 'Os ingredientes estão pedidos.'
-                    : 'Opcional. Serve para pedir o que é preciso e saber o custo.',
-                  { texto: temReq ? 'Ver' : 'Fazer', ao: () => setModulo('requisicao') })}
-
-                <div style={{ marginTop:14, paddingTop:12,
-                  borderTop:'1px solid rgba(26,23,20,0.07)' }}>
-                  <div style={{ fontSize:12.5, fontWeight:700, color:'rgba(26,23,20,0.5)',
-                    marginBottom:8 }}>
-                    O que vai ser avaliado
-                  </div>
-                  <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', lineHeight:1.7 }}>
-                    <div>
-                      <b>{compAtitudes.length}</b> atitudes
-                      <span style={{ color:'rgba(26,23,20,0.45)' }}> — sempre, em qualquer aula</span>
-                    </div>
-                    {pratico && (
-                      <div>
-                        <b>{compObrigatorias.length}</b> obrigatórias
-                        <span style={{ color:'rgba(26,23,20,0.45)' }}> — sempre, em aula prática</span>
-                      </div>
-                    )}
-                    <div>
-                      <b>{compSub.length + compApp.length + compTecnicas.length + compSubtecnicas.length}</b> técnicas
-                      <span style={{ color:'rgba(26,23,20,0.45)' }}>
-                        {temFicha ? ' — das fichas' : ' — escolhidas por ti'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── Coluna 2: o que se pode juntar ── */}
-              <div style={{ background:BS, borderRadius:14, padding:16,
-                border:`1px solid ${B}22` }}>
-                <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em',
-                  textTransform:'uppercase', color:B, marginBottom:10 }}>
-                  O que podes juntar
-                </div>
-
-                {!temFicha && (
-                  <div style={{ background:'#fff', borderRadius:11, padding:13, marginBottom:9 }}>
-                    <div style={{ fontSize:14.5, fontWeight:700 }}>Ficha técnica</div>
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
-                      lineHeight:1.5, marginBottom:10 }}>
-                      Traz as técnicas, os ingredientes e os alergénios. É o que
-                      faz as competências aparecerem sozinhas.
-                    </div>
-                    <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-                      <button onClick={() => { setFichaEmEdicao(null); setModulo('ficha'); }}
-                        style={{ flex:1, minWidth:110, padding:'10px', borderRadius:9,
-                          border:'none', background:B, color:'#fff', fontSize:13,
-                          fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                        Criar nova
-                      </button>
-                      <button onClick={() => { setFichaEmEdicao(null); setIrParaBiblioteca(true); setModulo('ficha'); }}
-                        style={{ flex:1, minWidth:110, padding:'10px', borderRadius:9,
-                          border:`1.5px solid ${B}`, background:'#fff', color:B,
-                          fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                        Ir buscar uma
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {temFicha && (
-                  <div style={{ background:'#fff', borderRadius:11, padding:13, marginBottom:9 }}>
-                    <div style={{ fontSize:14.5, fontWeight:700 }}>Outra ficha</div>
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
-                      lineHeight:1.5, marginBottom:10 }}>
-                      Uma aula pode ter várias produções.
-                    </div>
-                    <div style={{ display:'flex', gap:7, flexWrap:'wrap' }}>
-                      <button onClick={() => { setFichaEmEdicao(null); setModulo('ficha'); }}
-                        style={{ flex:1, minWidth:110, padding:'10px', borderRadius:9,
-                          border:'none', background:B, color:'#fff', fontSize:13,
-                          fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                        Criar nova
-                      </button>
-                      <button onClick={() => { setFichaEmEdicao(null); setIrParaBiblioteca(true); setModulo('ficha'); }}
-                        style={{ flex:1, minWidth:110, padding:'10px', borderRadius:9,
-                          border:`1.5px solid ${B}`, background:'#fff', color:B,
-                          fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                        Ir buscar uma
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {!temGuiao && temFicha && (
-                  <div style={{ background:'#fff', borderRadius:11, padding:13, marginBottom:9 }}>
-                    <div style={{ fontSize:14.5, fontWeight:700 }}>Guião</div>
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
-                      lineHeight:1.5, marginBottom:10 }}>
-                      Explica o porquê de cada passo. Ajuda quem tem mais
-                      dificuldade a seguir a produção sozinho.
-                    </div>
-                    <button onClick={() => setModulo('guia')}
-                      style={{ width:'100%', padding:'10px', borderRadius:9,
-                        border:`1.5px solid ${B}`, background:'#fff', color:B,
-                        fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                      Escrever guião
-                    </button>
-                  </div>
-                )}
-
-                {!temReq && temFicha && (
-                  <div style={{ background:'#fff', borderRadius:11, padding:13, marginBottom:9 }}>
-                    <div style={{ fontSize:14.5, fontWeight:700 }}>Requisição</div>
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
-                      lineHeight:1.5, marginBottom:10 }}>
-                      Sai dos ingredientes das fichas. Dá o custo da aula e a
-                      lista para o economato.
-                    </div>
-                    <button onClick={() => setModulo('requisicao')}
-                      style={{ width:'100%', padding:'10px', borderRadius:9,
-                        border:`1.5px solid ${B}`, background:'#fff', color:B,
-                        fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                      Fazer requisição
-                    </button>
-                  </div>
-                )}
-
-                {!temFicha && (
-                  <div style={{ background:'#fff', borderRadius:11, padding:13 }}>
-                    <div style={{ fontSize:14.5, fontWeight:700 }}>Escolher competências à mão</div>
-                    <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:3,
-                      lineHeight:1.5, marginBottom:10 }}>
-                      Se não vais usar ficha, define tu o que vai ser avaliado.
-                      As atitudes e as obrigatórias já estão garantidas.
-                    </div>
-                    <button onClick={() => setTabInicio('competencias')}
-                      style={{ width:'100%', padding:'10px', borderRadius:9,
-                        border:`1.5px solid ${B}`, background:'#fff', color:B,
-                        fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                      Escolher competências
-                    </button>
-                  </div>
-                )}
-
-                {temFicha && temGuiao && temReq && (
-                  <div style={{ background:'rgba(90,122,78,0.1)', borderRadius:11, padding:14,
-                    fontSize:13.5, color:'var(--sage)', lineHeight:1.55, fontWeight:600 }}>
-                    Está tudo. Falta só publicar para os alunos verem a aula.
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
-        {fichasDoPlano.length > 0 && (
-          <div style={{ marginBottom: 14, padding: '10px 14px', background: 'var(--cream-dark)', borderRadius: 12, border: '1px solid var(--border)' }}>
-            <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 8 }}>Fichas de Produção — {fichasDoPlano.length}</div>
-            {/* Cada ficha com o que se pode fazer com ela. A lista só
-                mostrava os nomes: não havia como tirar uma ficha do plano,
-                abrir a que está errada, ou acrescentar outra sem sair
-                daqui. */}
-            {fichasDoPlano.map(f => (
-              <div key={f.id} style={{ display: 'flex', alignItems: 'flex-start',
-                gap: 10, padding: '11px 0', borderBottom: '1px solid var(--border)',
-                flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 150px', minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14.5 }}>{f.nomePrato}</div>
-                  <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>
-                    {f.classificacao} · {f.numPorcoes} doses
-                    {(f as any).textoGuia
-                      ? <b style={{ color: 'var(--sage)' }}> · com guião</b>
-                      : ' · sem guião'}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                  <button onClick={() => { setFichaEmEdicao(f.id); setModulo('ficha'); }}
-                    style={{ padding: '7px 12px', borderRadius: 8, fontSize: 12.5,
-                      fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                      border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
-                      color: 'rgba(26,23,20,0.7)' }}>
-                    Abrir
-                  </button>
-                  <button onClick={() => {
-                      if (!confirm(`Tirar "${f.nomePrato}" deste plano?\n\nA ficha continua na biblioteca — só deixa de estar nesta aula.`)) return;
-                      const p = {
-                        ...planoFresco(),
-                        fichasIds: (plano.fichasIds || []).filter((id: string) => id !== f.id),
-                        atualizadoEm: new Date().toISOString(),
-                      };
-                      addOrUpdatePlanoAula(p);
-                      onPlanoActualizado(p);
-                    }}
-                    style={{ padding: '7px 12px', borderRadius: 8, fontSize: 12.5,
-                      fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-                      border: '1px solid var(--danger, #c0392b)', background: '#fff',
-                      color: 'var(--danger, #c0392b)' }}>
-                    Tirar
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            <div style={{ display: 'flex', gap: 7, marginTop: 12, flexWrap: 'wrap' }}>
-              <button onClick={() => { setFichaEmEdicao(null); setIrParaBiblioteca(false); setModulo('ficha'); }}
-                style={{ flex: '1 1 130px', padding: '11px', borderRadius: 10,
-                  border: 'none', background: 'var(--copper)', color: '#fff',
-                  fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                Nova ficha
-              </button>
-              <button onClick={() => { setFichaEmEdicao(null); setIrParaBiblioteca(true); setModulo('ficha'); }}
-                style={{ flex: '1 1 130px', padding: '11px', borderRadius: 10,
-                  border: '1.5px solid var(--copper)', background: '#fff',
-                  color: 'var(--copper)', fontSize: 13.5, fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'inherit' }}>
-                Biblioteca
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(26,23,20,0.4)', marginBottom: 10 }}>Construir esta aula</div>
-          <ModuloCard icone="🎯" titulo={`Competências (${totalComp})`} cor="var(--copper)" descricao={`${compObrigatorias.length} obrigatórias · ${compTecnicas.length} técnicas · ${compAtitudes.length} atitudes`} estado="pendente" onClick={() => setModulo('competencias')} />
-          {contextoDoPlano(plano).producao && (<>
-          <ModuloCard icone="📄" titulo="Ficha de Produção" cor="var(--copper)" descricao={temFichas ? `${fichasDoPlano.length} ficha${fichasDoPlano.length > 1 ? 's' : ''} criada${fichasDoPlano.length > 1 ? 's' : ''}` : 'Criar ficha com ingredientes, preparação e HACCP'} estado={estadoModulo('ficha') as any} onClick={() => setModulo('ficha')} />
-          <ModuloCard icone="📚" titulo="Guia de Apoio à Produção" cor="var(--sage)" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : 'Documento pedagógico com rendimentos, food cost e questões'} estado={estadoModulo('guia') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('guia')} />
-          <ModuloCard icone="🛒" titulo="Requisição" cor="#2980b9" descricao={!temFichas ? 'Cria primeiro uma Ficha de Produção' : temRequisicao ? 'Requisição criada — ver ou editar' : 'Consolidar ingredientes para a aula'} estado={estadoModulo('requisicao') as any} desativado={!temFichas} onClick={() => temFichas && setModulo('requisicao')} />
-          </>)}
-          <ModuloCard icone="✓" titulo="Validação e Avaliação" cor="#8e44ad" descricao="Validar autoavaliações dos alunos" estado={estadoModulo('validacao') as any} onClick={() => setModulo('validacao')} />
-          <ModuloCard icone="🔓" titulo="Reabrir Autoavaliação" cor="#16a085" descricao="Aluno enganou-se? Destranca para ele corrigir" estado="pendente" onClick={() => setModulo('registos')} />
-        </div>
-
-        <div style={{ padding: '14px 16px', borderRadius: 14, border: `2px solid ${publicado ? 'var(--sage)' : 'var(--copper)'}`, background: publicado ? 'var(--sage-pale)' : 'var(--copper-pale)' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, color: publicado ? 'var(--sage)' : 'var(--copper)' }}>{publicado ? '✓ Aula publicada para os alunos' : '🚀 Publicar para os alunos'}</div>
-          {publicado && plano.atualizadoEm && (
-            <div style={{ fontSize: 13, color: 'var(--sage)', marginBottom: 6, fontWeight: 600 }}>
-              Última publicação: {fmtData(plano.atualizadoEm)} às {new Date(plano.atualizadoEm).toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' })}
-            </div>
-          )}
-          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>{publicado ? 'Os alunos vêem sempre a versão mais recente.' : 'Quando estiver pronto, publica para os alunos poderem aceder.'}</div>
-          {publicado ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ padding:'8px 12px', borderRadius:8, background:'rgba(90,122,78,0.15)', fontSize:13, color:'var(--sage)', fontWeight:600, textAlign:'center' }}>
-                ✓ Visível para os alunos
-              </div>
-              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', textAlign: 'center' }}>
-                O que mudares aqui chega aos alunos sozinho — não há nada para carregar.
-              </div>
-            </div>
-          ) : (
-            <BotaoPublicar planoId={plano.id}
-              antesDePublicar={() => confirmarTurmaAoPublicar(plano.turmaId, plano.titulo)}
-              depoisDePublicar={() => onPlanoActualizado({ ...planoFresco(), ultimaAlteracao: undefined } as any)} />
-          )}
-        </div>
+      </Gaveta>
+      )}
+      <Gaveta id="responde" n={contextoDoPlano(plano).producao ? 4 : 3} titulo="O que o aluno responde"
+        resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolhe primeiro o tipo de aula'; } catch { return ''; } })()}>
+      <PassoOQueSeAvalia plano={plano} />
+        <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,
+          border:'1px solid rgba(26,23,20,0.2)', background:'#fff', fontSize:13.5, fontWeight:700, cursor:'pointer',
+          fontFamily:'inherit', color:'rgba(26,23,20,0.75)' }}>
+          Mudar as competências à mão
+        </button>
+      </Gaveta>
+      <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />
         {/* Evento pedagógico — um almoço, uma mostra. */}
         <EventoAssociador plano={plano} turmaId={turmaId} onPlanoActualizado={onPlanoActualizado} />
+      </div>
 
+      <div style={{ minWidth:0 }}>
+        <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase',
+          color:'rgba(26,23,20,0.45)', margin:'0 0 10px' }}>Na aula</div>
+      {/* Publicar está no menu do plano, à esquerda, em cima: não se repete aqui. */}
+      {blocoAbertura}
+      <NaColuna>
+      <PassoEnviar plano={plano} onPlanoActualizado={onPlanoActualizado} />
+      </NaColuna>
+      <div style={{ display:'flex', flexDirection:'column', gap:8, margin:'0 0 14px' }}>
+        {[
+          { t: 'Lista da turma', d: 'Quem entrou, a farda, as faltas e os atrasos.', ao: () => setTabInicio('turma') },
+          { t: 'Validar as autoavaliações', d: 'Confirmar a nota de cada aluno nesta aula.', ao: () => setModulo('validacao') },
+          { t: 'Reabrir a autoavaliação de um aluno', d: 'O aluno enganou-se? Destranca para ele corrigir.', ao: () => setModulo('registos') },
+        ].map(x => (
+          <button key={x.t} onClick={x.ao} style={{ display:'block', width:'100%', textAlign:'left', background:'#fff',
+            border:'1px solid rgba(26,23,20,0.14)', borderRadius:14, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit' }}>
+            <span style={{ fontSize:15, fontWeight:700, color:'var(--charcoal, #1a1714)' }}>{x.t} ›</span>
+            <span style={{ display:'block', fontSize:13.5, color:'rgba(26,23,20,0.6)', marginTop:2 }}>{x.d}</span>
+          </button>
+        ))}
+      </div>
+      {temOrganizacao(plano) && (
+        <button onClick={() => setTabInicio('turma')} style={{ display:'block', width:'100%', textAlign:'left',
+          background:'#fff', border:'1px solid rgba(107,63,160,0.35)', borderRadius:14, padding:'12px 16px',
+          margin:'0 0 14px', cursor:'pointer', fontFamily:'inherit' }}>
+          <span style={{ fontSize:15, fontWeight:700, color:'#6B3FA0' }}>Plano organizacional da aula</span>
+          <span style={{ display:'block', fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:3 }}>
+            {organizacaoDe(plano)
+              ? 'Cada aluno já tem a sua função. Toca para ver quem faz o quê e para substituir quem faltar.'
+              : plano.estado === 'publicado' ? 'Toca para distribuir as funções.' : 'As funções distribuem-se quando publicares o plano.'}
+          </span>
+        </button>
+      )}
+      {/* Mudaste o plano depois de alunos já terem respondido: eles
+          responderam às perguntas antigas. Nada lhes era reenviado. */}
+      {(() => {
+        const n = respostasAntesDaAlteracao(plano.id);
+        // Sem alteração: pode pedir na mesma (as perguntas não estavam bem, por exemplo).
+        // Quem respondeu ou já foi validado nesta aula (a validação pode estar
+        // neste aparelho sem a autoavaliação que lhe deu origem).
+        const total = new Set([
+          ...getSelecoes().filter(x => x.planoAulaId === plano.id).map(x => x.alunoId),
+          ...getValidacoes().filter(v => v.planoAulaId === plano.id
+            && String((v as any).validadoEm || '') >= String((plano as any).pedirDeNovoEm || '')).map(v => v.alunoId),
+        ]).size;
+        if (!n && total && plano.estado === 'publicado') return (
+          <div style={{ background:'#fff', border:'1px solid rgba(26,23,20,0.12)', borderRadius:14, padding:'10px 14px', margin:'0 0 14px',
+            display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <div style={{ flex:1, minWidth:200, fontSize:13.5, color:'rgba(26,23,20,0.7)' }}>
+              {total} aluno{total === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.
+              Se as perguntas não estavam bem, podes pedir que respondam outra vez.
+            </div>
+            <button onClick={() => {
+                if (!confirm(`Pedir aos ${total} alunos que respondam outra vez?\n\nA nota que já deste continua a contar até validares a nova.`)) return;
+                pedirNovaAutoavaliacao(plano.id);
+                const p = getPlanosAula().find(x => x.id === plano.id);
+                if (p) onPlanoActualizado(p);
+              }}
+              style={{ padding:'9px 14px', borderRadius:10, border:'1px solid #b5651d', background:'#fff', color:'#b5651d',
+                fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+              Pedir que respondam outra vez
+            </button>
+          </div>
+        );
+        // Com o registo do que os alunos receberam, o passo 4 («Enviar aos
+        // alunos») já mostra o que mudou e pede que respondam outra vez.
+        if (!n || (plano as any).enviadoAosAlunos) return null;
+        return (
+          <div style={{ background:'#fdf0e6', border:'1.5px solid #e8c98f', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>
+            <div style={{ fontSize:14.5, fontWeight:700, color:'#8a4a15' }}>
+              Mudaste este plano depois de {n} aluno{n === 1 ? '' : 's'} já ter{n === 1 ? '' : 'em'} respondido à autoavaliação.
+            </div>
+            <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', margin:'4px 0 10px', lineHeight:1.5 }}>
+              Responderam às perguntas antigas. Se pedires, a autoavaliação volta a abrir para eles, com as perguntas novas,
+              e voltas a validar. Também os que já validaste: a nota que deste continua a contar até validares a nova.
+            </div>
+            <button onClick={() => {
+                if (!confirm(`Pedir a ${n} aluno${n === 1 ? '' : 's'} que respondam outra vez?`)) return;
+                pedirNovaAutoavaliacao(plano.id);
+                const p = getPlanosAula().find(x => x.id === plano.id);
+                if (p) onPlanoActualizado(p);
+              }}
+              style={{ padding:'10px 16px', borderRadius:10, border:'none', background:'#b5651d', color:'#fff',
+                fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+              Pedir a estes alunos que respondam outra vez
+            </button>
+          </div>
+        );
+      })()}
+      {(plano as any).pedirDeNovoEm && (
+        <div style={{ fontSize:13, color:'#3f5e34', background:'#eef4eb', borderRadius:10, padding:'8px 12px', margin:'0 0 14px' }}>
+          ✓ Pediste aos alunos que respondessem outra vez ({new Date((plano as any).pedirDeNovoEm).toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}). Veem as perguntas novas quando abrirem a aula.
+          {/* Abre o WhatsApp com a mensagem escrita: o professor escolhe o grupo da turma e envia. */}
+          <a href={`https://wa.me/?text=${encodeURIComponent(
+              `Olá, ${plano.turmaId}! Mudei as perguntas da autoavaliação da aula «${plano.titulo}» `
+              + `(${String(plano.data).slice(8, 10)}/${String(plano.data).slice(5, 7)}). `
+              + 'As perguntas agora são mais claras e é a vossa oportunidade de mostrar o que fizeram bem. '
+              + 'Abram a aplicação Avaliação ECL: aparece logo no Início e leva 2 minutos. '
+              + 'Até responderem, conta a nota que já tinham. Obrigada!')}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{ display:'inline-block', marginTop:8, padding:'9px 14px', borderRadius:10, background:'#25D366',
+              color:'#fff', fontSize:13.5, fontWeight:700, textDecoration:'none' }}>
+            Avisar a turma no WhatsApp
+          </a>
+        </div>
+      )}
+      {eventoForaDoHorario(plano) && (
+        <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
+          <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
+        </div>
+      )}
+      </div>
+      </div>
       </>)}
     </div>
   );
