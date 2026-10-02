@@ -8,6 +8,7 @@ import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO, VAI_PARA_A_BASE }
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
+import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
@@ -7026,6 +7027,26 @@ export function anularPlanoAula(planoId: string): void {
 export function atualizarPlano(planoId: string, alteracoes: Partial<PlanoAula>): PlanoAula | null {
   const p = getPlanosAula().find(x => x.id === planoId);
   if (!p) return null;
+  // Mudou a unidade: o manual e as competências acompanham (Rosa, out/2026).
+  // Saem os indicadores do manual da unidade antiga (e as retiradas deles);
+  // numa aula dada pelo professor entra o próximo conteúdo do manual novo;
+  // num trabalho com tema, fica sem nada marcado (os alunos escolhem entre todos).
+  if (alteracoes.ucId !== undefined && alteracoes.ucId !== p.ucId) {
+    const x: any = p;
+    const mNovo = manualDaUC(alteracoes.ucId);
+    const doNovo = (id: string) => !!mNovo && String(id).startsWith(`KNW-P-M-${mNovo.ficheiro}-`);
+    const doManual = (id: string) => String(id).startsWith('KNW-P-M-');
+    const ficam = ((x.conhecimentosProf || []) as any[]).filter(k => !doManual(k.id) || doNovo(k.id));
+    const tri: any = x.triagemAula;
+    const tipo = String(x.tipoPlanAula || '').replace('_obr', '');
+    if (!ficam.some(k => doManual(k.id)) && (tipo === 'teorico' || tipo === 'misto') && !(tri && (tri.modo === 'grupo' || tri.modo === 'individual'))) {
+      const prox = proximoConteudo(getPlanosAula(), p.turmaId, alteracoes.ucId, p.id);
+      if (prox) ficam.push(...indicadoresDoConteudo(prox.ficheiro, prox.capitulo));
+    }
+    (alteracoes as any).conhecimentosProf = ficam;
+    (alteracoes as any).compRemovidas = ((x.compRemovidas || []) as string[]).filter(id => !doManual(id) || doNovo(id));
+    (alteracoes as any).compAdicionadas = ((x.compAdicionadas || []) as string[]).filter(id => !doManual(id) || doNovo(id));
+  }
   const novo = { ...p, ...alteracoes, atualizadoEm: new Date().toISOString() } as PlanoAula;
   addOrUpdatePlanoAula(novo);
   if (alteracoes.ucId && alteracoes.ucId !== p.ucId) {
