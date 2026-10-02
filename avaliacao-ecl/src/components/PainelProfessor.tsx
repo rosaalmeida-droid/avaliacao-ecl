@@ -1,13 +1,13 @@
 // ============================================================
 // Painel inicial do professor.
 //
-// Mesmo princípio do aluno: grelha de blocos de cor com ícone e uma
-// palavra. A cor é bordeaux, para o professor saber num relance em que
-// perfil está — o aluno é violeta.
-//
-// São dezassete destinos, o que numa grelha corrida seria uma parede.
-// Ficam agrupados por momento de uso: o que se faz antes da aula, o que
-// se faz depois, e o que raramente se toca.
+// (out/2026) Curto, para o professor saber o que fazer num relance:
+//   1. a aula de hoje, com o botão da etapa em que está;
+//   2. a unidade em curso, numa linha;
+//   3. o que está à espera (por validar, recuperações) — só quando há;
+//   4. quatro atalhos. O resto está no menu (☰).
+// Antes repetiam-se aqui, em blocos grandes, os 16 destinos do menu.
+// A cor é bordeaux, para o professor saber em que perfil está — o aluno é violeta.
 // ============================================================
 
 import React from 'react';
@@ -71,47 +71,18 @@ interface Grupo {
 // Os mesmos nomes e a mesma ordem do menu lateral (NAV, no Header).
 // Fichas técnicas saiu: abria o mesmo ecrã que a Biblioteca. Guiões e
 // requisições criam-se dentro de cada plano; aqui ficam em "Mais".
-function grupos(pendentes: { validar: number; recuperacoes: number }): Grupo[] {
-  return [
-    {
-      titulo: 'Dia a dia',
-      destinos: [
-        { id: 'planos',  label: 'Planos de aula', icone: I.plano },
-        { id: 'abrir_aula', label: 'Abrir a aula', icone: I.abrir },
-        { id: 'eventos', label: 'Atividades e concursos', icone: I.eventos },
-      ],
-    },
-    {
-      titulo: 'Avaliar',
-      destinos: [
-        { id: 'validacao', label: 'Validar', icone: I.validar,
-          sub: pendentes.validar > 0 ? `${pendentes.validar} por validar` : undefined },
-        { id: 'avaliacao_uc', label: 'Notas da UC', icone: I.notas },
-        { id: 'mapa_competencias', label: 'Mapa da turma', icone: I.mapa },
-        { id: 'gestao_recuperacoes', label: 'Recuperações', icone: I.recuperar,
-          sub: pendentes.recuperacoes > 0 ? `${pendentes.recuperacoes} em curso` : undefined },
-      ],
-    },
-    {
-      titulo: 'Consultar',
-      destinos: [
-        { id: 'biblioteca',    label: 'Biblioteca de fichas', icone: I.biblioteca },
-        { id: 'manual',        label: 'Manual do cozinheiro', icone: I.manual },
-        { id: 'manuais_aluno', label: 'Manuais do aluno', icone: I.manual },
-        { id: 'cronograma',    label: 'Cronograma', icone: I.cronograma },
-      ],
-    },
-  ];
-}
-
-/** O que raramente se usa no dia a dia — fica atrás de "Mais". */
-const MAIS: Destino[] = [
-  { id: 'guia',            label: 'Guiões', icone: I.guia },
-  { id: 'requisicao',      label: 'Requisições', icone: I.requisicao },
-  { id: 'orcamentos',      label: 'Orçamentos', icone: I.orcamento },
-  { id: 'historial',       label: 'Historial', icone: I.historial },
-  { id: 'ajuda',           label: 'Ajuda', icone: I.ajuda },
+/** Os atalhos do Início: o que se usa em todas as aulas. */
+const ATALHOS: Destino[] = [
+  { id: 'planos',       label: 'Planos de aula', icone: I.plano },
+  { id: 'abrir_aula',   label: 'Abrir a aula',   icone: I.abrir },
+  { id: 'validacao',    label: 'Validar',        icone: I.validar },
+  { id: 'avaliacao_uc', label: 'Notas da UC',    icone: I.notas },
 ];
+
+const botaoPendente: React.CSSProperties = {
+  minHeight: 44, padding: '8px 14px', borderRadius: 22, border: 'none', cursor: 'pointer',
+  background: '#FDF0E6', color: '#8A4B12', fontSize: 14.5, fontWeight: 700, fontFamily: 'inherit',
+};
 
 /** A aula de hoje e a etapa em que está. O botão muda com a etapa. */
 export interface AulaHojeProf {
@@ -130,30 +101,6 @@ const ETAPAS: { id: AulaHojeProf['etapa']; label: string; botao: string }[] = [
   { id: 'turma',    label: 'Turma na aula', botao: 'Ver a turma' },
   { id: 'validar',  label: 'Validar',       botao: 'Validar' },
 ];
-
-function Cartao({ d, onAbrir }: { d: Destino; onAbrir: (v: VistaProf) => void }) {
-  return (
-    <button
-      onClick={() => onAbrir(d.id)}
-      style={{
-        background: C.bordeaux, border: 'none', borderRadius: 14,
-        padding: '22px 10px', minHeight: 120, width: '100%',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 12,
-        cursor: 'pointer', fontFamily: 'inherit', color: '#fff',
-        WebkitTapHighlightColor: 'transparent',
-      }}
-    >
-      {d.icone()}
-      <span style={{ fontSize: 15, fontWeight: 500, textAlign: 'center', lineHeight: 1.25 }}>
-        {d.label}
-      </span>
-      {d.sub && (
-        <span style={{ fontSize: 12.5, color: C.bordeauxClaro, textAlign: 'center' }}>{d.sub}</span>
-      )}
-    </button>
-  );
-}
 
 interface Props {
   nomeProfessor: string;
@@ -183,62 +130,11 @@ export function PainelProfessor({
    *  o mês, quando é a primeira coisa que quer ver. */
   calendario?: React.ReactNode;
 }) {
-  const gs = grupos({ validar: porValidar, recuperacoes: recuperacoesEmCurso });
-  const [verMais, setVerMais] = React.useState(false);
   const iEtapa = aulaHoje ? ETAPAS.findIndex(e => e.id === aulaHoje.etapa) : -1;
 
   return (
     <div style={{ background: C.fundo, minHeight: '100%', padding: 14 }}>
       <div style={{ maxWidth: calendario ? 1060 : 720, margin: '0 auto' }}>
-
-        {/* Quem sou */}
-        <div style={{
-          background: C.branco, borderRadius: 16, boxShadow: C.sombra,
-          padding: '14px 16px', marginBottom: 14,
-          display: 'flex', alignItems: 'center', gap: 13,
-        }}>
-          <div style={{
-            width: 46, height: 46, borderRadius: '50%', background: C.bordeauxSuave,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#B07C88', flexShrink: 0,
-          }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z" />
-            </svg>
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.tinta, lineHeight: 1.2 }}>
-              {nomeProfessor || 'Professor'}
-            </div>
-            <div style={{ fontSize: 15, color: C.texto }}>{turmaNome || turmaId}</div>
-          </div>
-        </div>
-
-        {/* A unidade em curso */}
-        <div style={{
-          background: C.bordeauxSuave, borderRadius: 16,
-          padding: '15px 17px', marginBottom: 18,
-          borderLeft: `5px solid ${C.bordeaux}`,
-        }}>
-          <div style={{
-            fontSize: 13, fontWeight: 700, letterSpacing: '0.08em',
-            textTransform: 'uppercase', color: C.bordeaux,
-          }}>
-            {ucId || 'Sem unidade em curso'}
-          </div>
-          {ucNome && (
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.tinta, marginTop: 4, lineHeight: 1.3 }}>
-              {ucNome}
-            </div>
-          )}
-          <div style={{ fontSize: 15, color: C.texto, marginTop: 7 }}>
-            {aulasHoje > 0
-              ? `${aulasHoje} aula${aulasHoje > 1 ? 's' : ''} hoje`
-              : proximasAulas > 0
-                ? `Sem aulas hoje · ${proximasAulas} marcada${proximasAulas > 1 ? 's' : ''} para os próximos dias`
-                : 'Sem aulas marcadas'}
-          </div>
-        </div>
 
         {/* A aula de hoje. O aluno tinha um botão grande para a aula; o
             professor tinha de ir a Planos, encontrar o plano e só lá
@@ -285,32 +181,58 @@ export function PainelProfessor({
           </div>
         )}
 
+        {/* A unidade em curso, numa linha. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '4px 10px', marginBottom: 14,
+          padding: '10px 14px', borderRadius: 12, background: C.bordeauxSuave, borderLeft: `4px solid ${C.bordeaux}` }}>
+          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', color: C.bordeaux }}>{ucId || 'Sem unidade em curso'}</span>
+          {ucNome && <span style={{ fontSize: 15, fontWeight: 700, color: C.tinta }}>{ucNome}</span>}
+          <span style={{ fontSize: 14, color: C.texto }}>
+            {aulasHoje > 0
+              ? `${aulasHoje} aula${aulasHoje > 1 ? 's' : ''} hoje`
+              : proximasAulas > 0
+                ? `Sem aulas hoje · ${proximasAulas} marcada${proximasAulas > 1 ? 's' : ''} para os próximos dias`
+                : 'Sem aulas marcadas'}
+          </span>
+        </div>
+
+        {/* O que está à espera do professor — só aparece quando há. */}
+        {(porValidar > 0 || recuperacoesEmCurso > 0) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            {porValidar > 0 && (
+              <button onClick={() => onAbrir('validacao')} style={{ ...botaoPendente }}>
+                {porValidar} autoavaliaç{porValidar === 1 ? 'ão' : 'ões'} por validar →
+              </button>
+            )}
+            {recuperacoesEmCurso > 0 && (
+              <button onClick={() => onAbrir('gestao_recuperacoes')} style={{ ...botaoPendente }}>
+                {recuperacoesEmCurso} recuperaç{recuperacoesEmCurso === 1 ? 'ão' : 'ões'} em curso →
+              </button>
+            )}
+          </div>
+        )}
+
         <div style={{
           display: calendario ? 'grid' : 'block',
-          gridTemplateColumns: calendario ? 'minmax(0, 1fr) minmax(300px, 380px)' : undefined,
+          gridTemplateColumns: calendario ? 'repeat(auto-fit, minmax(300px, 1fr))' : undefined,
           gap: 20, alignItems: 'start',
         }}>
         <div>
-        {[...gs, { titulo: 'Mais', destinos: verMais ? MAIS : [] }].filter(g => g.titulo !== 'Mais' || verMais).map(g => (
-          <div key={g.titulo} style={{ marginBottom: 20 }}>
-            <div style={{
-              fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
-              letterSpacing: '0.07em', color: C.suave, marginBottom: 10, paddingLeft: 2,
-            }}>
-              {g.titulo}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 12 }}>
-              {g.destinos.map(d => <Cartao key={d.id} d={d} onAbrir={onAbrir} />)}
-            </div>
+          {/* Atalhos para o que se usa todos os dias. O resto está no menu
+              (☰): antes repetiam-se aqui os 16 destinos do menu, em blocos
+              grandes, e a aula de hoje perdia-se no meio (Rosa, out/2026). */}
+          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em',
+            color: C.suave, marginBottom: 10, paddingLeft: 2 }}>Atalhos</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10 }}>
+            {ATALHOS.map(d => (
+              <button key={d.id} onClick={() => onAbrir(d.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, padding: '8px 12px', borderRadius: 12,
+                border: `1px solid ${C.bordeauxClaro}`, background: C.branco, color: C.bordeaux, cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 15, fontWeight: 700, textAlign: 'left', boxShadow: C.sombra }}>
+                <span style={{ display: 'flex', flexShrink: 0, transform: 'scale(0.7)', margin: '-6px' }}>{d.icone()}</span>
+                <span style={{ minWidth: 0 }}>{d.label}</span>
+              </button>
+            ))}
           </div>
-        ))}
-        <button onClick={() => setVerMais(v => !v)} style={{
-          width: '100%', minHeight: 48, borderRadius: 12, border: `1px dashed ${C.bordeauxClaro}`,
-          background: 'transparent', color: C.texto, fontSize: 14.5, fontWeight: 600,
-          cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20,
-        }}>
-          {verMais ? 'Menos' : 'Mais… (guiões, requisições, orçamentos, historial, ajuda)'}
-        </button>
         </div>
 
         {/* O calendário, à direita. */}
