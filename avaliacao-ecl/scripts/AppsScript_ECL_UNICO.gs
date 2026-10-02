@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v21.1';
+var VERSAO = 'ECL único v21.2';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1980,12 +1980,37 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   try { f.setTabColor(COR_TURMA); } catch (e) {}
 }
 
+/**
+ * (v21.2) Corre-se à mão, uma vez: apaga as folhas antigas de cada aluno
+ * («12_Nome…», da v20 para trás) e os separadores «TURMA …» da v20. Estão
+ * agora no separador de cada turma, e os dados continuam nas folhas de dados
+ * (AVALIACOES, PRESENCAS…). ANTES de apagar, faz uma cópia do ficheiro
+ * inteiro na pasta das cópias de segurança (Rosa, out/2026).
+ */
+function apagarFolhasAntigas() {
+  var ss = ficheiro();
+  var pasta = pastaDasCopias();
+  var agora = Utilities.formatDate(new Date(), 'Europe/Lisbon', 'yyyy-MM-dd HH.mm');
+  DriveApp.getFileById(ss.getId()).makeCopy('Avaliação ECL — antes de apagar as folhas antigas — ' + agora, pasta);
+  Logger.log('Cópia de segurança feita na pasta «' + PASTA_COPIAS + '».');
+  var apagadas = [];
+  ss.getSheets().forEach(function (f) {
+    var n = f.getName();
+    if (/^\d+_/.test(n) || n.indexOf('TURMA ') === 0) {
+      try { ss.deleteSheet(f); apagadas.push(n); } catch (e) { Logger.log('Não apaguei ' + n + ': ' + e); }
+    }
+  });
+  Logger.log('Apagadas ' + apagadas.length + ' folhas: ' + apagadas.join(', '));
+  atualizarFolhasDasTurmas();
+  Logger.log('Separadores das turmas refeitos.');
+}
+
 /** Põe as turmas à frente e esconde o resto (não apaga). Os separadores
  *  «TURMA …» da v20 saem: foram substituídos por estes. */
 function arrumarSeparadores(ss, nomesTurmas) {
   ss.getSheets().forEach(function (f) {
     var n = f.getName();
-    if (n.indexOf('TURMA ') === 0 && nomesTurmas.indexOf(n) < 0) { try { ss.deleteSheet(f); } catch (e) {} }
+    if (n.indexOf('TURMA ') === 0 && nomesTurmas.indexOf(n) < 0) { try { ss.deleteSheet(f); } catch (e) { Logger.log('Não apaguei ' + n + ': ' + e); } }
   });
   var visiveis = nomesTurmas.concat(VISIVEIS_SEMPRE);
   var pos = 1;
@@ -1995,7 +2020,7 @@ function arrumarSeparadores(ss, nomesTurmas) {
     try { f.showSheet(); ss.setActiveSheet(f); ss.moveActiveSheet(pos++); } catch (e) {}
   });
   ss.getSheets().forEach(function (f) {
-    if (visiveis.indexOf(f.getName()) < 0 && !f.isSheetHidden()) { try { f.hideSheet(); } catch (e) {} }
+    if (visiveis.indexOf(f.getName()) < 0 && !f.isSheetHidden()) { try { f.hideSheet(); } catch (e) { Logger.log('Não escondi ' + f.getName() + ': ' + e); } }
   });
   var primeira = ss.getSheetByName(nomesTurmas[0] || 'LEIA-ME');
   if (primeira) try { ss.setActiveSheet(primeira); } catch (e) {}
