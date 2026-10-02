@@ -101,8 +101,12 @@ const grelha = (min = 150): React.CSSProperties => ({ display: 'grid', gridTempl
 // 1. A LISTA
 // ══════════════════════════════════════════════════════════════
 
-export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano }: {
+export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano, semAvaliacao }: {
   turmaId?: string; nomeProfessor?: string;
+  /** Área «Eventos e orçamentos»: sem a avaliação dos alunos nem concursos e
+   *  atividades (são planos de aula). Por omissão, desligado: o professor e a
+   *  coordenação veem tudo como antes. */
+  semAvaliacao?: boolean;
   /** Concurso ou outra atividade: cria-se o plano de avaliação (tipo de atividade). */
   onNovoPlano?: (tipoAtividade: string) => void;
   onAbrirPlano?: (plano: any) => void;
@@ -166,7 +170,7 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano }
   const ev = aberto ? eventos.find(e => e.id === aberto) : null;
   if (ev) {
     return fundo(<PainelEvento evento={ev} onVoltar={() => setAberto(null)} onGuardar={guardar}
-      onEditar={() => setEmTriagem(ev)} nomeProfessor={nomeProfessor}
+      onEditar={() => setEmTriagem(ev)} nomeProfessor={nomeProfessor} semAvaliacao={semAvaliacao}
       onApagar={() => { apagarEvento(ev.id); setAberto(null); setVersao(v => v + 1); }} />);
   }
 
@@ -239,7 +243,7 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano }
         );
       })}
 
-      {outras.length > 0 && (<>
+      {!semAvaliacao && outras.length > 0 && (<>
         <div style={rotulo}>Concursos e outras atividades</div>
         {outras.map(p => {
           const turma = modoParticipacao(p) === 'turma';
@@ -272,7 +276,7 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano }
         </details>
       )}
 
-      {antigos > 0 && (
+      {!semAvaliacao && antigos > 0 && (
         <button onClick={() => setVerAntigos(true)} style={{ background: 'none', border: 'none', color: C.suave, fontSize: 13.5,
           textDecoration: 'underline', cursor: 'pointer', marginTop: 14, fontFamily: 'inherit' }}>
           Eventos do ecrã antigo, guardados neste aparelho ({antigos})
@@ -560,8 +564,9 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
 }
 const p0Modo = (p: any) => p?.modoParticipacao === 'inscricao' ? ' (só os inscritos que aceitares)' : ' (a turma toda)';
 
-function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomeProfessor }: {
+function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomeProfessor, semAvaliacao }: {
   evento: EventoECL; onVoltar: () => void; onGuardar: (e: EventoECL) => void; onEditar: () => void; onApagar: () => void; nomeProfessor?: string;
+  semAvaliacao?: boolean;
 }) {
   const [secao, setSecao] = useState<Secao | null>(null);
   const e = evento;
@@ -649,7 +654,7 @@ function PainelEvento({ evento, onVoltar, onGuardar, onEditar, onApagar, nomePro
         </div>
       </div>
 
-      <AvaliacaoDosAlunos e={e} nomeProfessor={nomeProfessor} />
+      {!semAvaliacao && <AvaliacaoDosAlunos e={e} nomeProfessor={nomeProfessor} />}
 
       {/* AGORA — uma coisa de cada vez, responde-se aqui */}
       {acao ? <CartaoAgora e={e} acao={acao} mudar={mudar} irPara={irPara} /> : (

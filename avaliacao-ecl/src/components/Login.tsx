@@ -6,6 +6,8 @@ import { LOGO_ECL as logoEcl } from '../logo_ecl';
 import { PROFESSORES, professorPorNome } from '../professores';
 
 const PIN_COORDENADORA = '1006';
+/** Código comum da área «Eventos e orçamentos» (provisório — a Rosa escolhe o definitivo). */
+const CODIGO_EVENTOS = '2026';
 
 export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string, turmaId?: string, nome?: string) => void }) {
   const [modo, setModo] = useState<Perfil | null>(null);
@@ -56,6 +58,13 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
   }
 
   function entrarStaff(perfil: Exclude<Perfil, 'aluno'>) {
+    // Eventos e orçamentos: só o código comum, sem nome (Rosa, out/2026).
+    // O que se fizer aqui fica registado como «Eventos e orçamentos».
+    if (perfil === 'eventos') {
+      if (pin !== CODIGO_EVENTOS) { setErro('Código incorreto.'); return; }
+      onLogin('eventos', undefined, undefined, 'Eventos e orçamentos');
+      return;
+    }
     if (perfil === 'coordenadora') {
       if (pin !== PIN_COORDENADORA) { setErro('PIN incorreto.'); return; }
       onLogin('coordenadora');
@@ -95,6 +104,9 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
             <button className="btn btn-ghost btn-block btn-lg" onClick={() => setModo('coordenadora')}>
               Sou Coordenadora
             </button>
+            <button className="btn btn-ghost btn-block btn-lg" onClick={() => setModo('eventos')}>
+              Eventos e orçamentos
+            </button>
           </div>
           <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12.5, color: 'rgba(26,23,20,0.3)' }}>
             Escola de Comércio de Lisboa © 2026
@@ -110,7 +122,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
         <Cabecalho />
         <div className="card">
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 16, color: 'var(--charcoal)' }}>
-            {modo === 'aluno' ? 'Login do Aluno' : modo === 'professor' ? 'Login do Professor' : 'Login da Coordenadora'}
+            {modo === 'aluno' ? 'Login do Aluno' : modo === 'professor' ? 'Login do Professor' : modo === 'eventos' ? 'Eventos e orçamentos' : 'Login da Coordenadora'}
           </div>
 
           {modo === 'aluno' && (
@@ -196,6 +208,20 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
               </Field>
               {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
               <Button block onClick={() => entrarStaff('coordenadora')}>Entrar</Button>
+            </>
+          )}
+
+          {modo === 'eventos' && (
+            <>
+              <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.65)', marginBottom: 12, lineHeight: 1.5 }}>
+                Eventos, orçamentos, fichas técnicas e requisições.
+              </div>
+              <Field label="Código">
+                <input className="input" type="password" inputMode="numeric" value={pin} onChange={e => setPin(e.target.value)} placeholder="••••"
+                  onKeyDown={e => e.key === 'Enter' && entrarStaff('eventos')} />
+              </Field>
+              {erro && <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 10 }}>{erro}</div>}
+              <Button block onClick={() => entrarStaff('eventos')}>Entrar</Button>
             </>
           )}
 

@@ -43,7 +43,9 @@ export const MINIMO_POR_ANO: Record<1 | 2 | 3, number> = {
   3: 12,
 };
 
-export type Perfil = 'aluno' | 'professor' | 'coordenadora';
+// 'eventos': quem trata de eventos, orçamentos, fichas e requisições, sem
+// planos de aula nem alunos (Rosa, out/2026). Entra com um código comum.
+export type Perfil = 'aluno' | 'professor' | 'coordenadora' | 'eventos';
 
 export type ModoTrabalho = 'individual' | 'grupo';
 

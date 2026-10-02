@@ -403,75 +403,70 @@ const SECCOES: Seccao[] = [
   {
     id: 'plano',
     titulo: 'Construir um plano de aula',
-    resumo: 'Nada é obrigatório, mas cada peça traz alguma coisa.',
+    resumo: 'Seis passos curtos; a aplicação deduz o resto e mostra tudo no fim.',
     conteudo: (
       <>
-        <H>O que um plano pode ter</H>
-        <Tabela
-          cabecalho={['Peça', 'Obrigatória?', 'O que traz']}
-          linhas={[
-            ['Ficha técnica', 'Não', 'As competências técnicas, os ingredientes e os alergénios'],
-            ['Guião de produção', 'Não', 'O passo a passo para o aluno seguir sozinho'],
-            ['Requisição', 'Não', 'O pedido ao economato e o custo da aula'],
-            ['Competências', 'Sim', 'Sem fichas, escolhes tu quais avaliar'],
-          ]}
-        />
-
-        <H>Farda/higiene e registos: tirar de uma aula</H>
+        <H>Criar o plano, passo a passo</H>
         <P>
-          São obrigatórias em todas as aulas práticas, mas há aulas onde não
-          fazem sentido. Ao criar o plano, ou depois em <b>Competências</b>
-          (<b>Obrigatória · tirar desta aula</b>), podes tirá-las. O aluno
-          deixa de ter esses passos nessa aula.
+          Em <b>Planos de aula › + Novo plano</b> abre-se uma janela de cada vez. Criar e
+          <b> Editar o plano</b> são a mesma coisa: ao mudar um plano tens tudo outra vez,
+          como se fosse novo (sumário, manual, perguntas).
         </P>
-
-        <Destaque>
-          <b>Sem ficha técnica</b>, a aula continua a funcionar: as
-          obrigatórias e as atitudes são avaliadas na mesma. O que tens de
-          fazer é escolher à mão as competências técnicas, se quiseres
-          avaliar alguma.
+        <Passos itens={[
+          <><b>Quando</b> — o dia e as horas (vêm do horário da turma).</>,
+          <><b>Unidade</b> — a UC ou UFCD. Mudar a unidade muda também o manual e as competências.</>,
+          <><b>Que aula é</b> — prática, mista, teórica ou só de atitudes.</>,
+          <><b>Como é a aula</b> — perguntas numeradas, só as que fazem falta: onde é, se trabalham em grupo, se continua a aula anterior e em que fase está o trabalho (investigação, desenvolvimento, receita e ficha técnica, menu, requisição, apresentação escrita, oral, digital ou prática).</>,
+          <><b>Conteúdos e sumário</b> — o índice do Manual do Aluno: <b>Incluir o manual todo</b>, uma parte, um capítulo ou só alguns pontos. O sumário escreve-se sozinho a partir do que escolheste.</>,
+          <><b>Confirmar</b> — «O plano fica assim»: como é a aula, o manual, o sumário e o que o aluno responde, cada um com <b>mudar</b>.</>,
+        ]} />
+        <Destaque cor="verde">
+          Enganaste-te nas perguntas? <b>↺ Recomeçar este plano do zero</b> volta ao início sem apagar o plano.
         </Destaque>
 
-        <H>Mudar um plano já feito</H>
+        <H>O que a aplicação deduz</H>
         <P>
-          Podes a qualquer momento acrescentar fichas, tirar fichas,
-          escrever ou apagar o guião, e refazer a requisição. Se
-          acrescentares uma ficha depois de a requisição estar feita, a
-          aplicação avisa que os ingredientes mudaram.
+          Da resposta «como é a aula» saem as perguntas da autoavaliação (numa aula teórica não se
+          pergunta pela farda nem pelo KitchenFlow), os critérios de cada fase do trabalho e os pesos
+          da nota. A linha <b>«Deduzido … não é assim? mudar»</b> mostra o que a aplicação concluiu.
         </P>
 
-        <H>Corrigir um plano</H>
+        <H>Fichas, guião e requisição</H>
         <P>
-          No menu do plano, <b>Editar o plano</b> muda a data, as horas, o tipo
-          de aula, a unidade e o título — a qualquer momento, mesmo com a aula
-          já aberta e os alunos avaliados. As avaliações ficam; se mudares a
-          unidade, passam a contar para a nova. As fichas mudam-se no Preparar.
+          Estão sempre no plano, no campo <b>Fichas, guião e requisição</b>. Nas aulas sem cozinha
+          a aplicação não as pede, mas podes juntá-las. Se mudares as fichas depois de fazer a
+          requisição, a aplicação avisa que a requisição está desatualizada.
+        </P>
+        <Destaque>
+          Ao colar a resposta da IA numa ficha, confirma os ingredientes antes da requisição. Se uma
+          ficha tiver tempos («3 min») no lugar dos ingredientes, a requisição deixa-os de fora e
+          avisa qual é a ficha a corrigir.
+        </Destaque>
+
+        <H>Competências</H>
+        <P>
+          Com o manual todo, aparecem todas as competências de conhecimentos, por parte e por
+          capítulo. O total mostra duas contas: <b>No plano</b> (todas) e <b>Cada aluno responde a</b>
+          (as do capítulo que ele escolhe, mais as obrigatórias e as atitudes).
+        </P>
+        <P>
+          O que tirares fica em <b>Retiradas desta aula</b>, com <b>+ Incluir</b> e <b>Repor todas</b>.
+          <b> Repor as competências da aula</b> volta à lista completa. As obrigatórias (farda,
+          higiene e segurança alimentar, assiduidade) tiram-se com <b>Obrigatória · tirar desta aula</b>
+          e deixam de contar.
         </P>
 
-        <H>Arquivar um plano</H>
+        <H>Arquivar e eliminar</H>
         <P>
-          O professor arquiva: o plano sai do calendário e fica no Arquivo, de
-          onde o podes repor. Se a aula já tem trabalho dos alunos — entradas,
-          autoavaliações, validações — a aplicação mostra-te o que existe e
-          deixa-te <b>corrigir o plano e manter as avaliações</b> (enganos na
-          ficha, na unidade ou na data) ou arquivá-lo.
-        </P>
-        <P>
-          <b>Eliminar para sempre é só com a coordenadora</b> (Dados e
-          segurança): planos arquivados, fichas de produção e a cópia de
-          segurança. Se a aula não devia ter contado, pede-lhe que a anule.
+          O professor arquiva: o plano sai do calendário e fica no Arquivo, de onde o podes repor.
+          <b> Eliminar para sempre é só com a coordenadora</b> (Dados e segurança).
         </P>
 
         <H>Publicar</H>
         <P>
-          Ao publicar, a aplicação pergunta para que turma é: só os alunos
-          dessa turma veem a aula. Cada professor entra com o seu PIN e só
-          tem as suas turmas; quem tem várias muda de turma no menu.
-        </P>
-        <P>
-          <b>Enquanto não publicares, os alunos não veem a aula</b> — nem
-          no calendário, nem nas próximas aulas. Podes publicar mesmo sem
-          ficha associada e acrescentá-la depois.
+          A aplicação pergunta para que turma é. <b>Enquanto não publicares, os alunos não veem a
+          aula.</b> Depois de publicar aparece <b>A enviar…</b> e, quando chega, <b>Chegou</b>: a
+          partir daí os telemóveis dos alunos já o têm.
         </P>
       </>
     ),
@@ -481,54 +476,52 @@ const SECCOES: Seccao[] = [
   {
     id: 'aula',
     titulo: 'Durante a aula',
-    resumo: 'Abrir a aula, ver a turma, resolver PINs.',
+    resumo: 'Abrir a aula, ver a turma, grupos, telemóveis e PINs.',
     conteudo: (
       <>
+        <H>O Início</H>
+        <P>
+          Em cima está <b>a aula de hoje</b>, com o botão da etapa em que vais: preparar, publicar,
+          abrir a aula, ver a turma, validar. Por baixo, a unidade em curso, o que está por validar
+          e quatro atalhos. O resto está no menu <b>☰</b>.
+        </P>
+
         <H>Abrir a aula</H>
         <P>
-          Os alunos só conseguem registar a entrada depois de <b>abrires a
-          aula</b>. Antes disso podem consultar o plano, a ficha e o
-          guião, mas nada fica registado.
-        </P>
-        <P>
-          É a partir da abertura que contam os 10 minutos de tolerância.
+          Os alunos só registam a entrada depois de <b>abrires a aula</b>; é daí que contam os 10
+          minutos de tolerância. Por baixo aparece se a abertura <b>chegou aos alunos</b> — fica
+          verde logo que está na base de dados.
         </P>
 
         <H>A vista de turma</H>
         <P>
-          No menu do plano, <b>Turma</b> mostra numa lista: quem entrou e a
-          que horas, quem tem farda incompleta e o que falta, quem fez os
-          registos do KitchenFlow, e quem já se autoavaliou.
+          <b>Turma</b>, no menu do plano: quem entrou e a que horas, a farda, os registos do
+          KitchenFlow e quem já se autoavaliou. As decisões de falta fazem-se daí.
         </P>
+
+        <H>Grupos e líder do KitchenFlow</H>
         <P>
-          As decisões de falta fazem-se daí, sem sair do ecrã.
+          Os alunos formam os grupos no telemóvel e tu vês, mudas e validas. Num grupo, os registos
+          de HACCP fazem-se uma vez: escolhes o líder e podes trocar se faltar. Os grupos e o líder
+          chegam na hora aos telemóveis.
         </P>
 
         <H>O PIN e o telemóvel</H>
         <P>
-          Na primeira entrada, o PIN do aluno fica ligado ao telemóvel onde
-          ele entrou. Nas seguintes, só esse telemóvel entra com esse PIN — um
-          colega que o saiba não consegue entrar noutro.
+          Na primeira entrada, o PIN fica ligado ao telemóvel do aluno. Se o telemóvel parecer outro
+          — o iPhone apaga a memória do site ao fim de 7 dias sem o abrir, e abrir o link pelo
+          WhatsApp ou pelo Instagram conta como outro browser — o aluno <b>entra na mesma com o PIN
+          certo</b> e o PIN passa para esse telemóvel.
         </P>
         <Destaque>
-          Se o aluno mudar de telemóvel, limpar o browser ou usar uma janela
-          anónima, fica recusado. <b>Liberta-o</b> no separador <b>PIN temp.</b>{' '}
-          do plano — a próxima entrada volta a ligar. Não experimentes a
-          aplicação com o PIN de um aluno no teu computador: o PIN fica ligado
-          a ele.
+          Nesse caso recebes um aviso em <b>Avisos</b>: «… entrou noutro telemóvel ou browser». Se
+          não foi o próprio aluno, muda-lhe o PIN no separador <b>PIN temp.</b> do plano.
         </Destaque>
 
         <H>Aluno sem PIN</H>
         <P>
-          Se um aluno esqueceu o PIN e não consegue entrar, gera-lhe um
-          PIN temporário no separador <b>PIN temp.</b> dentro do plano. O
-          telemóvel fica libertado ao mesmo tempo.
-        </P>
-
-        <H>Líder do KitchenFlow</H>
-        <P>
-          Num grupo, os registos de HACCP fazem-se uma vez. Escolhes quem
-          é o líder e podes trocar se ele faltar.
+          Se o aluno esqueceu o PIN, gera-lhe um PIN temporário no separador <b>PIN temp.</b>
+          dentro do plano.
         </P>
       </>
     ),
@@ -711,35 +704,42 @@ const SECCOES: Seccao[] = [
   {
     id: 'dados',
     titulo: 'Onde ficam guardados os dados',
-    resumo: 'O que está guardado só aqui e o que já está no arquivo da escola.',
+    resumo: 'Na base de dados (rápida) e no Sheets da escola (arquivo).',
     conteudo: (
       <>
         <P>
-          Tudo é guardado primeiro <b>no computador onde estás</b>, e
-          enviado a seguir para o arquivo da escola.
+          Tudo é guardado primeiro <b>no aparelho onde estás</b> e enviado a seguir para dois sítios:
         </P>
+        <Tabela
+          cabecalho={['Onde', 'Para quê', 'O que lá vai']}
+          linhas={[
+            ['Base de dados (Firebase)', 'Chega em cerca de 1 segundo aos outros aparelhos',
+              'Planos, fichas, abertura da aula, presenças, autoavaliações, validações, notas, grupos, avaliação entre colegas e líder do KitchenFlow'],
+            ['Sheets da escola', 'Arquivo de tudo, para ler e para as cópias de segurança',
+              'Tudo o que está acima e ainda requisições, eventos, recuperações, pautas e preços'],
+          ]}
+        />
 
-        <Destaque cor="bordeaux">
-          <b>O envio não devolve confirmação.</b> É uma limitação do Google
-          Apps Script, não do código. Por isso a aplicação confirma de
-          outra maneira: vai ler o arquivo e vê se o que enviou lá está.
-          <br /><br />
-          No topo do painel há uma linha a dizer o estado. Se disser que
-          há coisas por guardar, <b>não feches o browser</b> sem carregar
-          em "Guardar agora".
-        </Destaque>
-
-        <H>Mudar de computador</H>
+        <H>Ler o Sheets</H>
         <P>
-          Ao abrir a aplicação noutro computador, ela vai buscar ao arquivo
-          o que lá estiver. Se alguma coisa não tiver chegado lá, não
-          aparece — daí a importância do aviso acima.
+          Cada turma tem um separador com o nome dela (por exemplo «1º BCR»), refeito sozinho de 10
+          em 10 minutos:
         </P>
+        <Passos itens={[
+          <><b>Os alunos</b> — presenças, faltas, atrasos, autoavaliações, validadas, média e telemóvel.</>,
+          <><b>As notas de cada UC</b> — um aluno por linha e uma aula por coluna: a nota validada, «AA» (autoavaliou-se, falta validar) ou «F» (faltou).</>,
+          <><b>As aulas</b> — dia, horas, UC, tipo, se foi aberta e quantos vieram.</>,
+        ]} />
+        <Destaque cor="bordeaux">
+          As folhas de dados (ALUNOS, PLANOS, PRESENCAS…) e as fichas por extenso estão
+          <b> escondidas, não apagadas</b>: a aplicação grava nelas. Para as ver: menu
+          <b> Ver › Folhas ocultas</b>. Não as apagues nem ordenes durante as aulas.
+        </Destaque>
 
         <H>Se fechares com coisas por guardar</H>
         <P>
-          O browser pergunta se queres mesmo sair. E na próxima vez que
-          abrires, a aplicação tenta enviar sozinha o que ficou pendente.
+          O browser pergunta se queres mesmo sair. Na próxima vez que abrires, a aplicação envia
+          sozinha o que ficou pendente.
         </P>
       </>
     ),

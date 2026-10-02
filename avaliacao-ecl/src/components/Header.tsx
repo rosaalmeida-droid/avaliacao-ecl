@@ -288,7 +288,7 @@ function Topbar({ nomeProfessor, syncStatus, onAtualizar, onAbrirMenu, onAbrirPa
     : syncStatus === 'offline' ? { cor: '#E53E3E', txt: 'Sem ligação' }
     : null;
 
-  const perfilLabel: Record<Perfil, string> = { aluno: 'Aluno', professor: 'Professor', coordenadora: 'Coordenadora' };
+  const perfilLabel: Record<Perfil, string> = { aluno: 'Aluno', professor: 'Professor', coordenadora: 'Coordenadora', eventos: 'Eventos e orçamentos' };
 
   return (
     <header className="ecl-topbar" style={{

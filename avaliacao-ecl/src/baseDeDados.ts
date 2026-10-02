@@ -40,13 +40,22 @@ export const COLECAO_DO_TIPO: Record<string, string> = {
   plano: 'planos',
   ficha: 'fichas',
   sessao: 'sessoes',
+  // (3.ª fase, out/2026) O que acontece na aula: os grupos, o que os colegas
+  // dizem uns dos outros e o líder do KitchenFlow.
+  grupo_membro: 'grupos',
+  grupo_info: 'gruposinfo',
+  avaliacao_par: 'pares',
+  lider_kf: 'lideres',
+  // As matérias-primas acrescentadas pelos professores: iguais para todos
+  // (antes ficavam só no aparelho onde foram criadas — Rosa, out/2026).
+  materia_prima: 'materiasprimas',
 };
 /** As fichas são de todas as turmas: ficam numa «turma» à parte. */
 export const TURMA_DAS_FICHAS = '_todas';
-const turmaDaColecao = (colecao: string, turmaId: string) => colecao === 'fichas' ? TURMA_DAS_FICHAS : turmaId;
+const turmaDaColecao = (colecao: string, turmaId: string) => colecao === 'fichas' || colecao === 'materiasprimas' ? TURMA_DAS_FICHAS : turmaId;
 /** O que cada perfil ouve: o professor tudo; o aluno a aula e as notas. */
 export const TIPOS_DO_PROFESSOR = Object.keys(COLECAO_DO_TIPO);
-export const TIPOS_DO_ALUNO = ['plano', 'ficha', 'sessao', 'validacao', 'avaliacao'];
+export const TIPOS_DO_ALUNO = ['plano', 'ficha', 'sessao', 'validacao', 'avaliacao', 'presenca', 'grupo_membro', 'grupo_info', 'lider_kf'];
 
 let aLigar: Promise<{ app: FirebaseApp; db: Firestore } | null> | null = null;
 
@@ -87,6 +96,7 @@ const semBarras = (t: string) => String(t || '').replace(/\//g, '∕') || '_';
 /** O identificador do registo na base. As presenças são uma por aluno e aula. */
 function idDoRegisto(tipo: string, dados: Record<string, any>): string {
   if (tipo === 'presenca') return semBarras(`${dados.alunoId}__${dados.planoAulaId}`);
+  if (tipo === 'lider_kf') return semBarras(`${dados.planoAulaId}__${dados.grupoId || 'turma'}`);
   return semBarras(String(dados.id || ''));
 }
 
@@ -107,6 +117,10 @@ function paraBase(tipo: string, dados: Record<string, any>): ParaBase | null {
     case 'ficha': { const f = dados.ficha || dados; return f?.id ? { colecao: 'fichas', turma: TURMA_DAS_FICHAS, id: String(f.id), obj: inteiro(f) } : null; }
     case 'eliminar_ficha': return dados.fichaId ? { colecao: 'fichas', turma: TURMA_DAS_FICHAS, id: String(dados.fichaId),
       obj: { id: dados.fichaId, eliminado: true } } : null;
+    case 'materia_prima': return dados.id ? { colecao: 'materiasprimas', turma: TURMA_DAS_FICHAS, id: String(dados.id),
+      obj: { ...dados, turmaId: TURMA_DAS_FICHAS } } : null;
+    case 'eliminar_materia_prima': return dados.id ? { colecao: 'materiasprimas', turma: TURMA_DAS_FICHAS, id: String(dados.id),
+      obj: { id: dados.id, eliminado: true, atualizadoEm: new Date().toISOString() } } : null;
     case 'sessao': case 'fechar_sessao': {
       const { tipo: _t, ...resto } = dados as any;
       return dados.planoAulaId && dados.turmaId ? { colecao: 'sessoes', turma: dados.turmaId, id: String(dados.planoAulaId), obj: resto, juntar: true } : null;
@@ -137,7 +151,7 @@ export async function gravarNaBase(tipo: string, dados: Record<string, any>): Pr
 }
 
 /** Os tipos de envio que vão para a base. */
-export const VAI_PARA_A_BASE = new Set([...Object.keys(COLECAO_DO_TIPO), 'eliminar_plano', 'eliminar_ficha', 'fechar_sessao']);
+export const VAI_PARA_A_BASE = new Set([...Object.keys(COLECAO_DO_TIPO), 'eliminar_plano', 'eliminar_ficha', 'fechar_sessao', 'eliminar_materia_prima']);
 
 // Só se pede o que é novo desde a última leitura neste aparelho: a base
 // gratuita conta cada registo lido, e uma turma junta milhares num ano.
