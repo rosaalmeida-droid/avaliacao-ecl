@@ -2,7 +2,7 @@ import { ATITUDES_FIXAS_EVENTO } from '../eventosAvaliacao';
 import { AvisoCoberturaUC } from './AvisoCoberturaUC';
 import { EventosNaAula } from './EventosNaAula';
 import { UCEmAtrasoNoPlano } from './UCEmAtraso';
-import { conhecimentosDaAula, conhecimentosDoReferencial } from '../compatECL';
+import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
 import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
@@ -628,18 +628,21 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         .map((k: any) => ({ id: k.id, nome: k.nome, definicao: k.definicao, criterios: [] as any[] }))
     : [];
   // Os conhecimentos desta aula: os do professor, ou os do referencial da UC.
-  const compConhecimentos = [...conhecimentosSugeridos, ...(ehAtitudinal ? [] : conhecimentosDaAula(plano)
-    .map(k => ({ id: k.id, nome: k.texto, definicao: '', criterios: [] as any[] })))].filter(k => !compRemovidas.includes(k.id));
-  compConhecimentos.forEach(k => IDS_JA_USADOS.add(k.id));
+  // As listas «Todas» ficam com as retiradas: é por elas que se mostram, para
+  // se poderem voltar a incluir (Rosa, out/2026: retirar não pode ser para sempre).
+  const compConhecimentosTodos = [...conhecimentosSugeridos, ...(ehAtitudinal ? [] : conhecimentosDaAula(plano)
+    .map(k => ({ id: k.id, nome: k.texto, definicao: '', criterios: [] as any[] })))];
+  const compConhecimentos = compConhecimentosTodos.filter(k => !compRemovidas.includes(k.id));
+  compConhecimentosTodos.forEach(k => IDS_JA_USADOS.add(k.id));
 
   // ── Fallback: sistema antigo (microsPorUC) se não há SUB/APP ─
   const usarFallback = compSub.length === 0 && compApp.length === 0 && tipoPlanAula === 'pratico';
   // A mesma regra da autoavaliação do aluno (tecnicasDeRecurso).
-  const compTecnicas = ehAtitudinal ? [] : (usarFallback && temFichas)
-    ? tecnicasDeRecurso(plano.ucId, fichasDoPlano)
-        .filter(m => !IDS_JA_USADOS.has(m.id) && !compRemovidas.includes(m.id))
+  const compTecnicasTodas = ehAtitudinal ? [] : (usarFallback && temFichas)
+    ? tecnicasDeRecurso(plano.ucId, fichasDoPlano).filter(m => !IDS_JA_USADOS.has(m.id))
     : [];
-  compTecnicas.forEach(m => IDS_JA_USADOS.add(m.id));
+  const compTecnicas = compTecnicasTodas.filter(m => !compRemovidas.includes(m.id));
+  compTecnicasTodas.forEach(m => IDS_JA_USADOS.add(m.id));
 
   // ── Determinar ano do curso pela turma ─────────────────────
   const anoTurma = turmaId?.includes('1') ? 1 : turmaId?.includes('3') ? 3 : 2;
@@ -684,6 +687,40 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     addOrUpdatePlanoAula(p);
     onPlanoActualizado(p);
   }
+
+  // As competências retiradas, todas juntas, para se voltarem a incluir (Rosa, out/2026).
+  // A farda e os registos (OBR) dependem do tipo de aula: mudam-se em «Como é a aula».
+  const blocoRetiradas = (() => {
+          const retiradas = [...new Set(compRemovidas)].filter(id => !/^OBR_0[12]$/.test(id));
+          if (!retiradas.length) return null;
+          const nomeDe = (id: string) => {
+            const todas: any[] = [...compSubTodas, ...compAppTodas, ...compConhecimentosTodos, ...compTecnicasTodas, ...ATITUDES, ...compObrigatorias];
+            const x = todas.find(m => m.id === id || codigoDaLinha(m.id) === codigoDaLinha(id));
+            return x?.nome || nomeConhecimentoProf(id) || id;
+          };
+          return (
+            <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:10, border:'1px dashed rgba(26,23,20,0.25)', background:'#fff' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                <div style={{ flex:1, fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'rgba(26,23,20,0.55)' }}>
+                  Retiradas desta aula ({retiradas.length})
+                </div>
+                <button onClick={() => guardarCompetencias(compRemovidas.filter(x => /^OBR_0[12]$/.test(x)), compAdicionadas)}
+                  style={{ fontSize:13, padding:'5px 12px', borderRadius:8, border:'none', background:'var(--sage)', color:'#fff', cursor:'pointer', fontWeight:700, fontFamily:'inherit' }}>
+                  Repor todas
+                </button>
+              </div>
+              {retiradas.map(id => (
+                <div key={id} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 0', borderTop:'1px solid rgba(26,23,20,0.06)' }}>
+                  <span style={{ flex:1, fontSize:13.5, color:'rgba(26,23,20,0.6)', textDecoration:'line-through' }}>{nomeDe(id)}</span>
+                  <button onClick={() => guardarCompetencias(compRemovidas.filter(x => x !== id), compAdicionadas)}
+                    style={{ fontSize:13, padding:'3px 10px', borderRadius:6, border:'1px solid var(--sage)', background:'var(--sage)', color:'#fff', cursor:'pointer', fontWeight:600, fontFamily:'inherit' }}>
+                    + Incluir
+                  </button>
+                </div>
+              ))}
+            </div>
+          );
+        })();
 
   function estadoModulo(m: string) {
     if (m === 'ficha') return temFichas ? 'concluido' : 'pendente';
@@ -1091,10 +1128,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)' }}>As competências específicas do prato (técnicas, aparelhos e micros) aparecem aqui depois de criares a ficha técnica desta aula.</div>
           </div>
         )}
-        {compTecnicas.length > 0 && (
+        {compTecnicasTodas.length > 0 && (
           <div style={{ marginBottom:14 }}>
             <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--copper)', marginBottom:8 }}>🔬 Técnicas — UC {plano.ucId}</div>
-            {compTecnicas.map(m => {
+            {compTecnicasTodas.map(m => {
               const removida = compRemovidas.includes(m.id);
               return (
                 <div key={m.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderRadius:8, background: removida ? 'var(--cream-dark)' : 'var(--copper-pale)', marginBottom:6, opacity: removida ? 0.5 : 1 }}>
@@ -1139,6 +1176,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             </div>
           );
         })()}
+        {blocoRetiradas}
         <div style={{ padding:'12px 14px', background:'var(--cream-dark)', borderRadius:10, textAlign:'center', marginBottom:16 }}>
           <div style={{ fontWeight:700, fontSize:16 }}>Total: {totalComp} competências</div>
         </div>
@@ -1555,7 +1593,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--copper)', marginBottom: 8 }}>🔬 Competências desta aula</div>
-            {[...compSubTodas, ...compAppTodas, ...compConhecimentos, ...compTecnicas].slice(0, 8).map(m => {
+            {[...compSubTodas, ...compAppTodas, ...compConhecimentosTodos, ...compTecnicasTodas].slice(0, 8).map(m => {
               const removida = retirada(m.id) || compRemovidas.includes(m.id);
               const aberta = compAberta === m.id;
               return (
@@ -1667,6 +1705,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               );
             })}
           </div>
+          {blocoRetiradas}
           <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 13, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
             <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compSub.length + compApp.length + compTecnicas.length} técnicas · {compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{nAtitudesDaAula} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
