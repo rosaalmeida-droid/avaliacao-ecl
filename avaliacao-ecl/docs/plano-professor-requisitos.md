@@ -26,3 +26,20 @@ Regras para reorganizar o ecrã do plano. Servem de lista de verificação antes
 - Validar sem fichas: numa aula teórica, «Validação e Avaliação» não pode pedir «Cria primeiro uma Ficha de Produção».
 - Nas aulas teóricas e atitudinais não aparecem os blocos de fichas, guião e requisição.
 - Dados: rapidez, dados que faltam, Sheets organizado por turma (precisa do Apps Script).
+
+## Feito (out/2026)
+- Plano em duas colunas. À esquerda, «Preparar a aula», em gavetas que abrem e fecham, cada uma com o resumo e se está feita:
+  - Como é a aula;
+  - Conteúdos e sumário;
+  - Fichas, guião e requisição (só nas aulas com cozinha);
+  - O que o aluno responde.
+- À direita, «Na aula»: abrir a aula, enviar aos alunos, a turma nesta aula, lista da turma, validar, reabrir.
+- Tirados os blocos repetidos:
+  - «Antes de começar»;
+  - o segundo «O que este plano tem»;
+  - a segunda lista de fichas;
+  - «Construir esta aula»;
+  - o segundo botão de publicar (fica o do menu).
+- No menu do plano, nas aulas sem cozinha, não aparecem fichas, guião nem requisição.
+- No telemóvel, o menu do plano passa para cima.
+- Falta: editar no próprio campo em vez do ecrã «Editar o plano».

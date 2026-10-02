@@ -9,7 +9,7 @@
 // ============================================================
 
 import { ehEventoForaDoHorario, rotuloEvento, codigoEvento } from '../rotuloPlano';
-import { gruposDaAula } from '../backend';
+import { gruposDaAula, contextoDoPlano } from '../backend';
 import React, { useEffect, useState } from 'react';
 import type { PlanoAula, FichaProducao } from '../types';
 import { BotaoPublicar } from './BotaoPublicar';
@@ -90,6 +90,7 @@ export function MenuDoPlano({
   requisicaoDesatualizada?: boolean;
 }) {
   const comGuiao = fichas.filter(f => !!(f as any).textoGuia).length;
+  const producao = contextoDoPlano(plano).producao;
   // O bloco de publicar continua à vista enquanto envia e depois confirma.
   const [, setV] = useState(0);
   useEffect(() => subscreverPublicacao(() => setV(v => v + 1)), []);
@@ -200,8 +201,8 @@ export function MenuDoPlano({
           ainda falta. Estava no fundo, pequeno, ao lado de "Editar". */}
       {aoPublicar && (!publicado || estadoPublicacao(plano.id)) && (() => {
         const falta = [
-          fichas.length === 0 && 'as fichas',
-          (!temRequisicao || requisicaoDesatualizada) && 'a requisição',
+          producao && fichas.length === 0 && 'as fichas',
+          producao && (!temRequisicao || requisicaoDesatualizada) && 'a requisição',
           totalCompetencias === 0 && 'as competências',
         ].filter(Boolean) as string[];
         return (
@@ -222,6 +223,8 @@ export function MenuDoPlano({
 
       {/* O que o plano tem */}
       <div style={{ paddingTop: 5 }}>
+        {/* Aulas sem cozinha (teóricas, atitudinais): sem fichas, guião nem requisição. */}
+        {producao && (<>
         <Linha
           marca={fichas.length > 0 ? 'feito' : 'falta'}
           texto="Fichas"
@@ -243,6 +246,7 @@ export function MenuDoPlano({
           activo={moduloActivo === 'requisicao'}
           aoClicar={() => aoIrPara('requisicao')} />
 
+        </>)}
         <Linha
           marca={totalCompetencias > 0 ? 'feito' : 'falta'}
           texto="Competências"

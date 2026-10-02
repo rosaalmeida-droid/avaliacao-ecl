@@ -174,9 +174,9 @@ export function ModalFullscreen({
         </div>
 
         {/* Conteúdo — com o menu do plano à esquerda, quando existe */}
-        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <div className="mf-conteudo" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           {menuLateral && (
-            <div style={{
+            <div className="mf-menu" style={{
               width: 196, flexShrink: 0, overflowY: 'auto',
               background: '#7B2233', color: '#fff',
             }}>
@@ -212,6 +212,10 @@ export function ModalFullscreen({
           .mf-titulo { font-size: 15.5px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .mf-guardado, .mf-rodape { display: none !important; }
           .mf-corpo { padding: 12px !important; }
+          /* O menu do plano passa para cima, numa faixa que rola: ao lado
+             comia metade da largura do telemóvel. */
+          .mf-conteudo { flex-direction: column !important; }
+          .mf-menu { width: 100% !important; max-height: 32vh; flex-shrink: 0 !important; }
         }
       `}</style>
     </div>
