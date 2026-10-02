@@ -2001,7 +2001,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         );
       })()}
       </Gaveta>
-      {contextoDoPlano(plano).producao && (
+      {/* Sempre à vista, como antes (Rosa, out/2026: esconder nas aulas «sem
+          cozinha» tirava a requisição aos eventos e aos planos antigos). */}
       <Gaveta id="fichas" n={4} titulo="Fichas, guião e requisição"
         resumo={`${fichasDoPlano.length} ficha${fichasDoPlano.length === 1 ? '' : 's'} · ${fichasDoPlano.some((f: any) => f.textoGuia) ? 'com guião' : 'sem guião'} · ${temRequisicao ? 'requisição feita' : 'sem requisição'}`}
         feito={temFichas}>
@@ -2172,8 +2173,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           ))}
         </div>
       </Gaveta>
-      )}
-      <Gaveta id="responde" n={contextoDoPlano(plano).producao ? 5 : 4} titulo="O que o aluno responde"
+      <Gaveta id="responde" n={5} titulo="O que o aluno responde"
         resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolhe primeiro o tipo de aula'; } catch { return ''; } })()}>
       <PassoOQueSeAvalia plano={plano} />
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,

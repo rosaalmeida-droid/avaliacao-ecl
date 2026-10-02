@@ -235,6 +235,12 @@ function limparTexto(t: string): string {
   return t.replace(/\s+/g, ' ').trim();
 }
 
+/** «3 min», «1 h», «TEMPO»…: não é um produto. */
+function pareceTempoOuTitulo(produto: string): boolean {
+  const p = String(produto || '').trim();
+  return !p || /^\d+([.,]\d+)?\s*(min|minutos?|h|horas?|seg|segundos?)\.?$/i.test(p) || /^(tempo|produto|descri[çc][ãa]o|temp)$/i.test(p);
+}
+
 function extrairFicha(texto: string): FichaTecnica {
   // Detectar se o texto colado é o PROMPT (não a resposta da IA)
   // Sinais: contém os marcadores literais de instrução do prompt
@@ -341,6 +347,13 @@ function extrairFicha(texto: string): FichaTecnica {
   // DETETAR FORMATO IA (com separador |)
   // Quando o texto vem do Claude/ChatGPT com formato exato
   // -------------------------------------------------------
+  // Os títulos das secções como a IA os escreve umas vezes («## PREPARAÇÃO»,
+  // «PREPARAÇÃO :», «MODO DE PREPARAÇÃO:»…) passam à forma certa. Sem isto, a
+  // tabela dos passos era lida como ingredientes: na requisição apareciam
+  // «3 min», «5 min», «8 min» no lugar dos produtos (Rosa, out/2026).
+  texto = texto
+    .replace(/^[ \t#*]*INGREDIENTES\s*(?:\([^)\n]*\))?\s*:?[ \t*]*$/gim, 'INGREDIENTES:')
+    .replace(/^[ \t#*]*(?:MODO\s+DE\s+)?PREPARA[ÇC][ÃA]O\s*(?:\([^)\n]*\))?\s*:?[ \t*]*$/gim, 'PREPARAÇÃO:');
   const temFormatoIA = texto.includes('NOME DO PRATO:') && texto.includes('INGREDIENTES:');
   
   if (temFormatoIA) {
@@ -436,6 +449,11 @@ function extrairFicha(texto: string): FichaTecnica {
     // Preparação — aceita formato com ou sem |
     // A preparação acaba no campo seguinte — também nos alergénios e nos
     // registos: antes, "ALERGÉNIOS: …" ia parar às observações do último passo.
+    // Um «ingrediente» que é só um tempo ou um título de coluna veio da
+    // tabela dos passos: não entra.
+    for (let k = ingredientesIA.length - 1; k >= 0; k--) {
+      if (pareceTempoOuTitulo(ingredientesIA[k].produto)) ingredientesIA.splice(k, 1);
+    }
     const secPrepIA = texto.match(/PREPARAÇÃO:\n([\s\S]*?)(?=\nEMPRATAMENTO:|\nEQUIPAMENTO|\nCONSERVAÇÃO:|\nALERG|\nREGENERAÇÃO|\nREGISTOS|\nSUBTÉCNICAS|\nAPARELHOS|\n===GUI|$)/i);
     const preparacaoIA: PassoPreparacao[] = [];
     if (secPrepIA) {
