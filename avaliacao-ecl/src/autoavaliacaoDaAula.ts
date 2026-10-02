@@ -102,11 +102,15 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   // Trabalho sobre o manual: cada aluno (ou grupo) tem o seu tema. Os
   // indicadores são os do tema que ele escolhe; o professor pode ter
   // marcado os conteúdos por onde se escolhe (Rosa, out/2026).
-  const temTema = !ehAtitudinal && escolheTema(triagem);
+  // Os conteúdos (capítulos) do manual que o professor marcou no plano.
+  const marcados = new Set(conhecimentos.map(k => capituloDoCampo(k.id)?.capitulo.n).filter((n): n is number => n != null));
+  // Num trabalho, cada aluno (ou grupo) escolhe o seu tema: entre os conteúdos
+  // marcados, ou entre todos se não houver nenhum marcado (Rosa, out/2026).
+  // Numa aula dada pelo professor com muitos conteúdos (o manual todo, por
+  // exemplo), o aluno diz qual trabalhou, em vez de responder a todos.
+  const temTema = !ehAtitudinal && (escolheTema(triagem) || marcados.size > 2);
   const md = temTema ? manualDaUC(p.ucId) : null;
-  // O aluno escolhe entre TODOS os conteúdos do manual: cada um escolhe o seu
-  // (Rosa, out/2026 — o professor só podia marcar um, e todos tinham o mesmo).
-  const temasPossiveis = md ? md.capitulos.map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
+  const temasPossiveis = md ? md.capitulos.filter(c => !marcados.size || marcados.has(c.n)).map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
   // Os critérios são os das fases em que o trabalho está hoje: a oral só na
   // aula em que se apresenta; na investigação, os da pesquisa.
   const fases = temTema ? fasesDoTrabalho(triagem) : [];
