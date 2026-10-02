@@ -564,8 +564,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [compAberta, setCompAberta] = useState<string | null>(null);
   function toggleComp(id: string) { setCompAberta(prev => prev === id ? null : id); }
   // Muitos capítulos do manual: a lista começa fechada.
-  // Rosa, out/2026: «o manual não aparece todo» — a lista começa aberta.
-  const [verCaps, setVerCaps] = useState(true);
+  // As partes do manual que o professor fechou (começam todas abertas).
+  const [partesFechadas, setPartesFechadas] = useState<string[]>([]);
 
   // Estado do botão de publicar atualização
 
@@ -692,19 +692,20 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // trabalho com tema), o aluno escolhe um e responde só aos indicadores desse
   // (3 a 4): é isso que conta, e não os indicadores todos (Rosa, out/2026:
   // «Total: 81 competências» com o manual todo).
-  const capsDoManual = new Map<string, { titulo: string; ids: string[]; nomes: Record<string, string> }>();
+  const capsDoManual = new Map<string, { titulo: string; parte: string; ids: string[]; nomes: Record<string, string> }>();
   for (const k of compConhecimentosTodos) {
     const c = capituloDoCampo(k.id);
     if (!c) continue;
     const chave = `${c.ficheiro}-${c.capitulo.n}`;
-    const g = capsDoManual.get(chave) || { titulo: rotuloConteudo(c.capitulo), ids: [], nomes: {} };
+    const g = capsDoManual.get(chave) || { titulo: rotuloConteudo(c.capitulo), parte: c.capitulo.parte || '', ids: [], nomes: {} };
     g.ids.push(k.id); g.nomes[k.id] = k.nome;
     capsDoManual.set(chave, g);
   }
+  const nKnwManual = [...capsDoManual.values()].reduce((n, g) => n + g.ids.filter(id => !compRemovidas.includes(id)).length, 0);
   const capsAtivos = [...capsDoManual.values()].filter(g => g.ids.some(id => !compRemovidas.includes(id))).length;
   const temaAEscolher = !ehAtitudinal && (capsAtivos > 2 || escolheTema(triagemDoPlano(plano)));
   const nConhecimentosAvaliados = temaAEscolher
-    ? compConhecimentos.filter(k => !capituloDoCampo(k.id)).length + Math.min(4, compConhecimentos.filter(k => capituloDoCampo(k.id)).length || 4)
+    ? compConhecimentos.filter(k => !capituloDoCampo(k.id)).length + Math.max(0, ...[...capsDoManual.values()].map(g => g.ids.filter(id => !compRemovidas.includes(id)).length))
     : compConhecimentos.length;
   const totalComp = ehAtitudinal
     ? nObrigatorias + nAtitudesDaAula + compAdicionadas.filter(x => !x.startsWith('ATI-')).length
@@ -1706,53 +1707,60 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             })}
           </div>
           {/* Os conhecimentos do manual, por capítulo: tira-se ou repõe-se o capítulo inteiro. */}
+          {/* O manual: todas as competências de conhecimentos, por parte e por
+              conteúdo, à vista. O aluno é que escolhe o conteúdo (Rosa, out/2026:
+              «não vejo o manual todo»). */}
           {capsDoManual.size > 0 && (
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d4ed8', marginBottom: 4 }}>
-                📚 Do manual — {capsDoManual.size} conteúdo{capsDoManual.size === 1 ? '' : 's'}
+                📚 Do manual — {capsDoManual.size} conteúdo{capsDoManual.size === 1 ? '' : 's'} · {nKnwManual} competências de conhecimentos
               </div>
               {temaAEscolher && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
-                O aluno escolhe um destes conteúdos e responde só aos indicadores desse.</div>}
-              {capsDoManual.size > 6 && (
-                <button onClick={() => setVerCaps(v => !v)} style={{ fontSize: 13, fontWeight: 700, padding: '6px 12px', borderRadius: 8,
-                  border: '1px solid rgba(29,78,216,0.3)', background: '#fff', color: '#1d4ed8', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8 }}>
-                  {verCaps ? 'Esconder os conteúdos ▲' : `Ver os ${capsDoManual.size} conteúdos ▼`}
-                </button>
-              )}
-              {(capsDoManual.size <= 6 || verCaps) && [...capsDoManual.entries()].map(([chave, g]) => {
-                const ativos = g.ids.filter(id => !compRemovidas.includes(id)).length;
-                const tirado = ativos === 0;
-                const aberto = compAberta === 'cap-' + chave;
+                Estão todas no plano. Cada aluno escolhe um conteúdo e responde só às competências desse.</div>}
+              {[...new Set([...capsDoManual.values()].map(g => g.parte))].map(parte => {
+                const doParte = [...capsDoManual.entries()].filter(([, g]) => g.parte === parte);
+                const aberta = !partesFechadas.includes(parte);
+                const nAtivas = doParte.reduce((n, [, g]) => n + g.ids.filter(id => !compRemovidas.includes(id)).length, 0);
+                const nTodas = doParte.reduce((n, [, g]) => n + g.ids.length, 0);
                 return (
-                  <div key={chave} style={{ borderRadius: 8, background: tirado ? 'var(--cream-dark)' : 'rgba(29,78,216,0.05)', marginBottom: 6,
-                    border: `1px solid ${tirado ? 'var(--border)' : 'rgba(29,78,216,0.18)'}`, opacity: tirado ? 0.55 : 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }}>
-                      <span style={{ fontSize: 14 }}>{tirado ? '○' : '●'}</span>
-                      <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => toggleComp('cap-' + chave)}>
-                        <div style={{ fontSize: 13.5, fontWeight: tirado ? 400 : 600, textDecoration: tirado ? 'line-through' : 'none' }}>{g.titulo}</div>
-                        <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>{ativos} de {g.ids.length} indicadores {aberto ? '▲' : '▼'}</div>
-                      </div>
-                      <button onClick={() => guardarCompetencias(tirado ? compRemovidas.filter(x => !g.ids.includes(x)) : [...new Set([...compRemovidas, ...g.ids])], compAdicionadas)}
-                        style={{ fontSize:13, padding: '3px 10px', borderRadius: 6, border: `1px solid ${tirado ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: tirado ? 'var(--sage)' : 'transparent', color: tirado ? 'white' : 'rgba(26,23,20,0.5)', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
-                        {tirado ? '+ Incluir' : '− Remover'}
-                      </button>
-                    </div>
-                    {aberto && (
-                      <div style={{ padding: '0 12px 8px 36px' }}>
-                        {g.ids.map(id => {
-                          const r = compRemovidas.includes(id);
-                          return (
-                            <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderTop: '1px solid rgba(29,78,216,0.08)' }}>
-                              <span style={{ flex: 1, fontSize: 13, color: r ? 'rgba(26,23,20,0.45)' : 'inherit', textDecoration: r ? 'line-through' : 'none' }}>{g.nomes[id]}</span>
-                              <button onClick={() => guardarCompetencias(r ? compRemovidas.filter(x => x !== id) : [...compRemovidas, id], compAdicionadas)}
-                                style={{ fontSize: 12, padding: '2px 8px', borderRadius: 6, border: `1px solid ${r ? 'var(--sage)' : 'rgba(26,23,20,0.4)'}`, background: r ? 'var(--sage)' : 'transparent', color: r ? '#fff' : 'rgba(26,23,20,0.5)', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
-                                {r ? '+ Incluir' : '−'}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                  <div key={parte} style={{ marginBottom: 8 }}>
+                    <button onClick={() => setPartesFechadas(p => aberta ? [...p, parte] : p.filter(x => x !== parte))}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: 'none',
+                        background: 'rgba(29,78,216,0.1)', color: '#1d4ed8', fontWeight: 700, fontSize: 13.5, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                      <span style={{ flex: 1 }}>{parte || 'Manual'}</span>
+                      <span style={{ fontWeight: 600, fontSize: 12.5 }}>{doParte.length} conteúdos · {nAtivas} de {nTodas} {aberta ? '▲' : '▼'}</span>
+                    </button>
+                    {aberta && doParte.map(([chave, g]) => {
+                      const ativos = g.ids.filter(id => !compRemovidas.includes(id)).length;
+                      const tirado = ativos === 0;
+                      return (
+                        <div key={chave} style={{ borderRadius: 8, background: tirado ? 'var(--cream-dark)' : 'rgba(29,78,216,0.05)', margin: '6px 0 0 8px',
+                          border: `1px solid ${tirado ? 'var(--border)' : 'rgba(29,78,216,0.18)'}`, opacity: tirado ? 0.55 : 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px' }}>
+                            <div style={{ flex: 1, fontSize: 13.5, fontWeight: tirado ? 400 : 700, textDecoration: tirado ? 'line-through' : 'none' }}>{g.titulo}</div>
+                            <button onClick={() => guardarCompetencias(tirado ? compRemovidas.filter(x => !g.ids.includes(x)) : [...new Set([...compRemovidas, ...g.ids])], compAdicionadas)}
+                              style={{ fontSize:12.5, padding: '3px 10px', borderRadius: 6, border: `1px solid ${tirado ? 'var(--sage)' : 'rgba(26,23,20,0.55)'}`, background: tirado ? 'var(--sage)' : 'transparent', color: tirado ? 'white' : 'rgba(26,23,20,0.5)', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                              {tirado ? '+ Incluir' : '− Tirar o conteúdo'}
+                            </button>
+                          </div>
+                          <div style={{ padding: '0 12px 6px 22px' }}>
+                            {g.ids.map(id => {
+                              const r = compRemovidas.includes(id);
+                              return (
+                                <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', borderTop: '1px solid rgba(29,78,216,0.08)' }}>
+                                  <span style={{ fontSize: 12 }}>{r ? '○' : '●'}</span>
+                                  <span style={{ flex: 1, fontSize: 13, color: r ? 'rgba(26,23,20,0.45)' : 'inherit', textDecoration: r ? 'line-through' : 'none' }}>{g.nomes[id]}</span>
+                                  <button onClick={() => guardarCompetencias(r ? compRemovidas.filter(x => x !== id) : [...compRemovidas, id], compAdicionadas)}
+                                    style={{ fontSize: 12, padding: '2px 8px', borderRadius: 6, border: `1px solid ${r ? 'var(--sage)' : 'rgba(26,23,20,0.4)'}`, background: r ? 'var(--sage)' : 'transparent', color: r ? '#fff' : 'rgba(26,23,20,0.5)', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                                    {r ? '+ Incluir' : '−'}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -1834,7 +1842,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
           {blocoRetiradas}
           <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 13, textAlign: 'center' }}>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
+            {temaAEscolher && nKnwManual > 0 && (
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: '#1d4ed8' }}>
+                No plano: {totalComp - nConhecimentosAvaliados + compConhecimentos.filter(k => !capituloDoCampo(k.id)).length + nKnwManual} competências ({nKnwManual} do manual)</div>
+            )}
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{temaAEscolher && nKnwManual > 0 ? `Cada aluno responde a ${totalComp}` : `Total: ${totalComp} competências`}</div>
             <div style={{ color: 'rgba(26,23,20,0.5)' }}>{nObrigatorias} obrigatória{nObrigatorias === 1 ? '' : 's'} · {compSub.length + compApp.length + compTecnicas.length} técnicas · {nConhecimentosAvaliados > 0 ? `${nConhecimentosAvaliados} conhecimentos${temaAEscolher && capsDoManual.size > 0 ? ' (do conteúdo que o aluno escolhe)' : ''} · ` : ''}{compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{nAtitudesDaAula} atitudes</div>
             {totalComp > 12 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
             {totalComp <= 5 && <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>✓ Número adequado para uma aula.</div>}
