@@ -120,7 +120,6 @@ import { EventosECL } from './components/EventosECL';
 import { AbrirAulas } from './components/AbrirAulas';
 import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
-import { ArranqueAnoLetivo } from './components/ArranqueAnoLetivo';
 import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   migrarTurmaAntiga,
   getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada, definirPerfilDoAparelho,
