@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v21';
+var VERSAO = 'ECL único v21.1';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1796,7 +1796,9 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 // em baixo, à esquerda).
 
 var COR_TURMA = '#7B2233';
-var VISIVEIS_SEMPRE = ['LEIA-ME', 'PROCURAR'];
+// (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
+// parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
+var VISIVEIS_SEMPRE = ['PRECOS', 'PRECOS_A_REVER', 'LEIA-ME', 'PROCURAR'];
 
 function porTurma(lista) {
   var m = {};
@@ -2279,7 +2281,8 @@ var ORDEM_FOLHAS = [
 var LEIA_ME = [
   ['Folha', 'O que tem'],
   ['1º BCR, 3º ACP, …', 'Um separador por turma, só para ler: os alunos (presenças, faltas, atrasos, autoavaliações, média), as notas de cada UC (um aluno por linha, uma aula por coluna) e as aulas. Refaz-se sozinho de 10 em 10 minutos.'],
-  ['Folhas escondidas', 'As folhas de dados (ALUNOS, PLANOS, PRESENCAS…) e as fichas por extenso ficam escondidas: a aplicação grava nelas. Para as ver: menu Ver › Folhas ocultas. Não apagar.'],
+  ['PRECOS / PRECOS_A_REVER', 'As matérias-primas com os preços revistos, e as que os professores pediram para rever. Sempre à vista.'],
+  ['Folhas escondidas', 'As folhas de dados (ALUNOS, PLANOS, PRESENCAS…) e as fichas por extenso ficam escondidas, não apagadas: a aplicação grava nelas. Para as ver: menu Ver › Folhas ocultas. Não apagar.'],
   ['ALUNOS', 'Os alunos de cada turma (nome, número, PIN).'],
   ['PLANOS', 'Os planos de aula: dia da aula, horas, unidade, estado (rascunho/publicado) e quando foram criados.'],
   ['SESSOES', 'As aulas abertas aos alunos: quando abriu e quando fechou.'],
