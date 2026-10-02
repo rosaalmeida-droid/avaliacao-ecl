@@ -4,7 +4,7 @@
 // Sheets: backup permanente — nunca perde dados ao mudar browser
 // ============================================================
 
-import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO } from './baseDeDados';
+import { baseLigada, gravarNaBase, lerDaBase, COLECAO_DO_TIPO, VAI_PARA_A_BASE } from './baseDeDados';
 import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
@@ -346,7 +346,7 @@ async function enviar(url: string, tipo: string, dados: Record<string, unknown>,
   if (!url) return;
   // Autoavaliações, validações, avaliações e presenças vão também para a
   // base de dados (chegam logo); o Sheets fica como cópia.
-  if (!repetida && COLECAO_DO_TIPO[tipo]) gravarNaBase(tipo, dados as Record<string, any>);
+  if (!repetida && VAI_PARA_A_BASE.has(tipo)) paraABase(tipo, dados as Record<string, any>);
   if (!repetida && url === SHEETS_ECL_URL && VAO_DUAS_VEZES.has(tipo)) {
     setTimeout(() => { emSegundoPlano(() => { enviar(url, tipo, dados, true); }); }, 10000 + Math.random() * 5000);
   }
@@ -363,6 +363,25 @@ async function enviar(url: string, tipo: string, dados: Record<string, unknown>,
     f.itens.push(corpo);
     f.resolver.push(resolve);
   });
+}
+
+// ── Base de dados (Firebase), 2.ª fase ─────────────────────────
+// Os planos, as fichas e a abertura da aula também vão para a base: os
+// telemóveis dos alunos recebem-nos na hora. O Sheets continua a recebê-los.
+// Um plano que chegou à base já chegou aos alunos: o aviso «A enviar…»
+// passa a «Chegou» (o Sheets confere-se depois, sem prender o professor).
+function paraABase(tipo: string, dados: Record<string, any>): void {
+  if (!baseLigada()) return;
+  const d: Record<string, any> = { ...dados };
+  if (tipo === 'fechar_sessao' && !d.turmaId) {
+    const s: any = getSessoesAula().find(x => x.planoAulaId === d.planoAulaId);
+    d.turmaId = s?.turmaId || getPlanosAula().find(p => p.id === d.planoAulaId)?.turmaId;
+  }
+  gravarNaBase(tipo, d).then(ok => {
+    if (!ok || tipo !== 'plano') return;
+    const p: any = d.plano || d;
+    marcarPlanoNaBase(String(p.id), String(p.atualizadoEm || ''));
+  }).catch(() => {});
 }
 
 // No máximo 4 leituras ao mesmo tempo por aparelho. O Google aceita
@@ -661,6 +680,17 @@ function juntarSelecoes(dados: any[]): void {
 /** O que chega da base de dados (de uma vez ou à escuta), por tipo de envio. */
 export function juntarDaBase(tipo: string, dados: any[]): void {
   if (!dados.length) return;
+  // Planos e fichas eliminados noutro aparelho: saem deste também.
+  const fora = dados.filter(x => x?.eliminado).map(x => String(x.id));
+  if (fora.length && (tipo === 'plano' || tipo === 'ficha')) {
+    const [chave, chaveElim] = tipo === 'plano' ? [KEYS.planos, KEYS.eliminadosPlanos] : [KEYS.fichas, KEYS.eliminadosFichas];
+    save(chave, load<any>(chave).filter(x => !fora.includes(String(x.id))));
+    save(chaveElim, [...new Set([...load<string>(chaveElim), ...fora])]);
+  }
+  const vivos = dados.filter(x => !x?.eliminado);
+  if (tipo === 'plano') { if (vivos.length) juntarAula({ planos: vivos }, vivos[0].turmaId || ''); return; }
+  if (tipo === 'ficha') { if (vivos.length) juntarAula({ fichas: vivos }, ''); return; }
+  if (tipo === 'sessao') { if (vivos.length) juntarAula({ sessoes: vivos.filter(x => x.abertaEm || x.fechadaEm) }, vivos[0].turmaId || ''); return; }
   if (tipo === 'avaliacao') juntarAvaliacoes(dados);
   else if (tipo === 'validacao') juntarValidacoes(dados);
   else if (tipo === 'presenca') juntarPresencas(dados);
@@ -2288,6 +2318,8 @@ export function arquivarPlanoAula(planoId: string): void {
 // Elimina o plano DEFINITIVAMENTE — local e no Sheets (linha removida da
 // sheet Planos_Aula). Diferente de arquivar: não há forma de recuperar.
 export function eliminarPlanoAulaDefinitivamente(planoId: string): void {
+  const turmaDoPlano = getPlanosAula().find(p => p.id === planoId)?.turmaId;
+  if (turmaDoPlano) paraABase('eliminar_plano', { planoId, turmaId: turmaDoPlano });
   save(KEYS.planos, getPlanosAula().filter(p => p.id !== planoId));
   // Registar tombstone — sem isto, a próxima sincronização trazia o plano
   // de volta do Sheets, porque não havia forma de saber que foi eliminado
@@ -4872,6 +4904,8 @@ export function abrirSessaoAula(
  *  (fichas, avaliações) prendia-a na fila do script. */
 function enviarAberturaJa(s: SessaoAula): Promise<void> {
   const plano = getPlanosAula().find(p => p.id === s.planoAulaId);
+  paraABase('sessao', { planoAulaId: s.planoAulaId, turmaId: plano?.turmaId || s.turmaId,
+    abertaEm: s.abertaEm, abertaPor: s.abertaPor, toleranciaMin: s.toleranciaMin });
   return enviarAgora(SHEETS_HISTORICO_URL, {
     tipo: 'sessao', planoAulaId: s.planoAulaId, turmaId: plano?.turmaId || s.turmaId,
     abertaEm: s.abertaEm, abertaPor: s.abertaPor, toleranciaMin: s.toleranciaMin,
@@ -7147,6 +7181,7 @@ async function publicarEConfirmar(planoId: string): Promise<ResultadoPublicacao>
   };
   let ligou = false;
   for (let volta = 0; volta < 2; volta++) {
+    if (volta === 0) paraABase('plano', { plano: publicado });
     await Promise.race([enviarAgora(SHEETS_PLANOS_URL, { tipo: 'plano', plano: publicado }, 'urgente'), esperar(120000)]);
     for (const ms of [300, 1500, 3000, 5000]) {
       await esperar(ms);
@@ -7540,6 +7575,8 @@ export interface PorConfirmar {
   /** (planos) O que a última conferência viu: para o professor saber porque não confirma. */
   motivo?: 'sem_leitura' | 'nao_esta' | 'versao_antiga';
   versaoNoSheets?: string;
+  /** (planos) A versão que já chegou à base de dados — e, por ela, aos alunos. */
+  naBaseVersao?: string;
 }
 
 function espera(): PorConfirmar[] {
@@ -7596,10 +7633,27 @@ export function selecaoPorConfirmar(id: string): boolean {
   return espera().some(x => x.tipo === 'selecao' && x.id === id);
 }
 
-/** Este plano (ou a última alteração dele) ainda não se sabe se chegou aos alunos? */
+/** Este plano (ou a última alteração dele) ainda não se sabe se chegou aos alunos?
+ *  Se a versão atual já está na base de dados, chegou (os alunos leem de lá). */
 export function planoPorConfirmar(id: string): boolean {
-  return espera().some(x => x.tipo === 'plano' && x.id === id);
+  const e = espera().find(x => x.tipo === 'plano' && x.id === id);
+  if (!e) return false;
+  const local = String((getPlanosAula().find(p => p.id === id) as any)?.atualizadoEm || '');
+  return !(e.naBaseVersao && local && e.naBaseVersao >= local);
 }
+
+/** O plano chegou à base de dados nesta versão. */
+function marcarPlanoNaBase(id: string, versao: string): void {
+  const l = espera();
+  const e = l.find(x => x.tipo === 'plano' && x.id === id);
+  if (!e || (e.naBaseVersao && e.naBaseVersao >= versao)) return;
+  e.naBaseVersao = versao;
+  guardarEspera(l);
+  ouvintesEspera.forEach(f => { try { f(); } catch { /* */ } });
+}
+const ouvintesEspera = new Set<() => void>();
+/** Avisa quando um plano à espera chega à base (para o aviso «A enviar…» mudar logo). */
+export function subscreverEspera(f: () => void): () => void { ouvintesEspera.add(f); return () => { ouvintesEspera.delete(f); }; }
 
 /** O que se sabe do envio do plano que ainda não confirmou (para o aviso dizer porquê). */
 export function esperaDoPlano(id: string): PorConfirmar | undefined {
@@ -7614,6 +7668,7 @@ export function reenviarPlanoJa(id: string): void {
   const p = l.find(x => x.tipo === 'plano' && x.id === id);
   if (p) { p.tentativas = 0; p.desde = new Date().toISOString(); guardarEspera(l); }
   else porConfirmar('plano', id, plano.titulo || `Plano de ${plano.data}`, plano.turmaId);
+  paraABase('plano', { plano });
   enviarAgora(SHEETS_PLANOS_URL, { tipo: 'plano', plano }, 'urgente');
 }
 
@@ -8391,11 +8446,20 @@ export async function lerAula(turmaId: string): Promise<boolean> {
     if (json && json.ok && !Array.isArray(json.planos)) aulaNaoSuportada = true;
     return false;
   }
+  juntarAula(json, turmaId);
+  if (json.contador) contadorDaAula.set(turmaId, String(json.contador));
+  aulaJaLida = true;
+  return true;
+}
+
+/** Junta ao aparelho a aula que chegou (do Sheets ou da base de dados):
+ *  planos, fichas, aberturas e grupos. */
+function juntarAula(json: any, turmaId: string): void {
   // Planos (os eliminados neste aparelho não voltam)
   const eliminados = new Set(load<string>(KEYS.eliminadosPlanos));
   const planos = getPlanosAula();
   let mudou = false;
-  for (const pRaw of json.planos) {
+  for (const pRaw of (json.planos || [])) {
     if (!pRaw?.id || eliminados.has(pRaw.id)) continue;
     const p: any = { ...pRaw,
       fichasIds: Array.isArray(pRaw.fichasIds) ? pRaw.fichasIds
@@ -8443,17 +8507,14 @@ export async function lerAula(turmaId: string): Promise<boolean> {
     const ex = sess.get(r.planoAulaId);
     if (!ex?.abertaEm || (r.abertaEm && r.abertaEm < ex.abertaEm) || (r.fechadaEm && !ex.fechadaEm)) {
       sess.set(r.planoAulaId, { planoAulaId: r.planoAulaId, turmaId: r.turmaId || turmaId,
-        abertaEm: ex?.abertaEm && ex.abertaEm < r.abertaEm ? ex.abertaEm : r.abertaEm, abertaPor: r.abertaPor,
+        abertaEm: ex?.abertaEm && (!r.abertaEm || ex.abertaEm < r.abertaEm) ? ex.abertaEm : r.abertaEm, abertaPor: r.abertaPor || ex?.abertaPor,
         toleranciaMin: Number(r.toleranciaMin) || TOLERANCIA_PADRAO_MIN, fechadaEm: r.fechadaEm || ex?.fechadaEm });
     }
   }
   save(KEY_SESSOES as any, [...sess.values()]);
-  if (json.contador) contadorDaAula.set(turmaId, String(json.contador));
-  aulaJaLida = true;
   // Grupos
   juntarPorId(KEY_MEMBROS, (json.grupos?.membros || []) as MembroGrupo[]);
   juntarPorId(KEY_INFO_GRUPOS, (json.grupos?.info || []).map((g: any) => ({ ...g, validado: g.validado === true || g.validado === 'true' })) as InfoGrupo[]);
-  return true;
 }
 
 /** Esta abertura já está na aula que os telemóveis leem? (script v19; null = não sei) */

@@ -30,7 +30,7 @@ import {
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
-  sincronizarDoSheets, calcularPontosRegularidade, getSelecoes, getValidacoes,
+  sincronizarDoSheets, juntarDaBase, calcularPontosRegularidade, getSelecoes, getValidacoes,
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
@@ -77,6 +77,7 @@ import { perguntasDe, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondi
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
 import { CINCO_C, triagemDoPlano, type Letra5CAluno } from '../contextoAula';
 import { capituloDoCampo } from '../bancoManuais';
+import { ouvirTurmaNaBase, TIPOS_DO_ALUNO } from '../baseDeDados';
 import { regrasDaAutoavaliacao, ecrasDoAluno, type EcraDoAluno } from '../autoavaliacaoDaAula';
 import { fraseDaAula } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
@@ -690,6 +691,18 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     tique();
     const t = setInterval(tique, 3000);
     return () => { vivo = false; clearInterval(t); };
+  }, [aluno.turmaId]);
+
+  // Com a base de dados: o plano, as fichas, a abertura da aula e as notas
+  // chegam ao telemóvel no momento em que o professor os grava.
+  useEffect(() => {
+    let t: any = null;
+    const parar = ouvirTurmaNaBase(aluno.turmaId, (tipo, dados) => {
+      juntarDaBase(tipo, dados);
+      clearTimeout(t);
+      t = setTimeout(() => setPlanos(getPlanosAulaPorTurma(aluno.turmaId).filter(p => p.estado === 'publicado')), 300);
+    }, TIPOS_DO_ALUNO);
+    return () => { clearTimeout(t); parar(); };
   }, [aluno.turmaId]);
 
   // O resto (notas, validações…) quando há novidades — no máximo de
