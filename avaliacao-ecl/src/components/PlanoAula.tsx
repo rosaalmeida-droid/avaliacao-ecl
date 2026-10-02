@@ -944,8 +944,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     tipoAtividade: tipoInicial || 'Aula prática',
     // Evento: vai a turma toda (obrigatório) ou os alunos inscrevem-se e o professor aceita.
     modoParticipacao: 'turma' as 'turma' | 'inscricao',
-    /** Evento ou atividade: as faltas contam como penalização? Por omissão, não. */
-    faltasContam: false,
+    /** As faltas e os atrasos contam para a assiduidade? Nas aulas sim; nos
+     *  eventos e atividades, por omissão, não. */
+    faltasContam: !tipoEventoDe(tipoInicial || ''),
     // Obrigatórias, mas o professor pode tirá-las desta aula.
     comFarda: true,
     comRegistos: true,
@@ -1095,7 +1096,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         titulo: dados.titulo.trim() || x.titulo, ucId: dados.ucId, ucNome: ucSelE?.nome || x.ucNome || '',
         tipoAtividade: dados.tipoAtividade, compRemovidas: [...tiradas],
       };
-      if (tipoEventoDe(dados.tipoAtividade)) { alt.tipoEvento = tipoEventoDe(dados.tipoAtividade); alt.modoParticipacao = dados.modoParticipacao; alt.contaAssiduidade = !!(dados as any).faltasContam; }
+      alt.contaAssiduidade = !!(dados as any).faltasContam;
+      if (tipoEventoDe(dados.tipoAtividade)) { alt.tipoEvento = tipoEventoDe(dados.tipoAtividade); alt.modoParticipacao = dados.modoParticipacao; }
       else if (x.tipoEvento) alt.tipoEvento = undefined;
       // Mudou o tipo de aula: a triagem acompanha (as outras respostas ficam).
       if (mudou.tipo && !tipoEventoDe(dados.tipoAtividade)) {
@@ -1116,20 +1118,10 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     // Aula criada depois de acontecer: o professor esqueceu-se de a criar
     // e vai pedir a autoavaliação agora. As faltas e atrasos dessa aula
     // podem não ser dos alunos — pergunta-se, não se assume.
-    let contaAssiduidade = true;
+    // As faltas e os atrasos contam? O professor responde no passo 3, em
+    // todas as aulas (antes, numa aula que já passou, saía uma janela ao guardar).
+    const contaAssiduidade = !!(dados as any).faltasContam;
     const hojeISO = new Date().toISOString().slice(0, 10);
-    // Evento fora do horário: faltas e atrasos não contam para a assiduidade
-    // (a pontualidade no evento avalia-se na atitude).
-    // O professor escolhe se as faltas contam (pergunta no formulário).
-    if (tipoEventoDe(dados.tipoAtividade)) contaAssiduidade = !!(dados as any).faltasContam;
-    else if (dados.data && dados.data < hojeISO) {
-      contaAssiduidade = confirm(
-        'Esta aula já passou.\n\n'
-        + 'Queres que as faltas e os atrasos desta aula contem para a assiduidade?\n\n'
-        + 'OK — contam, como numa aula normal.\n'
-        + 'Cancelar — não contam; serve só para os alunos se autoavaliarem.'
-      );
-    }
 
     setDuplicados(null);
     aCriar.current = true;
@@ -1467,7 +1459,11 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         </div>
         <div className="field" style={{ marginBottom: 14 }}>
           <label className="field-label">Tipo de actividade</label>
-          <select className="input" value={dados.tipoAtividade} onChange={e => setD('tipoAtividade', e.target.value)}>
+          <select className="input" value={dados.tipoAtividade} onChange={e => {
+            const novo = e.target.value;
+            if (!!tipoEventoDe(novo) !== !!tipoEventoDe(dados.tipoAtividade)) setDados(p => ({ ...p, faltasContam: !tipoEventoDe(novo) }));
+            setD('tipoAtividade', novo);
+          }}>
             {TIPOS_ATIVIDADE.map(t => <option key={t}>{t}</option>)}
           </select>
           {tipoEventoDe(dados.tipoAtividade) && (
@@ -1488,6 +1484,29 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
               </label>
             ))}
           </div>
+          {/* As faltas e os atrasos contam? Antes só se perguntava nos eventos;
+              numa aula que já passou aparecia uma janela escondida ao guardar
+              (Rosa, out/2026). */}
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '12px 0 6px' }}>As faltas e os atrasos contam?</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {([[true, 'Sim', 'Contam como numa aula normal: entram nas horas de falta da UC.'],
+               [false, 'Não', tipoEventoDe(dados.tipoAtividade)
+                 ? 'A presença, a pontualidade e a farda contam só como atitudes (responsabilidade, apresentação).'
+                 : 'Não entram nas horas de falta. Ex.: aula criada depois de acontecer, só para os alunos se autoavaliarem.']] as const).map(([v, t, d]) => (
+              <button key={t} type="button" onClick={() => setDados(p => ({ ...p, faltasContam: v }))}
+                style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                  border: `2px solid ${(dados as any).faltasContam === v ? 'var(--copper)' : 'rgba(26,23,20,0.12)'}`,
+                  background: (dados as any).faltasContam === v ? 'var(--copper-pale, #fdf0e6)' : '#fff' }}>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>{t}</div>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{d}</div>
+              </button>
+            ))}
+          </div>
+          {dados.data && dados.data < new Date().toISOString().slice(0, 10) && !tipoEventoDe(dados.tipoAtividade) && (
+            <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 6 }}>
+              Esta aula já passou. Se a estás a criar só para os alunos se autoavaliarem, escolhe «Não».
+            </div>
+          )}
           {tipoEventoDe(dados.tipoAtividade) && (
             <div style={{ marginTop: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Quem participa?</div>
@@ -1498,19 +1517,6 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
                     style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
                       border: `2px solid ${dados.modoParticipacao === v ? 'var(--copper)' : 'rgba(26,23,20,0.12)'}`,
                       background: dados.modoParticipacao === v ? 'var(--copper-pale, #fdf0e6)' : '#fff' }}>
-                    <div style={{ fontWeight: 800, fontSize: 14 }}>{t}</div>
-                    <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{d}</div>
-                  </button>
-                ))}
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 700, margin: '12px 0 6px' }}>As faltas contam como penalização?</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {([[false, 'Não', 'A presença, a pontualidade e a farda contam só como atitudes (responsabilidade, apresentação).'],
-                   [true, 'Sim', 'Contam como numa aula: entram nas horas de falta da UC.']] as const).map(([v, t, d]) => (
-                  <button key={t} type="button" onClick={() => setDados(p => ({ ...p, faltasContam: v }))}
-                    style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-                      border: `2px solid ${(dados as any).faltasContam === v ? 'var(--copper)' : 'rgba(26,23,20,0.12)'}`,
-                      background: (dados as any).faltasContam === v ? 'var(--copper-pale, #fdf0e6)' : '#fff' }}>
                     <div style={{ fontWeight: 800, fontSize: 14 }}>{t}</div>
                     <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>{d}</div>
                   </button>
@@ -1559,8 +1565,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
               : `${({ pratico: 'Prática', misto: 'Mista', teorico: 'Teórica', atitudinal: 'Atitudinal' } as Record<string, string>)[dados.tipoPlanAula]} · ${dados.tipoAtividade}`, 3],
             ['Farda', dados.comFarda ? 'avalia-se' : 'não se avalia', 3],
             ['Registos (HACCP)', dados.comRegistos ? 'avaliam-se' : 'não se avaliam', 3],
-            ...(tipoEventoDe(dados.tipoAtividade) ? [['Participam', dados.modoParticipacao === 'inscricao' ? 'quem se inscrever' : 'a turma toda', 3],
-              ['Faltas contam', (dados as any).faltasContam ? 'sim' : 'não', 3]] : []),
+            ['Faltas e atrasos', (dados as any).faltasContam ? 'contam' : 'não contam', 3],
+            ...(tipoEventoDe(dados.tipoAtividade) ? [['Participam', dados.modoParticipacao === 'inscricao' ? 'quem se inscrever' : 'a turma toda', 3]] : []),
             ...(alvo && !tipoEventoDe(dados.tipoAtividade) ? (() => {
               const tri = triagemDoPlano(alvo);
               const md = manualDaUC(alvo.ucId);
