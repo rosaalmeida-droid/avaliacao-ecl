@@ -564,7 +564,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [compAberta, setCompAberta] = useState<string | null>(null);
   function toggleComp(id: string) { setCompAberta(prev => prev === id ? null : id); }
   // Muitos capítulos do manual: a lista começa fechada.
-  const [verCaps, setVerCaps] = useState(false);
+  // Rosa, out/2026: «o manual não aparece todo» — a lista começa aberta.
+  const [verCaps, setVerCaps] = useState(true);
 
   // Estado do botão de publicar atualização
 
@@ -669,12 +670,15 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     : null;
 
   // ── Atitudes ────────────────────────────────────────────────
-  const compAtitudes = ATITUDES
+  // A mesma lista que se mostra e que se conta (mostravam-se 5 e contavam-se 4).
+  const compAtitudesTodas = ATITUDES
     .filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente')
       && !IDS_ATITUDES_DUPLICAM.has(a.id)
       && !IDS_JA_USADOS.has(a.id))
-    .slice(0, 4)
-    .filter(a => !compRemovidas.includes(a.id));
+    .slice(0, 4);
+  const compAtitudes = compAtitudesTodas.filter(a => !compRemovidas.includes(a.id));
+  // As obrigatórias tiradas desta aula («Fora desta aula») não contam.
+  const nObrigatorias = compObrigatorias.filter(o => !compRemovidas.includes(o.id)).length;
 
   // ── Subtécnicas (fallback) ──────────────────────────────────
   const compSubtecnicas: any[] = [];
@@ -703,8 +707,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     ? compConhecimentos.filter(k => !capituloDoCampo(k.id)).length + Math.min(4, compConhecimentos.filter(k => capituloDoCampo(k.id)).length || 4)
     : compConhecimentos.length;
   const totalComp = ehAtitudinal
-    ? compObrigatorias.length + nAtitudesDaAula + compAdicionadas.filter(x => !x.startsWith('ATI-')).length
-    : compObrigatorias.length + compSub.length + compApp.length
+    ? nObrigatorias + nAtitudesDaAula + compAdicionadas.filter(x => !x.startsWith('ATI-')).length
+    : nObrigatorias + compSub.length + compApp.length
       + nConhecimentosAvaliados + compTecnicas.length + compAtitudes.length + compAdicionadas.length;
 
   function guardarCompetencias(removidas: string[], adicionadas: string[]) {
@@ -1559,7 +1563,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)',
               lineHeight: 1.8 }}>
               <div>
-                <b>{compObrigatorias.length}</b> obrigatórias
+                <b>{nObrigatorias}</b> obrigatórias
                 <span style={{ color: 'rgba(26,23,20,0.5)' }}>
                   {' '}— higiene, HACCP e assiduidade. Em todas as aulas práticas.
                 </span>
@@ -1814,7 +1818,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 </button>
               </>
             )}
-            {!ehAtitudinal && ATITUDES.filter(a => (a.prioridade === 'permanente' || a.prioridade === 'recorrente') && !IDS_ATITUDES_DUPLICAM.has(a.id)).slice(0, 5).map(a => {
+            {!ehAtitudinal && compAtitudesTodas.map(a => {
               const removida = compRemovidas.includes(a.id);
               return (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: removida ? 'var(--cream-dark)' : 'rgba(142,68,173,0.06)', marginBottom: 6, border: `1px solid ${removida ? 'var(--border)' : 'rgba(142,68,173,0.15)'}`, opacity: removida ? 0.5 : 1 }}>
@@ -1831,7 +1835,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           {blocoRetiradas}
           <div style={{ padding: '12px 14px', background: 'var(--cream-dark)', borderRadius: 10, fontSize: 13, textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Total: {totalComp} competências</div>
-            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{compObrigatorias.length} obrigatórias · {compSub.length + compApp.length + compTecnicas.length} técnicas · {compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{nAtitudesDaAula} atitudes{compRemovidas.length > 0 && ` · ${compRemovidas.length} removida${compRemovidas.length > 1 ? 's' : ''}`}</div>
+            <div style={{ color: 'rgba(26,23,20,0.5)' }}>{nObrigatorias} obrigatória{nObrigatorias === 1 ? '' : 's'} · {compSub.length + compApp.length + compTecnicas.length} técnicas · {nConhecimentosAvaliados > 0 ? `${nConhecimentosAvaliados} conhecimentos${temaAEscolher && capsDoManual.size > 0 ? ' (do conteúdo que o aluno escolhe)' : ''} · ` : ''}{compSubtecnicas.length > 0 ? `${compSubtecnicas.length} subtécnicas · ` : ''}{nAtitudesDaAula} atitudes</div>
             {totalComp > 12 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
             {totalComp <= 5 && <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>✓ Número adequado para uma aula.</div>}
           </div>
