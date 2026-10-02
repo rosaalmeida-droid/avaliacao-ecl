@@ -11,6 +11,7 @@
 import type { PlanoAula, FichaProducao } from './types';
 import { codigosDasLinhas, encontrarSubtecnica, encontrarAparelho, ATITUDES } from './compatECL';
 import { triagemDoPlano, tipoDe, escolheTema, fasesDoTrabalho, type FaseProjeto } from './contextoAula';
+import { manualDaUC, capituloDoCampo } from './bancoManuais';
 
 const semPonto = (t: string) => t.trim().replace(/[.;:]+$/, '');
 const minuscula = (t: string) => t ? t[0].toLowerCase() + t.slice(1) : t;
@@ -34,8 +35,25 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
       porConteudo.set(titulo, g);
     } else soltos.push(minuscula(semPonto(k.texto)));
   }
-  // Num trabalho, cada aluno tem o seu tema: não se põe no sumário um conteúdo só.
-  if (t && escolheTema(t)) { porConteudo.clear(); soltos.length = 0; }
+  // Muitos conteúdos (o manual todo, por exemplo) ou um trabalho em que cada
+  // aluno tem o seu tema: o sumário diz os conteúdos de forma resumida, sem
+  // os indicadores um a um (Rosa, out/2026).
+  const md = manualDaUC(p.ucId);
+  const caps = new Set(conh.map((k: any) => capituloDoCampo(String(k.id || ''))?.capitulo.n).filter((n): n is number => n != null));
+  const resumoDoManual = () => {
+    if (!md) return '';
+    if (!caps.size || caps.size === md.capitulos.length) return `todos os conteúdos do Manual do Aluno «${md.titulo}»`;
+    const titulos = md.capitulos.filter(c => caps.has(c.n)).map(c => c.titulo);
+    return titulos.length <= 6 ? `conteúdos do Manual do Aluno: ${lista(titulos)}` : `${titulos.length} conteúdos do Manual do Aluno «${md.titulo}»`;
+  };
+  const trabalho = !!t && escolheTema(t);
+  let linhaDosTemas = '';
+  if (trabalho || caps.size > 3) {
+    const r = resumoDoManual();
+    porConteudo.clear(); soltos.length = 0;
+    if (!trabalho && r) linhas.push(`${r.charAt(0).toUpperCase()}${r.slice(1)}.`);
+    if (trabalho && r) linhaDosTemas = `Temas à escolha: ${r}.`;
+  }
   const temas = [...new Set([...porConteudo.values()].map(g => g.tema).filter(Boolean))] as string[];
   if (temas.length) linhas.push(`${temas.join('; ')}.`);
   for (const [titulo, g] of porConteudo) linhas.push(`${titulo}: ${lista(g.indicadores)}.`);
@@ -71,6 +89,7 @@ export function sumarioAutomatico(plano: PlanoAula, fichas: FichaProducao[]): st
     const quem = t.modo === 'individual' ? 'Trabalho individual (cada aluno com o seu tema do Manual do Aluno)'
       : 'Trabalho de grupo (cada grupo com o seu tema do Manual do Aluno)';
     linhas.push(`${quem}${t.continuaDe ? ', em continuação da aula anterior' : ''}: ${lista(fases)}.`);
+    if (linhaDosTemas) linhas.push(linhaDosTemas);
     return linhas.join('\n');
   }
   // Como se trabalhou.

@@ -1702,14 +1702,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         resumo={sumarioDoPlano(plano, fichasDoPlano).split('\n')[0] || 'Sem sumário'}>
       <SumarioAula key={plano.id} plano={plano} onGuardado={(p) => onPlanoActualizado(p as any)} />
       {/* Aula sem cozinhar (teórica, com o manual): o que se trabalhou é o que o aluno avalia. */}
-      {!contextoDoPlano(plano).producao && !(plano as any).tipoEvento && !escolheTema(triagemDoPlano(plano)) && (
+      {(!contextoDoPlano(plano).producao || escolheTema(triagemDoPlano(plano))) && !(plano as any).tipoEvento && (
         <ConhecimentosDoProfessor plano={plano} onPlanoActualizado={onPlanoActualizado} />
-      )}
-      {/* Num trabalho, cada aluno escolhe o seu tema: o professor não marca conteúdos. */}
-      {escolheTema(triagemDoPlano(plano)) && (
-        <div style={{ background:'#E6EEF7', borderRadius:12, padding:'10px 14px', fontSize:14, lineHeight:1.5, marginTop:10 }}>
-          Neste trabalho cada aluno escolhe o seu tema, de entre todos os conteúdos do manual. Não precisas de marcar conteúdos.
-        </div>
       )}
       {/* Aula atitudinal — o professor escolhe o que se trabalha. Cada
           toque marca ou desmarca; nada fica gravado até ele confirmar.
@@ -2293,6 +2287,8 @@ function ResultadosConcurso({ plano, alunos, participantes, gravar, bt }: {
 function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
   const [texto, setTexto] = React.useState('');
   const [capAberto, setCapAberto] = React.useState<number | null>(null);
+  // As partes do manual começam fechadas: vê-se só a parte e quantos conteúdos tem marcados.
+  const [partesAbertas, setPartesAbertas] = React.useState<Set<string>>(new Set());
   // O que o professor escolheu: campos do manual ou escritos por ele. O
   // referencial é só sugestão: as linhas dele não dizem ao aluno o que se fez.
   const lista: { id: string; texto: string; capitulo?: string; tema?: string }[] = conhecimentosDaAula(plano);
@@ -2310,13 +2306,17 @@ function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; o
   const alternarCampo = (id: string, textoCampo: string, capitulo: string) =>
     gravar(escolhido(id) ? lista.filter(x => x.id !== id) : [...lista, { id, texto: textoCampo, capitulo, tema: capituloDoCampo(id)?.capitulo.parte }]);
   const azul = '#1d4ed8';
+  const trabalho = escolheTema(triagemDoPlano(plano));
   return (
     <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(37,99,235,0.25)', background: 'rgba(37,99,235,0.04)' }}>
-      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: azul, marginBottom: 4 }}>📚 O que se trabalhou hoje</div>
+      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: azul, marginBottom: 4 }}>
+        {trabalho ? '📚 Temas por onde os alunos escolhem' : '📚 O que se trabalhou hoje'}</div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.45 }}>
-        {NIVEIS_CONHECIMENTO.tema} › {NIVEIS_CONHECIMENTO.conteudo} › {NIVEIS_CONHECIMENTO.indicador}. O aluno autoavalia-se em cada indicador marcado.
+        {trabalho
+          ? 'Cada aluno escolhe o seu tema entre os conteúdos marcados. Sem nada marcado, entram todos os do manual.'
+          : 'Com 1 ou 2 conteúdos, o aluno responde a cada indicador. Com mais (ou o manual todo), o aluno diz qual trabalhou e responde aos desse.'}
       </div>
-      {proximo && !lista.some(k => k.id.startsWith(`KNW-P-M-${proximo.ficheiro}-${proximo.capitulo.n}-`)) && (
+      {!trabalho && proximo && !lista.some(k => k.id.startsWith(`KNW-P-M-${proximo.ficheiro}-${proximo.capitulo.n}-`)) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: `1px solid ${azul}`,
           borderRadius: 10, padding: '8px 12px', marginBottom: 8 }}>
           <span style={{ flex: 1, minWidth: 200, fontSize: 13.5 }}>
@@ -2328,60 +2328,102 @@ function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano: any; o
               cursor: 'pointer', fontFamily: 'inherit' }}>Usar</button>
         </div>
       )}
-      {lista.length === 0 && <div style={{ fontSize: 13, color: '#8a4a15', marginBottom: 6 }}>Nada escolhido: o aluno avalia só «o trabalho de hoje», com o sumário à frente.</div>}
-      {lista.map(k => (
+      {/* Os escritos à mão (não do manual). */}
+      {lista.filter(k => !k.id.startsWith('KNW-P-M-')).map(k => (
         <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 13.5 }}>
-          <span style={{ flex: 1 }}>● {k.texto}{k.capitulo && <span style={{ color: 'rgba(26,23,20,0.5)' }}> — {k.capitulo}</span>}</span>
+          <span style={{ flex: 1 }}>● {k.texto}</span>
           <button onClick={() => gravar(lista.filter(x => x.id !== k.id))} style={{ fontSize: 12.5, padding: '3px 9px', borderRadius: 7,
             border: '1px solid rgba(26,23,20,0.2)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>Tirar</button>
         </div>
       ))}
 
-      {/* O índice do manual da UC: cada capítulo com os seus campos. */}
-      {manual && (
-        <div style={{ marginTop: 10, background: '#fff', borderRadius: 10, border: '1px solid rgba(37,99,235,0.2)', padding: '8px 10px' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: azul, marginBottom: 4 }}>Do manual: {manual.titulo}</div>
-          {manual.capitulos.map((c, k) => {
-            const campos = camposDoCapitulo(c);
-            const rotulo = `Manual, ${rotuloConteudo(c)}`;
-            const n = campos.filter((_, i) => escolhido(idCampoManual(manual.ficheiro, c.n, i))).length;
-            const novaParte = k === 0 || manual.capitulos[k - 1].parte !== c.parte;
-            return (
-              <div key={c.n}>
-                {novaParte && c.parte && <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
-                  color: 'rgba(26,23,20,0.45)', margin: '8px 0 2px' }}>{c.parte}</div>}
-                <button onClick={() => setCapAberto(capAberto === c.n ? null : c.n)} style={{ display: 'flex', width: '100%', gap: 8, textAlign: 'left',
-                  padding: '6px 4px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5 }}>
-                  <span style={{ color: 'rgba(26,23,20,0.45)', minWidth: 20 }}>{String(c.n).padStart(2, '0')}</span>
-                  <span style={{ flex: 1, fontWeight: n ? 700 : 500 }}>{c.titulo}</span>
-                  {n > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: azul }}>{n} de {campos.length}</span>}
-                  <span style={{ color: 'rgba(26,23,20,0.4)' }}>{capAberto === c.n ? '▾' : '▸'}</span>
-                </button>
-                {capAberto === c.n && (
-                  <div style={{ padding: '2px 0 8px 28px' }}>
-                    {campos.map((t, i) => {
-                      const id = idCampoManual(manual.ficheiro, c.n, i);
-                      return (
-                        <label key={id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13.5, padding: '4px 0', cursor: 'pointer' }}>
-                          <input type="checkbox" checked={escolhido(id)} onChange={() => alternarCampo(id, t, rotulo)} style={{ width: 17, height: 17, marginTop: 1 }} />
-                          <span>{t}</span>
-                        </label>
-                      );
-                    })}
-                    <button onClick={() => {
-                        const faltam = campos.map((t, i) => ({ id: idCampoManual(manual.ficheiro, c.n, i), texto: t, capitulo: rotulo }))
-                          .filter(x => !escolhido(x.id));
-                        if (faltam.length) gravar([...lista, ...faltam.map(x => ({ ...x, tema: c.parte }))]);
-                      }}
-                      style={{ marginTop: 4, fontSize: 12.5, fontWeight: 700, padding: '4px 10px', borderRadius: 7, border: `1px solid ${azul}`,
-                        background: '#fff', color: azul, cursor: 'pointer', fontFamily: 'inherit' }}>Marcar o capítulo todo</button>
-                  </div>
-                )}
+      {/* O índice do manual da UC (Rosa, out/2026): o manual todo com um toque;
+          cada parte e cada capítulo marcam-se de uma vez; os indicadores, se
+          se quiser, abrindo o capítulo. */}
+      {manual && (() => {
+        const campos = (c: any) => camposDoCapitulo(c).map((t, i) => ({ id: idCampoManual(manual.ficheiro, c.n, i), texto: t,
+          capitulo: `Manual, ${rotuloConteudo(c)}`, tema: c.parte }));
+        const nMarcados = (c: any) => campos(c).filter(x => escolhido(x.id)).length;
+        const marcar = (caps: any[], on: boolean) => {
+          const ids = new Set(caps.flatMap(c => campos(c).map(x => x.id)));
+          gravar(on ? [...lista, ...caps.flatMap(c => campos(c)).filter(x => !escolhido(x.id))] : lista.filter(x => !ids.has(x.id)));
+        };
+        const capsComAlgo = manual.capitulos.filter(c => nMarcados(c) > 0).length;
+        const todos = capsComAlgo === manual.capitulos.length;
+        const partes = [...new Set(manual.capitulos.map(c => c.parte || ''))];
+        const caixa = (estado: 0 | 1 | 2, ao: () => void, grande?: boolean) => (
+          <span onClick={e => { e.stopPropagation(); ao(); }} role="checkbox" aria-checked={estado === 2 ? true : estado === 1 ? 'mixed' : false}
+            style={{ width: grande ? 20 : 18, height: grande ? 20 : 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer',
+              border: `2px solid ${estado ? azul : 'rgba(26,23,20,0.3)'}`, background: estado === 2 ? azul : estado === 1 ? 'rgba(29,78,216,0.15)' : '#fff',
+              color: '#fff', fontSize: 12, fontWeight: 900, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+            {estado === 2 ? '✓' : estado === 1 ? <span style={{ color: azul }}>–</span> : ''}
+          </span>
+        );
+        return (
+          <div style={{ marginTop: 10, background: '#fff', borderRadius: 10, border: '1px solid rgba(37,99,235,0.2)', padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+              <div style={{ flex: '1 1 200px', fontSize: 14, fontWeight: 700, color: azul }}>Manual: {manual.titulo}
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.6)' }}>
+                  {capsComAlgo ? `${capsComAlgo} de ${manual.capitulos.length} conteúdos marcados` : 'Nenhum conteúdo marcado'}
+                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+              <button onClick={() => marcar(manual.capitulos, true)} disabled={todos}
+                style={{ fontSize: 13.5, fontWeight: 700, padding: '8px 14px', borderRadius: 9, border: 'none', background: todos ? 'rgba(29,78,216,0.35)' : azul,
+                  color: '#fff', cursor: todos ? 'default' : 'pointer', fontFamily: 'inherit' }}>{todos ? '✓ Manual todo incluído' : 'Incluir o manual todo'}</button>
+              {capsComAlgo > 0 && <button onClick={() => marcar(manual.capitulos, false)}
+                style={{ fontSize: 13, fontWeight: 700, padding: '7px 12px', borderRadius: 9, border: '1px solid rgba(26,23,20,0.2)', background: '#fff',
+                  cursor: 'pointer', fontFamily: 'inherit' }}>Limpar</button>}
+            </div>
+            {partes.map(parte => {
+              const caps = manual.capitulos.filter(c => (c.parte || '') === parte);
+              const nc = caps.filter(c => nMarcados(c) > 0).length;
+              const estadoParte: 0 | 1 | 2 = nc === 0 ? 0 : nc === caps.length && caps.every(c => nMarcados(c) === campos(c).length) ? 2 : 1;
+              return (
+                <div key={parte} style={{ marginTop: 6 }}>
+                  {parte && (
+                    <div onClick={() => setPartesAbertas(s => { const n = new Set(s); n.has(parte) ? n.delete(parte) : n.add(parte); return n; })}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 4px',
+                      cursor: 'pointer', borderBottom: '1px solid rgba(26,23,20,0.08)' }}>
+                      {caixa(estadoParte, () => marcar(caps, estadoParte !== 2), true)}
+                      <span style={{ flex: 1, fontSize: 12.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'rgba(26,23,20,0.6)' }}>{parte}</span>
+                      <span style={{ fontSize: 12, color: 'rgba(26,23,20,0.5)' }}>{nc} de {caps.length} {partesAbertas.has(parte) ? '▾' : '▸'}</span>
+                    </div>
+                  )}
+                  {(!parte || partesAbertas.has(parte)) && caps.map(c => {
+                    const n = nMarcados(c), total = campos(c).length;
+                    const est: 0 | 1 | 2 = n === 0 ? 0 : n === total ? 2 : 1;
+                    return (
+                      <div key={c.n}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px 5px 18px' }}>
+                          {caixa(est, () => marcar([c], est !== 2))}
+                          <span onClick={() => marcar([c], est !== 2)} style={{ flex: 1, fontSize: 13.5, cursor: 'pointer', fontWeight: n ? 700 : 500 }}>
+                            <span style={{ color: 'rgba(26,23,20,0.45)', marginRight: 6 }}>{String(c.n).padStart(2, '0')}</span>{c.titulo}
+                          </span>
+                          <button onClick={() => setCapAberto(capAberto === c.n ? null : c.n)} title="Ver os indicadores"
+                            style={{ fontSize: 12, padding: '2px 8px', borderRadius: 7, border: '1px solid rgba(26,23,20,0.15)', background: '#fff',
+                              color: 'rgba(26,23,20,0.6)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                            {n ? `${n}/${total}` : total} {capAberto === c.n ? '▾' : '▸'}
+                          </button>
+                        </div>
+                        {capAberto === c.n && (
+                          <div style={{ padding: '0 0 6px 46px' }}>
+                            {campos(c).map(x => (
+                              <label key={x.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, padding: '3px 0', cursor: 'pointer' }}>
+                                <input type="checkbox" checked={escolhido(x.id)} onChange={() => alternarCampo(x.id, x.texto, x.capitulo)} style={{ width: 16, height: 16, marginTop: 1 }} />
+                                <span>{x.texto}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       <details style={{ marginTop: 10 }}>
         <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: azul }}>Escrever outro{sugestoes.length ? ' ou usar o referencial' : ''}</summary>
