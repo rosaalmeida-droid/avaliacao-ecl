@@ -89,6 +89,18 @@ regra('20a/20c. Numa atividade com ficha, os alunos avaliam as técnicas da fich
   igual(r.ecras.some((e: any) => String(e.nome).includes('SUB-010')), true, 'a técnica da ficha aparece:');
 });
 
+regra('20g. Na atividade, a atitude escolhida pelo professor pergunta-se; as do dia não se repetem', () => {
+  const aula = { id: 'p_aula', turmaId: 't', ucId: 'UC1', data: '2026-10-01', horaInicio: '10:30', horaFim: '15:00', tipoAtividade: 'Aula prática', estado: 'publicado' };
+  const base = { id: 'p_atv', turmaId: 't', ucId: 'UC1', data: '2026-10-01', horaInicio: '10:30', horaFim: '15:00', tipoAtividade: 'Atividade fora da escola',
+    tipoEvento: 'evento', tipoPlanAula: 'pratico', fichasIds: ['f1'], modoParticipacao: 'inscricao', participantesIds: ['a1'], aulaLigada: 'p_aula', estado: 'publicado' };
+  por('ecl_fichas', [{ id: 'f1', nomePrato: 'Marmelada', tecnicasSugeridas: ['SUB-010 Bater claras'], aparelhosDetectados: [] }]);
+  const ati = (p: any) => g.oQueOAlunoVe(p).ecras.filter((e: any) => e.tipo === 'atitude').map((e: any) => e.nome);
+  por('ecl_planos', [aula, { ...base, compAdicionadas: ev.atitudesSugeridasEvento('Atividade fora da escola') }]);
+  igual(ati(b.getPlanosAula()[1]).length, 0, 'com as sugeridas, não se repetem:');
+  por('ecl_planos', [aula, { ...base, compAdicionadas: ['ATI-009'] }]);
+  igual(ati(b.getPlanosAula()[1]).length, 1, 'a escolhida (cooperação) pergunta-se:');
+});
+
 regra('20d. «Atividade fora da escola» aparece como «Atividade extra», e já se sabe como é', () => {
   igual(ev.nomeDoTipoAtividade('Atividade fora da escola'), 'Atividade extra');
   igual(!!c.triagemDoPlano({ tipoEvento: 'evento', tipoAtividade: 'Atividade fora da escola' }), true);

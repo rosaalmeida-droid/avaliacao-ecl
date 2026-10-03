@@ -16,7 +16,7 @@ import { trimestreAtual } from './datas';
 import { sumarioDoPlano } from './sumarioAutomatico';
 import { criteriosDasFases } from './criteriosTrabalho';
 import { opcoesDeEscolhaDoAluno } from './motorAvaliacao';
-import { ATITUDES_FIXAS_EVENTO, NOME_TEC_EVENTO } from './eventosAvaliacao';
+import { ATITUDES_FIXAS_EVENTO, NOME_TEC_EVENTO, atitudesSugeridasEvento } from './eventosAvaliacao';
 import {
   temPerguntas, atitudeAplicavel, perguntasAplicaveis, perguntasDe, porqueNaoSeFaz,
 } from './perguntas_atitudes';
@@ -152,14 +152,23 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   const idsDoTrimestre = atitudesDoTrimestre(ano, trimestre).map((x: any) => x.id as string);
   const marcadasNoPlano = [...new Set(((p.compAdicionadas || []) as string[]))]
     .filter(id => id.startsWith('ATI-') && !compRemovidas.includes(id) && temPerguntas(id));
-  const atitudesDaAula = (!ehAtitudinal
+  // Regra (Rosa, out/2026): na atividade, as atitudes não se repetem quando os
+  // alunos já as respondem no plano da turma. MAS a atitude que o professor
+  // escolheu de propósito para a atividade (mudou as sugeridas: por exemplo,
+  // a cooperação num trabalho de grupo) pergunta-se. As atitudes fixas dos
+  // eventos (as de todos os dias) ficam no plano da turma.
+  const sugeridas = evento ? atitudesSugeridasEvento(String(p.tipoAtividade || '')) : [];
+  const mudouAsSugeridas = evento && (marcadasNoPlano.length !== sugeridas.length || marcadasNoPlano.some(id => !sugeridas.includes(id)));
+  const escolhidasNaAtividade = semAtitudes && mudouAsSugeridas
+    ? marcadasNoPlano.filter(id => !ATITUDES_FIXAS_EVENTO.includes(id)) : [];
+  const atitudesDaAula = semAtitudes ? escolhidasNaAtividade : (!ehAtitudinal
     ? [...new Set([
         ...(evento ? ATITUDES_FIXAS_EVENTO.filter(id => !compRemovidas.includes(id) && temPerguntas(id)) : []),
         ...(opts.fardaIncompleta && temPerguntas('ATI-003') ? ['ATI-003'] : []),
       ])]
     : marcadasNoPlano.length ? marcadasNoPlano
     : idsDoTrimestre.filter(id => !compRemovidas.includes(id) && temPerguntas(id))
-  ).filter(aplicavel).filter(() => !semAtitudes);
+  ).filter(aplicavel);
 
   const atitudesPermitidas = opcoesDeEscolhaDoAluno(ano);
   const atitudesDoPlano = ((p.compAdicionadas || []) as string[]).filter(id => id.startsWith('ATI-'));
@@ -281,7 +290,7 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
 
   for (const id of R.atitudesDaAula)
     ecras.push({ tipo: 'atitude', rotulo: 'Atitude', nome: nomeAti(id), perguntas: perguntasQueSeFazem(id),
-      porque: evento ? 'atitude dos eventos' : R.ehAtitudinal ? 'marcada no plano' : 'farda incompleta', c: 'cp' });
+      porque: evento ? (R.semAtitudes ? 'escolhida por ti para esta atividade' : 'atitude dos eventos') : R.ehAtitudinal ? 'marcada no plano' : 'farda incompleta', c: 'cp' });
   if (R.escolheAtitude) {
     ecras.push({ tipo: 'escolhe', rotulo: 'Atitude', nome: `Escolhe 1: ${R.atitudesParaEscolher.map(nomeAti).join(' · ')}`,
       perguntas: R.atitudesParaEscolher.flatMap(perguntasQueSeFazem), porque: 'do trimestre e do plano', c: 'cp' });

@@ -3171,7 +3171,9 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // pessoal». Só as que têm uma pergunta que faça sentido nesta aula.
   const fardaIncompletaHoje = !ehAtitudinal && fardaIncompletaRegisto;
   void fardaIncompletaHoje;
-  const atitudesDaAula: string[] = partes.atitudes ? regras.atitudesDaAula : [];
+  // Na atividade, as regras já tiram as atitudes do dia (respondidas no plano
+  // da turma) e deixam só a que o professor escolheu para a atividade.
+  const atitudesDaAula: string[] = partes.atitudes || (plano as any).tipoEvento ? regras.atitudesDaAula : [];
   // Medidas seletivas (2) ou adicionais (3): as mesmas perguntas, mais fáceis de ler.
   const simples = (aluno.nivelMedidas || 1) >= 2;
   // Um exemplo concreto de hoje (opcional).
