@@ -35,7 +35,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, rotuloDoPlano, partesDoPlanoParaOAluno, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, rotuloDoPlano, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -1924,7 +1924,7 @@ function OQueVaisResponder({ plano, fichas, aluno }: { plano: PlanoAula; fichas:
   const t = triagemDoPlano(plano);
   let ecras: EcraDoAluno[] = [];
   try {
-    ecras = ecrasDoAluno(plano, fichas, contextoDoPlano(plano), perguntaCODaAula(plano.id), perguntaCRDaAula(plano.id), aluno.ano ?? 1).ecras;
+    ecras = ecrasDoAluno(plano, fichas, contextoDoPlano(plano), perguntaCODaAula(plano.id), perguntaCRDaAula(plano.id), aluno.ano ?? 1, atitudesNoPlanoDaTurma(plano)).ecras;
   } catch { return null; }
   if (!ecras.length && !t) return null;
   const cs = (['cp', 'cl', 'cr', 'co'] as Letra5CAluno[]).filter(c => ecras.some(e => e.c === c));
@@ -2946,7 +2946,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     }
     return null;
   });
-  const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido });
+  const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido, atitudesNoPlanoDaTurma: atitudesNoPlanoDaTurma(plano) });
   // Esteve numa atividade do mesmo dia: responde só às partes do plano da
   // turma que o professor autorizou (Rosa, out/2026) — por exemplo, as
   // técnicas e os conhecimentos, mas não as atitudes, já avaliadas na atividade.

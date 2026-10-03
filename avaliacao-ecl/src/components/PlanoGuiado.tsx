@@ -15,7 +15,7 @@ import React, { useState, useContext, createContext } from 'react';
 import type { PlanoAula } from '../types';
 import {
   addOrUpdatePlanoAula, getPlanosAula, getFichasProducao, getAlunos, getSelecoes, contextoDoPlano,
-  perguntaCODaAula, perguntaCRDaAula, pedirNovaAutoavaliacao, estadoDaTurmaNaAula, anotarNoPlano, gruposDaAula, alunosDoPlano,
+  perguntaCODaAula, perguntaCRDaAula, pedirNovaAutoavaliacao, estadoDaTurmaNaAula, anotarNoPlano, gruposDaAula, alunosDoPlano, atitudesNoPlanoDaTurma,
 } from '../backend';
 import {
   triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem,
@@ -294,7 +294,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
           <span style={{ width: 24, height: 24, borderRadius: '50%', background: C.fundo, color: C.cobre, fontWeight: 800, fontSize: 13,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{n++}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 7 }}>Que aula é?</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 7 }}>{(plano as any).tipoEvento ? 'Que tipo de atividade é?' : 'Que tipo de aula é?'}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
               {(['pratico', 'misto', 'teorico', 'atitudinal'] as TipoAula[]).map(t => {
                 const on = !!definida && tipo === t;
@@ -428,7 +428,7 @@ function ResultadoDaAula({ plano, triagem }: { plano: PlanoAula; triagem: Triage
   return (
     <div style={{ marginTop: 16, background: C.azulP, borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 7 }}>
       <div style={{ fontWeight: 800, fontSize: 15, color: C.azul }}>Ficou assim</div>
-      {linha('A aula', fraseDaAula(triagem) + (escolheTema(triagem) ? ` ${triagem.modo === 'grupo' ? 'Trabalho de grupo' : 'Trabalho individual'}: ${fasesDoTrabalho(triagem).map(f => NOME_FASE[f].toLowerCase()).join(', ')}.` : ''))}
+      {linha((plano as any).tipoEvento ? 'A atividade' : 'O plano de aula', fraseDaAula(triagem) + (escolheTema(triagem) ? ` ${triagem.modo === 'grupo' ? 'Trabalho de grupo' : 'Trabalho individual'}: ${fasesDoTrabalho(triagem).map(f => NOME_FASE[f].toLowerCase()).join(', ')}.` : ''))}
       {linha('Sumário', <span style={{ whiteSpace: 'pre-line' }}>{sumarioDoPlano(plano, fichas)}</span>)}
       {linha(`O aluno responde`, ecras.length ? `${ecras.length}: ${ecras.map(e => e.nome).join(' → ')}` : '—')}
       {linha('Conta para a nota', pesos.map(x => `${x.nome} ${x.pct}%`).join(' · ') || '—')}
@@ -449,7 +449,7 @@ function anoDaTurma(turmaId: string): number {
 export function oQueOAlunoVe(plano: PlanoAula) {
   const fichas = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
   const ctx = contextoDoPlano(plano);
-  return ecrasDoAluno(plano, fichas, ctx, perguntaCODaAula(plano.id), perguntaCRDaAula(plano.id), anoDaTurma(plano.turmaId));
+  return ecrasDoAluno(plano, fichas, ctx, perguntaCODaAula(plano.id), perguntaCRDaAula(plano.id), anoDaTurma(plano.turmaId), atitudesNoPlanoDaTurma(plano));
 }
 
 export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {

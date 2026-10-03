@@ -6835,7 +6835,9 @@ export function participacaoContaParaBonus(a: Atividade, alunoId: string): { con
   const nota = new Map(val.notas.map(n => [n.competenciaId, Number(n.nota)]));
   const exigidas = a.tipo === 'concurso'
     ? ATITUDES_FIXAS_EVENTO
-    : [...new Set([...ATITUDES_FIXAS_EVENTO, ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('ATI-')), TEC_EVENTO])];
+    : [...new Set([...ATITUDES_FIXAS_EVENTO, ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('ATI-')), TEC_EVENTO,
+        // As técnicas da ficha técnica da atividade também contam (Rosa, out/2026).
+        ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('SUB-') || id.startsWith('APP-'))])];
   // Um plano que passou de aula a evento pode não ter as atitudes do evento:
   // conta então o que foi avaliado.
   const aContar = exigidas.some(id => nota.has(id)) ? exigidas.filter(id => nota.has(id)) : [...nota.keys()];
@@ -8734,39 +8736,6 @@ export function inscreverNoEvento(plano: PlanoAula, aluno: { id: string; nome?: 
 export function inscritosNoEvento(planoId: string): string[] {
   return getMembrosGrupo(idInscricao(planoId)).filter(m => m.grupoId === 'inscrito').map(m => m.alunoId);
 }
-/** «Separar a atividade da aula» enganou-se numa atividade verdadeira (Rosa,
- *  out/2026): a atividade passou a «aula» da turma toda e ficou uma cópia.
- *  Encontra o par a desfazer, a partir de qualquer um dos dois planos. */
-export function separacaoParaDesfazer(planoId: string): { original: any; copia: any } | null {
-  const todos: any[] = getPlanosAula();
-  const p: any = todos.find(x => x.id === planoId);
-  if (!p) return null;
-  const original = p.tipoEvento === null && p.modoParticipacao === 'turma' ? p
-    : (p.aulaLigada && String(p.id).startsWith(`plano_atv_${p.aulaLigada}_`) ? todos.find(x => x.id === p.aulaLigada) : null);
-  if (!original || original.tipoEvento !== null || original.modoParticipacao !== 'turma') return null;
-  const copia = todos.find(x => x.aulaLigada === original.id && String(x.id).startsWith(`plano_atv_${original.id}_`) && x.estado !== 'arquivado');
-  return copia ? { original, copia } : null;
-}
-/** Volta tudo a como estava antes de «Separar»: a atividade, só para os
- *  alunos escolhidos, e sem cópia. */
-export function desfazerSeparacao(planoId: string): PlanoAula | null {
-  const par = separacaoParaDesfazer(planoId);
-  if (!par) return null;
-  const { original: o, copia: c } = par;
-  const agora = new Date().toISOString();
-  const atividade: any = { ...o, tipoAtividade: c.tipoAtividade, tipoEvento: c.tipoEvento, modoParticipacao: c.modoParticipacao,
-    participantesIds: c.participantesIds || [], postosPeloProfessor: c.postosPeloProfessor || [],
-    participantesConfirmadosEm: c.participantesConfirmadosEm || null, tambemRespondemAula: c.tambemRespondemAula !== false,
-    partesDaAula: c.partesDaAula || null, eventoId: c.eventoId || null,
-    resultadosConcurso: c.resultadosConcurso || null, fasesConcurso: c.fasesConcurso || null, atualizadoEm: agora };
-  addOrUpdatePlanoAula(atividade);
-  // A cópia sai (o que os alunos responderam nela passa para a atividade).
-  const respostas = getSelecoes().filter(s => s.planoAulaId === c.id);
-  respostas.forEach(s => addOrUpdateSelecao({ ...s, planoAulaId: o.id, id: `sel_${o.id}_${s.alunoId}` } as any));
-  eliminarPlanoAulaDefinitivamente(c.id);
-  return atividade;
-}
-
 /** Uma aula que foi transformada em atividade (antes da regra «a atividade
  *  nunca muda a aula»): ainda tem sinais de aula — o tipo de aula, fichas,
  *  conteúdos, ou respostas de alunos que não estão na atividade. */
@@ -8835,9 +8804,22 @@ export const PARTES_POR_OMISSAO: PartesDoPlano = { tecnicas: true, conhecimentos
 export function partesDoPlanoParaOAluno(aula: any, alunoId: string): PartesDoPlano {
   const atv: any = getPlanosAula().find((a: any) => eventoForaDoHorario(a) && a.estado !== 'arquivado'
     && aulaDoDiaDaAtividade(a)?.id === aula?.id && participantesDoEvento(a).includes(alunoId));
+  // A própria atividade: as atitudes só se não forem já avaliadas no plano
+  // de aula da turma desse dia (não se repetem as mesmas perguntas).
+  if (aula?.tipoEvento) return { tecnicas: true, conhecimentos: true, atitudes: !atitudesNoPlanoDaTurma(aula) };
   if (!atv) return { tecnicas: true, conhecimentos: true, atitudes: true };
   if (atv.tambemRespondemAula === false) return { tecnicas: false, conhecimentos: false, atitudes: false };
   return { ...PARTES_POR_OMISSAO, ...(atv.partesDaAula || {}) };
+}
+/** Regra (Rosa, out/2026): os alunos da atividade já respondem às atitudes
+ *  no plano de aula da turma desse dia? Então a atividade não as repete.
+ *  Se não respondem ao plano de aula (ou as atitudes lá foram tiradas), a
+ *  atividade avalia as atitudes. */
+export function atitudesNoPlanoDaTurma(atividade: any): boolean {
+  if (!atividade?.tipoEvento) return false;
+  const aula = aulaDoDiaDaAtividade(atividade);
+  if (!aula || atividade.tambemRespondemAula === false) return false;
+  return { ...PARTES_POR_OMISSAO, ...(atividade.partesDaAula || {}) }.atitudes !== false;
 }
 /** Texto do plano do dia: «quinta-feira, 01/10 · Plano n.º 103 — título». */
 export function rotuloDoPlano(p: any): string {
