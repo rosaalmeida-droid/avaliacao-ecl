@@ -353,11 +353,13 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
  */
 export const PERGUNTAS_EVENTO: Record<string, [PerguntaAtitude, PerguntaAtitude]> = {
   'ATI-001': [ // Responsabilidade
-    P('Antes do evento ou do concurso, quantas vezes treinaste o prato ou a tua tarefa?', [
-      'Não treinei.',
-      'Treinei uma vez, só porque o professor mandou.',
-      'Treinei duas ou três vezes.',
-      'Treinei várias vezes e pedi opinião ao professor ou a um colega.',
+    // Serve para qualquer evento (serviço, inauguração, feira) e para os
+    // concursos: «treinar o prato» só fazia sentido num concurso (Rosa, out/2026).
+    P('Antes do evento, como te preparaste para a tua tarefa?', [
+      'Não me preparei: só soube o que ia fazer quando cheguei.',
+      'Preparei-me pouco, só porque o professor mandou.',
+      'Sabia bem a minha tarefa (li a ficha ou o que me pediram).',
+      'Sabia bem a minha tarefa e treinei ou tirei dúvidas antes com o professor ou um colega.',
     ]),
     P('A que horas chegaste?', [
       'Cheguei atrasado e não avisei.',

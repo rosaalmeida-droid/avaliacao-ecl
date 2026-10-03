@@ -160,9 +160,9 @@ export const FACEIS_DE_SEMPRE: Record<string, VersoesFaceis> = {
     ['Não olhei.', 'Vi que falhou, mas não sei porquê.', 'Sei o que falhou e porquê.', 'Sei o que vou mudar.'], undefined,
     'Pensaste no teu trabalho?', ['Não.', 'Um pouco.', 'Sim.', 'Sim, sei o que mudar.']),
   // ── Eventos e concursos ──
-  'EV|ATI-001|0': f('Treinaste antes do evento?',
-    ['Não.', 'Uma vez.', 'Duas ou três vezes.', 'Muitas vezes e pedi opinião.'], undefined,
-    'Treinaste?', ['Não.', 'Uma vez.', 'Sim.', 'Muitas vezes.']),
+  'EV|ATI-001|0': f('Antes do evento, preparaste-te para a tua tarefa?',
+    ['Não, só soube quando cheguei.', 'Pouco, porque mandaram.', 'Sim, sabia a minha tarefa.', 'Sim, e tirei dúvidas antes.'], undefined,
+    'Preparaste-te antes?', ['Não.', 'Pouco.', 'Sim.', 'Sim, e perguntei.']),
   'EV|ATI-001|1': f('A que horas chegaste?',
     ['Atrasado, sem avisar.', 'Atrasado, mas avisei.', 'À hora.', 'Antes da hora e ajudei.'], undefined,
     'Chegaste a horas?', ['Não.', 'Avisei.', 'Sim.', 'Antes.']),

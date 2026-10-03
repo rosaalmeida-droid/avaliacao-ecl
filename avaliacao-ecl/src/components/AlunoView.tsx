@@ -4080,8 +4080,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             {ehDeEvento && primeira && (
               <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:12, background:'#f3f0f7',
                 fontSize:14.5, lineHeight:1.55, color:'#2A1745' }}>
-                <b>Aqui o que conta é o teu esforço e o teu compromisso</b> — se treinaste, se chegaste a horas,
-                se vieste preparado e se ficaste até ao fim. Responde com verdade: o professor também viu.
+                <b>Aqui o que conta é o teu esforço e o teu compromisso</b> — se te preparaste, se chegaste a horas,
+                se trouxeste o que precisavas e se ficaste até ao fim. Responde com verdade: o professor também viu.
               </div>
             )}
             <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:V }}>
