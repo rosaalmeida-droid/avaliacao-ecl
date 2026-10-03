@@ -5,7 +5,9 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 ## Plano de aula
 1. **O aluno vê sempre a versão mais recente do plano.** Cada gravação leva a hora (`atualizadoEm`). O ecrã da aula do aluno não fica com a versão de quando a abriu.
 2. **Mudar o dia, as horas, o título ou o sumário não obriga a responder outra vez.** Estas mudanças chegam aos alunos sozinhas.
-3. **Mudar aquilo a que o aluno responde depois de alguém já ter respondido: decide o professor.** Isto inclui perguntas, tipo de aula, conteúdos do manual, competências, fichas e como é a aula. O professor escolhe entre «Sim, respondem outra vez» e «Não, fica o que responderam». Nunca se pede sozinho.
+3. **Mudar aquilo a que o aluno responde depois de alguém já ter respondido obriga a responder outra vez.** Isto inclui perguntas, tipo de aula, conteúdos do manual, competências, fichas e como é a aula. A nota que o professor já deu conta até validar a nova.
+3a. **Finalizar alterações.** Num plano publicado, enquanto houver alterações por finalizar, aparece a barra «Finalizar alterações». As alterações feitas dentro do plano também contam. O professor vê o plano todo como fica e o que mudou agora, e só depois confirma. Quando os alunos têm de responder outra vez, aparece o botão «Avisar a turma no WhatsApp».
+3b. **Trabalho com tema escolhido pelo aluno e um só conteúdo marcado é um engano do professor.** A aplicação avisa no plano e nos conteúdos.
 4. Um plano anulado não volta, e o que dependia dele sai também.
 
 ## Autoavaliação do aluno
@@ -23,5 +25,3 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 ## Datas
 13. As datas comparam-se como datas e não como texto (`quandoFoi`). A hora do Sheets, do Firebase e de cada telemóvel pode vir escrita de maneiras diferentes.
 
-## Por decidir com a Rosa
-- Quando o professor marca **um só** conteúdo do manual num trabalho em que cada aluno escolhe o tema, o aluno só pode escolher esse? Hoje sim.

@@ -25,7 +25,7 @@ import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { SumarioAula } from './SumarioAula';
 import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, Gaveta, NaColuna, fraseDaAula, oQueOAlunoVe,
-  fotografiaDoPlano, diferencasEntre, enviarAlteracoesAosAlunos, mudaramAsPerguntas } from './PlanoGuiado';
+  fotografiaDoPlano, diferencasEntre, enviarAlteracoesAosAlunos, mudaramAsPerguntas, alteracoesPorEnviar, EstadoDoPlano } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
 import { triagemDoPlano, escolheTema, obrigatoriasDaTriagem } from '../contextoAula';
 import { eventosParaPlanos } from '../eventos/modelo';
@@ -462,7 +462,18 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   const [modulo, setModulo] = useState<Modulo>('inicio');
   // Ao mudar um plano já publicado: como estava antes, e o que perguntar no fim.
   const antesDeEditar = React.useRef<ReturnType<typeof fotografiaDoPlano> | null>(null);
-  const [perguntarEnvio, setPerguntarEnvio] = useState<{ sinal: string; texto: string }[] | null>(null);
+  const [finalizar, setFinalizar] = useState<{ fase: 'confirmar' | 'feito'; mud: { sinal: string; texto: string }[]; obrig: boolean; responderam: number } | null>(null);
+  /** Abre «Finalizar alterações»: o plano todo, o que mudou, e se os alunos
+   *  têm de responder outra vez (mudou aquilo a que respondem e alguém já
+   *  respondeu — regra da Rosa, out/2026). */
+  function abrirFinalizar(base?: ReturnType<typeof fotografiaDoPlano>) {
+    const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+    const antes = base || atual.enviadoAosAlunos;
+    const agora = fotografiaDoPlano(atual);
+    const mud = antes ? diferencasEntre(antes, agora) : [];
+    const responderam = selecoesQueContam().filter(s => s.planoAulaId === atual.id).length;
+    setFinalizar({ fase: 'confirmar', mud, obrig: !!antes && responderam > 0 && mudaramAsPerguntas(antes, agora), responderam });
+  }
   React.useEffect(() => {
     if (modulo === 'editar') { try { antesDeEditar.current = fotografiaDoPlano(getPlanosAula().find(x => x.id === plano.id) || plano); } catch { antesDeEditar.current = null; } }
   }, [modulo]);
@@ -1282,15 +1293,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               const depois = getPlanosAula().find(x => x.id === p.id) || p;
               const antes = antesDeEditar.current;
               if (!antes || depois.estado !== 'publicado') return;
-              const agora = fotografiaDoPlano(depois);
-              const mud = diferencasEntre(antes, agora);
-              if (!mud.length) return;
-              // Os alunos já veem o plano novo (vai sozinho). Só se pergunta
-              // se é para responderem outra vez quando mudou aquilo a que
-              // responderam e alguém já respondeu.
-              const responderam = selecoesQueContam().filter(s => s.planoAulaId === depois.id).length;
-              if (responderam > 0 && mudaramAsPerguntas(antes, agora)) setPerguntarEnvio(mud);
-              else { const novo = enviarAlteracoesAosAlunos(depois.id, false, true); if (novo) onPlanoActualizado?.(novo); }
+              // Guardou no «Editar o plano»: mostra-se o plano todo e o que
+              // mudou, para finalizar (Rosa, out/2026).
+              if (diferencasEntre(antes, fotografiaDoPlano(depois)).length) abrirFinalizar(antes);
             } catch { /* */ }
           }}
           onVoltar={() => setModulo('inicio')}
@@ -1529,34 +1534,72 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   </>);
 
   // ── INÍCIO ───────────────────────────────────────────────────
-  const respostasJaDadas = selecoesQueContam().filter(s => s.planoAulaId === plano.id).length;
   return (
     <div>
-      {/* Mudou-se um plano que os alunos já têm: enviar-lhes agora? */}
-      {perguntarEnvio && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(26,23,20,0.55)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: '#fff', borderRadius: 18, padding: '22px 22px 18px', maxWidth: 460, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 6 }}>Pedir aos alunos que respondam outra vez?</div>
-            <div style={{ fontSize: 14.5, color: 'rgba(26,23,20,0.7)', marginBottom: 10 }}>Os alunos já veem o plano novo. Mudaste aquilo a que respondem:</div>
-            <ul style={{ margin: '0 0 12px', paddingLeft: 20, fontSize: 14.5, lineHeight: 1.6 }}>
-              {perguntarEnvio.map((d, i) => <li key={i}>{d.texto}</li>)}
-            </ul>
-            {respostasJaDadas > 0 && (
-              <div style={{ fontSize: 13.5, background: '#FDF0E6', color: '#7A3E0C', borderRadius: 10, padding: '9px 12px', marginBottom: 12 }}>
-                {respostasJaDadas} aluno{respostasJaDadas === 1 ? ' já respondeu' : 's já responderam'} às perguntas antigas.
-                Se pedires, conta a resposta nova; a anterior fica anulada (a nota que já deste conta até validares a nova).
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button onClick={() => { const novo = enviarAlteracoesAosAlunos(plano.id, true, true); if (novo) onPlanoActualizado(novo); setPerguntarEnvio(null); }}
-                style={{ flex: '2 1 200px', minHeight: 48, borderRadius: 12, border: 'none', background: 'var(--copper)', color: '#fff',
-                  fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Sim, respondem outra vez</button>
-              <button onClick={() => { const novo = enviarAlteracoesAosAlunos(plano.id, false, true); if (novo) onPlanoActualizado(novo); setPerguntarEnvio(null); }}
-                style={{ flex: '1 1 120px', minHeight: 48, borderRadius: 12, border: '1px solid rgba(26,23,20,0.2)', background: '#fff',
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Não, fica o que responderam</button>
+      {/* Finalizar as alterações (Rosa, out/2026): o professor vê o plano todo
+          como fica e o que mudou agora, e só então confirma. */}
+      {finalizar && (() => {
+        const atual = getPlanosAula().find(x => x.id === plano.id) || plano;
+        const fecha = () => setFinalizar(null);
+        const btn = (cor: string, cheio: boolean): React.CSSProperties => ({ flex: '1 1 180px', minHeight: 48, borderRadius: 12,
+          border: cheio ? 'none' : `1px solid ${cor}`, background: cheio ? cor : '#fff', color: cheio ? '#fff' : cor,
+          fontSize: 15.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' });
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(26,23,20,0.55)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 18, padding: '20px 20px 16px', maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+              {finalizar.fase === 'confirmar' ? (<>
+                <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 10 }}>Confirma o plano antes de finalizar</div>
+                <EstadoDoPlano plano={atual} mudancas={finalizar.mud} />
+                {finalizar.obrig && (
+                  <div style={{ fontSize: 13.5, background: '#fdf0ef', color: '#8e2418', borderRadius: 10, padding: '9px 12px', margin: '12px 0 0', fontWeight: 600 }}>
+                    Mudaste aquilo a que os alunos respondem. {finalizar.responderam} aluno{finalizar.responderam === 1 ? ' já respondeu e vai' : 's já responderam e vão'} ter
+                    de responder outra vez. A nota que já deste conta até validares a nova.
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
+                  <button onClick={() => {
+                      const novo = enviarAlteracoesAosAlunos(plano.id, finalizar.obrig, true);
+                      if (novo) onPlanoActualizado(novo);
+                      setFinalizar({ ...finalizar, fase: 'feito' });
+                    }} style={btn('var(--copper)', true)}>Está certo, finalizar</button>
+                  <button onClick={fecha} style={btn('#5a5550', false)}>Voltar a corrigir</button>
+                </div>
+              </>) : (<>
+                <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 6 }}>✓ Alterações finalizadas</div>
+                <div style={{ fontSize: 14.5, color: 'rgba(26,23,20,0.75)', lineHeight: 1.5 }}>
+                  {finalizar.obrig
+                    ? `Os alunos já veem o plano novo. ${finalizar.responderam === 1 ? 'O aluno que já tinha respondido foi avisado' : `Os ${finalizar.responderam} alunos que já tinham respondido foram avisados`} para responder outra vez.`
+                    : 'Os alunos já veem o plano novo. Não precisam de responder outra vez: o que mudou não muda as perguntas.'}
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
+                  {finalizar.obrig && (
+                    <a href={`https://wa.me/?text=${encodeURIComponent(
+                        `Olá, ${plano.turmaId}! Mudei a aula «${plano.titulo}» (${String(plano.data).slice(8, 10)}/${String(plano.data).slice(5, 7)}) `
+                        + 'e as perguntas da autoavaliação mudaram. Abram a aplicação Avaliação ECL e respondam outra vez: '
+                        + 'aparece logo no Início e leva 2 minutos. Até responderem, conta a nota que já tinham. Obrigada!')}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ ...btn('#25D366', true), display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+                      Avisar a turma no WhatsApp
+                    </a>
+                  )}
+                  <button onClick={fecha} style={btn('var(--copper)', !finalizar.obrig)}>Fechar</button>
+                </div>
+              </>)}
             </div>
           </div>
+        );
+      })()}
+      {/* Plano publicado com alterações por finalizar: o professor sabe sempre. */}
+      {modulo === 'inicio' && !finalizar && alteracoesPorEnviar(getPlanosAula().find(x => x.id === plano.id) || plano).length > 0 && (
+        <div style={{ position: 'sticky', top: 0, zIndex: 50, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          background: '#fff7e6', border: '2px solid #b5651d', borderRadius: 14, padding: '10px 14px', margin: '0 0 14px' }}>
+          <div style={{ flex: 1, minWidth: 200, fontSize: 14.5, fontWeight: 700, color: '#7a4310' }}>
+            Tens alterações por finalizar neste plano.
+          </div>
+          <button onClick={() => abrirFinalizar()} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#b5651d',
+            color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Finalizar alterações</button>
         </div>
       )}
       <EstadoEnvioPlano plano={plano} />
@@ -2276,6 +2319,19 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               : plano.estado === 'publicado' ? 'Toca para distribuir as funções.' : 'As funções distribuem-se quando publicares o plano.'}
           </span>
         </button>
+      )}
+      {/* Regra (Rosa, out/2026): pedir aos alunos que escolham o tema e só
+          haver um conteúdo marcado é um engano — todos ficam com o mesmo. */}
+      {!ehAtitudinal && escolheTema(triagemDoPlano(plano)) && capsAtivos === 1 && (
+        <div style={{ background:'#fdf0ef', border:'2px solid #c0392b', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>
+          <div style={{ fontSize:15, fontWeight:800, color:'#8e2418' }}>Os alunos escolhem o tema, mas só há um conteúdo marcado</div>
+          <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.75)', marginTop:4, lineHeight:1.5 }}>
+            Assim todos ficam com o mesmo tema. Marca mais conteúdos (ou o manual todo) em «Conteúdos e sumário»,
+            ou muda a aula para o tema dado por ti.
+          </div>
+          <button onClick={() => setTabInicio('competencias')} style={{ marginTop:10, padding:'8px 14px', borderRadius:10, border:'1px solid #c0392b',
+            background:'#fff', color:'#c0392b', fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Ver os conteúdos</button>
+        </div>
       )}
       {/* Mudaste o plano depois de alunos já terem respondido: eles
           responderam às perguntas antigas. Nada lhes era reenviado. */}

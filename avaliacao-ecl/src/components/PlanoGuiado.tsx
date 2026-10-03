@@ -26,6 +26,7 @@ import {
 import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoDaAula';
 import { conhecimentosDaAula } from '../compatECL';
 import { sumarioDoPlano } from '../sumarioAutomatico';
+import { capituloDoCampo, rotuloConteudo } from '../bancoManuais';
 
 const C = {
   tinta: '#1F1A16', suave: 'rgba(26,23,20,0.62)', linha: 'rgba(26,23,20,0.12)',
@@ -601,6 +602,48 @@ export function mudaramAsPerguntas(antes: EnvioRegistado, agora: EnvioRegistado)
   return false;
 }
 
+/** O estado todo do plano, como fica, para o professor confirmar antes de
+ *  finalizar as alterações (Rosa, out/2026). As mudanças de agora vêm em cima. */
+export function EstadoDoPlano({ plano, mudancas }: { plano: PlanoAula; mudancas: { sinal: string; texto: string }[] }) {
+  const p: any = plano;
+  const f = fotografia(plano);
+  const tri = triagemDoPlano(plano);
+  const fichas = getFichasProducao().filter(x => (plano.fichasIds || []).includes(x.id)).map(x => x.nomePrato);
+  const caps = [...new Set(conhecimentosDaAula(plano).map(k => capituloDoCampo(k.id)).filter(Boolean)
+    .map(c => `${c!.capitulo.n}. ${rotuloConteudo(c!.capitulo)}`))];
+  const dia = String(plano.data || '').slice(0, 10).split('-').reverse().join('/');
+  const linha = (rotulo: string, valor: React.ReactNode) => (
+    <div style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(26,23,20,0.08)', fontSize: 14 }}>
+      <div style={{ width: 130, flexShrink: 0, color: 'rgba(26,23,20,0.55)', fontWeight: 600 }}>{rotulo}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>{valor}</div>
+    </div>
+  );
+  return (
+    <div>
+      {mudancas.length > 0 && (
+        <div style={{ background: '#FDF0E6', border: '1.5px solid #e8c98f', borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#7A3E0C', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>O que mudaste agora</div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
+            {mudancas.map((d, i) => <li key={i}>{d.texto}</li>)}
+          </ul>
+        </div>
+      )}
+      <div style={{ fontSize: 13, fontWeight: 800, color: 'rgba(26,23,20,0.55)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>O plano como fica</div>
+      {linha('Aula', `${plano.titulo || '—'}`)}
+      {linha('Quando', `${dia} · ${p.horaInicio || '?'}–${p.horaFim || '?'}`)}
+      {linha('Unidade', plano.ucId || '—')}
+      {linha('Tipo de aula', f.tipo ? (TEXTO_TIPO as any)[f.tipo] || f.tipo : '—')}
+      {tri && linha('Como é', `${TEXTO_ONDE[tri.onde]} · ${tri.cozinham ? 'cozinham' : 'não cozinham'} · ${TEXTO_TRABALHO[tri.trabalho]}`)}
+      {tri?.modo && linha('Trabalho', TEXTO_MODO[tri.modo])}
+      {caps.length > 0 && linha('Conteúdos do manual', caps.length > 6 ? `${caps.length} conteúdos (${caps.slice(0, 3).join(' · ')}…)` : caps.join(' · '))}
+      {linha('Fichas', fichas.length ? fichas.join(' · ') : 'nenhuma')}
+      {linha('Faltas e atrasos', f.faltas ? 'contam' : 'não contam')}
+      {linha('O aluno responde a', `${f.ecras.length} pergunta${f.ecras.length === 1 ? '' : 's'}`)}
+      {f.sumario && linha('Sumário', <span style={{ whiteSpace: 'pre-wrap' }}>{f.sumario}</span>)}
+    </div>
+  );
+}
+
 /** Para comparar o plano antes e depois de o mudar (ecrã de editar). */
 export const fotografiaDoPlano = (plano: PlanoAula) => fotografia(plano);
 export const diferencasEntre = (antes: ReturnType<typeof fotografia>, depois: ReturnType<typeof fotografia>) => diferencas(antes, depois);
@@ -639,7 +682,8 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   const mudou = registado ? diferencas(registado, agora) : [];
   // Os que já responderam (às perguntas que tinham antes destas alterações).
   const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
-  const [pedirOutraVez, setPedirOutraVez] = useState(true);
+  // Regra (Rosa, out/2026): mudou aquilo a que respondem → respondem outra vez, sempre.
+  const pedirOutraVez = !!registado && mudaramAsPerguntas(registado, agora);
   const [enviado, setEnviado] = useState(false);
   const cart = useCartao(mudou.length ? { border: `2px solid ${C.ambarL}` } : {});
 
@@ -685,11 +729,11 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
                 <b>{responderam} aluno{responderam === 1 ? ' já respondeu' : 's já responderam'} às perguntas antigas.</b> A nota que já
                 deste continua a contar até validares a nova.
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
-                <input type="checkbox" checked={pedirOutraVez} onChange={e => setPedirOutraVez(e.target.checked)}
-                  style={{ width: 19, height: 19 }} />
-                Pedir {responderam === 1 ? 'a este aluno que responda' : `a estes ${responderam} que respondam`} outra vez
-              </label>
+              <div style={{ fontSize: 14.5, fontWeight: 700 }}>
+                {pedirOutraVez
+                  ? `Mudaram as perguntas: ${responderam === 1 ? 'este aluno vai responder' : `estes ${responderam} vão responder`} outra vez.`
+                  : 'As perguntas não mudaram: não precisam de responder outra vez.'}
+              </div>
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
