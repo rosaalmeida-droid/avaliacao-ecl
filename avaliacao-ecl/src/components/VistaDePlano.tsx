@@ -557,8 +557,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // Passa a «Atividade extra — …» (só o título; não obriga a responder outra vez).
   React.useEffect(() => {
     const t = String(plano.titulo || '');
-    if (!eventoForaDoHorario(plano) || !t.startsWith('Atividade fora da escola')) return;
-    const p = { ...plano, titulo: t.replace('Atividade fora da escola', 'Atividade extra'), atualizadoEm: new Date().toISOString() };
+    if (!eventoForaDoHorario(plano) || !t.includes('Atividade fora da escola')) return;
+    // Todas as vezes que aparece, e sem «Atividade extra — Atividade extra».
+    const novo = t.split('Atividade fora da escola').join('Atividade extra').replace(/(Atividade extra\s*—\s*)+/g, 'Atividade extra — ').replace(/ — $/, '');
+    const p = { ...plano, titulo: novo, atualizadoEm: new Date().toISOString() };
     addOrUpdatePlanoAula(p); onPlanoActualizado(p);
   }, [plano.id]);
   // Plano publicado de uma aula prática: as funções de cada aluno distribuem-se

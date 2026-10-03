@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v23.2';
+var VERSAO = 'ECL único v23.3';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1837,6 +1837,20 @@ function virgula(n) { return n === '' || n === undefined ? '' : String(n).replac
 var NOME_TIPO_AULA = { pratico: 'Prática', teorico: 'Teórica', misto: 'Mista', atitudinal: 'Atitudinal', atitudinal_obr: 'Atitudinal', evento: 'Evento' };
 var NOME_ESTADO = { publicado: 'Publicado', rascunho: 'Rascunho', arquivado: 'Arquivado' };
 
+/** O tipo de aula como se lê: o da triagem («Como é a aula»), e as atividades extra à parte. */
+function tipoParaLer(p) {
+  var t = (p.triagemAula && p.triagemAula.tipo) || p.tipoPlanAula || '';
+  var nome = NOME_TIPO_AULA[t] || t;
+  return p.tipoEvento ? 'Atividade extra' + (nome ? ' (' + nome.toLowerCase() + ')' : '') : nome;
+}
+
+/** «03/10/2026 09:06», na hora de Lisboa. */
+function criadoParaLer(s) {
+  if (!s) return '';
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? String(s) : Utilities.formatDate(d, 'Europe/Lisbon', 'dd/MM/yyyy HH:mm');
+}
+
 function agoraLisboa() {
   return Utilities.formatDate(new Date(), 'Europe/Lisbon', 'dd/MM/yyyy HH:mm');
 }
@@ -1967,7 +1981,9 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
 
   // 3. As aulas (a mais recente primeiro)
   titulo('AS AULAS (' + aulas.length + ')', '#2F5D8A');
-  cabecalho(['Dia', 'Horas', 'UC', 'Aula', 'Tipo', 'Estado', 'Aberta aos alunos', 'Presentes', 'Faltas', 'Autoavaliações', 'Validadas']);
+  // (v23.3) O nº do plano e quando foi criado: com planos repetidos, sabe-se
+  // qual é o último (Rosa, out/2026). As atividades extra dizem que o são.
+  cabecalho(['Dia', 'Horas', 'UC', 'Aula', 'Tipo', 'Estado', 'Aberta aos alunos', 'Presentes', 'Faltas', 'Autoavaliações', 'Validadas', 'Nº do plano', 'Criado em']);
   aulas.slice().reverse().forEach(function (p) {
     var pr = 0, fa = 0, aa = 0, va = 0;
     alunos.forEach(function (a) {
@@ -1977,7 +1993,8 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       if (nota[k] !== undefined) va++;
     });
     junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), horaDe(p.horaInicio) + (p.horaFim ? '–' + horaDe(p.horaFim) : ''),
-      p.ucId || '', p.titulo || '', NOME_TIPO_AULA[p.tipoPlanAula] || p.tipoPlanAula || '', NOME_ESTADO[p.estado] || p.estado || '', abertas[p.id] ? 'Sim' : 'Não', pr, fa, aa, va]);
+      p.ucId || '', p.titulo || '', tipoParaLer(p), NOME_ESTADO[p.estado] || p.estado || '', abertas[p.id] ? 'Sim' : 'Não', pr, fa, aa, va,
+      p.numeroPlan || '', criadoParaLer(p.criadoEm)]);
   });
 
   // Escrever tudo de uma vez.

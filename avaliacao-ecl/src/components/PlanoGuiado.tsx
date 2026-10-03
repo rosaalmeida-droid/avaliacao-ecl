@@ -282,7 +282,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
 
   return (
     <div style={cart}>
-      <CabecalhoPasso n={1} titulo="Como é esta aula?"
+      <CabecalhoPasso n={1} titulo={(plano as any)?.tipoEvento ? 'Como é esta atividade?' : 'Como é esta aula?'}
         sub="Uma pergunta de cada vez: só aparecem as que fazem falta. O resto a aplicação deduz." />
       {!definida && (
         <div style={{ background: C.ambarP, color: '#5C3A08', borderRadius: 10, padding: '10px 14px', fontSize: 14, marginBottom: 14, lineHeight: 1.5 }}>
