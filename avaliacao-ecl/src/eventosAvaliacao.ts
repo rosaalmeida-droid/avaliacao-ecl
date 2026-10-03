@@ -20,6 +20,21 @@ export const TIPOS_EVENTO = ['Evento externo', 'Concurso', 'Catering', 'Buffet',
 
 export type TipoEvento = 'evento' | 'concurso';
 
+/** O nome que se mostra. «Atividade fora da escola» é só o nome guardado
+ *  (planos antigos): a atividade pode ser na escola. Mostra-se «Atividade
+ *  extra»; se é dentro ou fora da escola pergunta-se em «Onde é?» (Rosa, out/2026). */
+export function nomeDoTipoAtividade(tipo?: string): string {
+  return tipo === 'Atividade fora da escola' ? 'Atividade extra' : (tipo || '');
+}
+
+/** «Como é a atividade» já se sabe numa atividade extra: avaliam-se as atitudes
+ *  (e as técnicas da ficha, se houver). Onde é muda-se em «Onde é?». */
+export function triagemDaAtividade(tipoAtividade?: string): { tipo: 'atitudinal'; onde: 'cozinha' | 'fora'; cozinham: boolean; trabalho: 'grupos'; servico: boolean } {
+  const t = tipoAtividade || '';
+  return { tipo: 'atitudinal', onde: t === 'Evento externo' ? 'fora' : 'cozinha',
+    cozinham: /Catering|Buffet|Evento/i.test(t), trabalho: 'grupos', servico: /Catering|Buffet|Evento externo/i.test(t) };
+}
+
 export function tipoEventoDe(tipoAtividade?: string): TipoEvento | undefined {
   if (!tipoAtividade || !TIPOS_EVENTO.includes(tipoAtividade)) return undefined;
   return tipoAtividade === 'Concurso' ? 'concurso' : 'evento';

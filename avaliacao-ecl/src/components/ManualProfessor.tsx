@@ -645,7 +645,8 @@ const SECCOES: Seccao[] = [
           1. Cria a atividade (em «Atividades e concursos», ou no «Editar o plano» de uma aula, escolhendo o tipo e «Só alguns alunos»).
           Se vier de uma aula, a aula fica <b>igual</b> para a turma toda e a atividade fica à parte, ligada a ela.<br />
           2. Põe quem foi: aceita os inscritos ou usa «+ Acrescentar um aluno que foi».<br />
-          3. Se houve produção, junta a <b>ficha técnica e o guião</b> à atividade.<br />
+          3. Se houve produção, junta a <b>ficha técnica e o guião</b> à atividade. As técnicas que os alunos avaliam vêm da ficha:
+          vês-las em «Competências», em cima («Técnicas da ficha técnica»), e mudas abrindo a ficha («Abrir a ficha»).<br />
           4. Carrega em <b>«Confirmar participantes»</b>: vês quem participa, o que cada um vai responder e como conta. Confirma.
         </P>
         <H>O que os alunos da atividade respondem</H>

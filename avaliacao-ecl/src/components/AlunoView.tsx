@@ -1974,9 +1974,9 @@ function OQueVaisResponder({ plano, fichas, aluno }: { plano: PlanoAula; fichas:
       {t && (
         <div style={{ marginBottom:10 }}>
           <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'#6B3FA0', marginBottom:4 }}>
-            Como é esta aula
+            {(plano as any).tipoEvento ? 'Como é esta atividade' : 'Como é esta aula'}
           </div>
-          <div style={{ fontSize:15.5, fontWeight:700, lineHeight:1.45 }}>{fraseDaAula(t)}</div>
+          <div style={{ fontSize:15.5, fontWeight:700, lineHeight:1.45 }}>{fraseDaAula(t, !!(plano as any).tipoEvento)}</div>
         </div>
       )}
       <div style={{ fontSize:12.5, fontWeight:800, letterSpacing:'0.05em', textTransform:'uppercase', color:'#6B3FA0', marginBottom:4 }}>

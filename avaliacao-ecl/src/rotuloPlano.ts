@@ -2,7 +2,7 @@
 //  N = posição do plano dentro da sua UC (ordenado por data).
 //  M = dias de cozinha da turma entre início e fim da UC (horários.ts);
 //      para as outras disciplinas, semanas.
-import { TIPOS_EVENTO } from './eventosAvaliacao';
+import { TIPOS_EVENTO, nomeDoTipoAtividade } from './eventosAvaliacao';
 import { getPlanosAula } from './backend';
 import { CRONOGRAMA_2026_2027, modulosDaTurma } from './cronograma';
 import { horarioDaTurma, temCozinha } from './horarios';
@@ -84,7 +84,7 @@ export function codigoEvento(plano: PlanoAula): string {
 export function rotuloEvento(plano: PlanoAula): string {
   const tipo = (plano as any).tipoAtividade && TIPOS_EVENTO.includes((plano as any).tipoAtividade)
     ? (plano as any).tipoAtividade : ((plano as any).tipoEvento === 'concurso' ? 'Concurso' : 'Evento');
-  return `${tipo} · ${codigoEvento(plano)}`;
+  return `${nomeDoTipoAtividade(tipo)} · ${codigoEvento(plano)}`;
 }
 
 export function posicaoNaUC(plano: PlanoAula): number {

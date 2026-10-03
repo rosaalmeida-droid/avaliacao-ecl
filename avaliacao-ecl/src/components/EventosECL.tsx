@@ -153,7 +153,7 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano, 
       { icone: '🚐', nome: 'Evento externo', sub: 'para fora da escola ou para uma entidade: catering e serviço', ir: () => novoEvento('fora') },
       { icone: '🏫', nome: 'Evento interno', sub: 'na ECL: catering e serviço', ir: () => novoEvento('ecl') },
       { icone: '🏆', nome: 'Concurso', sub: 'avalia-se a participação dos alunos', ir: () => { setEscolherTipo(false); onNovoPlano?.('Concurso'); } },
-      { icone: '✳️', nome: 'Outra atividade', sub: 'visita, feira, atividade fora da escola…', ir: () => { setEscolherTipo(false); onNovoPlano?.('Atividade fora da escola'); } },
+      { icone: '✳️', nome: 'Atividade extra', sub: 'visita, feira, outra atividade — na escola ou fora', ir: () => { setEscolherTipo(false); onNovoPlano?.('Atividade fora da escola'); } },
     ];
     return fundo(<>
       <button onClick={() => setEscolherTipo(false)} style={{ ...botao(), minHeight: 40, padding: '8px 14px', fontSize: 14, marginBottom: 12 }}>← Voltar</button>

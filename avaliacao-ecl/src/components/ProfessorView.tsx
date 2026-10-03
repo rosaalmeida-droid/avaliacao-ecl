@@ -1883,6 +1883,35 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
   );
 }
 
+/** Uma ficha guardada, pronta para o editor (abrir uma ficha que já existe). */
+function fichaParaOEditor(f: any, nomeProfessor?: string): FichaTecnica {
+  return normalizarFicha({
+      nomePrato: f.nomePrato, classificacao: f.classificacao,
+      fichaNum: f.fichaNum || '', alergenicos: f.alergenicos,
+      tempoPrep: f.tempoPrep||'', tempoConf: f.tempoConf||'',
+      numPorcoes: f.numPorcoes||'',
+      // Se a ficha vier sem ingredientes, mantém-se vazia — mas o
+      // professor é avisado. Antes era substituída em silêncio por
+      // uma ficha em branco, e as quantidades originais
+      // desapareciam sem ninguém perceber porquê.
+      ingredientes: (f.ingredientes && f.ingredientes.length > 0)
+        ? f.ingredientes as any : FICHA_VAZIA.ingredientes,
+      preparacao: (f.preparacao && f.preparacao.length > 0)
+        ? f.preparacao as any : FICHA_VAZIA.preparacao,
+      empratamento: f.empratamento||'', elaboradoPor: f.elaboradoPor||nomeProfessor||'',
+      data: f.data||'', equipamento: f.equipamento||'',
+      conservacao: f.conservacao||'', regeneracao: f.regeneracao||'',
+      kitchenflow: f.kitchenflow||'',
+      familia1: (f as any).familia1 || undefined,
+      familia2: (f as any).familia2 || undefined,
+      etiquetas: (f as any).etiquetas || [],
+      // As técnicas ficam guardadas em «tecnicasSugeridas»: sem isto, a ficha
+      // abria sem as técnicas escolhidas (Rosa, out/2026).
+      tecnicasDetectadas: (f as any).tecnicasDetectadas?.length ? (f as any).tecnicasDetectadas : (f as any).tecnicasSugeridas || [],
+      aparelhosDetectados: (f as any).aparelhosDetectados || [],
+    });
+}
+
 export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado, planoId, modoGuia, nomePratoInicial, fichaParaEditar, abrirBiblioteca }: {
   turmaId: string;
   nomeProfessor?: string;
@@ -1905,8 +1934,12 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
   const [fichaEmEdicaoId, setFichaEmEdicaoId] = useState<string | null>(fichaParaEditar ?? null);
   const [textoReceita, setTextoReceita] = useState('');
   const [linkReceita, setLinkReceita] = useState('');
-  const [ficha, setFicha] = useState<FichaTecnica>({ ...FICHA_VAZIA, elaboradoPor: nomeProfessor || FICHA_VAZIA.elaboradoPor });
-  const [passo, setPasso] = useState<'link' | 'ficha'>('link');
+  // Abrir uma ficha que o plano já tem: abre ESSA ficha, com as técnicas.
+  // Antes abria o ecrã de criar uma ficha nova, vazio (Rosa, out/2026).
+  const fichaAberta = fichaParaEditar ? getFichasProducao().find(f => f.id === fichaParaEditar) : undefined;
+  const [ficha, setFicha] = useState<FichaTecnica>(() => fichaAberta ? fichaParaOEditor(fichaAberta, nomeProfessor)
+    : { ...FICHA_VAZIA, elaboradoPor: nomeProfessor || FICHA_VAZIA.elaboradoPor });
+  const [passo, setPasso] = useState<'link' | 'ficha'>(fichaAberta ? 'ficha' : 'link');
   const [fichasGuardadas, setFichasGuardadas] = useState(() => getFichasProducao());
   // Quando o professor vem do plano com "Ir buscar uma ficha", abre
   // logo na biblioteca completa em vez das fichas deste plano.
@@ -2406,29 +2439,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               setVista('biblioteca');
               return;
             }
-            setFicha(normalizarFicha({
-              nomePrato: f.nomePrato, classificacao: f.classificacao,
-              fichaNum: f.fichaNum || '', alergenicos: f.alergenicos,
-              tempoPrep: f.tempoPrep||'', tempoConf: f.tempoConf||'',
-              numPorcoes: f.numPorcoes||'',
-              // Se a ficha vier sem ingredientes, mantém-se vazia — mas o
-              // professor é avisado. Antes era substituída em silêncio por
-              // uma ficha em branco, e as quantidades originais
-              // desapareciam sem ninguém perceber porquê.
-              ingredientes: (f.ingredientes && f.ingredientes.length > 0)
-                ? f.ingredientes as any : FICHA_VAZIA.ingredientes,
-              preparacao: (f.preparacao && f.preparacao.length > 0)
-                ? f.preparacao as any : FICHA_VAZIA.preparacao,
-              empratamento: f.empratamento||'', elaboradoPor: f.elaboradoPor||nomeProfessor||'',
-              data: f.data||'', equipamento: f.equipamento||'',
-              conservacao: f.conservacao||'', regeneracao: f.regeneracao||'',
-              kitchenflow: f.kitchenflow||'',
-              familia1: (f as any).familia1 || undefined,
-              familia2: (f as any).familia2 || undefined,
-              etiquetas: (f as any).etiquetas || [],
-              tecnicasDetectadas: (f as any).tecnicasDetectadas || [],
-              aparelhosDetectados: (f as any).aparelhosDetectados || [],
-            }));
+            setFicha(fichaParaOEditor(f, nomeProfessor));
             // Avisar quando a ficha chega incompleta. Acontece nas que
             // foram sincronizadas antes de o bug da leitura ser corrigido.
             if (!f.ingredientes?.length || !f.preparacao?.length) {
