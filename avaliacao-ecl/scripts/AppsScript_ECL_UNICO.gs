@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25';
+var VERSAO = 'ECL único v25.1';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -109,6 +109,10 @@ var FOLHAS = {
   // Iguais para todos os aparelhos (antes ficavam só no aparelho onde foram criadas).
   MATERIAS_PRIMAS:    { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'aliases', 'criadoEm', 'atualizadoEm'] },
   // (v23) A tabela de preços completa da aplicação (base + da escola + revistos), para se ver no Sheets.
+  // (v25.1) As notas como a aplicação as calcula (nota de cada aula, média da
+  // UC com o peso de cada aula e as faltas a 0, bónus, nota da UC). O separador
+  // da turma usa-as, para mostrar o mesmo número que a aplicação.
+  NOTAS_APP:          { chave: ['id'], colunas: ['id', 'turmaId', 'alunoId', 'nomeAluno', 'ucId', 'media', 'bonus', 'final', 'faltas', 'porAula', 'atualizadoEm'] },
   TABELA_PRECOS:      { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'origem', 'fonte', 'atualizadoEm'] },
   // (v24) Alunos de fora das turmas que vêm recuperar UC. As recuperações
   // deles estão em RECUPERACOES, na «turma» EXTERNOS.
@@ -808,6 +812,7 @@ function tratar(d) {
     if (tipo === 'precos')               return guardarVarios('PRECOS', d.precos || []);
     if (tipo === 'materia_prima')          return guardar('MATERIAS_PRIMAS', d.materiaPrima || d);
     if (tipo === 'tabela_precos')          return guardarVarios('TABELA_PRECOS', d.linhas || []);
+    if (tipo === 'notas_app')              return guardarVarios('NOTAS_APP', d.linhas || []);
     if (tipo === 'aluno_externo')          return guardar('ALUNOS_EXTERNOS', d.alunoExterno || d);
     if (tipo === 'eliminar_aluno_externo') return eliminar('ALUNOS_EXTERNOS', d.id);
     if (tipo === 'eliminar_materia_prima') return eliminar('MATERIAS_PRIMAS', d.id);
@@ -1869,6 +1874,7 @@ function atualizarFolhasDasTurmas() {
   var lerOuNada = function (n) { try { return ler(n, {}); } catch (e) { return []; } };
   var grupos = porTurma(lerOuNada('GRUPOS')), gruposInfo = porTurma(lerOuNada('GRUPOS_INFO'));
   var pares = porTurma(lerOuNada('AVALIACAO_PARES')), lideres = porTurma(lerOuNada('LIDERES_KF'));
+  var notasApp = porTurma(lerOuNada('NOTAS_APP'));
   var fichasTodas = lerOuNada('FICHAS');
   var nomesComp = nomesDasCompetenciasDasFichas(fichasTodas);
   var nomeFicha = {}; fichasTodas.forEach(function (f) { nomeFicha[f.id] = f.nomePrato || ''; });
@@ -1882,7 +1888,7 @@ function atualizarFolhasDasTurmas() {
         finais: finais[turma] || [], telemoveis: telemoveis[turma] || [],
         recuperacoes: recuperacoes[turma] || [], planoPorId: porIdPlano,
         grupos: grupos[turma] || [], gruposInfo: gruposInfo[turma] || [], pares: pares[turma] || [], lideres: lideres[turma] || [],
-        nomesComp: nomesComp, nomeFicha: nomeFicha
+        nomesComp: nomesComp, nomeFicha: nomeFicha, notasApp: notasApp[turma] || []
       }, hoje);
     } catch (e) { Logger.log('Turma ' + turma + ': ' + e); }
   });
@@ -2046,6 +2052,14 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
       var n = Number(String(x.notaMedia20 === undefined ? '' : x.notaMedia20).replace(',', '.'));
       if (idsAulas[x.planoAulaId] && !isNaN(n) && String(x.notaMedia20) !== '') nota[chave(x.alunoId, x.planoAulaId)] = Math.round(n * 10) / 10;
     });
+  // (v25.1) A nota de cada aula como a aplicação a calcula hoje manda (o
+  // professor e o aluno veem esta). A de cima é a que foi gravada no dia.
+  var daApp = {};
+  (d.notasApp || []).forEach(function (r) {
+    daApp[r.alunoId + '|' + r.ucId] = r;
+    var pa = {}; try { pa = JSON.parse(r.porAula || '{}'); } catch (e) { pa = {}; }
+    Object.keys(pa).forEach(function (pid) { if (idsAulas[pid]) nota[chave(r.alunoId, pid)] = Math.round(Number(pa[pid]) * 10) / 10; });
+  });
   var ligado = {}; d.telemoveis.forEach(function (t) { ligado[t.alunoId] = true; });
   var abertas = {}; d.sessoes.forEach(function (s) { if (s.abertaEm) abertas[s.planoAulaId] = true; });
 
@@ -2085,10 +2099,10 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     var daUC = contam.filter(function (p) { return String(p.ucId || 'Sem UC') === uc; });
     var nome = daUC.map(function (p) { return p.ucNome; }).filter(Boolean)[0] || '';
     titulo('NOTAS — ' + uc + (nome ? ' · ' + nome : '') + ' (' + daUC.length + ' aula' + (daUC.length === 1 ? '' : 's') + ')', '#3E7A31');
-    junta(['Em cada aula: a nota validada (0-20) · AA = autoavaliou-se, falta validar · F = faltou · vazio = sem registo']);
+    junta(['Em cada aula: a nota validada (0-20) · AA = autoavaliou-se, falta validar · F = faltou · vazio = sem registo. A média, o bónus e a nota da UC são os da aplicação (cada aula pelo seu peso, as faltas a 0).']);
     formatos.push({ tipo: 'legenda', linha: linhas.length });
     cabecalho(['Nº', 'Nome'].concat(daUC.map(function (p) { return diaCurto(p.data) + (p.horaInicio ? ' ' + horaDe(p.horaInicio) : ''); }))
-      .concat(['Média', 'Nota final da UC']));
+      .concat(['Média', 'Faltas (contam 0)', 'Bónus', 'Nota da UC (como na aplicação)', 'Nota final publicada']));
     alunos.forEach(function (a) {
       var soma = 0, n = 0;
       var cel = daUC.map(function (p) {
@@ -2099,7 +2113,10 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
         return '';
       });
       var fin = d.finais.filter(function (x) { return x.alunoId === a.id && String(x.ucId) === uc; }).pop();
-      junta([a.numero || '', a.nome || ''].concat(cel).concat([n ? virgula(Math.round(soma / n * 10) / 10) : '', fin ? (virgula(fin.nota) + (fin.resultado ? ' (' + fin.resultado + ')' : '')) : '']));
+      var ap = daApp[a.id + '|' + uc];
+      var media = ap && ap.media !== '' && ap.media !== undefined ? virgula(ap.media) : (n ? virgula(Math.round(soma / n * 10) / 10) : '');
+      junta([a.numero || '', a.nome || ''].concat(cel).concat([media, ap ? (Number(ap.faltas) || 0) : '', ap && Number(ap.bonus) ? '+' + virgula(ap.bonus) : '',
+        ap && ap.final !== '' && ap.final !== undefined ? virgula(ap.final) : '', fin ? (virgula(fin.nota) + (fin.resultado ? ' (' + fin.resultado + ')' : '')) : '']));
     });
     vazia();
   });
@@ -3123,6 +3140,7 @@ var SUMARIO_DADOS = {
   EVENTOS: 'Os eventos (pedido, orçamentos, estado).',
   TELEMOVEIS: 'Que telemóvel está ligado a cada aluno.',
   ELIMINADOS: 'O que foi apagado na aplicação: fica aqui registado e não volta.',
+  NOTAS_APP: 'As notas como a aplicação as calcula (cada aula, média, bónus, nota da UC). O separador da turma usa-as. Atualiza-se quando um professor abre a aplicação.',
   PRECOS: 'Os preços revistos das matérias-primas (coordenação). A aplicação usa-os na requisição.',
   PRECOS_A_REVER: 'Os preços que os professores pediram para rever. A coordenação revê na aplicação.',
   MATERIAS_PRIMAS: 'As matérias-primas que os professores acrescentaram na requisição. Chegam a todos os aparelhos.',
@@ -3161,7 +3179,7 @@ var ORDEM_FOLHAS = [
   ['FICHAS', '#2F5D8A'], ['REQUISICOES', '#2F5D8A'], ['REQUISICAO_LINHAS', '#2F5D8A'], ['PRECOS', '#2F5D8A'], ['PRECOS_A_REVER', '#2F5D8A'],
   ['GRUPOS', '#B5651D'], ['GRUPOS_INFO', '#B5651D'], ['AVALIACAO_PARES', '#B5651D'],
   ['EVENTOS', '#6B4C9A'], ['COMANDAS', '#6B4C9A'],
-  ['TELEMOVEIS', '#777777'], ['PROCURAR', '#777777'], ['ELIMINADOS', '#777777'], ['POR_ARRUMAR', '#777777']
+  ['TELEMOVEIS', '#777777'], ['PROCURAR', '#777777'], ['ELIMINADOS', '#777777'], ['POR_ARRUMAR', '#777777'], ['NOTAS_APP', '#777777']
 ];
 
 var LEIA_ME = [

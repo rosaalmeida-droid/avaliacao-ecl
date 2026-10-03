@@ -13,6 +13,7 @@ import { getLibrary } from '../libraryService';
 import { capituloDoCampo } from '../bancoManuais';
 import { Card, Button, Field } from './ui';
 import { CriteriosComp } from './CriteriosComp';
+import { ColegasNaValidacao } from './ColegasNaValidacao';
 
 // Escala 1-4 alinhada com a autoavaliação do aluno
 // Escala 1-5 — cores de ardósia progressivas (neutras, sem verde/vermelho)
@@ -358,6 +359,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     return inicial;
   });
   const [comentario, setComentario] = useState('');
+  // A opinião dos colegas de grupo: o professor diz se a teve em conta (Rosa, out/2026).
+  const [consideraColegas, setConsideraColegas] = useState<boolean>(() => !!(validacaoExistente as any)?.consideraColegas);
   // O aluno declarou a farda completa e não era verdade: a farda fica a 1 e
   // a atitude «Responsabilidade pelas suas ações» (ATI-001) também.
   // Fica gravado na validação: ao reabrir, o botão aparece como foi deixado.
@@ -511,6 +514,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       ...(triagem && !atitudesNaoPerguntadas ? { triagem5c: triagem } : {}),
       ...(naoReparou.length ? { naoReparou } : {}),
       comentarioGeral: comentario,
+      ...(consideraColegas ? { consideraColegas: true } : {}),
       validadoPor: 'professor',
       validadoEm: agora,
     };
@@ -694,6 +698,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             {semFarda ? 'Desfazer: tinha a farda completa' : 'Não tinha a farda completa'}
           </button>
         </div>
+      )}
+
+      {!atitudesNaoPerguntadas && (
+        <ColegasNaValidacao alunoId={selecao.alunoId} turmaId={selecao.turmaId} autoavaliacoes={selecao.autoavaliacoes || []}
+          triagemDoAluno={(selecao as any).triagem5c} tidoEmConta={consideraColegas} onTidoEmConta={setConsideraColegas} />
       )}
 
       {autoavaliacoes.length === 0 && (
@@ -1078,6 +1087,17 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           Ponderação de aula {tipoPlanAula === 'teorico' ? 'teórica' : tipoPlanAula === 'misto' ? 'mista' : (tipoPlanAula as any) === 'atitudinal' ? 'atitudinal — só atitudes' : 'prática'}.
           Falta preencher {autoavaliacoes.filter(a => !notasProf[a.competenciaId]).length} de {autoavaliacoes.length} competências.
         </div>
+        {/* Os 5 C não entram nesta nota: dizê-lo aqui, com o que ficou em cada
+            um, para o professor não pensar que os «5» contam (Rosa, out/2026). */}
+        {triagem && !atitudesNaoPerguntadas && (() => {
+          const v = (r: any) => typeof r === 'number' ? String((r + 1) * 5) : r === 'sem' ? 'não houve' : '—';
+          return (
+            <div style={{ fontSize:13, marginTop:8, padding:'7px 10px', borderRadius:8, background:'rgba(26,23,20,0.04)', color:'rgba(26,23,20,0.7)', lineHeight:1.5 }}>
+              <b>Não entram nesta nota:</b> os 5 C — Colaborativo {v(triagem.cl)} · Criativo {v(triagem.cr)} · Consciente {v(triagem.co)}.
+              Vão só para a pauta da UC. A nota desta aula vem das competências de cima.
+            </div>
+          );
+        })()}
       </div>
 
       {/* Turmas ACP — +1 nas atitudes dos anos anteriores. Conta para a
