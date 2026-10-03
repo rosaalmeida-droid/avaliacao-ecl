@@ -133,3 +133,12 @@ export function avisoFimUC(plano: PlanoAula): string {
   }
   return '';
 }
+
+/** Texto do plano do dia: «quinta-feira, 01/10, 10:30–15:00 · Plano de Aula 3 de 12 — título».
+ *  (Rosa, out/2026) A numeração conta de 1 em cada UC da turma, como no
+ *  resto da aplicação; o n.º interno (157…) não aparece. */
+export function rotuloDoPlano(p: any): string {
+  if (!p) return '';
+  const dia = new Date(String(p.data || '').slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit' });
+  return `${dia}${p.horaInicio ? `, ${p.horaInicio}–${p.horaFim || ''}` : ''} · ${rotuloPlano(p)}${p.ucId ? ` (${p.ucId})` : ''} — ${p.titulo || 'aula'}`;
+}

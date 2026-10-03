@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v24.2';
+var VERSAO = 'ECL único v24.3';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1910,6 +1910,12 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // (v24.2) Só as aulas que contam entram nas contas dos alunos e nas notas:
   // as arquivadas (anuladas) e as atividades extra (bónus) não (auditoria out/2026).
   var contam = aulas.filter(function (p) { return p.estado !== 'arquivado' && !p.tipoEvento; });
+  // (v24.3) O plano conta de 1 dentro de cada UC da turma, como na aplicação
+  // («Plano de Aula 3 de 12»); o n.º interno (157…) não aparece (Rosa, out/2026).
+  var posNaUC = {}, contaUC = {};
+  d.planos.filter(function (p) { return p.estado !== 'arquivado' && !p.tipoEvento && !p.eliminado; })
+    .sort(function (a, b) { return String(a.data || '').localeCompare(String(b.data || '')) || (Number(a.numeroPlan) || 0) - (Number(b.numeroPlan) || 0); })
+    .forEach(function (p) { var u = p.ucId || ''; contaUC[u] = (contaUC[u] || 0) + 1; posNaUC[p.id] = contaUC[u]; });
 
   // Por aluno e aula: presença, autoavaliação, nota validada.
   var chave = function (a, p) { return a + '|' + p; };
@@ -1994,7 +2000,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
   // qual é o último (Rosa, out/2026). As atividades extra dizem que o são.
   junta(['Verde: publicada, conta para a nota · Vermelho: não conta (arquivada/anulada) · Roxo: atividade extra (conta como bónus)']);
   formatos.push({ tipo: 'legenda', linha: linhas.length });
-  cabecalho(['Dia', 'Horas', 'UC', 'Aula', 'Tipo', 'Estado', 'Aberta aos alunos', 'Presentes', 'Faltas', 'Autoavaliações', 'Validadas', 'Nº do plano', 'Criado em', 'Conta para a nota?']);
+  cabecalho(['Dia', 'Horas', 'UC', 'Aula', 'Tipo', 'Estado', 'Aberta aos alunos', 'Presentes', 'Faltas', 'Autoavaliações', 'Validadas', 'Plano da UC', 'Criado em', 'Conta para a nota?']);
   aulas.slice().reverse().forEach(function (p) {
     var pr = 0, fa = 0, aa = 0, va = 0;
     alunos.forEach(function (a) {
@@ -2005,7 +2011,7 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     });
     junta([diaCurto(p.data) + '/' + String(p.data).slice(0, 4), horaDe(p.horaInicio) + (p.horaFim ? '–' + horaDe(p.horaFim) : ''),
       p.ucId || '', p.titulo || '', tipoParaLer(p), NOME_ESTADO[p.estado] || p.estado || '', abertas[p.id] ? 'Sim' : 'Não', pr, fa, aa, va,
-      p.numeroPlan || '', criadoParaLer(p.criadoEm),
+      p.tipoEvento ? '' : (posNaUC[p.id] ? 'Plano ' + posNaUC[p.id] : ''), criadoParaLer(p.criadoEm),
       p.estado === 'arquivado' ? 'Não (arquivada)' : p.tipoEvento ? 'Bónus (atividade extra)' : 'Sim']);
     formatos.push({ tipo: 'cor', linha: linhas.length, n: 14,
       cor: p.estado === 'arquivado' ? '#F8D7DA' : p.tipoEvento ? '#EDE3F6' : '#DFF0D8' });

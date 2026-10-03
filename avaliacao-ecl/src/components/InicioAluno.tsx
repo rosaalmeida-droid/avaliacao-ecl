@@ -197,7 +197,7 @@ interface Props {
   ucId?: string;
   ucNome?: string;
   planoHoje?: PlanoAula | null;
-  numeroPlano?: number;
+  numeroPlano?: string;
   /** true depois de o professor abrir a sessão. */
   sessaoAberta?: boolean;
   /** A função do aluno nesta aula (plano organizacional), se já foi distribuída. */
@@ -277,7 +277,7 @@ export function InicioAluno({
                 {ucNome || planoHoje.titulo}
               </div>
               <div style={{ fontSize: 14.5, color: C.violetaClaro, marginTop: 4 }}>
-                {numeroPlano ? `Plano de aula ${String(numeroPlano).padStart(2, '0')}` : planoHoje.titulo}
+                {numeroPlano || planoHoje.titulo}
                 {planoHoje.titulo && numeroPlano ? ` · ${planoHoje.titulo}` : ''}
               </div>
 
