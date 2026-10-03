@@ -8569,6 +8569,8 @@ export interface MembroGrupo {
   grupoNome: string;
   definidoPor: 'aluno' | 'professor';
   atualizadoEm: string;
+  /** O tema do manual (capítulo) que o aluno escolheu na autoavaliação. */
+  tema?: number | null;
 }
 export interface InfoGrupo {
   id: string;            // o grupoId
@@ -8614,7 +8616,10 @@ function juntarPorId<T extends { id: string; atualizadoEm?: string; criadoEm?: s
     if (!n?.id) continue;
     const velho = m.get(n.id);
     const d = (x: any) => String(x?.atualizadoEm || x?.criadoEm || '');
-    if (!velho || d(n) >= d(velho)) m.set(n.id, n);
+    // A mesma versão vinda de outro sítio (o Sheets pode não guardar todos
+    // os campos, como o tema do grupo): fica o que já se sabia.
+    if (velho && d(n) === d(velho)) m.set(n.id, { ...velho, ...n, ...((velho as any).tema != null && (n as any).tema == null ? { tema: (velho as any).tema } : {}) });
+    else if (!velho || d(n) > d(velho)) m.set(n.id, n);
   }
   save(chave, [...m.values()]);
 }
@@ -8667,6 +8672,23 @@ export function gruposDaAula(planoAulaId: string): GrupoDaAula[] {
 }
 export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula | undefined {
   return gruposDaAula(planoAulaId).find(g => g.membros.some(m => m.alunoId === alunoId));
+}
+
+/** Regra (Rosa, out/2026): no mesmo grupo, o tema é o mesmo. O tema que o
+ *  aluno escolhe fica no registo dele no grupo, que chega aos colegas. */
+export function marcarTemaNoGrupo(planoAulaId: string, alunoId: string, tema: number | null): void {
+  const m = load<MembroGrupo>(KEY_MEMBROS).find(x => x.planoAulaId === planoAulaId && x.alunoId === alunoId && x.grupoId);
+  if (!m || (m.tema ?? null) === tema) return;
+  const reg: MembroGrupo = { ...m, tema, atualizadoEm: new Date().toISOString() };
+  juntarPorId(KEY_MEMBROS, [reg]);
+  enviar(SHEETS_ECL_URL, 'grupo_membro', reg as any);
+}
+/** Os temas que os colegas do grupo já escolheram (sem o próprio aluno). */
+export function temasDosColegas(planoAulaId: string, alunoId: string): { nome: string; tema: number }[] {
+  const g = grupoDoAluno(planoAulaId, alunoId);
+  if (!g) return [];
+  return g.membros.filter(m => m.alunoId !== alunoId && m.tema != null)
+    .map(m => ({ nome: String(m.nomeAluno || '').split(' ')[0] || 'Colega', tema: Number(m.tema) }));
 }
 
 // ============================================================

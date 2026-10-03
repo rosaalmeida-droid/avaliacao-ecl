@@ -13,9 +13,13 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 ## Autoavaliação do aluno
 5. **Conta só a última resposta de cada aluno em cada aula.** As anteriores deixam de contar (`selecoesQueContam`, `ultimaResposta`).
 6. **A última resposta tem de chegar ao professor.** O envio insiste até o Sheets ter essa versão (a hora da resposta) e nunca desiste. Se o professor já a validou, conta como chegada.
-7. **O aluno não volta a responder por causa de um problema da aplicação.** Só responde outra vez quando o professor o pede (regra 3).
+7. **O aluno não volta a responder por causa de um problema da aplicação.** Só responde outra vez quando mudam as perguntas (regra 3).
 8. «Resposta nova» ou «antiga» decide-se pela **versão do plano** a que o aluno respondeu (`versaoPlano`), e não pela hora do telemóvel, que pode estar errada.
 9. Num trabalho em que o aluno escolhe o tema, o tema que já trabalhava aparece sempre na lista.
+
+## Grupos
+14. **Ligar ou desligar os grupos é uma alteração do plano.** Aparece em «Finalizar alterações» e no plano como fica, com os grupos formados. O botão diz «Grupos LIGADOS» ou «Grupos DESLIGADOS».
+15. **No mesmo grupo, o tema é o mesmo.** Se o aluno escolher um tema diferente do de um colega do grupo, é avisado («O teu colega … escolheu outro tema. Tens a certeza? Fala com o professor») e pode escolher o mesmo. Na validação, o professor vê «⚠ Tema diferente do grupo».
 
 ## Validação do professor
 10. **A última resposta está sempre ao alcance do professor para validar,** em «Por validar» ou em «Já validadas — tocar para alterar», mesmo dias depois.

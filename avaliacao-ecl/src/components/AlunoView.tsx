@@ -5,7 +5,7 @@ import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
-import { grupoDoAluno, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
+import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano } from '../rotuloPlano';
@@ -3848,13 +3848,37 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                     {c.parte}
                   </div>
                 )}
-                <button onClick={() => setTemaEscolhido(temaEscolhido === c.n ? null : c.n)} style={estiloOpcao(temaEscolhido === c.n)}>
+                <button onClick={() => { const n = temaEscolhido === c.n ? null : c.n; setTemaEscolhido(n); marcarTemaNoGrupo(plano.id, aluno.id, n); }} style={estiloOpcao(temaEscolhido === c.n)}>
                   {radio(temaEscolhido === c.n)}
                   <span><span style={{ color:'rgba(26,23,20,0.5)' }}>{c.n}. </span>{c.titulo}</span>
                 </button>
               </React.Fragment>
             );
           })}
+          {/* No mesmo grupo, o mesmo tema (Rosa, out/2026). */}
+          {(() => {
+            const colegas = temasDosColegas(plano.id, aluno.id);
+            const outro = colegas.find(x => x.tema !== temaEscolhido);
+            if (!outro || temaEscolhido == null) return null;
+            const cap = regras.temasPossiveis.find(t => t.capitulo.n === outro.tema)?.capitulo;
+            return (
+              <div style={{ marginTop:14, padding:'12px 14px', borderRadius:12, background:'#fdf0ef', border:'2px solid #c0392b' }}>
+                <div style={{ fontSize:15, fontWeight:800, color:'#8e2418' }}>
+                  O teu colega {outro.nome} escolheu outro tema: {outro.tema}. {cap?.titulo || ''}
+                </div>
+                <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.75)', marginTop:4, lineHeight:1.5 }}>
+                  No mesmo grupo, o tema é o mesmo. Tens a certeza do tema que escolheste? Se não estiver certo, fala com o professor.
+                </div>
+                {cap && (
+                  <button onClick={() => { setTemaEscolhido(outro.tema); marcarTemaNoGrupo(plano.id, aluno.id, outro.tema); }}
+                    style={{ marginTop:10, padding:'9px 14px', borderRadius:10, border:'1px solid #c0392b', background:'#fff', color:'#c0392b',
+                      fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                    Escolher o mesmo tema do {outro.nome}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

@@ -76,8 +76,9 @@ export function GruposProfessor({ plano, onPlanoActualizado }: { plano: PlanoAul
         A autoavaliação continua individual.
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button onClick={() => mudarConfig({ ativo: !cfg.ativo })} style={pequeno(cfg.ativo)}>
-          {cfg.ativo ? '✓ Os alunos formam os grupos' : 'Os alunos formam os grupos'}
+        <button onClick={() => mudarConfig({ ativo: !cfg.ativo })}
+          style={{ ...pequeno(cfg.ativo), background: cfg.ativo ? '#3E7A31' : '#fff', color: cfg.ativo ? '#fff' : '#5a5550', fontWeight: 800 }}>
+          {cfg.ativo ? 'Grupos LIGADOS — tocar para desligar' : 'Grupos DESLIGADOS — tocar para ligar'}
         </button>
         {cfg.ativo && <span style={{ fontSize: 13.5, color: '#555', marginLeft: 6 }}>Até</span>}
         {cfg.ativo && [2, 3, 4, 5].map(n => (

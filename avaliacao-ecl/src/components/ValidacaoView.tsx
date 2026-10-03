@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu } from '../backend';
+import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -613,6 +613,16 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             Tema do aluno: {temaDoAluno(selecao)}
           </div>
         )}
+        {(() => {
+          // No mesmo grupo, o mesmo tema: o professor vê se não bate certo.
+          const meu = (selecao.autoavaliacoes || []).map((a: any) => capituloDoCampo(String(a?.competenciaId || ''))?.capitulo.n).find(n => n != null);
+          const outros = temasDosColegas(selecao.planoAulaId || '', selecao.alunoId).filter(c => meu != null && c.tema !== meu);
+          return outros.length ? (
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 6, color: '#ffb4a8' }}>
+              ⚠ Tema diferente do grupo: {outros.map(o => `${o.nome} escolheu o ${o.tema}`).join(' · ')}
+            </div>
+          ) : null;
+        })()}
       </div>
 
       {/* Sem farda completa: avalia-se tudo (fica no percurso), as técnicas contam 0. */}

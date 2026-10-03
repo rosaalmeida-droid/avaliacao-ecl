@@ -535,6 +535,7 @@ interface EnvioRegistado {
   em: string; triagem?: TriagemAula | null; ecras: string[]; fichas: string[];
   quando?: string; ucId?: string; titulo?: string; tipo?: string; manual?: string[]; sumario?: string;
   competencias?: string[]; faltas?: boolean;
+  grupos?: string;
 }
 
 function fotografia(plano: PlanoAula): EnvioRegistado {
@@ -554,7 +555,13 @@ function fotografia(plano: PlanoAula): EnvioRegistado {
     sumario,
     competencias: [...(p.compRemovidas || []).map((x: string) => '-' + x), ...(p.compAdicionadas || []).map((x: string) => '+' + x)].sort(),
     faltas: p.contaAssiduidade !== false,
+    grupos: textoGrupos(plano),
   };
+}
+/** Os grupos formados pelos alunos, em texto (para o «o que mudou»). */
+function textoGrupos(plano: PlanoAula): string {
+  const g = (plano as any).gruposAlunos;
+  return g?.ativo ? `Ligados (até ${Number(g.tamanho) || 4} por grupo)` : 'Desligados';
 }
 
 function diferencas(antes: EnvioRegistado, agora: EnvioRegistado): { sinal: '+' | '−' | '~'; texto: string }[] {
@@ -583,6 +590,8 @@ function diferencas(antes: EnvioRegistado, agora: EnvioRegistado): { sinal: '+' 
   if (antes.sumario !== undefined && antes.sumario !== agora.sumario) out.push({ sinal: '~', texto: 'Sumário' });
   if (antes.competencias !== undefined && !igual(antes.competencias, agora.competencias)) out.push({ sinal: '~', texto: 'Competências (tiradas ou repostas)' });
   if (antes.faltas !== undefined && antes.faltas !== agora.faltas) out.push({ sinal: '~', texto: `Faltas e atrasos: ${agora.faltas ? 'contam' : 'não contam'}` });
+  // Os grupos mudam-se num sítio à parte: o professor tem de o ver aqui (Rosa, out/2026).
+  if ((antes.grupos ?? 'Desligados') !== agora.grupos) out.push({ sinal: '~', texto: `Grupos formados pelos alunos: «${antes.grupos ?? 'Desligados'}» → «${agora.grupos}»` });
   return out;
 }
 
@@ -638,6 +647,13 @@ export function EstadoDoPlano({ plano, mudancas }: { plano: PlanoAula; mudancas:
       {caps.length > 0 && linha('Conteúdos do manual', caps.length > 6 ? `${caps.length} conteúdos (${caps.slice(0, 3).join(' · ')}…)` : caps.join(' · '))}
       {linha('Fichas', fichas.length ? fichas.join(' · ') : 'nenhuma')}
       {linha('Faltas e atrasos', f.faltas ? 'contam' : 'não contam')}
+      {linha('Grupos', (() => {
+        const gs = gruposDaAula(plano.id);
+        return <>{f.grupos}{gs.length > 0 && (
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.65)', marginTop: 2 }}>
+            {gs.map(g => `${g.nome}: ${g.membros.map(m => String(m.nomeAluno || '').split(' ')[0] || '?').join(', ')}`).join(' · ')}
+          </div>)}</>;
+      })())}
       {linha('O aluno responde a', `${f.ecras.length} pergunta${f.ecras.length === 1 ? '' : 's'}`)}
       {f.sumario && linha('Sumário', <span style={{ whiteSpace: 'pre-wrap' }}>{f.sumario}</span>)}
     </div>
