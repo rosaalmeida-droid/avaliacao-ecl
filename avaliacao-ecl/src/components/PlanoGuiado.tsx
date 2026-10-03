@@ -15,7 +15,7 @@ import React, { useState, useContext, createContext } from 'react';
 import type { PlanoAula } from '../types';
 import {
   addOrUpdatePlanoAula, getPlanosAula, getFichasProducao, getAlunos, getSelecoes, contextoDoPlano,
-  perguntaCODaAula, perguntaCRDaAula, pedirNovaAutoavaliacao, estadoDaTurmaNaAula, anotarNoPlano, gruposDaAula,
+  perguntaCODaAula, perguntaCRDaAula, pedirNovaAutoavaliacao, estadoDaTurmaNaAula, anotarNoPlano, gruposDaAula, alunosDoPlano,
 } from '../backend';
 import {
   triagemDoPlano, tipoDaTriagem, obrigatoriasDaTriagem,
@@ -417,7 +417,7 @@ function ResultadoDaAula({ plano, triagem }: { plano: PlanoAula; triagem: Triage
     pesos = pesosDaAula(plano, r.regras).filter(x => x.pct > 0);
   } catch { /* */ }
   const fichas = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
-  const alunos = getAlunos().filter(a => a.turmaId === plano.turmaId && a.ativo !== false);
+  const alunos = alunosDoPlano(plano);
   const grupos = triagem.modo === 'grupo' ? gruposDaAula(plano.id) : [];
   const emGrupo = new Set(grupos.flatMap(g => g.membros.map(m => m.alunoId)));
   const linha = (rot: string, txt: React.ReactNode) => (

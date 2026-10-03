@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO, aulaTransformadaEmAtividade, separarAtividadeDaAula } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -340,8 +340,8 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
   const [tick, setTick] = React.useState(0);
 
   React.useEffect(() => {
-    setAlunos(getAlunos().filter((a: any) => a.turmaId === turmaId && a.ativo !== false).sort((a: any, b: any) => a.numero - b.numero));
-  }, [turmaId]);
+    setAlunos(alunosDoPlano(plano));
+  }, [turmaId, plano]);
 
   function estaSubmetido(alunoId: string): { submetido: boolean; hora: string } {
     try {
@@ -1308,13 +1308,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-        <PinTemporarioPanel turmaId={turmaId} nomeProfessor={nomeProfessor} />
+        <ReabrirAutoavaliacao plano={plano} onPlanoActualizado={onPlanoActualizado} />
+        <details style={{ marginTop: 18 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 14.5, fontWeight: 700, color: 'rgba(26,23,20,0.6)' }}>O aluno esqueceu-se do PIN e não consegue entrar?</summary>
+          <div style={{ marginTop: 10 }}><PinTemporarioPanel turmaId={turmaId} nomeProfessor={nomeProfessor} /></div>
+        </details>
       </div>
     );
   }
 
   if (modulo === 'validacao') {
-    const alunosDaTurma = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
+    const alunosDaTurma = alunosDoPlano(plano);
     const historico = getHistoricoAvaliacoes().filter(r => r.planoAulaId === plano.id);
     const selecoes = getSelecoes().filter(s => s.planoAulaId === plano.id);
     const validacoes = getValidacoes().filter(v => v.planoAulaId === plano.id);
@@ -1591,14 +1595,33 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
         );
       })()}
+      {/* Aula que foi transformada em atividade (antes da regra): repara-se
+          com um toque — a aula volta à turma toda, a atividade fica à parte
+          (Rosa, out/2026: opção A). */}
+      {modulo === 'inicio' && aulaTransformadaEmAtividade(getPlanosAula().find(x => x.id === plano.id) || plano) && (
+        <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 14, padding: '12px 16px', margin: '0 0 14px' }}>
+          <div style={{ fontSize: 15.5, fontWeight: 800, color: '#8e2418' }}>Esta aula foi transformada em atividade</div>
+          <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.75)', marginTop: 4, lineHeight: 1.5 }}>
+            Por isso os outros alunos deixaram de ver a aula. Separa com um toque: a aula volta a ser aula para a turma toda, com tudo o
+            que já tinha (fichas, conteúdos, respostas), e a atividade fica à parte, ligada a ela, com os mesmos alunos ({participantesDoEvento(plano).length}).
+          </div>
+          <button onClick={() => {
+              if (!confirm('Separar a atividade da aula?\n\nA aula volta para a turma toda, com as fichas, conteúdos e respostas que já tinha.\nA atividade fica à parte, só com os alunos que escolheste.')) return;
+              const r = separarAtividadeDaAula(plano.id);
+              if (r) { alert('Feito. A aula voltou para a turma toda. Abre-se agora a atividade: confirma os participantes e as partes da aula a que respondem.'); onPlanoActualizado(r.atividade); }
+            }}
+            style={{ marginTop: 10, padding: '10px 16px', borderRadius: 10, border: 'none', background: '#c0392b', color: '#fff',
+              fontSize: 14.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Separar a atividade da aula</button>
+        </div>
+      )}
       {/* Esta é uma atividade à parte de uma aula: em cima, a aula e quem foi. */}
-      {modulo === 'inicio' && (plano as any).aulaLigada && eventoForaDoHorario(plano) && (() => {
-        const aula: any = getPlanosAula().find(x => x.id === (plano as any).aulaLigada);
+      {modulo === 'inicio' && eventoForaDoHorario(plano) && aulaDoDiaDaAtividade(plano) && (() => {
+        const aula: any = aulaDoDiaDaAtividade(plano);
         return (
           <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px 14px', margin: '0 0 14px', border: '2px solid #6B3FA0' }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade à parte da aula</div>
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)', marginTop: 3, lineHeight: 1.5 }}>
-              A aula {aula ? `«${aula.titulo}»` : 'do dia'} não muda: os outros alunos continuam com ela. Aqui escolhes quem foi a esta atividade e confirmas.
+              O plano da turma desse dia — <b>{rotuloDoPlano(aula)}</b> — não muda: os outros alunos continuam com ele. Aqui escolhes quem foi a esta atividade e confirmas.
             </div>
             {aula && <button onClick={() => onPlanoActualizado(aula)} style={{ marginTop: 8, padding: '7px 12px', borderRadius: 9, border: '1px solid #6B3FA0',
               background: '#fff', color: '#6B3FA0', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>← Abrir a aula</button>}
@@ -1607,7 +1630,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         );
       })()}
       {/* Atividades à parte, ligadas a esta aula (a aula não muda). */}
-      {modulo === 'inicio' && getPlanosAula().filter((a: any) => a.aulaLigada === plano.id && a.estado !== 'arquivado').map((a: any) => {
+      {modulo === 'inicio' && !eventoForaDoHorario(plano) && getPlanosAula().filter((a: any) => eventoForaDoHorario(a) && a.estado !== 'arquivado'
+        && aulaDoDiaDaAtividade(a)?.id === plano.id).map((a: any) => {
         const quem = participantesDoEvento(a);
         return (
           <button key={a.id} onClick={() => onPlanoActualizado(a)} style={{ display: 'block', width: '100%', textAlign: 'left', background: '#f3eefa',
@@ -1615,7 +1639,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             <span style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade ligada a esta aula: {a.titulo}</span>
             <span style={{ display: 'block', fontSize: 13.5, color: 'rgba(26,23,20,0.7)', marginTop: 3 }}>
               {quem.length ? `${quem.length} aluno${quem.length === 1 ? '' : 's'}` : 'Ainda sem alunos'} ·
-              {a.tambemRespondemAula === false ? ' respondem só à atividade' : ' também respondem a esta aula'} ·
+              {a.tambemRespondemAula === false ? ' respondem só à atividade'
+                : ' nesta aula respondem a: ' + (() => { const pt = { ...PARTES_POR_OMISSAO, ...(a.partesDaAula || {}) };
+                    return [pt.tecnicas && 'técnicas', pt.conhecimentos && 'conhecimentos', pt.atitudes && 'atitudes'].filter(Boolean).join(', ') || 'nada'; })()} ·
               {a.participantesConfirmadosEm ? ' confirmada' : ' por confirmar'} — tocar para abrir
             </span>
           </button>
@@ -2329,7 +2355,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {[
           { t: 'Lista da turma', d: 'Quem entrou, a farda, as faltas e os atrasos.', ao: () => setTabInicio('turma') },
           { t: 'Validar as autoavaliações', d: 'Confirmar a nota de cada aluno nesta aula.', ao: () => setModulo('validacao') },
-          { t: 'Reabrir a autoavaliação de um aluno', d: 'O aluno enganou-se? Destranca para ele corrigir.', ao: () => setModulo('registos') },
+          { t: 'Reabrir a autoavaliação de um aluno', d: 'O aluno enganou-se, ou houve um erro? Reabre só para ele, sem PIN novo.', ao: () => setModulo('registos') },
         ].map(x => (
           <button key={x.t} onClick={x.ao} style={{ display:'block', width:'100%', textAlign:'left', background:'#fff',
             border:'1px solid rgba(26,23,20,0.14)', borderRadius:14, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit' }}>
@@ -2436,7 +2462,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </a>
         </div>
       )}
-      {eventoForaDoHorario(plano) && !(plano as any).aulaLigada && (
+      {eventoForaDoHorario(plano) && !aulaDoDiaDaAtividade(plano) && (
         <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
           <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
         </div>
@@ -2596,16 +2622,36 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             <ul style={{ margin: '2px 0 12px', paddingLeft: 18 }}>
               {ecras.length ? ecras.map((e: any, i: number) => <li key={i}>{e.rotulo}: {e.nome}</li>) : <li>As atitudes do evento e a técnica geral.</li>}
             </ul>
-            {plano.aulaLigada && (() => {
-              const aula: any = getPlanosAula().find(x => x.id === plano.aulaLigada);
-              const sim = plano.tambemRespondemAula !== false;
+            {(() => {
+              const aula: any = aulaDoDiaDaAtividade(plano);
+              if (!aula) return null;
+              const nada = plano.tambemRespondemAula === false;
+              const partes = { ...PARTES_POR_OMISSAO, ...(plano.partesDaAula || {}) };
+              const mudar = (k: 'tecnicas' | 'conhecimentos' | 'atitudes') => {
+                const nova = { ...partes, [k]: nada ? true : !partes[k] };
+                const algum = nova.tecnicas || nova.conhecimentos || nova.atitudes;
+                gravar({ partesDaAula: nova, tambemRespondemAula: algum, aulaLigada: aula.id });
+              };
+              const caixa = (k: 'tecnicas' | 'conhecimentos' | 'atitudes', texto: string) => {
+                const on = !nada && partes[k];
+                return (
+                  <button key={k} style={{ ...bt(on), display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', marginBottom: 6 }} onClick={() => mudar(k)}>
+                    <span style={{ fontSize: 16 }}>{on ? '☑' : '☐'}</span>{texto}
+                  </button>
+                );
+              };
               return (<>
-                <div style={{ fontWeight: 800 }}>E a aula «{aula?.titulo || 'do dia'}»?</div>
-                <div style={{ color: 'rgba(26,23,20,0.7)', margin: '2px 0 6px' }}>A aula não muda: os outros alunos continuam com ela. Estes alunos…</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                  <button style={bt(sim)} onClick={() => gravar({ tambemRespondemAula: true })}>Também respondem à aula (o trabalho da aula)</button>
-                  <button style={bt(!sim)} onClick={() => gravar({ tambemRespondemAula: false })}>Só respondem à atividade</button>
+                <div style={{ fontWeight: 800 }}>O plano da turma desse dia</div>
+                <div style={{ margin: '2px 0 4px', padding: '8px 10px', borderRadius: 8, background: '#f6f3ee' }}>{rotuloDoPlano(aula)}</div>
+                <div style={{ color: 'rgba(26,23,20,0.7)', margin: '2px 0 6px' }}>
+                  A atividade é um extra: este plano não muda, e os alunos da atividade continuam a responder-lhe como os outros.
+                  Se quiseres, tira uma parte (por exemplo as atitudes, já avaliadas na atividade):
                 </div>
+                {caixa('tecnicas', 'Técnicas (a prática da aula)')}
+                {caixa('conhecimentos', 'Conhecimentos (o trabalho exigido)')}
+                {caixa('atitudes', 'Atitudes e os 5 C')}
+                <button style={{ ...bt(nada), marginBottom: 12 }} onClick={() => gravar({ tambemRespondemAula: false, aulaLigada: aula.id })}>
+                  {nada ? '✓ ' : ''}Nada: só respondem à atividade</button>
               </>);
             })()}
             <div style={{ fontWeight: 800 }}>Como conta</div>
@@ -2639,6 +2685,51 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
       );
     })()}
   </>);
+}
+
+/** Reabrir a autoavaliação de UM aluno, sem PIN novo (Rosa, out/2026). Abre
+ *  sozinha no telemóvel dele, com aviso; fecha quando ele responder. */
+function ReabrirAutoavaliacao({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
+  const [, redesenhar] = React.useState(0);
+  const alunos = alunosDoPlano(plano);
+  const respostas = new Map(selecoesQueContam().filter(s => s.planoAulaId === plano.id).map(s => [s.alunoId, s]));
+  const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+  const hora = (iso?: string) => iso ? new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.1)' }}>
+      <div style={{ fontSize: 17, fontWeight: 800 }}>Reabrir a autoavaliação de um aluno</div>
+      <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', margin: '4px 0 12px', lineHeight: 1.5 }}>
+        Só para esse aluno e sem PIN novo: a autoavaliação abre sozinha no telemóvel dele, com um aviso.
+        Quando ele responder, fecha outra vez e a resposta nova fica em «Por validar». Até lá conta o que já tinha.
+      </div>
+      {alunos.map(a => {
+        const s: any = respostas.get(a.id);
+        const reaberta = reabertaPorResponder(atual, a.id);
+        const validada = s && selecaoJaValidada(s);
+        return (
+          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b>{a.numero}.</b> {a.nome}
+              <span style={{ display: 'block', fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>
+                {reaberta ? `Reaberta (${hora(atual.reabertaPara?.[a.id])}) — à espera da resposta nova`
+                  : s ? `Respondeu ${hora(s.criadaEm)}${validada ? ' · validada' : ' · por validar'}` : 'Ainda não respondeu'}
+              </span>
+            </span>
+            {s && !reaberta && (
+              <button onClick={() => {
+                  if (!confirm(`Reabrir a autoavaliação de ${a.nome}?\n\nAbre só para este aluno, sem PIN novo. Até responder outra vez, conta o que já tinha.`)) return;
+                  reabrirAutoavaliacao(plano.id, a.id);
+                  const p = getPlanosAula().find(x => x.id === plano.id); if (p) onPlanoActualizado(p);
+                  redesenhar(n => n + 1);
+                }}
+                style={{ padding: '8px 14px', borderRadius: 9, border: '1px solid #b5651d', background: '#fff', color: '#b5651d',
+                  fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Reabrir</button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 // ── Concurso: fases e vencedor (os pontos saem daqui) ──────────

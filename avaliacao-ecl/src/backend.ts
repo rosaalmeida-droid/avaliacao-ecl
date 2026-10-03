@@ -10,7 +10,7 @@ import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC } from './pautaUC';
-import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO } from './eventosAvaliacao';
+import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
@@ -2959,6 +2959,28 @@ export function pedirNovaAutoavaliacao(planoId: string): void {
   if (!p) return;
   addOrUpdatePlanoAula({ ...p, pedirDeNovoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString() } as any);
 }
+/** Regra (Rosa, out/2026): o professor reabre a autoavaliação de UM aluno,
+ *  sem PIN novo. Fica no plano (reabertaPara), chega ao telemóvel dele, e
+ *  fecha outra vez quando ele responde. Os outros continuam fechados. */
+export function reabrirAutoavaliacao(planoId: string, alunoId: string): void {
+  const p: any = getPlanosAula().find(x => x.id === planoId);
+  if (!p) return;
+  addOrUpdatePlanoAula({ ...p, reabertaPara: { ...(p.reabertaPara || {}), [alunoId]: new Date().toISOString() } });
+}
+/** Desde quando este aluno tem de responder outra vez nesta aula: o pedido à
+ *  turma (perguntas novas) ou a reabertura só para ele — o mais recente. */
+export function pedidoParaOAluno(plano: any, alunoId?: string): string | undefined {
+  const a = plano?.pedirDeNovoEm, b = alunoId ? plano?.reabertaPara?.[alunoId] : undefined;
+  return !a ? b : !b ? a : (quandoFoi(b) > quandoFoi(a) ? b : a);
+}
+/** A autoavaliação deste aluno foi reaberta e ele ainda não respondeu outra vez? */
+export function reabertaPorResponder(plano: any, alunoId: string): boolean {
+  const r = plano?.reabertaPara?.[alunoId];
+  if (!r) return false;
+  const s = load<SelecaoAluno>(KEYS.selecoes).filter(x => x.alunoId === alunoId && x.planoAulaId === plano.id)
+    .sort((x: any, y: any) => quandoFoi(y.criadaEm) - quandoFoi(x.criadaEm))[0];
+  return !s || !respostaDepoisDoPedido(s, r);
+}
 export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
 
 /** A validação desta autoavaliação. Procura pelo código e também pelo
@@ -2975,7 +2997,7 @@ export function validacaoDaSelecao(s: { id: string; alunoId?: string; planoAulaI
     .sort((a: any, b: any) => quandoFoi(b.validadoEm) - quandoFoi(a.validadoEm))[0];
   // Respondeu outra vez depois de o professor pedir: a validação antiga não
   // é desta resposta (continua a contar para a nota até haver a nova).
-  const pedido = v && (s.criadaEm || (s as any).versaoPlano) ? (getPlanosAula().find(p => p.id === s.planoAulaId) as any)?.pedirDeNovoEm : undefined;
+  const pedido = v && (s.criadaEm || (s as any).versaoPlano) ? pedidoParaOAluno(getPlanosAula().find(p => p.id === s.planoAulaId), s.alunoId) : undefined;
   // «Resposta nova» conta pela versão do plano a que o aluno respondeu (a hora
   // do professor); só as respostas antigas, sem versão, usam a hora do
   // telemóvel do aluno, que pode estar adiantada ou atrasada.
@@ -5989,9 +6011,10 @@ export interface EstadoAlunoNaAula {
 }
 
 export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): EstadoAlunoNaAula[] {
-  const alunos = getAlunos()
-    .filter(a => a.turmaId === turmaId && a.ativo !== false)
-    .sort((a, b) => a.numero - b.numero);
+  // Numa atividade com participantes escolhidos, só esses (Rosa, out/2026).
+  const planoDaAula: any = getPlanosAula().find(p => p.id === planoAulaId);
+  const alunos = planoDaAula ? alunosDoPlano(planoDaAula)
+    : getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
 
   const presencas = getPresencas().filter(p => p.planoAulaId === planoAulaId);
   const selecoes = getSelecoes().filter(s => s.planoAulaId === planoAulaId);
@@ -8710,6 +8733,96 @@ export function inscreverNoEvento(plano: PlanoAula, aluno: { id: string; nome?: 
 }
 export function inscritosNoEvento(planoId: string): string[] {
   return getMembrosGrupo(idInscricao(planoId)).filter(m => m.grupoId === 'inscrito').map(m => m.alunoId);
+}
+/** Uma aula que foi transformada em atividade (antes da regra «a atividade
+ *  nunca muda a aula»): ainda tem sinais de aula — o tipo de aula, fichas,
+ *  conteúdos, ou respostas de alunos que não estão na atividade. */
+export function aulaTransformadaEmAtividade(plano: any): boolean {
+  if (!plano || !eventoForaDoHorario(plano) || plano.aulaLigada) return false;
+  const tipo = plano.triagemAula?.tipo;
+  const quem = new Set(participantesDoEvento(plano));
+  const deOutros = modoParticipacao(plano) === 'inscricao'
+    && getSelecoes().some(s => s.planoAulaId === plano.id && !quem.has(s.alunoId));
+  return (!!tipo && tipo !== 'atitudinal') || (plano.fichasIds || []).length > 0 || (plano.conhecimentosProf || []).length > 0 || deOutros;
+}
+
+/** Repara: a aula volta a ser aula para a turma toda, e a atividade passa a
+ *  ficar à parte, ligada a ela, com os mesmos participantes e decisões.
+ *  Os campos tirados vão a «null» (e não apagados): assim a correção chega a
+ *  todos os aparelhos e ao Sheets, que guarda o que já lá estava. */
+export function separarAtividadeDaAula(planoId: string): { aula: PlanoAula; atividade: PlanoAula } | null {
+  const x: any = getPlanosAula().find(p => p.id === planoId);
+  if (!x || !aulaTransformadaEmAtividade(x)) return null;
+  const agora = new Date().toISOString();
+  const tipo = x.triagemAula?.tipo || String(x.tipoPlanAula || 'pratico').replace('_obr', '');
+  const nomes: Record<string, string> = { pratico: 'Aula prática', misto: 'Aula mista', teorico: 'Aula teórica', atitudinal: 'Dinâmica de grupo — atitudes' };
+  const atividade: any = {
+    id: `plano_atv_${x.id}_${Date.now().toString(36)}`, turmaId: x.turmaId, professor: x.professor || '',
+    data: String(x.data || '').slice(0, 10), horaInicio: x.horaInicio || '', horaFim: x.horaFim || '',
+    titulo: `${x.tipoAtividade} — ${x.titulo || 'aula'}`, observacoes: '', fichasIds: [], estado: 'publicado',
+    criadoEm: agora, atualizadoEm: agora, ucId: x.ucId || '', ucNome: x.ucNome || '',
+    numeroPlan: proximoNumeroPlano(), tipoAtividade: x.tipoAtividade, tipoEvento: x.tipoEvento,
+    tipoPlanAula: 'atitudinal', compAdicionadas: atitudesSugeridasEvento(x.tipoAtividade),
+    modoParticipacao: modoParticipacao(x), participantesIds: x.participantesIds || [],
+    postosPeloProfessor: x.postosPeloProfessor || [], participantesConfirmadosEm: x.participantesConfirmadosEm || agora,
+    resultadosConcurso: x.resultadosConcurso || {}, fasesConcurso: x.fasesConcurso || 0,
+    contaAssiduidade: false, aulaLigada: x.id, tambemRespondemAula: x.tambemRespondemAula !== false,
+    ...(x.eventoId ? { eventoId: x.eventoId } : {}),
+    triagemAula: { tipo: 'atitudinal', onde: /fora|externo/i.test(x.tipoAtividade) ? 'fora' : 'cozinha',
+      cozinham: !/fora|externo|Concurso/i.test(x.tipoAtividade), trabalho: 'grupos', servico: /Catering|Buffet|externo/i.test(x.tipoAtividade) },
+  };
+  addOrUpdatePlanoAula(atividade);
+  const aula: any = { ...x, tipoAtividade: nomes[tipo] || 'Aula prática', tipoEvento: null, modoParticipacao: 'turma',
+    participantesIds: [], postosPeloProfessor: [], participantesConfirmadosEm: null, tambemRespondemAula: null, eventoId: null,
+    resultadosConcurso: null, fasesConcurso: null, atualizadoEm: agora };
+  addOrUpdatePlanoAula(aula);
+  return { aula, atividade };
+}
+
+/** O plano da turma no dia da atividade (Rosa, out/2026): o que está ligado
+ *  a ela, ou senão a aula da mesma turma nesse dia (a que se sobrepõe às
+ *  horas, se houver mais do que uma). Não se escolhe: é o do mesmo dia. */
+export function aulaDoDiaDaAtividade(atividade: any): PlanoAula | undefined {
+  if (!atividade) return undefined;
+  const todos = getPlanosAula();
+  if (atividade.aulaLigada) { const a = todos.find(p => p.id === atividade.aulaLigada); if (a) return a; }
+  const dia = String(atividade.data || '').slice(0, 10);
+  const min = (h?: string) => { const [a, b] = String(h || '').split(':').map(Number); return isNaN(a) ? NaN : a * 60 + (b || 0); };
+  const doDia = todos.filter((p: any) => p.id !== atividade.id && p.turmaId === atividade.turmaId && !p.tipoEvento
+    && p.estado !== 'arquivado' && String(p.data || '').slice(0, 10) === dia);
+  const i1 = min(atividade.horaInicio), f1 = min(atividade.horaFim);
+  return doDia.find((p: any) => { const i2 = min(p.horaInicio), f2 = min(p.horaFim); return [i1, f1, i2, f2].some(isNaN) || (i1 < f2 && i2 < f1); }) || doDia[0];
+}
+/** As partes do plano da turma a que um aluno de uma atividade do mesmo dia
+ *  responde, como o professor disse (Rosa, out/2026). A atividade é um extra:
+ *  por omissão, continuam a responder a tudo, como os outros. O professor
+ *  pode tirar uma parte (por exemplo as atitudes, já avaliadas na atividade). */
+export type PartesDoPlano = { tecnicas: boolean; conhecimentos: boolean; atitudes: boolean };
+export const PARTES_POR_OMISSAO: PartesDoPlano = { tecnicas: true, conhecimentos: true, atitudes: true };
+export function partesDoPlanoParaOAluno(aula: any, alunoId: string): PartesDoPlano {
+  const atv: any = getPlanosAula().find((a: any) => eventoForaDoHorario(a) && a.estado !== 'arquivado'
+    && aulaDoDiaDaAtividade(a)?.id === aula?.id && participantesDoEvento(a).includes(alunoId));
+  if (!atv) return { tecnicas: true, conhecimentos: true, atitudes: true };
+  if (atv.tambemRespondemAula === false) return { tecnicas: false, conhecimentos: false, atitudes: false };
+  return { ...PARTES_POR_OMISSAO, ...(atv.partesDaAula || {}) };
+}
+/** Texto do plano do dia: «quinta-feira, 01/10 · Plano n.º 103 — título». */
+export function rotuloDoPlano(p: any): string {
+  if (!p) return '';
+  const dia = new Date(String(p.data || '').slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit' });
+  return `${dia}${p.horaInicio ? `, ${p.horaInicio}–${p.horaFim || ''}` : ''} · Plano n.º ${p.numeroPlan || '?'} — ${p.titulo || 'aula'}`;
+}
+
+/** Regra (Rosa, out/2026): os alunos de um plano. Numa atividade com os
+ *  participantes escolhidos (inscrição), só esses; numa aula (ou atividade
+ *  da turma toda), a turma toda. Tudo o que lista alunos de um plano — quem
+ *  falta responder, a turma na aula, faltas, funções, grupos, reabrir —
+ *  usa isto. */
+export function alunosDoPlano(plano: any): Aluno[] {
+  const turma = getAlunos().filter(a => a.turmaId === plano?.turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
+  if (!plano || !eventoForaDoHorario(plano) || modoParticipacao(plano) !== 'inscricao') return turma;
+  const ids = new Set<string>((plano.participantesIds || []) as string[]);
+  return turma.filter(a => ids.has(a.id));
 }
 export function participantesDoEvento(p: PlanoAula): string[] {
   return modoParticipacao(p) === 'turma'
