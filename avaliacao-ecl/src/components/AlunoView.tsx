@@ -1137,7 +1137,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>Validada pelo professor</div>
                 </div>
                 <div style={{ marginLeft:'auto', fontFamily:'var(--font-display)', fontSize:34, fontWeight:900, color:cor, lineHeight:1 }}>
-                  {nota20}<span style={{ fontSize:18 }}>/20</span>
+                  {String(nota20).replace(".", ",")}<span style={{ fontSize:18 }}>/20</span>
                 </div>
               </div>
             );
@@ -1704,7 +1704,10 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = f
     ...(comGrupos ? [{ id:'grupo', label:'Estou num grupo', agora:'O meu grupo', cor:V }] : []),
     // A função de cada um (plano organizacional): o que fazer antes de produzir.
     ...(minhasFuncoes.some(f => f.inicio.length) ? [{ id:'funcao_inicio', label:'Fiz a minha função (início)', agora:'A tua função: início', cor:V }] : []),
-    { id:'ficha',      label:'Produzi',                    agora:'Produzir',         cor:V },
+    // Numa aula teórica não há produção: o passo é o trabalho da aula.
+    String((plano as any).tipoPlanAula || '') === 'teorico'
+      ? { id:'ficha', label:'Fiz o trabalho da aula', agora:'O trabalho da aula', cor:V }
+      : { id:'ficha', label:'Produzi', agora:'Produzir', cor:V },
     ...(fichas.some((f:any) => f.textoGuia)
       ? [{ id:'guia', label:'Consultei o guião', agora:'Ver o guião', cor:V }] : []),
     // A requisição é do professor: o aluno só a consulta, e só se existir.
@@ -1727,7 +1730,8 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = f
     if (id==='guia' && guiaoConcluido) return 'concluido';
     if (id==='requisicao' && requisicao) return 'concluido';
     if (id==='funcao_fim' && funcaoFimFeita) return 'concluido';
-    if (id==='avaliacao' && avaliacaoConcluida) return 'concluido';
+    // Também quando a resposta chegou depois de o ecrã abrir (ou já foi validada).
+    if (id==='avaliacao' && (avaliacaoConcluida || jaSubmeteuAutoavaliacao(plano, aluno.id) || !!validacaoDaAula(aluno.id, plano.id))) return 'concluido';
     if (id===secAberta) return 'ativo';
     return 'pendente';
   };
@@ -3363,9 +3367,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               // A validação tem de ser desta resposta (ou de uma mais recente):
               // depois de responder outra vez, a validação antiga já não é desta
               // resposta, e dizia «já validou» ao lado de «A enviar…» (Rosa, out/2026).
-              const minha = getSelecoes().find(s => s.id === `sel_${plano.id}_${aluno.id}`);
-              const v = minha ? validacaoDaSelecao(minha) : undefined;
-              if (v && quandoFoi((v as any).validadoEm) >= quandoFoi(minha!.criadaEm)) return 'O professor já validou. A nota desta aula está no topo.';
+              // A resposta pode ter outro identificador (versões antigas): procura-se
+              // também pela aula. Dizia «vai confirmar» com «Professor confirmou» logo abaixo.
+              const minha = getSelecoes().find(s => s.id === `sel_${plano.id}_${aluno.id}`) || ultimaResposta(aluno.id, plano.id);
+              const v = (minha ? validacaoDaSelecao(minha) : undefined) || validacaoDaAula(aluno.id, plano.id);
+              if (v && (!minha || quandoFoi((v as any).validadoEm) >= quandoFoi(minha.criadaEm))) return 'O professor já validou. A nota desta aula está mais abaixo.';
               if (v) return 'O professor tinha validado a tua resposta anterior. Esta resposta nova vai ser validada outra vez.';
               return 'O professor vai confirmar o teu registo.';
             })()}
@@ -3415,7 +3421,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           const val: any = validacaoDaAula(aluno.id, plano.id);
           const calculo = val ? calculoDaAulaValidada(val) : null;
           if (val && calculo) {
-            const { nota20, detalhes } = calculo;
+            const { nota20, porCategoria } = calculo;
+            // Por extenso, para o aluno: «KNW: 12/20 | ATI: 5/20» eram códigos.
+            const NOME_PARTE: Record<string, string> = { OBR: 'Farda e registos', SUB: 'Técnicas', KNW: 'Conhecimentos', ATI: 'Atitudes', INI: 'Iniciativa' };
+            const detalhes = Object.entries(porCategoria || {})
+              .map(([c, n]) => `${NOME_PARTE[c] || c}: ${String(n).replace('.', ',')}/20`).join(' · ');
             const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             const label = classificacao20(nota20);
 
@@ -3450,14 +3460,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                   </div>
                 ))}
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{nota20}</span>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{String(nota20).replace('.', ',')}</span>
                   <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/20</span>
                   <span style={{ marginLeft:'auto', fontSize:14, fontWeight:700, color:cor }}>{label}</span>
                 </div>
                 {detalhes && (
                   <div style={{ marginTop:10, fontSize:12.5, color:'rgba(26,23,20,0.45)',
-                    padding:'6px 10px', borderRadius:8, background:'rgba(26,23,20,0.03)',
-                    fontFamily:'monospace' }}>
+                    padding:'6px 10px', borderRadius:8, background:'rgba(26,23,20,0.03)' }}>
                     {detalhes}
                   </div>
                 )}
@@ -3506,17 +3515,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             termine sabendo como esta aula contribui para a unidade,
             não só a nota isolada. */}
         {(() => {
-          const historico = getHistoricoAvaliacoes().filter((r: any) =>
-            r.alunoId === aluno.id && r.ucId === plano.ucId && r.validadoPor === 'professor'
-          );
-          if (!historico.length) return null;
-          const media = historico.reduce((s: number, r: any) => s + r.nota, 0) / historico.length;
-          const nota20 = Math.round(nivelPara20(media) * 10) / 10;
+          // A mesma conta das «Notas da UC» e do Sheets (notaFinalUC). Era uma média
+          // simples das competências, que não batia com a nota da UC (Rosa, out/2026).
+          const n = plano.ucId ? notaFinalUC(aluno.id, aluno.turmaId, plano.ucId) : null;
+          if (!n || n.final == null) return null;
+          const nota20 = n.final;
           return (
             <div style={{ background:'#6B3FA0', borderRadius:14, padding:16, marginTop:12 }}>
               <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.06em',
                 textTransform:'uppercase', color:'#DCCFF0', marginBottom:6 }}>
-                Progressão na UC
+                A tua nota na UC até agora
               </div>
               <div style={{ display:'flex', alignItems:'baseline', gap:7 }}>
                 <span style={{ fontSize:28, fontWeight:700, color:'#fff' }}>

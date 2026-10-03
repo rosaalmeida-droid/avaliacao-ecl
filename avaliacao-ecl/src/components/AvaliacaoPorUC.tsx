@@ -351,7 +351,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                 </div>
                 {mediaGeral > 0 && (
                   <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1)}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: cor }}>{pauta ? String(Math.round(mediaGeral)) + (Math.round(mediaGeral) < 10 ? " a)" : "") : mediaGeral.toFixed(1).replace('.', ',')}</div>
                     <div style={{ fontSize: 12, color: 'rgba(26,23,20,0.4)' }}
                       title={porCategoriaUltima
                         ? 'Como esta nota foi calculada: ' + Object.entries(porCategoriaUltima).map(([c,n]) => `${c} ${n}/20`).join(' · ')
@@ -405,7 +405,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
                             </div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: cr }}>{c.media.toFixed(1)}</div>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: cr }}>{c.media.toFixed(1).replace('.', ',')}</div>
                           </div>
                         </div>
                       );

@@ -164,7 +164,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
                               <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 20,
                                 background: `${corNota(nota)}18`, color: corNota(nota),
                                 fontWeight: 800, fontSize: 13 }}>
-                                {nota.toFixed(1)}
+                                {nota.toFixed(1).replace('.', ',')}
                               </span>
                             ) : (
                               <span style={{ color: 'rgba(26,23,20,0.15)', fontSize: 16 }}>—</span>
@@ -177,7 +177,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
                         background: media > 0 ? `${corNota(media)}10` : 'transparent' }}>
                         {media > 0 ? (
                           <span style={{ fontWeight: 800, fontSize: 14, color: corNota(media) }}>
-                            {media.toFixed(1)}
+                            {media.toFixed(1).replace('.', ',')}
                           </span>
                         ) : <span style={{ color: 'rgba(26,23,20,0.2)' }}>—</span>}
                       </td>
@@ -198,7 +198,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
                       <td key={cId} style={{ padding: '8px 4px', textAlign: 'center',
                         borderTop: '2px solid rgba(26,23,20,0.12)' }}>
                         {m > 0 ? (
-                          <span style={{ fontWeight: 800, fontSize: 13, color: corNota(m) }}>{m.toFixed(1)}</span>
+                          <span style={{ fontWeight: 800, fontSize: 13, color: corNota(m) }}>{m.toFixed(1).replace('.', ',')}</span>
                         ) : <span style={{ color: 'rgba(26,23,20,0.2)' }}>—</span>}
                       </td>
                     );
@@ -208,7 +208,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
                     {(() => {
                       const m = regsFiltrados.length
                         ? regsFiltrados.reduce((a,b) => a+b.nota,0)/regsFiltrados.length : 0;
-                      return m > 0 ? <span style={{ fontWeight: 800, fontSize: 14, color: corNota(m) }}>{m.toFixed(1)}</span> : '—';
+                      return m > 0 ? <span style={{ fontWeight: 800, fontSize: 14, color: corNota(m) }}>{m.toFixed(1).replace('.', ',')}</span> : '—';
                     })()}
                   </td>
                 </tr>
