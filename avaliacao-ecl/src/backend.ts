@@ -8657,6 +8657,11 @@ export interface NotaFinalPublicada {
   alunoId: string; turmaId: string; ucId: string;
   nota: number; resultado: string; cp: number; total: number;
   professor: string; publicadaEm: string;
+  /** (out/2026) Como os colegas de grupo veem o aluno, sem nomes nem notas
+   *  (calculado no aparelho do professor ao publicar). */
+  colegas?: { forte: string[]; melhorar: string[] } | null;
+  /** Em quantas aulas desta UC o professor teve em conta a opinião dos colegas. */
+  colegasTidosEmConta?: number;
 }
 
 export function getNotaFinalPublicadaUC(alunoId: string, ucId: string): NotaFinalPublicada | null {
@@ -8665,7 +8670,8 @@ export function getNotaFinalPublicadaUC(alunoId: string, ucId: string): NotaFina
   const a = s?.autoavaliacoes?.[0];
   if (!s || !a || typeof a.nota !== 'number') return null;
   return { alunoId, turmaId: s.turmaId, ucId, nota: a.nota, resultado: a.resultado || '', cp: a.cp,
-    total: a.total, professor: a.professor || '', publicadaEm: a.publicadaEm || s.criadaEm };
+    total: a.total, professor: a.professor || '', publicadaEm: a.publicadaEm || s.criadaEm,
+    colegas: a.colegas || null, colegasTidosEmConta: Number(a.colegasTidosEmConta) || 0 };
 }
 
 /** Todas as notas finais publicadas de um aluno (as UC que já fecharam). */
@@ -8678,11 +8684,21 @@ export function notasFinaisPublicadasDoAluno(alunoId: string): NotaFinalPublicad
 
 export function publicarNotaFinalUC(n: Omit<NotaFinalPublicada, 'publicadaEm'>): void {
   const agora = new Date().toISOString();
+  // O que os colegas de grupo veem (sem nomes) e em quantas aulas o professor
+  // o teve em conta: vai com a nota, para o aluno e para a avaliação final.
+  const daUC = new Set(getPlanosAula().filter(p => p.ucId === n.ucId && p.turmaId === n.turmaId).map(p => p.id));
+  let colegas: NotaFinalPublicada['colegas'] = null, colegasTidosEmConta = 0;
+  try {
+    colegas = resumoDosColegasParaOAluno(n.alunoId, daUC);
+    colegasTidosEmConta = new Set(getValidacoes().filter((v: any) => v.alunoId === n.alunoId && daUC.has(String(v.planoAulaId)) && v.consideraColegas)
+      .map((v: any) => v.planoAulaId)).size;
+  } catch { /* sem dados dos colegas: vai só a nota */ }
   addOrUpdateSelecao({
     id: `nota_${n.ucId}_${n.alunoId}`, planoAulaId: PREFIXO_NOTA + n.ucId, comandaId: '', fichaId: '',
     alunoId: n.alunoId, turmaId: n.turmaId, tecnicas: [], atitudes: [], responsabilidades: [],
     autoavaliacoes: [{ competenciaId: 'NOTA_FINAL_UC', nivel: 'nota', nota: n.nota, resultado: n.resultado,
-      cp: n.cp, total: n.total, professor: n.professor, publicadaEm: agora }],
+      cp: n.cp, total: n.total, professor: n.professor, publicadaEm: agora,
+      ...(colegas ? { colegas } : {}), ...(colegasTidosEmConta ? { colegasTidosEmConta } : {}) }],
     criadaEm: agora,
   } as any);
 }
