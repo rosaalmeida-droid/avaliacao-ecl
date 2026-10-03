@@ -220,13 +220,15 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
         if (!atual.titulo || atual.titulo === tituloPadrao) novo.titulo = `${nomeNovo} — ${String(atual.data || '').slice(0, 10)}`;
         novo.tipoAtividade = nomeNovo;
       }
-      if ('onde' in parcial || 'tipo' in parcial || 'farda' in parcial || !definida) {
-        const ob = obrigatoriasDaTriagem(nova);
-        const tiradas = new Set<string>(atual.compRemovidas || []);
-        if (ob.farda) tiradas.delete('OBR_01'); else tiradas.add('OBR_01');
-        if (ob.registos) tiradas.delete('OBR_02'); else tiradas.add('OBR_02');
-        novo.compRemovidas = [...tiradas];
-      }
+    }
+    // A farda e os registos de higiene acompanham o tipo — também numa
+    // atividade extra (antes ficava de fora, como o tipo; auditoria out/2026).
+    if ('onde' in parcial || 'tipo' in parcial || 'farda' in parcial || (!definida && !atual.tipoEvento)) {
+      const ob = obrigatoriasDaTriagem(nova);
+      const tiradas = new Set<string>(atual.compRemovidas || []);
+      if (ob.farda) tiradas.delete('OBR_01'); else tiradas.add('OBR_01');
+      if (ob.registos) tiradas.delete('OBR_02'); else tiradas.add('OBR_02');
+      novo.compRemovidas = [...tiradas];
     }
     // Passou a trabalho com tema: o conteúdo que vinha marcado sozinho (o
     // próximo do manual) deixava os alunos com um só tema. Sem nada marcado,

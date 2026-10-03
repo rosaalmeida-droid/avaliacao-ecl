@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v24';
+var VERSAO = 'ECL único v24.1';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -860,7 +860,7 @@ function doGet(e) {
     if (tipo === 'get_pautas')       return comDados('pautas',       ler('PAUTAS', { turmaId: turma }));
     if (tipo === 'get_precos')       return comDados('precos',       ler('PRECOS', {}));
     if (tipo === 'get_materias_primas') return comDados('materiasPrimas', ler('MATERIAS_PRIMAS', {}), { eliminados: eliminadosDe('MATERIAS_PRIMAS') });
-    if (tipo === 'get_eventos')      return comDados('eventos',      ler('EVENTOS', {}));
+    if (tipo === 'get_eventos')      return comDados('eventos',      ler('EVENTOS', {}), { eliminados: eliminadosDe('EVENTOS') });
     if (tipo === 'get_alunos_externos') return comDados('alunosExternos', ler('ALUNOS_EXTERNOS', {}), { eliminados: eliminadosDe('ALUNOS_EXTERNOS') });
     if (tipo === 'get_precos_a_rever') return comDados('precosARever', ler('PRECOS_A_REVER', {}));
     // A pergunta mais pequena que há: "em que número vais?". Os

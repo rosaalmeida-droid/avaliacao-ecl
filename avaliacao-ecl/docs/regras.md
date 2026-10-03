@@ -58,6 +58,12 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 12. O professor vê o tema que o aluno escolheu e se respondeu mais do que uma vez.
 12a. **Reabrir a autoavaliação de um aluno, sem PIN novo.** No plano, em «Reabrir a autoavaliação de um aluno», o professor carrega em «Reabrir» ao lado do aluno. A autoavaliação abre sozinha no telemóvel desse aluno, com um aviso. Os outros alunos continuam fechados. Até ele responder, conta o que já tinha. Quando responde, fecha outra vez e a resposta nova fica «Por validar». O PIN temporário fica só para quem se esqueceu do PIN.
 
+## Auditoria (out/2026): casos parecidos corrigidos
+31. **Numa atividade, a farda e os registos de higiene acompanham o tipo escolhido**, como numa aula (estavam de fora, como o tipo).
+32. **Um evento eliminado num aparelho sai dos outros** e não volta a ser enviado (como os planos).
+33. **A aula que o aluno espera para entrar vai à frente da fila** de leituras do Sheets (como o código de entrada).
+34. **Reabrir a requisição de uma aula traz os preços corrigidos à mão; e as quantidades corrigidas, se as fichas e as doses forem as mesmas** (como a ficha, que abria vazia).
+
 ## Datas
 13. As datas comparam-se como datas e não como texto (`quandoFoi`). A hora do Sheets, do Firebase e de cada telemóvel pode vir escrita de maneiras diferentes.
 

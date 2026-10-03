@@ -406,13 +406,30 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       const f = getFichasProducao().find(x => x.id === fid);
       if (f) pax[fid] = porcoesDe(f);
     });
-    return agregarIngredientes(fsel, pax);
+    const base = agregarIngredientes(fsel, pax);
+    // Requisição já guardada para este plano: abre com as quantidades e os
+    // preços que ficaram guardados, e não recalculada do zero (como a ficha,
+    // que abria vazia — auditoria out/2026).
+    const guardada: any = planoInicial ? getRequisicaoPorPlano(planoInicial.id) : undefined;
+    if (!guardada?.linhas?.length) return base;
+    const porProduto = new Map<string, any>(guardada.linhas.map((l: any) => [String(l.produto || '').trim().toLowerCase(), l]));
+    return base.map(l => {
+      const s = porProduto.get(String(l.produto || '').trim().toLowerCase());
+      if (!s) return l;
+      const qt = Number(s.quantidadeTotal);
+      return recalc({ ...l, qtEncomenda: qt > 0 ? qt : l.qtEncomenda,
+        precoUnitario: s.precoUnitario != null && s.precoUnitario !== '' ? String(s.precoUnitario) : l.precoUnitario });
+    });
   });
+  // As doses só recalculam as quantidades quando o professor as muda (e não
+  // ao abrir, o que apagava as quantidades guardadas).
+  const primeiraVezDoses = React.useRef(!!(planoInicial && (getRequisicaoPorPlano(planoInicial.id) as any)?.linhas?.length));
   const [msg, setMsg] = useState('');
   const [linkSheets, setLinkSheets] = useState(''); // URL do Google Sheets para abrir directamente
 
   // Auto-recalcular quantidades quando o nº de doses muda (correctamente APÓS todos os useState)
   React.useEffect(() => {
+    if (primeiraVezDoses.current) { primeiraVezDoses.current = false; return; }
     if (linhas.length > 0 && fichasSel.length > 0) {
       const fsel = getFichasProducao().filter(f => fichasSel.includes(f.id));
       // Mudar as doses recalcula as quantidades, mas guarda o que o
@@ -494,10 +511,24 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     if (fichasSemIngredientes.length > 0) {
       alert(`Atenção: a(s) ficha(s) "${fichasSemIngredientes.map(f => f.nomePrato).join('", "')}" não têm ingredientes guardados. Abre a ficha e confirma que está completa antes de gerar a requisição.`);
     }
+    // Requisição já guardada para este plano (auditoria out/2026): os preços
+    // corrigidos à mão voltam sempre; as quantidades corrigidas voltam se as
+    // fichas e as doses forem as mesmas (mudar as doses recalcula).
+    const guardada: any = planoSel ? getRequisicaoPorPlano(planoSel.id) : undefined;
+    const porProduto = new Map<string, any>((guardada?.linhas || []).map((l: any) => [String(l.produto || '').trim().toLowerCase(), l]));
+    const mesmas = !!guardada?.paxPorFicha && [...fichasSel].sort().join('|') === [...(guardada.fichasIds || [])].sort().join('|')
+      && fichasSel.every(id => Number(guardada.paxPorFicha[id]) === Number(paxPorFicha[id]));
     // Os preços escritos antes de gerar (por ficha) entram nesta requisição.
     setLinhas(novasLinhas.map(l => {
-      const v = precosPreReq[l.produto.toLowerCase().trim()];
-      return v && precoNum(v) > 0 ? recalc({ ...l, precoUnitario: v, daBD: false }) : l;
+      const k = l.produto.toLowerCase().trim();
+      const v = precosPreReq[k];
+      if (v && precoNum(v) > 0) return recalc({ ...l, precoUnitario: v, daBD: false });
+      const s = porProduto.get(k);
+      if (!s) return l;
+      const qt = Number(s.quantidadeTotal);
+      return recalc({ ...l,
+        ...(s.precoUnitario != null && s.precoUnitario !== '' && precoNum(String(s.precoUnitario)) > 0 ? { precoUnitario: String(s.precoUnitario), daBD: false } : {}),
+        ...(mesmas && qt > 0 ? { qtEncomenda: qt } : {}) });
     }));
     setFase('editar');
   }
@@ -1569,6 +1600,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
             dataAula: planoSel?.data || evento?.data || '', professor: planoSel?.professor || nomeProfessor || '', fichasIds: fichasSel,
             linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: precoNum(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
             custoTotal: crTotal, estado: chegou ? 'enviada' : 'rascunho',
+            // As doses de cada ficha: ao reabrir, as quantidades corrigidas voltam se forem as mesmas.
+            ...({ paxPorFicha } as any),
             criadaEm: reqExistente?.criadaEm || agoraISO, atualizadaEm: agoraISO,
           });
           evento?.onGuardada?.(idReq, crTotal);
