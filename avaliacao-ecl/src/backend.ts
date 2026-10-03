@@ -2966,13 +2966,23 @@ export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<V
  *  telemóvel e do Sheets, ou com um código antigo). Sem isto, a cópia que
  *  chegava depois aparecia por corrigir e o professor corrigia duas vezes. */
 export function validacaoDaSelecao(s: { id: string; alunoId?: string; planoAulaId?: string; criadaEm?: string }, validacoes: Validacao[] = getValidacoes()): Validacao | undefined {
-  const v = validacoes.find((v: any) => v.selecaoId === s.id)
-    || validacoes.find((v: any) => !!s.alunoId && !!s.planoAulaId && v.alunoId === s.alunoId && v.planoAulaId === s.planoAulaId);
+  // A mais recente de todas as deste aluno nesta aula. Antes ficava a
+  // primeira que aparecesse: se o professor corrigisse noutra cópia, a
+  // correção não contava e o aluno continuava «por validar» (Rosa, out/2026).
+  const v = validacoes
+    .filter((v: any) => v.selecaoId === s.id
+      || (!!s.alunoId && !!s.planoAulaId && v.alunoId === s.alunoId && v.planoAulaId === s.planoAulaId))
+    .sort((a: any, b: any) => quandoFoi(b.validadoEm) - quandoFoi(a.validadoEm))[0];
   // Respondeu outra vez depois de o professor pedir: a validação antiga não
   // é desta resposta (continua a contar para a nota até haver a nova).
   const pedido = v && s.criadaEm ? (getPlanosAula().find(p => p.id === s.planoAulaId) as any)?.pedirDeNovoEm : undefined;
-  if (v && pedido && String(s.criadaEm) >= pedido && String((v as any).validadoEm || '') < pedido) return undefined;
+  if (v && pedido && quandoFoi(s.criadaEm) >= quandoFoi(pedido) && quandoFoi((v as any).validadoEm) < quandoFoi(pedido)) return undefined;
   return v;
+}
+/** Uma data em milissegundos, venha ela como vier (texto ISO ou do Sheets). */
+function quandoFoi(x: unknown): number {
+  const t = Date.parse(String(x || ''));
+  return isNaN(t) ? 0 : t;
 }
 export function selecaoJaValidada(s: { id: string; alunoId?: string; planoAulaId?: string }, validacoes: Validacao[] = getValidacoes()): boolean {
   return !!validacaoDaSelecao(s, validacoes);

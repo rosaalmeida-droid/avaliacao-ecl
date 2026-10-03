@@ -10,6 +10,7 @@ import { getComandas, getSelecoes, getValidacoes, addOrUpdateValidacao,
 import { TEC_EVENTO, NOME_TEC_EVENTO } from '../eventosAvaliacao';
 import { MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, encontrarMicro, encontrarAtitude, encontrarAparelho, encontrarSubtecnica, nomeCompetencia, nomeConhecimentoProf, categoriaDaNota, ramoDaCompetencia, caminhoDoRamo } from '../compatECL';
 import { getLibrary } from '../libraryService';
+import { capituloDoCampo } from '../bancoManuais';
 import { Card, Button, Field } from './ui';
 import { CriteriosComp } from './CriteriosComp';
 
@@ -76,6 +77,17 @@ function corNotaFinal(nota: number): string {
   return 'var(--danger)';
 }
 
+/** O tema do manual que o aluno trabalhou (o capítulo das competências
+ *  que respondeu). Vazio quando a aula não é sobre o manual. */
+function temaDoAluno(s: SelecaoAluno): string {
+  const caps = new Map<number, string>();
+  for (const a of (s.autoavaliacoes || []) as any[]) {
+    const c = capituloDoCampo(String(a?.competenciaId || ''));
+    if (c) caps.set(c.capitulo.n, `${c.capitulo.n}. ${c.capitulo.titulo}`);
+  }
+  return [...caps.entries()].sort((a, b) => a[0] - b[0]).map(e => e[1]).join(' · ');
+}
+
 /** O professor precisa do nome, não do identificador interno. */
 function nomeDoAluno(alunoId: string): string {
   const a = getAlunos().find(x => x.id === alunoId);
@@ -88,10 +100,11 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   const selecoes = getSelecoes().filter(s => (!turmaId || s.turmaId === turmaId) && (!planoId || s.planoAulaId === planoId));
   const validacoes = getValidacoes();
 
-  const pendentes = selecoes.filter(s => !selecaoJaValidada(s, validacoes));
   // Uma por aluno e aula: a mesma autoavaliação pode ter chegado duas vezes.
+  // Fica a resposta mais recente: se o aluno respondeu outra vez, é essa que
+  // se valida (antes ficava a antiga, já validada, e a nova não aparecia).
   const unicas = [...new Map([...selecoes]
-    .sort((a, b) => Number(selecaoJaValidada(a, validacoes)) - Number(selecaoJaValidada(b, validacoes)) || String(a.criadaEm || '').localeCompare(String(b.criadaEm || '')))
+    .sort((a, b) => (Date.parse(String(a.criadaEm || '')) || 0) - (Date.parse(String(b.criadaEm || '')) || 0))
     .map(s => [`${s.alunoId}|${s.planoAulaId}`, s] as const)).values()];
   const porValidarLista = unicas.filter(s => !selecaoJaValidada(s, validacoes));
   const validadasLista = unicas.filter(s => selecaoJaValidada(s, validacoes))
@@ -136,7 +149,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         validacaoExistente={valExistente}
         onVoltar={() => { setAcabou(null); setAtiva(null); }}
         // Depois de guardar, o seguinte por validar — sem voltar à lista.
-        seguintes={pendentes.filter(s => s.id !== ativa.id).length}
+        seguintes={porValidarLista.filter(s => s.id !== ativa.id).length}
         onSeguinte={() => {
           const prox = porValidarLista.filter(s => s.id !== ativa.id && !selecaoJaValidada(s))[0];
           setAcabou(nomeDoAluno(ativa.alunoId));
@@ -221,6 +234,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
           </div>
           <div className="muted" style={{ fontSize: 13 }}>
             {plano?.ucId ? `${plano.ucId} · ` : ''}
+            {temaDoAluno(s) ? `Tema: ${temaDoAluno(s)} · ` : ''}
             {jaValidada
               ? '✓ Validado — tocar para alterar'
               : `${nMicros} competência${nMicros !== 1 ? 's' : ''} a validar`}
@@ -594,6 +608,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           {ucId && `${ucId} · `}{nomeDoAluno(selecao.alunoId)}
           {fichasNomes.length > 0 && ` · ${fichasNomes.join(', ')}`}
         </div>
+        {temaDoAluno(selecao) && (
+          <div style={{ fontSize: 14, fontWeight: 700, marginTop: 8, color: '#f0b470' }}>
+            Tema do aluno: {temaDoAluno(selecao)}
+          </div>
+        )}
       </div>
 
       {/* Sem farda completa: avalia-se tudo (fica no percurso), as técnicas contam 0. */}
