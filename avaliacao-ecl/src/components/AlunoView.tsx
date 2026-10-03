@@ -577,6 +577,8 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
 
 export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
+  /** Atividade aberta só para ver (o aluno não esteve nela). */
+  const [planoConsulta, setPlanoConsulta] = useState<PlanoAula | null>(null);
   // Cinco separadores, como a especificação: Início, Aula, Percurso,
   // Recursos, Perfil. A navegação é a mesma dentro e fora da aula.
   const [aba, setAba] = useState<SeparadorAluno>('inicio');
@@ -1132,6 +1134,12 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         </ModalFullscreen>
       )}
 
+      {planoConsulta && (
+        <ModalFullscreen titulo={planoConsulta.titulo || 'Atividade'} subtitulo="Só para ver" onFechar={() => setPlanoConsulta(null)}>
+          <VistaDePlanoAluno plano={planoConsulta} aluno={aluno} soConsulta onVoltar={() => setPlanoConsulta(null)} />
+        </ModalFullscreen>
+      )}
+
       {ucFinal && (
         // Abre no seu próprio ecrã cheio, uma coisa de cada vez.
         <AutoavaliacaoFinalUC aluno={aluno} ucId={ucFinal}
@@ -1340,6 +1348,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
             {destino === 'atividades' && (
               <EcraAtividades
+                onVer={(id) => { const p = getPlanosAula().find(x => x.id === id); if (p) setPlanoConsulta(p); }}
                 atividades={atividades}
                 alunoId={aluno.id}
                 onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
@@ -1495,6 +1504,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
+                onVer={(id) => { const p = getPlanosAula().find(x => x.id === id); if (p) setPlanoConsulta(p); }}
                 onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
                 onCancelar={(id) => { inscreverOuEvento(id, false); setRefreshAtiv(n => n + 1); }}
                 onBalanco={(id, p, r) => { registarBalancoAtividade(id, aluno.id, p, r); setRefreshAtiv(n => n + 1); }} />
@@ -1572,8 +1582,11 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 // ═════════════════════════════════════════════════════════════
 // VISTA DE UM PLANO — acordeão com os 4 passos
 // ═════════════════════════════════════════════════════════════
-function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
+function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = false }: {
   plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
+  /** Atividade em que o aluno não esteve: só vê o que se fez, a ficha técnica
+   *  e o guião; não se inscreve nem se avalia (Rosa, out/2026). */
+  soConsulta?: boolean;
 }) {
   // Sempre a versão mais recente do plano. Antes ficava a que estava quando
   // o aluno abriu a aula: se o professor corrigisse o plano (o manual todo
@@ -1644,7 +1657,11 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
   // KF final, autoavaliação. O KitchenFlow deixou de ser um atalho geral
   // — são dois pontos de controlo dentro do fluxo da aula.
   // Aula atitudinal: sem farda, KitchenFlow, produção nem requisição.
-  const PASSOS = String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [
+  const PASSOS = soConsulta ? [
+    { id:'orientacao', label:'Vi o que se fez',            agora:'Ver a atividade',  cor:V },
+    ...(fichas.length ? [{ id:'ficha', label:'Vi a ficha técnica', agora:'Ver a ficha técnica', cor:V }] : []),
+    ...(fichas.some((f:any) => f.textoGuia) ? [{ id:'guia', label:'Vi o guião', agora:'Ver o guião', cor:V }] : []),
+  ] : String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [
     { id:'orientacao', label:'Vi o que vamos fazer',      agora:'Ver a aula',       cor:V },
     { id:'entrada',    label:'Entrei na aula',             agora:'Entrar',           cor:V },
     ...(comGrupos ? [{ id:'grupo', label:'Estou num grupo', agora:'O meu grupo', cor:V }] : []),
@@ -1701,6 +1718,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
   React.useEffect(() => {
     if (_abriuNoPasso.current) return;
     _abriuNoPasso.current = true;
+    if (soConsulta) { setSecAberta('orientacao'); return; }
     const falta = PASSOS.find(p => estadoPasso(p.id) !== 'concluido');
     setSecAberta(falta ? falta.id : PASSOS[PASSOS.length - 1].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1722,8 +1740,14 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
       <div style={{ background:'#F3F2F5' }}>
         <div style={{ padding:14, maxWidth:640, margin:'0 auto' }}>
 
+          {soConsulta && (
+            <div style={{ background:'#f3eefa', border:'1.5px solid #6B3FA0', borderRadius:14, padding:'12px 14px', marginBottom:14, fontSize:14.5, lineHeight:1.5 }}>
+              <b>Só para ver.</b> Não estiveste nesta atividade: podes ver o que se fez, a ficha técnica e o guião, para aprender.
+              Não te inscreves nem te autoavalias nela.
+            </div>
+          )}
           {/* A função de hoje: a primeira coisa que o aluno vê ao abrir a aula. */}
-          {orgAula && <CartaoMinhaFuncao plano={planoVivo} alunoId={aluno.id} onVerQuadro={() => setVerQuadro(true)} />}
+          {orgAula && !soConsulta && <CartaoMinhaFuncao plano={planoVivo} alunoId={aluno.id} onVerQuadro={() => setVerQuadro(true)} />}
 
           {/* Barra de progresso: vê-se em meio segundo quantos faltam. */}
           <div style={{ background:'#6B3FA0', borderRadius:16, padding:'15px 17px', marginBottom:14 }}>
@@ -1788,7 +1812,8 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
                 </div>
             {secAberta==='orientacao' && (
               <PainelOrientacao plano={plano} fichas={fichas} aluno={aluno}
-                onContinuar={() => { setOrientacaoConcluida(true); _save('orientacao'); setSecAberta('entrada'); }} />
+                onContinuar={() => { if (soConsulta) { setSecAberta(fichas.length ? 'ficha' : 'orientacao'); return; }
+                  setOrientacaoConcluida(true); _save('orientacao'); setSecAberta('entrada'); }} />
             )}
             {secAberta==='entrada' && (
               <SecaoEntrada aluno={aluno} plano={plano}
@@ -1808,14 +1833,16 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
             )}
             {secAberta==='ficha' && (
               <SecaoFichas fichas={fichas} plano={plano} aluno={aluno}
-                onConcluido={() => { setFichaConcluida(true); _save('ficha');
+                onConcluido={() => { if (soConsulta) { setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : 'orientacao'); return; }
+                  setFichaConcluida(true); _save('ficha');
                   // Sem registos (retirados pelo professor), vai direto à autoavaliação.
                   setSecAberta(fichas.some((f:any)=>f.textoGuia) ? 'guia' : requisicao ? 'requisicao'
                     : antesDaAvaliacao()); }} />
             )}
             {secAberta==='guia' && (
               <SecaoGuiao fichas={fichas} plano={plano}
-                onConcluido={() => { setGuiaoConcluido(true); _save('guia'); setSecAberta(requisicao ? 'requisicao'
+                onConcluido={() => { if (soConsulta) { setSecAberta('orientacao'); return; }
+                  setGuiaoConcluido(true); _save('guia'); setSecAberta(requisicao ? 'requisicao'
                   : antesDaAvaliacao()); }} />
             )}
             {secAberta==='requisicao' && (

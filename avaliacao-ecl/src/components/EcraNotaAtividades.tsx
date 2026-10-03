@@ -253,10 +253,12 @@ export function EcraMinhaNota({
 // ── Atividades e concursos ────────────────────────────────────
 
 export function EcraAtividades({
-  atividades, alunoId, onInscrever, onCancelar, onBalanco,
+  atividades, alunoId, onInscrever, onCancelar, onBalanco, onVer,
 }: {
   atividades: Atividade[];
   alunoId: string;
+  /** Abrir, só para ver, uma atividade em que o aluno não esteve. */
+  onVer?: (planoId: string) => void;
   onInscrever: (id: string) => void;
   onCancelar: (id: string) => void;
   onBalanco: (id: string, participou: boolean, resultado?: string) => void;
@@ -378,6 +380,23 @@ export function EcraAtividades({
                 </div>
               ) : botao('Dizer como correu', () => setABalancar(a.id))
             ))}
+            <div style={{ height: 18 }} />
+          </>
+        )}
+
+        {/* Atividades da turma em que não esteve: só para ver (Rosa, out/2026). */}
+        {onVer && atividades.some(a => doPlano(a) && a.data <= hoje && !participou(a)) && (
+          <>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em',
+              textTransform: 'uppercase', color: C.suave, marginBottom: 10 }}>
+              Para ver: o que os colegas fizeram
+            </div>
+            {atividades.filter(a => doPlano(a) && a.data <= hoje && !participou(a)).map(a => cartao(a, <>
+              <div style={{ fontSize: 14.5, color: C.texto, marginTop: 6, lineHeight: 1.5 }}>
+                Não estiveste nesta atividade. Podes ver o que se fez, a ficha técnica e o guião.
+              </div>
+              {botao('Ver a atividade', () => onVer((a as any).planoId), false)}
+            </>))}
             <div style={{ height: 18 }} />
           </>
         )}
