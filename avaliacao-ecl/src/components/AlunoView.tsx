@@ -34,7 +34,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -473,7 +473,7 @@ function PercursoUC({ aluno, ucId, semNotas = false }: { aluno: { id:string; tur
   const selecoes = getSelecoes().filter(s => s.alunoId === aluno.id);
   const validacoes = getValidacoes().filter(v => v.alunoId === aluno.id);
   const linhas = planos.map(p => {
-    const sel = selecoes.find(s => s.planoAulaId === p.id);
+    const sel = ultimaResposta(aluno.id, p.id, selecoes);
     const val = sel ? validacaoDaSelecao(sel, validacoes as any) : undefined;
     const estado = val ? 'validado' : (sel ? 'aguarda' : 'por_avaliar');
     const nota20 = val ? notaDaAulaValidada(validacaoDaAula(aluno.id, p.id, validacoes as any)) : null;
@@ -1071,7 +1071,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           onFechar={() => setPlanoAtivo(null)}
         >
           {(() => {
-            const sel = getSelecoes().find(s => s.alunoId === aluno.id && s.planoAulaId === planoAtivo.id);
+            const sel = ultimaResposta(aluno.id, planoAtivo.id);
             const val = sel ? validacaoDaSelecao(sel) : undefined;
             const nota20 = val ? notaDaAulaValidada(validacaoDaAula(aluno.id, planoAtivo.id)) : null;
             if (nota20 == null) return null;
@@ -1203,7 +1203,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               const limite = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
               const u = aulasPassadas.find(p => String(p.data || '').slice(0, 10) >= limite);
               if (!u) return null;
-              const sel = getSelecoes().find(s => s.alunoId === aluno.id && s.planoAulaId === u.id);
+              const sel = ultimaResposta(aluno.id, u.id);
               const validada = !!sel && selecaoJaValidada(sel);
               return { titulo: u.titulo, data: u.data, estado: validada ? 'validada' : sel ? 'enviada' : 'por_avaliar', podeAvaliar: true };
             })()}
@@ -1530,9 +1530,17 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 // ═════════════════════════════════════════════════════════════
 // VISTA DE UM PLANO — acordeão com os 4 passos
 // ═════════════════════════════════════════════════════════════
-function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
+function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
   plano: PlanoAula; aluno: Aluno; onVoltar: () => void;
 }) {
+  // Sempre a versão mais recente do plano. Antes ficava a que estava quando
+  // o aluno abriu a aula: se o professor corrigisse o plano (o manual todo
+  // em vez de um conteúdo, por exemplo), o aluno continuava com as
+  // perguntas antigas até fechar e voltar a abrir (Rosa, out/2026).
+  const plano = getPlanosAula().find(p => p.id === planoAberto.id) || planoAberto;
+  const versao = String((plano as any).atualizadoEm || '');
+  const versaoAoAbrir = React.useRef(versao);
+  const mudouDesdeQueAbriu = !!versaoAoAbrir.current && versao !== versaoAoAbrir.current;
   const [secAberta, setSecAberta] = React.useState<string>('orientacao');
   /** O passo abre num ecrã cheio, por cima da aula; ao acabar, segue para o próximo. */
   const [ecra, setEcra] = React.useState(false);
@@ -1776,8 +1784,13 @@ function VistaDePlanoAluno({ plano, aluno, onVoltar }: {
             )}
               </EcraCheio>
             )}
+            {secAberta==='avaliacao' && mudouDesdeQueAbriu && (
+              <div style={{ margin:'0 0 12px', padding:'12px 14px', borderRadius:12, background:'#fff7e6', border:'1.5px solid #b5651d', fontSize:14, color:'#7a4310', fontWeight:600 }}>
+                O professor atualizou esta aula. As perguntas abaixo já são as novas.
+              </div>
+            )}
             {secAberta==='avaliacao' && (
-              <SecaoAvaliacao fichas={fichas} plano={plano} aluno={aluno} abrirLogo={ecra}
+              <SecaoAvaliacao key={versao} fichas={fichas} plano={plano} aluno={aluno} abrirLogo={ecra}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
             )}
 
@@ -3169,7 +3182,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       ...(ehEvento && tecEvento !== null ? [{ competenciaId: TEC_EVENTO, nivel: 'evento', nota: tecEvento,
         texto: OPCOES_TEC_EVENTO.find(o => o.nota === tecEvento)?.texto, comentario: tecMenosBem.trim() }] : []),
     ];
-    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => atiOk(id))].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,triagem5c:{ ...triagem, problema: (triagem.problema||'').trim() || undefined },criadaEm:agora});
+    addOrUpdateSelecao({id:`sel_${plano.id}_${aluno.id}`,comandaId:plano.id,planoAulaId:plano.id,fichaId:'',alunoId:aluno.id,turmaId:aluno.turmaId,tecnicas:Object.keys(notasMicro),atitudes:[atitudeEscolhida, atitudeApanhar, ...atitudesDaAula.filter(id => atiOk(id))].filter(Boolean) as string[],responsabilidades:[],autoavaliacoes:todasAutoavaliacoes as any,triagem5c:{ ...triagem, problema: (triagem.problema||'').trim() || undefined },criadaEm:agora,
+      // A versão do plano a que o aluno respondeu: se o professor o mudar
+      // depois, sabe-se que esta resposta é da versão anterior.
+      versaoPlano:String((plano as any).atualizadoEm || '')} as any);
     guardarTriagemDaAula(aluno.id, aluno.turmaId, plano.id,
       { ...triagem, problema: (triagem.problema || '').trim() || undefined }, 'aluno');
     try { localStorage.setItem(`avaliacao_submetida_${plano.id}_${aluno.id}`, agora); } catch {}

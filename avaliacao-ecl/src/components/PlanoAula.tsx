@@ -1,5 +1,5 @@
 import { eventosParaPlanos } from '../eventos/modelo';
-import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada } from '../backend';
+import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada, selecoesQueContam } from '../backend';
 import { proximoConteudo, indicadoresDoConteudo, manualDaUC, capituloDoCampo } from '../bancoManuais';
 import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, type TipoAula, type TriagemAula } from '../contextoAula';
 import { PassoComoEAula, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
@@ -117,7 +117,7 @@ function limparHora(h?: string): string {
 /** Autoavaliações deste plano que o professor ainda não validou. */
 function porValidarDoPlano(planoId: string): number {
   const validacoes = _getValidacoes();
-  return _getSelecoes().filter((x: any) => x.planoAulaId === planoId && !selecaoJaValidada(x, validacoes as any)).length;
+  return selecoesQueContam(_getSelecoes()).filter((x: any) => x.planoAulaId === planoId && !selecaoJaValidada(x, validacoes as any)).length;
 }
 
 /** O aviso no cartão do plano: vê-se logo, no calendário e na lista. */

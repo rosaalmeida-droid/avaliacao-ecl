@@ -6,9 +6,45 @@
 // para tentar já outra vez — em vez de o professor esperar sem saber.
 // ============================================================
 import React, { useEffect, useState } from 'react';
-import { estadoAbertura, subscreverAbertura, confirmarAberturaNoSheets, getSessaoAula } from '../backend';
+import { estadoAbertura, subscreverAbertura, confirmarAberturaNoSheets, getSessaoAula, getPlanosAula, getFichasProducao } from '../backend';
+import { sumarioDoPlano } from '../sumarioAutomatico';
 
+/** Aula aberta: a abertura chegou aos alunos? E o lembrete de sumariar a aula. */
 export function EstadoAberturaAula({ planoAulaId }: { planoAulaId: string }) {
+  const s = getSessaoAula(planoAulaId);
+  return (<>
+    <EstadoDaAbertura planoAulaId={planoAulaId} />
+    {s?.abertaEm && !s.fechadaEm && <LembreteSumario planoAulaId={planoAulaId} />}
+  </>);
+}
+
+/** Ao abrir a aula: não esquecer o sumário no eSchooling (Rosa, out/2026).
+ *  O sumário que a aplicação escreveu copia-se com um toque. */
+function LembreteSumario({ planoAulaId }: { planoAulaId: string }) {
+  const [copiado, setCopiado] = useState(false);
+  const plano = getPlanosAula().find(p => p.id === planoAulaId);
+  if (!plano) return null;
+  let texto = '';
+  try { texto = sumarioDoPlano(plano, getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id))); } catch { /* */ }
+  async function copiar() {
+    try { await navigator.clipboard.writeText(texto); setCopiado(true); setTimeout(() => setCopiado(false), 2500); }
+    catch { alert('Não consegui copiar sozinho. Seleciona o texto do sumário e copia.'); }
+  }
+  return (
+    <div style={{ marginTop: 10, padding: '11px 14px', borderRadius: 12, background: '#FFF7E6', border: '1px solid #F2C46D',
+      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 14.5, color: '#6B4300' }}>
+      <span style={{ flex: '1 1 240px' }}>📝 <b>Não te esqueças de sumariar esta aula</b> no eSchooling.</span>
+      {texto && (
+        <button onClick={copiar} style={{ minHeight: 40, padding: '0 14px', borderRadius: 10, border: '1px solid #D9A441', background: '#fff',
+          color: '#6B4300', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {copiado ? 'Copiado ✓' : 'Copiar o sumário'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EstadoDaAbertura({ planoAulaId }: { planoAulaId: string }) {
   const [, redesenhar] = useState(0);
   useEffect(() => subscreverAbertura(() => redesenhar(n => n + 1)), []);
   const e = estadoAbertura(planoAulaId);
