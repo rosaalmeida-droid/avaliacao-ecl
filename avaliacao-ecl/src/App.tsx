@@ -122,7 +122,7 @@ import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
 import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   migrarTurmaAntiga,
-  getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada, definirPerfilDoAparelho,
+  getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada, selecoesQueContam, definirPerfilDoAparelho,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
@@ -480,10 +480,10 @@ function AppInterno() {
                     const m = CRONOGRAMA_2026_2027.find((x: any) => x.id === planoAberto.ucId);
                     return (m as any)?.disciplina;
                   })()}
-                  autoavaliacoes={getSelecoes().filter((s: any) => s.planoAulaId === planoAberto.id).length}
+                  autoavaliacoes={selecoesQueContam().filter((s: any) => s.planoAulaId === planoAberto.id).length}
                   porValidar={(() => {
                     const vals = getValidacoes();
-                    return getSelecoes().filter((s: any) =>
+                    return selecoesQueContam().filter((s: any) =>
                       s.planoAulaId === planoAberto.id && !selecaoJaValidada(s, vals)).length;
                   })()}
                   aoPublicar={() => confirmarTurmaAoPublicar(planoAberto.turmaId, planoAberto.titulo)}
@@ -656,7 +656,7 @@ function AppInterno() {
                 porValidar={(() => {
                   // Autoavaliações submetidas que ainda não têm validação.
                   const vals = getValidacoes();
-                  return getSelecoes().filter((s: any) =>
+                  return selecoesQueContam().filter((s: any) =>
                     s.turmaId === turmaId && !selecaoJaValidada(s, vals)).length;
                 })()}
                 onAbrir={(v) => setVistaGlobal(v)}
@@ -670,7 +670,7 @@ function AppInterno() {
                   const nFichas = (p.fichasIds || []).length;
                   const sessao = getSessaoAula(p.id);
                   const vals = getValidacoes();
-                  const porValidarHoje = getSelecoes().filter((x: any) =>
+                  const porValidarHoje = selecoesQueContam().filter((x: any) =>
                     x.planoAulaId === p.id && !selecaoJaValidada(x, vals)).length;
                   const est = sessao?.abertaEm ? estadoDaTurmaNaAula(p.id, turmaId) : [];
                   const etapa = porValidarHoje > 0 ? 'validar'

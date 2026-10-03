@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram } from '../backend';
+import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -103,9 +103,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   // Uma por aluno e aula: a mesma autoavaliação pode ter chegado duas vezes.
   // Fica a resposta mais recente: se o aluno respondeu outra vez, é essa que
   // se valida (antes ficava a antiga, já validada, e a nova não aparecia).
-  const unicas = [...new Map([...selecoes]
-    .sort((a, b) => (Date.parse(String(a.criadaEm || '')) || 0) - (Date.parse(String(b.criadaEm || '')) || 0))
-    .map(s => [`${s.alunoId}|${s.planoAulaId}`, s] as const)).values()];
+  const unicas = selecoesQueContam(selecoes);
   const porValidarLista = unicas.filter(s => !selecaoJaValidada(s, validacoes));
   const validadasLista = unicas.filter(s => selecaoJaValidada(s, validacoes))
     .sort((a, b) => String(b.criadaEm || '').localeCompare(String(a.criadaEm || '')));
@@ -235,6 +233,8 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
           <div className="muted" style={{ fontSize: 13 }}>
             {plano?.ucId ? `${plano.ucId} · ` : ''}
             {temaDoAluno(s) ? `Tema: ${temaDoAluno(s)} · ` : ''}
+            {vezesQueRespondeu(s.alunoId, s.planoAulaId || '', selecoes) > 1
+              ? `Respondeu ${vezesQueRespondeu(s.alunoId, s.planoAulaId || '', selecoes)} vezes: conta a última · ` : ''}
             {jaValidada
               ? '✓ Validado — tocar para alterar'
               : `${nMicros} competência${nMicros !== 1 ? 's' : ''} a validar`}

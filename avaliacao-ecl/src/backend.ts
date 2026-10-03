@@ -2984,6 +2984,26 @@ function quandoFoi(x: unknown): number {
   const t = Date.parse(String(x || ''));
   return isNaN(t) ? 0 : t;
 }
+/** De cada aluno, em cada aula, conta só a ÚLTIMA resposta: as anteriores
+ *  ficam anuladas. Assim uma resposta antiga, enviada duas vezes ou de antes
+ *  de o professor pedir outra vez, nunca fica «por validar» para sempre
+ *  (Rosa, out/2026). Usa-se em todo o lado onde se conta ou se mostra. */
+export function selecoesQueContam(sels: SelecaoAluno[] = getSelecoes()): SelecaoAluno[] {
+  const m = new Map<string, SelecaoAluno>();
+  for (const s of sels) {
+    const k = `${s.alunoId}|${s.planoAulaId}`, a = m.get(k);
+    if (!a || quandoFoi((s as any).criadaEm) >= quandoFoi((a as any).criadaEm)) m.set(k, s);
+  }
+  return [...m.values()];
+}
+/** A resposta que conta deste aluno nesta aula (a última). */
+export function ultimaResposta(alunoId: string, planoId: string, sels: SelecaoAluno[] = getSelecoes()): SelecaoAluno | undefined {
+  return selecoesQueContam(sels.filter(s => s.alunoId === alunoId && s.planoAulaId === planoId))[0];
+}
+/** Quantas vezes o aluno respondeu a esta aula (o professor é avisado se for mais de uma). */
+export function vezesQueRespondeu(alunoId: string, planoId: string, sels: SelecaoAluno[] = getSelecoes()): number {
+  return sels.filter(s => s.alunoId === alunoId && s.planoAulaId === planoId).length;
+}
 export function selecaoJaValidada(s: { id: string; alunoId?: string; planoAulaId?: string }, validacoes: Validacao[] = getValidacoes()): boolean {
   return !!validacaoDaSelecao(s, validacoes);
 }
@@ -6385,7 +6405,7 @@ export function autoavaliacoesPorValidar(turmaId: string): PorValidar[] {
 
   const porPlano = new Map<string, { nomes: string[] }>();
 
-  getSelecoes()
+  selecoesQueContam()
     .filter((s: any) => s.turmaId === turmaId && !selecaoJaValidada(s, validacoes))
     .forEach((s: any) => {
       const atual = porPlano.get(s.planoAulaId) || { nomes: [] };
