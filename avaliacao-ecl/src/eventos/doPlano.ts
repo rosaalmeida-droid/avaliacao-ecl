@@ -66,6 +66,15 @@ export function criarAvaliacaoDoEvento(ev: any, turmaId: string, modo: 'turma' |
   // um PLANO DE AULA com o evento lá dentro (conta como aula). Fica em
   // rascunho: o professor escolhe o tipo de aula e publica.
   if (modo === 'turma' && ucs.length > 0) {
+    // Já há plano de aula desta turma nesse dia: o evento entra nesse plano
+    // (nunca se cria um plano de aula a mais).
+    const doDia = (getPlanosAula() as any[]).find(p => p.turmaId === turmaId && !p.tipoEvento && p.estado !== 'arquivado'
+      && String(p.data || '').slice(0, 10) === String(ev.data || '').slice(0, 10));
+    if (doDia) {
+      const comEvento = { ...doDia, eventoNaAula: 'evento', eventoId: ev.id, atualizadoEm: agora };
+      addOrUpdatePlanoAula(comEvento);
+      return comEvento;
+    }
     const aula: any = {
       id: `plano_ev_${ev.id}_${turmaId.replace(/\W/g, '')}`, turmaId, professor,
       data: ev.data, horaInicio: ev.horaInicio || '', horaFim: ev.horaFim || '',

@@ -540,8 +540,8 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
         <b style={{ color: C.verde }}>✓ Atividade extra criada</b> — {planos.map(p => p.turmaId).join(', ')}
         {p0Modo(planos[0])}. Os alunos autoavaliam-se na atividade, e conta como bónus na UC dessa data.
       </>) : (<>
-        <b style={{ color: C.verde }}>✓ Plano de aula criado, com o evento lá dentro</b> — {planos.map(p => p.turmaId).join(', ')}.
-        Vai a turma toda dentro do ano letivo, por isso conta como aula. Abre-o em «Planos de aula», escolhe o tipo de aula e publica.
+        <b style={{ color: C.verde }}>✓ O evento está no plano de aula da turma</b> — {planos.map(p => p.turmaId).join(', ')}.
+        Vai a turma toda dentro do ano letivo, por isso conta como aula. Abre-o em «Planos de aula» (se ainda estiver em rascunho, escolhe o tipo de aula e publica).
       </>)}
     </div>
   );
