@@ -63,6 +63,7 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 32. **Um evento eliminado num aparelho sai dos outros** e não volta a ser enviado (como os planos).
 33. **A aula que o aluno espera para entrar vai à frente da fila** de leituras do Sheets (como o código de entrada).
 34. **Reabrir a requisição de uma aula traz os preços corrigidos à mão; e as quantidades corrigidas, se as fichas e as doses forem as mesmas** (como a ficha, que abria vazia).
+35. **No separador de cada turma do Sheets, as aulas aparecem a verde (contam para a nota), a vermelho (arquivadas: não contam) e a roxo (atividades extra: só bónus).** As arquivadas e as atividades extra já não entram nas presenças, nas médias nem nas notas da UC desse separador (antes entravam).
 
 ## Datas
 13. As datas comparam-se como datas e não como texto (`quandoFoi`). A hora do Sheets, do Firebase e de cada telemóvel pode vir escrita de maneiras diferentes.
