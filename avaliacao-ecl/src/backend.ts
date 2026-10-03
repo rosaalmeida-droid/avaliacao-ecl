@@ -6802,8 +6802,10 @@ export function validacaoDaAula(alunoId: string, planoId: string, validacoes: Va
 export function calculoDaAulaValidada(v: any, tipoSeNaoHouver?: string):
   { nota20: number; porCategoria: Record<string, number>; detalhes: string } | null {
   if (!v) return null;
-  const plano: any = v.tipoPlanAulaUsado ? null : getPlanosAula().find(p => p.id === v.planoAulaId);
-  const tipo = (v.tipoPlanAulaUsado || tipoSeNaoHouver || plano?.tipoPlanAula || 'pratico') as any;
+  const plano: any = planoPorIdRapido(v.planoAulaId);
+  // Atividade extra com ficha técnica: as técnicas contam (dentro do bónus),
+  // também nas validações já feitas como «atitudinal» (Rosa, out/2026).
+  const tipo = (atividadeComTecnicas(plano) ? 'pratico' : (v.tipoPlanAulaUsado || tipoSeNaoHouver || plano?.tipoPlanAula || 'pratico')) as any;
   const notas = (v.notas || []).filter((n: any) => contaNaNotaDaAula(n.competenciaId)).map((n: any) => {
     const categoria = categoriaDe(n.competenciaId);
     const nota = v.semFarda && categoria === 'SUB' ? 1
@@ -9274,4 +9276,27 @@ export function eliminarRecuperacaoExterno(id: string): void {
   if (!r) return;
   // Não se apaga: fica «anulada», para não voltar de outro aparelho.
   addOrUpdateRecuperacao({ ...(r as any), estado: 'anulada', atualizadoEm: new Date().toISOString() });
+}
+
+/** Atividade extra (evento, concurso…) com ficha técnica: os alunos avaliam
+ *  as técnicas da ficha e elas contam na nota da atividade, como numa aula
+ *  prática (técnicas, atitudes e farda). Antes a atividade ficava
+ *  «atitudinal» e só as atitudes contavam (Rosa, out/2026). */
+export function atividadeComTecnicas(plano: any): boolean {
+  if (!plano?.tipoEvento || !(plano.fichasIds || []).length) return false;
+  const t = plano.triagemAula?.tipo;
+  return !t || t === 'pratico' || t === 'misto';
+}
+
+/** O tipo de aula que decide os pesos da nota deste plano. */
+export function tipoParaANota(plano: any): string {
+  return atividadeComTecnicas(plano) ? 'pratico' : (plano?.tipoPlanAula || 'pratico');
+}
+
+// Os planos por código, guardados um instante: o cálculo da nota de cada aula
+// validada precisa do plano, e numa pauta são centenas de cálculos seguidos.
+let planosRapidos: { em: number; m: Map<string, PlanoAula> } | null = null;
+function planoPorIdRapido(id: string): PlanoAula | undefined {
+  if (!planosRapidos || Date.now() - planosRapidos.em > 1000) planosRapidos = { em: Date.now(), m: new Map(getPlanosAula().map(p => [p.id, p])) };
+  return planosRapidos.m.get(id);
 }
