@@ -37,6 +37,8 @@ export interface RegrasAutoavaliacao {
   subIds: string[];
   /** Atividade com ficha técnica: também se avaliam as técnicas da ficha. */
   tecnicasNaAtividade?: boolean;
+  /** Atividade sem atitudes nem 5 C (o professor tirou-as). */
+  semAtitudes?: boolean;
   appIds: string[];
   /** Técnicas de recurso da UC, quando as fichas não têm subtécnicas. */
   recursoIds: string[];
@@ -67,6 +69,9 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   ctx: ContextoAula; ano?: number; fardaIncompleta?: boolean;
   /** O conteúdo do manual que o aluno escolheu para o trabalho (n.º do capítulo). */
   temaEscolhido?: number | null;
+  /** Atividade: os alunos já respondem às atitudes no plano de aula da turma
+   *  desse dia — a atividade não as repete (Rosa, out/2026). */
+  atitudesNoPlanoDaTurma?: boolean;
 }): RegrasAutoavaliacao {
   const p: any = plano;
   const ctx = opts.ctx;
@@ -85,6 +90,9 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   // Numa atividade (evento, concurso) com ficha técnica, os alunos também se
   // avaliam nas técnicas da ficha (Rosa, out/2026).
   const tecnicasNaAtividade = !!p.tipoEvento && fichas.length > 0;
+  // Na atividade, o professor pode tirar as atitudes (e os 5 C), por já
+  // serem avaliadas no plano de aula da turma (Rosa, out/2026).
+  const semAtitudes = !!p.tipoEvento && opts.atitudesNoPlanoDaTurma === true;
   const subsUsadas = ehAtitudinal && !tecnicasNaAtividade ? [] : subIds.slice(0, 8);
   const appsUsadas = ehAtitudinal && !tecnicasNaAtividade ? [] : appIds.slice(0, 4);
   const usarRecurso = subsUsadas.length === 0 && appsUsadas.length === 0;
@@ -151,17 +159,17 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
       ])]
     : marcadasNoPlano.length ? marcadasNoPlano
     : idsDoTrimestre.filter(id => !compRemovidas.includes(id) && temPerguntas(id))
-  ).filter(aplicavel);
+  ).filter(aplicavel).filter(() => !semAtitudes);
 
   const atitudesPermitidas = opcoesDeEscolhaDoAluno(ano);
   const atitudesDoPlano = ((p.compAdicionadas || []) as string[]).filter(id => id.startsWith('ATI-'));
-  const atitudesParaEscolher = [...new Set([...atitudesDoPlano, ...idsDoTrimestre])]
+  const atitudesParaEscolher = semAtitudes ? [] : [...new Set([...atitudesDoPlano, ...idsDoTrimestre])]
     .filter(id => atitudesPermitidas.includes(id) && !compRemovidas.includes(id) && aplicavel(id))
     .slice(0, MAX_ATITUDES_PARA_ESCOLHER);
 
   return {
     ctx, tipoPlanAula, ehAtitudinal, manual,
-    subIds, appIds, recursoIds, conhecimentos, tecnicasNaAtividade,
+    subIds, appIds, recursoIds, conhecimentos, tecnicasNaAtividade, semAtitudes,
     atitudesDaAula, atitudesParaEscolher, atitudesPermitidas,
     escolheAtitude: !ehAtitudinal && atitudesParaEscolher.length > 0,
     tecEvento: p.tipoEvento === 'evento',
@@ -220,8 +228,8 @@ export interface NaoSePergunta { nome: string; motivo: string }
  * técnicas» (se não teve oportunidade em nenhuma).
  */
 export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: ContextoAula,
-  perguntaCOId: string, perguntaCRId: string, ano = 1): { ecras: EcraDoAluno[]; fora: NaoSePergunta[]; regras: RegrasAutoavaliacao } {
-  const R = regrasDaAutoavaliacao(plano, fichas, { ctx, ano });
+  perguntaCOId: string, perguntaCRId: string, ano = 1, atitudesNoPlanoDaTurma = false): { ecras: EcraDoAluno[]; fora: NaoSePergunta[]; regras: RegrasAutoavaliacao } {
+  const R = regrasDaAutoavaliacao(plano, fichas, { ctx, ano, atitudesNoPlanoDaTurma });
   const p: any = plano;
   const evento = !!p.tipoEvento;
   const ecras: EcraDoAluno[] = [];
@@ -284,6 +292,7 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
 
   if (R.tecEvento) ecras.push({ tipo: 'evento', rotulo: 'Evento', nome: NOME_TEC_EVENTO, perguntas: [], porque: 'é um evento', c: 'cl' });
 
+  if (R.semAtitudes) return { ecras, fora, regras: R };
   const qs = perguntasDaAula(perguntaCOId, perguntaCRId, R.clSempre ? CL_SEMPRE.id : undefined);
   const qcl = qs.find(q => q.chave === 'cl')!;
   if (R.clNaoSePergunta) fora.push({ nome: 'Trabalho com os colegas (CL)', motivo: porqueNao(['colegas'], ctx) + ', fora da cozinha' });

@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO, aulaTransformadaEmAtividade, separarAtividadeDaAula } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -1595,25 +1595,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
         );
       })()}
-      {/* Aula que foi transformada em atividade (antes da regra): repara-se
-          com um toque — a aula volta à turma toda, a atividade fica à parte
-          (Rosa, out/2026: opção A). */}
-      {modulo === 'inicio' && aulaTransformadaEmAtividade(getPlanosAula().find(x => x.id === plano.id) || plano) && (
-        <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 14, padding: '12px 16px', margin: '0 0 14px' }}>
-          <div style={{ fontSize: 15.5, fontWeight: 800, color: '#8e2418' }}>Esta aula foi transformada em atividade</div>
-          <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.75)', marginTop: 4, lineHeight: 1.5 }}>
-            Por isso os outros alunos deixaram de ver a aula. Separa com um toque: a aula volta a ser aula para a turma toda, com tudo o
-            que já tinha (fichas, conteúdos, respostas), e a atividade fica à parte, ligada a ela, com os mesmos alunos ({participantesDoEvento(plano).length}).
-          </div>
-          <button onClick={() => {
-              if (!confirm('Separar a atividade da aula?\n\nA aula volta para a turma toda, com as fichas, conteúdos e respostas que já tinha.\nA atividade fica à parte, só com os alunos que escolheste.')) return;
-              const r = separarAtividadeDaAula(plano.id);
-              if (r) { alert('Feito. A aula voltou para a turma toda. Abre-se agora a atividade: confirma os participantes e as partes da aula a que respondem.'); onPlanoActualizado(r.atividade); }
-            }}
-            style={{ marginTop: 10, padding: '10px 16px', borderRadius: 10, border: 'none', background: '#c0392b', color: '#fff',
-              fontSize: 14.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Separar a atividade da aula</button>
-        </div>
-      )}
       {/* Esta é uma atividade à parte de uma aula: em cima, a aula e quem foi. */}
       {modulo === 'inicio' && eventoForaDoHorario(plano) && aulaDoDiaDaAtividade(plano) && (() => {
         const aula: any = aulaDoDiaDaAtividade(plano);
@@ -2028,7 +2009,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         resumo={`${fmtDataCurta(plano.data)} · ${String(plano.horaInicio || '').slice(0, 5)}–${String(plano.horaFim || '').slice(0, 5)} · ${plano.ucId || 'sem unidade'}`}>
         <QuandoEUnidade plano={plano} onPlanoActualizado={onPlanoActualizado} onAbrirCriar={() => setModulo('editar')} />
       </Gaveta>
-      <Gaveta id="como" n={2} titulo="Como é a aula"
+      <Gaveta id="como" n={2} titulo={(plano as any).tipoEvento ? 'Como é a atividade' : 'Como é o plano de aula'}
         resumo={triagemDoPlano(plano) ? fraseDaAula(triagemDoPlano(plano)!) : 'Falta escolher o tipo de aula'}
         feito={!!triagemDoPlano(plano)} abertaAoInicio={!triagemDoPlano(plano)}>
       <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
@@ -2654,6 +2635,11 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
                   {nada ? '✓ ' : ''}Nada: só respondem à atividade</button>
               </>);
             })()}
+            <div style={{ padding: '9px 11px', borderRadius: 9, background: '#f3eefa', margin: '0 0 12px', fontSize: 14 }}>
+              {atitudesNoPlanoDaTurma(getPlanosAula().find(x => x.id === plano.id) || plano)
+                ? 'Atitudes: estes alunos já respondem às atitudes no plano de aula da turma, por isso a atividade não as repete. Na atividade avaliam as técnicas (da ficha técnica, se houver) e a técnica geral.'
+                : 'Atitudes: estes alunos não respondem às atitudes no plano de aula da turma, por isso a atividade avalia as atitudes, além das técnicas.'}
+            </div>
             <div style={{ fontWeight: 800 }}>Como conta</div>
             <div style={{ margin: '2px 0 12px', color: 'rgba(26,23,20,0.8)' }}>
               {concurso

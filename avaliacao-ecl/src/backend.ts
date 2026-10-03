@@ -6835,7 +6835,9 @@ export function participacaoContaParaBonus(a: Atividade, alunoId: string): { con
   const nota = new Map(val.notas.map(n => [n.competenciaId, Number(n.nota)]));
   const exigidas = a.tipo === 'concurso'
     ? ATITUDES_FIXAS_EVENTO
-    : [...new Set([...ATITUDES_FIXAS_EVENTO, ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('ATI-')), TEC_EVENTO])];
+    : [...new Set([...ATITUDES_FIXAS_EVENTO, ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('ATI-')), TEC_EVENTO,
+        // As técnicas da ficha técnica da atividade também contam (Rosa, out/2026).
+        ...val.notas.map(n => n.competenciaId).filter(id => id.startsWith('SUB-') || id.startsWith('APP-'))])];
   // Um plano que passou de aula a evento pode não ter as atitudes do evento:
   // conta então o que foi avaliado.
   const aContar = exigidas.some(id => nota.has(id)) ? exigidas.filter(id => nota.has(id)) : [...nota.keys()];
@@ -8802,9 +8804,22 @@ export const PARTES_POR_OMISSAO: PartesDoPlano = { tecnicas: true, conhecimentos
 export function partesDoPlanoParaOAluno(aula: any, alunoId: string): PartesDoPlano {
   const atv: any = getPlanosAula().find((a: any) => eventoForaDoHorario(a) && a.estado !== 'arquivado'
     && aulaDoDiaDaAtividade(a)?.id === aula?.id && participantesDoEvento(a).includes(alunoId));
+  // A própria atividade: as atitudes só se não forem já avaliadas no plano
+  // de aula da turma desse dia (não se repetem as mesmas perguntas).
+  if (aula?.tipoEvento) return { tecnicas: true, conhecimentos: true, atitudes: !atitudesNoPlanoDaTurma(aula) };
   if (!atv) return { tecnicas: true, conhecimentos: true, atitudes: true };
   if (atv.tambemRespondemAula === false) return { tecnicas: false, conhecimentos: false, atitudes: false };
   return { ...PARTES_POR_OMISSAO, ...(atv.partesDaAula || {}) };
+}
+/** Regra (Rosa, out/2026): os alunos da atividade já respondem às atitudes
+ *  no plano de aula da turma desse dia? Então a atividade não as repete.
+ *  Se não respondem ao plano de aula (ou as atitudes lá foram tiradas), a
+ *  atividade avalia as atitudes. */
+export function atitudesNoPlanoDaTurma(atividade: any): boolean {
+  if (!atividade?.tipoEvento) return false;
+  const aula = aulaDoDiaDaAtividade(atividade);
+  if (!aula || atividade.tambemRespondemAula === false) return false;
+  return { ...PARTES_POR_OMISSAO, ...(atividade.partesDaAula || {}) }.atitudes !== false;
 }
 /** Texto do plano do dia: «quinta-feira, 01/10 · Plano n.º 103 — título». */
 export function rotuloDoPlano(p: any): string {

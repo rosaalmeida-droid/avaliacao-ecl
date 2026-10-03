@@ -45,7 +45,7 @@ function saudacao(): string {
   return lista[Math.floor(Math.random() * lista.length)];
 }
 
-type Seccao = 'inicio' | 'eventos' | 'orcamentos' | 'fichas' | 'precos' | 'guia';
+type Seccao = 'inicio' | 'eventos' | 'orcamentos' | 'fichas' | 'precos' | 'manuais' | 'guia';
 
 const SECCOES: { id: Exclude<Seccao, 'inicio'>; icone: string; titulo: string; frase: string; ajuda: string }[] = [
   { id: 'eventos', icone: '🎪', titulo: 'Eventos',
@@ -60,6 +60,9 @@ const SECCOES: { id: Exclude<Seccao, 'inicio'>; icone: string; titulo: string; f
   { id: 'precos', icone: '🏷️', titulo: 'Preços das matérias-primas',
     frase: 'Consultar os preços que a aplicação usa nas contas.',
     ajuda: 'Só para consulta. Os preços são revistos todos os meses pela coordenação.' },
+  { id: 'manuais', icone: '📚', titulo: 'Manuais',
+    frase: 'Serviços especiais (banquetes, catering) e planear a produção.',
+    ajuda: 'Os manuais da escola que têm a ver com eventos e orçamentos. Abrem num separador novo.' },
   { id: 'guia', icone: '📘', titulo: 'Como usar',
     frase: 'O guia, passo a passo, para quem está a começar.',
     ajuda: '' },
@@ -72,7 +75,7 @@ export function EventosOrcamentos({ nome }: { nome: string }) {
 
   return (
     <div style={{ background: C.fundo, minHeight: 'calc(100vh - 58px)', padding: '28px 20px 64px' }}>
-      <div style={{ maxWidth: seccao === 'inicio' || seccao === 'guia' || seccao === 'precos' ? 980 : 1180, margin: '0 auto' }}>
+      <div style={{ maxWidth: seccao === 'inicio' || seccao === 'guia' || seccao === 'precos' || seccao === 'manuais' ? 980 : 1180, margin: '0 auto' }}>
 
         {seccao === 'inicio' ? (
           <>
@@ -115,12 +118,13 @@ export function EventosOrcamentos({ nome }: { nome: string }) {
                 {atual?.ajuda && <div style={{ fontSize: 16, color: C.suave, marginTop: 4, lineHeight: 1.5 }}>{atual.ajuda}</div>}
               </div>
             </div>
-            <div style={{ background: seccao === 'guia' || seccao === 'precos' ? 'transparent' : C.papel, borderRadius: 20,
-              padding: seccao === 'guia' || seccao === 'precos' ? 0 : '18px 16px', border: seccao === 'guia' || seccao === 'precos' ? 'none' : `1px solid ${C.linha}` }}>
+            <div style={{ background: seccao === 'guia' || seccao === 'precos' || seccao === 'manuais' ? 'transparent' : C.papel, borderRadius: 20,
+              padding: seccao === 'guia' || seccao === 'precos' || seccao === 'manuais' ? 0 : '18px 16px', border: seccao === 'guia' || seccao === 'precos' || seccao === 'manuais' ? 'none' : `1px solid ${C.linha}` }}>
               {seccao === 'eventos' && <EventosECL turmaId="" nomeProfessor={nome} semAvaliacao />}
               {seccao === 'orcamentos' && <Requisicao nomeProfessor={nome} turmaId="" />}
               {seccao === 'fichas' && <ProfessorView turmaId="" nomeProfessor={nome} abrirBiblioteca />}
               {seccao === 'precos' && <PrecosConsulta />}
+              {seccao === 'manuais' && <ManuaisDosEventos />}
               {seccao === 'guia' && <Guia irPara={setSeccao} />}
             </div>
           </>
@@ -131,6 +135,35 @@ export function EventosOrcamentos({ nome }: { nome: string }) {
 }
 
 // ── Preços: só para consulta ────────────────────────────────────
+/** Só os manuais que têm a ver com eventos e orçamentos (Rosa, out/2026). */
+const MANUAIS_EVENTOS: { ficheiro: string; titulo: string; frase: string; anexo?: string }[] = [
+  { ficheiro: 'UC03591', titulo: 'Planear e executar serviços especiais de cozinha',
+    frase: 'Banquetes, catering, buffets e outros serviços especiais.' },
+  { ficheiro: 'UC03576', titulo: 'Planear e organizar a produção de cozinha',
+    frase: 'Planear a produção, fichas técnicas, custos e requisições.', anexo: 'UC03576_Anexo' },
+];
+function ManuaisDosEventos() {
+  const cartao = (href: string, titulo: string, frase: string, icone: string) => (
+    <a key={href} href={href} target="_blank" rel="noopener" style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none',
+      background: C.papel, border: `1px solid ${C.linha}`, borderRadius: 16, padding: '16px 18px', marginBottom: 10, color: C.tinta }}>
+      <span style={{ fontSize: 30 }}>{icone}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 17.5, fontWeight: 800 }}>{titulo}</span>
+        <span style={{ display: 'block', fontSize: 14.5, color: C.suave, marginTop: 2 }}>{frase}</span>
+      </span>
+      <span style={{ fontSize: 15, fontWeight: 800, color: C.acento }}>Abrir ›</span>
+    </a>
+  );
+  return (
+    <div>
+      {MANUAIS_EVENTOS.map(m => (<React.Fragment key={m.ficheiro}>
+        {cartao(`/manuais/UC/${m.ficheiro}.pdf`, m.titulo, m.frase, '📘')}
+        {m.anexo && cartao(`/manuais/UC/${m.anexo}.pdf`, 'Anexo: fichas técnicas', 'As fichas técnicas do manual de planear a produção.', '📄')}
+      </React.Fragment>))}
+    </div>
+  );
+}
+
 /** Os preços das matérias-primas, só para consultar. O mesmo ecrã em
  *  «Eventos e orçamentos», no professor e no aluno (Rosa, out/2026). */
 export function PrecosConsulta() {

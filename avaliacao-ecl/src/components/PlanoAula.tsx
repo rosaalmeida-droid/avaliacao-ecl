@@ -895,6 +895,17 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
   );
 }
 
+/** Regra (Rosa, out/2026) — «Quem vai?» decide como conta:
+ *  · só alguns alunos → ATIVIDADE EXTRA (bónus; competências no perfil);
+ *  · a turma toda, dentro do ano letivo → PLANO DE AULA com um evento lá
+ *    dentro (avalia-se e conta como uma aula);
+ *  · a turma toda, fora do ano letivo (sem UC a decorrer, como nas férias)
+ *    → ATIVIDADE EXTRA, que conta como bónus no plano de aula seguinte da UC.
+ *  «Onde é» (na escola ou fora) é só o sítio: não muda a avaliação. */
+function ehAtividadeExtra(d: { tipoAtividade: string; modoParticipacao?: string; data: string }, turmaId: string): boolean {
+  return !!tipoEventoDe(d.tipoAtividade) && (d.modoParticipacao === 'inscricao' || modulosAtivos(turmaId, d.data).length === 0);
+}
+
 export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAlteracao, onGuardado, dataInicial, tipoInicial, planoExistente, onEliminado }: {
   turmaId:string; nomeProfessor?:string; onConcluido:(p:TPlanoAula)=>void;
   /** Alterar um plano já criado, no mesmo ecrã de o criar (Rosa, out/2026). */
@@ -1081,7 +1092,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       // esta aula, só para quem foi. Antes, escolher um tipo de atividade
       // aqui transformava a aula toda em atividade, e o plano desaparecia
       // aos alunos que não estavam nela.
-      if (!x.tipoEvento && tipoEventoDe(dados.tipoAtividade)) {
+      if (!x.tipoEvento && ehAtividadeExtra(dados, turmaId)) {
         if (!confirm('Uma atividade não muda esta aula: os outros alunos continuam com o plano.\n\n'
           + 'Vou criar a atividade à parte, ligada a esta aula. A seguir escolhes quem foi e confirmas.\n\nContinuar?')) return;
         const agora = new Date().toISOString();
@@ -1125,10 +1136,12 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         tipoAtividade: dados.tipoAtividade, compRemovidas: [...tiradas],
       };
       alt.contaAssiduidade = !!(dados as any).faltasContam;
-      if (tipoEventoDe(dados.tipoAtividade)) { alt.tipoEvento = tipoEventoDe(dados.tipoAtividade); alt.modoParticipacao = dados.modoParticipacao; }
-      else if (x.tipoEvento) alt.tipoEvento = undefined;
+      if (ehAtividadeExtra(dados, turmaId)) { alt.tipoEvento = tipoEventoDe(dados.tipoAtividade); alt.modoParticipacao = dados.modoParticipacao; }
+      // A turma toda, dentro do ano letivo: é um plano de aula (com evento).
+      // «null» e não «undefined», para a correção chegar a todos os aparelhos.
+      else { if (x.tipoEvento) alt.tipoEvento = null; alt.eventoNaAula = tipoEventoDe(dados.tipoAtividade) || null; }
       // Mudou o tipo de aula: a triagem acompanha (as outras respostas ficam).
-      if (mudou.tipo && !tipoEventoDe(dados.tipoAtividade)) {
+      if (mudou.tipo && !ehAtividadeExtra(dados, turmaId)) {
         const tp = dados.tipoPlanAula as TipoAula;
         const coz = tp === 'pratico' || tp === 'misto';
         alt.tipoPlanAula = tp;
@@ -1139,7 +1152,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       }
       const novo = atualizarPlano(x.id, alt);
       try { onGuardado?.(); } catch (e) { console.error(e); }
-      if (novo && continuar) { aoMudarPlano(novo); setPasso(tipoEventoDe(dados.tipoAtividade) ? 6 : 4); return; }
+      if (novo && continuar) { aoMudarPlano(novo); setPasso(ehAtividadeExtra(dados, turmaId) ? 6 : 4); return; }
       if (novo) onConcluido(novo);
       return;
     }
@@ -1183,7 +1196,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     // mudar no plano). Numa teórica ou mista, o plano traz já o próximo
     // conteúdo da UC com os seus indicadores — o professor só confirma
     // (Rosa, out/2026: a aplicação tem de poupar trabalho ao professor).
-    if (!tipoEventoDe(dados.tipoAtividade)) {
+    if (!ehAtividadeExtra(dados, turmaId)) {
       const tp = dados.tipoPlanAula as TipoAula;
       const cozinham = tp === 'pratico' || tp === 'misto';
       (p as any).triagemAula = { tipo: tp, cozinham, onde: cozinham ? 'cozinha' : 'sala',
@@ -1197,7 +1210,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     // Evento ou concurso: avalia-se com as atitudes dos eventos (as 3 fixas
     // e as do tipo de evento) e, no evento, uma pergunta de técnica geral.
     // O professor pode mudar as atitudes no plano.
-    const tipoEvento = tipoEventoDe(dados.tipoAtividade);
+    const tipoEvento = ehAtividadeExtra(dados, turmaId) ? tipoEventoDe(dados.tipoAtividade) : undefined;
+    // A turma toda, dentro do ano letivo: plano de aula com um evento lá dentro.
+    if (!tipoEvento && tipoEventoDe(dados.tipoAtividade)) (p as any).eventoNaAula = tipoEventoDe(dados.tipoAtividade);
     if (tipoEvento) {
       (p as any).tipoEvento = tipoEvento;
       (p as any).tipoPlanAula = 'atitudinal';
@@ -1220,7 +1235,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       aCriar.current = false; setEstadoCriar(false);
       try { onGuardado?.(); } catch (e) { console.error(e); }
       const gravado = getPlanosAulaPorTurma(turmaId).find((y: any) => y.id === p.id) || p;
-      aoMudarPlano(gravado); setPasso(tipoEventoDe(dados.tipoAtividade) ? 6 : 4);
+      aoMudarPlano(gravado); setPasso(ehAtividadeExtra(dados, turmaId) ? 6 : 4);
       return;
     }
     try { onGuardado?.(); } catch (e) { console.error(e); }
@@ -1458,7 +1473,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         </div>
         </>)}
         {passo === 3 && (<>
-        <div className="field" style={{ marginBottom: 14, display: tipoEventoDe(dados.tipoAtividade) ? 'none' : undefined }}>
+        <div className="field" style={{ marginBottom: 14, display: ehAtividadeExtra(dados, turmaId) ? 'none' : undefined }}>
           <label className="field-label" style={{ fontSize: 13, fontWeight: 700 }}>Tipo de aula</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {([
@@ -1492,10 +1507,16 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             if (!!tipoEventoDe(novo) !== !!tipoEventoDe(dados.tipoAtividade)) setDados(p => ({ ...p, faltasContam: !tipoEventoDe(novo) }));
             setD('tipoAtividade', novo);
           }}>
-            {TIPOS_ATIVIDADE.map(t => <option key={t}>{t}</option>)}
+            {TIPOS_ATIVIDADE.map(t => <option key={t} value={t}>{t === 'Atividade fora da escola' ? 'Visita ou outra atividade' : t}</option>)}
           </select>
-          {tipoEventoDe(dados.tipoAtividade) && (
+          {tipoEventoDe(dados.tipoAtividade) && !ehAtividadeExtra(dados, turmaId) && (
+            <div style={{ fontSize: 13, color: '#3f5e34', marginTop: 6, lineHeight: 1.5 }}>
+              📘 A turma toda, dentro do ano letivo: é um <b>plano de aula</b> com um evento lá dentro. Avalia-se e conta para a nota como uma aula.
+            </div>
+          )}
+          {ehAtividadeExtra(dados, turmaId) && (
             <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 6, lineHeight: 1.5 }}>
+              <b>Atividade extra</b>{dados.modoParticipacao !== 'inscricao' ? ' (fora do ano letivo: conta como bónus no plano de aula seguinte da UC)' : ''}.{' '}
               {tipoEventoDe(dados.tipoAtividade) === 'concurso'
                 ? '🏆 Concurso: avalia-se a hora, ficar até ao fim e a farda (+ autoconfiança, autocontrolo, iniciativa). Dá +0,75 com as 3 primeiras em "Muito bom" e farda. Só alunos com 10 ou mais.'
                 : '🎪 Evento: avalia-se a hora, ficar até ao fim, a farda, mais atitudes do tipo de evento e uma pergunta de técnica geral. Dá +0,5 com tudo em "Muito bom" e farda.'}
@@ -1530,18 +1551,20 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
               </button>
             ))}
           </div>
-          {dados.data && dados.data < new Date().toISOString().slice(0, 10) && !tipoEventoDe(dados.tipoAtividade) && (
+          {dados.data && dados.data < new Date().toISOString().slice(0, 10) && !ehAtividadeExtra(dados, turmaId) && (
             <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 6 }}>
               Esta aula já passou. Se a estás a criar só para os alunos se autoavaliarem, escolhe «Não».
             </div>
           )}
           {tipoEventoDe(dados.tipoAtividade) && (
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Quem participa?</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Quem vai?</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {([['turma', 'A turma toda', 'Obrigatório para todos. Não há candidaturas.'],
-                   ['inscricao', 'Quem se inscrever', 'Os alunos inscrevem-se nas «Atividades e concursos» e tu aceitas.']] as const).map(([v, t, d]) => (
-                  <button key={v} type="button" onClick={() => setDados(p => ({ ...p, modoParticipacao: v }))}
+                {([['turma', 'A turma toda', 'Obrigatório para todos. Dentro do ano letivo, é um plano de aula e conta como aula.'],
+                   ['inscricao', 'Só alguns alunos', 'Atividade extra: inscrevem-se (ou escolhes tu) e dá bónus. As técnicas ficam no perfil.']] as const).map(([v, t, d]) => (
+                  <button key={v} type="button" onClick={() => setDados(p => ({ ...p, modoParticipacao: v,
+                      // A turma toda, dentro do ano letivo, é uma aula: as faltas contam.
+                      faltasContam: v === 'turma' && modulosAtivos(turmaId, p.data).length > 0 }))}
                     style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
                       border: `2px solid ${dados.modoParticipacao === v ? 'var(--copper)' : 'rgba(26,23,20,0.12)'}`,
                       background: dados.modoParticipacao === v ? 'var(--copper-pale, #fdf0e6)' : '#fff' }}>
