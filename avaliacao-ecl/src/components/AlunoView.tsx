@@ -31,7 +31,7 @@ import {
   getHistoricoAluno, registarHigieneKitchenFlow, registarTemperaturaKitchenFlow,
   registarNaoConformidadeKitchenFlow, abrirKitchenFlow, KITCHENFLOW_APP_URL, getPresencas,
   sincronizarEvidenciasKitchenFlow, extrairRegistosObrigatorios, EvidenciaKitchenFlow,
-  sincronizarDoSheets, juntarDaBase, calcularPontosRegularidade, getSelecoes, getValidacoes,
+  sincronizarDoSheets, juntarDaBase, calcularPontosRegularidade, getSelecoes, getValidacoes, quandoFoi, subscreverEspera,
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
@@ -2876,6 +2876,8 @@ function SecaoRequisicao({ requisicao, onConcluido }: { requisicao: any; onConcl
  */
 function EstadoDoEnvio({ selecaoId }: { selecaoId: string }) {
   const [pendente, setPendente] = useState(() => selecaoPorConfirmar(selecaoId));
+  // Chegou à base de dados: muda logo para «Chegou ao professor».
+  useEffect(() => subscreverEspera(() => setPendente(selecaoPorConfirmar(selecaoId))), [selecaoId]);
   useEffect(() => {
     if (!pendente) return;
     let vivo = true;
@@ -3338,9 +3340,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           )}
           <EstadoDoEnvio selecaoId={`sel_${plano.id}_${aluno.id}`} />
           <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginTop:6 }}>
-            {getValidacoes().some(v => v.alunoId === aluno.id && v.planoAulaId === plano.id)
-              ? 'O professor já validou. A nota desta aula está no topo.'
-              : 'O professor vai confirmar o teu registo.'}
+            {(() => {
+              // A validação tem de ser desta resposta (ou de uma mais recente):
+              // depois de responder outra vez, a validação antiga já não é desta
+              // resposta, e dizia «já validou» ao lado de «A enviar…» (Rosa, out/2026).
+              const minha = getSelecoes().find(s => s.id === `sel_${plano.id}_${aluno.id}`);
+              const v = minha ? validacaoDaSelecao(minha) : undefined;
+              if (v && quandoFoi((v as any).validadoEm) >= quandoFoi(minha!.criadaEm)) return 'O professor já validou. A nota desta aula está no topo.';
+              if (v) return 'O professor tinha validado a tua resposta anterior. Esta resposta nova vai ser validada outra vez.';
+              return 'O professor vai confirmar o teu registo.';
+            })()}
           </div>
         </div>
 
