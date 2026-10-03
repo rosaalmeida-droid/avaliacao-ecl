@@ -8714,7 +8714,10 @@ export async function sincronizarEventos(): Promise<boolean> {
   const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_eventos' });
   if (!json?.ok) return false;
   const remotos: any[] = (json.eventos || json.dados || []).filter((e: any) => e?.id && e.versao === 4);
-  const porId = new Map<string, any>(lerEventosLocais().map((e: any) => [e.id, e]));
+  // Eliminado noutro aparelho (script v24): sai daqui também, e não volta a
+  // ser enviado. Antes ficava e era reenviado para sempre (auditoria out/2026).
+  const fora = new Set<string>((json.eliminados || []).map(String));
+  const porId = new Map<string, any>(lerEventosLocais().filter((e: any) => !fora.has(String(e.id))).map((e: any) => [e.id, e]));
   for (const r of remotos) {
     const l = porId.get(r.id);
     if (!l || String(r.atualizadoEm || '') > String(l.atualizadoEm || '')) porId.set(r.id, r);
@@ -9031,7 +9034,8 @@ export function contadorDaTurma(turmaId: string): string { return contadorDaAula
 export function aulaRapidaDisponivel(): boolean { return !aulaNaoSuportada; }
 export async function lerAula(turmaId: string): Promise<boolean> {
   if (!turmaId || aulaNaoSuportada) return false;
-  const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId });
+  // A aula é o que o aluno espera para entrar: vai à frente da fila (auditoria out/2026).
+  const json: any = await lerDoSheetsJa(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId }, 15000);
   if (!json?.ok || !Array.isArray(json.planos)) {
     if (json && json.ok === false && /tipo|desconhecido/i.test(String(json.mensagem || ''))) aulaNaoSuportada = true;
     if (json && json.ok && !Array.isArray(json.planos)) aulaNaoSuportada = true;
@@ -9111,7 +9115,7 @@ function juntarAula(json: any, turmaId: string): void {
 /** Esta abertura já está na aula que os telemóveis leem? (script v19; null = não sei) */
 export async function aberturaNaAula(turmaId: string, planoAulaId: string): Promise<boolean | null> {
   if (aulaNaoSuportada) return null;
-  const json: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId });
+  const json: any = await lerDoSheetsJa(SHEETS_ECL_URL, { tipo: 'get_aula', turmaId }, 15000);
   if (!json?.ok || !Array.isArray(json.sessoes)) return null;
   return json.sessoes.some((s: any) => String(s.planoAulaId) === planoAulaId && s.abertaEm);
 }
