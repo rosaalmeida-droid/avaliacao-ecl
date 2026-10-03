@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import type { Aluno, PlanoAula } from '../types';
 import {
   gruposDaAula, grupoDoAluno, entrarNoGrupo, sincronizarGrupos, guardarAvaliacaoPar, getAvaliacoesPares,
-  getAlunos, getFichasProducao, lerAula, aulaRapidaDisponivel,
+  getAlunos, getFichasProducao, lerAula, aulaRapidaDisponivel, podemAvaliarSe,
 } from '../backend';
 
 const V = '#6B3FA0';
@@ -116,7 +116,8 @@ const PERGUNTAS: { chave: 'colabora' | 'ouve' | 'flexivel' | 'conflito'; texto: 
 
 export function AvaliarColegas({ aluno, plano }: { aluno: Aluno; plano: PlanoAula }) {
   const meu = grupoDoAluno(plano.id, aluno.id);
-  const colegas = (meu?.membros || []).filter(m => m.alunoId !== aluno.id);
+  // Os alunos de teste ficam fora da avaliação dos colegas verdadeiros.
+  const colegas = (meu?.membros || []).filter(m => m.alunoId !== aluno.id && podemAvaliarSe(aluno.id, m.alunoId));
   const jaFeitas = new Set(getAvaliacoesPares(plano.id).filter(p => p.avaliadorId === aluno.id).map(p => p.avaliadoId));
   const [i, setI] = useState(() => Math.max(0, colegas.findIndex(c => !jaFeitas.has(c.alunoId))));
   const [resp, setResp] = useState<Record<string, number>>({});

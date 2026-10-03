@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import type { PlanoAula } from '../types';
 import {
   gruposDaAula, entrarNoGrupo, guardarInfoGrupo, sincronizarGrupos, getAvaliacoesPares, getAlunos,
-  getFichasProducao, addOrUpdatePlanoAula, getMembrosGrupo, type AvaliacaoPar, lerAula, aulaRapidaDisponivel, alunosDoPlano,
+  getFichasProducao, addOrUpdatePlanoAula, getMembrosGrupo, type AvaliacaoPar, lerAula, aulaRapidaDisponivel, alunosDoPlano, podemAvaliarSe,
 } from '../backend';
 import { configGrupos } from './GruposAluno';
 
@@ -94,7 +94,8 @@ export function GruposProfessor({ plano, onPlanoActualizado }: { plano: PlanoAul
   if (!cfg.ativo && grupos.length === 0 && getAvaliacoesPares(plano.id).length === 0) return config;
 
   // ── O que os colegas disseram ────────────────────────────────
-  const pares = getAvaliacoesPares(plano.id);
+  // Sem os alunos de teste misturados com os verdadeiros (Rosa, out/2026).
+  const pares = getAvaliacoesPares(plano.id).filter(p => podemAvaliarSe(p.avaliadorId, p.avaliadoId));
   const porAvaliado = new Map<string, AvaliacaoPar[]>();
   pares.forEach(p => porAvaliado.set(p.avaliadoId, [...(porAvaliado.get(p.avaliadoId) || []), p]));
   const media = (l: AvaliacaoPar[], k: 'colabora' | 'ouve' | 'flexivel' | 'conflito') => l.reduce((s, x) => s + (x[k] || 0), 0) / l.length;
