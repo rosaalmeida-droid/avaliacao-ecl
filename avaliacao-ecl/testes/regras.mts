@@ -123,6 +123,17 @@ regra('22a. Recuperar numa atividade: só com participação confirmada e valida
   igual(b.participacaoContaParaBonus(b.eventosComoAtividades('t')[0], 'a2').conta, false, 'não dá bónus:');
 });
 
+regra('41a. Os alunos de teste não entram na avaliação entre colegas dos verdadeiros', () => {
+  por('ecl_alunos', [{ id: 'r1', turmaId: 't', numero: 1, nome: 'Ana' }, { id: 'r2', turmaId: 't', numero: 2, nome: 'Rui' },
+    { id: 't99', turmaId: 't', numero: 99, nome: 'TESTE — aluno de ensaio' }, { id: 't88', turmaId: 't', numero: 88, nome: 'TESTE 88' }]);
+  igual(b.podemAvaliarSe('r1', 'r2'), true, 'verdadeiros entre si:');
+  igual(b.podemAvaliarSe('r1', 't99'), false, 'verdadeiro avalia teste:');
+  igual(b.podemAvaliarSe('t99', 'r1'), false, 'teste avalia verdadeiro:');
+  igual(b.podemAvaliarSe('t99', 't88'), true, 'testes entre si (para ensaiar):');
+  b.guardarAvaliacaoPar({ planoAulaId: 'p', turmaId: 't', grupoId: 'g', avaliadorId: 't99', avaliadoId: 'r1', colabora: 1, ouve: 1, flexivel: 1, conflito: 3 } as any);
+  igual(b.getAvaliacoesPares('p').length, 0, 'não fica gravada:');
+});
+
 regra('13. As datas comparam-se como datas, venham escritas como vierem', () => {
   const sels: any[] = [
     { id: 'velha', alunoId: 'a1', planoAulaId: 'p1', criadaEm: '2026-10-01T23:00:00.000Z' },

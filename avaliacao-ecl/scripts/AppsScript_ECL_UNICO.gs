@@ -1922,7 +1922,9 @@ function seccaoGruposEColegas(d, aulas, alunos, junta, titulo, cabecalho, vazia,
   var membro = ultimoPor(d.grupos, function (g) { return g.planoAulaId + '|' + g.alunoId; }, function (g) { return g.atualizadoEm; });
   var info = ultimoPor(d.gruposInfo, function (g) { return g.planoAulaId + '|' + g.id; }, function (g) { return g.atualizadoEm; });
   var lider = ultimoPor(d.lideres, function (l) { return l.planoAulaId + '|' + l.grupoId; }, function (l) { return l.definidoEm; });
-  var par = ultimoPor(d.pares, function (p) { return p.id; }, function (p) { return p.criadoEm; });
+  // Os alunos de teste (nº 99 e 88) não entram na avaliação dos colegas verdadeiros.
+  var teste = function (id) { var a = porIdAluno[id]; if (!a) return false; var n = Number(a.numero); return n === 99 || n === 88 || n === 9999 || /\bteste\b/i.test(String(a.nome || '')); };
+  var par = ultimoPor(d.pares.filter(function (p) { return teste(p.avaliadorId) === teste(p.avaliadoId); }), function (p) { return p.id; }, function (p) { return p.criadoEm; });
   var palavra = function (v) { return v >= 2.5 ? 'muito' : v >= 1.75 ? 'às vezes' : 'pouco'; };
   var comGrupos = aulas.filter(function (p) { return p.estado !== 'arquivado'; }).slice().reverse().filter(function (p) {
     return Object.keys(membro).some(function (k) { return k.indexOf(p.id + '|') === 0 && membro[k].grupoId; });
@@ -1942,7 +1944,7 @@ function seccaoGruposEColegas(d, aulas, alunos, junta, titulo, cabecalho, vazia,
     });
     Object.keys(porGrupo).forEach(function (gid) {
       var g = porGrupo[gid], gi = info[p.id + '|' + gid] || {}, li = lider[p.id + '|' + gid];
-      var nomes = g.membros.map(function (m) { return (li && li.alunoId === m.alunoId ? '★ ' : '') + nomeAl(m.alunoId, m.nomeAluno); });
+      var nomes = g.membros.map(function (m) { return (li && li.alunoId === m.alunoId ? '★ ' : '') + nomeAl(m.alunoId, m.nomeAluno) + (teste(m.alunoId) ? ' (aluno de teste)' : ''); });
       var disseram = g.membros.map(function (m) {
         var sobre = Object.keys(par).map(function (k) { return par[k]; })
           .filter(function (x) { return x.planoAulaId === p.id && x.avaliadoId === m.alunoId; });

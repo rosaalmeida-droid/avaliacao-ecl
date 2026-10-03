@@ -8843,7 +8843,20 @@ export function guardarInfoGrupo(g: Omit<InfoGrupo, 'atualizadoEm'>): void {
   juntarPorId(KEY_INFO_GRUPOS, [reg]);
   enviar(SHEETS_ECL_URL, 'grupo_info', reg as any);
 }
+/** Regra (Rosa, out/2026): os alunos de teste (nº 99 e 88, «TESTE — aluno de
+ *  ensaio») não entram na avaliação entre colegas dos alunos verdadeiros. Um
+ *  aluno de teste só avalia (e só é avaliado por) outro aluno de teste. */
+export function alunoDeTeste(alunoOuId: Aluno | string | undefined): boolean {
+  const a: any = typeof alunoOuId === 'string' ? getAlunos().find(x => x.id === alunoOuId) : alunoOuId;
+  if (!a) return false;
+  const n = Number(a.numero);
+  return n === 99 || n === 88 || n === 9999 || /\bteste\b/i.test(String(a.nome || ''));
+}
+export function podemAvaliarSe(avaliadorId: string, avaliadoId: string): boolean {
+  return avaliadorId !== avaliadoId && alunoDeTeste(avaliadorId) === alunoDeTeste(avaliadoId);
+}
 export function guardarAvaliacaoPar(p: Omit<AvaliacaoPar, 'id' | 'criadoEm'>): void {
+  if (!podemAvaliarSe(p.avaliadorId, p.avaliadoId)) return;
   const reg: AvaliacaoPar = { ...p, id: `par_${p.planoAulaId}_${p.avaliadorId}_${p.avaliadoId}`, criadoEm: new Date().toISOString() };
   juntarPorId(KEY_PARES, [reg]);
   enviar(SHEETS_ECL_URL, 'avaliacao_par', reg as any);
