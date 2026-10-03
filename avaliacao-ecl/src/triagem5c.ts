@@ -105,6 +105,10 @@ export interface Triagem5C {
   /** A pergunta do Criativo a que respondeu (BANCO_CR). Sem ela, é a
    *  pergunta antiga «alguma coisa não correu como esperavas?». */
   crId?: string;
+  /** (out/2026) Não se perguntou ao aluno (atividade cujas atitudes e 5 C
+   *  ficam no plano da turma, ou o professor tirou as atitudes). Então o
+   *  'sem' quer dizer «não se perguntou», e não «não aconteceu». */
+  naoPerguntado?: boolean;
   /** O problema que o aluno resolveu, nas palavras dele (opcional). */
   problema?: string;
   /** A pergunta do Colaborativo a que respondeu (sem ela, a do trabalho com os colegas). */

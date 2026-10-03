@@ -8814,6 +8814,76 @@ export function getMembrosGrupo(planoAulaId: string): MembroGrupo[] {
 export function getInfoGrupos(planoAulaId: string): InfoGrupo[] {
   return load<InfoGrupo>(KEY_INFO_GRUPOS).filter(g => g.planoAulaId === planoAulaId);
 }
+// ── O que os colegas dizem de um aluno (Rosa, out/2026) ─────────
+// Não conta para nota. Ajuda o professor a validar as atitudes e os 5 C:
+// mostra, aula a aula, quem disse o quê. No fim da UC, o aluno recebe um
+// resumo sem nomes e sem notas, para perceber como os colegas o veem.
+
+export type DimensaoPar = 'colabora' | 'ouve' | 'flexivel' | 'conflito';
+/** Cada pergunta dos colegas, a atitude e o C a que ajuda. */
+export const LIGACOES_PARES: Record<DimensaoPar, { pergunta: string; atitudes: string[]; c: 'cl' | 'co' | 'cr'; nomeC: string; muito: string; pouco: string }> = {
+  colabora: { pergunta: 'Colaborou com o grupo?', atitudes: ['ATI-009'], c: 'cl', nomeC: 'Colaborativo',
+    muito: 'colaboras muito com o grupo', pouco: 'podes colaborar mais com o grupo' },
+  ouve: { pergunta: 'Ouviu os outros?', atitudes: ['ATI-008', 'ATI-007'], c: 'co', nomeC: 'Consciente',
+    muito: 'ouves bem os outros', pouco: 'podes ouvir mais os outros antes de decidir' },
+  flexivel: { pergunta: 'Aceitou outras ideias?', atitudes: ['ATI-012'], c: 'cr', nomeC: 'Criativo',
+    muito: 'aceitas bem as ideias dos outros', pouco: 'podes abrir-te mais às ideias dos outros' },
+  conflito: { pergunta: 'Nos problemas do grupo…', atitudes: ['ATI-005', 'ATI-018', 'ATI-006'], c: 'co', nomeC: 'Consciente',
+    muito: 'ajudas a resolver os problemas do grupo', pouco: 'nos problemas do grupo, podes ajudar mais a resolver em vez de discutir' },
+};
+export const TEXTO_RESPOSTA_PAR: Record<DimensaoPar, [string, string, string]> = {
+  colabora: ['pouco', 'às vezes', 'muito'], ouve: ['pouco', 'às vezes', 'muito'], flexivel: ['pouco', 'às vezes', 'muito'],
+  conflito: ['criou conflitos', 'nem uma coisa nem outra', 'ajudou a resolver'],
+};
+export interface RespostaDeColega {
+  planoAulaId: string; data: string; avaliadorId: string; avaliadorNome: string; valor: number; comentario?: string;
+  /** Muito diferente do que os outros colegas disseram na mesma aula: pode ser conflito entre eles. */
+  foraDoComum: boolean;
+}
+export interface OQueOsColegasDizem { dimensao: DimensaoPar; respostas: RespostaDeColega[]; media: number | null; colegas: number; aulas: number }
+
+/** Tudo o que os colegas disseram de um aluno, por pergunta (só aulas até «ate», se dado). */
+export function oQueOsColegasDizem(alunoId: string, opts: { ate?: string; planosIds?: Set<string> } = {}): OQueOsColegasDizem[] {
+  const planos = new Map(getPlanosAula().map(p => [p.id, p as any]));
+  const nomes = new Map(getAlunos().map(a => [a.id, a.nome || `nº ${a.numero}`]));
+  const doAluno = load<AvaliacaoPar>(KEY_PARES).filter(p => p.avaliadoId === alunoId && podemAvaliarSe(p.avaliadorId, p.avaliadoId)
+    && planos.has(p.planoAulaId) && planos.get(p.planoAulaId).estado !== 'arquivado'
+    && (!opts.planosIds || opts.planosIds.has(p.planoAulaId))
+    && (!opts.ate || String(planos.get(p.planoAulaId).data || '').slice(0, 10) <= opts.ate));
+  return (Object.keys(LIGACOES_PARES) as DimensaoPar[]).map(dim => {
+    const respostas: RespostaDeColega[] = doAluno.filter(p => Number(p[dim]) > 0).map(p => {
+      const outros = doAluno.filter(o => o.planoAulaId === p.planoAulaId && o.id !== p.id && Number(o[dim]) > 0).map(o => Number(o[dim]));
+      const mediaOutros = outros.length ? outros.reduce((a, b) => a + b, 0) / outros.length : null;
+      return { planoAulaId: p.planoAulaId, data: String(planos.get(p.planoAulaId)?.data || '').slice(0, 10), avaliadorId: p.avaliadorId,
+        avaliadorNome: nomes.get(p.avaliadorId) || p.avaliadorId, valor: Number(p[dim]), comentario: p.comentario,
+        foraDoComum: mediaOutros !== null && outros.length >= 2 && Math.abs(Number(p[dim]) - mediaOutros) >= 1.5 };
+    }).sort((a, b) => b.data.localeCompare(a.data));
+    // A média deixa de fora o que é muito diferente do resto (pode ser conflito entre colegas).
+    const conta = respostas.filter(r => !r.foraDoComum);
+    return { dimensao: dim, respostas, media: conta.length ? Math.round(conta.reduce((s, r) => s + r.valor, 0) / conta.length * 10) / 10 : null,
+      colegas: new Set(respostas.map(r => r.avaliadorId)).size, aulas: new Set(respostas.map(r => r.planoAulaId)).size };
+  });
+}
+/** A pergunta dos colegas que ajuda a validar esta competência (atitude) ou este C. */
+export function dimensoesDosColegasPara(competenciaOuC: string): DimensaoPar[] {
+  return (Object.keys(LIGACOES_PARES) as DimensaoPar[]).filter(d =>
+    LIGACOES_PARES[d].atitudes.includes(competenciaOuC) || LIGACOES_PARES[d].c === competenciaOuC);
+}
+/** «muito» / «às vezes» / «pouco», a partir da média (1 a 3). */
+export function palavraDosColegas(media: number | null, dim: DimensaoPar): string {
+  if (media === null) return '';
+  const t = TEXTO_RESPOSTA_PAR[dim];
+  return media >= 2.5 ? t[2] : media >= 1.75 ? t[1] : t[0];
+}
+/** Para o aluno, no fim da UC: o que os colegas veem, sem nomes nem notas.
+ *  Só com pelo menos 2 colegas diferentes (para ninguém saber quem disse). */
+export function resumoDosColegasParaOAluno(alunoId: string, planosIds: Set<string>): { forte: string[]; melhorar: string[] } | null {
+  const r = oQueOsColegasDizem(alunoId, { planosIds }).filter(x => x.media !== null && x.colegas >= 2);
+  if (!r.length) return null;
+  return { forte: r.filter(x => x.media! >= 2.5).map(x => LIGACOES_PARES[x.dimensao].muito),
+    melhorar: r.filter(x => x.media! < 2).map(x => LIGACOES_PARES[x.dimensao].pouco) };
+}
+
 export function getAvaliacoesPares(planoAulaId?: string): AvaliacaoPar[] {
   return load<AvaliacaoPar>(KEY_PARES).filter(p => !planoAulaId || p.planoAulaId === planoAulaId);
 }
@@ -8983,7 +9053,10 @@ export function separarAtividadeDaAula(planoId: string): { aula: PlanoAula; ativ
 export function aulaDoDiaDaAtividade(atividade: any): PlanoAula | undefined {
   if (!atividade) return undefined;
   const todos = getPlanosAula();
-  if (atividade.aulaLigada) { const a = todos.find(p => p.id === atividade.aulaLigada); if (a) return a; }
+  // A aula ligada só vale se ainda estiver em uso: arquivada (anulada) ou
+  // eliminada, procura-se a aula da turma desse dia que está em uso (antes a
+  // atividade continuava presa a um plano arquivado — Rosa, out/2026).
+  if (atividade.aulaLigada) { const a: any = todos.find(p => p.id === atividade.aulaLigada); if (a && a.estado !== 'arquivado' && !a.eliminado) return a; }
   const dia = String(atividade.data || '').slice(0, 10);
   const min = (h?: string) => { const [a, b] = String(h || '').split(':').map(Number); return isNaN(a) ? NaN : a * 60 + (b || 0); };
   const doDia = todos.filter((p: any) => p.id !== atividade.id && p.turmaId === atividade.turmaId && !p.tipoEvento
