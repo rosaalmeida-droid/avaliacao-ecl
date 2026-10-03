@@ -8734,6 +8734,39 @@ export function inscreverNoEvento(plano: PlanoAula, aluno: { id: string; nome?: 
 export function inscritosNoEvento(planoId: string): string[] {
   return getMembrosGrupo(idInscricao(planoId)).filter(m => m.grupoId === 'inscrito').map(m => m.alunoId);
 }
+/** «Separar a atividade da aula» enganou-se numa atividade verdadeira (Rosa,
+ *  out/2026): a atividade passou a «aula» da turma toda e ficou uma cópia.
+ *  Encontra o par a desfazer, a partir de qualquer um dos dois planos. */
+export function separacaoParaDesfazer(planoId: string): { original: any; copia: any } | null {
+  const todos: any[] = getPlanosAula();
+  const p: any = todos.find(x => x.id === planoId);
+  if (!p) return null;
+  const original = p.tipoEvento === null && p.modoParticipacao === 'turma' ? p
+    : (p.aulaLigada && String(p.id).startsWith(`plano_atv_${p.aulaLigada}_`) ? todos.find(x => x.id === p.aulaLigada) : null);
+  if (!original || original.tipoEvento !== null || original.modoParticipacao !== 'turma') return null;
+  const copia = todos.find(x => x.aulaLigada === original.id && String(x.id).startsWith(`plano_atv_${original.id}_`) && x.estado !== 'arquivado');
+  return copia ? { original, copia } : null;
+}
+/** Volta tudo a como estava antes de «Separar»: a atividade, só para os
+ *  alunos escolhidos, e sem cópia. */
+export function desfazerSeparacao(planoId: string): PlanoAula | null {
+  const par = separacaoParaDesfazer(planoId);
+  if (!par) return null;
+  const { original: o, copia: c } = par;
+  const agora = new Date().toISOString();
+  const atividade: any = { ...o, tipoAtividade: c.tipoAtividade, tipoEvento: c.tipoEvento, modoParticipacao: c.modoParticipacao,
+    participantesIds: c.participantesIds || [], postosPeloProfessor: c.postosPeloProfessor || [],
+    participantesConfirmadosEm: c.participantesConfirmadosEm || null, tambemRespondemAula: c.tambemRespondemAula !== false,
+    partesDaAula: c.partesDaAula || null, eventoId: c.eventoId || null,
+    resultadosConcurso: c.resultadosConcurso || null, fasesConcurso: c.fasesConcurso || null, atualizadoEm: agora };
+  addOrUpdatePlanoAula(atividade);
+  // A cópia sai (o que os alunos responderam nela passa para a atividade).
+  const respostas = getSelecoes().filter(s => s.planoAulaId === c.id);
+  respostas.forEach(s => addOrUpdateSelecao({ ...s, planoAulaId: o.id, id: `sel_${o.id}_${s.alunoId}` } as any));
+  eliminarPlanoAulaDefinitivamente(c.id);
+  return atividade;
+}
+
 /** Uma aula que foi transformada em atividade (antes da regra «a atividade
  *  nunca muda a aula»): ainda tem sinais de aula — o tipo de aula, fichas,
  *  conteúdos, ou respostas de alunos que não estão na atividade. */
