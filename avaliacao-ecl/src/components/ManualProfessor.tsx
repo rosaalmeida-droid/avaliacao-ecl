@@ -276,6 +276,14 @@ const SECCOES: Seccao[] = [
           falta.
         </Destaque>
 
+        <H>Alunos externos</H>
+        <P>
+          Alunos de fora das turmas que vêm recuperar uma UC. Em <b>Recuperações › «Alunos externos — recuperações e pauta»</b>:
+          acrescentas o aluno, crias o plano de recuperação (UC, como recupera, o que tem de fazer, prazo), registas o que ele
+          entregou e o resultado (0-20). O aluno não entra na aplicação. Em «Pauta por UC» sai a pauta dessa UC (imprimir/PDF
+          ou Excel). Fica tudo no Sheets, e a coordenação vê o mesmo.
+        </P>
+
         <H>O limite dos 10%</H>
         <P>
           Os 10% contam-se sobre o <b>total de horas da UC</b> no cronograma,

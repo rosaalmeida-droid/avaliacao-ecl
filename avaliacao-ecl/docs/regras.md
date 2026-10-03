@@ -43,6 +43,14 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 22. **Aviso ao aluno:** quem esteve numa atividade que já aconteceu recebe «Estiveste na atividade … autoavalia-te», com o dia e o plano da turma a que também responde.
 22a. **Recuperar uma UC numa atividade extra.** Quem escolhe a atividade é o professor (no plano de recuperação, ou em «Alunos em recuperação» na atividade). Também pode ser o aluno em recuperação: candidata-se, mesmo numa atividade só para alguns, e o professor aceita ou escolhe outra. No resumo da atividade, o aluno aparece «a recuperar a UC …». **Só recupera se o professor confirmar que participou.** Quando o professor valida a autoavaliação dele na atividade, a aplicação sugere essa nota como resultado da recuperação e o professor confirma. **Para ele, a atividade não dá bónus.**
 
+## Alunos externos
+27. **Os alunos externos (de fora das turmas) que vêm recuperar UC ficam no Sheets e em todos os aparelhos** (folha ALUNOS_EXTERNOS). Antes ficavam só no aparelho da coordenação.
+28. **Tratam das recuperações deles o professor da UC e a coordenação** (Recuperações › «Alunos externos», ou Coordenação › Externos): o plano (UC, como recupera, o que tem de fazer, prazo), o que o aluno entregou e o resultado (0-20). **O aluno não entra na aplicação.**
+29. **Sai uma pauta por UC** com os externos que a recuperaram: imprimir/PDF e Excel. No Sheets, a folha «EXTERNOS (recuperações)» mostra tudo por UC.
+
+## Pauta
+30. **Pauta provisória:** a coordenação (Simular pauta) vê a pauta de qualquer turma e UC, a qualquer momento, com as notas validadas até hoje. Sai marcada «PAUTA PROVISÓRIA»; não fecha a UC, não publica notas nem envia nada.
+
 ## Validação do professor
 10. **A última resposta está sempre ao alcance do professor para validar,** em «Por validar» ou em «Já validadas — tocar para alterar», mesmo dias depois. Também quando o telemóvel do aluno respondeu com a versão antiga do plano (depois de um «responder outra vez»): a resposta aparece com a nota «Respondeu antes da última alteração do plano» e conta até chegar outra (`selecoesDoProfessor`). Num plano, a lista procura pelo plano e não pela turma escolhida no menu. «Procurar autoavaliações agora» diz a hora e o resultado («nada de novo» ou «chegaram N»).
 11. **Conta a validação mais recente do professor.** Uma correção substitui a anterior (notas e registos).

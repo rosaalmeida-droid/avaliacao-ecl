@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v23.3';
+var VERSAO = 'ECL único v24';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -109,7 +109,10 @@ var FOLHAS = {
   // Iguais para todos os aparelhos (antes ficavam só no aparelho onde foram criadas).
   MATERIAS_PRIMAS:    { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'aliases', 'criadoEm', 'atualizadoEm'] },
   // (v23) A tabela de preços completa da aplicação (base + da escola + revistos), para se ver no Sheets.
-  TABELA_PRECOS:      { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'origem', 'fonte', 'atualizadoEm'] }
+  TABELA_PRECOS:      { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'origem', 'fonte', 'atualizadoEm'] },
+  // (v24) Alunos de fora das turmas que vêm recuperar UC. As recuperações
+  // deles estão em RECUPERACOES, na «turma» EXTERNOS.
+  ALUNOS_EXTERNOS:    { chave: ['id'], colunas: ['id', 'nome', 'numeroProcesso', 'turmaOrigem', 'cursoOrigem', 'anoLetivo', 'contacto', 'observacoes', 'criadoEm', 'atualizadoEm'] }
 };
 
 /** Registos especiais que viajam como autoavaliações (v12). */
@@ -805,6 +808,8 @@ function tratar(d) {
     if (tipo === 'precos')               return guardarVarios('PRECOS', d.precos || []);
     if (tipo === 'materia_prima')          return guardar('MATERIAS_PRIMAS', d.materiaPrima || d);
     if (tipo === 'tabela_precos')          return guardarVarios('TABELA_PRECOS', d.linhas || []);
+    if (tipo === 'aluno_externo')          return guardar('ALUNOS_EXTERNOS', d.alunoExterno || d);
+    if (tipo === 'eliminar_aluno_externo') return eliminar('ALUNOS_EXTERNOS', d.id);
     if (tipo === 'eliminar_materia_prima') return eliminar('MATERIAS_PRIMAS', d.id);
     if (tipo === 'precos_a_rever')       return guardarVarios('PRECOS_A_REVER', d.precosARever || []);
 
@@ -856,6 +861,7 @@ function doGet(e) {
     if (tipo === 'get_precos')       return comDados('precos',       ler('PRECOS', {}));
     if (tipo === 'get_materias_primas') return comDados('materiasPrimas', ler('MATERIAS_PRIMAS', {}), { eliminados: eliminadosDe('MATERIAS_PRIMAS') });
     if (tipo === 'get_eventos')      return comDados('eventos',      ler('EVENTOS', {}));
+    if (tipo === 'get_alunos_externos') return comDados('alunosExternos', ler('ALUNOS_EXTERNOS', {}), { eliminados: eliminadosDe('ALUNOS_EXTERNOS') });
     if (tipo === 'get_precos_a_rever') return comDados('precosARever', ler('PRECOS_A_REVER', {}));
     // A pergunta mais pequena que há: "em que número vais?". Os
     // aparelhos fazem-na de 15 em 15 segundos e só vão buscar dados
@@ -1811,7 +1817,7 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 var COR_TURMA = '#7B2233';
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
 // parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
-var VISIVEIS_SEMPRE = ['FICHAS TÉCNICAS', 'REQUISIÇÕES (todas)', 'RECUPERAÇÕES (todas)', 'TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
+var VISIVEIS_SEMPRE = ['FICHAS TÉCNICAS', 'REQUISIÇÕES (todas)', 'RECUPERAÇÕES (todas)', 'EXTERNOS (recuperações)', 'ALUNOS_EXTERNOS', 'TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
 
 function porTurma(lista) {
   var m = {};
@@ -2279,6 +2285,7 @@ function trazerFolhaAntiga(nomeDoFicheiro, nomeDaFolha) {
 var FOLHA_INDICE_FICHAS = 'FICHAS TÉCNICAS';
 var FOLHA_LISTA_REQUISICOES = 'REQUISIÇÕES (todas)';
 var FOLHA_LISTA_RECUPERACOES = 'RECUPERAÇÕES (todas)';
+var FOLHA_EXTERNOS = 'EXTERNOS (recuperações)';
 var COR_GERAL = '#2F5D8A';
 
 function listaDeIds(v) {
@@ -2325,6 +2332,9 @@ function escreverFolhasGerais(ss, dados) {
   var requisicoes = ler('REQUISICOES', {});
   var recuperacoes = dados.recuperacoes || ler('RECUPERACOES', {});
   var alunos = {}; (dados.alunos || ler('ALUNOS', {})).forEach(function (a) { alunos[a.id] = a; });
+  // (v24) Os alunos externos: nome e nº de processo.
+  var externos = []; try { externos = ler('ALUNOS_EXTERNOS', {}); } catch (e) {}
+  externos.forEach(function (a) { alunos[a.id] = { id: a.id, nome: a.nome, numero: a.numeroProcesso || '' }; });
   var planoPorId = {}; planos.forEach(function (p) { planoPorId[p.id] = p; });
   var eventoPorId = {}; eventos.forEach(function (e) { eventoPorId[e.id] = e; });
   var fichaPorId = {}; fichas.forEach(function (f) { fichaPorId[f.id] = f; });
@@ -2368,8 +2378,25 @@ function escreverFolhasGerais(ss, dados) {
   // 3. Recuperações de todas as turmas.
   var lrec = recuperacoes.slice().sort(function (a, b) { return String(a.turmaId).localeCompare(String(b.turmaId)) || (Number((alunos[a.alunoId] || {}).numero) || 0) - (Number((alunos[b.alunoId] || {}).numero) || 0); })
     .map(function (r) { return linhaDeRecuperacao(r, alunos, planoPorId, true); });
-  escreverFolhaGeral(ss, FOLHA_LISTA_RECUPERACOES, 'RECUPERAÇÕES (' + recuperacoes.length + ') · de todas as turmas (cada turma tem as suas no seu separador)',
+  escreverFolhaGeral(ss, FOLHA_LISTA_RECUPERACOES, 'RECUPERAÇÕES (' + recuperacoes.length + ') · de todas as turmas (cada turma tem as suas no seu separador; os alunos externos estão na turma EXTERNOS)',
     CAB_RECUPERACAO_GERAL, lrec, [80, 45, 200, 90, 90, 110, 300, 90, 80, 90, 220]);
+
+  // 4. (v24) Os alunos externos e as recuperações deles, por UC (a pauta de cada UC).
+  var recExt = recuperacoes.filter(function (r) { return r.turmaId === 'EXTERNOS' && r.estado !== 'anulada'; })
+    .sort(function (a, b) { return String(a.ucId).localeCompare(String(b.ucId)) || String((alunos[a.alunoId] || {}).nome || '').localeCompare(String((alunos[b.alunoId] || {}).nome || ''), 'pt'); });
+  var porExt = {}; externos.forEach(function (a) { porExt[a.id] = a; });
+  var lext = recExt.map(function (r) {
+    var a = porExt[r.alunoId] || {};
+    var feita = r.estado === 'concluida', n = Number(r.resultadoNota);
+    return [r.ucId || '', r.ucNome || '', a.numeroProcesso || '', a.nome || r.nomeAluno || r.alunoId, [a.turmaOrigem, a.cursoOrigem].filter(Boolean).join(' · '),
+      NOME_MODALIDADE[r.modalidade] || r.modalidade || '', r.descricaoPlano || '',
+      (Array.isArray(r.entregas) ? r.entregas : []).map(function (e) { return diaPT(e.data) + ': ' + e.descricao; }).join('\n'),
+      feita && !isNaN(n) ? String(n).replace('.', ',') : 'Em curso', feita && !isNaN(n) ? (Math.round(n) < 10 ? Math.round(n) + ' a)' : String(Math.round(n))) : '',
+      diaPT(r.realizadaEm), r.professorAvaliador || ''];
+  });
+  escreverFolhaGeral(ss, FOLHA_EXTERNOS, 'ALUNOS EXTERNOS — RECUPERAÇÕES POR UC (' + externos.length + ' alunos, ' + recExt.length + ' recuperações) · a pauta de cada UC sai também da aplicação',
+    ['UC', 'Nome da UC', 'Nº processo', 'Aluno', 'Origem', 'Como recupera', 'O que tem de fazer', 'O que entregou', 'Resultado', 'Classificação', 'Data', 'Professor'], lext,
+    [80, 200, 90, 200, 160, 110, 260, 260, 75, 85, 85, 140]);
 }
 
 var NOME_ESTADO_RECUP = { em_curso: 'Em curso', concluida: 'Recuperado', pendente: 'Pendente', gerada: 'Por decidir', validada: 'Validada', nao_validada: 'Não validada', submetida: 'Entregue', em_analise: 'Em análise', devolvida: 'Devolvida' };
@@ -2798,6 +2825,7 @@ var LEIA_ME = [
   ['Folha', 'O que tem'],
   ['1º BCR, 3º ACP, …', 'Um separador por turma, só para ler: os alunos (presenças, faltas, atrasos, autoavaliações, média), as notas de cada UC (um aluno por linha, uma aula por coluna) e as aulas. Refaz-se sozinho de 10 em 10 minutos.'],
   ['FICHAS TÉCNICAS', 'Todas as fichas técnicas, com um link «abrir» para cada uma (a ficha por extenso, com o guião no fim). As folhas «F …» são as fichas por extenso.'],
+  ['EXTERNOS (recuperações) · ALUNOS_EXTERNOS', 'Os alunos de fora das turmas que vêm recuperar UC, e as recuperações deles por UC (plano, o que entregaram, resultado, professor). A pauta de cada UC sai também da aplicação.'],
   ['TABELA_PRECOS', 'A tabela de preços completa da aplicação (todas as matérias-primas, com os preços que a aplicação usa). Atualiza-se sozinha quando um professor abre a aplicação. Sempre à vista.'],
   ['AUDITORIA', 'O que estava nos ficheiros antigos e não está aqui (corre auditarFolhasAntigas). As linhas vermelhas são as importantes.'],
   ['PRECOS / PRECOS_A_REVER', 'As matérias-primas com os preços revistos, e as que os professores pediram para rever. Sempre à vista.'],

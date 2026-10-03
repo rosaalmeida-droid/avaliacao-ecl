@@ -10,6 +10,7 @@ import { SeletorIA } from './SeletorIA';
 import { CriarRecuperacaoFCT, RecuperacaoFCTAluno } from './RecuperacaoFCT';
 import { gerarPDFRecuperacaoFCT } from './GerarPDFRecuperacaoFCT';
 import { PainelUCEmAtraso } from './UCEmAtraso';
+import { AlunosExternos } from './AlunosExternos';
 
 function getNomeComp(id: string): string {
   if (id.startsWith('OBR_')) return OBRIGATORIAS.find(o => o.id === id)?.nome || id;
@@ -25,6 +26,7 @@ const NIVEIS: { v: 'nao_demonstrada' | 'em_desenvolvimento' | 'consolidada' | 'a
 ];
 
 export function GestaoRecuperacoes({ turmaId, nomeProfessor }: { turmaId: string; nomeProfessor?: string }) {
+  const [verExternos, setVerExternos] = useState(false);
   const [tab, setTab] = useState<'pendentes' | 'submetidas' | 'concluidas'>('submetidas');
   const [refresh, setRefresh] = useState(0);
   const [activa, setActiva] = useState<RecuperacaoModulo | null>(null);
@@ -63,6 +65,15 @@ export function GestaoRecuperacoes({ turmaId, nomeProfessor }: { turmaId: string
 
       <div style={{ marginBottom: 14 }}>
         <CriarRecuperacaoFCT turmaId={turmaId} onCriada={() => setRefresh(r => r + 1)} />
+      </div>
+
+      {/* Alunos externos (de fora das turmas): o professor da UC também trata deles (Rosa, out/2026). */}
+      <div style={{ marginBottom: 14 }}>
+        <button onClick={() => setVerExternos(v => !v)} style={{ width: '100%', padding: '12px 14px', borderRadius: 12,
+          border: '1.5px dashed #0f766e', background: '#fff', color: '#0f766e', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+          🌍 {verExternos ? 'Fechar os alunos externos' : 'Alunos externos — recuperações e pauta'}
+        </button>
+        {verExternos && <AlunosExternos nomeProfessor={nomeProfessor} />}
       </div>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>

@@ -11,7 +11,7 @@ import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula'
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
-import { ucsEquivalentes, modulosDaTurma } from './cronograma';
+import { ucsEquivalentes, modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
   Turma, Aluno, PlanoAula, FichaProducao,
@@ -9148,4 +9148,130 @@ export function coberturaDaUC(turmaId: string, ucId: string): CoberturaUC {
     conhecimentos: { total: refs.length, avaliados: refs.length - knwFaltam.length, faltam: knwFaltam },
     atitudes: { avaliadas: [...ids].filter(i => categoriaDaNota(i) === 'ATI').length },
   };
+}
+
+// ============================================================
+// Alunos externos e as suas recuperações (Rosa, out/2026)
+// ============================================================
+// Alunos de fora das turmas que vêm recuperar UC. Antes ficavam só no
+// aparelho da coordenação (e podiam perder-se) e não podiam ter
+// recuperações. Agora ficam no Sheets (folha ALUNOS_EXTERNOS, script v24) e
+// em todos os aparelhos. As recuperações são as de sempre, na «turma»
+// EXTERNOS: plano (UC, como recupera, o que tem de fazer, prazo), as
+// entregas e o resultado. Tratam delas o professor da UC e a coordenação;
+// o aluno não entra na aplicação. Sai uma pauta por UC.
+
+export const TURMA_EXTERNOS = 'EXTERNOS';
+const KEY_EXTERNOS = 'ecl_alunos_externos';
+
+export interface AlunoExterno {
+  id: string;
+  nome: string;
+  numeroProcesso?: string;
+  /** Escola ou turma de origem. */
+  turmaOrigem?: string;
+  cursoOrigem?: string;
+  anoLetivo?: string;
+  contacto?: string;
+  observacoes?: string;
+  /** FCT (da lista antiga da coordenação). */
+  localFCT?: string;
+  supervisorFCT?: string;
+  dataInicio?: string;
+  dataTermo?: string;
+  criadoEm: string;
+  atualizadoEm?: string;
+}
+
+export interface EntregaRecuperacao { data: string; descricao: string; registadoPor?: string }
+
+export function getAlunosExternos(): AlunoExterno[] {
+  try { return JSON.parse(localStorage.getItem(KEY_EXTERNOS) || '[]'); } catch { return []; }
+}
+function gravarAlunosExternos(l: AlunoExterno[]): void {
+  try { localStorage.setItem(KEY_EXTERNOS, JSON.stringify(l)); } catch { /* */ }
+}
+export function guardarAlunoExterno(a: AlunoExterno): void {
+  const r = { ...a, atualizadoEm: new Date().toISOString() };
+  const todos = getAlunosExternos().filter(x => x.id !== a.id);
+  gravarAlunosExternos([...todos, r]);
+  if (SHEETS_ECL_URL) enviar(SHEETS_ECL_URL, 'aluno_externo', { alunoExterno: r } as any);
+}
+export function eliminarAlunoExterno(id: string): void {
+  gravarAlunosExternos(getAlunosExternos().filter(a => a.id !== id));
+  if (SHEETS_ECL_URL) enviar(SHEETS_ECL_URL, 'eliminar_aluno_externo', { id } as any);
+}
+
+/** Traz do Sheets os alunos externos e as recuperações deles (e envia os que só cá estão). */
+export async function sincronizarExternos(): Promise<boolean> {
+  let ok = false;
+  try {
+    const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_alunos_externos' });
+    if (j?.ok && Array.isArray(j.dados)) {
+      ok = true;
+      const fora = new Set((j.eliminados || []).map(String));
+      const m = new Map(getAlunosExternos().filter(a => !fora.has(a.id)).map(a => [a.id, a]));
+      const doSheets = new Set<string>();
+      for (const a of j.dados as AlunoExterno[]) {
+        if (!a?.id || !a.nome) continue;
+        doSheets.add(a.id);
+        const loc = m.get(a.id);
+        if (!loc || String(a.atualizadoEm || '') >= String(loc.atualizadoEm || '')) m.set(a.id, a);
+      }
+      gravarAlunosExternos([...m.values()]);
+      // Os que estavam só neste aparelho (a lista antiga da coordenação) vão para o Sheets.
+      [...m.values()].filter(a => !doSheets.has(a.id)).forEach(a => enviar(SHEETS_ECL_URL, 'aluno_externo', { alunoExterno: a } as any));
+    }
+    const jr: any = await lerDoSheets(SHEETS_RECUPERACAO_URL, { tipo: 'recuperacoes', turmaId: TURMA_EXTERNOS });
+    if (jr?.ok && Array.isArray(jr.dados)) {
+      const todas = getRecuperacoes();
+      for (const r of jr.dados) {
+        if (!r?.id) continue;
+        const i = todas.findIndex(x => x.id === r.id);
+        if (i < 0) todas.push(r);
+        else if (String(r.atualizadoEm || '') > String(todas[i].atualizadoEm || '')) todas[i] = r;
+      }
+      save(KEYS.recuperacoes, todas);
+    }
+  } catch { /* fica o que está cá */ }
+  return ok;
+}
+
+export function recuperacoesDeExternos(): RecuperacaoModulo[] {
+  return getRecuperacoes().filter(r => r.turmaId === TURMA_EXTERNOS);
+}
+
+/** As UC que um aluno externo pode recuperar (todas as do cronograma, sem repetir). */
+export function ucsParaExternos(): { id: string; nome: string; ano: number }[] {
+  const m = new Map<string, { id: string; nome: string; ano: number }>();
+  for (const x of CRONOGRAMA_2026_2027 as any[]) if (x?.id && !m.has(x.id)) m.set(x.id, { id: x.id, nome: x.nome || '', ano: x.turmaAno || 0 });
+  return [...m.values()].sort((a, b) => a.ano - b.ano || a.id.localeCompare(b.id));
+}
+
+export function criarRecuperacaoExterno(aluno: AlunoExterno, uc: { id: string; nome: string }, modalidade: 'pratico' | 'teorico' | 'atividade' | 'outra',
+  descricao: string, prazo: string, professor: string): RecuperacaoModulo {
+  const agora = new Date().toISOString();
+  const r: any = {
+    id: novoId('rec_ext'), alunoId: aluno.id, nomeAluno: aluno.nome, turmaId: TURMA_EXTERNOS, ucId: uc.id, ucNome: uc.nome,
+    tipoUC: 'tecnica', planosIds: [], competenciasIds: [], atitudesIds: [], responsabilidadesIds: [],
+    estado: 'em_curso', quando: 'ja', modalidade, descricaoPlano: descricao,
+    dataLimite: prazo ? new Date(prazo + 'T23:59:00').toISOString() : undefined,
+    dataAtribuicao: agora, criadoEm: agora, atualizadoEm: agora, professorAvaliador: professor, entregas: [],
+  };
+  addOrUpdateRecuperacao(r);
+  return r;
+}
+
+export function registarEntregaRecuperacao(id: string, descricao: string, data: string, quem?: string): void {
+  const r: any = getRecuperacoes().find(x => x.id === id);
+  if (!r) return;
+  const e: EntregaRecuperacao = { data: data || new Date().toISOString().slice(0, 10), descricao, registadoPor: quem };
+  addOrUpdateRecuperacao({ ...r, entregas: [...(r.entregas || []), e], atualizadoEm: new Date().toISOString() });
+}
+
+export function eliminarRecuperacaoExterno(id: string): void {
+  const r = getRecuperacoes().find(x => x.id === id);
+  if (!r) return;
+  // Não se apaga: fica «anulada», para não voltar de outro aparelho.
+  addOrUpdateRecuperacao({ ...(r as any), estado: 'anulada', atualizadoEm: new Date().toISOString() });
 }
