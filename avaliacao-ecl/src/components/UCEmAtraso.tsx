@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ucsEmAtraso, criarPlanoRecuperacao, registarResultadoRecuperacao, MODALIDADES_RECUPERACAO,
   adiarRecuperacaoParaDepoisDaUC, faltasDaUC,
+  atividadesParaRecuperar, ligarRecuperacaoAAtividade, resultadoSugeridoDaRecuperacao, atividadeDaRecuperacao,
   type UCEmAtraso,
 } from '../backend';
 
@@ -153,7 +154,11 @@ export function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou, onAb
               {l.estado === 'em_curso' && l.plano && (
                 <span><b>Plano em curso:</b> {MODALIDADES_RECUPERACAO.find(m => m.id === l.plano!.modalidade)?.nome || 'recuperação'}
                   {l.plano.descricaoPlano ? ` — ${l.plano.descricaoPlano}` : ''}
-                  {l.plano.dataLimite ? ` · até ${dataPT(l.plano.dataLimite)}` : ''}. Falta registar a realização e o resultado.</span>
+                  {l.plano.dataLimite ? ` · até ${dataPT(l.plano.dataLimite)}` : ''}. Falta registar a realização e o resultado.
+                  {(() => {
+                    const a: any = atividadeDaRecuperacao(l.plano);
+                    return a ? <><br /><b>Recupera na atividade «{a.titulo}»</b> ({dataPT(a.data)}). Só conta se confirmares que participou.</> : null;
+                  })()}</span>
               )}
               {l.estado === 'recuperado' && l.plano && (
                 <span style={{ color: '#3E7A31', fontWeight: 700 }}>Recuperado{typeof l.plano.resultadoNota === 'number' ? ` com ${h1(l.plano.resultadoNota)} valores` : ''}
@@ -197,6 +202,8 @@ function FormPlano({ l, onFeito, onCancelar }: { l: UCEmAtraso; onFeito: () => v
   const [modalidade, setModalidade] = useState<'pratico' | 'teorico' | 'atividade' | 'outra'>('pratico');
   const [descricao, setDescricao] = useState(MODALIDADES_RECUPERACAO[0].sugestao);
   const [prazo, setPrazo] = useState(() => new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10));
+  const atividades = atividadesParaRecuperar(l.turmaId);
+  const [atividadeId, setAtividadeId] = useState('');
   return (
     <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: '#f7f5f2' }}>
       <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Plano de recuperação — escolhe a modalidade</div>
@@ -210,6 +217,20 @@ function FormPlano({ l, onFeito, onCancelar }: { l: UCEmAtraso; onFeito: () => v
           </label>
         ))}
       </div>
+      {modalidade === 'atividade' && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Em que atividade?</div>
+          {atividades.length === 0
+            ? <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)' }}>Esta turma ainda não tem atividades extra. Podes criar o plano e ligar a atividade depois, ou aceitar o aluno quando ele se candidatar.</div>
+            : <select value={atividadeId} onChange={e => setAtividadeId(e.target.value)} style={campo}>
+                <option value="">— Escolher depois —</option>
+                {atividades.map((a: any) => <option key={a.id} value={a.id}>{dataPT(a.data)} · {a.titulo}</option>)}
+              </select>}
+          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 4, lineHeight: 1.5 }}>
+            O aluno entra na atividade marcado «a recuperar». Só recupera se confirmares que participou. Não dá bónus.
+          </div>
+        </div>
+      )}
       <div style={{ fontSize: 13, fontWeight: 700, margin: '10px 0 4px' }}>O que o aluno tem de fazer</div>
       <textarea value={descricao} onChange={e => setDescricao(e.target.value)} rows={3} style={campo} />
       <div style={{ fontSize: 13, fontWeight: 700, margin: '10px 0 4px' }}>Prazo</div>
@@ -219,7 +240,8 @@ function FormPlano({ l, onFeito, onCancelar }: { l: UCEmAtraso; onFeito: () => v
           background: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
         <button onClick={() => {
           if (!descricao.trim()) { alert('Escreve o que o aluno tem de fazer.'); return; }
-          criarPlanoRecuperacao(l.alunoId, l.turmaId, l.ucId, modalidade, descricao.trim(), prazo);
+          const rec = criarPlanoRecuperacao(l.alunoId, l.turmaId, l.ucId, modalidade, descricao.trim(), prazo);
+          if (modalidade === 'atividade' && atividadeId) ligarRecuperacaoAAtividade(rec.id, atividadeId);
           onFeito();
         }} style={{ padding: '9px 14px', borderRadius: 9, border: 'none', background: 'var(--sage, #5a7a4e)', color: '#fff',
           fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Criar o plano</button>
@@ -231,14 +253,22 @@ function FormPlano({ l, onFeito, onCancelar }: { l: UCEmAtraso; onFeito: () => v
 function FormResultado({ l, nomeProfessor, onFeito, onCancelar }: {
   l: UCEmAtraso; nomeProfessor?: string; onFeito: () => void; onCancelar: () => void;
 }) {
-  const [nota, setNota] = useState('');
-  const [obs, setObs] = useState('');
+  const sugestao = l.plano ? resultadoSugeridoDaRecuperacao(l.plano) : { nota: null, porque: '' };
+  const [nota, setNota] = useState(sugestao.nota != null ? String(sugestao.nota) : '');
+  const [obs, setObs] = useState(sugestao.nota != null && sugestao.atividade ? `Recuperou na atividade «${sugestao.atividade.titulo}».` : '');
   return (
     <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: '#f7f5f2' }}>
       <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Realização da recuperação</div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.5 }}>
         O resultado substitui o zero das aulas faltadas nesta UC, na nota e na pauta.
       </div>
+      {sugestao.porque && (
+        <div style={{ fontSize: 13, marginBottom: 8, padding: '8px 10px', borderRadius: 9, lineHeight: 1.5,
+          background: sugestao.nota != null ? '#eaf3e6' : '#fdf3e0' }}>
+          {sugestao.nota != null ? <><b>Resultado sugerido: {h1(sugestao.nota)} valores.</b> {sugestao.porque} Confirma ou corrige.</>
+            : <><b>Ainda não há resultado para sugerir.</b> {sugestao.porque}</>}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <label style={{ fontSize: 13, fontWeight: 700 }}>Resultado (0 a 20)<br />
           <input type="number" min={0} max={20} step={0.5} value={nota} onChange={e => setNota(e.target.value)}

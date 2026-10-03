@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -2540,6 +2540,13 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
   const [aPublicar, setAPublicar] = React.useState(false);
   const participantes = modo === 'turma' ? alunos.map(a => a.id) : aceites;
   const foraDaLista = alunos.filter(a => !lista.includes(a.id)).sort((a, b) => (a.numero || 0) - (b.numero || 0));
+  // Recuperação numa atividade (Rosa, out/2026): o professor escolhe, ou o aluno
+  // em recuperação candidata-se. Só recupera se participou; não dá bónus.
+  const emRecuperacao = (() => { try { return ucsEmAtraso(plano.turmaId).filter(l => l.estado !== 'recuperado'); } catch { return []; } })();
+  const candidatos = candidatosARecuperar(plano.id);
+  const marcaRecup = (id: string) => { const m = recuperaNaAtividade(plano, id); return m ? ` (a recuperar a UC ${m.ucId})` : ''; };
+  const alunosARecuperar = [...new Set(emRecuperacao.map(l => l.alunoId))];
+  const atualizar = () => { const q = getPlanosAula().find(x => x.id === plano.id); if (q) onPlanoActualizado(q); redesenhar(n => n + 1); };
   return (<>
     <div style={{ marginTop: 11, paddingTop: 11, borderTop: '1px solid rgba(181,101,29,0.25)', fontSize: 13.5 }}>
       <div style={{ fontWeight: 700, marginBottom: 6 }}>{plano.tipoEvento === 'concurso' ? '🏆 Quem participa neste concurso?' : '🏅 Quem participa neste evento?'}</div>
@@ -2569,14 +2576,40 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             const ok = aceites.includes(id);
             return (
               <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: '1px solid rgba(26,23,20,0.06)' }}>
-                <span style={{ flex: 1 }}>{nome(id)}{!inscritos.includes(id) && <span style={{ color: 'rgba(26,23,20,0.45)' }}>
-                  {(plano.postosPeloProfessor || []).includes(id) ? ' (posto pelo professor)' : ' (retirou-se)'}</span>}</span>
+                <span style={{ flex: 1 }}>{nome(id)}{recuperaNaAtividade(plano, id) && <b style={{ color: '#b5651d' }}>{marcaRecup(id)}</b>}{!inscritos.includes(id) && <span style={{ color: 'rgba(26,23,20,0.45)' }}>
+                  {(plano.postosPeloProfessor || []).includes(id) ? ' (posto pelo professor)' : recuperaNaAtividade(plano, id) ? '' : ' (retirou-se)'}</span>}</span>
                 <button style={bt(ok)} onClick={() => gravar({ participantesIds: ok ? aceites.filter(x => x !== id) : [...aceites, id] })}>
                   {ok ? '✓ Aceite' : 'Aceitar'}</button>
               </div>
             );
           })}
         </>
+      )}
+      {alunosARecuperar.length > 0 && (
+        <div style={{ marginTop: 10, padding: '9px 11px', borderRadius: 10, background: '#fdf6ee', border: '1px solid rgba(181,101,29,0.3)' }}>
+          <div style={{ fontWeight: 800, marginBottom: 2 }}>Alunos em recuperação</div>
+          <div style={{ color: 'rgba(26,23,20,0.65)', fontSize: 13, marginBottom: 6, lineHeight: 1.45 }}>
+            Podem recuperar uma UC nesta atividade. Só recuperam se confirmares que participaram. Para eles não dá bónus.
+          </div>
+          {alunosARecuperar.map(id => {
+            const ucs = emRecuperacao.filter(l => l.alunoId === id).map(l => l.ucId).join(', ');
+            const marcado = recuperaNaAtividade(plano, id);
+            const candidato = candidatos.includes(id);
+            return (
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '5px 0', borderTop: '1px solid rgba(26,23,20,0.06)' }}>
+                <span style={{ flex: '1 1 180px' }}>{nome(id)} <span style={{ color: 'rgba(26,23,20,0.5)' }}>· UC {ucs}</span>
+                  <span style={{ display: 'block', fontSize: 12.5, color: marcado ? '#3f5e34' : candidato ? '#b5651d' : 'rgba(26,23,20,0.5)', fontWeight: marcado || candidato ? 700 : 400 }}>
+                    {marcado ? `✓ A recuperar a UC ${marcado.ucId} nesta atividade` : candidato ? 'Candidatou-se para recuperar nesta atividade' : 'Não está a recuperar nesta atividade'}</span></span>
+                {marcado ? (
+                  <button style={bt(false)} onClick={() => { if (!confirm(`${nome(id)} deixa de recuperar nesta atividade?`)) return; desligarRecuperacaoDaAtividade(plano.id, id); atualizar(); }}>Tirar</button>
+                ) : (<>
+                  <button style={bt(true)} onClick={() => { aceitarParaRecuperar(plano.id, id); atualizar(); }}>{candidato ? 'Aceitar para recuperar' : 'Recuperar nesta atividade'}</button>
+                  {candidato && <button style={bt(false)} onClick={() => { const a = alunos.find(x => x.id === id); if (a) candidatarParaRecuperar(plano, a, false); atualizar(); }}>Não aceitar</button>}
+                </>)}
+              </div>
+            );
+          })}
+        </div>
       )}
       {plano.tipoEvento === 'concurso' && <ResultadosConcurso plano={plano} alunos={alunos}
         participantes={modo === 'turma' ? alunos.map(a => a.id) : aceites} gravar={gravar} bt={bt} />}
@@ -2598,7 +2631,14 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 4 }}>{plano.titulo || 'Atividade'}</div>
             <div style={{ color: 'rgba(26,23,20,0.6)', marginBottom: 12 }}>{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')} · {plano.ucId || ''}</div>
             <div style={{ fontWeight: 800 }}>Quem participa ({participantes.length})</div>
-            <div style={{ margin: '2px 0 12px' }}>{participantes.map(nome).join(' · ')}</div>
+            <div style={{ margin: '2px 0 12px' }}>{participantes.map(id => nome(id) + marcaRecup(id)).join(' · ')}</div>
+            {participantes.some(id => recuperaNaAtividade(plano, id)) && (
+              <div style={{ padding: '9px 11px', borderRadius: 9, background: '#fdf6ee', margin: '0 0 12px', fontSize: 14 }}>
+                <b>Recuperação:</b> os alunos marcados «a recuperar» usam esta atividade para recuperar a UC, e não ganham bónus.
+                Quando validares a autoavaliação deles nesta atividade, a aplicação sugere essa nota como resultado da recuperação
+                (em «UC em atraso — recuperação»); tu confirmas.
+              </div>
+            )}
             <div style={{ fontWeight: 800 }}>O que cada um vai responder na autoavaliação</div>
             <ul style={{ margin: '2px 0 12px', paddingLeft: 18 }}>
               {ecras.length ? ecras.map((e: any, i: number) => <li key={i}>{e.rotulo}: {e.nome}</li>) : <li>As atitudes do evento e a técnica geral.</li>}

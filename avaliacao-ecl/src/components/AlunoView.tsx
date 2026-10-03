@@ -35,7 +35,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, rotuloDoPlano, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, rotuloDoPlano, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -852,6 +852,18 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       if (pl) inscreverNoEvento(pl, aluno, sim);
     } else inscreverEmAtividade(id, aluno.id, sim);
   }
+  // Recuperar numa atividade: o aluno em recuperação candidata-se (Rosa, out/2026).
+  const recuperacaoAtividades = React.useMemo(() => {
+    let ucs: string[] = [];
+    try { ucs = ucsARecuperarDoAluno(aluno.id, aluno.turmaId); } catch { /* sem dados */ }
+    const plano = (id: string) => planosBrutos.find(x => x.id === id) || getPlanosAulaPorTurma(aluno.turmaId, true).find(x => x.id === id);
+    return {
+      ucs,
+      estado: (id: string): 'candidato' | 'aceite' | null => recuperaNaAtividade(plano(id), aluno.id) ? 'aceite'
+        : candidatosARecuperar(id).includes(aluno.id) ? 'candidato' : null,
+      onCandidatar: (id: string, sim: boolean) => { const p = plano(id); if (p) candidatarParaRecuperar(p, aluno, sim); setRefreshAtiv(n => n + 1); },
+    };
+  }, [aluno.id, aluno.turmaId, planosBrutos, refreshAtiv]);
   const atividadesAbertas = atividades.filter(
     x => !x.fechada && x.data >= new Date().toISOString().slice(0, 10)
   ).length;
@@ -1353,6 +1365,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 alunoId={aluno.id}
                 onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
                 onCancelar={(id) => { inscreverOuEvento(id, false); setRefreshAtiv(n => n + 1); }}
+                recuperacao={recuperacaoAtividades}
                 onBalanco={(id, participou, resultado) => {
                   registarBalancoAtividade(id, aluno.id, participou, resultado);
                   setRefreshAtiv(n => n + 1);
@@ -1507,6 +1520,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 onVer={(id) => { const p = getPlanosAula().find(x => x.id === id); if (p) setPlanoConsulta(p); }}
                 onInscrever={(id) => { inscreverOuEvento(id, true); setRefreshAtiv(n => n + 1); }}
                 onCancelar={(id) => { inscreverOuEvento(id, false); setRefreshAtiv(n => n + 1); }}
+                recuperacao={recuperacaoAtividades}
                 onBalanco={(id, p, r) => { registarBalancoAtividade(id, aluno.id, p, r); setRefreshAtiv(n => n + 1); }} />
             )}
             {(destino === 'fichas' || destino === 'guiao' || destino === 'kitchenflow') && (

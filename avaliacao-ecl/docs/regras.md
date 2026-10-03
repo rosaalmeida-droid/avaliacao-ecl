@@ -38,6 +38,7 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 20a. **Atividade com ficha técnica:** os alunos avaliam-se na atividade também nas técnicas da ficha, além das atitudes e da técnica geral.
 21. **Numa atividade com alunos escolhidos, todas as listas mostram só esses alunos** (`alunosDoPlano`): quem falta responder, a turma na aula e as faltas, as funções, os grupos, a validação e o reabrir.
 22. **Aviso ao aluno:** quem esteve numa atividade que já aconteceu recebe «Estiveste na atividade … autoavalia-te», com o dia e o plano da turma a que também responde.
+22a. **Recuperar uma UC numa atividade extra.** Quem escolhe a atividade é o professor (no plano de recuperação, ou em «Alunos em recuperação» na atividade). Também pode ser o aluno em recuperação: candidata-se, mesmo numa atividade só para alguns, e o professor aceita ou escolhe outra. No resumo da atividade, o aluno aparece «a recuperar a UC …». **Só recupera se o professor confirmar que participou.** Quando o professor valida a autoavaliação dele na atividade, a aplicação sugere essa nota como resultado da recuperação e o professor confirma. **Para ele, a atividade não dá bónus.**
 
 ## Validação do professor
 10. **A última resposta está sempre ao alcance do professor para validar,** em «Por validar» ou em «Já validadas — tocar para alterar», mesmo dias depois.

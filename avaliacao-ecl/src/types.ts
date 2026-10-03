@@ -579,6 +579,8 @@ export interface RecuperacaoModulo {
   quando?: 'ja' | 'depois';
   /** O que o aluno tem de fazer, nas palavras do professor. */
   descricaoPlano?: string;
+  /** Modalidade «atividade»: a atividade extra onde o aluno recupera (Rosa, out/2026). */
+  atividadePlanoId?: string;
   /** Resultado da recuperação, 0-20. Substitui o zero das aulas faltadas. */
   resultadoNota?: number;
   realizadaEm?: string;

@@ -674,6 +674,23 @@ const SECCOES: Seccao[] = [
           perfil e o bónus aparece no plano de aula seguinte da UC (21 de setembro). <b>Catering com 3 alunos</b> à hora de uma aula teórica:
           atividade extra só para os 3, com a ficha técnica e o guião; continuam a responder ao plano de aula da turma; os colegas veem a atividade só para consulta.
         </Destaque>
+
+        <H>Recuperar uma UC numa atividade extra</H>
+        <P>
+          Um aluno em recuperação (faltas acima dos 10%) pode recuperar a UC participando numa atividade extra.
+        </P>
+        <Passos itens={[
+          <><b>Quem escolhe:</b> tu, ou o aluno. Em «UC em atraso — recuperação», escolhe a modalidade «atividade» e a atividade.
+            Ou, na atividade, em «Alunos em recuperação», carrega em «Recuperar nesta atividade».</>,
+          <><b>O aluno pode candidatar-se</b> em «Atividades e concursos › Recuperar numa atividade», mesmo numa atividade só para alguns alunos.
+            Na atividade aparece «Candidatou-se para recuperar»: carregas em «Aceitar para recuperar» ou «Não aceitar» (e escolhes outra).</>,
+          <>No resumo da atividade («Confirmar participantes»), o aluno aparece marcado <b>«a recuperar a UC …»</b>.</>,
+          <><b>Só recupera se participou:</b> tens de confirmar os participantes e validar a autoavaliação dele nessa atividade.</>,
+          <>Depois, em «Registar realização e resultado», a aplicação <b>sugere a nota</b> que validaste na atividade. Tu confirmas ou corriges.</>,
+        ]} />
+        <Destaque cor="bordeaux">
+          <b>Para quem recupera, a atividade não dá bónus.</b> Serve só para recuperar a UC.
+        </Destaque>
       </>
     ),
   },

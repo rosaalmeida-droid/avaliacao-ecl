@@ -527,6 +527,13 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
     'Não te inscreves nem te avalias nessa atividade.',
     'Sem participar em nada, a nota máxima é 17; só com eventos, 18; o 20 só com um concurso.',
   ] },
+  { titulo: '9. Recuperar numa atividade', texto: [
+    'Se estás em recuperação (faltaste a mais de 10% das horas de uma UC), podes recuperar numa atividade extra.',
+    'Em «Atividades e concursos › Recuperar numa atividade», carrega em «Candidatar-me para recuperar». Podes, mesmo que a atividade seja só para alguns alunos.',
+    'O professor aceita ou escolhe outra atividade. O professor também pode escolher por ti.',
+    'Só recuperas se participares e o professor o confirmar. Autoavalias-te na atividade como os outros.',
+    'Para ti, essa atividade não dá bónus: serve só para recuperar.',
+  ] },
 ];
 
 function GuiaDoAluno({ onFechar }: { onFechar: () => void }) {
