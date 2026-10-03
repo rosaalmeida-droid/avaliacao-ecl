@@ -5,6 +5,7 @@ import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
+import { PrecosConsulta } from './EventosOrcamentos';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
@@ -1453,6 +1454,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 notaPossivel={null} />
             )}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
+            {destino === 'precos' && <div style={{ padding:'4px 14px 24px' }}><PrecosConsulta /></div>}
             {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
@@ -1504,6 +1506,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 ['fichas', 'As minhas fichas', 'da aula de hoje'],
                 ['guiao', 'Guiões de produção', 'apoio às fichas'],
                 ['kitchenflow', 'KitchenFlow', 'registos de higiene'],
+                ['precos', 'Preços das matérias-primas', 'quanto custa cada produto'],
               ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
                 <button key={d} onClick={() => setDestino(d)} style={{
                   width:'100%', background:'#fff', border:'none', borderRadius:14,

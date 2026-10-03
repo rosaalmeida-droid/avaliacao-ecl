@@ -131,7 +131,9 @@ export function EventosOrcamentos({ nome }: { nome: string }) {
 }
 
 // ── Preços: só para consulta ────────────────────────────────────
-function PrecosConsulta() {
+/** Os preços das matérias-primas, só para consultar. O mesmo ecrã em
+ *  «Eventos e orçamentos», no professor e no aluno (Rosa, out/2026). */
+export function PrecosConsulta() {
   const [pesquisa, setPesquisa] = useState('');
   const [categoria, setCategoria] = useState('');
   const revistos = useMemo(() => new Map(getPrecosRevistos().map(p => [p.id, p])), []);

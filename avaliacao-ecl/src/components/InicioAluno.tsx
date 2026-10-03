@@ -35,7 +35,7 @@ export type DestinoAluno =
   | 'entrar' | 'consultar_plano' | 'fichas' | 'guiao' | 'requisicao'
   | 'avaliar' | 'nota' | 'perfil' | 'manual' | 'calendario'
   | 'recuperacoes' | 'kitchenflow' | 'atividades'
-  | 'avisar_professor' | 'proximas';
+  | 'avisar_professor' | 'proximas' | 'precos';
 
 /** Aviso calculado a partir dos dados. Nunca texto guardado à mão. */
 export interface AvisoAluno {
