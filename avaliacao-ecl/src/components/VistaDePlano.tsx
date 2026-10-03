@@ -25,7 +25,8 @@ import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { SumarioAula } from './SumarioAula';
 import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, Gaveta, NaColuna, fraseDaAula, oQueOAlunoVe,
-  fotografiaDoPlano, diferencasEntre, enviarAlteracoesAosAlunos, mudaramAsPerguntas, alteracoesPorEnviar, EstadoDoPlano } from './PlanoGuiado';
+  fotografiaDoPlano, diferencasEntre, enviarAlteracoesAosAlunos, mudaramAsPerguntas, alteracoesPorEnviar, EstadoDoPlano, registarVersaoEnviada } from './PlanoGuiado';
+import { tipoDaTriagem } from '../contextoAula';
 import { sumarioDoPlano } from '../sumarioAutomatico';
 import { triagemDoPlano, escolheTema, obrigatoriasDaTriagem } from '../contextoAula';
 import { eventosParaPlanos } from '../eventos/modelo';
@@ -562,6 +563,22 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     const novo = t.split('Atividade fora da escola').join('Atividade extra').replace(/(Atividade extra\s*—\s*)+/g, 'Atividade extra — ').replace(/ — $/, '');
     const p = { ...plano, titulo: novo, atualizadoEm: new Date().toISOString() };
     addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+  }, [plano.id]);
+  // Atividade extra em que o professor escolheu «Prática» (ou mista, teórica)
+  // mas que ficou «atitudinal» por dentro (erro da aplicação, corrigido em
+  // out/2026): passa a ser o que o professor escolheu. É uma correção, não uma
+  // alteração do professor: não pede aos alunos que respondam outra vez.
+  React.useEffect(() => {
+    const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+    const t = atual.triagemAula;
+    if (!atual.tipoEvento || !t?.tipo || t.tipo === 'atitudinal') return;
+    const certo = tipoDaTriagem(t, false, atual.tipoPlanAula);
+    if (String(atual.tipoPlanAula || '') === certo) return;
+    const semOutrasAlteracoes = alteracoesPorEnviar(atual).length === 0;
+    const p = { ...atual, tipoPlanAula: certo, atualizadoEm: new Date().toISOString() };
+    addOrUpdatePlanoAula(p);
+    if (semOutrasAlteracoes && atual.enviadoAosAlunos) registarVersaoEnviada(p.id);
+    onPlanoActualizado(getPlanosAula().find(x => x.id === plano.id) || p);
   }, [plano.id]);
   // Plano publicado de uma aula prática: as funções de cada aluno distribuem-se
   // logo, para os alunos as verem antes da aula (plano organizacional).

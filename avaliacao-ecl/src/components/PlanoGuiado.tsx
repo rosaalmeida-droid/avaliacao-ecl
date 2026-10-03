@@ -201,7 +201,13 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const novo: any = { ...atual, triagemAula: nova };
     // O tipo da aula (os pesos da nota) e a farda e os registos acompanham a
-    // triagem. Os eventos têm as regras deles e não mudam.
+    // triagem. Também numa atividade extra: escolher «Prática» e ficar
+    // «atitudinal» no registo, na nota e no Sheets era grave (Rosa, out/2026).
+    if (atual.tipoEvento && 'tipo' in parcial) {
+      const temKnwEv = conhecimentosDaAula(atual).length > 0
+        || ((atual.compAdicionadas || []) as string[]).some(id => id.startsWith('KNW-'));
+      novo.tipoPlanAula = tipoDaTriagem(nova, temKnwEv, atual.tipoPlanAula);
+    }
     if (!atual.tipoEvento) {
       const temKnw = conhecimentosDaAula(atual).length > 0
         || ((atual.compAdicionadas || []) as string[]).some(id => id.startsWith('KNW-'));
