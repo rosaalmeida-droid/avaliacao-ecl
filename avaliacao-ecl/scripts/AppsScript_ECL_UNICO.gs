@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v23.1';
+var VERSAO = 'ECL único v23.2';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1461,6 +1461,7 @@ function organizarFichas() {
     n++;
   });
   Logger.log('Fichas escritas por extenso: ' + n);
+  try { atualizarFolhasDasTurmas(); } catch (e) { Logger.log(e); }
   Logger.log('As que só têm o índice não aparecem — vêm completas quando a aplicação as enviar.');
 }
 
@@ -1810,7 +1811,7 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 var COR_TURMA = '#7B2233';
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
 // parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
-var VISIVEIS_SEMPRE = ['TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
+var VISIVEIS_SEMPRE = ['FICHAS TÉCNICAS', 'REQUISIÇÕES (todas)', 'RECUPERAÇÕES (todas)', 'TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
 
 function porTurma(lista) {
   var m = {};
@@ -1857,6 +1858,10 @@ function atualizarFolhasDasTurmas() {
   var validacoes = porTurma(ler('VALIDACOES', {}));
   var finais = porTurma(ler('NOTAS_FINAIS', {}));
   var telemoveis = porTurma(telemoveisLigados(''));
+  var todasRecup = ler('RECUPERACOES', {});
+  var recuperacoes = porTurma(todasRecup);
+  var todosPlanos = [].concat.apply([], Object.keys(planos).map(function (t) { return planos[t]; }));
+  var porIdPlano = {}; todosPlanos.forEach(function (p) { porIdPlano[p.id] = p; });
 
   var turmas = Object.keys(alunos).sort();
   turmas.forEach(function (turma) {
@@ -1864,10 +1869,12 @@ function atualizarFolhasDasTurmas() {
       escreverSeparadorDaTurma(ss, turma, {
         alunos: alunos[turma] || [], planos: planos[turma] || [], sessoes: sessoes[turma] || [],
         presencas: presencas[turma] || [], selecoes: selecoes[turma] || [], validacoes: validacoes[turma] || [],
-        finais: finais[turma] || [], telemoveis: telemoveis[turma] || []
+        finais: finais[turma] || [], telemoveis: telemoveis[turma] || [],
+        recuperacoes: recuperacoes[turma] || [], planoPorId: porIdPlano
       }, hoje);
     } catch (e) { Logger.log('Turma ' + turma + ': ' + e); }
   });
+  try { escreverFolhasGerais(ss, { planos: todosPlanos, recuperacoes: todasRecup }); } catch (e) { Logger.log('Folhas gerais: ' + e); }
   arrumarSeparadores(ss, turmas.map(nomeDoSeparador));
 }
 
@@ -1946,6 +1953,17 @@ function escreverSeparadorDaTurma(ss, turma, d, hoje) {
     });
     vazia();
   });
+
+  // (v23.2) As recuperações dos alunos desta turma.
+  var recs = (d.recuperacoes || []);
+  if (recs.length) {
+    var porIdAluno = {}; d.alunos.forEach(function (a) { porIdAluno[a.id] = a; });
+    titulo('RECUPERAÇÕES (' + recs.length + ')', '#B5651D');
+    cabecalho(CAB_RECUPERACAO_TURMA);
+    recs.slice().sort(function (a, b) { return (Number((porIdAluno[a.alunoId] || {}).numero) || 0) - (Number((porIdAluno[b.alunoId] || {}).numero) || 0); })
+      .forEach(function (r) { junta(linhaDeRecuperacao(r, porIdAluno, d.planoPorId || {}, false)); });
+    vazia();
+  }
 
   // 3. As aulas (a mais recente primeiro)
   titulo('AS AULAS (' + aulas.length + ')', '#2F5D8A');
@@ -2228,6 +2246,130 @@ function trazerFolhaAntiga(nomeDoFicheiro, nomeDaFolha) {
   Logger.log('Copiada como «ANTIGA ' + nomeDaFolha + '». Não mexe no ficheiro antigo.');
 }
 
+// ══════════════════════════════════════════════════════════════
+// (v23.2) NADA ESCONDIDO: TUDO À VISTA E ARRUMADO
+// ══════════════════════════════════════════════════════════════
+// Rosa (out/2026): «não quero que as coisas estejam escondidas, quero que
+// estejam organizadas». O que é de cada turma fica no separador da turma.
+// O que é geral fica em folhas próprias, à vista, a seguir às turmas:
+//   FICHAS TÉCNICAS      — todas as fichas, com o guião, e onde entraram
+//                          (plano tal da turma tal, evento tal);
+//   REQUISIÇÕES (todas)  — cada requisição e para que plano ou evento foi;
+//   RECUPERAÇÕES (todas) — as recuperações de todas as turmas.
+// Depois, as fichas por extenso («F …») e, no fim, as folhas de dados onde
+// a aplicação grava (ler à vontade; não mexer).
+
+var FOLHA_INDICE_FICHAS = 'FICHAS TÉCNICAS';
+var FOLHA_LISTA_REQUISICOES = 'REQUISIÇÕES (todas)';
+var FOLHA_LISTA_RECUPERACOES = 'RECUPERAÇÕES (todas)';
+var COR_GERAL = '#2F5D8A';
+
+function listaDeIds(v) {
+  if (Array.isArray(v)) return v.map(String);
+  if (typeof v === 'string' && v) { try { var j = JSON.parse(v); if (Array.isArray(j)) return j.map(String); } catch (e) {} return v.split(/[;,]/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  return [];
+}
+
+function diaPT(s) { var t = String(s || '').slice(0, 10).split('-'); return t.length === 3 ? t[2] + '/' + t[1] + '/' + t[0] : String(s || ''); }
+
+/** Escreve uma folha geral: título, cabeçalho e linhas (a última coluna pode ser um link). */
+function escreverFolhaGeral(ss, nome, titulo, cab, linhas, larguras, links) {
+  var f = ss.getSheetByName(nome) || ss.insertSheet(nome);
+  f.clear();
+  f.getRange(1, 1).setValue(titulo + '  ·  atualizado a ' + agoraLisboa() + '  ·  só para ler: refaz-se sozinho de 10 em 10 minutos')
+    .setFontWeight('bold').setFontColor(COR_GERAL);
+  f.getRange(2, 1, 1, cab.length).setValues([cab]).setFontWeight('bold').setBackground(COR_GERAL).setFontColor('#ffffff').setWrap(true);
+  if (linhas.length) {
+    f.getRange(3, 1, linhas.length, cab.length).setNumberFormat('@')
+      .setValues(linhas.map(function (l) { return l.map(function (v) { return v === null || v === undefined ? '' : String(v); }); }))
+      .setWrap(true).setVerticalAlignment('top');
+    if (links) {
+      var col = cab.length;
+      f.getRange(3, col, links.length, 1).setRichTextValues(links.map(function (gid, i) {
+        return [gid === null || gid === undefined
+          ? SpreadsheetApp.newRichTextValue().setText(String(linhas[i][col - 1] || '')).build()
+          : SpreadsheetApp.newRichTextValue().setText('abrir').setLinkUrl('#gid=' + gid).build()];
+      }));
+    }
+  }
+  f.setFrozenRows(2);
+  (larguras || []).forEach(function (w, i) { f.setColumnWidth(i + 1, w); });
+  try { f.setTabColor(COR_GERAL); } catch (e) {}
+  return f;
+}
+
+/** As folhas gerais: fichas técnicas, requisições e recuperações. */
+function escreverFolhasGerais(ss, dados) {
+  ss = ss || ficheiro();
+  dados = dados || {};
+  var planos = (dados.planos || ler('PLANOS', {})).filter(function (p) { return p.estado !== 'arquivado'; });
+  var eventos = ler('EVENTOS', {});
+  var fichas = ler('FICHAS', {}).filter(function (f) { return f.nomePrato; });
+  var requisicoes = ler('REQUISICOES', {});
+  var recuperacoes = dados.recuperacoes || ler('RECUPERACOES', {});
+  var alunos = {}; (dados.alunos || ler('ALUNOS', {})).forEach(function (a) { alunos[a.id] = a; });
+  var planoPorId = {}; planos.forEach(function (p) { planoPorId[p.id] = p; });
+  var eventoPorId = {}; eventos.forEach(function (e) { eventoPorId[e.id] = e; });
+  var fichaPorId = {}; fichas.forEach(function (f) { fichaPorId[f.id] = f; });
+  var descPlano = function (p) { return (p.turmaId || '') + ' · ' + diaPT(p.data) + ' · ' + (p.titulo || 'aula'); };
+  var descEvento = function (e) { return 'Evento «' + (e.nome || e.Evento || 'sem nome') + '»' + (e.data ? ' · ' + diaPT(e.data) : ''); };
+
+  // 1. Fichas técnicas: onde entrou cada uma.
+  var usos = {};
+  var usar = function (id, texto) { if (!id) return; (usos[id] = usos[id] || []); if (usos[id].indexOf(texto) < 0) usos[id].push(texto); };
+  planos.forEach(function (p) { listaDeIds(p.fichasIds).forEach(function (id) { usar(id, 'Plano: ' + descPlano(p)); }); });
+  eventos.forEach(function (e) {
+    listaDeIds(e.fichasIds).forEach(function (id) { usar(id, descEvento(e)); });
+    (Array.isArray(e.orcamentos) ? e.orcamentos : []).forEach(function (o) { listaDeIds(o.fichasIds).forEach(function (id) { usar(id, descEvento(e) + ' (orçamento «' + (o.nome || '') + '»)'); }); });
+  });
+  fichas.sort(function (a, b) { return String(a.nomePrato).localeCompare(String(b.nomePrato), 'pt'); });
+  var lf = [], gf = [];
+  fichas.forEach(function (fi) {
+    var fo = ss.getSheetByName(fi.folha || nomeDaFolhaDaFicha(fi));
+    lf.push([fi.nomePrato, fi.classificacao || '', Array.isArray(fi.ucsAssociadas) ? fi.ucsAssociadas.join(', ') : (fi.ucsAssociadas || ''),
+      fi.elaboradoPor || '', diaPT(fi.data), fi.numPorcoes || '', fi.textoGuia ? 'Sim' : 'Não',
+      (usos[fi.id] || []).join('\n') || 'Ainda não entrou em nenhum plano nem evento', fo ? 'abrir' : 'sem folha: correr organizarFichas']);
+    gf.push(fo ? fo.getSheetId() : null);
+  });
+  escreverFolhaGeral(ss, FOLHA_INDICE_FICHAS, 'FICHAS TÉCNICAS E GUIÕES (' + fichas.length + ') · «abrir» mostra a ficha por extenso, com o guião no fim',
+    ['Ficha', 'Classificação', 'UC', 'Elaborado por', 'Data', 'Porções', 'Tem guião', 'Onde entrou', 'Ficha por extenso'], lf,
+    [230, 120, 100, 140, 85, 65, 70, 380, 150], gf);
+
+  // 2. Requisições: para que plano ou evento foi cada uma.
+  requisicoes.sort(function (a, b) { return String(b.dataAula || b.data || '').localeCompare(String(a.dataAula || a.data || '')); });
+  var lr = requisicoes.map(function (r) {
+    var p = planoPorId[r.planoAulaId], e = eventoPorId[r.eventoId];
+    var para = e ? descEvento(e) : p ? 'Plano: ' + descPlano(p) : (r.planoTitulo ? 'Plano: ' + r.planoTitulo : (r.planoAulaId ? 'Plano ' + r.planoAulaId + ' (já não existe)' : '—'));
+    var nomesFichas = listaDeIds(r.fichasIds).map(function (id) { return fichaPorId[id] ? fichaPorId[id].nomePrato : ''; }).filter(Boolean).join(', ');
+    var custo = Number(r.custoTotal);
+    return [r.numero || '', diaPT(r.dataAula || r.data), r.turmaId || '', para, nomesFichas, (r.linhas || []).length || r.nLinhas || '',
+      isNaN(custo) || !custo ? '' : String(Math.round(custo * 100) / 100).replace('.', ',') + ' €', r.estado || ''];
+  });
+  escreverFolhaGeral(ss, FOLHA_LISTA_REQUISICOES, 'REQUISIÇÕES (' + requisicoes.length + ') · os produtos de cada uma estão na folha REQUISICAO_LINHAS',
+    ['Nº', 'Data', 'Turma', 'Para', 'Fichas', 'Produtos', 'Custo total', 'Estado'], lr, [70, 90, 80, 360, 260, 75, 95, 90]);
+
+  // 3. Recuperações de todas as turmas.
+  var lrec = recuperacoes.slice().sort(function (a, b) { return String(a.turmaId).localeCompare(String(b.turmaId)) || (Number((alunos[a.alunoId] || {}).numero) || 0) - (Number((alunos[b.alunoId] || {}).numero) || 0); })
+    .map(function (r) { return linhaDeRecuperacao(r, alunos, planoPorId, true); });
+  escreverFolhaGeral(ss, FOLHA_LISTA_RECUPERACOES, 'RECUPERAÇÕES (' + recuperacoes.length + ') · de todas as turmas (cada turma tem as suas no seu separador)',
+    CAB_RECUPERACAO_GERAL, lrec, [80, 45, 200, 90, 90, 110, 300, 90, 80, 90, 220]);
+}
+
+var NOME_ESTADO_RECUP = { em_curso: 'Em curso', concluida: 'Recuperado', pendente: 'Pendente', gerada: 'Por decidir', validada: 'Validada', nao_validada: 'Não validada', submetida: 'Entregue', em_analise: 'Em análise', devolvida: 'Devolvida' };
+var NOME_MODALIDADE = { pratico: 'Exercício prático', teorico: 'Trabalho teórico', atividade: 'Numa atividade', outra: 'Outra' };
+var CAB_RECUPERACAO_GERAL = ['Turma', 'Nº', 'Aluno', 'UC', 'Estado', 'Como recupera', 'O que tem de fazer', 'Prazo', 'Resultado', 'Feita em', 'Atividade'];
+var CAB_RECUPERACAO_TURMA = CAB_RECUPERACAO_GERAL.slice(1);
+
+function linhaDeRecuperacao(r, alunos, planoPorId, comTurma) {
+  var a = alunos[r.alunoId] || {};
+  var atv = r.atividadePlanoId && planoPorId[r.atividadePlanoId];
+  var estado = r.quando === 'depois' && !r.modalidade && r.estado !== 'concluida' ? 'Fica para depois da UC' : (NOME_ESTADO_RECUP[r.estado] || r.estado || '');
+  var linha = [a.numero || '', a.nome || r.nomeAluno || r.alunoId || '', r.ucId || '', estado, NOME_MODALIDADE[r.modalidade] || r.modalidade || '',
+    r.descricaoPlano || '', diaPT(r.dataLimite), r.resultadoNota === undefined || r.resultadoNota === '' ? '' : String(r.resultadoNota).replace('.', ','),
+    diaPT(r.realizadaEm), atv ? diaPT(atv.data) + ' · ' + (atv.titulo || '') : ''];
+  return comTurma ? [r.turmaId || ''].concat(linha) : linha;
+}
+
 /** Põe as turmas à frente e esconde o resto (não apaga). Os separadores
  *  «TURMA …» da v20 saem: foram substituídos por estes. */
 function arrumarSeparadores(ss, nomesTurmas) {
@@ -2235,16 +2377,26 @@ function arrumarSeparadores(ss, nomesTurmas) {
     var n = f.getName();
     if (n.indexOf('TURMA ') === 0 && nomesTurmas.indexOf(n) < 0) { try { ss.deleteSheet(f); } catch (e) { Logger.log('Não apaguei ' + n + ': ' + e); } }
   });
-  var visiveis = nomesTurmas.concat(VISIVEIS_SEMPRE);
+  // (v23.2) Nada escondido, tudo por ordem: as turmas; as folhas gerais;
+  // as fichas por extenso («F …»); e, no fim, as folhas de dados onde a
+  // aplicação grava. Só a folha dos códigos de entrada fica escondida.
+  var nomes = ss.getSheets().map(function (f) { return f.getName(); });
+  var dasFichas = nomes.filter(function (n) { return /^F /.test(n); }).sort(function (a, b) { return a.localeCompare(b, 'pt'); });
+  var deDados = ORDEM_FOLHAS.map(function (p) { return p[0]; }).filter(function (n) { return VISIVEIS_SEMPRE.indexOf(n) < 0; });
+  var ordem = nomesTurmas.concat(VISIVEIS_SEMPRE).concat(dasFichas).concat(deDados);
+  nomes.forEach(function (n) { if (ordem.indexOf(n) < 0 && n !== FOLHA_CODIGOS) ordem.push(n); });
   var pos = 1;
-  visiveis.forEach(function (n) {
+  ordem.forEach(function (n) {
     var f = ss.getSheetByName(n);
     if (!f) return;
-    try { f.showSheet(); ss.setActiveSheet(f); ss.moveActiveSheet(pos++); } catch (e) {}
+    try {
+      if (f.isSheetHidden()) f.showSheet();
+      if (f.getIndex() !== pos) { ss.setActiveSheet(f); ss.moveActiveSheet(pos); }
+      pos++;
+    } catch (e) { Logger.log('Não arrumei ' + n + ': ' + e); }
   });
-  ss.getSheets().forEach(function (f) {
-    if (visiveis.indexOf(f.getName()) < 0 && !f.isSheetHidden()) { try { f.hideSheet(); } catch (e) { Logger.log('Não escondi ' + f.getName() + ': ' + e); } }
-  });
+  var cod = ss.getSheetByName(FOLHA_CODIGOS);
+  if (cod && !cod.isSheetHidden()) try { cod.hideSheet(); } catch (e) {}
   var primeira = ss.getSheetByName(nomesTurmas[0] || 'LEIA-ME');
   if (primeira) try { ss.setActiveSheet(primeira); } catch (e) {}
 }
@@ -2628,11 +2780,13 @@ var ORDEM_FOLHAS = [
 var LEIA_ME = [
   ['Folha', 'O que tem'],
   ['1º BCR, 3º ACP, …', 'Um separador por turma, só para ler: os alunos (presenças, faltas, atrasos, autoavaliações, média), as notas de cada UC (um aluno por linha, uma aula por coluna) e as aulas. Refaz-se sozinho de 10 em 10 minutos.'],
+  ['FICHAS TÉCNICAS', 'Todas as fichas técnicas, com um link «abrir» para cada uma (a ficha por extenso, com o guião no fim). As folhas «F …» são as fichas por extenso.'],
   ['TABELA_PRECOS', 'A tabela de preços completa da aplicação (todas as matérias-primas, com os preços que a aplicação usa). Atualiza-se sozinha quando um professor abre a aplicação. Sempre à vista.'],
   ['AUDITORIA', 'O que estava nos ficheiros antigos e não está aqui (corre auditarFolhasAntigas). As linhas vermelhas são as importantes.'],
   ['PRECOS / PRECOS_A_REVER', 'As matérias-primas com os preços revistos, e as que os professores pediram para rever. Sempre à vista.'],
   ['MATERIAS_PRIMAS', 'As matérias-primas que os professores acrescentaram na requisição. Chegam a todos os aparelhos. Sempre à vista.'],
-  ['Folhas escondidas', 'As folhas de dados (ALUNOS, PLANOS, PRESENCAS…) e as fichas por extenso ficam escondidas, não apagadas: a aplicação grava nelas. Para as ver: menu Ver › Folhas ocultas. Não apagar.'],
+  ['FICHAS TÉCNICAS · REQUISIÇÕES (todas) · RECUPERAÇÕES (todas)', 'As coisas gerais da escola, à vista a seguir às turmas: cada ficha diz onde entrou (plano, turma, evento); cada requisição diz para que plano ou evento foi; as recuperações de todas as turmas. Refazem-se sozinhas de 10 em 10 minutos.'],
+  ['Folhas de dados (no fim)', 'ALUNOS, PLANOS, PRESENCAS, FICHAS, RECUPERACOES… : é onde a aplicação grava. Estão à vista, no fim; pode ler-se à vontade, mas não mexer nem apagar. Só a folha dos códigos de entrada fica escondida.'],
   ['ALUNOS', 'Os alunos de cada turma (nome, número, PIN).'],
   ['PLANOS', 'Os planos de aula: dia da aula, horas, unidade, estado (rascunho/publicado) e quando foram criados.'],
   ['SESSOES', 'As aulas abertas aos alunos: quando abriu e quando fechou.'],
