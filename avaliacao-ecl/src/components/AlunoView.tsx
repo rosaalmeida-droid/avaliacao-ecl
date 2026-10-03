@@ -5,7 +5,8 @@ import { conhecimentosDaAula } from '../compatECL';
 import React, { useState, useRef, useEffect } from 'react';
 import { lerAula, aulaRapidaDisponivel, contadorDaTurma, getPlanosAula } from '../backend';
 import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
-import { grupoDoAluno, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
+import { PrecosConsulta } from './EventosOrcamentos';
+import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano } from '../rotuloPlano';
@@ -564,7 +565,9 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
   try {
     const em = localStorage.getItem(`avaliacao_submetida_${plano.id}_${alunoId}`);
     const pedido = plano?.pedirDeNovoEm;
-    if (em && pedido && em < pedido) return false;
+    // Depois de o professor pedir outra vez, só conta uma resposta à versão
+    // nova do plano (não a hora do telemóvel, que pode estar errada).
+    if (pedido) return !!ultimaResposta(alunoId, plano.id);
     return !!em;
   } catch { return false; }
 }
@@ -1451,6 +1454,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 notaPossivel={null} />
             )}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
+            {destino === 'precos' && <div style={{ padding:'4px 14px 24px' }}><PrecosConsulta /></div>}
             {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
@@ -1502,6 +1506,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 ['fichas', 'As minhas fichas', 'da aula de hoje'],
                 ['guiao', 'Guiões de produção', 'apoio às fichas'],
                 ['kitchenflow', 'KitchenFlow', 'registos de higiene'],
+                ['precos', 'Preços das matérias-primas', 'quanto custa cada produto'],
               ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
                 <button key={d} onClick={() => setDestino(d)} style={{
                   width:'100%', background:'#fff', border:'none', borderRadius:14,
@@ -1541,6 +1546,10 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
   const versao = String((plano as any).atualizadoEm || '');
   const versaoAoAbrir = React.useRef(versao);
   const mudouDesdeQueAbriu = !!versaoAoAbrir.current && versao !== versaoAoAbrir.current;
+  // Esteve numa atividade ligada a esta aula e o professor disse que
+  // responde só à atividade (Rosa, out/2026).
+  const soAtividade: any = getPlanosAula().find((a: any) => a.aulaLigada === plano.id && a.tambemRespondemAula === false
+    && participantesDoEvento(a).includes(aluno.id));
   const [secAberta, setSecAberta] = React.useState<string>('orientacao');
   /** O passo abre num ecrã cheio, por cima da aula; ao acabar, segue para o próximo. */
   const [ecra, setEcra] = React.useState(false);
@@ -1789,7 +1798,13 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
                 O professor atualizou esta aula. As perguntas abaixo já são as novas.
               </div>
             )}
-            {secAberta==='avaliacao' && (
+            {secAberta==='avaliacao' && soAtividade && (
+              <div style={{ padding:'14px 16px', borderRadius:12, background:'#f3eefa', border:'1.5px solid #6B3FA0', fontSize:15, lineHeight:1.5 }}>
+                <b>Hoje estiveste na atividade «{soAtividade.titulo}».</b> O professor disse que respondes só à atividade:
+                encontra-a em «Atividades e concursos». Não precisas de responder a esta aula.
+              </div>
+            )}
+            {secAberta==='avaliacao' && !soAtividade && (
               <SecaoAvaliacao key={versao} fichas={fichas} plano={plano} aluno={aluno} abrirLogo={ecra}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
             )}
@@ -3846,13 +3861,37 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                     {c.parte}
                   </div>
                 )}
-                <button onClick={() => setTemaEscolhido(temaEscolhido === c.n ? null : c.n)} style={estiloOpcao(temaEscolhido === c.n)}>
+                <button onClick={() => { const n = temaEscolhido === c.n ? null : c.n; setTemaEscolhido(n); marcarTemaNoGrupo(plano.id, aluno.id, n); }} style={estiloOpcao(temaEscolhido === c.n)}>
                   {radio(temaEscolhido === c.n)}
                   <span><span style={{ color:'rgba(26,23,20,0.5)' }}>{c.n}. </span>{c.titulo}</span>
                 </button>
               </React.Fragment>
             );
           })}
+          {/* No mesmo grupo, o mesmo tema (Rosa, out/2026). */}
+          {(() => {
+            const colegas = temasDosColegas(plano.id, aluno.id);
+            const outro = colegas.find(x => x.tema !== temaEscolhido);
+            if (!outro || temaEscolhido == null) return null;
+            const cap = regras.temasPossiveis.find(t => t.capitulo.n === outro.tema)?.capitulo;
+            return (
+              <div style={{ marginTop:14, padding:'12px 14px', borderRadius:12, background:'#fdf0ef', border:'2px solid #c0392b' }}>
+                <div style={{ fontSize:15, fontWeight:800, color:'#8e2418' }}>
+                  O teu colega {outro.nome} escolheu outro tema: {outro.tema}. {cap?.titulo || ''}
+                </div>
+                <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.75)', marginTop:4, lineHeight:1.5 }}>
+                  No mesmo grupo, o tema é o mesmo. Tens a certeza do tema que escolheste? Se não estiver certo, fala com o professor.
+                </div>
+                {cap && (
+                  <button onClick={() => { setTemaEscolhido(outro.tema); marcarTemaNoGrupo(plano.id, aluno.id, outro.tema); }}
+                    style={{ marginTop:10, padding:'9px 14px', borderRadius:10, border:'1px solid #c0392b', background:'#fff', color:'#c0392b',
+                      fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                    Escolher o mesmo tema do {outro.nome}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

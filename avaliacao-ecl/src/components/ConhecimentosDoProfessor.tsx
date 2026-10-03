@@ -54,6 +54,12 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
           ? 'Cada aluno escolhe o seu tema entre os conteúdos marcados. Sem nada marcado, entram todos os do manual.'
           : 'Com 1 ou 2 conteúdos, o aluno responde a cada indicador. Com mais (ou o manual todo), o aluno diz qual trabalhou e responde aos desse.'}
       </div>
+      {trabalho && new Set(lista.filter(k => !removidas.includes(k.id)).map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null)).size === 1 && (
+        <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 10, padding: '8px 12px', marginBottom: 8,
+          fontSize: 13.5, fontWeight: 700, color: '#8e2418', lineHeight: 1.45 }}>
+          Os alunos escolhem o tema, mas só marcaste um conteúdo: todos ficam com o mesmo. Marca mais conteúdos ou o manual todo.
+        </div>
+      )}
       {!trabalho && proximo && !lista.some(k => k.id.startsWith(`KNW-P-M-${proximo.ficheiro}-${proximo.capitulo.n}-`)) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: `1px solid ${azul}`,
           borderRadius: 10, padding: '8px 12px', marginBottom: 8 }}>

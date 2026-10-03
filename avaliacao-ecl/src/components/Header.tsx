@@ -55,7 +55,7 @@ const WHITE        = '#ffffff';
 
 // ── Tipo de vistas ─────────────────────────────────────────────
 // 'inicio' é o painel de blocos — o ecrã de entrada do professor.
-export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'avaliar_evento' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda';
+export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'avaliar_evento' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda' | 'precos';
 
 // ── Ícones SVG inline ─────────────────────────────────────────
 const Icons = {
@@ -104,6 +104,7 @@ export const NAV: NavItem[] = [
   { id: 'biblioteca',          label: 'Biblioteca de fichas', icon: Icons.biblioteca, secao: 'Consultar' },
   { id: 'manual',              label: 'Manual do cozinheiro', icon: Icons.manual,     secao: 'Consultar' },
   { id: 'manuais_aluno',       label: 'Manuais do aluno',     icon: Icons.manual,     secao: 'Consultar' },
+  { id: 'precos',              label: 'Preços das matérias-primas', icon: Icons.req, secao: 'Consultar' },
   { id: 'cronograma',          label: 'Cronograma',           icon: Icons.cronograma, secao: 'Consultar' },
   { id: 'guia',                label: 'Guiões',               icon: Icons.guia,       secao: 'Mais' },
   { id: 'requisicao',          label: 'Requisições',          icon: Icons.req,        secao: 'Mais' },

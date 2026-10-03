@@ -26,6 +26,7 @@ import {
 import { ecrasDoAluno, pesosDaAula, resumoParaComparar } from '../autoavaliacaoDaAula';
 import { conhecimentosDaAula } from '../compatECL';
 import { sumarioDoPlano } from '../sumarioAutomatico';
+import { capituloDoCampo, rotuloConteudo } from '../bancoManuais';
 
 const C = {
   tinta: '#1F1A16', suave: 'rgba(26,23,20,0.62)', linha: 'rgba(26,23,20,0.12)',
@@ -534,6 +535,7 @@ interface EnvioRegistado {
   em: string; triagem?: TriagemAula | null; ecras: string[]; fichas: string[];
   quando?: string; ucId?: string; titulo?: string; tipo?: string; manual?: string[]; sumario?: string;
   competencias?: string[]; faltas?: boolean;
+  grupos?: string;
 }
 
 function fotografia(plano: PlanoAula): EnvioRegistado {
@@ -553,7 +555,13 @@ function fotografia(plano: PlanoAula): EnvioRegistado {
     sumario,
     competencias: [...(p.compRemovidas || []).map((x: string) => '-' + x), ...(p.compAdicionadas || []).map((x: string) => '+' + x)].sort(),
     faltas: p.contaAssiduidade !== false,
+    grupos: textoGrupos(plano),
   };
+}
+/** Os grupos formados pelos alunos, em texto (para o «o que mudou»). */
+function textoGrupos(plano: PlanoAula): string {
+  const g = (plano as any).gruposAlunos;
+  return g?.ativo ? `Ligados (até ${Number(g.tamanho) || 4} por grupo)` : 'Desligados';
 }
 
 function diferencas(antes: EnvioRegistado, agora: EnvioRegistado): { sinal: '+' | '−' | '~'; texto: string }[] {
@@ -582,7 +590,74 @@ function diferencas(antes: EnvioRegistado, agora: EnvioRegistado): { sinal: '+' 
   if (antes.sumario !== undefined && antes.sumario !== agora.sumario) out.push({ sinal: '~', texto: 'Sumário' });
   if (antes.competencias !== undefined && !igual(antes.competencias, agora.competencias)) out.push({ sinal: '~', texto: 'Competências (tiradas ou repostas)' });
   if (antes.faltas !== undefined && antes.faltas !== agora.faltas) out.push({ sinal: '~', texto: `Faltas e atrasos: ${agora.faltas ? 'contam' : 'não contam'}` });
+  // Os grupos mudam-se num sítio à parte: o professor tem de o ver aqui (Rosa, out/2026).
+  if ((antes.grupos ?? 'Desligados') !== agora.grupos) out.push({ sinal: '~', texto: `Grupos formados pelos alunos: «${antes.grupos ?? 'Desligados'}» → «${agora.grupos}»` });
   return out;
+}
+
+/** Regra (Rosa, out/2026): só se pede aos alunos que respondam outra vez
+ *  quando muda AQUILO A QUE RESPONDEM — as perguntas, o tipo de aula, os
+ *  conteúdos do manual, as competências, as fichas ou como é a aula. O dia,
+ *  as horas, o título e o sumário chegam-lhes sozinhos e não mudam a resposta. */
+export function mudaramAsPerguntas(antes: EnvioRegistado, agora: EnvioRegistado): boolean {
+  const igual = (a: any, b: any) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const t = (x: any) => x ? { onde: x.onde, cozinham: x.cozinham, trabalho: x.trabalho, servico: x.servico } : null;
+  if (!igual([...antes.ecras].sort(), [...agora.ecras].sort())) return true;
+  if (!igual([...antes.fichas].sort(), [...agora.fichas].sort())) return true;
+  if (antes.triagem && !igual(t(antes.triagem), t(agora.triagem))) return true;
+  if (antes.tipo !== undefined && antes.tipo !== agora.tipo) return true;
+  if (antes.manual !== undefined && !igual(antes.manual, agora.manual)) return true;
+  if (antes.competencias !== undefined && !igual(antes.competencias, agora.competencias)) return true;
+  return false;
+}
+
+/** O estado todo do plano, como fica, para o professor confirmar antes de
+ *  finalizar as alterações (Rosa, out/2026). As mudanças de agora vêm em cima. */
+export function EstadoDoPlano({ plano, mudancas }: { plano: PlanoAula; mudancas: { sinal: string; texto: string }[] }) {
+  const p: any = plano;
+  const f = fotografia(plano);
+  const tri = triagemDoPlano(plano);
+  const fichas = getFichasProducao().filter(x => (plano.fichasIds || []).includes(x.id)).map(x => x.nomePrato);
+  const caps = [...new Set(conhecimentosDaAula(plano).map(k => capituloDoCampo(k.id)).filter(Boolean)
+    .map(c => `${c!.capitulo.n}. ${rotuloConteudo(c!.capitulo)}`))];
+  const dia = String(plano.data || '').slice(0, 10).split('-').reverse().join('/');
+  const linha = (rotulo: string, valor: React.ReactNode) => (
+    <div style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(26,23,20,0.08)', fontSize: 14 }}>
+      <div style={{ width: 130, flexShrink: 0, color: 'rgba(26,23,20,0.55)', fontWeight: 600 }}>{rotulo}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>{valor}</div>
+    </div>
+  );
+  return (
+    <div>
+      {mudancas.length > 0 && (
+        <div style={{ background: '#FDF0E6', border: '1.5px solid #e8c98f', borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#7A3E0C', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>O que mudaste agora</div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
+            {mudancas.map((d, i) => <li key={i}>{d.texto}</li>)}
+          </ul>
+        </div>
+      )}
+      <div style={{ fontSize: 13, fontWeight: 800, color: 'rgba(26,23,20,0.55)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>O plano como fica</div>
+      {linha('Aula', `${plano.titulo || '—'}`)}
+      {linha('Quando', `${dia} · ${p.horaInicio || '?'}–${p.horaFim || '?'}`)}
+      {linha('Unidade', plano.ucId || '—')}
+      {linha('Tipo de aula', f.tipo ? (TEXTO_TIPO as any)[f.tipo] || f.tipo : '—')}
+      {tri && linha('Como é', `${TEXTO_ONDE[tri.onde]} · ${tri.cozinham ? 'cozinham' : 'não cozinham'} · ${TEXTO_TRABALHO[tri.trabalho]}`)}
+      {tri?.modo && linha('Trabalho', TEXTO_MODO[tri.modo])}
+      {caps.length > 0 && linha('Conteúdos do manual', caps.length > 6 ? `${caps.length} conteúdos (${caps.slice(0, 3).join(' · ')}…)` : caps.join(' · '))}
+      {linha('Fichas', fichas.length ? fichas.join(' · ') : 'nenhuma')}
+      {linha('Faltas e atrasos', f.faltas ? 'contam' : 'não contam')}
+      {linha('Grupos', (() => {
+        const gs = gruposDaAula(plano.id);
+        return <>{f.grupos}{gs.length > 0 && (
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.65)', marginTop: 2 }}>
+            {gs.map(g => `${g.nome}: ${g.membros.map(m => String(m.nomeAluno || '').split(' ')[0] || '?').join(', ')}`).join(' · ')}
+          </div>)}</>;
+      })())}
+      {linha('O aluno responde a', `${f.ecras.length} pergunta${f.ecras.length === 1 ? '' : 's'}`)}
+      {f.sumario && linha('Sumário', <span style={{ whiteSpace: 'pre-wrap' }}>{f.sumario}</span>)}
+    </div>
+  );
 }
 
 /** Para comparar o plano antes e depois de o mudar (ecrã de editar). */
@@ -623,7 +698,8 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   const mudou = registado ? diferencas(registado, agora) : [];
   // Os que já responderam (às perguntas que tinham antes destas alterações).
   const responderam = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
-  const [pedirOutraVez, setPedirOutraVez] = useState(true);
+  // Regra (Rosa, out/2026): mudou aquilo a que respondem → respondem outra vez, sempre.
+  const pedirOutraVez = !!registado && mudaramAsPerguntas(registado, agora);
   const [enviado, setEnviado] = useState(false);
   const cart = useCartao(mudou.length ? { border: `2px solid ${C.ambarL}` } : {});
 
@@ -669,11 +745,11 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
                 <b>{responderam} aluno{responderam === 1 ? ' já respondeu' : 's já responderam'} às perguntas antigas.</b> A nota que já
                 deste continua a contar até validares a nova.
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 14.5, fontWeight: 600, cursor: 'pointer' }}>
-                <input type="checkbox" checked={pedirOutraVez} onChange={e => setPedirOutraVez(e.target.checked)}
-                  style={{ width: 19, height: 19 }} />
-                Pedir {responderam === 1 ? 'a este aluno que responda' : `a estes ${responderam} que respondam`} outra vez
-              </label>
+              <div style={{ fontSize: 14.5, fontWeight: 700 }}>
+                {pedirOutraVez
+                  ? `Mudaram as perguntas: ${responderam === 1 ? 'este aluno vai responder' : `estes ${responderam} vão responder`} outra vez.`
+                  : 'As perguntas não mudaram: não precisam de responder outra vez.'}
+              </div>
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

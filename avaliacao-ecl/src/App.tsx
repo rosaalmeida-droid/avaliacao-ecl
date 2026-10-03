@@ -128,7 +128,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
   ucsPorFechar, confirmarEReenviar, estadoDaEspera, vigiarAlteracoes, reenviarPresencasAntigas, planoPorConfirmar, juntarDaBase, esquecerEntrada } from './backend';
 import { ouvirTurmaNaBase } from './baseDeDados';
-import { EventosOrcamentos } from './components/EventosOrcamentos';
+import { EventosOrcamentos, PrecosConsulta } from './components/EventosOrcamentos';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -752,6 +752,7 @@ function AppInterno() {
               onAbrirPlano={(p) => abrirPlano(p)} />}
             {vistaGlobal === 'abrir_aula' && <AbrirAulas turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'cronograma' && <CronogramaTab turmaId={turmaId} />}
+            {vistaGlobal === 'precos' && <div style={{ padding: '4px 0 24px' }}><PrecosConsulta /></div>}
             {/* Dicionário movido para o ecrã do aluno */}
           </>
 

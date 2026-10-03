@@ -110,7 +110,11 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   // exemplo), o aluno diz qual trabalhou, em vez de responder a todos.
   const temTema = !ehAtitudinal && (escolheTema(triagem) || marcados.size > 2);
   const md = temTema ? manualDaUC(p.ucId) : null;
-  const temasPossiveis = md ? md.capitulos.filter(c => !marcados.size || marcados.has(c.n)).map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
+  // O tema que o aluno já trabalha (trabalho que continua) aparece sempre,
+  // mesmo que não esteja entre os marcados: antes ficava escolhido por trás,
+  // sem o aluno o ver nem os indicadores dele (Rosa, out/2026).
+  const temasPossiveis = md ? md.capitulos.filter(c => !marcados.size || marcados.has(c.n) || c.n === opts.temaEscolhido)
+    .map(c => ({ ficheiro: md.ficheiro, capitulo: c })) : [];
   // Os critérios são os das fases em que o trabalho está hoje: a oral só na
   // aula em que se apresenta; na investigação, os da pesquisa.
   const fases = temTema ? fasesDoTrabalho(triagem) : [];

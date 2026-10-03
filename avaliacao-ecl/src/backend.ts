@@ -724,8 +724,8 @@ function juntarSelecoes(dados: any[]): void {
   const merged = [...locais];
   for (const s of dados) {
     const idx = merged.findIndex((x: SelecaoAluno) => x.id === s.id);
-    if (idx < 0) merged.push(s);
-    else if ((s.criadaEm || '') > (merged[idx].criadaEm || '')) merged[idx] = s;
+    if (idx < 0) { merged.push(s); continue; }
+    if (quandoFoi(s.criadaEm) > quandoFoi(merged[idx].criadaEm)) merged[idx] = s;
   }
   save(KEYS.selecoes, merged);
 }
@@ -2941,7 +2941,7 @@ export function getSelecoes(): SelecaoAluno[] {
   if (!pedidos.size) return todas;
   return todas.filter(s => {
     const em = pedidos.get(s.planoAulaId || '');
-    return !em || String(s.criadaEm || '') >= em;
+    return !em || respostaDepoisDoPedido(s, em);
   });
 }
 
@@ -2975,9 +2975,21 @@ export function validacaoDaSelecao(s: { id: string; alunoId?: string; planoAulaI
     .sort((a: any, b: any) => quandoFoi(b.validadoEm) - quandoFoi(a.validadoEm))[0];
   // Respondeu outra vez depois de o professor pedir: a validação antiga não
   // é desta resposta (continua a contar para a nota até haver a nova).
-  const pedido = v && s.criadaEm ? (getPlanosAula().find(p => p.id === s.planoAulaId) as any)?.pedirDeNovoEm : undefined;
-  if (v && pedido && quandoFoi(s.criadaEm) >= quandoFoi(pedido) && quandoFoi((v as any).validadoEm) < quandoFoi(pedido)) return undefined;
+  const pedido = v && (s.criadaEm || (s as any).versaoPlano) ? (getPlanosAula().find(p => p.id === s.planoAulaId) as any)?.pedirDeNovoEm : undefined;
+  // «Resposta nova» conta pela versão do plano a que o aluno respondeu (a hora
+  // do professor); só as respostas antigas, sem versão, usam a hora do
+  // telemóvel do aluno, que pode estar adiantada ou atrasada.
+  const respostaNova = pedido ? respostaDepoisDoPedido(s, pedido) : false;
+  if (v && pedido && respostaNova && quandoFoi((v as any).validadoEm) < quandoFoi(pedido)) return undefined;
   return v;
+}
+/** A resposta foi dada depois de o professor pedir que respondessem outra vez?
+ *  Conta a versão do plano a que o aluno respondeu (a hora do professor); só
+ *  as respostas antigas, sem versão, usam a hora do telemóvel do aluno, que
+ *  pode estar adiantada ou atrasada. */
+export function respostaDepoisDoPedido(s: { criadaEm?: string }, pedido: string): boolean {
+  const versao = (s as any).versaoPlano;
+  return versao ? quandoFoi(versao) >= quandoFoi(pedido) : quandoFoi(s.criadaEm) >= quandoFoi(pedido);
 }
 /** Uma data em milissegundos, venha ela como vier (texto ISO ou do Sheets). */
 function quandoFoi(x: unknown): number {
@@ -3073,6 +3085,8 @@ function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
     atitudes: s.atitudes,
     autoavaliacoes: s.autoavaliacoes,
     criadaEm: s.criadaEm,
+    // A versão do plano a que respondeu (out/2026).
+    ...((s as any).versaoPlano ? { versaoPlano: (s as any).versaoPlano } : {}),
   };
 }
 
@@ -8006,6 +8020,10 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
         (json?.dados || []).forEach((x: any) => {
           ids.add(String(x.id));
           if (tipo === 'plano') versaoNoSheets.set(String(x.id), Date.parse(String(x.atualizadoEm || '')));
+          // A autoavaliação: a que lá está tem de ser a ÚLTIMA resposta do
+          // aluno. Com o mesmo código, a resposta antiga dava a nova por
+          // entregue e o professor validava a antiga (Rosa, out/2026).
+          if (tipo === 'selecao') versaoNoSheets.set('selecao:' + String(x.id), quandoFoi(x.criadaEm));
         });
       } catch { /* sem rede: fica para a próxima */ }
     }
@@ -8014,6 +8032,11 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   }
 
   const versaoChegou = (p: PorConfirmar): boolean => {
+    if (p.tipo === 'selecao') {
+      const local = quandoFoi((load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id) as any)?.criadaEm);
+      const remota = versaoNoSheets.get('selecao:' + String(p.id)) || 0;
+      return !local || !remota || remota >= local - 1000;
+    }
     if (p.tipo !== 'plano') return true;
     const local = Date.parse(String((getPlanosAula().find(x => x.id === p.id) as any)?.atualizadoEm || ''));
     const remota = versaoNoSheets.get(String(p.id)) ?? NaN;
@@ -8029,10 +8052,18 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
     const ids = noSheets.get(p.tipo);
     if (!ids || !lidoComSucesso.has(p.tipo)) { restantes.push({ ...p, motivo: 'sem_leitura' }); continue; }   // não consegui ler: não conto como falha
     if (ids.has(String(p.id)) && versaoChegou(p)) { confirmados++; continue; }
+    // O professor já validou esta resposta: chegou, de certeza.
+    if (p.tipo === 'selecao') {
+      const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
+      const v: any = sel && validacaoDaSelecao(sel);
+      if (v && quandoFoi(v.validadoEm) >= quandoFoi((sel as any).criadaEm)) { confirmados++; continue; }
+    }
     // A autoavaliação do aluno insiste até chegar: sem ela o professor
     // não a vê para validar. O plano também (eram 5 vezes, e depois o
     // aviso «A enviar…» ficava para sempre sem nada a acontecer).
-    if (p.tentativas < 5 || (p.tipo === 'selecao' && p.tentativas < 60) || (p.tipo === 'plano' && p.tentativas < 30)) emSegundoPlano(() => reenviar(p));
+    // A resposta do aluno nunca desiste: depois de 60 tentativas, continua
+    // de 10 em 10 conferências (antes parava e ficava «A enviar…» para sempre).
+    if (p.tentativas < 5 || (p.tipo === 'selecao' && (p.tentativas < 60 || p.tentativas % 10 === 0)) || (p.tipo === 'plano' && p.tentativas < 30)) emSegundoPlano(() => reenviar(p));
     const v = versaoNoSheets.get(String(p.id));
     restantes.push({ ...p, tentativas: p.tentativas + 1,
       ...(p.tipo === 'plano' ? { motivo: ids.has(String(p.id)) ? 'versao_antiga' as const : 'nao_esta' as const,
@@ -8538,6 +8569,8 @@ export interface MembroGrupo {
   grupoNome: string;
   definidoPor: 'aluno' | 'professor';
   atualizadoEm: string;
+  /** O tema do manual (capítulo) que o aluno escolheu na autoavaliação. */
+  tema?: number | null;
 }
 export interface InfoGrupo {
   id: string;            // o grupoId
@@ -8583,7 +8616,10 @@ function juntarPorId<T extends { id: string; atualizadoEm?: string; criadoEm?: s
     if (!n?.id) continue;
     const velho = m.get(n.id);
     const d = (x: any) => String(x?.atualizadoEm || x?.criadoEm || '');
-    if (!velho || d(n) >= d(velho)) m.set(n.id, n);
+    // A mesma versão vinda de outro sítio (o Sheets pode não guardar todos
+    // os campos, como o tema do grupo): fica o que já se sabia.
+    if (velho && d(n) === d(velho)) m.set(n.id, { ...velho, ...n, ...((velho as any).tema != null && (n as any).tema == null ? { tema: (velho as any).tema } : {}) });
+    else if (!velho || d(n) > d(velho)) m.set(n.id, n);
   }
   save(chave, [...m.values()]);
 }
@@ -8636,6 +8672,23 @@ export function gruposDaAula(planoAulaId: string): GrupoDaAula[] {
 }
 export function grupoDoAluno(planoAulaId: string, alunoId: string): GrupoDaAula | undefined {
   return gruposDaAula(planoAulaId).find(g => g.membros.some(m => m.alunoId === alunoId));
+}
+
+/** Regra (Rosa, out/2026): no mesmo grupo, o tema é o mesmo. O tema que o
+ *  aluno escolhe fica no registo dele no grupo, que chega aos colegas. */
+export function marcarTemaNoGrupo(planoAulaId: string, alunoId: string, tema: number | null): void {
+  const m = load<MembroGrupo>(KEY_MEMBROS).find(x => x.planoAulaId === planoAulaId && x.alunoId === alunoId && x.grupoId);
+  if (!m || (m.tema ?? null) === tema) return;
+  const reg: MembroGrupo = { ...m, tema, atualizadoEm: new Date().toISOString() };
+  juntarPorId(KEY_MEMBROS, [reg]);
+  enviar(SHEETS_ECL_URL, 'grupo_membro', reg as any);
+}
+/** Os temas que os colegas do grupo já escolheram (sem o próprio aluno). */
+export function temasDosColegas(planoAulaId: string, alunoId: string): { nome: string; tema: number }[] {
+  const g = grupoDoAluno(planoAulaId, alunoId);
+  if (!g) return [];
+  return g.membros.filter(m => m.alunoId !== alunoId && m.tema != null)
+    .map(m => ({ nome: String(m.nomeAluno || '').split(' ')[0] || 'Colega', tema: Number(m.tema) }));
 }
 
 // ============================================================

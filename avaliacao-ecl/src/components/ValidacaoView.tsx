@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu } from '../backend';
+import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -258,7 +258,10 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
 function QuemFalta({ planoId, turmaId, selecoes }: { planoId: string; turmaId: string; selecoes: SelecaoAluno[] }) {
   const daTurma = getAlunos().filter(a => a.turmaId === turmaId && a.numero !== 99 && a.numero !== 88);
   const entraram = new Set(getPresencas().filter(p => p.planoAulaId === planoId && p.presente).map(p => p.alunoId));
-  const esperados = entraram.size ? daTurma.filter(a => entraram.has(a.id)) : daTurma;
+  // Quem esteve numa atividade ligada à aula e responde só à atividade não falta aqui.
+  const soAtividade = new Set(getPlanosAula().filter((a: any) => a.aulaLigada === planoId && a.tambemRespondemAula === false)
+    .flatMap((a: any) => participantesDoEvento(a)));
+  const esperados = (entraram.size ? daTurma.filter(a => entraram.has(a.id)) : daTurma).filter(a => !soAtividade.has(a.id));
   if (!esperados.length) return null;
   const enviaram = new Set(selecoes.filter(s => s.planoAulaId === planoId).map(s => s.alunoId));
   const faltam = esperados.filter(a => !enviaram.has(a.id)).sort((a, b) => a.numero - b.numero);
@@ -613,6 +616,16 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             Tema do aluno: {temaDoAluno(selecao)}
           </div>
         )}
+        {(() => {
+          // No mesmo grupo, o mesmo tema: o professor vê se não bate certo.
+          const meu = (selecao.autoavaliacoes || []).map((a: any) => capituloDoCampo(String(a?.competenciaId || ''))?.capitulo.n).find(n => n != null);
+          const outros = temasDosColegas(selecao.planoAulaId || '', selecao.alunoId).filter(c => meu != null && c.tema !== meu);
+          return outros.length ? (
+            <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 6, color: '#ffb4a8' }}>
+              ⚠ Tema diferente do grupo: {outros.map(o => `${o.nome} escolheu o ${o.tema}`).join(' · ')}
+            </div>
+          ) : null;
+        })()}
       </div>
 
       {/* Sem farda completa: avalia-se tudo (fica no percurso), as técnicas contam 0. */}
