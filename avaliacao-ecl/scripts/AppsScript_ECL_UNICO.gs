@@ -1081,7 +1081,7 @@ function importarDoAntigo() {
   Logger.log('');
   Logger.log('Trazidos ' + total + ' registos.');
   Logger.log('Contagens agora: ' + JSON.stringify(contagens()));
-  Logger.log('Agora corre  organizarPorAluno  para refazer as folhas por aluno.');
+  Logger.log('Agora corre  atualizarFolhasDasTurmas  para refazer os separadores das turmas.');
 }
 
 /** Lê uma folha antiga e devolve objetos com os nomes das colunas. */
@@ -1271,28 +1271,11 @@ function escreverNaFolhaDoAluno(d) {
  * Corre depois de importar, ou sempre que quiseres arrumar.
  */
 function organizarPorAluno() {
-  var ss = ficheiro();
-  var alunos = ler('ALUNOS', {});
-  var porId = {};
-  alunos.forEach(function (a) { porId[a.id] = a; });
-
-  // Limpar as folhas antigas dos alunos
-  ss.getSheets().forEach(function (f) {
-    if (/^\d+_/.test(f.getName())) ss.deleteSheet(f);
-  });
-
-  var n = 0;
-  ler('AVALIACOES', {}).forEach(function (r) {
-    var a = porId[r.alunoId] || {};
-    escreverNaFolhaDoAluno({
-      alunoId: r.alunoId, nomeAluno: r.nomeAluno || a.nome, numero: a.numero || 0,
-      ano: a.ano || (String(a.turmaId || '').match(/[123]/) || [1])[0],
-      data: r.data, planoTitulo: r.planoAulaId, ucId: r.ucId,
-      microcompetenciaId: r.microcompetenciaId, nota: r.nota, validadoPor: r.validadoPor
-    });
-    n++;
-  });
-  Logger.log('Folhas por aluno refeitas: ' + n + ' avaliações.');
+  // (v24.3) Já não se usa: as folhas de cada aluno («1_Nome…») estão
+  // resumidas no separador de cada turma. Fazê-las outra vez só enchia o
+  // ficheiro de folhas repetidas (Rosa, out/2026: «porque tenho estes alunos?»).
+  Logger.log('Já não é preciso: cada aluno está no separador da turma dele. '
+    + 'Para tirar as folhas antigas de cada aluno, corre  apagarFolhasAntigas  (faz antes uma cópia de segurança).');
 }
 
 
