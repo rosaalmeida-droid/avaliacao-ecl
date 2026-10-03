@@ -472,7 +472,7 @@ export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
         sub="Sai sozinho do 1 e do 2. À direita está o que o aluno vai ver no telemóvel, por esta ordem." />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Peso na nota desta aula</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{(plano as any).tipoEvento ? 'Peso na nota da atividade (que dá o bónus, até +0,5)' : 'Peso na nota desta aula'}</div>
           {pesos.map(x => (
             <div key={x.cat}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14.5, marginBottom: 4 }}>

@@ -818,7 +818,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     guardarCompetencias([...(ob.farda ? [] : ['OBR_01']), ...(ob.registos ? [] : ['OBR_02'])],
       ehAtitudinal ? compAdicionadas.filter(x => x.startsWith('ATI-')) : []);
   }
-  const botaoRepor = (
+  // Numa atividade extra não há «competências da aula» para repor.
+  const botaoRepor = eventoForaDoHorario(plano) ? null : (
     <button onClick={reporCompetencias} style={{ display: 'block', width: '100%', marginBottom: 14, padding: '11px 14px', borderRadius: 10,
       border: '1.5px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
       ↺ Repor as competências da aula (limpa o que tiraste e juntaste)
@@ -1618,7 +1619,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px 14px', margin: '0 0 14px', border: '2px solid #6B3FA0' }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade extra</div>
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)', marginTop: 3, lineHeight: 1.5 }}>
-              O plano da turma desse dia — <b>{rotuloDoPlano(aula)}</b> — não muda: os outros alunos continuam com ele. Aqui escolhes quem foi a esta atividade e confirmas.
+              Ligada ao plano de aula <b>{rotuloDoPlano(aula)}</b>, que se trabalha à parte. Aqui escolhes quem foi a esta atividade e confirmas.
             </div>
             {aula && <button onClick={() => onPlanoActualizado(aula)} style={{ marginTop: 8, padding: '7px 12px', borderRadius: 9, border: '1px solid #6B3FA0',
               background: '#fff', color: '#6B3FA0', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>← Abrir o plano de aula (à parte)</button>}
@@ -1707,6 +1708,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <TecnicasDasFichas plano={plano} fichas={fichasDoPlano}
             onAbrir={(id) => { setFichaEmEdicao(id); setIrParaBiblioteca(false); setModulo('ficha'); }} />
           {eventoForaDoHorario(plano) && <ResumoDaAtividadeExtra plano={plano} />}
+          {/* Numa atividade extra fica só o que é dela: a contagem e as listas
+              abaixo são as de um plano de aula (Rosa, out/2026). */}
+          {!eventoForaDoHorario(plano) && (<>
           {/* De onde vem cada grupo. O ecrã dava só o total — "22
               competências" — e o professor não percebia porque é que
               aparecem tantas num plano ainda sem fichas. */}
@@ -2007,6 +2011,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             {totalComp > 12 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
             {totalComp <= 5 && <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>✓ Número adequado para uma aula.</div>}
           </div>
+          </>)}
         </div>
       )}
 
@@ -2083,10 +2088,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 textAlign:'left', cursor:'pointer', fontFamily:'inherit', fontSize:13.5,
                 border:`1.5px solid ${obrigatoriasPendentes ? '#5a7a4e' : 'rgba(26,23,20,0.18)'}`,
                 background: obrigatoriasPendentes ? '#eef4eb' : '#fff' }}>
-              <b>{obrigatoriasPendentes ? '✓ Higiene e farda contam nesta aula' : 'Higiene e farda não entram nesta aula'}</b>
+              <b>{obrigatoriasPendentes ? `✓ Higiene e farda contam ${eventoForaDoHorario(plano) ? 'nesta atividade' : 'nesta aula'}` : `Higiene e farda não entram ${eventoForaDoHorario(plano) ? 'nesta atividade' : 'nesta aula'}`}</b>
               <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.6)', marginTop:2, lineHeight:1.45 }}>
                 {obrigatoriasPendentes
-                  ? 'O aluno avalia-se nelas e valem 20% da nota da aula.'
+                  ? `O aluno avalia-se nelas e valem 20% da nota ${eventoForaDoHorario(plano) ? 'da atividade' : 'da aula'}.`
                   : 'Não aparecem ao aluno nem contam para a nota.'}
               </div>
             </button>
@@ -2242,7 +2247,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               border: '1px solid rgba(26,23,20,0.1)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.07em',
                 textTransform: 'uppercase', color: 'rgba(26,23,20,0.4)', marginBottom: 12 }}>
-                Fichas desta aula — {fichasDoPlano.length}
+                {eventoForaDoHorario(plano) ? 'Fichas desta atividade' : 'Fichas desta aula'} — {fichasDoPlano.length}
               </div>
 
               {fichasDoPlano.length === 0 && (
@@ -2336,7 +2341,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,
           border:'1px solid rgba(26,23,20,0.2)', background:'#fff', fontSize:13.5, fontWeight:700, cursor:'pointer',
           fontFamily:'inherit', color:'rgba(26,23,20,0.75)' }}>
-          Mudar as competências à mão
+          {eventoForaDoHorario(plano) ? 'Ver as técnicas da ficha' : 'Mudar as competências à mão'}
         </button>
       </Gaveta>
       {!eventoForaDoHorario(plano) && <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />}
