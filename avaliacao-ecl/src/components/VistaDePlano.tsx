@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -1308,7 +1308,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
-        <PinTemporarioPanel turmaId={turmaId} nomeProfessor={nomeProfessor} />
+        <ReabrirAutoavaliacao plano={plano} onPlanoActualizado={onPlanoActualizado} />
+        <details style={{ marginTop: 18 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 14.5, fontWeight: 700, color: 'rgba(26,23,20,0.6)' }}>O aluno esqueceu-se do PIN e não consegue entrar?</summary>
+          <div style={{ marginTop: 10 }}><PinTemporarioPanel turmaId={turmaId} nomeProfessor={nomeProfessor} /></div>
+        </details>
       </div>
     );
   }
@@ -2329,7 +2333,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {[
           { t: 'Lista da turma', d: 'Quem entrou, a farda, as faltas e os atrasos.', ao: () => setTabInicio('turma') },
           { t: 'Validar as autoavaliações', d: 'Confirmar a nota de cada aluno nesta aula.', ao: () => setModulo('validacao') },
-          { t: 'Reabrir a autoavaliação de um aluno', d: 'O aluno enganou-se? Destranca para ele corrigir.', ao: () => setModulo('registos') },
+          { t: 'Reabrir a autoavaliação de um aluno', d: 'O aluno enganou-se, ou houve um erro? Reabre só para ele, sem PIN novo.', ao: () => setModulo('registos') },
         ].map(x => (
           <button key={x.t} onClick={x.ao} style={{ display:'block', width:'100%', textAlign:'left', background:'#fff',
             border:'1px solid rgba(26,23,20,0.14)', borderRadius:14, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit' }}>
@@ -2639,6 +2643,51 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
       );
     })()}
   </>);
+}
+
+/** Reabrir a autoavaliação de UM aluno, sem PIN novo (Rosa, out/2026). Abre
+ *  sozinha no telemóvel dele, com aviso; fecha quando ele responder. */
+function ReabrirAutoavaliacao({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
+  const [, redesenhar] = React.useState(0);
+  const alunos = getAlunosEv().filter(a => a.turmaId === plano.turmaId && a.ativo !== false).sort((a, b) => (a.numero || 0) - (b.numero || 0));
+  const respostas = new Map(selecoesQueContam().filter(s => s.planoAulaId === plano.id).map(s => [s.alunoId, s]));
+  const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
+  const hora = (iso?: string) => iso ? new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.1)' }}>
+      <div style={{ fontSize: 17, fontWeight: 800 }}>Reabrir a autoavaliação de um aluno</div>
+      <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', margin: '4px 0 12px', lineHeight: 1.5 }}>
+        Só para esse aluno e sem PIN novo: a autoavaliação abre sozinha no telemóvel dele, com um aviso.
+        Quando ele responder, fecha outra vez e a resposta nova fica em «Por validar». Até lá conta o que já tinha.
+      </div>
+      {alunos.map(a => {
+        const s: any = respostas.get(a.id);
+        const reaberta = reabertaPorResponder(atual, a.id);
+        const validada = s && selecaoJaValidada(s);
+        return (
+          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b>{a.numero}.</b> {a.nome}
+              <span style={{ display: 'block', fontSize: 12.5, color: 'rgba(26,23,20,0.55)' }}>
+                {reaberta ? `Reaberta (${hora(atual.reabertaPara?.[a.id])}) — à espera da resposta nova`
+                  : s ? `Respondeu ${hora(s.criadaEm)}${validada ? ' · validada' : ' · por validar'}` : 'Ainda não respondeu'}
+              </span>
+            </span>
+            {s && !reaberta && (
+              <button onClick={() => {
+                  if (!confirm(`Reabrir a autoavaliação de ${a.nome}?\n\nAbre só para este aluno, sem PIN novo. Até responder outra vez, conta o que já tinha.`)) return;
+                  reabrirAutoavaliacao(plano.id, a.id);
+                  const p = getPlanosAula().find(x => x.id === plano.id); if (p) onPlanoActualizado(p);
+                  redesenhar(n => n + 1);
+                }}
+                style={{ padding: '8px 14px', borderRadius: 9, border: '1px solid #b5651d', background: '#fff', color: '#b5651d',
+                  fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Reabrir</button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 // ── Concurso: fases e vencedor (os pontos saem daqui) ──────────

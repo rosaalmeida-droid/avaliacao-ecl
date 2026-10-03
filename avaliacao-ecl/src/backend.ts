@@ -2959,6 +2959,28 @@ export function pedirNovaAutoavaliacao(planoId: string): void {
   if (!p) return;
   addOrUpdatePlanoAula({ ...p, pedirDeNovoEm: new Date().toISOString(), atualizadoEm: new Date().toISOString() } as any);
 }
+/** Regra (Rosa, out/2026): o professor reabre a autoavaliação de UM aluno,
+ *  sem PIN novo. Fica no plano (reabertaPara), chega ao telemóvel dele, e
+ *  fecha outra vez quando ele responde. Os outros continuam fechados. */
+export function reabrirAutoavaliacao(planoId: string, alunoId: string): void {
+  const p: any = getPlanosAula().find(x => x.id === planoId);
+  if (!p) return;
+  addOrUpdatePlanoAula({ ...p, reabertaPara: { ...(p.reabertaPara || {}), [alunoId]: new Date().toISOString() } });
+}
+/** Desde quando este aluno tem de responder outra vez nesta aula: o pedido à
+ *  turma (perguntas novas) ou a reabertura só para ele — o mais recente. */
+export function pedidoParaOAluno(plano: any, alunoId?: string): string | undefined {
+  const a = plano?.pedirDeNovoEm, b = alunoId ? plano?.reabertaPara?.[alunoId] : undefined;
+  return !a ? b : !b ? a : (quandoFoi(b) > quandoFoi(a) ? b : a);
+}
+/** A autoavaliação deste aluno foi reaberta e ele ainda não respondeu outra vez? */
+export function reabertaPorResponder(plano: any, alunoId: string): boolean {
+  const r = plano?.reabertaPara?.[alunoId];
+  if (!r) return false;
+  const s = load<SelecaoAluno>(KEYS.selecoes).filter(x => x.alunoId === alunoId && x.planoAulaId === plano.id)
+    .sort((x: any, y: any) => quandoFoi(y.criadaEm) - quandoFoi(x.criadaEm))[0];
+  return !s || !respostaDepoisDoPedido(s, r);
+}
 export function getValidacoes(): Validacao[] { return semPlanosEliminados(load<Validacao>(KEYS.validacoes)); }
 
 /** A validação desta autoavaliação. Procura pelo código e também pelo
@@ -2975,7 +2997,7 @@ export function validacaoDaSelecao(s: { id: string; alunoId?: string; planoAulaI
     .sort((a: any, b: any) => quandoFoi(b.validadoEm) - quandoFoi(a.validadoEm))[0];
   // Respondeu outra vez depois de o professor pedir: a validação antiga não
   // é desta resposta (continua a contar para a nota até haver a nova).
-  const pedido = v && (s.criadaEm || (s as any).versaoPlano) ? (getPlanosAula().find(p => p.id === s.planoAulaId) as any)?.pedirDeNovoEm : undefined;
+  const pedido = v && (s.criadaEm || (s as any).versaoPlano) ? pedidoParaOAluno(getPlanosAula().find(p => p.id === s.planoAulaId), s.alunoId) : undefined;
   // «Resposta nova» conta pela versão do plano a que o aluno respondeu (a hora
   // do professor); só as respostas antigas, sem versão, usam a hora do
   // telemóvel do aluno, que pode estar adiantada ou atrasada.

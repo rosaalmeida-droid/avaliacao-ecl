@@ -31,6 +31,7 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 10. **A última resposta está sempre ao alcance do professor para validar,** em «Por validar» ou em «Já validadas — tocar para alterar», mesmo dias depois.
 11. **Conta a validação mais recente do professor.** Uma correção substitui a anterior (notas e registos).
 12. O professor vê o tema que o aluno escolheu e se respondeu mais do que uma vez.
+12a. **Reabrir a autoavaliação de um aluno, sem PIN novo.** No plano, em «Reabrir a autoavaliação de um aluno», o professor carrega em «Reabrir» ao lado do aluno. A autoavaliação abre sozinha no telemóvel desse aluno, com um aviso. Os outros alunos continuam fechados. Até ele responder, conta o que já tinha. Quando responde, fecha outra vez e a resposta nova fica «Por validar». O PIN temporário fica só para quem se esqueceu do PIN.
 
 ## Datas
 13. As datas comparam-se como datas e não como texto (`quandoFoi`). A hora do Sheets, do Firebase e de cada telemóvel pode vir escrita de maneiras diferentes.

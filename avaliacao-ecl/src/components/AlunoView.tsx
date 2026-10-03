@@ -35,7 +35,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -564,6 +564,9 @@ function frasesVisiveis(c: { id?: string; rotulo: string; resultado?: string; ma
 function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
   try {
     const em = localStorage.getItem(`avaliacao_submetida_${plano.id}_${alunoId}`);
+    // O professor reabriu a autoavaliação só deste aluno: está por fazer
+    // até ele responder outra vez.
+    if (reabertaPorResponder(plano, alunoId)) return false;
     const pedido = plano?.pedirDeNovoEm;
     // Depois de o professor pedir outra vez, só conta uma resposta à versão
     // nova do plano (não a hora do telemóvel, que pode estar errada).
@@ -949,7 +952,19 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       && (getPresencas().some(x => x.alunoId === aluno.id && x.planoAulaId === p.id)
         || getValidacoes().some(v => v.alunoId === aluno.id && v.planoAulaId === p.id))
       && !getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === p.id));
-    aulasPorAutoavaliar.current = deNovo;
+    // O professor reabriu a autoavaliação só deste aluno (sem PIN novo).
+    const reabertas = planosOrdenados.filter((p: any) => reabertaPorResponder(p, aluno.id) && !deNovo.includes(p));
+    if (reabertas.length > 0) {
+      av.push({
+        id: 'reaberta',
+        titulo: 'O professor reabriu a tua autoavaliação',
+        detalhe: `Podes responder outra vez a ${reabertas.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
+          + 'Até responderes, conta o que respondeste antes.',
+        destino: 'autoavaliar_pendente' as any,
+        urgente: true,
+      });
+    }
+    aulasPorAutoavaliar.current = [...deNovo, ...reabertas];
     if (deNovo.length > 0) {
       av.push({
         id: 'responder_de_novo',
