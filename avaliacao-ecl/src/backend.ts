@@ -18,7 +18,7 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
 , SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO, notaPara20, nivelDe20, nivelPara20 } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial } from './compatECL';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial, nomeCompetencia } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos, juntarPrecosRevistos, getPrecosRevistos, getMateriaPrimasBase, type PrecoRevisto } from './materiasPrimasBase';
@@ -381,6 +381,11 @@ function paraABase(tipo: string, dados: Record<string, any>): void {
   gravarNaBase(tipo, d).then(ok => {
     // A abertura na base já está nos telemóveis dos alunos.
     if (ok && tipo === 'sessao' && d.abertaEm && !d.fechadaEm) aberturaNaBase(String(d.planoAulaId));
+    // A autoavaliação na base já está no ecrã do professor (que valida a
+    // partir da base): o aluno vê logo «Chegou ao professor», sem esperar
+    // pela leitura do Sheets, que levava um minuto (Rosa, out/2026). O Sheets
+    // continua a conferir-se por trás.
+    if (ok && tipo === 'selecao') { marcarSelecaoNaBase(String(d.id), String(d.criadaEm || '')); return; }
     if (!ok || tipo !== 'plano') return;
     const p: any = d.plano || d;
     marcarPlanoNaBase(String(p.id), String(p.atualizadoEm || ''));
@@ -3057,7 +3062,7 @@ export function respostaDepoisDoPedido(s: { criadaEm?: string }, pedido: string)
   return versao ? quandoFoi(versao) >= quandoFoi(pedido) : quandoFoi(s.criadaEm) >= quandoFoi(pedido);
 }
 /** Uma data em milissegundos, venha ela como vier (texto ISO ou do Sheets). */
-function quandoFoi(x: unknown): number {
+export function quandoFoi(x: unknown): number {
   const t = Date.parse(String(x || ''));
   return isNaN(t) ? 0 : t;
 }
@@ -3149,6 +3154,9 @@ function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
     tecnicas: s.tecnicas,
     atitudes: s.atitudes,
     autoavaliacoes: s.autoavaliacoes,
+    // (v25) Os nomes das competências, para o Sheets mostrar o que o aluno
+    // respondeu com palavras (o Sheets não tem o referencial).
+    nomes: Object.fromEntries((s.autoavaliacoes || []).map(a => [a.competenciaId, (() => { try { return nomeCompetencia(a.competenciaId); } catch { return a.competenciaId; } })()])),
     criadaEm: s.criadaEm,
     // A versão do plano a que respondeu (out/2026).
     ...((s as any).versaoPlano ? { versaoPlano: (s as any).versaoPlano } : {}),
@@ -7999,7 +8007,19 @@ function reenviar(p: PorConfirmar): void {
 
 /** Esta autoavaliação ainda não se sabe se chegou ao professor? */
 export function selecaoPorConfirmar(id: string): boolean {
-  return espera().some(x => x.tipo === 'selecao' && x.id === id);
+  const e = espera().find(x => x.tipo === 'selecao' && x.id === id);
+  if (!e) return false;
+  // Já está na base de dados, nesta versão: chegou ao professor.
+  const local = String((load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === id) as any)?.criadaEm || '');
+  return !(e.naBaseVersao && local && quandoFoi(e.naBaseVersao) >= quandoFoi(local));
+}
+function marcarSelecaoNaBase(id: string, versao: string): void {
+  const l = espera();
+  const e = l.find(x => x.tipo === 'selecao' && x.id === id);
+  if (!e || !versao || (e.naBaseVersao && quandoFoi(e.naBaseVersao) >= quandoFoi(versao))) return;
+  e.naBaseVersao = versao;
+  guardarEspera(l);
+  ouvintesEspera.forEach(f => { try { f(); } catch { /* */ } });
 }
 
 /** Este plano (ou a última alteração dele) ainda não se sabe se chegou aos alunos?
