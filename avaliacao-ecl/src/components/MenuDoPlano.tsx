@@ -8,8 +8,8 @@
 // Aqui vê tudo: qual é o plano, o que tem, o que falta, e a saída.
 // ============================================================
 
-import { ehEventoForaDoHorario, rotuloEvento, codigoEvento } from '../rotuloPlano';
-import { gruposDaAula, contextoDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO } from '../backend';
+import { ehEventoForaDoHorario, rotuloEvento, codigoEvento, rotuloDoPlano } from '../rotuloPlano';
+import { gruposDaAula, contextoDoPlano, aulaDoDiaDaAtividade, PARTES_POR_OMISSAO } from '../backend';
 import React, { useEffect, useState } from 'react';
 import type { PlanoAula, FichaProducao } from '../types';
 import { BotaoPublicar } from './BotaoPublicar';

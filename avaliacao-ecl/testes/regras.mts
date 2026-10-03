@@ -19,6 +19,7 @@ const b = await import('../src/backend');
 const g = await import('../src/components/PlanoGuiado');
 const ev = await import('../src/eventosAvaliacao');
 const c = await import('../src/contextoAula');
+const rp = await import('../src/rotuloPlano');
 
 let falhas = 0, total = 0;
 function regra(nome: string, fn: () => void) {
@@ -116,6 +117,14 @@ regra('13. As datas comparam-se como datas, venham escritas como vierem', () => 
     { id: 'nova', alunoId: 'a1', planoAulaId: 'p1', criadaEm: 'Fri Oct 02 2026 09:00:00 GMT+0100' },
   ];
   igual(b.selecoesQueContam(sels)[0].id, 'nova');
+});
+
+regra('35a. O plano conta de 1 dentro da UC da turma; o n.º interno não aparece', () => {
+  const p = (id: string, data: string, n: number, extra = {}) => ({ id, turmaId: 't', ucId: 'UC1', data, numeroPlan: n, estado: 'publicado', titulo: 'Aula', ...extra });
+  por('ecl_planos', [p('a', '2026-09-20', 150), p('arq', '2026-09-21', 151, { estado: 'arquivado' }), p('b', '2026-09-22', 157), p('outra', '2026-09-21', 152, { ucId: 'UC2' })]);
+  const r = rp.rotuloDoPlano(b.getPlanosAula().find(x => x.id === 'b'));
+  igual(r.includes('157'), false, 'sem o n.º interno:');
+  igual(/Plano de Aula 2\b/.test(r), true, 'é o 2.º da UC1 (' + r + '):');
 });
 
 // 4. Um plano eliminado noutro aparelho: neste, as notas dele também saem.

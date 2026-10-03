@@ -8984,12 +8984,6 @@ export function atitudesNoPlanoDaTurma(atividade: any): boolean {
   if (!aula || atividade.tambemRespondemAula === false) return false;
   return { ...PARTES_POR_OMISSAO, ...(atividade.partesDaAula || {}) }.atitudes !== false;
 }
-/** Texto do plano do dia: «quinta-feira, 01/10 · Plano n.º 103 — título». */
-export function rotuloDoPlano(p: any): string {
-  if (!p) return '';
-  const dia = new Date(String(p.data || '').slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit' });
-  return `${dia}${p.horaInicio ? `, ${p.horaInicio}–${p.horaFim || ''}` : ''} · Plano n.º ${p.numeroPlan || '?'} — ${p.titulo || 'aula'}`;
-}
 
 /** Regra (Rosa, out/2026): os alunos de um plano. Numa atividade com os
  *  participantes escolhidos (inscrição), só esses; numa aula (ou atividade
