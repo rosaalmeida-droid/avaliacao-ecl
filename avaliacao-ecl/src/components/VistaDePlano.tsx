@@ -2644,11 +2644,12 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
                 <div style={{ fontWeight: 800 }}>O plano da turma desse dia</div>
                 <div style={{ margin: '2px 0 4px', padding: '8px 10px', borderRadius: 8, background: '#f6f3ee' }}>{rotuloDoPlano(aula)}</div>
                 <div style={{ color: 'rgba(26,23,20,0.7)', margin: '2px 0 6px' }}>
-                  Este plano não muda: os outros alunos continuam com ele. Os alunos da atividade, neste plano, respondem a:
+                  A atividade é um extra: este plano não muda, e os alunos da atividade continuam a responder-lhe como os outros.
+                  Se quiseres, tira uma parte (por exemplo as atitudes, já avaliadas na atividade):
                 </div>
                 {caixa('tecnicas', 'Técnicas (a prática da aula)')}
                 {caixa('conhecimentos', 'Conhecimentos (o trabalho exigido)')}
-                {caixa('atitudes', 'Atitudes e os 5 C (normalmente não: já se avaliam na atividade)')}
+                {caixa('atitudes', 'Atitudes e os 5 C')}
                 <button style={{ ...bt(nada), marginBottom: 12 }} onClick={() => gravar({ tambemRespondemAula: false, aulaLigada: aula.id })}>
                   {nada ? '✓ ' : ''}Nada: só respondem à atividade</button>
               </>);

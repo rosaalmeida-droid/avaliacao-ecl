@@ -2978,7 +2978,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Subtécnicas como objectos para display.
   // Numa aula atitudinal não há técnicas: trabalham-se dinâmicas de grupo
   // e atitudes. As fichas do plano, se as houver, não entram na avaliação.
-  const subsSug = (String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [] : subIdsFiltrados)
+  const subsSug = (String((plano as any).tipoPlanAula || '').startsWith('atitudinal') && !regras.tecnicasNaAtividade ? [] : subIdsFiltrados)
     .slice(0, 8).map((id: string) => {
     const sub = encontrarSubtecnica(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);
@@ -3024,7 +3024,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   });
 
   // Aparelhos como objectos para display
-  const aparelhosSug = (String((plano as any).tipoPlanAula || '').startsWith('atitudinal') ? [] : appIdsFiltrados)
+  const aparelhosSug = (String((plano as any).tipoPlanAula || '').startsWith('atitudinal') && !regras.tecnicasNaAtividade ? [] : appIdsFiltrados)
     .slice(0, 4).map((id: string) => {
     const app = encontrarAparelho(id);
     const hist = getHistoricoAlunoMicro(aluno.id, id);

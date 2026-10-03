@@ -8794,11 +8794,11 @@ export function aulaDoDiaDaAtividade(atividade: any): PlanoAula | undefined {
   return doDia.find((p: any) => { const i2 = min(p.horaInicio), f2 = min(p.horaFim); return [i1, f1, i2, f2].some(isNaN) || (i1 < f2 && i2 < f1); }) || doDia[0];
 }
 /** As partes do plano da turma a que um aluno de uma atividade do mesmo dia
- *  responde, como o professor disse (Rosa, out/2026). Sem atividade, tudo.
- *  Por omissão: as técnicas e os conhecimentos (o trabalho exigido), e não as
- *  atitudes, que já se avaliam na atividade. */
+ *  responde, como o professor disse (Rosa, out/2026). A atividade é um extra:
+ *  por omissão, continuam a responder a tudo, como os outros. O professor
+ *  pode tirar uma parte (por exemplo as atitudes, já avaliadas na atividade). */
 export type PartesDoPlano = { tecnicas: boolean; conhecimentos: boolean; atitudes: boolean };
-export const PARTES_POR_OMISSAO: PartesDoPlano = { tecnicas: true, conhecimentos: true, atitudes: false };
+export const PARTES_POR_OMISSAO: PartesDoPlano = { tecnicas: true, conhecimentos: true, atitudes: true };
 export function partesDoPlanoParaOAluno(aula: any, alunoId: string): PartesDoPlano {
   const atv: any = getPlanosAula().find((a: any) => eventoForaDoHorario(a) && a.estado !== 'arquivado'
     && aulaDoDiaDaAtividade(a)?.id === aula?.id && participantesDoEvento(a).includes(alunoId));

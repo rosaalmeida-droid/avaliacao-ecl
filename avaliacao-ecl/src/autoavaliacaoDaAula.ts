@@ -35,6 +35,8 @@ export interface RegrasAutoavaliacao {
   manual: boolean;
   /** Subtécnicas e preparações base das fichas (sem as retiradas). */
   subIds: string[];
+  /** Atividade com ficha técnica: também se avaliam as técnicas da ficha. */
+  tecnicasNaAtividade?: boolean;
   appIds: string[];
   /** Técnicas de recurso da UC, quando as fichas não têm subtécnicas. */
   recursoIds: string[];
@@ -80,8 +82,11 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   const tipoPlanAula = String(p.tipoPlanAula || (subIds.length === 0 && appIds.length === 0 ? 'teorico' : 'pratico'));
   const ehAtitudinal = tipoPlanAula.startsWith('atitudinal');
 
-  const subsUsadas = ehAtitudinal ? [] : subIds.slice(0, 8);
-  const appsUsadas = ehAtitudinal ? [] : appIds.slice(0, 4);
+  // Numa atividade (evento, concurso) com ficha técnica, os alunos também se
+  // avaliam nas técnicas da ficha (Rosa, out/2026).
+  const tecnicasNaAtividade = !!p.tipoEvento && fichas.length > 0;
+  const subsUsadas = ehAtitudinal && !tecnicasNaAtividade ? [] : subIds.slice(0, 8);
+  const appsUsadas = ehAtitudinal && !tecnicasNaAtividade ? [] : appIds.slice(0, 4);
   const usarRecurso = subsUsadas.length === 0 && appsUsadas.length === 0;
   const recursoIds = ehAtitudinal || !usarRecurso || fichas.length === 0 ? []
     : tecnicasDeRecurso(ucId, fichas as any[]).map(m => m.id).filter(id => !compRemovidas.includes(id)).slice(0, 6);
@@ -156,7 +161,7 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
 
   return {
     ctx, tipoPlanAula, ehAtitudinal, manual,
-    subIds, appIds, recursoIds, conhecimentos,
+    subIds, appIds, recursoIds, conhecimentos, tecnicasNaAtividade,
     atitudesDaAula, atitudesParaEscolher, atitudesPermitidas,
     escolheAtitude: !ehAtitudinal && atitudesParaEscolher.length > 0,
     tecEvento: p.tipoEvento === 'evento',
@@ -174,7 +179,7 @@ export function pesosDaAula(plano: PlanoAula, R: RegrasAutoavaliacao): { cat: 'O
   const tipo = (R.tipoPlanAula in PESOS_AULA ? R.tipoPlanAula : 'pratico') as keyof typeof PESOS_AULA;
   const p: Record<string, number> = { ...PESOS_AULA[tipo] };
   const rem: string[] = (plano as any).compRemovidas || [];
-  const temSub = !R.ehAtitudinal && R.subIds.length + R.appIds.length + R.recursoIds.length > 0;
+  const temSub = (!R.ehAtitudinal || !!R.tecnicasNaAtividade) && R.subIds.length + R.appIds.length + R.recursoIds.length > 0;
   const temKnw = R.conhecimentos.length > 0;
   if ((tipo === 'pratico' || tipo === 'misto') && !temKnw && temSub) { p.SUB += p.KNW; p.KNW = 0; }
   const farda = !rem.includes('OBR_01'), registos = !rem.includes('OBR_02') && R.ctx.producao;
@@ -224,7 +229,7 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
   const prato = (id: string) => ramoDaCompetencia(id, fichas as any[]).prato || '';
   const daFicha = (id: string) => prato(id) ? `da ficha ${prato(id)}` : 'das fichas';
 
-  if (!R.ehAtitudinal) {
+  if (!R.ehAtitudinal || R.tecnicasNaAtividade) {
     // Como no aluno: cada preparação base com as suas técnicas, depois as soltas.
     const subs = R.subIds.slice(0, 8);
     const apps = R.appIds.slice(0, 4);
