@@ -1085,6 +1085,17 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       // ── Sincronizar Validações ──────────────────────────────────────
       const jsonVal = await ler(SHEETS_HISTORICO_URL, { tipo: 'get_validacoes', turmaId });
       if (jsonVal?.ok && jsonVal.dados?.length > 0) juntarValidacoes(jsonVal.dados);
+      // (out/2026) No aparelho do professor: as validações que estão na
+      // aplicação (vindas da base de dados) e faltam no Sheets, ou lá estão
+      // sem a nota ou mais antigas, voltam a ser enviadas até chegarem.
+      if (jsonVal?.ok && perfilDoAparelho && perfilDoAparelho !== 'aluno') {
+        const noSheets = new Map<string, any>((jsonVal.dados || []).map((x: any) => [String(x.id), x]));
+        getValidacoes().filter(v => v.turmaId === turmaId).forEach(v => {
+          const x = noSheets.get(String(v.id));
+          const falta = !x || String(x.notaMedia20 ?? '') === '' || quandoFoi(x.validadoEm) < quandoFoi((v as any).validadoEm) - 1000;
+          if (falta) { enviarValidacaoAoSheets(v); porConfirmar('validacao', v.id, 'validação', v.turmaId); }
+        });
+      }
 
       // ── Sincronizar Presenças ───────────────────────────────────────
       // A decisão local ganha se for mais recente do que a do Sheets; sem data
@@ -1141,6 +1152,7 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       partilharMateriasPrimasAntigas();
       // A tabela completa de preços fica também no Sheets, para se ver (Rosa, out/2026).
       if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarTabelaDePrecos();
+      if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarNotasDaTurma(turmaId);
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -3182,13 +3194,24 @@ export function addOrUpdateValidacao(v: Validacao): void {
     ? Math.round(notaPonderada * 10) / 10
     : notaPara20(notaMediaVal);
 
+  enviarValidacaoAoSheets(v, nota20Final);
+  // (out/2026) A validação insiste até chegar ao Sheets, como a autoavaliação.
+  // Antes ia uma vez: se o Sheets estava ocupado, a nota ficava na aplicação
+  // e o Sheets continuava a mostrar «AA» (Rosa: o Leonel, dias 29/09 e 02/10).
+  porConfirmar('validacao', v.id, 'validação', v.turmaId);
+}
+
+function enviarValidacaoAoSheets(v: Validacao, nota20Final?: number): void {
+  const np = (v as any).notaMedia20;
+  const n20 = nota20Final ?? (typeof np === 'number' ? Math.round(np * 10) / 10
+    : notaPara20(v.notas.length ? v.notas.reduce((s, n) => s + n.nota, 0) / v.notas.length : 0));
   const aluno_val = getAlunos().find(a => a.id === v.alunoId);
   enviar(SHEETS_HISTORICO_URL, 'validacao', {
     ...(v as unknown as Record<string, unknown>),
     nomeAluno: aluno_val?.nome || ('Aluno ' + (aluno_val?.numero || 0)),
     turma: v.turmaId,
-    nota_media_1_5: Math.round(nivelDe20(nota20Final) * 10) / 10,
-    nota_media_0_20: nota20Final,
+    nota_media_1_5: Math.round(nivelDe20(n20) * 10) / 10,
+    nota_media_0_20: n20,
   });
 }
 
@@ -5077,6 +5100,48 @@ export function tabelaDePrecosCompleta() {
 const KEY_TABELA_PRECOS_ENVIADA = 'ecl_tabela_precos_enviada';
 /** Envia a tabela de preços para o Sheets (folha TABELA_PRECOS, script v23),
  *  só quando mudou desde a última vez. Um pedido só, com tudo. */
+// (out/2026) As notas de cada aluno, como a aplicação as calcula, vão para o
+// Sheets: a nota de cada aula (com a conta de hoje), a média da UC (com o peso
+// de cada aula e as faltas a 0), o bónus e a nota da UC. Assim o Sheets mostra
+// exatamente o que o professor e o aluno veem na aplicação (Rosa: o Sheets
+// fazia a média simples e dava outro número).
+const KEY_NOTAS_ENVIADAS = 'ecl_notas_app_enviadas';
+export function enviarNotasDaTurma(turmaId: string, forcar = false): void {
+  try {
+    if (!SHEETS_ECL_URL || !turmaId) return;
+    const planos = getPlanosAula().filter(p => p.turmaId === turmaId && !(p as any).tipoEvento && p.estado !== 'arquivado');
+    const ucs = [...new Set(planos.map(p => p.ucId).filter(Boolean) as string[])];
+    const alunos = getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false);
+    const validacoes = getValidacoes();
+    const agora = new Date().toISOString();
+    const linhas: any[] = [];
+    for (const a of alunos) for (const uc of ucs) {
+      const c = notaFinalUC(a.id, turmaId, uc);
+      const porAula: Record<string, number> = {};
+      planos.filter(p => p.ucId === uc).forEach(p => {
+        const n = notaDaAulaValidada(validacaoDaAula(a.id, p.id, validacoes));
+        if (n !== null) porAula[p.id] = Math.round(n * 10) / 10;
+      });
+      if (c.final === null && !Object.keys(porAula).length) continue;
+      linhas.push({ id: `${turmaId}|${a.id}|${uc}`, turmaId, alunoId: a.id, nomeAluno: a.nome || '', ucId: uc,
+        media: c.base === null ? '' : Math.round(c.base * 10) / 10,
+        bonus: Math.round(((c.bonusParticipacao || 0) + (c.bonusAssiduidade || 0)) * 100) / 100,
+        final: c.final === null ? '' : Math.round(c.final * 10) / 10,
+        faltas: getPlanosFaltadosPorUC(a.id, uc, turmaId).length,
+        porAula: JSON.stringify(porAula), atualizadoEm: agora });
+    }
+    if (!linhas.length) return;
+    const assinatura = linhas.map(l => `${l.id}:${l.media}:${l.bonus}:${l.final}:${l.faltas}:${l.porAula}`).join('|');
+    const chave = KEY_NOTAS_ENVIADAS + '|' + turmaId;
+    let anterior = '';
+    try { anterior = localStorage.getItem(chave) || ''; } catch { /* */ }
+    const resumo = String(assinatura.length) + ':' + [...assinatura].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 7);
+    if (!forcar && anterior === resumo) return;
+    enviar(SHEETS_ECL_URL, 'notas_app', { linhas } as any);
+    try { localStorage.setItem(chave, resumo); } catch { /* */ }
+  } catch (e) { console.warn('[notas] não enviei', e); }
+}
+
 export function enviarTabelaDePrecos(forcar = false): void {
   try {
     if (!SHEETS_ECL_URL) return;
@@ -7943,7 +8008,7 @@ export function professoresComPlanos(turmaId: string): string[] {
 const KEY_ESPERA = 'ecl_por_confirmar';
 
 export interface PorConfirmar {
-  tipo: 'plano' | 'ficha' | 'aluno' | 'avaliacao' | 'selecao';
+  tipo: 'plano' | 'ficha' | 'aluno' | 'avaliacao' | 'selecao' | 'validacao';
   id: string;
   rotulo: string;
   turmaId: string;
@@ -7984,6 +8049,7 @@ const LEITURA_POR_TIPO: Record<PorConfirmar['tipo'], [string, string]> = {
   aluno:     [SHEETS_ALUNOS_URL, 'get_alunos'],
   avaliacao: [SHEETS_HISTORICO_URL, 'get_avaliacoes'],
   selecao:   [SHEETS_HISTORICO_URL, 'get_selecoes'],
+  validacao: [SHEETS_HISTORICO_URL, 'get_validacoes'],
 };
 
 function reenviar(p: PorConfirmar): void {
@@ -7999,6 +8065,9 @@ function reenviar(p: PorConfirmar): void {
   } else if (p.tipo === 'selecao') {
     const sel = load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id);
     if (sel) enviar(SHEETS_HISTORICO_URL, 'selecao', corpoSelecao(sel));
+  } else if (p.tipo === 'validacao') {
+    const v = getValidacoes().find(x => x.id === p.id);
+    if (v) enviarValidacaoAoSheets(v);
   } else {
     const r = getHistoricoAvaliacoes().find(x => x.id === p.id);
     if (r) enviar(SHEETS_HISTORICO_URL, 'avaliacao', r as any);
@@ -8149,6 +8218,8 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
           // aluno. Com o mesmo código, a resposta antiga dava a nova por
           // entregue e o professor validava a antiga (Rosa, out/2026).
           if (tipo === 'selecao') versaoNoSheets.set('selecao:' + String(x.id), quandoFoi(x.criadaEm));
+          // A validação: a que lá está tem de ser a última (com a nota).
+          if (tipo === 'validacao') versaoNoSheets.set('validacao:' + String(x.id), String(x.notaMedia20 ?? '') === '' ? 0 : quandoFoi(x.validadoEm));
         });
       } catch { /* sem rede: fica para a próxima */ }
     }
@@ -8157,6 +8228,11 @@ export async function confirmarEReenviar(): Promise<{ confirmados: number; aRepe
   }
 
   const versaoChegou = (p: PorConfirmar): boolean => {
+    if (p.tipo === 'validacao') {
+      const local = quandoFoi((getValidacoes().find(x => x.id === p.id) as any)?.validadoEm);
+      const remota = versaoNoSheets.get('validacao:' + String(p.id)) || 0;
+      return !local || (remota > 0 && remota >= local - 1000);
+    }
     if (p.tipo === 'selecao') {
       const local = quandoFoi((load<SelecaoAluno>(KEYS.selecoes).find(x => x.id === p.id) as any)?.criadaEm);
       const remota = versaoNoSheets.get('selecao:' + String(p.id)) || 0;

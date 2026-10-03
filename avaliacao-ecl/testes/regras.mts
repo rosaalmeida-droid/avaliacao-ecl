@@ -143,6 +143,13 @@ regra('20h. A atividade ligada a uma aula arquivada passa para a aula desse dia 
   igual(rp.rotuloDoPlano(velha).includes('157'), false, 'a arquivada também não mostra o n.º interno:');
 });
 
+regra('46. A validação do professor insiste até chegar ao Sheets', () => {
+  por('ecl_planos', [{ id: 'p1', turmaId: 't', ucId: 'UC1', data: '2026-09-29', estado: 'publicado' }]);
+  b.addOrUpdateValidacao({ id: 'v1', selecaoId: 's1', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', validadoEm: '2026-10-02T10:00:00Z',
+    notas: [{ competenciaId: 'SUB-010', nota: 4 }], notaMedia20: 15 } as any);
+  igual(b.estadoDaEspera().total >= 1, true, 'fica à espera de confirmação:');
+});
+
 regra('13. As datas comparam-se como datas, venham escritas como vierem', () => {
   const sels: any[] = [
     { id: 'velha', alunoId: 'a1', planoAulaId: 'p1', criadaEm: '2026-10-01T23:00:00.000Z' },
