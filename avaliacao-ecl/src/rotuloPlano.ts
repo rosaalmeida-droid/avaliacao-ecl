@@ -140,5 +140,9 @@ export function avisoFimUC(plano: PlanoAula): string {
 export function rotuloDoPlano(p: any): string {
   if (!p) return '';
   const dia = new Date(String(p.data || '').slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit' });
-  return `${dia}${p.horaInicio ? `, ${p.horaInicio}–${p.horaFim || ''}` : ''} · ${rotuloPlano(p)}${p.ucId ? ` (${p.ucId})` : ''} — ${p.titulo || 'aula'}`;
+  // Uma aula que ficou com o nome de uma atividade (criada antes da regra
+  // «a atividade nunca muda a aula») não se apresenta com esse nome.
+  const t = String(p.titulo || '');
+  const nomeDeAtividade = !p.tipoEvento && TIPOS_EVENTO.some(x => t.startsWith(x));
+  return `${dia}${p.horaInicio ? `, ${p.horaInicio}–${p.horaFim || ''}` : ''} · ${rotuloPlano(p)}${p.ucId ? ` (${p.ucId})` : ''}${t && !nomeDeAtividade ? ` — ${t}` : ''}`;
 }

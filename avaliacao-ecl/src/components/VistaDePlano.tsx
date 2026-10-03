@@ -2721,7 +2721,7 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             })()}
             <div style={{ padding: '9px 11px', borderRadius: 9, background: '#f3eefa', margin: '0 0 12px', fontSize: 14 }}>
               {atitudesNoPlanoDaTurma(getPlanosAula().find(x => x.id === plano.id) || plano)
-                ? 'Atitudes: estes alunos já respondem às atitudes no plano de aula da turma, por isso a atividade não as repete. Na atividade avaliam as técnicas (da ficha técnica, se houver) e a técnica geral.'
+                ? 'Atitudes: estes alunos já respondem às atitudes no plano de aula da turma, por isso a atividade não as repete. Na atividade avaliam as técnicas (da ficha técnica, se houver), a técnica geral e a atitude que escolheres de propósito para a atividade, se escolheres alguma.'
                 : 'Atitudes: estes alunos não respondem às atitudes no plano de aula da turma, por isso a atividade avalia as atitudes, além das técnicas.'}
             </div>
             <div style={{ fontWeight: 800 }}>Como conta</div>
@@ -2812,7 +2812,9 @@ function ResumoDaAtividadeExtra({ plano }: { plano: any }) {
       </ul>
       <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)', lineHeight: 1.55 }}>
         {atitudesNoPlanoDaTurma(plano)
-          ? 'As atitudes não se repetem aqui: estes alunos já respondem às atitudes no plano de aula da turma desse dia.'
+          ? (ecras.some((e: any) => e.tipo === 'atitude')
+            ? 'As atitudes do dia não se repetem aqui (estes alunos já as respondem no plano de aula da turma); só a que escolheste para esta atividade.'
+            : 'As atitudes não se repetem aqui: estes alunos já respondem às atitudes no plano de aula da turma desse dia. Se quiseres uma atitude própria da atividade (por exemplo, a cooperação num trabalho de grupo), escolhe-a nas competências.')
           : 'As atitudes avaliam-se aqui, porque estes alunos não respondem às atitudes no plano de aula da turma desse dia.'}
         {' '}Conta como bónus (até +0,5). As técnicas ficam no perfil do aluno e contam para a consolidação.
         {aula && <> As competências do plano de aula da turma (<b>{rotuloDoPlano(aula)}</b>) ficam nesse plano: não são estas.</>}
