@@ -585,6 +585,22 @@ function diferencas(antes: EnvioRegistado, agora: EnvioRegistado): { sinal: '+' 
   return out;
 }
 
+/** Regra (Rosa, out/2026): só se pede aos alunos que respondam outra vez
+ *  quando muda AQUILO A QUE RESPONDEM — as perguntas, o tipo de aula, os
+ *  conteúdos do manual, as competências, as fichas ou como é a aula. O dia,
+ *  as horas, o título e o sumário chegam-lhes sozinhos e não mudam a resposta. */
+export function mudaramAsPerguntas(antes: EnvioRegistado, agora: EnvioRegistado): boolean {
+  const igual = (a: any, b: any) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const t = (x: any) => x ? { onde: x.onde, cozinham: x.cozinham, trabalho: x.trabalho, servico: x.servico } : null;
+  if (!igual([...antes.ecras].sort(), [...agora.ecras].sort())) return true;
+  if (!igual([...antes.fichas].sort(), [...agora.fichas].sort())) return true;
+  if (antes.triagem && !igual(t(antes.triagem), t(agora.triagem))) return true;
+  if (antes.tipo !== undefined && antes.tipo !== agora.tipo) return true;
+  if (antes.manual !== undefined && !igual(antes.manual, agora.manual)) return true;
+  if (antes.competencias !== undefined && !igual(antes.competencias, agora.competencias)) return true;
+  return false;
+}
+
 /** Para comparar o plano antes e depois de o mudar (ecrã de editar). */
 export const fotografiaDoPlano = (plano: PlanoAula) => fotografia(plano);
 export const diferencasEntre = (antes: ReturnType<typeof fotografia>, depois: ReturnType<typeof fotografia>) => diferencas(antes, depois);

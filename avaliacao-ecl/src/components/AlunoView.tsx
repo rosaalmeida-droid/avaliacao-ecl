@@ -564,7 +564,9 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
   try {
     const em = localStorage.getItem(`avaliacao_submetida_${plano.id}_${alunoId}`);
     const pedido = plano?.pedirDeNovoEm;
-    if (em && pedido && em < pedido) return false;
+    // Depois de o professor pedir outra vez, só conta uma resposta à versão
+    // nova do plano (não a hora do telemóvel, que pode estar errada).
+    if (pedido) return !!ultimaResposta(alunoId, plano.id);
     return !!em;
   } catch { return false; }
 }

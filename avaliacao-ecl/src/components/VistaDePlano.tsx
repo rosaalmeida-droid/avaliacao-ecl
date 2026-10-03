@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -25,7 +25,7 @@ import { TurmaNaAula } from './TurmaNaAula';
 import { RegistosKFaoVivo } from './RegistosKFaoVivo';
 import { SumarioAula } from './SumarioAula';
 import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, Gaveta, NaColuna, fraseDaAula, oQueOAlunoVe,
-  fotografiaDoPlano, diferencasEntre, enviarAlteracoesAosAlunos } from './PlanoGuiado';
+  fotografiaDoPlano, diferencasEntre, enviarAlteracoesAosAlunos, mudaramAsPerguntas } from './PlanoGuiado';
 import { sumarioDoPlano } from '../sumarioAutomatico';
 import { triagemDoPlano, escolheTema, obrigatoriasDaTriagem } from '../contextoAula';
 import { eventosParaPlanos } from '../eventos/modelo';
@@ -469,7 +469,6 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   // Manter o menu do plano a par de onde estamos, e obedecer-lhe quando
   // ele pede para ir a outro sítio. A lógica de cada módulo não muda.
-  React.useEffect(() => { aoMudarModulo?.(modulo); }, [modulo]);
 
   // Veio do aviso de eliminação com "Corrigir o plano" — abrir o editor.
   React.useEffect(() => {
@@ -538,6 +537,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   // coisa com arranjos diferentes. Sobra de termos construído o novo sem
   // apagar o velho.
   const [tabInicio, setTabInicio] = useState<'resumo' | 'competencias' | 'turma' | 'grupos'>('resumo');
+  // O menu da esquerda marca onde o professor está. As competências abrem-se
+  // dentro do Início: antes o menu ficava em «Fichas» (Rosa, out/2026).
+  React.useEffect(() => {
+    aoMudarModulo?.(modulo === 'inicio' && tabInicio === 'competencias' ? 'competencias' : modulo);
+  }, [modulo, tabInicio]);
   // Plano publicado de uma aula prática: as funções de cada aluno distribuem-se
   // logo, para os alunos as verem antes da aula (plano organizacional).
   React.useEffect(() => {
@@ -1277,8 +1281,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             try {
               const depois = getPlanosAula().find(x => x.id === p.id) || p;
               const antes = antesDeEditar.current;
-              const mud = antes && depois.estado === 'publicado' ? diferencasEntre(antes, fotografiaDoPlano(depois)) : [];
-              if (mud.length) setPerguntarEnvio(mud);
+              if (!antes || depois.estado !== 'publicado') return;
+              const agora = fotografiaDoPlano(depois);
+              const mud = diferencasEntre(antes, agora);
+              if (!mud.length) return;
+              // Os alunos já veem o plano novo (vai sozinho). Só se pergunta
+              // se é para responderem outra vez quando mudou aquilo a que
+              // responderam e alguém já respondeu.
+              const responderam = selecoesQueContam().filter(s => s.planoAulaId === depois.id).length;
+              if (responderam > 0 && mudaramAsPerguntas(antes, agora)) setPerguntarEnvio(mud);
+              else { const novo = enviarAlteracoesAosAlunos(depois.id, false, true); if (novo) onPlanoActualizado?.(novo); }
             } catch { /* */ }
           }}
           onVoltar={() => setModulo('inicio')}
@@ -1517,7 +1529,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   </>);
 
   // ── INÍCIO ───────────────────────────────────────────────────
-  const respostasJaDadas = new Set(getSelecoes().filter(s => s.planoAulaId === plano.id).map(s => s.alunoId)).size;
+  const respostasJaDadas = selecoesQueContam().filter(s => s.planoAulaId === plano.id).length;
   return (
     <div>
       {/* Mudou-se um plano que os alunos já têm: enviar-lhes agora? */}
@@ -1525,26 +1537,25 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(26,23,20,0.55)', display: 'flex',
           alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#fff', borderRadius: 18, padding: '22px 22px 18px', maxWidth: 460, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 6 }}>Publicar as alterações aos alunos?</div>
-            <div style={{ fontSize: 14.5, color: 'rgba(26,23,20,0.7)', marginBottom: 10 }}>Este plano já está com os alunos. Mudaste:</div>
+            <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 6 }}>Pedir aos alunos que respondam outra vez?</div>
+            <div style={{ fontSize: 14.5, color: 'rgba(26,23,20,0.7)', marginBottom: 10 }}>Os alunos já veem o plano novo. Mudaste aquilo a que respondem:</div>
             <ul style={{ margin: '0 0 12px', paddingLeft: 20, fontSize: 14.5, lineHeight: 1.6 }}>
               {perguntarEnvio.map((d, i) => <li key={i}>{d.texto}</li>)}
             </ul>
             {respostasJaDadas > 0 && (
               <div style={{ fontSize: 13.5, background: '#FDF0E6', color: '#7A3E0C', borderRadius: 10, padding: '9px 12px', marginBottom: 12 }}>
-                {respostasJaDadas} aluno{respostasJaDadas === 1 ? ' já respondeu' : 's já responderam'}: vão ser avisados para responder outra vez.
-                A nota que já deste continua a contar até validares a nova.
+                {respostasJaDadas} aluno{respostasJaDadas === 1 ? ' já respondeu' : 's já responderam'} às perguntas antigas.
+                Se pedires, conta a resposta nova; a anterior fica anulada (a nota que já deste conta até validares a nova).
               </div>
             )}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button onClick={() => { const novo = enviarAlteracoesAosAlunos(plano.id, true, true); if (novo) onPlanoActualizado(novo); setPerguntarEnvio(null); }}
                 style={{ flex: '2 1 200px', minHeight: 48, borderRadius: 12, border: 'none', background: 'var(--copper)', color: '#fff',
-                  fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Sim, publicar aos alunos</button>
-              <button onClick={() => setPerguntarEnvio(null)}
+                  fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Sim, respondem outra vez</button>
+              <button onClick={() => { const novo = enviarAlteracoesAosAlunos(plano.id, false, true); if (novo) onPlanoActualizado(novo); setPerguntarEnvio(null); }}
                 style={{ flex: '1 1 120px', minHeight: 48, borderRadius: 12, border: '1px solid rgba(26,23,20,0.2)', background: '#fff',
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Mais tarde</button>
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Não, fica o que responderam</button>
             </div>
-            <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginTop: 10 }}>«Mais tarde»: fica no cartão «Enviar aos alunos», no plano.</div>
           </div>
         </div>
       )}
