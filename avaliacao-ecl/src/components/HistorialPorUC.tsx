@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import {
   getPlanosAulaPorTurma, getSelecoes, getValidacoes,
-  getFichasProducao, getAlunos, validacaoDaSelecao, selecaoJaValidada, selecoesQueContam,
+  getFichasProducao, getAlunos, validacaoDaSelecao, selecaoJaValidada, selecoesQueContam, selecoesDoProfessor,
 } from '../backend';
 import { getReferencialUC } from '../referencial811RA144';
 import { modulosDaTurma } from '../cronograma';
@@ -52,7 +52,7 @@ interface UCResumo {
 
 function montar(turmaId: string): UCResumo[] {
   const planos = getPlanosAulaPorTurma(turmaId);
-  const selecoes = selecoesQueContam(getSelecoes().filter(s => s.turmaId === turmaId));
+  const selecoes = selecoesQueContam(selecoesDoProfessor().filter(s => s.turmaId === turmaId));
   const validacoes = getValidacoes();
   const fichas = getFichasProducao();
   const totalAlunos = getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).length;

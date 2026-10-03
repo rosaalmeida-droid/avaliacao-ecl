@@ -2945,6 +2945,23 @@ export function getSelecoes(): SelecaoAluno[] {
   });
 }
 
+/**
+ * As autoavaliações que o PROFESSOR vê para validar. São as de getSelecoes e,
+ * de cada aluno que só tem respostas de antes do último pedido («responder
+ * outra vez»), a última dessas, marcada `antesDoPedido`. Regra (Rosa, out/2026):
+ * a última resposta está sempre ao alcance do professor. Antes, se o telemóvel
+ * do aluno ainda tinha a versão antiga do plano, a resposta ficava escondida
+ * ao professor e «pendente» para sempre.
+ */
+export function selecoesDoProfessor(): SelecaoAluno[] {
+  const visiveis = getSelecoes();
+  const todas = semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
+  if (todas.length === visiveis.length) return visiveis;
+  const tem = new Set(visiveis.map(s => s.alunoId + '|' + s.planoAulaId));
+  const escondidas = selecoesQueContam(todas.filter(s => !tem.has(s.alunoId + '|' + s.planoAulaId)));
+  return [...visiveis, ...escondidas.map(s => ({ ...s, antesDoPedido: true } as SelecaoAluno))];
+}
+
 /** Respostas desta aula dadas antes da última alteração do plano (e ainda não validadas). */
 export function respostasAntesDaAlteracao(planoId: string): number {
   const p: any = getPlanosAula().find(x => x.id === planoId);
@@ -6017,7 +6034,8 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
     : getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
 
   const presencas = getPresencas().filter(p => p.planoAulaId === planoAulaId);
-  const selecoes = getSelecoes().filter(s => s.planoAulaId === planoAulaId);
+  // A última resposta de cada aluno, a mesma que o professor valida.
+  const selecoes = selecoesQueContam(selecoesDoProfessor().filter(s => s.planoAulaId === planoAulaId));
   const validacoes = getValidacoes();
   const liderId = liderKFdoGrupo(planoAulaId);
 
@@ -6442,7 +6460,7 @@ export function autoavaliacoesPorValidar(turmaId: string): PorValidar[] {
 
   const porPlano = new Map<string, { nomes: string[] }>();
 
-  selecoesQueContam()
+  selecoesQueContam(selecoesDoProfessor())
     .filter((s: any) => s.turmaId === turmaId && !selecaoJaValidada(s, validacoes))
     .forEach((s: any) => {
       const atual = porPlano.get(s.planoAulaId) || { nomes: [] };
