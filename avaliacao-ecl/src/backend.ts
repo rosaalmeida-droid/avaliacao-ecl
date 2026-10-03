@@ -11,7 +11,7 @@ import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula'
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
 import { notaDaPautaUC } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
-import { ucsEquivalentes, modulosDaTurma } from './cronograma';
+import { ucsEquivalentes, modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
 import {
   Comanda, SelecaoAluno, Validacao, Atividade,
   Turma, Aluno, PlanoAula, FichaProducao,
@@ -21,7 +21,7 @@ import {
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
-import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
+import { estadoDosPrecos, juntarPrecosRevistos, getPrecosRevistos, getMateriaPrimasBase, type PrecoRevisto } from './materiasPrimasBase';
 
 // ══ SCRIPT ÚNICO ══
 // Um só script guarda tudo: planos, fichas, alunos, avaliações,
@@ -410,19 +410,35 @@ async function lerDoSheets(url: string, params: Record<string, string>): Promise
   try { return await lerDoSheetsAgora(url, params); } finally { acabouDeLer(); }
 }
 
-async function lerDoSheetsAgora(url: string, params: Record<string, string>): Promise<any> {
+/**
+ * Leitura com prioridade, para entrar na aplicação: não espera pela fila das
+ * outras leituras. Ao abrir, a aplicação pede ~15 coisas ao Sheets, 4 de cada
+ * vez; a confirmação do código ficava atrás delas e entrar demorava quase um
+ * minuto (Rosa, out/2026). Desiste ao fim de `ms` (e entra-se como antes).
+ */
+async function lerDoSheetsJa(url: string, params: Record<string, string>, ms = 10000): Promise<any> {
+  if (!url) return null;
+  return lerDoSheetsAgora(url, params, ms);
+}
+
+async function lerDoSheetsAgora(url: string, params: Record<string, string>, ms = 45000): Promise<any> {
+  // Um pedido que nunca responde prendia um lugar da fila para sempre.
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const t = ctl ? setTimeout(() => ctl.abort(), ms) : null;
   try {
     const u = new URL(url);
     Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
     // (v22) Os PIN dos alunos só vêm para quem entrou como professor ou coordenação.
     if (params.tipo === 'get_alunos') { const t = tokenDaEntrada(); if (t) u.searchParams.set('token', t); }
-    const res = await fetch(u.toString());
+    const res = await fetch(u.toString(), ctl ? { signal: ctl.signal } : undefined);
     const json = await res.json();
     if (json?.zeroEm) aplicarComecarDoZero(String(json.zeroEm));
     return json;
   } catch (e) {
     console.warn('Erro ao ler do Sheets:', e);
     return null;
+  } finally {
+    if (t) clearTimeout(t);
   }
 }
 
@@ -445,7 +461,7 @@ export type RespostaEntrada = 'entrou' | 'errado' | 'bloqueado' | 'semCodigo' | 
 
 /** O código do professor («Rosa Almeida»), da coordenação («coordenadora») ou dos eventos («eventos»). */
 export async function confirmarCodigo(quem: string, codigo: string): Promise<RespostaEntrada> {
-  const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'entrar', quem, codigo });
+  const j: any = await lerDoSheetsJa(SHEETS_ECL_URL, { tipo: 'entrar', quem, codigo });
   if (!j?.ok) return 'semRede';
   if (j.semCodigo || (j.entrou === undefined && !j.bloqueado)) return 'semCodigo';   // script antigo ou sem código novo
   if (j.bloqueado) return 'bloqueado';
@@ -455,7 +471,7 @@ export async function confirmarCodigo(quem: string, codigo: string): Promise<Res
 }
 
 export async function confirmarPinAluno(alunoId: string, pin: string): Promise<RespostaEntrada> {
-  const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'entrar_aluno', alunoId, pin });
+  const j: any = await lerDoSheetsJa(SHEETS_ECL_URL, { tipo: 'entrar_aluno', alunoId, pin });
   if (!j?.ok) return 'semRede';
   if (j.semPin || (j.entrou === undefined && !j.bloqueado)) return 'semCodigo';
   if (j.bloqueado) return 'bloqueado';
@@ -927,6 +943,14 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
           x => enviar(SHEETS_PLANOS_URL, 'plano', { plano: x }),
           Array.isArray(jsonPlanos.eliminados) ? new Set(jsonPlanos.eliminados.map(String)) : undefined);
         save(KEYS.planos, merged);
+        // Plano eliminado noutro aparelho: este também o marca como eliminado.
+        // Antes só saía da lista de planos, e as notas, autoavaliações e
+        // presenças dele continuavam a aparecer nas notas da UC (Rosa, out/2026).
+        if (Array.isArray(jsonPlanos.eliminados) && jsonPlanos.eliminados.length) {
+          const ja = new Set(load<string>(KEYS.eliminadosPlanos));
+          const novos = jsonPlanos.eliminados.map(String).filter((id: string) => id && !ja.has(id));
+          if (novos.length) save(KEYS.eliminadosPlanos, [...ja, ...novos]);
+        }
       }
     }
 
@@ -1110,6 +1134,8 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       const jsonMP = await ler(SHEETS_ECL_URL, { tipo: 'get_materias_primas' });
       if (jsonMP?.ok && Array.isArray(jsonMP.dados)) juntarMateriasPrimas(jsonMP.dados.concat((jsonMP.eliminados || []).map((id: string) => ({ id, eliminado: true }))));
       partilharMateriasPrimasAntigas();
+      // A tabela completa de preços fica também no Sheets, para se ver (Rosa, out/2026).
+      if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarTabelaDePrecos();
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -2171,8 +2197,8 @@ function guardarLigacoes(l: Record<string, string>): void {
 async function atualizarLigacoes(turmaId: string): Promise<boolean> {
   try {
     const json: any = await Promise.race([
-      lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_telemoveis', turmaId }),
-      new Promise(res => setTimeout(() => res(null), 5000)),
+      lerDoSheetsJa(SHEETS_HISTORICO_URL, { tipo: 'get_telemoveis', turmaId }, 6000),
+      new Promise(res => setTimeout(() => res(null), 6000)),
     ]);
     if (!json?.ok || !Array.isArray(json.telemoveis)) return false;
     const l = ligacoesLocais();
@@ -5024,6 +5050,37 @@ export function juntarMateriasPrimas(lista: any[]): void {
   save(KEYS.materiasPrimasCustom, [...m.values()].filter(x => !fora.has(x.id)));
 }
 
+/** A tabela de preços completa, como a aplicação a usa: a base, com os preços
+ *  revistos por cima, e as matérias-primas da escola. */
+export function tabelaDePrecosCompleta() {
+  const revistos = new Map(getPrecosRevistos().map(p => [p.id, p]));
+  return [
+    ...getMateriaPrimasBase().map(m => {
+      const r = revistos.get(m.id);
+      return { id: m.id, nome: m.nome, categoria: m.categoria, unidadeCompra: m.unidadeCompra,
+        precoKg: r?.precoKg || m.precoKg, precoUnitario: r?.precoUnidade || m.precoUnitario,
+        origem: r ? 'revisto pela coordenação' : 'tabela base', fonte: r ? (r.produtoContinente || m.fonte) : m.fonte,
+        atualizadoEm: r?.atualizadoEm || m.atualizadoEm };
+    }),
+    ...getMateriasPrimasCustom().map(m => ({ id: m.id, nome: m.nome, categoria: m.categoria || 'Outros', unidadeCompra: m.unidadeCompra,
+      precoKg: m.precoKg, precoUnitario: m.precoUnitario, origem: 'acrescentada pela escola', fonte: '', atualizadoEm: (m as any).atualizadoEm || '' })),
+  ];
+}
+const KEY_TABELA_PRECOS_ENVIADA = 'ecl_tabela_precos_enviada';
+/** Envia a tabela de preços para o Sheets (folha TABELA_PRECOS, script v23),
+ *  só quando mudou desde a última vez. Um pedido só, com tudo. */
+export function enviarTabelaDePrecos(forcar = false): void {
+  try {
+    if (!SHEETS_ECL_URL) return;
+    const linhas = tabelaDePrecosCompleta();
+    const assinatura = linhas.length + '|' + linhas.map(l => `${l.id}:${l.precoKg}:${l.precoUnitario}`).join(',').length
+      + '|' + linhas.reduce((s, l) => s + (Number(l.precoKg) || 0) + (Number(l.precoUnitario) || 0), 0).toFixed(2);
+    if (!forcar && localStorage.getItem(KEY_TABELA_PRECOS_ENVIADA) === assinatura) return;
+    enviar(SHEETS_ECL_URL, 'tabela_precos', { linhas } as any);
+    localStorage.setItem(KEY_TABELA_PRECOS_ENVIADA, assinatura);
+  } catch { /* */ }
+}
+
 /** Uma vez por aparelho: as que já cá estavam antes de se partilharem vão para todos. */
 export function partilharMateriasPrimasAntigas(): void {
   try {
@@ -6745,8 +6802,10 @@ export function validacaoDaAula(alunoId: string, planoId: string, validacoes: Va
 export function calculoDaAulaValidada(v: any, tipoSeNaoHouver?: string):
   { nota20: number; porCategoria: Record<string, number>; detalhes: string } | null {
   if (!v) return null;
-  const plano: any = v.tipoPlanAulaUsado ? null : getPlanosAula().find(p => p.id === v.planoAulaId);
-  const tipo = (v.tipoPlanAulaUsado || tipoSeNaoHouver || plano?.tipoPlanAula || 'pratico') as any;
+  const plano: any = planoPorIdRapido(v.planoAulaId);
+  // Atividade extra com ficha técnica: as técnicas contam (dentro do bónus),
+  // também nas validações já feitas como «atitudinal» (Rosa, out/2026).
+  const tipo = (atividadeComTecnicas(plano) ? 'pratico' : (v.tipoPlanAulaUsado || tipoSeNaoHouver || plano?.tipoPlanAula || 'pratico')) as any;
   const notas = (v.notas || []).filter((n: any) => contaNaNotaDaAula(n.competenciaId)).map((n: any) => {
     const categoria = categoriaDe(n.competenciaId);
     const nota = v.semFarda && categoria === 'SUB' ? 1
@@ -9091,4 +9150,153 @@ export function coberturaDaUC(turmaId: string, ucId: string): CoberturaUC {
     conhecimentos: { total: refs.length, avaliados: refs.length - knwFaltam.length, faltam: knwFaltam },
     atitudes: { avaliadas: [...ids].filter(i => categoriaDaNota(i) === 'ATI').length },
   };
+}
+
+// ============================================================
+// Alunos externos e as suas recuperações (Rosa, out/2026)
+// ============================================================
+// Alunos de fora das turmas que vêm recuperar UC. Antes ficavam só no
+// aparelho da coordenação (e podiam perder-se) e não podiam ter
+// recuperações. Agora ficam no Sheets (folha ALUNOS_EXTERNOS, script v24) e
+// em todos os aparelhos. As recuperações são as de sempre, na «turma»
+// EXTERNOS: plano (UC, como recupera, o que tem de fazer, prazo), as
+// entregas e o resultado. Tratam delas o professor da UC e a coordenação;
+// o aluno não entra na aplicação. Sai uma pauta por UC.
+
+export const TURMA_EXTERNOS = 'EXTERNOS';
+const KEY_EXTERNOS = 'ecl_alunos_externos';
+
+export interface AlunoExterno {
+  id: string;
+  nome: string;
+  numeroProcesso?: string;
+  /** Escola ou turma de origem. */
+  turmaOrigem?: string;
+  cursoOrigem?: string;
+  anoLetivo?: string;
+  contacto?: string;
+  observacoes?: string;
+  /** FCT (da lista antiga da coordenação). */
+  localFCT?: string;
+  supervisorFCT?: string;
+  dataInicio?: string;
+  dataTermo?: string;
+  criadoEm: string;
+  atualizadoEm?: string;
+}
+
+export interface EntregaRecuperacao { data: string; descricao: string; registadoPor?: string }
+
+export function getAlunosExternos(): AlunoExterno[] {
+  try { return JSON.parse(localStorage.getItem(KEY_EXTERNOS) || '[]'); } catch { return []; }
+}
+function gravarAlunosExternos(l: AlunoExterno[]): void {
+  try { localStorage.setItem(KEY_EXTERNOS, JSON.stringify(l)); } catch { /* */ }
+}
+export function guardarAlunoExterno(a: AlunoExterno): void {
+  const r = { ...a, atualizadoEm: new Date().toISOString() };
+  const todos = getAlunosExternos().filter(x => x.id !== a.id);
+  gravarAlunosExternos([...todos, r]);
+  if (SHEETS_ECL_URL) enviar(SHEETS_ECL_URL, 'aluno_externo', { alunoExterno: r } as any);
+}
+export function eliminarAlunoExterno(id: string): void {
+  gravarAlunosExternos(getAlunosExternos().filter(a => a.id !== id));
+  if (SHEETS_ECL_URL) enviar(SHEETS_ECL_URL, 'eliminar_aluno_externo', { id } as any);
+}
+
+/** Traz do Sheets os alunos externos e as recuperações deles (e envia os que só cá estão). */
+export async function sincronizarExternos(): Promise<boolean> {
+  let ok = false;
+  try {
+    const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'get_alunos_externos' });
+    if (j?.ok && Array.isArray(j.dados)) {
+      ok = true;
+      const fora = new Set((j.eliminados || []).map(String));
+      const m = new Map(getAlunosExternos().filter(a => !fora.has(a.id)).map(a => [a.id, a]));
+      const doSheets = new Set<string>();
+      for (const a of j.dados as AlunoExterno[]) {
+        if (!a?.id || !a.nome) continue;
+        doSheets.add(a.id);
+        const loc = m.get(a.id);
+        if (!loc || String(a.atualizadoEm || '') >= String(loc.atualizadoEm || '')) m.set(a.id, a);
+      }
+      gravarAlunosExternos([...m.values()]);
+      // Os que estavam só neste aparelho (a lista antiga da coordenação) vão para o Sheets.
+      [...m.values()].filter(a => !doSheets.has(a.id)).forEach(a => enviar(SHEETS_ECL_URL, 'aluno_externo', { alunoExterno: a } as any));
+    }
+    const jr: any = await lerDoSheets(SHEETS_RECUPERACAO_URL, { tipo: 'recuperacoes', turmaId: TURMA_EXTERNOS });
+    if (jr?.ok && Array.isArray(jr.dados)) {
+      const todas = getRecuperacoes();
+      for (const r of jr.dados) {
+        if (!r?.id) continue;
+        const i = todas.findIndex(x => x.id === r.id);
+        if (i < 0) todas.push(r);
+        else if (String(r.atualizadoEm || '') > String(todas[i].atualizadoEm || '')) todas[i] = r;
+      }
+      save(KEYS.recuperacoes, todas);
+    }
+  } catch { /* fica o que está cá */ }
+  return ok;
+}
+
+export function recuperacoesDeExternos(): RecuperacaoModulo[] {
+  return getRecuperacoes().filter(r => r.turmaId === TURMA_EXTERNOS);
+}
+
+/** As UC que um aluno externo pode recuperar (todas as do cronograma, sem repetir). */
+export function ucsParaExternos(): { id: string; nome: string; ano: number }[] {
+  const m = new Map<string, { id: string; nome: string; ano: number }>();
+  for (const x of CRONOGRAMA_2026_2027 as any[]) if (x?.id && !m.has(x.id)) m.set(x.id, { id: x.id, nome: x.nome || '', ano: x.turmaAno || 0 });
+  return [...m.values()].sort((a, b) => a.ano - b.ano || a.id.localeCompare(b.id));
+}
+
+export function criarRecuperacaoExterno(aluno: AlunoExterno, uc: { id: string; nome: string }, modalidade: 'pratico' | 'teorico' | 'atividade' | 'outra',
+  descricao: string, prazo: string, professor: string): RecuperacaoModulo {
+  const agora = new Date().toISOString();
+  const r: any = {
+    id: novoId('rec_ext'), alunoId: aluno.id, nomeAluno: aluno.nome, turmaId: TURMA_EXTERNOS, ucId: uc.id, ucNome: uc.nome,
+    tipoUC: 'tecnica', planosIds: [], competenciasIds: [], atitudesIds: [], responsabilidadesIds: [],
+    estado: 'em_curso', quando: 'ja', modalidade, descricaoPlano: descricao,
+    dataLimite: prazo ? new Date(prazo + 'T23:59:00').toISOString() : undefined,
+    dataAtribuicao: agora, criadoEm: agora, atualizadoEm: agora, professorAvaliador: professor, entregas: [],
+  };
+  addOrUpdateRecuperacao(r);
+  return r;
+}
+
+export function registarEntregaRecuperacao(id: string, descricao: string, data: string, quem?: string): void {
+  const r: any = getRecuperacoes().find(x => x.id === id);
+  if (!r) return;
+  const e: EntregaRecuperacao = { data: data || new Date().toISOString().slice(0, 10), descricao, registadoPor: quem };
+  addOrUpdateRecuperacao({ ...r, entregas: [...(r.entregas || []), e], atualizadoEm: new Date().toISOString() });
+}
+
+export function eliminarRecuperacaoExterno(id: string): void {
+  const r = getRecuperacoes().find(x => x.id === id);
+  if (!r) return;
+  // Não se apaga: fica «anulada», para não voltar de outro aparelho.
+  addOrUpdateRecuperacao({ ...(r as any), estado: 'anulada', atualizadoEm: new Date().toISOString() });
+}
+
+/** Atividade extra (evento, concurso…) com ficha técnica: os alunos avaliam
+ *  as técnicas da ficha e elas contam na nota da atividade, como numa aula
+ *  prática (técnicas, atitudes e farda). Antes a atividade ficava
+ *  «atitudinal» e só as atitudes contavam (Rosa, out/2026). */
+export function atividadeComTecnicas(plano: any): boolean {
+  if (!plano?.tipoEvento || !(plano.fichasIds || []).length) return false;
+  const t = plano.triagemAula?.tipo;
+  return !t || t === 'pratico' || t === 'misto';
+}
+
+/** O tipo de aula que decide os pesos da nota deste plano. */
+export function tipoParaANota(plano: any): string {
+  return atividadeComTecnicas(plano) ? 'pratico' : (plano?.tipoPlanAula || 'pratico');
+}
+
+// Os planos por código, guardados um instante: o cálculo da nota de cada aula
+// validada precisa do plano, e numa pauta são centenas de cálculos seguidos.
+let planosRapidos: { em: number; m: Map<string, PlanoAula> } | null = null;
+function planoPorIdRapido(id: string): PlanoAula | undefined {
+  if (!planosRapidos || Date.now() - planosRapidos.em > 1000) planosRapidos = { em: Date.now(), m: new Map(getPlanosAula().map(p => [p.id, p])) };
+  return planosRapidos.m.get(id);
 }

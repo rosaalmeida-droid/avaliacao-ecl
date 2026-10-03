@@ -41,13 +41,16 @@ const th: React.CSSProperties = {
 const td: React.CSSProperties = { padding: '6px 6px', border: '1px solid rgba(0,128,128,0.35)', textAlign: 'center', fontSize: 13 };
 const n1 = (x: number | null | undefined) => x === null || x === undefined ? '' : String(Math.round(x * 10) / 10).replace('.', ',');
 
-export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCancelar }: {
+export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCancelar, provisoria = false }: {
   turmaId: string;
   ucId: string;
   ucNome?: string;
   nomeProfessor?: string;
   onFechado: () => void;
   onCancelar: () => void;
+  /** Pauta provisória (simulação com os dados de hoje, Rosa, out/2026): as contas
+   *  e os ficheiros verdadeiros, mas nada é publicado aos alunos nem enviado. */
+  provisoria?: boolean;
 }) {
   // Que Planos de Avaliação entram. Recomendado: todos os realizados na UC,
   // para o percurso todo ficar à vista e não haver surpresas na nota.
@@ -73,7 +76,8 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
 
   // CLASSIF. ATRIBUÍDA: começa na sugestão; o professor muda o que quiser.
   // Fica guardada neste aparelho para não se perder ao fechar o ecrã.
-  const chaveClassif = chaveClassificacoes(turmaId, ucId);
+  // Na simulação, as classificações escritas ficam à parte (não mexem nas do professor).
+  const chaveClassif = chaveClassificacoes(turmaId, ucId) + (provisoria ? '_simulacao' : '');
   const [classifEscrita, setClassifEscrita] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem(chaveClassif) || '{}'); } catch { return {}; }
   });
@@ -126,7 +130,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
       turma: getTurmas().find(t => t.id === turmaId)?.nome || turmaId,
       disciplina: mod?.disciplina || '',
       formador: nomeProfessor || mod?.docente || '',
-      ucId, ucNome: ucNome || mod?.nome || '',
+      ucId, ucNome: (ucNome || mod?.nome || '') + (provisoria ? ` — PAUTA PROVISÓRIA (simulação de ${new Date().toLocaleDateString('pt-PT')})` : ''),
       dataInicio: mod?.dataInicio || '', dataFim: mod?.dataFim || '',
     };
     return { cabecalho, produtos, linhas: escolhidas, totalAtividades, classificacoes };
@@ -218,7 +222,13 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
         background: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 1100,
         maxHeight: '92vh', overflowY: 'auto',
       }}>
-        <div style={{ fontSize: 18, fontWeight: 800 }}>Pauta de {ucId}</div>
+        <div style={{ fontSize: 18, fontWeight: 800 }}>{provisoria ? `Pauta provisória de ${ucId} (simulação)` : `Pauta de ${ucId}`}</div>
+        {provisoria && (
+          <div style={{ marginTop: 6, padding: '8px 12px', borderRadius: 9, background: '#fff8e1', border: '1px solid #e0b000', fontSize: 13.5, lineHeight: 1.5 }}>
+            Com os alunos e as notas validadas <b>até hoje</b>. Pode descarregar em Excel ou PDF (sai marcada «PAUTA PROVISÓRIA»).
+            Não fecha a UC, não publica notas e não envia nada.
+          </div>
+        )}
         <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
           {ucNome || mod?.nome} · {turmaId}
         </div>
@@ -483,8 +493,17 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
 
         </>)}
 
+        {provisoria && (
+          <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: '#fff8e1', border: '1px solid #e0b000', fontSize: 14, lineHeight: 1.5 }}>
+            <b>Pauta provisória.</b> É uma simulação com os dados de hoje: as notas ainda podem mudar até ao fim da UC.
+            Nada foi publicado aos alunos nem enviado. A pauta final faz-se no fim da UC, em «Fechar a unidade».
+          </div>
+        )}
+        <div style={{ display: provisoria ? 'flex' : 'none', justifyContent: 'flex-end', marginTop: 12 }}>
+          <button onClick={onCancelar} style={{ ...botao(false), flex: '0 1 200px' }}>Fechar a simulação</button>
+        </div>
         {/* 5. Publicar aos alunos */}
-        {!porResponder && (
+        {!provisoria && !porResponder && (
           <>
             <div style={rotulo}>5. Notas finais para os alunos</div>
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginBottom: 8, lineHeight: 1.5 }}>
@@ -504,6 +523,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
         )}
 
         {/* 6. Email */}
+        {!provisoria && (<>
         <div style={rotulo}>6. Fechar a unidade e enviar</div>
         <input value={email} onChange={e => setEmail(e.target.value)}
           placeholder="o.teu.email@eclisboa.net" style={{
@@ -519,6 +539,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
             {aEnviar ? 'A enviar…' : 'Fechar a unidade e enviar a pauta'}
           </button>
         </div>
+        </>)}
       </div>
     </div>
   );

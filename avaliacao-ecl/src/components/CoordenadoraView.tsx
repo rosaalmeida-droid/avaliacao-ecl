@@ -15,7 +15,7 @@ import { DicionarioComp } from './DicionarioComp';
 import { coresDaTurma } from '../cores';
 import { EventosECL } from './EventosECL';
 import { ManualCoordenador } from './ManualCoordenador';
-import { GestaoAlunosExternos } from './AlunosExternos';
+import { AlunosExternos } from './AlunosExternos';
 import { DadosSeguranca } from './DadosSeguranca';
 import { PrecosCoordenadora } from './PrecosCoordenadora';
 import { SimulacaoPauta } from './SimulacaoPauta';
@@ -94,7 +94,7 @@ export function CoordenadoraView() {
       {tab === 'planos' && <BibliotecaPlanosTab />}
       {tab === 'cronograma' && <CronogramaTab />}
       {tab === 'manual' && <ManualCoordenador turmaId={getTurmas()[0]?.id || '1º ACP'} />}
-      {tab === 'externos' && <GestaoAlunosExternos />}
+      {tab === 'externos' && <AlunosExternos nomeProfessor="Coordenação" />}
       {tab === 'ranking' && <RankingTab />}
       {tab === 'atividades' && <EventosECL nomeProfessor="Coordenadora" />}
       {tab === 'pedagogico' && <VisaoPedagogicaTab />}

@@ -201,7 +201,13 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
     const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
     const novo: any = { ...atual, triagemAula: nova };
     // O tipo da aula (os pesos da nota) e a farda e os registos acompanham a
-    // triagem. Os eventos têm as regras deles e não mudam.
+    // triagem. Também numa atividade extra: escolher «Prática» e ficar
+    // «atitudinal» no registo, na nota e no Sheets era grave (Rosa, out/2026).
+    if (atual.tipoEvento && 'tipo' in parcial) {
+      const temKnwEv = conhecimentosDaAula(atual).length > 0
+        || ((atual.compAdicionadas || []) as string[]).some(id => id.startsWith('KNW-'));
+      novo.tipoPlanAula = tipoDaTriagem(nova, temKnwEv, atual.tipoPlanAula);
+    }
     if (!atual.tipoEvento) {
       const temKnw = conhecimentosDaAula(atual).length > 0
         || ((atual.compAdicionadas || []) as string[]).some(id => id.startsWith('KNW-'));
@@ -282,7 +288,7 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
 
   return (
     <div style={cart}>
-      <CabecalhoPasso n={1} titulo="Como é esta aula?"
+      <CabecalhoPasso n={1} titulo={(plano as any)?.tipoEvento ? 'Como é esta atividade?' : 'Como é esta aula?'}
         sub="Uma pergunta de cada vez: só aparecem as que fazem falta. O resto a aplicação deduz." />
       {!definida && (
         <div style={{ background: C.ambarP, color: '#5C3A08', borderRadius: 10, padding: '10px 14px', fontSize: 14, marginBottom: 14, lineHeight: 1.5 }}>

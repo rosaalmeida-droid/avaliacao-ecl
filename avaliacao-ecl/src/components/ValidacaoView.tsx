@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor } from '../backend';
+import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -158,7 +158,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         ucId={plano?.ucId || ''}
         fichasNomes={fichas.map(f => f.nomePrato)}
         fichas={fichas}
-        tipoPlanAula={(plano as any)?.tipoPlanAula || 'pratico'}
+        tipoPlanAula={tipoParaANota(plano) as any}
         validacaoExistente={valExistente}
         onVoltar={() => { setAcabou(null); setAtiva(null); }}
         // Depois de guardar, o seguinte por validar — sem voltar à lista.

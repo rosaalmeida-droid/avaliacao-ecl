@@ -184,7 +184,9 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
 // repartidos como faz calcularNotaPlano: numa aula prática sem
 // conhecimentos, o peso deles passa para as técnicas.
 export function pesosDaAula(plano: PlanoAula, R: RegrasAutoavaliacao): { cat: 'OBR' | 'SUB' | 'KNW' | 'ATI'; nome: string; pct: number }[] {
-  const tipo = (R.tipoPlanAula in PESOS_AULA ? R.tipoPlanAula : 'pratico') as keyof typeof PESOS_AULA;
+  // Atividade extra com as técnicas da ficha: pesos de aula prática (Rosa, out/2026).
+  const tipoBase = (plano as any)?.tipoEvento && R.tecnicasNaAtividade ? 'pratico' : R.tipoPlanAula;
+  const tipo = (tipoBase in PESOS_AULA ? tipoBase : 'pratico') as keyof typeof PESOS_AULA;
   const p: Record<string, number> = { ...PESOS_AULA[tipo] };
   const rem: string[] = (plano as any).compRemovidas || [];
   const temSub = (!R.ehAtitudinal || !!R.tecnicasNaAtividade) && R.subIds.length + R.appIds.length + R.recursoIds.length > 0;
