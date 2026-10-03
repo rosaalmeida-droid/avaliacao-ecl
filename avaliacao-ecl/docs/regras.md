@@ -1,6 +1,6 @@
 # Regras da aplicação (out/2026)
 
-Estas regras valem em toda a aplicação: no professor, no aluno, na coordenação, no Sheets e no Firebase. Qualquer mudança nova tem de as cumprir.
+Estas regras valem em toda a aplicação: no professor, no aluno, na coordenação, no Sheets e no Firebase. Qualquer mudança nova tem de as cumprir. Há testes automáticos para as principais (`testes/regras.mts`, corre-se com `npm run testar`).
 
 ## Plano de aula
 1. **O aluno vê sempre a versão mais recente do plano.** Cada gravação leva a hora (`atualizadoEm`). O ecrã da aula do aluno não fica com a versão de quando a abriu.
