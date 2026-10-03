@@ -355,12 +355,14 @@ export const PERGUNTAS_EVENTO: Record<string, [PerguntaAtitude, PerguntaAtitude]
   'ATI-001': [ // Responsabilidade
     // Serve para qualquer evento (serviço, inauguração, feira) e para os
     // concursos: «treinar o prato» só fazia sentido num concurso (Rosa, out/2026).
+    // Só saber a tarefa ao chegar acontece muitas vezes e não é culpa do
+    // aluno: é a resposta «não aconteceu», que não conta (Rosa, out/2026).
     P('Antes do evento, como te preparaste para a tua tarefa?', [
-      'Não me preparei: só soube o que ia fazer quando cheguei.',
+      'Sabia a minha tarefa, mas não me preparei.',
       'Preparei-me pouco, só porque o professor mandou.',
-      'Sabia bem a minha tarefa (li a ficha ou o que me pediram).',
-      'Sabia bem a minha tarefa e treinei ou tirei dúvidas antes com o professor ou um colega.',
-    ]),
+      'Preparei-me: li a ficha ou o que me pediram.',
+      'Preparei-me e tirei dúvidas ou treinei antes com o professor ou um colega.',
+    ], 'Só me disseram a tarefa quando cheguei (não dava para me preparar).'),
     P('A que horas chegaste?', [
       'Cheguei atrasado e não avisei.',
       'Cheguei atrasado, mas avisei.',
