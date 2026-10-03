@@ -25,7 +25,10 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 16. **Uma atividade nunca muda a aula.** Se o professor escolhe um tipo de atividade ao editar uma aula, a aula fica igual para todos. A atividade é criada à parte, ligada a essa aula (`aulaLigada`), e só a veem os alunos que foram.
 17. **O professor pode pôr diretamente quem foi** («Acrescentar um aluno que foi»), sem esperar pelas inscrições.
 18. **«Confirmar participantes»** mostra quem participa, o que cada um vai responder e como conta (bónus ou pontos, sem faltas). Publica a atividade e grava.
-19. **Os alunos da atividade também respondem à aula?** Decide o professor ao confirmar: «Também respondem à aula» ou «Só respondem à atividade». No segundo caso, a aula diz ao aluno que responde só à atividade, e ele não conta como «falta responder».
+19. **O plano da turma desse dia** é encontrado sozinho: o da mesma turma, no mesmo dia e às mesmas horas. Aparece escrito com o dia, as horas, o n.º e o título. Não muda com a atividade, e o conteúdo e o sumário da atividade são da atividade.
+20. **O professor decide a que partes desse plano os alunos da atividade respondem:** técnicas (a prática), conhecimentos (o trabalho exigido), atitudes e 5 C, ou nada. Por omissão: técnicas e conhecimentos, e não as atitudes, que já se avaliam na atividade. O aluno vê na aula só essas perguntas, com a explicação.
+21. **Numa atividade com alunos escolhidos, todas as listas mostram só esses alunos** (`alunosDoPlano`): quem falta responder, a turma na aula e as faltas, as funções, os grupos, a validação e o reabrir.
+22. **Aviso ao aluno:** quem esteve numa atividade que já aconteceu recebe «Estiveste na atividade … autoavalia-te», com o dia e o plano da turma a que também responde.
 
 ## Validação do professor
 10. **A última resposta está sempre ao alcance do professor para validar,** em «Por validar» ou em «Já validadas — tocar para alterar», mesmo dias depois.

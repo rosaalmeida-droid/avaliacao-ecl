@@ -35,7 +35,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, rotuloDoPlano, partesDoPlanoParaOAluno, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -991,6 +991,28 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         urgente: false,
       }));
 
+    // Atividade que já aconteceu e onde o professor o pôs (ou aceitou): tem de
+    // se autoavaliar nela (Rosa, out/2026). Antes não havia aviso nenhum
+    // para uma atividade passada.
+    const atividadesPorAvaliar = getPlanosAula().filter((p: any) => p.turmaId === aluno.turmaId && eventoForaDoHorario(p)
+      && p.estado === 'publicado' && String(p.data || '').slice(0, 10) <= hojeAceite
+      && participantesDoEvento(p).includes(aluno.id) && !ultimaResposta(aluno.id, p.id));
+    if (atividadesPorAvaliar.length > 0) {
+      const dia = (p: any) => new Date(String(p.data).slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit' });
+      av.push({
+        id: 'atividade_por_avaliar',
+        titulo: atividadesPorAvaliar.length === 1 ? `Estiveste na atividade «${atividadesPorAvaliar[0].titulo}»` : `Estiveste em ${atividadesPorAvaliar.length} atividades`,
+        detalhe: atividadesPorAvaliar.map((p: any) => {
+          const aula: any = aulaDoDiaDaAtividade(p);
+          return `«${p.titulo}» (${dia(p)})`
+            + (aula ? (p.tambemRespondemAula === false ? ' — respondes só à atividade, não ao plano da turma desse dia.' : ` — e respondes também ao plano da turma desse dia (${rotuloDoPlano(aula)}).`) : '.');
+        }).join(' ') + ' Autoavalia-te: leva 2 minutos e conta para a tua nota.',
+        destino: 'autoavaliar_pendente' as any,
+        urgente: true,
+      });
+      aulasPorAutoavaliar.current = [...atividadesPorAvaliar, ...(aulasPorAutoavaliar.current || [])];
+    }
+
     // Autoavaliação submetida que ainda não se sabe se chegou ao professor
     // (o aluno fechou a aplicação logo a seguir): vai outra vez sozinha.
     const aCaminho = getSelecoes().filter(s => s.alunoId === aluno.id && selecaoPorConfirmar(s.id)).length;
@@ -1563,7 +1585,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
   const mudouDesdeQueAbriu = !!versaoAoAbrir.current && versao !== versaoAoAbrir.current;
   // Esteve numa atividade ligada a esta aula e o professor disse que
   // responde só à atividade (Rosa, out/2026).
-  const soAtividade: any = getPlanosAula().find((a: any) => a.aulaLigada === plano.id && a.tambemRespondemAula === false
+  const soAtividade: any = getPlanosAula().find((a: any) => eventoForaDoHorario(a) && a.tambemRespondemAula === false && aulaDoDiaDaAtividade(a)?.id === plano.id
     && participantesDoEvento(a).includes(aluno.id));
   const [secAberta, setSecAberta] = React.useState<string>('orientacao');
   /** O passo abre num ecrã cheio, por cima da aula; ao acabar, segue para o próximo. */
@@ -1819,6 +1841,16 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
                 encontra-a em «Atividades e concursos». Não precisas de responder a esta aula.
               </div>
             )}
+            {secAberta==='avaliacao' && !soAtividade && (() => {
+              const pt = partesDoPlanoParaOAluno(plano, aluno.id);
+              if (pt.tecnicas && pt.conhecimentos && pt.atitudes) return null;
+              const quais = [pt.tecnicas && 'às técnicas', pt.conhecimentos && 'aos conhecimentos', pt.atitudes && 'às atitudes'].filter(Boolean).join(' e ');
+              return (
+                <div style={{ margin:'0 0 12px', padding:'12px 14px', borderRadius:12, background:'#f3eefa', border:'1.5px solid #6B3FA0', fontSize:14.5, lineHeight:1.5 }}>
+                  Hoje estiveste numa atividade. Nesta aula respondes só {quais}: o resto já se avalia na atividade.
+                </div>
+              );
+            })()}
             {secAberta==='avaliacao' && !soAtividade && (
               <SecaoAvaliacao key={versao} fichas={fichas} plano={plano} aluno={aluno} abrirLogo={ecra}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
@@ -2915,6 +2947,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     return null;
   });
   const regras = regrasDaAutoavaliacao(plano, fichas, { ctx: ctxAula, ano: aluno.ano ?? 1, fardaIncompleta: fardaIncompletaRegisto, temaEscolhido });
+  // Esteve numa atividade do mesmo dia: responde só às partes do plano da
+  // turma que o professor autorizou (Rosa, out/2026) — por exemplo, as
+  // técnicas e os conhecimentos, mas não as atitudes, já avaliadas na atividade.
+  const partes = partesDoPlanoParaOAluno(plano, aluno.id);
   const subIdsFiltrados = regras.subIds;
   // APP-xxx: aparelhos da ficha. Nada sai para os alunos com medidas (Rosa,
   // set/2026): avaliam o mesmo, com uma explicação simples do que é cada um.
@@ -3094,7 +3130,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // pessoal». Só as que têm uma pergunta que faça sentido nesta aula.
   const fardaIncompletaHoje = !ehAtitudinal && fardaIncompletaRegisto;
   void fardaIncompletaHoje;
-  const atitudesDaAula: string[] = regras.atitudesDaAula;
+  const atitudesDaAula: string[] = partes.atitudes ? regras.atitudesDaAula : [];
   // Medidas seletivas (2) ou adicionais (3): as mesmas perguntas, mais fáceis de ler.
   const simples = (aluno.nivelMedidas || 1) >= 2;
   // Um exemplo concreto de hoje (opcional).
@@ -3121,7 +3157,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // partilha; sozinho fora da cozinha (visita, sala) não se pergunta.
   const clNaoSePergunta = regras.clNaoSePergunta;
   const [triagem, setTriagem] = useState<Triagem5C>(() => ({
-    cl: clNaoSePergunta ? 'sem' : null, cr: null, co: null, problema: '',
+    cl: clNaoSePergunta || !partes.atitudes ? 'sem' : null, cr: !partes.atitudes ? 'sem' : null, co: !partes.atitudes ? 'sem' : null, problema: '',
     ...(regras.clSempre ? { clId: CL_SEMPRE.id } : {}),
     coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
   const perguntasTriagem = perguntasDaAula(triagem.coId, triagem.crId, triagem.clId);
@@ -3450,13 +3486,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   ];
   const itensComp: { id: string; nome: string; contexto: string; descricao: string;
     resultado: string; rotulo: string; frases: boolean; como?: boolean; manual?: boolean }[] = [
-    ...itensPratica,
+    ...(partes.tecnicas ? itensPratica : []),
     // Um campo do manual leva o capítulo por cima («Manual, cap. 21 — O bacalhau: demolha e cozedura»).
-    ...conhecimentosSug.map(m => ({ id: m.id, nome: m.nome,
+    ...(partes.conhecimentos ? conhecimentosSug : []).map(m => ({ id: m.id, nome: m.nome,
       contexto: m.capitulo || (regras.manual ? 'Conhecimento · no manual' : 'Conhecimento'),
       descricao: m.definicao, resultado: '', rotulo: 'Conhecimento', frases: false,
       manual: regras.manual || m.id.startsWith('KNW-P-M-') })),
-    ...microsSug.map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
+    ...(partes.tecnicas ? microsSug : []).map(m => ({ id: m.id, nome: (m as any).nome || 'Técnica', contexto: (m as any).contexto || '',
       descricao: (m as any).descricao || '', resultado: '', rotulo: 'Técnica', frases: false })),
   ];
 
@@ -3472,7 +3508,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // Só as que fazem sentido nesta aula: numa visita não se escolhe a
   // cooperação com a equipa nem a higiene dos alimentos.
   const atitudesSugeridas = regras.atitudesParaEscolher;
-  const opcoesAtitude = ATITUDES.filter(a =>
+  const opcoesAtitude = !partes.atitudes ? [] : ATITUDES.filter(a =>
     (verTodasAtitudes ? atitudesPermitidas.includes(a.id) : atitudesSugeridas.includes(a.id))
     && !compRemovidas.includes(a.id) && aplicavel(a.id));
   // Numa aula prática sem atitudes marcadas pelo professor, a atitude que o
@@ -3501,7 +3537,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     comp?: typeof itensComp[number]; atiId?: string; chave?: 'cl' | 'cr' | 'co' };
   const passos: Passo[] = [
     // Trabalho sobre o manual: primeiro o tema; depois os indicadores desse tema.
-    ...(regras.escolheTema ? [{ id: 'tema', tipo: 'tema' as const }] : []),
+    ...(regras.escolheTema && partes.conhecimentos ? [{ id: 'tema', tipo: 'tema' as const }] : []),
     ...itensComp.map(c => ({ id: 'c_' + c.id, tipo: 'comp' as const, comp: c })),
     ...(todasSemOport ? [{ id: 'outra', tipo: 'outra' as const }] : []),
     ...((!ehAtitudinal || comObrigatorias) && !semRegistos ? [{ id: 'haccp', tipo: 'haccp' as const }] : []),
@@ -3512,7 +3548,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     ...(ehEvento ? [{ id: 'tecEvento', tipo: 'tecEvento' as const }] : []),
     ...(faltamApanhar.length > 0 ? [{ id: 'apanhar', tipo: 'apanhar' as const }] : []),
     // Uma pergunta por ecrã: Colaborativo, Criativo e Consciente.
-    ...(['cl', 'cr', 'co'] as const).filter(chave => chave !== 'cl' || !clNaoSePergunta)
+    ...(['cl', 'cr', 'co'] as const).filter(chave => partes.atitudes && (chave !== 'cl' || !clNaoSePergunta))
       .map(chave => ({ id: 'tri_' + chave, tipo: 'triagem' as const, chave })),
     { id: 'rever', tipo: 'rever' as const },
   ];

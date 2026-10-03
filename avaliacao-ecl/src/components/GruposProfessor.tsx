@@ -10,7 +10,7 @@ import React, { useEffect, useState } from 'react';
 import type { PlanoAula } from '../types';
 import {
   gruposDaAula, entrarNoGrupo, guardarInfoGrupo, sincronizarGrupos, getAvaliacoesPares, getAlunos,
-  getFichasProducao, addOrUpdatePlanoAula, getMembrosGrupo, type AvaliacaoPar, lerAula, aulaRapidaDisponivel,
+  getFichasProducao, addOrUpdatePlanoAula, getMembrosGrupo, type AvaliacaoPar, lerAula, aulaRapidaDisponivel, alunosDoPlano,
 } from '../backend';
 import { configGrupos } from './GruposAluno';
 
@@ -44,7 +44,7 @@ export function GruposProfessor({ plano, onPlanoActualizado }: { plano: PlanoAul
   }
 
   const grupos = gruposDaAula(plano.id);
-  const alunos = getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => (a.numero || 0) - (b.numero || 0));
+  const alunos = alunosDoPlano(plano);
   const comGrupo = new Set(getMembrosGrupo(plano.id).filter(m => m.grupoId).map(m => m.alunoId));
   const semGrupo = alunos.filter(a => !comGrupo.has(a.id));
   const fichas = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));

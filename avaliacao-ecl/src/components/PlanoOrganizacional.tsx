@@ -142,7 +142,7 @@ export function QuadroOrganizacional({ plano, alunoId, modo, onPlanoMudou }: {
       ))}
       {(() => {
         const comFuncao = new Set(o.lugares.map(l => l.alunoId));
-        const sem = alunosDaTurma(plano.turmaId).filter(a => !comFuncao.has(a));
+        const sem = alunosDaTurma(plano.turmaId, plano).filter(a => !comFuncao.has(a));
         if (!sem.length) return null;
         const ajudas = new Map(colaboracoesDaAula(plano.id).map(c => [c.alunoId, c.texto]));
         return (

@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -340,8 +340,8 @@ function RegistosAlunos({ plano, turmaId }: { plano: PlanoAula; turmaId: string 
   const [tick, setTick] = React.useState(0);
 
   React.useEffect(() => {
-    setAlunos(getAlunos().filter((a: any) => a.turmaId === turmaId && a.ativo !== false).sort((a: any, b: any) => a.numero - b.numero));
-  }, [turmaId]);
+    setAlunos(alunosDoPlano(plano));
+  }, [turmaId, plano]);
 
   function estaSubmetido(alunoId: string): { submetido: boolean; hora: string } {
     try {
@@ -1318,7 +1318,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   if (modulo === 'validacao') {
-    const alunosDaTurma = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
+    const alunosDaTurma = alunosDoPlano(plano);
     const historico = getHistoricoAvaliacoes().filter(r => r.planoAulaId === plano.id);
     const selecoes = getSelecoes().filter(s => s.planoAulaId === plano.id);
     const validacoes = getValidacoes().filter(v => v.planoAulaId === plano.id);
@@ -1596,13 +1596,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         );
       })()}
       {/* Esta é uma atividade à parte de uma aula: em cima, a aula e quem foi. */}
-      {modulo === 'inicio' && (plano as any).aulaLigada && eventoForaDoHorario(plano) && (() => {
-        const aula: any = getPlanosAula().find(x => x.id === (plano as any).aulaLigada);
+      {modulo === 'inicio' && eventoForaDoHorario(plano) && aulaDoDiaDaAtividade(plano) && (() => {
+        const aula: any = aulaDoDiaDaAtividade(plano);
         return (
           <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px 14px', margin: '0 0 14px', border: '2px solid #6B3FA0' }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade à parte da aula</div>
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)', marginTop: 3, lineHeight: 1.5 }}>
-              A aula {aula ? `«${aula.titulo}»` : 'do dia'} não muda: os outros alunos continuam com ela. Aqui escolhes quem foi a esta atividade e confirmas.
+              O plano da turma desse dia — <b>{rotuloDoPlano(aula)}</b> — não muda: os outros alunos continuam com ele. Aqui escolhes quem foi a esta atividade e confirmas.
             </div>
             {aula && <button onClick={() => onPlanoActualizado(aula)} style={{ marginTop: 8, padding: '7px 12px', borderRadius: 9, border: '1px solid #6B3FA0',
               background: '#fff', color: '#6B3FA0', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>← Abrir a aula</button>}
@@ -1611,7 +1611,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         );
       })()}
       {/* Atividades à parte, ligadas a esta aula (a aula não muda). */}
-      {modulo === 'inicio' && getPlanosAula().filter((a: any) => a.aulaLigada === plano.id && a.estado !== 'arquivado').map((a: any) => {
+      {modulo === 'inicio' && !eventoForaDoHorario(plano) && getPlanosAula().filter((a: any) => eventoForaDoHorario(a) && a.estado !== 'arquivado'
+        && aulaDoDiaDaAtividade(a)?.id === plano.id).map((a: any) => {
         const quem = participantesDoEvento(a);
         return (
           <button key={a.id} onClick={() => onPlanoActualizado(a)} style={{ display: 'block', width: '100%', textAlign: 'left', background: '#f3eefa',
@@ -1619,7 +1620,9 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             <span style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade ligada a esta aula: {a.titulo}</span>
             <span style={{ display: 'block', fontSize: 13.5, color: 'rgba(26,23,20,0.7)', marginTop: 3 }}>
               {quem.length ? `${quem.length} aluno${quem.length === 1 ? '' : 's'}` : 'Ainda sem alunos'} ·
-              {a.tambemRespondemAula === false ? ' respondem só à atividade' : ' também respondem a esta aula'} ·
+              {a.tambemRespondemAula === false ? ' respondem só à atividade'
+                : ' nesta aula respondem a: ' + (() => { const pt = { ...PARTES_POR_OMISSAO, ...(a.partesDaAula || {}) };
+                    return [pt.tecnicas && 'técnicas', pt.conhecimentos && 'conhecimentos', pt.atitudes && 'atitudes'].filter(Boolean).join(', ') || 'nada'; })()} ·
               {a.participantesConfirmadosEm ? ' confirmada' : ' por confirmar'} — tocar para abrir
             </span>
           </button>
@@ -2440,7 +2443,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </a>
         </div>
       )}
-      {eventoForaDoHorario(plano) && !(plano as any).aulaLigada && (
+      {eventoForaDoHorario(plano) && !aulaDoDiaDaAtividade(plano) && (
         <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
           <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
         </div>
@@ -2600,16 +2603,35 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             <ul style={{ margin: '2px 0 12px', paddingLeft: 18 }}>
               {ecras.length ? ecras.map((e: any, i: number) => <li key={i}>{e.rotulo}: {e.nome}</li>) : <li>As atitudes do evento e a técnica geral.</li>}
             </ul>
-            {plano.aulaLigada && (() => {
-              const aula: any = getPlanosAula().find(x => x.id === plano.aulaLigada);
-              const sim = plano.tambemRespondemAula !== false;
+            {(() => {
+              const aula: any = aulaDoDiaDaAtividade(plano);
+              if (!aula) return null;
+              const nada = plano.tambemRespondemAula === false;
+              const partes = { ...PARTES_POR_OMISSAO, ...(plano.partesDaAula || {}) };
+              const mudar = (k: 'tecnicas' | 'conhecimentos' | 'atitudes') => {
+                const nova = { ...partes, [k]: nada ? true : !partes[k] };
+                const algum = nova.tecnicas || nova.conhecimentos || nova.atitudes;
+                gravar({ partesDaAula: nova, tambemRespondemAula: algum, aulaLigada: aula.id });
+              };
+              const caixa = (k: 'tecnicas' | 'conhecimentos' | 'atitudes', texto: string) => {
+                const on = !nada && partes[k];
+                return (
+                  <button key={k} style={{ ...bt(on), display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', marginBottom: 6 }} onClick={() => mudar(k)}>
+                    <span style={{ fontSize: 16 }}>{on ? '☑' : '☐'}</span>{texto}
+                  </button>
+                );
+              };
               return (<>
-                <div style={{ fontWeight: 800 }}>E a aula «{aula?.titulo || 'do dia'}»?</div>
-                <div style={{ color: 'rgba(26,23,20,0.7)', margin: '2px 0 6px' }}>A aula não muda: os outros alunos continuam com ela. Estes alunos…</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                  <button style={bt(sim)} onClick={() => gravar({ tambemRespondemAula: true })}>Também respondem à aula (o trabalho da aula)</button>
-                  <button style={bt(!sim)} onClick={() => gravar({ tambemRespondemAula: false })}>Só respondem à atividade</button>
+                <div style={{ fontWeight: 800 }}>O plano da turma desse dia</div>
+                <div style={{ margin: '2px 0 4px', padding: '8px 10px', borderRadius: 8, background: '#f6f3ee' }}>{rotuloDoPlano(aula)}</div>
+                <div style={{ color: 'rgba(26,23,20,0.7)', margin: '2px 0 6px' }}>
+                  Este plano não muda: os outros alunos continuam com ele. Os alunos da atividade, neste plano, respondem a:
                 </div>
+                {caixa('tecnicas', 'Técnicas (a prática da aula)')}
+                {caixa('conhecimentos', 'Conhecimentos (o trabalho exigido)')}
+                {caixa('atitudes', 'Atitudes e os 5 C (normalmente não: já se avaliam na atividade)')}
+                <button style={{ ...bt(nada), marginBottom: 12 }} onClick={() => gravar({ tambemRespondemAula: false, aulaLigada: aula.id })}>
+                  {nada ? '✓ ' : ''}Nada: só respondem à atividade</button>
               </>);
             })()}
             <div style={{ fontWeight: 800 }}>Como conta</div>
@@ -2649,7 +2671,7 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
  *  sozinha no telemóvel dele, com aviso; fecha quando ele responder. */
 function ReabrirAutoavaliacao({ plano, onPlanoActualizado }: { plano: any; onPlanoActualizado: (p: any) => void }) {
   const [, redesenhar] = React.useState(0);
-  const alunos = getAlunosEv().filter(a => a.turmaId === plano.turmaId && a.ativo !== false).sort((a, b) => (a.numero || 0) - (b.numero || 0));
+  const alunos = alunosDoPlano(plano);
   const respostas = new Map(selecoesQueContam().filter(s => s.planoAulaId === plano.id).map(s => [s.alunoId, s]));
   const atual: any = getPlanosAula().find(x => x.id === plano.id) || plano;
   const hora = (iso?: string) => iso ? new Date(iso).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';

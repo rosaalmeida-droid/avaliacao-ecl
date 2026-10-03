@@ -15,7 +15,7 @@
 // em poucos segundos. Quando alguém falta, o professor passa a função a
 // um colega presente, que fica com as duas (o líder nunca acumula).
 import type { PlanoAula } from './types';
-import { getPlanosAula, getAlunos, getPresencas, addOrUpdatePlanoAula, getSessaoAula } from './backend';
+import { getPlanosAula, getAlunos, getPresencas, addOrUpdatePlanoAula, getSessaoAula, alunosDoPlano } from './backend';
 
 export type IdFuncao = 'lider' | 'temp1' | 'temp2' | 'panos' | 'rececao' | 'copa' | 'economato'
   | 'equipamentos' | 'fogoes_frio' | 'lixo_carrinhos' | 'chao_bancadas';
@@ -364,9 +364,11 @@ export function substituirNoLugar(o: OrganizacaoAula, chave: string, novoId: str
 // ── Guardar no plano (só no aparelho do professor) ──────────
 
 /** Os alunos da turma que contam para o sorteio. */
-export function alunosDaTurma(turmaId: string): string[] {
+export function alunosDaTurma(turmaId: string, plano?: any): string[] {
   // Os alunos de teste (n.º 99 e 88) nunca entram nas funções da aula (Rosa, set/2026).
-  return getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false && a.numero !== 99 && a.numero !== 88)
+  // Numa atividade com alunos escolhidos, só esses (Rosa, out/2026).
+  const base = plano ? alunosDoPlano(plano) : getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false);
+  return base.filter(a => a.numero !== 99 && a.numero !== 88)
     .sort((a, b) => a.numero - b.numero).map(a => a.id);
 }
 
@@ -384,7 +386,7 @@ function guardar(plano: PlanoAula, o: OrganizacaoAula): PlanoAula {
 /** Distribui as funções (de novo, se já estavam distribuídas). */
 export function distribuirFuncoes(plano: PlanoAula): PlanoAula {
   const hist = historicoFuncoes(getPlanosAula(), plano.turmaId, plano.id);
-  return guardar(plano, sortearOrganizacao(alunosDaTurma(plano.turmaId), hist, plano.id + '|' + Date.now(), !comProducao(plano)));
+  return guardar(plano, sortearOrganizacao(alunosDaTurma(plano.turmaId, plano), hist, plano.id + '|' + Date.now(), !comProducao(plano)));
 }
 
 /** Plano publicado de uma aula prática ainda sem funções: distribui já. */
@@ -392,7 +394,7 @@ export function garantirOrganizacao(plano: PlanoAula): PlanoAula {
   const existente = organizacaoDe(plano);
   if (existente) return semAlunoTeste(plano, existente);
   if (!temOrganizacao(plano) || plano.estado !== 'publicado') return plano;
-  if (alunosDaTurma(plano.turmaId).length === 0) return plano;
+  if (alunosDaTurma(plano.turmaId, plano).length === 0) return plano;
   return distribuirFuncoes(plano);
 }
 
@@ -400,7 +402,7 @@ export function garantirOrganizacao(plano: PlanoAula): PlanoAula {
 function semAlunoTeste(plano: PlanoAula, o: OrganizacaoAula): PlanoAula {
   const teste = new Set(getAlunos().filter(a => a.turmaId === plano.turmaId && (a.numero === 99 || a.numero === 88)).map(a => a.id));
   if (!o.lugares.some(l => teste.has(l.alunoId))) return plano;
-  const alunos = alunosDaTurma(plano.turmaId);
+  const alunos = alunosDaTurma(plano.turmaId, plano);
   const hist = historicoFuncoes(getPlanosAula(), plano.turmaId, plano.id);
   let nova: OrganizacaoAula = o;
   for (const l of o.lugares.filter(x => teste.has(x.alunoId))) {
@@ -424,7 +426,7 @@ export function substituirAluno(plano: PlanoAula, chave: string, novoId: string)
   const o = organizacaoDe(plano);
   if (!o || !podeSubstituir(plano)) return plano;
   const hist = historicoFuncoes(getPlanosAula(), plano.turmaId, plano.id);
-  return guardar(plano, substituirNoLugar(o, chave, novoId, alunosDaTurma(plano.turmaId), hist, entraramNaAula(plano.id)));
+  return guardar(plano, substituirNoLugar(o, chave, novoId, alunosDaTurma(plano.turmaId, plano), hist, entraramNaAula(plano.id)));
 }
 
 /** Os candidatos para um lugar, pela ordem em que se propõem. */
@@ -432,7 +434,7 @@ export function candidatos(plano: PlanoAula, chave: string): string[] {
   const o = organizacaoDe(plano);
   if (!o) return [];
   const hist = historicoFuncoes(getPlanosAula(), plano.turmaId, plano.id);
-  return candidatosParaLugar(o, chave, alunosDaTurma(plano.turmaId), hist, entraramNaAula(plano.id));
+  return candidatosParaLugar(o, chave, alunosDaTurma(plano.turmaId, plano), hist, entraramNaAula(plano.id));
 }
 
 export function nomeDoAluno(id: string): string {
