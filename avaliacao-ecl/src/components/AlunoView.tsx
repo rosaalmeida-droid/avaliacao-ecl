@@ -74,7 +74,7 @@ import { EcraAvaliarMe, EcraNotaProgressiva } from './EcrasPercurso';
 import { EcraMinhaNota, EcraAtividades } from './EcraNotaAtividades';
 import { estadoDoNivel, opcoesDeEscolhaDoAluno } from '../motorAvaliacao';
 import { pedidoDeExemplo, OPCOES_SIMPLES } from '../frases_simples';
-import { perguntasDe, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
+import { perguntasDe, perguntaSubstituta, NAO_ACONTECEU, temPerguntas, atitudeRespondida as respondidaAtitude, nivelDaAtitude, textoDasRespostas,
   perguntasAplicaveis, atitudeAplicavel, respostasEfetivas } from '../perguntas_atitudes';
 import { CINCO_C, triagemDoPlano, type Letra5CAluno } from '../contextoAula';
 import { capituloDoCampo } from '../bancoManuais';
@@ -3706,8 +3706,14 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
     if (!ps) return null;
     const r = respAti[id] || [];
     const responder = (q: number, v: number) => setRespAti(x => {
-      const n = [...(x[id] || [null, null])]; n[q] = v; return { ...x, [id]: n };
+      const n = [...(x[id] || [null, null])]; n[q] = v;
+      // Deixou de ser «não aconteceu»: a pergunta de substituição sai.
+      if (q < 2 && v !== NAO_ACONTECEU && !n.slice(0, 2).some(y => y === NAO_ACONTECEU)) n[2] = null as any;
+      return { ...x, [id]: n };
     });
+    // Pergunta de substituição: quando uma pergunta «não aconteceu», a
+    // aplicação faz logo outra, sobre uma situação de sempre (Rosa, out/2026).
+    const substituta = r.slice(0, 2).some(x => x === NAO_ACONTECEU) ? perguntaSubstituta(id, ehDeEvento) : null;
     const radio = (on: boolean) => (
       <span style={{ width:20, height:20, borderRadius:'50%', flexShrink:0, boxSizing:'border-box',
         border: on ? `6px solid ${V}` : '2px solid #CFC6DB' }} />
@@ -3744,7 +3750,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                   background: v === NAO_ACONTECEU ? '#f3f0f7' : v >= 2 ? '#eef4eb' : T.copperP,
                   color: v === NAO_ACONTECEU ? 'rgba(26,23,20,0.7)' : v >= 2 ? '#3f5e34' : '#8a4a15' }}>
                   {v === NAO_ACONTECEU
-                    ? 'Esta resposta não conta para a nota. A outra pergunta passa a valer esta atitude toda.'
+                    ? (substituta ? 'Esta resposta não conta para a nota. Responde a esta, que faz mais sentido hoje:' : 'Esta resposta não conta para a nota. A outra pergunta passa a valer esta atitude toda.')
                     : v >= 2 ? '✅ É isto que se espera de ti.'
                     : <>➡️ <b>Para a próxima:</b> {q.respostas[2]}</>}
                 </div>
@@ -3752,6 +3758,23 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             </div>
           );
         })}
+        {substituta && (
+          <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 12, border: `1.5px solid ${V}`, background: '#faf7fd' }}>
+            <div style={{ fontSize:12.5, fontWeight:700, color:V, textTransform:'uppercase', letterSpacing:'0.05em' }}>Em vez da que não aconteceu</div>
+            <div style={{ fontSize:15.5, fontWeight:700, lineHeight:1.4, margin:'6px 0 10px' }}>{substituta.pergunta}</div>
+            {substituta.respostas.map((t, i) => (
+              <button key={i} onClick={() => responder(2, i)} style={estiloOpcao(r[2] === i)}>
+                {radio(r[2] === i)}{t}
+              </button>
+            ))}
+            {r[2] != null && (
+              <div style={{ marginTop:4, padding:'9px 12px', borderRadius:10, fontSize:13.5, lineHeight:1.45,
+                background: (r[2] as number) >= 2 ? '#eef4eb' : T.copperP, color: (r[2] as number) >= 2 ? '#3f5e34' : '#8a4a15' }}>
+                {(r[2] as number) >= 2 ? '✅ É isto que se espera de ti.' : <>➡️ <b>Para a próxima:</b> {substituta.respostas[2]}</>}
+              </div>
+            )}
+          </div>
+        )}
         {algumaNaoConta && (
           <div style={{ marginTop:10, fontSize:13, color:'rgba(26,23,20,0.6)', lineHeight:1.45 }}>
             O que não aconteceu não baixa a tua nota: as respostas que contam valem os 20 valores da aula.

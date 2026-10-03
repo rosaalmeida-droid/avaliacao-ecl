@@ -16,6 +16,7 @@
 import { NOTAS_FRASES } from './frases_atitudes';
 import { nivelDe20 } from './types';
 import { cumpre, porqueNao, type ContextoAula, type Requisito } from './contextoAula';
+import { PARES_NOVOS_ATITUDES } from './perguntasNovasAtitudes';
 
 export interface PerguntaAtitude {
   pergunta: string;
@@ -442,7 +443,36 @@ export function porqueNaoSeFaz(id: string, i: number, ctx: ContextoAula): string
 /** As respostas com as perguntas que não se fizeram marcadas «não se aplica». */
 export function respostasEfetivas(id: string, r: (number | null | undefined)[] | undefined,
   ctx: ContextoAula | undefined, evento = false): (number | null)[] {
-  return perguntasAplicaveis(id, ctx, evento).map((a, i) => a ? (r?.[i] ?? null) : NAO_SE_APLICA);
+  const base = perguntasAplicaveis(id, ctx, evento).map((a, i) => a ? (r?.[i] ?? null) : NAO_SE_APLICA);
+  // A pergunta de substituição (posição 2), quando a primeira «não aconteceu».
+  return r && r[2] != null ? [...base, r[2] as number] : base;
+}
+
+// ── Pergunta de substituição (Rosa, out/2026) ──────────────────
+// Quando o aluno responde «não aconteceu», a aplicação faz logo outra
+// pergunta, sobre uma situação que acontece sempre, em vez de ficar só
+// com a outra. A resposta conta como as outras (posição 2 das respostas).
+const SUBSTITUTAS_EVENTO: Record<string, PerguntaAtitude> = {
+  'ATI-001': P('Durante o evento, quando te deram a tua tarefa, o que fizeste?', [
+    'Fiquei à espera que me explicassem tudo outra vez.',
+    'Comecei, mas a perguntar a cada passo.',
+    'Percebi e comecei logo.',
+    'Percebi, comecei logo e ajudei a organizar os colegas.',
+  ]),
+  'ATI-012': P('Durante o evento, quando te pediram uma coisa diferente do que estavas a fazer, o que fizeste?', [
+    'Recusei ou reclamei.',
+    'Fiz, mas a reclamar.',
+    'Fiz logo.',
+    'Fiz logo e voltei à minha tarefa sem a deixar por acabar.',
+  ]),
+};
+export function perguntaSubstituta(id: string, evento = false): PerguntaAtitude | null {
+  if (evento && PERGUNTAS_EVENTO[id]) return SUBSTITUTAS_EVENTO[id] || null;
+  // Das perguntas novas: a primeira situação «de sempre» que se pode fazer
+  // em qualquer aula (sem precisar de cozinha, equipa…). Sempre a mesma para
+  // esta atitude, para o professor ver exatamente a que o aluno respondeu.
+  const par = (PARES_NOVOS_ATITUDES[id] || []).find(x => !x.requisitos[1].length);
+  return par ? par.perguntas[1] : null;
 }
 
 /** As perguntas desta atitude: as do evento, num evento ou concurso; senão as de sempre. */
@@ -459,8 +489,10 @@ export function temPerguntas(id: string): boolean {
 export function atitudeRespondida(id: string, r: (number | null | undefined)[] | undefined, evento = false): boolean {
   const ps = perguntasDe(id, evento);
   if (!ps || !r) return false;
+  // Com uma «não aconteceu», a pergunta de substituição também tem de ter resposta.
+  const precisaSub = r.slice(0, 2).some(x => x === NAO_ACONTECEU) && !!perguntaSubstituta(id, evento);
   return ps.every((p, i) => r[i] != null && (r[i]! >= 0 || r[i] === NAO_SE_APLICA || (r[i] === NAO_ACONTECEU && !!p.naoAconteceu)))
-    && r.some(x => x != null && x >= 0);
+    && r.some(x => x != null && x >= 0) && (!precisaSub || (r[2] != null && r[2]! >= 0));
 }
 
 /** Nível 1-5 da atitude: a média das respostas que contam. As «não aconteceu» saem da conta. */
@@ -474,10 +506,13 @@ export function nivelDaAtitude(r: (number | null | undefined)[] | undefined): nu
 export function textoDasRespostas(id: string, r: (number | null | undefined)[] | undefined, evento = false): { pergunta: string; resposta: string }[] {
   const ps = perguntasDe(id, evento);
   if (!ps || !r) return [];
-  return ps.map((p, i) => ({
+  const lista = ps.map((p, i) => ({
     pergunta: p.pergunta,
     resposta: r[i] === NAO_ACONTECEU ? `Não aconteceu: ${p.naoAconteceu}`
       : r[i] === NAO_SE_APLICA ? 'Não se perguntou: não fazia sentido nesta aula'
       : r[i] != null ? p.respostas[r[i]!] : 'Por responder',
   }));
+  const sub = r[2] != null && r[2]! >= 0 ? perguntaSubstituta(id, evento) : null;
+  if (sub) lista.push({ pergunta: '(em vez da que não aconteceu) ' + sub.pergunta, resposta: sub.respostas[r[2]!] });
+  return lista;
 }
