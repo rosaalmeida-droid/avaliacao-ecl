@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v22';
+var VERSAO = 'ECL único v23';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -107,7 +107,9 @@ var FOLHAS = {
   AVALIACAO_PARES:    { chave: ['id'], colunas: ['id', 'planoAulaId', 'turmaId', 'grupoId', 'avaliadorId', 'avaliadoId', 'nomeAvaliado', 'colabora', 'ouve', 'flexivel', 'conflito', 'comentario', 'criadoEm'] },
   // (v21.1) As matérias-primas que os professores acrescentam na requisição.
   // Iguais para todos os aparelhos (antes ficavam só no aparelho onde foram criadas).
-  MATERIAS_PRIMAS:    { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'aliases', 'criadoEm', 'atualizadoEm'] }
+  MATERIAS_PRIMAS:    { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'aliases', 'criadoEm', 'atualizadoEm'] },
+  // (v23) A tabela de preços completa da aplicação (base + da escola + revistos), para se ver no Sheets.
+  TABELA_PRECOS:      { chave: ['id'], colunas: ['id', 'nome', 'categoria', 'unidadeCompra', 'precoKg', 'precoUnitario', 'origem', 'fonte', 'atualizadoEm'] }
 };
 
 /** Registos especiais que viajam como autoavaliações (v12). */
@@ -802,6 +804,7 @@ function tratar(d) {
     // Preços da requisição (todos de uma vez)
     if (tipo === 'precos')               return guardarVarios('PRECOS', d.precos || []);
     if (tipo === 'materia_prima')          return guardar('MATERIAS_PRIMAS', d.materiaPrima || d);
+    if (tipo === 'tabela_precos')          return guardarVarios('TABELA_PRECOS', d.linhas || []);
     if (tipo === 'eliminar_materia_prima') return eliminar('MATERIAS_PRIMAS', d.id);
     if (tipo === 'precos_a_rever')       return guardarVarios('PRECOS_A_REVER', d.precosARever || []);
 
@@ -1807,7 +1810,7 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 var COR_TURMA = '#7B2233';
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
 // parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
-var VISIVEIS_SEMPRE = ['PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'LEIA-ME', 'PROCURAR'];
+var VISIVEIS_SEMPRE = ['TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'LEIA-ME', 'PROCURAR'];
 
 function porTurma(lista) {
   var m = {};
@@ -2006,6 +2009,145 @@ function apagarFolhasAntigas() {
   Logger.log('Apagadas ' + apagadas.length + ' folhas: ' + apagadas.join(', '));
   atualizarFolhasDasTurmas();
   Logger.log('Separadores das turmas refeitos.');
+}
+
+// ══════════════════════════════════════════════════════════════
+// (v23) AUDITORIA — o que estava nos ficheiros antigos e não está aqui
+// ══════════════════════════════════════════════════════════════
+// Corre  auditarFolhasAntigas  uma vez (Rosa, out/2026: «houve informação
+// nos Sheets antigos que desapareceu»). Não apaga nem muda nada: só lê os
+// ficheiros antigos, a cópia de segurança feita antes de apagar as folhas
+// soltas, e este ficheiro, e escreve o resultado na folha AUDITORIA.
+
+/** Para onde foi cada folha antiga (o que importarDoAntigo trouxe). */
+var DESTINO_DAS_ANTIGAS = {
+  AVALIACOES: 'AVALIACOES', 'Presenças': 'PRESENCAS', PRESENCAS: 'PRESENCAS', SELECOES: 'SELECOES',
+  VALIDACOES: 'VALIDACOES', SESSOES: 'SESSOES', LIDERES_KF: 'LIDERES_KF', INDICE: 'FICHAS',
+  Planos_Aula: 'PLANOS', Requisicoes: 'REQUISICOES'
+};
+
+function semAcentos(t) {
+  return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+}
+
+/** Os códigos (id) de uma folha, venha a coluna como «id» ou «ID». */
+function idsDaFolha(f) {
+  var d = f.getDataRange().getValues();
+  if (d.length < 2) return [];
+  var cab = d[0].map(function (c) { return semAcentos(c); });
+  var i = cab.indexOf('id');
+  if (i < 0) return null;
+  var out = [];
+  for (var r = 1; r < d.length; r++) if (String(d[r][i]).trim()) out.push(String(d[r][i]).trim());
+  return out;
+}
+
+function auditarFolhasAntigas() {
+  var novo = ficheiro();
+  var linhas = [['Ficheiro', 'Folha', 'Linhas', 'Foi para', 'Em falta no ficheiro novo', 'Colunas que não têm coluna própria no novo', 'O que quer dizer']];
+  var idsNovos = {};
+  function idsNovosDe(nome) {
+    if (!idsNovos[nome]) {
+      var m = {};
+      try { ler(nome, {}).forEach(function (o) { if (o.id) m[String(o.id)] = true; }); } catch (e) {}
+      idsNovos[nome] = m;
+    }
+    return idsNovos[nome];
+  }
+  function colunasNovas(nome) {
+    var def = FOLHAS[nome];
+    return def ? def.colunas.map(semAcentos) : [];
+  }
+
+  // 1. Os três ficheiros antigos.
+  [['Histórico antigo', ANTIGO_HISTORICO], ['Fichas antigas', ANTIGO_FICHAS], ['Planos antigos', ANTIGO_PLANOS]].forEach(function (par) {
+    var ss;
+    try { ss = SpreadsheetApp.openById(par[1]); }
+    catch (e) { linhas.push([par[0], '—', '', '', '', '', 'Não consegui abrir este ficheiro: ' + e]); return; }
+    ss.getSheets().forEach(function (f) {
+      var nome = f.getName();
+      var n = Math.max(0, f.getLastRow() - 1);
+      // As folhas de cada ficha (desenhadas) entram pela importação das fichas.
+      if (par[1] === ANTIGO_FICHAS && nome !== 'INDICE') {
+        linhas.push([par[0], nome, n, 'FICHAS (ingredientes e preparação)', '', '', 'Folha de uma ficha: foi lida para a ficha completa.']);
+        return;
+      }
+      var destino = DESTINO_DAS_ANTIGAS[nome];
+      var cab = f.getLastColumn() ? f.getRange(1, 1, 1, f.getLastColumn()).getValues()[0] : [];
+      if (!destino) {
+        linhas.push([par[0], nome, n, '— NÃO FOI TRAZIDA —', n ? n + ' linhas' : '', cab.join(', '),
+          n ? '⚠ IMPORTANTE: esta folha não foi copiada para o ficheiro novo. Ver se o que tem é preciso.' : 'Folha vazia.']);
+        return;
+      }
+      var faltam = '';
+      var ids = idsDaFolha(f);
+      if (ids && ids.length) {
+        var m = idsNovosDe(destino);
+        var em = ids.filter(function (id) { return !m[id]; });
+        faltam = em.length ? em.length + ' de ' + ids.length + ' (ex.: ' + em.slice(0, 5).join(', ') + ')' : 'nenhum';
+      } else if (ids === null) {
+        faltam = 'sem coluna id: não dá para comparar linha a linha (antigas ' + n + ', no novo ' + Object.keys(idsNovosDe(destino)).length + ')';
+      }
+      var novas = colunasNovas(destino);
+      var foraCols = cab.filter(function (c) { return c && novas.indexOf(semAcentos(c)) < 0; });
+      linhas.push([par[0], nome, n, destino, faltam, foraCols.join(', '),
+        faltam && faltam !== 'nenhum' && faltam.indexOf('sem coluna') < 0 ? '⚠ Há linhas antigas que não estão no novo.'
+          : foraCols.length ? 'Os dados estão no novo. As colunas listadas podem estar só no «registo completo» ou ter-se perdido na cópia: ver.' : 'Tudo trazido.']);
+    });
+  });
+
+  // 2. A cópia de segurança feita antes de apagar as folhas soltas.
+  try {
+    var pasta = pastaDasCopias(), fs = pasta.getFiles(), copia = null;
+    while (fs.hasNext()) {
+      var c = fs.next();
+      if (c.getName().indexOf('antes de apagar as folhas antigas') >= 0 && (!copia || c.getDateCreated() > copia.getDateCreated())) copia = c;
+    }
+    if (!copia) linhas.push(['Cópia de segurança', '—', '', '', '', '', 'Não encontrei a cópia «antes de apagar as folhas antigas»: as folhas soltas nunca foram apagadas.']);
+    else {
+      var ssc = SpreadsheetApp.openById(copia.getId());
+      ssc.getSheets().forEach(function (f) {
+        var nome = f.getName();
+        if (novo.getSheetByName(nome)) return;
+        var n = Math.max(0, f.getLastRow() - 1);
+        linhas.push(['Cópia de segurança (' + Utilities.formatDate(copia.getDateCreated(), 'Europe/Lisbon', 'dd/MM/yyyy HH:mm') + ')', nome, n,
+          'apagada do novo', '', '', 'Folha apagada pela limpeza. Está inteira na cópia: ' + copia.getUrl()]);
+      });
+    }
+  } catch (e) { linhas.push(['Cópia de segurança', '—', '', '', '', '', 'Erro a ler a cópia: ' + e]); }
+
+  // 3. Preços e matérias-primas neste ficheiro.
+  ['TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER'].forEach(function (nome) {
+    var n = 0;
+    try { n = ler(nome, {}).length; } catch (e) {}
+    linhas.push(['Ficheiro novo', nome, n, '', '', '',
+      nome === 'TABELA_PRECOS' ? (n ? 'A tabela completa de preços da aplicação.' : 'Vazia: abre a aplicação como professor ou coordenação, com rede, para a preencher.')
+      : nome === 'PRECOS' ? 'Só os preços revistos pela coordenação.' : nome === 'MATERIAS_PRIMAS' ? 'Só as matérias-primas acrescentadas pelos professores.' : 'Os preços que os professores pediram para rever.']);
+  });
+
+  var f = novo.getSheetByName('AUDITORIA') || novo.insertSheet('AUDITORIA', 0);
+  f.clear();
+  f.getRange(1, 1, linhas.length, linhas[0].length).setValues(linhas);
+  f.getRange(1, 1, 1, linhas[0].length).setFontWeight('bold').setBackground('#1f1b16').setFontColor('#faf7f2');
+  f.setFrozenRows(1);
+  [140, 160, 60, 160, 240, 320, 420].forEach(function (w, i) { f.setColumnWidth(i + 1, w); });
+  f.getRange(2, 1, Math.max(1, linhas.length - 1), linhas[0].length).setWrap(true).setVerticalAlignment('top');
+  for (var r = 1; r < linhas.length; r++) {
+    if (String(linhas[r][6]).indexOf('⚠') === 0) f.getRange(r + 1, 1, 1, linhas[0].length).setBackground('#fdecea');
+  }
+  try { f.showSheet(); novo.setActiveSheet(f); } catch (e) {}
+  Logger.log('Auditoria feita: ' + (linhas.length - 1) + ' linhas na folha AUDITORIA. As vermelhas são as importantes.');
+}
+
+/** Copia para aqui uma folha que não foi trazida dos ficheiros antigos (tal e qual). */
+function trazerFolhaAntiga(nomeDoFicheiro, nomeDaFolha) {
+  var id = { historico: ANTIGO_HISTORICO, fichas: ANTIGO_FICHAS, planos: ANTIGO_PLANOS }[String(nomeDoFicheiro || '').toLowerCase()];
+  if (!id) { Logger.log('Diz o ficheiro: historico, fichas ou planos.'); return; }
+  var origem = SpreadsheetApp.openById(id).getSheetByName(nomeDaFolha);
+  if (!origem) { Logger.log('Não há a folha «' + nomeDaFolha + '» nesse ficheiro.'); return; }
+  var copia = origem.copyTo(ficheiro());
+  copia.setName('ANTIGA ' + nomeDaFolha);
+  Logger.log('Copiada como «ANTIGA ' + nomeDaFolha + '». Não mexe no ficheiro antigo.');
 }
 
 /** Põe as turmas à frente e esconde o resto (não apaga). Os separadores
@@ -2408,6 +2550,8 @@ var ORDEM_FOLHAS = [
 var LEIA_ME = [
   ['Folha', 'O que tem'],
   ['1º BCR, 3º ACP, …', 'Um separador por turma, só para ler: os alunos (presenças, faltas, atrasos, autoavaliações, média), as notas de cada UC (um aluno por linha, uma aula por coluna) e as aulas. Refaz-se sozinho de 10 em 10 minutos.'],
+  ['TABELA_PRECOS', 'A tabela de preços completa da aplicação (todas as matérias-primas, com os preços que a aplicação usa). Atualiza-se sozinha quando um professor abre a aplicação. Sempre à vista.'],
+  ['AUDITORIA', 'O que estava nos ficheiros antigos e não está aqui (corre auditarFolhasAntigas). As linhas vermelhas são as importantes.'],
   ['PRECOS / PRECOS_A_REVER', 'As matérias-primas com os preços revistos, e as que os professores pediram para rever. Sempre à vista.'],
   ['MATERIAS_PRIMAS', 'As matérias-primas que os professores acrescentaram na requisição. Chegam a todos os aparelhos. Sempre à vista.'],
   ['Folhas escondidas', 'As folhas de dados (ALUNOS, PLANOS, PRESENCAS…) e as fichas por extenso ficam escondidas, não apagadas: a aplicação grava nelas. Para as ver: menu Ver › Folhas ocultas. Não apagar.'],

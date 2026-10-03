@@ -21,7 +21,7 @@ import {
 import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
-import { estadoDosPrecos, juntarPrecosRevistos, type PrecoRevisto } from './materiasPrimasBase';
+import { estadoDosPrecos, juntarPrecosRevistos, getPrecosRevistos, getMateriaPrimasBase, type PrecoRevisto } from './materiasPrimasBase';
 
 // ══ SCRIPT ÚNICO ══
 // Um só script guarda tudo: planos, fichas, alunos, avaliações,
@@ -1110,6 +1110,8 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
       const jsonMP = await ler(SHEETS_ECL_URL, { tipo: 'get_materias_primas' });
       if (jsonMP?.ok && Array.isArray(jsonMP.dados)) juntarMateriasPrimas(jsonMP.dados.concat((jsonMP.eliminados || []).map((id: string) => ({ id, eliminado: true }))));
       partilharMateriasPrimasAntigas();
+      // A tabela completa de preços fica também no Sheets, para se ver (Rosa, out/2026).
+      if (perfilDoAparelho && perfilDoAparelho !== 'aluno') enviarTabelaDePrecos();
     }
 
     localStorage.setItem(KEYS.syncPlanos, new Date().toISOString());
@@ -5022,6 +5024,37 @@ export function juntarMateriasPrimas(lista: any[]): void {
     }
   }
   save(KEYS.materiasPrimasCustom, [...m.values()].filter(x => !fora.has(x.id)));
+}
+
+/** A tabela de preços completa, como a aplicação a usa: a base, com os preços
+ *  revistos por cima, e as matérias-primas da escola. */
+export function tabelaDePrecosCompleta() {
+  const revistos = new Map(getPrecosRevistos().map(p => [p.id, p]));
+  return [
+    ...getMateriaPrimasBase().map(m => {
+      const r = revistos.get(m.id);
+      return { id: m.id, nome: m.nome, categoria: m.categoria, unidadeCompra: m.unidadeCompra,
+        precoKg: r?.precoKg || m.precoKg, precoUnitario: r?.precoUnidade || m.precoUnitario,
+        origem: r ? 'revisto pela coordenação' : 'tabela base', fonte: r ? (r.produtoContinente || m.fonte) : m.fonte,
+        atualizadoEm: r?.atualizadoEm || m.atualizadoEm };
+    }),
+    ...getMateriasPrimasCustom().map(m => ({ id: m.id, nome: m.nome, categoria: m.categoria || 'Outros', unidadeCompra: m.unidadeCompra,
+      precoKg: m.precoKg, precoUnitario: m.precoUnitario, origem: 'acrescentada pela escola', fonte: '', atualizadoEm: (m as any).atualizadoEm || '' })),
+  ];
+}
+const KEY_TABELA_PRECOS_ENVIADA = 'ecl_tabela_precos_enviada';
+/** Envia a tabela de preços para o Sheets (folha TABELA_PRECOS, script v23),
+ *  só quando mudou desde a última vez. Um pedido só, com tudo. */
+export function enviarTabelaDePrecos(forcar = false): void {
+  try {
+    if (!SHEETS_ECL_URL) return;
+    const linhas = tabelaDePrecosCompleta();
+    const assinatura = linhas.length + '|' + linhas.map(l => `${l.id}:${l.precoKg}:${l.precoUnitario}`).join(',').length
+      + '|' + linhas.reduce((s, l) => s + (Number(l.precoKg) || 0) + (Number(l.precoUnitario) || 0), 0).toFixed(2);
+    if (!forcar && localStorage.getItem(KEY_TABELA_PRECOS_ENVIADA) === assinatura) return;
+    enviar(SHEETS_ECL_URL, 'tabela_precos', { linhas } as any);
+    localStorage.setItem(KEY_TABELA_PRECOS_ENVIADA, assinatura);
+  } catch { /* */ }
 }
 
 /** Uma vez por aparelho: as que já cá estavam antes de se partilharem vão para todos. */
