@@ -93,7 +93,13 @@ export function posicaoNaUC(plano: PlanoAula): number {
     .filter(p => p.ucId === plano.ucId && p.turmaId === plano.turmaId && p.estado !== 'arquivado' && !ehEventoForaDoHorario(p))
     .sort((a, b) => String(a.data || '').localeCompare(String(b.data || '')) || (a.numeroPlan || 0) - (b.numeroPlan || 0));
   const idx = daUC.findIndex(p => p.id === plano.id);
-  return idx >= 0 ? idx + 1 : (plano.numeroPlan || 1);
+  if (idx >= 0) return idx + 1;
+  // Um plano que não está na conta (arquivado, por exemplo): a posição dele
+  // pela data, entre os outros da UC. Nunca o n.º interno (157…), que não
+  // quer dizer nada para o professor (Rosa, out/2026).
+  const antes = daUC.filter(p => String(p.data || '') < String(plano.data || '')
+    || (String(p.data || '') === String(plano.data || '') && (p.numeroPlan || 0) < (plano.numeroPlan || 0))).length;
+  return antes + 1;
 }
 
 export function rotuloPlano(plano: PlanoAula): string {

@@ -134,6 +134,15 @@ regra('41a. Os alunos de teste não entram na avaliação entre colegas dos verd
   igual(b.getAvaliacoesPares('p').length, 0, 'não fica gravada:');
 });
 
+regra('20h. A atividade ligada a uma aula arquivada passa para a aula desse dia em uso', () => {
+  const velha = { id: 'p157', turmaId: 't', ucId: 'UC1', data: '2026-10-01', horaInicio: '10:30', horaFim: '15:00', numeroPlan: 157, estado: 'arquivado', titulo: 'Atividade fora da escola — 2026-10-01' };
+  const nova = { id: 'p160', turmaId: 't', ucId: 'UC1', data: '2026-10-01', horaInicio: '10:30', horaFim: '15:00', numeroPlan: 160, estado: 'publicado', titulo: 'Aula' };
+  const atv = { id: 'atv', turmaId: 't', ucId: 'UC1', data: '2026-10-01', horaInicio: '10:30', horaFim: '15:00', tipoAtividade: 'Atividade fora da escola', tipoEvento: 'evento', aulaLigada: 'p157', estado: 'publicado' };
+  por('ecl_planos', [velha, nova, atv]);
+  igual(b.aulaDoDiaDaAtividade(atv)?.id, 'p160', 'a aula em uso:');
+  igual(rp.rotuloDoPlano(velha).includes('157'), false, 'a arquivada também não mostra o n.º interno:');
+});
+
 regra('13. As datas comparam-se como datas, venham escritas como vierem', () => {
   const sels: any[] = [
     { id: 'velha', alunoId: 'a1', planoAulaId: 'p1', criadaEm: '2026-10-01T23:00:00.000Z' },

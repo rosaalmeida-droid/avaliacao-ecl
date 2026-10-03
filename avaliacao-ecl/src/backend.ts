@@ -8983,7 +8983,10 @@ export function separarAtividadeDaAula(planoId: string): { aula: PlanoAula; ativ
 export function aulaDoDiaDaAtividade(atividade: any): PlanoAula | undefined {
   if (!atividade) return undefined;
   const todos = getPlanosAula();
-  if (atividade.aulaLigada) { const a = todos.find(p => p.id === atividade.aulaLigada); if (a) return a; }
+  // A aula ligada só vale se ainda estiver em uso: arquivada (anulada) ou
+  // eliminada, procura-se a aula da turma desse dia que está em uso (antes a
+  // atividade continuava presa a um plano arquivado — Rosa, out/2026).
+  if (atividade.aulaLigada) { const a: any = todos.find(p => p.id === atividade.aulaLigada); if (a && a.estado !== 'arquivado' && !a.eliminado) return a; }
   const dia = String(atividade.data || '').slice(0, 10);
   const min = (h?: string) => { const [a, b] = String(h || '').split(':').map(Number); return isNaN(a) ? NaN : a * 60 + (b || 0); };
   const doDia = todos.filter((p: any) => p.id !== atividade.id && p.turmaId === atividade.turmaId && !p.tipoEvento

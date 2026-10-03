@@ -78,3 +78,5 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 40. **Nas requisições, os produtos estão na própria linha**; para o mesmo plano ou evento vale a mais recente (verde) e as outras ficam «substituída» (vermelho).
 41. **O professor vê o que os colegas disseram** sempre que houve grupos nessa aula, mesmo com os grupos desligados no plano.
 42. **Os alunos de teste (nº 99 e 88, «TESTE — aluno de ensaio») não entram na avaliação entre colegas dos alunos verdadeiros**: os verdadeiros não os avaliam, eles não avaliam os verdadeiros (não fica gravado), e o professor e o Sheets não misturam. Entre si, os de teste avaliam-se, para se poder ensaiar.
+43. **Numa atividade cujas atitudes ficam no plano da turma, o «+1» das atitudes dos anos anteriores também fica nesse plano** (não aparece na validação da atividade). A mensagem de falta diz em que competências falta a nota do professor.
+44. **A atividade ligada a uma aula que entretanto foi arquivada passa para a aula desse dia que está em uso.** E nunca aparece o n.º interno do plano (157…): mesmo um plano arquivado diz a posição na UC.

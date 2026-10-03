@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { atitudesNoPlanoDaTurma, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -1072,7 +1072,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
 
       {/* Turmas ACP — +1 nas atitudes dos anos anteriores. Conta para a
           consolidação da atitude, não para a nota desta aula nem da UC. */}
-      {ehTurmaTransicao(selecao.turmaId) && (() => {
+      {/* Numa atividade extra cujas atitudes são avaliadas no plano da turma
+          desse dia, o +1 das atitudes também fica nesse plano: não se repete
+          aqui (Rosa, out/2026). */}
+      {ehTurmaTransicao(selecao.turmaId) && !atitudesNoPlanoDaTurma(getPlanosAula().find(p => p.id === selecao.planoAulaId)) && (() => {
         const aluno = getAlunos().find(a => a.id === selecao.alunoId);
         if (!aluno) return null;
         const lista = atitudesAnteriores(aluno);
@@ -1147,7 +1150,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
           <div style={{ fontSize:13, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>
-            Preenche a avaliação do professor em todas as competências antes de guardar.
+            Falta a tua nota em: {autoavaliacoes.filter(a => !notasProf[a.competenciaId]).map(a => { try { return nomeCompetencia(a.competenciaId); } catch { return a.competenciaId; } }).join(' · ')}.
+            {' '}Está mais acima, em cada competência.
           </div>
         )}
       </Card>
