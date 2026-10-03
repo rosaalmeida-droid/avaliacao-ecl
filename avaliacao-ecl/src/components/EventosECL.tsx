@@ -11,6 +11,7 @@
 // A lógica está em ../eventos/modelo.ts.
 // ============================================================
 import { eventosDosPlanosEmFalta, planosDoEvento, criarAvaliacaoDoEvento } from '../eventos/doPlano';
+import { modulosAtivos } from '../cronograma';
 import { EventosWizard } from './EventosWizard';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -152,7 +153,7 @@ export function EventosECL({ turmaId, nomeProfessor, onNovoPlano, onAbrirPlano, 
       { icone: '🚐', nome: 'Evento externo', sub: 'para fora da escola ou para uma entidade: catering e serviço', ir: () => novoEvento('fora') },
       { icone: '🏫', nome: 'Evento interno', sub: 'na ECL: catering e serviço', ir: () => novoEvento('ecl') },
       { icone: '🏆', nome: 'Concurso', sub: 'avalia-se a participação dos alunos', ir: () => { setEscolherTipo(false); onNovoPlano?.('Concurso'); } },
-      { icone: '✳️', nome: 'Outra atividade', sub: 'visita, feira, atividade fora da escola…', ir: () => { setEscolherTipo(false); onNovoPlano?.('Atividade fora da escola'); } },
+      { icone: '✳️', nome: 'Atividade extra', sub: 'visita, feira, outra atividade — na escola ou fora', ir: () => { setEscolherTipo(false); onNovoPlano?.('Atividade fora da escola'); } },
     ];
     return fundo(<>
       <button onClick={() => setEscolherTipo(false)} style={{ ...botao(), minHeight: 40, padding: '8px 14px', fontSize: 14, marginBottom: 12 }}>← Voltar</button>
@@ -535,8 +536,13 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
   const semPlano = getTurmas().map(t => t.id).filter(t => !planos.some(p => p.turmaId === t));
   if (planos.length) return (
     <div style={{ ...cartao, fontSize: 14.5, lineHeight: 1.5 }}>
-      <b style={{ color: C.verde }}>✓ Avaliação dos alunos criada</b> — {planos.map(p => p.turmaId).join(', ')}
-      {p0Modo(planos[0])}. Os alunos autoavaliam-se no plano do evento, e o bónus conta na UC dessa data.
+      {planos[0]?.tipoEvento ? (<>
+        <b style={{ color: C.verde }}>✓ Atividade extra criada</b> — {planos.map(p => p.turmaId).join(', ')}
+        {p0Modo(planos[0])}. Os alunos autoavaliam-se na atividade, e conta como bónus na UC dessa data.
+      </>) : (<>
+        <b style={{ color: C.verde }}>✓ O evento está no plano de aula da turma</b> — {planos.map(p => p.turmaId).join(', ')}.
+        Vai a turma toda dentro do ano letivo, por isso conta como aula. Abre-o em «Planos de aula» (se ainda estiver em rascunho, escolhe o tipo de aula e publica).
+      </>)}
     </div>
   );
   return (
@@ -551,10 +557,17 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
         {semPlano.map(t => <option key={t} value={t}>{t}</option>)}
       </select>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        {([['turma', 'A turma toda (obrigatório)'], ['inscricao', 'Só quem se inscrever']] as const).map(([v, t]) => (
+        {([['turma', 'A turma toda (obrigatório)'], ['inscricao', 'Só alguns alunos']] as const).map(([v, t]) => (
           <button key={v} onClick={() => setModo(v)} style={{ ...botao(modo === v ? 'principal' : 'claro'), flex: '1 1 160px', minHeight: 44, fontSize: 14 }}>{t}</button>
         ))}
       </div>
+      {turma && e.data && (
+        <div style={{ color: C.suave, fontSize: 13.5, marginBottom: 8 }}>
+          {modo === 'inscricao' ? 'Atividade extra: dá bónus, não conta faltas.'
+            : modulosAtivos(turma, e.data).length > 0 ? 'A turma toda, dentro do ano letivo: é um plano de aula com o evento lá dentro, e conta como aula.'
+            : 'A turma toda, fora do ano letivo: atividade extra, com bónus no plano de aula seguinte da UC.'}
+        </div>
+      )}
       <button disabled={!turma || !e.data} onClick={() => { criarAvaliacaoDoEvento(e, turma, modo, nomeProfessor || ''); redesenhar(n => n + 1); }}
         style={{ ...botao('principal'), width: '100%', opacity: !turma || !e.data ? 0.5 : 1 }}>
         Criar a avaliação dos alunos

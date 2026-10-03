@@ -1,5 +1,5 @@
 import { eventosParaPlanos } from '../eventos/modelo';
-import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada, selecoesQueContam } from '../backend';
+import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada, selecoesQueContam, selecoesDoProfessor } from '../backend';
 import { proximoConteudo, indicadoresDoConteudo, manualDaUC, capituloDoCampo } from '../bancoManuais';
 import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, type TipoAula, type TriagemAula } from '../contextoAula';
 import { PassoComoEAula, fraseDaAula, oQueOAlunoVe } from './PlanoGuiado';
@@ -32,7 +32,7 @@ function ucMaisProxima(turmaId: string, data: string): string {
   return (seguinte || anterior)?.id || '';
 }
 import { avisoDoDia, temCozinha, horasSugeridas, proximoDiaDeAula, horarioEmTexto } from '../horarios';
-import { tipoEventoDe, atitudesSugeridasEvento } from '../eventosAvaliacao';
+import { tipoEventoDe, atitudesSugeridasEvento, triagemDaAtividade, nomeDoTipoAtividade } from '../eventosAvaliacao';
 import { garantirEventoDoPlano } from '../eventos/doPlano';
 import { rotuloPlano } from '../rotuloPlano';
 
@@ -117,7 +117,7 @@ function limparHora(h?: string): string {
 /** Autoavaliações deste plano que o professor ainda não validou. */
 function porValidarDoPlano(planoId: string): number {
   const validacoes = _getValidacoes();
-  return selecoesQueContam(_getSelecoes()).filter((x: any) => x.planoAulaId === planoId && !selecaoJaValidada(x, validacoes as any)).length;
+  return selecoesQueContam(selecoesDoProfessor()).filter((x: any) => x.planoAulaId === planoId && !selecaoJaValidada(x, validacoes as any)).length;
 }
 
 /** O aviso no cartão do plano: vê-se logo, no calendário e na lista. */
@@ -1070,6 +1070,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       const i1 = min(dados.horaInicio), f1 = min(dados.horaFim);
       const iguais = getPlanosAulaPorTurma(turmaId).filter((x: any) => {
         if (x.estado === 'arquivado' || x.id === planoExistente?.id || x.id === planoVivo?.id) return false;
+        // Uma atividade extra pode ser à hora de uma aula: não é um plano repetido.
+        if (x.tipoEvento || (planoExistente as any)?.tipoEvento || ehAtividadeExtra(dados, turmaId)) return false;
         if (String(x.data || '').slice(0, 10) !== dados.data) return false;
         const i2 = min(x.horaInicio), f2 = min(x.horaFim);
         // Sem horas num dos lados, conta como sobreposto.
@@ -1099,15 +1101,15 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         const atv: any = {
           id: `plano_atv_${x.id}_${Date.now().toString(36)}`, turmaId: x.turmaId || turmaId, professor: x.professor || dados.professor || '',
           data: String(x.data || dados.data).slice(0, 10), horaInicio: x.horaInicio || dados.horaInicio, horaFim: x.horaFim || dados.horaFim,
-          titulo: `${dados.tipoAtividade} — ${x.titulo || 'aula'}`, observacoes: '', fichasIds: [], estado: 'rascunho',
+          titulo: `${nomeDoTipoAtividade(dados.tipoAtividade)} — ${x.titulo || 'aula'}`, observacoes: '', fichasIds: [], estado: 'rascunho',
           criadoEm: agora, atualizadoEm: agora, ucId: x.ucId || dados.ucId, ucNome: x.ucNome || '',
           numeroPlan: proximoNumeroPlano(), tipoAtividade: dados.tipoAtividade, tipoEvento: tipoEventoDe(dados.tipoAtividade),
           tipoPlanAula: 'atitudinal', compAdicionadas: atitudesSugeridasEvento(dados.tipoAtividade),
           modoParticipacao: 'inscricao', participantesIds: [], contaAssiduidade: false,
           aulaLigada: x.id, tambemRespondemAula: true,
           // Já se sabe como é: não se pergunta «Que aula é?» numa atividade.
-          triagemAula: { tipo: 'atitudinal', onde: /fora|externo/i.test(dados.tipoAtividade) ? 'fora' : 'cozinha',
-            cozinham: !/fora|externo|Concurso/i.test(dados.tipoAtividade), trabalho: 'grupos', servico: /Catering|Buffet|externo/i.test(dados.tipoAtividade) },
+          // Onde é (na escola ou fora) pergunta-se em «Como é a atividade».
+          triagemAula: triagemDaAtividade(dados.tipoAtividade),
         };
         try { const idEv = garantirEventoDoPlano(atv, dados.professor); if (idEv) atv.eventoId = idEv; } catch (e) { console.error(e); }
         addOrUpdatePlanoAula(atv);
@@ -1172,7 +1174,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     const ucSel = modulos.find(m => m.id === dados.ucId) || UCS_COZINHA.find(u => u.id === dados.ucId);
     const numeroPlan = proximoNumeroPlano();
     const codigoPlano = gerarCodigoPlano(turmaId, dados.ucId, numeroPlan);
-    const titulo = dados.titulo || `${dados.tipoAtividade}${dados.data ? ' — ' + dados.data : ''}`;
+    const titulo = dados.titulo || `${nomeDoTipoAtividade(dados.tipoAtividade)}${dados.data ? ' — ' + dados.data : ''}`;
     const p: TPlanoAula = {
       id: 'plano_' + Date.now(), turmaId,
       professor: dados.professor,
@@ -1254,20 +1256,22 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     <div>
       <div style={{ background: 'var(--charcoal)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
         <button onClick={onVoltar} style={{ background: 'rgba(247,241,230,0.1)', border: '1px solid rgba(247,241,230,0.2)', borderRadius: 8, padding: '5px 12px', color: 'rgba(247,241,230,0.7)', fontSize: 13, cursor: 'pointer', marginBottom: 10 }}>← Voltar</button>
-        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>{planoExistente ? 'Alterar o plano de aula' : tipoEventoDe(dados.tipoAtividade) ? '🏅 Avaliar evento ou concurso' : 'Novo Plano de Aula'}</div>
+        <div style={{ fontFamily: 'Fraunces, serif', fontSize: 20, fontWeight: 700, color: 'var(--cream)' }}>{planoExistente ? ((planoExistente as any).tipoEvento ? '🏅 Alterar a atividade extra' : 'Alterar o plano de aula') : tipoEventoDe(dados.tipoAtividade) ? '🏅 Avaliar evento ou concurso' : 'Novo Plano de Aula'}</div>
         {/* A turma bem à vista: o plano fica nesta turma e só estes alunos o veem. */}
         <div style={{ display: 'inline-block', marginTop: 8, padding: '6px 12px', borderRadius: 8,
           background: 'var(--copper)', color: '#fff', fontSize: 15, fontWeight: 800 }}>
           Turma: {turmaId}
         </div>
         <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.6)', marginTop: 4 }}>
-          Só os alunos desta turma veem este plano. Se não é esta a turma, muda-a no menu antes de criar.
+          {ehAtividadeExtra(dados, turmaId) ? 'Só os alunos escolhidos desta turma fazem esta atividade; os outros só a podem ver.'
+            : 'Só os alunos desta turma veem este plano. Se não é esta a turma, muda-a no menu antes de criar.'}
         </div>
       </div>
       <Card>
         {/* Por janelas, uma de cada vez (Rosa, out/2026): no fim vê-se tudo o que fica no plano. */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          {(['Quando', 'Unidade', 'Que aula é', 'Como é a aula', 'Conteúdos e sumário', 'Confirmar'] as const).map((t, i) => {
+          {(ehAtividadeExtra(dados, turmaId) ? ['Quando', 'Unidade', 'Que atividade é', 'Como é a atividade', 'Conteúdos e sumário', 'Confirmar']
+            : ['Quando', 'Unidade', 'Que aula é', 'Como é a aula', 'Conteúdos e sumário', 'Confirmar']).map((t, i) => {
             const n = i + 1, feito = n < passo, atual = n === passo;
             const pode = n <= passo || (n <= 3 && !!dados.data && (n <= 2 || !!dados.ucId)) || (n >= 4 && !!alvo);
             return (
@@ -1507,7 +1511,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             if (!!tipoEventoDe(novo) !== !!tipoEventoDe(dados.tipoAtividade)) setDados(p => ({ ...p, faltasContam: !tipoEventoDe(novo) }));
             setD('tipoAtividade', novo);
           }}>
-            {TIPOS_ATIVIDADE.map(t => <option key={t} value={t}>{t === 'Atividade fora da escola' ? 'Visita ou outra atividade' : t}</option>)}
+            {TIPOS_ATIVIDADE.map(t => <option key={t} value={t}>{t === 'Atividade fora da escola' ? 'Atividade extra (visita, feira, outra)' : t}</option>)}
           </select>
           {tipoEventoDe(dados.tipoAtividade) && !ehAtividadeExtra(dados, turmaId) && (
             <div style={{ fontSize: 13, color: '#3f5e34', marginTop: 6, lineHeight: 1.5 }}>
@@ -1607,12 +1611,12 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         </>)}
         {passo === 6 && (<>
         <div style={{ background: '#fbf8f3', border: '1px solid rgba(26,23,20,0.1)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>O plano fica assim</div>
+          <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{ehAtividadeExtra(dados, turmaId) ? 'A atividade extra fica assim' : 'O plano fica assim'}</div>
           {([
             ['Turma', turmaId, 0],
             ['Quando', `${dados.data ? new Date(dados.data + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'} · ${dados.horaInicio}–${dados.horaFim}`, 1],
             ['Unidade', (() => { const m: any = modulosDaTurma(turmaId).find(x => x.id === dados.ucId) || UCS_COZINHA.find(u => u.id === dados.ucId); return dados.ucId ? `${dados.ucId}${m?.nome ? ' — ' + m.nome : ''}` : '— (falta escolher)'; })(), 2],
-            ['Aula', tipoEventoDe(dados.tipoAtividade) ? dados.tipoAtividade
+            [ehAtividadeExtra(dados, turmaId) ? 'Atividade' : 'Aula', tipoEventoDe(dados.tipoAtividade) ? nomeDoTipoAtividade(dados.tipoAtividade)
               : `${({ pratico: 'Prática', misto: 'Mista', teorico: 'Teórica', atitudinal: 'Atitudinal' } as Record<string, string>)[dados.tipoPlanAula]} · ${dados.tipoAtividade}`, 3],
             ['Farda', dados.comFarda ? 'avalia-se' : 'não se avalia', 3],
             ['Registos (HACCP)', dados.comRegistos ? 'avaliam-se' : 'não se avaliam', 3],
@@ -1643,7 +1647,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         </div>
         <div className="field" style={{ marginBottom: 20 }}>
           <label className="field-label">Título (opcional)</label>
-          <input className="input" value={dados.titulo} onChange={e => setD('titulo', e.target.value)} placeholder={`Plano — ${dados.tipoAtividade} — ${dados.data}`} />
+          <input className="input" value={dados.titulo} onChange={e => setD('titulo', e.target.value)} placeholder={`Plano — ${nomeDoTipoAtividade(dados.tipoAtividade)} — ${dados.data}`} />
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>Se não preencheres, o título é gerado automaticamente com número sequencial</div>
         </div>
         {/* Já há um plano nesta turma, neste dia e a estas horas. */}

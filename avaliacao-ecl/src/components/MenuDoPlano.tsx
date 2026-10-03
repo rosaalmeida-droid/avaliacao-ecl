@@ -9,7 +9,7 @@
 // ============================================================
 
 import { ehEventoForaDoHorario, rotuloEvento, codigoEvento } from '../rotuloPlano';
-import { gruposDaAula, contextoDoPlano } from '../backend';
+import { gruposDaAula, contextoDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO } from '../backend';
 import React, { useEffect, useState } from 'react';
 import type { PlanoAula, FichaProducao } from '../types';
 import { BotaoPublicar } from './BotaoPublicar';
@@ -183,8 +183,25 @@ export function MenuDoPlano({
           </div>
         )}
 
-        {/* O aviso de última aula da unidade, quando se aplica. */}
-        {aviso && (
+        {/* Atividade extra: do plano de aula só a ligação e a que partes os
+            alunos da atividade continuam a responder (Rosa, out/2026). */}
+        {ehEventoForaDoHorario(plano) && (() => {
+          const aula: any = aulaDoDiaDaAtividade(plano);
+          const a: any = plano;
+          const pt = { ...PARTES_POR_OMISSAO, ...(a.partesDaAula || {}) };
+          const partes = a.tambemRespondemAula === false ? ''
+            : [pt.tecnicas && 'técnicas', pt.conhecimentos && 'conhecimentos', pt.atitudes && 'atitudes'].filter(Boolean).join(', ');
+          return (
+            <div style={{ marginTop: 9, padding: '8px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.14)',
+              fontSize: 11.5, color: 'rgba(255,255,255,0.92)', lineHeight: 1.45 }}>
+              {aula ? <>Atividade extra ligada ao <b>{rotuloDoPlano(aula)}</b>.<br />
+                  {partes ? `Os alunos da atividade continuam a responder a esse plano: ${partes}.` : 'Os alunos da atividade respondem só à atividade.'}</>
+                : 'Atividade extra, sem plano de aula da turma nesse dia.'}
+            </div>
+          );
+        })()}
+        {/* O aviso de última aula da unidade, quando se aplica (não numa atividade). */}
+        {aviso && !ehEventoForaDoHorario(plano) && (
           <div style={{ marginTop: 9, padding: '8px 10px', borderRadius: 8,
             background: 'rgba(255,255,255,0.14)', fontSize: 11.5,
             color: 'rgba(255,255,255,0.9)', lineHeight: 1.45 }}>
@@ -271,7 +288,7 @@ export function MenuDoPlano({
         {(alunosNaAula || String(plano.data || '').slice(0, 10) < new Date().toISOString().slice(0, 10)) && (
           <Linha
             marca="neutro"
-            texto="Turma e faltas"
+            texto={ehEventoForaDoHorario(plano) ? 'Quem foi' : 'Turma e faltas'}
             contador={alunosNaAula || '—'}
             activo={moduloActivo === 'turma'}
             aoClicar={() => aoIrPara('turma')} />
@@ -317,7 +334,7 @@ export function MenuDoPlano({
         background: moduloActivo === 'editar' ? 'rgba(255,255,255,0.16)' : 'transparent',
         color: BRANCO_FORTE, fontSize: 13.5, fontWeight: 700,
       }}>
-        ✏️ Editar o plano
+        ✏️ {ehEventoForaDoHorario(plano) ? 'Editar a atividade' : 'Editar o plano'}
       </button>
 
 

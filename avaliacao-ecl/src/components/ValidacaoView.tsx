@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano } from '../backend';
+import { getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -96,8 +96,14 @@ function nomeDoAluno(alunoId: string): string {
 }
 
 export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?: string }) {
-  const planos = getPlanosAula().filter(p => (!turmaId || p.turmaId === turmaId) && (!planoId || p.id === planoId));
-  const selecoes = getSelecoes().filter(s => (!turmaId || s.turmaId === turmaId) && (!planoId || s.planoAulaId === planoId));
+  // Num plano, procura-se pelo plano (não pela turma escolhida no menu): uma
+  // autoavaliação com a turma escrita de outra forma contava como pendente
+  // e não aparecia para validar (Rosa, out/2026).
+  const planos = getPlanosAula().filter(p => planoId ? p.id === planoId : (!turmaId || p.turmaId === turmaId));
+  const turmaDoPlano = planoId ? (planos[0]?.turmaId || turmaId) : turmaId;
+  const idsDaTurma = new Set(planos.map(p => p.id));
+  const selecoes = selecoesDoProfessor().filter(s => planoId ? s.planoAulaId === planoId
+    : (!turmaId || s.turmaId === turmaId || idsDaTurma.has(s.planoAulaId || '')));
   const validacoes = getValidacoes();
 
   // Uma por aluno e aula: a mesma autoavaliação pode ter chegado duas vezes.
@@ -113,24 +119,33 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
   const [acabou, setAcabou] = useState<string | null>(null);
   const [, redesenhar] = useState(0);
   const [aProcurar, setAProcurar] = useState(false);
+  /** A última procura: a hora e quantas chegaram (o professor sabe se já procurou). */
+  const [ultimaProcura, setUltimaProcura] = useState<{ hora: string; novas: number; falhou?: boolean } | null>(null);
 
   // As autoavaliações chegam pelo Sheets. Sem isto, só apareciam quando
   // a aplicação era reaberta — o professor ficava à espera sem saber
   // de quê. Enquanto este ecrã estiver aberto, procura de meio em meio
   // minuto, e há um botão para procurar já.
-  function procurar() {
-    if (!turmaId) return;
-    setAProcurar(true);
-    sincronizarDoSheets(turmaId)
-      .catch(() => {})
-      .finally(() => { setAProcurar(false); redesenhar(n => n + 1); });
+  function procurar(manual = false) {
+    if (!turmaDoPlano) return;
+    const antes = selecoesDoProfessor().length;
+    if (manual) setAProcurar(true);
+    let falhou = false;
+    sincronizarDoSheets(turmaDoPlano, { forcar: manual })
+      .catch(() => { falhou = true; })
+      .finally(() => {
+        setAProcurar(false);
+        setUltimaProcura({ hora: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+          novas: Math.max(0, selecoesDoProfessor().length - antes), falhou });
+        redesenhar(n => n + 1);
+      });
   }
 
   useEffect(() => {
     if (!turmaId || ativa) return;
-    const t = setInterval(procurar, 30000);
+    const t = setInterval(() => procurar(), 30000);
     return () => clearInterval(t);
-  }, [turmaId, ativa]);
+  }, [turmaDoPlano, ativa]);
 
   if (ativa) {
     const plano = planos.find(p => p.id === ativa.planoAulaId);
@@ -178,16 +193,24 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
           Validar seguidos ({porValidarLista.length}) →
         </button>
       )}
-      <button onClick={procurar} disabled={aProcurar} style={{
+      <button onClick={() => procurar(true)} disabled={aProcurar} style={{
         padding: '9px 14px', borderRadius: 9, marginBottom: 12,
         border: '1px solid rgba(26,23,20,0.18)', background: '#fff',
         fontSize: 13.5, fontWeight: 700, cursor: aProcurar ? 'default' : 'pointer',
         fontFamily: 'inherit', opacity: aProcurar ? 0.6 : 1,
       }}>
-        {aProcurar ? 'A procurar…' : 'Procurar autoavaliações agora'}
+        {aProcurar ? 'A procurar no Sheets…' : 'Procurar autoavaliações agora'}
       </button>
+      {!aProcurar && ultimaProcura && (
+        <span style={{ marginLeft: 10, fontSize: 13.5, fontWeight: 600,
+          color: ultimaProcura.falhou ? '#8e2418' : ultimaProcura.novas ? 'var(--sage)' : 'rgba(26,23,20,0.6)' }}>
+          {ultimaProcura.falhou ? `Às ${ultimaProcura.hora}: sem ligação ao Sheets. Tenta outra vez.`
+            : ultimaProcura.novas ? `Procurado às ${ultimaProcura.hora}: chegaram ${ultimaProcura.novas}.`
+            : `Procurado às ${ultimaProcura.hora}: nada de novo.`}
+        </span>
+      )}
 
-      {planoId && <QuemFalta planoId={planoId} turmaId={planos[0]?.turmaId || turmaId || ''} selecoes={selecoes} />}
+      {planoId && <QuemFalta planoId={planoId} turmaId={turmaDoPlano || ''} selecoes={selecoes} />}
 
       {/* Primeiro o que falta; o que já está validado fica por baixo, à
           parte. Antes vinha tudo junto debaixo de «pendentes». */}
@@ -235,6 +258,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
             {temaDoAluno(s) ? `Tema: ${temaDoAluno(s)} · ` : ''}
             {vezesQueRespondeu(s.alunoId, s.planoAulaId || '', selecoes) > 1
               ? `Respondeu ${vezesQueRespondeu(s.alunoId, s.planoAulaId || '', selecoes)} vezes: conta a última · ` : ''}
+            {(s as any).antesDoPedido && !jaValidada ? 'Respondeu antes da última alteração do plano: esta resposta conta até chegar outra · ' : ''}
             {jaValidada
               ? '✓ Validado — tocar para alterar'
               : `${nMicros} competência${nMicros !== 1 ? 's' : ''} a validar`}

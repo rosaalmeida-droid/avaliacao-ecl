@@ -9,6 +9,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { PlanoAula } from '../types';
 import { addOrUpdatePlanoAula, getPlanosAula, getFichasProducao } from '../backend';
+import { nomeDoTipoAtividade } from '../eventosAvaliacao';
 import { sumarioAutomatico } from '../sumarioAutomatico';
 
 function pedidoIA(plano: PlanoAula, notas: string): string {
@@ -16,7 +17,7 @@ function pedidoIA(plano: PlanoAula, notas: string): string {
   // Os pratos do plano ajudam a IA a escrever os nomes certos.
   const pratos = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id))
     .map(f => f.nomePrato).filter(Boolean);
-  const tipo = (plano as any).tipoAtividade || '';
+  const tipo = nomeDoTipoAtividade((plano as any).tipoAtividade || '');
   // Antes pedia «3 a 6 linhas, frases curtas»: a IA cortava quase tudo o
   // que o professor escrevia e ficavam duas ou três coisas (Rosa, out/2026).
   // Agora aproveita tudo e só arruma.

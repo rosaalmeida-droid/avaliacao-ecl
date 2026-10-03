@@ -1,3 +1,4 @@
+import { triagemDaAtividade } from './eventosAvaliacao';
 // ============================================================
 // Como é esta aula — a triagem que o professor faz no plano
 // ============================================================
@@ -146,7 +147,11 @@ export function triagemDoPlano(plano: any): TriagemAula | null {
   // Sem o tipo de aula escolhido pelo professor não há triagem: a aplicação
   // não adivinha (deduzia «atitudinal» numa aula teórica — Rosa, out/2026).
   const t = plano?.triagemAula;
-  return t && t.tipo && t.onde && t.trabalho ? t as TriagemAula : null;
+  if (t && t.tipo && t.onde && t.trabalho) return t as TriagemAula;
+  // Atividade extra sem triagem (criada no ecrã Eventos, ou antiga): já se sabe
+  // como é — atitudes e as técnicas da ficha. Não se pergunta o tipo de aula.
+  if (plano?.tipoEvento) return { ...triagemDaAtividade(plano.tipoAtividade), ...(t || {}) } as TriagemAula;
+  return null;
 }
 
 /**

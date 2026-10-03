@@ -149,7 +149,9 @@ function Pergunta({ titulo, children }: { titulo: string; children: React.ReactN
 }
 
 /** A frase que resume a aula: «Aula prática, em grupos, na cozinha, com serviço». */
-export function fraseDaAula(t: TriagemAula): string {
+export function fraseDaAula(t: TriagemAula, atividadeExtra = false): string {
+  // Numa atividade extra não se fala de «aula» (Rosa, out/2026).
+  if (atividadeExtra) return `Atividade extra, ${t.onde === 'fora' ? 'fora da escola' : 'na escola'}${t.cozinham ? ', a cozinhar' : ''}.`;
   const tt = tipoDe(t);
   const tipo = tt === 'pratico' ? 'Aula prática' : tt === 'misto' ? 'Aula mista' : tt === 'teorico' ? 'Aula teórica'
     : t.onde === 'fora' ? 'Visita ou atividade fora da escola' : 'Aula atitudinal';
@@ -428,7 +430,7 @@ function ResultadoDaAula({ plano, triagem }: { plano: PlanoAula; triagem: Triage
   return (
     <div style={{ marginTop: 16, background: C.azulP, borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 7 }}>
       <div style={{ fontWeight: 800, fontSize: 15, color: C.azul }}>Ficou assim</div>
-      {linha((plano as any).tipoEvento ? 'A atividade' : 'O plano de aula', fraseDaAula(triagem) + (escolheTema(triagem) ? ` ${triagem.modo === 'grupo' ? 'Trabalho de grupo' : 'Trabalho individual'}: ${fasesDoTrabalho(triagem).map(f => NOME_FASE[f].toLowerCase()).join(', ')}.` : ''))}
+      {linha((plano as any).tipoEvento ? 'A atividade' : 'O plano de aula', fraseDaAula(triagem, !!(plano as any).tipoEvento) + (escolheTema(triagem) ? ` ${triagem.modo === 'grupo' ? 'Trabalho de grupo' : 'Trabalho individual'}: ${fasesDoTrabalho(triagem).map(f => NOME_FASE[f].toLowerCase()).join(', ')}.` : ''))}
       {linha('Sumário', <span style={{ whiteSpace: 'pre-line' }}>{sumarioDoPlano(plano, fichas)}</span>)}
       {linha(`O aluno responde`, ecras.length ? `${ecras.length}: ${ecras.map(e => e.nome).join(' → ')}` : '—')}
       {linha('Conta para a nota', pesos.map(x => `${x.nome} ${x.pct}%`).join(' · ') || '—')}
@@ -470,7 +472,7 @@ export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
         sub="Sai sozinho do 1 e do 2. À direita está o que o aluno vai ver no telemóvel, por esta ordem." />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 22, alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Peso na nota desta aula</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{(plano as any).tipoEvento ? 'Peso na nota da atividade (que dá o bónus, até +0,5)' : 'Peso na nota desta aula'}</div>
           {pesos.map(x => (
             <div key={x.cat}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14.5, marginBottom: 4 }}>

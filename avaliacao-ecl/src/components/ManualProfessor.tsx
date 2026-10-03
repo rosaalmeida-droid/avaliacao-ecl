@@ -645,7 +645,8 @@ const SECCOES: Seccao[] = [
           1. Cria a atividade (em «Atividades e concursos», ou no «Editar o plano» de uma aula, escolhendo o tipo e «Só alguns alunos»).
           Se vier de uma aula, a aula fica <b>igual</b> para a turma toda e a atividade fica à parte, ligada a ela.<br />
           2. Põe quem foi: aceita os inscritos ou usa «+ Acrescentar um aluno que foi».<br />
-          3. Se houve produção, junta a <b>ficha técnica e o guião</b> à atividade.<br />
+          3. Se houve produção, junta a <b>ficha técnica e o guião</b> à atividade. As técnicas que os alunos avaliam vêm da ficha:
+          vês-las em «Competências», em cima («Técnicas da ficha técnica»), e mudas abrindo a ficha («Abrir a ficha»).<br />
           4. Carrega em <b>«Confirmar participantes»</b>: vês quem participa, o que cada um vai responder e como conta. Confirma.
         </P>
         <H>O que os alunos da atividade respondem</H>
@@ -673,6 +674,23 @@ const SECCOES: Seccao[] = [
           <b>Exemplos.</b> <b>18 de setembro</b>, a turma toda, antes do início do ano letivo: atividade extra; as atitudes validadas ficam no
           perfil e o bónus aparece no plano de aula seguinte da UC (21 de setembro). <b>Catering com 3 alunos</b> à hora de uma aula teórica:
           atividade extra só para os 3, com a ficha técnica e o guião; continuam a responder ao plano de aula da turma; os colegas veem a atividade só para consulta.
+        </Destaque>
+
+        <H>Recuperar uma UC numa atividade extra</H>
+        <P>
+          Um aluno em recuperação (faltas acima dos 10%) pode recuperar a UC participando numa atividade extra.
+        </P>
+        <Passos itens={[
+          <><b>Quem escolhe:</b> tu, ou o aluno. Em «UC em atraso — recuperação», escolhe a modalidade «atividade» e a atividade.
+            Ou, na atividade, em «Alunos em recuperação», carrega em «Recuperar nesta atividade».</>,
+          <><b>O aluno pode candidatar-se</b> em «Atividades e concursos › Recuperar numa atividade», mesmo numa atividade só para alguns alunos.
+            Na atividade aparece «Candidatou-se para recuperar»: carregas em «Aceitar para recuperar» ou «Não aceitar» (e escolhes outra).</>,
+          <>No resumo da atividade («Confirmar participantes»), o aluno aparece marcado <b>«a recuperar a UC …»</b>.</>,
+          <><b>Só recupera se participou:</b> tens de confirmar os participantes e validar a autoavaliação dele nessa atividade.</>,
+          <>Depois, em «Registar realização e resultado», a aplicação <b>sugere a nota</b> que validaste na atividade. Tu confirmas ou corriges.</>,
+        ]} />
+        <Destaque cor="bordeaux">
+          <b>Para quem recupera, a atividade não dá bónus.</b> Serve só para recuperar a UC.
         </Destaque>
       </>
     ),

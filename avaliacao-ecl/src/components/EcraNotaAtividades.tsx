@@ -253,7 +253,7 @@ export function EcraMinhaNota({
 // ── Atividades e concursos ────────────────────────────────────
 
 export function EcraAtividades({
-  atividades, alunoId, onInscrever, onCancelar, onBalanco, onVer,
+  atividades, alunoId, onInscrever, onCancelar, onBalanco, onVer, recuperacao,
 }: {
   atividades: Atividade[];
   alunoId: string;
@@ -262,6 +262,12 @@ export function EcraAtividades({
   onInscrever: (id: string) => void;
   onCancelar: (id: string) => void;
   onBalanco: (id: string, participou: boolean, resultado?: string) => void;
+  /** Aluno em recuperação: pode candidatar-se a recuperar numa atividade, mesmo fechada (Rosa, out/2026). */
+  recuperacao?: {
+    ucs: string[];
+    estado: (planoId: string) => 'candidato' | 'aceite' | null;
+    onCandidatar: (planoId: string, sim: boolean) => void;
+  };
 }) {
   const [aBalancar, setABalancar] = useState<string | null>(null);
   // Inscrever-se é um compromisso: pergunta-se antes, e dá-se os parabéns depois.
@@ -293,7 +299,9 @@ export function EcraAtividades({
   // Eventos que vêm do plano do professor: quem vai decide-o o professor
   // (a turma toda, ou os inscritos que ele aceita). Não há «como correu».
   const doPlano = (a: Atividade) => !!(a as any).doPlano;
-  const abertas = atividades.filter(a => !a.fechada && a.data >= hoje);
+  // Quem já se candidatou a recuperar numa atividade vê-a só em «Recuperar numa atividade».
+  const paraRecuperar = (a: Atividade) => !!(recuperacao && doPlano(a) && recuperacao.estado((a as any).planoId));
+  const abertas = atividades.filter(a => !a.fechada && a.data >= hoje && !paraRecuperar(a));
   const porFechar = atividades.filter(a => !doPlano(a) && a.data < hoje && inscrito(a) && !jaDeuBalanco(a));
   const feitas = atividades.filter(a => (doPlano(a) ? a.data < hoje && participou(a) : participou(a) || jaDeuBalanco(a)));
 
@@ -342,6 +350,36 @@ export function EcraAtividades({
           não ganhes. Para contar, tens de ir de farda e dar tudo. Sem ires
           a um concurso, a nota não passa de 18.
         </div>
+
+        {/* Em recuperação: candidatar-se a recuperar numa atividade (Rosa, out/2026). */}
+        {recuperacao && recuperacao.ucs.length > 0 && atividades.some(a => doPlano(a) && a.data >= hoje) && (
+          <>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.06em',
+              textTransform: 'uppercase', color: C.cobre, marginBottom: 10 }}>
+              Recuperar numa atividade
+            </div>
+            <div style={{ ...painel, padding: 15, marginBottom: 11, fontSize: 14.5, color: C.texto, lineHeight: 1.6 }}>
+              Estás em recuperação na UC {recuperacao.ucs.join(', ')}. Podes candidatar-te a recuperar numa destas atividades,
+              mesmo que seja só para alguns alunos. O professor aceita ou escolhe outra. Só recuperas se participares
+              e o professor o confirmar. Esta atividade serve para recuperar: não dá bónus.
+            </div>
+            {atividades.filter(a => doPlano(a) && a.data >= hoje).map(a => {
+              const pid = (a as any).planoId;
+              const est = recuperacao.estado(pid);
+              return cartao(a, est === 'aceite'
+                ? <div style={{ marginTop: 13, padding: '12px 14px', borderRadius: 11, background: C.verdeSuave, color: C.verde, fontSize: 15, fontWeight: 600 }}>
+                    ✓ O professor aceitou: recuperas nesta atividade. Só conta se participares.</div>
+                : est === 'candidato'
+                  ? <>
+                      <div style={{ marginTop: 13, padding: '12px 14px', borderRadius: 11, background: C.cobreSuave, color: C.cobre, fontSize: 15, fontWeight: 600 }}>
+                        Candidataste-te para recuperar. O professor vai decidir.</div>
+                      {botao('Retirar a candidatura', () => recuperacao.onCandidatar(pid, false), false)}
+                    </>
+                  : botao('Candidatar-me para recuperar', () => recuperacao.onCandidatar(pid, true), false));
+            })}
+            <div style={{ height: 18 }} />
+          </>
+        )}
 
         {/* Por fechar primeiro: é o que exige ação. */}
         {porFechar.length > 0 && (

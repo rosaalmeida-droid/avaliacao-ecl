@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento, reabrirAutoavaliacao, reabertaPorResponder, selecaoJaValidada, alunosDoPlano, aulaDoDiaDaAtividade, rotuloDoPlano, PARTES_POR_OMISSAO, atitudesNoPlanoDaTurma, ucsEmAtraso, candidatosARecuperar, aceitarParaRecuperar, candidatarParaRecuperar, recuperaNaAtividade, desligarRecuperacaoDaAtividade } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -553,6 +553,14 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   React.useEffect(() => {
     aoMudarModulo?.(modulo === 'inicio' && tabInicio === 'competencias' ? 'competencias' : modulo);
   }, [modulo, tabInicio]);
+  // Título antigo «Atividade fora da escola — …»: a atividade pode ser na escola.
+  // Passa a «Atividade extra — …» (só o título; não obriga a responder outra vez).
+  React.useEffect(() => {
+    const t = String(plano.titulo || '');
+    if (!eventoForaDoHorario(plano) || !t.startsWith('Atividade fora da escola')) return;
+    const p = { ...plano, titulo: t.replace('Atividade fora da escola', 'Atividade extra'), atualizadoEm: new Date().toISOString() };
+    addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+  }, [plano.id]);
   // Plano publicado de uma aula prática: as funções de cada aluno distribuem-se
   // logo, para os alunos as verem antes da aula (plano organizacional).
   React.useEffect(() => {
@@ -810,7 +818,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
     guardarCompetencias([...(ob.farda ? [] : ['OBR_01']), ...(ob.registos ? [] : ['OBR_02'])],
       ehAtitudinal ? compAdicionadas.filter(x => x.startsWith('ATI-')) : []);
   }
-  const botaoRepor = (
+  // Numa atividade extra não há «competências da aula» para repor.
+  const botaoRepor = eventoForaDoHorario(plano) ? null : (
     <button onClick={reporCompetencias} style={{ display: 'block', width: '100%', marginBottom: 14, padding: '11px 14px', borderRadius: 10,
       border: '1.5px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
       ↺ Repor as competências da aula (limpa o que tiraste e juntaste)
@@ -910,9 +919,11 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         <div style={{ background: 'var(--copper-pale)', borderRadius: 10, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: 'var(--copper)', fontWeight: 600 }}>
-          📄 A criar Ficha de Produção para este plano — será associada automaticamente
+          {fichaEmEdicao
+            ? `📄 Ficha ${eventoForaDoHorario(plano) ? 'desta atividade extra' : 'deste plano'}: «${getFichasProducao().find(f => f.id === fichaEmEdicao)?.nomePrato || ''}». Em baixo estão as técnicas que os alunos avaliam.`
+            : '📄 A criar Ficha de Produção para este plano — será associada automaticamente'}
         </div>
-        <ProfessorView turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id}
+        <ProfessorView key={fichaEmEdicao || 'nova'} turmaId={turmaId} nomeProfessor={nomeProfessor} planoId={plano.id}
           fichaParaEditar={fichaEmEdicao}
           abrirBiblioteca={irParaBiblioteca}
           onAlteracao={onAlteracao} onGuardado={aposGuardarFicha} />
@@ -1022,10 +1033,15 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   if (modulo === 'competencias') {
+    const atividade = eventoForaDoHorario(plano);
+    const abrirFicha = (id: string) => { setFichaEmEdicao(id); setIrParaBiblioteca(false); setModulo('ficha'); };
     return (
       <div>
         <CabecalhoPlano plano={plano} onVoltar={() => setModulo('inicio')} modulo={modulo} setModulo={setModulo} />
         {botaoRepor}
+        <TecnicasDasFichas plano={plano} fichas={fichasDoPlano} onAbrir={abrirFicha} />
+        {atividade && <ResumoDaAtividadeExtra plano={plano} />}
+        {!atividade && (<>
         <div style={{ padding:'10px 14px', background:'var(--copper-pale)', borderRadius:10, fontSize:13, color:'var(--copper)', marginBottom:14, border:'1px solid rgba(181,101,29,0.2)' }}>
           <strong>{totalComp} competências</strong> para esta aula. As obrigatórias contam sempre — só se tiram desta aula se houver razão (ex.: os alunos não foram avisados da farda).
         </div>
@@ -1276,6 +1292,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ padding:'12px 14px', background:'var(--cream-dark)', borderRadius:10, textAlign:'center', marginBottom:16 }}>
           <div style={{ fontWeight:700, fontSize:16 }}>Total: {totalComp} competências</div>
         </div>
+        </>)}
       </div>
     );
   }
@@ -1445,7 +1462,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             <div style={{ background:'var(--copper-pale, #fdf0e6)', border:'1px solid var(--copper)',
               borderRadius:14, padding:16, marginBottom:14 }}>
               <div style={{ fontSize:16, fontWeight:700, color:'var(--charcoal, #1a1714)' }}>
-                A aula ainda não está aberta
+                {eventoForaDoHorario(plano) ? 'A atividade ainda não está aberta' : 'A aula ainda não está aberta'}
               </div>
               <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', marginTop:5, lineHeight:1.55 }}>
                 Os alunos podem consultar o plano, as fichas e o guião, mas não
@@ -1470,7 +1487,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   background:'var(--copper)', color:'#fff', fontSize:17, fontWeight:700,
                   cursor: aAbrir ? 'default' : 'pointer', fontFamily:'inherit',
                   opacity: aAbrir ? 0.6 : 1 }}>
-                {aAbrir ? 'A abrir…' : 'Abrir a aula agora'}
+                {aAbrir ? 'A abrir…' : eventoForaDoHorario(plano) ? 'Abrir a atividade agora' : 'Abrir a aula agora'}
               </button>
             </div>
           );
@@ -1600,12 +1617,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         const aula: any = aulaDoDiaDaAtividade(plano);
         return (
           <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px 14px', margin: '0 0 14px', border: '2px solid #6B3FA0' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade à parte da aula</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade extra</div>
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)', marginTop: 3, lineHeight: 1.5 }}>
-              O plano da turma desse dia — <b>{rotuloDoPlano(aula)}</b> — não muda: os outros alunos continuam com ele. Aqui escolhes quem foi a esta atividade e confirmas.
+              Ligada ao plano de aula <b>{rotuloDoPlano(aula)}</b>, que se trabalha à parte. Aqui escolhes quem foi a esta atividade e confirmas.
             </div>
             {aula && <button onClick={() => onPlanoActualizado(aula)} style={{ marginTop: 8, padding: '7px 12px', borderRadius: 9, border: '1px solid #6B3FA0',
-              background: '#fff', color: '#6B3FA0', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>← Abrir a aula</button>}
+              background: '#fff', color: '#6B3FA0', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>← Abrir o plano de aula (à parte)</button>}
             <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
           </div>
         );
@@ -1688,6 +1705,12 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
       {tabInicio === 'competencias' && (
         <div>
           {botaoRepor}
+          <TecnicasDasFichas plano={plano} fichas={fichasDoPlano}
+            onAbrir={(id) => { setFichaEmEdicao(id); setIrParaBiblioteca(false); setModulo('ficha'); }} />
+          {eventoForaDoHorario(plano) && <ResumoDaAtividadeExtra plano={plano} />}
+          {/* Numa atividade extra fica só o que é dela: a contagem e as listas
+              abaixo são as de um plano de aula (Rosa, out/2026). */}
+          {!eventoForaDoHorario(plano) && (<>
           {/* De onde vem cada grupo. O ecrã dava só o total — "22
               competências" — e o professor não percebia porque é que
               aparecem tantas num plano ainda sem fichas. */}
@@ -1988,14 +2011,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             {totalComp > 12 && <div style={{ color: 'var(--copper)', marginTop: 6, fontWeight: 600 }}>⚠️ São muitas competências para uma aula.</div>}
             {totalComp <= 5 && <div style={{ color: 'var(--sage)', marginTop: 6, fontWeight: 600 }}>✓ Número adequado para uma aula.</div>}
           </div>
+          </>)}
         </div>
       )}
 
       {/* TAB PREPARAR — era o Resumo. Recebeu da Orientação o que não
           estava repetido: a lista de verificação e o evento. */}
       {tabInicio === 'resumo' && (<>
-      <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} />
-      <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />
+      {/* Numa atividade extra não se mostra o que é da aula da turma (Rosa, out/2026). */}
+      {!eventoForaDoHorario(plano) && <UCEmAtrasoNoPlano plano={plano} nomeProfessor={nomeProfessor} />}
+      {!eventoForaDoHorario(plano) && <EventosNaAula plano={plano} onAbrirEvento={(ev) => onPlanoActualizado(ev as any)} />}
       {/* O plano em duas colunas (Rosa, out/2026): à esquerda o que o
           professor prepara, campo a campo, cada um abre e fecha; à direita
           o que acontece na aula — publicar, abrir, enviar, quem entrou,
@@ -2004,13 +2029,13 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 400px), 1fr))' }}>
       <div style={{ minWidth:0 }}>
         <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase',
-          color:'rgba(26,23,20,0.45)', margin:'0 0 10px' }}>Preparar a aula</div>
+          color:'rgba(26,23,20,0.45)', margin:'0 0 10px' }}>{eventoForaDoHorario(plano) ? 'Preparar a atividade extra' : 'Preparar a aula'}</div>
       <Gaveta id="quando" n={1} titulo="Data, horas e unidade" feito={!!plano.ucId}
         resumo={`${fmtDataCurta(plano.data)} · ${String(plano.horaInicio || '').slice(0, 5)}–${String(plano.horaFim || '').slice(0, 5)} · ${plano.ucId || 'sem unidade'}`}>
         <QuandoEUnidade plano={plano} onPlanoActualizado={onPlanoActualizado} onAbrirCriar={() => setModulo('editar')} />
       </Gaveta>
       <Gaveta id="como" n={2} titulo={(plano as any).tipoEvento ? 'Como é a atividade' : 'Como é o plano de aula'}
-        resumo={triagemDoPlano(plano) ? fraseDaAula(triagemDoPlano(plano)!) : 'Falta escolher o tipo de aula'}
+        resumo={triagemDoPlano(plano) ? fraseDaAula(triagemDoPlano(plano)!, !!(plano as any).tipoEvento) : 'Falta escolher o tipo de aula'}
         feito={!!triagemDoPlano(plano)} abertaAoInicio={!triagemDoPlano(plano)}>
       <PassoComoEAula plano={plano} onPlanoActualizado={onPlanoActualizado} />
       </Gaveta>
@@ -2063,10 +2088,10 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 textAlign:'left', cursor:'pointer', fontFamily:'inherit', fontSize:13.5,
                 border:`1.5px solid ${obrigatoriasPendentes ? '#5a7a4e' : 'rgba(26,23,20,0.18)'}`,
                 background: obrigatoriasPendentes ? '#eef4eb' : '#fff' }}>
-              <b>{obrigatoriasPendentes ? '✓ Higiene e farda contam nesta aula' : 'Higiene e farda não entram nesta aula'}</b>
+              <b>{obrigatoriasPendentes ? `✓ Higiene e farda contam ${eventoForaDoHorario(plano) ? 'nesta atividade' : 'nesta aula'}` : `Higiene e farda não entram ${eventoForaDoHorario(plano) ? 'nesta atividade' : 'nesta aula'}`}</b>
               <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.6)', marginTop:2, lineHeight:1.45 }}>
                 {obrigatoriasPendentes
-                  ? 'O aluno avalia-se nelas e valem 20% da nota da aula.'
+                  ? `O aluno avalia-se nelas e valem 20% da nota ${eventoForaDoHorario(plano) ? 'da atividade' : 'da aula'}.`
                   : 'Não aparecem ao aluno nem contam para a nota.'}
               </div>
             </button>
@@ -2222,7 +2247,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               border: '1px solid rgba(26,23,20,0.1)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.07em',
                 textTransform: 'uppercase', color: 'rgba(26,23,20,0.4)', marginBottom: 12 }}>
-                Fichas desta aula — {fichasDoPlano.length}
+                {eventoForaDoHorario(plano) ? 'Fichas desta atividade' : 'Fichas desta aula'} — {fichasDoPlano.length}
               </div>
 
               {fichasDoPlano.length === 0 && (
@@ -2316,17 +2341,17 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,
           border:'1px solid rgba(26,23,20,0.2)', background:'#fff', fontSize:13.5, fontWeight:700, cursor:'pointer',
           fontFamily:'inherit', color:'rgba(26,23,20,0.75)' }}>
-          Mudar as competências à mão
+          {eventoForaDoHorario(plano) ? 'Ver as técnicas da ficha' : 'Mudar as competências à mão'}
         </button>
       </Gaveta>
-      <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />
+      {!eventoForaDoHorario(plano) && <AvisoCoberturaUC turmaId={plano.turmaId} ucId={plano.ucId} />}
         {/* Evento pedagógico — um almoço, uma mostra. */}
-        <EventoAssociador plano={plano} turmaId={turmaId} onPlanoActualizado={onPlanoActualizado} />
+        {!eventoForaDoHorario(plano) && <EventoAssociador plano={plano} turmaId={turmaId} onPlanoActualizado={onPlanoActualizado} />}
       </div>
 
       <div style={{ minWidth:0 }}>
         <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase',
-          color:'rgba(26,23,20,0.45)', margin:'0 0 10px' }}>Na aula</div>
+          color:'rgba(26,23,20,0.45)', margin:'0 0 10px' }}>{eventoForaDoHorario(plano) ? 'Na atividade' : 'Na aula'}</div>
       {/* Publicar está no menu do plano, à esquerda, em cima: não se repete aqui. */}
       {blocoAbertura}
       <NaColuna>
@@ -2540,9 +2565,16 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
   const [aPublicar, setAPublicar] = React.useState(false);
   const participantes = modo === 'turma' ? alunos.map(a => a.id) : aceites;
   const foraDaLista = alunos.filter(a => !lista.includes(a.id)).sort((a, b) => (a.numero || 0) - (b.numero || 0));
+  // Recuperação numa atividade (Rosa, out/2026): o professor escolhe, ou o aluno
+  // em recuperação candidata-se. Só recupera se participou; não dá bónus.
+  const emRecuperacao = (() => { try { return ucsEmAtraso(plano.turmaId).filter(l => l.estado !== 'recuperado'); } catch { return []; } })();
+  const candidatos = candidatosARecuperar(plano.id);
+  const marcaRecup = (id: string) => { const m = recuperaNaAtividade(plano, id); return m ? ` (a recuperar a UC ${m.ucId})` : ''; };
+  const alunosARecuperar = [...new Set(emRecuperacao.map(l => l.alunoId))];
+  const atualizar = () => { const q = getPlanosAula().find(x => x.id === plano.id); if (q) onPlanoActualizado(q); redesenhar(n => n + 1); };
   return (<>
     <div style={{ marginTop: 11, paddingTop: 11, borderTop: '1px solid rgba(181,101,29,0.25)', fontSize: 13.5 }}>
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>{plano.tipoEvento === 'concurso' ? '🏆 Quem participa neste concurso?' : '🏅 Quem participa neste evento?'}</div>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>{plano.tipoEvento === 'concurso' ? '🏆 Quem participa neste concurso?' : '🏅 Quem participa nesta atividade extra?'}</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
         <button style={bt(modo === 'turma')} onClick={() => gravar({ modoParticipacao: 'turma' })}>A turma toda (obrigatório)</button>
         <button style={bt(modo === 'inscricao')} onClick={() => gravar({ modoParticipacao: 'inscricao' })}>Quem se inscrever</button>
@@ -2569,14 +2601,40 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             const ok = aceites.includes(id);
             return (
               <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: '1px solid rgba(26,23,20,0.06)' }}>
-                <span style={{ flex: 1 }}>{nome(id)}{!inscritos.includes(id) && <span style={{ color: 'rgba(26,23,20,0.45)' }}>
-                  {(plano.postosPeloProfessor || []).includes(id) ? ' (posto pelo professor)' : ' (retirou-se)'}</span>}</span>
+                <span style={{ flex: 1 }}>{nome(id)}{recuperaNaAtividade(plano, id) && <b style={{ color: '#b5651d' }}>{marcaRecup(id)}</b>}{!inscritos.includes(id) && <span style={{ color: 'rgba(26,23,20,0.45)' }}>
+                  {(plano.postosPeloProfessor || []).includes(id) ? ' (posto pelo professor)' : recuperaNaAtividade(plano, id) ? '' : ' (retirou-se)'}</span>}</span>
                 <button style={bt(ok)} onClick={() => gravar({ participantesIds: ok ? aceites.filter(x => x !== id) : [...aceites, id] })}>
                   {ok ? '✓ Aceite' : 'Aceitar'}</button>
               </div>
             );
           })}
         </>
+      )}
+      {alunosARecuperar.length > 0 && (
+        <div style={{ marginTop: 10, padding: '9px 11px', borderRadius: 10, background: '#fdf6ee', border: '1px solid rgba(181,101,29,0.3)' }}>
+          <div style={{ fontWeight: 800, marginBottom: 2 }}>Alunos em recuperação</div>
+          <div style={{ color: 'rgba(26,23,20,0.65)', fontSize: 13, marginBottom: 6, lineHeight: 1.45 }}>
+            Podem recuperar uma UC nesta atividade. Só recuperam se confirmares que participaram. Para eles não dá bónus.
+          </div>
+          {alunosARecuperar.map(id => {
+            const ucs = emRecuperacao.filter(l => l.alunoId === id).map(l => l.ucId).join(', ');
+            const marcado = recuperaNaAtividade(plano, id);
+            const candidato = candidatos.includes(id);
+            return (
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '5px 0', borderTop: '1px solid rgba(26,23,20,0.06)' }}>
+                <span style={{ flex: '1 1 180px' }}>{nome(id)} <span style={{ color: 'rgba(26,23,20,0.5)' }}>· UC {ucs}</span>
+                  <span style={{ display: 'block', fontSize: 12.5, color: marcado ? '#3f5e34' : candidato ? '#b5651d' : 'rgba(26,23,20,0.5)', fontWeight: marcado || candidato ? 700 : 400 }}>
+                    {marcado ? `✓ A recuperar a UC ${marcado.ucId} nesta atividade` : candidato ? 'Candidatou-se para recuperar nesta atividade' : 'Não está a recuperar nesta atividade'}</span></span>
+                {marcado ? (
+                  <button style={bt(false)} onClick={() => { if (!confirm(`${nome(id)} deixa de recuperar nesta atividade?`)) return; desligarRecuperacaoDaAtividade(plano.id, id); atualizar(); }}>Tirar</button>
+                ) : (<>
+                  <button style={bt(true)} onClick={() => { aceitarParaRecuperar(plano.id, id); atualizar(); }}>{candidato ? 'Aceitar para recuperar' : 'Recuperar nesta atividade'}</button>
+                  {candidato && <button style={bt(false)} onClick={() => { const a = alunos.find(x => x.id === id); if (a) candidatarParaRecuperar(plano, a, false); atualizar(); }}>Não aceitar</button>}
+                </>)}
+              </div>
+            );
+          })}
+        </div>
       )}
       {plano.tipoEvento === 'concurso' && <ResultadosConcurso plano={plano} alunos={alunos}
         participantes={modo === 'turma' ? alunos.map(a => a.id) : aceites} gravar={gravar} bt={bt} />}
@@ -2598,7 +2656,14 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 4 }}>{plano.titulo || 'Atividade'}</div>
             <div style={{ color: 'rgba(26,23,20,0.6)', marginBottom: 12 }}>{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')} · {plano.ucId || ''}</div>
             <div style={{ fontWeight: 800 }}>Quem participa ({participantes.length})</div>
-            <div style={{ margin: '2px 0 12px' }}>{participantes.map(nome).join(' · ')}</div>
+            <div style={{ margin: '2px 0 12px' }}>{participantes.map(id => nome(id) + marcaRecup(id)).join(' · ')}</div>
+            {participantes.some(id => recuperaNaAtividade(plano, id)) && (
+              <div style={{ padding: '9px 11px', borderRadius: 9, background: '#fdf6ee', margin: '0 0 12px', fontSize: 14 }}>
+                <b>Recuperação:</b> os alunos marcados «a recuperar» usam esta atividade para recuperar a UC, e não ganham bónus.
+                Quando validares a autoavaliação deles nesta atividade, a aplicação sugere essa nota como resultado da recuperação
+                (em «UC em atraso — recuperação»); tu confirmas.
+              </div>
+            )}
             <div style={{ fontWeight: 800 }}>O que cada um vai responder na autoavaliação</div>
             <ul style={{ margin: '2px 0 12px', paddingLeft: 18 }}>
               {ecras.length ? ecras.map((e: any, i: number) => <li key={i}>{e.rotulo}: {e.nome}</li>) : <li>As atitudes do evento e a técnica geral.</li>}
@@ -2671,6 +2736,70 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
       );
     })()}
   </>);
+}
+
+/** As técnicas de cada ficha deste plano: o que os alunos vão avaliar (Rosa, out/2026:
+ *  «não há lado nenhum que diga quais são as competências técnicas»). */
+function TecnicasDasFichas({ plano, fichas, onAbrir }: { plano: any; fichas: any[]; onAbrir: (id: string) => void }) {
+  const texto = (l: any) => typeof l === 'string' ? l : (l?.nome || l?.texto || codigoDaLinha(l));
+  const retiradas: string[] = plano.compRemovidas || [];
+  const tirada = (l: any) => retiradas.some(r => codigoDaLinha(r) === codigoDaLinha(l));
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: '2px solid var(--copper)' }}>
+      <div style={{ fontSize: 16, fontWeight: 800 }}>Técnicas da ficha técnica</div>
+      <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', margin: '3px 0 10px', lineHeight: 1.5 }}>
+        São estas as técnicas que os alunos avaliam{eventoForaDoHorario(plano) ? ' nesta atividade extra' : ''}. Vêm da ficha:
+        para mudar, abre a ficha e corrige as técnicas em baixo.
+      </div>
+      {fichas.length === 0 && (
+        <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 600 }}>
+          Ainda não há nenhuma ficha técnica{eventoForaDoHorario(plano) ? ' nesta atividade' : ' neste plano'}: não se avaliam técnicas da ficha.
+        </div>
+      )}
+      {fichas.map((f: any) => {
+        const tec = [...(f.tecnicasSugeridas?.length ? f.tecnicasSugeridas : f.tecnicasDetectadas || [])];
+        const apa = [...(f.aparelhosDetectados || [])];
+        return (
+          <div key={f.id} style={{ borderTop: '1px solid rgba(26,23,20,0.08)', padding: '10px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, fontSize: 15, fontWeight: 700 }}>📄 {f.nomePrato}</div>
+              <button onClick={() => onAbrir(f.id)} style={{ padding: '7px 13px', borderRadius: 8, border: '1px solid var(--copper)', background: '#fff',
+                color: 'var(--copper)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Abrir a ficha</button>
+            </div>
+            {tec.length + apa.length === 0
+              ? <div style={{ fontSize: 13.5, color: '#8e2418', marginTop: 4 }}>Esta ficha não tem técnicas escolhidas. Abre-a e acrescenta as técnicas.</div>
+              : <ul style={{ margin: '6px 0 0', paddingLeft: 20, fontSize: 14, lineHeight: 1.6 }}>
+                  {tec.map((l, i) => <li key={'t' + i} style={{ textDecoration: tirada(l) ? 'line-through' : undefined, color: tirada(l) ? 'rgba(26,23,20,0.4)' : undefined }}>
+                    {texto(l)}{tirada(l) ? ' (tirada desta aula)' : ''}</li>)}
+                  {apa.map((l, i) => <li key={'a' + i} style={{ color: 'rgba(26,23,20,0.7)' }}>Preparação base: {texto(l)}</li>)}
+                </ul>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Numa atividade extra, as «Competências» mostram exatamente o que os alunos
+ *  respondem — não as do plano de aula da turma (Rosa, out/2026). */
+function ResumoDaAtividadeExtra({ plano }: { plano: any }) {
+  const ecras = (() => { try { return oQueOAlunoVe(plano).ecras; } catch { return []; } })();
+  const aula: any = aulaDoDiaDaAtividade(plano);
+  return (
+    <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: '1px solid rgba(107,63,160,0.35)' }}>
+      <div style={{ fontSize: 16, fontWeight: 800, color: '#6B3FA0' }}>O que os alunos respondem nesta atividade extra</div>
+      <ul style={{ margin: '6px 0 10px', paddingLeft: 20, fontSize: 14, lineHeight: 1.6 }}>
+        {ecras.length ? ecras.map((e: any, i: number) => <li key={i}>{e.rotulo}: {e.nome}</li>) : <li>As atitudes do evento e a técnica geral.</li>}
+      </ul>
+      <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)', lineHeight: 1.55 }}>
+        {atitudesNoPlanoDaTurma(plano)
+          ? 'As atitudes não se repetem aqui: estes alunos já respondem às atitudes no plano de aula da turma desse dia.'
+          : 'As atitudes avaliam-se aqui, porque estes alunos não respondem às atitudes no plano de aula da turma desse dia.'}
+        {' '}Conta como bónus (até +0,5). As técnicas ficam no perfil do aluno e contam para a consolidação.
+        {aula && <> As competências do plano de aula da turma (<b>{rotuloDoPlano(aula)}</b>) ficam nesse plano: não são estas.</>}
+      </div>
+    </div>
+  );
 }
 
 /** Reabrir a autoavaliação de UM aluno, sem PIN novo (Rosa, out/2026). Abre

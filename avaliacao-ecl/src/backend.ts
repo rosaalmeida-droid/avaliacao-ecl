@@ -2945,6 +2945,23 @@ export function getSelecoes(): SelecaoAluno[] {
   });
 }
 
+/**
+ * As autoavaliações que o PROFESSOR vê para validar. São as de getSelecoes e,
+ * de cada aluno que só tem respostas de antes do último pedido («responder
+ * outra vez»), a última dessas, marcada `antesDoPedido`. Regra (Rosa, out/2026):
+ * a última resposta está sempre ao alcance do professor. Antes, se o telemóvel
+ * do aluno ainda tinha a versão antiga do plano, a resposta ficava escondida
+ * ao professor e «pendente» para sempre.
+ */
+export function selecoesDoProfessor(): SelecaoAluno[] {
+  const visiveis = getSelecoes();
+  const todas = semPlanosEliminados(load<SelecaoAluno>(KEYS.selecoes)).filter(s => !ehRegistoEspecial(s));
+  if (todas.length === visiveis.length) return visiveis;
+  const tem = new Set(visiveis.map(s => s.alunoId + '|' + s.planoAulaId));
+  const escondidas = selecoesQueContam(todas.filter(s => !tem.has(s.alunoId + '|' + s.planoAulaId)));
+  return [...visiveis, ...escondidas.map(s => ({ ...s, antesDoPedido: true } as SelecaoAluno))];
+}
+
 /** Respostas desta aula dadas antes da última alteração do plano (e ainda não validadas). */
 export function respostasAntesDaAlteracao(planoId: string): number {
   const p: any = getPlanosAula().find(x => x.id === planoId);
@@ -6017,7 +6034,8 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
     : getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
 
   const presencas = getPresencas().filter(p => p.planoAulaId === planoAulaId);
-  const selecoes = getSelecoes().filter(s => s.planoAulaId === planoAulaId);
+  // A última resposta de cada aluno, a mesma que o professor valida.
+  const selecoes = selecoesQueContam(selecoesDoProfessor().filter(s => s.planoAulaId === planoAulaId));
   const validacoes = getValidacoes();
   const liderId = liderKFdoGrupo(planoAulaId);
 
@@ -6442,7 +6460,7 @@ export function autoavaliacoesPorValidar(turmaId: string): PorValidar[] {
 
   const porPlano = new Map<string, { nomes: string[] }>();
 
-  selecoesQueContam()
+  selecoesQueContam(selecoesDoProfessor())
     .filter((s: any) => s.turmaId === turmaId && !selecaoJaValidada(s, validacoes))
     .forEach((s: any) => {
       const atual = porPlano.get(s.planoAulaId) || { nomes: [] };
@@ -6818,6 +6836,9 @@ export function participacoesDoAlunoNaUC(alunoId: string, turmaId: string, ucId:
  * nada: só com tudo em «Muito bom» (Rosa, set/2026).
  */
 export function participacaoContaParaBonus(a: Atividade, alunoId: string): { conta: boolean; motivo: string; fator: number } {
+  // Atividade que serviu para recuperar a UC: só recupera, não dá bónus (Rosa, out/2026).
+  const planoAtv: any = (a as any).planoId ? getPlanosAula().find(p => p.id === (a as any).planoId) : null;
+  if (planoAtv?.paraRecuperar?.[alunoId]) return { conta: false, motivo: 'Serviu para recuperar a UC: não dá bónus.', fator: 0 };
   const dia = String(a.data || '').slice(0, 10);
   const doDia = getPlanosAula().filter(p => p.turmaId === a.turmaId && String(p.data || '').slice(0, 10) === dia && p.estado !== 'arquivado');
   const deEvento = doDia.filter((p: any) => !!p.tipoEvento);
@@ -8350,6 +8371,86 @@ export function adiarRecuperacaoParaDepoisDaUC(alunoId: string, turmaId: string,
   };
   addOrUpdateRecuperacao(r);
   return r;
+}
+
+// ── Recuperar numa atividade extra (Rosa, out/2026) ───────────────
+// O professor escolhe a atividade no plano de recuperação, ou o aluno em
+// recuperação candidata-se (mesmo a uma atividade fechada a outros). Só
+// recupera se o professor confirmar que participou; o resultado sugerido é a
+// nota que o professor validou nessa atividade. Para ele, não dá bónus.
+const ID_CANDIDATURA_RECUP = 'recuperacao';
+export function atividadesParaRecuperar(turmaId: string): PlanoAula[] {
+  return getPlanosAula().filter((p: any) => p.turmaId === turmaId && eventoForaDoHorario(p) && p.estado !== 'arquivado')
+    .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+}
+/** A recuperação em curso deste aluno numa UC (a mais recente), se houver. */
+function recuperacaoEmCurso(alunoId: string, ucId?: string): RecuperacaoModulo | undefined {
+  return getRecuperacoes().filter(r => r.alunoId === alunoId && (!ucId || r.ucId === ucId) && r.estado !== 'concluida')
+    .sort((x: any, y: any) => String(y.criadoEm || '').localeCompare(String(x.criadoEm || '')))[0];
+}
+/** Liga a recuperação à atividade: o aluno entra na atividade, marcado «a recuperar». */
+export function ligarRecuperacaoAAtividade(recuperacaoId: string, planoAtividadeId: string): void {
+  const r: any = getRecuperacoes().find(x => x.id === recuperacaoId);
+  const p: any = getPlanosAula().find(x => x.id === planoAtividadeId);
+  if (!r || !p) return;
+  addOrUpdateRecuperacao({ ...r, atividadePlanoId: p.id, modalidade: 'atividade', atualizadoEm: new Date().toISOString() });
+  addOrUpdatePlanoAula({ ...p, participantesIds: [...new Set([...(p.participantesIds || []), r.alunoId])],
+    paraRecuperar: { ...(p.paraRecuperar || {}), [r.alunoId]: { recuperacaoId: r.id, ucId: r.ucId } },
+    atualizadoEm: new Date().toISOString() });
+}
+/** As UC que este aluno tem para recuperar por faltas (ainda não recuperadas). */
+export function ucsARecuperarDoAluno(alunoId: string, turmaId: string): string[] {
+  const ucs = [...new Set(getPlanosAulaPorTurma(turmaId).map(p => p.ucId).filter(Boolean))] as string[];
+  return ucs.filter(ucId => situacaoRecuperacaoUC(alunoId, turmaId, ucId).motivo === 'faltas'
+    && !getRecuperacoes().some(r => r.alunoId === alunoId && r.ucId === ucId && r.estado === 'concluida'));
+}
+/** O aluno em recuperação candidata-se a recuperar nesta atividade. */
+export function candidatarParaRecuperar(plano: PlanoAula, aluno: { id: string; nome?: string }, sim: boolean): void {
+  entrarNoGrupo({ planoAulaId: 'insc_' + plano.id, turmaId: plano.turmaId, alunoId: aluno.id, nomeAluno: aluno.nome,
+    grupoId: sim ? ID_CANDIDATURA_RECUP : 'retirado', grupoNome: sim ? 'Candidato a recuperar' : 'Retirado', definidoPor: 'aluno' });
+}
+export function candidatosARecuperar(planoId: string): string[] {
+  return getMembrosGrupo('insc_' + planoId).filter(m => m.grupoId === ID_CANDIDATURA_RECUP).map(m => m.alunoId);
+}
+/** O professor aceita a candidatura: usa (ou cria) o plano de recuperação do aluno e liga-o à atividade. */
+export function aceitarParaRecuperar(planoAtividadeId: string, alunoId: string): void {
+  const p: any = getPlanosAula().find(x => x.id === planoAtividadeId);
+  if (!p) return;
+  const emAtraso = ucsEmAtraso(p.turmaId).filter(l => l.alunoId === alunoId);
+  const alvo = emAtraso.find(l => l.ucId === p.ucId) || emAtraso[0];
+  let r: any = recuperacaoEmCurso(alunoId, alvo?.ucId);
+  if (!r && alvo) r = criarPlanoRecuperacao(alunoId, p.turmaId, alvo.ucId, 'atividade',
+    `Participar na atividade «${p.titulo || 'atividade'}» e demonstrar as competências das aulas em falta.`);
+  if (r) ligarRecuperacaoAAtividade(r.id, p.id);
+}
+/** O professor tira a recuperação desta atividade (o aluno continua na lista; tira-o lá, se não foi). */
+export function desligarRecuperacaoDaAtividade(planoAtividadeId: string, alunoId: string): void {
+  const p: any = getPlanosAula().find(x => x.id === planoAtividadeId);
+  const marca = p?.paraRecuperar?.[alunoId];
+  if (!marca) return;
+  const resto = { ...p.paraRecuperar }; delete resto[alunoId];
+  addOrUpdatePlanoAula({ ...p, paraRecuperar: resto, atualizadoEm: new Date().toISOString() });
+  const r: any = getRecuperacoes().find(x => x.id === marca.recuperacaoId);
+  if (r && r.atividadePlanoId === p.id) addOrUpdateRecuperacao({ ...r, atividadePlanoId: undefined, atualizadoEm: new Date().toISOString() });
+}
+/** A UC que este aluno está a recuperar nesta atividade (ou nada). */
+export function recuperaNaAtividade(plano: any, alunoId: string): { recuperacaoId: string; ucId: string } | null {
+  return plano?.paraRecuperar?.[alunoId] || null;
+}
+/** O resultado sugerido: a nota validada na atividade, só se o professor confirmou que participou. */
+/** A atividade onde esta recuperação se faz (pela recuperação ou pela marca no plano da atividade). */
+export function atividadeDaRecuperacao(r: any): PlanoAula | undefined {
+  if (!r) return undefined;
+  return getPlanosAula().find((x: any) => r.atividadePlanoId ? x.id === r.atividadePlanoId : x.paraRecuperar?.[r.alunoId]?.recuperacaoId === r.id);
+}
+export function resultadoSugeridoDaRecuperacao(r: any): { nota: number | null; atividade?: PlanoAula; porque: string } {
+  const p: any = atividadeDaRecuperacao(r);
+  if (!p) return { nota: null, porque: '' };
+  if (!participantesDoEvento(p).includes(r.alunoId) || !p.participantesConfirmadosEm)
+    return { nota: null, atividade: p, porque: `Ainda não confirmaste que participou na atividade «${p.titulo}».` };
+  const nota = notaDaAulaValidada(validacaoDaAula(r.alunoId, p.id));
+  return nota == null ? { nota: null, atividade: p, porque: `Ainda não validaste a autoavaliação dele na atividade «${p.titulo}».` }
+    : { nota, atividade: p, porque: `Nota validada na atividade «${p.titulo}».` };
 }
 
 /** Regista que a recuperação foi feita e o resultado (0-20). */
