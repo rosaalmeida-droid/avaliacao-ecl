@@ -1546,6 +1546,10 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
   const versao = String((plano as any).atualizadoEm || '');
   const versaoAoAbrir = React.useRef(versao);
   const mudouDesdeQueAbriu = !!versaoAoAbrir.current && versao !== versaoAoAbrir.current;
+  // Esteve numa atividade ligada a esta aula e o professor disse que
+  // responde só à atividade (Rosa, out/2026).
+  const soAtividade: any = getPlanosAula().find((a: any) => a.aulaLigada === plano.id && a.tambemRespondemAula === false
+    && participantesDoEvento(a).includes(aluno.id));
   const [secAberta, setSecAberta] = React.useState<string>('orientacao');
   /** O passo abre num ecrã cheio, por cima da aula; ao acabar, segue para o próximo. */
   const [ecra, setEcra] = React.useState(false);
@@ -1794,7 +1798,13 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar }: {
                 O professor atualizou esta aula. As perguntas abaixo já são as novas.
               </div>
             )}
-            {secAberta==='avaliacao' && (
+            {secAberta==='avaliacao' && soAtividade && (
+              <div style={{ padding:'14px 16px', borderRadius:12, background:'#f3eefa', border:'1.5px solid #6B3FA0', fontSize:15, lineHeight:1.5 }}>
+                <b>Hoje estiveste na atividade «{soAtividade.titulo}».</b> O professor disse que respondes só à atividade:
+                encontra-a em «Atividades e concursos». Não precisas de responder a esta aula.
+              </div>
+            )}
+            {secAberta==='avaliacao' && !soAtividade && (
               <SecaoAvaliacao key={versao} fichas={fichas} plano={plano} aluno={aluno} abrirLogo={ecra}
                 onConcluido={() => setAvaliacaoConcluida(true)} />
             )}

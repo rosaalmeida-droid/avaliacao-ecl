@@ -1076,6 +1076,34 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     // Alterar um plano já criado: só os dados do início; o resto do plano fica.
     if (alvo) {
       const x: any = getPlanosAulaPorTurma(turmaId).find((y: any) => y.id === alvo.id) || alvo;
+      // Regra (Rosa, out/2026): uma atividade NUNCA muda a aula. Os outros
+      // alunos continuam com o plano; a atividade fica à parte, ligada a
+      // esta aula, só para quem foi. Antes, escolher um tipo de atividade
+      // aqui transformava a aula toda em atividade, e o plano desaparecia
+      // aos alunos que não estavam nela.
+      if (!x.tipoEvento && tipoEventoDe(dados.tipoAtividade)) {
+        if (!confirm('Uma atividade não muda esta aula: os outros alunos continuam com o plano.\n\n'
+          + 'Vou criar a atividade à parte, ligada a esta aula. A seguir escolhes quem foi e confirmas.\n\nContinuar?')) return;
+        const agora = new Date().toISOString();
+        const atv: any = {
+          id: `plano_atv_${x.id}_${Date.now().toString(36)}`, turmaId: x.turmaId || turmaId, professor: x.professor || dados.professor || '',
+          data: String(x.data || dados.data).slice(0, 10), horaInicio: x.horaInicio || dados.horaInicio, horaFim: x.horaFim || dados.horaFim,
+          titulo: `${dados.tipoAtividade} — ${x.titulo || 'aula'}`, observacoes: '', fichasIds: [], estado: 'rascunho',
+          criadoEm: agora, atualizadoEm: agora, ucId: x.ucId || dados.ucId, ucNome: x.ucNome || '',
+          numeroPlan: proximoNumeroPlano(), tipoAtividade: dados.tipoAtividade, tipoEvento: tipoEventoDe(dados.tipoAtividade),
+          tipoPlanAula: 'atitudinal', compAdicionadas: atitudesSugeridasEvento(dados.tipoAtividade),
+          modoParticipacao: 'inscricao', participantesIds: [], contaAssiduidade: false,
+          aulaLigada: x.id, tambemRespondemAula: true,
+          // Já se sabe como é: não se pergunta «Que aula é?» numa atividade.
+          triagemAula: { tipo: 'atitudinal', onde: /fora|externo/i.test(dados.tipoAtividade) ? 'fora' : 'cozinha',
+            cozinham: !/fora|externo|Concurso/i.test(dados.tipoAtividade), trabalho: 'grupos', servico: /Catering|Buffet|externo/i.test(dados.tipoAtividade) },
+        };
+        try { const idEv = garantirEventoDoPlano(atv, dados.professor); if (idEv) atv.eventoId = idEv; } catch (e) { console.error(e); }
+        addOrUpdatePlanoAula(atv);
+        try { onGuardado?.(); } catch (e) { console.error(e); }
+        onConcluido(atv);
+        return;
+      }
       const resumo = resumoDoPlano(x.id);
       const tipoAntes = String(x.tipoPlanAula || 'pratico').replace('_obr', '');
       const mudou = { uc: dados.ucId !== (x.ucId || ''), data: dados.data !== String(x.data || '').slice(0, 10), tipo: dados.tipoPlanAula !== tipoAntes };

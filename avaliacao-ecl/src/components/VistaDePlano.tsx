@@ -5,7 +5,7 @@ import { UCEmAtrasoNoPlano } from './UCEmAtraso';
 import { conhecimentosDaAula, conhecimentosDoReferencial, nomeConhecimentoProf } from '../compatECL';
 import { manualDaUC, camposDoCapitulo, idCampoManual, proximoConteudo, indicadoresDoConteudo, rotuloConteudo,
   capituloDoCampo, NIVEIS_CONHECIMENTO } from '../bancoManuais';
-import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam } from '../backend';
+import { eventoForaDoHorario, modoParticipacao, inscritosNoEvento, sincronizarGrupos, getAlunos as getAlunosEv, perguntaDaAula, selecoesQueContam, participantesDoEvento } from '../backend';
 import { bancoDe } from '../triagem5c';
 import { garantirOrganizacao, temOrganizacao, organizacaoDe, comProducao } from '../organizacaoAula';
 import { QuadroOrganizacional } from './PlanoOrganizacional';
@@ -1591,6 +1591,36 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </div>
         );
       })()}
+      {/* Esta é uma atividade à parte de uma aula: em cima, a aula e quem foi. */}
+      {modulo === 'inicio' && (plano as any).aulaLigada && eventoForaDoHorario(plano) && (() => {
+        const aula: any = getPlanosAula().find(x => x.id === (plano as any).aulaLigada);
+        return (
+          <div style={{ background: '#fff', borderRadius: 14, padding: '12px 16px 14px', margin: '0 0 14px', border: '2px solid #6B3FA0' }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade à parte da aula</div>
+            <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)', marginTop: 3, lineHeight: 1.5 }}>
+              A aula {aula ? `«${aula.titulo}»` : 'do dia'} não muda: os outros alunos continuam com ela. Aqui escolhes quem foi a esta atividade e confirmas.
+            </div>
+            {aula && <button onClick={() => onPlanoActualizado(aula)} style={{ marginTop: 8, padding: '7px 12px', borderRadius: 9, border: '1px solid #6B3FA0',
+              background: '#fff', color: '#6B3FA0', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>← Abrir a aula</button>}
+            <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
+          </div>
+        );
+      })()}
+      {/* Atividades à parte, ligadas a esta aula (a aula não muda). */}
+      {modulo === 'inicio' && getPlanosAula().filter((a: any) => a.aulaLigada === plano.id && a.estado !== 'arquivado').map((a: any) => {
+        const quem = participantesDoEvento(a);
+        return (
+          <button key={a.id} onClick={() => onPlanoActualizado(a)} style={{ display: 'block', width: '100%', textAlign: 'left', background: '#f3eefa',
+            border: '1.5px solid #6B3FA0', borderRadius: 14, padding: '10px 14px', margin: '0 0 14px', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#6B3FA0' }}>🏅 Atividade ligada a esta aula: {a.titulo}</span>
+            <span style={{ display: 'block', fontSize: 13.5, color: 'rgba(26,23,20,0.7)', marginTop: 3 }}>
+              {quem.length ? `${quem.length} aluno${quem.length === 1 ? '' : 's'}` : 'Ainda sem alunos'} ·
+              {a.tambemRespondemAula === false ? ' respondem só à atividade' : ' também respondem a esta aula'} ·
+              {a.participantesConfirmadosEm ? ' confirmada' : ' por confirmar'} — tocar para abrir
+            </span>
+          </button>
+        );
+      })}
       {/* Plano publicado com alterações por finalizar: o professor sabe sempre. */}
       {modulo === 'inicio' && !finalizar && alteracoesPorEnviar(getPlanosAula().find(x => x.id === plano.id) || plano).length > 0 && (
         <div style={{ position: 'sticky', top: 0, zIndex: 50, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
@@ -2406,7 +2436,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           </a>
         </div>
       )}
-      {eventoForaDoHorario(plano) && (
+      {eventoForaDoHorario(plano) && !(plano as any).aulaLigada && (
         <div style={{ background: '#fff', borderRadius: 14, padding: '4px 16px 14px', margin: '0 0 14px', border: '1px solid rgba(107,63,160,0.25)' }}>
           <ParticipantesEvento plano={plano} onPlanoActualizado={onPlanoActualizado} />
         </div>
@@ -2499,7 +2529,11 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
     cursor: 'pointer', fontFamily: 'inherit', border: `1.5px solid ${sel ? '#6B3FA0' : 'rgba(26,23,20,0.15)'}`,
     background: sel ? '#6B3FA0' : '#fff', color: sel ? '#fff' : 'rgba(26,23,20,0.75)' });
   const lista = [...new Set([...inscritos, ...aceites])];
-  return (
+  const [confirmar, setConfirmar] = React.useState(false);
+  const [aPublicar, setAPublicar] = React.useState(false);
+  const participantes = modo === 'turma' ? alunos.map(a => a.id) : aceites;
+  const foraDaLista = alunos.filter(a => !lista.includes(a.id)).sort((a, b) => (a.numero || 0) - (b.numero || 0));
+  return (<>
     <div style={{ marginTop: 11, paddingTop: 11, borderTop: '1px solid rgba(181,101,29,0.25)', fontSize: 13.5 }}>
       <div style={{ fontWeight: 700, marginBottom: 6 }}>{plano.tipoEvento === 'concurso' ? '🏆 Quem participa neste concurso?' : '🏅 Quem participa neste evento?'}</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -2514,11 +2548,22 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             {inscritos.length} inscrito{inscritos.length === 1 ? '' : 's'} · {aceites.length} aceite{aceites.length === 1 ? '' : 's'}. Os alunos inscrevem-se em «Atividades e concursos».
           </div>
           {lista.length === 0 && <div style={{ color: 'rgba(26,23,20,0.5)' }}>Ainda ninguém se inscreveu.</div>}
+          {/* Atividade feita de urgência: o professor põe logo quem foi (Rosa, out/2026). */}
+          {foraDaLista.length > 0 && (
+            <select value="" onChange={e => { const id = e.target.value; if (id) gravar({ participantesIds: [...new Set([...aceites, id])],
+                postosPeloProfessor: [...new Set([...(plano.postosPeloProfessor || []), id])] }); }}
+              style={{ margin: '6px 0 4px', padding: '8px 10px', borderRadius: 8, border: '1.5px solid rgba(107,63,160,0.4)', fontSize: 13.5,
+                fontFamily: 'inherit', background: '#fff', width: '100%' }}>
+              <option value="">+ Acrescentar um aluno que foi (sem inscrição)</option>
+              {foraDaLista.map(a => <option key={a.id} value={a.id}>{a.numero}. {a.nome}</option>)}
+            </select>
+          )}
           {lista.map(id => {
             const ok = aceites.includes(id);
             return (
               <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: '1px solid rgba(26,23,20,0.06)' }}>
-                <span style={{ flex: 1 }}>{nome(id)}{!inscritos.includes(id) && <span style={{ color: 'rgba(26,23,20,0.45)' }}> (retirou-se)</span>}</span>
+                <span style={{ flex: 1 }}>{nome(id)}{!inscritos.includes(id) && <span style={{ color: 'rgba(26,23,20,0.45)' }}>
+                  {(plano.postosPeloProfessor || []).includes(id) ? ' (posto pelo professor)' : ' (retirou-se)'}</span>}</span>
                 <button style={bt(ok)} onClick={() => gravar({ participantesIds: ok ? aceites.filter(x => x !== id) : [...aceites, id] })}>
                   {ok ? '✓ Aceite' : 'Aceitar'}</button>
               </div>
@@ -2528,8 +2573,72 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
       )}
       {plano.tipoEvento === 'concurso' && <ResultadosConcurso plano={plano} alunos={alunos}
         participantes={modo === 'turma' ? alunos.map(a => a.id) : aceites} gravar={gravar} bt={bt} />}
+      <button onClick={() => setConfirmar(true)} disabled={!participantes.length}
+        style={{ marginTop: 12, width: '100%', minHeight: 46, borderRadius: 12, border: 'none', fontSize: 15, fontWeight: 800,
+          fontFamily: 'inherit', cursor: participantes.length ? 'pointer' : 'default',
+          background: participantes.length ? '#6B3FA0' : 'rgba(26,23,20,0.15)', color: '#fff' }}>
+        {plano.participantesConfirmadosEm ? '✓ Participantes confirmados — ver o resumo' : 'Confirmar participantes'}
+      </button>
     </div>
-  );
+    {confirmar && (() => {
+      const ecras = (() => { try { return oQueOAlunoVe(plano).ecras; } catch { return []; } })();
+      const publicado = plano.estado === 'publicado';
+      const aEnviar = planoPorConfirmar(plano.id);
+      const concurso = plano.tipoEvento === 'concurso';
+      return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(26,23,20,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: '20px 20px 16px', maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', fontSize: 14.5, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 4 }}>{plano.titulo || 'Atividade'}</div>
+            <div style={{ color: 'rgba(26,23,20,0.6)', marginBottom: 12 }}>{String(plano.data || '').slice(0, 10).split('-').reverse().join('/')} · {plano.ucId || ''}</div>
+            <div style={{ fontWeight: 800 }}>Quem participa ({participantes.length})</div>
+            <div style={{ margin: '2px 0 12px' }}>{participantes.map(nome).join(' · ')}</div>
+            <div style={{ fontWeight: 800 }}>O que cada um vai responder na autoavaliação</div>
+            <ul style={{ margin: '2px 0 12px', paddingLeft: 18 }}>
+              {ecras.length ? ecras.map((e: any, i: number) => <li key={i}>{e.rotulo}: {e.nome}</li>) : <li>As atitudes do evento e a técnica geral.</li>}
+            </ul>
+            {plano.aulaLigada && (() => {
+              const aula: any = getPlanosAula().find(x => x.id === plano.aulaLigada);
+              const sim = plano.tambemRespondemAula !== false;
+              return (<>
+                <div style={{ fontWeight: 800 }}>E a aula «{aula?.titulo || 'do dia'}»?</div>
+                <div style={{ color: 'rgba(26,23,20,0.7)', margin: '2px 0 6px' }}>A aula não muda: os outros alunos continuam com ela. Estes alunos…</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                  <button style={bt(sim)} onClick={() => gravar({ tambemRespondemAula: true })}>Também respondem à aula (o trabalho da aula)</button>
+                  <button style={bt(!sim)} onClick={() => gravar({ tambemRespondemAula: false })}>Só respondem à atividade</button>
+                </div>
+              </>);
+            })()}
+            <div style={{ fontWeight: 800 }}>Como conta</div>
+            <div style={{ margin: '2px 0 12px', color: 'rgba(26,23,20,0.8)' }}>
+              {concurso
+                ? 'Não é uma aula: dá pontos na nota da UC, até 1 valor (candidatura 0,2 · participação 0,2 · cada fase 0,2 · ganhar completa o valor). Não conta faltas.'
+                : 'Não é uma aula: dá um bónus na nota da UC, até +0,5 por atividade, conforme a nota que validares. Sem farda não conta. Não conta faltas.'}
+              {' '}Os alunos respondem; tu validas como numa aula.
+            </div>
+            <div style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 12, fontWeight: 700,
+              background: !publicado ? '#fdf0ef' : aEnviar ? '#fff7e6' : '#eef4eb', color: !publicado ? '#8e2418' : aEnviar ? '#7a4310' : '#3f5e34' }}>
+              {!publicado ? 'Ainda não está publicada: os alunos não a veem. Confirma para publicar.'
+                : aEnviar ? 'A enviar aos alunos… não feches a aplicação.'
+                : plano.participantesConfirmadosEm ? '✓ Gravado. Estes alunos já veem a atividade e podem autoavaliar-se.' : 'Publicada. Confirma para gravar estes participantes.'}
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button disabled={aPublicar} onClick={async () => {
+                  const p = { ...plano, participantesConfirmadosEm: new Date().toISOString(), atualizadoEm: new Date().toISOString() };
+                  addOrUpdatePlanoAula(p); onPlanoActualizado(p);
+                  if (!publicado) { setAPublicar(true); try { await publicarPlanoParaAlunos(plano.id); } catch { /* fica a enviar */ }
+                    setAPublicar(false); const q = getPlanosAula().find(x => x.id === plano.id); if (q) onPlanoActualizado(q); }
+                }}
+                style={{ flex: '2 1 200px', minHeight: 48, borderRadius: 12, border: 'none', background: '#6B3FA0', color: '#fff', fontSize: 15.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {aPublicar ? 'A publicar…' : publicado ? 'Confirmar e gravar' : 'Confirmar e publicar'}
+              </button>
+              <button onClick={() => setConfirmar(false)}
+                style={{ flex: '1 1 120px', minHeight: 48, borderRadius: 12, border: '1px solid rgba(26,23,20,0.2)', background: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+  </>);
 }
 
 // ── Concurso: fases e vencedor (os pontos saem daqui) ──────────

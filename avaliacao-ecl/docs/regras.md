@@ -21,6 +21,12 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 14. **Ligar ou desligar os grupos é uma alteração do plano.** Aparece em «Finalizar alterações» e no plano como fica, com os grupos formados. O botão diz «Grupos LIGADOS» ou «Grupos DESLIGADOS».
 15. **No mesmo grupo, o tema é o mesmo.** Se o aluno escolher um tema diferente do de um colega do grupo, é avisado («O teu colega … escolheu outro tema. Tens a certeza? Fala com o professor») e pode escolher o mesmo. Na validação, o professor vê «⚠ Tema diferente do grupo».
 
+## Atividades (eventos, concursos) dentro de uma aula
+16. **Uma atividade nunca muda a aula.** Se o professor escolhe um tipo de atividade ao editar uma aula, a aula fica igual para todos. A atividade é criada à parte, ligada a essa aula (`aulaLigada`), e só a veem os alunos que foram.
+17. **O professor pode pôr diretamente quem foi** («Acrescentar um aluno que foi»), sem esperar pelas inscrições.
+18. **«Confirmar participantes»** mostra quem participa, o que cada um vai responder e como conta (bónus ou pontos, sem faltas). Publica a atividade e grava.
+19. **Os alunos da atividade também respondem à aula?** Decide o professor ao confirmar: «Também respondem à aula» ou «Só respondem à atividade». No segundo caso, a aula diz ao aluno que responde só à atividade, e ele não conta como «falta responder».
+
 ## Validação do professor
 10. **A última resposta está sempre ao alcance do professor para validar,** em «Por validar» ou em «Já validadas — tocar para alterar», mesmo dias depois.
 11. **Conta a validação mais recente do professor.** Uma correção substitui a anterior (notas e registos).
