@@ -33,7 +33,7 @@ function GrupoCompetencias({ titulo, icone, itens }: { titulo: string; icone: st
 }
 
 import { escreverPerfil } from '../motorAvaliacao';
-import { assiduidadeNaUC, leituraAssiduidade, assiduidadeEmHoras } from '../backend';
+import { assiduidadeNaUC, leituraAssiduidade, assiduidadeEmHoras, perfilSocialDoAluno } from '../backend';
 import { MICROCOMPETENCIAS } from '../compatECL';
 
 export function PerfilProfissionalAluno({ aluno, semTitulo }: {
@@ -83,6 +83,8 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
           Ainda não há competências registadas. Vai aparecendo aqui à medida que participas nas aulas.
         </div>
       )}
+
+      <PerfilSocialAluno alunoId={aluno.id} />
 
       {/* Assiduidade — antes das competências, porque é a base de
           tudo o resto. Sem estar presente não há nada a demonstrar. */}
@@ -182,3 +184,62 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
 }
 
 export default PerfilProfissionalAluno;
+
+/** Os 5 C e o que os colegas de grupo veem (Rosa, out/2026). Sem notas: em
+ *  palavras e com a barra do caminho. Do que os colegas disseram, só o que o
+ *  professor confirmou, sem nomes. Sempre um passo concreto. */
+function PerfilSocialAluno({ alunoId }: { alunoId: string }) {
+  const p = perfilSocialDoAluno(alunoId);
+  if (!p) return null;
+  const V = '#6B3FA0';
+  const caixa = (bg: string) => ({ background: bg, borderRadius: 14, padding: '12px 14px', marginBottom: 10 } as React.CSSProperties);
+  return (
+    <div data-perfil-social style={{ marginBottom: 14 }}>
+      {p.cincoC.length > 0 && (
+        <div style={caixa('#f1ebf8')}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: V, marginBottom: 6 }}>Como estás nos 5 C</div>
+          {p.cincoC.map(c => (
+            <div key={c.c} style={{ margin: '8px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14.5 }}><b>{c.nome}</b><span>{c.nivel}</span></div>
+              <div style={{ height: 8, borderRadius: 5, background: 'rgba(107,63,160,0.15)', marginTop: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${c.pct}%`, height: '100%', borderRadius: 5, background: V }} />
+              </div>
+              <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginTop: 2 }}>{c.frase}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {(p.forte.length > 0 || p.melhorar.length > 0) && (
+        <div style={caixa('#e8f2e4')}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#3E7A31', marginBottom: 4 }}>O que os teus colegas de grupo veem</div>
+          {p.forte.map((t, i) => <div key={'f' + i} style={{ fontSize: 14.5, margin: '4px 0' }}>👍 {t.charAt(0).toUpperCase() + t.slice(1)}.</div>)}
+          {p.melhorar.map((t, i) => <div key={'m' + i} style={{ fontSize: 14.5, margin: '4px 0' }}>🌱 {t.charAt(0).toUpperCase() + t.slice(1)}.</div>)}
+        </div>
+      )}
+      {p.diferenca && p.diferenca !== 'igual' && (
+        <div style={caixa(p.diferenca === 'acima' ? '#fff4e0' : '#e8f2e4')}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: p.diferenca === 'acima' ? '#9a6512' : '#3E7A31', marginBottom: 4 }}>Tu e os outros</div>
+          <div style={{ fontSize: 14.5, lineHeight: 1.5 }}>
+            {p.diferenca === 'acima'
+              ? <>Em algumas atitudes, <b>tu vês-te melhor do que os teus colegas te veem</b>. Não quer dizer que estejas mal — quer dizer que os outros ainda não notam. Vale a pena pensares nisso.</>
+              : <>Os teus colegas <b>veem-te melhor do que tu te vês</b>. Confia mais em ti: o grupo gosta de trabalhar contigo.</>}
+          </div>
+        </div>
+      )}
+      {p.diferenca === 'igual' && (
+        <div style={{ ...caixa('transparent'), border: '1px solid rgba(26,23,20,0.12)' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#3E7A31', marginBottom: 4 }}>Tu e os outros</div>
+          <div style={{ fontSize: 14.5 }}>O que dizes de ti <b>bate certo</b> com o que os teus colegas veem. Isso mostra que te conheces bem.</div>
+        </div>
+      )}
+      <div style={{ border: `1.5px dashed ${V}`, borderRadius: 14, padding: '11px 14px', fontSize: 14.5, lineHeight: 1.5 }}>
+        <b style={{ color: V }}>O teu próximo passo:</b> {p.passo}
+      </div>
+      {p.aulas > 0 && (
+        <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)', marginTop: 6 }}>
+          O que os colegas veem: opinião confirmada pelo professor em {p.aulas} aula{p.aulas === 1 ? '' : 's'}. Não conta para a nota.
+        </div>
+      )}
+    </div>
+  );
+}

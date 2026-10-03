@@ -8976,6 +8976,89 @@ export function resumoDosColegasParaOAluno(alunoId: string, planosIds: Set<strin
     melhorar: r.filter(x => x.media! < 2).map(x => LIGACOES_PARES[x.dimensao].pouco) };
 }
 
+/** O que os colegas disseram nesta aula, para guardar na validação quando o
+ *  professor o teve em conta: só números de conjunto, sem nomes (o aluno vê
+ *  isto no perfil). Com «autoAlta»/«autoBaixa»: o aluno viu-se bem acima ou
+ *  bem abaixo do que os colegas o veem. */
+export function colegasParaAValidacao(alunoId: string, planoAulaId: string, autoavaliacoes: any[], triagem: any) {
+  const dims: Record<string, { media: number; colegas: number }> = {};
+  const autoAlta: string[] = [], autoBaixa: string[] = [];
+  for (const d of oQueOsColegasDizem(alunoId, { planosIds: new Set([planoAulaId]) })) {
+    if (d.media === null) continue;
+    dims[d.dimensao] = { media: d.media, colegas: d.colegas };
+    const lig = LIGACOES_PARES[d.dimensao];
+    const notas = (autoavaliacoes || []).filter(a => lig.atitudes.includes(a.competenciaId) && Number(a.nota) > 0).map(a => Number(a.nota));
+    const r = triagem?.[lig.c];
+    const alta = notas.some(n => n >= 3) || (typeof r === 'number' && r >= 2);
+    const baixa = (notas.length > 0 && notas.every(n => n <= 2)) || (typeof r === 'number' && r <= 1);
+    if (alta && d.media < 2) autoAlta.push(d.dimensao);
+    if (baixa && d.media >= 2.5) autoBaixa.push(d.dimensao);
+  }
+  return Object.keys(dims).length ? { dims, autoAlta, autoBaixa } : null;
+}
+
+/** O perfil «social» do aluno (Rosa, out/2026): os 5 C em palavras e o que os
+ *  colegas veem — só o que o professor confirmou, sem nomes, com 2 ou mais
+ *  colegas — e um passo concreto. Calcula-se no telemóvel do aluno a partir
+ *  das validações dele (que já lá estão). */
+export interface PerfilSocial {
+  cincoC: { c: 'cl' | 'cr' | 'co'; nome: string; nivel: string; pct: number; frase: string }[];
+  forte: string[]; melhorar: string[];
+  diferenca: 'acima' | 'abaixo' | 'igual' | null;
+  passo: string; colegas: number; aulas: number;
+}
+const FRASES_5C: Record<'cl' | 'cr' | 'co', [string, string, string, string]> = {
+  cl: ['Ainda trabalhas quase sempre sozinho/a.', 'Ajudas quando te pedem.', 'Ajudas e partilhas sem te pedirem.', 'Combinas com a equipa e ajudas todos a acabar.'],
+  cr: ['Quando algo corre mal, ainda pedes logo ajuda.', 'Tentas uma vez e depois pedes ajuda.', 'Experimentas outras maneiras antes de pedir ajuda.', 'Resolves imprevistos e explicas aos colegas como fizeste.'],
+  co: ['Ainda te custa ver o que tens de melhorar.', 'Lembras-te do que correu mal, mas ainda não mudas.', 'Mudas o que correu mal.', 'Mudas o que correu mal e explicas o que melhoraste.'],
+};
+export function perfilSocialDoAluno(alunoId: string): PerfilSocial | null {
+  const vals = getValidacoes().filter((v: any) => v.alunoId === alunoId);
+  const porAula = new Map<string, any>();
+  vals.forEach((v: any) => { const a = porAula.get(v.planoAulaId); if (!a || quandoFoi(v.validadoEm) >= quandoFoi(a.validadoEm)) porAula.set(v.planoAulaId, v); });
+  const ultimas = [...porAula.values()];
+  const nomes = { cl: 'Colaborativo', cr: 'Criativo', co: 'Consciente' } as const;
+  const cincoC = (['cl', 'cr', 'co'] as const).map(c => {
+    const ns = ultimas.map(v => v.triagem5c?.[c]).filter((r: any) => typeof r === 'number').map((r: number) => r + 2);
+    if (!ns.length) return null;
+    const m = ns.reduce((a: number, b: number) => a + b, 0) / ns.length;
+    const i = m < 2.75 ? 0 : m < 3.5 ? 1 : m < 4.25 ? 2 : 3;
+    return { c, nome: nomes[c], nivel: ['Inicial', 'Em desenvolvimento', 'Consolidado', 'Avançado'][i], pct: Math.round(Math.max(10, Math.min(100, (m - 1) / 4 * 100))), frase: FRASES_5C[c][i] };
+  }).filter((x): x is NonNullable<typeof x> => !!x);
+  // O que os colegas disseram, nas aulas em que o professor o teve em conta.
+  const soma: Record<string, { s: number; n: number }> = {};
+  let colegas = 0, aulas = 0, acima = 0, abaixo = 0;
+  ultimas.filter(v => v.consideraColegas && v.colegasNaAula?.dims).forEach(v => {
+    aulas++;
+    Object.entries(v.colegasNaAula.dims as Record<string, { media: number; colegas: number }>).forEach(([d, x]) => {
+      soma[d] = soma[d] || { s: 0, n: 0 }; soma[d].s += x.media * x.colegas; soma[d].n += x.colegas;
+    });
+    colegas = Math.max(colegas, ...Object.values(v.colegasNaAula.dims as Record<string, { colegas: number }>).map(x => x.colegas));
+    acima += (v.colegasNaAula.autoAlta || []).length; abaixo += (v.colegasNaAula.autoBaixa || []).length;
+  });
+  const dims = Object.entries(soma).filter(([, x]) => x.n >= 2).map(([d, x]) => ({ d: d as DimensaoPar, m: x.s / x.n }));
+  const forte = dims.filter(x => x.m >= 2.5).map(x => LIGACOES_PARES[x.d].muito);
+  const melhorarD = dims.filter(x => x.m < 2).map(x => x.d);
+  const melhorar = melhorarD.map(d => LIGACOES_PARES[d].pouco);
+  if (!cincoC.length && !dims.length) return null;
+  const diferenca = !dims.length ? null : acima > abaixo ? 'acima' : abaixo > acima ? 'abaixo' : 'igual';
+  const PASSOS: Record<string, string> = {
+    conflito: 'quando não concordares, primeiro repete a ideia do colega («Estás a dizer que…?») e só depois dá a tua.',
+    colabora: 'na próxima aula, quando acabares a tua parte, pergunta à equipa «Em que posso ajudar?».',
+    ouve: 'antes de responder, deixa o colega acabar e repete o que ele disse.',
+    flexivel: 'experimenta a ideia de um colega antes de dizeres que não.',
+    cr: 'antes de pedir ajuda, experimenta uma maneira diferente. Se não resultar, pede — e conta o que tentaste.',
+    co: 'no fim da aula, pensa numa coisa que correu mal e no que vais mudar na próxima.',
+    cl: 'ajuda um colega sem ele te pedir.',
+  };
+  const maisFraco = [...cincoC].sort((a, b) => a.pct - b.pct)[0];
+  const passo = melhorarD.includes('conflito') ? PASSOS.conflito : melhorarD[0] ? PASSOS[melhorarD[0]]
+    : diferenca === 'abaixo' ? 'na próxima aula, diz uma ideia ao grupo: os teus colegas confiam em ti.'
+    : maisFraco && maisFraco.pct < 70 ? PASSOS[maisFraco.c]
+    : 'experimenta ser o líder do KitchenFlow numa aula — o grupo confia em ti.';
+  return { cincoC, forte, melhorar, diferenca, passo, colegas, aulas };
+}
+
 export function getAvaliacoesPares(planoAulaId?: string): AvaliacaoPar[] {
   return load<AvaliacaoPar>(KEY_PARES).filter(p => !planoAulaId || p.planoAulaId === planoAulaId);
 }

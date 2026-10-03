@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { colegasParaAValidacao, atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -514,7 +514,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       ...(triagem && !atitudesNaoPerguntadas ? { triagem5c: triagem } : {}),
       ...(naoReparou.length ? { naoReparou } : {}),
       comentarioGeral: comentario,
-      ...(consideraColegas ? { consideraColegas: true } : {}),
+      // Com a opinião dos colegas tida em conta, guarda-se o resumo desta aula
+      // (sem nomes): é o que o aluno vê no perfil.
+      ...(consideraColegas ? (() => { const r = colegasParaAValidacao(selecao.alunoId, selecao.planoAulaId || '', selecao.autoavaliacoes || [], (selecao as any).triagem5c);
+        return { consideraColegas: true, ...(r ? { colegasNaAula: r } : {}) }; })() : {}),
       validadoPor: 'professor',
       validadoEm: agora,
     };
