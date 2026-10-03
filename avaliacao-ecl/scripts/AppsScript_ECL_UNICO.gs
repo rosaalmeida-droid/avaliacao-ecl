@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v23';
+var VERSAO = 'ECL único v23.1';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -1810,7 +1810,7 @@ function criarArrumacaoAutomatica() { instalarTarefas(); }
 var COR_TURMA = '#7B2233';
 // (v21.1) As matérias-primas e os preços ficam à vista: escondê-los fez
 // parecer que a base das 250 matérias-primas se tinha perdido (Rosa, out/2026).
-var VISIVEIS_SEMPRE = ['TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'LEIA-ME', 'PROCURAR'];
+var VISIVEIS_SEMPRE = ['TABELA_PRECOS', 'PRECOS', 'MATERIAS_PRIMAS', 'PRECOS_A_REVER', 'AUDITORIA', 'VERIFICAR_ALUNOS', 'LEIA-ME', 'PROCURAR'];
 
 function porTurma(lista) {
   var m = {};
@@ -2137,6 +2137,84 @@ function auditarFolhasAntigas() {
   }
   try { f.showSheet(); novo.setActiveSheet(f); } catch (e) {}
   Logger.log('Auditoria feita: ' + (linhas.length - 1) + ' linhas na folha AUDITORIA. As vermelhas são as importantes.');
+}
+
+// ══════════════════════════════════════════════════════════════
+// (v23.1) AS FOLHAS ANTIGAS DE CADA ALUNO ESTÃO NO SEPARADOR DA TURMA?
+// ══════════════════════════════════════════════════════════════
+// Corre  verificarAlunosAntigos  uma vez. Não apaga nem muda nada. Lê as
+// folhas «8_Nome…» do ficheiro antigo do histórico, encontra as linhas com
+// notas e vê se esses dias existem no ficheiro novo para esse aluno (as
+// folhas de onde se faz o separador da turma). Resultado na folha
+// VERIFICAR_ALUNOS. As folhas de teste («Aluno 1», «Aluno 9999»…) vêm
+// marcadas como teste.
+
+function dataDaCelula(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, 'Europe/Lisbon', 'yyyy-MM-dd');
+  var t = String(v || '').trim();
+  var m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  return '';
+}
+
+function verificarAlunosAntigos() {
+  var antigo;
+  try { antigo = SpreadsheetApp.openById(ANTIGO_HISTORICO); }
+  catch (e) { Logger.log('Não consegui abrir o histórico antigo: ' + e); return; }
+
+  // O que o ficheiro novo tem de cada aluno, por dia.
+  var alunos = ler('ALUNOS', {});
+  var planos = {}; ler('PLANOS', {}).forEach(function (p) { planos[p.id] = String(p.data || '').slice(0, 10); });
+  var diasDoAluno = {};
+  function marca(alunoId, dia) { if (!alunoId || !dia) return; (diasDoAluno[alunoId] = diasDoAluno[alunoId] || {})[dia] = true; }
+  ler('AVALIACOES', {}).forEach(function (x) { marca(x.alunoId, String(x.data || '').slice(0, 10) || planos[x.planoAulaId]); });
+  ler('VALIDACOES', {}).forEach(function (x) { marca(x.alunoId, planos[x.planoAulaId] || String(x.validadoEm || '').slice(0, 10)); });
+  ler('SELECOES', {}).forEach(function (x) { if (!ehRegistoEspecial(x)) marca(x.alunoId, planos[x.planoAulaId] || String(x.criadaEm || '').slice(0, 10)); });
+  ler('PRESENCAS', {}).forEach(function (x) { marca(x.alunoId, String(x.data || '').slice(0, 10) || planos[x.planoAulaId]); });
+
+  var linhas = [['Folha antiga', 'Aluno no ficheiro novo', 'Linhas com notas', 'Dias com notas', 'Dias que estão no novo', 'Dias que faltam no novo', 'Exemplo de uma linha que falta', 'O que quer dizer']];
+  antigo.getSheets().forEach(function (f) {
+    var nome = f.getName();
+    var m = nome.match(/^(\d+)_(.*)$/);
+    if (!m) return;
+    var numero = Number(m[1]), resto = m[2].replace(/_conflict\d+$/, '').trim();
+    var teste = /^Aluno\b/.test(resto) || numero >= 99 || /Rosa Almeida/.test(resto);
+    // As linhas com notas: começam por uma data.
+    var d = f.getDataRange().getValues(), comNotas = [];
+    d.forEach(function (l) { var dia = dataDaCelula(l[0]); if (dia && l.slice(1).some(function (v) { return String(v).trim() !== ''; })) comNotas.push({ dia: dia, linha: l }); });
+    // O aluno no ficheiro novo: o nome começa da mesma maneira.
+    var alvo = semAcentos(resto).slice(0, 12);
+    var a = alunos.filter(function (x) { return alvo && semAcentos(x.nome).indexOf(alvo) === 0; })[0]
+      || alunos.filter(function (x) { return Number(x.numero) === numero && alvo && semAcentos(x.nome).indexOf(alvo.slice(0, 5)) === 0; })[0];
+    var dias = {}; comNotas.forEach(function (c) { dias[c.dia] = true; });
+    var listaDias = Object.keys(dias).sort();
+    var tem = a ? (diasDoAluno[a.id] || {}) : {};
+    var estao = listaDias.filter(function (x) { return tem[x]; });
+    var faltam = listaDias.filter(function (x) { return !tem[x]; });
+    var exemplo = '';
+    if (faltam.length) { var c1 = comNotas.filter(function (c) { return c.dia === faltam[0]; })[0]; exemplo = c1.linha.map(valorTexto).filter(function (v) { return v; }).join(' · '); }
+    var quer = teste ? 'Folha de teste: não é preciso.'
+      : !comNotas.length ? 'Sem notas: só o modelo vazio. Não é preciso.'
+      : !a ? '⚠ Não encontrei este aluno no ficheiro novo. Ver.'
+      : faltam.length ? '⚠ Há dias com notas que não estão no ficheiro novo nem no separador da turma.'
+      : 'Está tudo no ficheiro novo (e no separador da turma).';
+    linhas.push([nome, a ? (a.numero + ' ' + a.nome + ' (' + a.turmaId + ')') : '—', comNotas.length, listaDias.join(', '),
+      estao.length, faltam.join(', '), exemplo, quer]);
+  });
+
+  var novo = ficheiro();
+  var out = novo.getSheetByName('VERIFICAR_ALUNOS') || novo.insertSheet('VERIFICAR_ALUNOS', 0);
+  out.clear();
+  out.getRange(1, 1, linhas.length, linhas[0].length).setValues(linhas);
+  out.getRange(1, 1, 1, linhas[0].length).setFontWeight('bold').setBackground('#1f1b16').setFontColor('#faf7f2');
+  out.setFrozenRows(1);
+  [180, 220, 80, 220, 80, 220, 320, 360].forEach(function (w, i) { out.setColumnWidth(i + 1, w); });
+  out.getRange(2, 1, Math.max(1, linhas.length - 1), linhas[0].length).setWrap(true).setVerticalAlignment('top');
+  for (var r = 1; r < linhas.length; r++) if (String(linhas[r][7]).indexOf('⚠') === 0) out.getRange(r + 1, 1, 1, linhas[0].length).setBackground('#fdecea');
+  try { out.showSheet(); novo.setActiveSheet(out); } catch (e) {}
+  Logger.log('Verificação feita: folha VERIFICAR_ALUNOS. As linhas com ⚠ são as que faltam.');
 }
 
 /** Copia para aqui uma folha que não foi trazida dos ficheiros antigos (tal e qual). */
