@@ -323,7 +323,7 @@ export function AvaliacaoPorUC({ turmaId, alunoId, nomeProfessor }: { turmaId: s
         <div style={{ textAlign: 'center', padding: '40px 20px', color: 'rgba(26,23,20,0.4)' }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
           <div style={{ fontWeight: 600 }}>Sem avaliações com estes filtros</div>
-          <div style={{ fontSize: 13, marginTop: 4 }}>Tenta seleccionar uma UC/UFCD diferente ou alargar o período</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Tente selecionar outra UC/UFCD ou alargar o período</div>
         </div>
       ) : (
         dadosPorAluno.map(({ aluno, comps, mediaGeral, total, consolidadas, emRecuperacao, pauta, porCategoriaUltima }) => {

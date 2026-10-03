@@ -57,7 +57,7 @@ export function PrecosCoordenadora() {
 
   async function copiar() {
     try { await navigator.clipboard.writeText(pedido); setCopiado(true); setTimeout(() => setCopiado(false), 2500); }
-    catch { alert('Não consegui copiar sozinho. Seleciona o texto do pedido e copia (Ctrl+C).'); }
+    catch { alert('Não foi possível copiar automaticamente. Selecione o texto do pedido e copie-o (Ctrl+C).'); }
   }
 
   function verificar() {
@@ -69,7 +69,7 @@ export function PrecosCoordenadora() {
   function gravar() {
     if (!res) return;
     const novos = res.linhas.filter(l => l.novo && escolhidos.has(l.id)).map(l => l.novo!);
-    if (!novos.length) { alert('Não escolheste nenhum preço.'); return; }
+    if (!novos.length) { alert('Não escolheu nenhum preço.'); return; }
     if (!confirm(`Atualizar ${novos.length} preço(s)?\n\nFicam neste aparelho e vão para o Sheets; os outros aparelhos recebem-nos na próxima sincronização.`)) return;
     confirmarPrecos(novos);
     setRes(null); setResposta(''); setVersao(v => v + 1);
@@ -102,7 +102,7 @@ export function PrecosCoordenadora() {
               ? <b>✓ Os {noSheets.total} preço(s) estão no Sheets (folha PRECOS). Os outros aparelhos recebem-nos ao abrir a aplicação.</b>
               : <>
                   <b>⚠️ {noSheets.faltam.length} de {noSheets.total} preço(s) ainda não estão no Sheets.</b>
-                  <div style={{ fontSize: 13.5, margin: '6px 0' }}>Ficaram guardados neste aparelho. Confirma a internet e envia outra vez.</div>
+                  <div style={{ fontSize: 13.5, margin: '6px 0' }}>Ficaram guardados neste aparelho. Confirme a ligação à internet e envie outra vez.</div>
                   <button onClick={enviarOutraVez} style={botao(true)}>Enviar outra vez</button>
                 </>}
         </div>
@@ -121,8 +121,8 @@ export function PrecosCoordenadora() {
           <div style={titulo}>⚠️ Preços a rever — {aRever.length} pedido{aRever.length === 1 ? '' : 's'} dos professores</div>
           <div style={nota}>
             Um professor escreveu na requisição um preço diferente do da base. Esse preço valeu só nessa requisição;
-            a base continua com o teu. Revê-os no pedido à IA (a opção «Os que os professores pediram para rever»)
-            ou, se o preço da base está certo, carrega em «Está certo».
+            a base mantém o seu preço. Reveja-os no pedido à IA (a opção «Os que os professores pediram para rever»)
+            ou, se o preço da base estiver certo, carregue em «Está certo».
           </div>
           {aRever.map(p => (
             <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 0',
@@ -149,9 +149,9 @@ export function PrecosCoordenadora() {
       <div style={caixa}>
         <div style={titulo}>1. Copiar o pedido para a IA</div>
         <div style={nota}>
-          Cola-o numa IA que pesquise na internet (ChatGPT, Claude, Gemini, com pesquisa ligada). O pedido leva
-          todas as matérias-primas. Se a IA parar a meio ou disser que é demasiado, escolhe «Parte 1», «Parte 2»… e
-          faz uma de cada vez.
+          Cole-o numa IA que pesquise na internet (ChatGPT, Claude, Gemini, com pesquisa ligada). O pedido leva
+          todas as matérias-primas. Se a IA parar a meio ou disser que é demasiado, escolha «Parte 1», «Parte 2»… e
+          faça uma parte de cada vez.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
           <select value={parte} onChange={e => { setParte(Number(e.target.value)); setRes(null); }}
@@ -183,7 +183,7 @@ export function PrecosCoordenadora() {
       <div style={caixa}>
         <div style={titulo}>2. Colar a resposta da IA</div>
         <textarea value={resposta} onChange={e => setResposta(e.target.value)} rows={6}
-          placeholder='Cola aqui a resposta (a lista que começa com [ e acaba com ])'
+          placeholder='Cole aqui a resposta (a lista que começa com [ e acaba com ])'
           style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, fontFamily: 'monospace', padding: 8, borderRadius: 8,
             border: '1px solid rgba(26,23,20,0.2)' }} />
         <button onClick={verificar} disabled={!resposta.trim()} style={{ ...botao(true), marginTop: 8, opacity: resposta.trim() ? 1 : 0.5 }}>
@@ -203,7 +203,7 @@ export function PrecosCoordenadora() {
                 · {res.linhas.filter(l => l.estado === 'erro').length} com erro
                 {res.emFalta.length > 0 && <> · <b>{res.emFalta.length} não vieram</b> (ficam com o preço de antes)</>}
                 {res.desconhecidos.length > 0 && <> · códigos desconhecidos: {res.desconhecidos.join(', ')}</>}
-                . Tira o visto aos que não queres atualizar.
+                . Retire o visto aos que não pretende atualizar.
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>

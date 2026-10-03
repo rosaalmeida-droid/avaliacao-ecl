@@ -443,7 +443,7 @@ function ConfigTab() {
           {backupFeito ? '✅ Passo 1 — Cópia de segurança feita' : '1️⃣ Passo 1 — Cópia de segurança (OBRIGATÓRIO)'}
         </div>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
-          Antes de apagar seja o que for, descarrega uma cópia de segurança completa.
+          Antes de apagar seja o que for, descarregue uma cópia de segurança completa.
           Sem um backup dos últimos 10 minutos, a limpeza recusa-se a executar.
           Guarda o ficheiro num sítio seguro (Drive, email).
         </div>
@@ -519,7 +519,7 @@ function ConfigTab() {
           Escreve <strong>APAGAR</strong> (em maiúsculas) para executar o reset. Isto não tem volta — só o backup do Passo 1 recupera o que for apagado.
         </div>
         <input value={confirmacao} onChange={e => setConfirmacao(e.target.value)}
-          placeholder="Escreve APAGAR"
+          placeholder="Escreva APAGAR"
           disabled={!backupFeito || !preview || nadaParaApagar}
           style={{ width: '100%', padding: '10px 12px', borderRadius: 8,
             border: '1px solid rgba(26,23,20,0.2)', fontSize: 14, marginBottom: 8, boxSizing: 'border-box' }} />
@@ -703,7 +703,7 @@ function GestaoAlunosTab() {
 
       {ativos.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 32, color: 'rgba(26,23,20,0.4)' }}>
-          Sem alunos nesta turma. Usa a Cópia de Segurança para restaurar, ou sincroniza da Sheet.
+          Não há alunos nesta turma. Use a Cópia de Segurança para os restaurar ou sincronize a partir do Sheets.
         </div>
       ) : ativos.map(a => (
         <div key={a.id} style={{ background: '#fff', borderRadius: 12, padding: '10px 14px',

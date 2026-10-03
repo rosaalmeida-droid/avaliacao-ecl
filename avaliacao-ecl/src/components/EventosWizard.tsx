@@ -236,7 +236,7 @@ function gerarTarefas(evento: Evento): TarefaEvento[] {
     tarefas.push({ id: 'orc', titulo: 'Orçamento e Food Cost', disciplina: 'Gestão e Controlo', descricao: 'Orçamento do evento, cálculo do food cost e análise de resultados', selecionada: true });
   }
   if (evento.outrasTurmas.includes('area_projeto') || evento.outrasTurmas.includes('portugues')) {
-    tarefas.push({ id: 'cartaz', titulo: 'Cartaz e Comunicação', disciplina: evento.outrasTurmas.includes('area_projeto') ? 'Área de Projecto' : 'Português', descricao: `Cartaz e material de comunicação para o evento "${evento.nome}"`, selecionada: true });
+    tarefas.push({ id: 'cartaz', titulo: 'Cartaz e Comunicação', disciplina: evento.outrasTurmas.includes('area_projeto') ? 'Área de Projeto' : 'Português', descricao: `Cartaz e material de comunicação para o evento "${evento.nome}"`, selecionada: true });
   }
   if (evento.outrasTurmas.includes('matematica')) {
     tarefas.push({ id: 'cap', titulo: 'Cálculo de Capitações', disciplina: 'Matemática Aplicada', descricao: 'Capitações por momento e escalonamento de receitas', selecionada: true });
@@ -671,8 +671,8 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
   function salvarEventos(ev: Evento[]) { setEventos(ev); saveEventos(ev); }
 
   function criarEvento() {
-    if (!nome.trim() || !local) { setMsg('⚠️ Preenche o nome e o local do evento.'); return; }
-    if (dias.some(d => !d.data)) { setMsg('⚠️ Preenche a data de todos os dias.'); return; }
+    if (!nome.trim() || !local) { setMsg('⚠️ Preencha o nome e o local do evento.'); return; }
+    if (dias.some(d => !d.data)) { setMsg('⚠️ Preencha a data de todos os dias.'); return; }
     if (dias.some(d => d.momentos.length === 0)) { setMsg('⚠️ Adiciona pelo menos um momento a cada dia.'); return; }
 
     const todosEv = JSON.parse(localStorage.getItem('ecl_eventos_v3') || '[]');
@@ -809,7 +809,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
     if (!eventoAtual) return;
     const html = gerarRelatorioHTML(eventoAtual, false);
     const win = window.open('', '_blank');
-    if (!win) { alert('O navegador bloqueou a janela. Permite pop-ups e tenta de novo.'); return; }
+    if (!win) { alert('O navegador bloqueou a janela. Permita as janelas pop-up e tente de novo.'); return; }
     win.document.open(); win.document.write(html); win.document.close();
     setTimeout(() => { try { win.focus(); win.print(); } catch { } }, 500);
   }
@@ -918,7 +918,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
       <div style={{ marginBottom: 18 }}>
         <span style={label}>Outras turmas / disciplinas envolvidas</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {[['restaurante_bar', '🍷 Restaurante/Bar'], ['turismo', '✈️ Turismo'], ['gestao_controlo', '📊 Gestão e Controlo'], ['ingles', '🇬🇧 Inglês Técnico'], ['area_projeto', '📐 Área de Projecto'], ['portugues', '📝 Português'], ['matematica', '🔢 Matemática']].map(([v, l]) => {
+          {[['restaurante_bar', '🍷 Restaurante/Bar'], ['turismo', '✈️ Turismo'], ['gestao_controlo', '📊 Gestão e Controlo'], ['ingles', '🇬🇧 Inglês Técnico'], ['area_projeto', '📐 Área de Projeto'], ['portugues', '📝 Português'], ['matematica', '🔢 Matemática']].map(([v, l]) => {
             const sel = outrasTurmas.includes(v);
             return <button key={v} style={{ ...btn(sel ? COR.roxo : '#fff', sel ? '#fff' : COR.cinza), padding: '6px 12px', fontSize: 13, border: `1.5px solid ${sel ? COR.roxo : '#e5e7eb'}` }}
               onClick={() => toggleOutrasTurmas(v)}>{l}</button>;
@@ -1123,7 +1123,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
                 ))}
                 {mostrarSeletorPlanos && planosDisponiveis.length > 0 && (
                   <div style={{ background: COR.cinzaClaro, borderRadius: 10, padding: 12, marginBottom: 10 }}>
-                    <div style={{ fontSize: 13, color: COR.cinza, marginBottom: 8 }}>Selecciona os planos a associar a este evento:</div>
+                    <div style={{ fontSize: 13, color: COR.cinza, marginBottom: 8 }}>Selecione os planos a associar a este evento:</div>
                     {planosDisponiveis.map(p => (
                       <div key={p.id} onClick={() => { associarPlano(p, eventoAtual.id); setPlanosEvento(getPlanosDoEvento(turmaId, eventoAtual.id)); setMostrarSeletorPlanos(false); }}
                         style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: '#fff', cursor: 'pointer', marginBottom: 6 }}>
@@ -1173,7 +1173,7 @@ export function EventosWizard({ turmaId }: { turmaId: string; nomeProfessor?: st
 
         {/* Avisar antes de deixar o evento a meio. */}
         <button style={{ ...btnOutline, width: '100%' }} onClick={() => {
-          if (confirm('Voltar à lista?\n\nSe não guardaste, o que preencheste perde-se.')) setVista('lista');
+          if (confirm('Voltar à lista?\n\nSe não guardou, perde o que preencheu.')) setVista('lista');
         }}>← Voltar à lista</button>
       </div>
     );

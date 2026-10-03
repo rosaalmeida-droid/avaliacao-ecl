@@ -297,7 +297,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                 headers={['Fase', 'Quando ocorre', 'O que se espera']}
                 rows={[
                   ['Introdução', '1ª vez que a competência é apresentada (trimestre definido)', 'Aluno conhece e tenta demonstrar pela primeira vez.'],
-                  ['Reforço', 'Quando a UC activa uma competência já introduzida', 'Aluno demonstra com maior exigência — nível seguinte.'],
+                  ['Reforço', 'Quando a UC ativa uma competência já introduzida', 'Aluno demonstra com maior exigência — nível seguinte.'],
                   ['Consolidação', 'Quando o aluno atinge nível 3 ou mais em 2 aulas diferentes', 'Competência marcada como consolidada no portfólio.'],
                   ['Recuperação', 'Quando o aluno obtém nível 1 ou 2', 'Competência volta obrigatória ou com aviso na próxima vez.'],
                 ]}

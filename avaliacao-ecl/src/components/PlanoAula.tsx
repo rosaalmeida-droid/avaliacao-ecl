@@ -367,7 +367,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                 </span>
                 <button onClick={() => {
                   if (planosSelecionadosCal.size === 0) return;
-                  if (confirm(`Arquivar ${planosSelecionadosCal.size} plano(s)? Saem do calendário; podes repô-los no Arquivo.`)) {
+                  if (confirm(`Arquivar ${planosSelecionadosCal.size} plano(s)? Saem do calendário, mas pode repô-los a partir do Arquivo.`)) {
                     planosSelecionadosCal.forEach(id => arquivarPlanoAula(id));
                     setPlanosSelecionadosCal(new Set());
                     setModoSelecaoCal(false);
@@ -626,7 +626,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
       <span style={{ flex: 1, minWidth: 180 }}>
         {verDeTodos
           ? 'A ver as aulas de todos os professores.'
-          : `A ver as tuas aulas. Há ${dosOutros} de outros professores.`}
+          : `Está a ver as suas aulas. Há ${dosOutros} de outros professores.`}
       </span>
       <button onClick={() => setVerDeTodos(!verDeTodos)} style={{
         padding: '7px 13px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.2)',
@@ -728,7 +728,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           <button onClick={()=>setVista('arquivo')} className="tab-btn active" style={{ flex:1 }}>🗄️ Arquivo</button>
         </div>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginBottom: 14 }}>
-          Planos arquivados não aparecem no calendário nem na lista. Podes sempre trazê-los de volta.
+          Os planos arquivados não aparecem no calendário nem na lista, mas pode sempre repô-los.
         </div>
         {arquivados.length === 0 && <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>O arquivo está vazio.</div>}
         {arquivados.map(p => {
@@ -782,7 +782,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
           <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, flex: 1 }}>{planosSelecionadosIds.size} plano(s) selecionado(s)</span>
           <button onClick={() => {
             if (planosSelecionadosIds.size === 0) return;
-            if (confirm(`Arquivar ${planosSelecionadosIds.size} plano(s)? Saem da lista; podes repô-los no Arquivo.`)) {
+            if (confirm(`Arquivar ${planosSelecionadosIds.size} plano(s)? Saem da lista, mas pode repô-los a partir do Arquivo.`)) {
               planosSelecionadosIds.forEach(id => arquivarPlanoAula(id));
               setPlanosSelecionadosIds(new Set()); setModoSelecaoPlanos(false); setRefreshKey(k => k + 1);
             }
@@ -796,7 +796,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
         <div className="card" style={{ textAlign:'center', padding:40 }}>
           <div style={{ fontSize:40, marginBottom:10 }}>📋</div>
           <div className="display" style={{ fontSize:18, marginBottom:6 }}>Ainda não há planos</div>
-          <p className="muted">Cria o primeiro plano de aula para começar.</p>
+          <p className="muted">Crie o primeiro plano de aula para começar.</p>
         </div>
       )}
       {planos.map(p=>{
@@ -1096,7 +1096,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
       // aos alunos que não estavam nela.
       if (!x.tipoEvento && ehAtividadeExtra(dados, turmaId)) {
         if (!confirm('Uma atividade não muda esta aula: os outros alunos continuam com o plano.\n\n'
-          + 'Vou criar a atividade à parte, ligada a esta aula. A seguir escolhes quem foi e confirmas.\n\nContinuar?')) return;
+          + 'A aplicação vai criar a atividade à parte, ligada a esta aula. A seguir, escolha quem participou e confirme.\n\nContinuar?')) return;
         const agora = new Date().toISOString();
         const atv: any = {
           id: `plano_atv_${x.id}_${Date.now().toString(36)}`, turmaId: x.turmaId || turmaId, professor: x.professor || dados.professor || '',
@@ -1264,7 +1264,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         </div>
         <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.6)', marginTop: 4 }}>
           {ehAtividadeExtra(dados, turmaId) ? 'Só os alunos escolhidos desta turma fazem esta atividade; os outros só a podem ver.'
-            : 'Só os alunos desta turma veem este plano. Se não é esta a turma, muda-a no menu antes de criar.'}
+            : 'Só os alunos desta turma veem este plano. Se não for esta a turma, altere-a no menu antes de criar o plano.'}
         </div>
       </div>
       <Card>
@@ -1505,7 +1505,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           </div>
         </div>
         <div className="field" style={{ marginBottom: 14 }}>
-          <label className="field-label">Tipo de actividade</label>
+          <label className="field-label">Tipo de atividade</label>
           <select className="input" value={dados.tipoAtividade} onChange={e => {
             const novo = e.target.value;
             if (!!tipoEventoDe(novo) !== !!tipoEventoDe(dados.tipoAtividade)) setDados(p => ({ ...p, faltasContam: !tipoEventoDe(novo) }));
@@ -1557,7 +1557,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           </div>
           {dados.data && dados.data < new Date().toISOString().slice(0, 10) && !ehAtividadeExtra(dados, turmaId) && (
             <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 6 }}>
-              Esta aula já passou. Se a estás a criar só para os alunos se autoavaliarem, escolhe «Não».
+              Esta aula já passou. Se a está a criar apenas para os alunos se autoavaliarem, escolha «Não».
             </div>
           )}
           {tipoEventoDe(dados.tipoAtividade) && (
@@ -1683,8 +1683,8 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
         )}
 
         <button className="btn btn-primary btn-block" disabled={!podeGuardar || estadoCriar} onClick={() => guardar()} style={{ fontSize: 15, padding: '14px', opacity: podeGuardar && !estadoCriar ? 1 : 0.5 }}>
-          {alvo ? (podeGuardar ? (planoExistente ? 'Guardar as alterações' : 'Abrir o plano →') : 'Selecciona a UC para continuar')
-            : estadoCriar ? 'A criar o plano…' : podeGuardar ? 'Criar plano e começar →' : 'Selecciona a UC para continuar'}
+          {alvo ? (podeGuardar ? (planoExistente ? 'Guardar as alterações' : 'Abrir o plano →') : 'Selecione a UC para continuar')
+            : estadoCriar ? 'A criar o plano…' : podeGuardar ? 'Criar plano e começar →' : 'Selecione a UC para continuar'}
         </button>
         {planoExistente && (
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>

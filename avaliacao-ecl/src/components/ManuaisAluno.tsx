@@ -468,7 +468,7 @@ export function ManuaisAluno({ nomeProfessor: _nome, soLeitura = false }: {
                 <button style={btn(ROXO)} onClick={guardar}>{saved ? 'Guardar (atualizar)' : '💾 Guardar'}</button>
               </div>
               <p style={{ fontSize: 13, color: saved ? '#0a7d2c' : '#6b7280', marginBottom: 10 }}>
-                {saved ? '✓ Em Manuais Guardados. Exporta em Word/PDF para partilhar.' : 'Ainda não guardado. Clica Guardar, ou exporta directamente.'}
+                {saved ? '✓ Em Manuais Guardados. Exporta em Word/PDF para partilhar.' : 'Ainda não guardado. Clica Guardar, ou exporta diretamente.'}
               </p>
 
               {/* lista de capítulos compacta */}
@@ -504,7 +504,7 @@ export function ManuaisAluno({ nomeProfessor: _nome, soLeitura = false }: {
           <div style={{ flex: 1, minWidth: 0, position: 'sticky', top: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: BRAND }}>Preview do documento</span>
-              <span style={{ fontSize: 12.5, color: '#9ca3af' }}>— actualiza automaticamente</span>
+              <span style={{ fontSize: 12.5, color: '#9ca3af' }}>· atualiza automaticamente</span>
             </div>
             <div style={{ border: `1px solid ${LINE}`, borderRadius: 10, overflow: 'hidden', background: '#e5e7eb' }}>
               <iframe

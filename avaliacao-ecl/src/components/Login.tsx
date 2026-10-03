@@ -46,9 +46,9 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
         setErro(resultado.erro || 'Número ou PIN incorretos.');
       } else {
         if ((resultado as any).primeiraVezNesteTelemovel) {
-          alert('Bem-vindo! O teu PIN ficou ligado a este telemóvel.\n\n'
-            + 'A partir de agora só entras com ele. Se mudares de telemóvel, '
-            + 'pede ao professor para libertar o teu PIN.');
+          alert('Bem-vindo/a! O teu PIN ficou ligado a este telemóvel.\n\n'
+            + 'A partir de agora, só entras com ele. Se mudares de telemóvel, '
+            + 'pede ao professor que liberte o teu PIN.');
         }
         onLogin('aluno', resultado.aluno.id, turmaId);
       }
@@ -73,8 +73,8 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
     // Professor: o seu nome, o seu PIN e só as suas turmas.
     const turma = turmasDoProf.length === 1 ? turmasDoProf[0]?.id : turmaId;
     if (perfil === 'professor') {
-      if (!profEscolhido) { setErro('Escolhe o teu nome.'); return; }
-      if (!turma || !profEscolhido.turmas.includes(turma)) { setErro('Escolhe uma das tuas turmas.'); return; }
+      if (!profEscolhido) { setErro('Escolha o seu nome.'); return; }
+      if (!turma || !profEscolhido.turmas.includes(turma)) { setErro('Escolha uma das suas turmas.'); return; }
     }
     setLoading(true);
     const quem = perfil === 'professor' ? profEscolhido!.nome : perfil;
@@ -197,7 +197,7 @@ export function Login({ onLogin }: { onLogin: (perfil: Perfil, alunoId?: string,
               {profEscolhido && turmasDoProf.length > 1 && (
                 <Field label="Turma">
                   <select className="input" value={turmaId} onChange={e => setTurmaId(e.target.value)}>
-                    <option value="">Escolhe a turma</option>
+                    <option value="">Escolha a turma</option>
                     {turmasDoProf.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
                   </select>
                 </Field>

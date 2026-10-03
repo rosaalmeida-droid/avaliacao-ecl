@@ -184,7 +184,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
       {acabou && (
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)', borderRadius: 12,
           padding: '10px 14px', marginBottom: 12, fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
-          ✓ Validaste {acabou}. {porValidarLista.length ? '' : 'Não há mais nenhum por validar.'}
+          ✓ Validou {acabou}. {porValidarLista.length ? '' : 'Não há mais nenhum por validar.'}
         </div>
       )}
       {porValidarLista.length > 0 && (
@@ -205,7 +205,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
       {!aProcurar && ultimaProcura && (
         <span style={{ marginLeft: 10, fontSize: 13.5, fontWeight: 600,
           color: ultimaProcura.falhou ? '#8e2418' : ultimaProcura.novas ? 'var(--sage)' : 'rgba(26,23,20,0.6)' }}>
-          {ultimaProcura.falhou ? `Às ${ultimaProcura.hora}: sem ligação ao Sheets. Tenta outra vez.`
+          {ultimaProcura.falhou ? `Às ${ultimaProcura.hora}: sem ligação ao Sheets. Tente outra vez.`
             : ultimaProcura.novas ? `Procurado às ${ultimaProcura.hora}: chegaram ${ultimaProcura.novas}.`
             : `Procurado às ${ultimaProcura.hora}: nada de novo.`}
         </span>
@@ -226,7 +226,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
             <div className="muted" style={{ lineHeight: 1.6 }}>
               {selecoes.length
                 ? 'Todas as autoavaliações que chegaram já estão validadas.'
-                : 'A validação só aparece depois de os alunos submeterem a autoavaliação. Se a aula já acabou e não aparece ninguém, confirma que abriste a aula e que eles chegaram ao último passo.'}
+                : 'A validação só aparece depois de os alunos enviarem a autoavaliação. Se a aula já terminou e não aparece ninguém, confirme que abriu a aula e que os alunos chegaram ao último passo.'}
             </div>
           </div>
         </Card>
@@ -236,7 +236,7 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
       {validadasLista.length > 0 && (
         <>
           <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
-            color: 'var(--sage)', margin: '18px 2px 8px' }}>Já validadas ({validadasLista.length}) — tocar para alterar</div>
+            color: 'var(--sage)', margin: '18px 2px 8px' }}>Já validadas ({validadasLista.length}): toque para alterar</div>
           {validadasLista.map(s => cartao(s, true))}
         </>
       )}
@@ -252,16 +252,16 @@ export function ValidacaoView({ turmaId, planoId }: { turmaId?: string; planoId?
         style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, fontSize: 14 }}>
-            {nomeDoAluno(s.alunoId)} — {plano?.titulo || `Aula de ${dia} (o plano não está neste computador)`}
+            {nomeDoAluno(s.alunoId)} — {plano?.titulo || `Aula de ${dia} (o plano não está guardado neste computador)`}
           </div>
           <div className="muted" style={{ fontSize: 13 }}>
             {plano?.ucId ? `${plano.ucId} · ` : ''}
             {temaDoAluno(s) ? `Tema: ${temaDoAluno(s)} · ` : ''}
             {vezesQueRespondeu(s.alunoId, s.planoAulaId || '', selecoes) > 1
-              ? `Respondeu ${vezesQueRespondeu(s.alunoId, s.planoAulaId || '', selecoes)} vezes: conta a última · ` : ''}
-            {(s as any).antesDoPedido && !jaValidada ? 'Respondeu antes da última alteração do plano: esta resposta conta até chegar outra · ' : ''}
+              ? `Respondeu ${vezesQueRespondeu(s.alunoId, s.planoAulaId || '', selecoes)} vezes; conta a última resposta · ` : ''}
+            {(s as any).antesDoPedido && !jaValidada ? 'Respondeu antes da última alteração do plano; esta resposta conta até chegar uma nova · ' : ''}
             {jaValidada
-              ? '✓ Validado — tocar para alterar'
+              ? '✓ Validado: toque para alterar'
               : `${nMicros} competência${nMicros !== 1 ? 's' : ''} a validar`}
           </div>
         </div>
@@ -299,7 +299,7 @@ function QuemFalta({ planoId, turmaId, selecoes }: { planoId: string; turmaId: s
       {faltam.length > 0 && (<>
         <div style={{ fontWeight: 700, marginTop: 4 }}>Ainda não chegou de: {faltam.map(a => `${a.numero}. ${a.nome}`).join(' · ')}</div>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 4 }}>
-          Se o aluno diz que enviou, pede-lhe para abrir a aplicação com rede: a autoavaliação volta a ser enviada sozinha.
+          Se o aluno disser que enviou, peça-lhe que abra a aplicação com ligação à internet: a autoavaliação é reenviada automaticamente.
         </div>
       </>)}
     </div>
@@ -578,9 +578,9 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       setChegou(r.ok);
       if (!r.ok) {
         alert(
-          `ATENÇÃO — a avaliação de ${nome} ficou gravada aqui, mas ainda NÃO chegou ao arquivo da escola.\n\n`
+          `ATENÇÃO: a avaliação de ${nome} ficou guardada neste aparelho, mas ainda NÃO chegou ao arquivo da escola.\n\n`
           + `Confirmadas ${r.encontrados} de ${r.total} notas.\n\n`
-          + 'A aplicação volta a tentar sozinha. Se o aviso se repetir, vai a Coordenadora → Alunos → '
+          + 'A aplicação volta a tentar automaticamente. Se o aviso se repetir, vá a Coordenadora → Alunos → '
           + '"Testar a ligação".'
         );
       }
@@ -622,12 +622,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 20, color: 'var(--sage)' }}>✓</span>
           <div style={{ flex: 1, fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
-            Validação guardada. Podes continuar a alterar — basta guardar outra vez.
+            Validação guardada. Pode continuar a alterar: basta guardar outra vez.
             <div style={{ fontSize: 12.5, fontWeight: 500, marginTop: 3,
               color: chegou === false ? 'var(--danger)' : 'rgba(26,23,20,0.55)' }}>
-              {aEnviar ? '⏳ A chegar ao arquivo da escola… podes passar ao seguinte.'
+              {aEnviar ? '⏳ A enviar para o arquivo da escola… pode passar ao aluno seguinte.'
                 : chegou ? '✓ Já está no arquivo da escola.'
-                : chegou === false ? '⚠ Ainda não chegou ao arquivo — a aplicação volta a tentar.' : ''}
+                : chegou === false ? '⚠ Ainda não chegou ao arquivo. A aplicação volta a tentar.' : ''}
             </div>
           </div>
           {seguintes > 0 && onSeguinte && (
@@ -644,7 +644,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         <div style={{ background: 'rgba(90,122,78,0.12)', border: '1px solid var(--sage)',
           borderRadius: 12, padding: '12px 14px', marginBottom: 14,
           fontSize: 14, color: 'var(--sage)', fontWeight: 600 }}>
-          Já validaste esta autoavaliação. As notas abaixo são as que gravaste — altera e guarda de novo.
+          Já validou esta autoavaliação. As notas abaixo são as que guardou: altere-as e guarde de novo.
         </div>
       )}
 
@@ -680,7 +680,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           </div>
           <div style={{ fontSize: 13, lineHeight: 1.5, color: 'rgba(26,23,20,0.7)', marginTop: 4 }}>
             {semFarda
-              ? 'Avalia tudo normalmente: as técnicas ficam no percurso do aluno. As atitudes contam — incluindo «Cuidado com a apresentação pessoal» e a forma como ajudou na aula. Não é falta.'
+              ? 'Avalie tudo normalmente: as técnicas ficam registadas no percurso do aluno. As atitudes contam, incluindo «Cuidado com a apresentação pessoal» e a forma como o aluno ajudou na aula. Não conta como falta.'
               : 'O aluno declarou a farda completa à entrada.'}
           </div>
           {(() => {
@@ -721,8 +721,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             <div key="OBR_02" style={{ marginBottom: 10, background: '#fff', border: `1.5px solid ${escolha ? 'var(--border)' : '#b5651d'}`, borderRadius: 12, padding: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 14 }}>Registos do KitchenFlow</div>
               <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', margin: '4px 0 10px', lineHeight: 1.5 }}>
-                Vê o relatório do KitchenFlow desta aula. Os registos que a ficha pede foram feitos? Conta 10% na nota da aula.
-                A mesma marca fica já escolhida para os colegas do mesmo grupo.
+                Consulte o relatório do KitchenFlow desta aula. Os registos que a ficha pede foram feitos? Conta 10% na nota da aula.
+                A mesma opção fica escolhida para os colegas do mesmo grupo.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
                 {NIVEIS_REGISTOS_KF.map(n => (
@@ -758,11 +758,11 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
 
         // Cor e label do nível do aluno — suporta escala nova e antiga
         const corAluno = corNivelAluno((auto as any).nivel || '', (auto as any).nota);
-        const labelAluno = (auto as any).nivel === 'outra' ? `«${(auto as any).texto || ''}» — dá tu a nota`
+        const labelAluno = (auto as any).nivel === 'outra' ? `«${(auto as any).texto || ''}»: atribua a nota`
           : Array.isArray((auto as any).respostas) && (auto as any).respostas.length
             ? `${String(Math.round(para20Dec(Number((auto as any).nota) || 1) * 10) / 10).replace('.', ',')}/20 pelas respostas abaixo`
           : (auto as any).nivel === 'evento'
-          ? `${(auto as any).texto || ''}${(auto as any).comentario ? ` — correu menos bem: «${(auto as any).comentario}»` : ''}`
+          ? `${(auto as any).texto || ''}${(auto as any).comentario ? ` · o que correu menos bem: «${(auto as any).comentario}»` : ''}`
           : labelNivelAluno((auto as any).nivel || '', (auto as any).nota);
 
         // O ramo: prato → aparelho → técnica, para o professor saber de que
@@ -781,7 +781,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
               {auto.competenciaId === 'OBR_01' && (auto as any).daEntrada && (
                 <span style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
                   <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100, background:'#fdf0e6', color:'#b5651d' }}>
-                    Declarado pelo aluno — confirma
+                    Declarado pelo aluno: confirme
                   </span>
                   <button onClick={() => {
                       const v = !faltouVerdade; setFaltouVerdade(v);
@@ -789,14 +789,14 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                     }}
                     style={{ fontSize:12.5, fontWeight:700, padding:'3px 9px', borderRadius:8, cursor:'pointer', fontFamily:'inherit',
                       border:'1px solid #7B2233', background: faltouVerdade ? '#7B2233' : '#fff', color: faltouVerdade ? '#fff' : '#7B2233' }}>
-                    {faltouVerdade ? '✓ Não era verdade (farda e Responsabilidade a 1)' : 'Não era verdade'}
+                    {faltouVerdade ? '✓ Não era verdade (farda e responsabilidade com nível 1)' : 'Não era verdade'}
                   </button>
                 </span>
               )}
               {(auto as any).semRegistoKF && (
                 <span style={{ fontSize:12.5, fontWeight:700, padding:'2px 8px', borderRadius:100,
                   background:'#fdf0e6', color:'#b5651d' }}>
-                  Sem registos no KitchenFlow — proposta a 1
+                  Sem registos no KitchenFlow: proposta com nível 1
                 </span>
               )}
               {_isApp && _app && (
@@ -821,10 +821,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             {auto.competenciaId in semOport && (
               <div style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 10, background: '#fdf6e8', border: '1px solid #e8c98f' }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: '#8a5a12' }}>
-                  O aluno diz que não teve oportunidade de fazer esta hoje. Confirmas?
+                  O aluno diz que hoje não teve oportunidade de fazer esta competência. Confirma?
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                  {[[true, 'Confirmo: não conta para a nota'], [false, 'Não é verdade: não fez (0)']].map(([v, t]) => (
+                  {[[true, 'Confirmo: não conta para a nota'], [false, 'Não é verdade: não fez (conta 0)']].map(([v, t]) => (
                     <button key={String(v)} onClick={() => {
                         setSemOport(p => ({ ...p, [auto.competenciaId]: v as boolean }));
                         if (!v) setNotasProf(p => ({ ...p, [auto.competenciaId]: 1 }));
@@ -838,12 +838,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             )}
             {auto.competenciaId === 'OBR_01' && (
               <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
-                Confirma a farda: completa, passada, branca e limpa. Conta 10% na nota da aula. Quando falta, as técnicas contam 0.
+                Confirme a farda: completa, passada, branca e limpa. Conta 10% na nota da aula. Quando a farda não está completa, as técnicas contam 0.
               </div>
             )}
             {semFarda && categoriaDaNota(auto.competenciaId) === 'SUB' && (
               <div style={{ fontSize: 12.5, color: '#8e2418', marginBottom: 8 }}>
-                Sem farda: fica no percurso com a nota que deres, mas conta 0 na nota desta aula.
+                Sem farda: fica no percurso do aluno com a nota que atribuir, mas conta 0 na nota desta aula.
               </div>
             )}
 
@@ -876,7 +876,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                             </div>
                           )}
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {([[false, 'Não aconteceu: não conta'], [true, 'Aconteceu e não reparou: conta 5/20']] as const).map(([v, t]) => (
+                            {([[false, 'Não aconteceu: não conta'], [true, 'Aconteceu e o aluno não reparou: conta 5/20']] as const).map(([v, t]) => (
                               <button key={String(v)} onClick={() => {
                                   setAconteceu(p => ({ ...p, [chave]: v }));
                                   const idx = ((auto as any).respIdx || []).map((x: any, q: number) =>
@@ -892,7 +892,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                           </div>
                           {aconteceu[chave] && (
                             <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 4 }}>
-                              O aluno vai ver: «Aconteceu hoje e não reparaste» e o que fazer para a próxima.
+                              O aluno vai ver a mensagem «O professor observou que isto aconteceu hoje» e o que deve fazer da próxima vez.
                             </div>
                           )}
                         </div>
@@ -923,10 +923,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
 
             {/* Avaliação do professor (1-4) */}
             <div style={{ fontSize:13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2, marginTop: 12, color: 'rgba(26,23,20,0.5)' }}>
-              A tua avaliação
+              A sua avaliação
             </div>
             <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.45)', marginBottom: 8 }}>
-              Vem preenchido com o que o aluno se deu. Toca para alterar.
+              Vem preenchido com a proposta do aluno. Toque para alterar.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 8 }}>
               {NIVEIS_PROF.map(n => {
@@ -967,10 +967,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                 fontStyle: 'italic' }}>
                 {NIVEIS_PROF.some(n => n.v === notaProf)
                   ? `"${NIVEIS_PROF.find(n => n.v === notaProf)?.label}"`
-                  : `Média das respostas do aluno: ${String(Math.round(para20Dec(notaProf) * 10) / 10).replace('.', ',')}/20. Toca num valor para mudar.`}
+                  : `Média das respostas do aluno: ${String(Math.round(para20Dec(notaProf) * 10) / 10).replace('.', ',')}/20. Toque num valor para o alterar.`}
                 {NIVEIS_PROF.some(n => n.v === notaProf) && notaProf !== notaAluno14 && (
                   <span style={{ color: 'var(--copper)', fontWeight: 700, fontStyle: 'normal' }}>
-                    {' '}· alteraste o que o aluno tinha posto
+                    {' '}· alterou a proposta do aluno
                   </span>
                 )}
               </div>
@@ -1031,7 +1031,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                       ? <>⚠️ Este aluno diz que hoje não aconteceu, mas <b>{viram} colega{viram === 1 ? '' : 's'}</b> disse{viram === 1 ? '' : 'ram'} que sim.</>
                       : <>O aluno diz que hoje não aconteceu.</>}
                     <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:6 }}>
-                      {([[false, 'Não aconteceu: não conta'], [true, 'Aconteceu e não reparou: fica na mais baixa']] as const).map(([v, t]) => {
+                      {([[false, 'Não aconteceu: não conta'], [true, 'Aconteceu e o aluno não reparou: fica com a resposta mais baixa']] as const).map(([v, t]) => {
                         const on = (triagem.naoReparou || []).includes(q.chave) === v;
                         return (
                           <button key={String(v)} onClick={() => setTriagem(tr => tr && ({ ...tr,
@@ -1121,8 +1121,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
           <Card>
             <div style={{ fontSize:15, fontWeight:700 }}>Atitudes dos anos anteriores</div>
             <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', margin:'4px 0 10px', lineHeight:1.5 }}>
-              O aluno vem do referencial antigo. Se o viste demonstrar alguma destas
-              atitudes hoje, soma +1. Não entra na nota da aula nem da UC — conta só
+              O aluno vem do referencial antigo. Se o observou a demonstrar alguma destas
+              atitudes hoje, some +1. Não entra na nota da aula nem da UC: conta apenas
               para consolidar a atitude.
             </div>
             {ordenada.map(x => {
@@ -1139,7 +1139,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                       {x.nome} <span style={{ fontSize:12, color:'rgba(26,23,20,0.45)', fontWeight:500 }}>· {x.ano}º ano</span>
                     </div>
                     {sugerida && (
-                      <div style={{ fontSize:12, color:'#7d4f8c' }}>O aluno escolheu esta para apanhar</div>
+                      <div style={{ fontSize:12, color:'#7d4f8c' }}>O aluno escolheu esta para recuperar</div>
                     )}
                   </div>
                   <span style={{ fontSize:13, color:'rgba(26,23,20,0.55)', flexShrink:0 }}>
@@ -1183,8 +1183,8 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         </button>
         {autoavaliacoes.some(a => !notasProf[a.competenciaId]) && (
           <div style={{ fontSize:13, color: 'var(--danger)', textAlign: 'center', marginTop: 6 }}>
-            Falta a tua nota em: {autoavaliacoes.filter(a => !notasProf[a.competenciaId]).map(a => { try { return nomeCompetencia(a.competenciaId); } catch { return a.competenciaId; } }).join(' · ')}.
-            {' '}Está mais acima, em cada competência.
+            Falta a sua nota em: {autoavaliacoes.filter(a => !notasProf[a.competenciaId]).map(a => { try { return nomeCompetencia(a.competenciaId); } catch { return a.competenciaId; } }).join(' · ')}.
+            {' '}Encontra-as mais acima, em cada competência.
           </div>
         )}
       </Card>
@@ -1207,7 +1207,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
               maxHeight:'80vh', overflowY:'auto',
             }}>
               <div style={{ fontSize:19, fontWeight:700, color:'var(--charcoal, #1a1714)' }}>
-                Confirmas esta avaliação?
+                Confirma esta avaliação?
               </div>
               <div style={{ fontSize:14.5, color:'rgba(26,23,20,0.6)', marginTop:6,
                 lineHeight:1.55 }}>
@@ -1230,10 +1230,10 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                   padding:14, marginTop:12 }}>
                   <div style={{ fontSize:14, fontWeight:700, color:'var(--copper)',
                     marginBottom:6 }}>
-                    Alteraste {alterou.length} de {autoavaliacoes.length}
+                    Alterou {alterou.length} de {autoavaliacoes.length}
                   </div>
                   <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', lineHeight:1.6 }}>
-                    Nas restantes concordaste com o que o aluno se deu.
+                    Nas restantes, concordou com a proposta do aluno.
                   </div>
                 </div>
               )}
@@ -1242,7 +1242,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
                 <div style={{ background:'rgba(26,23,20,0.04)', borderRadius:12,
                   padding:14, marginTop:12, fontSize:14, color:'rgba(26,23,20,0.75)',
                   lineHeight:1.55 }}>
-                  <b>Vais escrever ao aluno:</b><br />{comentario}
+                  <b>Mensagem para o aluno:</b><br />{comentario}
                 </div>
               )}
 

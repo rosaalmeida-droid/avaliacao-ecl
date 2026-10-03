@@ -44,7 +44,7 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-var VERSAO = 'ECL único v25.1';
+var VERSAO = 'ECL único v25.2';
 
 // ── Os ficheiros antigos, para trazer o que já lá está ───────
 // Corre  importarDoAntigo  uma vez. Não apaga nada de lá.
@@ -164,7 +164,7 @@ var PROP_ZERO = 'ECL_ZERO_EM';
 function comecarDoZero() {
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty('CONFIRMAR_APAGAR') !== 'APAGAR TUDO') {
-    Logger.log('NADA FOI APAGADO. Para começar do zero, cria a propriedade do script');
+    Logger.log('NADA FOI APAGADO. Para começar do zero, crie a propriedade do script');
     Logger.log('CONFIRMAR_APAGAR com o valor APAGAR TUDO e corre outra vez.');
     return;
   }
@@ -607,7 +607,7 @@ function doPost(e) {
 
   if (outros.length) {
     var lock = LockService.getScriptLock();
-    try { lock.waitLock(30000); } catch (err) { return resposta(false, 'Ocupado, tenta outra vez'); }
+    try { lock.waitLock(30000); } catch (err) { return resposta(false, 'O arquivo está ocupado. Tente outra vez.'); }
     var turmas = {};
     try {
       outros.forEach(function (x) {
@@ -1065,7 +1065,7 @@ function testar() {
   Logger.log('Presenças: ' + pres.length + ' (tem de ser 1) · decisão: ' + (pres[0] && pres[0].decisaoProfessor));
 
   Logger.log('');
-  Logger.log('Apaga as linhas de teste (turma TESTE) quando quiseres.');
+  Logger.log('Apague as linhas de teste (turma TESTE) quando quiser.');
   Logger.log('Contagens: ' + JSON.stringify(contagens()));
 }
 
@@ -1280,7 +1280,7 @@ function organizarPorAluno() {
   // resumidas no separador de cada turma. Fazê-las outra vez só enchia o
   // ficheiro de folhas repetidas (Rosa, out/2026: «porque tenho estes alunos?»).
   Logger.log('Já não é preciso: cada aluno está no separador da turma dele. '
-    + 'Para tirar as folhas antigas de cada aluno, corre  apagarFolhasAntigas  (faz antes uma cópia de segurança).');
+    + 'Para retirar as folhas antigas de cada aluno, execute  apagarFolhasAntigas  (faça antes uma cópia de segurança).');
 }
 
 
@@ -1936,7 +1936,7 @@ function seccaoGruposEColegas(d, aulas, alunos, junta, titulo, cabecalho, vazia,
     return Object.keys(membro).some(function (k) { return k.indexOf(p.id + '|') === 0 && membro[k].grupoId; });
   });
   titulo('GRUPOS E COLEGAS (' + comGrupos.length + ' aula' + (comGrupos.length === 1 ? '' : 's') + ' com grupos)', '#B5651D');
-  junta(['Em cada grupo: os alunos (★ = líder do KitchenFlow), a ficha, se o professor validou, e o que os colegas disseram de cada um. Só o professor vê; não conta para nota.']);
+  junta(['Em cada grupo: os alunos (★ = líder do KitchenFlow), a ficha, se o professor validou, e o que os colegas disseram de cada um. Só o professor vê; não conta para a nota.']);
   formatos.push({ tipo: 'legenda', linha: linhas.length });
   if (!comGrupos.length) { junta(['Ainda não houve aulas com grupos.']); vazia(); return; }
   cabecalho(['Dia', 'Aula', 'Grupo', 'Alunos', 'Ficha', 'Validado', 'O que os colegas disseram']);
@@ -2321,7 +2321,7 @@ function auditarFolhasAntigas() {
     var n = 0;
     try { n = ler(nome, {}).length; } catch (e) {}
     linhas.push(['Ficheiro novo', nome, n, '', '', '',
-      nome === 'TABELA_PRECOS' ? (n ? 'A tabela completa de preços da aplicação.' : 'Vazia: abre a aplicação como professor ou coordenação, com rede, para a preencher.')
+      nome === 'TABELA_PRECOS' ? (n ? 'A tabela completa de preços da aplicação.' : 'Vazia: abra a aplicação como professor ou coordenação, com ligação à internet, para a preencher.')
       : nome === 'PRECOS' ? 'Só os preços revistos pela coordenação.' : nome === 'MATERIAS_PRIMAS' ? 'Só as matérias-primas acrescentadas pelos professores.' : 'Os preços que os professores pediram para rever.']);
   });
 
@@ -2728,7 +2728,7 @@ function criarFolhaCodigos() {
     f.setColumnWidth(1, 200); f.setColumnWidth(2, 140);
   }
   f.showSheet(); ss.setActiveSheet(f);
-  Logger.log('Folha CODIGOS pronta. Escreve na coluna «codigo» o código NOVO de cada um (4 ou mais algarismos) e depois esconde a folha.');
+  Logger.log('Folha CODIGOS pronta. Escreva na coluna «codigo» o código NOVO de cada pessoa (4 ou mais algarismos) e depois oculte a folha.');
 }
 
 function lerCodigos() {
@@ -2813,7 +2813,7 @@ function criarFolhaProcurar() {
     .setFontSize(14).setFontWeight('bold');
   f.getRange('A1:H1').setBackground('#1f1b16').setFontColor('#faf7f2');
 
-  f.getRange('A3').setValue('Escreve aqui o nome (ou parte):').setFontWeight('bold');
+  f.getRange('A3').setValue('Escreva aqui o nome (ou parte dele):').setFontWeight('bold');
   f.getRange('B3').setBackground('#fdf0e6').setBorder(true, true, true, true, false, false);
   f.getRange('A4').setValue('Turma (opcional):').setFontWeight('bold');
   f.getRange('B4').setBackground('#fdf0e6').setBorder(true, true, true, true, false, false);
@@ -3134,7 +3134,7 @@ var SUMARIO_DADOS = {
   REQUISICAO_LINHAS: 'Os produtos de cada requisição. Para ler: coluna «Produtos» em REQUISIÇÕES (todas).',
   GRUPOS: 'Em que grupo esteve cada aluno em cada aula. Para ler: «GRUPOS E COLEGAS» no separador da turma.',
   GRUPOS_INFO: 'Cada grupo: a ficha que lhe calhou e se o professor validou. Para ler: o separador da turma.',
-  AVALIACAO_PARES: 'O que cada aluno disse de cada colega do grupo (colabora, ouve, é flexível, conflito). Só o professor vê; não conta para nota. Para ler: «GRUPOS E COLEGAS» no separador da turma.',
+  AVALIACAO_PARES: 'O que cada aluno disse de cada colega do grupo (colabora, ouve, é flexível, conflito). Só o professor vê; não conta para a nota. Para ler: «GRUPOS E COLEGAS» no separador da turma.',
   COMANDAS: 'Registos antigos das comandas.',
   POR_ARRUMAR: 'O que falta passar para as folhas por extenso. Esvazia-se sozinha.',
   EVENTOS: 'Os eventos (pedido, orçamentos, estado).',
@@ -3211,7 +3211,7 @@ var LEIA_ME = [
   ['GRUPOS / GRUPOS_INFO', 'Em que grupo esteve cada aluno em cada aula, e a ficha de cada grupo.'],
   ['AVALIACAO_PARES', 'O que cada aluno disse dos colegas de grupo. Só para o professor; não conta para nota.'],
   ['EVENTOS', 'Os eventos (pedido, orçamentos, estado).'],
-  ['ELIMINADOS', 'O que foi apagado pela aplicação — fica aqui guardado e não volta.'],
+  ['ELIMINADOS', 'O que foi apagado pela aplicação: fica aqui registado e não volta.'],
   ['POR_ARRUMAR', 'O que falta passar para as folhas por extenso. Esvazia-se sozinha logo a seguir a cada envio (e de 5 em 5 minutos).'],
   ['', ''],
   ['Regras', 'Não ordenar nem filtrar as folhas de dados durante as aulas. Para ver uma turma, usar o separador com o nome dela. As linhas ficam pela ordem em que foram criadas.']

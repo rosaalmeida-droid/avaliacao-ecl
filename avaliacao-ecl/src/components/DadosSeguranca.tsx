@@ -74,7 +74,7 @@ export function DadosSeguranca() {
       )}
       <div style={caixa}>
         <div style={titulo}>PINs dos professores</div>
-        <div style={nota}>Cada professor entra com o seu PIN e só vê as suas turmas. Entrega o PIN a cada um.</div>
+        <div style={nota}>Cada professor entra com o seu PIN e só vê as suas turmas. Entregue o PIN a cada professor.</div>
         {PROFESSORES.map(p => (
           <div key={p.nome} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0',
             borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14, flexWrap: 'wrap' }}>
@@ -121,7 +121,7 @@ export function DadosSeguranca() {
 
       <div style={caixa}>
         <div style={titulo}>Eliminar fichas de produção</div>
-        <div style={nota}>Apaga a ficha aqui e no arquivo da escola — não pode ser desfeito.</div>
+        <div style={nota}>Apaga a ficha neste aparelho e no arquivo da escola. Esta ação não pode ser desfeita.</div>
         <input value={pesquisa} onChange={e => setPesquisa(e.target.value)} placeholder="Pesquisar ficha pelo nome…"
           style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8,
             border: '1px solid rgba(26,23,20,0.15)', fontSize: 14, marginBottom: 8 }} />
@@ -130,7 +130,7 @@ export function DadosSeguranca() {
             borderTop: '1px solid rgba(26,23,20,0.06)', fontSize: 14 }}>
             <span style={{ flex: 1, minWidth: 0 }}>{f.nomePrato || '(sem nome)'}</span>
             <button style={botaoApagar} onClick={() => {
-              if (!confirm(`Eliminar definitivamente «${f.nomePrato}»?\n\nApaga a ficha aqui e no arquivo da escola — não pode ser desfeito.`)) return;
+              if (!confirm(`Eliminar definitivamente «${f.nomePrato}»?\n\nApaga a ficha neste aparelho e no arquivo da escola. Esta ação não pode ser desfeita.`)) return;
               eliminarFichaProducaoDefinitivamente(f.id); setVersao(v => v + 1);
             }}>Eliminar</button>
           </div>

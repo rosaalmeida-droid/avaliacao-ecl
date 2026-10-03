@@ -42,7 +42,7 @@ function buildCabecalho(modulo: ModuloCronograma, anoLetivo: string): string {
     modulo.disciplina,
     tipoLabel + ' ' + modulo.id.replace('UFCD ', '') + ' - ' + modulo.nome,
     'Carga Horaria: ' + String(modulo.horasPrevistas) + ' horas',
-    'Ano Lectivo ' + anoLetivo,
+    'Ano Letivo ' + anoLetivo,
   ].join('\n');
 }
 
@@ -66,7 +66,7 @@ function buildContextoManual(modulo: ModuloCronograma, anoLetivo: string): strin
     '- Limites HACCP reais: refrigeracao 0-4 C, congelacao -18 C, confecao 65 C, regra 2h',
     '',
     'ESTILO:',
-    '- Portugues europeu, grafia pre-Acordo (Objectivos, actual, confeccao)',
+    '- Portugues europeu, grafia do Acordo Ortografico em vigor (objetivos, atual, confecao)',
     '- Texto justificado, tom tecnico-pedagogico',
     '- Caixas de destaque: DICA DO CHEF, CIENCIA NA COZINHA, HACCP, ERROS FREQUENTES, SABIAS QUE, NOTA',
     '- Tabelas com cabecalho colorido e linhas alternadas',
@@ -85,7 +85,7 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
       'PARTE 1 DE 5 - Gera APENAS esta parte e para:',
       '- Capa (com dados do cabecalho abaixo)',
       '- Enquadramento no Referencial (tabela: codigo, designacao, componente, ano, nivel, pre-requisitos)',
-      '- Objectivos de aprendizagem (8 objectivos em lista)',
+      '- Objetivos de aprendizagem (8 objetivos em lista)',
       '- Indice provisorio (deixa os numeros de pagina como "..." - serao preenchidos no fim)',
       '- Capitulo 1: Introducao (importancia da UC, valor nutricional/tecnico, historia, enquadramento)',
       '- Capitulo 2: Tecnologia da materia-prima (classificacao, criterios de qualidade/frescura)',
@@ -101,7 +101,7 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
       contexto,
       '',
       'PARTE 2 DE 5 - Continua o manual. Gera APENAS:',
-      '- Capitulo 5: Metodos de confeccao (calor humido/seco, pontos de cozedura, temperaturas)',
+      '- Capitulo 5: Metodos de confecao (calor humido/seco, pontos de cozedura, temperaturas)',
       '- Capitulo 6: Molhos e guarniciones (molhos-base passo a passo, marinadas, derivados)',
       '- Capitulo 7: Empratamento e analise sensorial (principios, grelha sensorial, harmonizacao)',
       '- Capitulo 8: Sustentabilidade (escolha responsavel, sazonalidade, aproveitamento integral)',
@@ -131,7 +131,7 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
       '- Capitulo 14: Fichas Tecnicas de Receita (minimo 8 receitas, maximo 14)',
       '  Cada ficha: nome, doses (4), tempo, metodo, lista de ingredientes com quantidades,',
       '  preparacao passo a passo numerado, nota tecnica do chef',
-      '  As receitas devem cobrir diferentes metodos de confeccao da UC',
+      '  As receitas devem cobrir diferentes metodos de confecao da UC',
       '',
       'Mantem o mesmo estilo e formato.',
       'Escreve "===FIM PARTE 4===" na ultima linha.',
@@ -148,7 +148,7 @@ function buildPromptGuiao(modulo: ModuloCronograma, anoLetivo: string, parte: nu
       '- Anexo A: Modelo de ficha tecnica em branco',
       '- Anexo B: Folha-resumo de temperaturas e regras HACCP (destacavel)',
       '',
-      'No fim de tudo, escreve uma linha com o INDICE FINAL actualizado com os numeros de pagina reais.',
+      'No fim de tudo, escreve uma linha com o INDICE FINAL atualizado com os numeros de pagina reais.',
       'Escreve "===FIM MANUAL===" na ultima linha.',
     ],
   };
@@ -379,14 +379,14 @@ function construirPromptUnico(modulo: ModuloCronograma, anoLetivo: string): stri
     '────────────────────────────────────────',
     '# UFCD A DESENVOLVER',
     modulo.id + ' — ' + modulo.nome,
-    'Referencial ' + ref_ + ' | ECL | Ano Lectivo 2026-2027',
+    'Referencial ' + ref_ + ' | ECL | Ano Letivo 2026-2027',
     '',
     'Realizações:', realizacoes || '- ver referencial',
     'Critérios:', criterios || '- ver referencial',
     'Conhecimentos específicos:', conhecimentos || '- ver referencial',
     '', tema, '',
     '────────────────────────────────────────',
-    '# OBJECTIVO',
+    '# OBJETIVO',
     'Produzir um MANUAL DO ALUNO dedicado exclusivamente à UFCD fornecida.',
     'O manual deve desenvolver em profundidade o verdadeiro objecto de estudo desta unidade.',
     'Não escrevas um manual da disciplina. Escreve um manual desta UFCD.',
@@ -438,16 +438,16 @@ function construirPromptUnico(modulo: ModuloCronograma, anoLetivo: string): stri
     'Livro técnico. Nunca expliques o que vais fazer.',
     'Nunca: "Neste capítulo..." "Vamos estudar..." "Iremos abordar..."',
     'Começa imediatamente pelo conteúdo.',
-    'Português europeu pré-Acordo (confecção, objectivo, actual, técnico).',
+    'Português europeu, com a grafia do Acordo Ortográfico em vigor (confeção, objetivo, atual, técnico).',
     '',
     '────────────────────────────────────────',
     '# CONTINUIDADE',
     'Se atingires o limite: interrompe no final de um parágrafo. Nunca cries conclusões.',
-    'Na resposta seguinte continua exactamente na frase seguinte. Nunca reinicies.',
+    'Na resposta seguinte continua exatamente na frase seguinte. Nunca reinicies.',
     '',
     '────────────────────────────────────────',
     '# FINAL DO MANUAL (só depois de todos os conteúdos específicos)',
-    '- receitas emblemáticas directamente relacionadas com esta UFCD;',
+    '- receitas emblemáticas diretamente relacionadas com esta UFCD;',
     '- questões de revisão; glossário técnico; índice final.',
     'As receitas nunca substituem o desenvolvimento teórico.',
     '',
@@ -455,7 +455,7 @@ function construirPromptUnico(modulo: ModuloCronograma, anoLetivo: string): stri
     '# REGRA FUNDAMENTAL',
     '"Este texto ajuda o aluno a dominar os conhecimentos exclusivos desta UFCD?"',
     'Se NÃO: não o escrevas. Se SIM: desenvolve até esgotar o tema.',
-    'O objectivo é produzir a obra mais completa possível sobre esta UFCD.',
+    'O objetivo é produzir a obra mais completa possível sobre esta UFCD.',
   ].join('\n');
 }
 
@@ -634,16 +634,16 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
   }
 
   async function gerarManual() {
-    if (!moduloSel) { setErro('Selecciona um modulo do cronograma primeiro.'); return; }
+    if (!moduloSel) { setErro('Selecione primeiro um módulo do cronograma.'); return; }
     setGerandoIA(true);
-    setFaseIA('Parte 1/5 - Introducao e HACCP...');
+    setFaseIA('Parte 1/5: introdução e HACCP...');
     setErro('');
     // Actualizar fase visualmente enquanto o GS processa (~60-90s total)
     const fases = [
-      'Parte 2/5 - Metodos de confeccao e especializacao...',
-      'Parte 3/5 - Fichas de trabalho e projeto...',
-      'Parte 4/5 - Receitas...',
-      'Parte 5/5 - Glossario, questionario e anexos...',
+      'Parte 2/5: métodos de confeção e especialização...',
+      'Parte 3/5: fichas de trabalho e projeto...',
+      'Parte 4/5: receitas...',
+      'Parte 5/5: glossário, questionário e anexos...',
     ];
     let fi = 0;
     const intervalo = setInterval(() => {
@@ -708,7 +708,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
             <div style={{ marginBottom: 10 }}>
               <label style={{ fontSize: 12.5, fontWeight: 700, color: 'rgba(26,23,20,0.5)',
                 display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Ano Lectivo
+                Ano Letivo
               </label>
               <div style={{ display: 'flex', gap: 6 }}>
                 {ANOS.map(a => (
@@ -773,7 +773,7 @@ function FormularioManual({ entrada, onGuardar, onCancelar, nomeProfessor }: {
             {/* Gerar manual — 3 IAs à escolha */}
             {!moduloSel ? (
               <div style={{ fontSize: 13, color: 'rgba(109,40,217,0.4)', textAlign: 'center', padding: 8 }}>
-                Selecciona um módulo para activar.
+                Selecione um módulo para o ativar.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

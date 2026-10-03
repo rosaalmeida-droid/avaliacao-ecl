@@ -41,7 +41,7 @@ export function CopiaSegurancaView() {
         }
         setFicheiroEscolhido(json);
       } catch {
-        setResultado({ ok: false, msg: 'Não foi possível ler este ficheiro. Confirma que é um .json exportado por esta app.' });
+        setResultado({ ok: false, msg: 'Não foi possível ler este ficheiro. Confirme que é um ficheiro .json exportado por esta aplicação.' });
       }
     };
     reader.readAsText(file);
@@ -50,7 +50,7 @@ export function CopiaSegurancaView() {
   function confirmarRestauro(modo: 'substituir' | 'juntar') {
     if (!ficheiroEscolhido) return;
     if (modo === 'substituir') {
-      const ok = confirm('Isto vai APAGAR tudo o que está guardado agora e substituir pelo conteúdo do ficheiro. Tens a certeza?');
+      const ok = confirm('Isto vai APAGAR tudo o que está guardado agora e substituir pelo conteúdo do ficheiro. Tem a certeza?');
       if (!ok) return;
     }
     try {
@@ -68,7 +68,7 @@ export function CopiaSegurancaView() {
         Cópia de Segurança
       </div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 16 }}>
-        Guarda uma cópia de tudo no teu computador. Útil se mudares de dispositivo ou se algo correr mal.
+        Guarde uma cópia de todos os dados no seu computador. É útil se mudar de aparelho ou se algo correr mal.
       </div>
 
       {/* O que está guardado agora */}
@@ -100,7 +100,7 @@ export function CopiaSegurancaView() {
       <div style={{ background: 'var(--copper-pale)', borderRadius: 12, padding: 16, border: '1px solid rgba(181,101,29,0.3)' }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--copper)', marginBottom: 6 }}>📤 Restaurar de um ficheiro</div>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 12 }}>
-          Escolhe um ficheiro .json exportado anteriormente para recuperar os dados.
+          Escolha um ficheiro .json exportado anteriormente para recuperar os dados.
         </div>
         <input ref={inputRef} type="file" accept=".json" onChange={lerFicheiro} style={{ marginBottom: 10, fontSize: 13 }} />
 

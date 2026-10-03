@@ -151,7 +151,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
   }
 
   async function gerar(tipo: 'xlsx' | 'pdf', partilhar = false) {
-    if (!escolhidas.length) { alert('Escolhe pelo menos um aluno.'); return; }
+    if (!escolhidas.length) { alert('Escolha pelo menos um aluno.'); return; }
     if (!confirmarClassificacoes()) return;
     setAGerar(tipo);
     try {
@@ -175,8 +175,8 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
   const podePartilhar = typeof navigator !== 'undefined' && typeof (navigator as any).canShare === 'function';
 
   async function enviar() {
-    if (!email.includes('@')) { alert('Escreve o teu email.'); return; }
-    if (!escolhidas.length) { alert('Escolhe pelo menos um aluno.'); return; }
+    if (!email.includes('@')) { alert('Escreva o seu email.'); return; }
+    if (!escolhidas.length) { alert('Escolha pelo menos um aluno.'); return; }
     if (!confirmarClassificacoes()) return;
     publicarNotas(false);
     guardarEmailDoProfessor(email);
@@ -351,7 +351,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
 
         {(modoPlanos !== 'pergunta' || avaliados.length === 0) && (<>
         {/* 3. A pauta */}
-        <div style={rotulo}>3. A pauta (toca num aluno para ver de onde saem os 5 C's)</div>
+        <div style={rotulo}>3. A pauta (toque num aluno para ver de onde vêm os 5 C)</div>
         {(semEvidencia.length > 0 || semProposta.length > 0) && (
           <div style={{ background: '#fdf0e6', border: '1px solid var(--copper)', borderRadius: 10,
             padding: '11px 13px', fontSize: 13.5, lineHeight: 1.55, marginBottom: 10 }}>
@@ -365,14 +365,14 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
           </div>
         )}
         <details style={{ fontSize: 13, color: 'rgba(26,23,20,0.7)', marginBottom: 8 }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 700 }}>De onde saem os 5 C's</summary>
+          <summary style={{ cursor: 'pointer', fontWeight: 700 }}>De onde vêm os 5 C</summary>
           <div style={{ padding: '6px 0 0 4px', lineHeight: 1.6 }}>
             {(Object.keys(MAPA_5C) as Letra5C[]).map(k => (
               <div key={k}><b>{MAPA_5C[k].sigla} {MAPA_5C[k].nome}</b>: {MAPA_5C[k].evidencias}.</div>
             ))}
             <div><b>CP Competente</b>: os Planos de Avaliação, com a ponderação acima.</div>
             <div style={{ marginTop: 4 }}>As atitudes e a higiene e segurança alimentar já contam na nota de cada plano
-              (logo no CP) e por isso não entram outra vez nos 5 C's.</div>
+              (logo no CP) e por isso não entram outra vez nos 5 C.</div>
           </div>
         </details>
         <div style={{ overflowX: 'auto', border: '1px solid rgba(0,128,128,0.4)', borderRadius: 8 }}>
@@ -508,7 +508,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
             <div style={rotulo}>5. Notas finais para os alunos</div>
             <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginBottom: 8, lineHeight: 1.5 }}>
               Cada aluno vê a sua nota final da UC (a CLASSIF. ATRIBUÍDA) depois de a publicares.
-              Se mudares uma nota na pauta, publica outra vez e o aluno vê a nota atualizada.
+              Se alterar uma nota na pauta, publique outra vez e o aluno passa a ver a nota atualizada.
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => { if (publicarNotas()) alert('Notas finais publicadas. Os alunos já as veem na aplicação.'); }}
@@ -526,7 +526,7 @@ export function FecharUC({ turmaId, ucId, ucNome, nomeProfessor, onFechado, onCa
         {!provisoria && (<>
         <div style={rotulo}>6. Fechar a unidade e enviar</div>
         <input value={email} onChange={e => setEmail(e.target.value)}
-          placeholder="o.teu.email@eclisboa.net" style={{
+          placeholder="o.seu.email@eclisboa.net" style={{
             width: '100%', padding: '11px 12px', borderRadius: 10, fontSize: 15,
             border: '1px solid rgba(26,23,20,0.2)', fontFamily: 'inherit', boxSizing: 'border-box',
           }} />

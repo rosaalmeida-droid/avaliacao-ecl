@@ -131,7 +131,7 @@ export function CentroAvisos({ onNavegar, perfil }: { onNavegar?: (aviso: Aviso)
                       <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                         <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--guia)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Editar antes de aprovar</div>
                         <div style={{ marginBottom: 7 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>Nome correcto</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 2 }}>Nome correto</div>
                           <input value={form.nomeCorrigido} onChange={e => setF('nomeCorrigido', e.target.value)}
                             style={{ width: '100%', padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 13 }} />
                         </div>

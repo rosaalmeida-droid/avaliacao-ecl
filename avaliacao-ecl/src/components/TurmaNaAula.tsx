@@ -98,10 +98,10 @@ export function TurmaNaAula({
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.tinta }}>
               {porDecidir ? `Faltam decidir ${porDecidir} aluno${porDecidir > 1 ? 's' : ''} (não entrou ou chegou fora de tempo).`
                 : conf ? `✓ Presenças confirmadas${(plano as any)?.presencasConfirmadasPor ? ` por ${(plano as any).presencasConfirmadasPor}` : ''} em ${hora}.`
-                : 'Todas as faltas decididas. Confirma para ficarem gravadas.'}
+                : 'Todas as faltas estão decididas. Confirme para ficarem guardadas.'}
             </div>
             <div style={{ fontSize: 12.5, color: C.suave, marginTop: 3 }}>
-              Cada decisão grava logo. «Confirmar» volta a enviar todas para a folha e marca esta parte como feita.
+              Cada decisão fica guardada de imediato. O botão «Confirmar» volta a enviar todas as decisões para o Sheets e marca esta parte como concluída.
             </div>
             <button onClick={() => { confirmarPresencasDaAula(planoAulaId, nomeProfessor || 'professor'); redesenhar(n => n + 1); onAtualizar?.(); }}
               style={{ marginTop: 10, minHeight: 44, width: '100%', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit',

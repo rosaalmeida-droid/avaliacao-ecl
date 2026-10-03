@@ -56,7 +56,7 @@ function TabCompetencias({ plano }: { plano?: PlanoAula }) {
   if (!plano) {
     return (
       <div style={{ padding: 16, color: 'rgba(26,23,20,0.4)', fontSize: 13, textAlign: 'center', marginTop: 32 }}>
-        Abre um plano de aula para ver as competências associadas.
+        Abra um plano de aula para ver as competências associadas.
       </div>
     );
   }
@@ -83,7 +83,7 @@ function TabCompetencias({ plano }: { plano?: PlanoAula }) {
       {/* Técnicas e subtécnicas */}
       {!compRemovidas.length && !compAdicionadas.length ? (
         <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.35)', marginTop: 10, fontStyle: 'italic' }}>
-          Define as competências no plano para as ver aqui.
+          Defina as competências no plano para as ver aqui.
         </div>
       ) : (
         <>
@@ -130,7 +130,7 @@ function TabComentario({ plano, nomeProfessor }: { plano?: PlanoAula; nomeProfes
   if (!plano) {
     return (
       <div style={{ padding: 16, color: 'rgba(26,23,20,0.4)', fontSize: 13, textAlign: 'center', marginTop: 32 }}>
-        Abre um plano para deixar comentários.
+        Abra um plano para deixar comentários.
       </div>
     );
   }
@@ -157,7 +157,7 @@ function TabComentario({ plano, nomeProfessor }: { plano?: PlanoAula; nomeProfes
         👤 Notas por aluno
       </div>
       <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', fontStyle: 'italic' }}>
-        Clica num aluno na Validação para deixar nota individual.
+        Clique num aluno, na Validação, para deixar uma nota individual.
       </div>
     </div>
   );

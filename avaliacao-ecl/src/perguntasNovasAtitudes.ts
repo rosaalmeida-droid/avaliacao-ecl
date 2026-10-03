@@ -131,7 +131,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
     par(
       P('Hoje, quando uma coisa te correu mal no prato, o que fizeste?', [
         'Atirei com as coisas ou disse asneiras.',
-        'Fiquei muito irritado e desisti um bocado.',
+        'Fiquei muito irritado/a e quase desisti.',
         'Respirei e tentei outra vez.',
         'Respirei, tentei outra vez e ri-me do que aconteceu.',
       ], 'Hoje não me correu nada mal.'),
@@ -364,7 +364,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
   'ATI-002': [ // Autonomia no âmbito das suas funções
     par(
       P('Hoje, quando acabaste a tua tarefa, o que fizeste?', [
-        'Fiquei parado à espera que me dissessem.',
+        'Fiquei parado/a à espera de que me dissessem.',
         'Perguntei o que fazer a seguir.',
         'Vi na ficha o que vinha a seguir e comecei.',
         'Vi o que vinha a seguir e ajudei também onde fazia falta.',
@@ -405,7 +405,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
   'ATI-007': [ // Empatia
     par(
       P('Hoje, quando um colega teve dificuldade numa técnica, o que fizeste?', [
-        'Ri-me ou gozei.',
+        'Ri-me ou fiz troça.',
         'Não liguei.',
         'Perguntei se precisava de ajuda.',
         'Ajudei-o sem o deixar envergonhado.',
@@ -664,7 +664,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
       ], ['colegas'], ['colegas'])),
     par(
       P('Hoje, quando um colega precisou de mais tempo ou de outra maneira de aprender, o que fizeste?', [
-        'Reclamei ou gozei.',
+        'Reclamei ou fiz troça.',
         'Fiquei impaciente.',
         'Esperei com paciência.',
         'Esperei e ajudei à maneira dele.',
@@ -734,7 +734,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
   'ATI-006': [ // Assertividade
     par(
       P('Hoje, quando discordaste de uma decisão, o que fizeste?', [
-        'Fiquei calado e chateado.',
+        'Fiquei calado/a e aborrecido/a.',
         'Reclamei com os colegas, mas não disse a quem decidiu.',
         'Disse a minha opinião com calma.',
         'Disse a minha opinião com calma e expliquei porquê.',
@@ -795,7 +795,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
       ], 'Hoje não fiz lixo.', ['cozinha']),
       P('Hoje, com os descartáveis (película, papel, luvas), como foi?', [
         'Usei muito mais do que precisava.',
-        'Usei um bocado a mais.',
+        'Usei um pouco a mais.',
         'Usei só o necessário.',
         'Usei só o necessário e reutilizei o que podia.',
       ], [], ['cozinha'])),
@@ -808,7 +808,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
       ], 'Hoje não escolhi ingredientes.', ['producao']),
       P('Hoje, com as quantidades, como foi?', [
         'Fiz muito mais do que era preciso.',
-        'Fiz um bocado a mais.',
+        'Fiz um pouco a mais.',
         'Fiz a quantidade certa.',
         'Fiz a quantidade certa e pesei tudo antes.',
       ], [], ['producao'])),
@@ -843,7 +843,7 @@ export const PARES_NOVOS_ATITUDES: Record<string, ParDePerguntas[]> = {
     par(
       P('Hoje, quando alguém criticou o teu trabalho, o que fizeste?', [
         'Fiquei magoado e desisti.',
-        'Fiquei calado e chateado.',
+        'Fiquei calado/a e aborrecido/a.',
         'Ouvi e pensei no que podia melhorar.',
         'Ouvi, agradeci e melhorei.',
       ], 'Hoje ninguém criticou o meu trabalho.'),

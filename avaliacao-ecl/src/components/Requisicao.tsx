@@ -182,14 +182,14 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
         addAviso({
           tipo: 'ingrediente_nao_encontrado',
           titulo: `Ingrediente "${proc.produto}" não está na base de preços`,
-          descricao: `Confirma o preço de "${proc.produto}" na Requisição — fica guardado automaticamente para a próxima vez.`,
+          descricao: `Confirme o preço de "${proc.produto}" na requisição. Fica guardado automaticamente para a próxima vez.`,
           contexto: { ingredienteNome: proc.produto, fichaId: f.id },
         });
       } else if (confianca === 'ambigua') {
         addAviso({
           tipo: 'ingrediente_ambiguo',
-          titulo: `Confirma o preço de "${proc.produto}"`,
-          descricao: `A app associou a "${mp?.nome}" mas não tem a certeza — confirma se está correto na Requisição.`,
+          titulo: `Confirme o preço de "${proc.produto}"`,
+          descricao: `A aplicação associou este produto a "${mp?.nome}", mas não tem a certeza. Confirme se está correto na requisição.`,
           contexto: { ingredienteNome: proc.produto, fichaId: f.id },
         });
       }
@@ -197,7 +197,7 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
       // Aviso: unidade 'un' que não é ovo
       const avisos = [...proc.avisos];
       if (proc.und === 'un' && !/(ov[oa]|egg)/i.test(proc.produto)) {
-        avisos.push(`⚠️ "${proc.produto}" ficou em unidades — verificar se é correcto`);
+        avisos.push(`⚠️ "${proc.produto}" ficou em unidades — verificar se está correto`);
       }
 
       // Q.b. e quantidade real do mesmo produto: fica a quantidade real.
@@ -506,10 +506,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     const fichasSemIngredientes = fichasSelecionadas.filter(f => !Array.isArray(f.ingredientes) || f.ingredientes.length === 0);
     const fichasComTempos = fichasSelecionadas.filter(f => (Array.isArray(f.ingredientes) ? f.ingredientes : []).some(i => produtoEhTempo(i?.produto || '')));
     if (fichasComTempos.length > 0) {
-      alert(`Atenção: a(s) ficha(s) "${fichasComTempos.map(f => f.nomePrato).join('", "')}" têm tempos dos passos (ex.: «3 min») no lugar dos ingredientes. Ficaram de fora da requisição. Abre a ficha e cola outra vez a resposta da IA para corrigir.`);
+      alert(`Atenção: a(s) ficha(s) "${fichasComTempos.map(f => f.nomePrato).join('", "')}" têm tempos dos passos (ex.: «3 min») no lugar dos ingredientes. Ficaram de fora da requisição. Abra a ficha e cole outra vez a resposta da IA para a corrigir.`);
     }
     if (fichasSemIngredientes.length > 0) {
-      alert(`Atenção: a(s) ficha(s) "${fichasSemIngredientes.map(f => f.nomePrato).join('", "')}" não têm ingredientes guardados. Abre a ficha e confirma que está completa antes de gerar a requisição.`);
+      alert(`Atenção: a(s) ficha(s) "${fichasSemIngredientes.map(f => f.nomePrato).join('", "')}" não têm ingredientes guardados. Abra a ficha e confirme que está completa antes de gerar a requisição.`);
     }
     // Requisição já guardada para este plano (auditoria out/2026): os preços
     // corrigidos à mão voltam sempre; as quantidades corrigidas voltam se as
@@ -671,7 +671,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       if (dadosResposta?.ok === false) {
         setMsg('⚠️ Erro: ' + (dadosResposta.mensagem || 'desconhecido'));
       } else if (!dadosResposta) {
-        setMsg('⚠️ Não houve resposta do documento. Confirma se a requisição foi criada antes de enviar outra vez.');
+        setMsg('⚠️ O documento não respondeu. Confirme se a requisição foi criada antes de a enviar outra vez.');
       } else {
         chegou = true;
         setMsg('✓ Enviado!');
@@ -681,7 +681,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       }
     } catch (e) {
       if (String(e).includes('abort')) {
-        setMsg('⏱️ Demorou demasiado — confirma se a requisição foi criada.');
+        setMsg('⏱️ O envio demorou demasiado. Confirme se a requisição foi criada.');
       } else {
         setMsg('❌ Falhou: ' + String(e));
       }
@@ -807,8 +807,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
             fontWeight: 700, marginBottom: 4, color: 'white' }}>🛒 Nova Requisição</div>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
             {planoIdFixo
-              ? 'Escolhe as fichas desta aula e define as doses.'
-              : 'Selecciona o dia no calendário (ou faz sem plano), escolhe as fichas e define as doses.'}
+              ? 'Escolha as fichas desta aula e defina as doses.'
+              : 'Selecione o dia no calendário (ou faça a requisição sem plano), escolha as fichas e defina as doses.'}
           </div>
         </div>
 
@@ -959,7 +959,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         {/* 2. Fichas e doses */}
         <div id="req-fichas" style={S.card}>
             <label style={S.lbl}>2. Fichas de producao e doses</label>
-            <div style={{ ...S.muted, marginBottom: 10 }}>Seleciona as fichas e define as doses pretendidas para cada uma.</div>
+            <div style={{ ...S.muted, marginBottom: 10 }}>Selecione as fichas e defina as doses pretendidas para cada uma.</div>
 
             {/* Duas origens. Sem isto, uma requisição só podia usar as
                 fichas do plano — e os orçamentos, que não têm plano,
@@ -999,10 +999,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               <div style={{ padding: '14px', color: 'rgba(26,23,20,0.5)', fontSize: 13.5,
                 textAlign: 'center', lineHeight: 1.55 }}>
                 {origemFichas === 'plano'
-                  ? 'Este plano não tem fichas associadas. Podes ir buscá-las à biblioteca no separador ao lado.'
+                  ? 'Este plano não tem fichas associadas. Pode ir buscá-las à biblioteca, no separador ao lado.'
                   : buscaFicha.trim()
                     ? `Nenhuma ficha com "${buscaFicha}".`
-                    : 'Ainda não há fichas na biblioteca. Cria a primeira nas Fichas Técnicas.'}
+                    : 'Ainda não há fichas na biblioteca. Crie a primeira em Fichas Técnicas.'}
               </div>
             ) : null}
 
@@ -1151,7 +1151,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 placeholder="Nome de quem faz as compras" /></div>
             </div>
             <div style={{ marginBottom: 8 }}>
-              <label style={S.lbl}>Atividade (pré-preenchida do plano — podes ajustar)</label>
+              <label style={S.lbl}>Atividade (preenchida a partir do plano; pode ajustar)</label>
               <input style={{ ...S.inp, width: '100%' }} value={atividade} onChange={e => setAtividade(e.target.value)} placeholder="ex: Almoco dos Pais · ECL Restaurante" />
             </div>
             <div>
@@ -1322,7 +1322,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   </div>
                 )}
                 <div style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, marginBottom: 10 }}>
-                  → Cria uma Ficha Técnica separada para a produção desta massa e associa-a a este plano de aula.
+                  → Crie uma Ficha Técnica separada para a produção desta massa e associe-a a este plano de aula.
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button onClick={() => setDecisao(i, 'produzir')}
@@ -1346,7 +1346,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                     <div style={{ fontWeight: 700, color: 'var(--guia)', marginBottom: 4 }}>⏳ Pendência criada</div>
                     <div style={{ color: 'rgba(26,23,20,0.7)' }}>"{l.produto}" não vai para a requisição de compras. Antes da aula:</div>
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{ fontSize: 12.5, color: 'var(--guia)', fontWeight: 600 }}>✓ Cria uma Ficha Técnica para esta massa e associa-a a este plano</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--guia)', fontWeight: 600 }}>✓ Crie uma Ficha Técnica para esta massa e associe-a a este plano</div>
                       <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>As matérias-primas base precisam de aparecer numa requisição separada</div>
                     </div>
                   </div>
@@ -1513,7 +1513,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                         }}
                         onBlur={() => confirmarPrecoIngrediente(i)}
                         style={{ ...S.inp, width: 58, textAlign: 'right', fontSize:13, background: l.daBD ? 'var(--sage-pale)' : '#fff' }}
-                        placeholder="0.00" title={l.daBD ? 'Preço da base de dados' : 'Confirma o preço — fica guardado para a próxima vez'} />
+                        placeholder="0.00" title={l.daBD ? 'Preço da base de dados' : 'Confirme o preço: fica guardado para a próxima vez'} />
                     </td>
                     <td style={{ padding: '3px 5px', textAlign: 'right', fontWeight: l.precoEncomenda > 0 ? 600 : 400, color: l.precoEncomenda > 0 ? 'var(--copper)' : 'rgba(26,23,20,0.55)' }}>
                       {l.precoEncomenda > 0 ? fE(l.precoEncomenda) : '—'}
@@ -1629,7 +1629,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 <div style={{ fontWeight: 700, fontSize: 15 }}>🌱 Escolher microgreens</div>
                 <button onClick={() => setPainelMicrogreens(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>×</button>
               </div>
-              <div style={{ fontSize: 12.5, opacity: 0.8, marginTop: 4 }}>Clica numa variedade para seleccionar</div>
+              <div style={{ fontSize: 12.5, opacity: 0.8, marginTop: 4 }}>Clique numa variedade para a selecionar</div>
             </div>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
               <input
@@ -1680,7 +1680,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               ))}
             </div>
             <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', fontSize: 12.5, color: 'rgba(26,23,20,0.4)', textAlign: 'center' }}>
-              Preços estimados · actualizar com Makro
+              Preços estimados · atualizar com os preços do Makro
             </div>
           </div>
         );

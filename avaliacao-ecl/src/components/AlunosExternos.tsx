@@ -132,7 +132,7 @@ function FormAluno({ a, onFechar, onGuardado }: { a: AlunoExterno; onFechar: () 
           eliminarAlunoExterno(d.id); onGuardado();
         }}>Eliminar</button>}
         <span style={{ flex: 1 }} />
-        <button style={botao()} onClick={() => { if (!d.nome.trim()) { alert('Escreve o nome.'); return; } guardarAlunoExterno({ ...d, nome: d.nome.trim() }); onGuardado(); }}>Guardar</button>
+        <button style={botao()} onClick={() => { if (!d.nome.trim()) { alert('Escreva o nome.'); return; } guardarAlunoExterno({ ...d, nome: d.nome.trim() }); onGuardado(); }}>Guardar</button>
       </div>
     </Modal>
   );
@@ -171,8 +171,8 @@ function FormRecuperacao({ a, nomeProfessor, onFechar, onCriada }: { a: AlunoExt
         <span style={{ flex: 1 }} />
         <button style={botao()} onClick={() => {
           const uc = ucs.find(u => u.id === ucId);
-          if (!uc) { alert('Escolhe a UC.'); return; }
-          if (!descricao.trim()) { alert('Escreve o que o aluno tem de fazer.'); return; }
+          if (!uc) { alert('Escolha a UC.'); return; }
+          if (!descricao.trim()) { alert('Escreva o que o aluno tem de fazer.'); return; }
           criarRecuperacaoExterno(a, uc, modalidade, descricao.trim(), prazo, professor.trim());
           onCriada();
         }}>Criar o plano</button>
@@ -224,7 +224,7 @@ function CartaoRecuperacao({ r, nomeProfessor, onMudou }: { r: any; nomeProfesso
           <button style={botao(false)} onClick={() => setModo('')}>Cancelar</button>
           <button style={botao()} onClick={() => {
             const n = Number(nota.replace(',', '.'));
-            if (nota === '' || isNaN(n) || n < 0 || n > 20) { alert('Escreve o resultado, de 0 a 20.'); return; }
+            if (nota === '' || isNaN(n) || n < 0 || n > 20) { alert('Escreva o resultado, de 0 a 20.'); return; }
             registarResultadoRecuperacao(r.id, n, texto.trim(), nomeProfessor || r.professorAvaliador); setModo(''); onMudou();
           }}>Guardar o resultado</button>
         </div>

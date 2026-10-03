@@ -245,7 +245,7 @@ export function PainelProfessor({
               fontSize: 13, fontWeight: 700, textTransform: 'uppercase',
               letterSpacing: '0.07em', color: C.suave, marginBottom: 10,
             }}>
-              As tuas aulas
+              As suas aulas
             </div>
             {calendario}
           </div>

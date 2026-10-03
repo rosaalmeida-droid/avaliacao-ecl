@@ -33,6 +33,7 @@ function GrupoCompetencias({ titulo, icone, itens }: { titulo: string; icone: st
 }
 
 import { escreverPerfil } from '../motorAvaliacao';
+import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { assiduidadeNaUC, leituraAssiduidade, assiduidadeEmHoras, perfilSocialDoAluno } from '../backend';
 import { MICROCOMPETENCIAS } from '../compatECL';
 
@@ -64,6 +65,8 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
       nome: c.nome,
       categoria: MICROCOMPETENCIAS.find(m => m.id === c.competenciaId)?.categoria,
       nivel: c.nivel,
+      consolidada: c.consolidada,
+      media: (c as any).media ?? null,
     }))
   );
 
@@ -83,8 +86,6 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
           Ainda não há competências registadas. Vai aparecendo aqui à medida que participas nas aulas.
         </div>
       )}
-
-      <PerfilSocialAluno alunoId={aluno.id} />
 
       {/* Assiduidade — antes das competências, porque é a base de
           tudo o resto. Sem estar presente não há nada a demonstrar. */}
@@ -111,13 +112,17 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
           </div>
           {ucsAcima.map(u => (
             <div key={u.ucId} style={{ fontSize:14, fontWeight:700, color:'var(--danger)', marginBottom:8, lineHeight:1.5 }}>
-              {u.ucId}: {fmtH(u.horasFaltadas)} h de faltas. A UC tem {fmtH(u.horasPrevistas || u.horasDadas)} h no total — chegaste aos 10% ({fmtH(u.limite)} h).
+              {u.ucId}: {fmtH(u.horasFaltadas)} h de faltas. A UC tem {fmtH(u.horasPrevistas || u.horasDadas)} h no total, e já chegaste aos 10% ({fmtH(u.limite)} h).
               Tens de fazer a recuperação deste módulo.
             </div>
           ))}
-          <div style={{ fontSize:15, color:'rgba(26,23,20,0.8)', lineHeight:1.6 }}>
-            {leitura.texto}
-          </div>
+          {/* Sem aulas abertas na aplicação, as horas já dizem tudo: a frase
+              «ainda não há aulas…» ao lado de «12 h dadas» contradizia-se. */}
+          {(assid.aulasPrevistas > 0 || horas.horasDadas === 0) && (
+            <div style={{ fontSize:15, color:'rgba(26,23,20,0.8)', lineHeight:1.6 }}>
+              {leitura.texto}
+            </div>
+          )}
           {leitura.atitudesAfetadas.length > 0 && (
             <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', marginTop:9,
               paddingTop:9, borderTop:'1px solid rgba(26,23,20,0.1)', lineHeight:1.5 }}>
@@ -161,6 +166,10 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
         </div>
       )}
 
+      {/* Os 5 C, a participação em atividades e eventos, o que os colegas
+          veem e o próximo passo (Rosa, out/2026). */}
+      <PerfilSocialAluno alunoId={aluno.id} />
+
       {/* O detalhe fica fechado: só abre quem quiser ver competência a
           competência. Aberto por omissão, era um muro de texto. */}
       <button
@@ -197,7 +206,8 @@ function PerfilSocialAluno({ alunoId }: { alunoId: string }) {
     <div data-perfil-social style={{ marginBottom: 14 }}>
       {p.cincoC.length > 0 && (
         <div style={caixa('#f1ebf8')}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: V, marginBottom: 6 }}>Como estás nos 5 C</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: V }}>Os teus 5 C{p.ucId ? ` · ${CRONOGRAMA_2026_2027.find(m => m.id === p.ucId)?.nome || p.ucId}` : ''}</div>
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 4 }}>Os mesmos da pauta da UC, até agora.</div>
           {p.cincoC.map(c => (
             <div key={c.c} style={{ margin: '8px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14.5 }}><b>{c.nome}</b><span>{c.nivel}</span></div>
@@ -207,6 +217,18 @@ function PerfilSocialAluno({ alunoId }: { alunoId: string }) {
               <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginTop: 2 }}>{c.frase}</div>
             </div>
           ))}
+        </div>
+      )}
+      {p.participacoes.length > 0 && (
+        <div style={caixa('#eef3fa')}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#2F5D8A', marginBottom: 4 }}>
+            Participação em atividades e eventos · {p.participacoes.length}
+          </div>
+          {p.participacoes.slice(0, 5).map((x, i) => (
+            <div key={i} style={{ fontSize: 14.5, margin: '3px 0' }}>⭐ {x.titulo} <span style={{ color: 'rgba(26,23,20,0.5)', fontSize: 13 }}>· {x.data.split('-').reverse().join('/')}</span></div>
+          ))}
+          {p.participacoes.length > 5 && <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>e mais {p.participacoes.length - 5}.</div>}
+          <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginTop: 4 }}>Contam para o Colaborativo e podem dar bónus na nota da UC.</div>
         </div>
       )}
       {(p.forte.length > 0 || p.melhorar.length > 0) && (
@@ -221,7 +243,7 @@ function PerfilSocialAluno({ alunoId }: { alunoId: string }) {
           <div style={{ fontSize: 15, fontWeight: 800, color: p.diferenca === 'acima' ? '#9a6512' : '#3E7A31', marginBottom: 4 }}>Tu e os outros</div>
           <div style={{ fontSize: 14.5, lineHeight: 1.5 }}>
             {p.diferenca === 'acima'
-              ? <>Em algumas atitudes, <b>tu vês-te melhor do que os teus colegas te veem</b>. Não quer dizer que estejas mal — quer dizer que os outros ainda não notam. Vale a pena pensares nisso.</>
+              ? <>Em algumas atitudes, <b>dás-te mais valor do que os teus colegas te dão</b>. Não quer dizer que estejas mal: pergunta ao grupo o que podes fazer para que também o notem.</>
               : <>Os teus colegas <b>veem-te melhor do que tu te vês</b>. Confia mais em ti: o grupo gosta de trabalhar contigo.</>}
           </div>
         </div>

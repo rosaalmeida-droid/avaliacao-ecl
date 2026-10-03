@@ -503,7 +503,7 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
           style={{ marginTop: 12, padding: '9px 18px', borderRadius: 9, border: `1.5px solid ${cor}`,
             background: mostrarRespostas ? cor : '#fff', color: mostrarRespostas ? '#fff' : cor,
             fontWeight: 700, fontSize: 13, cursor: 'pointer', width: '100%' }}>
-          {mostrarRespostas ? '🙈 Esconder respostas' : '✅ Ver respostas correctas'}
+          {mostrarRespostas ? '🙈 Esconder respostas' : '✅ Ver respostas corretas'}
         </button>
       )}
 
@@ -511,7 +511,7 @@ function SecaoQuestoes({ conteudo, cor }: { conteudo: string; cor: string }) {
         <div style={{ marginTop: 10, padding: '12px 14px', background: `${cor}10`,
           borderRadius: 10, border: `1px solid ${cor}30` }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: cor, marginBottom: 8,
-            textTransform: 'uppercase', letterSpacing: '0.05em' }}>Respostas correctas</div>
+            textTransform: 'uppercase', letterSpacing: '0.05em' }}>Respostas corretas</div>
           {Object.entries(respostasCorretas).map(([id, resp]) => (
             <div key={id} style={{ fontSize: 13, marginBottom: 5, display: 'flex', gap: 8 }}>
               <span style={{ fontWeight: 700, color: cor, flexShrink: 0 }}>
@@ -543,7 +543,7 @@ export function GuiaProducao({ textoGuia, nomePrato, ucId, ucNome, onFechar }: {
       <div style={{ padding: 20, textAlign: 'center', color: 'rgba(26,23,20,0.5)' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
         <div>O Guia de Apoio ainda não foi gerado.</div>
-        <div style={{ fontSize: 13, marginTop: 6 }}>Usa o botão "Gerar Guia" na Ficha de Produção.</div>
+        <div style={{ fontSize: 13, marginTop: 6 }}>Use o botão «Gerar Guia» na Ficha de Produção.</div>
       </div>
     );
   }
@@ -788,7 +788,7 @@ export function CaixaGuia({ nomePrato, ucId, ucNome, textoGuiaInicial, onGuiaAlt
         <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sage)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 14 }}>Guia de Apoio à Produção</div>
-          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>Cola o texto gerado pela IA para ver o guia formatado</div>
+          <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>Cole o texto gerado pela IA para ver o guia formatado</div>
         </div>
       </div>
 
@@ -797,7 +797,7 @@ export function CaixaGuia({ nomePrato, ucId, ucNome, textoGuiaInicial, onGuiaAlt
           <textarea
             value={textoGuia}
             onChange={e => actualizarTexto(e.target.value)}
-            placeholder={`Cola aqui o resultado da IA para o Guia de Apoio à Produção de "${nomePrato}"...\n\nEx:\n# 1. ENQUADRAMENTO DA PRODUÇÃO\n...`}
+            placeholder={`Cole aqui o resultado da IA para o Guia de Apoio à Produção de "${nomePrato}"...\n\nEx:\n# 1. ENQUADRAMENTO DA PRODUÇÃO\n...`}
             style={{ width: '100%', minHeight: 120, borderRadius: 10, border: '1.5px solid var(--border)', padding: 10, fontSize: 13, fontFamily: 'monospace', resize: 'vertical' }}
           />
           {textoGuia && (

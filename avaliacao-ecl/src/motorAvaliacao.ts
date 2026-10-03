@@ -169,7 +169,7 @@ export function atitudesPorRecuperar(historico: HistoricoAtitude[]): HistoricoAt
 export const LABEL_ORIGEM: Record<OrigemAtitude, string> = {
   trimestre: 'Atitude deste trimestre',
   recuperacao: 'A recuperar',
-  aluno: 'Proposta tua',
+  aluno: 'A tua proposta',
   extra: 'Acrescentada pelo professor',
 };
 
@@ -1935,7 +1935,7 @@ export function sugerirRealizacao(
 /** Texto para o professor confirmar a proposta. */
 export function textoSugestao(s: SugestaoTriagem): string {
   if (s.confianca === 'baixa') {
-    return 'Não consegui perceber a que realização isto pertence. Escolhe tu.';
+    return 'Não foi possível perceber a que realização isto pertence. Escolha manualmente.';
   }
   const p = s.porque.slice(0, 3).join(', ');
   return `Proponho "${s.realizacao}"${p ? ` — por causa de: ${p}` : ''}. Confirmas?`;
@@ -2044,7 +2044,7 @@ export function resumoCompetenciasDaFicha(comps: CompetenciaDaFicha[]): string {
   const trans = comps.filter(c => c.origem === 'transversal').length;
 
   if (comps.length === 0) {
-    return 'Não encontrei técnicas nesta ficha. Escolhe as competências à mão.';
+    return 'Não foram encontradas técnicas nesta ficha. Escolha as competências manualmente.';
   }
   if (trans === 0) {
     return `Encontrei ${noRef} competência${noRef > 1 ? 's' : ''} desta unidade nesta ficha.`;
@@ -2099,11 +2099,14 @@ function enumerar(itens: string[]): string {
  * @param comps competências com categoria e nível
  */
 export function escreverPerfil(
-  comps: { nome: string; categoria?: string; nivel?: number | null }[],
+  comps: { nome: string; categoria?: string; nivel?: number | null; consolidada?: boolean; media?: number | null }[],
   ucNome?: string
 ): PerfilTexto {
+  // (out/2026) Com os nomes das competências e a mesma regra do historial:
+  // uma competência está «a treinar» quando a média das notas do professor
+  // está abaixo de 3. Antes falava de «trabalho de cozinha» em geral e dizia
+  // «nenhuma área em atraso» ao lado de «1 em recuperação» (Rosa).
   const avaliadas = comps.filter(c => c.nivel != null && c.nivel > 0);
-
   if (avaliadas.length < 3) {
     return {
       fortes: 'Ainda não há avaliações suficientes para traçar o teu perfil. '
@@ -2112,59 +2115,23 @@ export function escreverPerfil(
       temDados: false,
     };
   }
-
-  // Agrupar por família e ver onde o aluno está bem e onde está fraco.
-  const porFamilia = new Map<string, number[]>();
-  for (const c of avaliadas) {
-    const f = NOME_FAMILIA[c.categoria ?? ''] ?? 'trabalho de cozinha';
-    if (!porFamilia.has(f)) porFamilia.set(f, []);
-    porFamilia.get(f)!.push(c.nivel!);
-  }
-
-  const medias = [...porFamilia.entries()].map(([familia, ns]) => ({
-    familia,
-    media: ns.reduce((a, b) => a + b, 0) / ns.length,
-    quantas: ns.length,
-  }));
-
-  const bem = medias.filter(m => m.media >= 3.5).sort((a, b) => b.media - a.media);
-  const mal = medias.filter(m => m.media < 2.5).sort((a, b) => a.media - b.media);
-
-  const dominadas = avaliadas.filter(c => (c.nivel ?? 0) >= 4).length;
-  const total = avaliadas.length;
-
-  // ── Pontos fortes ──
-  let fortes: string;
-  if (bem.length > 0) {
-    fortes = `Já dominas ${dominadas} de ${total} competências avaliadas`
-           + `${ucNome ? ` em ${ucNome.toLowerCase()}` : ''}. `
-           + `Estás particularmente à vontade em ${enumerar(bem.slice(0, 3).map(m => m.familia))}`;
-    fortes += bem[0].media >= 4.5
-      ? ', onde o teu trabalho está ao nível do que se espera de um profissional.'
-      : ', onde já trabalhas com autonomia.';
-  } else if (dominadas > 0) {
-    fortes = `Já dominas ${dominadas} de ${total} competências avaliadas. `
-           + 'Ainda não há uma área onde te destaques claramente, mas o percurso está a começar.';
-  } else {
-    fortes = `Foste avaliado em ${total} competências e estás em desenvolvimento em todas. `
-           + 'É normal no início — o que conta é a evolução, não o ponto de partida.';
-  }
-
-  // ── Áreas a desenvolver ──
-  let aDesenvolver: string;
-  const fracas = avaliadas.filter(c => (c.nivel ?? 0) <= 2).length;
-  if (mal.length > 0) {
-    aDesenvolver = `Precisas de mais prática em ${enumerar(mal.slice(0, 3).map(m => m.familia))}. `
-                 + `São ${fracas} competência${fracas === 1 ? '' : 's'} onde ainda precisas de apoio `
-                 + 'ou de repetir o trabalho. Fala com o professor sobre onde podes treinar.';
-  } else if (fracas > 0) {
-    aDesenvolver = `Tens ${fracas} competência${fracas === 1 ? '' : 's'} por consolidar, `
-                 + 'espalhadas por várias áreas. Nenhuma delas é um problema de fundo — '
-                 + 'é repetir e ganhar segurança.';
-  } else {
-    aDesenvolver = 'Não há nenhuma área em atraso neste momento. Continua a trabalhar '
-                 + 'as competências que ainda não foram avaliadas.';
-  }
-
+  const nota = (c: typeof avaliadas[number]) => (c.media ?? c.nivel ?? 0);
+  const dominadas = avaliadas.filter(c => nota(c) >= 3 && (c.consolidada || nota(c) >= 4));
+  const aTreinar = avaliadas.filter(c => nota(c) < 3);
+  const lista = (l: typeof avaliadas, max = 3) => {
+    // Só a primeira letra em minúscula, e só se for uma palavra (não um código «SUB-…»).
+    const nomes = l.slice(0, max).map(c => /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]/.test(c.nome) ? c.nome.charAt(0).toLowerCase() + c.nome.slice(1) : c.nome);
+    if (l.length <= max) return enumerar(nomes);
+    const resto = l.length - max;
+    return `${nomes.join(', ')} e mais ${resto === 1 ? 'uma' : resto}`;
+  };
+  const fortes = dominadas.length
+    ? (dominadas.length === avaliadas.length
+        ? `Já dominas todas as ${avaliadas.length} competências avaliadas${ucNome ? ` em ${ucNome.toLowerCase()}` : ''}: ${lista(dominadas)}.`
+        : `Já dominas ${dominadas.length} das ${avaliadas.length} competências avaliadas${ucNome ? ` em ${ucNome.toLowerCase()}` : ''}: ${lista(dominadas)}.`)
+    : `Foste avaliado/a em ${avaliadas.length} competências e ainda estás a desenvolvê-las todas. É normal no início: o que conta é a evolução.`;
+  const aDesenvolver = aTreinar.length
+    ? `Ainda a treinar: ${lista(aTreinar)}. Pede ao professor que te mostre outra vez e volta a experimentar na próxima aula.`
+    : 'Tudo o que já foi avaliado está bem. Continua assim nas próximas aulas.';
   return { fortes, aDesenvolver, temDados: true };
 }

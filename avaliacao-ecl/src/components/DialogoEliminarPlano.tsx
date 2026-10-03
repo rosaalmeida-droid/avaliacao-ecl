@@ -51,7 +51,7 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir, pod
     r.aulaAberta && 'a aula foi aberta',
     r.presencas && `${r.presencas} entrada${r.presencas > 1 ? 's' : ''} de alunos (presenças e atrasos)`,
     r.autoavaliacoes && `${r.autoavaliacoes} autoavaliaç${r.autoavaliacoes > 1 ? 'ões' : 'ão'}`,
-    r.validacoes && `${r.validacoes} validaç${r.validacoes > 1 ? 'ões' : 'ão'} tua${r.validacoes > 1 ? 's' : ''}`,
+    r.validacoes && `${r.validacoes} validaç${r.validacoes > 1 ? 'ões' : 'ão'} sua${r.validacoes > 1 ? 's' : ''}`,
     r.notas && `${r.notas} nota${r.notas > 1 ? 's' : ''} por competência`,
   ].filter(Boolean) as string[];
 
@@ -75,7 +75,7 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir, pod
             </div>
             <Botao onClick={() => { arquivarPlanoAula(plano.id); onFeito(); }}>
               Arquivar
-              <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.55)' }}>Sai do calendário; podes repô-lo no Arquivo.</div>
+              <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.55)' }}>Sai do calendário, mas pode repô-lo a partir do Arquivo.</div>
             </Botao>
             {podeEliminar ? (
               <Botao cor={VERMELHO} texto="#fff" borda={VERMELHO}
@@ -111,7 +111,7 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir, pod
               <Botao cor="#eef4eb" borda="#5a7a4e" onClick={onCorrigir}>
                 Corrigir o plano e manter as avaliações
                 <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
-                  Enganaste-te na ficha, na unidade, na data ou no tipo de aula. As avaliações ficam.
+                  Enganou-se na ficha, na unidade, na data ou no tipo de aula. As avaliações mantêm-se.
                 </div>
               </Botao>
             )}
@@ -126,7 +126,7 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir, pod
               <Botao onClick={() => { arquivarPlanoAula(plano.id); onFeito(); }}>
                 Arquivar
                 <div style={{ fontSize: 12.5, fontWeight: 500, color: 'rgba(26,23,20,0.6)', marginTop: 2 }}>
-                  Sai do calendário. Se a aula não devia ter contado, a coordenadora anula-a e apaga as avaliações.
+                  Sai do calendário. Se a aula não devia ter contado, a coordenação anula-a e apaga as avaliações.
                 </div>
               </Botao>
             )}
@@ -144,7 +144,7 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir, pod
               {linhas.map(l => <div key={l} style={{ fontSize: 14 }}>· {l}</div>)}
               <div style={{ fontSize: 14, marginTop: 8 }}>
                 As notas destes alunos na UC vão mudar, e as faltas e atrasos desta aula deixam de contar.
-                {r.requisicoes > 0 && ' A requisição desta aula também se apaga (o documento oficial enviado ao economato não é tocado).'}
+                {r.requisicoes > 0 && ' A requisição desta aula também é apagada (o documento oficial enviado ao economato não é alterado).'}
               </div>
             </div>
             <Botao cor={VERMELHO} texto="#fff" borda={VERMELHO}

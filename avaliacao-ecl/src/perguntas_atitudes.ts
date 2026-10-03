@@ -37,10 +37,10 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   // ── 1.º ano ──────────────────────────────────────────────
   'ATI-001': [ // Responsabilidade pelas suas ações
     P('Hoje, quando alguma coisa correu mal no teu trabalho, o que fizeste?', [
-      'Disse que a culpa não era minha ou escondi.',
+      'Disse que a culpa não era minha ou escondi o que aconteceu.',
       'Só admiti quando o professor perguntou.',
-      'Disse logo ao professor e corrigi.',
-      'Disse logo, corrigi e expliquei aos colegas para não voltar a acontecer.',
+      'Disse logo ao professor e corrigi o erro.',
+      'Disse logo, corrigi o erro e expliquei aos colegas como evitá-lo.',
     ], 'Hoje não correu nada mal.'),
     P('Hoje, com a tarefa que te deram, o que fizeste?', [
       'Não a acabei e não disse a ninguém.',
@@ -52,27 +52,27 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   'ATI-003': [ // Cuidado com a apresentação pessoal
     P('Hoje, como vieste para a cozinha?', [
       'Faltava-me parte da farda, ou vinha com anéis, unhas pintadas ou cabelo solto.',
-      'Farda completa, mas suja ou amarrotada, ou esqueci a touca ou o avental.',
-      'Farda completa, limpa e passada, cabelo preso e sem adornos.',
+      'Vim com a farda completa, mas suja ou amarrotada, ou esqueci-me da touca ou do avental.',
+      'Vim com a farda completa, limpa e passada, com o cabelo preso e sem adornos.',
       'Tudo isto, e ajudei um colega a corrigir a farda dele.',
     ], 'Hoje não era preciso farda.'),
     P('Hoje, como cuidaste da tua higiene e da tua aparência?', [
-      'Vim com a roupa suja ou despenteado, ou mexi no cabelo e na cara sem lavar as mãos.',
+      'Vim com a roupa suja ou despenteado/a, ou mexi no cabelo e na cara sem lavar as mãos.',
       'Estava bem, mas esqueci um pormenor (cabelo solto, unhas, brincos).',
-      'Vim limpo e arranjado, com o cabelo preso e sem adornos.',
+      'Vim limpo/a e arranjado/a, com o cabelo preso e sem adornos.',
       'Tudo isto, e lembrei um colega que se tinha esquecido de alguma coisa.',
     ]),
   ],
   'ATI-005': [ // Autocontrolo
     P('Hoje, quando houve pressão ou alguém te irritou, o que fizeste?', [
       'Levantei a voz ou respondi mal.',
-      'Fiquei nervoso e parei de trabalhar.',
+      'Fiquei nervoso/a e parei de trabalhar.',
       'Respirei e continuei a trabalhar com calma.',
       'Mantive a calma e ajudei a acalmar os outros.',
     ], 'Hoje não houve pressão nem ninguém me irritou.'),
     P('Hoje, a falar com os colegas durante o trabalho, como foi o teu tom?', [
       'Gritei ou falei mal com alguém.',
-      'Às vezes falei alto ou de forma bruta.',
+      'Às vezes falei alto ou de forma rude.',
       'Falei sempre com calma.',
       'Falei sempre com calma e ajudei a baixar o barulho quando havia confusão.',
     ]),
@@ -80,7 +80,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   'ATI-011': [ // Sentido de organização
     P('Hoje, como estava a tua bancada enquanto trabalhavas?', [
       'Desarrumada: andei à procura das coisas e perdi tempo.',
-      'Comecei arrumado, mas a meio ficou tudo misturado.',
+      'Comecei com tudo arrumado, mas a meio ficou tudo misturado.',
       'Preparei tudo antes de começar e limpei enquanto trabalhava.',
       'Tudo isto, e acabei a tempo de ajudar outra bancada.',
     ], 'Hoje não trabalhei na bancada.'),
@@ -93,13 +93,13 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   ],
   'ATI-013': [ // Disponibilidade para aprender
     P('Hoje, quando não percebeste alguma coisa, o que fizeste?', [
-      'Fiquei calado e fiz ao calhas.',
+      'Fiquei calado/a e fiz à sorte.',
       'Perguntei a um colega, mas não confirmei se estava certo.',
       'Perguntei ao professor.',
-      'Perguntei e depois voltei a experimentar até conseguir sozinho.',
+      'Perguntei e depois voltei a experimentar até conseguir sem ajuda.',
     ], 'Hoje percebi tudo à primeira.'),
     P('Hoje, quando o professor explicou ou te corrigiu, o que fizeste?', [
-      'Não prestei atenção ou fiquei chateado com a correção.',
+      'Não prestei atenção ou fiquei aborrecido/a com a correção.',
       'Ouvi, mas continuei a fazer à minha maneira.',
       'Ouvi e fiz como foi explicado.',
       'Fiz como foi explicado e fiz perguntas para perceber melhor.',
@@ -108,7 +108,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   'ATI-015': [ // Respeito pelas regras e normas definidas
     P('Hoje, com as regras (horário, lavar as mãos, circuito do sujo e do limpo), o que fizeste?', [
       'Falhei várias regras e o professor teve de me chamar a atenção.',
-      'Falhei uma regra (por exemplo, cheguei atrasado).',
+      'Falhei uma regra (por exemplo, cheguei atrasado/a).',
       'Cumpri todas as regras sem ninguém me lembrar.',
       'Cumpri todas e lembrei um colega que se estava a esquecer.',
     ]),
@@ -122,7 +122,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   'ATI-016': [ // Higiene e segurança alimentar
     P('Hoje, com os alimentos, o que fizeste?', [
       'Juntei cru com cozinhado ou usei a mesma tábua para tudo sem lavar.',
-      'Separei às vezes, mas nem sempre.',
+      'Separei algumas vezes, mas não sempre.',
       'Separei sempre o cru do cozinhado e limpei a tábua e a faca entre produtos.',
       'Tudo isto, e avisei um colega quando vi um erro de higiene.',
     ], 'Hoje não mexi em alimentos.'),
@@ -135,7 +135,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   ],
   'ATI-017': [ // Segurança e saúde no trabalho
     P('Hoje, com facas, lume e tachos quentes, o que fizeste?', [
-      'Andei com a faca na mão ou deixei-a no lava-loiça.',
+      'Andei com a faca na mão ou deixei-a dentro do lava-loiça.',
       'Tive cuidado quase sempre, mas distraí-me uma vez.',
       'Trabalhei sempre com segurança: faca pousada, pegas, «atenção, quente!».',
       'Tudo isto, e avisei ou protegi um colega de um perigo.',
@@ -150,27 +150,27 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   // ── 2.º ano ──────────────────────────────────────────────
   'ATI-002': [ // Autonomia
     P('Hoje, quando não sabias o passo seguinte, o que fizeste?', [
-      'Fiquei parado à espera que alguém me dissesse.',
+      'Fiquei parado/a à espera de que alguém me dissesse.',
       'Perguntei logo ao professor, sem ver a ficha.',
-      'Fui ver a ficha ou o plano e resolvi sozinho.',
-      'Resolvi sozinho e ainda adiantei a tarefa seguinte.',
+      'Fui ver a ficha ou o plano e resolvi sem ajuda.',
+      'Resolvi sem ajuda e ainda adiantei a tarefa seguinte.',
     ], 'Hoje soube sempre o que fazer.'),
     P('Hoje, como começaste o teu trabalho?', [
       'Esperei que me dissessem o que fazer.',
       'Comecei, mas precisei que me lembrassem várias vezes.',
-      'Comecei sozinho, a partir do plano ou da ficha.',
-      'Comecei sozinho e organizei a minha parte do princípio ao fim.',
+      'Comecei sem ajuda, a partir do plano ou da ficha.',
+      'Comecei sem ajuda e organizei a minha parte do princípio ao fim.',
     ]),
   ],
   'ATI-007': [ // Empatia
-    P('Hoje, quando um colega estava com dificuldades ou chateado, o que fizeste?', [
-      'Gozei ou disse alguma coisa que o magoou.',
+    P('Hoje, quando um colega estava com dificuldades ou aborrecido, o que fizeste?', [
+      'Fiz troça ou disse alguma coisa que o magoou.',
       'Reparei, mas não fiz nada.',
       'Perguntei se estava bem ou se precisava de ajuda.',
       'Ajudei-o sem o fazer sentir mal, até ele ficar bem.',
     ], 'Hoje não vi nenhum colega com dificuldades.'),
     P('Hoje, na forma como falaste com os colegas, o que fizeste?', [
-      'Gozei ou disse coisas que magoam.',
+      'Fiz troça ou disse coisas que magoam.',
       'Às vezes falei sem pensar no que o outro ia sentir.',
       'Falei com respeito e cuidado.',
       'Falei com cuidado e animei um colega.',
@@ -179,7 +179,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   'ATI-008': [ // Escuta ativa
     P('Hoje, numa conversa ou discussão em grupo, o que fizeste?', [
       'Falei por cima dos outros.',
-      'Fiquei calado e distraído.',
+      'Fiquei calado/a e distraído/a.',
       'Esperei pela minha vez e ouvi os outros até ao fim.',
       'Ouvi, e usei a ideia de um colega para continuar a conversa.',
     ], 'Hoje não houve conversa em grupo.'),
@@ -196,7 +196,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
       'Fiz a minha parte, mas não quis saber do resto da equipa.',
       'Fiz a minha parte e ajudei quando me pediram.',
       'Ofereci ajuda sem me pedirem e dividimos bem as tarefas.',
-    ], 'Hoje trabalhei sozinho, não havia equipa.'),
+    ], 'Hoje trabalhei sozinho/a: não havia equipa.'),
     P('Hoje, no fim da aula, o que fizeste?', [
       'Saí sem ajudar a arrumar.',
       'Arrumei só o que era meu.',
@@ -234,7 +234,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   ],
   'ATI-018': [ // Sensibilidade e bem-estar dos outros
     P('Hoje, quando um colega estava triste, cansado ou sozinho, o que fizeste?', [
-      'Gozei ou ignorei.',
+      'Fiz troça ou ignorei.',
       'Reparei, mas não fiz nada.',
       'Fui falar com ele.',
       'Fui falar com ele e chamei-o para junto de mim ou do meu grupo.',
@@ -248,14 +248,14 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   ],
   'ATI-022': [ // Respeito pelas diferenças individuais
     P('Hoje, quando alguém deu uma ideia diferente da tua, o que fizeste?', [
-      'Gozei ou disse que era uma parvoíce.',
+      'Fiz troça ou disse que era um disparate.',
       'Ignorei a ideia.',
       'Ouvi e respeitei.',
       'Ouvi, e experimentámos a ideia.',
     ], 'Hoje ninguém deu ideias diferentes das minhas.'),
     P('Hoje, com colegas diferentes de ti (origem, forma de ser, de trabalhar), o que fizeste?', [
-      'Gozei, pus de parte ou disse alguma coisa ofensiva.',
-      'Não gozei, mas evitei trabalhar com eles.',
+      'Fiz troça, pus de parte ou disse alguma coisa ofensiva.',
+      'Não fiz troça, mas evitei trabalhar com eles.',
       'Trabalhei bem com eles e respeitei a opinião deles.',
       'Trabalhei bem e defendi-os quando alguém os tratou mal.',
     ]),
@@ -263,7 +263,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   // ── 3.º ano ──────────────────────────────────────────────
   'ATI-004': [ // Iniciativa
     P('Hoje, quando acabaste a tua tarefa, o que fizeste?', [
-      'Fiquei parado ou fui para o telemóvel.',
+      'Fiquei parado/a ou fui ver o telemóvel.',
       'Esperei que o professor me desse outra tarefa.',
       'Perguntei o que faltava e comecei.',
       'Vi o que faltava e comecei sem ninguém me pedir.',
@@ -277,7 +277,7 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
   ],
   'ATI-006': [ // Assertividade
     P('Hoje, quando não concordaste com alguém ou tiveste de falar de um problema, o que fizeste?', [
-      'Gritei, fui mal-educado ou fiquei amuado.',
+      'Gritei, fui mal-educado/a ou fiquei amuado/a.',
       'Fiquei calado e guardei para mim.',
       'Disse com calma o que pensava.',
       'Disse com calma e propus uma solução.',
@@ -310,38 +310,38 @@ export const PERGUNTAS_ATITUDES: Record<string, [PerguntaAtitude, PerguntaAtitud
       'Fiz com confiança e só pedi ajuda quando era mesmo preciso.',
       'Fiz com confiança e ofereci-me para mostrar a um colega.',
     ], 'Hoje não tive nenhuma tarefa nova.'),
-    P('Hoje, quando tiveste de decidir alguma coisa sozinho, o que fizeste?', [
+    P('Hoje, quando tiveste de decidir alguma coisa sozinho/a, o que fizeste?', [
       'Não decidi e esperei que decidissem por mim.',
       'Decidi, mas pedi confirmação para tudo.',
-      'Decidi sozinho e só confirmei o que era importante.',
-      'Decidi sozinho e expliquei a um colega porquê.',
+      'Decidi sem ajuda e só confirmei o que era importante.',
+      'Decidi sem ajuda e expliquei a um colega porquê.',
     ]),
   ],
   'ATI-020': [ // Postura profissional
     P('Hoje, quando o professor ou o chefe te deu uma ordem, como respondeste?', [
-      'Refilei ou ignorei.',
-      'Fiz, mas de má cara.',
+      'Respondi mal ou ignorei.',
+      'Fiz, mas de má vontade.',
       'Respondi «Sim, chefe» e fiz.',
-      'Respondi, fiz, e avisei quando estava feito.',
+      'Respondi, fiz e avisei quando estava feito.',
     ]),
     P('Hoje, na forma como estiveste na aula (linguagem, telemóvel, horário), o que fizeste?', [
-      'Disse palavrões, usei o telemóvel ou cheguei atrasado.',
+      'Disse palavrões, usei o telemóvel ou cheguei atrasado/a.',
       'Estive quase sempre bem, mas falhei uma vez.',
       'Falei com educação, cheguei a horas e não usei o telemóvel.',
-      'Tudo isto, e fui exemplo para os colegas.',
+      'Tudo isto, e fui um exemplo para os colegas.',
     ]),
   ],
   'ATI-021': [ // Sentido crítico
     P('Hoje, quando viste ou provaste o trabalho de um colega, o que disseste?', [
-      'Gozei ou disse só «está mal».',
+      'Fiz troça ou disse apenas «está mal».',
       'Não disse nada.',
       'Disse o que estava bem e o que se podia melhorar.',
       'Disse com respeito e dei uma ideia concreta para melhorar.',
     ], 'Hoje não vi o trabalho de colegas.'),
     P('No fim da aula, o que pensaste sobre o teu trabalho?', [
       'Achei que estava tudo bem, sem olhar para o resultado.',
-      'Vi que alguma coisa não estava bem, mas não sei porquê.',
-      'Provei e olhei, e percebi o que falhou e porquê.',
+      'Vi que alguma coisa não estava bem, mas não percebi porquê.',
+      'Provei e observei, e percebi o que falhou e porquê.',
       'Percebi o que falhou e sei o que vou fazer diferente da próxima vez.',
     ]),
   ],
@@ -365,17 +365,17 @@ export const PERGUNTAS_EVENTO: Record<string, [PerguntaAtitude, PerguntaAtitude]
       'Preparei-me e tirei dúvidas ou treinei antes com o professor ou um colega.',
     ], 'Só me disseram a tarefa quando cheguei (não dava para me preparar).'),
     P('A que horas chegaste?', [
-      'Cheguei atrasado e não avisei.',
-      'Cheguei atrasado, mas avisei.',
+      'Cheguei atrasado/a e não avisei.',
+      'Cheguei atrasado/a, mas avisei.',
       'Cheguei à hora marcada.',
       'Cheguei antes da hora e ajudei a preparar.',
     ]),
   ],
   'ATI-003': [ // Apresentação pessoal
-    P('Como vieste vestido?', [
-      'Faltava parte da farda.',
-      'Farda completa, mas suja ou amarrotada.',
-      'Farda completa, limpa e passada.',
+    P('Como vieste vestido/a?', [
+      'Faltava-me parte da farda.',
+      'Vim com a farda completa, mas suja ou amarrotada.',
+      'Vim com a farda completa, limpa e passada.',
       'Tudo isto, e ajudei um colega a compor a farda.',
     ]),
     P('E o material de que precisavas (facas, utensílios, ficha, ingredientes)?', [
@@ -454,7 +454,7 @@ export function respostasEfetivas(id: string, r: (number | null | undefined)[] |
 // com a outra. A resposta conta como as outras (posição 2 das respostas).
 const SUBSTITUTAS_EVENTO: Record<string, PerguntaAtitude> = {
   'ATI-001': P('Durante o evento, quando te deram a tua tarefa, o que fizeste?', [
-    'Fiquei à espera que me explicassem tudo outra vez.',
+    'Fiquei à espera de que me explicassem tudo outra vez.',
     'Comecei, mas a perguntar a cada passo.',
     'Percebi e comecei logo.',
     'Percebi, comecei logo e ajudei a organizar os colegas.',

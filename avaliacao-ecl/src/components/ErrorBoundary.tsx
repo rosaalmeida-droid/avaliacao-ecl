@@ -40,7 +40,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
           <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Ocorreu um problema</div>
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 20 }}>
-            A app encontrou um erro inesperado. Os teus dados ficaram guardados — não foram perdidos.
+            A aplicação encontrou um erro inesperado. Os dados ficaram guardados e não se perderam.
           </div>
           <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginBottom: 20, fontFamily: 'monospace', wordBreak: 'break-word' }}>
             {this.state.mensagem}

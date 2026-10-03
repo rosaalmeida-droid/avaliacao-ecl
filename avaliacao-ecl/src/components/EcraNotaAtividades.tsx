@@ -452,11 +452,11 @@ export function EcraAtividades({
                 const aviso = (txt: string, cor: string, fundo: string) => (
                   <div style={{ marginTop: 13, padding: '12px 14px', borderRadius: 11, background: fundo, color: cor, fontSize: 15, fontWeight: 600 }}>{txt}</div>);
                 return cartao(a, turma
-                  ? aviso('Vai a turma toda — é obrigatório. Não conta como falta de aula; também te autoavalias.', C.violeta, C.violetaSuave)
+                  ? aviso('Vai a turma toda, por isso é obrigatório. Não conta como falta de aula, e também te autoavalias.', C.violeta, C.violetaSuave)
                   : aceite
                     ? aviso('✓ Foste aceite! Agora é contigo: assumes o compromisso de estar lá à hora, com a farda impecável, e dar o teu máximo do princípio ao fim. No dia, também te autoavalias.', C.verde, C.verdeSuave)
                     : inscrito(a)
-                      ? <>{parabens(a)}{aviso('Inscrito — o professor vai confirmar se vais.', C.cobre, C.cobreSuave)}{botao('Já não vou', () => onCancelar(a.id), false)}</>
+                      ? <>{parabens(a)}{aviso('Estás inscrito/a. O professor vai confirmar se participas.', C.cobre, C.cobreSuave)}{botao('Já não vou', () => onCancelar(a.id), false)}</>
                       : querParticipar(a, 'Quero participar'));
               }
               const vagasRestantes = a.vagas != null

@@ -140,13 +140,13 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
   async function abrirChatGPT() {
     await copiar();
     window.open('https://chatgpt.com/?q=' + encodeURIComponent(pedidoIA(plano, texto.trim() || automatico)), '_blank', 'noopener');
-    setAviso('Abri o ChatGPT com o pedido. Copia a resposta e cola-a aqui, por cima das notas.');
+    setAviso('O ChatGPT foi aberto com o pedido. Copie a resposta e cole-a aqui, por cima das notas.');
   }
   async function abrirGemini() {
     const ok = await copiar();
     window.open('https://gemini.google.com/app', '_blank', 'noopener');
-    setAviso(ok ? 'O pedido está copiado: no Gemini, cola-o (Ctrl+V) e envia. Depois cola aqui a resposta.'
-      : 'Não consegui copiar sozinho. Escreve as notas no Gemini e pede o sumário.');
+    setAviso(ok ? 'O pedido foi copiado: no Gemini, cole-o (Ctrl+V) e envie. Depois, cole aqui a resposta.'
+      : 'Não foi possível copiar automaticamente. Escreva as notas no Gemini e peça o sumário.');
   }
 
   function guardar(sozinho = false) {
@@ -169,13 +169,13 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
         {usaAutomatico && <span style={{ fontWeight: 500, fontSize: 13, color: '#3E7A31' }}> · feito pela aplicação</span>}</div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', margin: '3px 0 10px', lineHeight: 1.5 }}>
         {usaAutomatico
-          ? 'Escrito a partir do plano (tipo de aula, conteúdos, fichas). Atualiza-se sozinho quando mudas o plano. Só precisas de mexer se quiseres.'
-          : 'O teu sumário. Os alunos veem-no na aula e quando se avaliam. Apaga o texto para voltar ao da aplicação.'}
+          ? 'Escrito a partir do plano (tipo de aula, conteúdos e fichas). Atualiza-se automaticamente quando altera o plano. Só precisa de o alterar se quiser.'
+          : 'O seu sumário. Os alunos veem-no na aula e quando se autoavaliam. Apague o texto para voltar ao sumário da aplicação.'}
       </div>
       {usaAutomatico && (
         <div style={{ background: '#F4F8F2', border: '1px solid #CFE0C8', borderRadius: 10, padding: '10px 12px', fontSize: 14.5,
           lineHeight: 1.55, whiteSpace: 'pre-wrap', marginBottom: 8 }}>
-          {automatico || 'Ainda sem nada para resumir: escolhe o tipo de aula e o que se trabalha.'}
+          {automatico || 'Ainda não há nada para resumir: escolha o tipo de aula e o que se vai trabalhar.'}
         </div>
       )}
       {/* Enquanto grava: um aviso grande, que não se confunde com nada. */}
@@ -189,7 +189,7 @@ export function SumarioAula({ plano, onGuardado }: { plano: PlanoAula; onGuardad
             </div>
             <div style={{ fontSize: 13, opacity: 0.9, marginTop: 2 }}>
               {fase === 'a_ouvir'
-                ? (parcial || 'Fale à vontade. Só pára quando carregar em «Parar». O texto fica na caixa e guarda-se sozinho.')
+                ? (parcial || 'Pode falar à vontade. A gravação só para quando carregar em «Parar». O texto fica na caixa e é guardado automaticamente.')
                 : 'Se o navegador perguntar, carregue em «Permitir».'}
             </div>
           </div>

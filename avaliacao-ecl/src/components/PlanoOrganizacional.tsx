@@ -72,7 +72,7 @@ export function QuadroOrganizacional({ plano, alunoId, modo, onPlanoMudou }: {
       )}
       {modo === 'professor' && !aberta && (
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8, lineHeight: 1.5 }}>
-          Quem faltar substitui-se com a aula aberta, quando já sabes quem está.
+          Os alunos que faltarem são substituídos com a aula aberta, quando já se sabe quem está presente.
         </div>
       )}
       <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', marginBottom: 8, lineHeight: 1.5 }}>

@@ -9,7 +9,7 @@ import type { Triagem5C } from './triagem5c';
 import { bancoDe, perguntaDoCiclo } from './triagem5c';
 import { contextoDaAula, pesoNoModulo, type ContextoAula } from './contextoAula';
 import { manualDaUC, proximoConteudo, indicadoresDoConteudo } from './bancoManuais';
-import { notaDaPautaUC } from './pautaUC';
+import { notaDaPautaUC, produtosDaUC, linhasDaPautaUC, notaDoCompetente, nivelPauta } from './pautaUC';
 import { BONUS_EVENTOS, ATITUDES_FIXAS_EVENTO, TEC_EVENTO, TIPOS_EVENTO as TIPOS_EVENTO_PLANO, atitudesSugeridasEvento } from './eventosAvaliacao';
 import { ucsEquivalentes, modulosDaTurma, CRONOGRAMA_2026_2027 } from './cronograma';
 import {
@@ -1747,7 +1747,7 @@ export function limparDadosTesteSeguro(): ResultadoLimpeza {
   if (!backupRecente()) {
     return {
       ok: false,
-      mensagem: 'Bloqueado: é obrigatório descarregar uma cópia de segurança primeiro (há menos de 10 minutos). Descarrega o backup e volta a tentar.',
+      mensagem: 'Bloqueado: é obrigatório descarregar uma cópia de segurança primeiro (há menos de 10 minutos). Descarregue a cópia de segurança e volte a tentar.',
     };
   }
 
@@ -1842,7 +1842,7 @@ export function resetInicioAnoLetivo(): ResultadoLimpeza {
   if (!backupRecente()) {
     return {
       ok: false,
-      mensagem: 'Bloqueado: é obrigatório descarregar uma cópia de segurança primeiro (há menos de 10 minutos). Descarrega o backup e volta a tentar.',
+      mensagem: 'Bloqueado: é obrigatório descarregar uma cópia de segurança primeiro (há menos de 10 minutos). Descarregue a cópia de segurança e volte a tentar.',
     };
   }
 
@@ -2159,10 +2159,10 @@ export async function validarLoginAluno(
   // PIN deste aluno (ou não houver rede) se usa o que está neste aparelho.
   const r = await confirmarPinAluno(aluno.id, pinIntroduzido);
   if (r === 'errado') return { ok: false, erro: 'PIN incorreto.' };
-  if (r === 'bloqueado') return { ok: false, erro: 'Muitas tentativas erradas. Espera 10 minutos ou pede ajuda ao professor.' };
+  if (r === 'bloqueado') return { ok: false, erro: 'Fizeste demasiadas tentativas erradas. Espera 10 minutos ou pede ajuda ao professor.' };
   if (r !== 'entrou') {
     if (!aluno.pin) {
-      return { ok: false, erro: r === 'semRede' ? 'Sem ligação à escola. Confirma a internet e tenta outra vez.' : 'Ainda não tens PIN. Pede-o ao professor.' };
+      return { ok: false, erro: r === 'semRede' ? 'Sem ligação à escola. Confirma a ligação à internet e tenta outra vez.' : 'Ainda não tens PIN. Pede-o ao professor.' };
     }
     if (aluno.pin !== pinIntroduzido) return { ok: false, erro: 'PIN incorreto.' };
   }
@@ -4105,6 +4105,8 @@ export interface ItemPerfil {
   sucessos?: number;
   /** Regra da escola: consolidada com 2 sucessos em aulas diferentes. */
   consolidada?: boolean;
+  /** Média das notas do professor (1-5), a mesma conta do historial. */
+  media?: number | null;
 }
 
 /** Sucessos precisos para uma competência estar consolidada (PARAMETROS_AVALIACAO). */
@@ -4209,6 +4211,8 @@ export function getPerfilProfissionalAluno(alunoId: string): PerfilProfissionalA
       nivel: info.nivel, origem: info.origem, ultimaData: info.data,
       sucessos: sucessos.get(competenciaId) || 0,
       consolidada: (sucessos.get(competenciaId) || 0) >= SUCESSOS_PARA_CONSOLIDAR,
+      media: (() => { const ns = historico.filter(r => r.microcompetenciaId === competenciaId && r.validadoPor === 'professor').map(r => Number(r.nota)).filter(n => n > 0);
+        return ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : null; })(),
     };
     if (grupo === 'tecnica') tecnicas.push(item);
     else if (grupo === 'responsabilidade') responsabilidades.push(item);
@@ -4465,7 +4469,8 @@ function getNomeCompetenciaGenerica(id: string): string {
     return a?.nome || id;
   }
   const m = encontrarMicro(id);
-  if (!m) return id;
+  // Subtécnicas, aparelhos, aptidões… (SUB-, APP-, APT-): o nome vem do referencial.
+  if (!m) { try { return nomeCompetencia(id) || id; } catch { return id; } }
 
   // O `nome` de um perfil técnico é o RESULTADO ESPERADO — "produtos com
   // cor viva", "forma definida, exterior dourado e interior macio". Fora
@@ -5938,7 +5943,9 @@ export function leituraAssiduidade(a: Assiduidade): {
   grave: boolean;
 } {
   if (a.aulasPrevistas === 0) {
-    return { texto: 'Ainda não houve aulas nesta unidade.', atitudesAfetadas: [], grave: false };
+    // As horas contam todas as aulas dadas; aqui só as que o professor abriu na
+    // aplicação. Dizia «ainda não houve aulas» ao lado de «12 h dadas» (out/2026).
+    return { texto: 'Ainda não há aulas com as presenças registadas na aplicação.', atitudesAfetadas: [], grave: false };
   }
   if (a.faltas === 0 && a.atrasos === 0) {
     return {
@@ -5962,7 +5969,7 @@ export function leituraAssiduidade(a: Assiduidade): {
     if (!atitudes.includes('ATI-001')) atitudes.push('ATI-001');
   }
   if (a.semAutoavaliacao > 0) {
-    partes.push(`. Em ${a.semAutoavaliacao} ${a.semAutoavaliacao === 1 ? 'aula' : 'aulas'} estiveste mas não te avaliaste — perdeste a hipótese de dizer como te correu`);
+    partes.push(`. Em ${a.semAutoavaliacao} ${a.semAutoavaliacao === 1 ? 'aula' : 'aulas'}, estiveste presente, mas não te autoavaliaste, por isso perdeste a oportunidade de dizer como te correu a aula`);
   }
 
   return {
@@ -6406,7 +6413,7 @@ export async function guardarNoSheetsComConfirmacao(
     porConfirmar: r.porConfirmar,
     mensagem: r.porConfirmar === 0
       ? `Guardado. ${r.confirmados} ${r.confirmados === 1 ? 'item confirmado' : 'itens confirmados'} no Sheets.`
-      : `${r.confirmados} guardados, ${r.porConfirmar} ainda por chegar. Tenta outra vez dentro de um minuto.`,
+      : `${r.confirmados} guardados, ${r.porConfirmar} ainda por chegar. Tente outra vez dentro de um minuto.`,
   };
 }
 
@@ -7633,8 +7640,8 @@ async function publicarEConfirmar(planoId: string): Promise<ResultadoPublicacao>
     }
   }
   return { ok: false, erro: ligou
-    ? 'A aula não chegou ao Sheets, por isso os alunos ainda não a veem. Carrega outra vez em «Publicar».'
-    : 'Sem ligação ao Sheets. A aula ficou marcada aqui, mas os alunos só a veem quando chegar lá. Carrega outra vez em «Publicar» quando tiveres rede.' };
+    ? 'A aula não chegou ao Sheets, por isso os alunos ainda não a veem. Carregue outra vez em «Publicar».'
+    : 'Sem ligação ao Sheets. A aula ficou registada neste aparelho, mas os alunos só a veem quando chegar ao Sheets. Carregue outra vez em «Publicar» quando tiver ligação à internet.' };
 }
 
 // ============================================================
@@ -7804,9 +7811,9 @@ export async function testarLigacaoAoSheets(turmaId: string): Promise<string[]> 
     data: new Date().toISOString(), validadoPor: 'teste', nomeAluno: 'Teste de ligação',
   });
   const r = await confirmarRegistosNoSheets(turmaId, [id]);
-  linhas.push(r.ok ? 'Escrita: OK — o que gravas chega ao Sheets'
-    : 'Escrita: FALHOU — o que gravas NÃO chega ao Sheets');
-  if (!r.ok) linhas.push('Apaga a linha de teste se ela aparecer mais tarde (aluno TESTE).');
+  linhas.push(r.ok ? 'Escrita: OK. O que guarda chega ao Sheets.'
+    : 'Escrita: FALHOU. O que guarda NÃO chega ao Sheets.');
+  if (!r.ok) linhas.push('Apague a linha de teste se ela aparecer mais tarde (aluno TESTE).');
   return linhas;
 }
 
@@ -7952,7 +7959,7 @@ export async function enviarPautaPorEmail(
     const json: any = await lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_pautas', turmaId });
     const la = (json?.dados || json?.pautas || []).some((p: any) =>
       String(p.ucId) === ucId && String(p.turmaId) === turmaId);
-    return la ? { ok: true } : { ok: false, erro: 'A pauta não chegou ao Sheets. Tenta outra vez.' };
+    return la ? { ok: true } : { ok: false, erro: 'A pauta não chegou ao Sheets. Tente outra vez.' };
   } catch {
     return { ok: false, erro: 'Não consegui confirmar o envio.' };
   }
@@ -8604,7 +8611,7 @@ export function resultadoSugeridoDaRecuperacao(r: any): { nota: number | null; a
   if (!participantesDoEvento(p).includes(r.alunoId) || !p.participantesConfirmadosEm)
     return { nota: null, atividade: p, porque: `Ainda não confirmaste que participou na atividade «${p.titulo}».` };
   const nota = notaDaAulaValidada(validacaoDaAula(r.alunoId, p.id));
-  return nota == null ? { nota: null, atividade: p, porque: `Ainda não validaste a autoavaliação dele na atividade «${p.titulo}».` }
+  return nota == null ? { nota: null, atividade: p, porque: `Ainda não validou a autoavaliação deste aluno na atividade «${p.titulo}».` }
     : { nota, atividade: p, porque: `Nota validada na atividade «${p.titulo}».` };
 }
 
@@ -9002,29 +9009,65 @@ export function colegasParaAValidacao(alunoId: string, planoAulaId: string, auto
  *  colegas — e um passo concreto. Calcula-se no telemóvel do aluno a partir
  *  das validações dele (que já lá estão). */
 export interface PerfilSocial {
-  cincoC: { c: 'cl' | 'cr' | 'co'; nome: string; nivel: string; pct: number; frase: string }[];
+  /** A UC a que se referem os 5 C (a mais recente com aulas validadas). */
+  ucId: string;
+  cincoC: { c: 'cp' | 'cm' | 'cl' | 'cr' | 'co'; nome: string; nivel: string; pct: number; frase: string }[];
+  tecnicas: { dominadas: string[]; aTreinar: string[]; total: number };
+  atitudes: { dominadas: string[]; aTreinar: string[]; total: number };
+  participacoes: { titulo: string; data: string }[];
   forte: string[]; melhorar: string[];
   diferenca: 'acima' | 'abaixo' | 'igual' | null;
   passo: string; colegas: number; aulas: number;
 }
-const FRASES_5C: Record<'cl' | 'cr' | 'co', [string, string, string, string]> = {
-  cl: ['Ainda trabalhas quase sempre sozinho/a.', 'Ajudas quando te pedem.', 'Ajudas e partilhas sem te pedirem.', 'Combinas com a equipa e ajudas todos a acabar.'],
-  cr: ['Quando algo corre mal, ainda pedes logo ajuda.', 'Tentas uma vez e depois pedes ajuda.', 'Experimentas outras maneiras antes de pedir ajuda.', 'Resolves imprevistos e explicas aos colegas como fizeste.'],
-  co: ['Ainda te custa ver o que tens de melhorar.', 'Lembras-te do que correu mal, mas ainda não mudas.', 'Mudas o que correu mal.', 'Mudas o que correu mal e explicas o que melhoraste.'],
+/** O que quer dizer cada C, em três níveis (a melhorar · a caminho · bem). */
+const FRASES_5C: Record<'cp' | 'cm' | 'cl' | 'cr' | 'co', [string, string, string]> = {
+  cp: ['As técnicas e os conhecimentos das aulas ainda precisam de treino.', 'Já fazes as técnicas das aulas, às vezes com ajuda.', 'Fazes bem as técnicas e mostras o que sabes.'],
+  cm: ['As faltas, os atrasos ou as autoavaliações por entregar estão a pesar.', 'Estás presente e cumpres quase sempre o que te pedem.', 'Estás presente, chegas a horas e cumpres o que te pedem.'],
+  cl: ['Ainda trabalhas quase sempre sozinho/a.', 'Ajudas quando te pedem.', 'Combinas com a equipa e ajudas toda a gente a acabar.'],
+  cr: ['Quando algo corre mal, ainda pedes logo ajuda.', 'Tentas outra maneira antes de pedir ajuda.', 'Resolves imprevistos e explicas aos colegas como fizeste.'],
+  co: ['Ainda te custa ver o que tens de melhorar.', 'Já reparas no que correu mal e começas a mudar.', 'Mudas o que correu mal e explicas o que melhoraste.'],
 };
+const NOMES_5C = { cp: 'Competente', cm: 'Comprometido', cl: 'Colaborativo', cr: 'Criativo', co: 'Consciente' } as const;
+const PALAVRA_NIVEL: Record<number, string> = { 2: 'Insuficiente', 4: 'Suficiente', 5: 'Bom', 6: 'Muito bom' };
 export function perfilSocialDoAluno(alunoId: string): PerfilSocial | null {
   const vals = getValidacoes().filter((v: any) => v.alunoId === alunoId);
   const porAula = new Map<string, any>();
   vals.forEach((v: any) => { const a = porAula.get(v.planoAulaId); if (!a || quandoFoi(v.validadoEm) >= quandoFoi(a.validadoEm)) porAula.set(v.planoAulaId, v); });
   const ultimas = [...porAula.values()];
-  const nomes = { cl: 'Colaborativo', cr: 'Criativo', co: 'Consciente' } as const;
-  const cincoC = (['cl', 'cr', 'co'] as const).map(c => {
-    const ns = ultimas.map(v => v.triagem5c?.[c]).filter((r: any) => typeof r === 'number').map((r: number) => r + 2);
-    if (!ns.length) return null;
-    const m = ns.reduce((a: number, b: number) => a + b, 0) / ns.length;
-    const i = m < 2.75 ? 0 : m < 3.5 ? 1 : m < 4.25 ? 2 : 3;
-    return { c, nome: nomes[c], nivel: ['Inicial', 'Em desenvolvimento', 'Consolidado', 'Avançado'][i], pct: Math.round(Math.max(10, Math.min(100, (m - 1) / 4 * 100))), frase: FRASES_5C[c][i] };
-  }).filter((x): x is NonNullable<typeof x> => !!x);
+  const aluno = getAlunos().find(a => a.id === alunoId);
+  const turmaId = aluno?.turmaId || '';
+  // Os 5 C com a mesma conta da pauta, na UC mais recente com aulas validadas.
+  const planosPorId = new Map(getPlanosAula().map(p => [p.id, p as any]));
+  const ucId = String([...ultimas].map(v => planosPorId.get(v.planoAulaId)).filter((p: any) => p && !p.tipoEvento && p.ucId)
+    .sort((a: any, b: any) => String(b.data || '').localeCompare(String(a.data || '')))[0]?.ucId || '');
+  let cincoC: PerfilSocial['cincoC'] = [];
+  if (ucId && turmaId) {
+    try {
+      const produtos = produtosDaUC(turmaId, ucId);
+      const linha = linhasDaPautaUC(turmaId, ucId, produtos, alunoId)[0];
+      if (linha) {
+        const niveis: Record<string, number | null> = { cp: nivelPauta(notaDoCompetente(linha, produtos)), cm: linha.c5.cm, cl: linha.c5.cl, cr: linha.c5.cr, co: linha.c5.co };
+        cincoC = (['cp', 'cm', 'cl', 'cr', 'co'] as const).filter(c => niveis[c]).map(c => {
+          const n = niveis[c] as number;
+          return { c, nome: NOMES_5C[c], nivel: PALAVRA_NIVEL[n] || 'Suficiente', pct: Math.round(Math.max(12, Math.min(100, n / 6 * 100))),
+            frase: FRASES_5C[c][n <= 3 ? 0 : n === 4 ? 1 : 2] };
+        });
+      }
+    } catch { /* sem dados para a pauta */ }
+  }
+  // As competências técnicas e as atitudes: as que já dominas e as que estás a treinar.
+  const perfil = getPerfilProfissionalAluno(alunoId);
+  const resumo = (l: ItemPerfil[]) => ({
+    dominadas: l.filter(x => x.consolidada || x.nivel >= 4).map(x => x.nome),
+    aTreinar: l.filter(x => x.nivel > 0 && x.nivel < 3).map(x => x.nome),
+    total: l.filter(x => x.nivel > 0).length,
+  });
+  const tecnicas = resumo(perfil.tecnicas), atitudes = resumo(perfil.atitudes);
+  // A participação ativa: atividades e eventos em que esteve (participação confirmada pelo professor).
+  const participacoes = turmaId ? getPlanosAula().filter((p: any) => p.turmaId === turmaId && eventoForaDoHorario(p) && p.estado !== 'arquivado'
+    && p.participantesConfirmadosEm && participantesDoEvento(p).includes(alunoId))
+    .sort((a: any, b: any) => String(b.data || '').localeCompare(String(a.data || '')))
+    .map((p: any) => ({ titulo: String(p.titulo || 'Atividade').replace(/^Atividade fora da escola — /, ''), data: String(p.data || '').slice(0, 10) })) : [];
   // O que os colegas disseram, nas aulas em que o professor o teve em conta.
   const soma: Record<string, { s: number; n: number }> = {};
   let colegas = 0, aulas = 0, acima = 0, abaixo = 0;
@@ -9040,23 +9083,25 @@ export function perfilSocialDoAluno(alunoId: string): PerfilSocial | null {
   const forte = dims.filter(x => x.m >= 2.5).map(x => LIGACOES_PARES[x.d].muito);
   const melhorarD = dims.filter(x => x.m < 2).map(x => x.d);
   const melhorar = melhorarD.map(d => LIGACOES_PARES[d].pouco);
-  if (!cincoC.length && !dims.length) return null;
+  if (!cincoC.length && !dims.length && !tecnicas.total && !atitudes.total && !participacoes.length) return null;
   const diferenca = !dims.length ? null : acima > abaixo ? 'acima' : abaixo > acima ? 'abaixo' : 'igual';
   const PASSOS: Record<string, string> = {
     conflito: 'quando não concordares, primeiro repete a ideia do colega («Estás a dizer que…?») e só depois dá a tua.',
     colabora: 'na próxima aula, quando acabares a tua parte, pergunta à equipa «Em que posso ajudar?».',
     ouve: 'antes de responder, deixa o colega acabar e repete o que ele disse.',
     flexivel: 'experimenta a ideia de um colega antes de dizeres que não.',
-    cr: 'antes de pedir ajuda, experimenta uma maneira diferente. Se não resultar, pede — e conta o que tentaste.',
+    cr: 'antes de pedir ajuda, experimenta uma maneira diferente. Se não resultar, pede ajuda e conta o que tentaste.',
     co: 'no fim da aula, pensa numa coisa que correu mal e no que vais mudar na próxima.',
     cl: 'ajuda um colega sem ele te pedir.',
+    cm: 'chega a horas e entrega a autoavaliação no fim de cada aula.',
   };
-  const maisFraco = [...cincoC].sort((a, b) => a.pct - b.pct)[0];
+  const maisFraco = [...cincoC].filter(c => c.c === 'cl' || c.c === 'cr' || c.c === 'co' || c.c === 'cm').sort((a, b) => a.pct - b.pct)[0];
   const passo = melhorarD.includes('conflito') ? PASSOS.conflito : melhorarD[0] ? PASSOS[melhorarD[0]]
     : diferenca === 'abaixo' ? 'na próxima aula, diz uma ideia ao grupo: os teus colegas confiam em ti.'
-    : maisFraco && maisFraco.pct < 70 ? PASSOS[maisFraco.c]
-    : 'experimenta ser o líder do KitchenFlow numa aula — o grupo confia em ti.';
-  return { cincoC, forte, melhorar, diferenca, passo, colegas, aulas };
+    : maisFraco && maisFraco.pct < 75 ? PASSOS[maisFraco.c]
+    : tecnicas.aTreinar[0] ? `na próxima aula prática, pede ao professor que te mostre outra vez: ${tecnicas.aTreinar[0].toLowerCase()}.`
+    : 'experimenta ser o líder do KitchenFlow numa aula: o grupo confia em ti.';
+  return { ucId, cincoC, tecnicas, atitudes, participacoes, forte, melhorar, diferenca, passo, colegas, aulas };
 }
 
 export function getAvaliacoesPares(planoAulaId?: string): AvaliacaoPar[] {
