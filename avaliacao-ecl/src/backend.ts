@@ -18,7 +18,7 @@ import {
   DistribuicaoFicha, ChecklistAlunoFicha, RequisicaoAula, RecuperacaoModulo, Evidencia,
   Aviso, MateriaPrimaCustom, EntradaManual
 , SessaoAula, TOLERANCIA_PADRAO_MIN , CampoKF, PassoChecklistFicha, calcularNotaPlano, BONUS_PARTICIPACAO, notaPara20, nivelDe20, nivelPara20 } from './types';
-import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial } from './compatECL';
+import { microsPorUC, ATITUDES, OBRIGATORIAS, encontrarMicro, nomeConhecimentoProf, categoriaDaNota, conhecimentosDoReferencial, nomeCompetencia } from './compatECL';
 import { classificarGrupoCompetencia, gerarPromptPlanoIndividual, gerarPromptAnalisePreliminar } from './matrizEvidencias';
 import { REFERENCIAL_811RA144 } from './referencial811RA144';
 import { estadoDosPrecos, juntarPrecosRevistos, getPrecosRevistos, getMateriaPrimasBase, type PrecoRevisto } from './materiasPrimasBase';
@@ -3149,6 +3149,9 @@ function corpoSelecao(s: SelecaoAluno): Record<string, unknown> {
     tecnicas: s.tecnicas,
     atitudes: s.atitudes,
     autoavaliacoes: s.autoavaliacoes,
+    // (v25) Os nomes das competências, para o Sheets mostrar o que o aluno
+    // respondeu com palavras (o Sheets não tem o referencial).
+    nomes: Object.fromEntries((s.autoavaliacoes || []).map(a => [a.competenciaId, (() => { try { return nomeCompetencia(a.competenciaId); } catch { return a.competenciaId; } })()])),
     criadaEm: s.criadaEm,
     // A versão do plano a que respondeu (out/2026).
     ...((s as any).versaoPlano ? { versaoPlano: (s as any).versaoPlano } : {}),

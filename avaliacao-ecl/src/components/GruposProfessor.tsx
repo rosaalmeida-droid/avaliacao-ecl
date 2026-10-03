@@ -88,7 +88,10 @@ export function GruposProfessor({ plano, onPlanoActualizado }: { plano: PlanoAul
       </div>
     </div>
   );
-  if (!cfg.ativo) return config;
+  // Com os grupos desligados, mostra-se na mesma o que já existe (grupos que
+  // os alunos formaram e o que os colegas disseram): antes ficava escondido
+  // e o professor não via as avaliações entre colegas (Rosa, out/2026).
+  if (!cfg.ativo && grupos.length === 0 && getAvaliacoesPares(plano.id).length === 0) return config;
 
   // ── O que os colegas disseram ────────────────────────────────
   const pares = getAvaliacoesPares(plano.id);

@@ -70,3 +70,10 @@ Estas regras valem em toda a aplicação: no professor, no aluno, na coordenaç�
 ## Datas
 13. As datas comparam-se como datas e não como texto (`quandoFoi`). A hora do Sheets, do Firebase e de cada telemóvel pode vir escrita de maneiras diferentes.
 
+
+## Sheets (v25)
+37. **Cada separador tem em cima um resumo**: para que serve, de onde vêm os dados, para quem vão (alunos, professores, coordenação) e o que querem dizer as cores e os anulados. Nas folhas de dados, o resumo está na nota da célula A1.
+38. **Tudo de cada turma está no separador da turma**: alunos, notas, recuperações (com o que entregaram), aulas, grupos e o que os colegas disseram (com o líder KF), e o que chegou a cada aluno (o que respondeu, as respostas às perguntas, a nota do professor e os casos à parte). As folhas de dados ficam escondidas, no fim; à vista só EVENTOS, TELEMOVEIS e ELIMINADOS.
+39. **As fichas por extenso estão numa folha só (FICHAS POR EXTENSO)**, com o guião no fim de cada uma; o «abrir» de FICHAS TÉCNICAS vai direto à ficha.
+40. **Nas requisições, os produtos estão na própria linha**; para o mesmo plano ou evento vale a mais recente (verde) e as outras ficam «substituída» (vermelho).
+41. **O professor vê o que os colegas disseram** sempre que houve grupos nessa aula, mesmo com os grupos desligados no plano.
