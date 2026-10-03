@@ -410,19 +410,35 @@ async function lerDoSheets(url: string, params: Record<string, string>): Promise
   try { return await lerDoSheetsAgora(url, params); } finally { acabouDeLer(); }
 }
 
-async function lerDoSheetsAgora(url: string, params: Record<string, string>): Promise<any> {
+/**
+ * Leitura com prioridade, para entrar na aplicação: não espera pela fila das
+ * outras leituras. Ao abrir, a aplicação pede ~15 coisas ao Sheets, 4 de cada
+ * vez; a confirmação do código ficava atrás delas e entrar demorava quase um
+ * minuto (Rosa, out/2026). Desiste ao fim de `ms` (e entra-se como antes).
+ */
+async function lerDoSheetsJa(url: string, params: Record<string, string>, ms = 10000): Promise<any> {
+  if (!url) return null;
+  return lerDoSheetsAgora(url, params, ms);
+}
+
+async function lerDoSheetsAgora(url: string, params: Record<string, string>, ms = 45000): Promise<any> {
+  // Um pedido que nunca responde prendia um lugar da fila para sempre.
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const t = ctl ? setTimeout(() => ctl.abort(), ms) : null;
   try {
     const u = new URL(url);
     Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
     // (v22) Os PIN dos alunos só vêm para quem entrou como professor ou coordenação.
     if (params.tipo === 'get_alunos') { const t = tokenDaEntrada(); if (t) u.searchParams.set('token', t); }
-    const res = await fetch(u.toString());
+    const res = await fetch(u.toString(), ctl ? { signal: ctl.signal } : undefined);
     const json = await res.json();
     if (json?.zeroEm) aplicarComecarDoZero(String(json.zeroEm));
     return json;
   } catch (e) {
     console.warn('Erro ao ler do Sheets:', e);
     return null;
+  } finally {
+    if (t) clearTimeout(t);
   }
 }
 
@@ -445,7 +461,7 @@ export type RespostaEntrada = 'entrou' | 'errado' | 'bloqueado' | 'semCodigo' | 
 
 /** O código do professor («Rosa Almeida»), da coordenação («coordenadora») ou dos eventos («eventos»). */
 export async function confirmarCodigo(quem: string, codigo: string): Promise<RespostaEntrada> {
-  const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'entrar', quem, codigo });
+  const j: any = await lerDoSheetsJa(SHEETS_ECL_URL, { tipo: 'entrar', quem, codigo });
   if (!j?.ok) return 'semRede';
   if (j.semCodigo || (j.entrou === undefined && !j.bloqueado)) return 'semCodigo';   // script antigo ou sem código novo
   if (j.bloqueado) return 'bloqueado';
@@ -455,7 +471,7 @@ export async function confirmarCodigo(quem: string, codigo: string): Promise<Res
 }
 
 export async function confirmarPinAluno(alunoId: string, pin: string): Promise<RespostaEntrada> {
-  const j: any = await lerDoSheets(SHEETS_ECL_URL, { tipo: 'entrar_aluno', alunoId, pin });
+  const j: any = await lerDoSheetsJa(SHEETS_ECL_URL, { tipo: 'entrar_aluno', alunoId, pin });
   if (!j?.ok) return 'semRede';
   if (j.semPin || (j.entrou === undefined && !j.bloqueado)) return 'semCodigo';
   if (j.bloqueado) return 'bloqueado';
@@ -2173,8 +2189,8 @@ function guardarLigacoes(l: Record<string, string>): void {
 async function atualizarLigacoes(turmaId: string): Promise<boolean> {
   try {
     const json: any = await Promise.race([
-      lerDoSheets(SHEETS_HISTORICO_URL, { tipo: 'get_telemoveis', turmaId }),
-      new Promise(res => setTimeout(() => res(null), 5000)),
+      lerDoSheetsJa(SHEETS_HISTORICO_URL, { tipo: 'get_telemoveis', turmaId }, 6000),
+      new Promise(res => setTimeout(() => res(null), 6000)),
     ]);
     if (!json?.ok || !Array.isArray(json.telemoveis)) return false;
     const l = ligacoesLocais();
