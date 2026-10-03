@@ -8,6 +8,9 @@
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
+import { FecharUC } from './FecharUC';
+import { getTurmas, getPlanosAula } from '../backend';
+import { modulosDaTurma } from '../cronograma';
 import {
   calculoDoModelo, sugestaoClassificacao, erroClassificacao, avisosClassificacao,
   htmlDaPauta, gerarPautaXLSX, gerarPautaPDF, descarregar, nomeFicheiroPauta,
@@ -77,6 +80,43 @@ function simular(nAlunos: number, nPlanos: number, semente: number) {
 
 const n1 = (x: number | null | undefined) => x === null || x === undefined ? '—' : String(Math.round(x * 10) / 10).replace('.', ',');
 
+/** A pauta provisória de uma turma verdadeira: escolhe-se a turma e a UC e
+ *  abre-se o ecrã da pauta com os dados de hoje, sem fechar nem enviar nada
+ *  (Rosa, out/2026: «o coordenador pode, naquele momento, criar uma simulação»). */
+function PautaProvisoria() {
+  const turmas = getTurmas();
+  const [turmaId, setTurmaId] = useState('');
+  const [uc, setUc] = useState<{ id: string; nome: string } | null>(null);
+  const comPlanos = useMemo(() => new Set(getPlanosAula().filter(p => p.turmaId === turmaId && p.estado !== 'arquivado').map(p => p.ucId).filter(Boolean)), [turmaId]);
+  const ucs = turmaId ? (modulosDaTurma(turmaId) as any[]).filter(m => comPlanos.has(m.id)) : [];
+  const campo: React.CSSProperties = { padding: '9px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, minWidth: 200 };
+  return (
+    <div style={{ background: '#fff', border: '1px solid #1f4e79', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
+      <div style={{ fontSize: 16, fontWeight: 800, color: '#1f4e79' }}>Pauta provisória de uma turma</div>
+      <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', margin: '4px 0 10px', lineHeight: 1.5 }}>
+        A qualquer momento da UC: os alunos verdadeiros e as notas validadas até hoje, no modelo da escola.
+        Não fecha a UC, não publica notas e não envia nada.
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={{ fontSize: 13 }}>Turma<br />
+          <select value={turmaId} onChange={e => { setTurmaId(e.target.value); setUc(null); }} style={campo}>
+            <option value="">Escolher…</option>
+            {turmas.map(t => <option key={t.id} value={t.id}>{t.nome || t.id}</option>)}
+          </select></label>
+        <label style={{ fontSize: 13 }}>UC<br />
+          <select value={uc?.id || ''} disabled={!turmaId} onChange={e => { const m = ucs.find(x => x.id === e.target.value); setUc(m ? { id: m.id, nome: m.nome } : null); }} style={campo}>
+            <option value="">{turmaId && !ucs.length ? 'Esta turma ainda não tem planos' : 'Escolher…'}</option>
+            {ucs.map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome}</option>)}
+          </select></label>
+      </div>
+      {uc && turmaId && (
+        <FecharUC provisoria turmaId={turmaId} ucId={uc.id} ucNome={uc.nome} nomeProfessor="Coordenação"
+          onFechado={() => setUc(null)} onCancelar={() => setUc(null)} />
+      )}
+    </div>
+  );
+}
+
 export function SimulacaoPauta() {
   const [nAlunos, setNAlunos] = useState(12);
   const [nPlanos, setNPlanos] = useState(5);
@@ -119,6 +159,8 @@ export function SimulacaoPauta() {
 
   return (
     <div>
+      <PautaProvisoria />
+      <div style={{ fontSize: 16, fontWeight: 800, color: '#1f4e79', margin: '4px 0 8px' }}>Exemplo com alunos fictícios</div>
       <div style={{ background: '#fff8e1', border: '1px solid #e0b000', borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 13.5, lineHeight: 1.5 }}>
         <b>Simulação — alunos fictícios.</b> As notas são inventadas, mas as contas, o modelo e os
         ficheiros são os mesmos da pauta verdadeira. Nada é gravado nem enviado.
