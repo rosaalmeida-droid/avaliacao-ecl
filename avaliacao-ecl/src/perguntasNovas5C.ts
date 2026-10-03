@@ -236,10 +236,10 @@ export const BANCO_CR_NOVO: PerguntaCO[] = [
     ['Parei.', 'Fiz tudo à pressa.', 'Fiz o mais importante.', 'Reorganizei e acabei bem.'], 'Houve tempo.'),
   cr('cr22', 'resolver', 'Sem resposta',
     'Hoje, quando ninguém te sabia responder a uma dúvida, o que fizeste?',
-    ['Desisti.', 'Fiz ao calhas.', 'Procurei no manual ou na ficha.', 'Procurei, experimentei e confirmei depois.'],
+    ['Desisti.', 'Fiz à sorte.', 'Procurei no manual ou na ficha.', 'Procurei, experimentei e confirmei depois.'],
     'Hoje não tive dúvidas assim (o professor confirma).',
     'Hoje ninguém sabia responder. O que fizeste?',
-    ['Desisti.', 'Fiz ao calhas.', 'Procurei no manual.', 'Procurei e experimentei.'], 'Não tive dúvidas.'),
+    ['Desisti.', 'Fiz à sorte.', 'Procurei no manual.', 'Procurei e experimentei.'], 'Não tive dúvidas.'),
   // ── Ter ideias e experimentar ──
   cr('cr23', 'ideias', 'Nome do prato',
     'Hoje, se tivesses de dar um nome novo ao prato, conseguias?',

@@ -294,8 +294,8 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
         sub="Uma pergunta de cada vez: só aparecem as que fazem falta. O resto a aplicação deduz." />
       {!definida && (
         <div style={{ background: C.ambarP, color: '#5C3A08', borderRadius: 10, padding: '10px 14px', fontSize: 14, marginBottom: 14, lineHeight: 1.5 }}>
-          <b>Escolhe o tipo de aula.</b> Sem ele, a aplicação não sabe o que avaliar nem se há farda e higiene e
-          segurança alimentar — e não adivinha.
+          <b>Escolha o tipo de aula.</b> Sem esta informação, a aplicação não sabe o que avaliar nem se há farda e higiene e
+          segurança alimentar, e não o pode adivinhar.
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -468,7 +468,7 @@ export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
   // adivinhada (uma teórica aparecia «só atitudes, 100%»).
   if (!triagemDoPlano(plano)) return (
     <div style={cart}>
-      <CabecalhoPasso n={3} titulo="O que se avalia" sub="Escolhe primeiro, no passo 1, o tipo de aula: é ele que diz o que se avalia." />
+      <CabecalhoPasso n={3} titulo="O que se avalia" sub="Escolha primeiro, no passo 1, o tipo de aula: é ele que define o que se avalia." />
     </div>
   );
   const { ecras, fora, regras } = oQueOAlunoVe(plano);
@@ -493,7 +493,7 @@ export function PassoOQueSeAvalia({ plano }: { plano: PlanoAula }) {
           ))}
           {pesos.some(x => x.cat === 'OBR') && (
             <div style={{ fontSize: 13, color: C.suave, lineHeight: 1.5 }}>
-              A farda vês à entrada e os registos marcas tu pelo relatório do KitchenFlow — o aluno não responde a isso.
+              A farda é verificada à entrada e os registos são marcados pelo professor, a partir do relatório do KitchenFlow. O aluno não responde a estas perguntas.
             </div>
           )}
           <div style={{ fontSize: 13, color: C.suave, lineHeight: 1.5 }}>
@@ -641,7 +641,7 @@ export function EstadoDoPlano({ plano, mudancas }: { plano: PlanoAula; mudancas:
     <div>
       {mudancas.length > 0 && (
         <div style={{ background: '#FDF0E6', border: '1.5px solid #e8c98f', borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#7A3E0C', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>O que mudaste agora</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#7A3E0C', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>O que alterou agora</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
             {mudancas.map((d, i) => <li key={i}>{d.texto}</li>)}
           </ul>
@@ -722,13 +722,13 @@ export function PassoEnviar({ plano, onPlanoActualizado }: { plano: PlanoAula; o
   return (
     <div style={cart}>
       <CabecalhoPasso n={4} titulo="Enviar aos alunos"
-        sub={!publicado ? 'Os alunos ainda não veem esta aula: publica-a no botão «Publicar».'
+        sub={!publicado ? 'Os alunos ainda não veem esta aula: publique-a no botão «Publicar».'
           : registado ? `O que mudou desde o último envio (${hora(registado.em)})` : 'O que os alunos têm'} />
       {/* Publicado antes de haver este registo: ainda não se sabe o que os alunos têm. */}
       {publicado && !registado && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 14.5 }}>
           <span style={{ flex: '1 1 260px', color: C.suave }}>
-            Ainda não há registo do que os alunos receberam. Envia a versão atual: a partir daí, o que mudares aparece aqui.
+            Ainda não há registo do que os alunos receberam. Envie a versão atual: a partir desse momento, as alterações que fizer aparecem aqui.
           </span>
           <button onClick={enviar} style={{ fontFamily: 'inherit', fontSize: 15, fontWeight: 700, padding: '10px 16px',
             borderRadius: 10, border: 'none', background: C.cobre, color: '#fff', cursor: 'pointer' }}>Enviar aos alunos</button>

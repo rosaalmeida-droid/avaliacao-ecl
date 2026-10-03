@@ -58,7 +58,7 @@ export function ModalFullscreen({
 
     if (aoGuardar) {
       const querGuardar = confirm(
-        'Tens alterações por guardar.\n\nGuardar antes de sair?\n\n'
+        'Há alterações por guardar.\n\nGuardar antes de sair?\n\n'
         + 'OK para guardar e sair · Cancelar para continuar a editar'
       );
       if (!querGuardar) return;        // fica onde está
@@ -69,7 +69,7 @@ export function ModalFullscreen({
     }
 
     // Sem forma de guardar: pelo menos avisar.
-    if (confirm('Tens alterações por guardar.\n\nSair mesmo assim?')) onFechar();
+    if (confirm('Há alterações por guardar.\n\nSair mesmo assim?')) onFechar();
   }
 
   // Fechar com Esc
@@ -195,7 +195,7 @@ export function ModalFullscreen({
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
           <span style={{ color: corDestaque }}>●</span>
-          Ao fechar, o que fizeste aqui fica gravado automaticamente.
+          Ao fechar, o que fez aqui fica guardado automaticamente.
         </div>
       </div>
 

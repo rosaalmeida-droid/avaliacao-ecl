@@ -59,7 +59,7 @@ export function ManuaisDoAluno({ turmaId, ucAtual }: { turmaId: string; ucAtual?
     <div style={{ padding: 14, maxWidth: 620, margin: '0 auto' }}>
       <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>Manuais</div>
       {atual && (<>
-        <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#777', margin: '4px 2px 6px' }}>A tua UC agora</div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#777', margin: '4px 2px 6px' }}>A UC em curso</div>
         <LinhaComAnexo m={atual} url={urlManual(atual, ehManualUC(atual) ? 'UC' : coorte)} destaque />
       </>)}
       {primeiroAno ? <PorAno lista={MANUAIS_UC_1ANO} coorte="UC" /> : <PorAno lista={MANUAIS_UFCD} coorte={coorte} />}
@@ -88,7 +88,7 @@ export function ManuaisDoProfessor({ turmaId }: { turmaId?: string }) {
   return (
     <div style={{ background: '#fff', borderRadius: 14, padding: 16, marginBottom: 16, border: '1px solid rgba(26,23,20,0.08)' }}>
       <div style={{ fontSize: 18, fontWeight: 800 }}>📘 Manuais do Aluno (PDF)</div>
-      <div style={{ fontSize: 13, color: '#777', margin: '3px 0 10px' }}>Escolhe a versão da turma. Os alunos veem a da sua turma, com a UC atual primeiro.</div>
+      <div style={{ fontSize: 13, color: '#777', margin: '3px 0 10px' }}>Escolha a versão da turma. Os alunos veem a versão da sua turma, com a UC atual em primeiro lugar.</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
         {COORTES.map(c => <button key={c} style={bt(coorte === c)} onClick={() => setCoorte(c)}>
           {c}{c === '2023-2026' ? ' (recuperações)' : c === '2024-2027' ? ' (3.º ano)' : ' (2.º ano)'}</button>)}

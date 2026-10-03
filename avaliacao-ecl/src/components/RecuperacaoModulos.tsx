@@ -64,7 +64,7 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
         Recuperação de Módulos
       </div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 16 }}>
-        Aulas que faltaste podem ser recuperadas aqui — sem teres de repetir tudo do zero.
+        Aqui podes recuperar as aulas a que faltaste, sem teres de repetir tudo do início.
       </div>
 
       {/* Quatro separadores em grelha 2×2: no telemóvel partiam-se em três linhas desiguais. */}
@@ -250,7 +250,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
           <div className="muted" style={{ fontSize: 13 }}>
-            {trancada ? 'Prazo terminado — fala com o professor' : r.estado === 'pendente' ? 'Por fazer' : r.estado === 'submetida' ? 'Submetida — a aguardar avaliação' : 'Em avaliação'}
+            {trancada ? 'O prazo terminou: fala com o professor' : r.estado === 'pendente' ? 'Por fazer' : r.estado === 'submetida' ? 'Entregue: a aguardar avaliação' : 'Em avaliação'}
           </div>
         </div>
         <span style={{ fontSize: 14, color: 'var(--copper)' }}>{aberta ? '▲' : '▼'}</span>
@@ -289,7 +289,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                 if (resultado.ok && resultado.pdfUrl) {
                   const janelaP = window.open(resultado.pdfUrl, '_blank');
                   if (!janelaP) {
-                    alert('PDF gerado com sucesso, mas o browser bloqueou a abertura automática. Link: ' + resultado.pdfUrl + '\n\n(Foi copiado — permite pop-ups para abrir automaticamente da próxima vez.)');
+                    alert('O PDF foi gerado, mas o navegador bloqueou a abertura automática. Link: ' + resultado.pdfUrl + '\n\n(O link foi copiado. Permite as janelas pop-up para que abra automaticamente da próxima vez.)');
                     try { navigator.clipboard.writeText(resultado.pdfUrl); } catch {}
                   }
                 } else {
@@ -370,7 +370,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
                     📚 Estuda primeiro o(s) Guia(s) de Apoio à Produção
                   </div>
                   <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 10 }}>
-                    Todo o trabalho abaixo (B, C, D) deve ser respondido com base no que está aqui — enquadramento, HACCP, rendimentos, food cost e as questões já preparadas para esta produção.
+                    Todo o trabalho abaixo (B, C, D) deve ser respondido com base no que está aqui: o enquadramento, o HACCP, os rendimentos, o custo das matérias-primas (food cost) e as questões já preparadas para esta produção.
                   </div>
                   {guias.map(g => (
                     <div key={g.fichaId} style={{ marginBottom: 8, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
@@ -422,7 +422,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
 
               {ehTecnica && (
                 <div style={{ padding: '10px 12px', background: 'var(--sage-pale)', borderRadius: 8, fontSize: 13, color: 'var(--sage)', marginBottom: 14 }}>
-                  📷 Esta UC é predominantemente técnica — fala com o professor sobre como apresentar evidência prática (fotos, vídeo, ou repetição da técnica numa próxima aula).
+                  📷 Esta UC é sobretudo técnica. Fala com o professor sobre a forma de apresentares provas do trabalho prático (fotografias, vídeo ou repetição da técnica numa próxima aula).
                 </div>
               )}
 
@@ -501,8 +501,8 @@ function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: impo
       setTextoColado(textoFormatado);
     } else {
       // Modo manual — guarda só o prompt, o aluno copia/cola como antes.
-      if (resultado.motivo === 'limite_atingido') setAvisoIA('A geração automática atingiu o limite gratuito de hoje — usa o modo manual abaixo.');
-      else if (resultado.motivo !== 'sem_chave') setAvisoIA('Não foi possível gerar automaticamente — usa o modo manual abaixo.');
+      if (resultado.motivo === 'limite_atingido') setAvisoIA('A criação automática atingiu o limite gratuito de hoje. Usa o modo manual, mais abaixo.');
+      else if (resultado.motivo !== 'sem_chave') setAvisoIA('Não foi possível criar o plano automaticamente. Usa o modo manual, mais abaixo.');
       addOrUpdateRecuperacao({ ...r, promptPlanoIndividual: prompt, atualizadoEm: new Date().toISOString() });
     }
     setAGerarIA(false);
@@ -530,7 +530,7 @@ function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: impo
           🤖 Plano de Recuperação Individual
         </div>
         <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 10 }}>
-          Gera um plano feito só para ti, com as tuas competências em falta. A app tenta gerar automaticamente — se não conseguir, dá-te um texto para colares numa IA.
+          Cria um plano feito só para ti, com as competências que te faltam. A aplicação tenta criá-lo automaticamente. Se não conseguir, dá-te um texto para colares numa IA.
         </div>
         {avisoIA && <div style={{ fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>{avisoIA}</div>}
         <button onClick={gerar} disabled={aGerarIA} style={{ width: '100%', padding: 12, borderRadius: 8, border: 'none', background: 'var(--copper)', color: 'white', fontWeight: 700, fontSize: 13, cursor: aGerarIA ? 'default' : 'pointer', opacity: aGerarIA ? 0.7 : 1 }}>
@@ -553,7 +553,7 @@ function PlanoIndividualBloco({ recuperacao, onAtualizado }: { recuperacao: impo
           {!r.planoIndividualTexto && (
             <>
               <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
-                Escolhe uma IA — depois cola aqui o resultado.
+                Escolhe uma IA e, depois, cola aqui o resultado.
               </div>
               <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 12.5, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 200, overflowY: 'auto', marginBottom: 8 }}>
                 {prompt}

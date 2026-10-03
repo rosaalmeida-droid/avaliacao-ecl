@@ -299,8 +299,8 @@ export function EcraAvaliarMe({
               Do {titulo} — para ir fazendo
             </div>
             <div style={{ fontSize: 13, color: T.suave, marginTop: 3, lineHeight: 1.5 }}>
-              Mudaste de referencial a meio do curso. Estas atitudes vais
-              apanhando nas aulas deste ano: em cada aula podes escolher uma.
+              Mudaste de referencial a meio do curso. Vais trabalhar estas atitudes
+              nas aulas deste ano: em cada aula, podes escolher uma.
               {' '}{feitas} de {anteriores.length} já começadas.
             </div>
             <div style={{ marginTop: 10 }}>

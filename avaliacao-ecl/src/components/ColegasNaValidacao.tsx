@@ -48,7 +48,7 @@ export function ColegasNaValidacao({ alunoId, turmaId, autoavaliacoes, triagemDo
         O que os colegas de grupo dizem deste aluno
       </div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', margin: '4px 0 10px', lineHeight: 1.5 }}>
-        Não conta para a nota. Serve para te ajudar a validar as atitudes e os 5 C. O que é muito diferente do que os outros
+        Não conta para a nota. Serve para ajudar o professor a validar as atitudes e os 5 C. O que é muito diferente do que os outros
         colegas disseram na mesma aula fica fora da média (pode ser conflito entre eles).
       </div>
       {dados.map(d => {
@@ -75,7 +75,7 @@ export function ColegasNaValidacao({ alunoId, turmaId, autoavaliacoes, triagemDo
             </div>
             {diferenca && (
               <div style={{ marginTop: 6, fontSize: 13, padding: '6px 9px', borderRadius: 8, background: '#fff4e0', color: '#8a5a12', lineHeight: 1.45 }}>
-                ⚠ O aluno avalia-se alto aqui, mas os colegas veem-no <b>{palavra}</b>. Vale a pena confirmares com o que viste.
+                ⚠ O aluno avalia-se com nível alto aqui, mas a resposta dos colegas é «<b>{palavra}</b>». Confirme com o que observou.
               </div>
             )}
             {aberta === d.dimensao && (

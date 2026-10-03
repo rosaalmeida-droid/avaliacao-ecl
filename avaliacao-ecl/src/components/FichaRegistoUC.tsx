@@ -114,7 +114,7 @@ export function FichaRegistoUC({ turmaId }: { turmaId: string }) {
             border: '1px solid rgba(26,23,20,0.08)', display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
             <span><strong>Turma:</strong> {turmaId}</span>
             {ucSel && <span><strong>{isUFCD ? 'UFCD' : 'UC'}:</strong> {ucSel} — {ucNome.slice(0,40)}</span>}
-            <span><strong>Período:</strong> {periodo === 'tudo' ? 'Ano lectivo' : `${periodo.slice(1)}º Trimestre`}</span>
+            <span><strong>Período:</strong> {periodo === 'tudo' ? 'Ano letivo' : `${periodo.slice(1)}º Trimestre`}</span>
             <span><strong>Data:</strong> {hoje}</span>
             <span><strong>Alunos:</strong> {alunos.length}</span>
             <span><strong>Competências:</strong> {compsAvaliadas.length}</span>

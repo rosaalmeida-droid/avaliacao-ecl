@@ -221,7 +221,7 @@ export function RegistosKFaoVivo({ plano }: { plano: PlanoAula }) {
           )}
           {estado?.falhou && (
             <div style={{ fontSize: 13.5, color: '#8e2418', lineHeight: 1.5 }}>
-              Sem ligação ao KitchenFlow. Verifica a internet e toca em «Ler agora».
+              Sem ligação ao KitchenFlow. Verifique a ligação à internet e toque em «Ler agora».
             </div>
           )}
           {verTodos && <div style={{ maxHeight: 360, overflowY: 'auto' }}>

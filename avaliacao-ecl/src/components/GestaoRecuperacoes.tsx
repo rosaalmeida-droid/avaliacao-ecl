@@ -498,7 +498,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
             {!r.analiseIA ? (
               <>
                 <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginBottom: 8 }}>
-                  A IA não decide a nota — só ajuda a preparar a defesa oral e a identificar lacunas. Abre directo no Claude (já preenchido) ou copia para outra IA.
+                  A IA não decide a nota — só ajuda a preparar a defesa oral e a identificar lacunas. Abre diretamente no Claude (já preenchido) ou copia para outra IA.
                 </div>
                 <div style={{ background: 'var(--cream-dark)', borderRadius: 8, padding: 10, fontSize: 12.5, fontFamily: 'monospace', whiteSpace: 'pre-wrap', maxHeight: 180, overflowY: 'auto', marginBottom: 8 }}>
                   {promptAnalise}
@@ -514,7 +514,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
                 ) : (
                   <>
                     <textarea value={textoAnaliseColado} onChange={e => setTextoAnaliseColado(e.target.value)}
-                      placeholder="Cola aqui a análise que a IA devolveu..."
+                      placeholder="Cole aqui a análise que a IA devolveu..."
                       style={{ width: '100%', minHeight: 120, borderRadius: 8, border: '1px solid var(--border)', padding: 10, fontSize: 13, marginBottom: 8 }} />
                     <button onClick={guardarAnaliseIA} disabled={!textoAnaliseColado}
                       style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 13, cursor: 'pointer', opacity: textoAnaliseColado ? 1 : 0.4 }}>
@@ -564,7 +564,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
           🗣️ Defesa Oral (3-5 minutos) — obrigatória
         </div>
         <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginBottom: 10 }}>
-          Nenhuma recuperação deve ser validada só com base no trabalho escrito. Faz estas perguntas ao aluno para confirmar que compreende o que escreveu.
+          Nenhuma recuperação deve ser validada só com base no trabalho escrito. Faça estas perguntas ao aluno para confirmar que compreende o que escreveu.
         </div>
         {(r.perguntasDefesaOral || []).map((p, i) => (
           <div key={i} style={{ fontSize: 13, padding: '6px 10px', background: '#fff', borderRadius: 6, marginBottom: 4 }}>
@@ -607,7 +607,7 @@ function AvaliarRecuperacao({ recuperacao, nomeAluno, nomeProfessor, onVoltar }:
       <button onClick={concluir} disabled={!todasAvaliadas || !defesaOralRealizada}
         style={{ width: '100%', marginTop: 16, padding: 14, borderRadius: 10, border: 'none', background: 'var(--sage)', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: (todasAvaliadas && defesaOralRealizada) ? 1 : 0.4 }}>
         {!todasAvaliadas ? `Falta avaliar ${todasComp.filter(c => !niveis[c]).length} competência(s)`
-          : !defesaOralRealizada ? '🗣️ Confirma a defesa oral primeiro'
+          : !defesaOralRealizada ? '🗣️ Confirme primeiro a defesa oral'
           : '✓ Concluir Avaliação'}
       </button>
     </div>
@@ -628,7 +628,7 @@ function UCEmAtrasoNaGestao({ turmaId, nomeProfessor, onMudou }: { turmaId: stri
     <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 14, border: lista.some(l => l.estado === 'sem_plano') ? '2px solid #c0392b' : '1px solid rgba(26,23,20,0.1)' }}>
       <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>UC em atraso por faltas ({lista.length})</div>
       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)', marginBottom: 8 }}>
-        Faltas a partir de 10% do total de horas da UC. Decide se recupera já, em aula, ou depois da UC.
+        Faltas a partir de 10% do total de horas da UC. Decida se o aluno recupera já, em aula, ou depois da UC.
       </div>
       {lista.length === 0 ? <div style={{ fontSize: 14, color: 'rgba(26,23,20,0.5)' }}>Nenhum aluno com a UC em atraso.</div>
         : lista.map(l => (

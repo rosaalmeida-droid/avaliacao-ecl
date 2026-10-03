@@ -338,7 +338,7 @@ const PERGUNTAS: PerguntaTriagem[] = [
       {e.onde === 'fora' && <input autoFocus value={e.morada} onChange={x => mudar({ morada: x.target.value })} placeholder="Nome do espaço e morada" style={campo} />}
       <Opcao icone="❔" ativo={e.onde === 'por_definir'} onClick={() => { mudar({ onde: 'por_definir' }); avancar(); }}>Ainda por definir</Opcao>
     </>) },
-  { id: 'pessoas', titulo: 'Quantas pessoas?', ajuda: 'Um número aproximado chega; confirma-se mais tarde.', feita: e => e.pessoas > 0,
+  { id: 'pessoas', titulo: 'Quantas pessoas?', ajuda: 'Basta um número aproximado; pode confirmá-lo mais tarde.', feita: e => e.pessoas > 0,
     corpo: (e, mudar) => lista(<>
       <input type="number" min={1} inputMode="numeric" value={e.pessoas || ''} onChange={x => mudar({ pessoas: Math.max(0, Number(x.target.value) || 0) })}
         placeholder="Nº de pessoas" style={{ ...campo, fontSize: 26, fontWeight: 800, textAlign: 'center', maxWidth: 220 }} />
@@ -553,7 +553,7 @@ function AvaliacaoDosAlunos({ e, nomeProfessor }: { e: EventoECL; nomeProfessor?
       </div>
       {!e.data && <div style={{ color: '#8e2418', fontWeight: 700 }}>Falta a data do evento.</div>}
       <select value={turma} onChange={x => setTurma(x.target.value)} style={{ width: '100%', padding: 10, borderRadius: 10, fontSize: 15, marginBottom: 8, fontFamily: 'inherit' }}>
-        <option value="">Escolhe a turma…</option>
+        <option value="">Escolha a turma…</option>
         {semPlano.map(t => <option key={t} value={t}>{t}</option>)}
       </select>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -973,7 +973,7 @@ function FichasOrcamentos({ e, mudar, nomeProfessor }: { e: EventoECL; mudar: (x
       <div style={cartao}>
         {fichasDoEvento.length === 0 && (
           <div style={{ fontSize: 14.5, color: C.texto, lineHeight: 1.5, marginBottom: 12 }}>
-            Junte as fichas técnicas das iguarias do evento. Depois, em cada orçamento, escolhe as que entram.
+            Junte as fichas técnicas das iguarias do evento. Depois, em cada orçamento, escolha as que entram.
             {e.clienteSabe !== 'sim' && <> Não sabe ainda o menu? Peça propostas a uma IA:</>}
           </div>
         )}
@@ -1356,7 +1356,7 @@ function Quantidades({ e, mudar }: { e: EventoECL; mudar: (x: Partial<EventoECL>
                 </div>
                 {l.divergencia && (
                   <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-                    <div style={{ fontSize: 13, color: C.ambar, fontWeight: 700 }}>As fontes não batem certo — escolhe uma:</div>
+                    <div style={{ fontSize: 13, color: C.ambar, fontWeight: 700 }}>As fontes não coincidem. Escolha uma:</div>
                     {l.divergencia.opcoes.map((op, k) => (
                       <Opcao key={k} ativo={l.divergencia!.escolhida === k} sub={op.fonte}
                         onClick={() => mudarQ({ escolha: { ...(q.escolha || {}), [l.divergencia!.id]: k as 0 | 1 } })}>{op.quantidade}</Opcao>

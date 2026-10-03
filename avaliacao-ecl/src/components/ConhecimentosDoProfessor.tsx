@@ -57,7 +57,7 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
       {trabalho && new Set(lista.filter(k => !removidas.includes(k.id)).map(k => capituloDoCampo(k.id)?.capitulo.n).filter(n => n != null)).size === 1 && (
         <div style={{ background: '#fdf0ef', border: '2px solid #c0392b', borderRadius: 10, padding: '8px 12px', marginBottom: 8,
           fontSize: 13.5, fontWeight: 700, color: '#8e2418', lineHeight: 1.45 }}>
-          Os alunos escolhem o tema, mas só marcaste um conteúdo: todos ficam com o mesmo. Marca mais conteúdos ou o manual todo.
+          Os alunos escolhem o tema, mas só marcou um conteúdo: todos ficam com o mesmo. Marque mais conteúdos ou o manual todo.
         </div>
       )}
       {!trabalho && proximo && !lista.some(k => k.id.startsWith(`KNW-P-M-${proximo.ficheiro}-${proximo.capitulo.n}-`)) && (
@@ -176,7 +176,7 @@ export function ConhecimentosDoProfessor({ plano, onPlanoActualizado }: { plano:
         <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: azul }}>Escrever outro{sugestoes.length ? ' ou usar o referencial' : ''}</summary>
         <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
           <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') juntar(texto); }}
-            placeholder="Escreve o que se trabalhou (ex.: Identificar os cortes do porco)" className="input" style={{ flex: 1, fontSize: 13.5 }} />
+            placeholder="Escreva o que se trabalhou (por exemplo: Identificar os cortes do porco)" className="input" style={{ flex: 1, fontSize: 13.5 }} />
           <button onClick={() => juntar(texto)} className="btn btn-primary" style={{ fontSize: 13.5 }}>+ Juntar</button>
         </div>
         {sugestoes.length > 0 && (

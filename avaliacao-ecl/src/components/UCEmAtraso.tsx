@@ -146,10 +146,10 @@ export function PainelUCEmAtraso({ lista, nomeProfessor, onFechar, onMudou, onAb
 
             {/* A situação e o que falta fazer */}
             <div style={{ marginTop: 8, fontSize: 13.5, lineHeight: 1.5 }}>
-              {l.estado === 'sem_plano' && <span style={{ color: '#8e2418', fontWeight: 700 }}>Sem plano de recuperação — decide agora.</span>}
+              {l.estado === 'sem_plano' && <span style={{ color: '#8e2418', fontWeight: 700 }}>Sem plano de recuperação: decida agora.</span>}
               {l.estado === 'adiado' && (
                 <span><b>Fica para depois da UC.</b> Na pauta, a UC fica com a nota que tiver (com «a)» se for negativa).
-                  Quando quiseres, cria o plano de recuperação.</span>
+                  Quando quiser, crie o plano de recuperação.</span>
               )}
               {l.estado === 'em_curso' && l.plano && (
                 <span><b>Plano em curso:</b> {MODALIDADES_RECUPERACAO.find(m => m.id === l.plano!.modalidade)?.nome || 'recuperação'}
@@ -206,7 +206,7 @@ function FormPlano({ l, onFeito, onCancelar }: { l: UCEmAtraso; onFeito: () => v
   const [atividadeId, setAtividadeId] = useState('');
   return (
     <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: '#f7f5f2' }}>
-      <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Plano de recuperação — escolhe a modalidade</div>
+      <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>Plano de recuperação: escolha a modalidade</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 6 }}>
         {MODALIDADES_RECUPERACAO.map(m => (
           <label key={m.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 10px', borderRadius: 9,
@@ -221,7 +221,7 @@ function FormPlano({ l, onFeito, onCancelar }: { l: UCEmAtraso; onFeito: () => v
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Em que atividade?</div>
           {atividades.length === 0
-            ? <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)' }}>Esta turma ainda não tem atividades extra. Podes criar o plano e ligar a atividade depois, ou aceitar o aluno quando ele se candidatar.</div>
+            ? <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)' }}>Esta turma ainda não tem atividades extra. Pode criar o plano e associar a atividade mais tarde, ou aceitar o aluno quando ele se candidatar.</div>
             : <select value={atividadeId} onChange={e => setAtividadeId(e.target.value)} style={campo}>
                 <option value="">— Escolher depois —</option>
                 {atividades.map((a: any) => <option key={a.id} value={a.id}>{dataPT(a.data)} · {a.titulo}</option>)}
@@ -239,7 +239,7 @@ function FormPlano({ l, onFeito, onCancelar }: { l: UCEmAtraso; onFeito: () => v
         <button onClick={onCancelar} style={{ padding: '9px 14px', borderRadius: 9, border: '1px solid rgba(26,23,20,0.18)',
           background: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
         <button onClick={() => {
-          if (!descricao.trim()) { alert('Escreve o que o aluno tem de fazer.'); return; }
+          if (!descricao.trim()) { alert('Escreva o que o aluno tem de fazer.'); return; }
           const rec = criarPlanoRecuperacao(l.alunoId, l.turmaId, l.ucId, modalidade, descricao.trim(), prazo);
           if (modalidade === 'atividade' && atividadeId) ligarRecuperacaoAAtividade(rec.id, atividadeId);
           onFeito();
@@ -282,7 +282,7 @@ function FormResultado({ l, nomeProfessor, onFeito, onCancelar }: {
           background: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
         <button onClick={() => {
           const n = Number(nota.replace(',', '.'));
-          if (nota === '' || isNaN(n) || n < 0 || n > 20) { alert('Escreve o resultado, de 0 a 20.'); return; }
+          if (nota === '' || isNaN(n) || n < 0 || n > 20) { alert('Escreva o resultado, de 0 a 20.'); return; }
           if (l.plano) registarResultadoRecuperacao(l.plano.id, n, obs.trim(), nomeProfessor);
           onFeito();
         }} style={{ padding: '9px 14px', borderRadius: 9, border: 'none', background: 'var(--sage, #5a7a4e)', color: '#fff',

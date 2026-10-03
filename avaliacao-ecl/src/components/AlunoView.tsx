@@ -525,10 +525,10 @@ const FRASES_FORMATO: Record<string, string[]> = {
     'Apresentei sem ler e expliquei o tema.', 'Apresentei sem ler, expliquei o tema e respondi às perguntas.'],
   escrito: ['Entreguei incompleto ou copiado.', 'Entreguei completo, mas copiado do manual ou com erros.',
     'Entreguei completo, com as minhas palavras.', 'Entreguei completo, com as minhas palavras e exemplos da cozinha.'],
-  digital: ['Fiz só com texto copiado.', 'Fiz, mas com muito texto e pouco organizado.',
-    'Fiz claro, com imagens e pouco texto.', 'Fiz claro, com imagens, e usei-o para explicar sem ler.'],
+  digital: ['Usei só texto copiado.', 'Fiz, mas tem muito texto e está pouco organizado.',
+    'Ficou claro, com imagens e pouco texto.', 'Ficou claro, com imagens, e usei-o para explicar sem ler.'],
   pratico: ['Comecei a demonstração, mas não a acabei.', 'Fiz a demonstração, mas precisei de ajuda.',
-    'Fiz a demonstração sozinho e expliquei o que fazia.', 'Fiz sozinho, expliquei o que fazia e respondi às perguntas.'],
+    'Fiz a demonstração sem ajuda e expliquei o que fazia.', 'Fiz sem ajuda, expliquei o que fazia e respondi às perguntas.'],
 };
 
 function frasesVisiveis(c: { id?: string; rotulo: string; resultado?: string; manual?: boolean }): string[] {
@@ -541,21 +541,21 @@ function frasesVisiveis(c: { id?: string; rotulo: string; resultado?: string; ma
   if (c.rotulo === 'Conhecimento' && c.manual) return [
     'Ainda não sei: só uma parte, e com erros.',
     'Sei, mas preciso do manual ou da ajuda do professor.',
-    'Sei sozinho, sem olhar para o manual.',
-    'Sei sozinho e consigo explicar a um colega, com um exemplo da cozinha.',
+    'Sei sem ajuda e sem olhar para o manual.',
+    'Sei sem ajuda e consigo explicá-lo a um colega, com um exemplo da cozinha.',
   ];
   if (c.rotulo === 'Conhecimento') return [
     'Sei explicar só uma parte, e com erros.',
     'Sei explicar, mas a olhar para o caderno ou com a ajuda do professor.',
-    'Sei explicar sozinho, sem olhar.',
-    'Sei explicar sozinho e dar um exemplo da cozinha.',
+    'Sei explicar sem ajuda e sem olhar.',
+    'Sei explicar sem ajuda e dar um exemplo da cozinha.',
   ];
-  const comoNaFicha = c.resultado ? 'ficou como diz o «bem feito é»' : 'ficou como na ficha';
+  const comoNaFicha = c.resultado ? 'o resultado ficou como descrito em «bem feito é»' : 'o resultado ficou como na ficha';
   return [
     'Não consegui: o professor ou um colega teve de fazer por mim.',
-    'Fiz, mas o professor teve de me corrigir ou mostrar outra vez.',
-    `Fiz sozinho e ${comoNaFicha}.`,
-    `Fiz sozinho, ${comoNaFicha} à primeira, e ajudei ou expliquei a um colega.`,
+    'Fiz, mas o professor teve de me corrigir ou de me mostrar outra vez.',
+    `Fiz sem ajuda e ${comoNaFicha}.`,
+    `Fiz sem ajuda, ${comoNaFicha} à primeira, e ajudei um colega ou expliquei-lhe como fazer.`,
   ];
 }
 
@@ -615,8 +615,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const EXPLICA_AULA: Record<CausaAulaEmFalta, { titulo: string; texto: string; avisar: boolean }> = {
     sem_rede: { titulo: 'Sem ligação', avisar: false,
       texto: 'Não consegui falar com a escola. Verifica a internet e tenta outra vez.' },
-    resposta_estranha: { titulo: 'A escola não respondeu bem', avisar: true,
-      texto: 'Tenta outra vez daqui a um minuto. Se continuar, avisa o professor.' },
+    resposta_estranha: { titulo: 'O servidor da escola respondeu com um erro', avisar: true,
+      texto: 'Tenta outra vez daqui a um minuto. Se o problema continuar, avisa o professor.' },
     nada_no_arquivo: { titulo: 'Ainda não há aulas para a tua turma', avisar: true,
       texto: 'O professor ainda não criou planos de aula para a tua turma.' },
     nao_publicada: { titulo: 'A aula ainda não foi publicada', avisar: true,
@@ -624,11 +624,11 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     sem_aula_hoje: { titulo: 'Não há aula marcada para hoje', avisar: false,
       texto: 'As aulas publicadas são para outros dias. Vê o calendário.' },
     nao_chegou: { titulo: 'A aula ainda não chegou a este telemóvel', avisar: false,
-      texto: 'Existe, mas ainda não foi descarregada. Tenta outra vez daqui a pouco.' },
+      texto: 'A aula existe, mas ainda não foi descarregada. Tenta outra vez daqui a pouco.' },
     outra_turma: { titulo: 'A aula foi publicada para outra turma', avisar: true,
-      texto: 'Avisa o professor para confirmar a turma do plano.' },
-    ok: { titulo: 'Não encontrei nenhum problema', avisar: true,
-      texto: 'Tenta atualizar outra vez. Se a aula continuar sem aparecer, avisa o professor.' },
+      texto: 'Avisa o professor, para que confirme a turma indicada no plano.' },
+    ok: { titulo: 'Não foi encontrado nenhum problema', avisar: true,
+      texto: 'Tenta atualizar outra vez. Se a aula continuar a não aparecer, avisa o professor.' },
   };
   const [mensagemAula, setMensagemAula] = useState<{ titulo: string; texto: string; avisar: boolean } | null>(null);
   /** O relatório do último «Não vejo a aula», para ir com o aviso ao professor. */
@@ -748,7 +748,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const atrasos = getHist(`ecl_atrasos_${aluno.id}`);
   if (atrasos >= 3) {
     avisos.push({ emoji:'⏰', titulo:`${atrasos} atrasos registados`,
-      corpo:'Tenta chegar a horas — isso conta na tua avaliação de atitudes.',
+      corpo:'Procura chegar a horas: a pontualidade conta na avaliação das tuas atitudes.',
       cor:T.danger, bg:T.dangerP });
   }
   if (proximasAulas[0]) {
@@ -935,8 +935,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
     if (falhouLigacao) {
       av.push({
         id: 'sem-ligacao',
-        titulo: 'Não consegui ir buscar as aulas',
-        detalhe: 'A aula pode existir e não estar a chegar a este telemóvel. Toca aqui para tentar outra vez; se continuar, avisa o professor.',
+        titulo: 'Não foi possível carregar as aulas',
+        detalhe: 'A aula pode existir, mas não estar a chegar a este telemóvel. Toca aqui para tentar outra vez. Se o problema continuar, avisa o professor.',
         destino: 'inicio' as any,
         urgente: true,
       });
@@ -953,7 +953,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           id: 'entrada',
           titulo: t.foraDeTempo ? 'Ainda não entraste na aula' : 'Entrada aberta',
           detalhe: t.foraDeTempo
-            ? 'Entra na mesma — o professor decide sobre a falta.'
+            ? 'Regista a entrada na mesma: é o professor quem decide se há falta.'
             : `Faltam ${t.minutosRestantes} min de tolerância.`,
           destino: 'entrar',
           urgente: t.foraDeTempo,
@@ -973,7 +973,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         id: 'reaberta',
         titulo: 'O professor reabriu a tua autoavaliação',
         detalhe: `Podes responder outra vez a ${reabertas.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
-          + 'Até responderes, conta o que respondeste antes.',
+          + 'Enquanto não voltares a responder, conta a resposta anterior.',
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
       });
@@ -984,7 +984,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         id: 'responder_de_novo',
         titulo: 'O professor quer ouvir-te outra vez',
         detalhe: `Há perguntas novas, mais claras, na autoavaliação de ${deNovo.map(p => `«${p.titulo}» (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)})`).join(', ')}. `
-          + 'É a tua oportunidade de mostrar o que fizeste bem e o que queres melhorar. Leva 2 minutos. Até responderes, conta a nota que tinhas.',
+          + 'É a tua oportunidade de mostrar o que fizeste bem e o que queres melhorar. Leva 2 minutos. Enquanto não responderes, mantém-se a nota que tinhas.',
         // Abre logo a autoavaliação dessa aula (antes ia para o resumo da UC).
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
@@ -1000,7 +1000,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         id: 'aceite_' + p.id,
         titulo: `Foste aceite: ${p.titulo || 'atividade'}`,
         detalhe: `Parabéns! O professor escolheu-te para esta atividade (${String(p.data).slice(8, 10)}/${String(p.data).slice(5, 7)}${p.horaInicio ? `, ${p.horaInicio}` : ''}). `
-          + 'Agora é contigo: assumes o compromisso de estar lá à hora, com a farda impecável, e dar o teu máximo do princípio ao fim. Vais representar a escola.',
+          + 'A partir de agora, assumes o compromisso de chegar a horas, com a farda impecável, e de dar o teu melhor do princípio ao fim. Vais representar a escola.',
         destino: 'atividades',
         urgente: false,
       }));
@@ -1034,7 +1034,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       av.push({
         id: 'autoavaliacao_a_caminho',
         titulo: 'A tua autoavaliação ainda está a caminho do professor',
-        detalhe: 'Deixa a aplicação aberta um minuto, com rede: volta a ser enviada sozinha.',
+        detalhe: 'Deixa a aplicação aberta durante um minuto, com ligação à internet: o envio é repetido automaticamente.',
         destino: 'inicio' as any,
         urgente: true,
       });
@@ -1051,7 +1051,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       av.push({
         id: 'autoavaliacao',
         titulo: 'A tua voz conta: autoavalia-te',
-        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua opinião. Quem se autoavalia mostra ao professor o que fez bem — e o professor tem isso em conta. Leva 2 minutos.`,
+        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua opinião. Quando te autoavalias, mostras ao professor o que fizeste bem, e o professor tem isso em conta. Leva 2 minutos.`,
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
       });
@@ -1061,7 +1061,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       av.push({
         id: 'recuperacoes',
         titulo: 'Tens módulos por recuperar',
-        detalhe: `${recuperacoesPendentes} módulo${recuperacoesPendentes > 1 ? 's' : ''} — por faltas ou por ter terminado sem positiva.`,
+        detalhe: `${recuperacoesPendentes} módulo${recuperacoesPendentes > 1 ? 's' : ''}, por excesso de faltas ou por não teres obtido positiva.`,
         destino: 'recuperacoes',
         urgente: true,
       });
@@ -1077,7 +1077,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       av.push({
         id: 'atividades',
         titulo: 'Diz como correu a atividade',
-        detalhe: `${porFechar.length} por confirmar. Só conta depois de dizeres que foste.`,
+        detalhe: `${porFechar.length} por confirmar. Só conta depois de confirmares que participaste.`,
         destino: 'atividades',
       });
     }
@@ -1222,8 +1222,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
         {aba === 'inicio' && !destino && aparelhoSemEspaco() && (
           <div style={{ margin: '0 0 12px', padding: '12px 14px', borderRadius: 12, background: '#fdf0ef', border: '1.5px solid #c0392b',
             color: '#8e2418', fontSize: 14, lineHeight: 1.5 }}>
-            <b>Este telemóvel não tem espaço para guardar a aplicação.</b> Consegues ver as aulas agora, mas ao fechar a
-            aplicação voltam a ser descarregadas. Liberta espaço no telemóvel (fotografias, vídeos, aplicações) ou usa outro navegador.
+            <b>Este telemóvel não tem espaço para guardar a aplicação.</b> Podes ver as aulas agora, mas, quando fechares a
+            aplicação, terão de ser descarregadas outra vez. Liberta espaço no telemóvel (fotografias, vídeos, aplicações) ou usa outro navegador.
           </div>
         )}
         {aba === 'inicio' && !destino && (
@@ -1290,7 +1290,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                     + `quis entrar na aula de hoje e não há plano de aula criado.`,
                   contexto: { tabDestino: 'planos' },
                 } as any);
-                alert('O professor foi avisado. Vai receber também o que o teu telemóvel mostra, para perceber o problema.');
+                alert('O professor foi avisado e vai receber também a informação do teu telemóvel, para perceber o problema.');
                 return;
               }
               if (d === 'kitchenflow') {
@@ -1544,8 +1544,8 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             {(destino === 'fichas' || destino === 'guiao' || destino === 'kitchenflow') && (
               <div style={{ padding:20, textAlign:'center', color:'#777', fontSize:15 }}>
                 {planoHoje
-                  ? 'Abre pela aula de hoje.'
-                  : 'Sem aula hoje — estes materiais ficam disponíveis quando houver aula.'}
+                  ? 'Abre estes materiais a partir da aula de hoje.'
+                  : 'Hoje não tens aula. Estes materiais ficam disponíveis quando houver aula.'}
               </div>
             )}
           </div>
@@ -2405,8 +2405,8 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           <div style={{ fontSize:14, color: t.foraDeTempo ? '#8A4E15' : 'rgba(26,23,20,0.65)',
             marginTop:8, lineHeight:1.55 }}>
             {t.foraDeTempo
-              ? 'Se entrares agora fica registada falta de atraso. Entra na mesma — a presença conta.'
-              : `O professor abriu às ${new Date(sessao!.abertaEm!).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}. Entra antes de acabar o tempo.`}
+              ? 'Se entrares agora, fica registado um atraso, e o professor decide se conta como falta. Entra na mesma: a presença conta.'
+              : `O professor abriu a aula às ${new Date(sessao!.abertaEm!).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}. Entra antes de terminar a tolerância.`}
           </div>
         </div>
 
@@ -2461,11 +2461,11 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
             <div style={{ background:'#FDF0E8', border:'1px solid #E8C9A8', borderRadius:12,
               padding:'11px 13px', marginBottom:14, fontSize:14, color:'#7A4515', lineHeight:1.5 }}>
               <b>Olha para ti antes de responder.</b> O professor confirma sempre a farda de cada aluno.
-              Ser verdadeiro e assumir quando falta alguma coisa é uma competência profissional
-              que também é avaliada — dizer que está completa quando não está conta contra ti.
+              Ser honesto e assumir quando falta alguma coisa é uma competência profissional,
+              que também é avaliada. Dizer que a farda está completa quando não está conta contra ti.
             </div>
             <button
-              // Um toque só: antes pedia outra vez "Confirmar — está tudo".
+              // Um toque só: antes pedia outra vez "Confirmar: está tudo certo".
               onClick={() => gravarFarda([])}
               style={{ width:'100%', background:V, color:'#fff', border:'none',
                 borderRadius:12, padding:17, fontSize:17.5, fontWeight:600,
@@ -2545,8 +2545,8 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
                   podes entrar na cozinha. </>
               : null}
             Sem a farda completa, <b>as técnicas de hoje contam 0</b>. Se conseguires resolver
-            (alguém te trazer a farda, ou emprestada), fala com o professor. As atitudes contam
-            na mesma — incluindo a forma como ajudas na aula. Assumir o que aconteceu é ser profissional.
+            (se alguém te trouxer a farda ou se a pedires emprestada), fala com o professor. As atitudes contam
+            normalmente, incluindo a forma como ajudas na aula. Assumir o que aconteceu é uma atitude profissional.
           </div>
         )}
 
@@ -2569,7 +2569,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
         <NavSlides
           onAnterior={() => fardaSub === 0 ? setFardaModo('perguntar') : setFardaSub(n => n - 1)}
           pode={fardaSub === 0 ? true : fardaSub === 1 ? !!refl.porque : fardaSub === 2 ? !!refl.resolver : reflexaoFeita}
-          textoSeguinte={emFalta.length === 0 ? 'Confirmar — está tudo'
+          textoSeguinte={emFalta.length === 0 ? 'Confirmar: está tudo certo'
             : fardaSub < 3 ? 'Seguinte' : `Confirmar — falta-me ${emFalta.length}`}
           onSeguinte={() => emFalta.length === 0 || fardaSub === 3 ? gravarFarda() : setFardaSub(n => n + 1)}
           fundo="#fff" />
@@ -3345,10 +3345,10 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           {/* Uma palavra de reconhecimento: responder com verdade também é trabalho. */}
           <div style={{ fontSize:14.5, color:'#3f5e34', marginTop:8, lineHeight:1.55, fontWeight:600 }}>
             {(plano as any).tipoEvento
-              ? 'Obrigado por teres participado! Aqui o que conta é o teu esforço e o teu compromisso — e deste a cara pela escola.'
+              ? 'Obrigado por teres participado! Aqui, o que conta é o teu esforço e o teu compromisso, e tu representaste a escola.'
               : [
                   'Obrigado pela tua sinceridade. Olhar para o próprio trabalho com verdade é o primeiro passo para melhorar.',
-                  'Bom trabalho! Cada aula é um passo. Amanhã fazes ainda melhor.',
+                  'Bom trabalho! Cada aula é um passo em frente. Na próxima, vais fazer ainda melhor.',
                   'Obrigado! Saber o que correu bem e o que falta é o que faz um bom profissional.',
                 ][(aluno.numero + String(plano.id).length) % 3]}
           </div>
@@ -3379,7 +3379,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         {autoavsSubmetidas.length > 0 && (
           <div style={{ marginBottom:16 }}>
             <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
-              O que submeteste
+              O que enviaste
             </div>
             {autoavsSubmetidas.map((av: any, i: number) => {
               // Pela nota (1-5), que é o que se grava. Os nomes antigos dos
@@ -3445,7 +3445,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                 {(Array.isArray((val as any).naoReparou) ? (val as any).naoReparou : []).map((x: any, i: number) => (
                   <div key={i} style={{ marginBottom:10, padding:'10px 12px', borderRadius:10, background:'#fdf0e6',
                     color:'#8a4a15', fontSize:13.5, lineHeight:1.5 }}>
-                    <b>Aconteceu hoje e não reparaste:</b> {x.pergunta}
+                    <b>O professor observou que isto aconteceu hoje:</b> {x.pergunta}
                     {x.proxima && <div>➡️ <b>Para a próxima:</b> {x.proxima}</div>}
                   </div>
                 ))}
@@ -3598,7 +3598,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   const porqueAtitude = (id: string) =>
     atitudesEmRecup.includes(id) ? 'Para melhorar'
     : idsDoTrimestre.includes(id) ? 'A do trimestre'
-    : atitudesDoPlano.includes(id) ? 'Desta aula' : 'Proposta tua';
+    : atitudesDoPlano.includes(id) ? 'Desta aula' : 'A tua proposta';
 
   // O passo «Atitude do ano anterior» (atitudes do 1.º e 2.º ano) saiu:
   // baralhava a autoavaliação e não interessa à professora.
@@ -3750,7 +3750,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                   background: v === NAO_ACONTECEU ? '#f3f0f7' : v >= 2 ? '#eef4eb' : T.copperP,
                   color: v === NAO_ACONTECEU ? 'rgba(26,23,20,0.7)' : v >= 2 ? '#3f5e34' : '#8a4a15' }}>
                   {v === NAO_ACONTECEU
-                    ? (substituta ? 'Esta resposta não conta para a nota. Responde a esta, que faz mais sentido hoje:' : 'Esta resposta não conta para a nota. A outra pergunta passa a valer esta atitude toda.')
+                    ? (substituta ? 'Esta resposta não conta para a nota. Responde a esta, que faz mais sentido hoje:' : 'Esta resposta não conta para a nota. A outra pergunta passa a valer por toda esta atitude.')
                     : v >= 2 ? '✅ É isto que se espera de ti.'
                     : <>➡️ <b>Para a próxima:</b> {q.respostas[2]}</>}
                 </div>
@@ -3777,7 +3777,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         )}
         {algumaNaoConta && (
           <div style={{ marginTop:10, fontSize:13, color:'rgba(26,23,20,0.6)', lineHeight:1.45 }}>
-            O que não aconteceu não baixa a tua nota: as respostas que contam valem os 20 valores da aula.
+            O que não aconteceu não baixa a tua nota: a nota da aula é calculada apenas com as respostas que contam.
           </div>
         )}
         {campoExemplo(id, Math.max(-1, ...r.map(x => x ?? -1)))}
@@ -3830,7 +3830,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       const semKF = hsaSemRegisto();
       linhasRever.push({ nome: 'Higiene e segurança alimentar',
         resposta: !nivelHaccp ? 'Por responder'
-          : semKF ? 'Sem registo no KitchenFlow: fica a 1' : OPCOES.find(o => o.v === nivelHaccp)?.label || '',
+          : semKF ? 'Sem registo no KitchenFlow: fica com o nível 1' : OPCOES.find(o => o.v === nivelHaccp)?.label || '',
         nota: nivelHaccp ? (semKF ? 1 : notaDoNivel(nivelHaccp)) : null, passo: i });
     } else if (p.tipo === 'atiAula') {
       linhasRever.push({ nome: ATITUDES.find(x => x.id === p.atiId)?.nome ?? 'Atitude',
@@ -3867,7 +3867,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
         {nPerguntas} perguntas, uma de cada vez. Responde pelo que fizeste hoje.
       </div>
       {/* As perguntas trabalham os 5 C: o aluno vê quais, antes de começar. */}
-      <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', marginBottom:6 }}>Estas perguntas trabalham os teus 5 C:</div>
+      <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', marginBottom:6 }}>Nesta aula, as tuas respostas contam para:</div>
       <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:6 }}>
         {(['cp', 'cl', 'cr', 'co'] as Letra5CAluno[]).filter(c => passos.some(p => cDoPasso(p) === c)).map(c => (
           <React.Fragment key={c}>{chipC(c)}</React.Fragment>
@@ -3981,7 +3981,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             </div>
             {v === 'nop' && (
               <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', lineHeight:1.5, marginTop:2 }}>
-                Esta não conta para a nota de hoje e volta noutra aula. O professor confirma.
+                Esta competência não conta para a nota de hoje e volta a aparecer noutra aula. O professor confirma.
               </div>
             )}
           </div>
@@ -4025,7 +4025,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                   O teu colega {outro.nome} escolheu outro tema: {outro.tema}. {cap?.titulo || ''}
                 </div>
                 <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.75)', marginTop:4, lineHeight:1.5 }}>
-                  No mesmo grupo, o tema é o mesmo. Tens a certeza do tema que escolheste? Se não estiver certo, fala com o professor.
+                  Os alunos do mesmo grupo têm o mesmo tema. Tens a certeza do tema que escolheste? Se não tiveres, fala com o professor.
                 </div>
                 {cap && (
                   <button onClick={() => { setTemaEscolhido(outro.tema); marcarTemaNoGrupo(plano.id, aluno.id, outro.tema); }}
@@ -4047,8 +4047,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             Disseste que não tiveste oportunidade de fazer nenhuma das técnicas. O que fizeste hoje na cozinha?
           </div>
           <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 10px', lineHeight:1.5 }}>
-            Alguma coisa fizeste: escreve o quê (por exemplo, «descasquei e cortei as batatas para a sopa»).
-            O professor lê e dá a nota. Conta como a técnica de hoje.
+            Certamente fizeste alguma coisa: escreve o quê (por exemplo, «descasquei e cortei as batatas para a sopa»).
+            O professor lê a tua resposta e atribui a nota, que conta como a técnica de hoje.
           </div>
           <textarea value={outraTarefa} onChange={e => setOutraTarefa(e.target.value)} rows={3} maxLength={300}
             style={{ width:'100%', boxSizing:'border-box', padding:10, borderRadius:10, border:`1.5px solid ${T.border}`,
@@ -4066,7 +4066,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               entrada, com os itens da farda à frente. */}
           <div style={{ fontFamily:'var(--font-display)', fontSize:24, fontWeight:800 }}>Higiene e segurança alimentar</div>
           <div style={{ fontSize:14, color:'rgba(26,23,20,0.7)', marginTop:4, lineHeight:1.5 }}>
-            Registos no KitchenFlow, temperaturas, contaminações. É obrigatória.
+            Os registos no KitchenFlow: temperaturas e prevenção de contaminações. É obrigatória.
           </div>
           {rotuloSecao('Como correu hoje?')}
           {/* A mesma ordem das técnicas (do mais fraco ao melhor, e o «não fiz»
@@ -4086,8 +4086,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           {nivelHaccp && hsaSemRegisto() && (
             <div style={{ marginTop:4, padding:'10px 12px', borderRadius:10, fontSize:13.5, lineHeight:1.5,
               background:T.copperP, color:'#8a4a15' }}>
-              Não encontrei registo teu no KitchenFlow para esta aula. Mesmo que tenhas feito
-              tudo bem, fica no nível mais baixo até haver registo. O professor decide.
+              Não há nenhum registo teu no KitchenFlow para esta aula. Mesmo que tenhas feito
+              tudo bem, esta competência fica no nível mais baixo até existir um registo. O professor decide.
             </div>
           )}
         </div>
@@ -4104,7 +4104,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:12, background:'#f3f0f7',
                 fontSize:14.5, lineHeight:1.55, color:'#2A1745' }}>
                 <b>Aqui o que conta é o teu esforço e o teu compromisso</b> — se te preparaste, se chegaste a horas,
-                se trouxeste o que precisavas e se ficaste até ao fim. Responde com verdade: o professor também viu.
+                se trouxeste o que precisavas e se ficaste até ao fim. Responde com sinceridade: o professor também esteve a observar.
               </div>
             )}
             <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', color:V }}>
@@ -4126,7 +4126,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             Técnica no evento
           </div>
           <div style={{ fontFamily:'var(--font-display)', fontSize:21, fontWeight:800, lineHeight:1.3, marginTop:4 }}>
-            Se amanhã o chef te pusesse sozinho/a a fazer exatamente o mesmo que fizeste no evento, sem ninguém para ajudar, o que acontecia?
+            Se amanhã o chef te pedisse para fazeres sozinho/a exatamente o mesmo que fizeste no evento, sem ninguém para ajudar, o que aconteceria?
           </div>
           <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', margin:'6px 0 10px' }}>
             O chef também responde a esta pergunta sobre ti.
@@ -4140,7 +4140,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           ))}
           {rotuloSecao('O que é que correu menos bem na tua parte?')}
           <textarea value={tecMenosBem} onChange={e => setTecMenosBem(e.target.value)} rows={3}
-            placeholder="Há sempre alguma coisa. Escreve o que farias diferente."
+            placeholder="Há sempre alguma coisa a melhorar. Escreve o que farias de forma diferente."
             style={{ width:'100%', boxSizing:'border-box', padding:10, borderRadius:10, border:`1.5px solid ${T.border}`,
               fontSize:14.5, fontFamily:'inherit' }} />
         </div>
@@ -4158,8 +4158,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             <div style={{ marginBottom:12, padding:'10px 12px', borderRadius:10, background:T.copperP,
               fontSize:13.5, color:'#8a4a15', lineHeight:1.5 }}>
               {atitudesEmRecup.map((id: string) => (
-                <div key={id}><strong>{getAtitudeDetalhada(id)?.nome ?? 'Atitude'}:</strong> da última vez ficaste
-                  abaixo de 3. {dicaRecuperacaoAtitude(id, 1)}</div>
+                <div key={id}><strong>{getAtitudeDetalhada(id)?.nome ?? 'Atitude'}:</strong> na última avaliação, ficaste
+                  abaixo do nível 3. {dicaRecuperacaoAtitude(id, 1)}</div>
               ))}
             </div>
           )}
@@ -4228,7 +4228,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             {anterior && (
               <div style={{ marginBottom:12, padding:'10px 12px', borderRadius:10, background:'#f3f0f7', fontSize:13.5, lineHeight:1.5 }}>
                 Disseste que hoje não aconteceu: «{simples ? anterior.perguntaSimples : anterior.pergunta}»
-                Então responde a esta, que acontece em todas as aulas.
+                Responde então a esta, que se aplica a todas as aulas.
                 <button onClick={voltarAtras} style={{ display:'block', marginTop:4, background:'none', border:'none', padding:0,
                   color:V, fontWeight:700, textDecoration:'underline', cursor:'pointer', fontFamily:'inherit', fontSize:13.5 }}>
                   Afinal aconteceu: voltar à pergunta anterior
@@ -4292,8 +4292,8 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           {nivelHaccp && hsaSemRegisto() && (
             <div style={{ marginTop:12, padding:'10px 12px', borderRadius:10, background:T.copperP,
               fontSize:13.5, color:'#8a4a15', lineHeight:1.5 }}>
-              <strong>Higiene e segurança alimentar:</strong> não encontrei o teu registo no KitchenFlow.
-              Fica a 1 até haver registo. O professor decide.
+              <strong>Higiene e segurança alimentar:</strong> não há nenhum registo teu no KitchenFlow.
+              Fica com o nível 1 até existir um registo. O professor decide.
             </div>
           )}
 
@@ -4342,7 +4342,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             Enviar ao professor
           </button>
           <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)', textAlign:'center', marginTop:6 }}>
-            Depois de enviar já não podes mudar.
+            Depois de enviares, já não podes alterar as respostas.
           </div>
 
           <div style={{ marginTop:20 }}>

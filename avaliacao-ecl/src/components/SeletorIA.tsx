@@ -30,17 +30,17 @@ export function SeletorIA({ prompt, corPrincipal }: { prompt: string; corPrincip
 
   return (
     <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-      <button onClick={() => abrirIA('claude', prompt)} style={botaoStyle} title="Abre o Claude já com o prompt preenchido — só clicar ↗">
+      <button onClick={() => abrirIA('claude', prompt)} style={botaoStyle} title="Abre o Claude já com o pedido preenchido: basta clicar ↗">
         🟠 Claude
       </button>
-      <button onClick={() => abrirIA('chatgpt', prompt)} style={botaoStyle} title="Abre o ChatGPT já com o prompt preenchido — só clicar ↗">
+      <button onClick={() => abrirIA('chatgpt', prompt)} style={botaoStyle} title="Abre o ChatGPT já com o pedido preenchido: basta clicar ↗">
         🟢 ChatGPT
       </button>
-      <button onClick={() => abrirIA('gemini', prompt)} style={botaoStyle} title="Copia o prompt e abre o Gemini — colar com Ctrl+V">
+      <button onClick={() => abrirIA('gemini', prompt)} style={botaoStyle} title="Copia o pedido e abre o Gemini: cole com Ctrl+V">
         🔵 Gemini
       </button>
       <button onClick={copiar} style={{ ...botaoStyle, background: copiado ? cor : '#fff', color: copiado ? '#fff' : cor }}
-        title="Copia o texto do prompt para colares onde quiseres">
+        title="Copia o texto do pedido, para o colar onde quiser">
         {copiado ? '✓ Copiado!' : '📋 Copiar prompt'}
       </button>
     </div>

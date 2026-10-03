@@ -266,7 +266,7 @@ export function CriarRecuperacaoFCT({
 
   function criar() {
     if (!formularioValido || !ucId || competenciasSel.size === 0) {
-      alert('Escolhe o aluno, a UC, e pelo menos uma competência a evidenciar.');
+      alert('Escolha o aluno, a UC e pelo menos uma competência a evidenciar.');
       return;
     }
     // Aluno externo/antigo — gera um ID próprio (não existe em getAlunos()),
@@ -435,7 +435,7 @@ export function CriarRecuperacaoFCT({
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>
                   {competenciasDaUC.length === 0
-                    ? 'Sem competências mapeadas para esta UC — gera uma sugestão por IA, baseada no referencial oficial, e cola-as no campo abaixo:'
+                    ? 'Não há competências associadas a esta UC. Gere uma sugestão com a IA, baseada no referencial oficial, e cole-a no campo abaixo:'
                     : 'Preferes gerar por IA em vez de usar a lista da biblioteca acima? Gera uma sugestão baseada no referencial oficial:'}
                 </div>
                 <SeletorIA
@@ -452,11 +452,11 @@ export function CriarRecuperacaoFCT({
                   colar a lista toda de uma vez (não uma a uma) para o formulário
                   nunca ficar bloqueado nem obrigar a trabalho repetitivo. */}
               <div style={{ fontSize: 12.5, color: '#999', marginBottom: 4 }}>
-                Cola aqui a lista toda que a IA devolveu (uma competência por linha) —
-                não precisas de as escrever uma a uma.
+                Cole aqui a lista completa que a IA devolveu (uma competência por linha):
+                não precisa de as escrever uma a uma.
               </div>
               <textarea value={competenciaManual} onChange={e => setCompetenciaManual(e.target.value)}
-                placeholder={'Cola aqui a lista da IA — ex:\nComunicação clara com colegas\nCumprimento de instruções\nPontualidade'}
+                placeholder={'Cole aqui a lista da IA. Por exemplo:\nComunicação clara com colegas\nCumprimento de instruções\nPontualidade'}
                 style={{ width: '100%', minHeight: 90, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, boxSizing: 'border-box', marginBottom: 6, fontFamily: 'inherit' }} />
               <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={adicionarCompetenciaManual} style={{
@@ -516,7 +516,7 @@ export function CriarRecuperacaoFCT({
                 Importância de cada competência na nota final ({competenciasSel.size})
               </div>
               <div style={{ fontSize: 12.5, color: '#666', marginBottom: 10 }}>
-                Define se cada competência pesa pouco, o normal, ou muito na média final — o peso %
+                Defina se cada competência pesa pouco, o normal ou muito na média final. O peso (%)
                 é calculado automaticamente a partir disto e aparece já pronto na tabela do documento.
               </div>
               {Array.from(competenciasSel).map(comp => (
@@ -565,11 +565,11 @@ export function CriarRecuperacaoFCT({
                 })}
               />
               <div style={{ fontSize: 12.5, color: '#999', marginBottom: 8 }}>
-                Copia o prompt, cola numa IA, e o resultado ajuda o aluno a saber o que escrever em cada evidência.
+                Copie o pedido e cole-o numa IA: o resultado ajuda o aluno a saber o que escrever em cada evidência.
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Colocar aqui o guião</div>
               <textarea value={guiaoTexto} onChange={e => setGuiaoTexto(e.target.value)}
-                placeholder="Cola aqui o guião completo que a IA gerou — vai aparecer em anexo no documento final, numa folha própria para o aluno responder."
+                placeholder="Cole aqui o guião completo que a IA gerou. Vai aparecer em anexo no documento final, numa folha própria para o aluno responder."
                 style={{ width: '100%', minHeight: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13, boxSizing: 'border-box', fontFamily: 'inherit' }} />
               {guiaoTexto && (
                 <div style={{ fontSize: 12.5, color: '#5a7a4e', marginTop: 4 }}>
@@ -585,8 +585,8 @@ export function CriarRecuperacaoFCT({
               <span style={{ fontSize: 13, fontWeight: 600 }}>Pode vir a ser necessária defesa oral desta recuperação</span>
             </label>
             <div style={{ fontSize: 12.5, color: '#8a4a15', marginTop: 6 }}>
-              Decide isto agora — depois de avaliares a recuperação já não podes voltar a exigir uma
-              defesa oral que não tenhas previsto aqui.
+              Decida isto agora: depois de avaliar a recuperação, já não pode exigir uma
+              defesa oral que não tenha previsto aqui.
             </div>
           </div>
 
@@ -621,7 +621,7 @@ export function RecuperacaoFCTAluno({ recuperacao, onAtualizado }: {
 
   function adicionar() {
     if (!novaEvidencia.competenciaId || !novaEvidencia.descricao.trim()) {
-      alert('Escolhe a competência e descreve a situação real.');
+      alert('Escolhe a competência e descreve uma situação real.');
       return;
     }
     addEvidenciaFCT(recuperacao.id, {
@@ -639,7 +639,7 @@ export function RecuperacaoFCTAluno({ recuperacao, onAtualizado }: {
       <div style={{ marginBottom: 14, padding: 12, background: '#f5f0e8', borderRadius: 8, fontSize: 13 }}>
         {fct.exigirHoras
           ? `Esta recuperação exige um mínimo de ${fct.horasMinimasExigidas || 0} horas de FCT dedicadas a estas competências.`
-          : 'Esta recuperação não exige um número mínimo de horas — contam as evidências concretas do que fizeste.'}
+          : 'Esta recuperação não exige um número mínimo de horas: contam as evidências concretas do que fizeste.'}
         {fct.localFCT && <div style={{ marginTop: 4 }}>Local: {fct.localFCT}</div>}
       </div>
 

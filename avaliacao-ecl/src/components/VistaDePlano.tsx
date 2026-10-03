@@ -268,7 +268,7 @@ function ModalRequisicao({ plano, fichas, onSim, onNao, onNovaFicha }: {
       <div style={{ background:'#fff', borderRadius:20, padding:24, maxWidth:380, width:'100%' }}>
         <div style={{ fontSize:32, textAlign:'center', marginBottom:8 }}>🛒</div>
         <div style={{ fontWeight:700, fontSize:17, textAlign:'center', marginBottom:6 }}>Guia guardado!</div>
-        <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', textAlign:'center', marginBottom:20 }}>Queres criar agora a Requisição de ingredientes?</div>
+        <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', textAlign:'center', marginBottom:20 }}>Pretende criar agora a requisição de ingredientes?</div>
         {/* Sem fichas no plano não há nada para requisitar. O botão ficava
             cinzento e não havia como perceber porquê. */}
         {fichas.length === 0 && (
@@ -287,15 +287,15 @@ function ModalRequisicao({ plano, fichas, onSim, onNao, onNovaFicha }: {
             fontSize:14, color:'var(--copper)', lineHeight:1.55 }}>
             Este plano ainda não tem nenhuma ficha técnica associada. A
             requisição sai das fichas — sem elas não há ingredientes a pedir.
-            Cria a ficha primeiro e volta aqui.
+            Crie primeiro a ficha e volte depois a este ecrã.
           </div>
         )}
         {fichas.length > 0 && (
           <div style={{ marginBottom:16 }}>
             <div style={{ fontSize:13, fontWeight:700, color:'rgba(26,23,20,0.5)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Fichas a incluir na requisição:</div>
             <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:10, lineHeight:1.5 }}>
-              Escolhe as que entram nesta requisição. Se faltar alguma,
-              podes criá-la antes e voltar aqui.
+              Escolha as fichas que entram nesta requisição. Se faltar alguma,
+              pode criá-la antes e voltar a este ecrã.
             </div>
             {fichas.map(f => (
               <div key={f.id} onClick={() => toggle(f.id)}
@@ -322,7 +322,7 @@ function ModalRequisicao({ plano, fichas, onSim, onNao, onNovaFicha }: {
                 cursor: sel.length > 0 ? 'pointer' : 'not-allowed' }}>
               {sel.length > 0
                 ? `✓ Sim — criar Requisição (${sel.length} ficha${sel.length > 1 ? 's' : ''})`
-                : 'Escolhe pelo menos uma ficha'}
+                : 'Escolha pelo menos uma ficha'}
             </button>
           )}
           <button onClick={onNao}
@@ -409,7 +409,7 @@ function Aviso5C({ plano, aoMudar }: { plano: PlanoAula; aoMudar: (p: PlanoAula)
   return (
     <div style={{ marginTop: 10, marginBottom: 12, padding: '10px 12px', borderRadius: 10, background: '#f3eef6',
       border: '1px solid rgba(125,79,140,0.3)', fontSize: 13.5, lineHeight: 1.55, color: 'rgba(26,23,20,0.75)' }}>
-      <b style={{ color: '#7d4f8c' }}>ℹ️ Além destas, há 3 perguntas para os 5 C's.</b> No fim da autoavaliação, o aluno
+      <b style={{ color: '#7d4f8c' }}>ℹ️ Além destas, há 3 perguntas para os 5 C.</b> No fim da autoavaliação, o aluno
       responde sempre a 3 perguntas curtas — <b>Colaborativo</b>, <b>Criativo</b> e <b>Consciente</b>. <b>Não contam
       para a nota desta aula</b>: juntam-se ao longo do curso e entram na pauta, no fim de cada unidade.
       <PerguntaDoDia chave="cr" nome="Criativo" plano={plano} aoMudar={aoMudar} />
@@ -917,7 +917,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <div style={{ fontSize:36, marginBottom:12 }}>📚</div>
           <div style={{ fontWeight:700, fontSize:18, marginBottom:8 }}>Ficha guardada!</div>
           {nomePrato && <div style={{ fontSize:14, color:'var(--copper)', fontWeight:600, marginBottom:12 }}>{nomePrato}</div>}
-          <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:24 }}>Queres criar agora o Guia de Apoio à Produção?</div>
+          <div style={{ fontSize:14, color:'rgba(26,23,20,0.6)', marginBottom:24 }}>Pretende criar agora o Guia de Apoio à Produção?</div>
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             <button onClick={() => { setModalProximo(null); setModulo('guia'); }}
               style={{ padding:'14px', borderRadius:12, border:'none', background:'var(--sage)', color:'white', fontWeight:700, fontSize:15, cursor:'pointer' }}>
@@ -1086,7 +1086,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <div style={{ marginBottom:14, padding:'10px 12px', borderRadius:8,
             background:'rgba(3,105,161,0.06)', border:'1px solid rgba(3,105,161,0.2)' }}>
             <div style={{ fontSize:13, fontWeight:700, color:'#0369a1', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em' }}>
-              💡 Atitude activa — {trimestreActual}º trimestre · {anoTurma}º ano
+              💡 Atitude ativa: {trimestreActual}º trimestre · {anoTurma}º ano
             </div>
             {atitudesActivas.map(a => (
               <div key={a.id}>
@@ -1256,7 +1256,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {usarFallback && !temFichas && (
           <div style={{ marginBottom:14, padding:'12px 14px', borderRadius:10, background:'var(--cream-dark)', border:'1px dashed rgba(26,23,20,0.2)' }}>
             <div style={{ fontSize:13, fontWeight:600, color:'rgba(26,23,20,0.7)', marginBottom:2 }}>Ainda não há ficha técnica</div>
-            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)' }}>As competências específicas do prato (técnicas, aparelhos e micros) aparecem aqui depois de criares a ficha técnica desta aula.</div>
+            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)' }}>As competências específicas do prato (técnicas, aparelhos e micros) aparecem aqui depois de criar a ficha técnica desta aula.</div>
           </div>
         )}
         {compTecnicasTodas.length > 0 && (
@@ -1485,8 +1485,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               </div>
               <div style={{ fontSize:14, color:'rgba(26,23,20,0.65)', marginTop:5, lineHeight:1.55 }}>
                 Os alunos podem consultar o plano, as fichas e o guião, mas não
-                conseguem marcar presença nem registar nada. Ao abrires, começam
-                os dez minutos de tolerância.
+                conseguem marcar presença nem fazer registos. Quando abrir a aula, começam
+                a contar os dez minutos de tolerância.
               </div>
               <button disabled={aAbrir} onClick={() => {
                   // Um clique só. Abrir não se repete: a hora de abertura é
@@ -1564,7 +1564,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   {porDecidir.length} {porDecidir.length === 1 ? 'aluno entrou' : 'alunos entraram'} fora do tempo
                 </span>
                 <span style={{ display:'block', fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:3 }}>
-                  {tabInicio === 'turma' ? 'Decide a falta na lista abaixo.' : 'Toca aqui para decidir a falta na lista da turma.'}
+                  {tabInicio === 'turma' ? 'Decida a falta na lista abaixo.' : 'Toque aqui para decidir a falta na lista da turma.'}
                 </span>
               </button>
             )}
@@ -1590,7 +1590,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             <div style={{ background: '#fff', borderRadius: 18, padding: '20px 20px 16px', maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto',
               boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
               {finalizar.fase === 'confirmar' ? (<>
-                <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 10 }}>Confirma o plano antes de finalizar</div>
+                <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 10 }}>Confirme o plano antes de finalizar</div>
                 <EstadoDoPlano plano={atual} mudancas={finalizar.mud} />
                 {finalizar.obrig && (
                   <div style={{ fontSize: 13.5, background: '#fdf0ef', color: '#8e2418', borderRadius: 10, padding: '9px 12px', margin: '12px 0 0', fontWeight: 600 }}>
@@ -1669,7 +1669,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ position: 'sticky', top: 0, zIndex: 50, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
           background: '#fff7e6', border: '2px solid #b5651d', borderRadius: 14, padding: '10px 14px', margin: '0 0 14px' }}>
           <div style={{ flex: 1, minWidth: 200, fontSize: 14.5, fontWeight: 700, color: '#7a4310' }}>
-            Tens alterações por finalizar neste plano.
+            Há alterações por finalizar neste plano.
           </div>
           <button onClick={() => abrirFinalizar()} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#b5651d',
             color: '#fff', fontSize: 14.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>Finalizar alterações</button>
@@ -2146,7 +2146,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               borderTop:'1px solid rgba(26,23,20,0.08)', paddingTop:14 }}>
               <div style={{ flex:1, minWidth:150, fontSize:13.5, color:'rgba(26,23,20,0.6)',
                 alignSelf:'center' }}>
-                {mudou ? 'Tens alterações por guardar.'
+                {mudou ? 'Há alterações por guardar.'
                   : `${atitudesEscolhidas.length} atitude${atitudesEscolhidas.length === 1 ? '' : 's'} nesta aula.`}
               </div>
               {mudou && (
@@ -2200,7 +2200,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               A requisição está desatualizada
             </div>
             <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', margin:'4px 0 10px', lineHeight:1.55 }}>
-              Mudaste as fichas depois de fazer a requisição.
+              As fichas foram alteradas depois de feita a requisição.
               {dif.faltam.length > 0 && <div>· Não tem: {dif.faltam.map(nome).join(', ')}</div>}
               {dif.sobram.length > 0 && <div>· Tem a mais: {dif.sobram.map(nome).join(', ')}</div>}
             </div>
@@ -2355,7 +2355,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
       </Gaveta>
       <Gaveta id="responde" n={5} titulo="O que o aluno responde"
-        resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolhe primeiro o tipo de aula'; } catch { return ''; } })()}>
+        resumo={(() => { try { const n = oQueOAlunoVe(plano).ecras.length; return triagemDoPlano(plano) ? `${n} ecrã${n === 1 ? '' : 's'} no telemóvel do aluno, com os 5 C` : 'Escolha primeiro o tipo de aula'; } catch { return ''; } })()}>
       <PassoOQueSeAvalia plano={plano} />
         <button onClick={() => setTabInicio('competencias')} style={{ marginTop:12, padding:'9px 14px', borderRadius:10,
           border:'1px solid rgba(26,23,20,0.2)', background:'#fff', fontSize:13.5, fontWeight:700, cursor:'pointer',
@@ -2380,7 +2380,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         {[
           { t: 'Lista da turma', d: 'Quem entrou, a farda, as faltas e os atrasos.', ao: () => setTabInicio('turma') },
           { t: 'Validar as autoavaliações', d: 'Confirmar a nota de cada aluno nesta aula.', ao: () => setModulo('validacao') },
-          { t: 'Reabrir a autoavaliação de um aluno', d: 'O aluno enganou-se, ou houve um erro? Reabre só para ele, sem PIN novo.', ao: () => setModulo('registos') },
+          { t: 'Reabrir a autoavaliação de um aluno', d: 'O aluno enganou-se ou houve um erro? Reabra a autoavaliação só para esse aluno, sem PIN novo.', ao: () => setModulo('registos') },
         ].map(x => (
           <button key={x.t} onClick={x.ao} style={{ display:'block', width:'100%', textAlign:'left', background:'#fff',
             border:'1px solid rgba(26,23,20,0.14)', borderRadius:14, padding:'12px 16px', cursor:'pointer', fontFamily:'inherit' }}>
@@ -2396,8 +2396,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
           <span style={{ fontSize:15, fontWeight:700, color:'#6B3FA0' }}>Plano organizacional da aula</span>
           <span style={{ display:'block', fontSize:13.5, color:'rgba(26,23,20,0.65)', marginTop:3 }}>
             {organizacaoDe(plano)
-              ? 'Cada aluno já tem a sua função. Toca para ver quem faz o quê e para substituir quem faltar.'
-              : plano.estado === 'publicado' ? 'Toca para distribuir as funções.' : 'As funções distribuem-se quando publicares o plano.'}
+              ? 'Cada aluno já tem a sua função. Toque para ver quem faz o quê e para substituir quem faltar.'
+              : plano.estado === 'publicado' ? 'Toque para distribuir as funções.' : 'As funções são distribuídas quando publicar o plano.'}
           </span>
         </button>
       )}
@@ -2407,8 +2407,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         <div style={{ background:'#fdf0ef', border:'2px solid #c0392b', borderRadius:14, padding:'12px 14px', margin:'0 0 14px' }}>
           <div style={{ fontSize:15, fontWeight:800, color:'#8e2418' }}>Os alunos escolhem o tema, mas só há um conteúdo marcado</div>
           <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.75)', marginTop:4, lineHeight:1.5 }}>
-            Assim todos ficam com o mesmo tema. Marca mais conteúdos (ou o manual todo) em «Conteúdos e sumário»,
-            ou muda a aula para o tema dado por ti.
+            Assim, todos ficam com o mesmo tema. Marque mais conteúdos (ou o manual todo) em «Conteúdos e sumário»
+            ou altere a aula para um tema indicado pelo professor.
           </div>
           <button onClick={() => setTabInicio('competencias')} style={{ marginTop:10, padding:'8px 14px', borderRadius:10, border:'1px solid #c0392b',
             background:'#fff', color:'#c0392b', fontSize:13.5, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Ver os conteúdos</button>
@@ -2431,7 +2431,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
             display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
             <div style={{ flex:1, minWidth:200, fontSize:13.5, color:'rgba(26,23,20,0.7)' }}>
               {total} aluno{total === 1 ? ' já respondeu' : 's já responderam'} à autoavaliação desta aula.
-              Se as perguntas não estavam bem, podes pedir que respondam outra vez.
+              Se as perguntas não estavam corretas, pode pedir que voltem a responder.
             </div>
             <button onClick={() => {
                 if (!confirm(`Pedir aos ${total} alunos que respondam outra vez?\n\nA nota que já deste continua a contar até validares a nova.`)) return;
@@ -2454,8 +2454,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
               Mudaste este plano depois de {n} aluno{n === 1 ? '' : 's'} já ter{n === 1 ? '' : 'em'} respondido à autoavaliação.
             </div>
             <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', margin:'4px 0 10px', lineHeight:1.5 }}>
-              Responderam às perguntas antigas. Se pedires, a autoavaliação volta a abrir para eles, com as perguntas novas,
-              e voltas a validar. Também os que já validaste: a nota que deste continua a contar até validares a nova.
+              Estes alunos responderam às perguntas antigas. Se o pedir, a autoavaliação volta a abrir para eles, com as perguntas novas,
+              e terá de voltar a validar, incluindo as que já validou. A nota atribuída continua a contar até validar a nova resposta.
             </div>
             <button onClick={() => {
                 if (!confirm(`Pedir a ${n} aluno${n === 1 ? '' : 's'} que respondam outra vez?`)) return;
@@ -2539,7 +2539,7 @@ function QuandoEUnidade({ plano, onPlanoActualizado, onAbrirCriar }: {
             const m = modulos.find(x => x.id === e.target.value);
             gravar({ ucId: e.target.value, ...(m ? { ucNome: m.nome } : {}) } as any, `passam a contar para a unidade ${e.target.value}`);
           }}>
-          {!plano.ucId && <option value="">Escolhe a unidade</option>}
+          {!plano.ucId && <option value="">Escolha a unidade</option>}
           {[...new Set(modulos.map(m => m.disciplina || 'Outras'))].map(d => (
             <optgroup key={d} label={d}>
               {modulos.filter(m => (m.disciplina || 'Outras') === d).map(m => <option key={m.id} value={m.id}>{m.id} — {m.nome}</option>)}
@@ -2710,7 +2710,7 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
                 <div style={{ margin: '2px 0 4px', padding: '8px 10px', borderRadius: 8, background: '#f6f3ee' }}>{rotuloDoPlano(aula)}</div>
                 <div style={{ color: 'rgba(26,23,20,0.7)', margin: '2px 0 6px' }}>
                   A atividade é um extra: este plano não muda, e os alunos da atividade continuam a responder-lhe como os outros.
-                  Se quiseres, tira uma parte (por exemplo as atitudes, já avaliadas na atividade):
+                  Se quiser, retire uma parte (por exemplo, as atitudes, já avaliadas na atividade):
                 </div>
                 {caixa('tecnicas', 'Técnicas (a prática da aula)')}
                 {caixa('conhecimentos', 'Conhecimentos (o trabalho exigido)')}
@@ -2721,7 +2721,7 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             })()}
             <div style={{ padding: '9px 11px', borderRadius: 9, background: '#f3eefa', margin: '0 0 12px', fontSize: 14 }}>
               {atitudesNoPlanoDaTurma(getPlanosAula().find(x => x.id === plano.id) || plano)
-                ? 'Atitudes: estes alunos já respondem às atitudes no plano de aula da turma, por isso a atividade não as repete. Na atividade avaliam as técnicas (da ficha técnica, se houver), a técnica geral e a atitude que escolheres de propósito para a atividade, se escolheres alguma.'
+                ? 'Atitudes: estes alunos já respondem às atitudes no plano de aula da turma, por isso a atividade não as repete. Na atividade avaliam as técnicas (da ficha técnica, se houver), a técnica geral e a atitude escolhida especificamente para a atividade, se houver.'
                 : 'Atitudes: estes alunos não respondem às atitudes no plano de aula da turma, por isso a atividade avalia as atitudes, além das técnicas.'}
             </div>
             <div style={{ fontWeight: 800 }}>Como conta</div>
@@ -2733,9 +2733,9 @@ function ParticipantesEvento({ plano, onPlanoActualizado }: { plano: any; onPlan
             </div>
             <div style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 12, fontWeight: 700,
               background: !publicado ? '#fdf0ef' : aEnviar ? '#fff7e6' : '#eef4eb', color: !publicado ? '#8e2418' : aEnviar ? '#7a4310' : '#3f5e34' }}>
-              {!publicado ? 'Ainda não está publicada: os alunos não a veem. Confirma para publicar.'
-                : aEnviar ? 'A enviar aos alunos… não feches a aplicação.'
-                : plano.participantesConfirmadosEm ? '✓ Gravado. Estes alunos já veem a atividade e podem autoavaliar-se.' : 'Publicada. Confirma para gravar estes participantes.'}
+              {!publicado ? 'Ainda não está publicada: os alunos não a veem. Confirme para publicar.'
+                : aEnviar ? 'A enviar aos alunos… não feche a aplicação.'
+                : plano.participantesConfirmadosEm ? '✓ Guardado. Estes alunos já veem a atividade e podem autoavaliar-se.' : 'Publicada. Confirme para guardar estes participantes.'}
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button disabled={aPublicar} onClick={async () => {
@@ -2768,7 +2768,7 @@ function TecnicasDasFichas({ plano, fichas, onAbrir }: { plano: any; fichas: any
       <div style={{ fontSize: 16, fontWeight: 800 }}>Técnicas da ficha técnica</div>
       <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', margin: '3px 0 10px', lineHeight: 1.5 }}>
         São estas as técnicas que os alunos avaliam{eventoForaDoHorario(plano) ? ' nesta atividade extra' : ''}. Vêm da ficha:
-        para mudar, abre a ficha e corrige as técnicas em baixo.
+        para as alterar, abra a ficha e corrija as técnicas mais abaixo.
       </div>
       {fichas.length === 0 && (
         <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 600 }}>
@@ -2786,7 +2786,7 @@ function TecnicasDasFichas({ plano, fichas, onAbrir }: { plano: any; fichas: any
                 color: 'var(--copper)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Abrir a ficha</button>
             </div>
             {tec.length + apa.length === 0
-              ? <div style={{ fontSize: 13.5, color: '#8e2418', marginTop: 4 }}>Esta ficha não tem técnicas escolhidas. Abre-a e acrescenta as técnicas.</div>
+              ? <div style={{ fontSize: 13.5, color: '#8e2418', marginTop: 4 }}>Esta ficha não tem técnicas escolhidas. Abra-a e acrescente as técnicas.</div>
               : <ul style={{ margin: '6px 0 0', paddingLeft: 20, fontSize: 14, lineHeight: 1.6 }}>
                   {tec.map((l, i) => <li key={'t' + i} style={{ textDecoration: tirada(l) ? 'line-through' : undefined, color: tirada(l) ? 'rgba(26,23,20,0.4)' : undefined }}>
                     {texto(l)}{tirada(l) ? ' (tirada desta aula)' : ''}</li>)}
@@ -2813,8 +2813,8 @@ function ResumoDaAtividadeExtra({ plano }: { plano: any }) {
       <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.7)', lineHeight: 1.55 }}>
         {atitudesNoPlanoDaTurma(plano)
           ? (ecras.some((e: any) => e.tipo === 'atitude')
-            ? 'As atitudes do dia não se repetem aqui (estes alunos já as respondem no plano de aula da turma); só a que escolheste para esta atividade.'
-            : 'As atitudes não se repetem aqui: estes alunos já respondem às atitudes no plano de aula da turma desse dia. Se quiseres uma atitude própria da atividade (por exemplo, a cooperação num trabalho de grupo), escolhe-a nas competências.')
+            ? 'As atitudes do dia não se repetem aqui (estes alunos já as respondem no plano de aula da turma); apenas a que foi escolhida para esta atividade.'
+            : 'As atitudes não se repetem aqui: estes alunos já respondem às atitudes no plano de aula da turma desse dia. Se quiser uma atitude própria da atividade (por exemplo, a cooperação num trabalho de grupo), escolha-a nas competências.')
           : 'As atitudes avaliam-se aqui, porque estes alunos não respondem às atitudes no plano de aula da turma desse dia.'}
         {' '}Conta como bónus (até +0,5). As técnicas ficam no perfil do aluno e contam para a consolidação.
         {aula && <> As competências do plano de aula da turma (<b>{rotuloDoPlano(aula)}</b>) ficam nesse plano: não são estas.</>}
@@ -2835,8 +2835,8 @@ function ReabrirAutoavaliacao({ plano, onPlanoActualizado }: { plano: any; onPla
     <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.1)' }}>
       <div style={{ fontSize: 17, fontWeight: 800 }}>Reabrir a autoavaliação de um aluno</div>
       <div style={{ fontSize: 13.5, color: 'rgba(26,23,20,0.65)', margin: '4px 0 12px', lineHeight: 1.5 }}>
-        Só para esse aluno e sem PIN novo: a autoavaliação abre sozinha no telemóvel dele, com um aviso.
-        Quando ele responder, fecha outra vez e a resposta nova fica em «Por validar». Até lá conta o que já tinha.
+        Só para esse aluno e sem PIN novo: a autoavaliação abre automaticamente no telemóvel do aluno, com um aviso.
+        Quando o aluno responder, a autoavaliação fecha outra vez e a resposta nova fica em «Por validar». Até lá, conta a resposta anterior.
       </div>
       {alunos.map(a => {
         const s: any = respostas.get(a.id);

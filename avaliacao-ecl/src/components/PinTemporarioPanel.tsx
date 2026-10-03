@@ -58,7 +58,7 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
           🔑 PIN Temporário
         </div>
         <div style={{ fontSize: 13, color: '#78350f', lineHeight: 1.5 }}>
-          Se um aluno esqueceu o PIN e não consegue entrar na aula, podes criar um PIN temporário aqui.
+          Se um aluno se esqueceu do PIN e não consegue entrar na aula, pode criar aqui um PIN temporário.
           A coordenadora será avisada para definir um PIN definitivo.
         </div>
       </div>
@@ -67,11 +67,11 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
       {!confirmado ? (
         <div style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(26,23,20,0.08)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(26,23,20,0.4)', textTransform: 'uppercase', marginBottom: 8 }}>
-            Selecciona o aluno
+            Selecione o aluno
           </div>
           <select value={alunoSel} onChange={e => { setAlunoSel(e.target.value); setPinGerado(''); setConfirmado(false); }}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.12)', fontSize: 14, marginBottom: 12 }}>
-            <option value="">— Escolhe o aluno —</option>
+            <option value="">— Escolha o aluno —</option>
             {alunos.map(a => (
               <option key={a.id} value={a.id}>
                 Nº {a.numero}{a.nome ? ` — ${a.nome}` : ''}
@@ -131,7 +131,7 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
                 <button onClick={confirmarPin}
                   style={{ flex: 2, padding: '12px', borderRadius: 10, border: 'none',
                     background: '#5a7a4e', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                  ✓ Activar este PIN
+                  ✓ Ativar este PIN
                 </button>
                 <button onClick={criarPinTemp}
                   style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid rgba(26,23,20,0.15)',
@@ -147,7 +147,7 @@ export function PinTemporarioPanel({ turmaId, nomeProfessor }: Props) {
         <div style={{ background: '#f0fdf4', borderRadius: 12, padding: '20px', textAlign: 'center', border: '2px solid #86efac' }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>✅</div>
           <div style={{ fontWeight: 700, fontSize: 16, color: '#166534', marginBottom: 4 }}>
-            PIN activado para {aluno?.nome || `Aluno ${aluno?.numero}`}
+            PIN ativado para {aluno?.nome || `Aluno ${aluno?.numero}`}
           </div>
           <div style={{ fontSize: 13, color: '#15803d', marginBottom: 16 }}>
             PIN: <strong style={{ fontFamily: 'monospace', fontSize: 18 }}>{pinGerado}</strong>

@@ -209,7 +209,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
           {(() => {
             const al = calcularAnoLetivo();
             return (<>
-              <div style={{ color: WHITE, fontSize: 13, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Lectivo {al.anoLetivo}</div>
+              <div style={{ color: WHITE, fontSize: 13, fontWeight: 700, marginBottom: 2, fontFamily: "'Nunito', sans-serif" }}>Ano Letivo {al.anoLetivo}</div>
               {turmaId && (() => {
                 // Só as turmas deste professor; com mais de uma, muda-se aqui.
                 const minhas = turmasDoProfessor(nomeProfessor);

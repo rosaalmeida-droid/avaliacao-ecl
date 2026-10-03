@@ -49,7 +49,7 @@ export function CriteriosComp({ compId, cor = 'var(--copper)', abertaInicial = f
       descricao = app?.definicao || '';
       if ((app as any)?.ambito_profissional) {
         criterios = [
-          { criterio: `Preparação correcta: ${(app as any).ambito_profissional}`, como: 'Âmbito profissional' },
+          { criterio: `Preparação correta: ${(app as any).ambito_profissional}`, como: 'Âmbito profissional' },
         ];
       }
     } else {

@@ -82,7 +82,7 @@ export function listaCompetenciasParaPrompt(): string {
   }
   const nivel: Record<number, string> = { 1: 'NÍVEL 1 — Essencial (todos os alunos)', 2: 'NÍVEL 2 — Desenvolvimento (regulares e seletivas)', 3: 'NÍVEL 3 — Especialização (só alunos regulares sem medidas)' };
   linhas.push('', '─────────────────────────────────────────────────',
-    'LISTA DE APARELHOS — usa ID exacto + nível',
+    'LISTA DE APARELHOS — usa ID exato + nível',
     '(só listar se o aluno PRODUZ o aparelho nesta receita — cozinha ou pastelaria: bechamel, fundos, massas, cremes, marinadas…)',
     '─────────────────────────────────────────────────');
   for (const n of [1, 2, 3]) {
@@ -113,7 +113,7 @@ ELEVA a receita para nível profissional:
 
 1. TÉCNICAS — substitui métodos caseiros por técnicas de cozinha clássica:
    - "fritar" → saltear, confitar, poêler ou fritar por imersão (especificar)
-   - "cozinhar" → escalfar, branquear, estufar, brasear (o mais correcto para o produto)
+   - "cozinhar" → escalfar, branquear, estufar, brasear (o mais correto para o produto)
    - "misturar" → incorporar, homogeneizar, emulsionar (conforme o caso)
    - "deitar" → adicionar, incorporar, verter em fio
    - "mexer" → envolver suavemente, bater em neve, montar
@@ -209,7 +209,7 @@ Deixa o campo COMPONENTE vazio se for receita simples.
 
 REGRA 6 — PCC/HACCP
 Os PCC devem ser específicos da receita, não genéricos.
-Inclui: temperatura exacta, tempo, produto de risco.
+Inclui: temperatura exata, tempo, produto de risco.
 Exemplos corretos:
 - "Temperatura mínima 75°C no centro do produto"
 - "Creme pasteleiro: arrefecer de 65°C a 10°C em menos de 2h"
@@ -295,7 +295,7 @@ REGRA 9 — SUBTÉCNICAS E APARELHOS DETECTADOS
 ═══════════════════════════════════════════════════
 
 Esta secção é usada pela aplicação para avaliar o aluno.
-Tens DUAS categorias a detectar — são conceitos distintos:
+Tens DUAS categorias a detetar — são conceitos distintos:
 
   SUBTÉCNICAS (SUB-xxx) = operações concretas e observáveis que o aluno executa.
     Ex: cortar em brunoise, laminar massa, caramelizar com maçarico, fazer um roux.
@@ -334,12 +334,12 @@ O aluno avalia-se por estas frases: têm de ser observáveis e deste prato.
 ${listaCompetenciasParaPrompt()}
 
 ═══════════════════════════════════════════════════
-FORMATO DE RESPOSTA (manter exactamente)
+FORMATO DE RESPOSTA (manter exatamente)
 ═══════════════════════════════════════════════════
 
 NOME DO PRATO: [nome sem marcas]
-FAMÍLIA PRINCIPAL: [exactamente um valor da lista de famílias]
-FAMÍLIA SECUNDÁRIA: [exactamente um valor da lista OU "nenhuma"]
+FAMÍLIA PRINCIPAL: [exatamente um valor da lista de famílias]
+FAMÍLIA SECUNDÁRIA: [exatamente um valor da lista OU "nenhuma"]
 ETIQUETAS: [até 3 etiquetas da lista OU "nenhuma"]
 CLASSIFICAÇÃO: [Peixe / Carne / Aves / Sobremesa / Sopa / Entrada / Massa / Vegetariano / Outro]
 Nº DE DOSES: [número]
@@ -430,7 +430,7 @@ NR | DESCRIÇÃO | TEMP | TEMPO | OBS | PCC/HACCP
 1 | Caramelizar o açúcar em seco numa frigideira antiaderente até atingir âmbar escuro | Forte | 8 min | Não mexer — agitar apenas a frigideira | Atenção: açúcar a 180°C — risco de queimadura grave
 2 | Verter o caramelo na forma untada e distribuir uniformemente | | 2 min | Rodar a forma rapidamente antes de solidificar |
 3 | Aquecer o leite com a baunilha sem deixar ferver | Médio | 5 min | |
-4 | Bater os ovos inteiros e as gemas com o açúcar até dissolver — não incorporar ar | | 3 min | Evitar espuma — afecta a textura final |
+4 | Bater os ovos inteiros e as gemas com o açúcar até dissolver — não incorporar ar | | 3 min | Evitar espuma — afeta a textura final |
 5 | Verter o leite morno em fio sobre os ovos, mexendo constantemente | | 2 min | Temperar devagar para não coagular os ovos |
 6 | Passar o creme pelo passador fino e verter na forma caramelizada | | 2 min | Eliminar bolhas de ar da superfície |
 7 | Cozer em banho-maria no forno a 160°C durante 45 min | 160°C | 45 min | Cobrir com papel de alumínio a meio | PCC: temperatura interna mínima 72°C — verificar com termómetro
@@ -609,10 +609,10 @@ IMPORTANTE:
 - Toda a informação deve referir-se exclusivamente a esta produção: ${nomePrato}
 - Não utilizar textos genéricos nem frases feitas
 - Não repetir simplesmente o conteúdo da Ficha de Produção
-- O objectivo é explicar, formar e contextualizar tecnicamente o aluno, com profundidade real — este é material de estudo profissional, não um resumo superficial
+- O objetivo é explicar, formar e contextualizar tecnicamente o aluno, com profundidade real — este é material de estudo profissional, não um resumo superficial
 - Usa SEMPRE os ingredientes e a preparação reais da Ficha acima — nunca inventes valores diferentes
-- Linguagem clara e directa, adequada a um aluno de 14-16 anos, mas sem perder rigor técnico nem profundidade de conteúdo
-- Prefere tabelas, esquemas e listas estruturadas a parágrafos longos e densos — o objectivo é tornar o conteúdo mais fácil de estudar visualmente, sem cortar conteúdo
+- Linguagem clara e direta, adequada a um aluno de 14-16 anos, mas sem perder rigor técnico nem profundidade de conteúdo
+- Prefere tabelas, esquemas e listas estruturadas a parágrafos longos e densos — o objetivo é tornar o conteúdo mais fácil de estudar visualmente, sem cortar conteúdo
 - Cada secção deve ter desenvolvimento real e completo — não aceitar respostas de 2-3 frases onde o tema pede mais
 - Não incluir tarefas de recuperação, planos de recuperação ou avaliação de recuperação — isso vive agora num módulo próprio da app
 
@@ -647,15 +647,15 @@ Listar as responsabilidades técnicas concretas exigidas nesta produção, basea
 |---|---|
 
 ## Ligação aos Conhecimentos da UC/UFCD
-Esta subsecção só existe se a ficha técnica se relacionar com os conhecimentos formais da UC/UFCD indicada no início deste guia. Se não se aplicar (ex: a ficha é de outra família técnica), indicar claramente "Esta produção não cobre directamente os conhecimentos formais desta UC/UFCD — serve de contexto prático para competências transversais."
+Esta subsecção só existe se a ficha técnica se relacionar com os conhecimentos formais da UC/UFCD indicada no início deste guia. Se não se aplicar (ex: a ficha é de outra família técnica), indicar claramente "Esta produção não cobre diretamente os conhecimentos formais desta UC/UFCD — serve de contexto prático para competências transversais."
 
 Se se aplicar, desenvolver obrigatoriamente:
-- Que conhecimentos específicos do referencial desta UC/UFCD esta produção activa ou reforça? (citar os conhecimentos concretos, não de forma genérica)
+- Que conhecimentos específicos do referencial desta UC/UFCD esta produção ativa ou reforça? (citar os conhecimentos concretos, não de forma genérica)
 - Como esta produção serve de evidência prática para esses conhecimentos? O que o aluno demonstra ao produzir este prato que prova que adquiriu esses conhecimentos?
 - Existe algum conhecimento da UC que esta produção NÃO cobre? Se sim, indicar o que ficou por evidenciar e como poderia ser complementado (ex: "O conhecimento X desta UC exigiria uma produção diferente, como Y").
 - Tabela de cruzamento:
 
-| Conhecimento da UC/UFCD | Activado nesta produção? | Como se evidencia |
+| Conhecimento da UC/UFCD | Ativado nesta produção? | Como se evidencia |
 |---|---|---|
 | [citar do referencial] | Sim / Parcialmente / Não | [descrição concreta] |
 
@@ -707,16 +707,16 @@ Apresenta em duas tabelas:
 | Maioria mulheres | | -10 a -15% | |
 | Maioria homens | | +10 a +20% | Maior necessidade calórica média |
 | Idosos | | -10 a -15% | Menor apetite, digestão mais lenta |
-| Atletas / alta actividade | | +20 a +30% | |
+| Atletas / alta atividade | | +20 a +30% | |
 
 Termina com 2 parágrafos:
 1. Os critérios que determinam as capitações nesta preparação específica — liga ao valor energético, à riqueza do ingrediente, ao papel no equilíbrio do menu e ao contexto formal ou informal do serviço.
-2. Impacto na requisição: explica como a capitação escolhida afecta directamente a quantidade de ingredientes a requisitar. Por exemplo: se a ficha técnica tem capitação base de 150g por pessoa mas o evento é um jantar de 5 pratos, a requisição deve ser calculada com 80-100g. Dá um exemplo concreto com esta preparação, com os cálculos (nº pessoas × capitação ajustada = quantidade a requisitar). ATENÇÃO: não escrever aqui sobre competências do aluno — esse conteúdo pertence à secção 2.
+2. Impacto na requisição: explica como a capitação escolhida afeta diretamente a quantidade de ingredientes a requisitar. Por exemplo: se a ficha técnica tem capitação base de 150g por pessoa mas o evento é um jantar de 5 pratos, a requisição deve ser calculada com 80-100g. Dá um exemplo concreto com esta preparação, com os cálculos (nº pessoas × capitação ajustada = quantidade a requisitar). ATENÇÃO: não escrever aqui sobre competências do aluno — esse conteúdo pertence à secção 2.
 
 ---
 # 6. EQUILÍBRIO SENSORIAL
 
-OBRIGATÓRIO — preenche EXACTAMENTE neste formato (uma linha por sabor, sem alterar):
+OBRIGATÓRIO — preenche EXATAMENTE neste formato (uma linha por sabor, sem alterar):
 DOCE: [Forte / Presente / Ligeiro / Ausente]
 ÁCIDO: [Forte / Presente / Ligeiro / Ausente]
 SALGADO: [Forte / Presente / Ligeiro / Ausente]
@@ -726,7 +726,7 @@ UMAMI: [Forte / Presente / Ligeiro / Ausente]
 ATENÇÃO — REGRAS OBRIGATÓRIAS PARA A CLASSIFICAÇÃO:
 
 DOCE:
-- NUNCA classificar como "Ausente" em carnes seladas ou assadas — a reacção de Maillard e a caramelização das proteínas e açúcares naturais da carne criam sabor doce perceptível. Usar no mínimo "Ligeiro".
+- NUNCA classificar como "Ausente" em carnes seladas ou assadas — a reação de Maillard e a caramelização das proteínas e açúcares naturais da carne criam sabor doce percetível. Usar no mínimo "Ligeiro".
 - Marinadas com vinho, frutas, cebola ou beterraba contribuem para "Presente" ou "Forte".
 - Só "Ausente" em preparações sem carne, sem vegetais adocicados, sem caramelização.
 
@@ -774,7 +774,7 @@ Apresentar em combinação de texto e tabela. Mínimo 1 parágrafo por ponto + u
 ---
 # 9. FOOD COST PEDAGÓGICO
 
-O objectivo desta secção é ensinar ao aluno o que é o food cost e como se calcula passo a passo, usando esta produção como caso real. NÃO fazer apenas uma tabela sem explicação — cada passo deve ser explicado.
+O objetivo desta secção é ensinar ao aluno o que é o food cost e como se calcula passo a passo, usando esta produção como caso real. NÃO fazer apenas uma tabela sem explicação — cada passo deve ser explicado.
 
 **Passo 1 — O que é o food cost?**
 Explica em linguagem simples o que é o food cost e porque é uma ferramenta essencial de gestão em restauração. Liga ao conceito de margem de lucro.
@@ -808,10 +808,10 @@ Lista as técnicas culinárias específicas mobilizadas nesta produção (ex: br
 ---
 # 11. CONHECIMENTOS A CONSOLIDAR
 
-Esta secção explica os conceitos que o aluno deve compreender (não só executar) para realizar bem esta produção. NÃO fazer uma lista técnica avançada — o objectivo é tornar o conhecimento visível e compreensível para um aluno de 14-16 anos.
+Esta secção explica os conceitos que o aluno deve compreender (não só executar) para realizar bem esta produção. NÃO fazer uma lista técnica avançada — o objetivo é tornar o conhecimento visível e compreensível para um aluno de 14-16 anos.
 
 Para cada conhecimento, escreve:
-- **O que é** — explicação simples e directa, sem jargão desnecessário
+- **O que é** — explicação simples e direta, sem jargão desnecessário
 - **Porque importa** — ligação concreta ao que o aluno está a produzir
 - **Como se vê na prática** — o que acontece de observável quando esse conhecimento é aplicado bem (ou mal)
 
@@ -821,9 +821,9 @@ Aborda obrigatoriamente (adaptando a esta produção específica):
 
 2. **Conservação e segurança alimentar** — que condições específicas este prato exige? O que acontece se não forem respeitadas? Liga à experiência real do aluno.
 
-3. **Textura e aspecto final** — que sinais visuais e tácteis indicam que o prato está bem feito? O que o aluno deve observar?
+3. **Textura e aspeto final** — que sinais visuais e táteis indicam que o prato está bem feito? O que o aluno deve observar?
 
-4. **Ligação ao referencial da UC** — indica 2-3 conhecimentos do referencial oficial que esta produção activa directamente, em linguagem simples.
+4. **Ligação ao referencial da UC** — indica 2-3 conhecimentos do referencial oficial que esta produção ativa diretamente, em linguagem simples.
 
 Formato: um bloco por conhecimento (título + os 3 pontos acima). Máximo 4-5 conhecimentos, bem explicados, em vez de 10 conceitos superficiais.
 
@@ -834,7 +834,7 @@ Gera entre 8 e 10 questões de estudo sobre esta produção concreta.
 Mistura: escolha múltipla (a/b/c/d), verdadeiro/falso, e resposta curta.
 Cobre: ingredientes, técnica, HACCP e fundamentos teóricos.
 
-FORMATO OBRIGATÓRIO — segue EXACTAMENTE esta estrutura:
+FORMATO OBRIGATÓRIO — segue EXATAMENTE esta estrutura:
 
 PERGUNTAS:
 1. [Texto da pergunta de escolha múltipla]
@@ -852,7 +852,7 @@ d) [Opção]
 RESPOSTAS:
 1. [letra correta]
 2. [Verdadeiro/Falso]
-3. [resposta correcta em 1-2 frases]
+3. [resposta correta em 1-2 frases]
 [...uma resposta por linha, numerada...]
 
 NÃO misturar perguntas e respostas. NÃO escrever a resposta a seguir à pergunta.
@@ -948,7 +948,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
         🤖 Extrair Ficha de Produção com IA
       </div>
       <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
-        Copia o prompt, cola numa IA com o link da receita e copia o resultado abaixo.
+        Copie o pedido (prompt), cole-o numa IA com o link da receita e cole o resultado mais abaixo.
       </div>
       <SeletorIA prompt={promptFinal} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -964,7 +964,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
       </div>
       {copiado && (
         <div style={{ padding: '8px 12px', background: 'var(--copper-pale)', borderRadius: 8, fontSize: 13, color: 'var(--copper)', marginBottom: 8 }}>
-          ✅ Prompt copiado! No ChatGPT faz <strong>Ctrl+V</strong> para colar.
+          ✅ Pedido copiado! No ChatGPT, carregue em <strong>Ctrl+V</strong> para colar.
         </div>
       )}
       {mostrarPrompt && (
@@ -985,7 +985,7 @@ function BotaoIAs({ link, nomePrato, ucId, ucNome }: { link: string; nomePrato?:
           📚 Gerar Guia de Apoio à Produção
         </div>
         <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
-          Após criar a ficha, usa este prompt para gerar o Guia de Apoio completo com HACCP, rendimentos, equilíbrio sensorial e questões pedagógicas.
+          Depois de criar a ficha, use este pedido para gerar o Guia de Apoio completo, com HACCP, rendimentos, equilíbrio sensorial e questões pedagógicas.
         </div>
         <SeletorIA prompt={guiaFinal} corPrincipal="var(--guia)" />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -1064,7 +1064,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
     // Detectar se colou o PROMPT em vez da RESPOSTA da IA
     const ehPrompt = /\[nome sem marcas\]|\[Peixe \/ Carne|\[lista dos 14 alerg|\[X min\]|Analisa a (página|receita|Ficha)/i.test(textoManual.slice(0, 500));
     if (ehPrompt) {
-      setErro('⚠️ Isto parece ser o PROMPT, não o resultado da IA. Cola o texto que a IA respondeu, não o que enviaste.');
+      setErro('⚠️ Isto parece ser o pedido (prompt) e não o resultado da IA. Cole o texto com a resposta da IA, e não o que enviou.');
       return;
     }
     try { localStorage.removeItem('ecl_ficha_draft'); } catch {}
@@ -1148,7 +1148,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         <SeletorIA prompt={promptUnificado} corPrincipal="var(--copper)" />
         {!nomePrato && (
           <div style={{ marginTop:10, padding:'8px 12px', background:'rgba(90,122,78,0.08)', borderRadius:8, fontSize:13, color:'var(--sage)' }}>
-            💡 Preenche o nome do prato acima para activar o Guia de Apoio
+            💡 Preencha o nome do prato, mais acima, para ativar o Guia de Apoio
           </div>
         )}
       </div>
@@ -1156,14 +1156,14 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
       {/* 4. CAIXA RESULTADO */}
       <div style={{ background:'rgba(181,101,29,0.04)', borderRadius:10, padding:'12px 14px', marginBottom:12, border:'1px solid rgba(181,101,29,0.15)' }}>
         <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
-          📥 Passo 2 — Cola aqui o resultado da IA
+          📥 Passo 2: cole aqui o resultado da IA
         </div>
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:8 }}>
-          Cola o resultado da ficha <strong>ou</strong> do guia — a app detecta automaticamente qual é.
+          Cole o resultado da ficha <strong>ou</strong> do guia. A aplicação deteta automaticamente qual dos dois é.
         </div>
         <textarea className="input" value={textoManual}
           onChange={e => { setTextoManual(e.target.value); setErro(''); onAlteracao?.(); }}
-          placeholder={'Cola aqui a resposta da IA...\n\nSe usaste o prompt unificado, a app separa automaticamente a Ficha Técnica e o Guião de Apoio.\n\nExemplo (Ficha):\nNOME DO PRATO: Mousse de Chocolate\nCLASSIFICAÇÃO: Sobremesa\n...\n\n===GUIÃO===\n## 1. MISE EN PLACE\n...'}
+          placeholder={'Cole aqui a resposta da IA...\n\nSe usou o pedido unificado, a aplicação separa automaticamente a Ficha Técnica e o Guião de Apoio.\n\nExemplo (Ficha):\nNOME DO PRATO: Mousse de Chocolate\nCLASSIFICAÇÃO: Sobremesa\n...\n\n===GUIÃO===\n## 1. MISE EN PLACE\n...'}
           style={{ minHeight:180, fontSize:13, fontFamily:'monospace', background:'#fff' }} />
         {textoManual && (
           <button type="button" className="btn btn-primary" style={{ width:'100%', marginTop:8 }}
@@ -1626,7 +1626,7 @@ function PassoFichaTecnica({
           // Guardar draft antes de voltar — não perde o trabalho
           try { localStorage.setItem('ecl_ficha_draft', JSON.stringify(ficha)); } catch {}
           onVoltar();
-        }}>← Voltar (guarda rascunho)</Button>
+        }}>← Voltar (guarda o rascunho)</Button>
         <div style={{ height: 8 }} />
         <div style={{ display: 'flex', gap: 8 }}>
           <Button variant="ghost" onClick={() => {
@@ -1729,7 +1729,7 @@ function PassoFichaTecnica({
             }} disabled={!ficha.nomePrato}>
             ✓ Guardar Ficha de Produção
           </button>
-          {!ficha.nomePrato && <div style={{ textAlign:'center', fontSize:13, color:'var(--danger)', marginTop:6 }}>Preenche o nome do prato para guardar.</div>}
+          {!ficha.nomePrato && <div style={{ textAlign:'center', fontSize:13, color:'var(--danger)', marginTop:6 }}>Preencha o nome do prato para guardar.</div>}
         </div>
       </Card>
     </div>
@@ -1777,7 +1777,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
       <div style={{ padding: 16, textAlign: 'center' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>📚</div>
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Ainda não há nenhuma ficha</div>
-        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>Cria primeiro uma Ficha de Produção para depois gerar o Guia.</div>
+        <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>Crie primeiro uma Ficha de Produção para depois gerar o Guia.</div>
       </div>
     );
   }
@@ -1839,7 +1839,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
             <textarea
               value={textoGuia}
               onChange={e => setTextoGuia(e.target.value)}
-              placeholder={`Cola aqui o resultado da IA para o Guia de Apoio à Produção de "${nomePrato}"...`}
+              placeholder={`Cole aqui o resultado da IA para o Guia de Apoio à Produção de "${nomePrato}"...`}
               style={{ width: '100%', minHeight: 160, borderRadius: 10, border: '1.5px solid var(--border)', padding: 10, fontSize: 13, fontFamily: 'monospace', resize: 'vertical' }}
             />
             {textoGuia && (
@@ -2107,7 +2107,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       setVista('apos_guardar' as any);
     } catch (err) {
       console.error('Erro ao guardar ficha:', err);
-      alert('Ocorreu um erro ao guardar a ficha. Os dados não se perderam — tenta novamente. Detalhe: ' + String(err));
+      alert('Ocorreu um erro ao guardar a ficha. Os dados não se perderam: tente novamente. Detalhe: ' + String(err));
     }
   }
 
@@ -2236,7 +2236,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             </span>
             <button onClick={() => {
               if (fichasSelecionadasIds.size === 0) return;
-              if (confirm(`Eliminar DEFINITIVAMENTE ${fichasSelecionadasIds.size} ficha(s)? Apaga aqui e no arquivo da escola — não pode ser desfeito.`)) {
+              if (confirm(`Eliminar DEFINITIVAMENTE ${fichasSelecionadasIds.size} ficha(s)? Serão apagadas neste aparelho e no arquivo da escola, e esta ação não pode ser desfeita.`)) {
                 fichasSelecionadasIds.forEach(id => eliminarFichaProducaoDefinitivamente(id));
                 setFichasSelecionadasIds(new Set());
                 setModoSelecao(false);
@@ -2251,7 +2251,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
         {ucId && (
           <div style={{ padding:'8px 14px', background:'var(--copper-pale)', borderRadius:10, marginBottom:12, fontSize:13, color:'var(--copper)', border:'1px solid rgba(181,101,29,0.2)' }}>
-            <strong>UC activa:</strong> {ucId} — {ucNome}
+            <strong>UC ativa:</strong> {ucId} — {ucNome}
           </div>
         )}
 
@@ -2271,8 +2271,8 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               </div>
               <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.7)', marginTop:5,
                 lineHeight:1.55 }}>
-                Não são cópias — são fichas diferentes a partilhar o mesmo
-                identificador. Enquanto assim estiverem, gravar uma apaga a
+                Não são cópias: são fichas diferentes com o mesmo
+                identificador. Enquanto assim estiverem, guardar uma apaga a
                 outra.
                 <br />
                 {repetidos.slice(0, 3).map(g =>
@@ -2284,7 +2284,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                   alert(
                     `${r.corrigidas} fichas separadas.\n\n` +
                     'Cada uma tem agora um identificador próprio e deixam de se ' +
-                    'sobrepor. Verifica se o conteúdo de cada uma está certo.'
+                    'sobrepor. Verifique se o conteúdo de cada uma está correto.'
                   );
                   recarregar();
                 }}
@@ -2362,11 +2362,11 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                 } else {
                   alert(
                     'Não foi possível recuperar nenhuma.\n\n' +
-                    'Procurei na cópia local, na cópia do arranque do ano e no ' +
-                    'nem no arquivo da escola — em nenhum estava a versão completa.\n\n' +
-                    'Se tiveres estas fichas noutro aparelho ou noutro browser ' +
-                    'onde ainda apareçam completas, abre-as aí e guarda: isso ' +
-                    'volta a guardá-las e depois aparecem aqui.'
+                    'A aplicação procurou na cópia local, na cópia do início do ano e no ' +
+                    'arquivo da escola, mas em nenhum deles estava a versão completa.\n\n' +
+                    'Se tiver estas fichas noutro aparelho ou noutro navegador ' +
+                    'onde ainda apareçam completas, abra-as aí e guarde-as: ' +
+                    'assim ficam guardadas de novo e passam a aparecer aqui.'
                   );
                 }
               }}
@@ -2411,7 +2411,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         {fichasParaMostrar.length > 0 && (
           <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>
             {fichasParaMostrar.length} ficha{fichasParaMostrar.length!==1?'s':''}
-            {mostrarBibliotecaCompleta ? ' em toda a app — clica para associar a este plano' : ' associada(s) a este plano'}.
+            {mostrarBibliotecaCompleta ? ' em toda a aplicação: clique numa ficha para a associar a este plano' : ' associada(s) a este plano'}.
           </div>
         )}
 
@@ -2448,8 +2448,8 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                 (!f.ingredientes?.length && !f.preparacao?.length ? 'ingredientes nem preparação'
                  : !f.ingredientes?.length ? 'ingredientes' : 'preparação') +
                 '.\n\nIsto acontece em fichas guardadas antes de uma correção recente. ' +
-                'Se tiveres a ficha noutro aparelho onde ainda esteja completa, ' +
-                'abre-a aí primeiro para voltar a sincronizar.'
+                'Se tiver a ficha noutro aparelho onde ainda esteja completa, ' +
+                'abra-a primeiro nesse aparelho para voltar a sincronizar.'
               );
             }
             setVista('editar');
