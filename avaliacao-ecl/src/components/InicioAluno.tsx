@@ -507,12 +507,25 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
     'Uma falta conta zero nessa aula. Faltar a mais de 10% das horas da UC leva a recuperação.',
     '«Não tive oportunidade» não conta para a nota (o professor confirma). «Não fiz» vale 0.',
     'Sem farda completa, as técnicas desse dia contam 0. As atitudes contam — incluindo como ajudas na aula.',
-    'Participar em eventos e concursos dá até +2 (0,5 por evento).',
+    'Participar em eventos e concursos dá até +2 de bónus (até 0,5 por evento).',
   ] },
-  { titulo: '6. Eventos e concursos', texto: [
-    'Vê em «Atividades». Podes inscrever-te; o professor aceita.',
-    'No evento: chega a horas, fica até ao fim e leva a farda. Sem farda não conta.',
-    'Sem participar, a nota máxima é 17; só com eventos, 18; o 20 só com um concurso.',
+  { titulo: '6. Aula e atividade extra', texto: [
+    'Um plano de aula é a aula da turma toda: conta para a tua nota.',
+    'Uma atividade extra é um evento, concurso, visita ou catering só para alguns alunos (ou nas férias): dá bónus.',
+    'Se a turma toda vai a um evento durante o ano letivo, é um plano de aula: conta como aula.',
+    '«Fora da escola» quer dizer no exterior. Não quer dizer «fora das aulas».',
+  ] },
+  { titulo: '7. Se foste a uma atividade extra', texto: [
+    'Recebes o aviso «Estiveste na atividade… autoavalia-te».',
+    'Avalias as técnicas da ficha técnica (se houver) e, se o professor pedir, as atitudes.',
+    'As técnicas que consolidares ficam no teu perfil, como numa aula. Na nota, contam só dentro do bónus.',
+    'Normalmente também respondes ao plano de aula da turma desse dia, como os colegas. Na aula, vês a que partes respondes.',
+    'Chega a horas, fica até ao fim e leva a farda. Sem farda não conta.',
+  ] },
+  { titulo: '8. Se não foste', texto: [
+    'Em «Atividades e concursos › Para ver» vês o que os colegas fizeram, a ficha técnica e o guião, para aprender.',
+    'Não te inscreves nem te avalias nessa atividade.',
+    'Sem participar em nada, a nota máxima é 17; só com eventos, 18; o 20 só com um concurso.',
   ] },
 ];
 

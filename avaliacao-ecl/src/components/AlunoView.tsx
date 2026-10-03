@@ -1892,7 +1892,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = f
             boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
             <div style={{ fontSize:12.5, fontWeight:600, letterSpacing:'0.05em',
               textTransform:'uppercase', color:'#999', marginBottom:12 }}>
-              Os passos da aula
+              {(plano as any).tipoEvento ? 'Os passos da atividade' : 'Os passos da aula'}
             </div>
             {PASSOS.map(p => {
               const est = estadoPasso(p.id);

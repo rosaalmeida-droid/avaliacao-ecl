@@ -200,22 +200,17 @@ const SECCOES: Seccao[] = [
 
         <H>Eventos e concursos — até +2</H>
         <P>
-          Não é uma componente ponderada: é um acréscimo à nota. O evento ou
-          concurso avalia-se num <b>plano próprio</b>, criado em <b>Avaliar evento
-          fora do horário</b> (ou, dentro do horário, marcando o plano como
-          evento) — escolhe Evento externo, Concurso, Catering, Buffet ou
-          Atividade fora da escola. As atitudes já vêm marcadas; o aluno
-          autoavalia-se e tu ajustas, como numa aula.
+          Não é uma componente ponderada: é um acréscimo à nota. Cada evento ou concurso é uma <b>atividade extra</b>
+          (ver «Plano de aula e atividade extra»): o aluno autoavalia-se e tu validas, como numa aula.
         </P>
         <Tabela
           cabecalho={['', 'Evento', 'Concurso']}
           linhas={[
-            ['Bónus', '+0,5', '+0,75'],
-            ['Sempre avaliado', 'Chegar à hora, ficar até ao fim, farda', 'Chegar à hora, ficar até ao fim, farda'],
-            ['Sugerido pelo tipo', 'Cooperação, higiene, postura… e a técnica geral', 'Autoconfiança, autocontrolo, iniciativa'],
-            ['Para dar o bónus', 'Tudo em "Muito bom" (5), técnica incluída', 'As 3 fixas em "Muito bom"; técnica e resultado não contam'],
+            ['Bónus', 'Até +0,5, conforme a nota validada', 'Pontos até 1 valor'],
+            ['O que se avalia', 'Atitudes (se não forem já avaliadas no plano de aula), técnica geral e técnicas da ficha técnica', 'Candidatura 0,2 · participação 0,2 · cada fase 0,2 · ganhar completa o valor'],
             ['Sem farda', 'Não conta', 'Não conta'],
             ['Aluno com menos de 10', 'Conta — ajuda a subir', 'Não vai a concurso'],
+            ['Fora do ano letivo', 'Agregado ao plano de aula seguinte da UC', 'Agregado ao plano de aula seguinte da UC'],
           ]}
         />
         <Tabela
@@ -611,6 +606,73 @@ const SECCOES: Seccao[] = [
           Os resultados a atingir são os mesmos. Muda o caminho: perguntas mais
           fáceis de ler, sobre o que se vê. As medidas adicionais que alteram
           o currículo ainda não estão na aplicação.
+        </Destaque>
+      </>
+    ),
+  },
+
+  // ── Plano de aula e atividade extra (Rosa, out/2026) ────────────
+  {
+    id: 'extras',
+    titulo: 'Plano de aula e atividade extra',
+    resumo: '«Quem vai?» decide: a turma toda é um plano de aula; só alguns, ou fora do ano letivo, é uma atividade extra (bónus).',
+    conteudo: (
+      <>
+        <H>Duas palavras, duas coisas diferentes</H>
+        <P>
+          <b>Plano de aula</b> é a aula da turma toda. Avalia-se e conta para a nota da UC.
+          <b> Atividade extra</b> é tudo o que está fora dos planos de aula: eventos, concursos,
+          visitas, catering… Dá <b>bónus</b> e as competências ficam no perfil do aluno.
+          Uma atividade extra <b>nunca cria nem altera</b> um plano de aula.
+        </P>
+
+        <H>«Quem vai?» decide como conta</H>
+        <Tabela
+          cabecalho={['Quem vai', 'O que é', 'Como conta']}
+          linhas={[
+            ['A turma toda, dentro do ano letivo', 'Plano de aula com um evento lá dentro', 'Como uma aula: técnicas, conhecimentos e atitudes contam para a nota; as faltas contam'],
+            ['A turma toda, fora do ano letivo (férias, antes do início das UC)', 'Atividade extra', 'Bónus, agregado ao plano de aula seguinte da UC (mesmo semanas depois)'],
+            ['Só alguns alunos (inscrevem-se ou escolhes tu)', 'Atividade extra', 'Bónus; não conta faltas'],
+          ]}
+        />
+        <P>
+          <b>«Onde é?»</b> (na escola ou fora da escola) é só o sítio: não muda a avaliação.
+          «Fora da escola» quer dizer no exterior, e não «fora das aulas».
+        </P>
+
+        <H>Atividade extra: como se faz</H>
+        <P>
+          1. Cria a atividade (em «Atividades e concursos», ou no «Editar o plano» de uma aula, escolhendo o tipo e «Só alguns alunos»).
+          Se vier de uma aula, a aula fica <b>igual</b> para a turma toda e a atividade fica à parte, ligada a ela.<br />
+          2. Põe quem foi: aceita os inscritos ou usa «+ Acrescentar um aluno que foi».<br />
+          3. Se houve produção, junta a <b>ficha técnica e o guião</b> à atividade.<br />
+          4. Carrega em <b>«Confirmar participantes»</b>: vês quem participa, o que cada um vai responder e como conta. Confirma.
+        </P>
+        <H>O que os alunos da atividade respondem</H>
+        <P>
+          <b>Na atividade:</b> as técnicas da ficha técnica (se houver), a técnica geral e, se for o caso, as atitudes.<br />
+          <b>No plano de aula da turma desse dia</b> (a aplicação encontra-o sozinha: mesma turma, mesmo dia, mesmas horas):
+          por omissão respondem a tudo, como os colegas. Podes tirar uma parte só para eles (técnicas, conhecimentos,
+          atitudes e 5 C) ou escolher «Nada: só respondem à atividade».<br />
+          <b>Atitudes sem repetir:</b> se já respondem às atitudes no plano de aula, a atividade não as pergunta outra vez;
+          se não respondem, a atividade avalia-as. O resumo da atividade diz qual é o caso.
+        </P>
+        <H>Como conta</H>
+        <P>
+          <b>Evento:</b> bónus até <b>+0,5</b>, conforme a nota que validares (atitudes, técnica geral e as técnicas da ficha).
+          Sem farda não conta. <b>Concurso:</b> pontos até 1 valor (candidatura 0,2 · participação 0,2 · cada fase 0,2 · ganhar completa o valor).
+          As técnicas avaliadas numa atividade <b>contam só dentro do bónus</b>, mas ficam no <b>perfil</b> do aluno e contam para a <b>consolidação</b>,
+          como as de qualquer aula.
+        </P>
+        <H>Os outros alunos</H>
+        <P>
+          Veem a atividade <b>só para consulta</b>, em «Atividades e concursos › Para ver»: o que se fez, a ficha técnica e o guião.
+          Não se inscrevem nem se autoavaliam nela. Os alunos que foram recebem o aviso «Estiveste na atividade… autoavalia-te».
+        </P>
+        <Destaque cor="verde">
+          <b>Exemplos.</b> <b>18 de setembro</b>, a turma toda, antes do início do ano letivo: atividade extra; as atitudes validadas ficam no
+          perfil e o bónus aparece no plano de aula seguinte da UC (21 de setembro). <b>Catering com 3 alunos</b> à hora de uma aula teórica:
+          atividade extra só para os 3, com a ficha técnica e o guião; continuam a responder ao plano de aula da turma; os colegas veem a atividade só para consulta.
         </Destaque>
       </>
     ),
