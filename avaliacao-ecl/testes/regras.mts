@@ -20,6 +20,7 @@ const g = await import('../src/components/PlanoGuiado');
 const ev = await import('../src/eventosAvaliacao');
 const c = await import('../src/contextoAula');
 const rp = await import('../src/rotuloPlano');
+const pa = await import('../src/perguntas_atitudes');
 
 let falhas = 0, total = 0;
 function regra(nome: string, fn: () => void) {
@@ -148,6 +149,16 @@ regra('46. A validação do professor insiste até chegar ao Sheets', () => {
   b.addOrUpdateValidacao({ id: 'v1', selecaoId: 's1', alunoId: 'a1', turmaId: 't', planoAulaId: 'p1', validadoEm: '2026-10-02T10:00:00Z',
     notas: [{ competenciaId: 'SUB-010', nota: 4 }], notaMedia20: 15 } as any);
   igual(b.estadoDaEspera().total >= 1, true, 'fica à espera de confirmação:');
+});
+
+regra('49. «Não aconteceu» numa atitude: a aplicação faz logo outra pergunta, que conta', () => {
+  const sub = pa.perguntaSubstituta('ATI-001');
+  igual(!!sub, true, 'há pergunta de substituição:');
+  igual(pa.atitudeRespondida('ATI-001', [pa.NAO_ACONTECEU, 2]), false, 'falta responder à de substituição:');
+  igual(pa.atitudeRespondida('ATI-001', [pa.NAO_ACONTECEU, 2, 3]), true, 'respondida:');
+  igual(pa.nivelDaAtitude([pa.NAO_ACONTECEU, 1, 3]) !== pa.nivelDaAtitude([pa.NAO_ACONTECEU, 1]), true, 'a de substituição conta:');
+  igual(pa.textoDasRespostas('ATI-001', [pa.NAO_ACONTECEU, 2, 3]).length, 3, 'o professor vê as três:');
+  igual(!!pa.perguntaSubstituta('ATI-001', true), true, 'também nos eventos:');
 });
 
 regra('13. As datas comparam-se como datas, venham escritas como vierem', () => {
