@@ -943,6 +943,14 @@ async function sincronizarDoSheetsAgora(turmaId: string, opcoes?: { leve?: boole
           x => enviar(SHEETS_PLANOS_URL, 'plano', { plano: x }),
           Array.isArray(jsonPlanos.eliminados) ? new Set(jsonPlanos.eliminados.map(String)) : undefined);
         save(KEYS.planos, merged);
+        // Plano eliminado noutro aparelho: este também o marca como eliminado.
+        // Antes só saía da lista de planos, e as notas, autoavaliações e
+        // presenças dele continuavam a aparecer nas notas da UC (Rosa, out/2026).
+        if (Array.isArray(jsonPlanos.eliminados) && jsonPlanos.eliminados.length) {
+          const ja = new Set(load<string>(KEYS.eliminadosPlanos));
+          const novos = jsonPlanos.eliminados.map(String).filter((id: string) => id && !ja.has(id));
+          if (novos.length) save(KEYS.eliminadosPlanos, [...ja, ...novos]);
+        }
       }
     }
 

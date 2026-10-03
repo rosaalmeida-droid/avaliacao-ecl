@@ -118,5 +118,23 @@ regra('13. As datas comparam-se como datas, venham escritas como vierem', () => 
   igual(b.selecoesQueContam(sels)[0].id, 'nova');
 });
 
+// 4. Um plano eliminado noutro aparelho: neste, as notas dele também saem.
+{
+  total++; mem.clear();
+  (globalThis as any).fetch = async (url: string) => {
+    const tipo = new URL(String(url)).searchParams.get('tipo');
+    const corpo = tipo === 'get_planos' ? { ok: true, dados: [{ id: 'p_bom', turmaId: 't', data: '2026-09-29', estado: 'publicado' }], eliminados: ['p_apagado'] } : { ok: true, dados: [] };
+    return { ok: true, json: async () => corpo, text: async () => JSON.stringify(corpo) };
+  };
+  por('ecl_planos', [{ id: 'p_bom', turmaId: 't', data: '2026-09-29', estado: 'publicado' }, { id: 'p_apagado', turmaId: 't', data: '2026-09-28', estado: 'publicado' }]);
+  const reg = (id: string, p: string) => ({ id, alunoId: 'a1', turmaId: 't', planoAulaId: p, ucId: 'UC1', microcompetenciaId: 'ATI-001', nota: 4, data: '2026-09-28', validadoPor: 'professor' });
+  por('ecl_historico_avaliacoes', [reg('r1', 'p_bom'), reg('r2', 'p_apagado')]);
+  try {
+    await b.sincronizarDoSheets('t', { forcar: true });
+    igual(b.getHistoricoAvaliacoes().map(r => r.planoAulaId), ['p_bom'], 'notas que ficam:');
+    console.log('  ✓ 4. Um plano eliminado noutro aparelho sai daqui, com as notas dele');
+  } catch (e: any) { falhas++; console.log('  ✗ 4. Um plano eliminado noutro aparelho sai daqui, com as notas dele\n      ' + (e?.message || e)); }
+}
+
 console.log(`\n${total - falhas} de ${total} regras certas.`);
 process.exit(falhas ? 1 : 0);
