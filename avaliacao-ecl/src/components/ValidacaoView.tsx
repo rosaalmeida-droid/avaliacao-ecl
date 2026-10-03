@@ -1,5 +1,5 @@
 import { ehTurmaTransicao, atitudesAnteriores } from '../transicaoReferencial';
-import { atitudesNoPlanoDaTurma, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
+import { atitudesNoPlanoDaTurma, partesDoPlanoParaOAluno, getTriagemDaAula, guardarTriagemDaAula, colegasQueViram, selecoesQueContam, vezesQueRespondeu, temasDosColegas, participantesDoEvento, aulaDoDiaDaAtividade, eventoForaDoHorario, alunosDoPlano, selecoesDoProfessor, tipoParaANota } from '../backend';
 import { perguntasDaAula, perguntaPorId, type Triagem5C } from '../triagem5c';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
@@ -369,6 +369,13 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
     ? !!validacaoExistente.semFarda
     : !!fardaDaEntrada && Number((fardaDaEntrada as any).nota) < 5);
   const [guardado, setGuardado] = useState(false);
+  // Regra (Rosa, out/2026): o professor só valida o que se perguntou ao aluno.
+  // Numa atividade cujas atitudes ficam no plano da turma (ou quando o
+  // professor tirou as atitudes), o aluno não respondeu aos 5 C nem às
+  // atitudes: não aparecem aqui, nem como «o aluno diz que não aconteceu».
+  const planoDaSelecao: any = getPlanosAula().find(p => p.id === selecao.planoAulaId);
+  const atitudesNaoPerguntadas = !!((selecao as any).triagem5c?.naoPerguntado)
+    || (!!planoDaSelecao && !partesDoPlanoParaOAluno(planoDaSelecao, selecao.alunoId).atitudes);
   // Triagem do CL e do CR: vem a resposta do aluno; o professor confirma ou muda.
   const [triagem, setTriagem] = useState<Triagem5C | null>(() => {
     const t = getTriagemDaAula(selecao.alunoId, selecao.planoAulaId || '');
@@ -379,9 +386,12 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
   // A pergunta antiga ao aluno sobre a higiene e segurança alimentar sai:
   // os registos do KitchenFlow marca-os o professor, pelo relatório.
   const autoavaliacoesAluno = (selecao.autoavaliacoes || []).filter((a: any) => a.competenciaId !== 'OBR_02');
-  const planoDaSelecao: any = getPlanosAula().find(p => p.id === selecao.planoAulaId);
+  // Numa atividade extra cujas atitudes ficam no plano da turma, a higiene e
+  // os registos do KitchenFlow também ficam nesse plano: não se pedem aqui
+  // (era a nota que faltava e não deixava o professor validar — Rosa, out/2026).
   const comRegistosKF = ['pratico', 'misto'].includes(String(tipoPlanAula || planoDaSelecao?.tipoPlanAula || 'pratico'))
-    && !(planoDaSelecao?.compRemovidas || []).includes('OBR_02');
+    && !(planoDaSelecao?.compRemovidas || []).includes('OBR_02')
+    && !(planoDaSelecao?.tipoEvento && atitudesNaoPerguntadas);
   // Sem farda completa: «Cuidado com a apresentação pessoal» avalia-se sempre
   // nesta aula (mesmo que o aluno não a tenha na autoavaliação).
   const autoavaliacoes: any[] = [
@@ -498,7 +508,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
         nota: n.notaFinal,
         origem: 'professor' as const,
       })),
-      ...(triagem ? { triagem5c: triagem } : {}),
+      ...(triagem && !atitudesNaoPerguntadas ? { triagem5c: triagem } : {}),
       ...(naoReparou.length ? { naoReparou } : {}),
       comentarioGeral: comentario,
       validadoPor: 'professor',
@@ -977,7 +987,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       })}
 
       {/* Triagem do Colaborativo e do Criativo — não entra na nota da aula. */}
-      {triagem && (
+      {triagem && !atitudesNaoPerguntadas && (
         <Card>
           <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
             color:'rgba(26,23,20,0.5)', marginBottom:4 }}>Equipa, problemas e reflexão (5 C da pauta)</div>
@@ -1075,7 +1085,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
       {/* Numa atividade extra cujas atitudes são avaliadas no plano da turma
           desse dia, o +1 das atitudes também fica nesse plano: não se repete
           aqui (Rosa, out/2026). */}
-      {ehTurmaTransicao(selecao.turmaId) && !atitudesNoPlanoDaTurma(getPlanosAula().find(p => p.id === selecao.planoAulaId)) && (() => {
+      {ehTurmaTransicao(selecao.turmaId) && !atitudesNaoPerguntadas && (() => {
         const aluno = getAlunos().find(a => a.id === selecao.alunoId);
         if (!aluno) return null;
         const lista = atitudesAnteriores(aluno);

@@ -3202,6 +3202,7 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
   // partilha; sozinho fora da cozinha (visita, sala) não se pergunta.
   const clNaoSePergunta = regras.clNaoSePergunta;
   const [triagem, setTriagem] = useState<Triagem5C>(() => ({
+    ...(!partes.atitudes ? { naoPerguntado: true } : {}),
     cl: clNaoSePergunta || !partes.atitudes ? 'sem' : null, cr: !partes.atitudes ? 'sem' : null, co: !partes.atitudes ? 'sem' : null, problema: '',
     ...(regras.clSempre ? { clId: CL_SEMPRE.id } : {}),
     coId: perguntaCODaAula(plano.id), crId: perguntaCRDaAula(plano.id) }));
