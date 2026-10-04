@@ -1200,7 +1200,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         {/* Sem exigir plano: um orçamento é uma requisição sem aula. */}
         {fichasSel.length > 0 && (
           <button style={{ ...S.btnP, width: '100%' }} onClick={gerarLinhas}>
-            Gerar requisicao — {fichasSel.length} ficha{fichasSel.length > 1 ? 's' : ''} · {paxEncTotal} doses →
+            Gerar requisição — {fichasSel.length} ficha{fichasSel.length > 1 ? 's' : ''} · {paxEncTotal} doses →
           </button>
         )}
       </div>
@@ -1536,13 +1536,19 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                           ⚠️ Introduza o preço
                         </div>
                       )}
-                      {!l.isQB && l.produto && (l.confianca !== 'exata' || !l.precoUnitario) && (
-                        <button onClick={() => setEscolherMakro(i)} title="Ver os produtos da Makro com este nome e escolher"
-                          style={{ display: 'block', marginBottom: 3, fontSize: 12, fontWeight: 700, padding: '3px 6px', borderRadius: 6, cursor: 'pointer',
-                            border: '1px solid #0f766e', background: l.produtoMakro ? '#0f766e' : '#fff', color: l.produtoMakro ? '#fff' : '#0f766e', whiteSpace: 'nowrap' }}>
-                          {l.produtoMakro ? '✓ Makro' : 'Escolher na Makro'}
-                        </button>
-                      )}
+                      {!l.isQB && l.produto && (() => {
+                        // Com dúvida ou sem preço: «Escolher na Makro». Resolvido pela aplicação:
+                        // um «Mudar» discreto, para quem quiser trocar (nunca obrigatório).
+                        const duvida = l.confianca !== 'exata' || !l.precoUnitario;
+                        return (
+                          <button onClick={() => setEscolherMakro(i)} title="Ver os produtos da Makro com este nome e escolher outro"
+                            style={{ display: 'block', marginBottom: 3, fontSize: 12, fontWeight: 700, padding: duvida || l.produtoMakro ? '3px 6px' : '1px 4px', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
+                              border: duvida || l.produtoMakro ? '1px solid #0f766e' : '1px solid transparent',
+                              background: l.produtoMakro ? '#0f766e' : '#fff', color: l.produtoMakro ? '#fff' : duvida ? '#0f766e' : 'rgba(26,23,20,0.6)', textDecoration: duvida || l.produtoMakro ? 'none' : 'underline' }}>
+                            {l.produtoMakro ? '✓ Makro' : duvida ? 'Escolher na Makro' : 'Mudar'}
+                          </button>
+                        );
+                      })()}
                       {escolherMakro === i && (
                         <EscolherMakro produto={l.produto} und={l.und} onFechar={() => setEscolherMakro(null)}
                           onEscolher={(preco, e, def) => escolhidoNaMakro(i, preco, e, def)}

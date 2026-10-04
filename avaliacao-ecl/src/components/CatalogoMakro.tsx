@@ -12,6 +12,7 @@
 // dados/gerar_catalogo_makro.py a partir do CSV da Makro.
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
+import { precoKgMakro } from './EscolherMakro';
 
 export type Produto = [number, string, string, string, string, string, number | null, number | null, string,
   number | null, number | null, string, number | null, number | null, number, string, number[]?, number?];
@@ -141,7 +142,10 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 8 }}>
         {lista.slice(0, quantos).map(p => {
           const preco = comIVA ? p[7] : p[6];
-          const ref = comIVA ? p[10] : p[9];
+          // Preço por kg/L calculado pela aplicação (com as mesmas regras das fichas):
+          // não aparece onde a embalagem da Makro não é de confiança.
+          const ref = precoKgMakro(p);
+          const unRef = p[11] === 'L' || /\b(\d+\s*)?(ml|cl|l|lt)\b/i.test(p[5] || '') && !/\b(kg|g)\b/i.test(p[5] || '') ? 'L' : 'kg';
           const antes = p[13] != null && p[12] != null ? (comIVA ? p[13] * (1 + p[12] / 100) : p[13]) : null;
           const porQue = p[8] === 'embalagem' || !p[8] ? '' : `/${p[8]}`;
           return (
@@ -156,7 +160,7 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
                 <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <div style={{ fontSize: 16.5, fontWeight: 800, color: C.acento }}>{euro(preco)}{porQue}</div>
                   {antes != null && <div style={{ fontSize: 12.5, color: C.suave, textDecoration: 'line-through' }}>{euro(antes)}</div>}
-                  {ref != null && p[11] && (p[8] !== p[11]) && <div style={{ fontSize: 12.5, color: C.quente, fontWeight: 700 }}>{euro(ref)}/{p[11]}</div>}
+                  {ref != null && p[8] !== 'kg' && p[8] !== 'L' && <div style={{ fontSize: 12.5, color: C.quente, fontWeight: 700 }}>{euro(ref)}/{unRef}</div>}
                   {(p[17] || 0) > 0 && <div style={{ fontSize: 12, color: C.suave }}>inclui depósito {euro(p[17] ?? null)}</div>}
                 </div>
               </div>
