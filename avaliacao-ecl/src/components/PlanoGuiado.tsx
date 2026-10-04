@@ -216,8 +216,9 @@ export function PassoComoEAula({ plano, onPlanoActualizado }: { plano: PlanoAula
       const nomes: Record<string, string> = { pratico: 'Aula prática', misto: 'Aula mista', teorico: 'Aula teórica', atitudinal: 'Dinâmica de grupo — atitudes' };
       const nomeNovo = nomes[tipoDe(nova)];
       if (Object.values(nomes).includes(atual.tipoAtividade || 'Aula prática') && atual.tipoAtividade !== nomeNovo) {
-        const tituloPadrao = `${atual.tipoAtividade || 'Aula prática'} — ${String(atual.data || '').slice(0, 10)}`;
-        if (!atual.titulo || atual.titulo === tituloPadrao) novo.titulo = `${nomeNovo} — ${String(atual.data || '').slice(0, 10)}`;
+        const iso = String(atual.data || '').slice(0, 10), pt = iso.split('-').reverse().join('/');
+        const padroes = [`${atual.tipoAtividade || 'Aula prática'} — ${iso}`, `${atual.tipoAtividade || 'Aula prática'} — ${pt}`];
+        if (!atual.titulo || padroes.includes(atual.titulo)) novo.titulo = `${nomeNovo} — ${pt}`;
         novo.tipoAtividade = nomeNovo;
       }
     }

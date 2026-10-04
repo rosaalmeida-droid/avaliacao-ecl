@@ -386,7 +386,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // Sem plano pedido, não se escolhe nenhum: antes ficava o plano mais
   // recente, e uma requisição feita "sozinha" ia gravada nesse plano.
   const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || null : null;
-  const fichasSelInicial = fichasIniciais?.length ? fichasIniciais : (planoInicial?.fichasIds || []);
+  // Dentro de um plano sem fichas mas com requisição guardada, as fichas vêm da requisição (auditoria out/2026).
+  const fichasSelInicial = fichasIniciais?.length ? fichasIniciais
+    : (planoInicial?.fichasIds?.length ? planoInicial.fichasIds : ((planoInicial && getRequisicaoPorPlano(planoInicial.id)?.fichasIds) || []));
 
   /** Id da requisição feita sem plano (uma por ecrã aberto). */
   const reqAvulsaId = React.useRef<string>('');
@@ -407,9 +409,11 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     // desse evento como ponto de partida das doses — em vez do nº de porções
     // "de receita" da ficha, que é só uma referência genérica.
     const paxDoEvento = evento?.pessoas || (planoInicial ? paxDoEventoDoPlano(planoInicial) : null);
+    // As doses da requisição guardada voltam (antes voltavam as da ficha).
+    const guardadaIni: any = planoInicial ? getRequisicaoPorPlano(planoInicial.id) : undefined;
     fichasSelInicial.forEach(fid => {
       const f = getFichasProducao().find(x => x.id === fid);
-      if (f) r[fid] = paxDoEvento || porcoesDe(f);
+      if (f) r[fid] = Number(guardadaIni?.paxPorFicha?.[fid]) || paxDoEvento || porcoesDe(f);
     });
     return r;
   });
@@ -1490,7 +1494,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           </div>
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.65)', marginBottom: 12 }}>
             Em cozinha/pastelaria pedagógica, as massas base fazem parte das competências a desenvolver.
-            Cada massa deve ter uma <strong>Ficha Técnica própria</strong> associada a este plano de aula.
+            Cada massa deve ter uma <strong>Ficha Técnica própria</strong> {planoSel ? 'associada a este plano de aula' : 'nesta requisição'}.
           </div>
           {linhasPergunta.map(l => {
             const i = linhas.indexOf(l);
@@ -1506,7 +1510,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   </div>
                 )}
                 <div style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, marginBottom: 10 }}>
-                  → Crie uma Ficha Técnica separada para a produção desta massa e associe-a a este plano de aula.
+                  → Crie uma Ficha Técnica separada para a produção desta massa e {planoSel ? 'associe-a a este plano de aula' : 'junte-a a esta requisição'}.
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button onClick={() => setDecisao(i, 'produzir')}
@@ -1530,7 +1534,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                     <div style={{ fontWeight: 700, color: 'var(--guia)', marginBottom: 4 }}>⏳ Pendência criada</div>
                     <div style={{ color: 'rgba(26,23,20,0.7)' }}>"{l.produto}" não vai para a requisição de compras. Antes da aula:</div>
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{ fontSize: 12.5, color: 'var(--guia)', fontWeight: 600 }}>✓ Crie uma Ficha Técnica para esta massa e associe-a a este plano</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--guia)', fontWeight: 600 }}>✓ Crie uma Ficha Técnica para esta massa e {planoSel ? 'associe-a a este plano' : 'junte-a a esta requisição'}</div>
                       <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>As matérias-primas base precisam de aparecer numa requisição separada</div>
                     </div>
                   </div>

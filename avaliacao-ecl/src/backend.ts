@@ -2547,9 +2547,14 @@ async function sincronizarAlunosDaSheetBruto(): Promise<void> {
 // deixou na folha PLANOS e que a sincronização trouxe para o aparelho.
 // Um plano vindo do Sheets ou do Firestore pode chegar sem a lista de fichas
 // (aulas teóricas). Sem esta garantia, abrir esse plano fazia cair o ecrã do aluno.
+// Os títulos automáticos levavam a data à inglesa («Aula prática — 2026-10-01»):
+// mostram-se à portuguesa em todo o lado (auditoria out/2026).
+const ISO_NO_TITULO = /\b(\d{4})-(\d{2})-(\d{2})\b/g;
 export function getPlanosAula(): PlanoAula[] {
   return load<PlanoAula>(KEYS.planos).filter(p => p && p.id)
-    .map(p => Array.isArray(p.fichasIds) ? p : { ...p, fichasIds: [] });
+    .map(p => Array.isArray(p.fichasIds) ? p : { ...p, fichasIds: [] })
+    .map(p => typeof p.titulo === 'string' && /\b\d{4}-\d{2}-\d{2}\b/.test(p.titulo)
+      ? { ...p, titulo: p.titulo.replace(ISO_NO_TITULO, '$3/$2/$1') } : p);
 }
 
 export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false): PlanoAula[] {
