@@ -55,7 +55,7 @@ const WHITE        = '#ffffff';
 
 // ── Tipo de vistas ─────────────────────────────────────────────
 // 'inicio' é o painel de blocos — o ecrã de entrada do professor.
-export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'avaliar_evento' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda' | 'precos' | 'videos';
+export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'avaliar_evento' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda' | 'precos' | 'videos' | 'eschooling';
 
 // ── Ícones SVG inline ─────────────────────────────────────────
 const Icons = {
@@ -97,6 +97,8 @@ export const NAV: NavItem[] = [
   // Eventos, concursos e outras atividades num só sítio, com o mesmo nome
   // que os alunos veem (antes havia «Eventos» e «Avaliar evento fora do horário»).
   { id: 'eventos',             label: 'Atividades e concursos', icon: Icons.eventos, secao: 'Dia a dia' },
+  // Sumários e faltas para a eSchooling, pela extensão Claude no Chrome (Rosa, out/2026).
+  { id: 'eschooling',          label: 'Para a eSchooling',    icon: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>, secao: 'Dia a dia' },
   { id: 'validacao',           label: 'Validar',              icon: Icons.validacao,  secao: 'Avaliar' },
   { id: 'avaliacao_uc',        label: 'Notas da UC',          icon: Icons.avaliacao,  secao: 'Avaliar' },
   { id: 'mapa_competencias',   label: 'Mapa da turma',        icon: Icons.mapa,       secao: 'Avaliar' },

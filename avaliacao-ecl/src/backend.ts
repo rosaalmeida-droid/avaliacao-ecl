@@ -4971,6 +4971,19 @@ function calcularAvisosOperacionais(): Aviso[] {
     });
   }
 
+  // Sumários e faltas por passar à eSchooling (a partir das 18h do dia da aula).
+  try {
+    if (perfilDoAparelho !== 'aluno' && perfilDoAparelho !== 'coordenadora' && nomeDoAparelho) {
+      const pend = planosParaESchooling(nomeDoAparelho), n = pend.length;
+      if (n > 0 && (new Date().getHours() >= 18 || pend.some(x => String(x.data).slice(0, 10) < new Date().toISOString().slice(0, 10)))) {
+        avisos.push({ id: `op_eschooling_${new Date().toISOString().slice(0, 10)}_${n}`, tipo: 'outro',
+          titulo: `${n} aula${n === 1 ? '' : 's'} por passar para a eSchooling`,
+          descricao: 'Sumários e faltas prontos. Em «Para a eSchooling», copie o pedido para a extensão Claude no Chrome.',
+          contexto: { tabDestino: 'eschooling' }, resolvido: false, criadoEm: new Date().toISOString() } as any);
+      }
+    }
+  } catch { /* */ }
+
   return avisos;
 }
 
@@ -9937,4 +9950,62 @@ export const SEM_ATRASOS_MIN = 1440;
 export function atrasosContamNaAula(planoAulaId: string): boolean {
   const s = getSessaoAula(planoAulaId);
   return !s || (Number(s.toleranciaMin) || 0) < SEM_ATRASOS_MIN;
+}
+
+// ============================================================
+// Para a eSchooling (Rosa, out/2026)
+// ============================================================
+// A eSchooling não aceita importar dados. A aplicação junta, aula a aula,
+// o sumário e as faltas já registados aqui, e a extensão Claude no Chrome
+// passa-os para a eSchooling (o professor confirma antes de gravar).
+// As faltas seguem as mesmas regras da assiduidade (calcularBonusAssiduidadeUC).
+export interface AulaParaESchooling {
+  plano: PlanoAula;
+  sumario: string;
+  faltas: { alunoId: string; numero: number; nome: string }[];
+  atrasos: { alunoId: string; numero: number; nome: string }[];
+  /** As presenças desta aula ainda não foram tiradas (aula não aberta). */
+  semPresencas: boolean;
+}
+export function faltasDaAulaParaESchooling(p: PlanoAula): Pick<AulaParaESchooling, 'faltas' | 'atrasos' | 'semPresencas'> {
+  const alunos = getAlunos().filter(a => a.turmaId === p.turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
+  const pres = getPresencas().filter(x => x.planoAulaId === p.id);
+  const aberta = !!getSessaoAula(p.id)?.abertaEm;
+  const faltas: AulaParaESchooling['faltas'] = [], atrasos: AulaParaESchooling['atrasos'] = [];
+  let decididas = 0;
+  for (const a of alunos) {
+    const quem = { alunoId: a.id, numero: a.numero, nome: a.nome || `Aluno ${a.numero}` };
+    // O aluno fantasma nunca vem: na eSchooling tem sempre falta.
+    if (ehFantasma(a.id)) { faltas.push(quem); continue; }
+    const r: any = pres.find(x => x.alunoId === a.id);
+    const decisao = r?.decisaoProfessor;
+    if (decisao) decididas++;
+    if (decisao === 'falta_presenca') { faltas.push(quem); continue; }
+    if (decisao === 'falta_atraso') { atrasos.push(quem); continue; }
+    if (!aberta || (aberturaTardia(p.id) && !decisao)) continue;
+    if (!r || r.presente === false) { faltas.push(quem); continue; }
+    if (atrasoConta(r, p.id)) atrasos.push(quem);
+  }
+  return { faltas, atrasos, semPresencas: !aberta && decididas === 0 };
+}
+/** As aulas já dadas deste professor que ainda não passaram para a eSchooling. */
+export function aulasParaESchooling(nomeProfessor: string, incluirPassadas = false): AulaParaESchooling[] {
+  // O sumário junta-se no ecrã (sumarioDoPlano), com as fichas da aula.
+  return planosParaESchooling(nomeProfessor, incluirPassadas).map(p => ({ plano: p, sumario: '', ...faltasDaAulaParaESchooling(p) }));
+}
+/** Só os planos (leve: serve para o aviso, que se recalcula muitas vezes). */
+export function planosParaESchooling(nomeProfessor: string, incluirPassadas = false): PlanoAula[] {
+  const agora = new Date();
+  const hoje = agora.toISOString().slice(0, 10);
+  return getPlanosAula()
+    .filter((p: any) => p.estado !== 'arquivado' && p.estado !== 'rascunho' && planoDoProfessor(p, nomeProfessor)
+      && !eventoForaDoHorario(p) && String(p.data || '').slice(0, 10) <= hoje
+      && (incluirPassadas || !p.eschoolingEm))
+    .filter((p: any) => String(p.data).slice(0, 10) < hoje || !p.horaFim || p.horaFim <= agora.toTimeString().slice(0, 5))
+    .sort((a, b) => `${a.data} ${a.horaInicio || ''}`.localeCompare(`${b.data} ${b.horaInicio || ''}`));
+}
+export function marcarPassadoAESchooling(planoIds: string[], passado = true): void {
+  const em = new Date().toISOString();
+  getPlanosAula().filter(p => planoIds.includes(p.id))
+    .forEach(p => addOrUpdatePlanoAula({ ...(p as any), eschoolingEm: passado ? em : undefined, atualizadoEm: em }));
 }
