@@ -55,7 +55,7 @@ const WHITE        = '#ffffff';
 
 // ── Tipo de vistas ─────────────────────────────────────────────
 // 'inicio' é o painel de blocos — o ecrã de entrada do professor.
-export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'avaliar_evento' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda' | 'precos';
+export type VistaProf = 'inicio' | 'planos' | 'abrir_aula' | 'ficha' | 'guia' | 'requisicao' | 'validacao' | 'biblioteca' | 'avaliacao_uc' | 'copia_seguranca' | 'gestao_recuperacoes' | 'mapa_competencias' | 'manual' | 'eventos' | 'avaliar_evento' | 'cronograma' | 'orcamentos' | 'historial' | 'manuais_aluno' | 'ajuda' | 'precos' | 'videos';
 
 // ── Ícones SVG inline ─────────────────────────────────────────
 const Icons = {
@@ -83,7 +83,7 @@ const Icons = {
 };
 
 // ── Itens de navegação ────────────────────────────────────────
-interface NavItem { id: VistaProf; label: string; icon: JSX.Element; secao: string }
+interface NavItem { id: VistaProf; label: string; icon: JSX.Element; secao: string; soRosa?: boolean }
 
 // A mesma lista, com os mesmos nomes e pela mesma ordem, que os cartões
 // do painel inicial. Antes havia nomes diferentes nos dois sítios
@@ -106,6 +106,8 @@ export const NAV: NavItem[] = [
   { id: 'manuais_aluno',       label: 'Manuais do aluno',     icon: Icons.manual,     secao: 'Consultar' },
   { id: 'precos',              label: 'Preços das matérias-primas', icon: Icons.req, secao: 'Consultar' },
   { id: 'cronograma',          label: 'Cronograma',           icon: Icons.cronograma, secao: 'Consultar' },
+  // Só para a Rosa Almeida (out/2026): os vídeos dela no Instagram e no Facebook.
+  { id: 'videos',              label: 'Os meus vídeos',       icon: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="2" y="5" width="15" height="14" rx="2"/><polygon points="23 7 17 12 23 17 23 7"/></svg>, secao: 'Consultar', soRosa: true },
   { id: 'guia',                label: 'Guiões',               icon: Icons.guia,       secao: 'Mais' },
   { id: 'requisicao',          label: 'Requisições',          icon: Icons.req,        secao: 'Mais' },
   { id: 'orcamentos',          label: 'Orçamentos',           icon: Icons.req,        secao: 'Mais' },
@@ -178,7 +180,7 @@ function Sidebar({ vistaAtiva, onNavegar, nomeProfessor, turmaId, onSair, aberta
               <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '5px 10px 4px' }}>
                 {secao}
               </div>
-              {NAV.filter(n => n.secao === secao).map(item => {
+              {NAV.filter(n => n.secao === secao && (!n.soRosa || /rosa\s+almeida/i.test(nomeProfessor || ''))).map(item => {
                 const ativo = vistaAtiva === item.id;
                 return (
                   <button key={item.id} onClick={() => { onNavegar(item.id); if (isMobile) onFechar(); }}
