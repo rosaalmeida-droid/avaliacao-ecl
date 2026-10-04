@@ -102,9 +102,11 @@ const LABEL_NAV: Record<SeparadorAluno, string> = {
 // ── Barra de navegação permanente ─────────────────────────────
 // Mantém-se igual dentro e fora da aula: o aluno tem sempre saída.
 
-export function NavegacaoAluno({ ativo, onNavegar }: {
+export function NavegacaoAluno({ ativo, onNavegar, onKitchenFlow }: {
   ativo: SeparadorAluno;
   onNavegar: (s: SeparadorAluno) => void;
+  /** O KitchenFlow está sempre à mão (Rosa, out/2026). */
+  onKitchenFlow?: () => void;
 }) {
   return (
     // Fixa ao fundo do ecrã: «sticky» deixava-a a meio do ecrã quando a
@@ -132,6 +134,15 @@ export function NavegacaoAluno({ ativo, onNavegar }: {
           </button>
         );
       })}
+      {onKitchenFlow && (
+        <button onClick={onKitchenFlow} aria-label="Abrir o KitchenFlow"
+          style={{ flex: 1, background: 'transparent', border: 'none', padding: '10px 4px', minHeight: 56, cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: '#2F7D6B', fontFamily: 'inherit',
+            WebkitTapHighlightColor: 'transparent' }}>
+          {ico(<><path d="M6 3v8a3 3 0 0 0 6 0V3M9 3v18" /><path d="M17 3c-1.7 1.3-2.5 3.3-2.5 6s1 4 2.5 4v8" /></>, 22)}
+          <span style={{ fontSize: 11.5, fontWeight: 600 }}>KitchenFlow</span>
+        </button>
+      )}
     </nav>
   );
 }

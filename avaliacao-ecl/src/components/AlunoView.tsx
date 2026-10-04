@@ -742,6 +742,13 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
   const historicoAluno = getHistoricoAluno(aluno.id);
   const planoHoje = planos.find(p => isHoje(p.data));
+  // O KitchenFlow, sempre à mão (barra de navegação e Recursos): com a aula de hoje, se houver.
+  const abrirKFAluno = () => abrirKitchenFlow(undefined, {
+    turma: aluno.turmaId, numero: aluno.numero, pin: aluno.pin, tipo: 'aluno',
+    ...(planoHoje ? { ucId: planoHoje.ucId, ucNome: (planoHoje as any).ucNome, planoData: planoHoje.data,
+      planoHoraInicio: planoHoje.horaInicio, planoHoraFim: planoHoje.horaFim,
+      pratos: getFichasPorPlano(planoHoje.id).map((f: any) => f.nomePrato).filter(Boolean) } : {}),
+  } as any);
   const proximasAulas = planos.filter(p => isFuturo(p.data)).sort((a,b) => a.data.localeCompare(b.data)).slice(0, 5);
   const aulasPassadas = planos.filter(p => !isFuturo(p.data) && !isHoje(p.data)).sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
 
@@ -1546,11 +1553,13 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 recuperacao={recuperacaoAtividades}
                 onBalanco={(id, p, r) => { registarBalancoAtividade(id, aluno.id, p, r); setRefreshAtiv(n => n + 1); }} />
             )}
-            {(destino === 'fichas' || destino === 'guiao' || destino === 'kitchenflow') && (
-              <div style={{ padding:20, textAlign:'center', color:'#777', fontSize:15 }}>
-                {planoHoje
-                  ? 'Abre estes materiais a partir da aula de hoje.'
-                  : 'Hoje não tens aula. Estes materiais ficam disponíveis quando houver aula.'}
+            {(destino === 'fichas' || destino === 'guiao') && (
+              <RecursosDaTurma aluno={aluno} modo={destino} />
+            )}
+            {destino === 'kitchenflow' && (
+              <div style={{ padding:20, textAlign:'center' }}>
+                <button onClick={abrirKFAluno} style={{ padding:'14px 20px', borderRadius:12, border:'none', background:'#2F7D6B',
+                  color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Abrir o KitchenFlow</button>
               </div>
             )}
           </div>
@@ -1587,9 +1596,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               </div>
               {([
                 ['manual', 'Manual da unidade', 'em leitura'],
-                ['fichas', 'As minhas fichas', 'da aula de hoje'],
-                ['guiao', 'Guiões de produção', 'apoio às fichas'],
-                ['kitchenflow', 'KitchenFlow', 'registos de higiene'],
+                ['fichas', 'Fichas técnicas', 'todas as das aulas da turma'],
+                ['guiao', 'Guiões de produção', 'de apoio às fichas técnicas'],
+                ['kitchenflow', 'KitchenFlow', 'registos de higiene e segurança alimentar'],
                 ['precos', 'Preços das matérias-primas', 'quanto custa cada produto'],
               ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
                 <button key={d} onClick={() => setDestino(d)} style={{
@@ -1611,7 +1620,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       </div>
 
       {/* Navegação permanente — igual dentro e fora da aula. */}
-      <NavegacaoAluno ativo={aba} onNavegar={(s) => { setAba(s); setDestino(null); }} />
+      <NavegacaoAluno ativo={aba} onNavegar={(s) => { setAba(s); setDestino(null); }} onKitchenFlow={abrirKFAluno} />
     </div>
   );
 }
@@ -4385,5 +4394,59 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       )}
     </div>
     </EcraCheio>
+  );
+}
+
+// ── Recursos: as fichas técnicas e os guiões de todas as aulas da turma ──
+// (Rosa, out/2026: «os recursos não têm nada»). Só para consulta: as aulas
+// publicadas da turma e as atividades em que o aluno participou, da mais
+// recente para a mais antiga.
+function RecursosDaTurma({ aluno, modo }: { aluno: Aluno; modo: 'fichas' | 'guiao' }) {
+  const [aberto, setAberto] = useState<string | null>(null);
+  const aulas = getPlanosAulaPorTurma(aluno.turmaId)
+    .filter(p => p.estado === 'publicado' || p.estado === 'realizada')
+    .filter(p => !(p as any).tipoEvento || participantesDoEvento(p as any).includes(aluno.id))
+    .map(p => ({ p, fichas: getFichasPorPlano(p.id).filter((f: any) => modo === 'guiao' ? !!f.textoGuia : true) }))
+    .filter(x => x.fichas.length > 0)
+    .sort((a, b) => String(b.p.data || '').localeCompare(String(a.p.data || '')));
+  const atual = aulas.find(x => x.p.id === aberto);
+  if (atual) {
+    return (
+      <div style={{ padding: '0 10px 24px' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, padding: '4px 6px 8px' }}>
+          {rotuloDoPlano(atual.p)}
+        </div>
+        {modo === 'fichas'
+          ? <SecaoFichas fichas={atual.fichas} plano={atual.p} aluno={aluno} onConcluido={() => setAberto(null)} />
+          : <SecaoGuiao fichas={atual.fichas} plano={atual.p} onConcluido={() => setAberto(null)} />}
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: '4px 14px 24px', maxWidth: 620, margin: '0 auto' }}>
+      <div style={{ fontSize: 13.5, color: '#777', marginBottom: 10, lineHeight: 1.5 }}>
+        {modo === 'fichas'
+          ? 'As fichas técnicas das aulas da tua turma, da mais recente para a mais antiga. Toca numa aula para ver as fichas.'
+          : 'Os guiões de apoio às fichas técnicas das aulas da tua turma. Toca numa aula para ver o guião.'}
+      </div>
+      {!aulas.length && (
+        <div style={{ padding: 20, textAlign: 'center', color: '#777', fontSize: 15 }}>
+          {modo === 'fichas' ? 'Ainda não há fichas técnicas nas aulas da tua turma.' : 'Ainda não há guiões nas aulas da tua turma.'}
+        </div>
+      )}
+      {aulas.map(({ p, fichas }) => (
+        <button key={p.id} onClick={() => setAberto(p.id)} style={{ width: '100%', background: '#fff', border: 'none', borderRadius: 14,
+          padding: '13px 16px', marginBottom: 9, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', fontSize: 13, color: '#777' }}>{rotuloDoPlano(p)}</span>
+            <span style={{ display: 'block', fontSize: 15.5, fontWeight: 700, color: '#1A1A1A', marginTop: 2 }}>
+              {fichas.map((f: any) => f.nomePrato).filter(Boolean).join(' · ') || 'Ficha técnica'}
+            </span>
+          </span>
+          <span style={{ color: '#777', fontSize: 20 }}>›</span>
+        </button>
+      ))}
+    </div>
   );
 }
