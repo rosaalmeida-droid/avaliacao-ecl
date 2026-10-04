@@ -398,6 +398,17 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     });
     return r;
   });
+  // Três datas diferentes (Rosa, out/2026): o dia da aula, o dia em que os
+  // ingredientes têm de estar na cozinha (é esta que as compras leem na
+  // folha) e o dia em que a requisição é feita. Por defeito, os ingredientes
+  // são para o dia da aula; o professor muda quando precisa antes
+  // (marinadas, massas, fundos…).
+  const [dataPrecisa, setDataPrecisa] = useState('');
+  const [dataPrecisaMudada, setDataPrecisaMudada] = useState(false);
+  const dataDaAula = planoSel?.data || evento?.data || '';
+  const dataIngredientes = dataPrecisaMudada ? dataPrecisa : (dataPrecisa || dataDaAula);
+  const hojeISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const dataPT = (iso: string) => iso ? new Date(String(iso).slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-PT', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
   const [quebras, setQuebras] = useState(10);
   const [bevCost, setBevCost] = useState(20);
   const [consumo, setConsumo] = useState({ bar: false, rest: true, interno: false, convidados: false });
@@ -680,8 +691,13 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         paxTotal: paxEncTotal,   // H7 — Encomendas
         paxReceita: paxBaseTotal, // M7 — Receita para
         turma: planoSel?.turmaId || evento?.turmaId || turmaId || '',
-        // Sem plano (orçamento): vai a data de hoje, para a folha não ficar sem data.
-        dataAula: planoSel?.data || evento?.data || new Date().toISOString().slice(0, 10),
+        // A célula «Data aula» da folha é a que as compras leem como o dia em
+        // que os ingredientes têm de estar na cozinha: vai essa data. As três
+        // seguem também à parte, para o script da folha as poder mostrar.
+        dataAula: String(dataIngredientes || '').slice(0, 10),
+        dataDaAula: String(dataDaAula || '').slice(0, 10),
+        dataIngredientes: String(dataIngredientes || '').slice(0, 10),
+        dataRequisicao: hojeISO(),
         formador: nomeProfessor || planoSel?.professor || '',
         responsavel,  // N42
         atividade,    // K70
@@ -1216,6 +1232,17 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 onChange={e => { setResponsavel(e.target.value); try { localStorage.setItem('ecl_ultimo_responsavel_compras', e.target.value); } catch {} }}
                 placeholder="Nome de quem faz as compras" /></div>
             </div>
+            <div style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--copper)', background: 'var(--copper-pale)' }}>
+              <label style={S.lbl}>Dia em que os ingredientes têm de estar na cozinha</label>
+              <input type="date" style={{ ...S.inp, width: '100%', maxWidth: 220 }} value={String(dataIngredientes || '').slice(0, 10)}
+                onChange={e => { setDataPrecisa(e.target.value); setDataPrecisaMudada(true); }} />
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.65)', marginTop: 4, lineHeight: 1.45 }}>
+                {dataDaAula
+                  ? <>Por defeito, o dia da aula ({dataPT(dataDaAula)}). Se precisar dos ingredientes antes (marinadas, massas, fundos…), mude aqui.</>
+                  : <>Este orçamento não tem aula marcada: indique o dia em que precisa dos ingredientes.</>}
+                <br />Requisição feita em {dataPT(hojeISO())}. É esta data dos ingredientes que vai para a folha das compras.
+              </div>
+            </div>
             <div style={{ marginBottom: 8 }}>
               <label style={S.lbl}>Atividade (preenchida a partir do plano; pode ajustar)</label>
               <input style={{ ...S.inp, width: '100%' }} value={atividade} onChange={e => setAtividade(e.target.value)} placeholder="ex: Almoco dos Pais · ECL Restaurante" />
@@ -1640,6 +1667,12 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       {/* Consumo */}
       <div style={{ ...S.card, padding: '12px 16px' }}>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><strong>Ingredientes na cozinha:</strong>
+            <input type="date" value={String(dataIngredientes || '').slice(0, 10)}
+              onChange={e => { setDataPrecisa(e.target.value); setDataPrecisaMudada(true); }}
+              style={{ ...S.inp, padding: '3px 6px', fontSize: 13, borderColor: dataIngredientes ? undefined : '#b5651d' }} /></label>
+          {dataDaAula && <span><strong>Aula:</strong> {dataPT(dataDaAula)}</span>}
+          <span><strong>Requisição feita em:</strong> {dataPT(hojeISO())}</span>
           {responsavel && <span><strong>Resp. compras:</strong> {responsavel}</span>}
           {atividade && <span><strong>Atividade:</strong> {atividade}</span>}
           <span><strong>Consumo:</strong> {Object.entries(consumo).filter(([, v]) => v).map(([k]) => k === 'bar' ? 'ECL BAR' : k === 'rest' ? 'ECL Restaurante' : k === 'interno' ? 'Consumo Interno' : 'Convidados').join(', ') || '—'}</span>
@@ -1666,6 +1699,11 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           // Um envio de cada vez: dois toques criavam duas cópias do
           // documento no Sheets do economato.
           if (aEnviarReq) return;
+          if (!dataIngredientes) {
+            setMsg('⚠️ Indique o dia em que os ingredientes têm de estar na cozinha (por baixo da tabela, em «Ingredientes na cozinha»).');
+            setTimeout(() => setMsg(''), 8000);
+            return;
+          }
           setAEnviarReq(true);
           try {
           // 1. Enviar para o documento oficial (o documento e o envio não mudam).
@@ -1685,7 +1723,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
             linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: precoNum(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),
             custoTotal: crTotal, estado: chegou ? 'enviada' : 'rascunho',
             // As doses de cada ficha: ao reabrir, as quantidades corrigidas voltam se forem as mesmas.
-            ...({ paxPorFicha } as any),
+            ...({ paxPorFicha, dataIngredientes, dataRequisicao: hojeISO() } as any),
             criadaEm: reqExistente?.criadaEm || agoraISO, atualizadaEm: agoraISO,
           });
           evento?.onGuardada?.(idReq, crTotal);
