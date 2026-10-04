@@ -46,7 +46,8 @@ export function RecuperacaoModulosAluno({ aluno }: { aluno: Aluno }) {
     return situacaoRecuperacaoUC(aluno.id, aluno.turmaId, ucId).precisa;
   });
 
-  const emRecuperacao = todasRecuperacoes.filter(r => r.estado === 'pendente' || r.estado === 'submetida' || r.estado === 'em_avaliacao');
+  // Tudo o que ainda não está concluído — também a recuperação numa atividade (em curso).
+  const emRecuperacao = todasRecuperacoes.filter(r => r.estado !== 'concluida' && r.estado !== 'validada');
   const recuperados = todasRecuperacoes.filter(r => r.estado === 'concluida');
 
   function iniciarRecuperacao(ucId: string) {
@@ -250,7 +251,7 @@ function RecuperacaoCard({ recuperacao, aberta, onToggle, onAtualizado }: {
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
           <div className="muted" style={{ fontSize: 13 }}>
-            {trancada ? 'O prazo terminou: fala com o professor' : r.estado === 'pendente' ? 'Por fazer' : r.estado === 'submetida' ? 'Entregue: a aguardar avaliação' : 'Em avaliação'}
+            {trancada ? 'O prazo terminou: fala com o professor' : r.estado === 'pendente' ? 'Por fazer' : r.estado === 'submetida' ? 'Entregue: a aguardar avaliação' : r.estado === 'em_curso' ? (r.modalidade === 'atividade' ? 'A recuperar numa atividade: ainda não está recuperada' : 'Em curso') : 'Em avaliação'}
           </div>
         </div>
         <span style={{ fontSize: 14, color: 'var(--copper)' }}>{aberta ? '▲' : '▼'}</span>

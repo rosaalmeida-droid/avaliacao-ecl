@@ -787,6 +787,7 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'lider_kf') juntarLideres(dados);
   else if (tipo === 'materia_prima') juntarMateriasPrimas(dados);
   else if (tipo === 'nota_produto') juntarNotasProdutos(dados);
+  else if (tipo === 'aluno_fantasma') juntarFantasmas(dados);
   else if (tipo === 'requisicao') juntarRequisicoesDaBase(dados);
   else if (tipo === 'evento') juntarEventosDaBase(dados);
   else if (tipo === 'recuperacao') juntarRecuperacoesDaBase(dados);
@@ -1665,6 +1666,40 @@ let nomeDoAparelho = '';
 /** O nome de quem entrou (para assinar as notas sobre os produtos). */
 export function definirNomeDoAparelho(n: string): void { nomeDoAparelho = n || ''; }
 export function getPerfilDoAparelho(): string | null { return perfilDoAparelho; }
+
+// ── Alunos fantasma (Rosa, out/2026) ───────────────────────────
+// «Existem alunos fantasma em todas as turmas»: estão inscritos mas nunca
+// vêm. A coordenação marca-os e a aplicação deixa de os pôr nas faltas e
+// presenças da aula, nas funções e responsabilidades, nas recuperações e
+// no ranking (assume que faltam a tudo). Continuam na pauta oficial e
+// podem ser repostos. A marca é partilhada por todos os aparelhos.
+export interface MarcaFantasma { alunoId: string; turmaId: string; fantasma: boolean; marcadoPor: string; atualizadoEm: string }
+const KEY_FANTASMAS = 'ecl_alunos_fantasma';
+let cacheFantasmas: Set<string> | null = null;
+export function alunosFantasma(): Set<string> {
+  if (!cacheFantasmas) cacheFantasmas = new Set(load<MarcaFantasma>(KEY_FANTASMAS).filter(m => m.fantasma).map(m => m.alunoId));
+  return cacheFantasmas;
+}
+export function ehFantasma(alunoId: string): boolean { return alunosFantasma().has(alunoId); }
+export function marcarFantasma(aluno: { id: string; turmaId: string }, fantasma: boolean, quem: string): void {
+  const m: MarcaFantasma = { alunoId: aluno.id, turmaId: aluno.turmaId, fantasma, marcadoPor: quem || 'coordenação', atualizadoEm: new Date().toISOString() };
+  save(KEY_FANTASMAS, [...load<MarcaFantasma>(KEY_FANTASMAS).filter(x => x.alunoId !== aluno.id), m]);
+  cacheFantasmas = null;
+  gravarNaBase('aluno_fantasma', m as any);
+}
+function juntarFantasmas(lista: any[]): void {
+  const m = new Map(load<MarcaFantasma>(KEY_FANTASMAS).map(x => [x.alunoId, x]));
+  for (const x of lista) {
+    if (!x?.alunoId) continue;
+    const velho = m.get(x.alunoId);
+    if (!velho || String(x.atualizadoEm || '') >= String(velho.atualizadoEm || '')) {
+      m.set(x.alunoId, { alunoId: x.alunoId, turmaId: x.turmaDoAluno || x.turmaId || velho?.turmaId || '', fantasma: x.fantasma === true || x.fantasma === 'true',
+        marcadoPor: x.marcadoPor || '', atualizadoEm: x.atualizadoEm || '' });
+    }
+  }
+  save(KEY_FANTASMAS, [...m.values()]);
+  cacheFantasmas = null;
+}
 
 // ── Notas da equipa sobre os produtos (Rosa, out/2026) ─────────
 // Ao ver a fotografia de um produto da Makro, o professor pode deixar uma
@@ -6272,7 +6307,7 @@ export function estadoDaTurmaNaAula(planoAulaId: string, turmaId: string): Estad
   // Numa atividade com participantes escolhidos, só esses (Rosa, out/2026).
   const planoDaAula: any = getPlanosAula().find(p => p.id === planoAulaId);
   const alunos = planoDaAula ? alunosDoPlano(planoDaAula)
-    : getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
+    : getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false && !ehFantasma(a.id)).sort((a, b) => a.numero - b.numero);
 
   const presencas = getPresencas().filter(p => p.planoAulaId === planoAulaId);
   // A última resposta de cada aluno, a mesma que o professor valida.
@@ -8590,7 +8625,7 @@ export function ucsEmAtraso(turmaId: string): UCEmAtraso[] {
   const ucs = [...new Set(getPlanosAulaPorTurma(turmaId).map(p => p.ucId).filter(Boolean))] as string[];
   const mods = modulosDaTurma(turmaId);
   const out: UCEmAtraso[] = [];
-  for (const a of getAlunos().filter(x => x.turmaId === turmaId && x.ativo !== false)) {
+  for (const a of getAlunos().filter(x => x.turmaId === turmaId && x.ativo !== false && !ehFantasma(x.id))) {
     for (const ucId of ucs) {
       const s = situacaoRecuperacaoUC(a.id, turmaId, ucId);
       if (s.motivo !== 'faltas') continue;
@@ -9429,14 +9464,15 @@ export function atitudesNoPlanoDaTurma(atividade: any): boolean {
  *  falta responder, a turma na aula, faltas, funções, grupos, reabrir —
  *  usa isto. */
 export function alunosDoPlano(plano: any): Aluno[] {
-  const turma = getAlunos().filter(a => a.turmaId === plano?.turmaId && a.ativo !== false).sort((a, b) => a.numero - b.numero);
+  // Os alunos fantasma não entram nas listas da aula (faltas, funções, grupos).
+  const turma = getAlunos().filter(a => a.turmaId === plano?.turmaId && a.ativo !== false && !ehFantasma(a.id)).sort((a, b) => a.numero - b.numero);
   if (!plano || !eventoForaDoHorario(plano) || modoParticipacao(plano) !== 'inscricao') return turma;
   const ids = new Set<string>((plano.participantesIds || []) as string[]);
   return turma.filter(a => ids.has(a.id));
 }
 export function participantesDoEvento(p: PlanoAula): string[] {
   return modoParticipacao(p) === 'turma'
-    ? getAlunos().filter(a => a.turmaId === p.turmaId && a.ativo !== false).map(a => a.id)
+    ? getAlunos().filter(a => a.turmaId === p.turmaId && a.ativo !== false && !ehFantasma(a.id)).map(a => a.id)
     : ((p as any).participantesIds || []);
 }
 /** Os eventos da turma, no formato das atividades que o aluno vê. */

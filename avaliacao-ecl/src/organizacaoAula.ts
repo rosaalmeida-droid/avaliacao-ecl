@@ -15,7 +15,7 @@
 // em poucos segundos. Quando alguém falta, o professor passa a função a
 // um colega presente, que fica com as duas (o líder nunca acumula).
 import type { PlanoAula } from './types';
-import { getPlanosAula, getAlunos, getPresencas, addOrUpdatePlanoAula, getSessaoAula, alunosDoPlano } from './backend';
+import { getPlanosAula, getAlunos, getPresencas, addOrUpdatePlanoAula, getSessaoAula, alunosDoPlano, ehFantasma } from './backend';
 
 export type IdFuncao = 'lider' | 'temp1' | 'temp2' | 'panos' | 'rececao' | 'copa' | 'economato'
   | 'equipamentos' | 'fogoes_frio' | 'lixo_carrinhos' | 'chao_bancadas';
@@ -367,7 +367,7 @@ export function substituirNoLugar(o: OrganizacaoAula, chave: string, novoId: str
 export function alunosDaTurma(turmaId: string, plano?: any): string[] {
   // Os alunos de teste (n.º 99 e 88) nunca entram nas funções da aula (Rosa, set/2026).
   // Numa atividade com alunos escolhidos, só esses (Rosa, out/2026).
-  const base = plano ? alunosDoPlano(plano) : getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false);
+  const base = plano ? alunosDoPlano(plano) : getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false && !ehFantasma(a.id));
   return base.filter(a => a.numero !== 99 && a.numero !== 88)
     .sort((a, b) => a.numero - b.numero).map(a => a.id);
 }
