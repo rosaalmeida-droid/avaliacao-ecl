@@ -1690,8 +1690,26 @@ export function definirEmailsCompras(valor: string): void {
 export function listaEmailsCompras(valor = getEmailsCompras()): string[] {
   return valor.split(/[,;\s]+/).map(x => x.trim()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
 }
+/** Uma definição partilhada qualquer (texto), guardada na base: ex. os
+ *  favoritos e as notas dos vídeos da Rosa. */
+export function getConfig(id: string): string {
+  try { return (JSON.parse(localStorage.getItem('ecl_config_' + id) || '{}') as any).valor || ''; } catch { return ''; }
+}
+export function setConfig(id: string, valor: string): void {
+  const reg = { id, valor, atualizadoEm: new Date().toISOString() };
+  try { localStorage.setItem('ecl_config_' + id, JSON.stringify(reg)); } catch { /* */ }
+  gravarNaBase('config', reg);
+}
 function juntarConfigs(lista: any[]): void {
   for (const x of lista) {
+    if (x?.id && x.id !== 'emails_compras') {
+      let atual: any = {};
+      try { atual = JSON.parse(localStorage.getItem('ecl_config_' + x.id) || '{}'); } catch { /* */ }
+      if (String(x.atualizadoEm || '') >= String(atual.atualizadoEm || '')) {
+        try { localStorage.setItem('ecl_config_' + x.id, JSON.stringify({ id: x.id, valor: x.valor || '', atualizadoEm: x.atualizadoEm || '' })); } catch { /* */ }
+      }
+      continue;
+    }
     if (x?.id !== 'emails_compras') continue;
     let atual: any = {};
     try { atual = JSON.parse(localStorage.getItem(KEY_EMAILS_COMPRAS) || '{}'); } catch { /* */ }
