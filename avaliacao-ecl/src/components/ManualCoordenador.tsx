@@ -366,7 +366,7 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                 emRecuperacao > 0 ? <Badge texto={emRecuperacao.toString()} cor="#c0392b" /> : '—',
                 mediaGeral > 0 ? (
                   <Badge
-                    texto={mediaGeral.toFixed(1)}
+                    texto={mediaGeral.toFixed(1).replace('.', ',')}
                     cor={mediaGeral >= 3 ? T.sage : mediaGeral >= 2 ? T.copper : '#c0392b'}
                   />
                 ) : '—',

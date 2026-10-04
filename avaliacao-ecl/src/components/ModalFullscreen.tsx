@@ -145,7 +145,8 @@ export function ModalFullscreen({
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="mf-titulo" style={{ fontSize: 18, fontWeight: 800, color: '#1a1714', fontFamily: "'Nunito', sans-serif" }}>
-              {titulo}
+              {/* Datas como se leem em Portugal: «2026-10-01» passa a «01/10/2026». */}
+              {titulo.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3/$2/$1')}
             </div>
             {subtitulo && (
               <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', marginTop: 2 }}>{subtitulo}</div>
@@ -195,7 +196,7 @@ export function ModalFullscreen({
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
           <span style={{ color: corDestaque }}>●</span>
-          Ao fechar, o que fez aqui fica guardado automaticamente.
+          Ao fechar, tudo o que foi feito aqui fica guardado automaticamente.
         </div>
       </div>
 

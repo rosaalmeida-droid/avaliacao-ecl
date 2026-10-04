@@ -1174,7 +1174,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     const ucSel = modulos.find(m => m.id === dados.ucId) || UCS_COZINHA.find(u => u.id === dados.ucId);
     const numeroPlan = proximoNumeroPlano();
     const codigoPlano = gerarCodigoPlano(turmaId, dados.ucId, numeroPlan);
-    const titulo = dados.titulo || `${nomeDoTipoAtividade(dados.tipoAtividade)}${dados.data ? ' — ' + dados.data : ''}`;
+    const titulo = dados.titulo || `${nomeDoTipoAtividade(dados.tipoAtividade)}${dados.data ? ' — ' + dados.data.split('-').reverse().join('/') : ''}`;
     const p: TPlanoAula = {
       id: 'plano_' + Date.now(), turmaId,
       professor: dados.professor,

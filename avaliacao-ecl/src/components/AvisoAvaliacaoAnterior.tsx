@@ -146,7 +146,7 @@ export function AvisoAvaliacaoAnterior({ plano, alunos, microIds, nomeProfessor,
             {/* Histórico resumido */}
             {registos.length > 1 && (
               <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.45)', marginBottom: 8, paddingLeft: 4 }}>
-                {registos.length} avaliações anteriores · média {(registos.reduce((s, r) => s + r.nota, 0) / registos.length).toFixed(1)}
+                {registos.length} avaliações anteriores · média {(registos.reduce((s, r) => s + r.nota, 0) / registos.length).toFixed(1).replace('.', ',')}
               </div>
             )}
 
