@@ -7,6 +7,7 @@ import { EscolherMakro, qtdDeTexto, type EscolhaMakro } from './EscolherMakro';
 import { itemDoBancoPorNome, useBancoEmpratamento } from './BancoEmpratamento';
 import { manterEscolhaMakro } from '../precosRevistos';
 import { converterUnidadeParaPeso } from '../pesosMedios';
+import { semPontoFinal } from '../lerFichaDaIA';
 import {
   processarIngrediente,
   obterRendimento,
@@ -514,7 +515,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
   const paxBaseTotal = fichasSelecionadas.reduce((s, f) => s + (porcoesDe(f)), 0) || 1;
   const paxEncTotal = fichasSelecionadas.reduce((s, f) => s + (paxPorFicha[f.id] || porcoesDe(f)), 0) || 1;
-  const nomeReceita = fichasSelecionadas.map(f => f.nomePrato).join(' + ') || 'Requisicao';
+  // Sem o ponto final que a IA deixava no nome («Bacalhau à Brás._0410» no separador).
+  const nomeReceita = fichasSelecionadas.map(f => semPontoFinal(f.nomePrato || '')).filter(Boolean).join(' + ') || 'Requisicao';
 
   function selecionarPlano(p: PlanoAula) {
     setPlanoSel(p);
@@ -678,7 +680,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         paxTotal: paxEncTotal,   // H7 — Encomendas
         paxReceita: paxBaseTotal, // M7 — Receita para
         turma: planoSel?.turmaId || evento?.turmaId || turmaId || '',
-        dataAula: planoSel?.data || evento?.data || '',
+        // Sem plano (orçamento): vai a data de hoje, para a folha não ficar sem data.
+        dataAula: planoSel?.data || evento?.data || new Date().toISOString().slice(0, 10),
         formador: nomeProfessor || planoSel?.professor || '',
         responsavel,  // N42
         atividade,    // K70
