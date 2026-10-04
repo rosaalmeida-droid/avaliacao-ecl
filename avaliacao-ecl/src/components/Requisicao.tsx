@@ -3,7 +3,8 @@ import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getReq
 import { PlanoAula, FichaProducao } from '../types';
 import { eventosParaPlanos } from '../eventos/modelo';
 import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
-import { EscolherMakro, type EscolhaMakro } from './EscolherMakro';
+import { EscolherMakro, qtdDeTexto, type EscolhaMakro } from './EscolherMakro';
+import { itemDoBancoPorNome, useBancoEmpratamento } from './BancoEmpratamento';
 import { manterEscolhaMakro } from '../precosRevistos';
 import { converterUnidadeParaPeso } from '../pesosMedios';
 import {
@@ -151,7 +152,8 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
         .replace(/\s*\([^)]*\)/g, '')  // remover (...)
         .replace(/\s*\d+\s*x\s*\d+[gkGK]*/g, '') // remover 2x200g
         .trim();
-      const { mp, confianca } = encontrarMateriaPrimaComConfianca(nomeLimpo, custom);
+      const { mp, confianca: confiancaBD } = encontrarMateriaPrimaComConfianca(nomeLimpo, custom);
+      let confianca = confiancaBD;
 
       // Preço por unidade: só é real quando difere do preço por quilo.
       // Em 88 dos 247 produtos da base, o precoUnitario foi copiado do
@@ -179,6 +181,18 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
           }
         }
       }
+      // Produto acrescentado à ficha a partir do banco de empratamento (nome
+      // exato da Makro): o preço é o da Makro, com IVA, sem perguntar nada
+      // (antes pedia «Sugerir» e «Introduza o preço» — Rosa, out/2026).
+      const doBanco = itemDoBancoPorNome(nomeLimpo) || itemDoBancoPorNome(proc.produto);
+      if (doBanco && doBanco.preco != null) {
+        if (proc.und === 'un') precoMP = doBanco.preco;
+        else {
+          const q = qtdDeTexto(doBanco.embalagem) ?? qtdDeTexto(doBanco.nome);
+          precoMP = q ? Math.round(doBanco.preco / q * 100) / 100 : 0;
+        }
+      }
+      if (doBanco && precoMP > 0) confianca = 'exata';
       const precoUnitario = (precoMP && precoMP > 0) ? precoMP.toFixed(2).replace('.', ',') : '';
 
       // Gerar aviso no Centro de Avisos quando a correspondência não é segura
@@ -246,7 +260,8 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
           preco1pax: p * qt1pax,
           precoEncomenda: p * qtEncomenda,
           fichas: [f.nomePrato],
-          daBD: !!mp,
+          daBD: !!mp || !!(doBanco && precoMP > 0),
+          produtoMakro: doBanco && precoMP > 0 ? doBanco.nome : undefined,
           avisos,
           isQB: proc.isQB,
           perguntarProfessor: proc.perguntarProfessor,
@@ -428,6 +443,25 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         precoUnitario: s.precoUnitario != null && s.precoUnitario !== '' ? String(s.precoUnitario) : l.precoUnitario });
     });
   });
+  // O banco de empratamento chega da Internet um instante depois: os produtos
+  // que vieram dele e ainda estão sem preço ganham o preço da Makro.
+  const banco = useBancoEmpratamento();
+  React.useEffect(() => {
+    if (!banco) return;
+    setLinhas(prev => {
+      let mudou = false;
+      const n = prev.map(l => {
+        if (l.isQB || l.precoUnitario) return l;
+        const it = itemDoBancoPorNome(l.produto.replace(/\s*\([^)]*\)/g, '').trim());
+        if (!it || it.preco == null) return l;
+        const q = l.und === 'un' ? 1 : (qtdDeTexto(it.embalagem) ?? qtdDeTexto(it.nome));
+        if (!q) return l;
+        mudou = true;
+        return recalc({ ...l, precoUnitario: (Math.round(it.preco / q * 100) / 100).toFixed(2).replace('.', ','), daBD: true, produtoMakro: it.nome, confianca: 'exata' });
+      });
+      return mudou ? n : prev;
+    });
+  }, [banco]);
   // As doses só recalculam as quantidades quando o professor as muda (e não
   // ao abrir, o que apagava as quantidades guardadas).
   const primeiraVezDoses = React.useRef(!!(planoInicial && (getRequisicaoPorPlano(planoInicial.id) as any)?.linhas?.length));

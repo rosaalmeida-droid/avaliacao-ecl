@@ -10,17 +10,26 @@
 // Dados: public/banco_empratamento.json (dados/gerar_banco_empratamento.py).
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
+import { FotoProduto, SeloNotas, useNotasPorProduto, type ProdutoComFoto } from './FotoProduto';
 
 export interface ItemEmpratamento { codigo: string; nome: string; grupo: string; sub: string; embalagem: string; preco: number | null; imagem: string; link: string }
 interface Banco { loja: string; data: string; itens: ItemEmpratamento[] }
 
 let cache: Promise<Banco | null> | null = null;
+let lido: Banco | null = null;
 export function lerBancoEmpratamento(): Promise<Banco | null> {
   if (!cache) {
     cache = fetch('/banco_empratamento.json').then(r => (r.ok ? r.json() : null)).catch(() => null);
-    cache.then(b => { if (!b) cache = null; });
+    cache.then(b => { if (!b) cache = null; else lido = b; });
   }
   return cache;
+}
+/** O produto do banco com este nome exato (o que o professor acrescentou à
+ *  ficha a partir do banco). Só depois de o banco estar lido. */
+export function itemDoBancoPorNome(nome: string): ItemEmpratamento | null {
+  if (!lido || !nome) return null;
+  const n = norm(nome.trim());
+  return lido.itens.find(i => norm(i.nome) === n) || null;
 }
 export function useBancoEmpratamento(): Banco | null {
   const [b, setB] = useState<Banco | null>(null);
@@ -50,6 +59,10 @@ export function itemDoIngrediente(banco: Banco | null, nome: string): ItemEmprat
   return melhor && melhor.s >= 0.3 ? melhor.i : null;
 }
 
+/** O produto do banco no formato da janela da fotografia. */
+export const comFoto = (i: ItemEmpratamento): ProdutoComFoto => ({ codigo: i.codigo, nome: i.nome, imagem: i.imagem,
+  detalhe: [i.sub, i.embalagem].filter(Boolean).join(' · '), preco: i.preco, link: i.link });
+
 /** Miniatura ao lado de um ingrediente da ficha (não aparece se não houver correspondência). */
 export function ImagemDoIngrediente({ nome, tamanho = 34 }: { nome: string; tamanho?: number }) {
   const banco = useBancoEmpratamento();
@@ -61,13 +74,7 @@ export function ImagemDoIngrediente({ nome, tamanho = 34 }: { nome: string; tama
       <img src={item.imagem} alt={item.nome} title={`${item.nome} (Makro) — toque para ampliar`} loading="lazy"
         onClick={e => { e.preventDefault(); e.stopPropagation(); setGrande(true); }}
         style={{ width: tamanho, height: tamanho, objectFit: 'contain', background: '#fff', borderRadius: 6, border: '1px solid rgba(26,23,20,0.12)', cursor: 'zoom-in', flexShrink: 0 }} />
-      {grande && (
-        <div onClick={e => { e.stopPropagation(); setGrande(false); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1100,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16 }}>
-          <img src={item.imagem} alt={item.nome} style={{ maxWidth: 'min(90vw, 600px)', maxHeight: '75vh', background: '#fff', borderRadius: 10 }} />
-          <div style={{ color: '#fff', textAlign: 'center', fontSize: 15 }}>{item.nome}<br /><span style={{ opacity: 0.75 }}>{item.embalagem}{item.preco != null ? ` · ${item.preco.toFixed(2).replace('.', ',')} € (com IVA)` : ''}</span></div>
-        </div>
-      )}
+      {grande && <FotoProduto produto={comFoto(item)} onFechar={() => setGrande(false)} />}
     </>
   );
 }
@@ -80,6 +87,8 @@ export function BancoEmpratamentoJanela({ onEscolher, onFechar, jaEscolhidos = [
   const [grupo, setGrupo] = useState('');
   const [sub, setSub] = useState('');
   const [q, setQ] = useState('');
+  const [ver, setVer] = useState<ItemEmpratamento | null>(null);
+  const notas = useNotasPorProduto();
   const grupos = useMemo(() => [...new Set((banco?.itens || []).map(i => i.grupo))], [banco]);
   const subs = useMemo(() => [...new Set((banco?.itens || []).filter(i => i.grupo === grupo).map(i => i.sub))], [banco, grupo]);
   const qq = norm(q.trim());
@@ -97,6 +106,7 @@ export function BancoEmpratamentoJanela({ onEscolher, onFechar, jaEscolhidos = [
               <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.6)' }}>
                 Produtos da Makro Alfragide, com o preço com IVA{banco ? ` de ${new Date(banco.data + 'T12:00:00').toLocaleDateString('pt-PT')}` : ''}.
                 Toque num produto para o acrescentar à ficha (entra como ingrediente de «Empratamento» e vai para a requisição).
+                A lupa 🔍 abre a fotografia em grande e as notas da equipa.
               </div>
             </div>
             <button onClick={onFechar} aria-label="Fechar" style={{ border: 'none', background: 'none', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
@@ -113,7 +123,10 @@ export function BancoEmpratamentoJanela({ onEscolher, onFechar, jaEscolhidos = [
             </div>
           )}
         </div>
-        <div style={{ overflowY: 'auto', padding: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+        {/* No iPad (Safari) as linhas da grelha encolhiam e cortavam as fotografias e
+            os nomes: a altura das linhas e da imagem fica fixa (Rosa, out/2026). */}
+        <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 14, display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gridAutoRows: 'max-content', alignContent: 'start', gap: 12 } as React.CSSProperties}>
           {!banco && <div style={{ gridColumn: '1/-1', color: 'rgba(26,23,20,0.6)' }}>A abrir o banco de imagens…</div>}
           {banco && lista.length === 0 && <div style={{ gridColumn: '1/-1', color: 'rgba(26,23,20,0.6)' }}>Nenhum produto com esse nome.</div>}
           {lista.map(i => {
@@ -121,19 +134,28 @@ export function BancoEmpratamentoJanela({ onEscolher, onFechar, jaEscolhidos = [
             return (
               <button key={i.codigo} onClick={() => onEscolher(i)} title={ja ? 'Já está na ficha' : 'Acrescentar à ficha'}
                 style={{ background: '#fff', border: `${ja ? 3 : 1}px solid ${ja ? '#c9a227' : 'rgba(26,23,20,0.12)'}`, borderRadius: 12, overflow: 'hidden', padding: 0,
-                  textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column' }}>
-                <img src={i.imagem} alt={i.nome} loading="lazy" style={{ width: '100%', aspectRatio: '1', objectFit: 'contain', background: '#fff' }} />
+                  textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', display: 'block', width: '100%', minHeight: 0, flexShrink: 0 }}>
+                <div style={{ position: 'relative' }}>
+                  <img src={i.imagem} alt={i.nome} loading="lazy" style={{ width: '100%', height: 150, objectFit: 'contain', background: '#fff', display: 'block' }} />
+                  <span role="button" tabIndex={0} aria-label={`Ver ${i.nome} em grande`} title="Ver em grande e notas da equipa"
+                    onClick={e => { e.stopPropagation(); setVer(i); }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setVer(i); } }}
+                    style={{ position: 'absolute', top: 6, right: 6, width: 36, height: 36, borderRadius: 999, background: 'rgba(255,255,255,0.95)',
+                      border: '1px solid rgba(26,23,20,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, cursor: 'zoom-in' }}>🔍</span>
+                </div>
                 <div style={{ padding: '7px 9px 9px', display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.25 }}>{i.nome}</div>
                   <div style={{ fontSize: 11.5, color: 'rgba(26,23,20,0.6)' }}>{i.sub}{i.embalagem ? ` · ${i.embalagem}` : ''}</div>
                   {i.preco != null && <div style={{ fontSize: 13, fontWeight: 800, color: '#3f6b45' }}>{i.preco.toFixed(2).replace('.', ',')} €</div>}
                   {ja && <div style={{ fontSize: 11.5, fontWeight: 700, color: '#8a6d12' }}>✓ já na ficha</div>}
+                  <SeloNotas notas={notas.get(i.codigo)} />
                 </div>
               </button>
             );
           })}
         </div>
       </div>
+      {ver && <FotoProduto produto={comFoto(ver)} onFechar={() => setVer(null)} />}
     </div>
   );
 }

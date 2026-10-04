@@ -786,6 +786,7 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'avaliacao_par') juntarPorId(KEY_PARES, dados as AvaliacaoPar[]);
   else if (tipo === 'lider_kf') juntarLideres(dados);
   else if (tipo === 'materia_prima') juntarMateriasPrimas(dados);
+  else if (tipo === 'nota_produto') juntarNotasProdutos(dados);
   else if (tipo === 'requisicao') juntarRequisicoesDaBase(dados);
   else if (tipo === 'evento') juntarEventosDaBase(dados);
   else if (tipo === 'recuperacao') juntarRecuperacoesDaBase(dados);
@@ -1660,6 +1661,69 @@ const KEY_ALUNOS_ENVIADOS = 'ecl_alunos_enviados';
 let perfilDoAparelho: string | null = null;
 /** Quem está a usar este aparelho (professor, coordenadora, aluno). */
 export function definirPerfilDoAparelho(p: string | null): void { perfilDoAparelho = p; }
+let nomeDoAparelho = '';
+/** O nome de quem entrou (para assinar as notas sobre os produtos). */
+export function definirNomeDoAparelho(n: string): void { nomeDoAparelho = n || ''; }
+export function getPerfilDoAparelho(): string | null { return perfilDoAparelho; }
+
+// ── Notas da equipa sobre os produtos (Rosa, out/2026) ─────────
+// Ao ver a fotografia de um produto da Makro, o professor pode deixar uma
+// nota («já usámos», «não gostámos», «bom para empratar»…). As notas vão
+// para a base de dados e aparecem a todos os professores, em todos os
+// aparelhos. Quem as escreveu pode apagá-las.
+export interface NotaProduto {
+  id: string; codigo: string; produto: string; etiqueta: string; texto: string;
+  autor: string; criadaEm: string; atualizadoEm: string; eliminado?: boolean;
+}
+const KEY_NOTAS_PRODUTOS = 'ecl_notas_produtos';
+export const EVENTO_NOTAS_PRODUTOS = 'ecl-notas-produtos';
+const avisarNotas = () => { try { window.dispatchEvent(new Event(EVENTO_NOTAS_PRODUTOS)); } catch { /* */ } };
+
+export function getNotasProdutos(): NotaProduto[] {
+  return load<NotaProduto>(KEY_NOTAS_PRODUTOS).filter(n => !n.eliminado);
+}
+export function getNotasDoProduto(codigo: string): NotaProduto[] {
+  return getNotasProdutos().filter(n => n.codigo === codigo).sort((a, b) => b.criadaEm.localeCompare(a.criadaEm));
+}
+export function guardarNotaProduto(n: { codigo: string; produto: string; etiqueta: string; texto: string }): NotaProduto {
+  const agora = new Date().toISOString();
+  const nota: NotaProduto = { id: novoId('nota_prod'), codigo: n.codigo, produto: n.produto, etiqueta: n.etiqueta,
+    texto: n.texto.trim(), autor: nomeDoAparelho || 'Professor', criadaEm: agora, atualizadoEm: agora };
+  save(KEY_NOTAS_PRODUTOS, [...load<NotaProduto>(KEY_NOTAS_PRODUTOS), nota]);
+  gravarNaBase('nota_produto', nota as any);
+  avisarNotas();
+  return nota;
+}
+export function eliminarNotaProduto(id: string): void {
+  const todas = load<NotaProduto>(KEY_NOTAS_PRODUTOS);
+  const n = todas.find(x => x.id === id);
+  if (!n) return;
+  const apagada = { ...n, eliminado: true, atualizadoEm: new Date().toISOString() };
+  save(KEY_NOTAS_PRODUTOS, todas.map(x => x.id === id ? apagada : x));
+  gravarNaBase('nota_produto', apagada as any);
+  avisarNotas();
+}
+/** Quem pode apagar uma nota: quem a escreveu e a coordenação. */
+export function podeApagarNota(n: NotaProduto): boolean {
+  const eu = nomeDoAparelho.trim().toLowerCase();
+  return perfilDoAparelho === 'coordenadora' || /rosa\s+almeida/i.test(nomeDoAparelho)
+    || (!!eu && n.autor.trim().toLowerCase() === eu);
+}
+function juntarNotasProdutos(lista: any[]): void {
+  const m = new Map(load<NotaProduto>(KEY_NOTAS_PRODUTOS).map(x => [x.id, x]));
+  for (const x of lista) {
+    if (!x?.id || !x.codigo) continue;
+    const velho = m.get(x.id);
+    // Uma nota apagada não volta.
+    if (velho?.eliminado) continue;
+    if (!velho || x.eliminado || String(x.atualizadoEm || '') >= String(velho.atualizadoEm || '')) {
+      const { gravadoNaBaseEm: _g, turmaId: _t, ...nota } = x;
+      m.set(x.id, nota as NotaProduto);
+    }
+  }
+  save(KEY_NOTAS_PRODUTOS, [...m.values()]);
+  avisarNotas();
+}
 
 
 // ════════════════════════════════════════════════════════════════

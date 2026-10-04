@@ -122,7 +122,7 @@ import { CronogramaTab } from './components/CronogramaTab';
 import { HistorialPorUC } from './components/HistorialPorUC';
 import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialTeste, seedPlanoTeste, getTurmas, seedAlunosReais,
   migrarTurmaAntiga,
-  getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada, selecoesQueContam, selecoesDoProfessor, definirPerfilDoAparelho,
+  getPlanosAulaPorTurma, getSelecoes, getValidacoes, selecaoJaValidada, selecoesQueContam, selecoesDoProfessor, definirPerfilDoAparelho, definirNomeDoAparelho,
   getFichasProducao, getRequisicaoPorPlano, getSessaoAula,
   estadoDaTurmaNaAula, addOrUpdatePlanoAula,
   autoavaliacoesPorValidar, getPlanosAula, publicarNoClassroom, requisicaoDesatualizada, publicarPlanoParaAlunos,
@@ -344,6 +344,7 @@ function AppInterno() {
       sincronizarDoSheets(turmaIdRecebida).catch(() => {});
     }
     if (nomeUser) setNomeProfessor(nomeUser);
+    definirNomeDoAparelho(nomeUser || '');
     // Eventos e orçamentos: sem turma — vêm as fichas, os eventos e as requisições de todas.
     if (perfilRecebido === 'eventos') sincronizarDoSheets('', { forcar: true }).then(() => setRefreshKey(k => k + 1)).catch(() => {});
     if (perfilRecebido === 'aluno' && alunoId) {
@@ -364,7 +365,7 @@ function AppInterno() {
 
   function sair() {
     navegarCom(() => {
-      setPerfil(null); setAluno(null); setNomeProfessor('');
+      setPerfil(null); setAluno(null); setNomeProfessor(''); definirNomeDoAparelho('');
       esquecerEntrada();   // (v22) a autorização da entrada não fica para o seguinte
       setPlanoAberto(null); setVistaGlobal('planos'); limparAlteracoes();
     }, 'Se saíres agora perdes o que estás a preencher.');

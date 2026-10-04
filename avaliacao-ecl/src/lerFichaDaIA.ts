@@ -5,7 +5,7 @@
 // produto) e os passos. É daqui que saem os ingredientes da requisição.
 // ============================================================
 import { lerPerguntasDaIA, type PerguntaTecnica } from './bancoPerguntas';
-import { FAMILIAS_FICHA, FamiliaFicha } from './types';
+import { FAMILIAS_FICHA, FamiliaFicha, limparEtiquetas } from './types';
 import { detetarAlergenicos, formatarAlergenicos } from './alergenicos';
 
 // ============================================================
@@ -326,7 +326,8 @@ export function extrairFicha(texto: string): FichaTecnica {
     // Extrair campos do formato IA
     const extrair = (campo: string) => {
       const m = texto.match(new RegExp(`${campo}:\\s*(.+)`, 'i'));
-      return m ? m[1].trim() : '';
+      // Sem o ponto final que algumas IAs acrescentam («Bacalhau à Brás.»).
+      return m ? m[1].trim().replace(/([^.])\.$/, '$1').trim() : '';
     };
 
     const nomeIA = extrair('NOME DO PRATO');
@@ -334,9 +335,7 @@ export function extrairFicha(texto: string): FichaTecnica {
     const familia1IA = extrair('FAMÍLIA PRINCIPAL') || extrair('FAMILIA PRINCIPAL') || '';
     const familia2IA = extrair('FAMÍLIA SECUNDÁRIA') || extrair('FAMILIA SECUNDARIA') || '';
     const etiquetasIA = extrair('ETIQUETAS') || '';
-    const etiquetasArr = etiquetasIA && etiquetasIA !== 'nenhuma'
-      ? etiquetasIA.split('|').map((e: string) => e.trim()).filter((e: string) => e && e !== 'nenhuma')
-      : [];
+    const etiquetasArr = limparEtiquetas(etiquetasIA);
     const dosesIA = texto.match(/N[ºo°]?\s*DE\s*DOSES?:\s*(\d+)/i)?.[1] ||
                     texto.match(/PORÇÕES?:\s*(\d+)/i)?.[1] ||
                     texto.match(/DOSES?:\s*(\d+)/i)?.[1] || '';
