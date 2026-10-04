@@ -16,6 +16,7 @@ import Requisicao from './Requisicao';
 import { ProfessorView } from './ProfessorView';
 import { getMateriaPrimasBase, getPrecosRevistos } from '../materiasPrimasBase';
 import { getMateriasPrimasCustom } from '../backend';
+import { CatalogoMakro } from './CatalogoMakro';
 
 const C = {
   fundo: '#F3F6F5',
@@ -166,7 +167,23 @@ function ManuaisDosEventos() {
 
 /** Os preços das matérias-primas, só para consultar. O mesmo ecrã em
  *  «Eventos e orçamentos», no professor e no aluno (Rosa, out/2026). */
+/** Os preços da aplicação (os das fichas e da requisição) e, ao lado, o catálogo completo da Makro. */
 export function PrecosConsulta({ paraAluno = false }: { paraAluno?: boolean } = {}) {
+  const [fonte, setFonte] = useState<'app' | 'makro'>('app');
+  const sep = (ativo: boolean): React.CSSProperties => ({ flex: 1, minHeight: 48, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15.5,
+    fontWeight: 800, border: `2px solid ${C.acento}`, background: ativo ? C.acento : C.papel, color: ativo ? '#fff' : C.acento });
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <button onClick={() => setFonte('app')} style={sep(fonte === 'app')}>Matérias-primas da aplicação</button>
+        <button onClick={() => setFonte('makro')} style={sep(fonte === 'makro')}>Catálogo Makro</button>
+      </div>
+      {fonte === 'app' ? <PrecosDaAplicacao paraAluno={paraAluno} /> : <CatalogoMakro cores={C} />}
+    </div>
+  );
+}
+
+function PrecosDaAplicacao({ paraAluno = false }: { paraAluno?: boolean }) {
   const [pesquisa, setPesquisa] = useState('');
   // Mostram-se 60 de cada vez: com todos os produtos, a página ficava
   // interminável no telemóvel (Rosa, out/2026).
