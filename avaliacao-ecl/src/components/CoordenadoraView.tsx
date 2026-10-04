@@ -87,7 +87,7 @@ export function CoordenadoraView() {
               pode estar mal. <u>Ver em Preços</u>
             </button>
           )}
-          <CentroAvisos perfil="coordenadora" />
+          <CentroAvisos perfil="coordenadora" inline />
         </div>
       )}
       {tab === 'presencas' && <PresencasTab />}

@@ -23,7 +23,9 @@
 //
 // 4. A cruz do Consumo fica dentro do quadrado (ficava ao lado).
 //
-// 5. E-mail às compras (opcional). Se a aplicação enviar os e-mails das
+// 5. Lembrete mensal dos preços da Makro: execute uma vez instalarLembreteMakro.
+//
+// 6. E-mail às compras (opcional). Se a aplicação enviar os e-mails das
 //    pessoas das compras, segue logo uma mensagem formal com a ligação
 //    para a requisição. Sem e-mails, nada é enviado.
 //    Na primeira implementação, o Google pede autorização para enviar
@@ -489,6 +491,52 @@ function enviarEmailCompras(d, url, log) {
     log.push('e-mail: ' + e);
     return '';
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// LEMBRETE MENSAL — PREÇOS DA MAKRO (Rosa, out/2026)
+// ══════════════════════════════════════════════════════════════
+// No dia 1 de cada mês, às 9h, chega um e-mail com um título destacado a
+// lembrar a atualização dos preços da Makro, com os passos.
+// PARA LIGAR: no editor, escolha a função  instalarLembreteMakro  e carregue
+// em Executar (uma vez só). Para desligar: desligarLembreteMakro.
+
+var URL_APLICACAO = 'https://avaliacao-ecl.vercel.app';
+var PASTA_MAKRO_GITHUB = 'https://github.com/rosaalmeida-droid/avaliacao-ecl/upload/main/avaliacao-ecl/dados/makro';
+
+function lembretePrecosMakro() {
+  var para = Session.getEffectiveUser().getEmail();
+  if (!para) return;
+  var mes = Utilities.formatDate(new Date(), 'Europe/Lisbon', 'MMMM yyyy');
+  var html =
+    '<div style="font-family:Arial,sans-serif;max-width:620px">' +
+    '<div style="background:#b5651d;color:#fff;padding:18px 20px;border-radius:12px;font-size:22px;font-weight:bold">' +
+    '🛒 ATUALIZAR OS PREÇOS DA MAKRO</div>' +
+    '<p style="font-size:15px">Está na altura de atualizar os preços da Makro na aplicação (' + mes + '). Leva cerca de cinco minutos.</p>' +
+    '<ol style="font-size:15px;line-height:1.6">' +
+    '<li>No computador, abra o Chrome com a sessão da Makro iniciada (loja de Alfragide).</li>' +
+    '<li>Na aplicação, em <b>Coordenação › Avisos</b>, carregue em <b>Copiar o pedido para a extensão</b> e cole-o na extensão <b>Claude</b> (ou use o atalho agendado).</li>' +
+    '<li>Quando terminar, arraste o ficheiro <b>makro_AAAA-MM-DD.csv</b> para a pasta da Makro no GitHub e carregue em <b>Commit changes</b>:<br>' +
+    '<a href="' + PASTA_MAKRO_GITHUB + '">' + PASTA_MAKRO_GITHUB + '</a></li>' +
+    '<li>Em poucos minutos a aplicação fica com os preços novos. Confirme as propostas em <b>Coordenação › Preços</b>.</li>' +
+    '</ol>' +
+    '<p><a href="' + URL_APLICACAO + '" style="display:inline-block;background:#0f766e;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:bold">Abrir a aplicação</a></p>' +
+    '<p style="color:#888;font-size:12px">Lembrete automático da folha «Ficha de Food Cost/Requisição».</p></div>';
+  MailApp.sendEmail({ to: para, subject: '🛒 ATUALIZAR PREÇOS DA MAKRO — ' + mes, htmlBody: html, name: 'Avaliação ECL' });
+}
+
+function instalarLembreteMakro() {
+  desligarLembreteMakro();
+  ScriptApp.newTrigger('lembretePrecosMakro').timeBased().onMonthDay(1).atHour(9).inTimezone('Europe/Lisbon').create();
+  Logger.log('Lembrete ligado: dia 1 de cada mês, às 9h, para ' + Session.getEffectiveUser().getEmail() + '.');
+  lembretePrecosMakro();   // um primeiro e-mail agora, para ver como fica
+}
+
+function desligarLembreteMakro() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'lembretePrecosMakro') ScriptApp.deleteTrigger(t);
+  });
 }
 
 
