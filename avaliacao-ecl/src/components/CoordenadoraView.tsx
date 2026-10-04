@@ -19,7 +19,7 @@ import { AlunosExternos } from './AlunosExternos';
 import { DadosSeguranca } from './DadosSeguranca';
 import { PrecosCoordenadora } from './PrecosCoordenadora';
 import { SimulacaoPauta } from './SimulacaoPauta';
-import { getPrecosAReverPendentes, lerPrecosDoSheets, ehFantasma, marcarFantasma } from '../backend';
+import { getPrecosAReverPendentes, lerPrecosDoSheets, ehFantasma, marcarFantasma, eventosComoAtividades } from '../backend';
 
 export function CoordenadoraView() {
   const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos' | 'dados' | 'precos' | 'pauta'>('avisos');
@@ -876,7 +876,10 @@ function RankingTab() {
 
   const ranking = useMemo(() => {
     return alunos.map(a => {
-      const ativs = getAtividades(); const extra = calcularParticipacaoExtra(a.id, ativs);
+      // Os eventos e concursos atuais são planos (tipoEvento): o ranking só
+      // contava as atividades antigas e dava 0 a quase todos (auditoria out/2026).
+      const ativs = [...getAtividades().filter(x => x.turmaId === turmaSel), ...eventosComoAtividades(turmaSel)];
+      const extra = calcularParticipacaoExtra(a.id, ativs);
       return { aluno: a, pontos: extra.eventosParticipados + extra.concursosParticipados };
     }).sort((x, y) => y.pontos - x.pontos);
   }, [alunos]);

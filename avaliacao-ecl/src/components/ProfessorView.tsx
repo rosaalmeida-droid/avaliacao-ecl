@@ -2557,7 +2557,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>📄</div>
               <div className="display" style={{ fontSize: 18, marginBottom: 6 }}>
-                {mostrarBibliotecaCompleta ? 'Ainda não há fichas em nenhum plano' : 'Ainda não há fichas neste plano'}
+                {!planoId ? 'Ainda não há fichas técnicas' : mostrarBibliotecaCompleta ? 'Ainda não há fichas em nenhum plano' : 'Ainda não há fichas neste plano'}
               </div>
               <p className="muted">Uma aula pode ter 1 ou mais fichas de produção.</p>
               <Button onClick={novaFicha}>Criar primeira ficha →</Button>

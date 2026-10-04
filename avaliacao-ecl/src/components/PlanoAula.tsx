@@ -678,7 +678,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
               (aula aberta, presenças, autoavaliações, requisição), com as fichas de todas;
               as outras vão para o Arquivo.
               {grupos.slice(0, 3).map((g, i) => (
-                <div key={i} style={{ marginTop:4 }}>· {g[0].titulo || 'Plano'} — {String(g[0].data).slice(0, 10)} ({g.length} cópias)</div>
+                <div key={i} style={{ marginTop:4 }}>· {g[0].titulo || 'Plano'} — {String(g[0].data).slice(0, 10).split('-').reverse().join('/')} ({g.length} cópias)</div>
               ))}
             </div>
             <button onClick={() => {

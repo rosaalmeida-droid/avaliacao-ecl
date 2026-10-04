@@ -22,7 +22,8 @@ export function CentroAvisos({ onNavegar, perfil, inline = false }: { onNavegar?
     return () => clearInterval(id);
   }, []);
 
-  if (!isLargo && !inline) return null;
+  // Em ecrãs estreitos (iPad ao alto, telemóvel) os avisos desapareciam por
+  // completo (auditoria out/2026): a aba lateral fica, e o painel ocupa o ecrã.
 
   const tudoOk = avisos.length === 0;
 
@@ -218,7 +219,7 @@ export function CentroAvisos({ onNavegar, perfil, inline = false }: { onNavegar?
 
       {aberto && (
         <div style={{
-          pointerEvents: 'auto', width: 340, height: '100vh', background: '#fff',
+          pointerEvents: 'auto', width: isLargo ? 340 : 'min(340px, calc(100vw - 40px))', height: '100vh', background: '#fff',
           boxShadow: '-4px 0 20px rgba(0,0,0,0.15)', overflowY: 'auto', padding: 18,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>

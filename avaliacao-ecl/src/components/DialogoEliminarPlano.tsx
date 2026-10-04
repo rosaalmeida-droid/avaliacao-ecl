@@ -44,8 +44,8 @@ export function DialogoEliminarPlano({ plano, onFechar, onFeito, onCorrigir, pod
 }) {
   const r = resumoDoPlano(plano.id);
   const [passo, setPasso] = useState<'escolher' | 'confirmar'>('escolher');
-  const data = String(plano.data || '').slice(0, 10);
-  const nome = `${plano.titulo || 'Plano de aula'}${data ? ' — ' + data : ''}`;
+  const data = String(plano.data || '').slice(0, 10).split('-').reverse().join('/');
+  const nome = `${plano.titulo || 'Plano de aula'}${data && !String(plano.titulo || '').includes(data) ? ' — ' + data : ''}`;
 
   const linhas = [
     r.aulaAberta && 'a aula foi aberta',
