@@ -38,7 +38,7 @@ const DIETA = /sem glu|sem lact|vegan|\bbio\b|biologic|sem acucar|0% acucar/;
 const sems = (t: string) => new Set((norm(t).match(/\b(?:sem|s\/)\s*(\w+)/g) || []).map(x => x.replace(/^(sem|s\/)\s*/, '')));
 
 /** Quantidade em kg/L escrita num texto («10 X 9,8 Ml», «1 Kg», «500G»). */
-function qtdDeTexto(t: string): number | null {
+export function qtdDeTexto(t: string): number | null {
   const e = norm(t).replace(/(\d),(\d)/g, '$1.$2');
   let m = e.match(/(\d+)\s*x\s*([\d.]+)\s*(kg|g|gr|l|lt|ml|cl)\b/) || null;
   let n = 1, q = 0, u = '';
@@ -57,6 +57,14 @@ function qtdTotal(p: Produto): number | null {
 /** Preço com IVA por kg ou litro, calculado a partir da embalagem (o da Makro vem às vezes errado). */
 export function precoKgMakro(p: Produto): number | null {
   if (p[7] == null) return null;
+  // Limpeza, higiene, embalagens, consumíveis, equipamentos: a «embalagem» da Makro
+  // é muitas vezes o peso do artigo; o preço por kg não serve (verificação de 4/10/2026).
+  if (p[0] > 3) return null;
+  // Bebidas: só quando o nome e a embalagem dizem o mesmo (as caixas de packs vêm mal).
+  if (p[0] === 3 && !/^ca\.|ao peso/.test(norm(p[5] || ''))) {
+    const a = qtdDeTexto(p[3]), b = qtdDeTexto(p[5] || '');
+    if (!a || !b || Math.abs(a - b) / Math.max(a, b) > 0.05) return null;
+  }
   const q = qtdTotal(p);
   if (q) return p[7] / q;
   if (p[8] === 'kg' || p[8] === 'L') return p[7];
