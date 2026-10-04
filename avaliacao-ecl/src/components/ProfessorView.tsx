@@ -1,4 +1,5 @@
 import { getLibrary } from '../libraryService';
+import { ImagemDoIngrediente, BancoEmpratamentoJanela } from './BancoEmpratamento';
 import React, { useState } from 'react';
 import { REGRAS_PERGUNTAS, promptPerguntasDaFicha, lerPerguntasDaIA, type PerguntaTecnica } from '../bancoPerguntas';
 import { PerguntasDaFicha } from './PerguntasDaFicha';
@@ -1314,6 +1315,7 @@ function PassoFichaTecnica({
   ucNome?: string;
 }) {
   const [ficha, setFicha] = useState<FichaTecnica>(() => normalizarFicha(fichaInicial));
+  const [bancoAberto, setBancoAberto] = useState(false);
 
   // Auto-save sempre que a ficha muda (só se tem conteúdo)
   React.useEffect(() => {
@@ -1498,8 +1500,11 @@ function PassoFichaTecnica({
                       value={ing.un} onChange={e => setIngrediente(i, 'un', e.target.value)} />
                   </td>
                   <td style={{ padding: '4px 4px' }}>
-                    <input className="input" style={{ padding: '4px 6px', fontSize: 13 }}
-                      value={ing.produto} onChange={e => setIngrediente(i, 'produto', e.target.value)} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <ImagemDoIngrediente nome={ing.produto} tamanho={30} />
+                      <input className="input" style={{ padding: '4px 6px', fontSize: 13, flex: 1, minWidth: 0 }}
+                        value={ing.produto} onChange={e => setIngrediente(i, 'produto', e.target.value)} />
+                    </div>
                   </td>
                   <td style={{ padding: '4px 4px' }}>
                     <input className="input" style={{ padding: '4px 6px', fontSize: 13, width: 45 }}
@@ -1578,6 +1583,35 @@ function PassoFichaTecnica({
             onChange={e => setF('empratamento', e.target.value)}
             placeholder="Descreve a apresentação e empratamento..." />
         </Field>
+        {/* Banco de imagens (Makro): ervas, flores, micro legumes, frutos vermelhos, embalagens.
+            O que se escolhe entra na ficha como ingrediente de «Empratamento» (e vai para a requisição). */}
+        {(() => {
+          const doEmpratamento = ficha.ingredientes.filter(x => /empratamento/i.test(x.componente || ''));
+          return (
+            <div style={{ marginTop: 8 }}>
+              {doEmpratamento.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                  {doEmpratamento.map((x, k) => (
+                    <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', fontSize: 12.5 }}>
+                      <ImagemDoIngrediente nome={x.produto} tamanho={36} /> <span style={{ maxWidth: 180 }}>{x.produto}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button variant="ghost" onClick={() => setBancoAberto(true)}>🖼️ Banco de imagens de empratamento (Makro)</Button>
+              {bancoAberto && (
+                <BancoEmpratamentoJanela onFechar={() => setBancoAberto(false)}
+                  jaEscolhidos={[]}
+                  onEscolher={item => {
+                    setFicha(prev => prev.ingredientes.some(x => x.produto === item.nome) ? prev : ({
+                      ...prev,
+                      ingredientes: [...prev.ingredientes.filter(x => x.produto || x.qt), { componente: 'Empratamento', qt: '1', un: 'un', produto: item.nome, tPrep: '', tConf: '', obs: item.embalagem || '' }],
+                    }));
+                  }} />
+              )}
+            </div>
+          );
+        })()}
       </Card>
 
       {/* Equipamento */}
