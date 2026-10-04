@@ -14,7 +14,6 @@ const EXCLUIR_REQUISICAO = [
   'agua para demolhar', 'água para demolhar',
   'agua de cozedura', 'água de cozedura',
   'agua temperada', 'água temperada',
-  'gelo', 'ice',
   // Caldos produzidos em aula (regra da cozinha pedagógica)
   'caldo de galinha (produzido em aula)',
   'caldo de carne (produzido em aula)',
@@ -24,8 +23,13 @@ const EXCLUIR_REQUISICAO = [
   'caldo de vegetais (produzido em aula)',
 ];
 
+// Água engarrafada (mineral, com gás, em garrafa) compra-se: não sai da requisição
+// (Rosa, out/2026). O gelo também não: pergunta-se «comprar ou produzir?» (eventos).
+const AGUA_ENGARRAFADA = /mineral|com\s+g[aá]s|gaseificad|engarrafad|garraf|das\s+pedras|vidago|luso|castelo|pedras\s+salgadas|frize|monchique|carvalhelhos/i;
+
 export function deveExcluirDaRequisicao(nome: string): boolean {
   const n = nome.toLowerCase().trim();
+  if (/^(agua|água)\b/.test(n) && AGUA_ENGARRAFADA.test(n)) return false;
   return EXCLUIR_REQUISICAO.some(e => n === e || n.startsWith(e + ' ') || n.includes(' ' + e));
 }
 
@@ -191,6 +195,9 @@ export const PREPARACOES: Preparacao[] = [
   { nome: 'Massa filo', padroes: [/massa\s+filo/i, /filo\s+pastry/i, /phyllo/i], podeComprar: true, perguntarProfessor: true }, // excepção — muito técnica, pode comprar
   { nome: 'Base de tarte', padroes: [/base\s+de\s+tarte/i, /tart\s+shell/i, /base\s+para\s+tarte/i], podeComprar: false, perguntarProfessor: true, materiasPrimas: ['Farinha T55', 'Manteiga', 'Sal', 'Água'] },
   { nome: 'Bolacha champanhe', padroes: [/bolacha\s+champanhe/i, /ladyfinger/i, /savoiardi/i, /biscuit\s+cuill[eè]re/i], podeComprar: true, perguntarProfessor: true, materiasPrimas: ['Ovos', 'Açúcar', 'Farinha T55'] },
+
+  // Gelo: a cozinha produz, mas para eventos pode ser preciso comprar (Rosa, out/2026).
+  { nome: 'Gelo', padroes: [/^gelo\b/i, /^ice\b/i, /cubos\s+de\s+gelo/i], podeComprar: true, perguntarProfessor: true },
 
   // Preparações que são sempre compradas (produtos processados)
   { nome: 'Puré de tomate', padroes: [/pur[eé]\s+de\s+tomate/i, /concentrado\s+de\s+tomate/i], podeComprar: true, perguntarProfessor: false },
