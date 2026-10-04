@@ -30,7 +30,7 @@ let semChaveNestaSessao = false;
 
 export function iaDiretaDisponivel(): boolean { return !semChaveNestaSessao; }
 
-export async function pedirAIA(prompt: string, maxTokens = 8192, opts: { lerLinks?: boolean } = {}): Promise<RespostaIA> {
+export async function pedirAIA(prompt: string, maxTokens = 8192, opts: { lerLinks?: boolean; pensar?: boolean } = {}): Promise<RespostaIA> {
   if (semChaveNestaSessao) return { ok: false, motivo: 'sem_chave', mensagem: 'A ligação direta à IA não está configurada.' };
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 75000);
@@ -38,7 +38,7 @@ export async function pedirAIA(prompt: string, maxTokens = 8192, opts: { lerLink
     contarUso();
     const res = await fetch('/api/ia', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, maxTokens, lerLinks: !!opts.lerLinks }), signal: ctrl.signal,
+      body: JSON.stringify({ prompt, maxTokens, lerLinks: !!opts.lerLinks, pensar: !!opts.pensar }), signal: ctrl.signal,
     });
     const d = await res.json().catch(() => null);
     if (!d) return { ok: false, motivo: 'erro_api', mensagem: 'A IA não respondeu. Tente outra vez daqui a pouco.' };
