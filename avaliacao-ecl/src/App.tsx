@@ -130,6 +130,7 @@ import { sincronizarDoSheets, getAlunos, getEstadoSync, addAluno, seedHistorialT
 import { ouvirTurmaNaBase } from './baseDeDados';
 import { EventosOrcamentos, PrecosConsulta } from './components/EventosOrcamentos';
 import { BibliotecaVideos } from './components/BibliotecaVideos';
+import { PassarESchooling } from './components/PassarESchooling';
 
 function ModalGuardar({ mensagem, onGuardar, onDescartar, onCancelar }: {
   mensagem: string; onGuardar: () => void; onDescartar: () => void; onCancelar: () => void;
@@ -755,6 +756,7 @@ function AppInterno() {
             {vistaGlobal === 'abrir_aula' && <AbrirAulas turmaId={turmaId} nomeProfessor={nomeProfessor} />}
             {vistaGlobal === 'cronograma' && <CronogramaTab turmaId={turmaId} />}
             {vistaGlobal === 'precos' && <div style={{ padding: '4px 0 24px' }}><PrecosConsulta /></div>}
+            {vistaGlobal === 'eschooling' && <div style={{ padding: '4px 0 24px' }}><PassarESchooling nomeProfessor={nomeProfessor} /></div>}
             {vistaGlobal === 'videos' && /rosa\s+almeida/i.test(nomeProfessor) && <div style={{ padding: '4px 0 24px' }}><BibliotecaVideos /></div>}
             {/* Dicionário movido para o ecrã do aluno */}
           </>
