@@ -18,7 +18,7 @@ import { getReferencialUC } from '../referencial811RA144';
 import { exportDOCX, exportPDF, gerarHTML } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
 import { calcularNutricao, InfoNutricional } from '../nutricao';
-import { normalizarFicha, FICHA_VAZIA, extrairFicha, type LinhaIngrediente, type PassoPreparacao, type FichaTecnica } from '../lerFichaDaIA';
+import { normalizarFicha, FICHA_VAZIA, extrairFicha, semPontoFinal, type LinhaIngrediente, type PassoPreparacao, type FichaTecnica } from '../lerFichaDaIA';
 const nomeUCRef = (id: string): string => { try { return getReferencialUC(id)?.nome || ''; } catch { return ''; } };
 
 function copiarTexto(texto: string, onSucesso: () => void, onFalha: () => void) {
@@ -1035,7 +1035,10 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
   const [mostrarSimilares, setMostrarSimilares] = useState(false);
   const [copiadoFicha, setCopiadoFicha] = useState(false);
   const [copiadoGuia, setCopiadoGuia] = useState(false);
-  const [modoProf, setModoProf] = useState(false); // modo profissional — eleva técnicas
+  // Modo profissional — eleva técnicas. Fica lembrado neste aparelho: quem
+  // escolhe sempre a versão profissional não tem de a escolher todas as vezes.
+  const [modoProf, setModoProfEstado] = useState(() => { try { return localStorage.getItem('ecl_modo_prof') === '1'; } catch { return false; } });
+  const setModoProf = (v: boolean) => { setModoProfEstado(v); try { localStorage.setItem('ecl_modo_prof', v ? '1' : '0'); } catch { /* */ } };
   const promptUnificado = gerarPromptUnificado(link, ucId, ucNome, modoProf);
 
   // Prompts calculados em tempo real
@@ -1075,15 +1078,44 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
   const [respostaCopiada, setRespostaCopiada] = useState('');
   const pareceFicha = (t: string) => /NOME DO PRATO:/i.test(t) && /INGREDIENTES:/i.test(t);
 
+  // O pedido é o MESMO do «Copiar prompt». Mas a resposta completa (ficha,
+  // registos KitchenFlow, subtécnicas e dezenas de perguntas) não cabia no
+  // minuto que o servidor dá à IA: chegava cortada, sem registos nem
+  // perguntas (Rosa, out/2026). Agora vai em dois pedidos: 1) a ficha, com os
+  // registos e as técnicas; 2) as perguntas, feitas a partir dessa ficha.
+  const [etapaIA, setEtapaIA] = useState('');
   async function criarComAIA() {
-    setAGerar(true); setAvisoIA(''); setErro('');
-    const pedido = promptUnificado + (nomePrato ? `\n\nNOME DO PRATO PEDIDO PELO PROFESSOR: ${nomePrato}` : '');
-    const r = await pedirAIA(pedido, 16000, { lerLinks: /^https?:\/\//i.test(link.trim()) });
-    setAGerar(false);
-    if (r.ok && pareceFicha(r.texto)) { setTextoManual(r.texto); carregar(r.texto); return; }
-    setAvisoIA(r.ok
-      ? 'A IA respondeu, mas a resposta não tem o formato de uma ficha técnica. Tente outra vez ou use o método de copiar e colar, mais abaixo.'
-      : `${r.mensagem} Pode usar o método de copiar e colar, mais abaixo.`);
+    setAGerar(true); setAvisoIA(''); setErro(''); setEtapaIA('1/2 — a IA está a criar a ficha, os registos KitchenFlow e as técnicas…');
+    const pedido = promptUnificado + (nomePrato ? `\n\nNOME DO PRATO PEDIDO PELO PROFESSOR: ${nomePrato}` : '')
+      + '\n\nIMPORTANTE (pedido direto da aplicação): escreve TODAS as secções do formato até APARELHOS DETECTADOS, inclusive '
+      + 'REGISTOS KITCHENFLOW, SUBTÉCNICAS DETECTADAS e APARELHOS DETECTADOS. NÃO escrevas agora a secção PERGUNTAS DE AUTOAVALIAÇÃO: '
+      + 'vai ser pedida a seguir, num segundo pedido.';
+    const r = await pedirAIA(pedido, 14000, { lerLinks: /^https?:\/\//i.test(link.trim()), pensar: true });
+    if (!r.ok || !pareceFicha(r.texto)) {
+      setAGerar(false); setEtapaIA('');
+      setAvisoIA(r.ok
+        ? 'A IA respondeu, mas a resposta não tem o formato de uma ficha técnica. Tente outra vez ou use o método de copiar e colar, mais abaixo.'
+        : `${r.mensagem} Pode usar o método de copiar e colar, mais abaixo.`);
+      return;
+    }
+    let texto = r.texto.split('PERGUNTAS DE AUTOAVALIA')[0].trimEnd();
+    const faltam = [['REGISTOS KITCHENFLOW', 'os registos KitchenFlow'], ['SUBTÉCNICAS DETECTADAS', 'as subtécnicas'], ['APARELHOS DETECTADOS', 'os aparelhos']]
+      .filter(([sec]) => !new RegExp(sec.replace('É', '[ÉE]'), 'i').test(texto)).map(([, nome]) => nome);
+    // 2.º pedido: as perguntas de autoavaliação, a partir das técnicas da ficha.
+    const f = extrairFicha(texto);
+    const tecnicas = f.tecnicasDetectadas || [], aparelhos = f.aparelhosDetectados || [];
+    let semPerguntas = false;
+    if (tecnicas.length || aparelhos.length) {
+      setEtapaIA('2/2 — a IA está a escrever as perguntas de autoavaliação…');
+      const rp = await pedirAIA(promptPerguntasDaFicha(f.nomePrato, tecnicas, aparelhos, (f.preparacao || []).map(p => p.descricao).filter(Boolean)), 12000);
+      if (rp.ok && rp.texto.trim()) texto += '\n\n' + (/PERGUNTAS DE AUTOAVALIA/i.test(rp.texto) ? rp.texto : 'PERGUNTAS DE AUTOAVALIAÇÃO:\n' + rp.texto);
+      else semPerguntas = true;
+    }
+    setAGerar(false); setEtapaIA('');
+    if (faltam.length || semPerguntas) {
+      try { localStorage.setItem('ecl_aviso_ia_ficha', `A IA não escreveu ${[...faltam, ...(semPerguntas ? ['as perguntas'] : [])].join(', ')}. Confira a ficha; pode usar o botão «Criar as perguntas com a IA» ou o método de copiar e colar.`); } catch { /* */ }
+    }
+    setTextoManual(texto); carregar(texto);
   }
 
   // Quando o professor volta à aplicação depois de copiar a resposta da IA,
@@ -1160,22 +1192,8 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         <div style={{ fontWeight:700, fontSize:14, color:'var(--copper)', marginBottom:4 }}>
           🤖 Passo 1 — Gerar a Ficha de Produção com IA
         </div>
-        {/* Ligação direta: a ficha (com as perguntas das técnicas) aparece sem sair da aplicação. */}
-        {iaDiretaDisponivel() && (
-          <div style={{ marginBottom: 12 }}>
-            <button type="button" className="btn btn-primary" disabled={aGerar || (!nomePrato && !link)}
-              onClick={criarComAIA} style={{ width: '100%', minHeight: 46 }}>
-              {aGerar ? '⏳ A IA está a criar a ficha… (pode demorar até um minuto)' : '✨ Criar a ficha com a IA, sem sair da aplicação'}
-            </button>
-            {!nomePrato && !link && <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginTop: 4 }}>Escreva primeiro o nome do prato ou o link da receita.</div>}
-          </div>
-        )}
-        {avisoIA && <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: '#fff4e0', color: '#8a5a12', fontSize: 13 }}>{avisoIA}</div>}
-        <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
-          Em alternativa: o Claude e o ChatGPT abrem já com o pedido preenchido; no Gemini, o pedido é copiado automaticamente e basta colá-lo com Ctrl+V. Depois de copiar a resposta da IA, volte a esta janela: a aplicação deteta a resposta copiada.
-        </div>
-
-        {/* Selector de modo — fiel ao link ou versão profissional */}
+        {/* Selector de modo — fiel ao link ou versão profissional. Vem antes dos
+            botões: vale para o botão direto e para o «Copiar prompt». */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <button type="button"
             onClick={() => setModoProf(false)}
@@ -1193,6 +1211,21 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
             A IA vai elevar as técnicas para nível profissional — cortes com nomenclatura clássica, métodos de confeção precisos, massas base assinaladas para produção em aula.
           </div>
         )}
+
+        {/* Ligação direta: a ficha (com as perguntas das técnicas) aparece sem sair da aplicação. */}
+        {iaDiretaDisponivel() && (
+          <div style={{ marginBottom: 12 }}>
+            <button type="button" className="btn btn-primary" disabled={aGerar || (!nomePrato && !link)}
+              onClick={criarComAIA} style={{ width: '100%', minHeight: 46 }}>
+              {aGerar ? `⏳ ${etapaIA || 'A IA está a criar a ficha…'} (pode demorar até dois minutos)` : `✨ Criar a ficha com a IA, sem sair da aplicação — ${modoProf ? 'versão profissional' : 'fiel ao link'}`}
+            </button>
+            {!nomePrato && !link && <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginTop: 4 }}>Escreva primeiro o nome do prato ou o link da receita.</div>}
+          </div>
+        )}
+        {avisoIA && <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: '#fff4e0', color: '#8a5a12', fontSize: 13 }}>{avisoIA}</div>}
+        <div style={{ fontSize:13, color:'rgba(26,23,20,0.55)', marginBottom:10 }}>
+          Em alternativa: o Claude e o ChatGPT abrem já com o pedido preenchido; no Gemini, o pedido é copiado automaticamente e basta colá-lo com Ctrl+V. Depois de copiar a resposta da IA, volte a esta janela: a aplicação deteta a resposta copiada.
+        </div>
 
         <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(90,122,78,0.06)',
           border:'1px solid rgba(90,122,78,0.15)', marginBottom:10, fontSize:13, color:'var(--sage)' }}>
@@ -1369,6 +1402,8 @@ function PassoFichaTecnica({
     }));
   }
 
+  // O que a IA direta não escreveu (registos, técnicas, perguntas): avisa-se aqui, uma vez.
+  const [avisoIAFicha] = useState(() => { try { const a = localStorage.getItem('ecl_aviso_ia_ficha') || ''; localStorage.removeItem('ecl_aviso_ia_ficha'); return a; } catch { return ''; } });
   // Subtécnicas detetadas automaticamente
   const subtecnicasDetetadas = sugerirSubtecnicas(textoReceita + ' ' + ficha.nomePrato);
 
@@ -1397,6 +1432,11 @@ function PassoFichaTecnica({
         <div className="muted" style={{ marginBottom: 14 }}>
           Verifica e ajusta os dados extraídos automaticamente. Se os campos estiverem vazios (com [colchetes]), volta ao link e tenta com outra IA.
         </div>
+        {avisoIAFicha && (
+          <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 8, background: '#fff4e0', color: '#8a5a12', fontSize: 13.5, border: '1px solid #f0d49a' }}>
+            ⚠️ {avisoIAFicha}
+          </div>
+        )}
 
         {/* Cabeçalho */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -2084,7 +2124,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       const numeroFormatado = `#${proximoNum}`;
 
       // Evitar nomes duplicados — só ao criar ficha NOVA (não ao editar uma já existente)
-      let nomeFinal = fichaConfirmada.nomePrato || '';
+      let nomeFinal = semPontoFinal(fichaConfirmada.nomePrato || '');
       if (vista === 'criar' && nomeFinal) {
         const nomesExistentes = new Set(todasFichas.map(f => (f.nomePrato || '').trim().toLowerCase()));
         if (nomesExistentes.has(nomeFinal.trim().toLowerCase())) {
@@ -2111,7 +2151,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         try {
           return gerarHTML({
             nomePrato: nomeFinal,
-            classificacao: fichaConfirmada.classificacao || '',
+            classificacao: semPontoFinal(fichaConfirmada.classificacao || ''),
             fichaNum: fichaConfirmada.fichaNum || numeroFormatado,
             numPorcoes: fichaConfirmada.numPorcoes || '',
             tempoPrep: fichaConfirmada.tempoPrep || '',

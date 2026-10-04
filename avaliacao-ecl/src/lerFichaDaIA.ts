@@ -54,6 +54,13 @@ const LIMIAR_MANTER_MEDIDA = 20; // abaixo de 20g → manter medida original
 // Limpa nomes de produtos com ruído típico da extracção IA: duplicações, conectores soltos
 // Copia texto para a área de transferência com fallback se a API falhar
 
+/** Tira o ponto final de um título («Bacalhau à Brás.» → «Bacalhau à Brás»),
+ *  mas não as reticências. Rosa, out/2026: «tira os pontos dos títulos». */
+export function semPontoFinal(t: string): string {
+  return String(t ?? '').trim().replace(/([^.])\.$/, '$1').trim();
+}
+const CAMPOS_TITULO = ['nomePrato', 'classificacao', 'fichaNum', 'tempoPrep', 'tempoConf', 'numPorcoes'];
+
 export function normalizarFicha(f: any): FichaTecnica {
   const camposTexto: (keyof FichaTecnica)[] = [
     'nomePrato', 'classificacao', 'fichaNum', 'alergenicos', 'tempoPrep', 'tempoConf',
@@ -67,6 +74,7 @@ export function normalizarFicha(f: any): FichaTecnica {
     else if (v != null && typeof v !== 'string') out[campo] = String(v);
     else if (v == null) out[campo] = '';
   });
+  CAMPOS_TITULO.forEach(c => { if (typeof out[c] === 'string') out[c] = semPontoFinal(out[c]); });
   if (!Array.isArray(out.ingredientes) || out.ingredientes.length === 0) out.ingredientes = FICHA_VAZIA.ingredientes;
   if (!Array.isArray(out.preparacao) || out.preparacao.length === 0) out.preparacao = FICHA_VAZIA.preparacao;
   return out as FichaTecnica;
@@ -327,7 +335,7 @@ export function extrairFicha(texto: string): FichaTecnica {
     const extrair = (campo: string) => {
       const m = texto.match(new RegExp(`${campo}:\\s*(.+)`, 'i'));
       // Sem o ponto final que algumas IAs acrescentam («Bacalhau à Brás.»).
-      return m ? m[1].trim().replace(/([^.])\.$/, '$1').trim() : '';
+      return m ? semPontoFinal(m[1]) : '';
     };
 
     const nomeIA = extrair('NOME DO PRATO');
@@ -491,7 +499,7 @@ export function extrairFicha(texto: string): FichaTecnica {
     const equipamentoIA = texto.match(/EQUIPAMENTO NECESSÁRIO:\n([\s\S]*?)(?=\nCONSERVAÇÃO|\nREGENERAÇÃO|\nREGISTOS|$)/i)?.[1]?.trim() || '';
     const conservacaoIA = texto.match(/CONSERVAÇÃO:\n([\s\S]*?)(?=\nREGENERAÇÃO|\nREGISTOS|$)/i)?.[1]?.trim() || '';
     const regeneracaoIA = texto.match(/REGENERAÇÃO:\n([\s\S]*?)(?=\nREGISTOS|$)/i)?.[1]?.trim() || '';
-    const kitchenflowIA = texto.match(/REGISTOS KITCHENFLOW:\n([\s\S]*?)(?=\nTÉCNICAS|$)/i)?.[1]?.trim() || '';
+    const kitchenflowIA = texto.match(/REGISTOS KITCHENFLOW:\n([\s\S]*?)(?=\n\s*(?:SUB)?T[ÉE]CNICAS|\n\s*APARELHOS DETECTADOS|\n\s*PERGUNTAS DE AUTOAVALIA|\n\s*REGRA 10|$)/i)?.[1]?.trim() || '';
 
     // Extrair subtécnicas detectadas (SUB-xxx) — nova biblioteca V10
     const secSub = texto.match(/SUBTÉCNICAS DETECTADAS:\n([\s\S]*?)(?=\nAPARELHOS DETECTADOS:|\n---|$)/i)?.[1]?.trim() || '';

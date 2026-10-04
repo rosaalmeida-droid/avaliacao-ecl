@@ -15,7 +15,7 @@ export const config = { maxDuration: 60 };
 
 type Resultado = { texto?: string; limite?: boolean; auth?: boolean; erro?: string };
 
-async function chamarGemini(prompt: string, maxTokens: number, lerLinks = false): Promise<Resultado> {
+async function chamarGemini(prompt: string, maxTokens: number, lerLinks = false, pensar = false): Promise<Resultado> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { erro: 'sem_chave' };
   try {
@@ -24,7 +24,10 @@ async function chamarGemini(prompt: string, maxTokens: number, lerLinks = false)
       headers: { 'Content-Type': 'application/json' },
       // Com um link de receita, o Gemini pode abrir a página (url_context).
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], ...(lerLinks ? { tools: [{ url_context: {} }] } : {}),
-        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } } }),
+        // Com «pensar» (a ficha técnica), a IA pensa um pouco antes de escrever:
+        // sem isto as fichas saíam muito mais fracas do que no Gemini/Claude/ChatGPT
+        // abertos no navegador (Rosa, out/2026). Limitado para caber no minuto.
+        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: pensar ? 3000 : 0 } } }),
     });
     if (!resp.ok) {
       if (resp.status === 429) return { limite: true };
@@ -63,9 +66,9 @@ const MENSAGEM: Record<string, string> = {
   erro_api: 'A IA não respondeu. Tente outra vez daqui a pouco.',
 };
 
-async function pedir(prompt: string, maxTokens: number, lerLinks = false): Promise<{ ok: true; texto: string; fornecedor: string } | { ok: false; motivo: string; mensagem: string }> {
+async function pedir(prompt: string, maxTokens: number, lerLinks = false, pensar = false): Promise<{ ok: true; texto: string; fornecedor: string } | { ok: false; motivo: string; mensagem: string }> {
   const provedores: { nome: string; run: () => Promise<Resultado> }[] = [];
-  if (process.env.GEMINI_API_KEY) provedores.push({ nome: 'gemini', run: () => chamarGemini(prompt, maxTokens, lerLinks) });
+  if (process.env.GEMINI_API_KEY) provedores.push({ nome: 'gemini', run: () => chamarGemini(prompt, maxTokens, lerLinks, pensar) });
   if (process.env.OPENAI_API_KEY) provedores.push({ nome: 'openai', run: () => chamarOpenAI(prompt, maxTokens) });
   if (!provedores.length) return { ok: false, motivo: 'sem_chave', mensagem: MENSAGEM.sem_chave };
   let motivo = 'erro_api';
@@ -99,5 +102,5 @@ export default async function handler(req: any, res: any) {
   // Limite de tamanho: evita usos abusivos do endereço público.
   if (prompt.length > 120000) { res.status(413).json({ ok: false, motivo: 'corpo', mensagem: 'O pedido é demasiado grande.' }); return; }
   const maxTokens = Math.min(Number(body?.maxTokens) || 8192, 16000);
-  res.status(200).json(await pedir(prompt, maxTokens, !!body?.lerLinks));
+  res.status(200).json(await pedir(prompt, maxTokens, !!body?.lerLinks, !!body?.pensar));
 }
