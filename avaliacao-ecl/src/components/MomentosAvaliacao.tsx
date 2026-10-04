@@ -154,7 +154,7 @@ export function MomentosAvaliacao({ turmaId }: { turmaId: string }) {
                           <span style={{ flex: 1, fontSize: 13 }}>{aluno.nome || `Aluno ${aluno.numero}`}</span>
                           {nota > 0 ? (
                             <div style={{ textAlign: 'right' }}>
-                              <span style={{ fontWeight: 800, fontSize: 16, color: cor }}>{nota.toFixed(1)}</span>
+                              <span style={{ fontWeight: 800, fontSize: 16, color: cor }}>{nota.toFixed(1).replace('.', ',')}</span>
                               <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginLeft: 2 }}>/4</span>
                               <div style={{ fontSize: 13, fontWeight: 900, color: cor }}>{para20(nota)}<span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)' }}>/20</span></div>
                             </div>

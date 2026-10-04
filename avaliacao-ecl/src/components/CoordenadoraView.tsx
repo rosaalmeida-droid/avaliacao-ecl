@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
 import { Atividade, TipoAtividade, FichaProducao, PlanoAula } from '../types';
 import type { RegistoPresenca, PreviewReset } from '../backend';
-import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, definirNivelMedidas, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, lerTelemoveisDaTurma, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets, getHistoricoAvaliacoes, diagnostico } from '../backend';
+import { getTurmas, getAlunos, getValidacoes, getSelecoes, getComandas, getAtividades, addOrUpdateAtividade, getRecuperacoesPorTurma, getPerfilProfissionalAluno, alterarPinAluno, sincronizarAlunosDaSheet, save, definirNivelMedidas, getFichasProducao, getPlanosAulaPorTurma, getPresencas, descarregarCopiaSeguranca, previewResetInicioAno, resetInicioAnoLetivo, backupRecente , removerAlunoDaTurma, reporAlunoNaTurma, eliminarAlunoDefinitivo, alunosForaDasTurmas, libertarTelemovel, temTelemovelLigado, lerTelemoveisDaTurma, enviarTudoParaOSheets, oQueHaParaEnviar, testarLigacaoAoSheets, getHistoricoAvaliacoes, diagnostico, atrasoConta } from '../backend';
 import { Aluno } from '../types';
 import { construirHistorico, alertaEquilibrioModo, calcularProgressoUCs, calcularParticipacaoExtra } from '../progresso';
 import { UCS_COZINHA } from './PlanoAula';
@@ -277,7 +277,7 @@ function PresencasTab() {
                       display: 'flex', gap: 16, fontSize: 13 }}>
                       <span>📅 {porAluno[r.alunoId].length} aulas</span>
                       <span style={{ color: '#dc2626' }}>
-                        ⚠ {porAluno[r.alunoId].filter((h: RegistoPresenca) => h.atrasado).length} atrasos
+                        ⚠ {porAluno[r.alunoId].filter((h: RegistoPresenca) => atrasoConta(h, h.planoAulaId)).length} atrasos
                       </span>
                       <span style={{ color: '#dc2626' }}>
                         👔 {porAluno[r.alunoId].filter((h: RegistoPresenca) => h.fardamentoOk === false).length} fardamento incompleto

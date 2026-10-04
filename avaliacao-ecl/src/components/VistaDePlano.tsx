@@ -16,7 +16,7 @@ import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelat
 import { PlanoAula, FichaProducao } from '../types';
 import {
   addOrUpdatePlanoAula, getFichasProducao, addOrUpdateFichaProducao, getHistoricoAvaliacoes, getSelecoes, getValidacoes,
-  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula,
+  getRequisicaoPorPlano, getRequisicoesPorPlano, getAlunos, getPlanosAula, eliminarRequisicaoDefinitivamente, getPresencas, publicarNoClassroom , getSessaoAula, estadoTolerancia, abrirSessaoAula, SEM_ATRASOS_MIN,
   estadoDaTurmaNaAula, resumoDaTurmaNaAula,
   presencasPorDecidir, decidirFalta, LABEL_DECISAO,
   definirLiderKF, liderKFdoGrupo , requisicaoDesatualizada , publicarPlanoParaAlunos, respostasAntesDaAlteracao, pedirNovaAutoavaliacao, planoPorConfirmar, confirmarEReenviar, contextoDoPlano, subscreverEspera, atualizarPlano, resumoDoPlano, esperaDoPlano, reenviarPlanoJa, esquecerEsperaDoPlano } from '../backend';
@@ -1488,26 +1488,45 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                 conseguem marcar presença nem fazer registos. Quando abrir a aula, começam
                 a contar os dez minutos de tolerância.
               </div>
-              <button disabled={aAbrir} onClick={() => {
+              {/* Ao abrir, o professor diz se os atrasos contam (Rosa, out/2026):
+                  quando foi o professor a atrasar-se a enviar a aula, não contam. */}
+              {(() => {
+                const abrir = (contarAtrasos: boolean) => {
                   // Um clique só. Abrir não se repete: a hora de abertura é
                   // a primeira, e a tolerância conta a partir dela.
                   if (aAbrir) return;
                   setAAbrir(true);
                   // A turma do PLANO — é a que os alunos leem. A turma escolhida no
                   // menu pode ser outra, e os alunos nunca viam a aula aberta.
-                  abrirSessaoAula(plano.id, plano.turmaId || turmaId, nomeProfessor || 'professor');
+                  abrirSessaoAula(plano.id, plano.turmaId || turmaId, nomeProfessor || 'professor',
+                    contarAtrasos ? undefined : SEM_ATRASOS_MIN);
                   // Um objeto NOVO — com o mesmo, o ecrã não se redesenhava
                   // e o botão ficava à vista como se nada tivesse acontecido.
                   onPlanoActualizado?.({ ...plano });
                   setAcabouDeAbrir(true);
                   setTimeout(() => setAcabouDeAbrir(false), 6000);
-                }}
-                style={{ marginTop:12, width:'100%', padding:16, borderRadius:12, border:'none',
-                  background:'var(--copper)', color:'#fff', fontSize:17, fontWeight:700,
-                  cursor: aAbrir ? 'default' : 'pointer', fontFamily:'inherit',
-                  opacity: aAbrir ? 0.6 : 1 }}>
-                {aAbrir ? 'A abrir…' : eventoForaDoHorario(plano) ? 'Abrir a atividade agora' : 'Abrir a aula agora'}
-              </button>
+                };
+                const estilo = (principal: boolean): React.CSSProperties => ({ marginTop: 10, width: '100%', padding: 14, borderRadius: 12,
+                  border: principal ? 'none' : '1.5px solid var(--copper)', background: principal ? 'var(--copper)' : '#fff',
+                  color: principal ? '#fff' : 'var(--copper)', fontSize: 16, fontWeight: 700, cursor: aAbrir ? 'default' : 'pointer',
+                  fontFamily: 'inherit', opacity: aAbrir ? 0.6 : 1 });
+                return (
+                  <>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, marginTop: 12 }}>
+                      {eventoForaDoHorario(plano) ? 'Os atrasos contam nesta atividade?' : 'Os atrasos contam nesta aula?'}
+                    </div>
+                    <button disabled={aAbrir} onClick={() => abrir(true)} style={estilo(true)}>
+                      {aAbrir ? 'A abrir…' : 'Sim: abrir com 10 minutos de tolerância'}
+                    </button>
+                    <button disabled={aAbrir} onClick={() => abrir(false)} style={estilo(false)}>
+                      Não: abrir sem contar atrasos
+                    </button>
+                    <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.55)', marginTop: 6, lineHeight: 1.45 }}>
+                      Escolha «Não» quando o atraso não é dos alunos (por exemplo, se a aula foi enviada mais tarde).
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           );
         }
@@ -1541,7 +1560,8 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                       { hour:'2-digit', minute:'2-digit' })}
                   </div>
                   <div style={{ fontSize:13.5, color:'rgba(26,23,20,0.6)', marginTop:2 }}>
-                    {t.foraDeTempo
+                    {t.semAtrasos ? 'Nesta aula, os atrasos não contam.'
+                      : t.foraDeTempo
                       ? 'A tolerância terminou.'
                       : `Faltam ${t.minutosRestantes} min de tolerância.`}
                   </div>

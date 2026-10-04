@@ -1075,7 +1075,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
             Nota prevista desta aula
           </div>
           <div style={{ fontSize:26, fontWeight:800, color:'var(--sage)' }}>
-            {previsaoNota.nota20}<span style={{fontSize:14, fontWeight:600, opacity:0.6}}>/20</span>
+            {String(previsaoNota.nota20).replace(".", ",")}<span style={{fontSize:14, fontWeight:600, opacity:0.6}}>/20</span>
           </div>
         </div>
         <div style={{ fontSize:13, color:'rgba(26,23,20,0.65)', lineHeight:1.6 }}>
@@ -1217,7 +1217,7 @@ function ValidarSelecao({ selecao, planoTitulo, ucId, fichasNomes, fichas = [], 
               <div style={{ background:'rgba(90,122,78,0.08)', border:'1px solid var(--sage)',
                 borderRadius:12, padding:16, marginTop:16, textAlign:'center' }}>
                 <div style={{ fontSize:34, fontWeight:800, color:'var(--sage)' }}>
-                  {previsaoNota.nota20}<span style={{ fontSize:16, opacity:0.6 }}>/20</span>
+                  {String(previsaoNota.nota20).replace(".", ",")}<span style={{ fontSize:16, opacity:0.6 }}>/20</span>
                 </div>
                 <div style={{ fontSize:13, color:'rgba(26,23,20,0.6)', marginTop:4 }}>
                   {autoavaliacoes.length} competência{autoavaliacoes.length === 1 ? '' : 's'} avaliada{autoavaliacoes.length === 1 ? '' : 's'}

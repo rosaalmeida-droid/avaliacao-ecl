@@ -3531,6 +3531,8 @@ export function getPlanosFaltadosPorUC(alunoId: string, ucId: string, turmaId: s
     // aula aberta ele nem conseguia marcar presença. A responsabilidade é
     // do professor — só uma decisão explícita dele conta como falta.
     if (!getSessaoAula(plano.id)?.abertaEm) return false;
+    // Aula aberta depois do dia marcado: só uma decisão do professor conta.
+    if (aberturaTardia(plano.id)) return false;
     // Esteve na aula (mesmo atrasado) → não falta horas.
     if (registo?.presente) return false;
     return true;
@@ -3674,7 +3676,7 @@ export function faltasDaUC(alunoId: string, turmaId: string, ucId: string): Falt
         return;
       }
       const minutos = Number(reg.atrasadoMins) || 0;
-      if (reg.decisaoProfessor === 'falta_atraso' || minutos > 0 || reg.atrasado) {
+      if (atrasoConta(reg, p.id)) {
         out.push({ ...base, tipo: 'atraso',
           descricao: reg.decisaoProfessor === 'falta_atraso' ? 'Falta de atraso (decisão do professor)' : 'Chegou atrasado',
           horas: horasDoAtraso(reg, horasDoPlano(p)),
@@ -4318,8 +4320,10 @@ export function calcularBonusAssiduidadeUC(alunoId: string, turmaId: string, ucI
     if (decisao === 'falta_presenca') { faltas++; return; }
     if (!getSessaoAula(p.id)?.abertaEm && !decisao) return;
     if (decisao === 'falta_atraso') { atrasos++; return; }
+    // Aula aberta depois do dia: só conta o que o professor declarou.
+    if (aberturaTardia(p.id) && !decisao) return;
     if (!pres || pres.presente === false) { faltas++; return; }
-    if (decisao === 'falta_atraso' || (pres.atrasado && decisao !== 'sem_falta')) atrasos++;
+    if (atrasoConta(pres, p.id)) atrasos++;
     // Aula atitudinal não tem farda — não desconta.
     if (!pres.fardamentoOk && (p as any).tipoPlanAula !== 'atitudinal') fardaIncompleta++;
   });
@@ -5422,6 +5426,8 @@ export interface EstadoTolerancia {
   minutosRestantes: number;
   /** true depois de passado o limite — quem entrar agora fica atrasado. */
   foraDeTempo: boolean;
+  /** Nesta aula não há atrasos (aberta depois do dia, ou o professor assim o disse ao abrir). */
+  semAtrasos?: boolean;
 }
 
 /** Estado da janela de tolerância, num dado momento. */
@@ -5430,6 +5436,10 @@ export function estadoTolerancia(planoAulaId: string, agora = new Date()): Estad
   if (!s?.abertaEm) {
     return { aberta: false, minutosRestantes: 0, foraDeTempo: false };
   }
+  // Aula aberta depois do dia marcado (para os alunos se autoavaliarem):
+  // ninguém chega atrasado a uma aula que já passou (Rosa, out/2026).
+  if (aberturaTardia(planoAulaId) || (Number(s.toleranciaMin) || 0) >= SEM_ATRASOS_MIN)
+    return { aberta: true, abertaEm: s.abertaEm, minutosRestantes: 0, foraDeTempo: false, semAtrasos: true };
   const abertura = new Date(s.abertaEm);
   const limite = new Date(abertura.getTime() + s.toleranciaMin * 60000);
   const restam = Math.max(0, Math.ceil((limite.getTime() - agora.getTime()) / 60000));
@@ -5858,7 +5868,7 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
     .filter(p => {
       const dec = (presencas.find(r => r.planoAulaId === p.id) as any)?.decisaoProfessor;
       if (dec) return true;
-      return (p as any).contaAssiduidade !== false && !!getSessaoAula(p.id)?.abertaEm;
+      return (p as any).contaAssiduidade !== false && !!getSessaoAula(p.id)?.abertaEm && !aberturaTardia(p.id);
     });
   const selecoes = getSelecoes().filter(s => s.alunoId === alunoId);
 
@@ -5867,7 +5877,7 @@ export function assiduidadeNaUC(alunoId: string, turmaId: string, ucId?: string)
     const pres: any = presencas.find(p => p.planoAulaId === plano.id);
     if (pres?.presente || pres?.decisaoProfessor === 'sem_falta' || pres?.decisaoProfessor === 'falta_atraso') {
       comPresenca++;
-      if (pres.atrasado) atrasos++;
+      if (atrasoConta(pres, plano.id)) atrasos++;
       if (!selecoes.some(s => s.planoAulaId === plano.id)) semAuto++;
     }
     if (pres?.decisaoProfessor) comDecisao++;
@@ -7193,8 +7203,9 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
   // competências todas: um plano com o dobro das competências pesava o dobro.
   const faltadosPlanos = getPlanosFaltadosPorUC(alunoId, ucId, turmaId);
   const faltados = new Set(faltadosPlanos.map(p => p.id));
-  const planosUC = new Map(getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento)
-    .map(p => [p.id, p]));
+  // Só os planos que contam: publicados ou realizados (os arquivados não).
+  const planosUC = new Map(getPlanosAula().filter(p => p.ucId === ucId && p.turmaId === turmaId && !(p as any).tipoEvento
+    && p.estado !== 'arquivado').map(p => [p.id, p]));
   // Uma validação por aula: a mais recente. Quem respondeu duas vezes tinha
   // a mesma aula a contar duas vezes, com a nota antiga e a nova.
   const validacoesAluno = getValidacoes().filter((v: any) => v.alunoId === alunoId);
@@ -7202,6 +7213,13 @@ export function notaFinalUC(alunoId: string, turmaId: string, ucId: string): Not
     .filter(id => planosUC.has(id) && !faltados.has(id))
     .map(id => ({ nota: notaDaAulaValidada(validacaoDaAula(alunoId, id, validacoesAluno)), peso: pesoNoModulo(planosUC.get(id)) }))
     .filter((x): x is { nota: number; peso: number } => x.nota !== null);
+  // Aulas em que o aluno esteve e não se autoavaliou: contam 0 até se
+  // autoavaliar (Rosa, out/2026). Assim o aluno responsabiliza-se. Uma
+  // autoavaliação enviada e ainda por validar não conta (espera pelo professor).
+  for (const p of planosSemAutoavaliacao(alunoId, turmaId, ucId)) {
+    if (faltados.has(p.id)) continue;
+    notasAulas.push({ nota: 0, peso: pesoNoModulo(p) });
+  }
   const pesoAulas = notasAulas.reduce((s, x) => s + x.peso, 0);
   const base = pesoAulas ? notasAulas.reduce((s, x) => s + x.nota * x.peso, 0) / pesoAulas : null;
   const recup = notaRecuperacaoUC(alunoId, ucId) ?? 0;
@@ -9623,4 +9641,89 @@ let planosRapidos: { em: number; m: Map<string, PlanoAula> } | null = null;
 function planoPorIdRapido(id: string): PlanoAula | undefined {
   if (!planosRapidos || Date.now() - planosRapidos.em > 1000) planosRapidos = { em: Date.now(), m: new Map(getPlanosAula().map(p => [p.id, p])) };
   return planosRapidos.m.get(id);
+}
+
+/**
+ * Aulas da UC que já aconteceram, foram abertas pelo professor (ou em que o
+ * aluno marcou presença) e a que o aluno não respondeu: na nota da UC contam
+ * 0 até o aluno se autoavaliar (Rosa, out/2026). Não entram as aulas a que
+ * faltou (essas já contam 0 como falta), as arquivadas, as atividades extra
+ * e as aulas em que o professor disse que os alunos de uma atividade só
+ * respondem à atividade.
+ */
+export function planosSemAutoavaliacao(alunoId: string, turmaId: string, ucId?: string): PlanoAula[] {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const sels = getSelecoes();
+  const vals = getValidacoes();
+  const presencas = getPresencas().filter(r => r.alunoId === alunoId);
+  return getPlanosAula().filter(p => p.turmaId === turmaId && (!ucId || p.ucId === ucId)
+    && !(p as any).tipoEvento && (p.estado === 'publicado' || p.estado === 'realizada')
+    && aulaJaAconteceu(p, hoje))
+    .filter(p => {
+      const pres: any = presencas.find(r => r.planoAulaId === p.id);
+      if (pres?.decisaoProfessor === 'falta_presenca') return false;
+      const esteve = !!pres?.presente || ['sem_falta', 'falta_atraso', 'parcial'].includes(pres?.decisaoProfessor);
+      if (!esteve && !getSessaoAula(p.id)?.abertaEm) return false;
+      const partes = partesDoPlanoParaOAluno(p, alunoId);
+      if (!partes.tecnicas && !partes.conhecimentos && !partes.atitudes) return false;
+      if (ultimaResposta(alunoId, p.id, sels)) return false;
+      return !vals.some((v: any) => v.alunoId === alunoId && v.planoAulaId === p.id);
+    });
+}
+
+/**
+ * A aula foi aberta num dia posterior ao do plano (por exemplo, para os
+ * alunos se autoavaliarem depois). Nessas aulas, a aplicação não marca
+ * atrasos nem faltas sozinha: só conta o que o professor declarou nas
+ * presenças (Rosa, out/2026).
+ */
+export function aberturaTardia(planoAulaId: string): boolean {
+  const s = getSessaoAula(planoAulaId);
+  const p: any = planoPorIdRapido(planoAulaId);
+  if (!s?.abertaEm || !p?.data) return false;
+  const diaAbertura = new Date(s.abertaEm).toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' });
+  return diaAbertura > String(p.data).slice(0, 10);
+}
+
+// ── Email da escola do aluno (Rosa, out/2026) ─────────────────
+// Pedido logo na entrada, obrigatório: serve para os avisos de
+// autoavaliação em falta (o script do Sheets envia-os às 18h).
+export const RE_EMAIL_ESCOLA = /^[a-z0-9._%+-]+@eclisboa\.net$/i;
+const chaveEmail = (alunoId: string) => 'ecl_email_aluno_' + alunoId;
+
+export function emailDoAluno(alunoId: string): string {
+  try { return localStorage.getItem(chaveEmail(alunoId)) || ''; } catch { return ''; }
+}
+
+export function registarEmailDoAluno(aluno: Aluno, email: string): boolean {
+  const e = email.trim().toLowerCase();
+  if (!RE_EMAIL_ESCOLA.test(e)) return false;
+  try { localStorage.setItem(chaveEmail(aluno.id), e); } catch { /* sem espaço: volta a pedir */ }
+  enviar(SHEETS_ECL_URL, 'email_aluno', { alunoId: aluno.id, turmaId: aluno.turmaId, numero: aluno.numero, nome: aluno.nome || '',
+    email: e, atualizadoEm: new Date().toISOString() } as any);
+  return true;
+}
+
+/**
+ * Este registo de presença conta como atraso? (Rosa, out/2026)
+ * - o professor declarou «falta de atraso»: conta;
+ * - o professor declarou «sem falta»: não conta;
+ * - sem decisão: conta a entrada depois da tolerância, exceto nas aulas
+ *   abertas depois do dia do plano (aí só conta o que o professor registou)
+ *   e nas aulas em que o professor disse, ao abrir, que os atrasos não contam.
+ */
+export function atrasoConta(pres: any, planoAulaId: string): boolean {
+  if (!pres) return false;
+  if (pres.decisaoProfessor === 'falta_atraso') return true;
+  if (pres.decisaoProfessor) return false;
+  if (!pres.atrasado) return false;
+  if (aberturaTardia(planoAulaId)) return false;
+  return atrasosContamNaAula(planoAulaId);
+}
+
+/** Tolerância que quer dizer «nesta aula os atrasos não contam» (24 horas). */
+export const SEM_ATRASOS_MIN = 1440;
+export function atrasosContamNaAula(planoAulaId: string): boolean {
+  const s = getSessaoAula(planoAulaId);
+  return !s || (Number(s.toleranciaMin) || 0) < SEM_ATRASOS_MIN;
 }

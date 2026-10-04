@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import type { PlanoAula } from '../types';
 import {
-  getPlanosAulaPorTurma, getSessaoAula, abrirSessaoAula, fecharSessaoAula,
+  getPlanosAulaPorTurma, getSessaoAula, abrirSessaoAula, fecharSessaoAula, SEM_ATRASOS_MIN,
   publicarPlanoParaAlunos, getPresencas, getAlunos,
 } from '../backend';
 import { confirmarTurmaAoPublicar } from '../professores';
@@ -40,7 +40,7 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
     .sort((a, b) => dia(b).localeCompare(dia(a)));
   const nAlunos = getAlunos().filter(a => a.turmaId === turmaId && a.ativo !== false).length;
 
-  async function abrir(p: PlanoAula) {
+  async function abrir(p: PlanoAula, contarAtrasos = true) {
     if (aTratar) return;
     setATratar(p.id);
     try {
@@ -51,7 +51,7 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
         registarVersaoEnviada(p.id);
         publicarPlanoParaAlunos(p.id);
       }
-      abrirSessaoAula(p.id, p.turmaId || turmaId, nomeProfessor || 'professor');
+      abrirSessaoAula(p.id, p.turmaId || turmaId, nomeProfessor || 'professor', contarAtrasos ? undefined : SEM_ATRASOS_MIN);
       redesenhar(n => n + 1);
     } finally { setATratar(null); redesenhar(n => n + 1); }
   }
@@ -79,11 +79,22 @@ export function AbrirAulas({ turmaId, nomeProfessor }: { turmaId: string; nomePr
           </div>
         </div>
 
+        {/* Aula de hoje: o professor diz se os atrasos contam (Rosa, out/2026). */}
+        {!aberta && !fechada && !passada && (
+          <div style={{ fontSize: 14.5, fontWeight: 700, marginTop: 12 }}>Os atrasos contam nesta aula?</div>
+        )}
+        {!aberta && !fechada && !passada && (
+          <button onClick={() => abrir(p, false)} disabled={!!aTratar} style={{ width: '100%', minHeight: 50, marginTop: 8, borderRadius: 14,
+            border: `1.5px solid ${C.bordeaux}`, background: '#fff', color: C.bordeaux, fontSize: 16, fontWeight: 700,
+            cursor: aTratar ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+            Não: abrir sem contar atrasos
+          </button>
+        )}
         {!aberta && !fechada && (
           <button onClick={() => abrir(p)} disabled={!!aTratar} style={{ width: '100%', minHeight: 60, marginTop: 14, borderRadius: 14, border: 'none',
             background: C.bordeaux, color: '#fff', fontSize: 18, fontWeight: 800, cursor: aTratar ? 'default' : 'pointer', fontFamily: 'inherit',
             opacity: aTratar && !ocupado ? 0.5 : 1, boxShadow: '0 4px 14px rgba(123,34,51,0.25)' }}>
-            {ocupado ? 'A abrir…' : p.estado !== 'publicado' ? 'Publicar e abrir aos alunos' : passada ? 'Abrir para os alunos se autoavaliarem' : 'Abrir a aula aos alunos'}
+            {ocupado ? 'A abrir…' : passada ? 'Abrir para os alunos se autoavaliarem' : p.estado !== 'publicado' ? 'Sim: publicar e abrir, com 10 minutos de tolerância' : 'Sim: abrir com 10 minutos de tolerância'}
           </button>
         )}
 

@@ -8,6 +8,7 @@ import { PassoGrupo, AvaliarColegas, configGrupos } from './GruposAluno';
 import { PrecosConsulta } from './EventosOrcamentos';
 import { grupoDoAluno, marcarTemaNoGrupo, temasDosColegas, getPlanosFaltadosPorUC, bonusPorAtividade, type BonusDaAtividade } from '../backend';
 import { ModalFullscreen } from './ModalFullscreen';
+import { PedirEmailEscola } from './PedirEmailEscola';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano, rotuloDoPlano } from '../rotuloPlano';
 
@@ -35,7 +36,7 @@ import {
   addAviso, getAtividades, inscreverEmAtividade, registarBalancoAtividade,
   getSessaoAula, estadoTolerancia, podeRegistar, marcarPresenca,
   ehLiderKF, liderKFdoGrupo, getAlunos, sincronizarSessoes,
-  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade } from '../backend';
+  situacaoRecuperacaoUC, getNotaFinalPublicadaUC, previsaoNota , emailDoAluno, planosSemAutoavaliacao, leituraDePlanosFalhou , vigiarAlteracoes , diagnosticoDetalhado, type CausaAulaEmFalta , aparelhoSemEspaco, pedirAjudaAoProfessor, validacaoDaSelecao, ultimaResposta, reabertaPorResponder, aulaDoDiaDaAtividade, partesDoPlanoParaOAluno, atitudesNoPlanoDaTurma, selecaoJaValidada, notaFinalUC, eventoForaDoHorario, modoParticipacao, notaDaAulaValidada, calculoDaAulaValidada, validacaoDaAula, contaNaNotaDaAula, contextoDoPlano, participantesDoEvento, eventosComoAtividades, inscreverNoEvento, selecaoPorConfirmar, confirmarEReenviar, ucsARecuperarDoAluno, candidatarParaRecuperar, candidatosARecuperar, recuperaNaAtividade } from '../backend';
 import {
   MICROCOMPETENCIAS, ATITUDES, OBRIGATORIAS, PARAMETROS_AVALIACAO,
   microsPorUC, microsPorFamilia, jaTeveSucesso, estaEmRegressao,
@@ -575,7 +576,14 @@ function jaSubmeteuAutoavaliacao(plano: any, alunoId: string): boolean {
   } catch { return false; }
 }
 
-export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
+/** O email da escola é obrigatório: sem ele, o aluno não passa deste ecrã (Rosa, out/2026). */
+export function AlunoView(props: { aluno: Aluno; versaoDados?: number }) {
+  const [temEmail, setTemEmail] = React.useState(() => !!emailDoAluno(props.aluno.id));
+  if (!temEmail) return <PedirEmailEscola aluno={props.aluno} onFeito={() => setTemEmail(true)} />;
+  return <AlunoViewInterno {...props} />;
+}
+
+function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
   const [planoAtivo, setPlanoAtivo] = useState<PlanoAula | null>(null);
   /** Atividade aberta só para ver (o aluno não esteve nela). */
   const [planoConsulta, setPlanoConsulta] = useState<PlanoAula | null>(null);
@@ -734,6 +742,13 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
   const historicoAluno = getHistoricoAluno(aluno.id);
   const planoHoje = planos.find(p => isHoje(p.data));
+  // O KitchenFlow, sempre à mão (barra de navegação e Recursos): com a aula de hoje, se houver.
+  const abrirKFAluno = () => abrirKitchenFlow(undefined, {
+    turma: aluno.turmaId, numero: aluno.numero, pin: aluno.pin, tipo: 'aluno',
+    ...(planoHoje ? { ucId: planoHoje.ucId, ucNome: (planoHoje as any).ucNome, planoData: planoHoje.data,
+      planoHoraInicio: planoHoje.horaInicio, planoHoraFim: planoHoje.horaFim,
+      pratos: getFichasPorPlano(planoHoje.id).map((f: any) => f.nomePrato).filter(Boolean) } : {}),
+  } as any);
   const proximasAulas = planos.filter(p => isFuturo(p.data)).sort((a,b) => a.data.localeCompare(b.data)).slice(0, 5);
   const aulasPassadas = planos.filter(p => !isFuturo(p.data) && !isHoje(p.data)).sort((a,b) => b.data.localeCompare(a.data)).slice(0, 5);
 
@@ -954,7 +969,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
           titulo: t.foraDeTempo ? 'Ainda não entraste na aula' : 'Entrada aberta',
           detalhe: t.foraDeTempo
             ? 'Regista a entrada na mesma: é o professor quem decide se há falta.'
-            : `Faltam ${t.minutosRestantes} min de tolerância.`,
+            : t.semAtrasos ? 'Regista a tua entrada na aula.' : `Faltam ${t.minutosRestantes} min de tolerância.`,
           destino: 'entrar',
           urgente: t.foraDeTempo,
         });
@@ -1040,18 +1055,15 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       });
     }
 
-    // Aulas passadas em que esteve e não se autoavaliou.
-    const semAuto = planosOrdenados.filter(p =>
-      p.data < hojeISO &&
-      getPresencas().some(x => x.alunoId === aluno.id && x.planoAulaId === p.id) &&
-      !getSelecoes().some(s => s.alunoId === aluno.id && s.planoAulaId === p.id)
-    );
+    // Aulas em que esteve e não se autoavaliou: as mesmas que contam 0 na nota da UC.
+    const idsSemAuto = new Set(planosSemAutoavaliacao(aluno.id, aluno.turmaId).map(p => p.id));
+    const semAuto = planosOrdenados.filter(p => idsSemAuto.has(p.id));
     aulasPorAutoavaliar.current = [...aulasPorAutoavaliar.current, ...semAuto.filter(p => !aulasPorAutoavaliar.current.includes(p))];
     if (semAuto.length > 0) {
       av.push({
         id: 'autoavaliacao',
         titulo: 'A tua voz conta: autoavalia-te',
-        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua opinião. Quando te autoavalias, mostras ao professor o que fizeste bem, e o professor tem isso em conta. Leva 2 minutos.`,
+        detalhe: `${semAuto.length} aula${semAuto.length > 1 ? 's' : ''} à espera da tua autoavaliação. Enquanto não te autoavaliares, cada uma conta 0 na tua nota da UC. Leva 2 minutos.`,
         destino: 'autoavaliar_pendente' as any,
         urgente: true,
       });
@@ -1137,7 +1149,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>Validada pelo professor</div>
                 </div>
                 <div style={{ marginLeft:'auto', fontFamily:'var(--font-display)', fontSize:34, fontWeight:900, color:cor, lineHeight:1 }}>
-                  {nota20}<span style={{ fontSize:18 }}>/20</span>
+                  {String(nota20).replace(".", ",")}<span style={{ fontSize:18 }}>/20</span>
                 </div>
               </div>
             );
@@ -1541,11 +1553,13 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 recuperacao={recuperacaoAtividades}
                 onBalanco={(id, p, r) => { registarBalancoAtividade(id, aluno.id, p, r); setRefreshAtiv(n => n + 1); }} />
             )}
-            {(destino === 'fichas' || destino === 'guiao' || destino === 'kitchenflow') && (
-              <div style={{ padding:20, textAlign:'center', color:'#777', fontSize:15 }}>
-                {planoHoje
-                  ? 'Abre estes materiais a partir da aula de hoje.'
-                  : 'Hoje não tens aula. Estes materiais ficam disponíveis quando houver aula.'}
+            {(destino === 'fichas' || destino === 'guiao') && (
+              <RecursosDaTurma aluno={aluno} modo={destino} />
+            )}
+            {destino === 'kitchenflow' && (
+              <div style={{ padding:20, textAlign:'center' }}>
+                <button onClick={abrirKFAluno} style={{ padding:'14px 20px', borderRadius:12, border:'none', background:'#2F7D6B',
+                  color:'#fff', fontSize:16, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>Abrir o KitchenFlow</button>
               </div>
             )}
           </div>
@@ -1582,9 +1596,9 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               </div>
               {([
                 ['manual', 'Manual da unidade', 'em leitura'],
-                ['fichas', 'As minhas fichas', 'da aula de hoje'],
-                ['guiao', 'Guiões de produção', 'apoio às fichas'],
-                ['kitchenflow', 'KitchenFlow', 'registos de higiene'],
+                ['fichas', 'Fichas técnicas', 'todas as das aulas da turma'],
+                ['guiao', 'Guiões de produção', 'de apoio às fichas técnicas'],
+                ['kitchenflow', 'KitchenFlow', 'registos de higiene e segurança alimentar'],
                 ['precos', 'Preços das matérias-primas', 'quanto custa cada produto'],
               ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
                 <button key={d} onClick={() => setDestino(d)} style={{
@@ -1606,7 +1620,7 @@ export function AlunoView({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       </div>
 
       {/* Navegação permanente — igual dentro e fora da aula. */}
-      <NavegacaoAluno ativo={aba} onNavegar={(s) => { setAba(s); setDestino(null); }} />
+      <NavegacaoAluno ativo={aba} onNavegar={(s) => { setAba(s); setDestino(null); }} onKitchenFlow={abrirKFAluno} />
     </div>
   );
 }
@@ -1704,7 +1718,10 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = f
     ...(comGrupos ? [{ id:'grupo', label:'Estou num grupo', agora:'O meu grupo', cor:V }] : []),
     // A função de cada um (plano organizacional): o que fazer antes de produzir.
     ...(minhasFuncoes.some(f => f.inicio.length) ? [{ id:'funcao_inicio', label:'Fiz a minha função (início)', agora:'A tua função: início', cor:V }] : []),
-    { id:'ficha',      label:'Produzi',                    agora:'Produzir',         cor:V },
+    // Numa aula teórica não há produção: o passo é o trabalho da aula.
+    String((plano as any).tipoPlanAula || '') === 'teorico'
+      ? { id:'ficha', label:'Fiz o trabalho da aula', agora:'O trabalho da aula', cor:V }
+      : { id:'ficha', label:'Produzi', agora:'Produzir', cor:V },
     ...(fichas.some((f:any) => f.textoGuia)
       ? [{ id:'guia', label:'Consultei o guião', agora:'Ver o guião', cor:V }] : []),
     // A requisição é do professor: o aluno só a consulta, e só se existir.
@@ -1727,7 +1744,8 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = f
     if (id==='guia' && guiaoConcluido) return 'concluido';
     if (id==='requisicao' && requisicao) return 'concluido';
     if (id==='funcao_fim' && funcaoFimFeita) return 'concluido';
-    if (id==='avaliacao' && avaliacaoConcluida) return 'concluido';
+    // Também quando a resposta chegou depois de o ecrã abrir (ou já foi validada).
+    if (id==='avaliacao' && (avaliacaoConcluida || jaSubmeteuAutoavaliacao(plano, aluno.id) || !!validacaoDaAula(aluno.id, plano.id))) return 'concluido';
     if (id===secAberta) return 'ativo';
     return 'pendente';
   };
@@ -2397,7 +2415,7 @@ function SecaoEntrada({ aluno, plano, onConcluido }: {
           <div style={{ fontSize:17, fontWeight:700, color: t.foraDeTempo ? '#B5651D' : '#3E7A31' }}>
             {t.foraDeTempo ? 'A tolerância terminou' : 'Entrada aberta'}
           </div>
-          {!t.foraDeTempo && (
+          {!t.foraDeTempo && !t.semAtrasos && (
             <div style={{ fontSize:38, fontWeight:700, color:'#3E7A31', marginTop:8, lineHeight:1 }}>
               {t.minutosRestantes} <span style={{ fontSize:16, fontWeight:400 }}>min</span>
             </div>
@@ -3363,9 +3381,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
               // A validação tem de ser desta resposta (ou de uma mais recente):
               // depois de responder outra vez, a validação antiga já não é desta
               // resposta, e dizia «já validou» ao lado de «A enviar…» (Rosa, out/2026).
-              const minha = getSelecoes().find(s => s.id === `sel_${plano.id}_${aluno.id}`);
-              const v = minha ? validacaoDaSelecao(minha) : undefined;
-              if (v && quandoFoi((v as any).validadoEm) >= quandoFoi(minha!.criadaEm)) return 'O professor já validou. A nota desta aula está no topo.';
+              // A resposta pode ter outro identificador (versões antigas): procura-se
+              // também pela aula. Dizia «vai confirmar» com «Professor confirmou» logo abaixo.
+              const minha = getSelecoes().find(s => s.id === `sel_${plano.id}_${aluno.id}`) || ultimaResposta(aluno.id, plano.id);
+              const v = (minha ? validacaoDaSelecao(minha) : undefined) || validacaoDaAula(aluno.id, plano.id);
+              if (v && (!minha || quandoFoi((v as any).validadoEm) >= quandoFoi(minha.criadaEm))) return 'O professor já validou. A nota desta aula está mais abaixo.';
               if (v) return 'O professor tinha validado a tua resposta anterior. Esta resposta nova vai ser validada outra vez.';
               return 'O professor vai confirmar o teu registo.';
             })()}
@@ -3415,7 +3435,11 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
           const val: any = validacaoDaAula(aluno.id, plano.id);
           const calculo = val ? calculoDaAulaValidada(val) : null;
           if (val && calculo) {
-            const { nota20, detalhes } = calculo;
+            const { nota20, porCategoria } = calculo;
+            // Por extenso, para o aluno: «KNW: 12/20 | ATI: 5/20» eram códigos.
+            const NOME_PARTE: Record<string, string> = { OBR: 'Farda e registos', SUB: 'Técnicas', KNW: 'Conhecimentos', ATI: 'Atitudes', INI: 'Iniciativa' };
+            const detalhes = Object.entries(porCategoria || {})
+              .map(([c, n]) => `${NOME_PARTE[c] || c}: ${String(n).replace('.', ',')}/20`).join(' · ');
             const cor = nota20 >= 17 ? '#0369a1' : nota20 >= 12 ? '#5a7a4e' : nota20 >= 8 ? '#b5651d' : '#c0392b';
             const label = classificacao20(nota20);
 
@@ -3450,14 +3474,13 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
                   </div>
                 ))}
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{nota20}</span>
+                  <span style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:900, color:cor }}>{String(nota20).replace('.', ',')}</span>
                   <span style={{ fontSize:14, color:'rgba(26,23,20,0.4)' }}>/20</span>
                   <span style={{ marginLeft:'auto', fontSize:14, fontWeight:700, color:cor }}>{label}</span>
                 </div>
                 {detalhes && (
                   <div style={{ marginTop:10, fontSize:12.5, color:'rgba(26,23,20,0.45)',
-                    padding:'6px 10px', borderRadius:8, background:'rgba(26,23,20,0.03)',
-                    fontFamily:'monospace' }}>
+                    padding:'6px 10px', borderRadius:8, background:'rgba(26,23,20,0.03)' }}>
                     {detalhes}
                   </div>
                 )}
@@ -3506,17 +3529,16 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
             termine sabendo como esta aula contribui para a unidade,
             não só a nota isolada. */}
         {(() => {
-          const historico = getHistoricoAvaliacoes().filter((r: any) =>
-            r.alunoId === aluno.id && r.ucId === plano.ucId && r.validadoPor === 'professor'
-          );
-          if (!historico.length) return null;
-          const media = historico.reduce((s: number, r: any) => s + r.nota, 0) / historico.length;
-          const nota20 = Math.round(nivelPara20(media) * 10) / 10;
+          // A mesma conta das «Notas da UC» e do Sheets (notaFinalUC). Era uma média
+          // simples das competências, que não batia com a nota da UC (Rosa, out/2026).
+          const n = plano.ucId ? notaFinalUC(aluno.id, aluno.turmaId, plano.ucId) : null;
+          if (!n || n.final == null) return null;
+          const nota20 = n.final;
           return (
             <div style={{ background:'#6B3FA0', borderRadius:14, padding:16, marginTop:12 }}>
               <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.06em',
                 textTransform:'uppercase', color:'#DCCFF0', marginBottom:6 }}>
-                Progressão na UC
+                A tua nota na UC até agora
               </div>
               <div style={{ display:'flex', alignItems:'baseline', gap:7 }}>
                 <span style={{ fontSize:28, fontWeight:700, color:'#fff' }}>
@@ -4372,5 +4394,59 @@ function SecaoAvaliacao({ plano, aluno, fichas, onConcluido, abrirLogo }: {
       )}
     </div>
     </EcraCheio>
+  );
+}
+
+// ── Recursos: as fichas técnicas e os guiões de todas as aulas da turma ──
+// (Rosa, out/2026: «os recursos não têm nada»). Só para consulta: as aulas
+// publicadas da turma e as atividades em que o aluno participou, da mais
+// recente para a mais antiga.
+function RecursosDaTurma({ aluno, modo }: { aluno: Aluno; modo: 'fichas' | 'guiao' }) {
+  const [aberto, setAberto] = useState<string | null>(null);
+  const aulas = getPlanosAulaPorTurma(aluno.turmaId)
+    .filter(p => p.estado === 'publicado' || p.estado === 'realizada')
+    .filter(p => !(p as any).tipoEvento || participantesDoEvento(p as any).includes(aluno.id))
+    .map(p => ({ p, fichas: getFichasPorPlano(p.id).filter((f: any) => modo === 'guiao' ? !!f.textoGuia : true) }))
+    .filter(x => x.fichas.length > 0)
+    .sort((a, b) => String(b.p.data || '').localeCompare(String(a.p.data || '')));
+  const atual = aulas.find(x => x.p.id === aberto);
+  if (atual) {
+    return (
+      <div style={{ padding: '0 10px 24px' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, padding: '4px 6px 8px' }}>
+          {rotuloDoPlano(atual.p)}
+        </div>
+        {modo === 'fichas'
+          ? <SecaoFichas fichas={atual.fichas} plano={atual.p} aluno={aluno} onConcluido={() => setAberto(null)} />
+          : <SecaoGuiao fichas={atual.fichas} plano={atual.p} onConcluido={() => setAberto(null)} />}
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: '4px 14px 24px', maxWidth: 620, margin: '0 auto' }}>
+      <div style={{ fontSize: 13.5, color: '#777', marginBottom: 10, lineHeight: 1.5 }}>
+        {modo === 'fichas'
+          ? 'As fichas técnicas das aulas da tua turma, da mais recente para a mais antiga. Toca numa aula para ver as fichas.'
+          : 'Os guiões de apoio às fichas técnicas das aulas da tua turma. Toca numa aula para ver o guião.'}
+      </div>
+      {!aulas.length && (
+        <div style={{ padding: 20, textAlign: 'center', color: '#777', fontSize: 15 }}>
+          {modo === 'fichas' ? 'Ainda não há fichas técnicas nas aulas da tua turma.' : 'Ainda não há guiões nas aulas da tua turma.'}
+        </div>
+      )}
+      {aulas.map(({ p, fichas }) => (
+        <button key={p.id} onClick={() => setAberto(p.id)} style={{ width: '100%', background: '#fff', border: 'none', borderRadius: 14,
+          padding: '13px 16px', marginBottom: 9, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', fontSize: 13, color: '#777' }}>{rotuloDoPlano(p)}</span>
+            <span style={{ display: 'block', fontSize: 15.5, fontWeight: 700, color: '#1A1A1A', marginTop: 2 }}>
+              {fichas.map((f: any) => f.nomePrato).filter(Boolean).join(' · ') || 'Ficha técnica'}
+            </span>
+          </span>
+          <span style={{ color: '#777', fontSize: 20 }}>›</span>
+        </button>
+      ))}
+    </div>
   );
 }
