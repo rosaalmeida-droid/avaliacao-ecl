@@ -34,7 +34,8 @@ export function EtiquetaLigacaoPlano({ planoAulaId, fichaId, sobreEscuro = false
   return (
     <div style={{ fontSize: 12.5, color: sobreEscuro ? 'rgba(255,255,255,0.85)' : 'var(--sage)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
       <span>🔗</span>
-      <span>Ligada a: {plano.titulo || plano.data || plano.id.slice(0, 8)}</span>
+      {/* As datas à portuguesa: «Aula prática — 2026-10-01» → «… — 01/10/2026». */}
+      <span>Ligada a: {String(plano.titulo || plano.data || plano.id.slice(0, 8)).replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3/$2/$1')}</span>
     </div>
   );
 }

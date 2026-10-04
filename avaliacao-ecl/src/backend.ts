@@ -2649,7 +2649,15 @@ export function getFichasProducao(): FichaProducao[] {
   // (ex: "00:00:00" — gravado antes da correção do Apps Script que tratava
   // objetos Date incorretamente). Não altera o que já está correto.
   let mudou = false;
-  const corrigidas = fichas.map(f => {
+  // O ponto final que a IA deixava nos títulos («Bacalhau à Brás.», «Peixe.»)
+  // sai também das fichas já guardadas (Rosa, out/2026).
+  const semPonto = (t: any) => typeof t === 'string' ? t.trim().replace(/([^.])\.$/, '$1').trim() : t;
+  const corrigidas = fichas.map(f0 => {
+    let f = f0;
+    for (const c of ['nomePrato', 'classificacao', 'tempoPrep', 'tempoConf'] as const) {
+      const v = (f as any)[c];
+      if (typeof v === 'string' && semPonto(v) !== v) { f = { ...f, [c]: semPonto(v) }; mudou = true; }
+    }
     const dataRaw = (f.data || '').trim();
     const pareceSoHora = /^\d{1,2}:\d{2}(:\d{2})?$/.test(dataRaw);
     if (pareceSoHora) {

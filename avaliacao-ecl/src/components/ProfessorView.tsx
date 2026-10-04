@@ -2568,7 +2568,8 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         {fichasParaMostrar.length > 0 && (
           <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>
             {fichasParaMostrar.length} ficha{fichasParaMostrar.length!==1?'s':''}
-            {mostrarBibliotecaCompleta ? ' em toda a aplicação: clique numa ficha para a associar a este plano' : fichasParaMostrar.length !== 1 ? ' associadas a este plano' : ' associada a este plano'}.
+            {/* Nos Orçamentos não há plano: são as fichas todas (Rosa, out/2026). */}
+            {!planoId ? '' : mostrarBibliotecaCompleta ? ' em toda a aplicação: clique numa ficha para a associar a este plano' : fichasParaMostrar.length !== 1 ? ' associadas a este plano' : ' associada a este plano'}.
           </div>
         )}
 
