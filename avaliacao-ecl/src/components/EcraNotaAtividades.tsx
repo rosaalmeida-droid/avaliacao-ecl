@@ -9,6 +9,7 @@
 
 import React, { useState } from 'react';
 import { Atividade } from '../types';
+import { fmtDataLonga, fmtDataCurta } from '../datas';
 
 const C = {
   fundo: '#F3F2F5', branco: '#FFFFFF',
@@ -163,7 +164,7 @@ export function EcraMinhaNota({
             <div style={{ fontSize: 14, fontWeight: 600, color: C.tinta, marginBottom: 10 }}>Como chegaste a esta nota</div>
             {aulas.map(a => (
               <div key={'a' + a.numero + a.titulo} style={{ display: 'flex', gap: 10, padding: '6px 0', borderBottom: '1px solid #F0EDF2', fontSize: 14 }}>
-                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Aula {a.numero} · {a.titulo} <span style={{ color: '#999' }}>· {a.data}</span></span>
+                <span style={{ flex: 1, minWidth: 0, color: C.texto }}>Aula {a.numero} · {a.titulo} <span style={{ color: '#999' }}>· {fmtDataCurta(a.data)}</span></span>
                 <span style={{ fontWeight: 700, color: a.nota20 < 10 ? C.ambar : C.tinta }}>{fmt(a.nota20)}</span>
               </div>
             ))}
@@ -315,7 +316,7 @@ export function EcraAtividades({
         {a.titulo}
       </div>
       <div style={{ fontSize: 14, color: C.texto, marginTop: 5 }}>
-        {a.data}
+        {fmtDataLonga(a.data)}
         {a.horaInicio && ` · ${a.horaInicio}${a.horaFim ? `–${a.horaFim}` : ''}`}
         {a.local && ` · ${a.local}`}
       </div>
@@ -346,9 +347,11 @@ export function EcraAtividades({
         <div style={{ ...painel, padding: 15, marginBottom: 16, fontSize: 14.5,
           color: C.texto, lineHeight: 1.6 }}>
           Participar não é obrigatório, mas conta para a tua nota. Cada
-          evento pode subir-te 0,5 valores e cada concurso 0,75 — mesmo que
-          não ganhes. Para contar, tens de ir de farda e dar tudo. Sem ires
-          a um concurso, a nota não passa de 18.
+          evento pode subir-te 0,5 valores. Cada concurso pode subir-te até
+          1 valor: 0,2 por te candidatares (mesmo que não sejas escolhido),
+          0,2 por participares, 0,2 por cada fase que passares e, se ganhares,
+          o que falta para 1. Para contar, tens de ir de farda e dar o teu melhor. Se não
+          participares em nenhum concurso, a nota não passa de 18.
         </div>
 
         {/* Em recuperação: candidatar-se a recuperar numa atividade (Rosa, out/2026). */}
@@ -506,7 +509,7 @@ export function EcraAtividades({
                 </svg>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, color: C.tinta }}>{a.titulo}</div>
-                  <div style={{ fontSize: 13, color: C.suave }}>{a.data}</div>
+                  <div style={{ fontSize: 13, color: C.suave }}>{fmtDataLonga(a.data)}</div>
                 </div>
               </div>
             ))}

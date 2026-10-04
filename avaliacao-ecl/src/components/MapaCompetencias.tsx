@@ -49,7 +49,7 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>{consolidadas}/{total} competências consolidadas</div>
+                <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.5)' }}>{total ? `${consolidadas}/${total} competências consolidadas` : 'Ainda sem competências avaliadas'}</div>
               </div>
               <span style={{ fontSize: 13, color: 'var(--copper)' }}>{aberto ? '▲' : '▼'}</span>
             </button>
@@ -57,7 +57,7 @@ export function MapaCompetencias({ turmaId }: { turmaId: string }) {
             {aberto && (
               <ModalFullscreen
                 titulo={a.nome || `Aluno ${a.numero}`}
-                subtitulo={`${consolidadas}/${total} competências consolidadas`}
+                subtitulo={total ? `${consolidadas}/${total} competências consolidadas` : 'Ainda sem competências avaliadas'}
                 onFechar={() => setAlunoAberto(null)}
               >
                 <div style={{ marginBottom: 12, padding: 10, background: 'var(--cream-dark)', borderRadius: 8 }}>

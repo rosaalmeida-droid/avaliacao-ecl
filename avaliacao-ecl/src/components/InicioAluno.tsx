@@ -35,7 +35,7 @@ export type DestinoAluno =
   | 'entrar' | 'consultar_plano' | 'fichas' | 'guiao' | 'requisicao'
   | 'avaliar' | 'nota' | 'perfil' | 'manual' | 'calendario'
   | 'recuperacoes' | 'kitchenflow' | 'atividades'
-  | 'avisar_professor' | 'proximas' | 'precos';
+  | 'avisar_professor' | 'proximas' | 'precos' | 'dicionario';
 
 /** Aviso calculado a partir dos dados. Nunca texto guardado à mão. */
 export interface AvisoAluno {
@@ -282,7 +282,7 @@ export function InicioAluno({
                   { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
               <div style={{ fontSize: 13.5, color: C.violetaClaro, marginTop: 2 }}>
-                {planoHoje.horaInicio}–{planoHoje.horaFim}{ucId ? ` · ${ucId}` : ''}
+                {planoHoje.horaInicio}–{planoHoje.horaFim}
               </div>
               <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginTop: 5, lineHeight: 1.25 }}>
                 {ucNome || planoHoje.titulo}
@@ -435,12 +435,12 @@ export function InicioAluno({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
           gap: 11, marginBottom: 22 }}>
           <button onClick={() => onAbrir('nota')} style={cartaoCheio}>
-            <span style={{ fontSize: 27, fontWeight: 700, lineHeight: 1 }}>
-              {notaProgressiva != null
-                ? notaProgressiva.toFixed(1).replace('.', ',')
-                : '—'}
-            </span>
+            {/* Sem nota, um traço solto parecia um erro: mostra-se o ícone e a explicação. */}
+            {notaProgressiva != null
+              ? <span style={{ fontSize: 27, fontWeight: 700, lineHeight: 1 }}>{notaProgressiva.toFixed(1).replace('.', ',')}</span>
+              : svg(<path d="M5 20V11M12 20V5M19 20v-6M3 20h18" />, 28)}
             <span style={{ fontSize: 14.5, fontWeight: 600 }}>A minha nota</span>
+            {notaProgressiva == null && <span style={{ fontSize: 12.5, color: C.violetaClaro }}>ainda sem nota</span>}
           </button>
 
           <button onClick={() => onAbrir('perfil')} style={cartaoCheio}>
@@ -518,7 +518,7 @@ const PASSOS_GUIA: { titulo: string; texto: string[] }[] = [
     'Uma falta conta zero nessa aula. Se faltares a mais de 10% das horas da UC, ficas em recuperação.',
     'A resposta «Não tive oportunidade» não conta para a nota, mas o professor confirma-a. A resposta «Não fiz» vale 0.',
     'Sem a farda completa, as técnicas desse dia contam 0. As atitudes contam normalmente, incluindo a forma como ajudas na aula.',
-    'A participação em eventos e concursos pode dar até 2 valores de bónus (até 0,5 por evento e até 1 por concurso).',
+    'A participação em eventos e concursos pode dar até 2 valores de bónus: 0,5 por evento e, em cada concurso, até 1 valor (0,2 pela candidatura, 0,2 pela participação, 0,2 por cada fase passada e, se ganhares, o que falta para 1).',
   ] },
   { titulo: '6. Aula e atividade extra', texto: [
     'Um plano de aula é a aula da turma toda e conta para a tua nota.',
@@ -623,7 +623,7 @@ export function CabecalhoEcra({ ucId, ucNome, titulo, subtitulo, onVoltar }: {
             strokeWidth={2.2} strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
         )}
         <span style={{ fontSize: 13.5, color: C.violetaClaro }}>
-          {ucId ? `${ucId}${ucNome ? ` · ${ucNome}` : ''}` : ''}
+          {ucNome || ucId || ''}
         </span>
       </button>
       <div style={{ fontSize: 24, fontWeight: 700, color: '#fff', marginTop: 8, lineHeight: 1.2 }}>

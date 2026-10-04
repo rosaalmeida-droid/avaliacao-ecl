@@ -1,3 +1,4 @@
+import { abrirEImprimir } from '../imprimir';
 import { LOGO_ECL } from '../logo_ecl';
 import { DadosGuia, SecaoGuia } from '../types';
 
@@ -192,15 +193,6 @@ export async function gerarPDFGuiao(opcoes: OpcoesPDF): Promise<void> {
 </body>
 </html>`;
 
-  // Abrir numa nova janela e imprimir
-  const janela = window.open('', '_blank', 'width=900,height=700');
-  if (!janela) { alert('Permite popups para gerar o PDF'); return; }
-  janela.document.write(html);
-  janela.document.close();
-  janela.onload = () => {
-    setTimeout(() => {
-      janela.focus();
-      janela.print();
-    }, 500);
-  };
+  // Abrir numa nova janela e imprimir (função comum, fiável no iPad).
+  abrirEImprimir(html);
 }

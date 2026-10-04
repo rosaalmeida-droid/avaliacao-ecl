@@ -1,4 +1,5 @@
 import { eventosParaPlanos } from '../eventos/modelo';
+import { getReferencialUC } from '../referencial811RA144';
 import { getSelecoes as _getSelecoes, getValidacoes as _getValidacoes, selecaoJaValidada, selecoesQueContam, selecoesDoProfessor } from '../backend';
 import { proximoConteudo, indicadoresDoConteudo, manualDaUC, capituloDoCampo } from '../bancoManuais';
 import { triagemDoPlano, escolheTema, fasesDoTrabalho, NOME_FASE, type TipoAula, type TriagemAula } from '../contextoAula';
@@ -37,6 +38,12 @@ import { garantirEventoDoPlano } from '../eventos/doPlano';
 import { rotuloPlano } from '../rotuloPlano';
 
 // Data no formato "20-07-2026 · quarta-feira"
+/** O nome da UC: o do plano ou, se faltar, o do referencial (antes ficava só o código). */
+function nomeDaUC(p: { ucId?: string; ucNome?: string }): string {
+  if (p.ucNome) return p.ucNome;
+  try { return p.ucId ? getReferencialUC(p.ucId)?.nome || '' : ''; } catch { return ''; }
+}
+
 function dataComDia(iso?: string): string {
   if (!iso) return '';
   const d = /^\d{4}-\d{2}-\d{2}/.test(iso) ? new Date(iso.slice(0,10) + 'T12:00:00') : new Date(iso);
@@ -44,7 +51,7 @@ function dataComDia(iso?: string): string {
   const dd = String(d.getDate()).padStart(2,'0');
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const dia = d.toLocaleDateString('pt-PT', { weekday: 'long' });
-  return `${dd}-${mm}-${d.getFullYear()} · ${dia}`;
+  return `${dia}, ${dd}/${mm}/${d.getFullYear()}`;
 }
 
 // N.º da UC no referencial 811RA144 (coluna N.º do elenco — obrigatórias)
@@ -260,7 +267,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
     return (
       <div style={{ flex: 1, minWidth: 0 }}>
         {mostrarTitulo && (
-          <div style={{ fontSize: 13, fontWeight: 700, textAlign: 'center', marginBottom: 6, textTransform: 'capitalize', color: 'rgba(26,23,20,0.6)' }}>{nomeMes}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, textAlign: 'center', marginBottom: 6, color: 'rgba(26,23,20,0.6)' }}>{nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}</div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 3 }}>
           {diasSemana.map(d => (
@@ -299,7 +306,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <button onClick={() => navegar(-1)}
           style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 13 }}>‹</button>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, textTransform: 'capitalize' }}>{tituloAtual}</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700 }}>{tituloAtual.charAt(0).toUpperCase() + tituloAtual.slice(1)}</div>
         <button onClick={() => navegar(1)}
           style={{ background: 'var(--cream-dark)', border: 'none', borderRadius: 6, width: 26, height: 26, cursor: 'pointer', fontSize: 13 }}>›</button>
       </div>
@@ -465,7 +472,7 @@ export function CalendarioMensal({ planos, onAbrirPlano, onPlanoEliminado, turma
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
                       <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
-                      {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
+                      {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{nomeDaUC(p) ? ' — ' + nomeDaUC(p) : ''}</div>}
                       {porValidarDoPlano(p.id) > 0 && <div style={{ marginTop: 6 }}><AvisoPorValidar planoId={p.id} /></div>}
                     </div>
                     <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, fontWeight: 700,
@@ -524,7 +531,7 @@ function FichaSelector({ todasFichas, fichasSel, onChange }: {
                 {/* A data vinha em bruto do armazenamento —
                     "2026-06-18T23:00:00.000Z" na lista das fichas. */}
                 <div className="muted" style={{fontSize:13.5}}>
-                  {f.classificacao} · {f.numPorcoes} doses
+                  {[f.classificacao, f.numPorcoes ? `${f.numPorcoes} doses` : ''].filter(Boolean).join(' · ')}
                   {f.data && ` · ${(() => {
                     const d = new Date(String(f.data).slice(0, 10) + 'T00:00:00');
                     return isNaN(d.getTime())
@@ -740,7 +747,7 @@ export default function PlanoAula({ turmaId, nomeProfessor, onAlteracao, onGuard
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>{rotuloPlano(p)}{p.turmaId ? ' · ' + p.turmaId : ''}</div>
                   <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>{dataComDia(p.data)}{horaI && horaF ? ` · ${horaI}-${horaF}` : ''}</div>
-                  {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{p.ucNome ? ' — ' + p.ucNome : ''}</div>}
+                  {p.ucId && <div style={{ fontSize: 14, color: 'var(--copper)', fontWeight: 800, margin: '3px 0 0', lineHeight: 1.3 }}>{NUM_UC[p.ucId] ? NUM_UC[p.ucId] + ' · ' : ''}{p.ucId}{nomeDaUC(p) ? ' — ' + nomeDaUC(p) : ''}</div>}
                 </div>
                 <button onClick={() => { desarquivarPlanoAula(p.id); setRefreshKey(k => k + 1); }} style={{ fontSize: 13, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--sage)', background: '#fff', color: 'var(--sage)', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>↩️ Restaurar</button>
 
@@ -954,7 +961,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
     professor: nomeProfessor || '',
     tipoAtividade: tipoInicial || 'Aula prática',
     // Evento: vai a turma toda (obrigatório) ou os alunos inscrevem-se e o professor aceita.
-    modoParticipacao: 'turma' as 'turma' | 'inscricao',
+    // Numa atividade extra, por omissão, só vai quem for aceite: um aluno não
+    // convidado não pode avaliar a atividade (Rosa, out/2026).
+    modoParticipacao: (tipoEventoDe(tipoInicial || '') ? 'inscricao' : 'turma') as 'turma' | 'inscricao',
     /** As faltas e os atrasos contam para a assiduidade? Nas aulas sim; nos
      *  eventos e atividades, por omissão, não. */
     faltasContam: !tipoEventoDe(tipoInicial || ''),
@@ -1508,7 +1517,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
           <label className="field-label">Tipo de atividade</label>
           <select className="input" value={dados.tipoAtividade} onChange={e => {
             const novo = e.target.value;
-            if (!!tipoEventoDe(novo) !== !!tipoEventoDe(dados.tipoAtividade)) setDados(p => ({ ...p, faltasContam: !tipoEventoDe(novo) }));
+            if (!!tipoEventoDe(novo) !== !!tipoEventoDe(dados.tipoAtividade)) setDados(p => ({ ...p, faltasContam: !tipoEventoDe(novo), modoParticipacao: tipoEventoDe(novo) ? 'inscricao' : 'turma' }));
             setD('tipoAtividade', novo);
           }}>
             {TIPOS_ATIVIDADE.map(t => <option key={t} value={t}>{t === 'Atividade fora da escola' ? 'Atividade extra (visita, feira, outra)' : t}</option>)}
@@ -1522,7 +1531,7 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
             <div style={{ fontSize: 13, color: 'var(--copper)', marginTop: 6, lineHeight: 1.5 }}>
               <b>Atividade extra</b>{dados.modoParticipacao !== 'inscricao' ? ' (fora do ano letivo: conta como bónus no plano de aula seguinte da UC)' : ''}.{' '}
               {tipoEventoDe(dados.tipoAtividade) === 'concurso'
-                ? '🏆 Concurso: avalia-se a hora, ficar até ao fim e a farda (+ autoconfiança, autocontrolo, iniciativa). Dá +0,75 com as 3 primeiras em "Muito bom" e farda. Só alunos com 10 ou mais.'
+                ? '🏆 Concurso: avalia-se a hora, ficar até ao fim e a farda (+ autoconfiança, autocontrolo, iniciativa). Dá até 1 valor, por pontos: 0,2 pela candidatura, 0,2 pela participação, 0,2 por cada fase e o resto pela vitória. Só alunos com 10 ou mais.'
                 : '🎪 Evento: avalia-se a hora, ficar até ao fim, a farda, mais atitudes do tipo de evento e uma pergunta de técnica geral. Dá +0,5 com tudo em "Muito bom" e farda.'}
               {' '}Podes mudar as atitudes no plano.
             </div>
@@ -1711,9 +1720,9 @@ export function CriarPlano({ turmaId, nomeProfessor, onConcluido, onVoltar, onAl
 function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
   plano:TPlanoAula; turmaId:string; onVoltar:()=>void; onEditar:()=>void; onIrParaFicha?:()=>void;
 }) {
-  const fichas = getFichasProducao().filter(f=>plano.fichasIds.includes(f.id));
+  const fichas = getFichasProducao().filter(f=>(plano.fichasIds||[]).includes(f.id));
   const todasFichas = getFichasProducao();
-  const fichasDisponiveis = todasFichas.filter(f=>!plano.fichasIds.includes(f.id));
+  const fichasDisponiveis = todasFichas.filter(f=>!(plano.fichasIds||[]).includes(f.id));
   const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
   const [grelhaAberta, setGrelhaAberta] = useState(false);
   const [mostrarAdicionarFicha, setMostrarAdicionarFicha] = useState(false);
@@ -1811,7 +1820,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
       {/* Fichas de produção */}
       <div className="card">
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-          <div style={{fontSize:13,fontWeight:700,color:'var(--copper)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de producao</div>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--copper)',textTransform:'uppercase',letterSpacing:'0.04em'}}>Fichas de produção</div>
           <button className="btn btn-ghost btn-sm" onClick={()=>setMostrarAdicionarFicha(!mostrarAdicionarFicha)}>{mostrarAdicionarFicha?'Fechar':'+ Adicionar ficha'}</button>
         </div>
         {fichas.length===0&&<div className="muted">Sem fichas associadas.</div>}
@@ -1820,7 +1829,7 @@ function DetalhePlano({ plano, turmaId, onVoltar, onEditar, onIrParaFicha }: {
             <div style={{width:36,height:36,borderRadius:8,background:'var(--copper-pale)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>📄</div>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:600}}>{f.nomePrato}</div>
-              <div className="muted">{f.classificacao} · {f.numPorcoes} doses</div>
+              <div className="muted">{[f.classificacao, f.numPorcoes ? `${f.numPorcoes} doses` : ''].filter(Boolean).join(' · ')}</div>
             </div>
           </div>
         ))}

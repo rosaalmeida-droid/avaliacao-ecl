@@ -2110,7 +2110,7 @@ export function escreverPerfil(
   if (avaliadas.length < 3) {
     return {
       fortes: 'Ainda não há avaliações suficientes para traçar o teu perfil. '
-            + 'À medida que fores trabalhando, aparece aqui o que já dominas.',
+            + 'À medida que participares nas aulas, aparece aqui o que já dominas.',
       aDesenvolver: '',
       temDados: false,
     };

@@ -155,16 +155,17 @@ export function EcraAvaliarMe({
 
   return (
     <div style={{ padding: 14, maxWidth: 620, margin: '0 auto', background: T.fundo, minHeight: '100%' }}>
-      <Cabecalho ucId={ucId} ucNome={ucNome} titulo="Avaliar-me" />
+      <Cabecalho ucId={ucId} ucNome={ucNome} titulo="As minhas competências" />
 
       {!triado && (
         <div style={{
           background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', borderRadius: 16,
           padding: 14, marginBottom: 14, fontSize: 14.5, color: T.charcoal, lineHeight: 1.6,
         }}>
-          {temAulaHoje
-            ? 'O professor ainda não definiu ficha técnica nem trabalho para esta aula. Estas são todas as competências da unidade.'
-            : 'Não tens aula hoje. Estas são todas as competências desta unidade.'}
+          {/* Este ecrã não é a autoavaliação de uma aula: dizia «o professor
+              ainda não definiu ficha técnica» mesmo quando a aula tinha fichas. */}
+          Estas são todas as competências desta unidade e o ponto em que estás em cada uma.
+          A autoavaliação faz-se em cada aula{temAulaHoje ? ', a partir da aula de hoje' : ''}.
         </div>
       )}
 

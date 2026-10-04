@@ -28,6 +28,7 @@ import { PassoComoEAula, PassoOQueSeAvalia, PassoEnviar, Gaveta, NaColuna, frase
   fotografiaDoPlano, diferencasEntre, enviarAlteracoesAosAlunos, mudaramAsPerguntas, alteracoesPorEnviar, EstadoDoPlano, registarVersaoEnviada } from './PlanoGuiado';
 import { tipoDaTriagem } from '../contextoAula';
 import { sumarioDoPlano } from '../sumarioAutomatico';
+import { imprimirRelatorioPlano } from '../relatorioPlano';
 import { triagemDoPlano, escolheTema, obrigatoriasDaTriagem } from '../contextoAula';
 import { eventosParaPlanos } from '../eventos/modelo';
 import {
@@ -305,7 +306,7 @@ function ModalRequisicao({ plano, fichas, onSim, onNao, onNovaFicha }: {
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:600, fontSize:14 }}>{f.nomePrato}</div>
-                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{f.numPorcoes} doses · {f.classificacao}</div>
+                  <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{[f.numPorcoes ? `${f.numPorcoes} doses` : '', f.classificacao].filter(Boolean).join(' · ')}</div>
                 </div>
               </div>
             ))}
@@ -618,7 +619,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
 
   // Estado do botão de publicar atualização
 
-  const fichasDoPlano = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
+  const fichasDoPlano = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
   const requisicao = getRequisicaoPorPlano(plano.id);
   const todasRequisicoesDoPlano = getRequisicoesPorPlano(plano.id);
   const [modoSelecaoReq, setModoSelecaoReq] = useState(false);
@@ -906,7 +907,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   if (modalProximo === 'apos_ficha') {
-    const fichasActuais = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
+    const fichasActuais = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
     const ordenadas = [...fichasActuais].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
     const ultimaFicha = ordenadas[ordenadas.length - 1];
     const nomePrato = ultimaFicha?.nomePrato || '';
@@ -963,7 +964,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
   }
 
   if (modulo === 'guia') {
-    const fichasActuais = getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
+    const fichasActuais = getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
     const ordenadas = [...fichasActuais].sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''));
     const ultimaFicha = ordenadas[ordenadas.length - 1];
     const nomePratoGuia = ultimaFicha?.nomePrato || '';
@@ -1696,6 +1697,16 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
         </div>
       )}
       <EstadoEnvioPlano plano={plano} />
+      {/* Relatório do plano para imprimir ou guardar em PDF (Rosa, out/2026). */}
+      {modulo === 'inicio' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '6px 0 10px' }}>
+          <button onClick={() => imprimirRelatorioPlano(getPlanosAula().find(x => x.id === plano.id) || plano)}
+            style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid rgba(26,23,20,0.15)', background: '#fff',
+              fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', color: 'rgba(26,23,20,0.75)' }}>
+            🖨️ Relatório do plano (imprimir ou PDF)
+          </button>
+        </div>
+      )}
       {/* Enquanto não publicar, o aluno não vê a aula em lado nenhum —
           nem no calendário, nem nas próximas aulas. Isto tem de estar à
           frente, senão o professor marca a aula e ninguém a vê. */}
@@ -1811,7 +1822,7 @@ export function VistaDePlano({ plano, turmaId, nomeProfessor, onVoltar, onPlanoA
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button style={bt(!atual)} onClick={() => escolher(undefined)}>Não</button>
                     <button style={bt(atual === 'evento')} onClick={() => escolher('evento')}>Evento (+0,5)</button>
-                    <button style={bt(atual === 'concurso')} onClick={() => escolher('concurso')}>Concurso (+0,75)</button>
+                    <button style={bt(atual === 'concurso')} onClick={() => escolher('concurso')}>Concurso (até +1)</button>
                   </div>
                   {atual && (
                     <div style={{ marginTop: 6, color: 'rgba(26,23,20,0.6)', lineHeight: 1.5 }}>

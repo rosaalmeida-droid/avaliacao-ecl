@@ -18,6 +18,7 @@ import { exportDOCX, exportPDF, gerarHTML } from '../exportFicha';
 import { detetarAlergenicos, formatarAlergenicos, Alergenico } from '../alergenicos';
 import { calcularNutricao, InfoNutricional } from '../nutricao';
 import { normalizarFicha, FICHA_VAZIA, extrairFicha, type LinhaIngrediente, type PassoPreparacao, type FichaTecnica } from '../lerFichaDaIA';
+const nomeUCRef = (id: string): string => { try { return getReferencialUC(id)?.nome || ''; } catch { return ''; } };
 
 function copiarTexto(texto: string, onSucesso: () => void, onFalha: () => void) {
   if (navigator.clipboard && window.isSecureContext) {
@@ -1874,7 +1875,7 @@ function EcraGuiaDedicado({ planoId, ucId, ucNome, nomePratoInicial, onAlteracao
       <div className="no-print" style={{ background: 'var(--guia)', borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
         <div style={{ fontWeight: 700, fontSize: 16, color: 'white' }}>📚 Guia de Apoio à Produção</div>
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>{nomePrato}</div>
-        <EtiquetaLigacaoPlano planoAulaId={(fichaAlvo as any)?.planoAulaId} fichaId={fichaAlvo?.id} />
+        <EtiquetaLigacaoPlano planoAulaId={(fichaAlvo as any)?.planoAulaId} fichaId={fichaAlvo?.id} sobreEscuro />
       </div>
 
       {/* Um guião por ficha: com várias fichas, escolhe-se de qual. */}
@@ -2157,7 +2158,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
       if (planoId) {
         const planos = getPlanosAula();
         const plano = planos.find(p => p.id === planoId);
-        if (plano && !plano.fichasIds.includes(novaFichaId)) {
+        if (plano && !(plano.fichasIds || []).includes(novaFichaId)) {
           addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, novaFichaId], atualizadoEm: now });
         }
       }
@@ -2331,7 +2332,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
 
         {ucId && (
           <div style={{ padding:'8px 14px', background:'var(--copper-pale)', borderRadius:10, marginBottom:12, fontSize:13, color:'var(--copper)', border:'1px solid rgba(181,101,29,0.2)' }}>
-            <strong>UC ativa:</strong> {ucId} — {ucNome}
+            <strong>UC ativa:</strong> {ucId}{(ucNome || nomeUCRef(ucId)) ? ` — ${ucNome || nomeUCRef(ucId)}` : ''}
           </div>
         )}
 
@@ -2491,7 +2492,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         {fichasParaMostrar.length > 0 && (
           <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)', marginBottom:10 }}>
             {fichasParaMostrar.length} ficha{fichasParaMostrar.length!==1?'s':''}
-            {mostrarBibliotecaCompleta ? ' em toda a aplicação: clique numa ficha para a associar a este plano' : ' associada(s) a este plano'}.
+            {mostrarBibliotecaCompleta ? ' em toda a aplicação: clique numa ficha para a associar a este plano' : fichasParaMostrar.length !== 1 ? ' associadas a este plano' : ' associada a este plano'}.
           </div>
         )}
 
@@ -2509,7 +2510,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
               // Associar a ficha existente a este plano, sem duplicar
               const planos = getPlanosAula();
               const plano = planos.find(p => p.id === planoId);
-              if (plano && !plano.fichasIds.includes(f.id)) {
+              if (plano && !(plano.fichasIds || []).includes(f.id)) {
                 addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, f.id], atualizadoEm: new Date().toISOString() });
                 recarregar();
                 onAlteracao?.();
@@ -2547,7 +2548,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
             if (planoId) {
               const planos = getPlanosAula();
               const plano = planos.find(p => p.id === planoId);
-              if (plano && !plano.fichasIds.includes(f.id)) {
+              if (plano && !(plano.fichasIds || []).includes(f.id)) {
                 addOrUpdatePlanoAula({ ...plano, fichasIds: [...plano.fichasIds, f.id], atualizadoEm: new Date().toISOString() });
               }
             }
@@ -2577,7 +2578,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
                   )}
                 </div>
                 <div className="muted">
-                  {f.classificacao} · {f.ingredientes?.length || 0} ingredientes · {f.numPorcoes} porções
+                  {[f.classificacao, `${f.ingredientes?.length || 0} ingrediente${(f.ingredientes?.length || 0) === 1 ? '' : 's'}`, f.numPorcoes ? `${f.numPorcoes} porções` : ''].filter(Boolean).join(' · ')}
                 </div>
                 {(f.ucsAssociadas || []).length > 0 && <div style={{ fontSize:13, color:'var(--copper)' }}>{(f.ucsAssociadas || [])[0]}</div>}
                 <EtiquetaLigacaoPlano planoAulaId={f.planoAulaId} fichaId={f.id} />

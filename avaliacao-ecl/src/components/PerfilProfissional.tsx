@@ -81,11 +81,8 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
         O que já sabes fazer e o que ainda estás a treinar. Muda ao longo do curso.
       </div>
 
-      {totalCompetencias === 0 && (
-        <div style={{ padding: '30px 0', textAlign: 'center', color: 'rgba(26,23,20,0.4)' }}>
-          Ainda não há competências registadas. Vai aparecendo aqui à medida que participas nas aulas.
-        </div>
-      )}
+      {/* Sem competências, a mensagem do perfil (mais abaixo) já o diz: eram
+          duas mensagens seguidas a dizer o mesmo. */}
 
       {/* Assiduidade — antes das competências, porque é a base de
           tudo o resto. Sem estar presente não há nada a demonstrar. */}
@@ -172,14 +169,14 @@ export function PerfilProfissionalAluno({ aluno, semTitulo }: {
 
       {/* O detalhe fica fechado: só abre quem quiser ver competência a
           competência. Aberto por omissão, era um muro de texto. */}
-      <button
+      {totalCompetencias > 0 && <button
         onClick={() => setVerDetalhe((v: boolean) => !v)}
         style={{ width: '100%', background: 'transparent', border: '1px solid var(--border)',
           borderRadius: 12, padding: '13px', fontSize: 14.5, fontWeight: 700,
           color: 'rgba(26,23,20,0.65)', cursor: 'pointer', fontFamily: 'inherit' }}
       >
-        {verDetalhe ? 'Esconder o detalhe' : `Ver as ${totalCompetencias} competências uma a uma`}
-      </button>
+        {verDetalhe ? 'Esconder o detalhe' : totalCompetencias === 1 ? 'Ver a competência' : `Ver as ${totalCompetencias} competências uma a uma`}
+      </button>}
 
       {verDetalhe && (
         <div style={{ marginTop: 14 }}>

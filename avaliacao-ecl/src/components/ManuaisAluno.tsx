@@ -314,6 +314,10 @@ export function ManuaisAluno({ nomeProfessor: _nome, soLeitura = false }: {
 
   const uc = UCS.find((u) => u.code === selCode);
 
+  // Aluno sem manuais guardados no telemóvel: não se mostra nada. Por baixo da
+  // lista de manuais da turma, «Ainda não há nenhum manual» contradizia-a.
+  if (soLeitura && modo === 'lista' && lista.length === 0 && !doc) return null;
+
   // ── layout com preview ─────────────────────────────────────────────────────
   const temDoc   = doc && doc.pages.length > 0;
   const showSide = mostrarPreview && temDoc;

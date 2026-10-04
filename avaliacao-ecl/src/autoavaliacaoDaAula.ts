@@ -10,7 +10,7 @@ import type { PlanoAula, FichaProducao } from './types';
 import { PESOS_AULA } from './types';
 import {
   codigosDasLinhas, codigoDaLinha, tecnicasDeRecurso, conhecimentosDaAula, encontrarConhecimento,
-  atitudesDoTrimestre, ATITUDES, encontrarSubtecnica, encontrarAparelho, ramoDaCompetencia, PREFIXO_TRABALHO_AULA, NOMES_FORMATO,
+  atitudesDoTrimestre, ATITUDES, encontrarSubtecnica, nomeCompetencia, encontrarAparelho, ramoDaCompetencia, PREFIXO_TRABALHO_AULA, NOMES_FORMATO,
 } from './compatECL';
 import { trimestreAtual } from './datas';
 import { sumarioDoPlano } from './sumarioAutomatico';
@@ -96,7 +96,10 @@ export function regrasDaAutoavaliacao(plano: PlanoAula, fichas: FichaProducao[],
   const subsUsadas = ehAtitudinal && !tecnicasNaAtividade ? [] : subIds.slice(0, 8);
   const appsUsadas = ehAtitudinal && !tecnicasNaAtividade ? [] : appIds.slice(0, 4);
   const usarRecurso = subsUsadas.length === 0 && appsUsadas.length === 0;
-  const recursoIds = ehAtitudinal || !usarRecurso || fichas.length === 0 ? []
+  // Técnicas gerais da UC, quando as fichas não trazem técnicas: só nas aulas
+  // mistas. Numa aula só prática, não faz sentido avaliar técnicas que não
+  // estão nas fichas técnicas (Rosa, out/2026).
+  const recursoIds = ehAtitudinal || !usarRecurso || fichas.length === 0 || tipoPlanAula !== 'misto' ? []
     : tecnicasDeRecurso(ucId, fichas as any[]).map(m => m.id).filter(id => !compRemovidas.includes(id)).slice(0, 6);
 
   const conhecimentos: { id: string; nome: string; definicao: string; capitulo?: string }[] =
@@ -275,7 +278,7 @@ export function ecrasDoAluno(plano: PlanoAula, fichas: FichaProducao[], ctx: Con
           : k.capitulo || 'escrito por ti no passo 2', c: 'cp' });
     }
     for (const id of R.recursoIds)
-      ecras.push({ tipo: 'tecnica', rotulo: 'Técnica', nome: (encontrarSubtecnica(id) as any)?.nome || id, perguntas: [], porque: 'técnica da UC (as fichas não têm técnicas)', c: 'cp' });
+      ecras.push({ tipo: 'tecnica', rotulo: 'Técnica', nome: (encontrarSubtecnica(id) as any)?.nome || nomeCompetencia(id), perguntas: [], porque: 'técnica da UC (as fichas não têm técnicas)', c: 'cp' });
   } else if (R.subIds.length || R.appIds.length) {
     fora.push({ nome: 'Técnicas das fichas', motivo: 'aula só de atitudes' });
   }

@@ -2400,7 +2400,12 @@ async function sincronizarAlunosDaSheetBruto(): Promise<void> {
 // ── Planos de Aula ───────────────────────────────────────────
 // Sem as aulas fantasma (sem código) que o antigo envio ao calendário
 // deixou na folha PLANOS e que a sincronização trouxe para o aparelho.
-export function getPlanosAula(): PlanoAula[] { return load<PlanoAula>(KEYS.planos).filter(p => p && p.id); }
+// Um plano vindo do Sheets ou do Firestore pode chegar sem a lista de fichas
+// (aulas teóricas). Sem esta garantia, abrir esse plano fazia cair o ecrã do aluno.
+export function getPlanosAula(): PlanoAula[] {
+  return load<PlanoAula>(KEYS.planos).filter(p => p && p.id)
+    .map(p => Array.isArray(p.fichasIds) ? p : { ...p, fichasIds: [] });
+}
 
 export function getPlanosAulaPorTurma(turmaId: string, incluirArquivados = false): PlanoAula[] {
   return getPlanosAula()
@@ -2534,7 +2539,7 @@ function sincronizarPlanoComCalendario(p: PlanoAula): void {
   // aula fantasma, sem código, igual à verdadeira. O script único não tem
   // calendário — não se envia nada.
   if (SHEETS_CALENDARIO_URL === SHEETS_ECL_URL) return;
-  const fichas = getFichasProducao().filter(f => p.fichasIds.includes(f.id)).map(f => f.nomePrato);
+  const fichas = getFichasProducao().filter(f => (p.fichasIds || []).includes(f.id)).map(f => f.nomePrato);
   const temRequisicao = getRequisicoes().some(r => r.planoAulaId === p.id);
   // Um plano é gravado muitas vezes (competências, publicar, fichas…) e
   // cada gravação mandava tudo outra vez para o calendário. Só se envia
@@ -2585,7 +2590,7 @@ export function getFichasProducao(): FichaProducao[] {
 export function getFichasPorPlano(planoId: string): FichaProducao[] {
   const plano = getPlanosAula().find(p => p.id === planoId);
   if (!plano) return [];
-  return getFichasProducao().filter(f => plano.fichasIds.includes(f.id));
+  return getFichasProducao().filter(f => (plano.fichasIds || []).includes(f.id));
 }
 
 const KEY_FICHAS_HIST = 'ecl_fichas_historico';

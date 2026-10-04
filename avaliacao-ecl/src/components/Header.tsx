@@ -109,7 +109,7 @@ export const NAV: NavItem[] = [
   { id: 'guia',                label: 'Guiões',               icon: Icons.guia,       secao: 'Mais' },
   { id: 'requisicao',          label: 'Requisições',          icon: Icons.req,        secao: 'Mais' },
   { id: 'orcamentos',          label: 'Orçamentos',           icon: Icons.req,        secao: 'Mais' },
-  { id: 'historial',           label: 'Historial',            icon: Icons.avaliacao,  secao: 'Mais' },
+  // «Historial» saiu: abria o mesmo ecrã que «Notas da UC» (Rosa, out/2026).
   { id: 'ajuda',               label: 'Ajuda',                icon: Icons.ajuda,      secao: 'Mais' },
 ];
 

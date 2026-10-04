@@ -11,17 +11,14 @@ import { ModalFullscreen } from './ModalFullscreen';
 import { PedirEmailEscola } from './PedirEmailEscola';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa, trimestreAtual } from '../datas';
 import { rotuloPlano, rotuloDoPlano } from '../rotuloPlano';
+import { exportPDF } from '../exportFicha';
 
-// Âncora: nº da UC no referencial 811RA144 + data com dia da semana
-const NUM_UC_AL: Record<string, number> = {
-  UC03576:1, UC01999:2, UC03577:3, UC02002:4, UC02003:5, UC02004:6, UC02005:7,
-  UC03578:8, UC00596:9, UC03579:10, UC03580:11, UC03581:12, UC03582:13, UC00039:14,
-  UC00056:15, UC00034:16, UC00054:17, UC03583:18, UC00038:19, UC03584:20, UC00031:21,
-  UC00032:22, UC00035:23, UC00595:24, UC00069:25, UC00068:26,
-};
+// O aluno vê o nome da UC; o código sozinho («1 · UC03576») não lhe dizia nada.
 function ucAncora(ucId?: string, ucNome?: string): string {
   if (!ucId) return ucNome || '';
-  return (NUM_UC_AL[ucId] ? NUM_UC_AL[ucId] + ' · ' : '') + ucId + (ucNome ? ' — ' + ucNome : '');
+  let nome = ucNome;
+  if (!nome) { try { nome = getReferencialUC(ucId)?.nome; } catch { /* sem referencial */ } }
+  return nome || ucId;
 }
 import { Aluno, PlanoAula, FichaProducao, calcularNotaPlano, PESOS_AULA, classificacao20, notaPara20, nivelPara20, nivelDe20 } from '../types';
 import { atitudesAnteriores, idsAtitudesAnteriores, atitudesQueFaltam, ehTurmaTransicao } from '../transicaoReferencial';
@@ -338,6 +335,30 @@ function CalendarioAluno({ planos, onAbrirPlano, onMudarMes }: {
 
 // ─────────────────────────────────────────────────────────────
 // COMPONENTE — Card de aula na lista
+/** Agradecimento da professora ao 3.º ACP, a primeira turma a usar a
+ *  aplicação (Rosa, out/2026). Aparece no Início até o aluno o fechar. */
+function AgradecimentoTurmaPiloto({ alunoId }: { alunoId: string }) {
+  const chave = 'ecl_agradecimento_3acp_' + alunoId;
+  const [fechado, setFechado] = useState(() => { try { return !!localStorage.getItem(chave); } catch { return false; } });
+  if (fechado) return null;
+  return (
+    <div style={{ margin: '0 0 14px', borderRadius: 16, padding: '16px 18px', color: '#fff',
+      background: 'linear-gradient(135deg, #6B3FA0, #8E5CC4)', boxShadow: '0 6px 18px rgba(107,63,160,0.25)' }}>
+      <div style={{ fontSize: 19, fontWeight: 800, marginBottom: 6 }}>Obrigada, 3.º ACP! 💜</div>
+      <div style={{ fontSize: 14.5, lineHeight: 1.55 }}>
+        Vocês são os primeiros a usar esta aplicação. Têm experimentado cada ecrã comigo, com muita paciência,
+        e cada erro que encontram ajuda a melhorá-la para todos os alunos da escola. São os maiores. Força!
+      </div>
+      <div style={{ fontSize: 13.5, marginTop: 8, opacity: 0.9 }}>A professora Rosa Almeida</div>
+      <button onClick={() => { try { localStorage.setItem(chave, '1'); } catch { /* sem espaço */ } setFechado(true); }}
+        style={{ marginTop: 12, padding: '8px 16px', borderRadius: 10, border: 'none', background: '#fff', color: '#6B3FA0',
+          fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+        Fechar
+      </button>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void }) {
   // Data por extenso. Sem isto o aluno abre um plano futuro pelo
@@ -377,7 +398,7 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
             {plano.numeroPlan ? rotuloPlano(plano) : (plano.titulo || 'Plano de aula')}
           </div>
           {(plano.ucId || plano.ucNome) && (
-            <div style={{ fontSize:12.5, color:T.copper, fontWeight:700, marginTop:2 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
+            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.55)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
           )}
         </div>
         {evento
@@ -388,14 +409,46 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
     );
   }
 
-  // Card de aula de hoje ou futura — grande e colorido
-  const corFundo = evento ? '#6B3FA0' : hoje ? T.copper : '#2563eb';
-  const diasLabel = dias === 1 ? 'AMANHÃ' : dias <= 7 ? `em ${dias} dias` : '';
+  const diasLabel = dias === 1 ? 'Amanhã' : dias <= 7 ? `Daqui a ${dias} dias` : '';
+
+  // Aula futura (que não é evento): cartão branco e sóbrio. Antes era azul
+  // forte, ao lado do laranja da aula de hoje e do roxo da aplicação.
+  if (!hoje && !evento) {
+    return (
+      <div onClick={onAbrir} style={{
+        borderRadius:16, cursor:'pointer', marginBottom:10, background:'#fff',
+        border:`1.5px solid ${ROXO}33`, padding:'14px 16px', display:'flex', alignItems:'center', gap:12,
+      }}>
+        <div style={{ background:'#F3ECFA', borderRadius:10, padding:'8px 10px', textAlign:'center', flexShrink:0, minWidth:44 }}>
+          <div style={{ fontSize:18, fontWeight:700, color:ROXO, lineHeight:1 }}>{d.getDate().toString().padStart(2,'0')}</div>
+          <div style={{ fontSize:9, fontWeight:700, textTransform:'uppercase', color:ROXO, opacity:0.7, marginTop:1 }}>
+            {d.toLocaleDateString('pt-PT',{month:'short'})}
+          </div>
+        </div>
+        <div style={{ flex:1, minWidth:0 }}>
+          {diasLabel && <div style={{ fontSize:12.5, fontWeight:700, color:ROXO, marginBottom:2 }}>{diasLabel}</div>}
+          <div style={{ fontSize:15, fontWeight:700, color:T.charcoal, lineHeight:1.3 }}>
+            {plano.numeroPlan ? rotuloPlano(plano) : (plano.titulo || 'Plano de aula')}
+          </div>
+          {(plano.ucId || plano.ucNome) && (
+            <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.6)', marginTop:2 }}>{ucAncora(plano.ucId, plano.ucNome)}</div>
+          )}
+          <div style={{ fontSize:12.5, color:'rgba(26,23,20,0.6)', marginTop:2 }}>
+            {dataLonga}{plano.horaInicio ? ` · ${plano.horaInicio}–${plano.horaFim}` : ''}
+          </div>
+        </div>
+        <span style={{ fontSize:13.5, fontWeight:700, color:ROXO, flexShrink:0 }}>Ver ›</span>
+      </div>
+    );
+  }
+
+  // Aula de hoje ou evento: grande, na cor da aplicação.
+  const corFundo = evento ? '#4B2A7B' : ROXO;
 
   return (
     <div onClick={onAbrir} style={{
       borderRadius:20, overflow:'hidden', cursor:'pointer', marginBottom:12,
-      boxShadow: hoje ? '0 8px 24px rgba(181,101,29,0.35)' : '0 4px 16px rgba(37,99,235,0.2)',
+      boxShadow: '0 6px 18px rgba(107,63,160,0.28)',
     }}>
       {/* Faixa colorida */}
       <div style={{ background:`linear-gradient(135deg, ${corFundo}, ${corFundo}dd)`,
@@ -409,13 +462,13 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
         {hoje && !evento && (
           <div style={{ fontSize:12.5, fontWeight:800, color:'rgba(255,255,255,0.65)',
             textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:4 }}>
-            🔥 Aula de hoje
+            Aula de hoje
           </div>
         )}
         {!hoje && diasLabel && (
           <div style={{ fontSize:12.5, fontWeight:800, color:'rgba(255,255,255,0.65)',
             textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
-            📅 {diasLabel}
+            {diasLabel}
           </div>
         )}
         <div style={{ fontSize:18, fontWeight:800, color:'#fff', lineHeight:1.3,
@@ -435,11 +488,11 @@ function CardAula({ plano, onAbrir }: { plano: PlanoAula; onAbrir: () => void })
         )}
       </div>
       {/* Botão entrar */}
-      <div style={{ background: hoje ? '#8b4513' : '#1d4ed8',
+      <div style={{ background: evento ? '#3A1F62' : '#5A3489',
         padding:'13px 18px', display:'flex', alignItems:'center',
         justifyContent:'center', gap:8 }}>
         <span style={{ fontSize:16, fontWeight:800, color:'#fff', letterSpacing:'0.02em' }}>
-          {hoje ? '🚀 Entrar na aula' : '📋 Ver plano'}
+          {hoje ? 'Entrar na aula' : 'Ver o plano'}
         </span>
         <span style={{ fontSize:20, color:'rgba(255,255,255,0.7)' }}>→</span>
       </div>
@@ -1154,7 +1207,10 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               </div>
             );
           })()}
-          <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)} />
+          {/* Atividade extra para a qual o aluno não foi escolhido (nem está a
+              recuperar nela): só para ver — não entra nem se autoavalia (Rosa, out/2026). */}
+          <VistaDePlanoAluno plano={planoAtivo} aluno={aluno} onVoltar={() => setPlanoAtivo(null)}
+            soConsulta={eventoForaDoHorario(planoAtivo) && !participantesDoEvento(planoAtivo).includes(aluno.id) && !recuperaNaAtividade(planoAtivo, aluno.id)} />
         </ModalFullscreen>
       )}
 
@@ -1175,19 +1231,21 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       {/* ── CABEÇALHO ─────────────────────────────────────── */}
       {/* A margem de baixo «fugia» da faixa roxa (sem padding em baixo) e a
           linha «3º ano · Nº 2» ficava cortada na orla. */}
-      <div style={{ background:'#6d28d9', padding:'18px 20px 18px' }}>
+      {/* Faixa mais baixa e na cor da aplicação: com o cabeçalho por cima,
+          ocupava um quarto do ecrã do telemóvel (Rosa, out/2026). */}
+      <div style={{ background:'#6B3FA0', padding:'12px 16px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div>
-              <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)', fontWeight:600,
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', fontWeight:600,
                 textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
                 {aluno.turmaId}
               </div>
-              <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
-                color:'#faf7f2', lineHeight:1.1 }}>
+              <div style={{ fontFamily:'var(--font-display)', fontSize:20, fontWeight:700,
+                color:'#faf7f2', lineHeight:1.15 }}>
                 Olá, {aluno.nome?.split(' ')[0] || `Aluno ${aluno.numero}`}! 👋
               </div>
-              <div style={{ fontSize:13, color:'rgba(247,241,230,0.45)', marginTop:4 }}>
+              <div style={{ fontSize:13, color:'rgba(247,241,230,0.8)', marginTop:4 }}>
                 {aluno.ano}º ano · Nº {aluno.numero}
               </div>
               {(() => {
@@ -1209,17 +1267,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                   as medidas mudam o trabalho do professor, não o que o aluno vê
                   sobre si. Havia aqui um letreiro «Medidas Seletivas (Nível 2)». */}
             </div>
-            {/* Resumo rápido */}
-            <div style={{ display:'flex', gap:10 }}>
-              {/* O contador de "avaliações" saiu: contava registos internos
-                  (farda, higiene…) e não as aulas avaliadas — enganava. */}
-              <div style={{ background:'rgba(247,241,230,0.08)', borderRadius:14,
-                padding:'10px 16px', textAlign:'center' }}>
-                <div style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700,
-                  color:'#faf7f2', lineHeight:1 }}>{planos.length}</div>
-                <div style={{ fontSize:12.5, color:'rgba(247,241,230,0.45)', marginTop:3 }}>{planos.length === 1 ? 'aula' : 'aulas'}</div>
-              </div>
-            </div>
+            {/* O contador «4 aulas» saiu: não dizia nada ao aluno. */}
           </div>
 
 
@@ -1227,7 +1275,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
       </div>
 
       {/* ── CONTEÚDO ──────────────────────────────────────── */}
-      <div style={{ maxWidth:1100, margin:'0 auto', padding:'24px 20px 48px' }}>
+      {/* Margens mais curtas: no telemóvel, o conteúdo ficava apertado entre
+          duas margens largas e o fundo cinzento de cada separador. */}
+      <div style={{ maxWidth:1100, margin:'0 auto', padding:'12px 8px 48px' }}>
 
         {/* ── ABA INÍCIO ── */}
         {/* ── INÍCIO: a aula de hoje como ação principal ── */}
@@ -1238,6 +1288,7 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
             aplicação, terão de ser descarregadas outra vez. Liberta espaço no telemóvel (fotografias, vídeos, aplicações) ou usa outro navegador.
           </div>
         )}
+        {aba === 'inicio' && !destino && aluno.turmaId === '3º ACP' && <AgradecimentoTurmaPiloto alunoId={aluno.id} />}
         {aba === 'inicio' && !destino && (
           <>
             <CartaoAutoavaliacaoFinal ucs={ucsFinais} onAbrir={setUcFinal} />
@@ -1403,7 +1454,9 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
 
         {aba === 'aula' && (
           <div style={{ display:'grid', gap:24,
-            gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '380px 1fr' : '1fr' }}>
+            // minmax(0,1fr): sem isto, um texto comprido alargava a coluna e a
+            // página passava a largura do telemóvel.
+            gridTemplateColumns: 'window' in globalThis && window.innerWidth >= 900 ? '380px minmax(0,1fr)' : 'minmax(0,1fr)' }}>
             <div>
               <CalendarioAluno planos={planos} onAbrirPlano={p => setPlanoAtivo(p)}
                 onMudarMes={(m, y) => { setMesVisivel(m); setAnoVisivel(y); }} />
@@ -1471,14 +1524,25 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               {([
                 ['nota', 'Avaliação progressiva', notaProgressiva != null
                   ? `${notaProgressiva.toFixed(1).replace('.', ',')} valores` : 'ainda sem nota'],
-                ['avaliar', 'Avaliar-me', porAvaliar > 0
-                  ? `${porAvaliar} por avaliar` : 'tudo avaliado'],
+                // As aulas por autoavaliar (as que contam 0 na nota); antes
+                // dizia «26 por avaliar», que eram competências e não aulas.
+                ['autoavaliar_pendente' as DestinoAluno, 'Autoavaliar-me', aulasPorAutoavaliar.current.length > 0
+                  ? `${aulasPorAutoavaliar.current.length} aula${aulasPorAutoavaliar.current.length > 1 ? 's' : ''} à espera da tua autoavaliação` : 'não tens aulas por autoavaliar'],
+                ['avaliar', 'As minhas competências', porAvaliar > 0
+                  ? `${porAvaliar} ainda por avaliar` : 'todas já avaliadas'],
                 ['recuperacoes', 'Recuperações', recuperacoesPendentes > 0
                   ? `${recuperacoesPendentes} por recuperar` : 'nada em atraso'],
                 ['atividades', 'Atividades e concursos', atividadesAbertas > 0
                   ? `${atividadesAbertas} aberta${atividadesAbertas > 1 ? 's' : ''}` : 'oportunidades'],
               ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
-                <button key={d} onClick={() => setDestino(d)} style={{
+                <button key={d} onClick={() => {
+                  if ((d as string) === 'autoavaliar_pendente') {
+                    const p = aulasPorAutoavaliar.current[0];
+                    if (p) setPlanoAtivo(p); else setAba('aula');
+                    return;
+                  }
+                  setDestino(d);
+                }} style={{
                   width:'100%', background:'#fff', border:'none', borderRadius:14,
                   padding:'15px 16px', marginBottom:9, textAlign:'left', minHeight:44,
                   cursor:'pointer', fontFamily:'inherit', boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
@@ -1543,7 +1607,8 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               );
             })()}
             {destino === 'recuperacoes' && <RecuperacaoModulosAluno aluno={aluno} />}
-            {destino === 'precos' && <div style={{ padding:'4px 14px 24px' }}><PrecosConsulta /></div>}
+            {destino === 'precos' && <div style={{ padding:'4px 14px 24px' }}><PrecosConsulta paraAluno /></div>}
+            {destino === 'dicionario' && <div style={{ padding:'4px 14px 24px' }}><DicionarioComp perfil="aluno" turmaId={aluno.turmaId} /></div>}
             {destino === 'manual' && <><ManuaisDoAluno turmaId={aluno.turmaId} ucAtual={ucAtual} /><ManuaisAluno soLeitura /></>}
             {destino === 'atividades' && (
               <EcraAtividades atividades={atividades} alunoId={aluno.id}
@@ -1576,18 +1641,13 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
               </div>
               <AvaliacaoPorUC turmaId={aluno.turmaId} alunoId={aluno.id} />
             </div>
-            <div style={{ marginTop:24 }}>
-              <div style={{ fontSize:13, fontWeight:700, textTransform:'uppercase',
-                letterSpacing:'0.06em', color:'rgba(26,23,20,0.4)', marginBottom:10 }}>
-                📖 Dicionário de Cozinha
-              </div>
-              <DicionarioComp perfil="aluno" turmaId={aluno.turmaId} />
-            </div>
+            {/* O dicionário passou para «Recursos»: aqui listava milhares de
+                técnicas, com códigos, por baixo do perfil. */}
           </div>
         )}
 
         {/* Recursos: manual, fichas e guiões */}
-        {aba === 'recursos' && (
+        {aba === 'recursos' && !destino && (
           <div style={{ background:'#F3F2F5', minHeight:'100%', padding:14 }}>
             <div style={{ maxWidth:620, margin:'0 auto' }}>
               <div style={{ fontSize:11.5, fontWeight:700, letterSpacing:'0.09em',
@@ -1600,8 +1660,13 @@ function AlunoViewInterno({ aluno }: { aluno: Aluno; versaoDados?: number }) {
                 ['guiao', 'Guiões de produção', 'de apoio às fichas técnicas'],
                 ['kitchenflow', 'KitchenFlow', 'registos de higiene e segurança alimentar'],
                 ['precos', 'Preços das matérias-primas', 'quanto custa cada produto'],
+                ['dicionario', 'Dicionário de cozinha', 'o que é cada técnica e como se observa'],
               ] as [DestinoAluno, string, string][]).map(([d, t, sub]) => (
-                <button key={d} onClick={() => setDestino(d)} style={{
+                <button key={d} onClick={() => {
+                  // O KitchenFlow abre logo: antes havia um ecrã só com o botão «Abrir».
+                  if (d === 'kitchenflow') { abrirKFAluno(); return; }
+                  setDestino(d);
+                }} style={{
                   width:'100%', background:'#fff', border:'none', borderRadius:14,
                   padding:'15px 16px', marginBottom:9, textAlign:'left', minHeight:44,
                   cursor:'pointer', fontFamily:'inherit', boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
@@ -1804,7 +1869,7 @@ function VistaDePlanoAluno({ plano: planoAberto, aluno, onVoltar, soConsulta = f
             <div style={{ display:'flex', justifyContent:'space-between', gap:12 }}>
               <div style={{ fontSize:13, color:'#DCCFF0', overflow:'hidden',
                 textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {plano.ucId}{plano.ucNome ? ` · ${plano.ucNome}` : ''}
+                {ucAncora(plano.ucId, plano.ucNome)}
               </div>
             </div>
             {/* O título já está no cabeçalho da janela: aqui, a data e a hora. */}
@@ -2744,7 +2809,7 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
             <span style={{ fontSize:22 }}>📄</span>
             <div style={{ flex:1 }}>
               <div style={{ fontWeight:700, fontSize:15 }}>{f.nomePrato}</div>
-              <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{f.classificacao} · {f.numPorcoes} doses</div>
+              <div style={{ fontSize:13, color:'rgba(26,23,20,0.5)' }}>{[f.classificacao, f.numPorcoes ? `${f.numPorcoes} doses` : ''].filter(Boolean).join(' · ')}</div>
             </div>
             <span style={{ fontSize:18, color:'#2980b9' }}>{fichaAberta===f.id?'▲':'▼'}</span>
           </button>
@@ -2752,16 +2817,13 @@ function SecaoFichas({ fichas, plano, aluno, onConcluido }: {
           {fichaAberta===f.id && (
             <div style={{ padding:'14px', background:'#fdfcfb', borderRadius:'0 0 12px 12px',
               border:'1px solid #2980b920', borderTop:'none' }}>
-              {(f as any).htmlCompleto && (
-                <button style={{ width:'100%', padding:'10px', borderRadius:10, border:`1px solid ${T.border}`,
-                  background:'#fff', fontSize:13, fontWeight:600, cursor:'pointer', marginBottom:12 }}
-                  onClick={() => {
-                    const win=window.open('','_blank');
-                    if(win){win.document.write((f as any).htmlCompleto);win.document.close();}
-                  }}>
-                  🖨️ Ver / Imprimir Ficha Completa
-                </button>
-              )}
+              {/* Sempre disponível: antes só aparecia nas fichas com «htmlCompleto»,
+                  e o aluno imprimia o ecrã (Rosa, out/2026). */}
+              <button style={{ width:'100%', padding:'10px', borderRadius:10, border:`1px solid ${T.border}`,
+                background:'#fff', fontSize:13.5, fontWeight:600, cursor:'pointer', marginBottom:12 }}
+                onClick={() => { try { exportPDF(f as any); } catch { alert('Não foi possível preparar a ficha para imprimir.'); } }}>
+                🖨️ Imprimir ou guardar em PDF
+              </button>
 
               {f.ingredientes?.length>0 && (
                 <div style={{ marginBottom:14 }}>

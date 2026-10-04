@@ -55,6 +55,9 @@ function guardarSugestao(s: Sugestao) {
   try { localStorage.setItem(CHAVE_SUGESTOES, JSON.stringify(todas)); } catch {}
 }
 
+/** Quantas entradas se desenham de cada vez. */
+const LIMITE = 150;
+
 // ── Tipos de entrada do dicionário ───────────────────────────
 interface EntradaDic {
   id: string;
@@ -134,6 +137,9 @@ function CriteriosEditor({
       setTimeout(() => setGuardado(false), 4000);
     }
   }
+
+  // O aluno não pode sugerir critérios: sem critérios, não há nada para abrir.
+  if (perfil === 'aluno' && criteriosAtivos.length === 0) return null;
 
   return (
     <div>
@@ -296,7 +302,7 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
   // Agrupar por UC principal
   const porUC = useMemo(() => {
     const mapa: Record<string, EntradaDic[]> = {};
-    filtradas.forEach(e => {
+    filtradas.slice(0, LIMITE).forEach(e => {
       const uc = e.ucPrincipal || 'Sem UC';
       if (!mapa[uc]) mapa[uc] = [];
       mapa[uc].push(e);
@@ -309,7 +315,7 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
       {/* Cabeçalho */}
       <div style={{ background: '#1a1714', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: '#faf7f2', marginBottom: 10 }}>
-          📖 Dicionário de Técnicas e Microcompetências
+          📖 {perfil === 'aluno' ? 'Dicionário de cozinha' : 'Dicionário de Técnicas e Microcompetências'}
         </div>
 
         {/* Tabs dicionário / sugestões (só coordenadora) */}
@@ -341,7 +347,7 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
               <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(247,241,230,0.4)' }}>🔍</span>
               <input
                 value={pesquisa} onChange={e => setPesquisa(e.target.value)}
-                placeholder="Pesquisar por nome ou código..."
+                placeholder={perfil === 'aluno' ? 'Pesquisar uma técnica' : 'Pesquisar por nome ou código'}
                 style={{ width: '100%', padding: '8px 10px 8px 32px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#faf7f2', fontSize: 13 }}
               />
             </div>
@@ -351,13 +357,13 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
               <option value="">Todas as UCs</option>
               {ucs.map(uc => <option key={uc} value={uc}>{uc}</option>)}
             </select>
-            {/* Filtro tipo */}
-            <select value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value as any)}
+            {/* Filtro tipo (o aluno não conhece a diferença entre S e M) */}
+            {perfil !== 'aluno' && <select value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value as any)}
               style={{ padding: '8px 10px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#faf7f2', fontSize: 13 }}>
               <option value="todos">Todos os tipos</option>
               <option value="subtecnica">Só subtécnicas (S)</option>
               <option value="micro">Só microcompetências (M)</option>
-            </select>
+            </select>}
           </div>
         )}
         <div style={{ fontSize: 12.5, color: 'rgba(247,241,230,0.4)', marginTop: 6 }}>
@@ -406,9 +412,23 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
         </div>
       )}
 
-      {/* Vista dicionário */}
-      {abaVista === 'dicionario' && (
+      {/* Vista dicionário. Sem pesquisa nem UC escolhida, não se desenham as
+          milhares de entradas de uma vez: o ecrã ficava lento e interminável. */}
+      {abaVista === 'dicionario' && !pesquisa.trim() && !ucFiltro && (
+        <div style={{ textAlign: 'center', padding: 24, color: 'rgba(26,23,20,0.55)', fontSize: 14, lineHeight: 1.6 }}>
+          {perfil === 'aluno'
+            ? 'Escreve o nome de uma técnica (por exemplo, «juliana») ou escolhe uma UC.'
+            : 'Escreva o nome de uma técnica (por exemplo, «juliana») ou escolha uma UC.'}
+        </div>
+      )}
+      {abaVista === 'dicionario' && (pesquisa.trim() || ucFiltro) && (
         <div>
+          {filtradas.length > LIMITE && (
+            <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)', marginBottom: 8 }}>
+              {perfil === 'aluno' ? `Aparecem as primeiras ${LIMITE}. Escreve mais letras para encontrares o que procuras.`
+                : `Aparecem as primeiras ${LIMITE}. Escreva mais letras para encontrar o que procura.`}
+            </div>
+          )}
           {Object.keys(porUC).length === 0 ? (
             <div style={{ textAlign: 'center', padding: 32, color: 'rgba(26,23,20,0.4)' }}>Nenhuma entrada encontrada.</div>
           ) : Object.entries(porUC).map(([uc, items]) => (
@@ -420,11 +440,11 @@ export function DicionarioComp({ perfil, nomeProfessor, turmaId }: Props) {
               {items.map(e => (
                 <div key={e.id} style={{ background: '#fff', borderRadius: 10, padding: '10px 14px', marginBottom: 6, border: '1px solid rgba(26,23,20,0.07)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{
+                    {perfil !== 'aluno' && <span style={{
                       fontFamily: 'monospace', fontSize: 12.5, fontWeight: 700, padding: '1px 7px', borderRadius: 5,
                       background: e.tipo === 'subtecnica' ? 'rgba(15,118,110,0.08)' : 'var(--copper-pale)',
                       color: e.tipo === 'subtecnica' ? '#0f766e' : 'var(--copper)',
-                    }}>{e.id}</span>
+                    }}>{e.id}</span>}
                     <span style={{ fontSize: 13, fontWeight: 600 }}>{e.nome}</span>
                     <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.35)', marginLeft: 'auto' }}>
                       {e.tipo === 'subtecnica' ? 'subtécnica' : 'microcompetência'}

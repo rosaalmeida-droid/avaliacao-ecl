@@ -119,7 +119,7 @@ function ListaHistorico({ items, nomeAluno, onClick }: { items: RecuperacaoModul
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{nomeAluno(r.alunoId)}</div>
                 <div className="muted" style={{ fontSize: 13 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--sage)', marginTop: 2 }}>
-                  {nConsolidadas}/{nTotal} competências consolidadas
+                  {nTotal ? `${nConsolidadas}/${nTotal} competências consolidadas` : 'Ainda sem competências avaliadas'}
                 </div>
                 <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 4 }}>
                   Atribuída: {r.dataAtribuicao ? fmtData(r.dataAtribuicao) : '—'}
