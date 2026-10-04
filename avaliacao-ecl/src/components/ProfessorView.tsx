@@ -5,7 +5,7 @@ import { REGRAS_PERGUNTAS, promptPerguntasDaFicha, lerPerguntasDaIA, type Pergun
 import { PerguntasDaFicha } from './PerguntasDaFicha';
 import { pedirAIA, iaDiretaDisponivel } from '../ia';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS } from '../types';
+import { Comanda, FichaProducao, FAMILIAS_FICHA, FamiliaFicha, TODAS_ETIQUETAS, limparEtiquetas } from '../types';
 import { Button, Card, Field } from './ui';
 import { addOrUpdateFichaProducao, getFichasProducao, getPlanosAulaPorTurma, buscarFichasSimilares, addOrUpdatePlanoAula, getPlanosAula, eliminarFichaProducaoDefinitivamente, proximoNumeroFicha , publicarNoClassroom , recuperarFichasDoSheets, recuperarFichasDeTodoOLado, fichasDuplicadas, limparFichasDuplicadas, novoIdFicha, fichasComIdRepetido, separarFichasComIdRepetido } from '../backend';
 import { EtiquetaLigacaoPlano } from './EtiquetaLigacaoPlano';
@@ -1423,12 +1423,14 @@ function PassoFichaTecnica({
           <Field label="🏷️ Etiquetas (máx. 3 — contexto adicional)">
             <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
               {TODAS_ETIQUETAS.map((et: string) => {
-                const selecionada = (ficha.etiquetas || []).includes(et);
-                const limite = (ficha.etiquetas || []).length >= 3;
+                // Compara já limpas: «Cozinha Portuguesa.» (com ponto) é a mesma etiqueta.
+                const etqs = limparEtiquetas(ficha.etiquetas);
+                const selecionada = etqs.includes(et);
+                const limite = etqs.length >= 3;
                 return (
                   <button key={et} type="button"
                     onClick={() => {
-                      const cur = ficha.etiquetas || [];
+                      const cur = etqs;
                       if (selecionada) setF('etiquetas', cur.filter((x: string) => x !== et));
                       else if (!limite) setF('etiquetas', [...cur, et]);
                     }}
@@ -1447,7 +1449,7 @@ function PassoFichaTecnica({
             </div>
             {(ficha.etiquetas || []).length > 0 && (
               <div style={{ fontSize:13, color:'var(--copper)', marginTop:6 }}>
-                Selecionadas: {(ficha.etiquetas || []).join(' · ')}
+                Selecionadas: {limparEtiquetas(ficha.etiquetas).join(' · ') || 'nenhuma'}
               </div>
             )}
           </Field>
@@ -1816,7 +1818,7 @@ function PassoFichaTecnica({
                 kitchenflow: String(ficha.kitchenflow || ''),
                 familia1: ficha.familia1 || undefined,
                 familia2: ficha.familia2 || undefined,
-                etiquetas: Array.isArray(ficha.etiquetas) ? ficha.etiquetas : [],
+                etiquetas: limparEtiquetas(ficha.etiquetas),
                 ingredientes: (ficha.ingredientes || []).map(ing => ({
                   componente: String(ing?.componente ?? ''),
                   qt: String(ing?.qt ?? ''),
@@ -2165,7 +2167,7 @@ export function ProfessorView({ turmaId, nomeProfessor, onAlteracao, onGuardado,
         ...({
           familia1: fichaConfirmada.familia1 || (fichaOriginal as any)?.familia1 || undefined,
           familia2: fichaConfirmada.familia2 || (fichaOriginal as any)?.familia2 || undefined,
-          etiquetas: Array.isArray(fichaConfirmada.etiquetas) ? fichaConfirmada.etiquetas : ((fichaOriginal as any)?.etiquetas || []),
+          etiquetas: limparEtiquetas(Array.isArray(fichaConfirmada.etiquetas) ? fichaConfirmada.etiquetas : ((fichaOriginal as any)?.etiquetas || [])),
         } as any),
         ucsAssociadas: [ucId].filter(Boolean),
         elaboradoPor: nomeProfessor || fichaConfirmada.elaboradoPor || '',

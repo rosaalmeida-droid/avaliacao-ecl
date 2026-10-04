@@ -315,6 +315,20 @@ export const TODAS_ETIQUETAS: string[] = [
   ...ETIQUETAS_FICHA.tecnica,
   ...ETIQUETAS_FICHA.cultural,
 ];
+/** A etiqueta da lista que corresponde a um texto (sem ligar a maiúsculas,
+ *  acentos ou pontuação: a IA escreve «Cozinha Portuguesa.», e a etiqueta
+ *  ficava escolhida mas invisível — Rosa, out/2026). */
+const semPont = (t: string) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9/]+/g, ' ').trim();
+export function etiquetaDaLista(t: string): string | null {
+  const n = semPont(t);
+  return n ? TODAS_ETIQUETAS.find(e => semPont(e) === n) || null : null;
+}
+/** As etiquetas de uma ficha, limpas: só as da lista, sem repetir, no máximo 3. */
+export function limparEtiquetas(lista: unknown): string[] {
+  const arr = Array.isArray(lista) ? lista : String(lista || '').split(/[|,;·]/);
+  return [...new Set(arr.map(x => etiquetaDaLista(String(x))).filter((x): x is string => !!x))].slice(0, 3);
+}
+
 
 export const FAMILIAS_FICHA: FamiliaFicha[] = [
   'Preparações Base e Molhos',
