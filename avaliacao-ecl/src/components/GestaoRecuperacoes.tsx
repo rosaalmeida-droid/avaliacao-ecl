@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CRONOGRAMA_2026_2027 } from '../cronograma';
 import { fmtData, fmtDataHora, fmtHora, fmtDataCurta, fmtDataLonga, fmtDataRelativa } from '../datas';
-import { getRecuperacoesPorTurma, ucsEmAtraso, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript } from '../backend';
+import { getRecuperacoesPorTurma, ucsEmAtraso, addOrUpdateRecuperacao, addRegistoAvaliacao, getAlunos, getGuiasDaRecuperacao, addEvidencia, construirPromptAnalisePreliminar, recuperacaoEstaTrancada, destrancarRecuperacao, gerarPDFRecuperacaoFCTViaScript, gerarPautaFCTViaScript, atividadeDaRecuperacao, ehFantasma } from '../backend';
 import { encontrarMicro, encontrarAtitude, OBRIGATORIAS, encontrarAparelho, encontrarSubtecnica, nomeCompetencia } from '../compatECL';
 import { CriteriosComp } from './CriteriosComp';
 import { RecuperacaoModulo } from '../types';
@@ -31,10 +31,15 @@ export function GestaoRecuperacoes({ turmaId, nomeProfessor }: { turmaId: string
   const [refresh, setRefresh] = useState(0);
   const [activa, setActiva] = useState<RecuperacaoModulo | null>(null);
 
-  const todas = getRecuperacoesPorTurma(turmaId);
+  // Os alunos fantasma não aparecem nas recuperações (Rosa, out/2026).
+  const todas = getRecuperacoesPorTurma(turmaId).filter(r => !ehFantasma(r.alunoId));
   const alunos = getAlunos().filter((a) => a.turmaId === turmaId && a.ativo !== false);
 
-  const pendentes = todas.filter(r => r.estado === 'pendente');
+  // Por fazer: tudo o que ainda não foi entregue nem concluído — também a
+  // recuperação numa atividade (estado «em curso»), que saía da lista quando
+  // o aluno era proposto para a atividade (Rosa, out/2026: «o professor
+  // precisa de estar sempre em alerta»).
+  const pendentes = todas.filter(r => !['submetida', 'em_avaliacao', 'em_analise', 'concluida', 'validada'].includes(r.estado));
   const submetidas = todas.filter(r => r.estado === 'submetida' || r.estado === 'em_avaliacao');
   const concluidas = todas.filter(r => r.estado === 'concluida');
 
@@ -150,6 +155,9 @@ function Lista({ items, nomeAluno, vazio, onClick }: { items: RecuperacaoModulo[
               <div style={{ fontWeight: 700, fontSize: 14 }}>{nomeAluno(r.alunoId)}</div>
               <div className="muted" style={{ fontSize: 13 }}>{r.numeroRecuperacao ? `#${r.numeroRecuperacao} · ` : ""}{r.ucId} — {r.ucNome}</div>
               <div style={{ fontSize: 12.5, color: 'var(--copper)' }}>{r.planosIds.length} aula(s) em falta</div>
+              {(() => { const at: any = atividadeDaRecuperacao(r); return at ? (
+                <div style={{ fontSize: 12.5, color: '#b5651d', fontWeight: 700 }}>⚠️ A recuperar na atividade «{at.titulo}»{at.data ? ` (${fmtData(at.data)})` : ''}: ainda não está recuperada</div>
+              ) : null; })()}
               <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
                 Atribuída em {r.dataAtribuicao ? fmtData(r.dataAtribuicao) : '—'}
                 {r.dataSubmissao ? ` · submetida em ${fmtData(r.dataSubmissao)}` : ''}

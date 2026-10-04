@@ -8,6 +8,9 @@ import { itemDoBancoPorNome, useBancoEmpratamento } from './BancoEmpratamento';
 import { manterEscolhaMakro } from '../precosRevistos';
 import { converterUnidadeParaPeso } from '../pesosMedios';
 import { semPontoFinal } from '../lerFichaDaIA';
+import { RequisicoesFeitas } from './RequisicoesFeitas';
+import { getPlanosAula } from '../backend';
+import type { RequisicaoAula } from '../types';
 import {
   processarIngrediente,
   obterRendimento,
@@ -386,6 +389,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
   /** Id da requisição feita sem plano (uma por ecrã aberto). */
   const reqAvulsaId = React.useRef<string>('');
+  /** Requisição já feita, aberta a partir da lista «Requisições já feitas». */
+  const reqAberta = React.useRef<RequisicaoAula | null>(null);
+  const [abrirPendente, setAbrirPendente] = useState(false);
   /** Envio em curso — impede duas cópias do documento. */
   const [aEnviarReq, setAEnviarReq] = useState(false);
   const [fase, setFase] = useState<'escolher' | 'editar'>(
@@ -516,8 +522,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   );
   const [buscaFicha, setBuscaFicha] = useState('');
 
+  const reqDoPlano: any = planoSel ? getRequisicaoPorPlano(planoSel.id) : undefined;
   const fichasDoPlano = planoSel
-    ? todasFichas.filter(f => (planoSel.fichasIds || []).includes(f.id))
+    ? todasFichas.filter(f => (planoSel.fichasIds || []).includes(f.id) || (reqDoPlano?.fichasIds || []).includes(f.id))
     : [];
 
   const fichasDisp = origemFichas === 'plano'
@@ -548,13 +555,19 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   const nomeReceita = fichasSelecionadas.map(f => semPontoFinal(f.nomePrato || '')).filter(Boolean).join(' + ') || 'Requisicao';
 
   function selecionarPlano(p: PlanoAula) {
+    reqAberta.current = null;
     setPlanoSel(p);
-    setFichasSel(p.fichasIds);
+    // Uma aula (ex.: teórica) pode ter uma requisição guardada sem ter as
+    // fichas no plano: as fichas vêm então da requisição (Rosa, out/2026 —
+    // «abro e não vejo as fichas nem a requisição»).
+    const req: any = getRequisicaoPorPlano(p.id);
+    const ids = (p.fichasIds || []).length ? p.fichasIds : (req?.fichasIds || []);
+    setFichasSel(ids);
     const pax = paxDoEventoDoPlano(p);
     const r: Record<string, number> = {};
-    (p.fichasIds || []).forEach(fid => {
+    ids.forEach((fid: string) => {
       const f = todasFichas.find(x => x.id === fid);
-      if (f) r[fid] = pax || porcoesDe(f);
+      if (f) r[fid] = Number(req?.paxPorFicha?.[fid]) || pax || porcoesDe(f);
     });
     setPaxPorFicha(r);
     // A atividade e a família eram só as do primeiro plano: ao escolher
@@ -573,6 +586,35 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     if (f?.classificacao && !familia) setFamilia(f.classificacao);
   }
 
+  /** Abre uma requisição já feita: plano, fichas, doses, quantidades e preços. */
+  function abrirRequisicaoFeita(r: RequisicaoAula) {
+    const plano = r.planoAulaId ? getPlanosAula().find(p => p.id === r.planoAulaId) || null : null;
+    reqAberta.current = r;
+    if (!plano) reqAvulsaId.current = r.id;
+    setPlanoSel(plano);
+    const ids = (r.fichasIds || []).filter(id => todasFichas.some(f => f.id === id));
+    const pax = (r as any).paxPorFicha || {};
+    primeiraVezDoses.current = true;
+    setFichasSel(ids);
+    setPaxPorFicha(p => ({ ...p, ...pax }));
+    const di = (r as any).dataIngredientes;
+    if (di) { setDataPrecisa(di); setDataPrecisaMudada(true); }
+    if (ids.length) { setAbrirPendente(true); return; }
+    // As fichas já não estão neste aparelho: mostram-se as linhas guardadas.
+    setLinhas((r.linhas || []).map((l, i) => recalc({
+      id: `g${i}`, produto: l.produto, und: l.unidade, qt1pax: 0, qtReceita: 0, qtEncomenda: Number(l.quantidadeTotal) || 0,
+      precoUnitario: l.precoUnitario != null ? String(l.precoUnitario).replace('.', ',') : '', precoReceita: 0, preco1pax: 0, precoEncomenda: 0,
+      fichas: [], daBD: false, avisos: [], isQB: l.unidade === 'q.b.', perguntarProfessor: false,
+    } as Linha)));
+    setFase('editar');
+  }
+  React.useEffect(() => {
+    if (!abrirPendente) return;
+    setAbrirPendente(false);
+    gerarLinhas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirPendente]);
+
   function gerarLinhas() {
     const novasLinhas = agregarIngredientes(fichasSelecionadas, paxPorFicha);
     // Aviso imediato e visível — antes ficava silencioso e a requisição
@@ -588,7 +630,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     // Requisição já guardada para este plano (auditoria out/2026): os preços
     // corrigidos à mão voltam sempre; as quantidades corrigidas voltam se as
     // fichas e as doses forem as mesmas (mudar as doses recalcula).
-    const guardada: any = planoSel ? getRequisicaoPorPlano(planoSel.id) : undefined;
+    const guardada: any = reqAberta.current || (planoSel ? getRequisicaoPorPlano(planoSel.id) : undefined);
     const porProduto = new Map<string, any>((guardada?.linhas || []).map((l: any) => [String(l.produto || '').trim().toLowerCase(), l]));
     const mesmas = !!guardada?.paxPorFicha && [...fichasSel].sort().join('|') === [...(guardada.fichasIds || [])].sort().join('|')
       && fichasSel.every(id => Number(guardada.paxPorFicha[id]) === Number(paxPorFicha[id]));
@@ -915,6 +957,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           </div>
         </div>
 
+        {/* Requisições já feitas — das aulas, dos eventos e soltas (Rosa, out/2026). */}
+        {!planoIdFixo && !evento && <RequisicoesFeitas onAbrir={abrirRequisicaoFeita} />}
+
         {/* ── CALENDÁRIO ── (dentro de um plano não faz falta: a aula já está escolhida) */}
         <div style={S.card}>
           {!planoIdFixo && (<>
@@ -958,7 +1003,9 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               return (
                 <button key={dia} onClick={() => {
                   if (diasComPlano[dia]?.length) {
-                    selecionarPlano(diasComPlano[dia][0]);
+                    // Primeiro o plano que já tem requisição, depois o que tem fichas.
+                    const ps = diasComPlano[dia];
+                    selecionarPlano(ps.find(p => getRequisicaoPorPlano(p.id)) || ps.find(p => (p.fichasIds || []).length) || ps[0]);
                   }
                 }} style={{
                   padding: '8px 2px', borderRadius: 8, border: 'none',
@@ -1002,7 +1049,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   {p.titulo}
                   <span style={{ fontSize: 12.5, fontWeight: 400,
                     color: 'rgba(26,23,20,0.5)', marginLeft: 6 }}>
-                    {p.fichasIds?.length || 0} fichas
+                    {p.fichasIds?.length || 0} fichas{getRequisicaoPorPlano(p.id) ? ' · 📄 tem requisição' : ''}
                   </span>
                 </div>
               ))}
@@ -1025,7 +1072,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 13,
                   color: 'var(--copper)', marginBottom: 2 }}>
-                  ✓ {planoSel.titulo}
+                  ✓ {String(planoSel.titulo || '').replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3/$2/$1')}
                 </div>
                 <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>
                   {planoSel.data
@@ -1034,8 +1081,15 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   {planoSel.ucId && ` · ${planoSel.ucId}`}
                 </div>
                 <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
-                  {planoSel.fichasIds?.length || 0} {(planoSel.fichasIds?.length || 0) === 1 ? 'ficha associada' : 'fichas associadas'}
+                  {fichasDoPlano.length} {fichasDoPlano.length === 1 ? 'ficha associada' : 'fichas associadas'}{!(planoSel.fichasIds || []).length && fichasDoPlano.length ? ' (da requisição guardada)' : ''}
                 </div>
+                {reqDoPlano && (
+                  <button onClick={() => abrirRequisicaoFeita(reqDoPlano)}
+                    style={{ marginTop: 6, padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--sage)', background: '#fff',
+                      color: 'var(--sage)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    📄 Abrir a requisição guardada ({(Number(reqDoPlano.custoTotal) || 0).toFixed(2).replace('.', ',')} €, feita em {new Date(reqDoPlano.criadaEm || Date.now()).toLocaleDateString('pt-PT')})
+                  </button>
+                )}
               </div>
               <button onClick={() => {
                   // scroll suave para as fichas
@@ -1740,7 +1794,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           const idReq = planoSel ? (reqExistente?.id || `req_${planoSel.id}`) : evento ? evento.requisicaoId : reqAvulsaId.current;
           addOrUpdateRequisicao({
             id: idReq,
-            ...(evento ? { eventoId: evento.eventoId, orcamentoId: evento.orcamentoId } : {}),
+            ...(evento ? { eventoId: evento.eventoId, orcamentoId: evento.orcamentoId }
+              : (reqAberta.current as any)?.eventoId ? { eventoId: (reqAberta.current as any).eventoId, orcamentoId: (reqAberta.current as any).orcamentoId } : {}),
             planoAulaId: planoSel?.id || '', turmaId: planoSel?.turmaId || evento?.turmaId || turmaId,
             dataAula: planoSel?.data || evento?.data || '', professor: planoSel?.professor || nomeProfessor || '', fichasIds: fichasSel,
             linhas: linhas.map((l, i) => ({ id: `l${i}`, produto: l.produto, unidade: l.und, quantidadeTotal: l.qtEncomenda, precoUnitario: precoNum(l.precoUnitario) || undefined, custoTotal: l.precoEncomenda, obs: '' })),

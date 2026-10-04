@@ -21,7 +21,9 @@
 //    de todas (ex.: 26 = 6 + 12 + 8). Por baixo das assinaturas fica uma
 //    nota a explicar, com as doses de cada prato.
 //
-// 4. E-mail às compras (opcional). Se a aplicação enviar os e-mails das
+// 4. A cruz do Consumo fica dentro do quadrado (ficava ao lado).
+//
+// 5. E-mail às compras (opcional). Se a aplicação enviar os e-mails das
 //    pessoas das compras, segue logo uma mensagem formal com a ligação
 //    para a requisição. Sem e-mails, nada é enviado.
 //    Na primeira implementação, o Google pede autorização para enviar
@@ -258,7 +260,7 @@ function lerEstrutura(folha) {
       else if (etiqueta && txt.indexOf('atividade') === 0)  { est.linhaAtividade = linhaReal; est.colAtividade = c + 1; }
       else if (etiqueta && txt.indexOf('respons') === 0)    est.linhaResponsavel = linhaReal;
       else if (!etiqueta && (txt.indexOf('direc') === 0 || txt.indexOf('direç') === 0) && !est.linhaAssinaturas) est.linhaAssinaturas = linhaReal;
-      else if (txt.indexOf('ecl bar') === 0)  { est.linhaBar = linhaReal; est.colConsumo = c + 4; }
+      else if (txt.indexOf('ecl bar') === 0)  { est.linhaBar = linhaReal; est.colConsumo = c + 3; }
       else if (txt.indexOf('ecl restaurante') === 0) est.linhaRest = linhaReal;
       else if (txt.indexOf('consumo interno') === 0) est.linhaInterno = linhaReal;
       else if (txt.indexOf('convidados') === 0) est.linhaConvidados = linhaReal;
@@ -422,7 +424,10 @@ function preencherRodape(folha, d, est, log) {
   ];
   for (var i = 0; i < marcas.length; i++) {
     if (marcas[i][0]) {
-      try { folha.getRange(marcas[i][0], est.colConsumo).setValue(marcas[i][1] ? 'X' : ''); }
+      // O quadrado está três colunas depois da etiqueta («ECL BAR» em K,
+      // quadrado em M): a v5 escrevia uma coluna ao lado, fora do quadrado.
+      try { folha.getRange(marcas[i][0], est.colConsumo).setValue(marcas[i][1] ? 'X' : '')
+              .setHorizontalAlignment('center').setVerticalAlignment('middle').setFontWeight('bold'); }
       catch (e) { log.push('consumo: ' + e); }
     }
   }

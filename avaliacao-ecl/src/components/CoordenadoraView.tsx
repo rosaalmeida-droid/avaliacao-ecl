@@ -19,7 +19,7 @@ import { AlunosExternos } from './AlunosExternos';
 import { DadosSeguranca } from './DadosSeguranca';
 import { PrecosCoordenadora } from './PrecosCoordenadora';
 import { SimulacaoPauta } from './SimulacaoPauta';
-import { getPrecosAReverPendentes, lerPrecosDoSheets } from '../backend';
+import { getPrecosAReverPendentes, lerPrecosDoSheets, ehFantasma, marcarFantasma } from '../backend';
 
 export function CoordenadoraView() {
   const [tab, setTab] = useState<'avisos' | 'presencas' | 'planos' | 'ranking' | 'atividades' | 'pedagogico' | 'alunos' | 'config' | 'cronograma' | 'manual' | 'externos' | 'dados' | 'precos' | 'pauta'>('avisos');
@@ -713,7 +713,8 @@ function GestaoAlunosTab() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 800, fontSize: 13, flexShrink: 0 }}>{a.numero}</div>
           <div style={{ flex: 1, minWidth: 140 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{a.nome || '(sem nome)'}</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{a.nome || '(sem nome)'}
+              {ehFantasma(a.id) && <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 800, color: '#6b6b6b', background: '#eee', borderRadius: 999, padding: '1px 8px' }}>👻 fantasma</span>}</div>
             <BadgeNivel nivel={a.nivelMedidas} />
           </div>
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)' }}>PIN: {a.pin || '—'}</div>
@@ -732,6 +733,17 @@ function GestaoAlunosTab() {
               style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
                 background: '#faf7f2', fontSize: 12.5, cursor: 'pointer', fontWeight: 600 }}>📱 Libertar</button>
           )}
+          <button onClick={() => {
+              const f = ehFantasma(a.id);
+              if (!confirm(f
+                ? `Voltar a contar ${a.nome || 'este aluno'} como aluno da turma?\n\nVolta às faltas, às funções da aula, às recuperações e ao ranking.`
+                : `Marcar ${a.nome || 'este aluno'} como aluno fantasma?\n\nDeixa de aparecer nas faltas e presenças da aula, nas funções e responsabilidades, nas recuperações e no ranking da turma. Continua na pauta oficial e pode ser reposto a qualquer momento.`)) return;
+              marcarFantasma(a, !f, 'Coordenação'); setRefresh(r => r + 1);
+            }}
+            title="Aluno inscrito que nunca vem"
+            style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid rgba(26,23,20,0.15)',
+              background: ehFantasma(a.id) ? '#eee' : '#faf7f2', fontSize: 12.5, cursor: 'pointer', fontWeight: 600 }}>
+            {ehFantasma(a.id) ? '↩ Deixa de ser fantasma' : '👻 Fantasma'}</button>
           <button onClick={() => remover(a)} style={{ padding: '5px 10px', borderRadius: 8,
             border: '1px solid #c0392b', background: '#fff', color: '#c0392b', fontSize: 12.5,
             cursor: 'pointer', fontWeight: 700 }}>Remover</button>
@@ -857,7 +869,8 @@ function RankingTab() {
   const turmas = getTurmas();
   const [turmaSel, setTurmaSel] = useState<string>(turmas[0]?.id || '1º BCR');
   const alunos = useMemo(
-    () => getAlunos().filter(a => a.turmaId === turmaSel && a.ativo !== false),
+    // Os alunos fantasma não entram no ranking (Rosa, out/2026).
+    () => getAlunos().filter(a => a.turmaId === turmaSel && a.ativo !== false && !ehFantasma(a.id)),
     [turmaSel]
   );
 
