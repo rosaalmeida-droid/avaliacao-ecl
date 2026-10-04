@@ -64,6 +64,8 @@ export const COLECAO_DO_TIPO: Record<string, string> = {
   config: 'configs',
   // Avisos para a coordenação (sugestões de ingredientes dos professores).
   aviso_coord: 'avisoscoord',
+  // Ocorrências disciplinares (para a eSchooling): só dos professores, por turma.
+  ocorrencia: 'ocorrencias',
 };
 /** As fichas são de todas as turmas: ficam numa «turma» à parte. */
 export const TURMA_DAS_FICHAS = '_todas';
