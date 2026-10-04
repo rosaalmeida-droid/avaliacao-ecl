@@ -14,8 +14,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 type Produto = [number, string, string, string, string, string, number | null, number | null, string,
-  number | null, number | null, string, number | null, number | null, number, string];
-interface Catalogo { loja: string; data: string; grupos: string[]; produtos: Produto[] }
+  number | null, number | null, string, number | null, number | null, number, string, number[]?];
+interface Catalogo { loja: string; data: string; grupos: string[]; dietas?: string[]; produtos: Produto[] }
 
 let cache: Promise<Catalogo | null> | null = null;
 function lerCatalogo(): Promise<Catalogo | null> {
@@ -45,6 +45,8 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
   const [pesquisa, setPesquisa] = useState('');
   const [quantos, setQuantos] = useState(60);
   const [comIVA, setComIVA] = useState(true);
+  // Dietas especiais (sem glúten, sem lactose…): mostram os produtos de todos os grupos.
+  const [dieta, setDieta] = useState(-1);
 
   useEffect(() => { lerCatalogo().then(setCat); }, []);
 
@@ -65,9 +67,11 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
   const escolher = (n: number, v: string) => { setSel(s => s.map((x, k) => k < n ? x : k === n ? (x === v ? '' : v) : '')); setQuantos(60); };
   const lista = useMemo(() => {
     if (!cat) return [];
-    const base = palavras.length ? cat.produtos.map((p, i) => [p, i] as const) : doGrupo;
-    return base.filter(([p, i]) => (palavras.length ? palavras.every(w => indice[i].includes(w)) : passa(p, 3))).map(([p]) => p);
-  }, [cat, doGrupo, sel.join('|'), palavras.join(' '), indice]);
+    const todos = palavras.length || dieta >= 0;
+    const base = todos ? cat.produtos.map((p, i) => [p, i] as const) : doGrupo;
+    return base.filter(([p, i]) => (dieta < 0 || (p[16] || []).includes(dieta))
+      && (palavras.length ? palavras.every(w => indice[i].includes(w)) : dieta >= 0 || passa(p, 3))).map(([p]) => p);
+  }, [cat, doGrupo, sel.join('|'), palavras.join(' '), indice, dieta]);
 
   const chip = (ativo: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit',
     fontSize: 14.5, fontWeight: 700, border: `1.5px solid ${ativo ? C.acento : C.linha}`, background: ativo ? C.acento : C.papel, color: ativo ? '#fff' : C.tinta });
@@ -85,7 +89,17 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
         placeholder="Procurar na Makro (ex.: natas, película, luvas, garrafão de azeite)"
         style={{ width: '100%', boxSizing: 'border-box', minHeight: 54, padding: '0 18px', borderRadius: 14, border: `1.5px solid ${C.linha}`,
           fontSize: 17, fontFamily: 'inherit', background: C.papel, color: C.tinta }} />
-      {!palavras.length && (
+      {!!cat.dietas?.length && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, margin: '12px 0 4px' }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: C.suave, marginRight: 4 }}>Dietas especiais:</span>
+          {cat.dietas.map((dn, i) => {
+            const n = cat.produtos.filter(p => (p[16] || []).includes(i)).length;
+            return <button key={dn} onClick={() => { setDieta(d => d === i ? -1 : i); setQuantos(60); }}
+              style={{ ...chip(dieta === i), minHeight: 34, fontSize: 13.5, fontWeight: 600, ...(dieta === i ? {} : { borderStyle: 'dashed' }) }}>{dn} ({n})</button>;
+          })}
+        </div>
+      )}
+      {!palavras.length && dieta < 0 && (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '14px 0 10px' }}>
             {cat.grupos.map((g, i) => {
