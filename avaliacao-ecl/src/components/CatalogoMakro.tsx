@@ -13,7 +13,8 @@
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { precoKgMakro } from './EscolherMakro';
-import { useBancoEmpratamento } from './BancoEmpratamento';
+import { comFoto, useBancoEmpratamento, type ItemEmpratamento } from './BancoEmpratamento';
+import { FotoProduto, SeloNotas, useNotasPorProduto } from './FotoProduto';
 
 export type Produto = [number, string, string, string, string, string, number | null, number | null, string,
   number | null, number | null, string, number | null, number | null, number, string, number[]?, number?];
@@ -66,7 +67,10 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
   useEffect(() => { lerCatalogo().then(setCat); }, []);
   // Imagens do banco de empratamento (431 produtos), por código.
   const banco = useBancoEmpratamento();
-  const imagens = useMemo(() => new Map((banco?.itens || []).map(i => [i.codigo, i.imagem])), [banco]);
+  const imagens = useMemo(() => new Map((banco?.itens || []).map(i => [i.codigo, i])), [banco]);
+  // Tocar na fotografia abre-a em grande, com as notas da equipa (Rosa, out/2026).
+  const [ver, setVer] = useState<ItemEmpratamento | null>(null);
+  const notas = useNotasPorProduto();
 
   const indice = useMemo(() => (cat?.produtos || []).map(p => semAcentos(`${p[3]} ${p[4]} ${p[2]}`)), [cat]);
   const q = semAcentos(pesquisa.trim());
@@ -205,11 +209,18 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
           return (
             <div key={p[15]} style={{ background: C.papel, borderRadius: 12, padding: '10px 14px', border: `1px solid ${C.linha}`, borderLeft: `5px solid ${COR_GRUPO[p[0]]?.texto || C.linha}`, opacity: p[14] ? 1 : 0.6 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                {imagens.get(p[15]) && <img src={imagens.get(p[15])} alt="" loading="lazy" style={{ width: 52, height: 52, objectFit: 'contain', background: '#fff', borderRadius: 8, flexShrink: 0 }} />}
+                {imagens.get(p[15]) && (
+                  <button onClick={() => setVer(imagens.get(p[15]) || null)} aria-label={`Ver ${p[3]} em grande`} title="Ver em grande e notas da equipa"
+                    style={{ padding: 0, border: `1px solid ${C.linha}`, borderRadius: 8, background: '#fff', cursor: 'zoom-in', flexShrink: 0, position: 'relative' }}>
+                    <img src={imagens.get(p[15])!.imagem} alt="" loading="lazy" style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 8, display: 'block' }} />
+                    <span style={{ position: 'absolute', right: -4, bottom: -4, fontSize: 12, background: '#fff', borderRadius: 999, border: `1px solid ${C.linha}`, padding: '1px 3px' }}>🔍</span>
+                  </button>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.tinta, lineHeight: 1.3 }}>{p[3]}</div>
                   <span style={{ display: 'inline-block', fontSize: 11.5, fontWeight: 700, padding: '1px 7px', borderRadius: 999, marginTop: 3,
                     background: COR_GRUPO[p[0]]?.fundo, color: COR_GRUPO[p[0]]?.texto }}>{cat.grupos[p[0]]}{p[1] && p[1] !== cat.grupos[p[0]] ? ` · ${p[1]}` : ''}</span>
+                  {notas.has(p[15]) && <> <SeloNotas notas={notas.get(p[15])} /></>}
                   <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>
                     {[p[5], p[2] || p[1], p[12] != null ? `IVA ${p[12]}%` : ''].filter(Boolean).join(' · ')}{p[14] ? '' : ' · esgotado'}
                   </div>
@@ -231,6 +242,7 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
         </button>
       )}
       {lista.length === 0 && <div style={{ fontSize: 16, color: C.suave, padding: '24px 0' }}>Não há nenhum produto com esse nome na Makro.</div>}
+      {ver && <FotoProduto produto={comFoto(ver)} onFechar={() => setVer(null)} />}
     </div>
   );
 }

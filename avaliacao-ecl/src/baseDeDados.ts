@@ -55,6 +55,9 @@ export const COLECAO_DO_TIPO: Record<string, string> = {
   evento: 'eventos',
   recuperacao: 'recuperacoes',
   evidencia: 'evidencias',
+  // As notas da equipa sobre os produtos da Makro («já usámos», «não
+  // gostámos»…): iguais para todos os professores (Rosa, out/2026).
+  nota_produto: 'notasprodutos',
 };
 /** As fichas são de todas as turmas: ficam numa «turma» à parte. */
 export const TURMA_DAS_FICHAS = '_todas';
@@ -64,7 +67,7 @@ export const TIPOS_DO_PROFESSOR = Object.keys(COLECAO_DO_TIPO);
 export const TIPOS_DO_ALUNO = ['plano', 'ficha', 'sessao', 'validacao', 'avaliacao', 'presenca', 'grupo_membro', 'grupo_info', 'lider_kf',
   'recuperacao', 'evidencia'];
 /** O que é de todas as turmas: fica numa «turma» à parte. */
-const DE_TODAS = new Set(['fichas', 'materiasprimas', 'requisicoes', 'eventos']);
+const DE_TODAS = new Set(['fichas', 'materiasprimas', 'requisicoes', 'eventos', 'notasprodutos']);
 
 let aLigar: Promise<{ app: FirebaseApp; db: Firestore } | null> | null = null;
 
@@ -138,6 +141,8 @@ function paraBase(tipo: string, dados: Record<string, any>): ParaBase | null {
       obj: { ...dados, turmaId: TURMA_DAS_FICHAS } } : null;
     case 'eliminar_materia_prima': return dados.id ? { colecao: 'materiasprimas', turma: TURMA_DAS_FICHAS, id: String(dados.id),
       obj: { id: dados.id, eliminado: true, atualizadoEm: new Date().toISOString() } } : null;
+    case 'nota_produto': return dados.id ? { colecao: 'notasprodutos', turma: TURMA_DAS_FICHAS, id: String(dados.id),
+      obj: { ...dados, turmaId: TURMA_DAS_FICHAS } } : null;
     case 'sessao': case 'fechar_sessao': {
       const { tipo: _t, ...resto } = dados as any;
       return dados.planoAulaId && dados.turmaId ? { colecao: 'sessoes', turma: dados.turmaId, id: String(dados.planoAulaId), obj: resto, juntar: true } : null;

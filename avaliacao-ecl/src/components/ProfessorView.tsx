@@ -1289,7 +1289,7 @@ function PassoLink({ onContinuar, ucId, ucNome, onAlteracao, nomePratoInicial }:
         </div>
       )}
 
-      <Button block onClick={carregar} disabled={!textoManual && !link}>
+      <Button block onClick={() => carregar()} disabled={!textoManual && !link}>
         Continuar para a Ficha →
       </Button>
     </Card>
