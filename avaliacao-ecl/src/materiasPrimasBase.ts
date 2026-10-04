@@ -556,6 +556,8 @@ export interface PrecoRevisto {
   link?: string;
   atualizadoEm: string;
   revistoPor: string;
+  /** Loja de onde vem o preço (por omissão, Continente). */
+  loja?: string;
 }
 
 const KEY_PRECOS_REVISTOS = 'ecl_precos_revistos';
@@ -600,7 +602,7 @@ export function aplicarPrecosRevistos(): void {
       mp.precoUnitario = Math.round(r.precoEmbalagem * 100) / 100;
       mp.unidadeCompra = r.embalagem === 1000 ? (r.unidadeEmbalagem === 'ml' ? 'l' : 'kg') : 'un';
     }
-    mp.fonte = `Continente — ${r.marca || 'marca branca'}`;
+    mp.fonte = `${r.loja || 'Continente'} — ${r.marca || 'marca branca'}`;
     mp.atualizadoEm = r.atualizadoEm.slice(0, 7);
   });
 }

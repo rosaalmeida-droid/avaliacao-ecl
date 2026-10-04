@@ -15,6 +15,7 @@ import {
   gruposDeProdutos, gerarPedidoIA, verificarRespostaIA, confirmarPrecos, linkContinente, porReverEsteMes,
   type ResultadoVerificacao,
 } from '../precosRevistos';
+import PROPOSTAS_MAKRO from '../propostasMakro.json';
 
 const caixa: React.CSSProperties = { background: '#fff', borderRadius: 12, padding: '14px 16px',
   marginBottom: 14, border: '1px solid rgba(26,23,20,0.08)' };
@@ -24,6 +25,87 @@ const botao = (principal = false): React.CSSProperties => ({ padding: '9px 14px'
   fontFamily: 'inherit', fontWeight: 700, fontSize: 14, border: principal ? 'none' : '1px solid rgba(26,23,20,0.2)',
   background: principal ? '#0f766e' : '#fff', color: principal ? '#fff' : 'inherit' });
 const e2 = (x: number) => x > 0 ? x.toFixed(2).replace('.', ',') + ' €' : '—';
+
+
+// ── Preços da Makro para as matérias-primas (Rosa, out/2026) ──────────────
+// Cada matéria-prima da aplicação foi ligada ao produto da Makro que lhe
+// corresponde (revisto um a um: produto em cru, sem «com sal» por «sem sal»,
+// sem dietas especiais quando não se pedem). Aqui a coordenação vê o preço
+// atual, o produto e o preço da Makro, e confirma. As regras das fichas e da
+// requisição não mudam: só o preço.
+interface PropostaMakro extends PrecoRevisto { codigoMakro: string; embalagemMakro: string; precoEmbalagemMakro: number;
+  precoAtualKg: number; precoAtualUn: number }
+
+function PropostasMakro({ depoisDeGravar }: { depoisDeGravar: (lista: PrecoRevisto[]) => void }) {
+  const props = PROPOSTAS_MAKRO as unknown as PropostaMakro[];
+  const revistos = new Map(getPrecosRevistos().map(p => [p.id, p]));
+  const jaMakro = (id: string) => revistos.get(id)?.loja === 'Makro';
+  const [aberto, setAberto] = useState(false);
+  const [escolha, setEscolha] = useState<Set<string>>(() => new Set(props.filter(p => !jaMakro(p.id)).map(p => p.id)));
+  const [pesq, setPesq] = useState('');
+  const porUn = (p: PropostaMakro) => p.unidadeEmbalagem === 'un';
+  const atual = (p: PropostaMakro) => porUn(p) ? p.precoAtualUn : p.precoAtualKg;
+  const novo = (p: PropostaMakro) => porUn(p) ? p.precoUnidade : p.precoKg;
+  const q = pesq.trim().toLowerCase();
+  const lista = props.filter(p => !q || p.nome.toLowerCase().includes(q) || p.produtoContinente.toLowerCase().includes(q));
+  const nMakro = props.filter(p => jaMakro(p.id)).length;
+
+  function gravar() {
+    const hoje = new Date().toISOString();
+    const novos: PrecoRevisto[] = props.filter(p => escolha.has(p.id)).map(p => ({ id: p.id, nome: p.nome, produtoContinente: p.produtoContinente,
+      marca: p.marca, embalagem: p.embalagem, unidadeEmbalagem: p.unidadeEmbalagem, precoEmbalagem: p.precoEmbalagem, precoKg: p.precoKg,
+      precoUnidade: p.precoUnidade, atualizadoEm: hoje, revistoPor: 'Coordenadora (Makro)', loja: 'Makro' }));
+    if (!novos.length) { alert('Não escolheu nenhum preço.'); return; }
+    if (!confirm(`Passar ${novos.length} matéria(s)-prima(s) para o preço da Makro?\n\nAs fichas técnicas e a requisição passam a usar estes preços. Ficam neste aparelho e vão para o Sheets.`)) return;
+    confirmarPrecos(novos);
+    depoisDeGravar(novos);
+  }
+
+  return (
+    <div style={{ ...caixa, background: '#eef3fb', border: '1px solid #c9d8f0' }}>
+      <div style={titulo}>Preços da Makro para as matérias-primas</div>
+      <div style={nota}>
+        {props.length} das {getMateriaPrimasBase().length} matérias-primas têm um produto correspondente na Makro de Alfragide
+        {nMakro ? ` (${nMakro} já com o preço da Makro)` : ''}. Veja o preço atual e o novo, desmarque o que não quiser e confirme.
+        As regras das fichas e da requisição mantêm-se (ovos cozidos dão ovos, massas base perguntam «comprar ou produzir?»…): só muda o preço.
+      </div>
+      {!aberto ? <button onClick={() => setAberto(true)} style={botao(true)}>Ver as {props.length} propostas</button> : (
+        <>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+            <input value={pesq} onChange={e => setPesq(e.target.value)} placeholder="Procurar (ex.: manteiga)"
+              style={{ flex: '1 1 200px', padding: '9px 12px', borderRadius: 9, border: '1px solid rgba(26,23,20,0.2)', fontFamily: 'inherit', fontSize: 14 }} />
+            <button onClick={() => setEscolha(new Set(props.map(p => p.id)))} style={botao()}>Marcar todas</button>
+            <button onClick={() => setEscolha(new Set())} style={botao()}>Desmarcar todas</button>
+          </div>
+          <div style={{ maxHeight: 520, overflowY: 'auto', border: '1px solid rgba(26,23,20,0.1)', borderRadius: 10, background: '#fff' }}>
+            {lista.map(p => {
+              const a = atual(p), n = novo(p), dif = a > 0 ? (n - a) / a : 0;
+              return (
+                <label key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '9px 12px', borderBottom: '1px solid rgba(26,23,20,0.07)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={escolha.has(p.id)} style={{ marginTop: 4 }}
+                    onChange={e => setEscolha(s => { const x = new Set(s); e.target.checked ? x.add(p.id) : x.delete(p.id); return x; })} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14.5 }}>{p.nome}{jaMakro(p.id) ? ' · já com o preço da Makro' : ''}</div>
+                    <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.65)' }}>{p.produtoContinente} · {p.embalagemMakro} · {e2(p.precoEmbalagemMakro)} a embalagem</div>
+                  </div>
+                  <div style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: 13.5 }}>
+                    <div style={{ color: 'rgba(26,23,20,0.55)' }}>atual {e2(a)}{porUn(p) ? '/un' : '/kg'}</div>
+                    <div style={{ fontWeight: 800, color: '#0f766e' }}>Makro {e2(n)}{porUn(p) ? '/un' : '/kg'}</div>
+                    {Math.abs(dif) >= 0.5 && <div style={{ fontSize: 12, fontWeight: 700, color: dif > 0 ? '#b42318' : '#166534' }}>{dif > 0 ? '+' : ''}{Math.round(dif * 100)}%</div>}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+            <button onClick={gravar} style={botao(true)}>Confirmar {escolha.size} preço(s) da Makro</button>
+            <span style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)' }}>As variações de mais de 50% aparecem a cor: vale a pena olhar para elas.</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function PrecosCoordenadora() {
   const [versao, setVersao] = useState(0);
@@ -107,6 +189,7 @@ export function PrecosCoordenadora() {
                 </>}
         </div>
       )}
+      <PropostasMakro depoisDeGravar={lista => { setVersao(v => v + 1); confirmarNoSheets(lista); }} />
       <div style={{ ...caixa, background: faltam.length ? '#fdf0e6' : '#eef4eb' }}>
         <div style={titulo}>Preços de {mesNome}</div>
         <div style={{ fontSize: 14 }}>
