@@ -340,6 +340,14 @@ function qtParaColunaB(l: { qtEncomenda: number }, paxReceita: number, paxTotal:
   return l.qtEncomenda * paxReceita / paxTotal;
 }
 
+/** A nota das doses, no ecrã (a mesma que vai para a folha). */
+function NotaDoses({ texto }: { texto: string }) {
+  return (
+    <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.7)', background: '#faf7f2', border: '1px dashed rgba(26,23,20,0.25)',
+      borderRadius: 10, padding: '8px 12px', margin: '8px 0 12px', whiteSpace: 'pre-line', lineHeight: 1.5 }}>{texto}</div>
+  );
+}
+
 // ── Estilos ───────────────────────────────────────────────────
 const S = {
   card: { background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '18px', marginBottom: 12, boxShadow: 'var(--shadow-sm)' } as React.CSSProperties,
@@ -526,6 +534,16 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
   const paxBaseTotal = fichasSelecionadas.reduce((s, f) => s + (porcoesDe(f)), 0) || 1;
   const paxEncTotal = fichasSelecionadas.reduce((s, f) => s + (paxPorFicha[f.id] || porcoesDe(f)), 0) || 1;
+  // As doses somadas de várias fichas confundiam (26 doses de bacalhau?): a
+  // requisição, documento oficial, mantém a soma, com uma nota que a explica
+  // (Rosa, out/2026). Só com mais de uma ficha.
+  const dosesDe = (f: FichaProducao) => paxPorFicha[f.id] || porcoesDe(f);
+  const nomeSemPonto = (f: FichaProducao) => semPontoFinal(f.nomePrato || '');
+  const notaDoses = fichasSelecionadas.length > 1
+    ? `Nota: As ${paxEncTotal} doses indicadas em «Encomendas» correspondem à soma das doses das ${fichasSelecionadas.length} fichas técnicas desta requisição. `
+      + `Cada prato é produzido apenas para as doses indicadas:\n`
+      + fichasSelecionadas.map(f => `• ${nomeSemPonto(f)}: ${dosesDe(f)} dose${dosesDe(f) === 1 ? '' : 's'}`).join('\n')
+    : '';
   // Sem o ponto final que a IA deixava no nome («Bacalhau à Brás._0410» no separador).
   const nomeReceita = fichasSelecionadas.map(f => semPontoFinal(f.nomePrato || '')).filter(Boolean).join(' + ') || 'Requisicao';
 
@@ -717,6 +735,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           .filter(Boolean)
           .join('\n\n'),
         consumo: { bar: consumo.bar, rest: consumo.rest, interno: consumo.interno, convidados: consumo.convidados },
+        // A nota que explica a soma das doses, por baixo das assinaturas.
+        notaDoses,
         // Ingredientes → linhas 16-58 do Sheets
         // A = fórmula (B/M7, não escrever) | B=qtReceita | C=nome | J=und | L=preço
         // Inclui também linhas Q.B. (sal, especiarias a gosto) — já têm uma
@@ -1264,9 +1284,10 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         {/* Sem exigir plano: um orçamento é uma requisição sem aula. */}
         {fichasSel.length > 0 && (
           <button style={{ ...S.btnP, width: '100%' }} onClick={gerarLinhas}>
-            Gerar requisição — {fichasSel.length} ficha{fichasSel.length > 1 ? 's' : ''} · {paxEncTotal} doses →
+            Gerar requisição — {fichasSel.length} ficha{fichasSel.length > 1 ? 's' : ''} · {paxEncTotal} doses{fichasSelecionadas.length > 1 ? ` (${fichasSelecionadas.map(dosesDe).join(' + ')})` : ''} →
           </button>
         )}
+        {notaDoses && <NotaDoses texto={notaDoses} />}
       </div>
     );
   }
@@ -1678,6 +1699,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
           <span><strong>Consumo:</strong> {Object.entries(consumo).filter(([, v]) => v).map(([k]) => k === 'bar' ? 'ECL BAR' : k === 'rest' ? 'ECL Restaurante' : k === 'interno' ? 'Consumo Interno' : 'Convidados').join(', ') || '—'}</span>
         </div>
       </div>
+
+      {notaDoses && <NotaDoses texto={notaDoses} />}
 
       {msg && (
         <div style={{ padding: '10px 14px', background: 'var(--sage-pale)', borderRadius: 10, fontSize: 13, color: 'var(--sage)', marginBottom: 10, fontWeight: 600 }}>
