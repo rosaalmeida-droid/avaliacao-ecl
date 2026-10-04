@@ -48,15 +48,23 @@ def num(v):
 ficheiro = sys.argv[1]
 linhas = list(csv.reader(open(ficheiro, encoding="utf-8-sig"), delimiter=";"))[1:]
 produtos = []
+def deposito(ps, pc, iva):
+    # Nas bebidas em lata, garrafa ou com tara, o preço sem IVA inclui o depósito da
+    # embalagem (0,10 € por lata ou garrafa; mais nas grades com tara), que não paga
+    # IVA: pc = (ps - dep) * (1 + iva) + dep. Daqui sai o valor do depósito.
+    if None in (ps, pc, iva) or not iva: return 0
+    dep = (ps * (1 + iva / 100) - pc) / (iva / 100)
+    return round(dep, 2) if dep >= 0.08 else 0
+
 for r in linhas:
     r = (r + [""] * 16)[:16]
     _, cat, sub, nome, marca, emb, ps, pc, refere, pks, pkc, un, iva, antes, disp, cod = r
     produtos.append([grupo(cat, sub, nome), cat, sub, nome, marca, emb, num(ps), num(pc), refere, num(pks), num(pkc), un, num(iva), num(antes),
-                     0 if disp.strip() == "UNAVAILABLE" else 1, cod, dietas(nome + " " + sub)])
+                     0 if disp.strip() == "UNAVAILABLE" else 1, cod, dietas(nome + " " + sub), deposito(num(ps), num(pc), num(iva)) if cat in BEBIDAS else 0])
 data = os.path.basename(ficheiro).rsplit("_", 1)[-1].replace(".csv", "")
 saida = {"loja": "Makro Alfragide", "data": data, "grupos": GRUPOS, "dietas": DIETAS,
          "colunas": ["grupo","categoria","subcategoria","nome","marca","embalagem","precoSemIVA","precoComIVA","precoRefere",
-                     "precoRefSemIVA","precoRefComIVA","unidadeRef","iva","precoAntesPromoSemIVA","disponivel","codigo","dietas"],
+                     "precoRefSemIVA","precoRefComIVA","unidadeRef","iva","precoAntesPromoSemIVA","disponivel","codigo","dietas","depositoEmbalagem"],
          "produtos": produtos}
 destino = os.path.join(os.path.dirname(__file__), "..", "public", "catalogo_makro.json")
 json.dump(saida, open(destino, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
