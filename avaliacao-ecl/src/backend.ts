@@ -4991,6 +4991,11 @@ export interface PrecoARever {
   sugeridoEm: string;
   estado: 'pendente' | 'revisto';
   revistoEm?: string;
+  /** Escolhido pelo professor no catálogo da Makro (só vale na requisição dele
+   *  até a coordenação dizer «manter definitivamente»). */
+  produtoMakro?: string;
+  codigoMakro?: string;
+  embalagemMakro?: string;
 }
 
 const KEY_PRECOS_A_REVER = 'ecl_precos_a_rever';

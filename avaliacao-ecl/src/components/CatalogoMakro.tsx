@@ -13,12 +13,12 @@
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 
-type Produto = [number, string, string, string, string, string, number | null, number | null, string,
-  number | null, number | null, string, number | null, number | null, number, string, number[]?];
-interface Catalogo { loja: string; data: string; grupos: string[]; dietas?: string[]; produtos: Produto[] }
+export type Produto = [number, string, string, string, string, string, number | null, number | null, string,
+  number | null, number | null, string, number | null, number | null, number, string, number[]?, number?];
+export interface Catalogo { loja: string; data: string; grupos: string[]; dietas?: string[]; produtos: Produto[] }
 
 let cache: Promise<Catalogo | null> | null = null;
-function lerCatalogo(): Promise<Catalogo | null> {
+export function lerCatalogo(): Promise<Catalogo | null> {
   if (!cache) {
     cache = fetch('/catalogo_makro.json')
       .then(r => (r.ok ? r.json() : null))
@@ -44,7 +44,8 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
   const [sel, setSel] = useState<string[]>(['', '', '']);
   const [pesquisa, setPesquisa] = useState('');
   const [quantos, setQuantos] = useState(60);
-  const [comIVA, setComIVA] = useState(true);
+  // A escola trabalha sempre com IVA (não o deduz): mostra-se só o preço com IVA (Rosa, out/2026).
+  const comIVA = true;
   // Dietas especiais (sem glúten, sem lactose…): mostram os produtos de todos os grupos.
   const [dieta, setDieta] = useState(-1);
 
@@ -72,6 +73,13 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
     return base.filter(([p, i]) => (dieta < 0 || (p[16] || []).includes(dieta))
       && (palavras.length ? palavras.every(w => indice[i].includes(w)) : dieta >= 0 || passa(p, 3))).map(([p]) => p);
   }, [cat, doGrupo, sel.join('|'), palavras.join(' '), indice, dieta]);
+
+  // Taxas de IVA dos produtos que se estão a ver (para quem precise do preço sem IVA).
+  const taxas = useMemo(() => {
+    const m = new Map<number, number>();
+    lista.forEach(p => { if (p[12] != null) m.set(p[12], (m.get(p[12]) || 0) + 1); });
+    return [...m.entries()].sort((a, b) => a[0] - b[0]);
+  }, [lista]);
 
   const chip = (ativo: boolean): React.CSSProperties => ({ minHeight: 40, padding: '0 14px', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit',
     fontSize: 14.5, fontWeight: 700, border: `1.5px solid ${ativo ? C.acento : C.linha}`, background: ativo ? C.acento : C.papel, color: ativo ? '#fff' : C.tinta });
@@ -120,10 +128,16 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
       )}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', margin: '10px 0' }}>
         <div style={{ fontSize: 15, color: C.suave }}>{lista.length.toLocaleString('pt-PT')} produto{lista.length === 1 ? '' : 's'}</div>
-        <label style={{ fontSize: 14.5, color: C.tinta, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-          <input type="checkbox" checked={comIVA} onChange={e => setComIVA(e.target.checked)} /> Preços com IVA
-        </label>
+        <div style={{ fontSize: 14, color: C.suave }}>Preços com IVA</div>
       </div>
+      {taxas.length > 0 && (
+        <div style={{ fontSize: 13.5, color: C.tinta, background: C.papel, border: `1px dashed ${C.linha}`, borderRadius: 10, padding: '8px 12px', marginBottom: 10, lineHeight: 1.5 }}>
+          <b>IVA {taxas.length === 1 ? 'destes produtos' : 'nesta lista'}:</b>{' '}
+          {taxas.map(([t, n]) => `${t}%${taxas.length > 1 ? ` (${n.toLocaleString('pt-PT')} produto${n === 1 ? '' : 's'})` : ''}`).join(' · ')}.{' '}
+          Para o preço sem IVA, divida o preço por {taxas.map(([t]) => (1 + t / 100).toFixed(2).replace('.', ',')).join(', por ')}{taxas.length > 1 ? ', conforme a taxa de cada produto' : ''}.
+          {lista.some(p => (p[17] || 0) > 0) && ' Nas bebidas em lata ou garrafa, o preço inclui o depósito da embalagem (0,10 € por lata ou garrafa, mais nas grades com tara), que não paga IVA e se recebe de volta ao entregar as embalagens. O imposto sobre o álcool e as bebidas açucaradas já está dentro do preço.'}
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 8 }}>
         {lista.slice(0, quantos).map(p => {
           const preco = comIVA ? p[7] : p[6];
@@ -136,13 +150,14 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.tinta, lineHeight: 1.3 }}>{p[3]}</div>
                   <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>
-                    {[p[5], p[2] || p[1]].filter(Boolean).join(' · ')}{p[14] ? '' : ' · esgotado'}
+                    {[p[5], p[2] || p[1], p[12] != null ? `IVA ${p[12]}%` : ''].filter(Boolean).join(' · ')}{p[14] ? '' : ' · esgotado'}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <div style={{ fontSize: 16.5, fontWeight: 800, color: C.acento }}>{euro(preco)}{porQue}</div>
                   {antes != null && <div style={{ fontSize: 12.5, color: C.suave, textDecoration: 'line-through' }}>{euro(antes)}</div>}
                   {ref != null && p[11] && (p[8] !== p[11]) && <div style={{ fontSize: 12.5, color: C.quente, fontWeight: 700 }}>{euro(ref)}/{p[11]}</div>}
+                  {(p[17] || 0) > 0 && <div style={{ fontSize: 12, color: C.suave }}>inclui depósito {euro(p[17] ?? null)}</div>}
                 </div>
               </div>
             </div>
