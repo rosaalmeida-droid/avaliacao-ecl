@@ -54,19 +54,26 @@ O['v024']=O.get('c006')
 # Peças: peso médio de uma unidade (kg) para passar o preço por kg a preço por unidade.
 PESO_UN={'fr001':0.10,'fr011':0.09,'fr012':0.07}
 DUZIAS={'o001':60,'o002':60,'o003':24}
-def qtd_total(p):
-    e=(p[5] or '').lower().replace(',','.')
-    m=re.match(r'(?:ca\.\s*)?(\d+)\s*x\s*([\d.]+)\s*(kg|g|l|ml|cl)\b',e) or None
+def _qtd(t):
+    e=re.sub(r'(\d),(\d)',r'\1.\2',str(t).lower())
+    m=re.search(r'(\d+)\s*x\s*([\d.]+)\s*(kg|g|gr|l|lt|ml|cl)\b',e)
     if m:n,q,u=int(m.group(1)),float(m.group(2)),m.group(3)
     else:
-        m=re.match(r'(?:ca\.\s*)?([\d.]+)\s*(kg|g|l|ml|cl)\b',e)
+        m=re.search(r'([\d.]+)\s*(kg|g|gr|l|lt|ml|cl)\b',e)
         if not m:return None
         n,q,u=1,float(m.group(1)),m.group(2)
-    f={'kg':1,'l':1,'g':.001,'ml':.001,'cl':.01}[u];return n*q*f
+    f={'kg':1,'l':1,'lt':1,'g':.001,'gr':.001,'ml':.001,'cl':.01}[u]
+    return n*q*f if q>0 else None
+def qtd_total(p):
+    if re.match(r'^(ca\.|ao peso)',(p[5] or '').lower()):return None
+    # «10 X 9,8 Ml» no nome: o nome manda (a embalagem da Makro vem às vezes errada);
+    # senão a embalagem, que conta os packs («10 x 1 kg» com o preço do pack).
+    if re.search(r'\d+\s*x\s*[\d.,]+\s*(kg|g|gr|l|lt|ml|cl)\b',str(p[3]).lower()):return _qtd(p[3])
+    return _qtd(p[5] or '') or _qtd(p[3])
 def preco_kg(p):
-    if p[8] in('kg','L'):return p[7]
     q=qtd_total(p)
     if q:return p[7]/q
+    if p[8] in('kg','L'):return p[7]
     return p[10] if p[11] in('kg','L') else None
 saida=[]
 for r in res:
@@ -97,4 +104,4 @@ for x in saida:
 json.dump(props,open('propostas_makro.json','w'),ensure_ascii=False)
 print(len(props),'propostas')
 for q in props:
-    if q['unidadeEmbalagem']=='un' or q['id'] in('v020','cr007','tm001','ch001','a001','g001','o001','fr001'):print(q['id'],q['nome'],'|',q['produtoContinente'][:45],'|',q['embalagem'],q['unidadeEmbalagem'],q['precoEmbalagem'],'| kg',q['precoKg'],'| un',q['precoUnidade'],'| atual',q['precoAtualKg'],q['precoAtualUn'])
+    if q['unidadeEmbalagem']=='un' or q['id'] in('v020','cr007','tm001','ch001','a001','g001','o001','fr001'):pass #,'|',q['produtoContinente'][:45],'|',q['embalagem'],q['unidadeEmbalagem'],q['precoEmbalagem'],'| kg',q['precoKg'],'| un',q['precoUnidade'],'| atual',q['precoAtualKg'],q['precoAtualUn'])

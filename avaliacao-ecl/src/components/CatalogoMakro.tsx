@@ -13,12 +13,12 @@
 // ============================================================
 import React, { useEffect, useMemo, useState } from 'react';
 
-type Produto = [number, string, string, string, string, string, number | null, number | null, string,
+export type Produto = [number, string, string, string, string, string, number | null, number | null, string,
   number | null, number | null, string, number | null, number | null, number, string, number[]?, number?];
-interface Catalogo { loja: string; data: string; grupos: string[]; dietas?: string[]; produtos: Produto[] }
+export interface Catalogo { loja: string; data: string; grupos: string[]; dietas?: string[]; produtos: Produto[] }
 
 let cache: Promise<Catalogo | null> | null = null;
-function lerCatalogo(): Promise<Catalogo | null> {
+export function lerCatalogo(): Promise<Catalogo | null> {
   if (!cache) {
     cache = fetch('/catalogo_makro.json')
       .then(r => (r.ok ? r.json() : null))

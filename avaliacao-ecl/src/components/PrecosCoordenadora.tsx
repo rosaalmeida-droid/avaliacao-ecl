@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getPrecosAReverPendentes, marcarPrecosRevistos, lerPrecosDoSheets, confirmarPrecosNoSheets, enviarPrecosRevistos } from '../backend';
 import { getMateriaPrimasBase, getPrecosRevistos, type PrecoRevisto } from '../materiasPrimasBase';
 import {
-  gruposDeProdutos, gerarPedidoIA, verificarRespostaIA, confirmarPrecos, linkContinente, porReverEsteMes,
+  gruposDeProdutos, gerarPedidoIA, verificarRespostaIA, confirmarPrecos, linkContinente, porReverEsteMes, manterEscolhaMakro,
   type ResultadoVerificacao,
 } from '../precosRevistos';
 import PROPOSTAS_MAKRO from '../propostasMakro.json';
@@ -203,8 +203,8 @@ export function PrecosCoordenadora() {
         <div style={{ ...caixa, background: '#fff8ec', border: '1px solid #f0c98a' }}>
           <div style={titulo}>⚠️ Preços a rever — {aRever.length} pedido{aRever.length === 1 ? '' : 's'} dos professores</div>
           <div style={nota}>
-            Um professor escreveu na requisição um preço diferente do da base. Esse preço valeu só nessa requisição;
-            a base mantém o seu preço. Reveja-os no pedido à IA (a opção «Os que os professores pediram para rever»)
+            Um professor escreveu na requisição um preço diferente do da base, ou escolheu um produto na Makro. Esse preço
+            valeu só nessa requisição; a base mantém o seu preço. Nas escolhas da Makro, «Manter definitivamente» passa a valer para todos. Reveja-os no pedido à IA (a opção «Os que os professores pediram para rever»)
             ou, se o preço da base estiver certo, carregue em «Está certo».
           </div>
           {aRever.map(p => (
@@ -222,8 +222,22 @@ export function PrecosCoordenadora() {
                 Base: <b>{p.precoBase > 0 ? `${e2(p.precoBase)}/${p.und === 'un' ? 'un' : p.und}` : '—'}</b><br />
                 Professor: <b style={{ color: '#8a4a15' }}>{e2(p.precoProfessor)}/{p.und === 'un' ? 'un' : p.und}</b>
               </span>
-              <a href={linkContinente(p.nome)} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>Ver no Continente</a>
-              <button style={botao()} onClick={() => { marcarPrecosRevistos([p.id]); setVersao(v => v + 1); }}>Está certo</button>
+              {p.produtoMakro ? (
+                <>
+                  <span style={{ flex: '1 1 180px', fontSize: 12.5 }}>Escolhido na Makro: <b>{p.produtoMakro}</b>{p.embalagemMakro ? ` (${p.embalagemMakro})` : ''}</span>
+                  <button style={botao(true)} onClick={() => {
+                    if (!confirm(`Manter definitivamente «${p.produtoMakro}» para «${p.nome}»?\n\nA partir daqui, as fichas e as requisições de todos usam este produto e este preço.`)) return;
+                    manterEscolhaMakro({ mpId: p.mpId, nome: p.nome, produto: p.produto, und: p.und, preco: p.precoProfessor, produtoMakro: p.produtoMakro!, idPedido: p.id });
+                    setVersao(v => v + 1);
+                  }}>Manter definitivamente</button>
+                  <button style={botao()} onClick={() => { marcarPrecosRevistos([p.id]); setVersao(v => v + 1); }}>Fica como estava</button>
+                </>
+              ) : (
+                <>
+                  <a href={linkContinente(p.nome)} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>Ver no Continente</a>
+                  <button style={botao()} onClick={() => { marcarPrecosRevistos([p.id]); setVersao(v => v + 1); }}>Está certo</button>
+                </>
+              )}
             </div>
           ))}
         </div>

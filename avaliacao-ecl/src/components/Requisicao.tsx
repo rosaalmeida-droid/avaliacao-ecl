@@ -3,6 +3,8 @@ import { getPlanosAulaPorTurma, getFichasProducao, addOrUpdateRequisicao, getReq
 import { PlanoAula, FichaProducao } from '../types';
 import { eventosParaPlanos } from '../eventos/modelo';
 import { encontrarMateriaPrimaComConfianca, getMateriaPrimasBase } from '../materiasPrimasBase';
+import { EscolherMakro, type EscolhaMakro } from './EscolherMakro';
+import { manterEscolhaMakro } from '../precosRevistos';
 import { converterUnidadeParaPeso } from '../pesosMedios';
 import {
   processarIngrediente,
@@ -41,6 +43,10 @@ interface Linha {
   perguntarProfessor: boolean;
   decisaoProfessor?: 'comprar' | 'produzir';
   preparacaoInfo?: { nome: string; materiasPrimas?: string[]; podeComprar: boolean }; // dados da preparação identificada
+  /** Certeza da ligação à matéria-prima: 'exata', 'ambigua' ou 'nenhuma'. */
+  confianca?: string;
+  /** Produto escolhido na Makro para esta requisição. */
+  produtoMakro?: string;
 }
 
 /** Preço escrito à portuguesa ("1,49") → número. parseFloat("1,49") dava 1
@@ -245,6 +251,7 @@ function agregarIngredientes(fichas: FichaProducao[], paxPorFicha: Record<string
           isQB: proc.isQB,
           perguntarProfessor: proc.perguntarProfessor,
           preparacaoInfo: proc.preparacaoInfo,
+          confianca,
         });
       }
     });
@@ -425,6 +432,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // ao abrir, o que apagava as quantidades guardadas).
   const primeiraVezDoses = React.useRef(!!(planoInicial && (getRequisicaoPorPlano(planoInicial.id) as any)?.linhas?.length));
   const [msg, setMsg] = useState('');
+  // A janela «Escolher na Makro», aberta para uma linha (índice).
+  const [escolherMakro, setEscolherMakro] = useState<number | null>(null);
   const [linkSheets, setLinkSheets] = useState(''); // URL do Google Sheets para abrir directamente
 
   // Auto-recalcular quantidades quando o nº de doses muda (correctamente APÓS todos os useState)
@@ -572,6 +581,27 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
       });
       sinalizarPrecoARever({ mpId: '', nome: produto, produto, und, precoBase: 0, precoProfessor: preco, ...quem });
     }
+  }
+
+  /** O professor escolheu um produto da Makro: vale nesta requisição e vai para a coordenação. */
+  function escolhidoNaMakro(i: number, preco: number, e: EscolhaMakro, definitivo = false) {
+    const l = linhas[i];
+    setLinhas(prev => { const n = [...prev]; n[i] = recalc({ ...n[i], precoUnitario: preco.toFixed(2).replace('.', ','), daBD: false, produtoMakro: e.nome }); return n; });
+    const nomeLimpo = l.produto.replace(/\s*\([^)]*\)/g, '').trim();
+    const { mp } = encontrarMateriaPrimaComConfianca(nomeLimpo, []);
+    let base = 0;
+    if (mp) base = l.und === 'un' ? (mp.precoUnitario > 0 && mp.precoUnitario !== mp.precoKg ? mp.precoUnitario : 0) : mp.precoKg;
+    sinalizarPrecoARever({ mpId: mp?.id || '', nome: mp?.nome || l.produto, produto: l.produto, und: l.und,
+      precoBase: Math.round(base * 100) / 100, precoProfessor: preco,
+      professor: nomeProfessor || planoSel?.professor || '', turmaId: planoSel?.turmaId || turmaId,
+      produtoMakro: e.nome, codigoMakro: e.codigo, embalagemMakro: e.embalagem });
+    if (definitivo) manterEscolhaMakro({ mpId: mp?.id || '', nome: mp?.nome || l.produto, produto: l.produto, und: l.und, preco,
+      produtoMakro: e.nome, idPedido: mp?.id || `novo:${(mp?.nome || l.produto).toLowerCase().trim()}` }, nomeProfessor || 'Coordenadora');
+    resolverAvisosDoIngrediente(l.produto);
+    setEscolherMakro(null);
+    setMsg(definitivo ? '✓ Fica definitivo: as fichas e as requisições de todos passam a usar este produto da Makro.'
+      : '✓ Preço da Makro usado nesta requisição. A coordenação decide se fica para sempre.');
+    setTimeout(() => setMsg(''), 6000);
   }
 
   function confirmarPrecoIngrediente(i: number) {
@@ -1505,6 +1535,18 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                           background:'rgba(181,101,29,0.08)', borderRadius:4, padding:'2px 5px' }}>
                           ⚠️ Introduza o preço
                         </div>
+                      )}
+                      {!l.isQB && l.produto && (l.confianca !== 'exata' || !l.precoUnitario) && (
+                        <button onClick={() => setEscolherMakro(i)} title="Ver os produtos da Makro com este nome e escolher"
+                          style={{ display: 'block', marginBottom: 3, fontSize: 12, fontWeight: 700, padding: '3px 6px', borderRadius: 6, cursor: 'pointer',
+                            border: '1px solid #0f766e', background: l.produtoMakro ? '#0f766e' : '#fff', color: l.produtoMakro ? '#fff' : '#0f766e', whiteSpace: 'nowrap' }}>
+                          {l.produtoMakro ? '✓ Makro' : 'Escolher na Makro'}
+                        </button>
+                      )}
+                      {escolherMakro === i && (
+                        <EscolherMakro produto={l.produto} und={l.und} onFechar={() => setEscolherMakro(null)}
+                          onEscolher={(preco, e, def) => escolhidoNaMakro(i, preco, e, def)}
+                          podeDecidir={/rosa\s+(branca\s+)?(paulino\s+)?(a\s+)?almeida/i.test(nomeProfessor || '')} />
                       )}
                       <input value={l.precoUnitario}
                         onChange={e => {

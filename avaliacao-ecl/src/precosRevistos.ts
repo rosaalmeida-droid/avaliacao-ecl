@@ -11,7 +11,7 @@
 // O documento oficial da requisição não muda: só os preços que o enchem.
 // ============================================================
 import { getMateriaPrimasBase, getPrecosRevistos, juntarPrecosRevistos, type MateriaPrimaBase, type PrecoRevisto } from './materiasPrimasBase';
-import { enviarPrecosRevistos, marcarPrecosRevistos } from './backend';
+import { enviarPrecosRevistos, marcarPrecosRevistos, addOrUpdateMateriaPrimaCustom } from './backend';
 
 /** Grupos de produtos, para o pedido não ser grande demais para a IA. */
 export function gruposDeProdutos(): { nome: string; ids: string[] }[] {
@@ -198,4 +198,30 @@ export function porReverEsteMes(): MateriaPrimaBase[] {
   const mes = new Date().toISOString().slice(0, 7);
   const revistos = new Map(getPrecosRevistos().map(p => [p.id, p.atualizadoEm.slice(0, 7)]));
   return getMateriaPrimasBase().filter(mp => revistos.get(mp.id) !== mes);
+}
+
+/**
+ * A coordenação decide manter DEFINITIVAMENTE um produto da Makro escolhido
+ * numa requisição (Rosa, out/2026). Se a matéria-prima está na base, passa a
+ * ter o preço da Makro (como os preços revistos, vai para o Sheets); se não
+ * está, entra como matéria-prima nova, igual para todos.
+ */
+export function manterEscolhaMakro(e: { mpId: string; nome: string; produto: string; und: string; preco: number;
+  produtoMakro: string; idPedido?: string }, quem = 'Coordenadora'): void {
+  const mp = e.mpId ? getMateriaPrimasBase().find(m => m.id === e.mpId) : undefined;
+  if (mp) {
+    const porUn = e.und === 'un';
+    const emG = mp.unidadeReceita === 'ml' ? 'ml' : 'g';
+    const emb = porUn ? 1 : (mp.unidadeCompra === 'kg' || mp.unidadeCompra === 'l' ? 1000 : mp.fatorConversao || 1000);
+    const novo: PrecoRevisto = { id: mp.id, nome: mp.nome, produtoContinente: e.produtoMakro, marca: '',
+      embalagem: emb, unidadeEmbalagem: porUn ? 'un' : emG,
+      precoEmbalagem: porUn ? e.preco : Math.round(e.preco * emb / 10) / 100,
+      precoKg: porUn ? 0 : e.preco, precoUnidade: porUn ? e.preco : 0,
+      atualizadoEm: new Date().toISOString(), revistoPor: quem, loja: 'Makro' };
+    confirmarPrecos([novo]);
+  } else {
+    addOrUpdateMateriaPrimaCustom({ nome: e.produto, categoria: 'Outros', unidadeCompra: e.und,
+      precoKg: e.und === 'un' ? 0 : e.preco, precoUnitario: e.preco, aliases: [e.produto.toLowerCase(), e.produtoMakro.toLowerCase()] });
+  }
+  if (e.idPedido) marcarPrecosRevistos([e.idPedido]);
 }
