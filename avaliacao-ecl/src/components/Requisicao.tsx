@@ -9,6 +9,7 @@ import { manterEscolhaMakro } from '../precosRevistos';
 import { converterUnidadeParaPeso } from '../pesosMedios';
 import { semPontoFinal } from '../lerFichaDaIA';
 import { RequisicoesFeitas } from './RequisicoesFeitas';
+import { getEmailsCompras, definirEmailsCompras, listaEmailsCompras } from '../backend';
 import { getPlanosAula } from '../backend';
 import type { RequisicaoAula } from '../types';
 import {
@@ -436,6 +437,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     // pessoa em requisições próximas), mas o professor pode sempre mudar.
     try { return localStorage.getItem('ecl_ultimo_responsavel_compras') || ''; } catch { return ''; }
   });
+  // E-mails das compras: escritos uma vez, ficam guardados para todos.
+  const [emailsCompras, setEmailsCompras] = useState(() => getEmailsCompras());
   const [atividade, setAtividade] = useState(() => {
     // Auto-preencher com o título do plano (já inclui tipo de actividade + data)
     return evento ? evento.nome : planoInicial?.titulo || '';
@@ -779,6 +782,8 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         consumo: { bar: consumo.bar, rest: consumo.rest, interno: consumo.interno, convidados: consumo.convidados },
         // A nota que explica a soma das doses, por baixo das assinaturas.
         notaDoses,
+        // O script da folha manda logo um e-mail formal a estas pessoas.
+        emailsCompras: listaEmailsCompras(emailsCompras),
         // Ingredientes → linhas 16-58 do Sheets
         // A = fórmula (B/M7, não escrever) | B=qtReceita | C=nome | J=und | L=preço
         // Inclui também linhas Q.B. (sal, especiarias a gosto) — já têm uma
@@ -819,7 +824,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
         setMsg('⚠️ O documento não respondeu. Confirme se a requisição foi criada antes de a enviar outra vez.');
       } else {
         chegou = true;
-        setMsg('✓ Enviado!');
+        setMsg(dadosResposta?.emailEnviado ? `✓ Enviado! E-mail enviado às compras (${listaEmailsCompras(emailsCompras).join(', ')}).` : '✓ Enviado!');
         if (dadosResposta?.urlSheets) {
           setLinkSheets(dadosResposta.urlSheets);
         }
@@ -1306,6 +1311,17 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                 onChange={e => { setResponsavel(e.target.value); try { localStorage.setItem('ecl_ultimo_responsavel_compras', e.target.value); } catch {} }}
                 placeholder="Nome de quem faz as compras" /></div>
             </div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={S.lbl}>E-mails das compras (a requisição segue logo para estes e-mails)</label>
+              <input style={{ ...S.inp, width: '100%' }} value={emailsCompras} type="text" inputMode="email"
+                onChange={e => setEmailsCompras(e.target.value)} onBlur={() => definirEmailsCompras(emailsCompras)}
+                placeholder="ex.: compras@escola.pt, outra.pessoa@escola.pt" />
+              <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.6)', marginTop: 3 }}>
+                {listaEmailsCompras(emailsCompras).length
+                  ? `Fica guardado para as próximas requisições, em todos os aparelhos. Vai para: ${listaEmailsCompras(emailsCompras).join(', ')}.`
+                  : 'Separe os e-mails com vírgulas. Fica guardado para as próximas requisições, em todos os aparelhos.'}
+              </div>
+            </div>
             <div style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--copper)', background: 'var(--copper-pale)' }}>
               <label style={S.lbl}>Dia em que os ingredientes têm de estar na cozinha</label>
               <input type="date" style={{ ...S.inp, width: '100%', maxWidth: 220 }} value={String(dataIngredientes || '').slice(0, 10)}
@@ -1748,6 +1764,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               style={{ ...S.inp, padding: '3px 6px', fontSize: 13, borderColor: dataIngredientes ? undefined : '#b5651d' }} /></label>
           {dataDaAula && <span><strong>Aula:</strong> {dataPT(dataDaAula)}</span>}
           <span><strong>Requisição feita em:</strong> {dataPT(hojeISO())}</span>
+          <span><strong>E-mail às compras:</strong> {listaEmailsCompras(emailsCompras).join(', ') || 'sem e-mails (escreva-os em «Dados adicionais», ao voltar)'}</span>
           {responsavel && <span><strong>Resp. compras:</strong> {responsavel}</span>}
           {atividade && <span><strong>Atividade:</strong> {atividade}</span>}
           <span><strong>Consumo:</strong> {Object.entries(consumo).filter(([, v]) => v).map(([k]) => k === 'bar' ? 'ECL BAR' : k === 'rest' ? 'ECL Restaurante' : k === 'interno' ? 'Consumo Interno' : 'Convidados').join(', ') || '—'}</span>
