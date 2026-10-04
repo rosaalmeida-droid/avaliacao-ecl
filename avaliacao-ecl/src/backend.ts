@@ -788,6 +788,7 @@ export function juntarDaBase(tipo: string, dados: any[]): void {
   else if (tipo === 'materia_prima') juntarMateriasPrimas(dados);
   else if (tipo === 'nota_produto') juntarNotasProdutos(dados);
   else if (tipo === 'aluno_fantasma') juntarFantasmas(dados);
+  else if (tipo === 'config') juntarConfigs(dados);
   else if (tipo === 'requisicao') juntarRequisicoesDaBase(dados);
   else if (tipo === 'evento') juntarEventosDaBase(dados);
   else if (tipo === 'recuperacao') juntarRecuperacoesDaBase(dados);
@@ -1666,6 +1667,33 @@ let nomeDoAparelho = '';
 /** O nome de quem entrou (para assinar as notas sobre os produtos). */
 export function definirNomeDoAparelho(n: string): void { nomeDoAparelho = n || ''; }
 export function getPerfilDoAparelho(): string | null { return perfilDoAparelho; }
+
+// ── E-mails das compras (Rosa, out/2026) ───────────────────────
+// Escritos uma vez na requisição, ficam guardados para todos os aparelhos
+// e seguem em cada envio: o script da folha manda logo um e-mail formal.
+const KEY_EMAILS_COMPRAS = 'ecl_emails_compras';
+export function getEmailsCompras(): string {
+  try { return (JSON.parse(localStorage.getItem(KEY_EMAILS_COMPRAS) || '{}') as any).valor || ''; } catch { return ''; }
+}
+export function definirEmailsCompras(valor: string): void {
+  const reg = { id: 'emails_compras', valor: valor.trim(), atualizadoEm: new Date().toISOString() };
+  try { localStorage.setItem(KEY_EMAILS_COMPRAS, JSON.stringify(reg)); } catch { /* */ }
+  gravarNaBase('config', reg);
+}
+/** Os e-mails válidos, separados por vírgula, ponto e vírgula ou espaço. */
+export function listaEmailsCompras(valor = getEmailsCompras()): string[] {
+  return valor.split(/[,;\s]+/).map(x => x.trim()).filter(x => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+}
+function juntarConfigs(lista: any[]): void {
+  for (const x of lista) {
+    if (x?.id !== 'emails_compras') continue;
+    let atual: any = {};
+    try { atual = JSON.parse(localStorage.getItem(KEY_EMAILS_COMPRAS) || '{}'); } catch { /* */ }
+    if (String(x.atualizadoEm || '') >= String(atual.atualizadoEm || '')) {
+      try { localStorage.setItem(KEY_EMAILS_COMPRAS, JSON.stringify({ id: x.id, valor: x.valor || '', atualizadoEm: x.atualizadoEm || '' })); } catch { /* */ }
+    }
+  }
+}
 
 // ── Alunos fantasma (Rosa, out/2026) ───────────────────────────
 // «Existem alunos fantasma em todas as turmas»: estão inscritos mas nunca
