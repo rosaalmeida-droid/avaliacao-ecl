@@ -11,9 +11,9 @@ import type { PlanoAula } from '../types';
 import { KITCHENFLOW_SHEET_URL, getTurmas } from '../backend';
 import { organizacaoDe, FUNCOES_AULA, nomeDoAluno, type IdFuncao } from '../organizacaoAula';
 
-// O endereço que a aplicação KitchenFlow usa hoje, e o que a Avaliação ECL já
-// usava. Lê-se dos dois e juntam-se (sem repetidos), para não perder nada.
-const URL_KF_APP = 'https://script.google.com/macros/s/AKfycbzmt7yGx09nFF_8HUbdD0p29q9iS1ttKku-vbnoGxm-w7eq2cp8WlzZRm_jJyVIcKwF/exec';
+// O endereço que a aplicação KitchenFlow usa hoje (Google Sheets novo, script v6),
+// e o que a Avaliação ECL já usava. Lê-se dos dois e juntam-se (sem repetidos), para não perder nada.
+const URL_KF_APP = 'https://script.google.com/macros/s/AKfycbwa5WBEQy6fhYXP_mJO9RJy-23H1EtEkny2ObGwowrxc8T7EkoEwVuum0CJTr-HXrePkQ/exec';
 const URLS = [...new Set([URL_KF_APP, KITCHENFLOW_SHEET_URL].filter(Boolean))];
 
 /** As folhas onde os alunos registam. Cada linha começa por data, hora, turma, nº, nome. */

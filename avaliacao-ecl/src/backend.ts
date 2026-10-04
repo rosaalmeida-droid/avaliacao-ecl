@@ -71,14 +71,26 @@ export const KITCHENFLOW_SHEET_URL = 'https://script.google.com/macros/s/AKfycbw
 export const KITCHENFLOW_APP_URL = 'https://ecl-haccp.vercel.app/';
 
 // Formato: { tabela: string, linha: any[] }
+// Os registos que a Avaliação ECL faz pelo KitchenFlow (higiene pessoal, temperatura
+// de serviço, não conformidades) vão para o MESMO endereço que a aplicação
+// KitchenFlow usa: o Google Sheets novo «HACCP KitchenFlow 2026-2027» (script v6).
+// Antes iam para outro endereço (KITCHENFLOW_SHEET_URL), que podia ser outra folha: a higiene pessoal confirmada na Avaliação
+// podia não aparecer nas folhas HACCP (Rosa, out/2026).
+export const KITCHENFLOW_REGISTOS_URL = 'https://script.google.com/macros/s/AKfycbwa5WBEQy6fhYXP_mJO9RJy-23H1EtEkny2ObGwowrxc8T7EkoEwVuum0CJTr-HXrePkQ/exec';
+
 async function enviarParaKitchenFlow(tabela: string, linha: any[]): Promise<void> {
-  if (!KITCHENFLOW_SHEET_URL) return;
-  try {
-    await fetch(KITCHENFLOW_SHEET_URL, {
-      method: 'POST',
-      body: JSON.stringify({ tabela, linha }),
-    });
-  } catch { /* falha silenciosa — não bloqueia o fluxo do aluno */ }
+  // O número de envio deixa o script v6 reconhecer uma repetição: as tentativas
+  // seguintes não gravam a linha duas vezes.
+  const idEnvio = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  const corpo = JSON.stringify({ tabela, linha, idEnvio });
+  // Até 3 tentativas: na cozinha, a rede falha muitas vezes.
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch(KITCHENFLOW_REGISTOS_URL, { method: 'POST', body: corpo, keepalive: corpo.length < 60000 });
+      if (r.ok) return;
+    } catch { /* tenta outra vez */ }
+    await new Promise(res => setTimeout(res, 3000 * (i + 1)));
+  }
 }
 
 /** Envia registo de Higiene Pessoal para o KitchenFlow.
@@ -1332,7 +1344,7 @@ export async function sincronizarEvidenciasKitchenFlow(
   try {
     // Buscar registos do aluno neste dia para cada tipo obrigatório
     for (const tipoRegisto of registosObrigatorios) {
-      const url = `${KITCHENFLOW_SHEET_URL}?tabela=${encodeURIComponent(tipoRegisto)}&turma=${encodeURIComponent(turmaId)}&aluno=${encodeURIComponent(alunoId)}&data=${encodeURIComponent(data)}`;
+      const url = `${KITCHENFLOW_REGISTOS_URL}?tabela=${encodeURIComponent(tipoRegisto)}&turma=${encodeURIComponent(turmaId)}&aluno=${encodeURIComponent(alunoId)}&data=${encodeURIComponent(data)}`;
 
       const resp = await fetch(url);
       if (!resp.ok) continue;
