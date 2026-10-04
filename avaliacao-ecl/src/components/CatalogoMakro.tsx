@@ -36,6 +36,18 @@ const seccaoDe = (p: Produto) => (p[2] ? p[2].split(' > ')[0] : '') || p[1];
 const pormenorDe = (p: Produto) => (p[2] && p[2].includes(' > ') ? p[2].split(' > ').slice(1).join(' > ') : '');
 const euro = (n: number | null) => n == null ? '' : n.toFixed(2).replace('.', ',') + ' €';
 
+/** Cor de cada grupo (Rosa, out/2026: os frescos a verde, para se verem logo). */
+export const COR_GRUPO: { fundo: string; texto: string }[] = [
+  { fundo: '#e3f3e1', texto: '#25632a' },  // Frescos — verde
+  { fundo: '#e1edf8', texto: '#1f4e85' },  // Congelados — azul
+  { fundo: '#f5ecdc', texto: '#7a5520' },  // Mercearia — castanho claro
+  { fundo: '#efe4f6', texto: '#5d2f80' },  // Bebidas — roxo
+  { fundo: '#fbe9e2', texto: '#8a3a1c' },  // Consumíveis diretos
+  { fundo: '#ececec', texto: '#4a4a4a' },  // Consumíveis indiretos
+  { fundo: '#fff3cf', texto: '#7a5b00' },  // Embalagens
+  { fundo: '#e6eef0', texto: '#2f5560' },  // Equipamentos e utensílios
+];
+
 export interface CoresCatalogo { papel: string; tinta: string; suave: string; linha: string; acento: string; quente: string }
 
 export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
@@ -71,13 +83,27 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
   const opcoes = useMemo(() => NIVEIS.map((f, n) => (n === 0 || sel[n - 1]) ? contar(doGrupo.map(([p]) => p).filter(p => passa(p, n)), f) : []),
     [doGrupo, sel.join('|')]);
   const escolher = (n: number, v: string) => { setSel(s => s.map((x, k) => k < n ? x : k === n ? (x === v ? '' : v) : '')); setQuantos(60); };
-  const lista = useMemo(() => {
+  // Na pesquisa: filtrar por grupo e categoria (ex.: «banana» › Frescos › Frutas e Legumes).
+  const [pGrupo, setPGrupo] = useState(-1);
+  const [pCat, setPCat] = useState('');
+  useEffect(() => { setPGrupo(-1); setPCat(''); }, [pesquisa]);
+  /** Relevância: o produto cujo nome É a palavra procurada (logo no início, sem a marca)
+   *  vem antes do que só a tem como sabor («iogurte de banana»). */
+  const relevancia = (p: Produto) => {
+    const marca = new Set(semAcentos(p[4] || '').split(/\s+/).concat(['metro', 'chef', 'premium', 'professional', 'aro']));
+    const w = semAcentos(p[3]).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(x => x && !marca.has(x));
+    const pos = Math.min(...palavras.map(q => { const k = w.findIndex(x => x.startsWith(q)); return k < 0 ? 99 : k; }));
+    return pos * 10 + Math.min(w.length, 9);
+  };
+  const encontrados = useMemo(() => {
     if (!cat) return [];
     const todos = palavras.length || dieta >= 0;
     const base = todos ? cat.produtos.map((p, i) => [p, i] as const) : doGrupo;
-    return base.filter(([p, i]) => (dieta < 0 || (p[16] || []).includes(dieta))
+    const r = base.filter(([p, i]) => (dieta < 0 || (p[16] || []).includes(dieta))
       && (palavras.length ? palavras.every(w => indice[i].includes(w)) : dieta >= 0 || passa(p, 3))).map(([p]) => p);
+    return palavras.length ? r.map(p => [relevancia(p), p] as const).sort((a, b) => a[0] - b[0]).map(x => x[1]) : r;
   }, [cat, doGrupo, sel.join('|'), palavras.join(' '), indice, dieta]);
+  const lista = useMemo(() => encontrados.filter(p => (pGrupo < 0 || p[0] === pGrupo) && (!pCat || p[1] === pCat)), [encontrados, pGrupo, pCat]);
 
   // Taxas de IVA dos produtos que se estão a ver (para quem precise do preço sem IVA).
   const taxas = useMemo(() => {
@@ -112,12 +138,36 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
           })}
         </div>
       )}
+      {(palavras.length > 0 || dieta >= 0) && encontrados.length > 0 && (() => {
+        const porG = new Map<number, number>(); encontrados.forEach(p => porG.set(p[0], (porG.get(p[0]) || 0) + 1));
+        const porC = new Map<string, number>(); encontrados.filter(p => pGrupo < 0 || p[0] === pGrupo).forEach(p => porC.set(p[1], (porC.get(p[1]) || 0) + 1));
+        return (
+          <div style={{ margin: '12px 0 4px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <button onClick={() => { setPGrupo(-1); setPCat(''); setQuantos(60); }} style={{ ...chip(pGrupo < 0), minHeight: 34, fontSize: 13.5 }}>Todos ({encontrados.length})</button>
+              {[...porG.entries()].sort((a, b) => a[0] - b[0]).map(([g, n]) => (
+                <button key={g} onClick={() => { setPGrupo(pGrupo === g ? -1 : g); setPCat(''); setQuantos(60); }}
+                  style={{ ...chip(false), minHeight: 34, fontSize: 13.5, background: pGrupo === g ? COR_GRUPO[g].texto : COR_GRUPO[g].fundo,
+                    color: pGrupo === g ? '#fff' : COR_GRUPO[g].texto, borderColor: COR_GRUPO[g].texto }}>{cat.grupos[g]} ({n})</button>
+              ))}
+            </div>
+            {pGrupo >= 0 && porC.size > 1 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, paddingLeft: 10, borderLeft: `3px solid ${COR_GRUPO[pGrupo].texto}` }}>
+                {[...porC.entries()].sort((a, b) => b[1] - a[1]).map(([c, n]) => (
+                  <button key={c} onClick={() => { setPCat(pCat === c ? '' : c); setQuantos(60); }} style={{ ...chip(pCat === c), minHeight: 32, fontSize: 13 }}>{c} ({n})</button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
       {!palavras.length && dieta < 0 && (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '14px 0 10px' }}>
             {cat.grupos.map((g, i) => {
               const n = cat.produtos.filter(p => p[0] === i).length;
-              return <button key={g} onClick={() => { setGrupo(i); setSel(['', '', '']); setQuantos(60); }} style={chip(i === grupo)}>{g} ({n.toLocaleString('pt-PT')})</button>;
+              return <button key={g} onClick={() => { setGrupo(i); setSel(['', '', '']); setQuantos(60); }}
+                style={{ ...chip(i === grupo), ...(COR_GRUPO[i] ? { background: i === grupo ? COR_GRUPO[i].texto : COR_GRUPO[i].fundo, color: i === grupo ? '#fff' : COR_GRUPO[i].texto, borderColor: COR_GRUPO[i].texto } : {}) }}>{g} ({n.toLocaleString('pt-PT')})</button>;
             })}
           </div>
           {opcoes.map((ops, n) => ops.length > 1 && (
@@ -153,11 +203,13 @@ export function CatalogoMakro({ cores }: { cores: CoresCatalogo }) {
           const antes = p[13] != null && p[12] != null ? (comIVA ? p[13] * (1 + p[12] / 100) : p[13]) : null;
           const porQue = p[8] === 'embalagem' || !p[8] ? '' : `/${p[8]}`;
           return (
-            <div key={p[15]} style={{ background: C.papel, borderRadius: 12, padding: '10px 14px', border: `1px solid ${C.linha}`, opacity: p[14] ? 1 : 0.6 }}>
+            <div key={p[15]} style={{ background: C.papel, borderRadius: 12, padding: '10px 14px', border: `1px solid ${C.linha}`, borderLeft: `5px solid ${COR_GRUPO[p[0]]?.texto || C.linha}`, opacity: p[14] ? 1 : 0.6 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                 {imagens.get(p[15]) && <img src={imagens.get(p[15])} alt="" loading="lazy" style={{ width: 52, height: 52, objectFit: 'contain', background: '#fff', borderRadius: 8, flexShrink: 0 }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: C.tinta, lineHeight: 1.3 }}>{p[3]}</div>
+                  <span style={{ display: 'inline-block', fontSize: 11.5, fontWeight: 700, padding: '1px 7px', borderRadius: 999, marginTop: 3,
+                    background: COR_GRUPO[p[0]]?.fundo, color: COR_GRUPO[p[0]]?.texto }}>{cat.grupos[p[0]]}{p[1] && p[1] !== cat.grupos[p[0]] ? ` · ${p[1]}` : ''}</span>
                   <div style={{ fontSize: 13, color: C.suave, marginTop: 2 }}>
                     {[p[5], p[2] || p[1], p[12] != null ? `IVA ${p[12]}%` : ''].filter(Boolean).join(' · ')}{p[14] ? '' : ' · esgotado'}
                   </div>
