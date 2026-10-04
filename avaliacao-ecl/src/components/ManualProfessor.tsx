@@ -42,7 +42,9 @@ function Tabela({ cabecalho, linhas }: { cabecalho: string[]; linhas: (string | 
                 textAlign: i === 0 ? 'left' : 'right', padding: '9px 11px',
                 borderBottom: `2px solid ${C.linha}`, fontWeight: 800,
                 fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em',
-                color: C.tenue, whiteSpace: 'nowrap',
+                // Fundo claro explícito: o estilo geral das tabelas punha o
+                // cabeçalho escuro, e este texto cinzento deixava de se ler.
+                color: C.tenue, whiteSpace: 'nowrap', background: 'transparent',
               }}>{h}</th>
             ))}
           </tr>

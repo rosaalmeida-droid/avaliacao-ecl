@@ -131,6 +131,12 @@ function ColunaTurma({
   const aIniciar   = modulosAImpiciar(turmaId, 7);
   const terminados = modulosTerminados(turmaId, 14);
   const temAlgo    = ativos.length + aIniciar.length + terminados.length > 0;
+  // Texto escuro sobre cores claras (o amarelo com letra branca não se lia).
+  const claro = (() => { const h = String(cor.badge).replace('#', ''); if (h.length !== 6) return false;
+    const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 170; })();
+  const tinta = claro ? '#1a1714' : '#fff';
+  const tintaSuave = claro ? 'rgba(26,23,20,0.75)' : 'rgba(255,255,255,0.9)';
 
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -140,12 +146,12 @@ function ColunaTurma({
         background: cor.badge,
         display: 'flex', flexDirection: 'column', gap: 2,
       }}>
-        <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.65)', fontWeight: 700,
+        <div style={{ fontSize: 12.5, color: tintaSuave, fontWeight: 700,
           textTransform: 'uppercase' as const, letterSpacing: 0.8 }}>
           {referencial === 'novo' ? 'Ref. 811RA144 · UCs' : 'Ref. 811183 · UFCDs'}
         </div>
-        <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>{label}</div>
-        <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.5)' }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: tinta }}>{label}</div>
+        <div style={{ fontSize: 12.5, color: tintaSuave }}>
           {ativos.length} em curso · {aIniciar.length} a iniciar · {terminados.length} a verificar
         </div>
       </div>

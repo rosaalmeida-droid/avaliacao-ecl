@@ -216,7 +216,8 @@ export function ManualCoordenador({ turmaId }: { turmaId: string }) {
                 Não há bónus de assiduidade (a falta já conta 0, e a assiduidade pesa no Comprometido).
                 Sem farda completa, as técnicas da aula contam 0 (as atitudes contam). Depois soma-se o bónus de
                 <strong> eventos e concursos</strong> (evento +{String(BONUS_EVENTOS.porEvento).replace('.', ',')},
-                concurso +{String(BONUS_EVENTOS.porConcurso).replace('.', ',')}, até +{BONUS_EVENTOS.maximo}).
+                concurso até +{BONUS_EVENTOS.concurso.maximo}, por pontos: candidatura, participação e cada fase
+                +{String(BONUS_EVENTOS.concurso.fase).replace('.', ',')}, e a vitória completa o valor; no total, até +{BONUS_EVENTOS.maximo}).
                 Tetos: {BONUS_EVENTOS.tetoSemParticipacao} sem participar, {BONUS_EVENTOS.tetoSoEventos} só com
                 eventos, 20 com pelo menos um concurso. Concursos só com nota {BONUS_EVENTOS.notaMinimaConcurso} ou mais.
               </p>

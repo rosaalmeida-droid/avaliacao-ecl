@@ -1149,7 +1149,7 @@ export function ManualCozinheiro({ modoProf, nomeProfessor }: {
           </div>
           <div style={{ fontSize: 13, color: 'rgba(26,23,20,0.5)', maxWidth: 280, margin: '0 auto' }}>
             {entradas.length === 0
-              ? modoProf ? 'Cria a primeira entrada — escolhe um módulo do cronograma e gera com IA.' : 'O professor ainda não criou entradas.'
+              ? modoProf ? 'Crie a primeira entrada: escolha um módulo do cronograma e gere-a com a IA.' : 'O professor ainda não criou entradas.'
               : 'Tenta pesquisar com outras palavras.'}
           </div>
           {modoProf && entradas.length === 0 && (

@@ -166,8 +166,11 @@ function ManuaisDosEventos() {
 
 /** Os preços das matérias-primas, só para consultar. O mesmo ecrã em
  *  «Eventos e orçamentos», no professor e no aluno (Rosa, out/2026). */
-export function PrecosConsulta() {
+export function PrecosConsulta({ paraAluno = false }: { paraAluno?: boolean } = {}) {
   const [pesquisa, setPesquisa] = useState('');
+  // Mostram-se 60 de cada vez: com todos os produtos, a página ficava
+  // interminável no telemóvel (Rosa, out/2026).
+  const [quantos, setQuantos] = useState(60);
   const [categoria, setCategoria] = useState('');
   const revistos = useMemo(() => new Map(getPrecosRevistos().map(p => [p.id, p])), []);
   const todos = useMemo(() => [
@@ -187,7 +190,7 @@ export function PrecosConsulta() {
 
   return (
     <div>
-      <input value={pesquisa} onChange={e => setPesquisa(e.target.value)} placeholder="Procurar um produto (ex.: cenoura, bacalhau, manteiga)"
+      <input value={pesquisa} onChange={e => { setPesquisa(e.target.value); setQuantos(60); }} placeholder="Procurar um produto (ex.: cenoura, bacalhau, manteiga)"
         style={{ width: '100%', boxSizing: 'border-box', minHeight: 56, padding: '0 18px', borderRadius: 14, border: `1.5px solid ${C.linha}`,
           fontSize: 18, fontFamily: 'inherit', background: C.papel, color: C.tinta }} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '14px 0 18px' }}>
@@ -195,22 +198,32 @@ export function PrecosConsulta() {
         {categorias.map(c => <button key={c} onClick={() => setCategoria(c === categoria ? '' : c)} style={chip(c === categoria)}>{c}</button>)}
       </div>
       <div style={{ fontSize: 15, color: C.suave, marginBottom: 10 }}>{lista.length} produto{lista.length === 1 ? '' : 's'}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 12 }}>
-        {lista.map(t => (
-          <div key={t.id} style={{ background: C.papel, borderRadius: 16, padding: '16px 18px', border: `1px solid ${C.linha}` }}>
-            <div style={{ fontSize: 17.5, fontWeight: 800, color: C.tinta }}>{t.nome}</div>
-            <div style={{ fontSize: 14, color: C.suave, marginTop: 2 }}>{t.categoria}{t.daEscola ? ' · acrescentado por um professor' : ''}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: C.acento, marginTop: 10 }}>
-              {t.porUn ? `${euro(t.precoUn)} / unidade` : `${euro(t.precoKg)} / kg`}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 8 }}>
+        {lista.slice(0, quantos).map(t => (
+          <div key={t.id} style={{ background: C.papel, borderRadius: 12, padding: '10px 14px', border: `1px solid ${C.linha}`,
+            display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15.5, fontWeight: 700, color: C.tinta }}>{t.nome}</div>
+              <div style={{ fontSize: 13, color: C.suave, marginTop: 1 }}>
+                {t.categoria}{t.daEscola ? ' · acrescentado por um professor' : ''}{t.revisto ? ` · atualizado a ${data(t.revisto)}` : ''}
+              </div>
             </div>
-            {t.revisto && <div style={{ fontSize: 13.5, color: C.suave, marginTop: 4 }}>Atualizado a {data(t.revisto)}</div>}
+            <div style={{ fontSize: 16.5, fontWeight: 800, color: C.acento, whiteSpace: 'nowrap' }}>
+              {t.porUn ? `${euro(t.precoUn)}/un.` : `${euro(t.precoKg)}/kg`}
+            </div>
           </div>
         ))}
       </div>
+      {lista.length > quantos && (
+        <button onClick={() => setQuantos(n => n + 60)} style={{ ...chip(false), width: '100%', marginTop: 12 }}>
+          Mostrar mais ({lista.length - quantos} por mostrar)
+        </button>
+      )}
       {lista.length === 0 && <div style={{ fontSize: 17, color: C.suave, padding: '24px 0' }}>Não há nenhum produto com esse nome.</div>}
       <p style={{ marginTop: 22, fontSize: 15.5, color: C.suave, lineHeight: 1.6 }}>
-        Encontrou um preço errado? Escreva o preço certo na requisição: vale para essa requisição e a coordenação revê-o na
-        próxima atualização dos preços.
+        {paraAluno
+          ? 'Se encontrares um preço que te pareça errado, avisa o professor.'
+          : 'Encontrou um preço errado? Escreva o preço certo na requisição: vale para essa requisição e a coordenação revê-o na próxima atualização dos preços.'}
       </p>
     </div>
   );

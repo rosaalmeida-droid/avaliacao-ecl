@@ -42,8 +42,8 @@ function OrcamentosView({ turmaId, nomeProfessor, onAlteracao, onGuardado }: {
           Para calcular custos sem estar preso a uma aula: um evento, um
           almoço pedagógico, uma encomenda.
           <br />
-          Nas requisições, escolhe <strong>Biblioteca</strong> para usar
-          fichas técnicas que já tenhas feito.
+          Nas requisições, escolha <strong>Biblioteca</strong> para usar
+          fichas técnicas que já tenha feito.
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>

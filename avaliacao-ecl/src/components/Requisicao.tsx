@@ -347,7 +347,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
   // Planos recentes = últimos 60 dias + planos com fichas associadas
   const hoje = new Date();
   const limite60dias = new Date(hoje.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const planosRecentes = planos.filter(p => (p.data || '') >= limite60dias || p.fichasIds.length > 0);
+  const planosRecentes = planos.filter(p => (p.data || '') >= limite60dias || (p.fichasIds || []).length > 0);
   // Sem plano pedido, não se escolhe nenhum: antes ficava o plano mais
   // recente, e uma requisição feita "sozinha" ia gravada nesse plano.
   const planoInicial = planoIdFixo ? planos.find(p => p.id === planoIdFixo) || null : null;
@@ -478,7 +478,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
     setFichasSel(p.fichasIds);
     const pax = paxDoEventoDoPlano(p);
     const r: Record<string, number> = {};
-    p.fichasIds.forEach(fid => {
+    (p.fichasIds || []).forEach(fid => {
       const f = todasFichas.find(x => x.id === fid);
       if (f) r[fid] = pax || porcoesDe(f);
     });
@@ -822,8 +822,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
               return { ano: d.getFullYear(), mes: d.getMonth() };
             })} style={{ background: 'none', border: 'none', fontSize: 20,
               cursor: 'pointer', color: 'var(--copper)', padding: '0 6px' }}>‹</button>
-            <div style={{ fontWeight: 700, fontSize: 14,
-              textTransform: 'capitalize' }}>{nomeMes}</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}</div>
             <button onClick={() => setMesAtual(m => {
               const d = new Date(m.ano, m.mes + 1, 1);
               return { ano: d.getFullYear(), mes: d.getMonth() };
@@ -910,7 +909,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
           {!planoSel && !planoIdFixo && (
             <div style={{ marginTop: 10, fontSize: 13, color: 'rgba(26,23,20,0.55)' }}>
-              Sem plano escolhido: a requisição fica avulsa (por exemplo, um orçamento). Escolhe as fichas na biblioteca.
+              Sem plano escolhido: a requisição fica avulsa (por exemplo, um orçamento). Escolha as fichas na biblioteca.
             </div>
           )}
 
@@ -932,7 +931,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
                   {planoSel.ucId && ` · ${planoSel.ucId}`}
                 </div>
                 <div style={{ fontSize: 12.5, color: 'rgba(26,23,20,0.4)', marginTop: 2 }}>
-                  {planoSel.fichasIds?.length || 0} ficha(s) associada(s)
+                  {planoSel.fichasIds?.length || 0} {(planoSel.fichasIds?.length || 0) === 1 ? 'ficha associada' : 'fichas associadas'}
                 </div>
               </div>
               <button onClick={() => {
@@ -958,7 +957,7 @@ export default function Requisicao({ nomeProfessor, planoIdFixo, turmaId = 'CP1'
 
         {/* 2. Fichas e doses */}
         <div id="req-fichas" style={S.card}>
-            <label style={S.lbl}>2. Fichas de producao e doses</label>
+            <label style={S.lbl}>2. Fichas de produção e doses</label>
             <div style={{ ...S.muted, marginBottom: 10 }}>Selecione as fichas e defina as doses pretendidas para cada uma.</div>
 
             {/* Duas origens. Sem isto, uma requisição só podia usar as
